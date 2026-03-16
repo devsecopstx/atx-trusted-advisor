@@ -28,9 +28,14 @@ const auditMocks = vi.hoisted(() => ({
   listLatestAuditEventsForEntities: vi.fn()
 }));
 
+const verifierMocks = vi.hoisted(() => ({
+  triggerXaiCollectionVerification: vi.fn()
+}));
+
 vi.mock("@/lib/api-auth", () => apiAuthMocks);
 vi.mock("@/modules/xchat/repository", () => repositoryMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 
 import { GET as getPersonas, POST as postPersona } from "@/app/api/personas/route";
 import {
@@ -38,6 +43,7 @@ import {
   GET as getPersonaByIdRoute,
   PUT as putPersonaById
 } from "@/app/api/personas/[personaId]/route";
+import { POST as postVerifyPersonaCollection } from "@/app/api/personas/[personaId]/verify-collection/route";
 
 describe("persona API routes", () => {
   const now = new Date("2026-03-16T00:00:00.000Z");
@@ -126,6 +132,9 @@ describe("persona API routes", () => {
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
     auditMocks.listLatestAuditEventsForEntities.mockResolvedValue({});
+    verifierMocks.triggerXaiCollectionVerification.mockReturnValue({
+      started: true
+    });
   });
 
   it("allows admins to read persona list", async () => {
@@ -520,6 +529,33 @@ describe("persona API routes", () => {
     expect(repositoryMocks.deletePersona).toHaveBeenCalledWith("507f1f77bcf86cd799439055");
   });
 
+  it("triggers persona collection recheck for admin", async () => {
+    const response = await postVerifyPersonaCollection(new Request("http://test"), {
+      params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+    });
+    const payload = (await response.json()) as {
+      data: { personaId: string; collectionId: string; started: boolean };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.started).toBe(true);
+    expect(payload.data.personaId).toBe("507f1f77bcf86cd799439055");
+    expect(payload.data.collectionId).toBe("collection_ops-global");
+    expect(verifierMocks.triggerXaiCollectionVerification).toHaveBeenCalledWith(
+      "collection_ops-global"
+    );
+  });
+
+  it("returns not found when recheck persona does not exist", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValueOnce(null);
+
+    const response = await postVerifyPersonaCollection(new Request("http://test"), {
+      params: Promise.resolve({ personaId: "507f1f77bcf86cd799439099" })
+    });
+
+    expect(response.status).toBe(404);
+  });
+
   it("does not fail delete when audit write fails", async () => {
     auditMocks.createAuditEvent.mockRejectedValueOnce(new Error("audit unavailable"));
 
@@ -535,6 +571,16 @@ describe("persona API routes", () => {
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
     const response = await getPersonas();
+    expect(response.status).toBe(401);
+  });
+
+  it("returns auth response when unauthenticated on verify route", async () => {
+    apiAuthMocks.requireAdminSession.mockResolvedValueOnce(
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    );
+    const response = await postVerifyPersonaCollection(new Request("http://test"), {
+      params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+    });
     expect(response.status).toBe(401);
   });
 

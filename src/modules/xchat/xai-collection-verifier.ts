@@ -25,12 +25,23 @@ export function verifyXaiCollectionNonBlocking(collectionId: string): void {
   if (verificationInFlight.has(normalizedCollectionId)) {
     return;
   }
+  startVerification(normalizedCollectionId);
+}
 
-  const verificationPromise = runVerification(normalizedCollectionId).finally(() => {
-    verificationInFlight.delete(normalizedCollectionId);
-  });
-  verificationInFlight.set(normalizedCollectionId, verificationPromise);
-  void verificationPromise;
+export function triggerXaiCollectionVerification(collectionId: string): {
+  started: boolean;
+  reason?: "missing_collection_id" | "already_running";
+} {
+  const normalizedCollectionId = collectionId.trim();
+  if (!normalizedCollectionId) {
+    return { started: false, reason: "missing_collection_id" };
+  }
+  if (verificationInFlight.has(normalizedCollectionId)) {
+    return { started: false, reason: "already_running" };
+  }
+  verificationCache.delete(normalizedCollectionId);
+  startVerification(normalizedCollectionId);
+  return { started: true };
 }
 
 function setState(collectionId: string, nextState: Omit<XaiCollectionVerificationState, "checkedAt">) {
@@ -84,4 +95,12 @@ async function persistVerification(
       error instanceof Error ? error.message : error
     );
   }
+}
+
+function startVerification(collectionId: string): void {
+  const verificationPromise = runVerification(collectionId).finally(() => {
+    verificationInFlight.delete(collectionId);
+  });
+  verificationInFlight.set(collectionId, verificationPromise);
+  void verificationPromise;
 }

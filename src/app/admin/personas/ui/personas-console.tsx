@@ -35,6 +35,15 @@ type Persona = {
   } | null;
 };
 
+type RagFileOption = {
+  _id?: string;
+  filename: string;
+  scope: string;
+  xaiUploadStatus: "uploaded" | "failed" | "skipped";
+  xaiFileId?: string;
+  createdAt?: string;
+};
+
 const EMPTY_CREATE_FORM: PersonaFormState = {
   name: "",
   systemPrompt: "",
@@ -74,6 +83,9 @@ export function PersonasConsole({
   const [editForm, setEditForm] = useState<PersonaFormState>(EMPTY_CREATE_FORM);
   const [status, setStatus] = useState("Ready");
   const [verificationFilter, setVerificationFilter] = useState<VerificationFilter>("all");
+  const [pickerPersonaId, setPickerPersonaId] = useState<string | null>(null);
+  const [pickerFiles, setPickerFiles] = useState<RagFileOption[]>([]);
+  const [selectedPickerFileIds, setSelectedPickerFileIds] = useState<string[]>([]);
 
   const refreshPersonas = useCallback(async () => {
     try {
@@ -195,6 +207,125 @@ export function PersonasConsole({
       await refreshPersonas();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to delete persona");
+    }
+  }
+
+  async function recheckPersonaCollection(persona: Persona) {
+    if (!persona._id) {
+      setStatus("Persona missing id and cannot be rechecked");
+      return;
+    }
+    setStatus(`Rechecking ${persona.name} collection...`);
+    try {
+      await parseJson(
+        await fetch(`/api/personas/${persona._id}/verify-collection`, {
+          method: "POST"
+        })
+      );
+      setStatus(`Recheck queued for ${persona.name}`);
+      await refreshPersonas();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to recheck collection");
+    }
+  }
+
+  async function createPersonaCollection(persona: Persona) {
+    if (!persona._id) {
+      setStatus("Persona missing id and cannot create collection");
+      return;
+    }
+    setStatus(`Creating collection for ${persona.name}...`);
+    try {
+      await parseJson(
+        await fetch(`/api/personas/${persona._id}/collection/create`, {
+          method: "POST"
+        })
+      );
+      setStatus(`Collection created for ${persona.name}`);
+      await refreshPersonas();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to create collection");
+    }
+  }
+
+  async function linkPersonaScopeFiles(persona: Persona) {
+    if (!persona._id) {
+      setStatus("Persona missing id and cannot link files");
+      return;
+    }
+    setStatus(`Linking uploaded files for ${persona.name}...`);
+    try {
+      const payload = await parseJson<{
+        data: { linkedCount: number; candidateFiles: number; failed: Array<{ fileId: string }> };
+      }>(
+        await fetch(`/api/personas/${persona._id}/collection/link-files`, {
+          method: "POST"
+        })
+      );
+      setStatus(
+        `Linked ${payload.data.linkedCount}/${payload.data.candidateFiles} files for ${persona.name}`
+      );
+      await refreshPersonas();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to link files");
+    }
+  }
+
+  async function openFilePicker(persona: Persona) {
+    if (!persona._id) {
+      setStatus("Persona missing id and cannot select files");
+      return;
+    }
+    setStatus(`Loading files for ${persona.name}...`);
+    try {
+      const payload = await parseJson<{ data: RagFileOption[] }>(
+        await fetch(`/api/rag/files?scope=${encodeURIComponent(persona.defaultScope)}`)
+      );
+      const selectableFiles = payload.data.filter(
+        (file) => file.xaiUploadStatus === "uploaded" && Boolean(file.xaiFileId)
+      );
+      setPickerPersonaId(persona._id);
+      setPickerFiles(selectableFiles);
+      setSelectedPickerFileIds(
+        selectableFiles.flatMap((file) => (file._id ? [file._id] : []))
+      );
+      setStatus(`Loaded ${selectableFiles.length} selectable files for ${persona.name}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to load selectable files");
+    }
+  }
+
+  function togglePickerFile(fileId: string, checked: boolean) {
+    setSelectedPickerFileIds((current) => {
+      if (checked) {
+        return current.includes(fileId) ? current : [...current, fileId];
+      }
+      return current.filter((value) => value !== fileId);
+    });
+  }
+
+  async function syncSelectedFilesForPersona(persona: Persona) {
+    if (!persona._id) {
+      setStatus("Persona missing id and cannot sync selected files");
+      return;
+    }
+    setStatus(`Syncing ${selectedPickerFileIds.length} selected files for ${persona.name}...`);
+    try {
+      const payload = await parseJson<{
+        data: { linkedCount: number; candidateFiles: number; failed: Array<{ fileId: string }> };
+      }>(
+        await fetch(`/api/personas/${persona._id}/collection/link-files`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileIds: selectedPickerFileIds })
+        })
+      );
+      setStatus(
+        `Linked ${payload.data.linkedCount}/${payload.data.candidateFiles} selected files for ${persona.name}`
+      );
+      await refreshPersonas();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to sync selected files");
     }
   }
 
@@ -424,6 +555,38 @@ export function PersonasConsole({
                 <div className="tool-row">
                   <button
                     className="tiny-button"
+                    onClick={() => void createPersonaCollection(persona)}
+                    type="button"
+                    disabled={!persona._id}
+                  >
+                    Create xCollection
+                  </button>
+                  <button
+                    className="tiny-button"
+                    onClick={() => void linkPersonaScopeFiles(persona)}
+                    type="button"
+                    disabled={!persona._id}
+                  >
+                    Sync all scope files
+                  </button>
+                  <button
+                    className="tiny-button"
+                    onClick={() => void openFilePicker(persona)}
+                    type="button"
+                    disabled={!persona._id}
+                  >
+                    Select files
+                  </button>
+                  <button
+                    className="tiny-button"
+                    onClick={() => void recheckPersonaCollection(persona)}
+                    type="button"
+                    disabled={!persona._id}
+                  >
+                    Recheck now
+                  </button>
+                  <button
+                    className="tiny-button"
                     onClick={() => startEditing(persona)}
                     type="button"
                     disabled={!persona._id}
@@ -449,6 +612,86 @@ export function PersonasConsole({
           ) : null}
         </article>
       </div>
+
+      {pickerPersonaId
+        ? (() => {
+            const pickerPersona = personas.find((persona) => persona._id === pickerPersonaId) ?? null;
+            if (!pickerPersona) {
+              return null;
+            }
+            return (
+              <article className="surface-card xf-widget section-card">
+                <h3>Select files for {pickerPersona.name}</h3>
+                <p className="status-text">
+                  Scope: {pickerPersona.defaultScope} - choose exact uploaded files to link.
+                </p>
+                <div className="tool-row">
+                  <button
+                    className="tiny-button"
+                    onClick={() =>
+                      setSelectedPickerFileIds(
+                        pickerFiles.flatMap((file) => (file._id ? [file._id] : []))
+                      )
+                    }
+                    type="button"
+                  >
+                    Select all
+                  </button>
+                  <button
+                    className="tiny-button"
+                    onClick={() => setSelectedPickerFileIds([])}
+                    type="button"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    className="cta cta-primary"
+                    onClick={() => void syncSelectedFilesForPersona(pickerPersona)}
+                    type="button"
+                    disabled={selectedPickerFileIds.length === 0}
+                  >
+                    Sync selected ({selectedPickerFileIds.length})
+                  </button>
+                  <button
+                    className="cta cta-secondary"
+                    onClick={() => {
+                      setPickerPersonaId(null);
+                      setPickerFiles([]);
+                      setSelectedPickerFileIds([]);
+                    }}
+                    type="button"
+                  >
+                    Close
+                  </button>
+                </div>
+                <ul className="data-list">
+                  {pickerFiles.map((file) => {
+                    const fileId = file._id;
+                    if (!fileId) {
+                      return null;
+                    }
+                    return (
+                      <li key={fileId}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={selectedPickerFileIds.includes(fileId)}
+                            onChange={(event) => togglePickerFile(fileId, event.target.checked)}
+                          />{" "}
+                          {file.filename}
+                          {file.createdAt ? ` (${new Date(file.createdAt).toLocaleString()})` : ""}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {pickerFiles.length === 0 ? (
+                  <p className="status-text">No uploaded xAI-ready files found for this scope.</p>
+                ) : null}
+              </article>
+            );
+          })()
+        : null}
 
       {editingPersona ? (
         <article className="surface-card xf-widget section-card">

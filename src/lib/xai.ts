@@ -48,6 +48,87 @@ export function hasXaiManagementApiKey(): boolean {
   return Boolean(managementApiKey?.trim());
 }
 
+export async function createXaiCollection(collectionName: string): Promise<{
+  id: string;
+  name: string;
+}> {
+  const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  if (!managementApiKey) {
+    throw new Error("Missing XAI_MANAGEMENT_API_KEY");
+  }
+
+  const normalizedName = collectionName.trim();
+  if (!normalizedName) {
+    throw new Error("Collection name is required");
+  }
+
+  const response = await fetch(`${managementBaseUrl}/collections`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${managementApiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      collection_name: normalizedName
+    })
+  });
+
+  const payload = (await response.json()) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(`xAI collection create failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
+
+  const id =
+    (typeof payload.id === "string" ? payload.id : undefined) ??
+    (typeof payload.collection_id === "string" ? payload.collection_id : undefined);
+  if (!id) {
+    throw new Error("xAI collection create returned no collection id");
+  }
+
+  const name =
+    (typeof payload.name === "string" ? payload.name : undefined) ??
+    (typeof payload.collection_name === "string" ? payload.collection_name : undefined) ??
+    normalizedName;
+
+  return { id, name };
+}
+
+export async function addFileToXaiCollection(input: {
+  collectionId: string;
+  fileId: string;
+}): Promise<{ linked: boolean; alreadyLinked: boolean }> {
+  const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  if (!managementApiKey) {
+    throw new Error("Missing XAI_MANAGEMENT_API_KEY");
+  }
+
+  const collectionId = input.collectionId.trim();
+  const fileId = input.fileId.trim();
+  if (!collectionId || !fileId) {
+    throw new Error("Collection id and file id are required");
+  }
+
+  const response = await fetch(
+    `${managementBaseUrl}/collections/${collectionId}/documents/${fileId}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${managementApiKey}`
+      }
+    }
+  );
+
+  if (response.ok) {
+    return { linked: true, alreadyLinked: false };
+  }
+  if (response.status === 409) {
+    return { linked: true, alreadyLinked: true };
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  throw new Error(`xAI add file to collection failed: ${JSON.stringify(payload.error ?? payload)}`);
+}
+
 export async function uploadFileToXai(
   filename: string,
   bytes: Uint8Array
