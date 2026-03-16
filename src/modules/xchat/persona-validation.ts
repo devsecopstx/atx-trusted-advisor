@@ -1,0 +1,109 @@
+import { z } from "zod";
+
+export const PERSONA_VALIDATION_LIMITS = {
+  payloadBytes: 32 * 1024,
+  nameLength: 80,
+  systemPromptLength: 16_000,
+  overridePromptLength: 16_000,
+  xaiCollectionIdLength: 120,
+  xaiCollectionNameLength: 120,
+  modelLength: 120,
+  scopeLength: 80
+} as const;
+
+const temperatureSchema = z.preprocess(
+  (value) => {
+    if (typeof value === "string") {
+      return Number(value.replace(",", ".").trim());
+    }
+    return value;
+  },
+  z.number().min(0).max(1)
+);
+
+const booleanSchema = z.preprocess(
+  (value) => {
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") {
+        return true;
+      }
+      if (normalized === "false") {
+        return false;
+      }
+    }
+    return value;
+  },
+  z.boolean()
+);
+
+const optionalTrimmedString = (maxLength: number) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value === "string" && value.trim() === "") {
+        return undefined;
+      }
+      return value;
+    },
+    z.string().trim().max(maxLength).optional()
+  );
+
+const xaiCollectionSchema = z.object({
+  collectionId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(PERSONA_VALIDATION_LIMITS.xaiCollectionIdLength)
+    .regex(/^collection_[A-Za-z0-9-]+$/, "Invalid xAI collection id"),
+  collectionName: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.xaiCollectionNameLength)
+});
+
+export const createPersonaPayloadSchema = z.object({
+  name: z.string().trim().min(2).max(PERSONA_VALIDATION_LIMITS.nameLength),
+  systemPrompt: z.string().trim().min(10).max(PERSONA_VALIDATION_LIMITS.systemPromptLength),
+  overridePrompt: z.string().trim().min(1).max(PERSONA_VALIDATION_LIMITS.overridePromptLength),
+  xaiCollection: xaiCollectionSchema,
+  model: z.string().trim().min(1).max(PERSONA_VALIDATION_LIMITS.modelLength).default("grok-4-latest"),
+  temperature: temperatureSchema.default(0.2),
+  enableRag: booleanSchema.default(true),
+  defaultScope: z
+    .string()
+    .trim()
+    .min(1)
+    .max(PERSONA_VALIDATION_LIMITS.scopeLength)
+    .default("global")
+});
+
+export const updatePersonaPayloadSchema = z.object({
+  name: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.nameLength).refine(
+    (value) => value === undefined || value.length >= 2,
+    "String must contain at least 2 character(s)"
+  ),
+  systemPrompt: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.systemPromptLength).refine(
+    (value) => value === undefined || value.length >= 10,
+    "String must contain at least 10 character(s)"
+  ),
+  overridePrompt: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.overridePromptLength),
+  xaiCollection: xaiCollectionSchema.optional(),
+  model: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.modelLength),
+  temperature: temperatureSchema.optional(),
+  enableRag: booleanSchema.optional(),
+  defaultScope: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.scopeLength)
+});
+
+export function isPersonaPayloadTooLargeByHeader(request: Request): boolean {
+  const contentLengthHeader = request.headers.get("content-length");
+  if (!contentLengthHeader) {
+    return false;
+  }
+  const parsedLength = Number(contentLengthHeader);
+  return Number.isFinite(parsedLength) && parsedLength > PERSONA_VALIDATION_LIMITS.payloadBytes;
+}
+
+export function isPersonaPayloadTooLargeByBody(body: unknown): boolean {
+  return encodedByteLength(body) > PERSONA_VALIDATION_LIMITS.payloadBytes;
+}
+
+function encodedByteLength(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).length;
+}
