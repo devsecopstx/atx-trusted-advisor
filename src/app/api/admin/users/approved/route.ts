@@ -1,0 +1,16 @@
+import { NextResponse } from "next/server";
+
+import { requireAdminSession } from "@/lib/api-auth";
+import { listApprovedUsers } from "@/modules/core-admin/repository";
+
+export async function GET() {
+  const session = await requireAdminSession();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const users = await listApprovedUsers(100, {
+    tenantId: session.tenantId
+  });
+  return NextResponse.json({ data: users });
+}
