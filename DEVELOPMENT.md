@@ -64,6 +64,102 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 - Seed admin: `npm run seed:admin`
 - Backfill legacy xchat identity fields: `npm run migrate:xchat-identity`
 
+## Cloud Agent Config Freeze (Backoffice Core)
+
+Use this when locking Cursor cloud-agent and deployment config before first GCP rollout.
+
+### Freeze Checklist
+
+- [ ] Domain model fixed: frontend `fintech-advisor.ai`, backoffice `core.fintech-advisor.ai`
+- [ ] Staging host fixed: `staging.core.fintech-advisor.ai`
+- [ ] Separate GCP projects selected (`staging` and `production`)
+- [ ] Single X OAuth app configured with both callback URLs
+- [ ] GitHub Environments `staging` and `production` created
+- [ ] Workflow env vars set and validated in `.github/workflows/deploy-cloud-run.yml`
+- [ ] GitHub environment secrets set (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`)
+- [ ] Cloud Run runtime secrets provisioned (Secret Manager recommended)
+
+### GitHub Environment Variables
+
+Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-scoped.
+
+| Variable | Staging | Production |
+| --- | --- | --- |
+| `GCP_PROJECT_ID_STAGING` | `<your-staging-project-id>` | same value (staging-only variable) |
+| `GCP_PROJECT_ID_PROD` | same value (prod-only variable) | `<your-prod-project-id>` |
+| `GAR_LOCATION_STAGING` | `us-central1` (recommended) | same value (staging-only variable) |
+| `GAR_LOCATION_PROD` | same value (prod-only variable) | `us-central1` (recommended) |
+| `GAR_REPOSITORY_STAGING` | `xfinance` (recommended) | same value (staging-only variable) |
+| `GAR_REPOSITORY_PROD` | same value (prod-only variable) | `xfinance` (recommended) |
+| `CLOUD_RUN_REGION` | `us-central1` (recommended) | `us-central1` (recommended) |
+| `CLOUD_RUN_SERVICE_STAGING` | `xfinance-core-staging` | same value (staging-only variable) |
+| `CLOUD_RUN_SERVICE_PROD` | same value (prod-only variable) | `xfinance-core-prod` |
+| `STAGING_BASE_URL` | `https://staging.core.fintech-advisor.ai` | same value (staging-only variable) |
+| `PROD_BASE_URL` | same value (prod-only variable) | `https://core.fintech-advisor.ai` |
+
+### GitHub CLI Setup (Variables + Secrets)
+
+Use this once GCP resources exist.
+
+```bash
+# Required inputs
+STAGING_PROJECT_ID="<your-staging-project-id>"
+PROD_PROJECT_ID="<your-prod-project-id>"
+STAGING_WIP="<staging-workload-identity-provider-resource>"
+PROD_WIP="<prod-workload-identity-provider-resource>"
+STAGING_SA="<staging-deploy-sa>@${STAGING_PROJECT_ID}.iam.gserviceaccount.com"
+PROD_SA="<prod-deploy-sa>@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+
+# Repo variables used by workflow (vars.*)
+gh variable set GCP_PROJECT_ID_STAGING --body "$STAGING_PROJECT_ID"
+gh variable set GCP_PROJECT_ID_PROD --body "$PROD_PROJECT_ID"
+gh variable set GAR_LOCATION_STAGING --body "us-central1"
+gh variable set GAR_LOCATION_PROD --body "us-central1"
+gh variable set GAR_REPOSITORY_STAGING --body "xfinance"
+gh variable set GAR_REPOSITORY_PROD --body "xfinance"
+gh variable set CLOUD_RUN_REGION --body "us-central1"
+gh variable set CLOUD_RUN_SERVICE_STAGING --body "xfinance-core-staging"
+gh variable set CLOUD_RUN_SERVICE_PROD --body "xfinance-core-prod"
+gh variable set STAGING_BASE_URL --body "https://staging.core.fintech-advisor.ai"
+gh variable set PROD_BASE_URL --body "https://core.fintech-advisor.ai"
+
+# Environment secrets
+gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --env staging --body "$STAGING_WIP"
+gh secret set GCP_SERVICE_ACCOUNT_EMAIL --env staging --body "$STAGING_SA"
+gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --env production --body "$PROD_WIP"
+gh secret set GCP_SERVICE_ACCOUNT_EMAIL --env production --body "$PROD_SA"
+```
+
+### GitHub Environment Secrets
+
+Use environment-scoped secrets in GitHub:
+
+| Secret | Staging | Production |
+| --- | --- | --- |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `<staging-provider-resource-name>` | `<prod-provider-resource-name>` |
+| `GCP_SERVICE_ACCOUNT_EMAIL` | `<staging-deploy-sa>@<staging-project>.iam.gserviceaccount.com` | `<prod-deploy-sa>@<prod-project>.iam.gserviceaccount.com` |
+
+### Cloud Run Runtime Secrets (per environment)
+
+Required:
+
+- `MONGODB_URI_B64`
+- `XAI_API_KEY`
+- `X_OAUTH_CLIENT_ID`
+- `X_OAUTH_CLIENT_SECRET`
+- `AUTH_SECRET`
+
+Optional:
+
+- `XAI_MANAGEMENT_API_KEY`
+- `ADMIN_SEED_EMAIL`
+- `ADMIN_X_USERNAMES`
+
+### OAuth Callback URLs (single X app)
+
+- `https://core.fintech-advisor.ai/api/auth/x/callback`
+- `https://staging.core.fintech-advisor.ai/api/auth/x/callback`
+
 ## API Endpoints
 
 - `GET /api/health`

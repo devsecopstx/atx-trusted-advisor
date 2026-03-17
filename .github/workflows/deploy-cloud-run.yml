@@ -1,0 +1,148 @@
+name: Deploy Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Deployment target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  NODE_VERSION: "22"
+  IMAGE_NAME: "xfinance-core-app"
+
+jobs:
+  deploy-staging:
+    if: startsWith(github.ref, 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.target == 'staging')
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: true
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run CI gate
+        run: npm run ci:gate
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID_STAGING }}
+
+      - name: Configure Docker auth for Artifact Registry
+        run: gcloud auth configure-docker "${{ vars.GAR_LOCATION_STAGING }}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        env:
+          IMAGE_URI: ${{ vars.GAR_LOCATION_STAGING }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID_STAGING }}/${{ vars.GAR_REPOSITORY_STAGING }}/${{ env.IMAGE_NAME }}:staging-${{ github.sha }}
+        run: |
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run (staging)
+        run: |
+          gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
+            --image "$IMAGE_URI" \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Health check staging
+        run: |
+          curl --fail --silent --show-error "${{ vars.STAGING_BASE_URL }}/api/health"
+
+  deploy-production:
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: ${{ vars.PROD_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run CI gate
+        run: npm run ci:gate
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID_PROD }}
+
+      - name: Configure Docker auth for Artifact Registry
+        run: gcloud auth configure-docker "${{ vars.GAR_LOCATION_PROD }}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        env:
+          IMAGE_URI: ${{ vars.GAR_LOCATION_PROD }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID_PROD }}/${{ vars.GAR_REPOSITORY_PROD }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+        run: |
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run (production)
+        run: |
+          gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            --image "$IMAGE_URI" \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Health check production
+        run: |
+          curl --fail --silent --show-error "${{ vars.PROD_BASE_URL }}/api/health"
