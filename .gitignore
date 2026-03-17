@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # Next.js generated TypeScript env shim
 next-env.d.ts
+
+# Ephemeral local agent-generated batch tests
+tests/integration/xchat-batch-*.test.ts
