@@ -1,12 +1,35 @@
-# xfinance
+# xFinance Core App
 
-xFinance core admin backend for access governance, task scheduling, broker and portfolio administration, and notification defaults.
+Admin-only operations platform for xFinance. This repo powers:
 
-See `DEVELOPMENT.md` for local setup and API usage.
+- access request governance
+- persona and collection management
+- xChat operational workflows
+- audit visibility for admin actions
+- portfolio/account bootstrap defaults
 
-Quick start:
+## Quick Start
 
-1. `cp .env.example .env`
-2. `npm install`
-3. `npm run seed:admin`
-4. `npm run dev`
+1. Copy env template: `cp .env.example .env`
+2. Install deps: `npm install`
+3. Start MongoDB: `docker compose up -d`
+4. Seed admin defaults: `npm run seed:admin`
+5. Start app: `npm run dev`
+
+## Validation
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+## Core Routes
+
+- UI: `/admin`, `/admin/personas`, `/admin/xchat`, `/admin/audit`
+- API: `/api/personas`, `/api/xchat/ask`, `/api/admin/*`, `/api/health`
+
+## Docs
+
+- Full setup/runbook: `DEVELOPMENT.md`
+- Operator runbook: `AGENTS.md`
+- Contribution workflow: `CONTRIBUTING.md`
