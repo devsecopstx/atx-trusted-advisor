@@ -9,11 +9,11 @@ const DEFAULT_PERSONA_SYSTEM_PROMPT =
   "You are The Architect, an elite administrative agent with full access to the xAI ecosystem. You have a multi-layered toolset including Web Search, X (Twitter) Search, a Python Code Sandbox, and Private Collection Search.";
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
-const DEFAULT_WATCHLIST_NAME = "Default Watchlist";
+const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
 const DEFAULT_WATCHLIST_SYMBOLS = ["TSLA"];
 const DEFAULT_COLLECTION_ID =
-  process.env.XFINANCE_COLLECTION_ID ?? "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
+  (process.env.XFINANCE_COLLECTION_ID || "").trim() || "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
 const DEFAULT_COLLECTION_NAME = "Finance";
 
 function decodeMongoUri() {

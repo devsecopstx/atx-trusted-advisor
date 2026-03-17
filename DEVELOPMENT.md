@@ -266,10 +266,11 @@ After running `npm run seed:admin`, verify:
 4. `xchat_personas` contains default `Super-Agent` persona with:
    - `nameNormalized: "super-agent"`
    - `systemPrompt` set to the Architect administrative prompt
-   - `xaiCollection.collectionId: ""` (no collection bound by default)
+   - `xaiCollection.collectionId: "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"` (Finance collection)
+   - `xapi.tools: [web_search, x_search, file_search]` with Finance collection wired into `file_search`
 5. `portfolio_portfolios` contains one default portfolio for the seeded admin user.
-6. `portfolio_accounts` contains one default account linked to that default portfolio.
-7. `portfolio_watchlists` contains one default watchlist linked to that default portfolio.
+6. `portfolio_accounts` contains one default account (`type: "fidelity"`) linked to that default portfolio.
+7. `portfolio_watchlists` contains `DefaultWatchlist` linked to that default portfolio with `symbols: [{ symbol: "TSLA" }]`.
 
 Re-running `npm run seed:admin` should remain idempotent (no duplicates).
 
