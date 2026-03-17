@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Local editor workspace files
 *.code-workspace
+
+# Next.js generated TypeScript env shim
+next-env.d.ts
