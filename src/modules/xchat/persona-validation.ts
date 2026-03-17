@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
+
 export const PERSONA_VALIDATION_LIMITS = {
   payloadBytes: 32 * 1024,
   nameLength: 80,
@@ -8,7 +10,8 @@ export const PERSONA_VALIDATION_LIMITS = {
   xaiCollectionIdLength: 120,
   xaiCollectionNameLength: 120,
   modelLength: 120,
-  scopeLength: 80
+  scopeLength: 80,
+  xapiToolsLength: 32
 } as const;
 
 const temperatureSchema = z.preprocess(
@@ -56,12 +59,35 @@ const xaiCollectionSchema = z.object({
   collectionName: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.xaiCollectionNameLength)
 });
 
+const xapiToolSchema = z
+  .object({
+    type: z.string().trim().min(1).max(80)
+  })
+  .passthrough();
+
+const maxTurnsSchema = z.preprocess(
+  (value) => {
+    if (typeof value === "string") {
+      return Number(value.trim());
+    }
+    return value;
+  },
+  z.number().int().min(1).max(10)
+);
+
+const xapiSchema = z.object({
+  mode: z.enum(["responses", "chat_completions"]).default(DEFAULT_PERSONA_XAPI_CONFIG.mode),
+  toolChoice: z.enum(["auto", "required", "none"]).default(DEFAULT_PERSONA_XAPI_CONFIG.toolChoice),
+  maxTurns: maxTurnsSchema.default(DEFAULT_PERSONA_XAPI_CONFIG.maxTurns),
+  tools: z.array(xapiToolSchema).max(PERSONA_VALIDATION_LIMITS.xapiToolsLength).default([])
+});
+
 export const createPersonaPayloadSchema = z.object({
   name: z.string().trim().min(2).max(PERSONA_VALIDATION_LIMITS.nameLength),
   systemPrompt: z.string().trim().min(10).max(PERSONA_VALIDATION_LIMITS.systemPromptLength),
   overridePrompt: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.overridePromptLength),
   xaiCollection: xaiCollectionSchema.optional(),
-  model: z.string().trim().min(1).max(PERSONA_VALIDATION_LIMITS.modelLength).default("grok-4-latest"),
+  model: z.string().trim().min(1).max(PERSONA_VALIDATION_LIMITS.modelLength).default("grok-4-1-fast"),
   temperature: temperatureSchema.default(0.2),
   enableRag: booleanSchema.default(true),
   defaultScope: z
@@ -69,7 +95,8 @@ export const createPersonaPayloadSchema = z.object({
     .trim()
     .min(1)
     .max(PERSONA_VALIDATION_LIMITS.scopeLength)
-    .default("global")
+    .default("global"),
+  xapi: xapiSchema.default(DEFAULT_PERSONA_XAPI_CONFIG)
 });
 
 export const updatePersonaPayloadSchema = z.object({
@@ -86,7 +113,8 @@ export const updatePersonaPayloadSchema = z.object({
   model: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.modelLength),
   temperature: temperatureSchema.optional(),
   enableRag: booleanSchema.optional(),
-  defaultScope: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.scopeLength)
+  defaultScope: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.scopeLength),
+  xapi: xapiSchema.optional()
 });
 
 export function isPersonaPayloadTooLargeByHeader(request: Request): boolean {

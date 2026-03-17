@@ -8,6 +8,10 @@ export type PersonaFormState = {
   temperature: string;
   enableRag: boolean;
   defaultScope: string;
+  xapiMode: "responses" | "chat_completions";
+  xapiToolChoice: "auto" | "required" | "none";
+  xapiMaxTurns: string;
+  xapiToolsJson: string;
 };
 
 export type XaiCollectionInventoryOption = {
@@ -29,10 +33,14 @@ export const EMPTY_CREATE_FORM: PersonaFormState = {
   overridePrompt: "",
   xaiCollectionId: "",
   xaiCollectionName: "",
-  model: "grok-4-latest",
+  model: "grok-4-1-fast",
   temperature: "0.2",
   enableRag: true,
-  defaultScope: "global"
+  defaultScope: "global",
+  xapiMode: "responses",
+  xapiToolChoice: "auto",
+  xapiMaxTurns: "5",
+  xapiToolsJson: "[]"
 };
 
 export function applySelectedCollectionToPersonaForm(

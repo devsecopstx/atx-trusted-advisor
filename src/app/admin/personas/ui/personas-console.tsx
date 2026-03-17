@@ -32,6 +32,12 @@ type Persona = {
   temperature: number;
   enableRag: boolean;
   defaultScope: string;
+  xapi: {
+    mode: "responses" | "chat_completions";
+    toolChoice: "auto" | "required" | "none";
+    maxTurns: number;
+    tools: Array<{ type: string; [key: string]: unknown }>;
+  };
   xaiCollectionVerification?: {
     status: "verified" | "missing" | "error" | "skipped";
     checkedAt: string;
@@ -270,7 +276,11 @@ export function PersonasConsole({
       model: persona.model,
       temperature: String(persona.temperature),
       enableRag: persona.enableRag,
-      defaultScope: persona.defaultScope
+      defaultScope: persona.defaultScope,
+      xapiMode: persona.xapi.mode,
+      xapiToolChoice: persona.xapi.toolChoice,
+      xapiMaxTurns: String(persona.xapi.maxTurns),
+      xapiToolsJson: JSON.stringify(persona.xapi.tools, null, 2)
     });
   }
 
@@ -458,7 +468,44 @@ export function PersonasConsole({
     return parsed;
   }
 
+  function parseMaxTurnsInput(value: string): number {
+    const parsed = Number(value.trim());
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10) {
+      throw new Error("max_turns must be an integer between 1 and 10");
+    }
+    return parsed;
+  }
+
+  function parseXapiToolsInput(value: string): Array<{ type: string; [key: string]: unknown }> {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      throw new Error("Tools JSON must be valid JSON");
+    }
+    if (!Array.isArray(parsed)) {
+      throw new Error("Tools JSON must be an array");
+    }
+    const tools = parsed.filter(
+      (entry): entry is { type: string; [key: string]: unknown } =>
+        Boolean(entry) &&
+        typeof entry === "object" &&
+        "type" in entry &&
+        typeof (entry as { type?: unknown }).type === "string"
+    );
+    if (tools.length !== parsed.length) {
+      throw new Error("Each tool must include a string 'type' field");
+    }
+    return tools;
+  }
+
   function buildPersonaPayload(form: PersonaFormState, temperature: number) {
+    const maxTurns = parseMaxTurnsInput(form.xapiMaxTurns);
+    const tools = parseXapiToolsInput(form.xapiToolsJson);
     return {
       name: form.name,
       systemPrompt: form.systemPrompt,
@@ -470,7 +517,13 @@ export function PersonasConsole({
       model: form.model,
       temperature,
       enableRag: form.enableRag,
-      defaultScope: form.defaultScope
+      defaultScope: form.defaultScope,
+      xapi: {
+        mode: form.xapiMode,
+        toolChoice: form.xapiToolChoice,
+        maxTurns,
+        tools
+      }
     };
   }
 
@@ -612,6 +665,58 @@ export function PersonasConsole({
               required
               value={createForm.defaultScope}
             />
+            <select
+              onChange={(event) =>
+                updateCreateForm("xapiMode", event.target.value as PersonaFormState["xapiMode"])
+              }
+              value={createForm.xapiMode}
+            >
+              <option value="responses">xAPI mode: responses</option>
+              <option value="chat_completions">xAPI mode: chat_completions</option>
+            </select>
+            <select
+              onChange={(event) =>
+                updateCreateForm(
+                  "xapiToolChoice",
+                  event.target.value as PersonaFormState["xapiToolChoice"]
+                )
+              }
+              value={createForm.xapiToolChoice}
+            >
+              <option value="auto">tool_choice: auto</option>
+              <option value="required">tool_choice: required</option>
+              <option value="none">tool_choice: none</option>
+            </select>
+            <input
+              max={10}
+              min={1}
+              name="xapiMaxTurns"
+              onChange={(event) => updateCreateForm("xapiMaxTurns", event.target.value)}
+              placeholder="5"
+              required
+              step={1}
+              type="number"
+              value={createForm.xapiMaxTurns}
+            />
+            <textarea
+              name="xapiToolsJson"
+              onChange={(event) => updateCreateForm("xapiToolsJson", event.target.value)}
+              placeholder='[{"type":"web_search"}]'
+              rows={6}
+              value={createForm.xapiToolsJson}
+            />
+            <button
+              className="tiny-button"
+              onClick={() =>
+                updateCreateForm(
+                  "xapiToolsJson",
+                  JSON.stringify([{ type: "file_search" }, { type: "web_search" }], null, 2)
+                )
+              }
+              type="button"
+            >
+              Use KB tools preset
+            </button>
             <label>
               <input
                 checked={createForm.enableRag}
@@ -672,6 +777,11 @@ export function PersonasConsole({
                     {persona.xaiCollection.collectionName
                       ? ` (${persona.xaiCollection.collectionName})`
                       : ""}
+                  </small>
+                  <br />
+                  <small>
+                    xAPI: {persona.xapi.mode}, tool_choice={persona.xapi.toolChoice}, max_turns=
+                    {persona.xapi.maxTurns}, tools={persona.xapi.tools.length}
                   </small>
                   {!hasBoundCollection(persona) ? (
                     <>
@@ -1013,6 +1123,46 @@ export function PersonasConsole({
               placeholder="global"
               required
               value={editForm.defaultScope}
+            />
+            <select
+              onChange={(event) =>
+                updateEditForm("xapiMode", event.target.value as PersonaFormState["xapiMode"])
+              }
+              value={editForm.xapiMode}
+            >
+              <option value="responses">xAPI mode: responses</option>
+              <option value="chat_completions">xAPI mode: chat_completions</option>
+            </select>
+            <select
+              onChange={(event) =>
+                updateEditForm(
+                  "xapiToolChoice",
+                  event.target.value as PersonaFormState["xapiToolChoice"]
+                )
+              }
+              value={editForm.xapiToolChoice}
+            >
+              <option value="auto">tool_choice: auto</option>
+              <option value="required">tool_choice: required</option>
+              <option value="none">tool_choice: none</option>
+            </select>
+            <input
+              max={10}
+              min={1}
+              name="xapiMaxTurns"
+              onChange={(event) => updateEditForm("xapiMaxTurns", event.target.value)}
+              placeholder="5"
+              required
+              step={1}
+              type="number"
+              value={editForm.xapiMaxTurns}
+            />
+            <textarea
+              name="xapiToolsJson"
+              onChange={(event) => updateEditForm("xapiToolsJson", event.target.value)}
+              placeholder='[{"type":"web_search"}]'
+              rows={6}
+              value={editForm.xapiToolsJson}
             />
             <label>
               <input

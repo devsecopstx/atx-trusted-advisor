@@ -12,6 +12,7 @@ const rateLimitMocks = vi.hoisted(() => ({
 
 const xaiMocks = vi.hoisted(() => ({
   chatWithXai: vi.fn(),
+  respondWithXai: vi.fn(),
   searchDocumentsInCollections: vi.fn()
 }));
 
@@ -50,6 +51,10 @@ describe("xchat ask route collection retrieval", () => {
       outputText: "xAI answer",
       model: "grok-4-latest"
     });
+    xaiMocks.respondWithXai.mockResolvedValue({
+      outputText: "xAI answer",
+      model: "grok-4-latest"
+    });
     repositoryMocks.getPersonaById.mockResolvedValue({
       _id: new ObjectId("507f1f77bcf86cd799439055"),
       name: "Ops",
@@ -64,6 +69,12 @@ describe("xchat ask route collection retrieval", () => {
       temperature: 0.2,
       enableRag: true,
       defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "web_search" }]
+      },
       createdAt: new Date("2026-03-16T00:00:00.000Z"),
       updatedAt: new Date("2026-03-16T00:00:00.000Z")
     });
@@ -96,14 +107,11 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextCount).toBe(1);
     expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_ops-global");
     expect(repositoryMocks.retrieveRagChunks).not.toHaveBeenCalled();
-    expect(xaiMocks.chatWithXai).toHaveBeenCalledWith(
+    expect(xaiMocks.respondWithXai).toHaveBeenCalledWith(
       expect.objectContaining({
-        messages: expect.arrayContaining([
-          expect.objectContaining({
-            role: "system",
-            content: expect.stringContaining("Collection context snippet")
-          })
-        ])
+        systemPrompt: expect.stringContaining("Collection context snippet"),
+        toolChoice: "auto",
+        maxTurns: 5
       })
     );
   });
@@ -138,6 +146,48 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextSource).toBe("mongo_scope");
     expect(payload.data.contextCount).toBe(1);
     expect(repositoryMocks.retrieveRagChunks).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses chat completions mode when persona xapi mode is chat_completions", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439055"),
+      name: "Ops",
+      nameNormalized: "ops",
+      systemPrompt: "You are ops.",
+      overridePrompt: "Use checklist output.",
+      xaiCollection: {
+        collectionId: "collection_ops-global",
+        collectionName: "Ops Docs"
+      },
+      model: "grok-4-latest",
+      temperature: 0.2,
+      enableRag: true,
+      defaultScope: "global",
+      xapi: {
+        mode: "chat_completions",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: []
+      },
+      createdAt: new Date("2026-03-16T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-16T00:00:00.000Z")
+    });
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "Use fallback mode",
+          topK: 4
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(xaiMocks.chatWithXai).toHaveBeenCalledTimes(1);
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
   });
 
   it("continues when unauthenticated by returning auth response", async () => {

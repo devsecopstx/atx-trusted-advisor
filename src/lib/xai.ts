@@ -11,6 +11,14 @@ type XaiChatResult = {
   raw: unknown;
 };
 
+type XaiToolChoice = "auto" | "required" | "none";
+
+type XaiResponsesResult = {
+  model: string;
+  outputText: string;
+  raw: unknown;
+};
+
 type XaiCollectionSearchSnippet = {
   text: string;
   documentId?: string;
@@ -203,6 +211,48 @@ export async function chatWithXai(input: {
 
   return {
     model: payload.model ?? input.model ?? defaultModel,
+    outputText,
+    raw: payload
+  };
+}
+
+export async function respondWithXai(input: {
+  model?: string;
+  systemPrompt: string;
+  userPrompt: string;
+  tools?: Array<Record<string, unknown>>;
+  toolChoice?: XaiToolChoice;
+  maxTurns?: number;
+}): Promise<XaiResponsesResult> {
+  const { apiKey, baseUrl, defaultModel } = getXaiConfig();
+  const response = await fetch(`${baseUrl}/responses`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: input.model ?? defaultModel,
+      system_prompt: input.systemPrompt,
+      input: input.userPrompt,
+      tools: input.tools ?? [],
+      tool_choice: input.toolChoice ?? "auto",
+      max_turns: input.maxTurns ?? 5
+    })
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(`xAI responses failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
+
+  const outputText = extractResponseOutputText(payload);
+  if (!outputText) {
+    throw new Error("xAI responses returned an empty response");
+  }
+
+  return {
+    model: asString(payload.model) ?? input.model ?? defaultModel,
     outputText,
     raw: payload
   };
@@ -414,6 +464,36 @@ function extractCollectionSnippets(
 
 function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function extractResponseOutputText(payload: Record<string, unknown>): string {
+  const directText = asString(payload.output_text)?.trim();
+  if (directText) {
+    return directText;
+  }
+
+  const output = Array.isArray(payload.output) ? payload.output : [];
+  const fragments: string[] = [];
+
+  for (const entry of output) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+    const outputEntry = entry as Record<string, unknown>;
+    const content = Array.isArray(outputEntry.content) ? outputEntry.content : [];
+    for (const piece of content) {
+      if (!piece || typeof piece !== "object") {
+        continue;
+      }
+      const contentPiece = piece as Record<string, unknown>;
+      const text = asString(contentPiece.text)?.trim();
+      if (text) {
+        fragments.push(text);
+      }
+    }
+  }
+
+  return fragments.join("\n").trim();
 }
 
 function asNumber(value: unknown): number | undefined {
