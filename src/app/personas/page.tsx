@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
-import { AdminSessionPanel } from "@/app/admin/ui/admin-session-panel";
+import { XFinanceLogo } from "@/app/ui/xfinance-logo";
 
 import { PersonaDirectory } from "./ui/persona-directory";
 
@@ -15,28 +15,16 @@ export default async function PersonasPage() {
   return (
     <main className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <div className="hero-top">
-          <div>
-            <p className="eyebrow">xfinance core</p>
-            <h1 className="hero-title">xPersona Directory</h1>
-            <p className="hero-copy">
-              Read-only directory of configured xPersonas and their capabilities.
-            </p>
-          </div>
-          <AdminSessionPanel
-            avatarUrl={session.avatarUrl}
-            displayName={session.displayName}
-            email={session.email}
-            xUserId={session.xUserId}
-            username={session.username}
-          />
+        <XFinanceLogo size="sm" />
+        <h1 className="hero-title">xPersona Directory</h1>
+        <p className="hero-copy">
+          Read-only directory of configured xPersonas and their capabilities.
+        </p>
+        <div className="cta-row">
+          <Link className="cta cta-secondary" href="/admin">
+            Back to admin
+          </Link>
         </div>
-      </section>
-
-      <section className="panel">
-        <Link className="cta cta-secondary" href="/admin">
-          Back to admin
-        </Link>
       </section>
 
       <PersonaDirectory />

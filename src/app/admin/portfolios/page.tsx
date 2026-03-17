@@ -1,10 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
-import { BackIcon } from "@/app/admin/ui/crud-icons";
 
-import { AdminSessionPanel } from "../ui/admin-session-panel";
 import { PortfolioConsole } from "./ui/portfolio-console";
 
 export default async function AdminPortfoliosPage() {
@@ -17,33 +14,16 @@ export default async function AdminPortfoliosPage() {
   }
 
   return (
-    <main className="core-shell">
+    <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <div className="hero-top">
-          <div>
-            <p className="eyebrow">xfinance core admin</p>
-            <h1 className="hero-title">Portfolios</h1>
-            <p className="hero-copy">
-              View default portfolio, accounts, and watchlist for the current admin session.
-            </p>
-          </div>
-          <AdminSessionPanel
-            avatarUrl={session.avatarUrl}
-            displayName={session.displayName}
-            email={session.email}
-            xUserId={session.xUserId}
-            username={session.username}
-          />
-        </div>
-      </section>
-
-      <section className="panel">
-        <Link className="cta cta-secondary" href="/admin">
-          <BackIcon className="crud-icon" /> Back to admin functions
-        </Link>
+        <p className="eyebrow">xfinance core admin</p>
+        <h1 className="hero-title">Portfolios</h1>
+        <p className="hero-copy">
+          View default portfolio, accounts, and watchlist for the current admin session.
+        </p>
       </section>
 
       <PortfolioConsole />
-    </main>
+    </div>
   );
 }

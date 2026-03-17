@@ -16,6 +16,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin/access-requests", label: "Access" },
   { href: "/admin/personas", label: "Personas" },
   { href: "/admin/xchat", label: "xChat" },
+  { href: "/admin/portfolios", label: "Portfolios" },
   { href: "/admin/tasks", label: "Tasks" },
   { href: "/admin/rag-files", label: "RAG" },
   { href: "/admin/user-settings", label: "Users" },

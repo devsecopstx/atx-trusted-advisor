@@ -1,10 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
-import { BackIcon } from "@/app/admin/ui/crud-icons";
 
-import { AdminSessionPanel } from "../ui/admin-session-panel";
 import { RagFilesConsole } from "./ui/rag-files-console";
 
 export default async function AdminRagFilesPage() {
@@ -17,33 +14,16 @@ export default async function AdminRagFilesPage() {
   }
 
   return (
-    <main className="core-shell">
+    <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <div className="hero-top">
-          <div>
-            <p className="eyebrow">xfinance core admin</p>
-            <h1 className="hero-title">RAG Uploads</h1>
-            <p className="hero-copy">
-              Upload scoped documents and review the latest ingestion status for knowledge files.
-            </p>
-          </div>
-          <AdminSessionPanel
-            avatarUrl={session.avatarUrl}
-            displayName={session.displayName}
-            email={session.email}
-            xUserId={session.xUserId}
-            username={session.username}
-          />
-        </div>
-      </section>
-
-      <section className="panel">
-        <Link className="cta cta-secondary" href="/admin">
-          <BackIcon className="crud-icon" /> Back to admin functions
-        </Link>
+        <p className="eyebrow">xfinance core admin</p>
+        <h1 className="hero-title">RAG Uploads</h1>
+        <p className="hero-copy">
+          Upload scoped documents and review the latest ingestion status for knowledge files.
+        </p>
       </section>
 
       <RagFilesConsole />
-    </main>
+    </div>
   );
 }
