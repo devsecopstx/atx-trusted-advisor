@@ -59,7 +59,7 @@ const xaiCollectionSchema = z.object({
   collectionName: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.xaiCollectionNameLength)
 });
 
-const SUPPORTED_XAPI_TOOL_TYPES = ["web_search", "x_search", "file_search"] as const;
+const SUPPORTED_XAPI_TOOL_TYPES = ["web_search", "x_search", "file_search", "xfinance"] as const;
 
 const xapiToolSchema = z
   .object({

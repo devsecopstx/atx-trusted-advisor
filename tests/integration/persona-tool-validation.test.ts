@@ -50,15 +50,16 @@ describe("persona tool validation", () => {
   });
 
   it("PERSONA_XAPI_TOOL_TYPES includes all supported tools", () => {
-    expect(PERSONA_XAPI_TOOL_TYPES).toEqual(["web_search", "x_search", "file_search"]);
+    expect(PERSONA_XAPI_TOOL_TYPES).toEqual(["web_search", "x_search", "file_search", "xfinance"]);
   });
 
-  it("SUPER_AGENT_DEFAULT_TOOLS has web_search, x_search, and file_search", () => {
-    expect(SUPER_AGENT_DEFAULT_TOOLS).toHaveLength(3);
+  it("SUPER_AGENT_DEFAULT_TOOLS has web_search, x_search, file_search, and xfinance", () => {
+    expect(SUPER_AGENT_DEFAULT_TOOLS).toHaveLength(4);
     expect(SUPER_AGENT_DEFAULT_TOOLS.map((t) => t.type)).toEqual([
       "web_search",
       "x_search",
-      "file_search"
+      "file_search",
+      "xfinance"
     ]);
     const fileSearch = SUPER_AGENT_DEFAULT_TOOLS.find((t) => t.type === "file_search");
     expect(fileSearch).toHaveProperty("source");
