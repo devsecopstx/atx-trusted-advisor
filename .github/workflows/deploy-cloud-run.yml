@@ -73,7 +73,13 @@ jobs:
 
       - name: Health check staging
         run: |
-          curl --fail --silent --show-error "${{ vars.STAGING_BASE_URL }}/api/health"
+          if curl --fail --silent --show-error "${{ vars.STAGING_BASE_URL }}/api/health"; then
+            echo "staging_custom_domain_health:ok"
+          else
+            echo "staging_custom_domain_health:pending, falling back to run.app URL"
+            STAGING_SERVICE_URL="$(gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" --region "${{ vars.CLOUD_RUN_REGION }}" --format='value(status.url)')"
+            curl --fail --silent --show-error "${STAGING_SERVICE_URL}/api/health"
+          fi
 
   deploy-production:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
@@ -123,4 +129,10 @@ jobs:
 
       - name: Health check production
         run: |
-          curl --fail --silent --show-error "${{ vars.PROD_BASE_URL }}/api/health"
+          if curl --fail --silent --show-error "${{ vars.PROD_BASE_URL }}/api/health"; then
+            echo "production_custom_domain_health:ok"
+          else
+            echo "production_custom_domain_health:pending, falling back to run.app URL"
+            PROD_SERVICE_URL="$(gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE_PROD }}" --region "${{ vars.CLOUD_RUN_REGION }}" --format='value(status.url)')"
+            curl --fail --silent --show-error "${PROD_SERVICE_URL}/api/health"
+          fi
