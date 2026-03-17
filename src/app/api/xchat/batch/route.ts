@@ -105,9 +105,24 @@ export async function POST(request: Request) {
   }
 }
 
+const BATCH_LIST_RATE_WINDOW_MS = 60_000;
+const BATCH_LIST_RATE_MAX = 30;
+
 export async function GET() {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) return session;
+
+  const rateLimit = checkRateLimit({
+    key: `xchat-batch-list:${session.userId}`,
+    windowMs: BATCH_LIST_RATE_WINDOW_MS,
+    max: BATCH_LIST_RATE_MAX
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded", retryAfterSeconds: Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
 
   const jobs = await listBatchJobs({
     tenantId: session.tenantId,
