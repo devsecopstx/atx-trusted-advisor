@@ -4,10 +4,11 @@ import { getSessionUser } from "@/lib/auth";
 
 type AdminFunction = {
   href: string;
-  icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory" | "audit" | "portfolio";
+  icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory" | "audit" | "portfolio" | "strategy";
   title: string;
   description: string;
   adminOnly?: boolean;
+  comingSoon?: boolean;
 };
 
 const ADMIN_FUNCTIONS: AdminFunction[] = [
@@ -65,6 +66,13 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     icon: "audit",
     title: "Audit Explorer",
     description: "Browse and filter change trails across users, access requests, and xPersonas."
+  },
+  {
+    href: "/admin",
+    icon: "strategy",
+    title: "xStrategyBuilder",
+    description: "Build and backtest portfolio strategies with AI-assisted allocation.",
+    comingSoon: true
   }
 ];
 
@@ -150,6 +158,15 @@ function AdminFunctionIcon({ name }: IconProps) {
           <path d="M7.3 2.8v3h3" />
         </svg>
       );
+    case "strategy":
+      return (
+        <svg {...commonProps}>
+          <path d="M4 18l4-6 4 3 4-8 4 5" />
+          <path d="M4 22h16" />
+          <circle cx="8" cy="12" r="1.2" />
+          <circle cx="16" cy="7" r="1.2" />
+        </svg>
+      );
     default: {
       const exhaustiveCheck: never = name;
       return exhaustiveCheck;
@@ -180,16 +197,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <div className="hero-top">
-          <div>
-            <p className="eyebrow">xfinance core admin</p>
-            <h1 className="hero-title">Admin Control Center</h1>
-            <p className="hero-copy">
-              Pick one function at a time. Each button opens a focused mobile-friendly
-              page with large controls.
-            </p>
-          </div>
-        </div>
+        <p className="eyebrow">xfinance core admin</p>
+        <h1 className="hero-title">Admin Control Center</h1>
+        <p className="hero-copy">
+          Pick one function at a time. Each button opens a focused mobile-friendly
+          page with large controls.
+        </p>
       </section>
 
       <section className="panel stack-gap">
@@ -209,7 +222,20 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
         <div className="admin-function-grid">
           {ADMIN_FUNCTIONS.map((item) =>
-            isAdmin || item.adminOnly === false ? (
+            item.comingSoon ? (
+              <article
+                className="admin-function-card admin-function-card-disabled"
+                key={item.title}
+              >
+                <span aria-hidden="true" className="admin-function-icon">
+                  <AdminFunctionIcon name={item.icon} />
+                </span>
+                <span className="admin-function-copy">
+                  <strong>{item.title} <span className="status-badge status-pending">Coming soon</span></strong>
+                  <span>{item.description}</span>
+                </span>
+              </article>
+            ) : isAdmin || item.adminOnly === false ? (
               <Link className="admin-function-card" href={item.href} key={item.href}>
                 <span aria-hidden="true" className="admin-function-icon">
                   <AdminFunctionIcon name={item.icon} />

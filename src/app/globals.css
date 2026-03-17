@@ -262,6 +262,14 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--xf-warning-400);
 }
 
+.status-pending {
+  color: var(--xf-warning-400);
+}
+
+.status-error {
+  color: var(--xf-danger-400);
+}
+
 .cta-row {
   margin-top: 1rem;
   display: flex;
@@ -810,4 +818,23 @@ fieldset label.checkbox-label input[type="checkbox"] {
   padding: 0.6rem;
   max-height: 300px;
   overflow-y: auto;
+}
+
+/* ── Gain / loss value coloring ────────────── */
+
+.value-gain {
+  color: var(--xf-chart-gain);
+}
+
+.value-loss {
+  color: var(--xf-chart-loss);
+}
+
+.value-neutral {
+  color: var(--xf-text-300);
+}
+
+.value-currency {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
