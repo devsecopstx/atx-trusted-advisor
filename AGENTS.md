@@ -39,3 +39,17 @@ Operational runbook for engineers/agents working in `xfinance` core admin app.
 - Keep secrets only in `.env`; never commit real tokens.
 - Prefer updating existing docs over creating duplicates.
 - For persona/xchat/admin-audit changes, run at least build + typecheck before PR.
+
+## Cursor Cloud Specific Instructions
+
+- Environment recipe is tracked in `.cursor/environment.json`.
+- Install/update step in cloud: `npm ci`.
+- Long-running service in cloud: `npm run dev` terminal.
+- Required cloud secrets (configure in Cursor dashboard, not in git):
+  - `MONGODB_URI_B64`
+  - `XAI_API_KEY`
+  - `X_OAUTH_CLIENT_ID`
+  - `X_OAUTH_CLIENT_SECRET`
+- Minimal cloud smoke check after boot:
+  - `npm run typecheck`
+  - `npm run build`

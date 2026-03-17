@@ -1,0 +1,10 @@
+{
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "Next.js Dev",
+      "command": "npm run dev"
+    }
+  ],
+  "persistedDirectories": [".next/cache"]
+}

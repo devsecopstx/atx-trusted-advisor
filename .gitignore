@@ -139,7 +139,9 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 # Cursor workspace artifacts
-.cursor/
+.cursor/*
+!.cursor/environment.json
+!.cursor/settings.json
 
 # Local editor workspace files
 *.code-workspace
