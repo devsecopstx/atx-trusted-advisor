@@ -1,10 +1,6 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { getSessionUser } from "@/lib/auth";
-import { getMongoConnectionLabel } from "@/lib/env";
-
-import { AdminSessionPanel } from "./ui/admin-session-panel";
 
 type AdminFunction = {
   href: string;
@@ -171,11 +167,7 @@ type AdminPageProps = {
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = await searchParams;
   const session = await getSessionUser();
-  if (!session) {
-    redirect("/login");
-  }
-  const mongoConnection = getMongoConnectionLabel();
-  const isAdmin = session.roles.includes("global_admin");
+  const isAdmin = session?.roles.includes("global_admin") ?? false;
   const showForbiddenNotice = params.error === "forbidden";
   const forbiddenTarget = params.target?.trim().toLowerCase();
   const forbiddenTargetLabel =
@@ -186,25 +178,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         : "that function";
 
   return (
-    <main className="core-shell">
+    <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
         <div className="hero-top">
           <div>
             <p className="eyebrow">xfinance core admin</p>
-            <h1 className="hero-title">xFinance Core</h1>
+            <h1 className="hero-title">Admin Control Center</h1>
             <p className="hero-copy">
               Pick one function at a time. Each button opens a focused mobile-friendly
               page with large controls.
             </p>
           </div>
-          <AdminSessionPanel
-            avatarUrl={session.avatarUrl}
-            displayName={session.displayName}
-            email={session.email}
-            mongoConnection={mongoConnection}
-            xUserId={session.xUserId}
-            username={session.username}
-          />
         </div>
       </section>
 
@@ -254,6 +238,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           )}
         </div>
       </section>
-    </main>
+    </div>
   );
 }

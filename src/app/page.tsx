@@ -1,3 +1,5 @@
+import { XFinanceLogo } from "./ui/xfinance-logo";
+
 type ApiSurface = {
   path: string;
   method: string;
@@ -41,7 +43,7 @@ export default function HomePage() {
       <section className="hero-card xf-noise-overlay">
         <div className="hero-top">
           <div>
-            <p className="eyebrow">xfinance core</p>
+            <XFinanceLogo size="md" showSubtitle />
             <h1 className="hero-title">Admin Control Center</h1>
             <p className="hero-copy">
               Mobile-first operations surface for access governance, task scheduling,

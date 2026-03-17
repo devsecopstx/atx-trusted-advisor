@@ -1,3 +1,4 @@
+import { XFinanceLogo } from "../ui/xfinance-logo";
 import { LinkEmailForm } from "./ui/link-email-form";
 
 type LoginPageProps = {
@@ -32,12 +33,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const message = errorCode ? (errorCopy[errorCode] ?? "Login failed.") : null;
 
   return (
-    <main className="core-shell">
-      <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">xfinance core</p>
-        <h1 className="hero-title">xFinance Login</h1>
+    <main className="core-shell login-shell">
+      <section className="hero-card xf-noise-overlay login-hero">
+        <XFinanceLogo size="lg" showSubtitle />
+        <h1 className="hero-title">Sign In</h1>
         <p className="hero-copy">
-          Sign in with X to access the xFinance control plane.
+          Authenticate with X to access the xFinance control plane.
         </p>
         {message ? <p className="status-text status-error">{message}</p> : null}
         {errorDetails ? (

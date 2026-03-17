@@ -1,3 +1,161 @@
+/* ── Font & letter-spacing ─────────────────── */
+
+html {
+  font-family: var(--font-inter, "Inter", "SF Pro Display", "Segoe UI", sans-serif);
+}
+
+body {
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.03em;
+}
+
+/* ── XFinance logo lockup ──────────────────── */
+
+.xf-logo-lockup-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.xf-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.xf-logo-mark {
+  flex: 0 0 auto;
+}
+
+.xf-logo-text {
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: var(--xf-text-100);
+}
+
+.xf-logo-text--sm { font-size: 1.15rem; }
+.xf-logo-text--md { font-size: 1.55rem; }
+.xf-logo-text--lg { font-size: clamp(1.8rem, 5vw, 2.6rem); }
+
+.xf-logo-x-letter {
+  color: var(--xf-text-100);
+}
+
+.xf-logo-powered {
+  margin: 0;
+  color: var(--xf-text-300);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ── Admin top bar ─────────────────────────── */
+
+.admin-layout {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 1rem;
+  background: var(--xf-bg-800);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+}
+
+.admin-topbar-brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.admin-topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  overflow-x: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.admin-topbar-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-topbar-link {
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--xf-text-300);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 100ms ease, background 100ms ease;
+}
+
+.admin-topbar-link:hover {
+  color: var(--xf-text-100);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-topbar-session {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.admin-topbar-session .admin-session-panel {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-topbar-session .admin-session-panel > .status-text {
+  display: none;
+}
+
+.admin-topbar-session .cta {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+.admin-layout-content {
+  flex: 1;
+}
+
+/* ── Login shell ───────────────────────────── */
+
+.login-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 2rem 1rem;
+}
+
+.login-hero {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.login-hero .xf-logo-lockup-inline {
+  margin-bottom: 0.5rem;
+}
+
+/* ── Core shell ────────────────────────────── */
+
 .core-shell {
   width: min(1040px, 100% - 2rem);
   margin: 0 auto;
