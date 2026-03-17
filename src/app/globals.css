@@ -819,3 +819,22 @@ fieldset label.checkbox-label input[type="checkbox"] {
   max-height: 300px;
   overflow-y: auto;
 }
+
+/* ── Gain / loss value coloring ────────────── */
+
+.value-gain {
+  color: var(--xf-chart-gain);
+}
+
+.value-loss {
+  color: var(--xf-chart-loss);
+}
+
+.value-neutral {
+  color: var(--xf-text-300);
+}
+
+.value-currency {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
