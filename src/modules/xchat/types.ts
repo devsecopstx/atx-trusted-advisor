@@ -1,0 +1,132 @@
+import { ObjectId } from "mongodb";
+
+export type PersonaCollectionVerification = {
+  status: "verified" | "missing" | "error" | "skipped";
+  checkedAt: Date;
+  message?: string;
+  resolvedCollectionName?: string;
+};
+
+export type PersonaXapiMode = "responses" | "chat_completions";
+
+export type PersonaXapiToolChoice = "auto" | "required" | "none";
+
+export type PersonaXapiToolDefinition = {
+  type: string;
+  [key: string]: unknown;
+};
+
+export type PersonaXapiConfig = {
+  mode: PersonaXapiMode;
+  toolChoice: PersonaXapiToolChoice;
+  maxTurns: number;
+  tools: PersonaXapiToolDefinition[];
+};
+
+export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
+  mode: "responses",
+  toolChoice: "auto",
+  maxTurns: 5,
+  tools: []
+};
+
+export type PersonaConfig = {
+  _id?: ObjectId;
+  name: string;
+  nameNormalized: string;
+  systemPrompt: string;
+  overridePrompt: string;
+  xaiCollection?: {
+    collectionId?: string;
+    collectionName?: string;
+  };
+  xaiCollectionVerification?: PersonaCollectionVerification;
+  model: string;
+  temperature: number;
+  enableRag: boolean;
+  defaultScope: string;
+  xapi?: PersonaXapiConfig;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type RagSourceFile = {
+  _id?: ObjectId;
+  userId?: ObjectId;
+  tenantId?: ObjectId;
+  userEmail?: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedBy?: string;
+  scope: string;
+  xaiFileId?: string;
+  xaiUploadStatus: "uploaded" | "failed" | "skipped";
+  xaiUploadError?: string;
+  contentPreview: string;
+  createdAt: Date;
+};
+
+export type RagChunk = {
+  _id?: ObjectId;
+  fileId: ObjectId;
+  userId?: ObjectId;
+  tenantId?: ObjectId;
+  scope: string;
+  chunkIndex: number;
+  text: string;
+  tokenEstimate: number;
+  createdAt: Date;
+};
+
+export type XChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type XChatSessionLog = {
+  _id?: ObjectId;
+  userId?: ObjectId;
+  tenantId?: ObjectId;
+  userEmail?: string;
+  requestedBy?: string;
+  personaId?: ObjectId;
+  message: string;
+  response: string;
+  contextChunkIds: ObjectId[];
+  model: string;
+  xapiMode?: PersonaXapiMode;
+  xapiToolChoice?: PersonaXapiToolChoice;
+  xapiMaxTurns?: number;
+  xapiToolCount?: number;
+  collectionContextReferences?: Array<{
+    documentId?: string;
+    documentName?: string;
+    snippetFingerprint: string;
+  }>;
+  createdAt: Date;
+};
+
+export function normalizePersonaXapiConfig(input?: Partial<PersonaXapiConfig> | null): PersonaXapiConfig {
+  const mode = input?.mode === "chat_completions" ? "chat_completions" : "responses";
+  const toolChoice =
+    input?.toolChoice === "required" || input?.toolChoice === "none" ? input.toolChoice : "auto";
+  const maxTurnsRaw = Number(input?.maxTurns ?? DEFAULT_PERSONA_XAPI_CONFIG.maxTurns);
+  const maxTurns =
+    Number.isInteger(maxTurnsRaw) && maxTurnsRaw >= 1 && maxTurnsRaw <= 10
+      ? maxTurnsRaw
+      : DEFAULT_PERSONA_XAPI_CONFIG.maxTurns;
+  const tools = Array.isArray(input?.tools)
+    ? input.tools.filter(
+        (tool): tool is PersonaXapiToolDefinition =>
+          Boolean(tool) && typeof tool === "object" && typeof tool.type === "string"
+      )
+    : [];
+
+  return {
+    mode,
+    toolChoice,
+    maxTurns,
+    tools
+  };
+}
