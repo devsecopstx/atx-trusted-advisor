@@ -1,10 +1,15 @@
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
-import { AdminSessionPanel } from "@/app/admin/ui/admin-session-panel";
-import { PersonasOnboardingHome } from "@/app/admin/personas/ui/personas-onboarding-home";
 
-export default async function PersonasPage() {
+import { AdminSessionPanel } from "../../../../ui/admin-session-panel";
+import { CollectionBindingEditorPage } from "../../../ui/collection-binding-editor-page";
+
+type RouteContext = {
+  params: Promise<{ collectionId: string }>;
+};
+
+export default async function AdminEditCollectionPage({ params }: RouteContext) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
@@ -12,6 +17,7 @@ export default async function PersonasPage() {
   if (!session.roles.includes("global_admin")) {
     redirect("/admin?error=forbidden");
   }
+  const { collectionId } = await params;
 
   return (
     <main className="core-shell">
@@ -19,9 +25,9 @@ export default async function PersonasPage() {
         <div className="hero-top">
           <div>
             <p className="eyebrow">xfinance core admin</p>
-            <h1 className="hero-title">xPersona Onboarding</h1>
+            <h1 className="hero-title">Edit Collection Binding</h1>
             <p className="hero-copy">
-              Review existing personas and collections, then open dedicated create/edit pages.
+              Assign this collection to a persona from a dedicated collection edit page.
             </p>
           </div>
           <AdminSessionPanel
@@ -33,8 +39,7 @@ export default async function PersonasPage() {
           />
         </div>
       </section>
-
-      <PersonasOnboardingHome />
+      <CollectionBindingEditorPage collectionId={collectionId} />
     </main>
   );
 }
