@@ -122,3 +122,8 @@ All three share the same update script and secret requirements above.
 - The xAI management key-create smoke test is opt-in via `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true` and requires real API keys.
 - `*.code-workspace` files are gitignored — they are local IDE config and not used by cloud agents.
 - See `DEVELOPMENT.md` for the full Cloud Agent Atlas Mode setup and OAuth host-consistency notes.
+
+### Branding TODOs
+
+- **xMoney** — payment rails and transfer actions brand surface. Not yet available. When xMoney launches, add brand tokens (`--xf-xmoney-*`), a logo lockup variant, and a dedicated admin section or card treatment. Reference `design-system/xfinance-brand-kit.md` for the ecosystem naming convention: `xFinance` (platform), `Grok` (AI assistant), `xMoney` (payments). Keep the existing neutral monochrome palette and extend with xMoney-specific accent if the brand kit is updated.
+- **Personas vs Collections separation** — `/admin/personas` should only show persona configs (prompts, tools, collectionId links). Collections management UI should stay in RAG Uploads or a dedicated `/admin/collections` page. Do not re-introduce a standalone collections card in the personas view.
