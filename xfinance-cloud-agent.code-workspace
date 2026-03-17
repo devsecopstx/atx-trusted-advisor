@@ -1,0 +1,20 @@
+{
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "../../.cursor/skills"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      ".next": true,
+      "coverage": true
+    },
+    "search.exclude": {
+      ".next": true,
+      "coverage": true
+    }
+  }
+}
