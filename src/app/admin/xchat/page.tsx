@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
@@ -24,6 +25,15 @@ export default async function AdminXchatPage() {
       </section>
 
       <XchatConsole />
+
+      <section className="panel stack-gap">
+        <Link className="admin-function-card" href="/admin/xchat/batch">
+          <span className="admin-function-copy">
+            <strong>Open Batch Ops Dashboard</strong>
+            <span>View active jobs, failures, and progress summary.</span>
+          </span>
+        </Link>
+      </section>
     </div>
   );
 }

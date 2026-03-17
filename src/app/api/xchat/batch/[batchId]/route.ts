@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { toBatchDashboardJob } from "@/modules/xchat/batch-dashboard";
 import {
   getBatchJobRecord,
   listBatchItemResults,
@@ -40,6 +41,9 @@ export async function GET(_: Request, context: RouteContext) {
   }
 
   const items = await listBatchItemResults(batchId);
+  const lastError =
+    items.find((item) => item.status === "failed" && item.errorMessage)?.errorMessage ?? null;
+  const dashboard = toBatchDashboardJob(job, lastError);
 
   return NextResponse.json({
     data: {
@@ -52,7 +56,8 @@ export async function GET(_: Request, context: RouteContext) {
         failedCount: job.failedCount,
         submittedBy: job.submittedBy,
         createdAt: job.createdAt,
-        completedAt: job.completedAt
+        completedAt: job.completedAt,
+        dashboard
       },
       items: items.map((item) => ({
         itemId: item.itemId,
@@ -90,6 +95,7 @@ export async function POST(_: Request, context: RouteContext) {
 
   try {
     const updated = await pollBatchJob(batchId);
+    const dashboard = toBatchDashboardJob(updated);
     return NextResponse.json({
       data: {
         xaiBatchId: updated.xaiBatchId,
@@ -97,7 +103,8 @@ export async function POST(_: Request, context: RouteContext) {
         itemCount: updated.itemCount,
         completedCount: updated.completedCount,
         failedCount: updated.failedCount,
-        completedAt: updated.completedAt
+        completedAt: updated.completedAt,
+        dashboard
       }
     });
   } catch (error) {

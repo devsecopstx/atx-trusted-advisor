@@ -4,7 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 
 type AdminFunction = {
   href: string;
-  icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory" | "audit" | "portfolio" | "strategy";
+  icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory" | "audit" | "portfolio" | "strategy" | "batch";
   title: string;
   description: string;
   adminOnly?: boolean;
@@ -53,6 +53,12 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     icon: "chat",
     title: "xchat Ask",
     description: "Ask xchat questions with a selected persona on global scope."
+  },
+  {
+    href: "/admin/xchat/batch",
+    icon: "batch",
+    title: "Batch Ops Dashboard",
+    description: "Track xchat batch progress, failures, and completion metrics."
   },
   {
     href: "/personas",
@@ -165,6 +171,14 @@ function AdminFunctionIcon({ name }: IconProps) {
           <path d="M4 22h16" />
           <circle cx="8" cy="12" r="1.2" />
           <circle cx="16" cy="7" r="1.2" />
+        </svg>
+      );
+    case "batch":
+      return (
+        <svg {...commonProps}>
+          <rect x="4" y="5" width="16" height="4" rx="1.2" />
+          <rect x="4" y="10.5" width="16" height="4" rx="1.2" />
+          <rect x="4" y="16" width="16" height="3" rx="1.2" />
         </svg>
       );
     default: {

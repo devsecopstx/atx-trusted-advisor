@@ -5,6 +5,10 @@ import { requireAdminSession } from "@/lib/api-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getPersonaById } from "@/modules/xchat/repository";
 import {
+  buildBatchDashboardSummary,
+  toBatchDashboardJob
+} from "@/modules/xchat/batch-dashboard";
+import {
   listBatchJobs,
   submitBatchJob
 } from "@/modules/xchat/batch-service";
@@ -128,9 +132,11 @@ export async function GET() {
     tenantId: session.tenantId,
     limit: 50
   });
+  const dashboardJobs = jobs.map((job) => toBatchDashboardJob(job));
+  const summary = buildBatchDashboardSummary(dashboardJobs);
 
   return NextResponse.json({
-    data: jobs.map((job) => ({
+    data: jobs.map((job, index) => ({
       xaiBatchId: job.xaiBatchId,
       personaName: job.personaName,
       status: job.status,
@@ -139,7 +145,9 @@ export async function GET() {
       failedCount: job.failedCount,
       submittedBy: job.submittedBy,
       createdAt: job.createdAt,
-      completedAt: job.completedAt
-    }))
+      completedAt: job.completedAt,
+      dashboard: dashboardJobs[index]
+    })),
+    summary
   });
 }
