@@ -1,0 +1,115 @@
+import { NextResponse } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const authMocks = vi.hoisted(() => ({
+  requireAdminSession: vi.fn()
+}));
+
+const repositoryMocks = vi.hoisted(() => ({
+  getDefaultPortfolio: vi.fn(),
+  listPortfolioAccounts: vi.fn(),
+  getPortfolioWatchlist: vi.fn(),
+  upsertPositionForAccount: vi.fn()
+}));
+
+vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/modules/core-admin/repository", async () => {
+  const actual = await vi.importActual<typeof import("@/modules/core-admin/repository")>(
+    "@/modules/core-admin/repository"
+  );
+  return {
+    ...actual,
+    ...repositoryMocks
+  };
+});
+
+import { GET as getDefaultPortfolio } from "@/app/api/portfolios/default/route";
+import { GET as getPortfolioAccounts } from "@/app/api/portfolios/[portfolioId]/accounts/route";
+import { GET as getPortfolioWatchlist } from "@/app/api/portfolios/[portfolioId]/watchlist/route";
+import { POST as postPosition } from "@/app/api/positions/route";
+import { PositionValidationError } from "@/modules/core-admin/repository";
+
+describe("portfolio API routes", () => {
+  beforeEach(() => {
+    authMocks.requireAdminSession.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      roles: ["global_admin"]
+    });
+    repositoryMocks.getDefaultPortfolio.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      userId: "507f1f77bcf86cd799439011",
+      name: "Default Portfolio",
+      isDefault: true
+    });
+    repositoryMocks.listPortfolioAccounts.mockResolvedValue([]);
+    repositoryMocks.getPortfolioWatchlist.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439044" },
+      name: "Default Watchlist"
+    });
+    repositoryMocks.upsertPositionForAccount.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439055" },
+      symbol: "AAPL"
+    });
+  });
+
+  it("returns default portfolio for session user", async () => {
+    const response = await getDefaultPortfolio();
+    const payload = (await response.json()) as { data: { name: string } };
+    expect(response.status).toBe(200);
+    expect(payload.data.name).toBe("Default Portfolio");
+  });
+
+  it("returns account list for portfolio", async () => {
+    const response = await getPortfolioAccounts(new Request("http://test"), {
+      params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" })
+    });
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.listPortfolioAccounts).toHaveBeenCalledWith({
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId: "507f1f77bcf86cd799439033",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
+  });
+
+  it("returns watchlist for portfolio", async () => {
+    const response = await getPortfolioWatchlist(new Request("http://test"), {
+      params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" })
+    });
+    const payload = (await response.json()) as { data: { name: string } };
+    expect(response.status).toBe(200);
+    expect(payload.data.name).toBe("Default Watchlist");
+  });
+
+  it("maps position validation errors to HTTP status codes", async () => {
+    repositoryMocks.upsertPositionForAccount.mockRejectedValueOnce(
+      new PositionValidationError(
+        "ACCOUNT_PORTFOLIO_MISMATCH",
+        "Account does not belong to the specified portfolio"
+      )
+    );
+
+    const response = await postPosition(
+      new Request("http://test/api/positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439044",
+          symbol: "AAPL",
+          qty: 2,
+          avgCost: 190
+        })
+      })
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("returns auth response directly when non-admin", async () => {
+    authMocks.requireAdminSession.mockResolvedValueOnce(
+      NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    );
+    const response = await getDefaultPortfolio();
+    expect(response.status).toBe(403);
+  });
+});
