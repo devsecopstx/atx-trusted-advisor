@@ -33,9 +33,12 @@ export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
   tools: []
 };
 
+export const XFINANCE_COLLECTION_ID = "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
+
 export const SUPER_AGENT_DEFAULT_TOOLS: PersonaXapiToolDefinition[] = [
   { type: "web_search" },
-  { type: "x_search" }
+  { type: "x_search" },
+  { type: "file_search", source: { collection_ids: [XFINANCE_COLLECTION_ID] } }
 ];
 
 export type PersonaConfig = {

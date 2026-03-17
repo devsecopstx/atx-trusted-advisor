@@ -10,7 +10,11 @@ const DEFAULT_PERSONA_SYSTEM_PROMPT =
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
 const DEFAULT_WATCHLIST_NAME = "Default Watchlist";
-const DEFAULT_ACCOUNT_TYPE = "robinhood";
+const DEFAULT_ACCOUNT_TYPE = "fidelity";
+const DEFAULT_WATCHLIST_SYMBOLS = ["TSLA"];
+const DEFAULT_COLLECTION_ID =
+  process.env.XFINANCE_COLLECTION_ID ?? "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
+const DEFAULT_COLLECTION_NAME = "Finance";
 
 function decodeMongoUri() {
   const encoded = process.env.MONGODB_URI_B64 ?? process.env.MONGODB_URI_B4;
@@ -162,8 +166,8 @@ async function seed() {
           systemPrompt: DEFAULT_PERSONA_SYSTEM_PROMPT,
           overridePrompt: "",
           xaiCollection: {
-            collectionId: "",
-            collectionName: ""
+            collectionId: DEFAULT_COLLECTION_ID,
+            collectionName: DEFAULT_COLLECTION_NAME
           },
           model: "grok-4-1-fast",
           temperature: 0.2,
@@ -175,7 +179,8 @@ async function seed() {
             maxTurns: 5,
             tools: [
               { type: "web_search" },
-              { type: "x_search" }
+              { type: "x_search" },
+              { type: "file_search", source: { collection_ids: [DEFAULT_COLLECTION_ID] } }
             ]
           },
           updatedAt: now
@@ -243,6 +248,10 @@ async function seed() {
       throw new Error("Failed to create or fetch default account");
     }
 
+    const defaultSymbolDocs = DEFAULT_WATCHLIST_SYMBOLS.map((symbol) => ({
+      symbol: symbol.toUpperCase(),
+      addedAt: now
+    }));
     await db.collection("portfolio_watchlists").updateOne(
       { tenantId: tenant._id, userId: user._id, portfolioId: portfolio._id },
       {
@@ -254,6 +263,7 @@ async function seed() {
         },
         $set: {
           name: DEFAULT_WATCHLIST_NAME,
+          symbols: defaultSymbolDocs,
           isDefault: true,
           updatedAt: now
         }

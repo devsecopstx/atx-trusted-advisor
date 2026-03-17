@@ -80,6 +80,7 @@ export type ProvisionDefaultPortfolioInput = {
   accountName?: string;
   watchlistName?: string;
   accountType?: AccountType;
+  watchlistSymbols?: string[];
 };
 
 export type ProvisionDefaultPortfolioResult = {
@@ -661,7 +662,10 @@ export async function provisionDefaultPortfolioForUser(
   const portfolioName = input.portfolioName ?? DEFAULT_PORTFOLIO_NAME;
   const accountName = input.accountName ?? DEFAULT_ACCOUNT_NAME;
   const watchlistName = input.watchlistName ?? DEFAULT_WATCHLIST_NAME;
-  const accountType = input.accountType ?? "robinhood";
+  const accountType = input.accountType ?? "fidelity";
+  const watchlistSymbols = (input.watchlistSymbols ?? ["TSLA"]).map(
+    (symbol) => ({ symbol: symbol.toUpperCase(), addedAt: now })
+  );
 
   const portfolioFilter = withStrictTenantScope(
     { userId: input.userId, isDefault: true },
@@ -745,6 +749,7 @@ export async function provisionDefaultPortfolioForUser(
       },
       $set: {
         name: watchlistName,
+        symbols: watchlistSymbols,
         isDefault: true,
         updatedAt: now
       }
