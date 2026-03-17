@@ -87,6 +87,7 @@ export async function submitBatchJob(
   }
 
   const xapiConfig = normalizePersonaXapiConfig(input.persona.xapi);
+  const batchTools = xapiConfig.tools.filter((t) => t.type !== "xfinance");
   const collectionId = input.persona.xaiCollection?.collectionId?.trim();
   const endpoint =
     xapiConfig.mode === "chat_completions"
@@ -150,7 +151,7 @@ export async function submitBatchJob(
             model: input.persona.model ?? "grok-4-1-fast",
             system_prompt: systemPrompt,
             input: userPrompt,
-            tools: xapiConfig.tools,
+            tools: batchTools,
             tool_choice: xapiConfig.toolChoice,
             max_turns: xapiConfig.maxTurns
           };
