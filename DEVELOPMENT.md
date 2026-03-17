@@ -44,6 +44,34 @@ Use `.env` only (do not use `.env.local` for this app).
 5. Seed core admin user + default tenant:
    - `npm run seed:admin`
 
+## Cursor Cloud Agent Setup (Atlas Mode)
+
+Use this setup when running in Cursor Cloud with MongoDB Atlas. Do not start local MongoDB.
+
+### Cloud Agent Rules
+
+- Do not run `docker compose up -d` for MongoDB in cloud agents.
+- Use Atlas connection only via `MONGODB_URI_B64`.
+- Keep app/runtime secrets in GCP Secret Manager, not in repo.
+- Use `npm ci` before validation/build commands.
+
+### Minimum Cloud Runtime Env Keys
+
+- `MONGODB_URI_B64`
+- `XAI_API_KEY`
+- `XAI_MANAGEMENT_API_KEY`
+- `X_OAUTH_CLIENT_ID`
+- `X_OAUTH_CLIENT_SECRET`
+- `AUTH_SECRET`
+
+### Cloud Build/Validation Sequence
+
+1. `npm ci`
+2. `npm run lint`
+3. `npm run typecheck`
+4. `npm run build`
+5. Optional full gate: `npm run ci:gate`
+
 ## OAuth Host Consistency
 
 OAuth flow cookies are host-scoped. Keep these values aligned to avoid `missing_oauth_cookie_context`:
