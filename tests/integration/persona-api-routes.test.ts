@@ -28,10 +28,15 @@ const auditMocks = vi.hoisted(() => ({
   listLatestAuditEventsForEntities: vi.fn()
 }));
 
+const authMocks = vi.hoisted(() => ({
+  requireSessionUser: vi.fn()
+}));
+
 const verifierMocks = vi.hoisted(() => ({
   triggerXaiCollectionVerification: vi.fn()
 }));
 
+vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/api-auth", () => apiAuthMocks);
 vi.mock("@/modules/xchat/repository", () => repositoryMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
@@ -49,6 +54,10 @@ describe("persona API routes", () => {
   const now = new Date("2026-03-16T00:00:00.000Z");
 
   beforeEach(() => {
+    authMocks.requireSessionUser.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439011",
+      roles: ["global_admin"]
+    });
     apiAuthMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       roles: ["global_admin"]
@@ -161,7 +170,7 @@ describe("persona API routes", () => {
     });
   });
 
-  it("allows admins to read persona list", async () => {
+  it("allows authenticated users to read persona list", async () => {
     const response = await getPersonas();
     const payload = (await response.json()) as {
       data: Array<{
@@ -173,7 +182,7 @@ describe("persona API routes", () => {
     };
 
     expect(response.status).toBe(200);
-    expect(apiAuthMocks.requireAdminSession).toHaveBeenCalledTimes(1);
+    expect(authMocks.requireSessionUser).toHaveBeenCalledTimes(1);
     expect(payload.data[0]?._id).toBe("507f1f77bcf86cd799439033");
     expect(payload.data[0]?.overridePrompt).toBe("Rewrite user input as a technical brief.");
     expect(payload.data[0]?.xaiCollection.collectionId).toBe("collection_analyst-global");
@@ -688,7 +697,7 @@ describe("persona API routes", () => {
   });
 
   it("returns auth response when unauthenticated on read route", async () => {
-    apiAuthMocks.requireAdminSession.mockResolvedValueOnce(
+    authMocks.requireSessionUser.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
     const response = await getPersonas();
