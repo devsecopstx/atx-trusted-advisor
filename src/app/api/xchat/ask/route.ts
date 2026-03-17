@@ -112,14 +112,21 @@ export async function POST(request: Request) {
     }
 
     if (!ragContext) {
-      ragChunks = await retrieveRagChunks(tenantId, scope, message, topK);
-      if (ragChunks.length > 0) {
-        contextSource = "mongo_scope";
+      try {
+        ragChunks = await retrieveRagChunks(tenantId, scope, message, topK);
+        if (ragChunks.length > 0) {
+          contextSource = "mongo_scope";
+        }
+        contextCount = ragChunks.length;
+        ragContext = ragChunks
+          .map((chunk, index) => `[#${index + 1}] ${chunk.text}`)
+          .join("\n\n");
+      } catch (error) {
+        console.error(
+          `[xchat/ask] mongo scope retrieval failed for scope ${scope}:`,
+          error instanceof Error ? error.message : error
+        );
       }
-      contextCount = ragChunks.length;
-      ragContext = ragChunks
-        .map((chunk, index) => `[#${index + 1}] ${chunk.text}`)
-        .join("\n\n");
     }
   }
 

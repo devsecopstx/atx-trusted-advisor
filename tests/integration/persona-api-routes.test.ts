@@ -756,6 +756,35 @@ describe("persona API routes", () => {
     );
   });
 
+  it("applies default model and xapi config on minimal create payload", async () => {
+    const response = await postPersona(
+      new Request("http://test/api/personas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "DefaultsOnly",
+          systemPrompt: "You are a defaults persona for regression coverage."
+        })
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(repositoryMocks.createPersona).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "DefaultsOnly",
+        model: "grok-4-1-fast",
+        enableRag: true,
+        defaultScope: "global",
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: []
+        }
+      })
+    );
+  });
+
   it("returns conflict on duplicate persona name create", async () => {
     repositoryMocks.createPersona.mockRejectedValueOnce(
       new repositoryMocks.PersonaNameConflictError()
