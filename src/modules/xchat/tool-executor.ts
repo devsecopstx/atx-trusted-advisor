@@ -6,8 +6,10 @@ import {
   listScheduledTasks,
   listTaskRuns
 } from "@/modules/core-admin/repository";
+import { getCachedToolResult, setCachedToolResult } from "@/modules/xchat/tool-cache";
 
 const MAX_OUTPUT_BYTES = 8 * 1024;
+const CACHEABLE_OPERATIONS = new Set(["portfolio_summary", "watchlist_snapshot", "account_health"]);
 
 type ExecutorContext = {
   userId: string;
@@ -146,9 +148,22 @@ export function createXfinanceToolExecutor(
       };
     }
 
+    if (CACHEABLE_OPERATIONS.has(operation)) {
+      const cached = getCachedToolResult(ctx.userId, operation);
+      if (cached) {
+        return { result: cached };
+      }
+    }
+
     const data = await handler(args, ctx);
     const serialized = JSON.stringify(data);
-    return { result: truncateOutput(serialized) };
+    const output = truncateOutput(serialized);
+
+    if (CACHEABLE_OPERATIONS.has(operation)) {
+      setCachedToolResult(ctx.userId, operation, output);
+    }
+
+    return { result: output };
   };
 }
 
