@@ -1,111 +1,52 @@
 import { XFinanceLogo } from "./xfinance-logo";
 
-function RisingChart() {
+function XFinanceIcon() {
   return (
     <svg
       aria-hidden="true"
-      className="mh-chart-icon"
+      className="mh-product-icon"
       fill="none"
-      viewBox="0 0 80 56"
+      viewBox="0 0 64 64"
     >
-      <path
-        d="M4 48 L18 36 L30 40 L44 22 L56 26 L68 10 L76 4"
-        stroke="var(--xf-gain-green)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.5"
-      />
-      <path
-        d="M4 48 L18 36 L30 40 L44 22 L56 26 L68 10 L76 4 L76 56 L4 56Z"
-        fill="url(#chartGrad)"
-        opacity="0.15"
-      />
-      <defs>
-        <linearGradient id="chartGrad" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="var(--xf-gain-green)" />
-          <stop offset="100%" stopColor="transparent" />
-        </linearGradient>
-      </defs>
+      <rect x="6" y="12" width="52" height="40" rx="6" stroke="var(--xf-text-300)" strokeWidth="1.5" />
+      <path d="M6 24h52" stroke="var(--xf-text-300)" strokeWidth="1.5" />
+      <rect x="14" y="30" width="12" height="6" rx="2" fill="rgba(255,255,255,0.06)" stroke="var(--xf-text-300)" strokeWidth="1" />
+      <rect x="14" y="40" width="12" height="6" rx="2" fill="rgba(255,255,255,0.06)" stroke="var(--xf-text-300)" strokeWidth="1" />
+      <path d="M34 33l5 4 9-10" stroke="var(--xf-gain-green)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
     </svg>
   );
 }
 
-function GainArrow() {
+function XChatIcon() {
   return (
     <svg
       aria-hidden="true"
-      className="mh-gain-arrow"
+      className="mh-product-icon"
       fill="none"
-      viewBox="0 0 24 24"
+      viewBox="0 0 64 64"
     >
       <path
-        d="M12 19V6M12 6l5 5M12 6L7 11"
-        stroke="var(--xf-gain-green)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
+        d="M10 14a6 6 0 0 1 6-6h32a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6H28l-10 8v-8h-2a6 6 0 0 1-6-6V14z"
+        stroke="var(--xf-text-300)"
+        strokeWidth="1.5"
       />
+      <circle cx="24" cy="26" r="2" fill="var(--xf-text-300)" />
+      <circle cx="32" cy="26" r="2" fill="var(--xf-text-300)" />
+      <circle cx="40" cy="26" r="2" fill="var(--xf-text-300)" />
+      <path d="M38 52l6-6h6a4 4 0 0 0 4-4" stroke="var(--xf-gain-green)" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
 
-function DollarSign() {
+function ProductCard(props: { icon: React.ReactNode; name: string; description: string }) {
   return (
-    <span aria-hidden="true" className="mh-dollar">$</span>
-  );
-}
-
-function PhoneMockup() {
-  return (
-    <div className="mh-phone">
-      <div className="mh-phone-screen">
-        <div className="mh-phone-header">
-          <span className="mh-phone-dot" />
-          <span className="mh-phone-pill" />
-          <span className="mh-phone-dot" />
-        </div>
-        <div className="mh-phone-portfolio">
-          <span className="mh-phone-label">Portfolio</span>
-          <span className="mh-phone-value">
-            <DollarSign />12,847.32
-          </span>
-          <span className="mh-phone-gain">
-            <GainArrow />
-            +4.2%
-          </span>
-        </div>
-        <RisingChart />
-        <div className="mh-phone-actions">
-          <span className="mh-phone-btn mh-phone-btn-buy">Buy</span>
-          <span className="mh-phone-btn mh-phone-btn-sell">Sell</span>
-        </div>
+    <div className="mh-product-card">
+      {props.icon}
+      <div className="mh-product-copy">
+        <strong>{props.name}</strong>
+        <span>{props.description}</span>
       </div>
     </div>
-  );
-}
-
-function TraderSilhouette() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="mh-trader"
-      fill="none"
-      viewBox="0 0 48 72"
-    >
-      <circle cx="24" cy="10" fill="rgba(255,255,255,0.08)" r="8" />
-      <path
-        d="M12 72V42a12 12 0 0 1 24 0v30"
-        fill="rgba(255,255,255,0.05)"
-        stroke="rgba(255,255,255,0.12)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M6 52l6-10M42 52l-6-10"
-        stroke="rgba(255,255,255,0.1)"
-        strokeLinecap="round"
-        strokeWidth="1.5"
-      />
-    </svg>
   );
 }
 
@@ -119,35 +60,35 @@ export function MarketingHero() {
         <div className="mh-left">
           <XFinanceLogo size="md" showSubtitle />
           <p className="mh-descriptor">
-            Retail investing &amp; trading for everyday people
+            AI-native software &amp; services for finance professionals
           </p>
 
           <h1 className="mh-tagline">
-            No Atoms Moved.{" "}
+            Your Portfolio.{" "}
             <br />
-            Just <span className="mh-tagline-glow">Gains</span> Earned.
+            Your <span className="mh-tagline-glow">Edge</span>.
           </h1>
 
           <p className="mh-sub">
-            Smart, accessible finance built for independent traders.
-            No suits. No whales. Just you and the market.
+            Institutional-grade tools powered by xAI.
+            Private dark-launch — approved access only.
           </p>
 
           <div className="mh-badges">
-            <span className="mh-badge">
-              <DollarSign /> Zero Commission
-            </span>
-            <span className="mh-badge">
-              <GainArrow /> Real-time Charts
-            </span>
             <span className="mh-badge mh-badge-grok">
               Powered by Grok
+            </span>
+            <span className="mh-badge">
+              xAI Collection RAG
+            </span>
+            <span className="mh-badge">
+              Dark Launch
             </span>
           </div>
 
           <div className="mh-cta-row">
             <a className="mh-cta-primary" href="/login">
-              Start Trading
+              Request Access
             </a>
             <a className="mh-cta-secondary" href="/admin">
               Admin Console
@@ -156,8 +97,18 @@ export function MarketingHero() {
         </div>
 
         <div className="mh-right">
-          <PhoneMockup />
-          <TraderSilhouette />
+          <div className="mh-product-stack">
+            <ProductCard
+              icon={<XFinanceIcon />}
+              name="xFinance"
+              description="Portfolio management, watchlists, accounts, and strategy execution for finance professionals."
+            />
+            <ProductCard
+              icon={<XChatIcon />}
+              name="xChat"
+              description="AI advisor with persona-driven tools, RAG context, and real-time xFinance data access."
+            />
+          </div>
         </div>
       </div>
     </section>

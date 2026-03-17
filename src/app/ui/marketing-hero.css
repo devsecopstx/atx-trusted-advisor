@@ -119,16 +119,6 @@
   color: var(--xf-gain-green);
 }
 
-.mh-dollar {
-  color: var(--xf-gain-green);
-  font-weight: 700;
-}
-
-.mh-gain-arrow {
-  width: 16px;
-  height: 16px;
-}
-
 /* ── CTAs ──────────────────────────────────── */
 
 .mh-cta-row {
@@ -171,133 +161,61 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* ── Right: phone + silhouette ─────────────── */
+/* ── Right: product cards ─────────────────── */
 
 .mh-right {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  gap: 1.5rem;
   position: relative;
 }
 
-.mh-phone {
-  width: min(260px, 60vw);
-  aspect-ratio: 9 / 19;
-  border-radius: 32px;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: linear-gradient(145deg, rgba(30, 33, 38, 0.6), rgba(12, 14, 18, 0.9));
-  box-shadow:
-    0 24px 48px rgba(0, 0, 0, 0.6),
-    0 0 40px rgba(57, 255, 20, 0.06);
-}
-
-.mh-phone-screen {
-  height: 100%;
-  border-radius: 24px;
-  padding: 14px 12px;
-  background:
-    radial-gradient(circle at 70% 15%, rgba(57, 255, 20, 0.04), transparent 50%),
-    linear-gradient(160deg, var(--xf-bg-800) 0%, var(--xf-bg-900) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.mh-phone-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding-bottom: 4px;
-}
-
-.mh-phone-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.mh-phone-pill {
-  width: 48px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.mh-phone-portfolio {
+.mh-product-stack {
   display: grid;
-  gap: 2px;
-}
-
-.mh-phone-label {
-  color: var(--xf-text-400);
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.mh-phone-value {
-  color: var(--xf-text-100);
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.mh-phone-gain {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  color: var(--xf-gain-green);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.mh-phone-gain .mh-gain-arrow {
-  width: 14px;
-  height: 14px;
-}
-
-.mh-chart-icon {
+  gap: 1rem;
   width: 100%;
-  flex: 1;
-  min-height: 0;
+  max-width: 380px;
 }
 
-.mh-phone-actions {
+.mh-product-card {
   display: flex;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.2rem;
+  border-radius: var(--xf-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(145deg, rgba(30, 33, 38, 0.5), rgba(12, 14, 18, 0.8));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 
-.mh-phone-btn {
-  flex: 1;
-  text-align: center;
-  border-radius: 8px;
-  padding: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.mh-product-card:hover {
+  border-color: rgba(57, 255, 20, 0.2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(57, 255, 20, 0.06);
 }
 
-.mh-phone-btn-buy {
-  background: var(--xf-gain-green);
-  color: var(--xf-bg-900);
-}
-
-.mh-phone-btn-sell {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: var(--xf-text-300);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.mh-trader {
+.mh-product-icon {
   width: 48px;
-  opacity: 0.6;
+  height: 48px;
   flex-shrink: 0;
+}
+
+.mh-product-copy {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.mh-product-copy strong {
+  color: var(--xf-text-100);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.mh-product-copy span {
+  color: var(--xf-text-300);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 @media (max-width: 859px) {
@@ -305,11 +223,7 @@
     order: -1;
   }
 
-  .mh-phone {
-    width: min(200px, 50vw);
-  }
-
-  .mh-trader {
-    display: none;
+  .mh-product-stack {
+    max-width: 100%;
   }
 }
