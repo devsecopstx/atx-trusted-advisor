@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
 
+import { AskIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type PersonaOption = {
@@ -66,7 +67,7 @@ export function XchatConsole() {
     <section className="panel stack-gap">
       <div className="tool-row">
         <button className="cta cta-secondary" onClick={() => void refreshPersonas()} type="button">
-          Refresh personas
+          <RefreshIcon className="crud-icon" /> Refresh personas
         </button>
         <p className="status-text">{status}</p>
       </div>
@@ -93,7 +94,7 @@ export function XchatConsole() {
             value={message}
           />
           <button className="cta cta-primary" type="submit">
-            Ask xchat
+            <AskIcon className="crud-icon" /> Ask xchat
           </button>
         </form>
         {chatResponse ? <pre className="chat-response">{chatResponse}</pre> : null}

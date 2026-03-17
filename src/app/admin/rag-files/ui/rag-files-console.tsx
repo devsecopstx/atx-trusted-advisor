@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useState } from "react";
 
+import { RefreshIcon, UploadIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type RagFile = {
@@ -51,7 +52,7 @@ export function RagFilesConsole() {
     <section className="panel stack-gap">
       <div className="tool-row">
         <button className="cta cta-secondary" onClick={() => void refreshFiles()} type="button">
-          Refresh files
+          <RefreshIcon className="crud-icon" /> Refresh files
         </button>
         <p className="status-text">{status}</p>
       </div>
@@ -62,7 +63,7 @@ export function RagFilesConsole() {
           <input name="scope" defaultValue="global" placeholder="scope" />
           <input name="file" required type="file" />
           <button className="cta cta-primary" type="submit">
-            Upload to RAG
+            <UploadIcon className="crud-icon" /> Upload to RAG
           </button>
         </form>
       </article>

@@ -182,6 +182,35 @@ describe("persona API routes", () => {
     expect(repositoryMocks.createPersona).toHaveBeenCalledTimes(1);
   });
 
+  it("creates persona without override prompt", async () => {
+    const response = await postPersona(
+      new Request("http://test/api/personas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "NoOverride",
+          systemPrompt: "You are a persona that works without an override prompt.",
+          xaiCollection: {
+            collectionId: "collection_no-override-global",
+            collectionName: "No Override Global Docs"
+          },
+          model: "grok-4-latest",
+          temperature: 0.2,
+          enableRag: true,
+          defaultScope: "global"
+        })
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(repositoryMocks.createPersona).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "NoOverride",
+        overridePrompt: ""
+      })
+    );
+  });
+
   it("does not fail create when audit write fails", async () => {
     auditMocks.createAuditEvent.mockRejectedValueOnce(new Error("audit unavailable"));
 
@@ -352,6 +381,31 @@ describe("persona API routes", () => {
     expect(repositoryMocks.updatePersona).toHaveBeenCalledWith(
       "507f1f77bcf86cd799439055",
       expect.objectContaining({ name: "Ops Updated" })
+    );
+  });
+
+  it("updates persona when override prompt is empty", async () => {
+    const response = await putPersonaById(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Ops Updated",
+          overridePrompt: ""
+        })
+      }),
+      {
+        params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePersona).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439055",
+      expect.objectContaining({
+        name: "Ops Updated",
+        overridePrompt: ""
+      })
     );
   });
 
@@ -607,7 +661,7 @@ describe("persona API routes", () => {
     expect(response.status).toBe(400);
   });
 
-  it("rejects create when xai collection is missing", async () => {
+  it("allows create when xai collection is missing", async () => {
     const response = await postPersona(
       new Request("http://test/api/personas", {
         method: "POST",
@@ -624,7 +678,15 @@ describe("persona API routes", () => {
       })
     );
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(201);
+    expect(repositoryMocks.createPersona).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "MissingCollection",
+        xaiCollection: expect.objectContaining({
+          collectionId: ""
+        })
+      })
+    );
   });
 
   it("returns conflict on duplicate persona name create", async () => {

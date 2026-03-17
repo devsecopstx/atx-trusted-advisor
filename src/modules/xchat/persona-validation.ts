@@ -49,20 +49,18 @@ const optionalTrimmedString = (maxLength: number) =>
   );
 
 const xaiCollectionSchema = z.object({
-  collectionId: z
-    .string()
-    .trim()
-    .min(1)
-    .max(PERSONA_VALIDATION_LIMITS.xaiCollectionIdLength)
-    .regex(/^collection_[A-Za-z0-9-]+$/, "Invalid xAI collection id"),
+  collectionId: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.xaiCollectionIdLength).refine(
+    (value) => value === undefined || /^collection_[A-Za-z0-9-]+$/.test(value),
+    "Invalid xAI collection id"
+  ),
   collectionName: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.xaiCollectionNameLength)
 });
 
 export const createPersonaPayloadSchema = z.object({
   name: z.string().trim().min(2).max(PERSONA_VALIDATION_LIMITS.nameLength),
   systemPrompt: z.string().trim().min(10).max(PERSONA_VALIDATION_LIMITS.systemPromptLength),
-  overridePrompt: z.string().trim().min(1).max(PERSONA_VALIDATION_LIMITS.overridePromptLength),
-  xaiCollection: xaiCollectionSchema,
+  overridePrompt: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.overridePromptLength),
+  xaiCollection: xaiCollectionSchema.optional(),
   model: z.string().trim().min(1).max(PERSONA_VALIDATION_LIMITS.modelLength).default("grok-4-latest"),
   temperature: temperatureSchema.default(0.2),
   enableRag: booleanSchema.default(true),
@@ -83,7 +81,7 @@ export const updatePersonaPayloadSchema = z.object({
     (value) => value === undefined || value.length >= 10,
     "String must contain at least 10 character(s)"
   ),
-  overridePrompt: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.overridePromptLength),
+  overridePrompt: z.string().trim().max(PERSONA_VALIDATION_LIMITS.overridePromptLength).optional(),
   xaiCollection: xaiCollectionSchema.optional(),
   model: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.modelLength),
   temperature: temperatureSchema.optional(),

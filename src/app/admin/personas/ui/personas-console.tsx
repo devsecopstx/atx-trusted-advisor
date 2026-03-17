@@ -1,9 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  AddIcon,
+  BackIcon,
+  DeleteIcon,
+  EditIcon,
+  RefreshIcon,
+  UploadIcon
+} from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import {
+  EMPTY_CREATE_FORM,
+  applySelectedCollectionToPersonaForm,
+  type PersonaFormState,
+  type XaiCollectionInventoryOption
+} from "@/app/admin/personas/ui/personas-onboarding";
 
 type Persona = {
   _id?: string;
@@ -44,30 +58,6 @@ type RagFileOption = {
   createdAt?: string;
 };
 
-const EMPTY_CREATE_FORM: PersonaFormState = {
-  name: "",
-  systemPrompt: "",
-  overridePrompt: "",
-  xaiCollectionId: "",
-  xaiCollectionName: "",
-  model: "grok-4-latest",
-  temperature: "0.2",
-  enableRag: true,
-  defaultScope: "global"
-};
-
-type PersonaFormState = {
-  name: string;
-  systemPrompt: string;
-  overridePrompt: string;
-  xaiCollectionId: string;
-  xaiCollectionName: string;
-  model: string;
-  temperature: string;
-  enableRag: boolean;
-  defaultScope: string;
-};
-
 type VerificationFilter = "all" | "missing" | "stale";
 
 const VERIFICATION_STALE_MS = 15 * 60_000;
@@ -86,6 +76,12 @@ export function PersonasConsole({
   const [pickerPersonaId, setPickerPersonaId] = useState<string | null>(null);
   const [pickerFiles, setPickerFiles] = useState<RagFileOption[]>([]);
   const [selectedPickerFileIds, setSelectedPickerFileIds] = useState<string[]>([]);
+  const [assignCollectionSelectionByPersonaId, setAssignCollectionSelectionByPersonaId] = useState<
+    Record<string, string>
+  >({});
+  const [collectionInventory, setCollectionInventory] = useState<XaiCollectionInventoryOption[]>([]);
+  const [collectionInventoryLoading, setCollectionInventoryLoading] = useState(false);
+  const [collectionInventoryError, setCollectionInventoryError] = useState<string | null>(null);
 
   const refreshPersonas = useCallback(async () => {
     try {
@@ -122,6 +118,15 @@ export function PersonasConsole({
       }),
     [personas, verificationFilter]
   );
+  const selectedCreateCollection = useMemo(
+    () =>
+      collectionInventory.find((collection) => collection.id === createForm.xaiCollectionId) ?? null,
+    [collectionInventory, createForm.xaiCollectionId]
+  );
+
+  useEffect(() => {
+    void refreshCollectionInventory();
+  }, []);
 
   function updateCreateForm<K extends keyof PersonaFormState>(key: K, value: PersonaFormState[K]) {
     setCreateForm((current) => ({ ...current, [key]: value }));
@@ -129,6 +134,33 @@ export function PersonasConsole({
 
   function updateEditForm<K extends keyof PersonaFormState>(key: K, value: PersonaFormState[K]) {
     setEditForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function refreshCollectionInventory() {
+    setCollectionInventoryLoading(true);
+    try {
+      const payload = await parseJson<{ data: XaiCollectionInventoryOption[] }>(
+        await fetch("/api/personas/collections")
+      );
+      setCollectionInventory(payload.data);
+      setCollectionInventoryError(null);
+    } catch (error) {
+      setCollectionInventory([]);
+      setCollectionInventoryError(
+        error instanceof Error ? error.message : "Failed to load collection inventory"
+      );
+    } finally {
+      setCollectionInventoryLoading(false);
+    }
+  }
+
+  function applyCollectionSelection(collectionId: string) {
+    setCreateForm((current) =>
+      applySelectedCollectionToPersonaForm(current, collectionInventory, collectionId)
+    );
+    if (collectionId) {
+      setCollectionInventoryError(null);
+    }
   }
 
   async function createPersona(event: FormEvent<HTMLFormElement>) {
@@ -147,6 +179,79 @@ export function PersonasConsole({
       await refreshPersonas();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to create persona");
+    }
+  }
+
+  async function createCollectionForOnboarding() {
+    const requestedName = createForm.xaiCollectionName.trim() || createForm.name.trim();
+    if (!requestedName) {
+      setStatus("Set persona name or collection name before creating collection");
+      return;
+    }
+    setStatus(`Creating xAI collection ${requestedName}...`);
+    try {
+      const payload = await parseJson<{
+        data: {
+          id: string;
+          name?: string;
+          stats: {
+            documentCount: number | null;
+            createdAt: string | null;
+            updatedAt: string | null;
+          };
+        };
+      }>(
+        await fetch("/api/personas/collections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: requestedName })
+        })
+      );
+      setCreateForm((current) =>
+        applySelectedCollectionToPersonaForm(current, [payload.data], payload.data.id)
+      );
+      setCollectionInventory((current) => {
+        const withoutCreated = current.filter((entry) => entry.id !== payload.data.id);
+        return [...withoutCreated, payload.data];
+      });
+      setCollectionInventoryError(null);
+      setStatus(`Created xAI collection ${payload.data.id}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to create xAI collection");
+    }
+  }
+
+  async function assignCollectionToPersona(persona: Persona) {
+    const personaId = persona._id;
+    if (!personaId) {
+      setStatus("Persona missing id and cannot update collection");
+      return;
+    }
+    const selectedCollectionId = assignCollectionSelectionByPersonaId[personaId]?.trim() ?? "";
+    if (!selectedCollectionId) {
+      setStatus(`Select a collection before assigning ${persona.name}`);
+      return;
+    }
+    const selectedCollection =
+      collectionInventory.find((collection) => collection.id === selectedCollectionId) ?? null;
+    setStatus(`Assigning ${selectedCollectionId} to ${persona.name}...`);
+    try {
+      await parseJson(
+        await fetch(`/api/personas/${personaId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            xaiCollection: {
+              collectionId: selectedCollectionId,
+              collectionName: selectedCollection?.name ?? ""
+            }
+          })
+        })
+      );
+      setStatus(`Assigned ${selectedCollectionId} to ${persona.name}`);
+      await refreshPersonas();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to assign collection");
     }
   }
 
@@ -215,6 +320,10 @@ export function PersonasConsole({
       setStatus("Persona missing id and cannot be rechecked");
       return;
     }
+    if (!hasBoundCollection(persona)) {
+      setStatus(`Bind a collection to ${persona.name} before running verification`);
+      return;
+    }
     setStatus(`Rechecking ${persona.name} collection...`);
     try {
       await parseJson(
@@ -253,6 +362,10 @@ export function PersonasConsole({
       setStatus("Persona missing id and cannot link files");
       return;
     }
+    if (!hasBoundCollection(persona)) {
+      setStatus(`Bind a collection to ${persona.name} before linking scope files`);
+      return;
+    }
     setStatus(`Linking uploaded files for ${persona.name}...`);
     try {
       const payload = await parseJson<{
@@ -274,6 +387,10 @@ export function PersonasConsole({
   async function openFilePicker(persona: Persona) {
     if (!persona._id) {
       setStatus("Persona missing id and cannot select files");
+      return;
+    }
+    if (!hasBoundCollection(persona)) {
+      setStatus(`Bind a collection to ${persona.name} before selecting files`);
       return;
     }
     setStatus(`Loading files for ${persona.name}...`);
@@ -361,10 +478,10 @@ export function PersonasConsole({
     <section className="panel stack-gap">
       <div className="tool-row">
         <Link className="cta cta-secondary" href="/admin">
-          Back to admin functions
+          <BackIcon className="crud-icon" /> Back to admin functions
         </Link>
         <button className="cta cta-secondary" onClick={() => void refreshPersonas()} type="button">
-          Refresh personas
+          <RefreshIcon className="crud-icon" /> Refresh personas
         </button>
         <p className="status-text">{status}</p>
       </div>
@@ -396,18 +513,71 @@ export function PersonasConsole({
               onChange={(event) => updateCreateForm("overridePrompt", event.target.value)}
               placeholder="override prompt template"
               rows={3}
-              required
               value={createForm.overridePrompt}
             />
+            <div className="tool-row">
+              <select
+                aria-label="xai-collection-picker"
+                onChange={(event) => applyCollectionSelection(event.target.value)}
+                value={
+                  collectionInventory.some(
+                    (collection) => collection.id === createForm.xaiCollectionId
+                  )
+                    ? createForm.xaiCollectionId
+                    : ""
+                }
+              >
+                <option value="">Select existing xAI collection</option>
+                {collectionInventory.map((collection) => (
+                  <option key={collection.id} value={collection.id}>
+                    {collection.name ?? collection.id} ({collection.id}) - docs:{" "}
+                    {collection.stats.documentCount ?? "n/a"}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="tiny-button"
+                onClick={() => void refreshCollectionInventory()}
+                type="button"
+                disabled={collectionInventoryLoading}
+              >
+                {collectionInventoryLoading ? "Loading..." : "Refresh collections"}
+              </button>
+              <button
+                className="tiny-button"
+                onClick={() => void createCollectionForOnboarding()}
+                type="button"
+              >
+                <AddIcon className="crud-icon" /> Create xAI collection
+              </button>
+            </div>
+            {collectionInventoryError ? (
+              <small className="status-text">{collectionInventoryError}</small>
+            ) : null}
+            {selectedCreateCollection ? (
+              <small className="status-text">
+                Selected stats: docs {selectedCreateCollection.stats.documentCount ?? "n/a"}
+                {selectedCreateCollection.stats.updatedAt
+                  ? `, updated ${new Date(selectedCreateCollection.stats.updatedAt).toLocaleString()}`
+                  : ""}
+              </small>
+            ) : null}
             <input
               maxLength={120}
               name="xaiCollectionId"
+              list="xpersona-collection-suggestions"
               onChange={(event) => updateCreateForm("xaiCollectionId", event.target.value)}
-              pattern="collection_[A-Za-z0-9-]+"
-              placeholder="collection_..."
-              required
+              pattern="^$|collection_[A-Za-z0-9-]+"
+              placeholder="optional: collection_..."
               value={createForm.xaiCollectionId}
             />
+            <datalist id="xpersona-collection-suggestions">
+              {collectionInventory.map((collection) => (
+                <option key={collection.id} value={collection.id}>
+                  {collection.name ?? collection.id}
+                </option>
+              ))}
+            </datalist>
             <input
               maxLength={120}
               name="xaiCollectionName"
@@ -452,13 +622,13 @@ export function PersonasConsole({
               Enable RAG
             </label>
             <button className="cta cta-primary" type="submit">
-              Save persona
+              <AddIcon className="crud-icon" /> Save persona
             </button>
           </form>
         </article>
 
         <article className="surface-card xf-widget section-card">
-          <h3>Existing Personas (read-only list)</h3>
+          <h3>Existing Personas</h3>
           <div className="tool-row">
             <button
               className="tiny-button"
@@ -503,6 +673,15 @@ export function PersonasConsole({
                       ? ` (${persona.xaiCollection.collectionName})`
                       : ""}
                   </small>
+                  {!hasBoundCollection(persona) ? (
+                    <>
+                      <br />
+                      <small className="status-text status-error">
+                        No collection bound yet. Create or select a collection to enable file sync and
+                        verification.
+                      </small>
+                    </>
+                  ) : null}
                   {persona.xaiCollectionVerification ? (
                     <>
                       <br />
@@ -559,31 +738,46 @@ export function PersonasConsole({
                     type="button"
                     disabled={!persona._id}
                   >
-                    Create xCollection
+                    <AddIcon className="crud-icon" /> Create xCollection
                   </button>
                   <button
                     className="tiny-button"
                     onClick={() => void linkPersonaScopeFiles(persona)}
                     type="button"
-                    disabled={!persona._id}
+                    disabled={!persona._id || !hasBoundCollection(persona)}
+                    title={
+                      hasBoundCollection(persona)
+                        ? "Sync all uploaded scope files"
+                        : "Bind a collection first"
+                    }
                   >
-                    Sync all scope files
+                    <UploadIcon className="crud-icon" /> Sync all scope files
                   </button>
                   <button
                     className="tiny-button"
                     onClick={() => void openFilePicker(persona)}
                     type="button"
-                    disabled={!persona._id}
+                    disabled={!persona._id || !hasBoundCollection(persona)}
+                    title={
+                      hasBoundCollection(persona)
+                        ? "Select and sync specific files"
+                        : "Bind a collection first"
+                    }
                   >
-                    Select files
+                    <EditIcon className="crud-icon" /> Select files
                   </button>
                   <button
                     className="tiny-button"
                     onClick={() => void recheckPersonaCollection(persona)}
                     type="button"
-                    disabled={!persona._id}
+                    disabled={!persona._id || !hasBoundCollection(persona)}
+                    title={
+                      hasBoundCollection(persona)
+                        ? "Recheck current collection"
+                        : "Bind a collection first"
+                    }
                   >
-                    Recheck now
+                    <RefreshIcon className="crud-icon" /> Recheck now
                   </button>
                   <button
                     className="tiny-button"
@@ -591,7 +785,7 @@ export function PersonasConsole({
                     type="button"
                     disabled={!persona._id}
                   >
-                    Edit
+                    <EditIcon className="crud-icon" /> Edit
                   </button>
                   <button
                     className="tiny-button"
@@ -599,7 +793,39 @@ export function PersonasConsole({
                     type="button"
                     disabled={!persona._id}
                   >
-                    Delete
+                    <DeleteIcon className="crud-icon" /> Delete
+                  </button>
+                </div>
+                <div className="tool-row">
+                  <select
+                    aria-label={`assign-collection-${persona._id ?? persona.name}`}
+                    value={persona._id ? assignCollectionSelectionByPersonaId[persona._id] ?? "" : ""}
+                    onChange={(event) => {
+                      if (!persona._id) {
+                        return;
+                      }
+                      const selectedId = event.target.value;
+                      setAssignCollectionSelectionByPersonaId((current) => ({
+                        ...current,
+                        [persona._id as string]: selectedId
+                      }));
+                    }}
+                    disabled={!persona._id || collectionInventory.length === 0}
+                  >
+                    <option value="">Assign existing collection...</option>
+                    {collectionInventory.map((collection) => (
+                      <option key={collection.id} value={collection.id}>
+                        {collection.name ?? collection.id} ({collection.id})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="tiny-button"
+                    onClick={() => void assignCollectionToPersona(persona)}
+                    type="button"
+                    disabled={!persona._id || collectionInventory.length === 0}
+                  >
+                    <EditIcon className="crud-icon" /> Save collection id
                   </button>
                 </div>
               </li>
@@ -609,6 +835,30 @@ export function PersonasConsole({
             <p className="status-text">
               No personas match this filter ({verificationFilter}).
             </p>
+          ) : null}
+        </article>
+
+        <article className="surface-card xf-widget section-card">
+          <h3>Existing xAI Collections</h3>
+          <p className="status-text">
+            {collectionInventoryLoading
+              ? "Loading collections..."
+              : `${collectionInventory.length} collections available`}
+          </p>
+          {collectionInventoryError ? (
+            <p className="status-text status-error">{collectionInventoryError}</p>
+          ) : null}
+          <ul className="data-list">
+            {collectionInventory.map((collection) => (
+              <li key={collection.id}>
+                <strong>{collection.name ?? "Unnamed collection"}</strong>
+                <small>Id: {collection.id}</small>
+                <small>Docs: {collection.stats.documentCount ?? "n/a"}</small>
+              </li>
+            ))}
+          </ul>
+          {collectionInventory.length === 0 && !collectionInventoryLoading ? (
+            <p className="status-text">No collections returned by the management API.</p>
           ) : null}
         </article>
       </div>
@@ -650,7 +900,7 @@ export function PersonasConsole({
                     type="button"
                     disabled={selectedPickerFileIds.length === 0}
                   >
-                    Sync selected ({selectedPickerFileIds.length})
+                    <UploadIcon className="crud-icon" /> Sync selected ({selectedPickerFileIds.length})
                   </button>
                   <button
                     className="cta cta-secondary"
@@ -661,7 +911,7 @@ export function PersonasConsole({
                     }}
                     type="button"
                   >
-                    Close
+                    <BackIcon className="crud-icon" /> Close
                   </button>
                 </div>
                 <ul className="data-list">
@@ -720,16 +970,14 @@ export function PersonasConsole({
               onChange={(event) => updateEditForm("overridePrompt", event.target.value)}
               placeholder="override prompt template"
               rows={3}
-              required
               value={editForm.overridePrompt}
             />
             <input
               maxLength={120}
               name="xaiCollectionId"
               onChange={(event) => updateEditForm("xaiCollectionId", event.target.value)}
-              pattern="collection_[A-Za-z0-9-]+"
-              placeholder="collection_..."
-              required
+              pattern="^$|collection_[A-Za-z0-9-]+"
+              placeholder="optional: collection_..."
               value={editForm.xaiCollectionId}
             />
             <input
@@ -777,7 +1025,7 @@ export function PersonasConsole({
             </label>
             <div className="tool-row">
               <button className="cta cta-primary" type="submit">
-                Update persona
+                <EditIcon className="crud-icon" /> Update persona
               </button>
               <button
                 className="cta cta-secondary"
@@ -825,4 +1073,8 @@ function getVerificationBadgeLabel(persona: Persona): string {
     return "stale";
   }
   return persona.xaiCollectionVerification.status;
+}
+
+function hasBoundCollection(persona: Persona): boolean {
+  return Boolean(persona.xaiCollection.collectionId?.trim());
 }

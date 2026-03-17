@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 
 import { parseJson } from "@/app/admin/ui/http";
-import { AddIcon, DeleteIcon, EditIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 
 type AccessRequest = {
   _id?: string;
@@ -211,7 +211,7 @@ export function AccessRequestsConsole() {
           <option value="all">all</option>
         </select>
         <button className="cta cta-secondary" onClick={() => void refreshAccessRequests()} type="button">
-          Refresh requests
+          <RefreshIcon className="crud-icon" /> Refresh requests
         </button>
         <p className="status-text">{status}</p>
       </div>

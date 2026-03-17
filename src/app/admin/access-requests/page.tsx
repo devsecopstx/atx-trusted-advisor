@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
+import { BackIcon } from "@/app/admin/ui/crud-icons";
 
 import { AdminSessionPanel } from "../ui/admin-session-panel";
 import { AccessRequestsConsole } from "./ui/access-requests-console";
@@ -38,7 +39,7 @@ export default async function AdminAccessRequestsPage() {
 
       <section className="panel">
         <Link className="cta cta-secondary" href="/admin">
-          Back to admin functions
+          <BackIcon className="crud-icon" /> Back to admin functions
         </Link>
       </section>
 

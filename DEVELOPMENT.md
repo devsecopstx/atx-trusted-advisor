@@ -22,6 +22,8 @@ Use `.env` only (do not use `.env.local` for this app).
 - `MONGODB_URI_B64` (Base64-encoded MongoDB URI)
   - legacy alias also supported: `MONGODB_URI_B4`
 - `XAI_API_KEY`
+- `XAI_MANAGEMENT_API_KEY` (optional override; when omitted, management operations fall back to `XAI_API_KEY`)
+- `XAI_MANAGEMENT_BASE_URL` (optional override; defaults to `https://management-api.x.ai/v1`)
 - `X_OAUTH_CLIENT_ID` (raw client id from X app, not base64-encoded)
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET` (recommended for session signing)
@@ -57,6 +59,8 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 - Typecheck: `npm run typecheck`
 - Lint: `npm run lint`
 - Build: `npm run build`
+- Smoke tests: `npm run smoke:verify`
+- xAI management key-create smoke (opt-in): `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true npm run smoke:xai-key-create`
 - Seed admin: `npm run seed:admin`
 - Backfill legacy xchat identity fields: `npm run migrate:xchat-identity`
 
@@ -82,12 +86,31 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 - `PUT /api/admin/users/:userId/settings`
 - `GET /api/personas`
 - `POST /api/personas`
+- `GET /api/personas/collections`
+- `POST /api/personas/collections`
 - `GET /api/personas/:personaId`
 - `PUT /api/personas/:personaId`
 - `DELETE /api/personas/:personaId`
 - `GET /api/rag/files`
 - `POST /api/rag/files`
 - `POST /api/xchat/ask`
+
+## xPersona Collection Endpoint Notes
+
+- `GET /api/personas/collections` returns `{ data: CollectionInventoryItem[] }` for admin onboarding collection selection.
+- `POST /api/personas/collections` accepts `{ name: string }` and creates a new xAI collection for onboarding.
+- xPersona can be created without a bound xAI collection (`xaiCollection.collectionId` empty). This enables step-by-step onboarding before RAG wiring.
+- Management operations use `XAI_MANAGEMENT_API_KEY` when set; otherwise they fall back to `XAI_API_KEY`.
+- The key used for management operations must have Collections permissions enabled (read for listing and write for creating/linking as needed).
+- Current Finance collection id for operations: `collection_b75e188e-e7e6-4aa8-8e01-23caf0946236`.
+- Error responses include stable `code` values for operator troubleshooting:
+  - `missing_management_key`
+  - `upstream_unauthorized`
+  - `upstream_forbidden`
+  - `upstream_error`
+  - `validation_error`
+  - `invalid_json`
+  - `payload_too_large`
 
 ## Multi-tenant Seed Verification
 
@@ -96,8 +119,105 @@ After running `npm run seed:admin`, verify:
 1. `core_users` has `atxbogart@gmail.com` with role `global_admin`
 2. `core_tenants` has `slug: xfinance-core` with `isDefault: true`
 3. `core_tenant_memberships` has one default membership linking the admin user and default tenant
+4. `xchat_personas` contains default `Super-Agent` persona with:
+   - `nameNormalized: "super-agent"`
+   - `systemPrompt` set to the Architect administrative prompt
+   - `xaiCollection.collectionId: ""` (no collection bound by default)
+5. `portfolio_portfolios` contains one default portfolio for the seeded admin user.
+6. `portfolio_accounts` contains one default account linked to that default portfolio.
+7. `portfolio_watchlists` contains one default watchlist linked to that default portfolio.
 
 Re-running `npm run seed:admin` should remain idempotent (no duplicates).
+
+## Batch Knowledge Base Workaround
+
+For batch workflows, use this retrieval pattern:
+
+1. Pre-search target collections with `POST /v1/documents/search` (xAI API).
+2. Inject the returned snippets into each JSONL batch item as contextual text.
+3. Submit the enriched JSONL batch request.
+
+This is the current workaround when direct "Knowledge Base" wiring is not available in batch mode.
+
+### Collection upload/link workflow (required two-step)
+
+To make files visible inside a collection, perform both steps:
+
+1. Upload file with standard xAI API key (`XAI_API_KEY`) to get a `file_id`.
+2. Attach that file to the collection with management key (`XAI_MANAGEMENT_API_KEY`).
+
+#### Practical Bash example
+
+```bash
+# 0) Set known Finance collection id (provided by team)
+export XFINANCE_COLLECTION_ID="collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
+
+# 1) Upload file using standard key
+UPLOAD_RESPONSE="$(curl -sS -X POST https://api.x.ai/v1/files \
+  -H "Authorization: Bearer ${XAI_API_KEY}" \
+  -F "file=@./finance-kb.md")"
+echo "${UPLOAD_RESPONSE}"
+
+# 2) Parse uploaded file id (requires jq)
+FILE_ID="$(echo "${UPLOAD_RESPONSE}" | jq -r '.id')"
+
+# 3) Attach uploaded file to collection using management key
+curl -sS -X POST "https://management-api.x.ai/v1/collections/${XFINANCE_COLLECTION_ID}/documents/${FILE_ID}" \
+  -H "Authorization: Bearer ${XAI_MANAGEMENT_API_KEY}"
+```
+
+### Team API-key create smoke (safe template)
+
+Use environment variables (do not hardcode live tokens in source):
+
+- `XAI_TEAM_ID`
+- `XAI_MANAGEMENT_API_KEY` (or fallback `XAI_API_KEY`)
+- `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true`
+
+The smoke test calls:
+
+```bash
+POST https://management-api.x.ai/auth/teams/${XAI_TEAM_ID}/api-keys
+```
+
+with payload shape:
+
+```json
+{
+  "name": "xfinance-smoke-<timestamp>",
+  "acls": ["api-key:model:*", "api-key:endpoint:*"],
+  "qps": 3,
+  "qpm": 10,
+  "tpm": null
+}
+```
+
+## Admin Step-by-Step Validation (xChat readiness)
+
+1. Run `npm run seed:admin`.
+2. Confirm default `Super-Agent` persona is visible in admin personas.
+3. Confirm default portfolio/account surfaces load for the seeded admin user.
+4. Open xChat and run a non-RAG prompt with the default persona.
+5. Optionally create/select an xAI collection and re-run validation with RAG enabled.
+
+### Authenticated smoke checklist (admin session)
+
+Use this checklist to validate "admin can start using xChat" in an authenticated browser session:
+
+1. Start app: `npm run dev`.
+2. Open `http://localhost:3000/login` and complete admin login.
+3. Open `/admin/personas`:
+   - verify `Super-Agent` is visible,
+   - verify no-collection mode is allowed,
+   - verify collection-dependent actions show clear guidance when collection is not bound.
+4. Open `/dashboard` or `/holdings`:
+   - verify default portfolio/account data surfaces load for seeded admin.
+5. Open `/admin/xchat`:
+   - submit a non-RAG prompt with default persona and verify a response returns.
+6. Optional RAG validation:
+   - bind a collection,
+   - run file sync/recheck actions,
+   - ask xChat a prompt expected to hit collection context.
 
 ## Example Payloads
 

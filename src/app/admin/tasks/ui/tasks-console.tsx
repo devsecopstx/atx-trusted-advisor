@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useState } from "react";
 
+import { AddIcon, RefreshIcon, RunIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type ScheduledTask = {
@@ -73,7 +74,7 @@ export function TasksConsole() {
     <section className="panel stack-gap">
       <div className="tool-row">
         <button className="cta cta-secondary" onClick={() => void refreshTasks()} type="button">
-          Refresh tasks
+          <RefreshIcon className="crud-icon" /> Refresh tasks
         </button>
         <p className="status-text">{status}</p>
       </div>
@@ -90,7 +91,7 @@ export function TasksConsole() {
           </select>
           <input name="scheduleCron" placeholder="0 2 * * *" required />
           <button className="cta cta-primary" type="submit">
-            Create task
+            <AddIcon className="crud-icon" /> Create task
           </button>
         </form>
       </article>
@@ -102,7 +103,7 @@ export function TasksConsole() {
             <li key={task._id ?? task.name}>
               <span>{task.name}</span>
               <button className="tiny-button" onClick={() => void runTask(task._id)} type="button">
-                Run
+                <RunIcon className="crud-icon" /> Run
               </button>
             </li>
           ))}

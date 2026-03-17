@@ -13,8 +13,8 @@ export type PersonaConfig = {
   nameNormalized: string;
   systemPrompt: string;
   overridePrompt: string;
-  xaiCollection: {
-    collectionId: string;
+  xaiCollection?: {
+    collectionId?: string;
     collectionName?: string;
   };
   xaiCollectionVerification?: PersonaCollectionVerification;

@@ -1,25 +1,25 @@
 :root {
-  --xf-bg-900: #050814;
-  --xf-bg-800: #0a1026;
-  --xf-surface-700: #101a38;
-  --xf-surface-600: #17234a;
-  --xf-text-100: #f7fbff;
-  --xf-text-300: #b3c7e6;
-  --xf-text-400: #8ea6cc;
-  --xf-blue-400: #37b7ff;
-  --xf-cyan-400: #4ff3ff;
-  --xf-purple-400: #8e6dff;
-  --xf-purple-500: #7350ff;
-  --xf-success-400: #1ee6b7;
-  --xf-danger-400: #ff5f8f;
-  --xf-warning-400: #ffc86b;
-  --xf-glow-blue: 0 0 24px rgba(55, 183, 255, 0.35);
-  --xf-glow-purple: 0 0 24px rgba(142, 109, 255, 0.35);
+  --xf-bg-900: #090909;
+  --xf-bg-800: #111214;
+  --xf-surface-700: #17191d;
+  --xf-surface-600: #1f2329;
+  --xf-text-100: #f6f8fc;
+  --xf-text-300: #b5bac6;
+  --xf-text-400: #888f9f;
+  --xf-blue-400: #d1d6de;
+  --xf-cyan-400: #c6ccd6;
+  --xf-purple-400: #c7ccd5;
+  --xf-purple-500: #b6bcc7;
+  --xf-success-400: #8bd5b3;
+  --xf-danger-400: #f5a0ad;
+  --xf-warning-400: #dfc78d;
+  --xf-glow-blue: 0 0 16px rgba(255, 255, 255, 0.1);
+  --xf-glow-purple: 0 0 16px rgba(255, 255, 255, 0.08);
   --xf-radius-sm: 12px;
   --xf-radius-md: 18px;
   --xf-radius-lg: 28px;
-  --xf-shadow-soft: 0 12px 40px rgba(0, 8, 24, 0.45);
-  --xf-shadow-card: 0 10px 28px rgba(7, 13, 33, 0.55);
+  --xf-shadow-soft: 0 10px 36px rgba(2, 6, 14, 0.5);
+  --xf-shadow-card: 0 8px 24px rgba(4, 10, 24, 0.55);
   --xf-blur-glass: blur(14px);
 }
 
@@ -34,8 +34,8 @@ body {
   margin: 0;
   padding: 0;
   background:
-    radial-gradient(circle at 15% 20%, rgba(55, 183, 255, 0.18), transparent 45%),
-    radial-gradient(circle at 80% 75%, rgba(142, 109, 255, 0.22), transparent 42%),
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.05), transparent 44%),
+    radial-gradient(circle at 86% 82%, rgba(255, 255, 255, 0.03), transparent 40%),
     linear-gradient(160deg, var(--xf-bg-900) 0%, var(--xf-bg-800) 100%);
   color: var(--xf-text-100);
   font-family: "Inter", "SF Pro Display", "Segoe UI", sans-serif;
@@ -58,8 +58,8 @@ body {
   margin: 0 auto;
   overflow: hidden;
   border-radius: var(--xf-radius-lg);
-  border: 1px solid rgba(142, 109, 255, 0.25);
-  box-shadow: var(--xf-shadow-soft), inset 0 0 40px rgba(79, 243, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--xf-shadow-soft), inset 0 0 40px rgba(255, 255, 255, 0.04);
   isolation: isolate;
 }
 
@@ -90,8 +90,7 @@ body {
 }
 
 .xf-logo-x {
-  color: var(--xf-blue-400);
-  text-shadow: var(--xf-glow-blue);
+  color: var(--xf-text-100);
 }
 
 .xf-logo-subtitle {
@@ -110,10 +109,10 @@ body {
   border-radius: 40px;
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  background: linear-gradient(145deg, rgba(50, 65, 112, 0.62), rgba(17, 26, 56, 0.9));
+  background: linear-gradient(145deg, rgba(35, 38, 44, 0.62), rgba(19, 21, 26, 0.92));
   box-shadow:
     0 28px 55px rgba(0, 0, 0, 0.6),
-    0 0 45px rgba(55, 183, 255, 0.2);
+    0 0 45px rgba(255, 255, 255, 0.08);
 }
 
 .xf-phone-screen {
@@ -121,21 +120,21 @@ body {
   border-radius: 30px;
   padding: 16px;
   background:
-    radial-gradient(circle at 85% 10%, rgba(79, 243, 255, 0.26), transparent 50%),
-    linear-gradient(160deg, #0b1433 0%, #0a153d 40%, #08102a 100%);
-  border: 1px solid rgba(79, 243, 255, 0.18);
+    radial-gradient(circle at 85% 10%, rgba(255, 255, 255, 0.09), transparent 50%),
+    linear-gradient(160deg, #111316 0%, #101215 40%, #0b0d10 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .xf-widget {
-  background: linear-gradient(160deg, rgba(22, 35, 74, 0.76), rgba(9, 15, 36, 0.74));
-  border: 1px solid rgba(179, 199, 230, 0.16);
+  background: linear-gradient(160deg, rgba(18, 28, 48, 0.82), rgba(10, 15, 29, 0.86));
+  border: 1px solid rgba(170, 181, 203, 0.2);
   border-radius: var(--xf-radius-md);
   box-shadow: var(--xf-shadow-card);
 }
 
 .xf-glass {
-  background: linear-gradient(145deg, rgba(33, 49, 90, 0.38), rgba(11, 19, 42, 0.52));
-  border: 1px solid rgba(79, 243, 255, 0.2);
+  background: linear-gradient(145deg, rgba(35, 39, 47, 0.42), rgba(16, 18, 22, 0.56));
+  border: 1px solid rgba(255, 255, 255, 0.16);
   backdrop-filter: var(--xf-blur-glass);
 }
 
@@ -159,7 +158,7 @@ body {
   position: absolute;
   inset: auto -20% -45% -20%;
   height: 75%;
-  background: linear-gradient(90deg, rgba(55, 183, 255, 0.22), rgba(142, 109, 255, 0.22));
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.06));
   filter: blur(22px);
   z-index: -1;
 }
@@ -208,7 +207,7 @@ body {
 .xf-chart-bars span {
   flex: 1;
   border-radius: 999px 999px 4px 4px;
-  background: linear-gradient(to top, var(--xf-purple-500), var(--xf-cyan-400));
+  background: linear-gradient(to top, #aab0ba, #d4d9e0);
   opacity: 0.9;
 }
 
@@ -235,7 +234,7 @@ body {
   display: grid;
   place-items: center;
   font-weight: 700;
-  background: linear-gradient(145deg, rgba(55, 183, 255, 0.3), rgba(142, 109, 255, 0.3));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.07));
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -248,12 +247,12 @@ body {
 }
 
 .xf-node-links line {
-  stroke: rgba(79, 243, 255, 0.58);
+  stroke: rgba(255, 255, 255, 0.42);
   stroke-width: 1.4;
 }
 
 .xf-node-links circle {
-  fill: rgba(142, 109, 255, 0.88);
+  fill: rgba(255, 255, 255, 0.78);
 }
 
 @media (max-width: 860px) {

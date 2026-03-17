@@ -17,6 +17,14 @@ type XaiCollectionSearchSnippet = {
   documentName?: string;
 };
 
+export type XaiCollectionInventoryItem = {
+  id: string;
+  name?: string;
+  documentCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 function getXaiConfig() {
   const env = getEnv();
   return {
@@ -28,8 +36,10 @@ function getXaiConfig() {
 
 function getXaiManagementConfig() {
   const env = getEnv();
+  const fallbackApiKey = env.XAI_API_KEY?.trim();
+  const managementApiKey = env.XAI_MANAGEMENT_API_KEY?.trim() || fallbackApiKey;
   return {
-    managementApiKey: env.XAI_MANAGEMENT_API_KEY,
+    managementApiKey,
     managementBaseUrl: env.XAI_MANAGEMENT_BASE_URL ?? "https://management-api.x.ai/v1"
   };
 }
@@ -54,7 +64,7 @@ export async function createXaiCollection(collectionName: string): Promise<{
 }> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
   if (!managementApiKey) {
-    throw new Error("Missing XAI_MANAGEMENT_API_KEY");
+    throw new Error("Missing XAI_API_KEY");
   }
 
   const normalizedName = collectionName.trim();
@@ -99,7 +109,7 @@ export async function addFileToXaiCollection(input: {
 }): Promise<{ linked: boolean; alreadyLinked: boolean }> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
   if (!managementApiKey) {
-    throw new Error("Missing XAI_MANAGEMENT_API_KEY");
+    throw new Error("Missing XAI_API_KEY");
   }
 
   const collectionId = input.collectionId.trim();
@@ -241,7 +251,7 @@ export async function getXaiCollectionById(collectionId: string): Promise<{
 }> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
   if (!managementApiKey) {
-    throw new Error("Missing XAI_MANAGEMENT_API_KEY");
+    throw new Error("Missing XAI_API_KEY");
   }
 
   const normalizedId = collectionId.trim();
@@ -271,6 +281,65 @@ export async function getXaiCollectionById(collectionId: string): Promise<{
     (typeof payload.collection_name === "string" ? payload.collection_name : undefined);
 
   return { id, name };
+}
+
+export async function listXaiCollections(): Promise<XaiCollectionInventoryItem[]> {
+  const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  if (!managementApiKey) {
+    throw new Error("Missing XAI_API_KEY");
+  }
+
+  const response = await fetch(`${managementBaseUrl}/collections`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${managementApiKey}`
+    }
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(`xAI collections list failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
+
+  const collectionCandidates = [
+    payload.data,
+    payload.results,
+    payload.collections,
+    payload.items
+  ].find(Array.isArray);
+
+  if (!Array.isArray(collectionCandidates)) {
+    return [];
+  }
+
+  const collections: XaiCollectionInventoryItem[] = [];
+  for (const candidate of collectionCandidates) {
+    if (!candidate || typeof candidate !== "object") {
+      continue;
+    }
+    const entry = candidate as Record<string, unknown>;
+    const id = asString(entry.id) ?? asString(entry.collection_id);
+    if (!id) {
+      continue;
+    }
+    const name = asString(entry.name) ?? asString(entry.collection_name);
+    const documentCount =
+      asNumber(entry.document_count) ??
+      asNumber(entry.documents_count) ??
+      asNumber(entry.total_documents) ??
+      asNumber(entry.size);
+    const createdAt = asString(entry.created_at) ?? asString(entry.createdAt);
+    const updatedAt = asString(entry.updated_at) ?? asString(entry.updatedAt);
+    collections.push({
+      id,
+      name,
+      documentCount,
+      createdAt,
+      updatedAt
+    });
+  }
+
+  return collections;
 }
 
 function extractCollectionSnippets(
@@ -345,4 +414,17 @@ function extractCollectionSnippets(
 
 function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
 }

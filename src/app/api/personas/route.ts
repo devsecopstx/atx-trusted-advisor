@@ -64,7 +64,14 @@ export async function POST(request: Request) {
 
   let persona: PersonaConfig;
   try {
-    persona = await createPersona(parsed.data);
+    persona = await createPersona({
+      ...parsed.data,
+      overridePrompt: parsed.data.overridePrompt ?? "",
+      xaiCollection: {
+        collectionId: parsed.data.xaiCollection?.collectionId ?? "",
+        collectionName: parsed.data.xaiCollection?.collectionName
+      }
+    });
   } catch (error) {
     if (error instanceof PersonaNameConflictError) {
       return NextResponse.json(
@@ -111,7 +118,10 @@ function serializePersona(persona: PersonaConfig) {
     name: persona.name,
     systemPrompt: persona.systemPrompt,
     overridePrompt: persona.overridePrompt ?? "",
-    xaiCollection: persona.xaiCollection,
+    xaiCollection: {
+      collectionId: persona.xaiCollection?.collectionId ?? "",
+      collectionName: persona.xaiCollection?.collectionName
+    },
     model: persona.model,
     temperature: persona.temperature,
     enableRag: persona.enableRag,

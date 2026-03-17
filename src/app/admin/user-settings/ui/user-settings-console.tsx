@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
-import { AddIcon, DeleteIcon, EditIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type UserSettingsResponse = {
@@ -251,7 +251,7 @@ export function UserSettingsConsole() {
     <section className="panel stack-gap">
       <div className="tool-row">
         <button className="cta cta-secondary" onClick={() => void refreshApprovedUsers()} type="button">
-          Refresh users
+          <RefreshIcon className="crud-icon" /> Refresh users
         </button>
         <p className="status-text">{status}</p>
       </div>

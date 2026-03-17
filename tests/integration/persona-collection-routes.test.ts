@@ -147,6 +147,25 @@ describe("persona collection routes", () => {
     });
   });
 
+  it("sanitizes per-file link errors to avoid upstream payload leakage", async () => {
+    xaiMocks.addFileToXaiCollection.mockRejectedValueOnce(
+      new Error('xAI add file to collection failed: {"internal_ref":"secret_ref","api_key":"xai_abc"}')
+    );
+
+    const response = await postLinkFiles(new Request("http://test"), {
+      params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+    });
+    const payload = (await response.json()) as {
+      data: { failed: Array<{ fileId: string; error: string }> };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.failed).toHaveLength(1);
+    expect(payload.data.failed[0]?.error).toBe("Failed to link file to xAI collection");
+    expect(payload.data.failed[0]?.error).not.toContain("internal_ref");
+    expect(payload.data.failed[0]?.error).not.toContain("xai_");
+  });
+
   it("returns auth response when unauthorized", async () => {
     apiAuthMocks.requireAdminSession.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })

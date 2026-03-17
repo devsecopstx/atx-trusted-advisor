@@ -73,7 +73,7 @@ export async function POST(request: Request, context: RouteContext) {
     } catch (error) {
       failed.push({
         fileId,
-        error: error instanceof Error ? error.message : "Unknown link error"
+        error: sanitizeLinkFilesError(error)
       });
     }
   }
@@ -91,4 +91,18 @@ export async function POST(request: Request, context: RouteContext) {
       failed
     }
   });
+}
+
+function sanitizeLinkFilesError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "Failed to link file to xAI collection";
+  }
+  const lowered = error.message.toLowerCase();
+  if (lowered.includes("not found") || lowered.includes("404")) {
+    return "xAI rejected file link (resource not found)";
+  }
+  if (lowered.includes("unauthorized") || lowered.includes("forbidden") || lowered.includes("401")) {
+    return "xAI rejected file link (authorization failed)";
+  }
+  return "Failed to link file to xAI collection";
 }

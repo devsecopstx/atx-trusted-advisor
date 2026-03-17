@@ -149,7 +149,10 @@ function serializePersona(persona: PersonaConfig) {
     name: persona.name,
     systemPrompt: persona.systemPrompt,
     overridePrompt: persona.overridePrompt ?? "",
-    xaiCollection: persona.xaiCollection,
+    xaiCollection: {
+      collectionId: persona.xaiCollection?.collectionId ?? "",
+      collectionName: persona.xaiCollection?.collectionName
+    },
     model: persona.model,
     temperature: persona.temperature,
     enableRag: persona.enableRag,
