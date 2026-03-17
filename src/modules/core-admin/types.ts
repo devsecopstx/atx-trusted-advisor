@@ -1,11 +1,21 @@
 import { ObjectId } from "mongodb";
 
 export const accessRequestStatusValues = [
+  "new",
+  "triaged",
   "pending",
   "approved",
-  "rejected"
+  "rejected",
+  "expired"
 ] as const;
 export type AccessRequestStatus = (typeof accessRequestStatusValues)[number];
+
+export const ACCESS_REQUEST_SLA_DAYS = 7;
+
+export type AccessRequestPolicyViolation = {
+  code: string;
+  message: string;
+};
 
 export type AccessRequest = {
   _id?: ObjectId;
@@ -16,8 +26,12 @@ export type AccessRequest = {
   reason: string;
   status: AccessRequestStatus;
   requestedAt: Date;
+  triagedAt?: Date;
+  triagedBy?: string;
   reviewedBy?: string;
   reviewedAt?: Date;
+  expiredAt?: Date;
+  policyViolations?: AccessRequestPolicyViolation[];
 };
 
 export type AccessRequestUserSummary = {

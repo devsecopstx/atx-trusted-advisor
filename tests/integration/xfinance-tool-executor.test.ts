@@ -10,6 +10,10 @@ const repositoryMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
+vi.mock("@/modules/xchat/tool-cache", () => ({
+  getCachedToolResult: () => null,
+  setCachedToolResult: () => undefined
+}));
 
 import {
   createXfinanceToolExecutor,
