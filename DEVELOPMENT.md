@@ -30,6 +30,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
 - `ADMIN_SEED_EMAIL` (optional, default `atxbogart@gmail.com`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
+- `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications)
 
 ## Local Setup
 
@@ -218,6 +219,10 @@ Route53 TODO details:
 - `POST /api/auth/link-email` (email-first fallback link flow)
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
+
+### Self-service access requests
+
+- `POST /api/access-requests` (authenticated users request their own access; sends Slack notification if `SLACK_WEBHOOK_URL` is configured)
 
 ### Admin — access requests
 

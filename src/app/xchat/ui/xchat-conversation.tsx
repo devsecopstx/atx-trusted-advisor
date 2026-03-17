@@ -76,7 +76,7 @@ export function XchatConversation() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt,
+          message: prompt,
           scope: selectedPersona?.defaultScope ?? "global",
           personaId: selectedPersonaId || undefined
         })
