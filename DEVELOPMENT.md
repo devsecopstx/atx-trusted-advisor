@@ -210,24 +210,53 @@ Route53 TODO details:
 
 ## API Endpoints
 
+### Health and auth
+
 - `GET /api/health`
-- `GET /login`
-- `GET /admin` (auth required)
 - `GET /api/auth/x/login`
 - `GET /api/auth/x/callback`
 - `POST /api/auth/link-email` (email-first fallback link flow)
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
+
+### Admin — access requests
+
 - `GET /api/admin/access-requests`
-- `GET /api/admin/bootstrap-status`
 - `POST /api/admin/access-requests`
+- `GET /api/admin/access-requests/:requestId`
+- `PATCH /api/admin/access-requests/:requestId`
+- `PUT /api/admin/access-requests/:requestId`
+- `DELETE /api/admin/access-requests/:requestId`
+
+### Admin — users
+
+- `GET /api/admin/users`
+- `POST /api/admin/users`
+- `GET /api/admin/users/approved`
+- `GET /api/admin/users/:userId`
+- `PUT /api/admin/users/:userId`
+- `DELETE /api/admin/users/:userId`
+- `PATCH /api/admin/users/:userId/email`
+- `PATCH /api/admin/users/:userId/plan`
+- `PATCH /api/admin/users/:userId/role`
+- `GET /api/admin/users/:userId/settings`
+- `PUT /api/admin/users/:userId/settings`
+
+### Admin — tasks and scheduler
+
 - `GET /api/admin/tasks`
 - `POST /api/admin/tasks`
 - `POST /api/admin/tasks/:taskId/run`
 - `POST /api/admin/scheduler/tick`
 - `GET /api/admin/task-runs`
-- `GET /api/admin/users/:userId/settings`
-- `PUT /api/admin/users/:userId/settings`
+
+### Admin — audit and bootstrap
+
+- `GET /api/admin/audit`
+- `GET /api/admin/bootstrap-status`
+
+### Personas
+
 - `GET /api/personas`
 - `POST /api/personas`
 - `GET /api/personas/collections`
@@ -235,9 +264,29 @@ Route53 TODO details:
 - `GET /api/personas/:personaId`
 - `PUT /api/personas/:personaId`
 - `DELETE /api/personas/:personaId`
+- `POST /api/personas/:personaId/collection/create`
+- `POST /api/personas/:personaId/collection/link-files`
+- `POST /api/personas/:personaId/verify-collection`
+
+### Portfolios
+
+- `GET /api/portfolios/default`
+- `GET /api/portfolios/:portfolioId/accounts`
+- `GET /api/portfolios/:portfolioId/watchlist`
+- `POST /api/positions`
+
+### RAG files
+
 - `GET /api/rag/files`
 - `POST /api/rag/files`
+
+### xChat
+
 - `POST /api/xchat/ask`
+- `POST /api/xchat/batch`
+- `GET /api/xchat/batch`
+- `GET /api/xchat/batch/:batchId`
+- `POST /api/xchat/batch/:batchId`
 
 ## xPersona Collection Endpoint Notes
 

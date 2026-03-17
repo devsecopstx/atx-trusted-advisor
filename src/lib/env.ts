@@ -15,6 +15,7 @@ const envSchema = z.object({
   XAI_MANAGEMENT_BASE_URL: z.string().url().optional(),
   XAI_CHAT_MODEL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(16).optional(),
+  SLACK_WEBHOOK_URL: z.union([z.string().url(), z.literal("")]).optional(),
   ADMIN_SEED_EMAIL: z.string().email().optional(),
   ADMIN_X_USERNAMES: z.string().optional(),
   NODE_ENV: z

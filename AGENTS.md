@@ -24,8 +24,10 @@ Operational runbook for engineers/agents working in `xfinance` core admin app.
 
 - `MONGODB_URI_B64`
 - `XAI_API_KEY`
+- `XAI_MANAGEMENT_API_KEY`
 - `X_OAUTH_CLIENT_ID`
 - `X_OAUTH_CLIENT_SECRET`
+- `AUTH_SECRET`
 
 ## Quick Health Checks
 
@@ -50,15 +52,11 @@ runtime. The update script writes `.env` from these injected secrets automatical
 
 ## Project Cursor Skills (Safe Set)
 
-- Project-local skills are stored in `.cursor/skills/`.
-- Current safe skills:
-  - `xfinance-docs-ops`
-  - `xfinance-xchat-validation-checklist`
-  - `xfinance-runbook-navigator`
-- These skills are docs/ops oriented and must not deploy, rotate keys, or mutate production/staging secrets.
+- Project-local skills are stored in `.cursor/skills/`. See `.cursor/skills/README.md` for the full index.
+- Ops/review skills: `xfinance-docs-ops`, `xfinance-xchat-validation-checklist`, `xfinance-runbook-navigator`, `xfinance-design-ops`, `xdesign-review`.
+- Strategy skills: 10 `xfinance-strategy-*` skills (options strategy references).
+- All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
 - Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/xfinance-tool-stub.md`.
-
-### Docker prerequisite
 
 ### .env generation
 
@@ -96,7 +94,7 @@ const payload = JSON.stringify({
   email: 'atxbogart@gmail.com',
   roles: ['global_admin'],
   tenantId: '<tenantId from seed output>',
-  tenantRole: 'owner',
+  tenantRole: 'tenant_admin',
   xUserId: 'dev_test',
   username: 'dev_test',
   exp: Date.now() + 12*60*60*1000
@@ -141,12 +139,28 @@ All three share the same update script and secret requirements above.
 - Phase 1: Token hygiene — badge variants, marketing-hero hex→tokens, chart bar tokens, admin hub hero alignment.
 - Phase 2: Chart tokens (`--xf-chart-*`), xStrategyBuilder coming-soon card, `value-gain`/`value-loss` CSS utilities.
 
-**Phase 3 — xfinance tool surface branding (deferred until tool ships):**
+**Phase 3 — xchat for non-admin users (next branding feature):**
+- Build a user-facing `/chat` or `/xchat` route — authenticated, non-admin. Uses the shared brand kit (dark-first, `--xf-*` tokens, Inter font, logo lockup).
+- Two user states to brand:
+  - **Approved users** — full xchat access, persona selection, chat UI with `--xf-surface-700` cards and `--xf-gain-green` accents for AI responses.
+  - **Not-approved users** — gated landing with "Access pending" state, clear messaging, and a CTA that triggers a Slack notification to admin for approval.
+- Admin receives Slack notification on new access requests (webhook integration). Approve/deny from `/admin/access-requests`.
+- Reuse existing access-request API (`POST /api/admin/access-requests`) for the request flow.
+- Brand the chat UI consistently: message bubbles, persona badges, typing indicators, error states — all using `--xf-*` tokens.
+
+**Phase 4 — xFeature plans, limits, and fees:**
+- Introduce plan tiers: free (limited prompts/day), paid/premium (higher limits, priority, advanced personas).
+- Brand surfaces needed: plan selection card, usage meter/bar, upgrade CTA, limit-reached gate.
+- Token candidates: `--xf-plan-free`, `--xf-plan-premium`, `--xf-plan-accent` for tier-specific color treatments.
+- Backend: per-user plan field (already exists in user settings `plan`), rate limiting per plan, fee/billing integration (Stripe or xMoney when available).
+- Admin surface: plan assignment in `/admin/user-settings`, usage dashboard, plan override controls.
+
+**Phase 5 — xfinance tool surface branding (deferred until tool ships):**
 - When `xfinance` custom tool ships (see `docs/xchat/xfinance-tool-stub.md`), add a tool-result card component with branded output formatting using `--xf-surface-700` + `--xf-chart-*` tokens.
 - Extend xChat console with tool invocation visual treatment (distinct from plain chat responses).
 - Use `value-gain`/`value-loss` utilities for numeric outputs from portfolio/watchlist operations.
 
-**Phase 4 — xMoney (deferred until available):**
+**Phase 6 — xMoney (deferred until available):**
 - Payment rails and transfer actions brand surface. When xMoney launches, add brand tokens (`--xf-xmoney-*`), a logo lockup variant, and a dedicated admin section or card treatment. Reference `design-system/xfinance-brand-kit.md` for ecosystem naming: `xFinance` (platform), `Grok` (AI assistant), `xMoney` (payments).
 
 **Standing design rules:**

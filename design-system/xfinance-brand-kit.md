@@ -16,17 +16,40 @@
 
 ## Color System
 
+### Core palette
+
 | Token | Hex | Use |
 | --- | --- | --- |
 | `--xf-bg-900` | `#090909` | Primary canvas base |
 | `--xf-bg-800` | `#111214` | Secondary deep background |
-| `--xf-surface-700` | `#17191D` | Elevated cards |
-| `--xf-text-100` | `#F7FBFF` | Primary text |
-| `--xf-text-300` | `#B5BAC6` | Secondary text |
-| `--xf-blue-400` | `#D1D6DE` | Neutral accent (legacy token name) |
-| `--xf-cyan-400` | `#C6CCD6` | Neutral highlight (legacy token name) |
-| `--xf-purple-400` | `#C7CCD5` | Neutral tertiary accent (legacy token name) |
-| `--xf-purple-500` | `#B6BCC7` | Neutral gradient depth |
+| `--xf-surface-700` | `#17191d` | Elevated cards |
+| `--xf-surface-600` | `#1f2329` | Raised interactive surfaces |
+| `--xf-text-100` | `#f6f8fc` | Primary text |
+| `--xf-text-300` | `#b5bac6` | Secondary text |
+| `--xf-text-400` | `#888f9f` | Tertiary / muted text |
+| `--xf-blue-400` | `#d1d6de` | Neutral accent (legacy token name) |
+| `--xf-cyan-400` | `#c6ccd6` | Neutral highlight (legacy token name) |
+| `--xf-purple-400` | `#c7ccd5` | Neutral tertiary accent (legacy token name) |
+| `--xf-purple-500` | `#b6bcc7` | Neutral gradient depth |
+
+### Semantic colors
+
+| Token | Hex | Use |
+| --- | --- | --- |
+| `--xf-success-400` | `#8bd5b3` | Success states, live badges |
+| `--xf-danger-400` | `#f5a0ad` | Error states, destructive actions |
+| `--xf-warning-400` | `#dfc78d` | Warning states, pending badges |
+| `--xf-gain-green` | `#39ff14` | Neon green for gains, CTAs, hero accents |
+| `--xf-gain-green-muted` | `#00cc00` | Subdued green for secondary gain indicators |
+
+### Chart tokens
+
+| Token | Hex | Use |
+| --- | --- | --- |
+| `--xf-chart-bar-lo` | `#aab0ba` | Chart bar gradient start |
+| `--xf-chart-bar-hi` | `#d4d9e0` | Chart bar gradient end |
+| `--xf-chart-gain` | `#39ff14` | Positive chart values |
+| `--xf-chart-loss` | `#f5a0ad` | Negative chart values |
 
 ## Typography
 

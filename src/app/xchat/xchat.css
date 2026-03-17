@@ -1,0 +1,358 @@
+/* ── xchat layout ───────────────────────────── */
+
+.xchat-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.xchat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--xf-bg-800);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.xchat-header-brand {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+
+.xchat-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.xchat-header-link {
+  padding: 0.3rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--xf-text-300);
+  text-decoration: none;
+  transition: color 100ms ease, background 100ms ease;
+}
+
+.xchat-header-link:hover {
+  color: var(--xf-text-100);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.xchat-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Plans landing ─────────────────────────── */
+
+.plans-landing {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.plans-landing-inner {
+  width: min(960px, 100%);
+  display: grid;
+  gap: 2rem;
+  text-align: center;
+}
+
+.plans-landing-hero {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+}
+
+.plans-landing-hero h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--xf-text-100);
+}
+
+.plans-landing-hero p {
+  margin: 0;
+  max-width: 50ch;
+  color: var(--xf-text-300);
+  line-height: 1.5;
+}
+
+.plans-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 720px) {
+  .plans-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.plan-card {
+  border-radius: var(--xf-radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--xf-surface-700);
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+  text-align: left;
+  transition: border-color 150ms ease;
+}
+
+.plan-card:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.plan-card-featured {
+  border-color: var(--xf-gain-green);
+  box-shadow: 0 0 24px rgba(57, 255, 20, 0.08);
+}
+
+.plan-card-featured:hover {
+  border-color: var(--xf-gain-green);
+}
+
+.plan-card-header {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.plan-card-name {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.plan-card-price {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+}
+
+.plan-card-price small {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--xf-text-300);
+}
+
+.plan-card-features {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.plan-card-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--xf-text-300);
+  line-height: 1.4;
+}
+
+.plan-check {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--xf-gain-green);
+}
+
+.plan-card-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--xf-radius-sm);
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.plan-card-cta:hover {
+  transform: translateY(-1px);
+}
+
+.plan-cta-primary {
+  background: var(--xf-gain-green);
+  color: var(--xf-bg-900);
+}
+
+.plan-cta-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--xf-text-100);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.plans-request-form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 440px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.plans-request-form textarea {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--xf-text-100);
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+  resize: vertical;
+}
+
+/* ── xchat conversation UI ─────────────────── */
+
+.xchat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.xchat-persona-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.xchat-persona-bar select {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--xf-surface-700);
+  color: var(--xf-text-100);
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.xchat-persona-bar .status-badge {
+  font-size: 0.7rem;
+}
+
+.xchat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 0;
+}
+
+.xchat-msg {
+  border-radius: var(--xf-radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 85%;
+}
+
+.xchat-msg-user {
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--xf-text-100);
+}
+
+.xchat-msg-ai {
+  align-self: flex-start;
+  background: var(--xf-surface-700);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--xf-text-100);
+}
+
+.xchat-msg-error {
+  align-self: flex-start;
+  background: rgba(245, 160, 173, 0.08);
+  border: 1px solid rgba(245, 160, 173, 0.2);
+  color: var(--xf-danger-400);
+  font-size: 0.85rem;
+}
+
+.xchat-typing {
+  align-self: flex-start;
+  display: flex;
+  gap: 4px;
+  padding: 0.6rem 0.8rem;
+}
+
+.xchat-typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--xf-text-400);
+  animation: xchat-pulse 1.2s ease infinite;
+}
+
+.xchat-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.xchat-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes xchat-pulse {
+  0%, 80% { opacity: 0.3; transform: scale(0.85); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.xchat-input-bar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 0 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.xchat-input-bar input {
+  flex: 1;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--xf-text-100);
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+}
+
+.xchat-input-bar button {
+  border-radius: 10px;
+  border: none;
+  background: var(--xf-gain-green);
+  color: var(--xf-bg-900);
+  padding: 0.6rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.xchat-input-bar button:hover {
+  transform: translateY(-1px);
+}
+
+.xchat-input-bar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
