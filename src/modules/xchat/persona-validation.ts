@@ -59,9 +59,16 @@ const xaiCollectionSchema = z.object({
   collectionName: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.xaiCollectionNameLength)
 });
 
+const SUPPORTED_XAPI_TOOL_TYPES = ["web_search", "x_search", "file_search"] as const;
+
 const xapiToolSchema = z
   .object({
-    type: z.string().trim().min(1).max(80)
+    type: z.enum(SUPPORTED_XAPI_TOOL_TYPES),
+    source: z
+      .object({
+        collection_ids: z.array(z.string().trim().min(1)).min(1)
+      })
+      .optional()
   })
   .passthrough();
 
@@ -97,6 +104,14 @@ export const createPersonaPayloadSchema = z.object({
     .max(PERSONA_VALIDATION_LIMITS.scopeLength)
     .default("global"),
   xapi: xapiSchema.default(DEFAULT_PERSONA_XAPI_CONFIG)
+}).superRefine((value, context) => {
+  if (hasFileSearchTool(value.xapi.tools) && !value.xaiCollection?.collectionId) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["xaiCollection", "collectionId"],
+      message: "file_search requires xaiCollection.collectionId"
+    });
+  }
 });
 
 export const updatePersonaPayloadSchema = z.object({
@@ -116,6 +131,12 @@ export const updatePersonaPayloadSchema = z.object({
   defaultScope: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.scopeLength),
   xapi: xapiSchema.optional()
 });
+
+export function hasFileSearchTool(
+  tools: Array<{ type: string; [key: string]: unknown }> | undefined
+): boolean {
+  return Array.isArray(tools) && tools.some((tool) => tool.type === "file_search");
+}
 
 export function isPersonaPayloadTooLargeByHeader(request: Request): boolean {
   const contentLengthHeader = request.headers.get("content-length");

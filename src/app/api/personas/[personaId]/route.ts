@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/api-auth";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import {
+  hasFileSearchTool,
   isPersonaPayloadTooLargeByBody,
   isPersonaPayloadTooLargeByHeader,
   updatePersonaPayloadSchema
@@ -68,6 +69,24 @@ export async function PUT(request: Request, context: RouteContext) {
   }
 
   const { personaId } = await context.params;
+  const existingPersona = await getPersonaById(personaId);
+  if (!existingPersona) {
+    return NextResponse.json({ error: "Persona not found" }, { status: 404 });
+  }
+  if (hasFileSearchTool(parsed.data.xapi?.tools)) {
+    const resolvedCollectionId =
+      parsed.data.xaiCollection?.collectionId ?? existingPersona.xaiCollection?.collectionId ?? "";
+    if (!resolvedCollectionId.trim()) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid persona payload: file_search requires xaiCollection.collectionId (existing or in update payload)"
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   const updates = Object.fromEntries(
     Object.entries(parsed.data).filter(([, value]) => value !== undefined)
   ) as Partial<Omit<PersonaConfig, "_id" | "createdAt" | "updatedAt">>;
