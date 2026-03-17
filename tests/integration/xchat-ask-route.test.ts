@@ -146,6 +146,149 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextSource).toBe("mongo_scope");
     expect(payload.data.contextCount).toBe(1);
     expect(repositoryMocks.retrieveRagChunks).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        xapiMode: "responses",
+        xapiToolChoice: "auto",
+        xapiMaxTurns: 5,
+        xapiToolCount: 1,
+        contextChunkIds: [expect.any(ObjectId)]
+      })
+    );
+  });
+
+  it("falls back to mongo rag chunks when collection search throws", async () => {
+    xaiMocks.searchDocumentsInCollections.mockRejectedValueOnce(new Error("collection unavailable"));
+    repositoryMocks.retrieveRagChunks.mockResolvedValueOnce([
+      {
+        _id: new ObjectId("507f1f77bcf86cd799439109"),
+        fileId: new ObjectId("507f1f77bcf86cd799439066"),
+        scope: "global",
+        chunkIndex: 0,
+        text: "Mongo chunk after collection error",
+        tokenEstimate: 42,
+        createdAt: new Date("2026-03-16T00:00:00.000Z")
+      }
+    ]);
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "fallback on collection error",
+          topK: 4
+        })
+      })
+    );
+
+    const payload = (await response.json()) as { data: { contextSource: string; contextCount: number } };
+    expect(response.status).toBe(200);
+    expect(payload.data.contextSource).toBe("mongo_scope");
+    expect(payload.data.contextCount).toBe(1);
+    expect(repositoryMocks.retrieveRagChunks).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses mongo retrieval directly when persona has no collection id", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439055"),
+      name: "Ops",
+      nameNormalized: "ops",
+      systemPrompt: "You are ops.",
+      overridePrompt: "Use checklist output.",
+      xaiCollection: {
+        collectionId: "",
+        collectionName: ""
+      },
+      model: "grok-4-latest",
+      temperature: 0.2,
+      enableRag: true,
+      defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "web_search" }]
+      },
+      createdAt: new Date("2026-03-16T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-16T00:00:00.000Z")
+    });
+    repositoryMocks.retrieveRagChunks.mockResolvedValueOnce([
+      {
+        _id: new ObjectId("507f1f77bcf86cd799439129"),
+        fileId: new ObjectId("507f1f77bcf86cd799439066"),
+        scope: "global",
+        chunkIndex: 0,
+        text: "Mongo chunk without collection",
+        tokenEstimate: 42,
+        createdAt: new Date("2026-03-16T00:00:00.000Z")
+      }
+    ]);
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "No collection id path",
+          topK: 4
+        })
+      })
+    );
+
+    const payload = (await response.json()) as { data: { contextSource: string; contextCount: number } };
+    expect(response.status).toBe(200);
+    expect(payload.data.contextSource).toBe("mongo_scope");
+    expect(payload.data.contextCount).toBe(1);
+    expect(xaiMocks.searchDocumentsInCollections).not.toHaveBeenCalled();
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).not.toHaveBeenCalled();
+  });
+
+  it("keeps context empty when rag is disabled", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439055"),
+      name: "Ops",
+      nameNormalized: "ops",
+      systemPrompt: "You are ops.",
+      overridePrompt: "Use checklist output.",
+      xaiCollection: {
+        collectionId: "collection_ops-global",
+        collectionName: "Ops Docs"
+      },
+      model: "grok-4-latest",
+      temperature: 0.2,
+      enableRag: false,
+      defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "web_search" }]
+      },
+      createdAt: new Date("2026-03-16T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-16T00:00:00.000Z")
+    });
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "RAG disabled",
+          topK: 4
+        })
+      })
+    );
+
+    const payload = (await response.json()) as { data: { contextSource: string; contextCount: number } };
+    expect(response.status).toBe(200);
+    expect(payload.data.contextSource).toBe("none");
+    expect(payload.data.contextCount).toBe(0);
+    expect(xaiMocks.searchDocumentsInCollections).not.toHaveBeenCalled();
+    expect(repositoryMocks.retrieveRagChunks).not.toHaveBeenCalled();
   });
 
   it("uses chat completions mode when persona xapi mode is chat_completions", async () => {
@@ -188,6 +331,36 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(xaiMocks.chatWithXai).toHaveBeenCalledTimes(1);
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+    expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        xapiMode: "chat_completions",
+        xapiToolChoice: "auto",
+        xapiMaxTurns: 5,
+        xapiToolCount: 0
+      })
+    );
+  });
+
+  it("still responds when mongo retrieval throws after collection miss", async () => {
+    xaiMocks.searchDocumentsInCollections.mockResolvedValueOnce([]);
+    repositoryMocks.retrieveRagChunks.mockRejectedValueOnce(new Error("mongo unavailable"));
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "mongo failure handling",
+          topK: 4
+        })
+      })
+    );
+
+    const payload = (await response.json()) as { data: { contextSource: string; contextCount: number } };
+    expect(response.status).toBe(200);
+    expect(payload.data.contextSource).toBe("none");
+    expect(payload.data.contextCount).toBe(0);
   });
 
   it("continues when unauthenticated by returning auth response", async () => {
