@@ -135,12 +135,18 @@ export type Account = {
   updatedAt: Date;
 };
 
+export type WatchlistSymbol = {
+  symbol: string;
+  addedAt: Date;
+};
+
 export type Watchlist = {
   _id?: ObjectId;
   tenantId?: ObjectId;
   userId: string;
   portfolioId: ObjectId;
   name: string;
+  symbols: WatchlistSymbol[];
   isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;

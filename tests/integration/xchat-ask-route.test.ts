@@ -414,4 +414,40 @@ describe("xchat ask route collection retrieval", () => {
     );
     expect(response.status).toBe(401);
   });
+
+  it("returns 429 when rate limit is exceeded", async () => {
+    const resetAtMs = Date.now() + 30_000;
+    rateLimitMocks.checkRateLimit.mockReturnValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetAtMs
+    });
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "test rate limit" })
+      })
+    );
+    const payload = (await response.json()) as {
+      error: string;
+      retryAfterSeconds: number;
+    };
+    expect(response.status).toBe(429);
+    expect(payload.error).toBe("Rate limit exceeded");
+    expect(payload.retryAfterSeconds).toBeGreaterThan(0);
+  });
+
+  it("returns 400 for invalid ask payload", async () => {
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "" })
+      })
+    );
+    expect(response.status).toBe(400);
+    const payload = (await response.json()) as { error: string };
+    expect(payload.error).toBe("Invalid ask payload");
+  });
 });

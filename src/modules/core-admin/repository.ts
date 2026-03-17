@@ -32,7 +32,7 @@ let ensurePortfolioIndexesPromise: Promise<void> | null = null;
 
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
-const DEFAULT_WATCHLIST_NAME = "Default Watchlist";
+const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 
 type TenantScopedOptions = {
   tenantId?: string;
@@ -80,6 +80,7 @@ export type ProvisionDefaultPortfolioInput = {
   accountName?: string;
   watchlistName?: string;
   accountType?: AccountType;
+  watchlistSymbols?: string[];
 };
 
 export type ProvisionDefaultPortfolioResult = {
@@ -640,7 +641,7 @@ export async function getPortfolioWatchlist(input: {
     return null;
   }
   const db = await getDb();
-  return db.collection<Watchlist>(collections.watchlists).findOne(
+  const doc = await db.collection<Watchlist>(collections.watchlists).findOne(
     withStrictTenantScope(
       {
         userId: input.userId,
@@ -649,6 +650,8 @@ export async function getPortfolioWatchlist(input: {
       input.tenantId
     )
   );
+  if (!doc) return null;
+  return { ...doc, symbols: doc.symbols ?? [] };
 }
 
 export async function provisionDefaultPortfolioForUser(
@@ -661,7 +664,10 @@ export async function provisionDefaultPortfolioForUser(
   const portfolioName = input.portfolioName ?? DEFAULT_PORTFOLIO_NAME;
   const accountName = input.accountName ?? DEFAULT_ACCOUNT_NAME;
   const watchlistName = input.watchlistName ?? DEFAULT_WATCHLIST_NAME;
-  const accountType = input.accountType ?? "robinhood";
+  const accountType = input.accountType ?? "fidelity";
+  const watchlistSymbols = (input.watchlistSymbols ?? ["TSLA"]).map(
+    (symbol) => ({ symbol: symbol.toUpperCase(), addedAt: now })
+  );
 
   const portfolioFilter = withStrictTenantScope(
     { userId: input.userId, isDefault: true },
@@ -745,6 +751,7 @@ export async function provisionDefaultPortfolioForUser(
       },
       $set: {
         name: watchlistName,
+        symbols: watchlistSymbols,
         isDefault: true,
         updatedAt: now
       }

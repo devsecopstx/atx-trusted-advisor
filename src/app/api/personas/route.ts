@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { requireSessionUser } from "@/lib/auth";
 import {
   createAuditEvent,
   listLatestAuditEventsForEntities
@@ -18,7 +19,7 @@ import {
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
 export async function GET() {
-  const session = await requireAdminSession();
+  const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }
