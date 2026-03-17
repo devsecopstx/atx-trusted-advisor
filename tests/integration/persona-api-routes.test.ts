@@ -728,6 +728,51 @@ describe("persona API routes", () => {
     expect(response.status).toBe(400);
   });
 
+  it("rejects create when xapi uses unsupported tool type", async () => {
+    const response = await postPersona(
+      new Request("http://test/api/personas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "InvalidToolType",
+          systemPrompt: "You are an ops persona with invalid xapi tool type.",
+          xaiCollection: {
+            collectionId: "collection_invalid-tool-global"
+          },
+          xapi: {
+            mode: "responses",
+            toolChoice: "auto",
+            maxTurns: 5,
+            tools: [{ type: "shell_exec" }]
+          }
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects create when file_search tool has no collection binding", async () => {
+    const response = await postPersona(
+      new Request("http://test/api/personas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "FileSearchNoCollection",
+          systemPrompt: "You are an ops persona that attempts file_search without collection.",
+          xapi: {
+            mode: "responses",
+            toolChoice: "auto",
+            maxTurns: 5,
+            tools: [{ type: "file_search" }]
+          }
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("allows create when xai collection is missing", async () => {
     const response = await postPersona(
       new Request("http://test/api/personas", {
@@ -842,5 +887,52 @@ describe("persona API routes", () => {
 
     expect(response.status).toBe(409);
     expect(payload.code).toBe("PERSONA_NAME_CONFLICT");
+  });
+
+  it("rejects update when file_search tool has no collection binding", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439055"),
+      name: "Ops",
+      nameNormalized: "ops",
+      systemPrompt: "You are an operations persona for controls and audit.",
+      overridePrompt: "Summarize as an action plan.",
+      xaiCollection: {
+        collectionId: "",
+        collectionName: ""
+      },
+      model: "grok-4-latest",
+      temperature: 0.1,
+      enableRag: false,
+      defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: []
+      },
+      createdAt: now,
+      updatedAt: now
+    });
+
+    const response = await putPersonaById(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          xapi: {
+            mode: "responses",
+            toolChoice: "required",
+            maxTurns: 5,
+            tools: [{ type: "file_search" }]
+          }
+        })
+      }),
+      {
+        params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+      }
+    );
+
+    expect(response.status).toBe(400);
+    expect(repositoryMocks.updatePersona).not.toHaveBeenCalled();
   });
 });

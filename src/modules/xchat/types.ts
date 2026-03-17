@@ -99,6 +99,11 @@ export type XChatSessionLog = {
   xapiToolChoice?: PersonaXapiToolChoice;
   xapiMaxTurns?: number;
   xapiToolCount?: number;
+  collectionContextReferences?: Array<{
+    documentId?: string;
+    documentName?: string;
+    snippetFingerprint: string;
+  }>;
   createdAt: Date;
 };
 

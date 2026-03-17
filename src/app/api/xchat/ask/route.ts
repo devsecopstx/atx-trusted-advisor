@@ -82,6 +82,11 @@ export async function POST(request: Request) {
 
   let contextSource: "none" | "mongo_scope" | "xai_collection" = "none";
   let ragChunks: Awaited<ReturnType<typeof retrieveRagChunks>> = [];
+  let collectionContextReferences: Array<{
+    documentId?: string;
+    documentName?: string;
+    snippetFingerprint: string;
+  }> = [];
   let ragContext = "";
   let contextCount = 0;
 
@@ -96,6 +101,11 @@ export async function POST(request: Request) {
         if (collectionSnippets.length > 0) {
           contextSource = "xai_collection";
           contextCount = collectionSnippets.length;
+          collectionContextReferences = collectionSnippets.map((snippet) => ({
+            documentId: snippet.documentId,
+            documentName: snippet.documentName,
+            snippetFingerprint: createSnippetFingerprint(snippet.text)
+          }));
           ragContext = collectionSnippets
             .map((snippet, index) => {
               const source = snippet.documentName ?? snippet.documentId ?? "collection_doc";
@@ -139,24 +149,41 @@ export async function POST(request: Request) {
     ? `${userPromptTemplate}\n\nUser message:\n${message}`
     : message;
 
-  const xaiResponse =
-    xapiConfig.mode === "chat_completions"
-      ? await chatWithXai({
-          model: persona?.model,
-          temperature: persona?.temperature ?? 0.2,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ]
-        })
-      : await respondWithXai({
-          model: persona?.model,
-          systemPrompt,
-          userPrompt,
-          tools: xapiConfig.tools,
-          toolChoice: xapiConfig.toolChoice,
-          maxTurns: xapiConfig.maxTurns
-        });
+  let xaiResponse: { outputText: string; model: string };
+  try {
+    xaiResponse =
+      xapiConfig.mode === "chat_completions"
+        ? await chatWithXai({
+            model: persona?.model,
+            temperature: persona?.temperature ?? 0.2,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ]
+          })
+        : await respondWithXai({
+            model: persona?.model,
+            systemPrompt,
+            userPrompt,
+            tools: xapiConfig.tools,
+            toolChoice: xapiConfig.toolChoice,
+            maxTurns: xapiConfig.maxTurns
+          });
+  } catch (error) {
+    console.error("[xchat/ask] xAI provider call failed", {
+      mode: xapiConfig.mode,
+      personaId: persona?._id?.toHexString(),
+      error: error instanceof Error ? error.message : "Unknown provider error"
+    });
+    return NextResponse.json(
+      {
+        error: "xAI provider request failed",
+        provider: "xai",
+        retryable: true
+      },
+      { status: 502 }
+    );
+  }
 
   const contextChunkIds = ragChunks.flatMap((chunk) => (chunk._id ? [chunk._id] : []));
   await saveXChatLog({
@@ -172,7 +199,8 @@ export async function POST(request: Request) {
     xapiMode: xapiConfig.mode,
     xapiToolChoice: xapiConfig.toolChoice,
     xapiMaxTurns: xapiConfig.maxTurns,
-    xapiToolCount: xapiConfig.tools.length
+    xapiToolCount: xapiConfig.tools.length,
+    collectionContextReferences
   });
 
   return NextResponse.json({
@@ -183,4 +211,14 @@ export async function POST(request: Request) {
       contextSource
     }
   });
+}
+
+function createSnippetFingerprint(input: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash +=
+      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return `f${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }

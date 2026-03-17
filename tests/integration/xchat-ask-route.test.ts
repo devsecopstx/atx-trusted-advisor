@@ -114,6 +114,16 @@ describe("xchat ask route collection retrieval", () => {
         maxTurns: 5
       })
     );
+    expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collectionContextReferences: [
+          expect.objectContaining({
+            documentName: "ops-handbook.md",
+            snippetFingerprint: expect.stringMatching(/^f[0-9a-f]{8}$/)
+          })
+        ]
+      })
+    );
   });
 
   it("falls back to mongo rag chunks when collection search returns empty", async () => {
@@ -361,6 +371,34 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(payload.data.contextSource).toBe("none");
     expect(payload.data.contextCount).toBe(0);
+  });
+
+  it("returns structured 502 when xai provider call fails", async () => {
+    xaiMocks.respondWithXai.mockRejectedValueOnce(new Error("provider outage"));
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "provider error path",
+          topK: 4
+        })
+      })
+    );
+    const payload = (await response.json()) as {
+      error: string;
+      provider: string;
+      retryable: boolean;
+    };
+    expect(response.status).toBe(502);
+    expect(payload).toEqual({
+      error: "xAI provider request failed",
+      provider: "xai",
+      retryable: true
+    });
+    expect(repositoryMocks.saveXChatLog).not.toHaveBeenCalled();
   });
 
   it("continues when unauthenticated by returning auth response", async () => {
