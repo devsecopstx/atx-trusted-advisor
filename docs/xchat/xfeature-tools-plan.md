@@ -1,0 +1,162 @@
+# xFeature Tools Implementation Plan
+
+## Status
+
+Planning document. No runtime changes until explicitly approved.
+
+## Context
+
+The `xfinance` custom tool stub (`docs/xchat/xfinance-tool-stub.md`) defines the target tool surface for xChat personas to call controlled xFinance capabilities. This plan turns that stub into a phased implementation roadmap.
+
+## Current State
+
+- xChat ask route forwards `xapi.tools` to xAI responses API (`web_search`, `x_search`, `file_search`).
+- xAI handles tool execution server-side for these three built-in tools.
+- The `xfinance` custom tool requires client-side execution: xAI calls the tool, we execute it, and return results back to xAI for the next turn.
+- Persona validation only allows `web_search | x_search | file_search` via `PERSONA_XAPI_TOOL_TYPES`.
+- The tool stub defines four operations: `portfolio_summary`, `watchlist_snapshot`, `account_health`, `task_status`.
+
+## Architecture Decision
+
+xAI responses API supports custom tools via the `function` tool type. When the model decides to call a custom function, the API returns a `tool_call` output item with the function name and arguments. The client must:
+
+1. Parse the `tool_call` from the response output.
+2. Execute the function locally.
+3. Submit a follow-up request with the function result as a `function_call_output` input item.
+4. Repeat until the model produces a final text response (up to `max_turns`).
+
+This is the **tool-use loop** pattern. The current `respondWithXai` in `src/lib/xai.ts` does not implement this loop — it sends a single request and extracts text. The loop must be added.
+
+## Phase 1: Tool-Use Loop in xAI Client
+
+### Scope
+- Extend `respondWithXai` (or add `respondWithXaiToolLoop`) in `src/lib/xai.ts` to support multi-turn tool calls.
+- Define a `ToolExecutor` callback type: `(name: string, args: Record<string, unknown>) => Promise<string>`.
+- The loop calls xAI, checks output for `tool_call` items, invokes the executor, appends `function_call_output`, and re-calls until text output or max turns.
+
+### Contracts
+```ts
+type ToolExecutor = (
+  name: string,
+  args: Record<string, unknown>
+) => Promise<{ result: string; error?: string }>;
+
+type RespondWithToolLoopInput = {
+  model?: string;
+  systemPrompt: string;
+  userPrompt: string;
+  tools: Array<Record<string, unknown>>;
+  toolChoice?: "auto" | "required" | "none";
+  maxTurns?: number;
+  executor: ToolExecutor;
+};
+```
+
+### Safety
+- Hard cap on loop iterations (default 5, configurable via persona `maxTurns`).
+- If executor throws, return a structured error result to the model (do not crash the loop).
+- Log each tool call (name, args summary, duration, success/failure) for audit.
+
+### Testing
+- Unit test the loop with mocked fetch: model calls tool → executor returns → model produces text.
+- Test max-turns enforcement.
+- Test executor failure handling.
+
+## Phase 2: xFinance Tool Executor
+
+### Scope
+- Create `src/modules/xchat/tool-executor.ts` implementing the four operations from the stub.
+- Each operation is a pure read against existing repository functions (no mutations in v1).
+
+### Operations
+
+| Operation | Repository Source | Return Shape |
+|-----------|-----------------|--------------|
+| `portfolio_summary` | `getDefaultPortfolio` + `listPortfolioAccounts` | `{ name, isDefault, accountCount, accounts[] }` |
+| `watchlist_snapshot` | `getPortfolioWatchlist` | `{ name, symbols[], symbolCount }` |
+| `account_health` | `listPortfolioAccounts` | `{ accounts[]: { name, type, extAccountId, isDefault } }` |
+| `task_status` | `listScheduledTasks` + `listTaskRuns` | `{ tasks[], recentRuns[] }` |
+
+### Auth/Scope
+- Executor receives `userId` and `tenantId` from the session context (passed through the ask route).
+- Each operation is scoped to the authenticated user's tenant. No cross-tenant access.
+- No secret or credential material in outputs.
+
+### Safety
+- Read-only: no `$set`, no `updateOne`, no inserts.
+- Output is serialized to a string (JSON) with a max length cap (e.g. 8KB) to prevent prompt overflow.
+- Unknown operation names return `{ error: "unknown_operation" }`.
+
+### Testing
+- Unit tests for each operation with mocked repository.
+- Test unknown operation rejection.
+- Test output length cap.
+
+## Phase 3: Persona Tool Validation Update
+
+### Scope
+- Add `"xfinance"` to `PERSONA_XAPI_TOOL_TYPES` in `src/modules/xchat/types.ts`.
+- Update persona validation in `src/modules/xchat/persona-validation.ts` to accept `xfinance` as a tool type.
+- Update `normalizePersonaXapiConfig` to pass through `xfinance` tools.
+- Update the persona editor multi-select UI to include an `xfinance` checkbox.
+
+### Compatibility
+- Existing personas without `xfinance` tool are unaffected.
+- The tool is opt-in per persona.
+- `xfinance` tool definition: `{ type: "xfinance" }` (no `source` required).
+
+### Migration
+- No schema migration needed. `xfinance` is a new tool type, not a field change.
+- Optionally add `xfinance` to Super-Agent default tools via seed update.
+
+## Phase 4: Wire Tool Loop into Ask Route
+
+### Scope
+- In `src/app/api/xchat/ask/route.ts`, when the persona has an `xfinance` tool in `xapi.tools`, use `respondWithXaiToolLoop` instead of `respondWithXai`.
+- Pass the `xFinanceToolExecutor` as the executor.
+- Session context (`userId`, `tenantId`) flows from the route handler to the executor.
+
+### Fallback
+- If the persona has no custom tools (only `web_search`/`x_search`/`file_search`), use the existing single-request path. No loop overhead for built-in-only personas.
+
+### Audit
+- Add `xapiToolCalls` field to `XChatSessionLog` to record which tools were invoked and their results.
+
+## Phase 5: Batch Support for Custom Tools
+
+### Scope
+- xAI Batch API does not support multi-turn tool loops. Batch items are single-request.
+- For batch workloads with `xfinance` tool: pre-execute tool calls during prompt assembly (similar to the existing collection pre-search pattern).
+- Inject tool output into the system prompt as structured context.
+
+### Pattern
+```
+For each batch item:
+  1. Run portfolio_summary / watchlist_snapshot as applicable.
+  2. Serialize output into system prompt context block.
+  3. Submit the enriched prompt to batch.
+```
+
+## Delivery Order
+
+| Phase | Dependencies | Scope |
+|-------|-------------|-------|
+| 1 | None | xAI client tool loop |
+| 2 | None (parallel with 1) | xfinance executor |
+| 3 | Phase 1 + 2 | Validation + UI update |
+| 4 | Phase 1 + 2 + 3 | Ask route wiring |
+| 5 | Phase 4 | Batch pre-execution |
+
+## Risk Hotspots
+
+- **Tool loop infinite cycling**: mitigated by hard `maxTurns` cap + per-turn timeout.
+- **Executor data leakage**: mitigated by tenant-scoped reads only, no secrets in output.
+- **Prompt overflow from large tool outputs**: mitigated by output length cap.
+- **Batch items with stale pre-executed context**: acceptable for v1 (batch is async, some staleness expected).
+
+## Non-Goals (v1)
+
+- No mutation operations (create/update/delete via tool calls).
+- No real-time market data (tool returns stored portfolio data, not live prices).
+- No cross-tenant tool execution.
+- No custom tool support in `chat_completions` mode (only `responses` mode has tool loop).
