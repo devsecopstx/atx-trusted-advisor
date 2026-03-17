@@ -70,16 +70,16 @@ Use this with image models when creating social creatives:
 ```text
 Create a premium mobile fintech marketing hero image for xFinance powered by xAI, Grok, and xMoney.
 
-Style: modern, sleek, futuristic fintech aesthetic; professional yet approachable; clean lines; dark mode UI; subtle neon glow.
-Palette: deep navy/black base with electric blue, cyan, and ultraviolet-purple accents.
+Style: modern, sleek, futuristic fintech aesthetic; professional yet approachable; clean lines; dark mode UI; subtle monochrome depth.
+Palette: deep charcoal/black base with silver-gray and soft white accents.
 Composition: vertical 4:5 social-ready hero.
 - Top: prominent xFinance logo with small subtitle "Powered by xAI".
 - Right/center: realistic smartphone mockup showing dark-mode finance app UI (optimus coach, exam, finance charts, AI assistant panel).
 - Left: floating glassmorphism cards with:
   - "Grok" AI assistant card/icon
   - xMoney payment card with transfer/payment symbols
-  - crypto/AI motifs (token glyphs, node-link graphics, abstract neural lines)
+  - crypto/AI motifs (token glyphs, node-link graphics, abstract neural lines) in monochrome
 Visual quality: crisp, high-detail, premium product render, balanced layout, minimal clutter.
 Mood: high-tech finance brand, trustworthy and innovative.
-Constraints: no gibberish text, no misspellings, interface text must be legible and believable.
+Constraints: no gibberish text, no misspellings, interface text must be legible and believable, and no saturated icon colors.
 ```
