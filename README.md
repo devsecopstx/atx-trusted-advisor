@@ -29,8 +29,8 @@ Admin-only operations platform for xFinance. This repo powers:
 
 ## Core Routes
 
-- UI: `/login`, `/admin`, `/admin/access-requests`, `/admin/personas`, `/admin/portfolios`, `/admin/tasks`, `/admin/xchat`, `/admin/rag-files`, `/admin/user-settings`, `/admin/audit`, `/personas`
-- API: `/api/health`, `/api/personas`, `/api/xchat/ask`, `/api/xchat/batch`, `/api/admin/*`, `/api/portfolios/*`, `/api/positions`
+- UI: `/login`, `/xchat`, `/admin`, `/admin/access-requests`, `/admin/personas`, `/admin/portfolios`, `/admin/tasks`, `/admin/xchat`, `/admin/rag-files`, `/admin/user-settings`, `/admin/audit`, `/personas`
+- API: `/api/health`, `/api/personas`, `/api/access-requests`, `/api/xchat/ask`, `/api/xchat/batch`, `/api/admin/*`, `/api/portfolios/*`, `/api/positions`
 
 ## Docs
 
