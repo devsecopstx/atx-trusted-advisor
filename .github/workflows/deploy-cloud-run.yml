@@ -75,12 +75,34 @@ jobs:
 
       - name: Health check staging
         run: |
-          if curl --fail --silent --show-error "${{ vars.STAGING_BASE_URL }}/api/health"; then
-            echo "staging_custom_domain_health:ok"
+          health_check_with_retry() {
+            local label="$1"
+            local url="$2"
+            local attempts=10
+            local sleep_seconds=10
+
+            for attempt in $(seq 1 "${attempts}"); do
+              if curl --fail --silent --show-error "${url}"; then
+                echo "${label}:ok attempt=${attempt}"
+                return 0
+              fi
+
+              echo "${label}:pending attempt=${attempt}/${attempts}"
+              if [ "${attempt}" -lt "${attempts}" ]; then
+                sleep "${sleep_seconds}"
+              fi
+            done
+
+            echo "${label}:failed after ${attempts} attempts"
+            return 1
+          }
+
+          if health_check_with_retry "staging_custom_domain_health" "${{ vars.STAGING_BASE_URL }}/api/health"; then
+            echo "staging_health_check:custom_domain_ok"
           else
-            echo "staging_custom_domain_health:pending, falling back to run.app URL"
+            echo "staging_custom_domain_health:falling back to run.app URL"
             STAGING_SERVICE_URL="$(gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" --region "${{ vars.CLOUD_RUN_REGION }}" --format='value(status.url)')"
-            curl --fail --silent --show-error "${STAGING_SERVICE_URL}/api/health"
+            health_check_with_retry "staging_run_app_health" "${STAGING_SERVICE_URL}/api/health"
           fi
 
   deploy-production:
@@ -137,10 +159,32 @@ jobs:
 
       - name: Health check production
         run: |
-          if curl --fail --silent --show-error "${{ vars.PROD_BASE_URL }}/api/health"; then
-            echo "production_custom_domain_health:ok"
+          health_check_with_retry() {
+            local label="$1"
+            local url="$2"
+            local attempts=10
+            local sleep_seconds=10
+
+            for attempt in $(seq 1 "${attempts}"); do
+              if curl --fail --silent --show-error "${url}"; then
+                echo "${label}:ok attempt=${attempt}"
+                return 0
+              fi
+
+              echo "${label}:pending attempt=${attempt}/${attempts}"
+              if [ "${attempt}" -lt "${attempts}" ]; then
+                sleep "${sleep_seconds}"
+              fi
+            done
+
+            echo "${label}:failed after ${attempts} attempts"
+            return 1
+          }
+
+          if health_check_with_retry "production_custom_domain_health" "${{ vars.PROD_BASE_URL }}/api/health"; then
+            echo "production_health_check:custom_domain_ok"
           else
-            echo "production_custom_domain_health:pending, falling back to run.app URL"
+            echo "production_custom_domain_health:falling back to run.app URL"
             PROD_SERVICE_URL="$(gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE_PROD }}" --region "${{ vars.CLOUD_RUN_REGION }}" --format='value(status.url)')"
-            curl --fail --silent --show-error "${PROD_SERVICE_URL}/api/health"
+            health_check_with_retry "production_run_app_health" "${PROD_SERVICE_URL}/api/health"
           fi
