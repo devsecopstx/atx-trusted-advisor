@@ -137,5 +137,19 @@ All three share the same update script and secret requirements above.
 
 ### Branding TODOs
 
-- **xMoney** — payment rails and transfer actions brand surface. Not yet available. When xMoney launches, add brand tokens (`--xf-xmoney-*`), a logo lockup variant, and a dedicated admin section or card treatment. Reference `design-system/xfinance-brand-kit.md` for the ecosystem naming convention: `xFinance` (platform), `Grok` (AI assistant), `xMoney` (payments). Keep the existing neutral monochrome palette and extend with xMoney-specific accent if the brand kit is updated.
-- **Personas vs Collections separation** — `/admin/personas` should only show persona configs (prompts, tools, collectionId links). Collections management UI should stay in RAG Uploads or a dedicated `/admin/collections` page. Do not re-introduce a standalone collections card in the personas view.
+**Completed:**
+- Phase 1: Token hygiene — badge variants, marketing-hero hex→tokens, chart bar tokens, admin hub hero alignment.
+- Phase 2: Chart tokens (`--xf-chart-*`), xStrategyBuilder coming-soon card, `value-gain`/`value-loss` CSS utilities.
+
+**Phase 3 — xfinance tool surface branding (deferred until tool ships):**
+- When `xfinance` custom tool ships (see `docs/xchat/xfinance-tool-stub.md`), add a tool-result card component with branded output formatting using `--xf-surface-700` + `--xf-chart-*` tokens.
+- Extend xChat console with tool invocation visual treatment (distinct from plain chat responses).
+- Use `value-gain`/`value-loss` utilities for numeric outputs from portfolio/watchlist operations.
+
+**Phase 4 — xMoney (deferred until available):**
+- Payment rails and transfer actions brand surface. When xMoney launches, add brand tokens (`--xf-xmoney-*`), a logo lockup variant, and a dedicated admin section or card treatment. Reference `design-system/xfinance-brand-kit.md` for ecosystem naming: `xFinance` (platform), `Grok` (AI assistant), `xMoney` (payments).
+
+**Standing design rules:**
+- Personas vs Collections separation — `/admin/personas` shows persona configs only (prompts, tools, collectionId links). Collections management stays in RAG Uploads or a dedicated `/admin/collections` page.
+- All admin sub-pages delegate auth + session panel to the shared admin layout (`src/app/admin/layout.tsx`). Do not add duplicate `AdminSessionPanel` imports.
+- No hardcoded hex in app CSS — use `--xf-*` tokens from `design-system/xfinance-brand-kit.css`.
