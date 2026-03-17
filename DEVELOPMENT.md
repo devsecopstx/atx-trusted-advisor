@@ -285,10 +285,6 @@ Route53 TODO details:
 - `GET /api/rag/files`
 - `POST /api/rag/files`
 
-### Self-service access requests
-
-- `POST /api/access-requests` (authenticated, non-admin — self-service with Slack notification)
-
 ### xChat
 
 - `POST /api/xchat/ask` (supports xfinance tool loop when persona has xfinance tool)
