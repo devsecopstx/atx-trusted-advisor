@@ -4,6 +4,8 @@ import { getDb } from "@/lib/mongodb";
 import type {
   PersonaCollectionVerification,
   PersonaConfig,
+  PersonaStatus,
+  PersonaVersionSnapshot,
   RagChunk,
   RagSourceFile,
   XChatSessionLog
@@ -11,6 +13,7 @@ import type {
 
 const collections = {
   personas: "xchat_personas",
+  personaVersions: "xchat_persona_versions",
   ragFiles: "xchat_rag_files",
   ragChunks: "xchat_rag_chunks",
   chatLogs: "xchat_logs"
@@ -309,6 +312,145 @@ export async function updatePersonasCollectionVerification(
     }
   );
   return result.modifiedCount;
+}
+
+export async function listPersonasByStatus(status: PersonaStatus): Promise<PersonaConfig[]> {
+  await ensurePersonaIndexes();
+  const db = await getDb();
+  return db
+    .collection<PersonaConfig>(collections.personas)
+    .find({ status })
+    .sort({ updatedAt: -1 })
+    .toArray();
+}
+
+export async function publishPersona(
+  id: string,
+  actor: PersonaVersionSnapshot["actor"]
+): Promise<PersonaConfig | null> {
+  await ensurePersonaIndexes();
+  const db = await getDb();
+  if (!ObjectId.isValid(id)) return null;
+
+  const _id = new ObjectId(id);
+  const persona = await db.collection<PersonaConfig>(collections.personas).findOne({ _id });
+  if (!persona) return null;
+
+  const nextVersion = (persona.version ?? 0) + 1;
+  const now = new Date();
+
+  const { _id: _personaOid, ...personaFields } = persona;
+  void _personaOid;
+  const snapshot: PersonaVersionSnapshot = {
+    personaId: _id,
+    version: nextVersion,
+    snapshot: personaFields,
+    action: "published",
+    actor,
+    createdAt: now
+  };
+  await db.collection<PersonaVersionSnapshot>(collections.personaVersions).insertOne(snapshot);
+
+  await db.collection<PersonaConfig>(collections.personas).updateOne(
+    { _id },
+    { $set: { status: "published" as const, version: nextVersion, publishedAt: now, updatedAt: now } }
+  );
+
+  return db.collection<PersonaConfig>(collections.personas).findOne({ _id });
+}
+
+export async function archivePersona(
+  id: string,
+  actor: PersonaVersionSnapshot["actor"]
+): Promise<PersonaConfig | null> {
+  await ensurePersonaIndexes();
+  const db = await getDb();
+  if (!ObjectId.isValid(id)) return null;
+
+  const _id = new ObjectId(id);
+  const persona = await db.collection<PersonaConfig>(collections.personas).findOne({ _id });
+  if (!persona) return null;
+
+  const now = new Date();
+  const { _id: _archiveOid, ...archiveFields } = persona;
+  void _archiveOid;
+  const snapshot: PersonaVersionSnapshot = {
+    personaId: _id,
+    version: persona.version ?? 0,
+    snapshot: archiveFields,
+    action: "archived",
+    actor,
+    createdAt: now
+  };
+  await db.collection<PersonaVersionSnapshot>(collections.personaVersions).insertOne(snapshot);
+
+  await db.collection<PersonaConfig>(collections.personas).updateOne(
+    { _id },
+    { $set: { status: "archived" as const, updatedAt: now } }
+  );
+
+  return db.collection<PersonaConfig>(collections.personas).findOne({ _id });
+}
+
+export async function rollbackPersona(
+  id: string,
+  targetVersion: number,
+  actor: PersonaVersionSnapshot["actor"]
+): Promise<PersonaConfig | null> {
+  await ensurePersonaIndexes();
+  const db = await getDb();
+  if (!ObjectId.isValid(id)) return null;
+
+  const _id = new ObjectId(id);
+  const versionDoc = await db
+    .collection<PersonaVersionSnapshot>(collections.personaVersions)
+    .findOne({ personaId: _id, version: targetVersion });
+
+  if (!versionDoc) return null;
+
+  const now = new Date();
+  const currentPersona = await db.collection<PersonaConfig>(collections.personas).findOne({ _id });
+  if (!currentPersona) return null;
+
+  const rollbackSnapshot: PersonaVersionSnapshot = {
+    personaId: _id,
+    version: (currentPersona.version ?? 0) + 1,
+    snapshot: { ...versionDoc.snapshot },
+    action: "rolled_back",
+    actor,
+    createdAt: now
+  };
+  await db.collection<PersonaVersionSnapshot>(collections.personaVersions).insertOne(rollbackSnapshot);
+
+  const restoreFields = versionDoc.snapshot;
+  await db.collection<PersonaConfig>(collections.personas).updateOne(
+    { _id },
+    {
+      $set: {
+        ...restoreFields,
+        status: "published" as const,
+        version: rollbackSnapshot.version,
+        publishedAt: now,
+        updatedAt: now
+      }
+    }
+  );
+
+  return db.collection<PersonaConfig>(collections.personas).findOne({ _id });
+}
+
+export async function listPersonaVersions(
+  personaId: string,
+  limit = 20
+): Promise<PersonaVersionSnapshot[]> {
+  const db = await getDb();
+  if (!ObjectId.isValid(personaId)) return [];
+  return db
+    .collection<PersonaVersionSnapshot>(collections.personaVersions)
+    .find({ personaId: new ObjectId(personaId) })
+    .sort({ version: -1 })
+    .limit(limit)
+    .toArray();
 }
 
 function escapeRegex(value: string): string {

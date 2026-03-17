@@ -171,7 +171,7 @@ describe("persona API routes", () => {
   });
 
   it("allows authenticated users to read persona list", async () => {
-    const response = await getPersonas();
+    const response = await getPersonas(new Request("http://localhost/api/personas"));
     const payload = (await response.json()) as {
       data: Array<{
         _id: string;
@@ -700,7 +700,7 @@ describe("persona API routes", () => {
     authMocks.requireSessionUser.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
-    const response = await getPersonas();
+    const response = await getPersonas(new Request("http://localhost/api/personas"));
     expect(response.status).toBe(401);
   });
 
