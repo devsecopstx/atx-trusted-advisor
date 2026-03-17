@@ -165,7 +165,7 @@ async function seed() {
             collectionId: "",
             collectionName: ""
           },
-          model: "grok-4-latest",
+          model: "grok-4-1-fast",
           temperature: 0.2,
           enableRag: true,
           defaultScope: "global",
