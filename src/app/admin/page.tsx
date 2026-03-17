@@ -8,7 +8,7 @@ import { AdminSessionPanel } from "./ui/admin-session-panel";
 
 type AdminFunction = {
   href: string;
-  icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory";
+  icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory" | "audit";
   title: string;
   description: string;
   adminOnly?: boolean;
@@ -57,6 +57,12 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     title: "xPersona Directory",
     description: "Read-only list of configured xPersonas.",
     adminOnly: false
+  },
+  {
+    href: "/admin/audit",
+    icon: "audit",
+    title: "Audit Explorer",
+    description: "Browse and filter change trails across users, access requests, and xPersonas."
   }
 ];
 
@@ -122,6 +128,15 @@ function AdminFunctionIcon({ name }: IconProps) {
         <svg {...commonProps}>
           <path d="M5 7.5h5l1.4 1.8H19a1.5 1.5 0 0 1 1.5 1.5v6.7A1.5 1.5 0 0 1 19 19H5A1.5 1.5 0 0 1 3.5 17.5V9A1.5 1.5 0 0 1 5 7.5z" />
           <path d="M8.2 13h7.6" />
+        </svg>
+      );
+    case "audit":
+      return (
+        <svg {...commonProps}>
+          <path d="M12 4.5v7" />
+          <path d="M12 15.3v.2" />
+          <path d="M7.5 5.8A8 8 0 1 0 20 12" />
+          <path d="M7.3 2.8v3h3" />
         </svg>
       );
     default: {
