@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { BackIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type PersonaListItem = {
@@ -65,6 +65,9 @@ export function PersonasOnboardingHome() {
   return (
     <section className="panel stack-gap">
       <div className="tool-row">
+        <Link className="cta cta-secondary" href="/admin">
+          <BackIcon className="crud-icon" /> Back to admin functions
+        </Link>
         <button className="cta cta-secondary" disabled={loading} onClick={() => void refresh()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh onboarding
         </button>

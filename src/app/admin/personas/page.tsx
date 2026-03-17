@@ -22,7 +22,8 @@ export default async function AdminPersonasPage() {
             <p className="eyebrow">xfinance core admin</p>
             <h1 className="hero-title">xPersona Onboarding</h1>
             <p className="hero-copy">
-              Follow a clean flow: review personas/collections, then create or edit in dedicated pages.
+              Configure xPersona first, then set up collections or personas in dedicated pages. After
+              that, xchat usage is allowed.
             </p>
           </div>
           <AdminSessionPanel
