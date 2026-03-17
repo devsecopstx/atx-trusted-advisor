@@ -8,6 +8,7 @@ Project-local skills in this directory are safe for Cursor Cloud Agents to reuse
 - `xfinance-xchat-validation-checklist`: run repeatable local/staging xChat validation checks.
 - `xfinance-runbook-navigator`: route operators to the right runbook section and next command.
 - `xfinance-design-ops`: run concise design/ops review gates for core tools and xPersona contracts.
+- `xdesign-review`: final MVP merge gate for combined core MVP + branding cloud-agent changes.
 
 ## Strategy Skills
 

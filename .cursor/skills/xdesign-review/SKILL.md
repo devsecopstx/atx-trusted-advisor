@@ -1,0 +1,86 @@
+---
+id: xdesign-review
+name: xdesign-review
+description: Final MVP PR review gate for xFinance when combining Core MVP and Branding cloud-agent changes.
+---
+
+# xDesign Review: Final MVP Gate
+
+## Goal
+
+Provide a strict final review gate before accepting combined PR changes from:
+
+- Core MVP cloud agent (API/domain/runtime)
+- Branding cloud agent (UI/UX/visual system)
+
+## When to Use
+
+- Final review before merging MVP changes to `main`.
+- Any PR that includes both product logic and visual/brand changes.
+- Any `xPersona`, `xChat`, tool-routing, or admin-contract changes.
+
+## Mandatory Reviewer Sequence
+
+Run in this exact order and mark each as complete/incomplete:
+
+1. `design-review-best-practices`
+2. `xdesign-review`
+3. `xdesign-review-adversarial`
+4. `xdesign-review-reliability`
+
+If any reviewer is skipped, final review is incomplete.
+
+## Core MVP Acceptance Checks
+
+- Route contract compatibility is preserved (`/api/*` responses, status codes, payload shape).
+- Auth and tenant boundaries remain enforced (no privilege broadening).
+- xChat/xPersona flows keep stable behavior under validation and error paths.
+- No regressions in retries, fallbacks, or deploy-health checks.
+- Critical env/secret assumptions are documented and unchanged unless explicitly approved.
+
+## Branding Acceptance Checks
+
+- Dark/light mode remains legible and consistent.
+- Brand palette and typography remain coherent with existing xFinance direction.
+- UI changes do not break core task flows or accessibility basics.
+- New visuals do not hide errors, states, or operator controls.
+
+## Combined PR Risk Checks
+
+- No hidden coupling between branding refactors and core runtime logic.
+- No accidental API behavior drift from UI-driven model changes.
+- Docs parity is updated where behavior changed (`AGENTS.md`, `DEVELOPMENT.md`, skills index).
+- Tests cover changed logic; missing tests are called out explicitly.
+
+## Output Format (Required)
+
+```md
+## Findings
+### High
+- ...
+### Medium
+- ...
+### Low
+- ...
+
+## Reviewer Completion
+- design-review-best-practices: complete|incomplete
+- xdesign-review: complete|incomplete
+- xdesign-review-adversarial: complete|incomplete
+- xdesign-review-reliability: complete|incomplete
+
+## Merge Recommendation
+- accept | accept-with-conditions | reject
+
+## Gaps
+- missing tests
+- missing docs sync
+- residual risk notes
+```
+
+## Guardrails
+
+- Findings-first review style: bugs/regressions before summaries.
+- Do not invent behavior; verify from code/diff/tests.
+- Treat auth, tenant isolation, and contract drift as high severity.
+- Keep recommendations actionable and scoped to the touched changes.
