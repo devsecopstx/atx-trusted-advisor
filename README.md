@@ -23,10 +23,14 @@ Admin-only operations platform for xFinance. This repo powers:
 - `npm run test`
 - `npm run build`
 
+## Validation (full gate)
+
+- `npm run ci:gate` (runs lint + typecheck + test)
+
 ## Core Routes
 
-- UI: `/admin`, `/admin/personas`, `/admin/xchat`, `/admin/audit`
-- API: `/api/personas`, `/api/xchat/ask`, `/api/admin/*`, `/api/health`
+- UI: `/login`, `/admin`, `/admin/access-requests`, `/admin/personas`, `/admin/portfolios`, `/admin/tasks`, `/admin/xchat`, `/admin/rag-files`, `/admin/user-settings`, `/admin/audit`, `/personas`
+- API: `/api/health`, `/api/personas`, `/api/xchat/ask`, `/api/xchat/batch`, `/api/admin/*`, `/api/portfolios/*`, `/api/positions`
 
 ## Docs
 

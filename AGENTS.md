@@ -24,8 +24,10 @@ Operational runbook for engineers/agents working in `xfinance` core admin app.
 
 - `MONGODB_URI_B64`
 - `XAI_API_KEY`
+- `XAI_MANAGEMENT_API_KEY`
 - `X_OAUTH_CLIENT_ID`
 - `X_OAUTH_CLIENT_SECRET`
+- `AUTH_SECRET`
 
 ## Quick Health Checks
 
@@ -50,15 +52,11 @@ runtime. The update script writes `.env` from these injected secrets automatical
 
 ## Project Cursor Skills (Safe Set)
 
-- Project-local skills are stored in `.cursor/skills/`.
-- Current safe skills:
-  - `xfinance-docs-ops`
-  - `xfinance-xchat-validation-checklist`
-  - `xfinance-runbook-navigator`
-- These skills are docs/ops oriented and must not deploy, rotate keys, or mutate production/staging secrets.
+- Project-local skills are stored in `.cursor/skills/`. See `.cursor/skills/README.md` for the full index.
+- Ops/review skills: `xfinance-docs-ops`, `xfinance-xchat-validation-checklist`, `xfinance-runbook-navigator`, `xfinance-design-ops`, `xdesign-review`.
+- Strategy skills: 10 `xfinance-strategy-*` skills (options strategy references).
+- All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
 - Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/xfinance-tool-stub.md`.
-
-### Docker prerequisite
 
 ### .env generation
 
@@ -96,7 +94,7 @@ const payload = JSON.stringify({
   email: 'atxbogart@gmail.com',
   roles: ['global_admin'],
   tenantId: '<tenantId from seed output>',
-  tenantRole: 'owner',
+  tenantRole: 'tenant_admin',
   xUserId: 'dev_test',
   username: 'dev_test',
   exp: Date.now() + 12*60*60*1000
