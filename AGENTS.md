@@ -71,6 +71,7 @@ The `.env` file is generated at startup from Cursor secrets. Required secrets
 | `X_OAUTH_CLIENT_ID` | X OAuth client ID (raw, not base64) |
 | `X_OAUTH_CLIENT_SECRET` | X OAuth client secret |
 | `AUTH_SECRET` | Session signing secret (min 16 chars) |
+| `SLACK_WEBHOOK_URL` | Slack incoming webhook for access request notifications (optional) |
 
 ### Starting the app
 
