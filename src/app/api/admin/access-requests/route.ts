@@ -1,0 +1,200 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { requireAdminSession } from "@/lib/api-auth";
+import {
+  createAuditEvent,
+  listLatestAuditEventsForEntities
+} from "@/modules/audit/repository";
+import {
+  createAccessRequest,
+  getPendingAccessRequestByUserAndRole,
+  listAccessRequests
+} from "@/modules/core-admin/repository";
+import type { AccessRequestListItem } from "@/modules/core-admin/types";
+import { accessRequestStatusValues } from "@/modules/core-admin/types";
+import { ensureCoreUserByEmail } from "@/modules/identity/repository";
+
+const createAccessRequestSchema = z.object({
+  userId: z.string().trim().min(1).optional(),
+  email: z.string().trim().email().optional(),
+  requestedRole: z.enum(["advisor", "operator", "viewer"]),
+  requestedPlan: z.enum(["free", "pro", "enterprise"]).optional().default("free"),
+  reason: z.string().min(5),
+  status: z.enum(accessRequestStatusValues).optional()
+}).superRefine((value, ctx) => {
+  const hasUserId = Boolean(value.userId);
+  const hasEmail = Boolean(value.email);
+  if (!hasUserId && !hasEmail) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide either userId or email.",
+      path: ["userId"]
+    });
+  }
+  if (hasUserId && hasEmail) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide only one identifier: userId or email.",
+      path: ["email"]
+    });
+  }
+});
+
+const accessRequestQuerySchema = z.object({
+  status: z.union([z.enum(accessRequestStatusValues), z.literal("all")]).optional().default("pending")
+});
+
+export async function GET(request: Request) {
+  const session = await requireAdminSession();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const url = new URL(request.url);
+  const parsed = accessRequestQuerySchema.safeParse({
+    status: url.searchParams.get("status") ?? undefined
+  });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid query payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const requests = await listAccessRequests({
+    status: parsed.data.status === "all" ? undefined : parsed.data.status,
+    tenantId: session.tenantId
+  });
+  const serialized = requests.map(serializeAccessRequest);
+  const latestAuditByRequestId = await listLatestAuditEventsForEntities({
+    entityType: "access_request",
+    entityIds: serialized.flatMap((item) => (item._id ? [item._id] : []))
+  });
+  return NextResponse.json({
+    data: serialized.map((item) => ({
+      ...item,
+      latestAuditEvent: item._id ? serializeAuditEvent(latestAuditByRequestId[item._id]) : null
+    }))
+  });
+}
+
+export async function POST(request: Request) {
+  const session = await requireAdminSession();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const json = await request.json();
+  const parsed = createAccessRequestSchema.safeParse(json);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid request payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  let resolvedUserId = parsed.data.userId;
+  let resolvedEmail: string | undefined;
+
+  if (parsed.data.email) {
+    const ensuredUser = await ensureCoreUserByEmail({
+      email: parsed.data.email
+    });
+    if (!ensuredUser._id) {
+      return NextResponse.json(
+        { error: "Unable to create or resolve user for access request" },
+        { status: 500 }
+      );
+    }
+    resolvedUserId = ensuredUser._id.toHexString();
+    resolvedEmail = ensuredUser.email;
+  }
+
+  if (!resolvedUserId) {
+    return NextResponse.json({ error: "Unable to resolve user id" }, { status: 400 });
+  }
+
+  const existingPending = await getPendingAccessRequestByUserAndRole({
+    userId: resolvedUserId,
+    requestedRole: parsed.data.requestedRole,
+    tenantId: session.tenantId
+  });
+  if (existingPending) {
+    return NextResponse.json(
+      {
+        error: "A pending request for this user and role already exists.",
+        data: serializeAccessRequest(existingPending)
+      },
+      { status: 409 }
+    );
+  }
+
+  const created = await createAccessRequest({
+    tenantId: session.tenantId,
+    userId: resolvedUserId,
+    requestedRole: parsed.data.requestedRole,
+    requestedPlan: parsed.data.requestedPlan,
+    reason: parsed.data.reason,
+    status: parsed.data.email ? "pending" : parsed.data.status
+  });
+  if (created._id) {
+    await createAuditEvent({
+      entityType: "access_request",
+      entityId: created._id.toHexString(),
+      action: "created",
+      actor: {
+        userId: session.userId,
+        email: session.email,
+        username: session.username
+      },
+      details: {
+        requestedRole: created.requestedRole,
+        requestedPlan: created.requestedPlan,
+        reason: created.reason
+      }
+    });
+  }
+  return NextResponse.json(
+    {
+      data: serializeAccessRequest(created),
+      meta: {
+        resolvedUserId,
+        resolvedEmail
+      }
+    },
+    { status: 201 }
+  );
+}
+
+function serializeAccessRequest(request: AccessRequestListItem) {
+  return {
+    ...request,
+    _id: request._id?.toHexString(),
+    tenantId: request.tenantId?.toHexString(),
+    requestedAt: request.requestedAt.toISOString(),
+    reviewedAt: request.reviewedAt?.toISOString()
+  };
+}
+
+function serializeAuditEvent(
+  event:
+    | {
+        action: string;
+        createdAt: Date;
+        actor: { userId: string; email?: string; username?: string };
+        details?: Record<string, unknown>;
+      }
+    | undefined
+) {
+  if (!event) {
+    return null;
+  }
+  return {
+    action: event.action,
+    createdAt: event.createdAt.toISOString(),
+    actor: event.actor,
+    details: event.details
+  };
+}
