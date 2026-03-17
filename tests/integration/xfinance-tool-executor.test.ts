@@ -48,7 +48,7 @@ describe("xfinance tool executor", () => {
 
   it("portfolio_summary returns portfolio with accounts", async () => {
     const executor = createXfinanceToolExecutor(ctx);
-    const result = await executor("portfolio_summary", {});
+    const result = await executor("xfinance", { operation: "portfolio_summary" });
     const data = JSON.parse(result.result);
     expect(data.name).toBe("Default Portfolio");
     expect(data.accountCount).toBe(1);
@@ -58,7 +58,7 @@ describe("xfinance tool executor", () => {
 
   it("watchlist_snapshot returns symbols", async () => {
     const executor = createXfinanceToolExecutor(ctx);
-    const result = await executor("watchlist_snapshot", {});
+    const result = await executor("xfinance", { operation: "watchlist_snapshot" });
     const data = JSON.parse(result.result);
     expect(data.name).toBe("DefaultWatchlist");
     expect(data.symbols).toEqual(["TSLA"]);
@@ -67,7 +67,7 @@ describe("xfinance tool executor", () => {
 
   it("account_health returns account list", async () => {
     const executor = createXfinanceToolExecutor(ctx);
-    const result = await executor("account_health", {});
+    const result = await executor("xfinance", { operation: "account_health" });
     const data = JSON.parse(result.result);
     expect(data.accountCount).toBe(1);
     expect(data.accounts[0].name).toBe("Default Account");
@@ -75,7 +75,7 @@ describe("xfinance tool executor", () => {
 
   it("task_status returns tasks and runs", async () => {
     const executor = createXfinanceToolExecutor(ctx);
-    const result = await executor("task_status", {});
+    const result = await executor("xfinance", { operation: "task_status" });
     const data = JSON.parse(result.result);
     expect(data.taskCount).toBe(1);
     expect(data.tasks[0].name).toBe("Daily Sync");
@@ -85,7 +85,7 @@ describe("xfinance tool executor", () => {
 
   it("unknown operation returns error", async () => {
     const executor = createXfinanceToolExecutor(ctx);
-    const result = await executor("delete_everything", {});
+    const result = await executor("xfinance", { operation: "delete_everything" });
     const data = JSON.parse(result.result);
     expect(data.error).toBe("unknown_operation");
     expect(result.error).toContain("unknown_operation");
@@ -94,7 +94,7 @@ describe("xfinance tool executor", () => {
   it("returns error when no default portfolio exists", async () => {
     repositoryMocks.getDefaultPortfolio.mockResolvedValueOnce(null);
     const executor = createXfinanceToolExecutor(ctx);
-    const result = await executor("portfolio_summary", {});
+    const result = await executor("xfinance", { operation: "portfolio_summary" });
     const data = JSON.parse(result.result);
     expect(data.error).toBe("no_default_portfolio");
   });
@@ -102,7 +102,7 @@ describe("xfinance tool executor", () => {
   it("returns error when no watchlist exists", async () => {
     repositoryMocks.getPortfolioWatchlist.mockResolvedValueOnce(null);
     const executor = createXfinanceToolExecutor(ctx);
-    const result = await executor("watchlist_snapshot", {});
+    const result = await executor("xfinance", { operation: "watchlist_snapshot" });
     const data = JSON.parse(result.result);
     expect(data.error).toBe("no_watchlist");
   });
@@ -130,7 +130,7 @@ describe("xfinance tool executor", () => {
     repositoryMocks.listTaskRuns.mockResolvedValueOnce([]);
 
     const executor = createXfinanceToolExecutor(ctx);
-    const result = await executor("task_status", {});
+    const result = await executor("xfinance", { operation: "task_status" });
     const bytes = new TextEncoder().encode(result.result).length;
     expect(bytes).toBeLessThanOrEqual(8 * 1024 + 20);
     expect(result.result).toContain("[truncated]");

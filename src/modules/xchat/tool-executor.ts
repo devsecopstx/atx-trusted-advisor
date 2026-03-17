@@ -136,12 +136,13 @@ function truncateOutput(output: string): string {
 export function createXfinanceToolExecutor(
   ctx: ExecutorContext
 ): ToolExecutor {
-  return async (name: string, args: Record<string, unknown>) => {
-    const handler = operations[name];
+  return async (_name: string, args: Record<string, unknown>) => {
+    const operation = typeof args.operation === "string" ? args.operation : "";
+    const handler = operations[operation];
     if (!handler) {
       return {
-        result: JSON.stringify({ error: "unknown_operation", operation: name }),
-        error: `unknown_operation: ${name}`
+        result: JSON.stringify({ error: "unknown_operation", operation }),
+        error: `unknown_operation: ${operation}`
       };
     }
 
