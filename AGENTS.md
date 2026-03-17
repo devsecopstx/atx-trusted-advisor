@@ -48,6 +48,7 @@ Operational runbook for engineers/agents working in `xfinance` core admin app.
 - Required cloud secrets (configure in Cursor dashboard, not in git):
   - `MONGODB_URI_B64`
   - `XAI_API_KEY`
+  - `XAI_MANAGEMENT_API_KEY`
   - `X_OAUTH_CLIENT_ID`
   - `X_OAUTH_CLIENT_SECRET`
 - Minimal cloud smoke check after boot:
