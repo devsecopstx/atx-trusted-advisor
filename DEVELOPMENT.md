@@ -160,6 +160,24 @@ Optional:
 - `https://core.fintech-advisor.ai/api/auth/x/callback`
 - `https://staging.core.fintech-advisor.ai/api/auth/x/callback`
 
+### Immediate Rollout TODO (Raw Deploy + Route53)
+
+Use this ordered checklist for first live rollout:
+
+- [ ] Create runtime secrets in both GCP projects (`fintech-advisor-staging`, `fintech-advisor-prod`)
+- [ ] Deploy staging raw (`gcloud run deploy ...` to `xfinance-core-staging`)
+- [ ] Validate staging health (`GET https://staging.core.fintech-advisor.ai/api/health`)
+- [ ] Deploy prod raw (`gcloud run deploy ...` to `xfinance-core-prod`)
+- [ ] Add Route53 records for mapped domains
+
+Route53 TODO details:
+
+- [ ] Create/verify `core.fintech-advisor.ai` DNS record target from GCP domain mapping output
+- [ ] Create/verify `staging.core.fintech-advisor.ai` DNS record target from GCP domain mapping output
+- [ ] Set low TTL during cutover (for example, 60-300 seconds)
+- [ ] Confirm DNS propagation with `dig` before final health checks
+- [ ] Replace temporary Atlas allow-all access (`0.0.0.0/0`) with GCP static egress IP allowlist after validation
+
 ## API Endpoints
 
 - `GET /api/health`

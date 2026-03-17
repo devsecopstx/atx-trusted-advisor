@@ -62,21 +62,10 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT_ID_STAGING }}
 
-      - name: Configure Docker auth for Artifact Registry
-        run: gcloud auth configure-docker "${{ vars.GAR_LOCATION_STAGING }}-docker.pkg.dev" --quiet
-
-      - name: Build and push image
-        env:
-          IMAGE_URI: ${{ vars.GAR_LOCATION_STAGING }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID_STAGING }}/${{ vars.GAR_REPOSITORY_STAGING }}/${{ env.IMAGE_NAME }}:staging-${{ github.sha }}
-        run: |
-          docker build -t "$IMAGE_URI" .
-          docker push "$IMAGE_URI"
-          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
-
       - name: Deploy to Cloud Run (staging)
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
-            --image "$IMAGE_URI" \
+            --source . \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
@@ -123,21 +112,10 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT_ID_PROD }}
 
-      - name: Configure Docker auth for Artifact Registry
-        run: gcloud auth configure-docker "${{ vars.GAR_LOCATION_PROD }}-docker.pkg.dev" --quiet
-
-      - name: Build and push image
-        env:
-          IMAGE_URI: ${{ vars.GAR_LOCATION_PROD }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID_PROD }}/${{ vars.GAR_REPOSITORY_PROD }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-        run: |
-          docker build -t "$IMAGE_URI" .
-          docker push "$IMAGE_URI"
-          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
-
       - name: Deploy to Cloud Run (production)
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
-            --image "$IMAGE_URI" \
+            --source . \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
