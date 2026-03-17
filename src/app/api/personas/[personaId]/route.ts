@@ -13,7 +13,7 @@ import {
   getPersonaById,
   updatePersona
 } from "@/modules/xchat/repository";
-import type { PersonaConfig } from "@/modules/xchat/types";
+import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
 type RouteContext = {
   params: Promise<{ personaId: string }>;
@@ -157,6 +157,7 @@ function serializePersona(persona: PersonaConfig) {
     temperature: persona.temperature,
     enableRag: persona.enableRag,
     defaultScope: persona.defaultScope,
+    xapi: normalizePersonaXapiConfig(persona.xapi),
     xaiCollectionVerification: persona.xaiCollectionVerification
       ? {
           ...persona.xaiCollectionVerification,

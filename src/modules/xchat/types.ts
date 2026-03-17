@@ -7,6 +7,29 @@ export type PersonaCollectionVerification = {
   resolvedCollectionName?: string;
 };
 
+export type PersonaXapiMode = "responses" | "chat_completions";
+
+export type PersonaXapiToolChoice = "auto" | "required" | "none";
+
+export type PersonaXapiToolDefinition = {
+  type: string;
+  [key: string]: unknown;
+};
+
+export type PersonaXapiConfig = {
+  mode: PersonaXapiMode;
+  toolChoice: PersonaXapiToolChoice;
+  maxTurns: number;
+  tools: PersonaXapiToolDefinition[];
+};
+
+export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
+  mode: "responses",
+  toolChoice: "auto",
+  maxTurns: 5,
+  tools: []
+};
+
 export type PersonaConfig = {
   _id?: ObjectId;
   name: string;
@@ -22,6 +45,7 @@ export type PersonaConfig = {
   temperature: number;
   enableRag: boolean;
   defaultScope: string;
+  xapi?: PersonaXapiConfig;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -71,5 +95,33 @@ export type XChatSessionLog = {
   response: string;
   contextChunkIds: ObjectId[];
   model: string;
+  xapiMode?: PersonaXapiMode;
+  xapiToolChoice?: PersonaXapiToolChoice;
+  xapiMaxTurns?: number;
+  xapiToolCount?: number;
   createdAt: Date;
 };
+
+export function normalizePersonaXapiConfig(input?: Partial<PersonaXapiConfig> | null): PersonaXapiConfig {
+  const mode = input?.mode === "chat_completions" ? "chat_completions" : "responses";
+  const toolChoice =
+    input?.toolChoice === "required" || input?.toolChoice === "none" ? input.toolChoice : "auto";
+  const maxTurnsRaw = Number(input?.maxTurns ?? DEFAULT_PERSONA_XAPI_CONFIG.maxTurns);
+  const maxTurns =
+    Number.isInteger(maxTurnsRaw) && maxTurnsRaw >= 1 && maxTurnsRaw <= 10
+      ? maxTurnsRaw
+      : DEFAULT_PERSONA_XAPI_CONFIG.maxTurns;
+  const tools = Array.isArray(input?.tools)
+    ? input.tools.filter(
+        (tool): tool is PersonaXapiToolDefinition =>
+          Boolean(tool) && typeof tool === "object" && typeof tool.type === "string"
+      )
+    : [];
+
+  return {
+    mode,
+    toolChoice,
+    maxTurns,
+    tools
+  };
+}

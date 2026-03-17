@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
 import { listPersonas } from "@/modules/xchat/repository";
+import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 
 import { AdminSessionPanel } from "../ui/admin-session-panel";
 import { PersonasConsole } from "./ui/personas-console";
@@ -28,6 +29,7 @@ export default async function AdminPersonasPage() {
     temperature: persona.temperature,
     enableRag: persona.enableRag,
     defaultScope: persona.defaultScope,
+    xapi: normalizePersonaXapiConfig(persona.xapi),
     xaiCollectionVerification: persona.xaiCollectionVerification
       ? {
           ...persona.xaiCollectionVerification,

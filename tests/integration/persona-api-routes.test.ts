@@ -73,6 +73,12 @@ describe("persona API routes", () => {
         temperature: 0.2,
         enableRag: true,
         defaultScope: "global",
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "web_search" }]
+        },
         createdAt: now,
         updatedAt: now
       }
@@ -91,6 +97,12 @@ describe("persona API routes", () => {
       temperature: 0.2,
       enableRag: true,
       defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "file_search" }, { type: "web_search" }]
+      },
       createdAt: now,
       updatedAt: now
     });
@@ -108,6 +120,12 @@ describe("persona API routes", () => {
       temperature: 0.1,
       enableRag: false,
       defaultScope: "global",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: []
+      },
       createdAt: now,
       updatedAt: now
     });
@@ -125,6 +143,12 @@ describe("persona API routes", () => {
       temperature: 0.3,
       enableRag: true,
       defaultScope: "global",
+      xapi: {
+        mode: "chat_completions",
+        toolChoice: "none",
+        maxTurns: 3,
+        tools: []
+      },
       createdAt: now,
       updatedAt: now
     });
@@ -155,6 +179,7 @@ describe("persona API routes", () => {
     expect(payload.data[0]?.xaiCollection.collectionId).toBe("collection_analyst-global");
     expect(payload.data[0]?.xaiCollectionVerification?.status).toBe("verified");
     expect(payload.data[0]?.xaiCollectionVerification?.checkedAt).toBe(now.toISOString());
+    expect((payload.data[0] as { xapi?: { mode?: string } }).xapi?.mode).toBe("responses");
   });
 
   it("creates persona with admin permissions", async () => {
@@ -180,6 +205,15 @@ describe("persona API routes", () => {
 
     expect(response.status).toBe(201);
     expect(repositoryMocks.createPersona).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.createPersona).toHaveBeenCalledWith(
+      expect.objectContaining({
+        xapi: expect.objectContaining({
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5
+        })
+      })
+    );
   });
 
   it("creates persona without override prompt", async () => {
@@ -502,6 +536,39 @@ describe("persona API routes", () => {
         xaiCollection: {
           collectionId: "collection_ops-global-v3",
           collectionName: "Ops Global Docs v3"
+        }
+      })
+    );
+  });
+
+  it("updates persona xapi settings", async () => {
+    const response = await putPersonaById(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          xapi: {
+            mode: "responses",
+            toolChoice: "required",
+            maxTurns: 7,
+            tools: [{ type: "web_search" }]
+          }
+        })
+      }),
+      {
+        params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePersona).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439055",
+      expect.objectContaining({
+        xapi: {
+          mode: "responses",
+          toolChoice: "required",
+          maxTurns: 7,
+          tools: [{ type: "web_search" }]
         }
       })
     );

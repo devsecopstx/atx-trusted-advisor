@@ -15,7 +15,7 @@ import {
   createPersona,
   listPersonas
 } from "@/modules/xchat/repository";
-import type { PersonaConfig } from "@/modules/xchat/types";
+import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -70,7 +70,8 @@ export async function POST(request: Request) {
       xaiCollection: {
         collectionId: parsed.data.xaiCollection?.collectionId ?? "",
         collectionName: parsed.data.xaiCollection?.collectionName
-      }
+      },
+      xapi: normalizePersonaXapiConfig(parsed.data.xapi)
     });
   } catch (error) {
     if (error instanceof PersonaNameConflictError) {
@@ -126,6 +127,7 @@ function serializePersona(persona: PersonaConfig) {
     temperature: persona.temperature,
     enableRag: persona.enableRag,
     defaultScope: persona.defaultScope,
+    xapi: normalizePersonaXapiConfig(persona.xapi),
     xaiCollectionVerification: persona.xaiCollectionVerification
       ? {
           ...persona.xaiCollectionVerification,

@@ -4,12 +4,13 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { chatWithXai, searchDocumentsInCollections } from "@/lib/xai";
+import { chatWithXai, respondWithXai, searchDocumentsInCollections } from "@/lib/xai";
 import {
   getPersonaById,
   retrieveRagChunks,
   saveXChatLog
 } from "@/modules/xchat/repository";
+import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 
 const askSchema = z.object({
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
 
   const { message, personaId, topK = 4 } = parsed.data;
   const persona = personaId ? await getPersonaById(personaId) : null;
+  const xapiConfig = normalizePersonaXapiConfig(persona?.xapi);
   const scope = parsed.data.scope ?? persona?.defaultScope ?? "global";
   const tenantId = ObjectId.isValid(session.tenantId)
     ? new ObjectId(session.tenantId)
@@ -130,14 +132,24 @@ export async function POST(request: Request) {
     ? `${userPromptTemplate}\n\nUser message:\n${message}`
     : message;
 
-  const xaiResponse = await chatWithXai({
-    model: persona?.model,
-    temperature: persona?.temperature ?? 0.2,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
-    ]
-  });
+  const xaiResponse =
+    xapiConfig.mode === "chat_completions"
+      ? await chatWithXai({
+          model: persona?.model,
+          temperature: persona?.temperature ?? 0.2,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ]
+        })
+      : await respondWithXai({
+          model: persona?.model,
+          systemPrompt,
+          userPrompt,
+          tools: xapiConfig.tools,
+          toolChoice: xapiConfig.toolChoice,
+          maxTurns: xapiConfig.maxTurns
+        });
 
   const contextChunkIds = ragChunks.flatMap((chunk) => (chunk._id ? [chunk._id] : []));
   await saveXChatLog({
@@ -149,7 +161,11 @@ export async function POST(request: Request) {
     message,
     response: xaiResponse.outputText,
     contextChunkIds,
-    model: xaiResponse.model
+    model: xaiResponse.model,
+    xapiMode: xapiConfig.mode,
+    xapiToolChoice: xapiConfig.toolChoice,
+    xapiMaxTurns: xapiConfig.maxTurns,
+    xapiToolCount: xapiConfig.tools.length
   });
 
   return NextResponse.json({
