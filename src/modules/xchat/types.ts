@@ -11,8 +11,11 @@ export type PersonaXapiMode = "responses" | "chat_completions";
 
 export type PersonaXapiToolChoice = "auto" | "required" | "none";
 
+export const PERSONA_XAPI_TOOL_TYPES = ["web_search", "x_search", "file_search"] as const;
+export type PersonaXapiToolType = (typeof PERSONA_XAPI_TOOL_TYPES)[number];
+
 export type PersonaXapiToolDefinition = {
-  type: string;
+  type: PersonaXapiToolType;
   [key: string]: unknown;
 };
 
@@ -119,7 +122,10 @@ export function normalizePersonaXapiConfig(input?: Partial<PersonaXapiConfig> | 
   const tools = Array.isArray(input?.tools)
     ? input.tools.filter(
         (tool): tool is PersonaXapiToolDefinition =>
-          Boolean(tool) && typeof tool === "object" && typeof tool.type === "string"
+          Boolean(tool) &&
+          typeof tool === "object" &&
+          typeof tool.type === "string" &&
+          (PERSONA_XAPI_TOOL_TYPES as readonly string[]).includes(tool.type)
       )
     : [];
 
