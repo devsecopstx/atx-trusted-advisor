@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { AddIcon, RefreshIcon, RunIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
@@ -14,20 +14,51 @@ type ScheduledTask = {
   nextRunAt?: string;
 };
 
+type TaskRun = {
+  _id?: string;
+  taskId: string;
+  taskName: string;
+  category: string;
+  triggeredBy: string;
+  status: "running" | "success" | "failed";
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+  output: string;
+};
+
+const POLL_INTERVAL_MS = 30_000;
+
 export function TasksConsole() {
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
-  const [status, setStatus] = useState("Ready - tap refresh");
+  const [runs, setRuns] = useState<TaskRun[]>([]);
+  const [status, setStatus] = useState("Ready — tap refresh");
+  const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshTasks = useCallback(async () => {
-    setStatus("Loading tasks...");
     try {
       const payload = await parseJson<{ data: ScheduledTask[] }>(await fetch("/api/admin/tasks"));
       setTasks(payload.data);
-      setStatus("Synced");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to refresh tasks");
     }
   }, []);
+
+  const refreshRuns = useCallback(async () => {
+    try {
+      const payload = await parseJson<{ data: TaskRun[] }>(await fetch("/api/admin/task-runs"));
+      setRuns(payload.data);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to refresh runs");
+    }
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    setStatus("Syncing...");
+    await Promise.all([refreshTasks(), refreshRuns()]);
+    setStatus("Synced");
+  }, [refreshTasks, refreshRuns]);
 
   async function createTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,34 +78,46 @@ export function TasksConsole() {
         })
       );
       event.currentTarget.reset();
-      await refreshTasks();
+      await refreshAll();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to create task");
     }
   }
 
   async function runTask(taskId: string | undefined) {
-    if (!taskId) {
-      return;
-    }
+    if (!taskId) return;
+    setRunningTaskId(taskId);
     setStatus(`Running task ${taskId}...`);
     try {
-      await parseJson(
-        await fetch(`/api/admin/tasks/${taskId}/run`, {
-          method: "POST"
-        })
+      const payload = await parseJson<{
+        data: { runId: string; status: string; output: string };
+      }>(
+        await fetch(`/api/admin/tasks/${taskId}/run`, { method: "POST" })
       );
-      await refreshTasks();
+      setStatus(`Task finished: ${payload.data.status}`);
+      await refreshAll();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to run task");
+    } finally {
+      setRunningTaskId(null);
     }
   }
+
+  useEffect(() => {
+    void refreshAll();
+    pollRef.current = setInterval(() => {
+      void refreshAll();
+    }, POLL_INTERVAL_MS);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [refreshAll]);
 
   return (
     <section className="panel stack-gap">
       <div className="tool-row">
-        <button className="cta cta-secondary" onClick={() => void refreshTasks()} type="button">
-          <RefreshIcon className="crud-icon" /> Refresh tasks
+        <button className="cta cta-secondary" onClick={() => void refreshAll()} type="button">
+          <RefreshIcon className="crud-icon" /> Refresh
         </button>
         <p className="status-text">{status}</p>
       </div>
@@ -97,17 +140,87 @@ export function TasksConsole() {
       </article>
 
       <article className="surface-card xf-widget section-card">
-        <h3>Latest Tasks</h3>
-        <ul className="data-list">
-          {tasks.map((task) => (
-            <li key={task._id ?? task.name}>
-              <span>{task.name}</span>
-              <button className="tiny-button" onClick={() => void runTask(task._id)} type="button">
-                <RunIcon className="crud-icon" /> Run
-              </button>
-            </li>
-          ))}
-        </ul>
+        <h3>Tasks ({tasks.length})</h3>
+        {tasks.length > 0 ? (
+          <div className="crud-table-wrap">
+            <table className="crud-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Cron</th>
+                  <th>Enabled</th>
+                  <th>Next Run</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task) => (
+                  <tr key={task._id ?? task.name}>
+                    <td>{task.name}</td>
+                    <td>{task.category}</td>
+                    <td><code>{task.scheduleCron}</code></td>
+                    <td>{task.enabled ? "Yes" : "No"}</td>
+                    <td>{task.nextRunAt ? new Date(task.nextRunAt).toLocaleString() : "—"}</td>
+                    <td>
+                      <button
+                        className="tiny-button"
+                        disabled={runningTaskId === task._id}
+                        onClick={() => void runTask(task._id)}
+                        type="button"
+                      >
+                        <RunIcon className="crud-icon" />{" "}
+                        {runningTaskId === task._id ? "Running..." : "Run"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="status-text">No tasks yet. Create one above.</p>
+        )}
+      </article>
+
+      <article className="surface-card xf-widget section-card">
+        <h3>Recent Runs ({runs.length})</h3>
+        {runs.length > 0 ? (
+          <div className="crud-table-wrap">
+            <table className="crud-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Triggered By</th>
+                  <th>Started</th>
+                  <th>Duration</th>
+                  <th>Output</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runs.map((run) => (
+                  <tr key={run._id ?? run.startedAt}>
+                    <td>{run.taskName}</td>
+                    <td>{run.category}</td>
+                    <td>
+                      <span className={`status-badge status-${run.status === "success" ? "ready" : run.status === "failed" ? "error" : "pending"}`}>
+                        {run.status}
+                      </span>
+                    </td>
+                    <td>{run.triggeredBy}</td>
+                    <td>{new Date(run.startedAt).toLocaleString()}</td>
+                    <td>{run.durationMs != null ? `${run.durationMs}ms` : "—"}</td>
+                    <td className="output-cell">{run.output || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="status-text">No task runs yet. Run a task to see results here.</p>
+        )}
       </article>
     </section>
   );

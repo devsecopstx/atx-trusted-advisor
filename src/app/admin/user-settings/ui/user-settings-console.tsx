@@ -5,10 +5,37 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
-type UserSettingsResponse = {
-  data: {
-    updatedAt: string;
-  };
+type BrokerSettings = {
+  provider: "alpaca" | "interactive-brokers" | "paper";
+  accountRef: string;
+  enabled: boolean;
+};
+
+type PortfolioSettings = {
+  riskProfile: "conservative" | "balanced" | "growth";
+  baseCurrency: "USD" | "EUR" | "GBP";
+  rebalanceFrequencyDays: number;
+};
+
+type AccountSettings = {
+  accountStatus: "active" | "suspended";
+  maxConcurrentSessions: number;
+  timezone: string;
+};
+
+type NotificationDefaults = {
+  email: boolean;
+  push: boolean;
+  sms: boolean;
+  digestHourUTC: number;
+};
+
+type UserAdminSettingsPayload = {
+  broker: BrokerSettings;
+  portfolio: PortfolioSettings;
+  account: AccountSettings;
+  notificationDefaults: NotificationDefaults;
+  updatedAt?: string;
 };
 
 type ApprovedUser = {
@@ -54,10 +81,15 @@ type ApiUser = {
 
 type EditableRole = Exclude<ApprovedUser["role"], "unknown">;
 
+const DEFAULT_SETTINGS: UserAdminSettingsPayload = {
+  broker: { provider: "paper", accountRef: "paper-main", enabled: true },
+  portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
+  account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
+  notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
+};
+
 export function UserSettingsConsole() {
   const [status, setStatus] = useState("Ready");
-  const [result, setResult] = useState("");
-  const [userIdInput, setUserIdInput] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [approvedUsers, setApprovedUsers] = useState<ApprovedUser[]>([]);
@@ -67,6 +99,10 @@ export function UserSettingsConsole() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<EditableRole>("viewer");
   const [newUserPlan, setNewUserPlan] = useState<ApprovedUser["subscriptionPlan"]>("free");
+
+  const [settingsForm, setSettingsForm] = useState<UserAdminSettingsPayload>(DEFAULT_SETTINGS);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsLastSaved, setSettingsLastSaved] = useState<string | null>(null);
 
   const refreshApprovedUsers = useCallback(async () => {
     try {
@@ -108,6 +144,31 @@ export function UserSettingsConsole() {
     }
   }, []);
 
+  const loadUserSettings = useCallback(async (userId: string) => {
+    setSettingsLoading(true);
+    setSettingsLastSaved(null);
+    try {
+      const payload = await parseJson<{ data: UserAdminSettingsPayload }>(
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}/settings`)
+      );
+      setSettingsForm({
+        broker: payload.data.broker,
+        portfolio: payload.data.portfolio,
+        account: payload.data.account,
+        notificationDefaults: payload.data.notificationDefaults
+      });
+      if (payload.data.updatedAt) {
+        setSettingsLastSaved(payload.data.updatedAt);
+      }
+      setStatus(`Settings loaded for ${userId}`);
+    } catch {
+      setSettingsForm(DEFAULT_SETTINGS);
+      setStatus("No existing settings — defaults loaded");
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, []);
+
   async function saveUserEdits(userId: string) {
     const email = emailEdits[userId]?.trim().toLowerCase() ?? "";
     if (!email) {
@@ -122,11 +183,7 @@ export function UserSettingsConsole() {
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            role,
-            subscriptionPlan
-          })
+          body: JSON.stringify({ email, role, subscriptionPlan })
         })
       );
       await refreshApprovedUsers();
@@ -150,12 +207,7 @@ export function UserSettingsConsole() {
         await fetch("/api/admin/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            role: newUserRole,
-            subscriptionPlan: newUserPlan,
-            status: "active"
-          })
+          body: JSON.stringify({ email, role: newUserRole, subscriptionPlan: newUserPlan, status: "active" })
         })
       );
       setNewUserEmail("");
@@ -172,14 +224,11 @@ export function UserSettingsConsole() {
     setStatus("Deleting user...");
     try {
       await parseJson(
-        await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
-          method: "DELETE"
-        })
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" })
       );
       if (selectedUserId === userId) {
         setSelectedUserId(null);
         setEditingUserId(null);
-        setUserIdInput("");
       }
       await refreshApprovedUsers();
       setStatus("User deleted");
@@ -188,54 +237,31 @@ export function UserSettingsConsole() {
     }
   }
 
-  async function upsertUserSettings(event: FormEvent<HTMLFormElement>) {
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const userId = userIdInput.trim();
-    if (!userId) {
-      setStatus("Missing user id");
+    if (!selectedUserId) {
+      setStatus("Select a user first");
       return;
     }
-
-    setStatus(`Updating settings for ${userId}...`);
+    setStatus(`Saving settings for ${selectedUserId}...`);
     try {
-      const payload = await parseJson<UserSettingsResponse>(
-        await fetch(`/api/admin/users/${encodeURIComponent(userId)}/settings`, {
+      const payload = await parseJson<{ data: { updatedAt: string } }>(
+        await fetch(`/api/admin/users/${encodeURIComponent(selectedUserId)}/settings`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            broker: {
-              provider: "paper",
-              accountRef: "paper-main",
-              enabled: true
-            },
-            portfolio: {
-              riskProfile: "balanced",
-              baseCurrency: "USD",
-              rebalanceFrequencyDays: 14
-            },
-            account: {
-              accountStatus: "active",
-              maxConcurrentSessions: 2,
-              timezone: "America/New_York"
-            },
-            notificationDefaults: {
-              email: true,
-              push: true,
-              sms: false,
-              digestHourUTC: 13
-            }
-          })
+          body: JSON.stringify(settingsForm)
         })
       );
-
-      setResult(
-        `Settings saved for ${userId} at ${new Date(payload.data.updatedAt).toLocaleString()}`
-      );
-      setStatus("User settings upserted");
-      setUserIdInput("");
+      setSettingsLastSaved(payload.data.updatedAt);
+      setStatus("Settings saved");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to update user settings");
+      setStatus(error instanceof Error ? error.message : "Failed to save settings");
     }
+  }
+
+  function selectUser(userId: string) {
+    setSelectedUserId(userId);
+    void loadUserSettings(userId);
   }
 
   useEffect(() => {
@@ -266,10 +292,7 @@ export function UserSettingsConsole() {
             type="email"
             value={newUserEmail}
           />
-          <select
-            onChange={(event) => setNewUserRole(event.target.value as EditableRole)}
-            value={newUserRole}
-          >
+          <select onChange={(event) => setNewUserRole(event.target.value as EditableRole)} value={newUserRole}>
             <option value="global_admin">global_admin</option>
             <option value="advisor">advisor</option>
             <option value="operator">operator</option>
@@ -301,16 +324,13 @@ export function UserSettingsConsole() {
             </thead>
             <tbody>
               {approvedUsers.map((user) => (
-                <tr key={user.userId}>
+                <tr key={user.userId} className={selectedUserId === user.userId ? "row-selected" : ""}>
                   <td>{user.name}</td>
                   <td>
                     <input
                       disabled={editingUserId !== user.userId}
                       onChange={(event) =>
-                        setEmailEdits((previous) => ({
-                          ...previous,
-                          [user.userId]: event.target.value
-                        }))
+                        setEmailEdits((previous) => ({ ...previous, [user.userId]: event.target.value }))
                       }
                       placeholder="update user email"
                       type="email"
@@ -363,22 +383,14 @@ export function UserSettingsConsole() {
                   </td>
                   <td>
                     <div className="tool-row">
-                      <button
-                        className="tiny-button"
-                        onClick={() => {
-                          setSelectedUserId(user.userId);
-                          setUserIdInput(user.userId);
-                        }}
-                        type="button"
-                      >
+                      <button className="tiny-button" onClick={() => selectUser(user.userId)} type="button">
                         <EditIcon className="crud-icon" /> Select
                       </button>
                       <button
                         className="tiny-button"
                         onClick={() => {
-                          setSelectedUserId(user.userId);
+                          selectUser(user.userId);
                           setEditingUserId(user.userId);
-                          setUserIdInput(user.userId);
                         }}
                         type="button"
                       >
@@ -392,11 +404,7 @@ export function UserSettingsConsole() {
                       >
                         <EditIcon className="crud-icon" /> Save
                       </button>
-                      <button
-                        className="tiny-button"
-                        onClick={() => void deleteUser(user.userId)}
-                        type="button"
-                      >
+                      <button className="tiny-button" onClick={() => void deleteUser(user.userId)} type="button">
                         <DeleteIcon className="crud-icon" /> Delete
                       </button>
                     </div>
@@ -408,26 +416,237 @@ export function UserSettingsConsole() {
         </div>
       </article>
 
-      <article className="surface-card xf-widget section-card">
-        <h3>Upsert Default xuser</h3>
-        <p className="status-text">
-          Rows are read-only by default. Select a row, press <strong>Edit</strong>, then press{" "}
-          <strong>Save</strong> to persist email, role, and plan changes.
-        </p>
-        <form className="stack-form" onSubmit={upsertUserSettings}>
-          <input
-            name="userId"
-            onChange={(event) => setUserIdInput(event.target.value)}
-            placeholder="user id"
-            required
-            value={userIdInput}
-          />
-          <button className="cta cta-primary" type="submit">
-            <AddIcon className="crud-icon" /> Add xuser
-          </button>
-        </form>
-        {result ? <p className="status-text">{result}</p> : null}
-      </article>
+      {selectedUserId ? (
+        <article className="surface-card xf-widget section-card">
+          <h3>
+            Settings for {approvedUsers.find((u) => u.userId === selectedUserId)?.name ?? selectedUserId}
+          </h3>
+          {settingsLastSaved ? (
+            <p className="status-text">Last saved: {new Date(settingsLastSaved).toLocaleString()}</p>
+          ) : null}
+          {settingsLoading ? (
+            <p className="status-text">Loading settings...</p>
+          ) : (
+            <form className="stack-form" onSubmit={saveSettings}>
+              <fieldset>
+                <legend>Broker</legend>
+                <label>
+                  Provider
+                  <select
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        broker: { ...s.broker, provider: e.target.value as BrokerSettings["provider"] }
+                      }))
+                    }
+                    value={settingsForm.broker.provider}
+                  >
+                    <option value="paper">paper</option>
+                    <option value="alpaca">alpaca</option>
+                    <option value="interactive-brokers">interactive-brokers</option>
+                  </select>
+                </label>
+                <label>
+                  Account Ref
+                  <input
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({ ...s, broker: { ...s.broker, accountRef: e.target.value } }))
+                    }
+                    required
+                    value={settingsForm.broker.accountRef}
+                  />
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    checked={settingsForm.broker.enabled}
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({ ...s, broker: { ...s.broker, enabled: e.target.checked } }))
+                    }
+                    type="checkbox"
+                  />
+                  Enabled
+                </label>
+              </fieldset>
+
+              <fieldset>
+                <legend>Portfolio</legend>
+                <label>
+                  Risk Profile
+                  <select
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        portfolio: {
+                          ...s.portfolio,
+                          riskProfile: e.target.value as PortfolioSettings["riskProfile"]
+                        }
+                      }))
+                    }
+                    value={settingsForm.portfolio.riskProfile}
+                  >
+                    <option value="conservative">conservative</option>
+                    <option value="balanced">balanced</option>
+                    <option value="growth">growth</option>
+                  </select>
+                </label>
+                <label>
+                  Base Currency
+                  <select
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        portfolio: {
+                          ...s.portfolio,
+                          baseCurrency: e.target.value as PortfolioSettings["baseCurrency"]
+                        }
+                      }))
+                    }
+                    value={settingsForm.portfolio.baseCurrency}
+                  >
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                  </select>
+                </label>
+                <label>
+                  Rebalance Frequency (days)
+                  <input
+                    min={1}
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        portfolio: { ...s.portfolio, rebalanceFrequencyDays: Number(e.target.value) || 14 }
+                      }))
+                    }
+                    type="number"
+                    value={settingsForm.portfolio.rebalanceFrequencyDays}
+                  />
+                </label>
+              </fieldset>
+
+              <fieldset>
+                <legend>Account</legend>
+                <label>
+                  Status
+                  <select
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        account: {
+                          ...s.account,
+                          accountStatus: e.target.value as AccountSettings["accountStatus"]
+                        }
+                      }))
+                    }
+                    value={settingsForm.account.accountStatus}
+                  >
+                    <option value="active">active</option>
+                    <option value="suspended">suspended</option>
+                  </select>
+                </label>
+                <label>
+                  Max Concurrent Sessions
+                  <input
+                    max={20}
+                    min={1}
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        account: { ...s.account, maxConcurrentSessions: Number(e.target.value) || 2 }
+                      }))
+                    }
+                    type="number"
+                    value={settingsForm.account.maxConcurrentSessions}
+                  />
+                </label>
+                <label>
+                  Timezone
+                  <input
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({ ...s, account: { ...s.account, timezone: e.target.value } }))
+                    }
+                    required
+                    value={settingsForm.account.timezone}
+                  />
+                </label>
+              </fieldset>
+
+              <fieldset>
+                <legend>Notifications</legend>
+                <label className="checkbox-label">
+                  <input
+                    checked={settingsForm.notificationDefaults.email}
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        notificationDefaults: { ...s.notificationDefaults, email: e.target.checked }
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  Email
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    checked={settingsForm.notificationDefaults.push}
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        notificationDefaults: { ...s.notificationDefaults, push: e.target.checked }
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  Push
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    checked={settingsForm.notificationDefaults.sms}
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        notificationDefaults: { ...s.notificationDefaults, sms: e.target.checked }
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  SMS
+                </label>
+                <label>
+                  Digest Hour (UTC)
+                  <input
+                    max={23}
+                    min={0}
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        notificationDefaults: {
+                          ...s.notificationDefaults,
+                          digestHourUTC: Number(e.target.value) || 0
+                        }
+                      }))
+                    }
+                    type="number"
+                    value={settingsForm.notificationDefaults.digestHourUTC}
+                  />
+                </label>
+              </fieldset>
+
+              <button className="cta cta-primary" type="submit">
+                <AddIcon className="crud-icon" /> Save settings
+              </button>
+            </form>
+          )}
+        </article>
+      ) : (
+        <article className="surface-card xf-widget section-card">
+          <h3>User Admin Settings</h3>
+          <p className="status-text">
+            Select a user from the table above to load and edit their broker, portfolio, account, and
+            notification settings.
+          </p>
+        </article>
+      )}
     </section>
   );
 }

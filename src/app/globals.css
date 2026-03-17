@@ -517,4 +517,139 @@
   .admin-function-card {
     min-height: 110px;
   }
+
+  .persona-directory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Selected row highlight */
+.crud-table tbody tr.row-selected {
+  background: rgba(255, 255, 255, 0.06);
+  outline: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Settings form fieldsets */
+fieldset {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--xf-radius-sm);
+  padding: 0.75rem;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+legend {
+  color: var(--xf-text-100);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0 0.4rem;
+}
+
+fieldset label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--xf-text-300);
+}
+
+fieldset label.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+fieldset label.checkbox-label input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--xf-text-100);
+}
+
+/* Task runs output cell */
+.output-cell {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Persona directory */
+.persona-directory-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.persona-card {
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.persona-card:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.persona-card-expanded {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.persona-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.persona-card-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.persona-card-badges {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.persona-card-meta {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.5rem;
+}
+
+.persona-card-meta small {
+  color: var(--xf-text-300);
+  font-size: 0.78rem;
+}
+
+.persona-card-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  color: var(--xf-text-300);
+  opacity: 0.6;
+}
+
+.persona-card-detail {
+  margin-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.75rem;
+}
+
+.persona-card-detail h4 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--xf-text-300);
+}
+
+.persona-prompt-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.78rem;
+  color: var(--xf-text-300);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--xf-radius-sm);
+  padding: 0.6rem;
+  max-height: 300px;
+  overflow-y: auto;
 }
