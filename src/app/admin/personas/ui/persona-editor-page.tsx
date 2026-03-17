@@ -111,7 +111,13 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       return;
     }
 
-    const parsedTools = buildToolsFromList(form.xapiToolList, form.xaiCollectionId);
+    let parsedTools: Array<{ type: string; [key: string]: unknown }> = [];
+    try {
+      parsedTools = buildToolsFromList(form.xapiToolList, form.xaiCollectionId);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Tools list is invalid");
+      return;
+    }
 
     setStatus(mode === "create" ? "Creating persona..." : "Saving persona...");
     try {
@@ -289,19 +295,33 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
   );
 }
 
-function buildToolsFromList(listValue: string, collectionId: string): Array<{ type: string; [key: string]: unknown }> {
+function buildToolsFromList(
+  listValue: string,
+  collectionId: string
+): Array<{ type: string; [key: string]: unknown }> {
   const normalized = listValue
     .split(/[,\n]/)
     .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean);
   const unique = Array.from(new Set(normalized));
+  const supportedTypes = new Set(["web_search", "x_search", "file_search"]);
+  const unsupportedTypes = unique.filter((entry) => !supportedTypes.has(entry));
+  if (unsupportedTypes.length > 0) {
+    throw new Error(
+      `Unsupported tool type(s): ${unsupportedTypes.join(", ")}. Supported values: web_search, x_search, file_search.`
+    );
+  }
+
+  const boundCollectionId = collectionId.trim();
+  if (unique.includes("file_search") && !boundCollectionId) {
+    throw new Error("file_search requires a collection id on the persona.");
+  }
 
   return unique.flatMap((entry) => {
     if (entry === "web_search" || entry === "x_search") {
       return [{ type: entry }];
     }
     if (entry === "file_search") {
-      const boundCollectionId = collectionId.trim();
       if (boundCollectionId) {
         return [{ type: "file_search", source: { collection_ids: [boundCollectionId] } }];
       }
