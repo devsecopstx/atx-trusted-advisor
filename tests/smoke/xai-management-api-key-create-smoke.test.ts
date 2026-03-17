@@ -6,8 +6,7 @@ const maybeIt = shouldRun ? it : it.skip;
 describe("xAI management api-key create smoke", () => {
   maybeIt("creates team API key via management API", async () => {
     const teamId = process.env.XAI_TEAM_ID?.trim();
-    const managementApiKey =
-      process.env.XAI_MANAGEMENT_API_KEY?.trim() ?? process.env.XAI_API_KEY?.trim();
+    const managementApiKey = process.env.XAI_MANAGEMENT_API_KEY?.trim();
     const managementBaseUrl = (
       process.env.XAI_MANAGEMENT_ROOT_URL?.trim() ?? "https://management-api.x.ai"
     ).replace(/\/$/, "");
@@ -16,7 +15,7 @@ describe("xAI management api-key create smoke", () => {
       throw new Error("Missing XAI_TEAM_ID for management key-create smoke test");
     }
     if (!managementApiKey) {
-      throw new Error("Missing effective management key (XAI_MANAGEMENT_API_KEY or XAI_API_KEY)");
+      throw new Error("Missing XAI_MANAGEMENT_API_KEY for management key-create smoke test");
     }
 
     const keyName = `xfinance-smoke-${Date.now()}`;

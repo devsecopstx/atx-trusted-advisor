@@ -22,7 +22,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `MONGODB_URI_B64` (Base64-encoded MongoDB URI)
   - legacy alias also supported: `MONGODB_URI_B4`
 - `XAI_API_KEY`
-- `XAI_MANAGEMENT_API_KEY` (optional override; when omitted, management operations fall back to `XAI_API_KEY`)
+- `XAI_MANAGEMENT_API_KEY` (required for management/KB collection operations)
 - `XAI_MANAGEMENT_BASE_URL` (optional override; defaults to `https://management-api.x.ai/v1`)
 - `X_OAUTH_CLIENT_ID` (raw client id from X app, not base64-encoded)
 - `X_OAUTH_CLIENT_SECRET`
@@ -145,13 +145,13 @@ Required:
 
 - `MONGODB_URI_B64`
 - `XAI_API_KEY`
+- `XAI_MANAGEMENT_API_KEY`
 - `X_OAUTH_CLIENT_ID`
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET`
 
 Optional:
 
-- `XAI_MANAGEMENT_API_KEY`
 - `ADMIN_SEED_EMAIL`
 - `ADMIN_X_USERNAMES`
 
@@ -216,7 +216,7 @@ Route53 TODO details:
 - `GET /api/personas/collections` returns `{ data: CollectionInventoryItem[] }` for admin onboarding collection selection.
 - `POST /api/personas/collections` accepts `{ name: string }` and creates a new xAI collection for onboarding.
 - xPersona can be created without a bound xAI collection (`xaiCollection.collectionId` empty). This enables step-by-step onboarding before RAG wiring.
-- Management operations use `XAI_MANAGEMENT_API_KEY` when set; otherwise they fall back to `XAI_API_KEY`.
+- Management operations require `XAI_MANAGEMENT_API_KEY`.
 - The key used for management operations must have Collections permissions enabled (read for listing and write for creating/linking as needed).
 - Current Finance collection id for operations: `collection_b75e188e-e7e6-4aa8-8e01-23caf0946236`.
 - Error responses include stable `code` values for operator troubleshooting:
@@ -287,7 +287,7 @@ curl -sS -X POST "https://management-api.x.ai/v1/collections/${XFINANCE_COLLECTI
 Use environment variables (do not hardcode live tokens in source):
 
 - `XAI_TEAM_ID`
-- `XAI_MANAGEMENT_API_KEY` (or fallback `XAI_API_KEY`)
+- `XAI_MANAGEMENT_API_KEY`
 - `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true`
 
 The smoke test calls:

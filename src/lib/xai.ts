@@ -44,10 +44,8 @@ function getXaiConfig() {
 
 function getXaiManagementConfig() {
   const env = getEnv();
-  const fallbackApiKey = env.XAI_API_KEY?.trim();
-  const managementApiKey = env.XAI_MANAGEMENT_API_KEY?.trim() || fallbackApiKey;
   return {
-    managementApiKey,
+    managementApiKey: env.XAI_MANAGEMENT_API_KEY.trim(),
     managementBaseUrl: env.XAI_MANAGEMENT_BASE_URL ?? "https://management-api.x.ai/v1"
   };
 }
@@ -63,7 +61,7 @@ export class XaiCollectionNotFoundError extends Error {
 
 export function hasXaiManagementApiKey(): boolean {
   const { managementApiKey } = getXaiManagementConfig();
-  return Boolean(managementApiKey?.trim());
+  return managementApiKey.length > 0;
 }
 
 export async function createXaiCollection(collectionName: string): Promise<{
@@ -71,9 +69,6 @@ export async function createXaiCollection(collectionName: string): Promise<{
   name: string;
 }> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
-  if (!managementApiKey) {
-    throw new Error("Missing XAI_API_KEY");
-  }
 
   const normalizedName = collectionName.trim();
   if (!normalizedName) {
@@ -116,9 +111,6 @@ export async function addFileToXaiCollection(input: {
   fileId: string;
 }): Promise<{ linked: boolean; alreadyLinked: boolean }> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
-  if (!managementApiKey) {
-    throw new Error("Missing XAI_API_KEY");
-  }
 
   const collectionId = input.collectionId.trim();
   const fileId = input.fileId.trim();
@@ -300,9 +292,6 @@ export async function getXaiCollectionById(collectionId: string): Promise<{
   name?: string;
 }> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
-  if (!managementApiKey) {
-    throw new Error("Missing XAI_API_KEY");
-  }
 
   const normalizedId = collectionId.trim();
   const response = await fetch(`${managementBaseUrl}/collections/${normalizedId}`, {
@@ -335,9 +324,6 @@ export async function getXaiCollectionById(collectionId: string): Promise<{
 
 export async function listXaiCollections(): Promise<XaiCollectionInventoryItem[]> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
-  if (!managementApiKey) {
-    throw new Error("Missing XAI_API_KEY");
-  }
 
   const response = await fetch(`${managementBaseUrl}/collections`, {
     method: "GET",

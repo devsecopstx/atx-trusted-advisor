@@ -70,7 +70,7 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.STAGING_BASE_URL }}/api/auth/x/callback" \
-            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest" \
+            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest" \
             --quiet
 
       - name: Health check staging
@@ -84,7 +84,11 @@ jobs:
           fi
 
   deploy-production:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
+    needs: [deploy-staging]
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.deploy-staging.result == 'success') ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
     name: Deploy Production
     runs-on: ubuntu-latest
     concurrency:
@@ -128,7 +132,7 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback" \
-            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest" \
+            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest" \
             --quiet
 
       - name: Health check production

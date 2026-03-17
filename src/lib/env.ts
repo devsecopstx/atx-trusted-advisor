@@ -4,7 +4,7 @@ const envSchema = z.object({
   MONGODB_URI_B64: z.string().min(1).optional(),
   MONGODB_URI_B4: z.string().min(1).optional(),
   XAI_API_KEY: z.string().min(1),
-  XAI_MANAGEMENT_API_KEY: z.string().min(1).optional(),
+  XAI_MANAGEMENT_API_KEY: z.string().min(1),
   X_OAUTH_CLIENT_ID: z.string().min(1),
   X_OAUTH_CLIENT_SECRET: z.string().min(1),
   X_OAUTH_CALLBACK_URL: z.string().url().optional(),
