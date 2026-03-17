@@ -250,6 +250,166 @@ export async function respondWithXai(input: {
   };
 }
 
+export type ToolExecutor = (
+  name: string,
+  args: Record<string, unknown>
+) => Promise<{ result: string; error?: string }>;
+
+export type ToolCallLog = {
+  name: string;
+  args: Record<string, unknown>;
+  result: string;
+  error?: string;
+  durationMs: number;
+};
+
+export type XaiToolLoopResult = {
+  model: string;
+  outputText: string;
+  toolCalls: ToolCallLog[];
+  turnsUsed: number;
+  raw: unknown;
+};
+
+export async function respondWithXaiToolLoop(input: {
+  model?: string;
+  systemPrompt: string;
+  userPrompt: string;
+  tools: Array<Record<string, unknown>>;
+  toolChoice?: XaiToolChoice;
+  maxTurns?: number;
+  executor: ToolExecutor;
+}): Promise<XaiToolLoopResult> {
+  const { apiKey, baseUrl, defaultModel } = getXaiConfig();
+  const model = input.model ?? defaultModel;
+  const maxTurns = input.maxTurns ?? 5;
+  const toolCalls: ToolCallLog[] = [];
+
+  let conversationInput: unknown = input.userPrompt;
+  let turnsUsed = 0;
+  let lastPayload: Record<string, unknown> = {};
+
+  for (let turn = 0; turn < maxTurns; turn++) {
+    turnsUsed = turn + 1;
+
+    const response = await fetch(`${baseUrl}/responses`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        system_prompt: input.systemPrompt,
+        input: conversationInput,
+        tools: input.tools,
+        tool_choice: input.toolChoice ?? "auto",
+        max_turns: 1
+      })
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    lastPayload = payload;
+
+    if (!response.ok) {
+      throw new Error(`xAI responses failed: ${JSON.stringify(payload.error ?? payload)}`);
+    }
+
+    const pendingToolCalls = extractToolCalls(payload);
+    if (pendingToolCalls.length === 0) {
+      const outputText = extractResponseOutputText(payload);
+      return {
+        model: asString(payload.model) ?? model,
+        outputText,
+        toolCalls,
+        turnsUsed,
+        raw: payload
+      };
+    }
+
+    const toolResults: Array<{ type: "function_call_output"; call_id: string; output: string }> = [];
+    for (const toolCall of pendingToolCalls) {
+      const start = Date.now();
+      let executorResult: { result: string; error?: string };
+      try {
+        executorResult = await input.executor(toolCall.name, toolCall.args);
+      } catch (error) {
+        executorResult = {
+          result: "",
+          error: error instanceof Error ? error.message : "executor_error"
+        };
+      }
+      const durationMs = Date.now() - start;
+
+      toolCalls.push({
+        name: toolCall.name,
+        args: toolCall.args,
+        result: executorResult.result,
+        error: executorResult.error,
+        durationMs
+      });
+
+      const output = executorResult.error
+        ? JSON.stringify({ error: executorResult.error })
+        : executorResult.result;
+
+      toolResults.push({
+        type: "function_call_output",
+        call_id: toolCall.callId,
+        output
+      });
+    }
+
+    conversationInput = toolResults;
+  }
+
+  const outputText = extractResponseOutputText(lastPayload);
+  return {
+    model: asString(lastPayload.model) ?? model,
+    outputText,
+    toolCalls,
+    turnsUsed,
+    raw: lastPayload
+  };
+}
+
+type ParsedToolCall = {
+  callId: string;
+  name: string;
+  args: Record<string, unknown>;
+};
+
+function extractToolCalls(payload: Record<string, unknown>): ParsedToolCall[] {
+  const output = Array.isArray(payload.output) ? payload.output : [];
+  const calls: ParsedToolCall[] = [];
+
+  for (const entry of output) {
+    if (!entry || typeof entry !== "object") continue;
+    const item = entry as Record<string, unknown>;
+    if (item.type !== "function_call") continue;
+
+    const callId = asString(item.call_id) ?? asString(item.id) ?? "";
+    const name = asString(item.name) ?? "";
+    let args: Record<string, unknown> = {};
+
+    if (typeof item.arguments === "string") {
+      try {
+        args = JSON.parse(item.arguments) as Record<string, unknown>;
+      } catch {
+        args = {};
+      }
+    } else if (item.arguments && typeof item.arguments === "object") {
+      args = item.arguments as Record<string, unknown>;
+    }
+
+    if (name) {
+      calls.push({ callId, name, args });
+    }
+  }
+
+  return calls;
+}
+
 export async function searchDocumentsInCollections(input: {
   query: string;
   collectionIds: string[];
