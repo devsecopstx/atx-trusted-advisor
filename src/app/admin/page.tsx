@@ -149,6 +149,7 @@ function AdminFunctionIcon({ name }: IconProps) {
 type AdminPageProps = {
   searchParams: Promise<{
     error?: string;
+    target?: string;
   }>;
 };
 
@@ -161,6 +162,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const mongoConnection = getMongoConnectionLabel();
   const isAdmin = session.roles.includes("global_admin");
   const showForbiddenNotice = params.error === "forbidden";
+  const forbiddenTarget = params.target?.trim().toLowerCase();
+  const forbiddenTargetLabel =
+    forbiddenTarget === "personas"
+      ? "xPersona Configuration"
+      : forbiddenTarget === "xchat"
+        ? "xchat Ask"
+        : "that function";
 
   return (
     <main className="core-shell">
@@ -195,7 +203,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </p>
           {showForbiddenNotice ? (
             <p className="status-text status-error">
-              Access denied for that function. Your account is authenticated but not a global admin.
+              Access denied for {forbiddenTargetLabel}. Your account is authenticated but not a global
+              admin.
             </p>
           ) : null}
         </div>

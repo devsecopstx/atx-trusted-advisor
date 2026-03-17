@@ -11,7 +11,7 @@ export default async function AdminPersonasPage() {
     redirect("/login");
   }
   if (!session.roles.includes("global_admin")) {
-    redirect("/admin?error=forbidden");
+    redirect("/admin?error=forbidden&target=personas");
   }
 
   return (

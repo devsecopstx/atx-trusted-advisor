@@ -24,7 +24,7 @@ type PersonaPayload = {
   xapiMode: "responses" | "chat_completions";
   xapiToolChoice: "auto" | "required" | "none";
   xapiMaxTurns: string;
-  xapiToolsJson: string;
+  xapiToolList: string;
 };
 
 const EMPTY_FORM: PersonaPayload = {
@@ -40,13 +40,14 @@ const EMPTY_FORM: PersonaPayload = {
   xapiMode: "responses",
   xapiToolChoice: "auto",
   xapiMaxTurns: "5",
-  xapiToolsJson: "[]"
+  xapiToolList: "web_search"
 };
 
 export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
   const [form, setForm] = useState<PersonaPayload>(EMPTY_FORM);
   const [status, setStatus] = useState("Ready");
   const [loading, setLoading] = useState(mode === "edit");
+  const [showAdvanced, setShowAdvanced] = useState(mode === "edit");
   const router = useRouter();
 
   useEffect(() => {
@@ -86,7 +87,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           xapiMode: payload.data.xapi.mode,
           xapiToolChoice: payload.data.xapi.toolChoice,
           xapiMaxTurns: String(payload.data.xapi.maxTurns),
-          xapiToolsJson: JSON.stringify(payload.data.xapi.tools, null, 2)
+          xapiToolList: payload.data.xapi.tools.map((tool) => tool.type).join(", ")
         });
         setStatus("Loaded");
       } catch (error) {
@@ -110,27 +111,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       return;
     }
 
-    let parsedTools: Array<{ type: string; [key: string]: unknown }> = [];
-    try {
-      const candidate = JSON.parse(form.xapiToolsJson.trim() || "[]") as unknown;
-      if (!Array.isArray(candidate)) {
-        throw new Error("Tools JSON must be an array");
-      }
-      const normalized = candidate.filter(
-        (tool): tool is { type: string; [key: string]: unknown } =>
-          Boolean(tool) &&
-          typeof tool === "object" &&
-          "type" in tool &&
-          typeof (tool as { type?: unknown }).type === "string"
-      );
-      if (normalized.length !== candidate.length) {
-        throw new Error("Each tool must contain a string type");
-      }
-      parsedTools = normalized;
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Tools JSON is invalid");
-      return;
-    }
+    const parsedTools = buildToolsFromList(form.xapiToolList, form.xaiCollectionId);
 
     setStatus(mode === "create" ? "Creating persona..." : "Saving persona...");
     try {
@@ -187,37 +168,16 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             rows={6}
             value={form.systemPrompt}
           />
-          <textarea
-            onChange={(event) => setForm((current) => ({ ...current, overridePrompt: event.target.value }))}
-            placeholder="override prompt"
-            rows={4}
-            value={form.overridePrompt}
-          />
           <input
             onChange={(event) => setForm((current) => ({ ...current, xaiCollectionId: event.target.value }))}
             placeholder="collection id"
             value={form.xaiCollectionId}
           />
           <input
-            onChange={(event) =>
-              setForm((current) => ({ ...current, xaiCollectionName: event.target.value }))
-            }
-            placeholder="collection name"
-            value={form.xaiCollectionName}
-          />
-          <input
             onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
             placeholder="model"
             required
             value={form.model}
-          />
-          <input
-            max={1}
-            min={0}
-            onChange={(event) => setForm((current) => ({ ...current, temperature: event.target.value }))}
-            step="0.1"
-            type="number"
-            value={form.temperature}
           />
           <input
             onChange={(event) =>
@@ -227,6 +187,47 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             required
             value={form.defaultScope}
           />
+          <input
+            onChange={(event) => setForm((current) => ({ ...current, xapiToolList: event.target.value }))}
+            placeholder="tools list: web_search, x_search, file_search"
+            value={form.xapiToolList}
+          />
+          <small className="status-text">
+            Tools are translated to xAI response tools. Use comma-separated values such as
+            `web_search`, `x_search`, and `file_search`.
+          </small>
+          <button className="tiny-button" onClick={() => setShowAdvanced((current) => !current)} type="button">
+            {showAdvanced ? "Hide optional fields" : "Show optional fields"}
+          </button>
+          {showAdvanced ? (
+            <>
+              <textarea
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, overridePrompt: event.target.value }))
+                }
+                placeholder="override prompt"
+                rows={4}
+                value={form.overridePrompt}
+              />
+              <input
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, xaiCollectionName: event.target.value }))
+                }
+                placeholder="collection name"
+                value={form.xaiCollectionName}
+              />
+              <input
+                max={1}
+                min={0}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, temperature: event.target.value }))
+                }
+                step="0.1"
+                type="number"
+                value={form.temperature}
+              />
+            </>
+          ) : null}
           <select
             onChange={(event) =>
               setForm((current) => ({
@@ -260,12 +261,6 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             type="number"
             value={form.xapiMaxTurns}
           />
-          <textarea
-            onChange={(event) => setForm((current) => ({ ...current, xapiToolsJson: event.target.value }))}
-            placeholder='[{"type":"web_search"}]'
-            rows={8}
-            value={form.xapiToolsJson}
-          />
           <label>
             <input
               checked={form.enableRag}
@@ -276,6 +271,10 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             />{" "}
             Enable RAG
           </label>
+          <small className="status-text">
+            Enable RAG means xchat can use collection/search context to ground answers before generating
+            the final response.
+          </small>
           <div className="tool-row">
             <button className="cta cta-primary" disabled={loading} type="submit">
               {mode === "create" ? "Create persona" : "Save persona"}
@@ -288,4 +287,26 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       </article>
     </section>
   );
+}
+
+function buildToolsFromList(listValue: string, collectionId: string): Array<{ type: string; [key: string]: unknown }> {
+  const normalized = listValue
+    .split(/[,\n]/)
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+  const unique = Array.from(new Set(normalized));
+
+  return unique.flatMap((entry) => {
+    if (entry === "web_search" || entry === "x_search") {
+      return [{ type: entry }];
+    }
+    if (entry === "file_search") {
+      const boundCollectionId = collectionId.trim();
+      if (boundCollectionId) {
+        return [{ type: "file_search", source: { collection_ids: [boundCollectionId] } }];
+      }
+      return [{ type: "file_search" }];
+    }
+    return [];
+  });
 }

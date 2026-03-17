@@ -13,7 +13,7 @@ export default async function AdminXchatPage() {
     redirect("/login");
   }
   if (!session.roles.includes("global_admin")) {
-    redirect("/admin?error=forbidden");
+    redirect("/admin?error=forbidden&target=xchat");
   }
 
   return (
