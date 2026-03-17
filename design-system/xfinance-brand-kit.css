@@ -13,6 +13,9 @@
   --xf-success-400: #8bd5b3;
   --xf-danger-400: #f5a0ad;
   --xf-warning-400: #dfc78d;
+  --xf-gain-green: #39ff14;
+  --xf-gain-green-muted: #00cc00;
+  --xf-gain-glow: 0 0 24px rgba(57, 255, 20, 0.35), 0 0 64px rgba(57, 255, 20, 0.12);
   --xf-glow-blue: 0 0 16px rgba(255, 255, 255, 0.1);
   --xf-glow-purple: 0 0 16px rgba(255, 255, 255, 0.08);
   --xf-radius-sm: 12px;

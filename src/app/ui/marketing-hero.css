@@ -1,0 +1,315 @@
+/* ── Marketing hero ─────────────────────────── */
+
+.mh-hero {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1.5rem;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 80%, rgba(57, 255, 20, 0.04), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(255, 255, 255, 0.02), transparent),
+    linear-gradient(170deg, #0b0b0e 0%, #000000 60%, #050508 100%);
+}
+
+/* xAI-style geometric grid lines */
+.mh-grid-lines {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 20%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 20%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Subtle circuit dot pattern */
+.mh-circuit-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(57, 255, 20, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: 20px 20px;
+  mask-image: radial-gradient(ellipse 40% 40% at 70% 30%, black, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 40% 40% at 70% 30%, black, transparent 70%);
+  pointer-events: none;
+}
+
+.mh-content {
+  position: relative;
+  z-index: 1;
+  width: min(1200px, 100%);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+@media (min-width: 860px) {
+  .mh-content {
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 3rem;
+  }
+}
+
+/* ── Left: copy ────────────────────────────── */
+
+.mh-left {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.mh-descriptor {
+  margin: 0;
+  color: var(--xf-text-300);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.mh-tagline {
+  margin: 0;
+  font-size: clamp(2rem, 5.5vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  color: #ffffff;
+}
+
+.mh-tagline-glow {
+  color: var(--xf-gain-green);
+  text-shadow: var(--xf-gain-glow);
+}
+
+.mh-sub {
+  margin: 0;
+  max-width: 48ch;
+  color: var(--xf-text-300);
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+/* ── Badges ────────────────────────────────── */
+
+.mh-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xf-text-100);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mh-badge-grok {
+  border-color: rgba(57, 255, 20, 0.2);
+  color: var(--xf-gain-green);
+}
+
+.mh-dollar {
+  color: var(--xf-gain-green);
+  font-weight: 700;
+}
+
+.mh-gain-arrow {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── CTAs ──────────────────────────────────── */
+
+.mh-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.mh-cta-primary,
+.mh-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--xf-radius-sm);
+  padding: 0.75rem 1.5rem;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.mh-cta-primary:hover,
+.mh-cta-secondary:hover {
+  transform: translateY(-1px);
+}
+
+.mh-cta-primary {
+  color: #000000;
+  background: var(--xf-gain-green);
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.25);
+}
+
+.mh-cta-primary:hover {
+  box-shadow: 0 0 32px rgba(57, 255, 20, 0.4);
+}
+
+.mh-cta-secondary {
+  color: var(--xf-text-100);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Right: phone + silhouette ─────────────── */
+
+.mh-right {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.5rem;
+  position: relative;
+}
+
+.mh-phone {
+  width: min(260px, 60vw);
+  aspect-ratio: 9 / 19;
+  border-radius: 32px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(145deg, rgba(30, 33, 38, 0.6), rgba(12, 14, 18, 0.9));
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(57, 255, 20, 0.06);
+}
+
+.mh-phone-screen {
+  height: 100%;
+  border-radius: 24px;
+  padding: 14px 12px;
+  background:
+    radial-gradient(circle at 70% 15%, rgba(57, 255, 20, 0.04), transparent 50%),
+    linear-gradient(160deg, #111316 0%, #0c0e12 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mh-phone-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+
+.mh-phone-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mh-phone-pill {
+  width: 48px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mh-phone-portfolio {
+  display: grid;
+  gap: 2px;
+}
+
+.mh-phone-label {
+  color: var(--xf-text-400);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mh-phone-value {
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.mh-phone-gain {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--xf-gain-green);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.mh-phone-gain .mh-gain-arrow {
+  width: 14px;
+  height: 14px;
+}
+
+.mh-chart-icon {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.mh-phone-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.mh-phone-btn {
+  flex: 1;
+  text-align: center;
+  border-radius: 8px;
+  padding: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mh-phone-btn-buy {
+  background: var(--xf-gain-green);
+  color: #000000;
+}
+
+.mh-phone-btn-sell {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--xf-text-300);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mh-trader {
+  width: 48px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+@media (max-width: 859px) {
+  .mh-right {
+    order: -1;
+  }
+
+  .mh-phone {
+    width: min(200px, 50vw);
+  }
+
+  .mh-trader {
+    display: none;
+  }
+}
