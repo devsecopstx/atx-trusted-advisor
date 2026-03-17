@@ -116,6 +116,11 @@ export type XChatSessionLog = {
     documentName?: string;
     snippetFingerprint: string;
   }>;
+  xapiToolCalls?: Array<{
+    name: string;
+    durationMs: number;
+    error?: string;
+  }>;
   createdAt: Date;
 };
 

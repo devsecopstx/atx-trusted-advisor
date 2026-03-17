@@ -4,13 +4,23 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { chatWithXai, respondWithXai, searchDocumentsInCollections } from "@/lib/xai";
+import {
+  chatWithXai,
+  respondWithXai,
+  respondWithXaiToolLoop,
+  searchDocumentsInCollections,
+  type ToolCallLog
+} from "@/lib/xai";
 import {
   getPersonaById,
   retrieveRagChunks,
   saveXChatLog
 } from "@/modules/xchat/repository";
 import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
+import {
+  createXfinanceToolExecutor,
+  XFINANCE_TOOL_DEFINITION
+} from "@/modules/xchat/tool-executor";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 
 const askSchema = z.object({
@@ -149,26 +159,51 @@ export async function POST(request: Request) {
     ? `${userPromptTemplate}\n\nUser message:\n${message}`
     : message;
 
+  const hasXfinanceTool = xapiConfig.tools.some((t) => t.type === "xfinance");
   let xaiResponse: { outputText: string; model: string };
+  let toolCallLogs: ToolCallLog[] = [];
+
   try {
-    xaiResponse =
-      xapiConfig.mode === "chat_completions"
-        ? await chatWithXai({
-            model: persona?.model,
-            temperature: persona?.temperature ?? 0.2,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
-            ]
-          })
-        : await respondWithXai({
-            model: persona?.model,
-            systemPrompt,
-            userPrompt,
-            tools: xapiConfig.tools,
-            toolChoice: xapiConfig.toolChoice,
-            maxTurns: xapiConfig.maxTurns
-          });
+    if (xapiConfig.mode === "chat_completions") {
+      xaiResponse = await chatWithXai({
+        model: persona?.model,
+        temperature: persona?.temperature ?? 0.2,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ]
+      });
+    } else if (hasXfinanceTool) {
+      const xaiTools: Array<Record<string, unknown>> = xapiConfig.tools
+        .filter((t) => t.type !== "xfinance")
+        .map((t) => ({ ...t }));
+      xaiTools.push(XFINANCE_TOOL_DEFINITION);
+
+      const executor = createXfinanceToolExecutor({
+        userId: session.userId,
+        tenantId: session.tenantId
+      });
+      const loopResult = await respondWithXaiToolLoop({
+        model: persona?.model,
+        systemPrompt,
+        userPrompt,
+        tools: xaiTools,
+        toolChoice: xapiConfig.toolChoice,
+        maxTurns: xapiConfig.maxTurns,
+        executor
+      });
+      xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
+      toolCallLogs = loopResult.toolCalls;
+    } else {
+      xaiResponse = await respondWithXai({
+        model: persona?.model,
+        systemPrompt,
+        userPrompt,
+        tools: xapiConfig.tools,
+        toolChoice: xapiConfig.toolChoice,
+        maxTurns: xapiConfig.maxTurns
+      });
+    }
   } catch (error) {
     console.error("[xchat/ask] xAI provider call failed", {
       mode: xapiConfig.mode,
@@ -200,7 +235,14 @@ export async function POST(request: Request) {
     xapiToolChoice: xapiConfig.toolChoice,
     xapiMaxTurns: xapiConfig.maxTurns,
     xapiToolCount: xapiConfig.tools.length,
-    collectionContextReferences
+    collectionContextReferences,
+    xapiToolCalls: toolCallLogs.length > 0
+      ? toolCallLogs.map((tc) => ({
+          name: tc.name,
+          durationMs: tc.durationMs,
+          error: tc.error
+        }))
+      : undefined
   });
 
   return NextResponse.json({
@@ -208,7 +250,10 @@ export async function POST(request: Request) {
       response: xaiResponse.outputText,
       model: xaiResponse.model,
       contextCount,
-      contextSource
+      contextSource,
+      toolCalls: toolCallLogs.length > 0
+        ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
+        : undefined
     }
   });
 }
