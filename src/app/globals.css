@@ -822,6 +822,60 @@ fieldset label.checkbox-label input[type="checkbox"] {
 
 /* ── Gain / loss value coloring ────────────── */
 
+/* ── Access request step indicator ──────────── */
+
+.ar-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.ar-step {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--xf-text-400);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ar-step-done {
+  color: var(--xf-text-100);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.ar-step-current {
+  border-color: var(--xf-gain-green);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.15);
+}
+
+.ar-step-terminal {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.ar-step-terminal.status-error {
+  border-color: rgba(245, 160, 173, 0.3);
+}
+
+.ar-step-terminal.status-live {
+  border-color: rgba(139, 213, 179, 0.3);
+}
+
+.ar-step-sep {
+  display: inline-block;
+  width: 8px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  vertical-align: middle;
+  margin: 0 1px;
+}
+
 .tiny-button-active {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.3);

@@ -6,16 +6,22 @@ import Image from "next/image";
 import { parseJson } from "@/app/admin/ui/http";
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 
+type AccessRequestStatus = "new" | "triaged" | "pending" | "approved" | "rejected" | "expired";
+
 type AccessRequest = {
   _id?: string;
   userId: string;
   requestedRole: "advisor" | "operator" | "viewer";
   requestedPlan: "free" | "pro" | "enterprise";
   reason: string;
-  status: "pending" | "approved" | "rejected";
+  status: AccessRequestStatus;
   requestedAt: string;
+  triagedAt?: string;
+  triagedBy?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  expiredAt?: string;
+  policyViolations?: Array<{ code: string; message: string }>;
   user?: {
     userId: string;
     email?: string;
@@ -35,20 +41,69 @@ type AccessRequest = {
   latestAuditEvent?: {
     action: string;
     createdAt: string;
-    actor: {
-      userId: string;
-      email?: string;
-      username?: string;
-    };
+    actor: { userId: string; email?: string; username?: string };
   } | null;
 };
 
-type AccessRequestFilter = "pending" | "approved" | "rejected" | "all";
+type AccessRequestFilter = AccessRequestStatus | "all";
+
+const STATUS_STEPS: AccessRequestStatus[] = ["new", "triaged", "pending", "approved"];
+const TERMINAL_STATUSES: AccessRequestStatus[] = ["approved", "rejected", "expired"];
+const SLA_DAYS = 7;
+
+const STATUS_COLOR: Record<AccessRequestStatus, string> = {
+  new: "status-warn",
+  triaged: "status-ready",
+  pending: "status-warn",
+  approved: "status-live",
+  rejected: "status-error",
+  expired: "status-ready"
+};
+
+function daysUntilExpiry(requestedAt: string): number {
+  const requested = new Date(requestedAt);
+  const expiry = new Date(requested);
+  expiry.setDate(expiry.getDate() + SLA_DAYS);
+  const remaining = expiry.getTime() - Date.now();
+  return Math.max(0, Math.ceil(remaining / (1000 * 60 * 60 * 24)));
+}
+
+function StatusStepIndicator({ current }: { current: AccessRequestStatus }) {
+  if (current === "rejected" || current === "expired") {
+    return (
+      <div className="ar-step-indicator">
+        <span className={`ar-step ar-step-terminal ${STATUS_COLOR[current]}`}>
+          {current}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ar-step-indicator">
+      {STATUS_STEPS.map((step, i) => {
+        const currentIdx = STATUS_STEPS.indexOf(current);
+        const isDone = i <= currentIdx;
+        const isCurrent = step === current;
+        return (
+          <span key={step}>
+            {i > 0 ? <span className="ar-step-sep" /> : null}
+            <span
+              className={`ar-step${isDone ? " ar-step-done" : ""}${isCurrent ? " ar-step-current" : ""}`}
+            >
+              {step}
+            </span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 export function AccessRequestsConsole() {
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
   const [status, setStatus] = useState("Ready - tap refresh");
-  const [statusFilter, setStatusFilter] = useState<AccessRequestFilter>("pending");
+  const [statusFilter, setStatusFilter] = useState<AccessRequestFilter>("all");
   const [emailEdits, setEmailEdits] = useState<Record<string, string>>({});
   const [planEdits, setPlanEdits] = useState<Record<string, AccessRequest["requestedPlan"]>>({});
 
@@ -69,9 +124,7 @@ export function AccessRequestsConsole() {
       setPlanEdits((previous) => {
         const next = { ...previous };
         for (const item of payload.data) {
-          if (!item._id) {
-            continue;
-          }
+          if (!item._id) continue;
           next[item._id] = previous[item._id] ?? item.requestedPlan ?? "free";
         }
         return next;
@@ -87,18 +140,9 @@ export function AccessRequestsConsole() {
     const formData = new FormData(event.currentTarget);
     const userId = String(formData.get("userId") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
-
-    if (!userId && !email) {
-      setStatus("Provide either email or user id.");
-      return;
-    }
-    if (userId && email) {
-      setStatus("Choose one identifier only: email or user id.");
-      return;
-    }
-
+    if (!userId && !email) { setStatus("Provide either email or user id."); return; }
+    if (userId && email) { setStatus("Choose one identifier only."); return; }
     setStatus("Creating access request...");
-
     try {
       await parseJson(
         await fetch("/api/admin/access-requests", {
@@ -121,29 +165,18 @@ export function AccessRequestsConsole() {
   }
 
   useEffect(() => {
-    const refreshTimer = window.setTimeout(() => {
-      void refreshAccessRequests();
-    }, 0);
-    return () => {
-      window.clearTimeout(refreshTimer);
-    };
+    const timer = window.setTimeout(() => void refreshAccessRequests(), 0);
+    return () => window.clearTimeout(timer);
   }, [refreshAccessRequests]);
 
   async function updateUserEmail(userId: string) {
     const email = emailEdits[userId]?.trim().toLowerCase() ?? "";
-    if (!email) {
-      setStatus("Email is required to update user.");
-      return;
-    }
+    if (!email) { setStatus("Email is required."); return; }
     setStatus("Updating user email...");
     try {
-      await parseJson(
-        await fetch(`/api/admin/users/${encodeURIComponent(userId)}/email`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email })
-        })
-      );
+      await parseJson(await fetch(`/api/admin/users/${encodeURIComponent(userId)}/email`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email })
+      }));
       await refreshAccessRequests();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to update email");
@@ -151,15 +184,11 @@ export function AccessRequestsConsole() {
   }
 
   async function reviewRequest(requestId: string, statusValue: "approved" | "rejected") {
-    setStatus(`${statusValue === "approved" ? "Approving" : "Rejecting"} request...`);
+    setStatus(`${statusValue === "approved" ? "Approving" : "Rejecting"}...`);
     try {
-      await parseJson(
-        await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: statusValue })
-        })
-      );
+      await parseJson(await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: statusValue })
+      }));
       await refreshAccessRequests();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to update request");
@@ -167,51 +196,48 @@ export function AccessRequestsConsole() {
   }
 
   async function updateRequestPlan(requestId: string) {
-    const requestedPlan = planEdits[requestId] ?? "free";
-    setStatus("Updating request plan...");
+    setStatus("Updating plan...");
     try {
-      await parseJson(
-        await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestedPlan })
-        })
-      );
+      await parseJson(await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestedPlan: planEdits[requestId] ?? "free" })
+      }));
       await refreshAccessRequests();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to update request plan");
+      setStatus(error instanceof Error ? error.message : "Failed to update plan");
     }
   }
 
   async function deleteRequest(requestId: string) {
-    setStatus("Deleting request...");
+    setStatus("Deleting...");
     try {
-      await parseJson(
-        await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
-          method: "DELETE"
-        })
-      );
+      await parseJson(await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, { method: "DELETE" }));
       await refreshAccessRequests();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to delete request");
+      setStatus(error instanceof Error ? error.message : "Failed to delete");
     }
   }
+
+  const isActionable = (s: AccessRequestStatus) => !TERMINAL_STATUSES.includes(s);
 
   return (
     <section className="panel stack-gap">
       <div className="tool-row">
         <select
-          aria-label="Filter access requests by status"
-          onChange={(event) => setStatusFilter(event.target.value as AccessRequestFilter)}
+          aria-label="Filter access requests"
+          onChange={(e) => setStatusFilter(e.target.value as AccessRequestFilter)}
           value={statusFilter}
         >
+          <option value="all">all</option>
+          <option value="new">new</option>
+          <option value="triaged">triaged</option>
           <option value="pending">pending</option>
           <option value="approved">approved</option>
           <option value="rejected">rejected</option>
-          <option value="all">all</option>
+          <option value="expired">expired</option>
         </select>
         <button className="cta cta-secondary" onClick={() => void refreshAccessRequests()} type="button">
-          <RefreshIcon className="crud-icon" /> Refresh requests
+          <RefreshIcon className="crud-icon" /> Refresh
         </button>
         <p className="status-text">{status}</p>
       </div>
@@ -220,7 +246,7 @@ export function AccessRequestsConsole() {
         <h3>New Access Request</h3>
         <form className="stack-form" onSubmit={createAccessRequest}>
           <input name="email" placeholder="user email (preferred)" type="email" />
-          <input name="userId" placeholder="user id (optional advanced path)" />
+          <input name="userId" placeholder="user id (optional)" />
           <select name="requestedRole" defaultValue="operator">
             <option value="advisor">advisor</option>
             <option value="operator">operator</option>
@@ -239,147 +265,105 @@ export function AccessRequestsConsole() {
       </article>
 
       <article className="surface-card xf-widget section-card">
-        <h3>Requests ({statusFilter})</h3>
+        <h3>Requests ({statusFilter}) — {accessRequests.length}</h3>
         <div className="crud-table-wrap">
           <table className="crud-table">
             <thead>
               <tr>
                 <th>User</th>
-                <th>Role</th>
-                <th>Plan</th>
+                <th>Role / Plan</th>
                 <th>Status</th>
+                <th>SLA</th>
                 <th>Reason</th>
-                <th>Audit</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {accessRequests.map((item) => (
-                <tr key={item._id ?? `${item.userId}-${item.requestedAt}`}>
-                  <td>
-                    <div className="user-summary">
-                      {item.user?.avatarUrl ? (
-                        <Image
-                          alt={`${item.user?.displayName ?? item.user?.username ?? "user"} avatar`}
-                          className="user-avatar"
-                          height={32}
-                          src={item.user.avatarUrl}
-                          width={32}
-                        />
-                      ) : (
-                        <span className="user-avatar user-avatar-fallback">
-                          {(item.user?.displayName ?? item.user?.username ?? item.userId)
-                            .slice(0, 1)
-                            .toUpperCase()}
-                        </span>
-                      )}
-                      <div className="user-summary-copy">
-                        <strong>{item.user?.email ?? item.user?.username ?? item.userId}</strong>
-                        <span>{item.user?.displayName ?? item.user?.username ?? "No display name"}</span>
-                        <span>xid: {item.user?.xUserId ?? "missing"}</span>
+              {accessRequests.map((item) => {
+                const days = daysUntilExpiry(item.requestedAt);
+                const slaUrgent = days <= 2 && isActionable(item.status);
+                return (
+                  <tr key={item._id ?? `${item.userId}-${item.requestedAt}`}>
+                    <td>
+                      <div className="user-summary">
+                        {item.user?.avatarUrl ? (
+                          <Image
+                            alt={`${item.user?.displayName ?? item.user?.username ?? "user"} avatar`}
+                            className="user-avatar" height={32} src={item.user.avatarUrl} width={32}
+                          />
+                        ) : (
+                          <span className="user-avatar user-avatar-fallback">
+                            {(item.user?.displayName ?? item.user?.username ?? item.userId).slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                        <div className="user-summary-copy">
+                          <strong>{item.user?.email ?? item.user?.username ?? item.userId}</strong>
+                          <span>{item.user?.displayName ?? ""}</span>
+                        </div>
                       </div>
-                    </div>
-                    <input
-                      onChange={(event) =>
-                        setEmailEdits((previous) => ({
-                          ...previous,
-                          [item.userId]: event.target.value
-                        }))
-                      }
-                      placeholder="update user email"
-                      type="email"
-                      value={emailEdits[item.userId] ?? ""}
-                    />
-                  </td>
-                  <td>{item.requestedRole}</td>
-                  <td>
-                    <select
-                      disabled={!item._id || item.status !== "pending"}
-                      onChange={(event) => {
-                        const requestId = item._id;
-                        if (!requestId) {
-                          return;
-                        }
-                        setPlanEdits((previous) => ({
-                          ...previous,
-                          [requestId]: event.target.value as AccessRequest["requestedPlan"]
-                        }));
-                      }}
-                      value={item._id ? (planEdits[item._id] ?? item.requestedPlan ?? "free") : "free"}
-                    >
-                      <option value="free">free</option>
-                      <option value="pro">pro</option>
-                      <option value="enterprise">enterprise</option>
-                    </select>
-                  </td>
-                  <td>{item.status}</td>
-                  <td>{item.reason}</td>
-                  <td>
-                    {item.reviewedAt
-                      ? `Reviewed by ${
-                          item.reviewedByUser?.email ??
-                          item.reviewedByUser?.displayName ??
-                          item.reviewedByUser?.username ??
-                          item.reviewedBy ??
-                          "unknown"
-                        } at ${new Date(item.reviewedAt).toLocaleString()}`
-                      : "Not reviewed"}
-                    {item.latestAuditEvent ? (
-                      <>
-                        <br />
-                        Last change: {item.latestAuditEvent.action} by{" "}
-                        {item.latestAuditEvent.actor.email ??
-                          item.latestAuditEvent.actor.username ??
-                          item.latestAuditEvent.actor.userId} at{" "}
-                        {new Date(item.latestAuditEvent.createdAt).toLocaleString()}
-                      </>
-                    ) : null}
-                  </td>
-                  <td>
-                    <div className="tool-row">
-                      <button
-                        className="tiny-button"
-                        onClick={() => void updateUserEmail(item.userId)}
-                        type="button"
+                    </td>
+                    <td>
+                      <span className="status-badge">{item.requestedRole}</span>
+                      <br />
+                      <select
+                        disabled={!item._id || !isActionable(item.status)}
+                        onChange={(e) => {
+                          if (!item._id) return;
+                          setPlanEdits((p) => ({ ...p, [item._id as string]: e.target.value as AccessRequest["requestedPlan"] }));
+                        }}
+                        value={item._id ? (planEdits[item._id] ?? item.requestedPlan) : "free"}
                       >
-                        <EditIcon className="crud-icon" /> Edit email
-                      </button>
-                      <button
-                        className="tiny-button"
-                        disabled={!item._id || item.status !== "pending"}
-                        onClick={() => item._id && void updateRequestPlan(item._id)}
-                        type="button"
-                      >
-                        <EditIcon className="crud-icon" /> Edit plan
-                      </button>
-                      <button
-                        className="tiny-button"
-                        disabled={!item._id || item.status !== "pending"}
-                        onClick={() => item._id && void reviewRequest(item._id, "approved")}
-                        type="button"
-                      >
-                        <EditIcon className="crud-icon" /> Edit approve
-                      </button>
-                      <button
-                        className="tiny-button"
-                        disabled={!item._id || item.status !== "pending"}
-                        onClick={() => item._id && void reviewRequest(item._id, "rejected")}
-                        type="button"
-                      >
-                        <EditIcon className="crud-icon" /> Edit reject
-                      </button>
-                      <button
-                        className="tiny-button"
-                        disabled={!item._id}
-                        onClick={() => item._id && void deleteRequest(item._id)}
-                        type="button"
-                      >
-                        <DeleteIcon className="crud-icon" /> Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <option value="free">free</option>
+                        <option value="pro">pro</option>
+                        <option value="enterprise">enterprise</option>
+                      </select>
+                    </td>
+                    <td>
+                      <StatusStepIndicator current={item.status} />
+                      {item.policyViolations && item.policyViolations.length > 0 ? (
+                        <small className="status-text status-error" style={{ display: "block", marginTop: "0.25rem" }}>
+                          {item.policyViolations.map((v) => v.message).join("; ")}
+                        </small>
+                      ) : null}
+                    </td>
+                    <td>
+                      {isActionable(item.status) ? (
+                        <span className={slaUrgent ? "value-loss" : "value-neutral"}>
+                          {days}d left
+                        </span>
+                      ) : (
+                        <span className="value-neutral">—</span>
+                      )}
+                    </td>
+                    <td><small>{item.reason}</small></td>
+                    <td>
+                      <div className="tool-row">
+                        <button className="tiny-button" onClick={() => void updateUserEmail(item.userId)} type="button">
+                          <EditIcon className="crud-icon" /> Email
+                        </button>
+                        {isActionable(item.status) && item._id ? (
+                          <>
+                            <button className="tiny-button" onClick={() => item._id && void updateRequestPlan(item._id)} type="button">
+                              <EditIcon className="crud-icon" /> Plan
+                            </button>
+                            <button className="tiny-button" onClick={() => item._id && void reviewRequest(item._id, "approved")} type="button">
+                              Approve
+                            </button>
+                            <button className="tiny-button" onClick={() => item._id && void reviewRequest(item._id, "rejected")} type="button">
+                              Reject
+                            </button>
+                          </>
+                        ) : null}
+                        {item._id ? (
+                          <button className="tiny-button" onClick={() => item._id && void deleteRequest(item._id)} type="button">
+                            <DeleteIcon className="crud-icon" /> Del
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

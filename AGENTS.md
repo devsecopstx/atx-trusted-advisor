@@ -140,30 +140,28 @@ All three share the same update script and secret requirements above.
 **Completed:**
 - Phase 1: Token hygiene — badge variants, marketing-hero hex→tokens, chart bar tokens, admin hub hero alignment.
 - Phase 2: Chart tokens (`--xf-chart-*`), xStrategyBuilder coming-soon card, `value-gain`/`value-loss` CSS utilities.
+- Phase 3: User-facing `/xchat` — plans landing, Slack access-request notifications, chat conversation UI.
+- Phase 4: Persona governance — draft/published/archived status, version snapshots, publish/archive/rollback, immutable audit.
+- Phase 5: Access workflow UI — status step indicator (new→triaged→pending→approved), SLA countdown, policy violation display, full state machine filter.
+- Phase 6: Docs sync — persona governance routes, plan limits table, access request state machine, tool cache documented.
 
-**Phase 3 — xchat for non-admin users (next branding feature):**
-- Build a user-facing `/chat` or `/xchat` route — authenticated, non-admin. Uses the shared brand kit (dark-first, `--xf-*` tokens, Inter font, logo lockup).
-- Two user states to brand:
-  - **Approved users** — full xchat access, persona selection, chat UI with `--xf-surface-700` cards and `--xf-gain-green` accents for AI responses.
-  - **Not-approved users** — gated landing with "Access pending" state, clear messaging, and a CTA that triggers a Slack notification to admin for approval.
-- Admin receives Slack notification on new access requests (webhook integration). Approve/deny from `/admin/access-requests`.
-- Reuse existing access-request API (`POST /api/admin/access-requests`) for the request flow.
-- Brand the chat UI consistently: message bubbles, persona badges, typing indicators, error states — all using `--xf-*` tokens.
+**Deferred — plan limits UI (connect runtime limits to branding):**
+- Drive plans landing feature bullets from `getPlanLimits()` instead of static text.
+- Add usage meter component to xchat UI showing prompts used / daily limit.
+- Add soft-limit warning banner when `softLimitReached` is true.
+- CSS tokens: `--xf-meter-fill`, `--xf-meter-bg`, `--xf-meter-warn`.
 
-**Phase 4 — xFeature plans, limits, and fees:**
-- Introduce plan tiers: free (limited prompts/day), paid/premium (higher limits, priority, advanced personas).
-- Brand surfaces needed: plan selection card, usage meter/bar, upgrade CTA, limit-reached gate.
-- Token candidates: `--xf-plan-free`, `--xf-plan-premium`, `--xf-plan-accent` for tier-specific color treatments.
-- Backend: per-user plan field (already exists in user settings `plan`), rate limiting per plan, fee/billing integration (Stripe or xMoney when available).
-- Admin surface: plan assignment in `/admin/user-settings`, usage dashboard, plan override controls.
+**Deferred — persona version history viewer:**
+- Version timeline UI in persona editor (list of snapshots with action/actor/date).
+- Visual diff between current and selected version.
+- One-click rollback in the timeline.
 
-**Phase 5 — xfinance tool surface branding (deferred until tool ships):**
-- When `xfinance` custom tool ships (see `docs/xchat/xfinance-tool-stub.md`), add a tool-result card component with branded output formatting using `--xf-surface-700` + `--xf-chart-*` tokens.
-- Extend xChat console with tool invocation visual treatment (distinct from plain chat responses).
-- Use `value-gain`/`value-loss` utilities for numeric outputs from portfolio/watchlist operations.
+**Deferred — xfinance tool surface branding (when tool ships):**
+- Tool-result card component with branded output formatting using `--xf-surface-700` + `--xf-chart-*` tokens.
+- xChat console tool invocation visual treatment.
 
-**Phase 6 — xMoney (deferred until available):**
-- Payment rails and transfer actions brand surface. When xMoney launches, add brand tokens (`--xf-xmoney-*`), a logo lockup variant, and a dedicated admin section or card treatment. Reference `design-system/xfinance-brand-kit.md` for ecosystem naming: `xFinance` (platform), `Grok` (AI assistant), `xMoney` (payments).
+**Deferred — xMoney (when available):**
+- Payment rails brand surface, `--xf-xmoney-*` tokens, logo lockup variant.
 
 **Standing design rules:**
 - Personas vs Collections separation — `/admin/personas` shows persona configs only (prompts, tools, collectionId links). Collections management stays in RAG Uploads or a dedicated `/admin/collections` page.
