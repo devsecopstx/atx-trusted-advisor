@@ -272,6 +272,10 @@ Route53 TODO details:
 - `POST /api/personas/:personaId/collection/create`
 - `POST /api/personas/:personaId/collection/link-files`
 - `POST /api/personas/:personaId/verify-collection`
+- `POST /api/personas/:personaId/publish` (admin — publishes persona, creates version snapshot)
+- `POST /api/personas/:personaId/archive` (admin — archives persona, creates snapshot)
+- `POST /api/personas/:personaId/rollback` (admin — `{targetVersion}`, restores from snapshot)
+- `GET /api/personas/:personaId/versions` (admin — list version history)
 
 ### Portfolios
 
@@ -296,6 +300,47 @@ Route53 TODO details:
 - `GET /api/xchat/batch`
 - `GET /api/xchat/batch/:batchId`
 - `POST /api/xchat/batch/:batchId`
+
+## Access Request State Machine
+
+Statuses: `new` → `triaged` → `pending` → `approved` | `rejected` | `expired`
+
+| From | Valid transitions |
+|---|---|
+| `new` | `triaged`, `approved`, `rejected`, `expired` |
+| `triaged` | `pending`, `approved`, `rejected`, `expired` |
+| `pending` | `approved`, `rejected`, `expired` |
+| `approved` | (terminal) |
+| `rejected` | (terminal) |
+| `expired` | (terminal) |
+
+SLA: requests expire after 7 days (`ACCESS_REQUEST_SLA_DAYS`). Policy validation in `src/modules/core-admin/access-policy.ts`.
+
+## Persona Governance
+
+Personas have a `status` field: `draft` (default), `published`, `archived`.
+
+- **Publish**: creates an immutable version snapshot in `xchat_persona_versions`, bumps `version`, sets `publishedAt`.
+- **Archive**: creates a snapshot, sets `status=archived`. Archived personas are hidden from non-admin users.
+- **Rollback**: restores a persona from a previous version snapshot by target version number.
+- Non-admin users (`GET /api/personas`) only see `published` personas.
+- Admin can filter by `?status=draft|published|archived`.
+- All actions create audit events (`entityType: "xpersona"`).
+
+## Plan Limits and Cost Controls
+
+Plan tiers defined in `src/modules/xchat/plan-limits.ts`:
+
+| Limit | Free | Pro | Enterprise |
+|---|---|---|---|
+| Prompts/day | 5 | 200 | 2,000 |
+| Max turns | 3 | 5 | 10 |
+| Max tool calls | 2 | 10 | 20 |
+| Batch | No | Yes (100 items) | Yes (500 items) |
+| Monthly budget | — | $50 | $500 |
+| Model escalation | — | grok-4-latest (>500 chars) | grok-4-latest (>200 chars) |
+
+Tool result caching in `src/modules/xchat/tool-cache.ts` (60s TTL, 200 max entries).
 
 ## xPersona Collection Endpoint Notes
 
