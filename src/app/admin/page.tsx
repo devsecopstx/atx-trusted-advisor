@@ -180,16 +180,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <div className="hero-top">
-          <div>
-            <p className="eyebrow">xfinance core admin</p>
-            <h1 className="hero-title">Admin Control Center</h1>
-            <p className="hero-copy">
-              Pick one function at a time. Each button opens a focused mobile-friendly
-              page with large controls.
-            </p>
-          </div>
-        </div>
+        <p className="eyebrow">xfinance core admin</p>
+        <h1 className="hero-title">Admin Control Center</h1>
+        <p className="hero-copy">
+          Pick one function at a time. Each button opens a focused mobile-friendly
+          page with large controls.
+        </p>
       </section>
 
       <section className="panel stack-gap">

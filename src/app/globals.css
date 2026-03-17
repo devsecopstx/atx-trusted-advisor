@@ -262,6 +262,14 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--xf-warning-400);
 }
 
+.status-pending {
+  color: var(--xf-warning-400);
+}
+
+.status-error {
+  color: var(--xf-danger-400);
+}
+
 .cta-row {
   margin-top: 1rem;
   display: flex;
