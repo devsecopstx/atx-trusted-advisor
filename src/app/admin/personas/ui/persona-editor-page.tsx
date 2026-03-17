@@ -11,6 +11,12 @@ type PersonaEditorPageProps = {
   personaId?: string;
 };
 
+type ToolSelections = {
+  web_search: boolean;
+  x_search: boolean;
+  file_search: boolean;
+};
+
 type PersonaPayload = {
   name: string;
   systemPrompt: string;
@@ -24,7 +30,7 @@ type PersonaPayload = {
   xapiMode: "responses" | "chat_completions";
   xapiToolChoice: "auto" | "required" | "none";
   xapiMaxTurns: string;
-  xapiToolList: string;
+  tools: ToolSelections;
 };
 
 const EMPTY_FORM: PersonaPayload = {
@@ -40,8 +46,36 @@ const EMPTY_FORM: PersonaPayload = {
   xapiMode: "responses",
   xapiToolChoice: "auto",
   xapiMaxTurns: "5",
-  xapiToolList: "web_search"
+  tools: { web_search: true, x_search: false, file_search: false }
 };
+
+function toolSelectionsFromArray(
+  tools: Array<{ type: string; [key: string]: unknown }>
+): ToolSelections {
+  return {
+    web_search: tools.some((t) => t.type === "web_search"),
+    x_search: tools.some((t) => t.type === "x_search"),
+    file_search: tools.some((t) => t.type === "file_search")
+  };
+}
+
+function toolSelectionsToArray(
+  selections: ToolSelections,
+  collectionId: string
+): Array<{ type: string; [key: string]: unknown }> {
+  const tools: Array<{ type: string; [key: string]: unknown }> = [];
+  if (selections.web_search) tools.push({ type: "web_search" });
+  if (selections.x_search) tools.push({ type: "x_search" });
+  if (selections.file_search) {
+    const boundId = collectionId.trim();
+    tools.push(
+      boundId
+        ? { type: "file_search", source: { collection_ids: [boundId] } }
+        : { type: "file_search" }
+    );
+  }
+  return tools;
+}
 
 export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
   const [form, setForm] = useState<PersonaPayload>(EMPTY_FORM);
@@ -49,6 +83,9 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
   const [loading, setLoading] = useState(mode === "edit");
   const [showAdvanced, setShowAdvanced] = useState(mode === "edit");
   const router = useRouter();
+
+  const fileSearchMissingCollection =
+    form.tools.file_search && !form.xaiCollectionId.trim();
 
   useEffect(() => {
     if (mode !== "edit" || !personaId) {
@@ -87,7 +124,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           xapiMode: payload.data.xapi.mode,
           xapiToolChoice: payload.data.xapi.toolChoice,
           xapiMaxTurns: String(payload.data.xapi.maxTurns),
-          xapiToolList: payload.data.xapi.tools.map((tool) => tool.type).join(", ")
+          tools: toolSelectionsFromArray(payload.data.xapi.tools)
         });
         setStatus("Loaded");
       } catch (error) {
@@ -110,14 +147,12 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       setStatus("max_turns must be an integer between 1 and 10");
       return;
     }
-
-    let parsedTools: Array<{ type: string; [key: string]: unknown }> = [];
-    try {
-      parsedTools = buildToolsFromList(form.xapiToolList, form.xaiCollectionId);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Tools list is invalid");
+    if (fileSearchMissingCollection) {
+      setStatus("file_search requires a collection id. Link a collection or deselect file_search.");
       return;
     }
+
+    const parsedTools = toolSelectionsToArray(form.tools, form.xaiCollectionId);
 
     setStatus(mode === "create" ? "Creating persona..." : "Saving persona...");
     try {
@@ -153,6 +188,13 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to save persona");
     }
+  }
+
+  function toggleTool(toolType: keyof ToolSelections) {
+    setForm((current) => ({
+      ...current,
+      tools: { ...current.tools, [toolType]: !current.tools[toolType] }
+    }));
   }
 
   return (
@@ -193,15 +235,40 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             required
             value={form.defaultScope}
           />
-          <input
-            onChange={(event) => setForm((current) => ({ ...current, xapiToolList: event.target.value }))}
-            placeholder="tools list: web_search, x_search, file_search"
-            value={form.xapiToolList}
-          />
-          <small className="status-text">
-            Tools are translated to xAI response tools. Use comma-separated values such as
-            `web_search`, `x_search`, and `file_search`.
-          </small>
+
+          <fieldset>
+            <legend>Tools</legend>
+            <label className="checkbox-label">
+              <input
+                checked={form.tools.web_search}
+                onChange={() => toggleTool("web_search")}
+                type="checkbox"
+              />
+              web_search
+            </label>
+            <label className="checkbox-label">
+              <input
+                checked={form.tools.x_search}
+                onChange={() => toggleTool("x_search")}
+                type="checkbox"
+              />
+              x_search
+            </label>
+            <label className={`checkbox-label${fileSearchMissingCollection ? " status-error" : ""}`}>
+              <input
+                checked={form.tools.file_search}
+                onChange={() => toggleTool("file_search")}
+                type="checkbox"
+              />
+              file_search
+              {fileSearchMissingCollection ? (
+                <small className="status-text status-error">
+                  requires collection id
+                </small>
+              ) : null}
+            </label>
+          </fieldset>
+
           <button className="tiny-button" onClick={() => setShowAdvanced((current) => !current)} type="button">
             {showAdvanced ? "Hide optional fields" : "Show optional fields"}
           </button>
@@ -282,7 +349,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             the final response.
           </small>
           <div className="tool-row">
-            <button className="cta cta-primary" disabled={loading} type="submit">
+            <button className="cta cta-primary" disabled={loading || fileSearchMissingCollection} type="submit">
               {mode === "create" ? "Create persona" : "Save persona"}
             </button>
             <button className="cta cta-secondary" onClick={() => router.push("/admin/personas")} type="button">
@@ -293,40 +360,4 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       </article>
     </section>
   );
-}
-
-function buildToolsFromList(
-  listValue: string,
-  collectionId: string
-): Array<{ type: string; [key: string]: unknown }> {
-  const normalized = listValue
-    .split(/[,\n]/)
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
-  const unique = Array.from(new Set(normalized));
-  const supportedTypes = new Set(["web_search", "x_search", "file_search"]);
-  const unsupportedTypes = unique.filter((entry) => !supportedTypes.has(entry));
-  if (unsupportedTypes.length > 0) {
-    throw new Error(
-      `Unsupported tool type(s): ${unsupportedTypes.join(", ")}. Supported values: web_search, x_search, file_search.`
-    );
-  }
-
-  const boundCollectionId = collectionId.trim();
-  if (unique.includes("file_search") && !boundCollectionId) {
-    throw new Error("file_search requires a collection id on the persona.");
-  }
-
-  return unique.flatMap((entry) => {
-    if (entry === "web_search" || entry === "x_search") {
-      return [{ type: entry }];
-    }
-    if (entry === "file_search") {
-      if (boundCollectionId) {
-        return [{ type: "file_search", source: { collection_ids: [boundCollectionId] } }];
-      }
-      return [{ type: "file_search" }];
-    }
-    return [];
-  });
 }
