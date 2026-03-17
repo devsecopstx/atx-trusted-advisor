@@ -1,0 +1,61 @@
+import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+
+import { getSessionUser } from "@/lib/auth";
+import { getMongoConnectionLabel } from "@/lib/env";
+import { XFinanceLogo } from "../ui/xfinance-logo";
+import { AdminSessionPanel } from "./ui/admin-session-panel";
+
+type AdminLayoutProps = {
+  children: ReactNode;
+};
+
+const NAV_LINKS: { href: string; label: string }[] = [
+  { href: "/admin", label: "Hub" },
+  { href: "/admin/access-requests", label: "Access" },
+  { href: "/admin/personas", label: "Personas" },
+  { href: "/admin/xchat", label: "xChat" },
+  { href: "/admin/portfolios", label: "Portfolios" },
+  { href: "/admin/tasks", label: "Tasks" },
+  { href: "/admin/rag-files", label: "RAG" },
+  { href: "/admin/user-settings", label: "Users" },
+  { href: "/admin/audit", label: "Audit" }
+];
+
+export default async function AdminLayout({ children }: AdminLayoutProps) {
+  const session = await getSessionUser();
+  if (!session) {
+    redirect("/login");
+  }
+
+  const mongoConnection = getMongoConnectionLabel();
+
+  return (
+    <div className="admin-layout">
+      <header className="admin-topbar">
+        <Link className="admin-topbar-brand" href="/admin">
+          <XFinanceLogo size="sm" />
+        </Link>
+        <nav className="admin-topbar-nav">
+          {NAV_LINKS.map((link) => (
+            <Link className="admin-topbar-link" href={link.href} key={link.href}>
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="admin-topbar-session">
+          <AdminSessionPanel
+            avatarUrl={session.avatarUrl}
+            displayName={session.displayName}
+            email={session.email}
+            mongoConnection={mongoConnection}
+            xUserId={session.xUserId}
+            username={session.username}
+          />
+        </div>
+      </header>
+      <main className="admin-layout-content">{children}</main>
+    </div>
+  );
+}
