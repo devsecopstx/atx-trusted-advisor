@@ -23,6 +23,7 @@ permissions:
 env:
   NODE_VERSION: "22"
   IMAGE_NAME: "xfinance-core-app"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   deploy-staging:
@@ -78,16 +79,30 @@ jobs:
           health_check_with_retry() {
             local label="$1"
             local url="$2"
-            local attempts=10
-            local sleep_seconds=10
+            local attempts=18
+            local sleep_seconds=15
 
             for attempt in $(seq 1 "${attempts}"); do
-              if curl --fail --silent --show-error "${url}"; then
+              local response_file
+              response_file="$(mktemp)"
+              local http_code
+              http_code="$(
+                curl --silent --show-error --location \
+                  --connect-timeout 5 --max-time 15 \
+                  --output "${response_file}" --write-out "%{http_code}" \
+                  "${url}" || true
+              )"
+              local response_body
+              response_body="$(tr -d '\n' < "${response_file}")"
+
+              if [ "${http_code}" = "200" ] && [[ "${response_body}" == *"\"status\":\"ok\""* ]]; then
+                rm -f "${response_file}"
                 echo "${label}:ok attempt=${attempt}"
                 return 0
               fi
 
-              echo "${label}:pending attempt=${attempt}/${attempts}"
+              echo "${label}:pending attempt=${attempt}/${attempts} status=${http_code:-curl_error}"
+              rm -f "${response_file}"
               if [ "${attempt}" -lt "${attempts}" ]; then
                 sleep "${sleep_seconds}"
               fi
@@ -162,16 +177,30 @@ jobs:
           health_check_with_retry() {
             local label="$1"
             local url="$2"
-            local attempts=10
-            local sleep_seconds=10
+            local attempts=18
+            local sleep_seconds=15
 
             for attempt in $(seq 1 "${attempts}"); do
-              if curl --fail --silent --show-error "${url}"; then
+              local response_file
+              response_file="$(mktemp)"
+              local http_code
+              http_code="$(
+                curl --silent --show-error --location \
+                  --connect-timeout 5 --max-time 15 \
+                  --output "${response_file}" --write-out "%{http_code}" \
+                  "${url}" || true
+              )"
+              local response_body
+              response_body="$(tr -d '\n' < "${response_file}")"
+
+              if [ "${http_code}" = "200" ] && [[ "${response_body}" == *"\"status\":\"ok\""* ]]; then
+                rm -f "${response_file}"
                 echo "${label}:ok attempt=${attempt}"
                 return 0
               fi
 
-              echo "${label}:pending attempt=${attempt}/${attempts}"
+              echo "${label}:pending attempt=${attempt}/${attempts} status=${http_code:-curl_error}"
+              rm -f "${response_file}"
               if [ "${attempt}" -lt "${attempts}" ]; then
                 sleep "${sleep_seconds}"
               fi

@@ -7,7 +7,6 @@ vi.mock("@/lib/mongodb", () => ({
 
 import { getDb } from "@/lib/mongodb";
 import {
-  PositionValidationError,
   provisionDefaultPortfolioForUser,
   upsertPositionForAccount
 } from "@/modules/core-admin/repository";
