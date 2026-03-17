@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
-import { AdminSessionPanel } from "@/app/admin/ui/admin-session-panel";
-import { PersonasOnboardingHome } from "@/app/admin/personas/ui/personas-onboarding-home";
 
-export default async function PersonasPage() {
+import { AdminSessionPanel } from "../../../ui/admin-session-panel";
+import { CollectionEditorPage } from "../../ui/collection-editor-page";
+
+export default async function AdminCreateCollectionPage() {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
@@ -19,9 +20,9 @@ export default async function PersonasPage() {
         <div className="hero-top">
           <div>
             <p className="eyebrow">xfinance core admin</p>
-            <h1 className="hero-title">xPersona Onboarding</h1>
+            <h1 className="hero-title">Create Collection</h1>
             <p className="hero-copy">
-              Review existing personas and collections, then open dedicated create/edit pages.
+              Create xAI collections first, then bind them in persona create/edit pages.
             </p>
           </div>
           <AdminSessionPanel
@@ -33,8 +34,7 @@ export default async function PersonasPage() {
           />
         </div>
       </section>
-
-      <PersonasOnboardingHome />
+      <CollectionEditorPage />
     </main>
   );
 }

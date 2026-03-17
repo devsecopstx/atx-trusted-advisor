@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
-import { listPersonas } from "@/modules/xchat/repository";
-import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 
 import { AdminSessionPanel } from "../ui/admin-session-panel";
-import { PersonasConsole } from "./ui/personas-console";
+import { PersonasOnboardingHome } from "./ui/personas-onboarding-home";
 
 export default async function AdminPersonasPage() {
   const session = await getSessionUser();
@@ -15,28 +13,6 @@ export default async function AdminPersonasPage() {
   if (!session.roles.includes("global_admin")) {
     redirect("/admin?error=forbidden");
   }
-  const personas = await listPersonas();
-  const initialPersonas = personas.map((persona) => ({
-    _id: persona._id?.toHexString(),
-    name: persona.name,
-    systemPrompt: persona.systemPrompt,
-    overridePrompt: persona.overridePrompt ?? "",
-    xaiCollection: {
-      collectionId: persona.xaiCollection?.collectionId ?? "",
-      collectionName: persona.xaiCollection?.collectionName
-    },
-    model: persona.model,
-    temperature: persona.temperature,
-    enableRag: persona.enableRag,
-    defaultScope: persona.defaultScope,
-    xapi: normalizePersonaXapiConfig(persona.xapi),
-    xaiCollectionVerification: persona.xaiCollectionVerification
-      ? {
-          ...persona.xaiCollectionVerification,
-          checkedAt: persona.xaiCollectionVerification.checkedAt.toISOString()
-        }
-      : null
-  }));
 
   return (
     <main className="core-shell">
@@ -44,9 +20,9 @@ export default async function AdminPersonasPage() {
         <div className="hero-top">
           <div>
             <p className="eyebrow">xfinance core admin</p>
-            <h1 className="hero-title">xPersona Configuration</h1>
+            <h1 className="hero-title">xPersona Onboarding</h1>
             <p className="hero-copy">
-              Create and review xPersona presets used by xchat across the admin workspace.
+              Follow a clean flow: review personas/collections, then create or edit in dedicated pages.
             </p>
           </div>
           <AdminSessionPanel
@@ -59,7 +35,7 @@ export default async function AdminPersonasPage() {
         </div>
       </section>
 
-      <PersonasConsole initialPersonas={initialPersonas} />
+      <PersonasOnboardingHome />
     </main>
   );
 }
