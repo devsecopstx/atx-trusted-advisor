@@ -142,6 +142,8 @@ vite.config.ts.timestamp-*
 .cursor/*
 !.cursor/environment.json
 !.cursor/settings.json
+!.cursor/skills/
+!.cursor/skills/**
 
 # Local editor workspace files
 *.code-workspace

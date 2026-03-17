@@ -48,6 +48,18 @@ Cloud agents connect to MongoDB Atlas — **do NOT run `docker compose up -d`**.
 The `MONGODB_URI_B64` secret is injected as an environment variable by the Cursor Cloud
 runtime. The update script writes `.env` from these injected secrets automatically.
 
+## Project Cursor Skills (Safe Set)
+
+- Project-local skills are stored in `.cursor/skills/`.
+- Current safe skills:
+  - `xfinance-docs-ops`
+  - `xfinance-xchat-validation-checklist`
+  - `xfinance-runbook-navigator`
+- These skills are docs/ops oriented and must not deploy, rotate keys, or mutate production/staging secrets.
+- Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/xfinance-tool-stub.md`.
+
+### Docker prerequisite
+
 ### .env generation
 
 The `.env` file is generated at startup from Cursor secrets. Required secrets
