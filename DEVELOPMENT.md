@@ -177,6 +177,8 @@ Route53 TODO details:
 - [ ] Set low TTL during cutover (for example, 60-300 seconds)
 - [ ] Confirm DNS propagation with `dig` before final health checks
 - [ ] Replace temporary Atlas allow-all access (`0.0.0.0/0`) with GCP static egress IP allowlist after validation
+- [ ] Ensure `cloudbuild.googleapis.com` is enabled in prod before first `--source` deploy workflow run
+- [ ] Create prod domain mapping (`core.fintech-advisor.ai`) after first successful prod service deploy
 
 ## API Endpoints
 
