@@ -14,22 +14,37 @@ import {
 import {
   PersonaNameConflictError,
   createPersona,
-  listPersonas
+  listPersonas,
+  listPersonasByStatus
 } from "@/modules/xchat/repository";
-import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
+import { normalizePersonaXapiConfig, type PersonaConfig, type PersonaStatus, personaStatusValues } from "@/modules/xchat/types";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }
 
-  const personas = await listPersonas();
+  const url = new URL(request.url);
+  const statusParam = url.searchParams.get("status");
+  const isAdmin = session.roles.includes("global_admin");
+
+  let personas: PersonaConfig[];
+  if (!isAdmin) {
+    personas = await listPersonasByStatus("published");
+  } else if (statusParam && (personaStatusValues as readonly string[]).includes(statusParam)) {
+    personas = await listPersonasByStatus(statusParam as PersonaStatus);
+  } else {
+    personas = await listPersonas();
+  }
+
   const serialized = personas.map(serializePersona);
-  const latestAuditByPersonaId = await listLatestAuditEventsForEntities({
-    entityType: "xpersona",
-    entityIds: serialized.flatMap((persona) => (persona._id ? [persona._id] : []))
-  });
+  const latestAuditByPersonaId = isAdmin
+    ? await listLatestAuditEventsForEntities({
+        entityType: "xpersona",
+        entityIds: serialized.flatMap((persona) => (persona._id ? [persona._id] : []))
+      })
+    : {};
   return NextResponse.json({
     data: serialized.map((persona) => ({
       ...persona,
@@ -129,6 +144,9 @@ function serializePersona(persona: PersonaConfig) {
     enableRag: persona.enableRag,
     defaultScope: persona.defaultScope,
     xapi: normalizePersonaXapiConfig(persona.xapi),
+    status: persona.status ?? "draft",
+    version: persona.version ?? 0,
+    publishedAt: persona.publishedAt?.toISOString() ?? null,
     xaiCollectionVerification: persona.xaiCollectionVerification
       ? {
           ...persona.xaiCollectionVerification,

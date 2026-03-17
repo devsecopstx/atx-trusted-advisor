@@ -42,6 +42,9 @@ export const SUPER_AGENT_DEFAULT_TOOLS: PersonaXapiToolDefinition[] = [
   { type: "xfinance" }
 ];
 
+export const personaStatusValues = ["draft", "published", "archived"] as const;
+export type PersonaStatus = (typeof personaStatusValues)[number];
+
 export type PersonaConfig = {
   _id?: ObjectId;
   name: string;
@@ -58,8 +61,25 @@ export type PersonaConfig = {
   enableRag: boolean;
   defaultScope: string;
   xapi?: PersonaXapiConfig;
+  status?: PersonaStatus;
+  version?: number;
+  publishedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type PersonaVersionSnapshot = {
+  _id?: ObjectId;
+  personaId: ObjectId;
+  version: number;
+  snapshot: Omit<PersonaConfig, "_id">;
+  action: "published" | "rolled_back" | "archived";
+  actor: {
+    userId: string;
+    email?: string;
+    username?: string;
+  };
+  createdAt: Date;
 };
 
 export type RagSourceFile = {

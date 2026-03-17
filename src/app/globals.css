@@ -822,6 +822,11 @@ fieldset label.checkbox-label input[type="checkbox"] {
 
 /* ── Gain / loss value coloring ────────────── */
 
+.tiny-button-active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
 .value-gain {
   color: var(--xf-chart-gain);
 }
