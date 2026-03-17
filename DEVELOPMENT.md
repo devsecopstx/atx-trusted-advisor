@@ -27,6 +27,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `X_OAUTH_CLIENT_ID` (raw client id from X app, not base64-encoded)
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET` (recommended for session signing)
+- `ALLOW_ANY_X_USER_LOGIN` (optional feature flag; set `true` to allow any authenticated X user into `/xchat` with non-admin permissions, default disabled)
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
 - `ADMIN_SEED_EMAIL` (optional, default `atxbogart@gmail.com`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
@@ -284,10 +285,6 @@ Route53 TODO details:
 
 - `GET /api/rag/files`
 - `POST /api/rag/files`
-
-### Self-service access requests
-
-- `POST /api/access-requests` (authenticated, non-admin — self-service with Slack notification)
 
 ### xChat
 

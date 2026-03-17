@@ -27,6 +27,7 @@ Run in this exact order and mark each as complete/incomplete:
 2. `xdesign-review`
 3. `xdesign-review-adversarial`
 4. `xdesign-review-reliability`
+5. `xdesign-review-audit`
 
 If any reviewer is skipped, final review is incomplete.
 
@@ -52,6 +53,13 @@ If any reviewer is skipped, final review is incomplete.
 - Docs parity is updated where behavior changed (`AGENTS.md`, `DEVELOPMENT.md`, skills index).
 - Tests cover changed logic; missing tests are called out explicitly.
 
+## Required Evidence Checklist
+
+- Route contract evidence is captured (request/response samples for changed `/api/*` endpoints).
+- Auth/tenant boundary evidence is captured (expected 401/403 behavior for protected routes).
+- Test evidence is captured (`npm run test`, targeted integration tests for touched logic).
+- Validation evidence is captured (`npm run lint`, `npm run typecheck`, `npm run build`).
+
 ## Output Format (Required)
 
 ```md
@@ -68,6 +76,7 @@ If any reviewer is skipped, final review is incomplete.
 - xdesign-review: complete|incomplete
 - xdesign-review-adversarial: complete|incomplete
 - xdesign-review-reliability: complete|incomplete
+- xdesign-review-audit: complete|incomplete
 
 ## Merge Recommendation
 - accept | accept-with-conditions | reject

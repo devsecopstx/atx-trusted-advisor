@@ -44,7 +44,8 @@ const auditMocks = vi.hoisted(() => ({
 
 const envMocks = vi.hoisted(() => ({
   getEnv: vi.fn(),
-  getXOauthClientId: vi.fn()
+  getXOauthClientId: vi.fn(),
+  isAllowAnyXUserLoginEnabled: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -171,8 +172,10 @@ describe("access request approval login flow", () => {
       X_OAUTH_TOKEN_URL: "https://x.test/token",
       X_OAUTH_USERINFO_URL: "https://x.test/me",
       ADMIN_X_USERNAMES: "",
+      ALLOW_ANY_X_USER_LOGIN: "false",
       NODE_ENV: "test"
     });
+    envMocks.isAllowAnyXUserLoginEnabled.mockReturnValue(false);
     envMocks.getXOauthClientId.mockReturnValue("test-client-id");
 
     global.fetch = vi
@@ -248,9 +251,50 @@ describe("access request approval login flow", () => {
     const afterApprovalResponse = await oauthCallback(
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
-    expect(afterApprovalResponse.headers.get("location")).toContain("/admin");
+    expect(afterApprovalResponse.headers.get("location")).toContain("/xchat");
     expect(authMocks.createSession).toHaveBeenCalledTimes(1);
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows fallback login to xchat when ALLOW_ANY_X_USER_LOGIN is enabled", async () => {
+    envMocks.getEnv.mockReturnValue({
+      X_OAUTH_CLIENT_SECRET: "test-secret",
+      X_OAUTH_TOKEN_URL: "https://x.test/token",
+      X_OAUTH_USERINFO_URL: "https://x.test/me",
+      ADMIN_X_USERNAMES: "",
+      ALLOW_ANY_X_USER_LOGIN: "true",
+      NODE_ENV: "test"
+    });
+    envMocks.isAllowAnyXUserLoginEnabled.mockReturnValue(true);
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "x-user-1",
+            username: "approved_user",
+            email: "approved.user@xfinance.ai"
+          }
+        })
+      }) as typeof fetch;
+
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+
+    expect(response.headers.get("location")).toContain("/xchat");
+    expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
+    expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledTimes(1);
+    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
   });
 
   it("allows non-admin authentication but denies admin API access", async () => {

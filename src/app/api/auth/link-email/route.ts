@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { consumePendingXLinkCookie, createSession } from "@/lib/auth";
+import { isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import {
   createAccessRequest,
-  getPendingAccessRequestByUserAndRole
+  getPendingAccessRequestByUserAndRole,
+  provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import { canUserLogin } from "@/modules/identity/authorization";
+import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
   ensureDefaultTenant,
   ensureCoreUserByEmail,
@@ -65,7 +67,10 @@ export async function POST(request: Request) {
     avatarUrl: pending.avatarUrl
   });
 
-  if (!canUserLogin(linkedUser.roles)) {
+  const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
+  const hasLoginRole = canUserLogin(linkedUser.roles);
+
+  if (!hasLoginRole) {
     const userId = linkedUser._id?.toHexString();
     if (userId) {
       const requestedRole = "viewer";
@@ -81,10 +86,13 @@ export async function POST(request: Request) {
         });
       }
     }
-    return NextResponse.json({
-      ok: true,
-      redirectTo: "/login?error=access_request_pending"
-    });
+
+    if (!allowAnyXUserLogin) {
+      return NextResponse.json({
+        ok: true,
+        redirectTo: "/login?error=access_request_pending"
+      });
+    }
   }
 
   const tenant = await ensureDefaultTenant();
@@ -99,10 +107,21 @@ export async function POST(request: Request) {
   });
 
   const authContext = await resolveAuthContext({ user: linkedUser });
+  const sessionRoles = hasLoginRole
+    ? authContext.roles
+    : authContext.roles.length > 0
+      ? authContext.roles
+      : ["viewer"];
+
+  await provisionDefaultPortfolioForUser({
+    userId: authContext.userId.toHexString(),
+    tenantId: authContext.tenantId.toHexString()
+  });
+
   await createSession({
     userId: authContext.userId.toHexString(),
     email: authContext.email,
-    roles: authContext.roles,
+    roles: sessionRoles,
     tenantId: authContext.tenantId.toHexString(),
     tenantRole: authContext.tenantRole,
     xUserId: authContext.xUserId ?? pending.xUserId,
@@ -111,7 +130,10 @@ export async function POST(request: Request) {
     avatarUrl: authContext.avatarUrl ?? pending.avatarUrl
   });
 
-  return NextResponse.json({ ok: true, redirectTo: "/admin" });
+  return NextResponse.json({
+    ok: true,
+    redirectTo: isGlobalAdmin(sessionRoles) ? "/admin" : "/xchat"
+  });
 }
 
 function isPlaceholderEmail(email: string): boolean {

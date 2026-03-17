@@ -15,6 +15,7 @@ const envSchema = z.object({
   XAI_MANAGEMENT_BASE_URL: z.string().url().optional(),
   XAI_CHAT_MODEL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(16).optional(),
+  ALLOW_ANY_X_USER_LOGIN: z.union([z.string(), z.boolean()]).optional(),
   SLACK_WEBHOOK_URL: z.union([z.string().url(), z.literal("")]).optional(),
   ADMIN_SEED_EMAIL: z.string().email().optional(),
   ADMIN_X_USERNAMES: z.string().optional(),
@@ -71,6 +72,17 @@ export function getMongoUriFromB64(): string {
 export function getXOauthClientId(): string {
   const { X_OAUTH_CLIENT_ID } = getEnv();
   return X_OAUTH_CLIENT_ID.trim();
+}
+
+export function isAllowAnyXUserLoginEnabled(): boolean {
+  const { ALLOW_ANY_X_USER_LOGIN } = getEnv();
+  if (typeof ALLOW_ANY_X_USER_LOGIN === "boolean") {
+    return ALLOW_ANY_X_USER_LOGIN;
+  }
+  if (typeof ALLOW_ANY_X_USER_LOGIN === "string") {
+    return ALLOW_ANY_X_USER_LOGIN.trim().toLowerCase() === "true";
+  }
+  return false;
 }
 
 export function getMongoConnectionLabel(): string {

@@ -7,10 +7,15 @@ import {
   readOAuthFlowCookies,
   setPendingXLinkCookie
 } from "@/lib/auth";
-import { getEnv, getXOauthClientId } from "@/lib/env";
+import {
+  getEnv,
+  getXOauthClientId,
+  isAllowAnyXUserLoginEnabled
+} from "@/lib/env";
 import {
   createAccessRequest,
-  getPendingAccessRequestByUserAndRole
+  getPendingAccessRequestByUserAndRole,
+  provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
@@ -70,7 +75,9 @@ export async function GET(request: Request) {
   if (!flowCookies.state || !flowCookies.verifier) {
     const existingSession = await getSessionUser();
     if (existingSession) {
-      return NextResponse.redirect(new URL("/admin", origin));
+      return NextResponse.redirect(
+        new URL(isGlobalAdmin(existingSession.roles) ? "/admin" : "/xchat", origin)
+      );
     }
     return NextResponse.redirect(
       new URL("/login?error=missing_oauth_cookie_context", origin)
@@ -168,7 +175,12 @@ export async function GET(request: Request) {
     });
   }
 
-  if (!user?._id || !canUserLogin(user.roles)) {
+  const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
+  const hasLoginRole = user?._id ? canUserLogin(user.roles) : false;
+  const shouldAllowFallbackLogin =
+    Boolean(user?._id) && !hasLoginRole && allowAnyXUserLogin;
+
+  if (!user?._id || !hasLoginRole) {
     if (user?._id) {
       const userId = user._id.toHexString();
       const requestedRole = "viewer";
@@ -186,13 +198,21 @@ export async function GET(request: Request) {
         });
       }
     }
-    return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
+
+    if (!shouldAllowFallbackLogin) {
+      return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
+    }
   }
 
   if (isPlaceholderEmail(user.email)) {
     await setPendingXLinkCookie(xIdentity);
     return NextResponse.redirect(new URL("/login?error=email_link_required", origin));
   }
+  if (!user._id) {
+    return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
+  }
+
+  const userObjectId = user._id;
 
   const allowlist = (env.ADMIN_X_USERNAMES ?? "")
     .split(",")
@@ -211,17 +231,27 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?error=tenant_bootstrap_failed", origin));
   }
   await upsertTenantMembership({
-    userId: user._id,
+    userId: userObjectId,
     tenantId: tenant._id,
     role: "tenant_admin",
     isDefaultTenant: true
   });
   const authContext = await resolveAuthContext({ user });
+  const sessionRoles = hasLoginRole
+    ? authContext.roles
+    : authContext.roles.length > 0
+      ? authContext.roles
+      : ["viewer"];
+
+  await provisionDefaultPortfolioForUser({
+    userId: authContext.userId.toHexString(),
+    tenantId: authContext.tenantId.toHexString()
+  });
 
   await createSession({
     userId: authContext.userId.toHexString(),
     email: authContext.email,
-    roles: authContext.roles,
+    roles: sessionRoles,
     tenantId: authContext.tenantId.toHexString(),
     tenantRole: authContext.tenantRole,
     xUserId: authContext.xUserId ?? xIdentity.xUserId,
@@ -230,7 +260,9 @@ export async function GET(request: Request) {
     avatarUrl: authContext.avatarUrl ?? xIdentity.avatarUrl
   });
 
-  return NextResponse.redirect(new URL("/admin", origin));
+  return NextResponse.redirect(
+    new URL(isGlobalAdmin(sessionRoles) ? "/admin" : "/xchat", origin)
+  );
 }
 
 async function fetchXUserProfile(
