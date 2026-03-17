@@ -353,6 +353,19 @@ async function correlateResults(
         }
       );
   }
+
+  await db
+    .collection<BatchItemRecord>(BATCH_ITEMS_COLLECTION)
+    .updateMany(
+      { batchJobId, status: "pending" },
+      {
+        $set: {
+          status: "failed",
+          errorMessage: "Item not present in batch output (lost)",
+          updatedAt: now
+        }
+      }
+    );
 }
 
 function extractOutputText(result: XaiBatchResultItem): string {
