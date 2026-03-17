@@ -64,9 +64,9 @@ export function MarketingHero() {
           </p>
 
           <h1 className="mh-tagline">
-            Your Portfolio.{" "}
+            No Atoms Moved.{" "}
             <br />
-            Your <span className="mh-tagline-glow">Edge</span>.
+            Just <span className="mh-tagline-glow">Gains</span> Earned.
           </h1>
 
           <p className="mh-sub">
@@ -88,7 +88,7 @@ export function MarketingHero() {
 
           <div className="mh-cta-row">
             <a className="mh-cta-primary" href="/login">
-              Request Access
+              xFinance Advisory
             </a>
             <a className="mh-cta-secondary" href="/admin">
               Admin Console
