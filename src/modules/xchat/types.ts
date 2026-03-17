@@ -33,6 +33,11 @@ export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
   tools: []
 };
 
+export const SUPER_AGENT_DEFAULT_TOOLS: PersonaXapiToolDefinition[] = [
+  { type: "web_search" },
+  { type: "x_search" }
+];
+
 export type PersonaConfig = {
   _id?: ObjectId;
   name: string;
@@ -119,7 +124,7 @@ export function normalizePersonaXapiConfig(input?: Partial<PersonaXapiConfig> | 
     Number.isInteger(maxTurnsRaw) && maxTurnsRaw >= 1 && maxTurnsRaw <= 10
       ? maxTurnsRaw
       : DEFAULT_PERSONA_XAPI_CONFIG.maxTurns;
-  const tools = Array.isArray(input?.tools)
+  const rawTools = Array.isArray(input?.tools)
     ? input.tools.filter(
         (tool): tool is PersonaXapiToolDefinition =>
           Boolean(tool) &&
@@ -128,6 +133,15 @@ export function normalizePersonaXapiConfig(input?: Partial<PersonaXapiConfig> | 
           (PERSONA_XAPI_TOOL_TYPES as readonly string[]).includes(tool.type)
       )
     : [];
+
+  const seenTypes = new Set<string>();
+  const tools: PersonaXapiToolDefinition[] = [];
+  for (const tool of rawTools) {
+    if (!seenTypes.has(tool.type)) {
+      seenTypes.add(tool.type);
+      tools.push(tool);
+    }
+  }
 
   return {
     mode,

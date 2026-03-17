@@ -8,7 +8,7 @@ import { AdminSessionPanel } from "./ui/admin-session-panel";
 
 type AdminFunction = {
   href: string;
-  icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory" | "audit";
+  icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory" | "audit" | "portfolio";
   title: string;
   description: string;
   adminOnly?: boolean;
@@ -26,6 +26,12 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     icon: "user",
     title: "User Settings",
     description: "Upsert default account, portfolio, and notification settings."
+  },
+  {
+    href: "/admin/portfolios",
+    icon: "portfolio",
+    title: "Portfolios",
+    description: "View default portfolio, linked accounts, and watchlist."
   },
   {
     href: "/admin/tasks",
@@ -128,6 +134,15 @@ function AdminFunctionIcon({ name }: IconProps) {
         <svg {...commonProps}>
           <path d="M5 7.5h5l1.4 1.8H19a1.5 1.5 0 0 1 1.5 1.5v6.7A1.5 1.5 0 0 1 19 19H5A1.5 1.5 0 0 1 3.5 17.5V9A1.5 1.5 0 0 1 5 7.5z" />
           <path d="M8.2 13h7.6" />
+        </svg>
+      );
+    case "portfolio":
+      return (
+        <svg {...commonProps}>
+          <rect x="4" y="6" width="16" height="12" rx="2" />
+          <path d="M4 10h16" />
+          <path d="M8 6V4" />
+          <path d="M16 6V4" />
         </svg>
       );
     case "audit":

@@ -169,6 +169,15 @@ async function seed() {
           temperature: 0.2,
           enableRag: true,
           defaultScope: "global",
+          xapi: {
+            mode: "responses",
+            toolChoice: "auto",
+            maxTurns: 5,
+            tools: [
+              { type: "web_search" },
+              { type: "x_search" }
+            ]
+          },
           updatedAt: now
         }
       },

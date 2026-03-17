@@ -1,0 +1,142 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  normalizePersonaXapiConfig,
+  PERSONA_XAPI_TOOL_TYPES,
+  SUPER_AGENT_DEFAULT_TOOLS
+} from "@/modules/xchat/types";
+import {
+  createPersonaPayloadSchema,
+  hasFileSearchTool
+} from "@/modules/xchat/persona-validation";
+
+describe("persona tool validation", () => {
+  it("normalizePersonaXapiConfig dedupes tools by type", () => {
+    const result = normalizePersonaXapiConfig({
+      mode: "responses",
+      toolChoice: "auto",
+      maxTurns: 5,
+      tools: [
+        { type: "web_search" },
+        { type: "web_search" },
+        { type: "x_search" },
+        { type: "x_search" },
+        { type: "web_search" }
+      ]
+    });
+    expect(result.tools).toHaveLength(2);
+    expect(result.tools.map((t) => t.type)).toEqual(["web_search", "x_search"]);
+  });
+
+  it("normalizePersonaXapiConfig rejects unknown tool types", () => {
+    const result = normalizePersonaXapiConfig({
+      mode: "responses",
+      toolChoice: "auto",
+      maxTurns: 5,
+      tools: [
+        { type: "web_search" },
+        { type: "code_execution" as never },
+        { type: "x_search" }
+      ]
+    });
+    expect(result.tools).toHaveLength(2);
+    expect(result.tools.map((t) => t.type)).toEqual(["web_search", "x_search"]);
+  });
+
+  it("normalizePersonaXapiConfig handles null/undefined input", () => {
+    expect(normalizePersonaXapiConfig(null).tools).toEqual([]);
+    expect(normalizePersonaXapiConfig(undefined).tools).toEqual([]);
+    expect(normalizePersonaXapiConfig({}).tools).toEqual([]);
+  });
+
+  it("PERSONA_XAPI_TOOL_TYPES includes all supported tools", () => {
+    expect(PERSONA_XAPI_TOOL_TYPES).toEqual(["web_search", "x_search", "file_search"]);
+  });
+
+  it("SUPER_AGENT_DEFAULT_TOOLS has web_search and x_search", () => {
+    expect(SUPER_AGENT_DEFAULT_TOOLS).toEqual([
+      { type: "web_search" },
+      { type: "x_search" }
+    ]);
+  });
+
+  it("hasFileSearchTool detects file_search in tool array", () => {
+    expect(hasFileSearchTool([{ type: "web_search" }])).toBe(false);
+    expect(hasFileSearchTool([{ type: "file_search" }])).toBe(true);
+    expect(hasFileSearchTool(undefined)).toBe(false);
+    expect(hasFileSearchTool([])).toBe(false);
+  });
+
+  it("createPersonaPayloadSchema rejects file_search without collection", () => {
+    const result = createPersonaPayloadSchema.safeParse({
+      name: "Test Agent",
+      systemPrompt: "You are a test agent for validation.",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "file_search" }]
+      }
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("createPersonaPayloadSchema allows file_search with collection", () => {
+    const result = createPersonaPayloadSchema.safeParse({
+      name: "Test Agent",
+      systemPrompt: "You are a test agent for validation.",
+      xaiCollection: {
+        collectionId: "collection_abc-123"
+      },
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "file_search" }]
+      }
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("createPersonaPayloadSchema rejects unknown tool type", () => {
+    const result = createPersonaPayloadSchema.safeParse({
+      name: "Test Agent",
+      systemPrompt: "You are a test agent for validation.",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "code_execution" }]
+      }
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("createPersonaPayloadSchema allows empty tools array", () => {
+    const result = createPersonaPayloadSchema.safeParse({
+      name: "Test Agent",
+      systemPrompt: "You are a test agent for validation.",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: []
+      }
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("createPersonaPayloadSchema defaults xapi when omitted", () => {
+    const result = createPersonaPayloadSchema.safeParse({
+      name: "Test Agent",
+      systemPrompt: "You are a test agent for validation."
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.xapi.mode).toBe("responses");
+      expect(result.data.xapi.toolChoice).toBe("auto");
+      expect(result.data.xapi.maxTurns).toBe(5);
+      expect(result.data.xapi.tools).toEqual([]);
+    }
+  });
+});

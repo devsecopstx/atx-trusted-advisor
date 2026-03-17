@@ -2,14 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
-import { AdminSessionPanel } from "@/app/admin/ui/admin-session-panel";
+import { BackIcon } from "@/app/admin/ui/crud-icons";
 
-import { PersonaDirectory } from "./ui/persona-directory";
+import { AdminSessionPanel } from "../ui/admin-session-panel";
+import { PortfolioConsole } from "./ui/portfolio-console";
 
-export default async function PersonasPage() {
+export default async function AdminPortfoliosPage() {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
+  }
+  if (!session.roles.includes("global_admin")) {
+    redirect("/admin?error=forbidden");
   }
 
   return (
@@ -17,10 +21,10 @@ export default async function PersonasPage() {
       <section className="hero-card xf-noise-overlay">
         <div className="hero-top">
           <div>
-            <p className="eyebrow">xfinance core</p>
-            <h1 className="hero-title">xPersona Directory</h1>
+            <p className="eyebrow">xfinance core admin</p>
+            <h1 className="hero-title">Portfolios</h1>
             <p className="hero-copy">
-              Read-only directory of configured xPersonas and their capabilities.
+              View default portfolio, accounts, and watchlist for the current admin session.
             </p>
           </div>
           <AdminSessionPanel
@@ -35,11 +39,11 @@ export default async function PersonasPage() {
 
       <section className="panel">
         <Link className="cta cta-secondary" href="/admin">
-          Back to admin
+          <BackIcon className="crud-icon" /> Back to admin functions
         </Link>
       </section>
 
-      <PersonaDirectory />
+      <PortfolioConsole />
     </main>
   );
 }
