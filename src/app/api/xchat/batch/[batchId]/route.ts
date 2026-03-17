@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   getBatchJobRecord,
   listBatchItemResults,
@@ -11,9 +12,26 @@ type RouteContext = {
   params: Promise<{ batchId: string }>;
 };
 
+const BATCH_DETAIL_RATE_WINDOW_MS = 60_000;
+const BATCH_DETAIL_RATE_MAX = 30;
+const BATCH_POLL_RATE_WINDOW_MS = 60_000;
+const BATCH_POLL_RATE_MAX = 10;
+
 export async function GET(_: Request, context: RouteContext) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) return session;
+
+  const rateLimit = checkRateLimit({
+    key: `xchat-batch-detail:${session.userId}`,
+    windowMs: BATCH_DETAIL_RATE_WINDOW_MS,
+    max: BATCH_DETAIL_RATE_MAX
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded", retryAfterSeconds: Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
 
   const { batchId } = await context.params;
   const job = await getBatchJobRecord(batchId);
@@ -51,6 +69,18 @@ export async function GET(_: Request, context: RouteContext) {
 export async function POST(_: Request, context: RouteContext) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) return session;
+
+  const rateLimit = checkRateLimit({
+    key: `xchat-batch-poll:${session.userId}`,
+    windowMs: BATCH_POLL_RATE_WINDOW_MS,
+    max: BATCH_POLL_RATE_MAX
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded", retryAfterSeconds: Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000) },
+      { status: 429 }
+    );
+  }
 
   const { batchId } = await context.params;
   const existing = await getBatchJobRecord(batchId);
