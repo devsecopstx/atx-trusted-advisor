@@ -96,6 +96,24 @@ Generate app-store-ready screenshot scene for xFinance:
 - no decorative clutter
 ```
 
+### Admin Console Surface (console.x.ai clean style)
+
+```text
+Generate an xFinance admin console screen in a clean, low-noise style inspired by console.x.ai.
+
+Requirements:
+- clear section headers and concise helper copy
+- table-first layout with soft separators and compact row density
+- action buttons grouped near table context ("Export", "Invite", filters)
+- restrained monochrome base with minimal accent usage
+- legible labels for roles/permissions and status states
+
+Constraints:
+- no saturated gradients
+- no decorative glow over data regions
+- no dense visual clutter that impairs operator scanning
+```
+
 ## Negative Prompt Block
 
 ```text

@@ -59,6 +59,7 @@ All four tags are mandatory in any hero or campaign prompt.
 - `platform:landing16x9`
 - `platform:appStoreScreenshot`
 - `platform:darkModeUi`
+- `platform:adminConsole`
 
 ## Anti-Pattern Tags (Blocklist)
 
@@ -102,3 +103,24 @@ trust:legibleAtMobile trust:believableFinancialUi
 platform:appStoreScreenshot platform:darkModeUi
 block:gibberishText block:misleadingFinancialValues
 ```
+
+### Preset: Admin Console Clean (console.x.ai inspired)
+
+```text
+brand:xFinance brand:poweredByXai
+style:darkFirst style:lowNoise style:cleanGeometry
+layout:balancedWhitespace layout:mobileFirst
+trust:legibleAtMobile trust:governedTone trust:conversionReady
+platform:adminConsole platform:darkModeUi
+block:overcrowdedComposition block:aggressiveNeonBloom
+```
+
+## Admin Console UX Traits
+
+Apply these traits for admin/operator surfaces:
+
+- Sparse information hierarchy with strong section titles and subdued helper text
+- High-contrast tables with soft separators and minimal chrome
+- Compact, predictable control placements (filters/actions near table context)
+- Neutral backgrounds with restrained accent usage for status and CTA only
+- Interaction density optimized for operations without visual noise

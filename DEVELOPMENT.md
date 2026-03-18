@@ -554,6 +554,12 @@ with payload shape:
 }
 ```
 
+## Design and Branding
+
+- **Branding prompts and tags:** `branding/xfinance-brand-prompts.md`, `branding/xfinance-branding-tags.md`, `branding/xfinance-color-palette.md`, `branding/xfinance-typography.md`
+- **Design system:** `design-system/xfinance-brand-kit.md`, `design-system/xfinance-brand-kit.css`
+- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/xfinance-brand-kit.md` § Admin Console Direction. UX review findings: `docs/xchat/xdesign-review-admin-console-ux.md`
+
 ## Admin Step-by-Step Validation (xChat readiness)
 
 1. Run `npm run seed:admin`.

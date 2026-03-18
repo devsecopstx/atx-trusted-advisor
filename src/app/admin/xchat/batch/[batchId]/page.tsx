@@ -100,8 +100,8 @@ export default async function AdminBatchDetailPage({
         {items.length === 0 ? (
           <p className="status-text">No batch items found.</p>
         ) : (
-          <div className="table-wrap">
-            <table className="table-grid">
+          <div className="crud-table-wrap">
+            <table className="crud-table">
               <thead>
                 <tr>
                   <th>Item ID</th>
