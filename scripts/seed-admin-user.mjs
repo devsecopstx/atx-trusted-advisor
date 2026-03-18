@@ -1,9 +1,9 @@
 import { MongoClient } from "mongodb";
 
 const ADMIN_EMAIL = process.env.ADMIN_SEED_EMAIL ?? "atxbogart@gmail.com";
-const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core";
-const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
-const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
+const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "xfinance-core";
+const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "xFinance Core";
+const DB_NAME = process.env.MONGODB_DB_NAME ?? "xfinancedb";
 const DEFAULT_PERSONA_NAME = "Super-Agent";
 const DEFAULT_PERSONA_SYSTEM_PROMPT =
   "You are The Architect, an elite administrative agent with full access to the xAI ecosystem. You have a multi-layered toolset including Web Search, X (Twitter) Search, a Python Code Sandbox, and Private Collection Search.";
@@ -13,7 +13,7 @@ const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
 const DEFAULT_WATCHLIST_SYMBOLS = ["TSLA"];
 const DEFAULT_COLLECTION_ID =
-  (process.env.ATXFINANCE_COLLECTION_ID || "").trim() || "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
+  (process.env.XFINANCE_COLLECTION_ID || "").trim() || "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
 const DEFAULT_COLLECTION_NAME = "Finance";
 
 function decodeMongoUri() {
@@ -181,7 +181,7 @@ async function seed() {
               { type: "web_search" },
               { type: "x_search" },
               { type: "file_search", source: { collection_ids: [DEFAULT_COLLECTION_ID] } },
-              { type: "atxfinance" }
+              { type: "xfinance" }
             ]
           },
           updatedAt: now

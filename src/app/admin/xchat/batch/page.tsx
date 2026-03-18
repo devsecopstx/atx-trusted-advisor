@@ -54,7 +54,7 @@ export default async function AdminXchatBatchPage({
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">atxfinance core admin</p>
+        <p className="eyebrow">xfinance core admin</p>
         <h1 className="hero-title">Batch Operations Dashboard</h1>
         <p className="hero-copy">
           Operational snapshot for xChat batch runs with status totals and per-job progress.

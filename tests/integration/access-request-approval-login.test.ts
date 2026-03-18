@@ -63,7 +63,7 @@ function makeUser() {
     _id: {
       toHexString: () => state.userId
     },
-    email: "approved.user@atxfinance.ai",
+    email: "approved.user@xfinance.ai",
     roles: [...state.userRoles],
     status: "active" as const
   };
@@ -138,8 +138,8 @@ describe("access request approval login flow", () => {
       _id: {
         toHexString: () => "507f1f77bcf86cd799439033"
       },
-      slug: "atxfinance-core",
-      name: "atxFinance Core",
+      slug: "xfinance-core",
+      name: "xFinance Core",
       isDefault: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -153,7 +153,7 @@ describe("access request approval login flow", () => {
       userId: {
         toHexString: () => state.userId
       },
-      email: "approved.user@atxfinance.ai",
+      email: "approved.user@xfinance.ai",
       roles: [...state.userRoles],
       tenantId: {
         toHexString: () => "507f1f77bcf86cd799439033"
@@ -193,7 +193,7 @@ describe("access request approval login flow", () => {
           data: {
             id: "x-user-1",
             username: "approved_user",
-            email: "approved.user@atxfinance.ai"
+            email: "approved.user@xfinance.ai"
           }
         })
       }) as typeof fetch;
@@ -243,7 +243,7 @@ describe("access request approval login flow", () => {
           data: {
             id: "x-user-1",
             username: "approved_user",
-            email: "approved.user@atxfinance.ai"
+            email: "approved.user@xfinance.ai"
           }
         })
       }) as typeof fetch;
@@ -282,7 +282,7 @@ describe("access request approval login flow", () => {
           data: {
             id: "x-user-1",
             username: "approved_user",
-            email: "approved.user@atxfinance.ai"
+            email: "approved.user@xfinance.ai"
           }
         })
       }) as typeof fetch;

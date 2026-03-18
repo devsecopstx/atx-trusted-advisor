@@ -63,7 +63,7 @@ describe("auth link-email route", () => {
 
     identityMocks.getCoreUserByEmail.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "user@atxfinance.ai",
+      email: "user@xfinance.ai",
       roles: state.userRoles,
       status: "active"
     });
@@ -71,13 +71,13 @@ describe("auth link-email route", () => {
     identityMocks.updateCoreUserEmail.mockResolvedValue(null);
     identityMocks.ensureCoreUserByEmail.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "user@atxfinance.ai",
+      email: "user@xfinance.ai",
       roles: state.userRoles,
       status: "active"
     });
     identityMocks.linkXAccountToUser.mockImplementation(async () => ({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "user@atxfinance.ai",
+      email: "user@xfinance.ai",
       roles: [...state.userRoles],
       status: "active"
     }));
@@ -89,7 +89,7 @@ describe("auth link-email route", () => {
     });
     identityMocks.resolveAuthContext.mockImplementation(async () => ({
       userId: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "user@atxfinance.ai",
+      email: "user@xfinance.ai",
       roles: [...state.userRoles],
       tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
       tenantRole: "tenant_admin",
@@ -103,7 +103,7 @@ describe("auth link-email route", () => {
       new Request("http://127.0.0.1:3000/api/auth/link-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "user@atxfinance.ai" })
+        body: JSON.stringify({ email: "user@xfinance.ai" })
       })
     );
 
@@ -121,7 +121,7 @@ describe("auth link-email route", () => {
       new Request("http://127.0.0.1:3000/api/auth/link-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "user@atxfinance.ai" })
+        body: JSON.stringify({ email: "user@xfinance.ai" })
       })
     );
 
@@ -144,7 +144,7 @@ describe("auth link-email route", () => {
       new Request("http://127.0.0.1:3000/api/auth/link-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "user@atxfinance.ai" })
+        body: JSON.stringify({ email: "user@xfinance.ai" })
       })
     );
 

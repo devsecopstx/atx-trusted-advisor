@@ -8,7 +8,7 @@
 - [ ] Identify exactly which credentials are rotating and why.
 - [ ] Confirm active production URL/domain and all OAuth callback URLs.
 - [ ] Confirm current App Runner service and GitHub repo/branch used for deploys.
-- [ ] Open `docs/secret-rotation.md` in the atxFinance repo as the runbook baseline.
+- [ ] Open `docs/secret-rotation.md` in the xFinance repo as the runbook baseline.
 
 ### 2) Create new credentials
 

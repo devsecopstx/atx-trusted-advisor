@@ -11,7 +11,7 @@ export type PersonaXapiMode = "responses" | "chat_completions";
 
 export type PersonaXapiToolChoice = "auto" | "required" | "none";
 
-export const PERSONA_XAPI_TOOL_TYPES = ["web_search", "x_search", "file_search", "atxfinance"] as const;
+export const PERSONA_XAPI_TOOL_TYPES = ["web_search", "x_search", "file_search", "xfinance"] as const;
 export type PersonaXapiToolType = (typeof PERSONA_XAPI_TOOL_TYPES)[number];
 
 export type PersonaXapiToolDefinition = {
@@ -33,13 +33,13 @@ export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
   tools: []
 };
 
-export const ATXFINANCE_COLLECTION_ID = "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
+export const XFINANCE_COLLECTION_ID = "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
 
 export const SUPER_AGENT_DEFAULT_TOOLS: PersonaXapiToolDefinition[] = [
   { type: "web_search" },
   { type: "x_search" },
-  { type: "file_search", source: { collection_ids: [ATXFINANCE_COLLECTION_ID] } },
-  { type: "atxfinance" }
+  { type: "file_search", source: { collection_ids: [XFINANCE_COLLECTION_ID] } },
+  { type: "xfinance" }
 ];
 
 export const personaStatusValues = ["draft", "published", "archived"] as const;
