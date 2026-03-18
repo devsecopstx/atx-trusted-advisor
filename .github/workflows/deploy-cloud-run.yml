@@ -28,6 +28,7 @@ permissions:
 env:
   NODE_VERSION: "22"
   IMAGE_NAME: "xfinance-core-app"
+  AR_REPOSITORY: "cloud-run-images"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   GH_REPOSITORY: ${{ github.repository }}
   GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
@@ -101,10 +102,28 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT_ID_STAGING }}
 
+      - name: Ensure Artifact Registry repository (staging)
+        run: |
+          gcloud artifacts repositories describe "${{ env.AR_REPOSITORY }}" \
+            --location "${{ vars.CLOUD_RUN_REGION }}" \
+            --project "${{ vars.GCP_PROJECT_ID_STAGING }}" >/dev/null 2>&1 || \
+          gcloud artifacts repositories create "${{ env.AR_REPOSITORY }}" \
+            --repository-format=docker \
+            --location "${{ vars.CLOUD_RUN_REGION }}" \
+            --description="Container images for Cloud Run deploys" \
+            --project "${{ vars.GCP_PROJECT_ID_STAGING }}"
+
+      - name: Build and push image (staging)
+        run: |
+          IMAGE_URI="${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID_STAGING }}/${{ env.AR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+          gcloud auth configure-docker "${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev" --quiet
+          gcloud builds submit --tag "${IMAGE_URI}" .
+
       - name: Deploy to Cloud Run (staging)
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
-            --source . \
+            --image "${IMAGE_URI}" \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
@@ -191,10 +210,28 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT_ID_PROD }}
 
+      - name: Ensure Artifact Registry repository (production)
+        run: |
+          gcloud artifacts repositories describe "${{ env.AR_REPOSITORY }}" \
+            --location "${{ vars.CLOUD_RUN_REGION }}" \
+            --project "${{ vars.GCP_PROJECT_ID_PROD }}" >/dev/null 2>&1 || \
+          gcloud artifacts repositories create "${{ env.AR_REPOSITORY }}" \
+            --repository-format=docker \
+            --location "${{ vars.CLOUD_RUN_REGION }}" \
+            --description="Container images for Cloud Run deploys" \
+            --project "${{ vars.GCP_PROJECT_ID_PROD }}"
+
+      - name: Build and push image (production)
+        run: |
+          IMAGE_URI="${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID_PROD }}/${{ env.AR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+          gcloud auth configure-docker "${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev" --quiet
+          gcloud builds submit --tag "${IMAGE_URI}" .
+
       - name: Deploy to Cloud Run (production)
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
-            --source . \
+            --image "${IMAGE_URI}" \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
@@ -280,10 +317,28 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT_ID_PROD }}
 
+      - name: Ensure Artifact Registry repository (production)
+        run: |
+          gcloud artifacts repositories describe "${{ env.AR_REPOSITORY }}" \
+            --location "${{ vars.CLOUD_RUN_REGION }}" \
+            --project "${{ vars.GCP_PROJECT_ID_PROD }}" >/dev/null 2>&1 || \
+          gcloud artifacts repositories create "${{ env.AR_REPOSITORY }}" \
+            --repository-format=docker \
+            --location "${{ vars.CLOUD_RUN_REGION }}" \
+            --description="Container images for Cloud Run deploys" \
+            --project "${{ vars.GCP_PROJECT_ID_PROD }}"
+
+      - name: Build and push image (production)
+        run: |
+          IMAGE_URI="${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID_PROD }}/${{ env.AR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+          gcloud auth configure-docker "${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev" --quiet
+          gcloud builds submit --tag "${IMAGE_URI}" .
+
       - name: Deploy to Cloud Run (production)
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
-            --source . \
+            --image "${IMAGE_URI}" \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
