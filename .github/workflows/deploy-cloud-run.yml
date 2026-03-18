@@ -48,6 +48,8 @@ jobs:
           CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
           CLOUD_RUN_SERVICE_STAGING: ${{ vars.CLOUD_RUN_SERVICE_STAGING }}
           STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          EXPECTED_GITHUB_REPOSITORY: ${{ vars.EXPECTED_GITHUB_REPOSITORY }}
+          EXPECTED_GITHUB_OWNER: ${{ vars.EXPECTED_GITHUB_OWNER }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
         run: |
@@ -58,6 +60,14 @@ jobs:
               exit 1
             fi
           done
+          if [ -n "${EXPECTED_GITHUB_REPOSITORY:-}" ] && [ "${EXPECTED_GITHUB_REPOSITORY}" != "${GH_REPOSITORY}" ]; then
+            echo "::error::Repo mismatch: expected ${EXPECTED_GITHUB_REPOSITORY}, got ${GH_REPOSITORY}"
+            exit 1
+          fi
+          if [ -n "${EXPECTED_GITHUB_OWNER:-}" ] && [ "${EXPECTED_GITHUB_OWNER}" != "${GH_REPOSITORY_OWNER}" ]; then
+            echo "::error::Owner mismatch: expected ${EXPECTED_GITHUB_OWNER}, got ${GH_REPOSITORY_OWNER}"
+            exit 1
+          fi
           echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=staging"
 
       - name: Setup Node
@@ -128,6 +138,8 @@ jobs:
           CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
           CLOUD_RUN_SERVICE_PROD: ${{ vars.CLOUD_RUN_SERVICE_PROD }}
           PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+          EXPECTED_GITHUB_REPOSITORY: ${{ vars.EXPECTED_GITHUB_REPOSITORY }}
+          EXPECTED_GITHUB_OWNER: ${{ vars.EXPECTED_GITHUB_OWNER }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
         run: |
@@ -138,6 +150,14 @@ jobs:
               exit 1
             fi
           done
+          if [ -n "${EXPECTED_GITHUB_REPOSITORY:-}" ] && [ "${EXPECTED_GITHUB_REPOSITORY}" != "${GH_REPOSITORY}" ]; then
+            echo "::error::Repo mismatch: expected ${EXPECTED_GITHUB_REPOSITORY}, got ${GH_REPOSITORY}"
+            exit 1
+          fi
+          if [ -n "${EXPECTED_GITHUB_OWNER:-}" ] && [ "${EXPECTED_GITHUB_OWNER}" != "${GH_REPOSITORY_OWNER}" ]; then
+            echo "::error::Owner mismatch: expected ${EXPECTED_GITHUB_OWNER}, got ${GH_REPOSITORY_OWNER}"
+            exit 1
+          fi
           echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=production-main"
 
       - name: Setup Node
@@ -207,6 +227,8 @@ jobs:
           CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
           CLOUD_RUN_SERVICE_PROD: ${{ vars.CLOUD_RUN_SERVICE_PROD }}
           PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+          EXPECTED_GITHUB_REPOSITORY: ${{ vars.EXPECTED_GITHUB_REPOSITORY }}
+          EXPECTED_GITHUB_OWNER: ${{ vars.EXPECTED_GITHUB_OWNER }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
         run: |
@@ -217,6 +239,14 @@ jobs:
               exit 1
             fi
           done
+          if [ -n "${EXPECTED_GITHUB_REPOSITORY:-}" ] && [ "${EXPECTED_GITHUB_REPOSITORY}" != "${GH_REPOSITORY}" ]; then
+            echo "::error::Repo mismatch: expected ${EXPECTED_GITHUB_REPOSITORY}, got ${GH_REPOSITORY}"
+            exit 1
+          fi
+          if [ -n "${EXPECTED_GITHUB_OWNER:-}" ] && [ "${EXPECTED_GITHUB_OWNER}" != "${GH_REPOSITORY_OWNER}" ]; then
+            echo "::error::Owner mismatch: expected ${EXPECTED_GITHUB_OWNER}, got ${GH_REPOSITORY_OWNER}"
+            exit 1
+          fi
           echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=production-direct"
 
       - name: Setup Node

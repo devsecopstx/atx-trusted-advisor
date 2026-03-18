@@ -134,6 +134,8 @@ Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-sc
 | `CLOUD_RUN_SERVICE_PROD` | same value (prod-only variable) | `xfinance-core-prod` |
 | `STAGING_BASE_URL` | `https://staging.core.fintech-advisor.ai` | same value (staging-only variable) |
 | `PROD_BASE_URL` | same value (prod-only variable) | `https://core.fintech-advisor.ai` |
+| `EXPECTED_GITHUB_REPOSITORY` | `devsecopstx/xfinance` | same value |
+| `EXPECTED_GITHUB_OWNER` | `devsecopstx` | same value |
 
 ### GitHub CLI Setup (Variables + Secrets)
 
@@ -157,6 +159,8 @@ gh variable set CLOUD_RUN_SERVICE_STAGING --repo "$GH_REPO" --body "xfinance-cor
 gh variable set CLOUD_RUN_SERVICE_PROD --repo "$GH_REPO" --body "xfinance-core-prod"
 gh variable set STAGING_BASE_URL --repo "$GH_REPO" --body "https://staging.core.fintech-advisor.ai"
 gh variable set PROD_BASE_URL --repo "$GH_REPO" --body "https://core.fintech-advisor.ai"
+gh variable set EXPECTED_GITHUB_REPOSITORY --repo "$GH_REPO" --body "$GH_REPO"
+gh variable set EXPECTED_GITHUB_OWNER --repo "$GH_REPO" --body "${GH_REPO%%/*}"
 
 # Environment secrets
 gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$GH_REPO" --env staging --body "$STAGING_WIP"
@@ -184,6 +188,51 @@ Use environment-scoped secrets in GitHub:
 | --- | --- | --- |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `<staging-provider-resource-name>` | `<prod-provider-resource-name>` |
 | `GCP_SERVICE_ACCOUNT_EMAIL` | `<staging-deploy-sa>@<staging-project>.iam.gserviceaccount.com` | `<prod-deploy-sa>@<prod-project>.iam.gserviceaccount.com` |
+
+### Org/Repo Migration OIDC Fix
+
+If `Deploy Cloud Run` fails at `Authenticate to Google Cloud` with `unauthorized_client` and `attribute condition`, update both GCP providers and service account bindings to the current repo:
+
+```bash
+REPO="devsecopstx/xfinance"
+STAGING_PROJECT_ID="fintech-advisor-staging"
+PROD_PROJECT_ID="fintech-advisor-prod"
+
+STAGING_PROJECT_NUMBER="$(gcloud projects describe "$STAGING_PROJECT_ID" --format='value(projectNumber)')"
+PROD_PROJECT_NUMBER="$(gcloud projects describe "$PROD_PROJECT_ID" --format='value(projectNumber)')"
+
+gcloud iam workload-identity-pools providers update-oidc github-provider \
+  --project "$STAGING_PROJECT_ID" \
+  --location global \
+  --workload-identity-pool github-pool \
+  --attribute-condition "assertion.repository=='$REPO'"
+
+gcloud iam workload-identity-pools providers update-oidc github-provider \
+  --project "$PROD_PROJECT_ID" \
+  --location global \
+  --workload-identity-pool github-pool \
+  --attribute-condition "assertion.repository=='$REPO'"
+
+gcloud iam service-accounts add-iam-policy-binding "github-deployer@${STAGING_PROJECT_ID}.iam.gserviceaccount.com" \
+  --project "$STAGING_PROJECT_ID" \
+  --role roles/iam.workloadIdentityUser \
+  --member "principalSet://iam.googleapis.com/projects/${STAGING_PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-pool/attribute.repository/${REPO}"
+
+gcloud iam service-accounts add-iam-policy-binding "github-deployer@${PROD_PROJECT_ID}.iam.gserviceaccount.com" \
+  --project "$PROD_PROJECT_ID" \
+  --role roles/iam.workloadIdentityUser \
+  --member "principalSet://iam.googleapis.com/projects/${PROD_PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-pool/attribute.repository/${REPO}"
+
+gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --env staging \
+  --body "projects/${STAGING_PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+gh secret set GCP_SERVICE_ACCOUNT_EMAIL --env staging \
+  --body "github-deployer@${STAGING_PROJECT_ID}.iam.gserviceaccount.com"
+
+gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --env production \
+  --body "projects/${PROD_PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+gh secret set GCP_SERVICE_ACCOUNT_EMAIL --env production \
+  --body "github-deployer@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+```
 
 ### GitHub Environment Protection Rules
 
