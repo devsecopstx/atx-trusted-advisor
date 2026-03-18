@@ -79,49 +79,13 @@ jobs:
 
       - name: Health check staging
         run: |
-          health_check_with_retry() {
-            local label="$1"
-            local url="$2"
-            local attempts=18
-            local sleep_seconds=15
-
-            for attempt in $(seq 1 "${attempts}"); do
-              local response_file
-              response_file="$(mktemp)"
-              local http_code
-              http_code="$(
-                curl --silent --show-error --location \
-                  --connect-timeout 5 --max-time 15 \
-                  --output "${response_file}" --write-out "%{http_code}" \
-                  "${url}" || true
-              )"
-              local response_body
-              response_body="$(tr -d '\n' < "${response_file}")"
-
-              if [ "${http_code}" = "200" ] && [[ "${response_body}" == *"\"status\":\"ok\""* ]]; then
-                rm -f "${response_file}"
-                echo "${label}:ok attempt=${attempt}"
-                return 0
-              fi
-
-              echo "${label}:pending attempt=${attempt}/${attempts} status=${http_code:-curl_error}"
-              rm -f "${response_file}"
-              if [ "${attempt}" -lt "${attempts}" ]; then
-                sleep "${sleep_seconds}"
-              fi
-            done
-
-            echo "${label}:failed after ${attempts} attempts"
-            return 1
-          }
-
-          if health_check_with_retry "staging_custom_domain_health" "${{ vars.STAGING_BASE_URL }}/api/health"; then
-            echo "staging_health_check:custom_domain_ok"
-          else
-            echo "staging_custom_domain_health:falling back to run.app URL"
-            STAGING_SERVICE_URL="$(gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" --region "${{ vars.CLOUD_RUN_REGION }}" --format='value(status.url)')"
-            health_check_with_retry "staging_run_app_health" "${STAGING_SERVICE_URL}/api/health"
-          fi
+          bash scripts/ops/health-check-with-fallback.sh \
+            "staging" \
+            "${{ vars.STAGING_BASE_URL }}" \
+            "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
+            "${{ vars.CLOUD_RUN_REGION }}" \
+            "18" \
+            "15"
 
   deploy-production-main:
     needs: [deploy-staging]
@@ -177,49 +141,13 @@ jobs:
 
       - name: Health check production
         run: |
-          health_check_with_retry() {
-            local label="$1"
-            local url="$2"
-            local attempts=18
-            local sleep_seconds=15
-
-            for attempt in $(seq 1 "${attempts}"); do
-              local response_file
-              response_file="$(mktemp)"
-              local http_code
-              http_code="$(
-                curl --silent --show-error --location \
-                  --connect-timeout 5 --max-time 15 \
-                  --output "${response_file}" --write-out "%{http_code}" \
-                  "${url}" || true
-              )"
-              local response_body
-              response_body="$(tr -d '\n' < "${response_file}")"
-
-              if [ "${http_code}" = "200" ] && [[ "${response_body}" == *"\"status\":\"ok\""* ]]; then
-                rm -f "${response_file}"
-                echo "${label}:ok attempt=${attempt}"
-                return 0
-              fi
-
-              echo "${label}:pending attempt=${attempt}/${attempts} status=${http_code:-curl_error}"
-              rm -f "${response_file}"
-              if [ "${attempt}" -lt "${attempts}" ]; then
-                sleep "${sleep_seconds}"
-              fi
-            done
-
-            echo "${label}:failed after ${attempts} attempts"
-            return 1
-          }
-
-          if health_check_with_retry "production_custom_domain_health" "${{ vars.PROD_BASE_URL }}/api/health"; then
-            echo "production_health_check:custom_domain_ok"
-          else
-            echo "production_custom_domain_health:falling back to run.app URL"
-            PROD_SERVICE_URL="$(gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE_PROD }}" --region "${{ vars.CLOUD_RUN_REGION }}" --format='value(status.url)')"
-            health_check_with_retry "production_run_app_health" "${PROD_SERVICE_URL}/api/health"
-          fi
+          bash scripts/ops/health-check-with-fallback.sh \
+            "production" \
+            "${{ vars.PROD_BASE_URL }}" \
+            "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            "${{ vars.CLOUD_RUN_REGION }}" \
+            "18" \
+            "15"
 
   deploy-production-direct:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
@@ -274,46 +202,10 @@ jobs:
 
       - name: Health check production
         run: |
-          health_check_with_retry() {
-            local label="$1"
-            local url="$2"
-            local attempts=18
-            local sleep_seconds=15
-
-            for attempt in $(seq 1 "${attempts}"); do
-              local response_file
-              response_file="$(mktemp)"
-              local http_code
-              http_code="$(
-                curl --silent --show-error --location \
-                  --connect-timeout 5 --max-time 15 \
-                  --output "${response_file}" --write-out "%{http_code}" \
-                  "${url}" || true
-              )"
-              local response_body
-              response_body="$(tr -d '\n' < "${response_file}")"
-
-              if [ "${http_code}" = "200" ] && [[ "${response_body}" == *"\"status\":\"ok\""* ]]; then
-                rm -f "${response_file}"
-                echo "${label}:ok attempt=${attempt}"
-                return 0
-              fi
-
-              echo "${label}:pending attempt=${attempt}/${attempts} status=${http_code:-curl_error}"
-              rm -f "${response_file}"
-              if [ "${attempt}" -lt "${attempts}" ]; then
-                sleep "${sleep_seconds}"
-              fi
-            done
-
-            echo "${label}:failed after ${attempts} attempts"
-            return 1
-          }
-
-          if health_check_with_retry "production_custom_domain_health" "${{ vars.PROD_BASE_URL }}/api/health"; then
-            echo "production_health_check:custom_domain_ok"
-          else
-            echo "production_custom_domain_health:falling back to run.app URL"
-            PROD_SERVICE_URL="$(gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE_PROD }}" --region "${{ vars.CLOUD_RUN_REGION }}" --format='value(status.url)')"
-            health_check_with_retry "production_run_app_health" "${PROD_SERVICE_URL}/api/health"
-          fi
+          bash scripts/ops/health-check-with-fallback.sh \
+            "production" \
+            "${{ vars.PROD_BASE_URL }}" \
+            "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            "${{ vars.CLOUD_RUN_REGION }}" \
+            "18" \
+            "15"

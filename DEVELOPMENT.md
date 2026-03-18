@@ -254,6 +254,7 @@ Route53 TODO details:
   - promote to production
 - Tag (`v*`) or manual dispatch (`target=production`):
   - direct production deploy (does not depend on staging job state)
+- Health checks are centralized in `scripts/ops/health-check-with-fallback.sh` for consistent behavior across deploy and rollback workflows.
 
 ### Manual rollback (workflow)
 

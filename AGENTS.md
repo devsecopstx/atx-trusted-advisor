@@ -65,6 +65,7 @@ from injected secrets.
 
 - Project-local skills are stored in `.cursor/skills/`. See `.cursor/skills/README.md` for the full index.
 - TODO: refine skills naming conventions; keep current names for now.
+- TODO: remove imported global Cursor skills from the repo once local skill parity is confirmed.
 - Ops/review skills: `xfinance-docs-ops`, `xfinance-xchat-validation-checklist`, `xfinance-runbook-navigator`, `xfinance-design-ops`, `xdesign-review`.
 - Strategy skills: 10 `xfinance-strategy-*` skills (options strategy references).
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.

@@ -1,6 +1,7 @@
 ---
 id: xdesign-review
 name: xdesign-review
+version: 2.0.0
 description: Final MVP PR review gate for xFinance when combining Core MVP and Branding cloud-agent changes.
 ---
 
@@ -93,3 +94,4 @@ If any reviewer is skipped, final review is incomplete.
 - Do not invent behavior; verify from code/diff/tests.
 - Treat auth, tenant isolation, and contract drift as high severity.
 - Keep recommendations actionable and scoped to the touched changes.
+- TODO: remove dependency on global Cursor skills; keep this project-local skill pack as source of truth.

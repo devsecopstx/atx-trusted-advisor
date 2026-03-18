@@ -72,55 +72,18 @@ jobs:
       - name: Verify health after rollback
         run: |
           if [ "${{ inputs.target }}" = "production" ]; then
-            SERVICE_NAME="${{ vars.CLOUD_RUN_SERVICE_PROD }}"
             BASE_URL="${{ vars.PROD_BASE_URL }}"
+            SERVICE_NAME="${{ vars.CLOUD_RUN_SERVICE_PROD }}"
             LABEL_PREFIX="production"
           else
-            SERVICE_NAME="${{ vars.CLOUD_RUN_SERVICE_STAGING }}"
             BASE_URL="${{ vars.STAGING_BASE_URL }}"
+            SERVICE_NAME="${{ vars.CLOUD_RUN_SERVICE_STAGING }}"
             LABEL_PREFIX="staging"
           fi
-
-          health_check_with_retry() {
-            local label="$1"
-            local url="$2"
-            local attempts=12
-            local sleep_seconds=10
-
-            for attempt in $(seq 1 "${attempts}"); do
-              local response_file
-              response_file="$(mktemp)"
-              local http_code
-              http_code="$(
-                curl --silent --show-error --location \
-                  --connect-timeout 5 --max-time 15 \
-                  --output "${response_file}" --write-out "%{http_code}" \
-                  "${url}" || true
-              )"
-              local response_body
-              response_body="$(tr -d '\n' < "${response_file}")"
-
-              if [ "${http_code}" = "200" ] && [[ "${response_body}" == *"\"status\":\"ok\""* ]]; then
-                rm -f "${response_file}"
-                echo "${label}:ok attempt=${attempt}"
-                return 0
-              fi
-
-              rm -f "${response_file}"
-              echo "${label}:pending attempt=${attempt}/${attempts} status=${http_code:-curl_error}"
-              if [ "${attempt}" -lt "${attempts}" ]; then
-                sleep "${sleep_seconds}"
-              fi
-            done
-
-            echo "${label}:failed after ${attempts} attempts"
-            return 1
-          }
-
-          if health_check_with_retry "${LABEL_PREFIX}_custom_domain_health" "${BASE_URL}/api/health"; then
-            echo "${LABEL_PREFIX}_health_check:custom_domain_ok"
-          else
-            echo "${LABEL_PREFIX}_custom_domain_health:falling back to run.app URL"
-            SERVICE_URL="$(gcloud run services describe "${SERVICE_NAME}" --region "${{ vars.CLOUD_RUN_REGION }}" --format='value(status.url)')"
-            health_check_with_retry "${LABEL_PREFIX}_run_app_health" "${SERVICE_URL}/api/health"
-          fi
+          bash scripts/ops/health-check-with-fallback.sh \
+            "${LABEL_PREFIX}" \
+            "${BASE_URL}" \
+            "${SERVICE_NAME}" \
+            "${{ vars.CLOUD_RUN_REGION }}" \
+            "12" \
+            "10"
