@@ -2,49 +2,56 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "xfinance-core: start backend",
+      "label": "Install Dependencies",
       "type": "shell",
-      "command": "docker compose --env-file .env up",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "isBackground": true,
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": false
-      },
+      "command": "npm ci",
       "problemMatcher": []
     },
     {
-      "label": "xfinance-core: start frontend",
+      "label": "Build App",
       "type": "shell",
-      "command": "npm run dev:frontend",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "isBackground": true,
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": false
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "xfinance-core: start backend + frontend (default)",
-      "dependsOn": [
-        "xfinance-core: start backend",
-        "xfinance-core: start frontend"
-      ],
-      "dependsOrder": "parallel",
+      "command": "npm run build",
       "group": {
         "kind": "build",
         "isDefault": true
       },
-      "runOptions": {
-        "runOn": "default"
-      },
+      "dependsOn": ["Install Dependencies"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Backend (Docker)",
+      "type": "shell",
+      "command": "npm run dev:backend",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Frontend (Next Dev)",
+      "type": "shell",
+      "command": "npm run dev:frontend",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Open Localhost",
+      "type": "shell",
+      "command": "sleep 3 && open http://localhost:3000",
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Local Services",
+      "dependsOn": ["Start Backend (Docker)", "Start Frontend (Next Dev)"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Localhost App (Backend + Frontend)",
+      "dependsOn": [
+        "Start Local Services",
+        "Open Localhost"
+      ],
+      "dependsOrder": "sequence",
       "problemMatcher": []
     }
   ]
