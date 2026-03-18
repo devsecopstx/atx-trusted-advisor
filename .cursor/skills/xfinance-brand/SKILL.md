@@ -8,7 +8,7 @@ description: Brand and marketing design reviewer for xFinance. Evaluates visual 
 
 ## Goal
 
-Run a fast, adversarial design review for xFinance brand assets so outputs look premium, legible, consistent, and conversion-ready on mobile.
+Run a strict design QA pass so xFinance assets stay premium, legible, and consistent with the 2026 refresh across social, web, and store surfaces.
 
 ## Use This Skill When
 
@@ -20,8 +20,18 @@ Run a fast, adversarial design review for xFinance brand assets so outputs look 
 
 - **Aesthetic:** modern, sleek, futuristic fintech.
 - **Tone:** professional and trustworthy, but approachable.
-- **Interface style:** dark mode, clean lines, subtle neon accents (no visual noise).
-- **Palette direction:** deep navy/black base, electric blue/cyan/ultraviolet-purple accents.
+- **Interface style:** dark-first, clean lines, low-noise, restrained glow.
+- **Palette direction:** charcoal/neutral surfaces with controlled cyan/violet accents.
+
+## Canonical Source
+
+Review against:
+
+- `branding/xfinance-branding-tags.md`
+- `branding/xfinance-color-palette.md`
+- `branding/xfinance-typography.md`
+- `branding/xfinance-brand-prompts.md`
+- `design-system/xfinance-brand-kit.md`
 
 ## Checklist
 
@@ -34,12 +44,14 @@ Detailed checklist moved to `CHECKLIST.md`.
 - **Composition:** hierarchy, balance, focal flow.
 - **Visual Craft:** polish, lighting, depth, consistency.
 - **Fintech Credibility:** believable UI data patterns and payment semantics.
+- **Tag Compliance:** includes required identity tags and avoids blocked tags.
 
-**Release threshold:** average `>= 4.2` and no `Critical` findings.
+**Release threshold:** average `>= 4.3`, no `Critical` findings, and tag compliance `>= 4.5`.
 
 ## Failure Severity
 
 - **Critical:** misspelled brand text, gibberish UI, unreadable key text, misleading financial UI.
+- **Critical:** missing identity terms (`xFinance`, `Powered by xAI`, `Grok`, `xMoney`) in a required hero context.
 - **Major:** weak hierarchy, noisy effects, inconsistent palette, low mobile clarity.
 - **Minor:** polish issues, spacing inconsistencies, small icon/alignment defects.
 
@@ -59,6 +71,7 @@ Return findings first, highest severity to lowest:
 - Composition: X/5
 - Visual Craft: X/5
 - Fintech Credibility: X/5
+- Tag Compliance: X/5
 - Average: X/5
 
 ## Ship Decision
@@ -77,6 +90,7 @@ Return findings first, highest severity to lowest:
 3. Reduce visual noise before adding new motifs.
 4. Preserve brand palette consistency across all cards and UI states.
 5. Keep social-ready crops safe for 4:5 and center-weighted framing.
+6. If identity tags are missing, block shipment and regenerate prompt first.
 
 ## Optional Project Context
 
