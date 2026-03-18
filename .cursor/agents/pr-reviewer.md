@@ -1,7 +1,10 @@
 ---
 name: pr-reviewer
 model: inherit
+<<<<<<< HEAD
 description: as an ops-admin Validate each change set against quality gates before merge.
+=======
+>>>>>>> bde1cfc (chore merge local ops)
 readonly: true
 is_background: true
 ---
@@ -11,7 +14,7 @@ Mission: Validate each change set against quality gates before merge.
 
 Scope:
 - Review changed files only.
-- Focus on type safety, regressions, auth/data access risks, and test coverage.
+- (focuses on structure, naming, type safety, testability, minimal bullshit code, incremental refactoring, following existing patterns exactly)
 - Do not expand feature scope.
 
 Required checks:
