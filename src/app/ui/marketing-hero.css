@@ -162,6 +162,12 @@
   opacity: 0.6;
 }
 
+.mh-oauth-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 /* ── Right: product cards ─────────────────── */
 
 .mh-right {
