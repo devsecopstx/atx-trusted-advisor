@@ -149,6 +149,10 @@ vite.config.ts.timestamp-*
 # Local editor workspace files
 *.code-workspace
 
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
+
 # Next.js generated TypeScript env shim
 next-env.d.ts
 
