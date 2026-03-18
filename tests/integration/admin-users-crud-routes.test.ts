@@ -41,7 +41,7 @@ describe("admin users CRUD routes", () => {
     identityMocks.listCoreUsers.mockResolvedValue([
       {
         _id: { toHexString: () => "507f1f77bcf86cd799439033" },
-        email: "user@xfinance.ai",
+        email: "user@atxfinance.ai",
         roles: ["viewer"],
         subscriptionPlan: "free",
         status: "active",
@@ -51,7 +51,7 @@ describe("admin users CRUD routes", () => {
     ]);
     identityMocks.createCoreUser.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439044" },
-      email: "new@xfinance.ai",
+      email: "new@atxfinance.ai",
       roles: ["viewer"],
       subscriptionPlan: "free",
       status: "active",
@@ -60,7 +60,7 @@ describe("admin users CRUD routes", () => {
     });
     identityMocks.getCoreUserById.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
-      email: "user@xfinance.ai",
+      email: "user@atxfinance.ai",
       roles: ["viewer"],
       subscriptionPlan: "free",
       status: "active",
@@ -69,7 +69,7 @@ describe("admin users CRUD routes", () => {
     });
     identityMocks.updateCoreUserById.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
-      email: "updated@xfinance.ai",
+      email: "updated@atxfinance.ai",
       roles: ["advisor"],
       subscriptionPlan: "pro",
       status: "active",
@@ -89,7 +89,7 @@ describe("admin users CRUD routes", () => {
     const response = await getUsers(new Request("http://test/api/admin/users?limit=50"));
     const payload = (await response.json()) as { data: Array<{ email: string }> };
     expect(response.status).toBe(200);
-    expect(payload.data[0]?.email).toBe("user@xfinance.ai");
+    expect(payload.data[0]?.email).toBe("user@atxfinance.ai");
     expect(identityMocks.listCoreUsers).toHaveBeenCalledWith(50);
   });
 
@@ -99,7 +99,7 @@ describe("admin users CRUD routes", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: "new@xfinance.ai",
+          email: "new@atxfinance.ai",
           role: "viewer",
           subscriptionPlan: "free",
           status: "active"
@@ -123,7 +123,7 @@ describe("admin users CRUD routes", () => {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: "updated@xfinance.ai",
+          email: "updated@atxfinance.ai",
           role: "advisor",
           subscriptionPlan: "pro"
         })

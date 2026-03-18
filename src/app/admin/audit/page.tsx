@@ -16,7 +16,7 @@ export default async function AdminAuditPage() {
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">xfinance core admin</p>
+        <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Audit Trail Explorer</h1>
         <p className="hero-copy">
           Search audit traces across users, access requests, and xPersonas.

@@ -33,7 +33,7 @@ export default function HomePage() {
 
           <div className="surface-grid two-col">
             <article className="surface-card xf-widget">
-              <h3>xFinance</h3>
+              <h3>atxFinance</h3>
               <p>
                 Portfolio management, account configuration, watchlists, and strategy execution
                 tools for approved finance professionals.
@@ -43,7 +43,7 @@ export default function HomePage() {
               <h3>xChat</h3>
               <p>
                 AI-powered advisor with persona-driven tools, xAI collection RAG, and real-time
-                xFinance data access via the xfinance tool.
+                atxFinance data access via the atxfinance tool.
               </p>
             </article>
           </div>

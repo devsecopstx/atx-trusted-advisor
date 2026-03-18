@@ -16,7 +16,7 @@ export default async function AdminRagFilesPage() {
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">xfinance core admin</p>
+        <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">RAG Uploads</h1>
         <p className="hero-copy">
           Upload scoped documents and review the latest ingestion status for knowledge files.
