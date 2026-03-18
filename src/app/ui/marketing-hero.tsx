@@ -50,6 +50,22 @@ function ProductCard(props: { icon: React.ReactNode; name: string; description: 
   );
 }
 
+function OAuthButton(props: { provider: string; href: string; disabled?: boolean }) {
+  const cls = `mh-oauth-btn${props.disabled ? " mh-oauth-btn-disabled" : ""}`;
+  if (props.disabled) {
+    return (
+      <span className={cls} aria-disabled="true">
+        {props.provider} <small>(coming soon)</small>
+      </span>
+    );
+  }
+  return (
+    <a className={cls} href={props.href}>
+      Sign in with {props.provider}
+    </a>
+  );
+}
+
 export function MarketingHero() {
   return (
     <section className="mh-hero">
@@ -71,7 +87,7 @@ export function MarketingHero() {
 
           <p className="mh-sub">
             Institutional-grade tools powered by xAI.
-            Private dark-launch — approved access only.
+            Start free — upgrade when you need more.
           </p>
 
           <div className="mh-badges">
@@ -81,18 +97,12 @@ export function MarketingHero() {
             <span className="mh-badge">
               xAI Collection RAG
             </span>
-            <span className="mh-badge">
-              Dark Launch
-            </span>
           </div>
 
-          <div className="mh-cta-row">
-            <a className="mh-cta-primary" href="/login">
-              xFinance Advisory
-            </a>
-            <a className="mh-cta-secondary" href="/admin">
-              Admin Console
-            </a>
+          <div className="mh-oauth-row">
+            <OAuthButton provider="X" href="/api/auth/x/login" />
+            <OAuthButton provider="Google" href="#" disabled />
+            <OAuthButton provider="GitHub" href="#" disabled />
           </div>
         </div>
 
