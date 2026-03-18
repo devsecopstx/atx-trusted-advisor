@@ -1,10 +1,10 @@
 ---
 id: setup-development
 name: setup-development
-description: Bootstrap xFinance on a fresh machine with dependency checks, env prompts, and build validation.
+description: Bootstrap atxFinance on a fresh machine with dependency checks, env prompts, and build validation.
 ---
 
-# Setup Development (xFinance)
+# Setup Development (atxFinance)
 
 ## Goal
 
@@ -40,16 +40,16 @@ Prefer isolation by risk boundary, not by every environment.
 
 Recommended allocation:
 
-1. `xfinance-prod` (prod only)
-2. `xfinance-nonprod` (dev + staging)
-3. `xfinance-strategy-nonprod` (if separate repo/app)
-4. `spare-rotation` (or future `xfinance-strategy-prod`)
+1. `atxfinance-prod` (prod only)
+2. `atxfinance-nonprod` (dev + staging)
+3. `atxfinance-strategy-nonprod` (if separate repo/app)
+4. `spare-rotation` (or future `atxfinance-strategy-prod`)
 
 Notes:
 
 - Keep exactly one active key per runtime via `XAI_API_KEY`.
 - Rotate by promoting `spare-rotation` and retiring the old key.
-- Do not reuse `xfinance-prod` in local development.
+- Do not reuse `atxfinance-prod` in local development.
 
 | Requirement | Where to Go | How to Get It |
 |---|---|---|
@@ -57,25 +57,25 @@ Notes:
 | `XAI_API_KEY` | xAI Console | 1) Sign in and open **API Keys**. 2) Click **Create API Key**. 3) Copy immediately (starts with `xai-`). |
 | `X_OAUTH_CLIENT_ID` | X Developer Portal | 1) Create a Project and App. 2) Enable OAuth 2.0 in **User authentication settings**. 3) Copy Client ID from **Keys and Tokens**. |
 | `X_OAUTH_CLIENT_SECRET` | X Developer Portal | In **Keys and Tokens**, regenerate/copy OAuth 2.0 client secret under Client ID/Secret controls. |
-| X App reference name | X Developer Portal -> Project Apps | Use `xfinance-advisory` as the app reference name for this local setup profile. |
+| X App reference name | X Developer Portal -> Project Apps | Use `atxfinance-advisory` as the app reference name for this local setup profile. |
 | Website URL | X Developer Portal -> User authentication settings | Set to `http://127.0.0.1:3000` for local development. |
 | Callback URI / Redirect URL | X Developer Portal -> User authentication settings | Set to `http://127.0.0.1:3000/api/auth/x/callback`. |
 | Terms of Service URL | X Developer Portal -> App details | Set to `https://www.xfin.digital/terms-of-service`. |
 | Privacy Policy URL | X Developer Portal -> App details | Set to `https://www.xfin.digital/privacy-policy`. |
-| Organization name | X Developer Portal -> App details | Use `xFinance`. |
+| Organization name | X Developer Portal -> App details | Use `atxFinance`. |
 
 ## X OAuth App Metadata (Required)
 
-When configuring the X Developer Portal app for xFinance, use:
+When configuring the X Developer Portal app for atxFinance, use:
 
 - Terms of Service: `https://www.xfin.digital/terms-of-service`
 - Privacy Policy: `https://www.xfin.digital/privacy-policy`
-- App reference name: `xfinance-advisory`
+- App reference name: `atxfinance-advisory`
 - Website URL (required): `http://127.0.0.1:3000`
 - Callback URI / Redirect URL (required): `http://127.0.0.1:3000/api/auth/x/callback`
-- Organization name: `xFinance`
+- Organization name: `atxFinance`
 
-## Reference Files (xFinance repo)
+## Reference Files (atxFinance repo)
 
 Use these as the source of truth while setting up local env and commands:
 

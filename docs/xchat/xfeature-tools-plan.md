@@ -6,13 +6,13 @@ Planning document. No runtime changes until explicitly approved.
 
 ## Context
 
-The `xfinance` custom tool stub (`docs/xchat/xfinance-tool-stub.md`) defines the target tool surface for xChat personas to call controlled xFinance capabilities. This plan turns that stub into a phased implementation roadmap.
+The `atxfinance` custom tool stub (`docs/xchat/atxfinance-tool-stub.md`) defines the target tool surface for xChat personas to call controlled atxFinance capabilities. This plan turns that stub into a phased implementation roadmap.
 
 ## Current State
 
 - xChat ask route forwards `xapi.tools` to xAI responses API (`web_search`, `x_search`, `file_search`).
 - xAI handles tool execution server-side for these three built-in tools.
-- The `xfinance` custom tool requires client-side execution: xAI calls the tool, we execute it, and return results back to xAI for the next turn.
+- The `atxfinance` custom tool requires client-side execution: xAI calls the tool, we execute it, and return results back to xAI for the next turn.
 - Persona validation only allows `web_search | x_search | file_search` via `PERSONA_XAPI_TOOL_TYPES`.
 - The tool stub defines four operations: `portfolio_summary`, `watchlist_snapshot`, `account_health`, `task_status`.
 
@@ -62,7 +62,7 @@ type RespondWithToolLoopInput = {
 - Test max-turns enforcement.
 - Test executor failure handling.
 
-## Phase 2: xFinance Tool Executor
+## Phase 2: atxFinance Tool Executor
 
 ### Scope
 - Create `src/modules/xchat/tool-executor.ts` implementing the four operations from the stub.
@@ -95,25 +95,25 @@ type RespondWithToolLoopInput = {
 ## Phase 3: Persona Tool Validation Update
 
 ### Scope
-- Add `"xfinance"` to `PERSONA_XAPI_TOOL_TYPES` in `src/modules/xchat/types.ts`.
-- Update persona validation in `src/modules/xchat/persona-validation.ts` to accept `xfinance` as a tool type.
-- Update `normalizePersonaXapiConfig` to pass through `xfinance` tools.
-- Update the persona editor multi-select UI to include an `xfinance` checkbox.
+- Add `"atxfinance"` to `PERSONA_XAPI_TOOL_TYPES` in `src/modules/xchat/types.ts`.
+- Update persona validation in `src/modules/xchat/persona-validation.ts` to accept `atxfinance` as a tool type.
+- Update `normalizePersonaXapiConfig` to pass through `atxfinance` tools.
+- Update the persona editor multi-select UI to include an `atxfinance` checkbox.
 
 ### Compatibility
-- Existing personas without `xfinance` tool are unaffected.
+- Existing personas without `atxfinance` tool are unaffected.
 - The tool is opt-in per persona.
-- `xfinance` tool definition: `{ type: "xfinance" }` (no `source` required).
+- `atxfinance` tool definition: `{ type: "atxfinance" }` (no `source` required).
 
 ### Migration
-- No schema migration needed. `xfinance` is a new tool type, not a field change.
-- Optionally add `xfinance` to Super-Agent default tools via seed update.
+- No schema migration needed. `atxfinance` is a new tool type, not a field change.
+- Optionally add `atxfinance` to Super-Agent default tools via seed update.
 
 ## Phase 4: Wire Tool Loop into Ask Route
 
 ### Scope
-- In `src/app/api/xchat/ask/route.ts`, when the persona has an `xfinance` tool in `xapi.tools`, use `respondWithXaiToolLoop` instead of `respondWithXai`.
-- Pass the `xFinanceToolExecutor` as the executor.
+- In `src/app/api/xchat/ask/route.ts`, when the persona has an `atxfinance` tool in `xapi.tools`, use `respondWithXaiToolLoop` instead of `respondWithXai`.
+- Pass the `atxFinanceToolExecutor` as the executor.
 - Session context (`userId`, `tenantId`) flows from the route handler to the executor.
 
 ### Fallback
@@ -126,7 +126,7 @@ type RespondWithToolLoopInput = {
 
 ### Scope
 - xAI Batch API does not support multi-turn tool loops. Batch items are single-request.
-- For batch workloads with `xfinance` tool: pre-execute tool calls during prompt assembly (similar to the existing collection pre-search pattern).
+- For batch workloads with `atxfinance` tool: pre-execute tool calls during prompt assembly (similar to the existing collection pre-search pattern).
 - Inject tool output into the system prompt as structured context.
 
 ### Pattern
@@ -142,7 +142,7 @@ For each batch item:
 | Phase | Dependencies | Scope |
 |-------|-------------|-------|
 | 1 | None | xAI client tool loop |
-| 2 | None (parallel with 1) | xfinance executor |
+| 2 | None (parallel with 1) | atxfinance executor |
 | 3 | Phase 1 + 2 | Validation + UI update |
 | 4 | Phase 1 + 2 + 3 | Ask route wiring |
 | 5 | Phase 4 | Batch pre-execution |

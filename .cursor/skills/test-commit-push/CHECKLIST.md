@@ -1,4 +1,4 @@
-# test-commit-push Checklist v2.2.0
+# test-commit-push Checklist
 
 ## Pre-Validation
 
@@ -20,7 +20,7 @@
 - [ ] Message explains intent and risk surface, not just file list.
 - [ ] Docs/runbooks updated when behavior or operations changed.
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
-- [ ] App version references are aligned (`package.json` and `src/lib/app-version.ts` consumers).
+- [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.
 
 ## Push Readiness
 

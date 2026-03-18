@@ -19,7 +19,7 @@ import {
 import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 import {
   createXfinanceToolExecutor,
-  XFINANCE_TOOL_DEFINITION
+  ATXFINANCE_TOOL_DEFINITION
 } from "@/modules/xchat/tool-executor";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 
@@ -151,7 +151,7 @@ export async function POST(request: Request) {
   }
 
   const systemPrompt = [
-    persona?.systemPrompt ?? "You are xchat, an operations-focused assistant for xfinance core admins.",
+    persona?.systemPrompt ?? "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext ? `Use the following RAG context if relevant:\n${ragContext}` : "No RAG context available."
   ].join("\n\n");
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
     ? `${userPromptTemplate}\n\nUser message:\n${message}`
     : message;
 
-  const hasXfinanceTool = xapiConfig.tools.some((t) => t.type === "xfinance");
+  const hasXfinanceTool = xapiConfig.tools.some((t) => t.type === "atxfinance");
   let xaiResponse: { outputText: string; model: string };
   let toolCallLogs: ToolCallLog[] = [];
 
@@ -175,9 +175,9 @@ export async function POST(request: Request) {
       });
     } else if (hasXfinanceTool) {
       const xaiTools: Array<Record<string, unknown>> = xapiConfig.tools
-        .filter((t) => t.type !== "xfinance")
+        .filter((t) => t.type !== "atxfinance")
         .map((t) => ({ ...t }));
-      xaiTools.push(XFINANCE_TOOL_DEFINITION);
+      xaiTools.push(ATXFINANCE_TOOL_DEFINITION);
 
       const executor = createXfinanceToolExecutor({
         userId: session.userId,

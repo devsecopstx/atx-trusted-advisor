@@ -1,14 +1,14 @@
 ---
 id: xrotate-keys
 name: xrotate-keys
-description: xFinance-focused key rotation with GCP Cloud Run + GitHub + provider checklist.
+description: atxFinance-focused key rotation with GCP Cloud Run + GitHub + provider checklist.
 ---
 
 # Rotate Keys
 
 ## Goal
 
-Perform controlled credential rotation for xFinance with minimal downtime, clean rollback, and no secret leakage.
+Perform controlled credential rotation for atxFinance with minimal downtime, clean rollback, and no secret leakage.
 
 ## Use This Skill When
 
@@ -16,7 +16,7 @@ Perform controlled credential rotation for xFinance with minimal downtime, clean
 - There is suspected key exposure
 - You are completing routine security hygiene
 
-## xFinance Scope
+## atxFinance Scope
 
 Primary runtime: GCP Cloud Run environment variables + Secret Manager.  
 CI/deploy integration: GitHub Actions OIDC + secrets/variables.  
@@ -33,7 +33,7 @@ Typical providers in scope:
 
 Detailed checklist moved to `CHECKLIST.md`.
 
-## Quick Command Block (xFinance)
+## Quick Command Block (atxFinance)
 
 Use these as a fast operator sequence. Replace placeholders before running.
 
@@ -42,15 +42,15 @@ Use these as a fast operator sequence. Replace placeholders before running.
 npx auth secret
 
 # 2) Create/update prod secrets in Secret Manager
-gcloud secrets create xfinance-prod-x-oauth-client-id --replication-policy=automatic 2>/dev/null || true
-printf '%s' "<NEW_X_OAUTH_CLIENT_ID>" | gcloud secrets versions add xfinance-prod-x-oauth-client-id --data-file=-
-gcloud secrets create xfinance-prod-x-oauth-client-secret --replication-policy=automatic 2>/dev/null || true
-printf '%s' "<NEW_X_OAUTH_CLIENT_SECRET>" | gcloud secrets versions add xfinance-prod-x-oauth-client-secret --data-file=-
+gcloud secrets create atxfinance-prod-x-oauth-client-id --replication-policy=automatic 2>/dev/null || true
+printf '%s' "<NEW_X_OAUTH_CLIENT_ID>" | gcloud secrets versions add atxfinance-prod-x-oauth-client-id --data-file=-
+gcloud secrets create atxfinance-prod-x-oauth-client-secret --replication-policy=automatic 2>/dev/null || true
+printf '%s' "<NEW_X_OAUTH_CLIENT_SECRET>" | gcloud secrets versions add atxfinance-prod-x-oauth-client-secret --data-file=-
 
 # 3) Rotate Cloud Run service to latest secrets (example env vars)
-gcloud run services update xfinance-core-prod \
+gcloud run services update atxfinance-core-prod \
   --region us-central1 \
-  --update-secrets "X_OAUTH_CLIENT_ID=xfinance-prod-x-oauth-client-id:latest,X_OAUTH_CLIENT_SECRET=xfinance-prod-x-oauth-client-secret:latest"
+  --update-secrets "X_OAUTH_CLIENT_ID=atxfinance-prod-x-oauth-client-id:latest,X_OAUTH_CLIENT_SECRET=atxfinance-prod-x-oauth-client-secret:latest"
 
 # 4) Secrets scan before commit
 pre-commit run gitleaks --all-files
