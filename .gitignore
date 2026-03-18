@@ -145,12 +145,8 @@ vite.config.ts.timestamp-*
 !.cursor/settings.json
 !.cursor/skills/
 !.cursor/skills/**
-!.cursor/plans/
-!.cursor/plans/**
 !.cursor/agents/
 !.cursor/agents/**
-!.cursor/cloud-agents/
-!.cursor/cloud-agents/**
 
 # Local editor workspace files
 *.code-workspace
