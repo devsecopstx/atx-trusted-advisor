@@ -52,6 +52,9 @@ jobs:
       - name: Run CI gate
         run: npm run ci:gate
 
+      - name: Build app
+        run: npm run build
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -120,13 +123,10 @@ jobs:
             health_check_with_retry "staging_run_app_health" "${STAGING_SERVICE_URL}/api/health"
           fi
 
-  deploy-production:
+  deploy-production-main:
     needs: [deploy-staging]
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.deploy-staging.result == 'success') ||
-      startsWith(github.ref, 'refs/tags/v') ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
-    name: Deploy Production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.deploy-staging.result == 'success'
+    name: Deploy Production (Main Promotion)
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-production
@@ -149,6 +149,106 @@ jobs:
 
       - name: Run CI gate
         run: npm run ci:gate
+
+      - name: Build app
+        run: npm run build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID_PROD }}
+
+      - name: Deploy to Cloud Run (production)
+        run: |
+          gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            --source . \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback" \
+            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest" \
+            --quiet
+
+      - name: Health check production
+        run: |
+          health_check_with_retry() {
+            local label="$1"
+            local url="$2"
+            local attempts=18
+            local sleep_seconds=15
+
+            for attempt in $(seq 1 "${attempts}"); do
+              local response_file
+              response_file="$(mktemp)"
+              local http_code
+              http_code="$(
+                curl --silent --show-error --location \
+                  --connect-timeout 5 --max-time 15 \
+                  --output "${response_file}" --write-out "%{http_code}" \
+                  "${url}" || true
+              )"
+              local response_body
+              response_body="$(tr -d '\n' < "${response_file}")"
+
+              if [ "${http_code}" = "200" ] && [[ "${response_body}" == *"\"status\":\"ok\""* ]]; then
+                rm -f "${response_file}"
+                echo "${label}:ok attempt=${attempt}"
+                return 0
+              fi
+
+              echo "${label}:pending attempt=${attempt}/${attempts} status=${http_code:-curl_error}"
+              rm -f "${response_file}"
+              if [ "${attempt}" -lt "${attempts}" ]; then
+                sleep "${sleep_seconds}"
+              fi
+            done
+
+            echo "${label}:failed after ${attempts} attempts"
+            return 1
+          }
+
+          if health_check_with_retry "production_custom_domain_health" "${{ vars.PROD_BASE_URL }}/api/health"; then
+            echo "production_health_check:custom_domain_ok"
+          else
+            echo "production_custom_domain_health:falling back to run.app URL"
+            PROD_SERVICE_URL="$(gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE_PROD }}" --region "${{ vars.CLOUD_RUN_REGION }}" --format='value(status.url)')"
+            health_check_with_retry "production_run_app_health" "${PROD_SERVICE_URL}/api/health"
+          fi
+
+  deploy-production-direct:
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
+    name: Deploy Production (Tag or Manual)
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: ${{ vars.PROD_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run CI gate
+        run: npm run ci:gate
+
+      - name: Build app
+        run: npm run build
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

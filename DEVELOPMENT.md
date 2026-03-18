@@ -20,7 +20,6 @@ This app is the admin-only core backend for xFinance operations:
 Use `.env` only (do not use `.env.local` for this app).
 
 - `MONGODB_URI_B64` (Base64-encoded MongoDB URI)
-  - legacy alias also supported: `MONGODB_URI_B4`
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY` (required for management/KB collection operations)
 - `XAI_MANAGEMENT_BASE_URL` (optional override; defaults to `https://management-api.x.ai/v1`)
@@ -45,6 +44,19 @@ Use `.env` only (do not use `.env.local` for this app).
    - `npm run dev`
 5. Seed core admin user + default tenant:
    - `npm run seed:admin`
+
+## Developer Prereqs (gh + local gate)
+
+Before changing deployment settings or running release workflows, verify:
+
+1. GitHub CLI auth:
+   - `gh auth status`
+2. GitHub permissions:
+   - You can read/write repo variables and environment secrets.
+   - You can dispatch workflows.
+3. Local release gate:
+   - `npm ci`
+   - `npm run ci:gate && npm run build`
 
 ## Cursor Cloud Agent Setup (Atlas Mode)
 
@@ -160,6 +172,17 @@ gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --env production --body "$PROD_WIP"
 gh secret set GCP_SERVICE_ACCOUNT_EMAIL --env production --body "$PROD_SA"
 ```
 
+### Short Ops Task (status snapshot)
+
+Use this command to print stage/prod URLs and latest CI + deploy outcomes:
+
+```bash
+printf "stage_url=%s\n" "$(gh variable get STAGING_BASE_URL)" && \
+printf "prod_url=%s\n" "$(gh variable get PROD_BASE_URL)" && \
+echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
+echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
+```
+
 ### GitHub Environment Secrets
 
 Use environment-scoped secrets in GitHub:
@@ -168,6 +191,17 @@ Use environment-scoped secrets in GitHub:
 | --- | --- | --- |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `<staging-provider-resource-name>` | `<prod-provider-resource-name>` |
 | `GCP_SERVICE_ACCOUNT_EMAIL` | `<staging-deploy-sa>@<staging-project>.iam.gserviceaccount.com` | `<prod-deploy-sa>@<prod-project>.iam.gserviceaccount.com` |
+
+### GitHub Environment Protection Rules
+
+For availability and change control:
+
+- `staging`:
+  - No required reviewers (fast feedback).
+- `production`:
+  - Required reviewers enabled (at least 1 operator).
+  - Restrict admin bypass where possible.
+  - Optional branch policy to limit deploy sources to `main` and release tags.
 
 ### Cloud Run Runtime Secrets (per environment)
 
@@ -209,6 +243,46 @@ Route53 TODO details:
 - [ ] Replace temporary Atlas allow-all access (`0.0.0.0/0`) with GCP static egress IP allowlist after validation
 - [ ] Ensure `cloudbuild.googleapis.com` is enabled in prod before first `--source` deploy workflow run
 - [ ] Create prod domain mapping (`core.fintech-advisor.ai`) after first successful prod service deploy
+
+## Deploy/Rollback Operations
+
+### Promotion flow
+
+- Push to `main`:
+  - deploy staging
+  - run health checks
+  - promote to production
+- Tag (`v*`) or manual dispatch (`target=production`):
+  - direct production deploy (does not depend on staging job state)
+
+### Manual rollback (workflow)
+
+Use GitHub Actions workflow `Rollback Cloud Run` with:
+
+- `target`: `staging` or `production`
+- `revision`: known good Cloud Run revision (for example, `xfinance-core-prod-00023-abc`)
+
+The workflow:
+
+1. Shifts 100% traffic to the selected revision.
+2. Validates `/api/health` on custom domain.
+3. Falls back to `run.app` URL health check if custom domain fails.
+
+### Manual rollback (gcloud fallback)
+
+```bash
+# List revisions (replace service/project)
+gcloud run revisions list \
+  --service xfinance-core-prod \
+  --region us-central1 \
+  --project fintech-advisor-prod
+
+# Shift traffic to a known good revision
+gcloud run services update-traffic xfinance-core-prod \
+  --region us-central1 \
+  --platform managed \
+  --to-revisions xfinance-core-prod-00023-abc=100
+```
 
 ## API Endpoints
 

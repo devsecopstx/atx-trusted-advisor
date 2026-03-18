@@ -19,6 +19,7 @@ Operational runbook for engineers/agents working in `xfinance` core admin app.
 - Tests: `npm run test`
 - Build: `npm run build`
 - CI gate: `npm run ci:gate`
+- Release gate: `npm run ci:gate && npm run build`
 
 ## Critical Env Keys
 
@@ -35,6 +36,15 @@ Operational runbook for engineers/agents working in `xfinance` core admin app.
 - Auth callback path configured in X app: `/api/auth/x/callback`
 - Personas API: `GET /api/personas`
 - xChat ask API: `POST /api/xchat/ask`
+
+## Quick Ops Status Task
+
+```bash
+printf "stage_url=%s\n" "$(gh variable get STAGING_BASE_URL)" && \
+printf "prod_url=%s\n" "$(gh variable get PROD_BASE_URL)" && \
+echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
+echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
+```
 
 ## Guardrails
 
@@ -54,6 +64,7 @@ from injected secrets.
 ## Project Cursor Skills (Safe Set)
 
 - Project-local skills are stored in `.cursor/skills/`. See `.cursor/skills/README.md` for the full index.
+- TODO: refine skills naming conventions; keep current names for now.
 - Ops/review skills: `xfinance-docs-ops`, `xfinance-xchat-validation-checklist`, `xfinance-runbook-navigator`, `xfinance-design-ops`, `xdesign-review`.
 - Strategy skills: 10 `xfinance-strategy-*` skills (options strategy references).
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
