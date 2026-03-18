@@ -79,9 +79,8 @@ from injected secrets.
   - `.cursor/skills/generate-docs/SKILL.md`
   - `.cursor/skills/test-commit-push/SKILL.md`
   - `.cursor/skills/test-commit-push/CHECKLIST.md`
-- Keep app version references aligned:
-  - canonical version source: `package.json`
-  - admin footer reads from `src/lib/app-version.ts`
+- App version lives only in `package.json`; runtime reads via `src/lib/app-version.ts`.
+  - Skill `.md` files must never contain hardcoded version strings — a version bump must not touch skills.
 
 ### .env generation
 

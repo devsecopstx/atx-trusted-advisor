@@ -1,7 +1,6 @@
 ---
 id: generate-docs
 name: generate-docs
-version: 2.1.0
 description: Update and generate concise, accurate docs for changed systems, APIs, and runbooks.
 ---
 
@@ -40,9 +39,9 @@ When introducing new subsystems, prefer extending `DEVELOPMENT.md` and linking f
 
 ## Version Consistency Rules
 
-- Canonical app version is `package.json`.
-- Admin footer version must resolve via `src/lib/app-version.ts` (no hardcoded version strings in UI).
-- If a release version changes, verify docs and runbooks do not retain stale version literals.
+- Canonical app version lives only in `package.json`.
+- Runtime surfaces (admin footer, etc.) must resolve via `src/lib/app-version.ts` — no hardcoded version strings in UI or skill files.
+- Skill `.md` files must never contain app version literals; a `package.json` version bump must not require touching skills.
 
 ## Local Skill Sync
 
