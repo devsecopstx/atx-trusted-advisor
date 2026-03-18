@@ -1,14 +1,14 @@
 services:
   mongodb:
     image: mongo:8
-    container_name: xfinance-mongodb
+    container_name: atxfinance-mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_DATABASE: xfinancedb
+      MONGO_INITDB_DATABASE: atxfinancedb
     volumes:
-      - xfinance_mongo_data:/data/db
+      - atxfinance_mongo_data:/data/db
 
 volumes:
-  xfinance_mongo_data:
+  atxfinance_mongo_data:

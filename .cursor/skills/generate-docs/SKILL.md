@@ -26,7 +26,7 @@ Keep project documentation aligned with code changes and operational reality.
 5. Validate commands and paths in docs.
 6. Keep version references consistent across docs and UI surfaces.
 
-## Baseline Docs Set (xFinance Core)
+## Baseline Docs Set (atxFinance Core)
 
 Default to maintaining this minimum docs set:
 

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Operational runbook for engineers/agents working in `xfinance` core admin app.
+Operational runbook for engineers/agents working in `atxfinance` core admin app.
 
 ## Standard Local Flow
 
@@ -66,11 +66,11 @@ from injected secrets.
 - Project-local skills are stored in `.cursor/skills/`. See `.cursor/skills/README.md` for the full index.
 - TODO: refine skills naming conventions; keep current names for now.
 - TODO: remove imported global Cursor skills from the repo once local skill parity is confirmed.
-- Ops/review skills: `xfinance-docs-ops`, `xfinance-xchat-validation-checklist`, `xfinance-runbook-navigator`, `xfinance-design-ops`, `xdesign-review`.
+- Ops/review skills: `atxfinance-docs-ops`, `atxfinance-xchat-validation-checklist`, `atxfinance-runbook-navigator`, `atxfinance-design-ops`, `xdesign-review`.
 - xDesign review outputs: `docs/xchat/xdesign-review-admin-console-ux.md` (and other `docs/xchat/*.md`).
-- Strategy skills: 10 `xfinance-strategy-*` skills (options strategy references).
+- Strategy skills: 10 `atxfinance-strategy-*` skills (options strategy references).
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
-- Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/xfinance-tool-stub.md`.
+- Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/atxfinance-tool-stub.md`.
 
 ### Local skill maintenance policy
 
@@ -106,7 +106,7 @@ npm run dev          # Next.js dev server on :3000
 npm run seed:admin   # Idempotent — safe to re-run
 ```
 
-Verify: `curl http://localhost:3000/api/health` should return `{"status":"ok","service":"xfinance-core-app","db":"xfinancedb"}`.
+Verify: `curl http://localhost:3000/api/health` should return `{"status":"ok","service":"atxfinance-core-app","db":"atxfinancedb"}`.
 
 ### Session cookie for testing authenticated endpoints
 
@@ -181,7 +181,7 @@ All three share the same update script and secret requirements above.
 - Visual diff between current and selected version.
 - One-click rollback in the timeline.
 
-**Deferred — xfinance tool surface branding (when tool ships):**
+**Deferred — atxfinance tool surface branding (when tool ships):**
 - Tool-result card component with branded output formatting using `--xf-surface-700` + `--xf-chart-*` tokens.
 - xChat console tool invocation visual treatment.
 
@@ -191,4 +191,4 @@ All three share the same update script and secret requirements above.
 **Standing design rules:**
 - Personas vs Collections separation — `/admin/personas` shows persona configs only (prompts, tools, collectionId links). Collections management stays in RAG Uploads or a dedicated `/admin/collections` page.
 - All admin sub-pages delegate auth + session panel to the shared admin layout (`src/app/admin/layout.tsx`). Do not add duplicate `AdminSessionPanel` imports.
-- No hardcoded hex in app CSS — use `--xf-*` tokens from `design-system/xfinance-brand-kit.css`.
+- No hardcoded hex in app CSS — use `--xf-*` tokens from `design-system/atxfinance-brand-kit.css`.

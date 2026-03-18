@@ -53,13 +53,13 @@ describe("oauth host normalization smoke", () => {
 
     identityMocks.getCoreUserByXIdentity.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "admin@xfinance.ai",
+      email: "admin@atxfinance.ai",
       roles: ["global_admin"],
       status: "active"
     });
     identityMocks.linkXAccountToUser.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "admin@xfinance.ai",
+      email: "admin@atxfinance.ai",
       roles: ["global_admin"],
       status: "active"
     });
@@ -72,7 +72,7 @@ describe("oauth host normalization smoke", () => {
     });
     identityMocks.resolveAuthContext.mockResolvedValue({
       userId: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "admin@xfinance.ai",
+      email: "admin@atxfinance.ai",
       roles: ["global_admin"],
       tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
       tenantRole: "tenant_admin",
@@ -95,7 +95,7 @@ describe("oauth host normalization smoke", () => {
           data: {
             id: "x-user-1",
             username: "adminuser",
-            email: "admin@xfinance.ai"
+            email: "admin@atxfinance.ai"
           }
         })
       }) as typeof fetch;

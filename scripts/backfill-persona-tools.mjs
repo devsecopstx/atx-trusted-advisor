@@ -1,13 +1,13 @@
 import { MongoClient } from "mongodb";
 
-const DB_NAME = process.env.MONGODB_DB_NAME ?? "xfinancedb";
+const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
 const DEFAULT_COLLECTION_ID =
-  (process.env.XFINANCE_COLLECTION_ID || "").trim() || "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
+  (process.env.ATXFINANCE_COLLECTION_ID || "").trim() || "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
 const DEFAULT_TOOLS = [
   { type: "web_search" },
   { type: "x_search" },
   { type: "file_search", source: { collection_ids: [DEFAULT_COLLECTION_ID] } },
-  { type: "xfinance" }
+  { type: "atxfinance" }
 ];
 
 function decodeMongoUri() {

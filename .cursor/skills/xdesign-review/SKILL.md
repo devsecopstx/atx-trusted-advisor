@@ -2,7 +2,7 @@
 id: xdesign-review
 name: xdesign-review
 version: 2.1.0
-description: Final MVP PR review gate for xFinance when combining Core MVP and Branding cloud-agent changes.
+description: Final MVP PR review gate for atxFinance when combining Core MVP and Branding cloud-agent changes.
 ---
 
 # xDesign Review: Final MVP Gate
@@ -43,7 +43,7 @@ If any reviewer is skipped, final review is incomplete.
 ## Branding Acceptance Checks
 
 - Dark/light mode remains legible and consistent.
-- Brand palette and typography remain coherent with existing xFinance direction.
+- Brand palette and typography remain coherent with existing atxFinance direction.
 - UI changes do not break core task flows or accessibility basics.
 - New visuals do not hide errors, states, or operator controls.
 

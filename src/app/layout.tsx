@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
-import "../../design-system/xfinance-brand-kit.css";
+import "../../design-system/atxfinance-brand-kit.css";
 import "./globals.css";
 
 const inter = Inter({
@@ -11,8 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "xfinance core admin",
-  description: "Mobile-first admin control plane for xFinance core operations"
+  title: "atxfinance core admin",
+  description: "Mobile-first admin control plane for atxFinance core operations"
 };
 
 type RootLayoutProps = {
