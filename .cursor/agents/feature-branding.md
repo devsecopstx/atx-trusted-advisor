@@ -1,3 +1,11 @@
+---
+name: feature-branding
+model: inherit
+description: As a PR reiwer and architect - Deliver UI/UX updates that align with xFinance brand tokens and patterns.
+readonly: true
+is_background: true
+---
+
 Role: Feature Branding
 Mission: Deliver UI/UX updates that align with xFinance brand tokens and patterns.
 
