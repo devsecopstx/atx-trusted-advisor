@@ -30,12 +30,52 @@ jobs:
       name: ${{ inputs.target }}
       url: ${{ inputs.target == 'production' && vars.PROD_BASE_URL || vars.STAGING_BASE_URL }}
     steps:
-      - name: Validate inputs
+      - name: Validate inputs and rollback configuration
+        env:
+          TARGET: ${{ inputs.target }}
+          REVISION: ${{ inputs.revision }}
+          CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
+          GCP_PROJECT_ID_STAGING: ${{ vars.GCP_PROJECT_ID_STAGING }}
+          GCP_PROJECT_ID_PROD: ${{ vars.GCP_PROJECT_ID_PROD }}
+          CLOUD_RUN_SERVICE_STAGING: ${{ vars.CLOUD_RUN_SERVICE_STAGING }}
+          CLOUD_RUN_SERVICE_PROD: ${{ vars.CLOUD_RUN_SERVICE_PROD }}
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
         run: |
-          if [ -z "${{ inputs.revision }}" ]; then
+          set -euo pipefail
+
+          if [ -z "${REVISION}" ]; then
             echo "revision input is required"
             exit 1
           fi
+
+          for key in CLOUD_RUN_REGION GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required rollback config: ${key}"
+              exit 1
+            fi
+          done
+
+          if [ "${TARGET}" = "production" ]; then
+            for key in GCP_PROJECT_ID_PROD CLOUD_RUN_SERVICE_PROD PROD_BASE_URL; do
+              if [ -z "${!key:-}" ]; then
+                echo "::error::Missing required rollback config: ${key}"
+                exit 1
+              fi
+            done
+          else
+            for key in GCP_PROJECT_ID_STAGING CLOUD_RUN_SERVICE_STAGING STAGING_BASE_URL; do
+              if [ -z "${!key:-}" ]; then
+                echo "::error::Missing required rollback config: ${key}"
+                exit 1
+              fi
+            done
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
