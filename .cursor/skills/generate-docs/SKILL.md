@@ -1,7 +1,7 @@
 ---
 id: generate-docs
 name: generate-docs
-version: 2.0.0
+version: 2.1.0
 description: Update and generate concise, accurate docs for changed systems, APIs, and runbooks.
 ---
 
@@ -24,6 +24,7 @@ Keep project documentation aligned with code changes and operational reality.
 3. Add concrete examples, constraints, and failure modes.
 4. Keep structure scannable and concise.
 5. Validate commands and paths in docs.
+6. Keep version references consistent across docs and UI surfaces.
 
 ## Baseline Docs Set (xFinance Core)
 
@@ -36,6 +37,19 @@ Default to maintaining this minimum docs set:
 - `CONTRIBUTING.md`: local validation + PR quality gates.
 
 When introducing new subsystems, prefer extending `DEVELOPMENT.md` and linking from `README.md` instead of creating scattered top-level docs.
+
+## Version Consistency Rules
+
+- Canonical app version is `package.json`.
+- Admin footer version must resolve via `src/lib/app-version.ts` (no hardcoded version strings in UI).
+- If a release version changes, verify docs and runbooks do not retain stale version literals.
+
+## Local Skill Sync
+
+- Keep docs-ops guidance aligned with:
+  - `.cursor/skills/test-commit-push/SKILL.md`
+  - `.cursor/skills/test-commit-push/CHECKLIST.md`
+  - `AGENTS.md`
 
 ## Output
 

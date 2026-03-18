@@ -135,6 +135,20 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1;
 }
 
+.admin-layout-footer {
+  padding: 0.65rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 12, 16, 0.9);
+}
+
+.admin-layout-footer-text {
+  margin: 0;
+  color: var(--xf-text-300);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* ── Login shell ───────────────────────────── */
 
 .login-shell {

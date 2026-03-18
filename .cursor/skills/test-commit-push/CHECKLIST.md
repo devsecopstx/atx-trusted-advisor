@@ -1,4 +1,4 @@
-# test-commit-push Checklist v2.0.0
+# test-commit-push Checklist v2.1.0
 
 ## Pre-Validation
 
@@ -12,12 +12,15 @@
 - [ ] `npm run typecheck` passes.
 - [ ] `npm run test` passes.
 - [ ] `npm run build` passes when release-sensitive code changed.
+- [ ] `npm run ci:gate && npm run build` passes for release/deploy-impacting changes.
 
 ## Commit Hygiene
 
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.
 - [ ] Docs/runbooks updated when behavior or operations changed.
+- [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
+- [ ] App version references are aligned (`package.json` and `src/lib/app-version.ts` consumers).
 
 ## Push Readiness
 

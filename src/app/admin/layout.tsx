@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { getSessionUser } from "@/lib/auth";
+import { APP_VERSION_LABEL } from "@/lib/app-version";
 import { getMongoConnectionLabel } from "@/lib/env";
 import { XFinanceLogo } from "../ui/xfinance-logo";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
@@ -57,6 +58,11 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </header>
       <main className="admin-layout-content">{children}</main>
+      <footer className="admin-layout-footer">
+        <span className="admin-layout-footer-text">
+          xfinance-core-app {APP_VERSION_LABEL}
+        </span>
+      </footer>
     </div>
   );
 }

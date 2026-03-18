@@ -1,7 +1,7 @@
 ---
 id: xdesign-review
 name: xdesign-review
-version: 2.0.0
+version: 2.1.0
 description: Final MVP PR review gate for xFinance when combining Core MVP and Branding cloud-agent changes.
 ---
 

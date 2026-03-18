@@ -1,11 +1,11 @@
 ---
 id: test-commit-push
 name: test-commit-push
-version: 2.0.0
+version: 2.1.0
 description: Execute a safe local validation flow (test, lint, typecheck), then prepare clean commit and push guidance.
 ---
 
-# Test Commit Push v2.0.0
+# Test Commit Push v2.1.0
 
 ## Goal
 
@@ -23,11 +23,13 @@ Ship changes safely by validating locally and preparing an accurate commit workf
    - `git fetch origin`
    - `git merge origin/main` (or rebase if team policy requires it)
 2. If conflicts occur, resolve them first, then verify no conflict markers remain.
-3. Run project test, lint, and typecheck commands.
+3. Run project validation commands (including release gate when applicable).
 4. Fix blocking failures in scope.
 5. Re-run validation until clean.
-6. Prepare concise commit message reflecting intent.
-7. Confirm push readiness and branch status.
+6. Confirm docs/skill updates for any changed runbooks or delivery workflow.
+7. Verify app version consistency (`package.json` -> `src/lib/app-version.ts` surfaces).
+8. Prepare concise commit message reflecting intent.
+9. Confirm push readiness and branch status.
 
 ## Output
 
@@ -38,3 +40,7 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 ## Checklist
 
 Detailed checklist moved to `CHECKLIST.md`.
+
+## Local Repo Policy
+
+- Prefer project-local skill guidance in `.cursor/skills/` over global defaults.
