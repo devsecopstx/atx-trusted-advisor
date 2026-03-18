@@ -1,15 +1,9 @@
 import "./ui/marketing-hero.css";
+import "./ui/product-plans.css";
 import { MarketingHero } from "./ui/marketing-hero";
-
-function getOAuthStatus(): "configured" | "missing" {
-  const hasClientId = Boolean(process.env.X_OAUTH_CLIENT_ID);
-  const hasClientSecret = Boolean(process.env.X_OAUTH_CLIENT_SECRET);
-  return hasClientId && hasClientSecret ? "configured" : "missing";
-}
+import { ProductPlans } from "./ui/product-plans";
 
 export default function HomePage() {
-  const oauthStatus = getOAuthStatus();
-
   return (
     <>
       <MarketingHero />
