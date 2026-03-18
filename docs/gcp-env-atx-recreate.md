@@ -1,6 +1,6 @@
 # GCP Environment Recreate — atx Apex
 
-Recreate xfinance GCP staging and production from scratch with apex `atx` (replacing `core`).
+Recreate atxfinance GCP staging and production from scratch with apex `atx` (replacing `core`).
 
 **New hostnames:**
 - Staging: `https://staging.atx.fintech-advisor.ai`
@@ -28,8 +28,8 @@ APEX="atx"
 STAGING_PROJECT="fintech-advisor-staging"
 PROD_PROJECT="fintech-advisor-prod"
 REGION="us-central1"
-SERVICE_STAGING="xfinance-core-staging"
-SERVICE_PROD="xfinance-core-prod"
+SERVICE_STAGING="atxfinance-core-staging"
+SERVICE_PROD="atxfinance-core-prod"
 ```
 
 ---
@@ -38,8 +38,8 @@ SERVICE_PROD="xfinance-core-prod"
 
 ```bash
 # Create projects (or skip if they exist)
-gcloud projects create "$STAGING_PROJECT" --name "xfinance-staging" --set-as-default
-gcloud projects create "$PROD_PROJECT" --name "xfinance-prod"
+gcloud projects create "$STAGING_PROJECT" --name "atxfinance-staging" --set-as-default
+gcloud projects create "$PROD_PROJECT" --name "atxfinance-prod"
 
 # Enable billing (manual in Console if needed)
 # Link billing: https://console.cloud.google.com/billing
@@ -88,7 +88,7 @@ gcloud secrets versions add MONGODB_URI_B64 --data-file=- --project "$STAGING_PR
 Uses `--source .` — Cloud Build detects Node.js and builds with buildpacks. No Dockerfile required.
 
 ```bash
-cd /path/to/xfinance
+cd /path/to/atxfinance
 STAGING_URL="https://staging.${APEX}.${DOMAIN}"
 
 gcloud run deploy "$SERVICE_STAGING" \

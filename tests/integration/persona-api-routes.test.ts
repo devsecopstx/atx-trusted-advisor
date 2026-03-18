@@ -67,7 +67,7 @@ describe("persona API routes", () => {
         _id: new ObjectId("507f1f77bcf86cd799439033"),
         name: "Analyst",
         nameNormalized: "analyst",
-        systemPrompt: "You are an analyst persona for xFinance admins.",
+        systemPrompt: "You are an analyst persona for atxFinance admins.",
         overridePrompt: "Rewrite user input as a technical brief.",
         xaiCollection: {
           collectionId: "collection_analyst-global",

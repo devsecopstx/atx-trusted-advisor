@@ -39,7 +39,7 @@ describe("xchat ask route collection retrieval", () => {
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
-      email: "admin@xfinance.ai",
+      email: "admin@atxfinance.ai",
       username: "xf-admin",
       roles: ["global_admin"]
     });

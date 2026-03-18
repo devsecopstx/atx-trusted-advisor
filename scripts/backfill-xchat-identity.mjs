@@ -1,6 +1,6 @@
 import { MongoClient } from "mongodb";
 
-const DB_NAME = process.env.MONGODB_DB_NAME ?? "xfinancedb";
+const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
 
 function decodeMongoUri() {
   const encoded = process.env.MONGODB_URI_B64 ?? process.env.MONGODB_URI_B4;

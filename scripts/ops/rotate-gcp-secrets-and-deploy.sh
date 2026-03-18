@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Rotate xfinance runtime secrets in GCP Secret Manager.
+# Rotate atxfinance runtime secrets in GCP Secret Manager.
 # Behavior:
 # - If .env exists, load it.
 # - If .env does not exist, use current shell environment variables.

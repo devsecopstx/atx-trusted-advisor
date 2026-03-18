@@ -18,7 +18,7 @@ describe("xAI management api-key create smoke", () => {
       throw new Error("Missing XAI_MANAGEMENT_API_KEY for management key-create smoke test");
     }
 
-    const keyName = `xfinance-smoke-${Date.now()}`;
+    const keyName = `atxfinance-smoke-${Date.now()}`;
     const response = await fetch(`${managementBaseUrl}/auth/teams/${teamId}/api-keys`, {
       method: "POST",
       headers: {
@@ -49,7 +49,7 @@ describe("xAI management api-key create smoke", () => {
       (typeof payload.api_key_id === "string" ? payload.api_key_id : undefined);
 
     expect(createdName).toBeTruthy();
-    expect(createdName).toContain("xfinance-smoke-");
+    expect(createdName).toContain("atxfinance-smoke-");
     expect(createdId).toBeTruthy();
   });
 });

@@ -16,7 +16,7 @@ export default async function AdminAccessRequestsPage() {
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">xfinance core admin</p>
+        <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Access Requests</h1>
         <p className="hero-copy">
           Review pending approvals and quickly create a new role request for a user.
