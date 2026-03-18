@@ -123,8 +123,8 @@ export default async function AdminXchatBatchPage({
         {dashboardJobs.length === 0 ? (
           <p className="status-text">No batch jobs yet.</p>
         ) : (
-          <div className="table-wrap">
-            <table className="table-grid">
+          <div className="crud-table-wrap">
+            <table className="crud-table">
               <thead>
                 <tr>
                   <th>Batch ID</th>

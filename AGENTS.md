@@ -67,6 +67,7 @@ from injected secrets.
 - TODO: refine skills naming conventions; keep current names for now.
 - TODO: remove imported global Cursor skills from the repo once local skill parity is confirmed.
 - Ops/review skills: `xfinance-docs-ops`, `xfinance-xchat-validation-checklist`, `xfinance-runbook-navigator`, `xfinance-design-ops`, `xdesign-review`.
+- xDesign review outputs: `docs/xchat/xdesign-review-admin-console-ux.md` (and other `docs/xchat/*.md`).
 - Strategy skills: 10 `xfinance-strategy-*` skills (options strategy references).
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
 - Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/xfinance-tool-stub.md`.

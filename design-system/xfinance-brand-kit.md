@@ -66,6 +66,18 @@
 - Place **Grok** and **xMoney** glass cards on the left.
 - Keep negative space around logo and key UI metrics; avoid overpacking.
 
+## Admin Console Direction (console.x.ai inspired)
+
+Use this direction for operator/admin surfaces where fast scanning matters more than visual flair:
+
+- **Structure:** section title + short helper text + context actions + table/list body.
+- **Density:** compact controls and row spacing, but never below readable thresholds.
+- **Controls:** place search/filter/actions adjacent to the data they affect.
+- **Palette:** neutral dark surfaces with restrained accents for status and focus only.
+- **Hierarchy:** emphasize headings and column labels; de-emphasize secondary metadata.
+- **Interaction:** keep affordances clear (`Export`, `Invite users`, row menus) and consistent.
+- **Do not:** add decorative glow or high-saturation accents on data-dense admin screens.
+
 ## Branding Update Plan (Based on Provided Example)
 
 1. **Phase 1 - Core UI baseline**
