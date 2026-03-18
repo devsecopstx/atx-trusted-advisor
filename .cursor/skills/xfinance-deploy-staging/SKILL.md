@@ -48,10 +48,10 @@ Also confirm:
 
 Use this stable mapping:
 
-- Host: `staging.core.<domain>`
+- Host: `staging.atx.<domain>`
 - LB host rule target: staging backend service
 - Serverless NEG target: Cloud Run `xfinance-core-staging`
-- App callback: `https://staging.core.<domain>/api/auth/x/callback`
+- App callback: `https://staging.atx.<domain>/api/auth/x/callback`
 
 ## Required Safety Rules
 

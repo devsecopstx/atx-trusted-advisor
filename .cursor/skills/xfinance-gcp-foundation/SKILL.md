@@ -19,8 +19,8 @@ Create a deterministic GCP baseline for `xfinance` with:
 
 Use these defaults unless the user explicitly overrides:
 
-- Production app URL: `https://core.<domain>`
-- Staging URL: `https://staging.core.<domain>`
+- Production app URL: `https://atx.<domain>`
+- Staging URL: `https://staging.atx.<domain>`
 - One Cloud Run service per environment:
   - `xfinance-core-staging`
   - `xfinance-core-prod`
@@ -40,15 +40,15 @@ Collect these first:
 - Region (default `us-central1`)
 - Artifact Registry location/repository
 - Service account emails for deploy/runtime
-- Whether prod uses `core.<domain>` (recommended for backoffice) or apex
+- Whether prod uses `atx.<domain>` (recommended for backoffice) or apex
 - OAuth app strategy (single app with 2 callbacks vs separate env apps)
 
 ## DNS Records
 
 Create/verify records:
 
-- `staging.core.<domain>` -> LB static IP (A/AAAA)
-- `core.<domain>` -> LB static IP (A/AAAA)
+- `staging.atx.<domain>` -> LB static IP (A/AAAA)
+- `atx.<domain>` -> LB static IP (A/AAAA)
 
 If using apex for production:
 
@@ -58,8 +58,8 @@ If using apex for production:
 
 Use Google-managed certificate covering:
 
-- `staging.core.<domain>`
-- `core.<domain>` (and apex if selected)
+- `staging.atx.<domain>`
+- `atx.<domain>` (and apex if selected)
 
 Do not cut traffic until certificate state is `ACTIVE`.
 
@@ -67,8 +67,8 @@ Do not cut traffic until certificate state is `ACTIVE`.
 
 Create URL map host routing:
 
-- Host `staging.core.<domain>` -> backend `xfinance-core-staging`
-- Host `core.<domain>` -> backend `xfinance-core-prod`
+- Host `staging.atx.<domain>` -> backend `xfinance-core-staging`
+- Host `atx.<domain>` -> backend `xfinance-core-prod`
 
 Default backend can point to staging only during setup; move to explicit hosts for final state.
 
@@ -94,7 +94,7 @@ For both envs, set required app keys:
 | `X_OAUTH_CLIENT_ID` | required | required | separate app creds preferred |
 | `X_OAUTH_CLIENT_SECRET` | required | required | separate app creds preferred |
 | `AUTH_SECRET` | strongly required | strongly required | minimum 16 chars |
-| `X_OAUTH_CALLBACK_URL` | `https://staging.core.<domain>/api/auth/x/callback` | `https://core.<domain>/api/auth/x/callback` | pin callbacks in production-like envs |
+| `X_OAUTH_CALLBACK_URL` | `https://staging.atx.<domain>/api/auth/x/callback` | `https://atx.<domain>/api/auth/x/callback` | pin callbacks in production-like envs |
 | `ADMIN_SEED_EMAIL` | optional | optional | default seed admin email |
 | `ADMIN_X_USERNAMES` | optional | optional | comma-separated allowlist |
 

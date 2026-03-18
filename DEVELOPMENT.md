@@ -112,8 +112,8 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 
 ### Freeze Checklist
 
-- [ ] Domain model fixed: frontend `fintech-advisor.ai`, backoffice `core.fintech-advisor.ai`
-- [ ] Staging host fixed: `staging.core.fintech-advisor.ai`
+- [ ] Domain model fixed: frontend `fintech-advisor.ai`, backoffice `atx.fintech-advisor.ai`
+- [ ] Staging host fixed: `staging.atx.fintech-advisor.ai`
 - [ ] Separate GCP projects selected (`staging` and `production`)
 - [ ] Single X OAuth app configured with both callback URLs
 - [ ] GitHub Environments `staging` and `production` created
@@ -132,8 +132,8 @@ Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-sc
 | `CLOUD_RUN_REGION` | `us-central1` (recommended) | `us-central1` (recommended) |
 | `CLOUD_RUN_SERVICE_STAGING` | `xfinance-core-staging` | same value (staging-only variable) |
 | `CLOUD_RUN_SERVICE_PROD` | same value (prod-only variable) | `xfinance-core-prod` |
-| `STAGING_BASE_URL` | `https://staging.core.fintech-advisor.ai` | same value (staging-only variable) |
-| `PROD_BASE_URL` | same value (prod-only variable) | `https://core.fintech-advisor.ai` |
+| `STAGING_BASE_URL` | `https://staging.atx.fintech-advisor.ai` | same value (staging-only variable) |
+| `PROD_BASE_URL` | same value (prod-only variable) | `https://atx.fintech-advisor.ai` |
 | `EXPECTED_GITHUB_REPOSITORY` | `devsecopstx/xfinance` | same value |
 | `EXPECTED_GITHUB_OWNER` | `devsecopstx` | same value |
 
@@ -157,8 +157,8 @@ gh variable set GCP_PROJECT_ID_PROD --repo "$GH_REPO" --body "$PROD_PROJECT_ID"
 gh variable set CLOUD_RUN_REGION --repo "$GH_REPO" --body "us-central1"
 gh variable set CLOUD_RUN_SERVICE_STAGING --repo "$GH_REPO" --body "xfinance-core-staging"
 gh variable set CLOUD_RUN_SERVICE_PROD --repo "$GH_REPO" --body "xfinance-core-prod"
-gh variable set STAGING_BASE_URL --repo "$GH_REPO" --body "https://staging.core.fintech-advisor.ai"
-gh variable set PROD_BASE_URL --repo "$GH_REPO" --body "https://core.fintech-advisor.ai"
+gh variable set STAGING_BASE_URL --repo "$GH_REPO" --body "https://staging.atx.fintech-advisor.ai"
+gh variable set PROD_BASE_URL --repo "$GH_REPO" --body "https://atx.fintech-advisor.ai"
 gh variable set EXPECTED_GITHUB_REPOSITORY --repo "$GH_REPO" --body "$GH_REPO"
 gh variable set EXPECTED_GITHUB_OWNER --repo "$GH_REPO" --body "${GH_REPO%%/*}"
 
@@ -263,8 +263,12 @@ Optional:
 
 ### OAuth Callback URLs (single X app)
 
-- `https://core.fintech-advisor.ai/api/auth/x/callback`
-- `https://staging.core.fintech-advisor.ai/api/auth/x/callback`
+- `https://atx.fintech-advisor.ai/api/auth/x/callback`
+- `https://staging.atx.fintech-advisor.ai/api/auth/x/callback`
+
+### GCP Environment Recreate (atx Apex)
+
+For a full GCP recreate with `atx` instead of `core` subdomain, see [docs/gcp-env-atx-recreate.md](docs/gcp-env-atx-recreate.md). Standalone gcloud setup, no GitHub required.
 
 ### Immediate Rollout TODO (Raw Deploy + Route53)
 
@@ -272,19 +276,19 @@ Use this ordered checklist for first live rollout:
 
 - [ ] Create runtime secrets in both GCP projects (`fintech-advisor-staging`, `fintech-advisor-prod`)
 - [ ] Deploy staging raw (`gcloud run deploy ...` to `xfinance-core-staging`)
-- [ ] Validate staging health (`GET https://staging.core.fintech-advisor.ai/api/health`)
+- [ ] Validate staging health (`GET https://staging.atx.fintech-advisor.ai/api/health`)
 - [ ] Deploy prod raw (`gcloud run deploy ...` to `xfinance-core-prod`)
 - [ ] Add Route53 records for mapped domains
 
 Route53 TODO details:
 
-- [ ] Create/verify `core.fintech-advisor.ai` DNS record target from GCP domain mapping output
-- [ ] Create/verify `staging.core.fintech-advisor.ai` DNS record target from GCP domain mapping output
+- [ ] Create/verify `atx.fintech-advisor.ai` DNS record target from GCP domain mapping output
+- [ ] Create/verify `staging.atx.fintech-advisor.ai` DNS record target from GCP domain mapping output
 - [ ] Set low TTL during cutover (for example, 60-300 seconds)
 - [ ] Confirm DNS propagation with `dig` before final health checks
 - [ ] Replace temporary Atlas allow-all access (`0.0.0.0/0`) with GCP static egress IP allowlist after validation
 - [ ] Ensure `cloudbuild.googleapis.com` is enabled in prod before first `--source` deploy workflow run
-- [ ] Create prod domain mapping (`core.fintech-advisor.ai`) after first successful prod service deploy
+- [ ] Create prod domain mapping (`atx.fintech-advisor.ai`) after first successful prod service deploy
 
 ## Deploy/Rollback Operations
 

@@ -48,10 +48,10 @@ Also confirm:
 
 Use this stable mapping:
 
-- Host: `core.<domain>` (or apex if explicitly chosen)
+- Host: `atx.<domain>` (or apex if explicitly chosen)
 - LB host rule target: production backend service
 - Serverless NEG target: Cloud Run `xfinance-core-prod`
-- App callback: `https://core.<domain>/api/auth/x/callback` (or apex callback)
+- App callback: `https://atx.<domain>/api/auth/x/callback` (or apex callback)
 
 ## Required Safety Rules
 

@@ -13,5 +13,60 @@
       ".next": true,
       "coverage": true
     }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Install Dependencies",
+        "type": "shell",
+        "command": "npm ci",
+        "problemMatcher": []
+      },
+      {
+        "label": "Build App",
+        "type": "shell",
+        "command": "npm run build",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "dependsOn": ["Install Dependencies"],
+        "dependsOrder": "sequence",
+        "problemMatcher": []
+      },
+      {
+        "label": "Start Backend (Docker)",
+        "type": "shell",
+        "command": "npm run dev:backend",
+        "isBackground": true,
+        "problemMatcher": []
+      },
+      {
+        "label": "Start Frontend (Next Dev)",
+        "type": "shell",
+        "command": "npm run dev:frontend",
+        "isBackground": true,
+        "problemMatcher": []
+      },
+      {
+        "label": "Open Localhost",
+        "type": "shell",
+        "command": "sleep 3 && open http://localhost:3000",
+        "problemMatcher": []
+      },
+      {
+        "label": "Start Local Services",
+        "dependsOn": ["Start Backend (Docker)", "Start Frontend (Next Dev)"],
+        "dependsOrder": "parallel",
+        "problemMatcher": []
+      },
+      {
+        "label": "Run Localhost App (Backend + Frontend)",
+        "dependsOn": ["Start Local Services", "Open Localhost"],
+        "dependsOrder": "sequence",
+        "problemMatcher": []
+      }
+    ]
   }
 }
