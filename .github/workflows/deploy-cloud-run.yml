@@ -24,6 +24,8 @@ env:
   NODE_VERSION: "22"
   IMAGE_NAME: "xfinance-core-app"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  GH_REPOSITORY: ${{ github.repository }}
+  GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
   deploy-staging:
@@ -39,6 +41,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate staging deploy configuration
+        env:
+          GCP_PROJECT_ID_STAGING: ${{ vars.GCP_PROJECT_ID_STAGING }}
+          CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
+          CLOUD_RUN_SERVICE_STAGING: ${{ vars.CLOUD_RUN_SERVICE_STAGING }}
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+        run: |
+          set -euo pipefail
+          for key in GCP_PROJECT_ID_STAGING CLOUD_RUN_REGION CLOUD_RUN_SERVICE_STAGING STAGING_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required deploy config: ${key}"
+              exit 1
+            fi
+          done
+          echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=staging"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -102,6 +122,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate production deploy configuration
+        env:
+          GCP_PROJECT_ID_PROD: ${{ vars.GCP_PROJECT_ID_PROD }}
+          CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
+          CLOUD_RUN_SERVICE_PROD: ${{ vars.CLOUD_RUN_SERVICE_PROD }}
+          PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+        run: |
+          set -euo pipefail
+          for key in GCP_PROJECT_ID_PROD CLOUD_RUN_REGION CLOUD_RUN_SERVICE_PROD PROD_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required deploy config: ${key}"
+              exit 1
+            fi
+          done
+          echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=production-main"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -162,6 +200,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate production deploy configuration
+        env:
+          GCP_PROJECT_ID_PROD: ${{ vars.GCP_PROJECT_ID_PROD }}
+          CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
+          CLOUD_RUN_SERVICE_PROD: ${{ vars.CLOUD_RUN_SERVICE_PROD }}
+          PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+        run: |
+          set -euo pipefail
+          for key in GCP_PROJECT_ID_PROD CLOUD_RUN_REGION CLOUD_RUN_SERVICE_PROD PROD_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required deploy config: ${key}"
+              exit 1
+            fi
+          done
+          echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=production-direct"
 
       - name: Setup Node
         uses: actions/setup-node@v4

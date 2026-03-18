@@ -129,10 +129,6 @@ Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-sc
 | --- | --- | --- |
 | `GCP_PROJECT_ID_STAGING` | `<your-staging-project-id>` | same value (staging-only variable) |
 | `GCP_PROJECT_ID_PROD` | same value (prod-only variable) | `<your-prod-project-id>` |
-| `GAR_LOCATION_STAGING` | `us-central1` (recommended) | same value (staging-only variable) |
-| `GAR_LOCATION_PROD` | same value (prod-only variable) | `us-central1` (recommended) |
-| `GAR_REPOSITORY_STAGING` | `xfinance` (recommended) | same value (staging-only variable) |
-| `GAR_REPOSITORY_PROD` | same value (prod-only variable) | `xfinance` (recommended) |
 | `CLOUD_RUN_REGION` | `us-central1` (recommended) | `us-central1` (recommended) |
 | `CLOUD_RUN_SERVICE_STAGING` | `xfinance-core-staging` | same value (staging-only variable) |
 | `CLOUD_RUN_SERVICE_PROD` | same value (prod-only variable) | `xfinance-core-prod` |
@@ -151,25 +147,22 @@ STAGING_WIP="<staging-workload-identity-provider-resource>"
 PROD_WIP="<prod-workload-identity-provider-resource>"
 STAGING_SA="<staging-deploy-sa>@${STAGING_PROJECT_ID}.iam.gserviceaccount.com"
 PROD_SA="<prod-deploy-sa>@${PROD_PROJECT_ID}.iam.gserviceaccount.com"
+GH_REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 
 # Repo variables used by workflow (vars.*)
-gh variable set GCP_PROJECT_ID_STAGING --body "$STAGING_PROJECT_ID"
-gh variable set GCP_PROJECT_ID_PROD --body "$PROD_PROJECT_ID"
-gh variable set GAR_LOCATION_STAGING --body "us-central1"
-gh variable set GAR_LOCATION_PROD --body "us-central1"
-gh variable set GAR_REPOSITORY_STAGING --body "xfinance"
-gh variable set GAR_REPOSITORY_PROD --body "xfinance"
-gh variable set CLOUD_RUN_REGION --body "us-central1"
-gh variable set CLOUD_RUN_SERVICE_STAGING --body "xfinance-core-staging"
-gh variable set CLOUD_RUN_SERVICE_PROD --body "xfinance-core-prod"
-gh variable set STAGING_BASE_URL --body "https://staging.core.fintech-advisor.ai"
-gh variable set PROD_BASE_URL --body "https://core.fintech-advisor.ai"
+gh variable set GCP_PROJECT_ID_STAGING --repo "$GH_REPO" --body "$STAGING_PROJECT_ID"
+gh variable set GCP_PROJECT_ID_PROD --repo "$GH_REPO" --body "$PROD_PROJECT_ID"
+gh variable set CLOUD_RUN_REGION --repo "$GH_REPO" --body "us-central1"
+gh variable set CLOUD_RUN_SERVICE_STAGING --repo "$GH_REPO" --body "xfinance-core-staging"
+gh variable set CLOUD_RUN_SERVICE_PROD --repo "$GH_REPO" --body "xfinance-core-prod"
+gh variable set STAGING_BASE_URL --repo "$GH_REPO" --body "https://staging.core.fintech-advisor.ai"
+gh variable set PROD_BASE_URL --repo "$GH_REPO" --body "https://core.fintech-advisor.ai"
 
 # Environment secrets
-gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --env staging --body "$STAGING_WIP"
-gh secret set GCP_SERVICE_ACCOUNT_EMAIL --env staging --body "$STAGING_SA"
-gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --env production --body "$PROD_WIP"
-gh secret set GCP_SERVICE_ACCOUNT_EMAIL --env production --body "$PROD_SA"
+gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$GH_REPO" --env staging --body "$STAGING_WIP"
+gh secret set GCP_SERVICE_ACCOUNT_EMAIL --repo "$GH_REPO" --env staging --body "$STAGING_SA"
+gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$GH_REPO" --env production --body "$PROD_WIP"
+gh secret set GCP_SERVICE_ACCOUNT_EMAIL --repo "$GH_REPO" --env production --body "$PROD_SA"
 ```
 
 ### Short Ops Task (status snapshot)
