@@ -13,11 +13,16 @@ Provide a strict final review gate before accepting combined PR changes from:
 - Core MVP cloud agent (API/domain/runtime)
 - Branding cloud agent (UI/UX/visual system)
 
+## Core MVP Scope (Revisit)
+
+- **xChat** — Finance-enabled Grok session that **only responds to finance questions**. Implemented as a constrained chat experience; xPersona config and how search/RAG tools are used will be refined in a later TODO.
+- **xCoach** — Currently a **stub**. Planned: licensing exam (timed test). Further scope (TODO) to be discussed.
+
 ## When to Use
 
 - Final review before merging MVP changes to `main`.
 - Any PR that includes both product logic and visual/brand changes.
-- Any `xPersona`, `xChat`, tool-routing, or admin-contract changes.
+- Any `xPersona`, `xChat`, `xCoach`, tool-routing, or admin-contract changes.
 
 ## Mandatory Reviewer Sequence
 
@@ -35,7 +40,8 @@ If any reviewer is skipped, final review is incomplete.
 
 - Route contract compatibility is preserved (`/api/*` responses, status codes, payload shape).
 - Auth and tenant boundaries remain enforced (no privilege broadening).
-- xChat/xPersona flows keep stable behavior under validation and error paths.
+- **xChat**: finance-only scope is preserved; validation and error paths remain stable. (TODO: xPersona config and search-tool usage reviewed in later pass.)
+- **xCoach**: stub behavior is acceptable until licensing-exam scope is defined (TODO).
 - No regressions in retries, fallbacks, or deploy-health checks.
 - Critical env/secret assumptions are documented and unchanged unless explicitly approved.
 
@@ -86,6 +92,12 @@ If any reviewer is skipped, final review is incomplete.
 - missing docs sync
 - residual risk notes
 ```
+
+## Deferred / TODO (Out of Scope for This Revisit)
+
+- **xPersona**: detailed config and how it gates xChat scope — later TODO.
+- **Search/RAG tools**: how they are used in xChat — later TODO.
+- **xCoach**: full licensing-exam (timed test) design and implementation — stub only for now; will discuss more.
 
 ## Guardrails
 
