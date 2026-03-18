@@ -27,7 +27,7 @@ permissions:
 
 env:
   NODE_VERSION: "22"
-  IMAGE_NAME: "atxfinance-core-app"
+  IMAGE_NAME: "xfinance-core-app"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   GH_REPOSITORY: ${{ github.repository }}
   GH_REPOSITORY_OWNER: ${{ github.repository_owner }}

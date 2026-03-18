@@ -87,7 +87,7 @@ export async function submitBatchJob(
   }
 
   const xapiConfig = normalizePersonaXapiConfig(input.persona.xapi);
-  const batchTools = xapiConfig.tools.filter((t) => t.type !== "atxfinance");
+  const batchTools = xapiConfig.tools.filter((t) => t.type !== "xfinance");
   const collectionId = input.persona.xaiCollection?.collectionId?.trim();
   const endpoint =
     xapiConfig.mode === "chat_completions"
@@ -127,7 +127,7 @@ export async function submitBatchJob(
 
     const systemPrompt = [
       input.persona.systemPrompt ??
-        "You are xchat, an operations-focused assistant for atxfinance core admins.",
+        "You are xchat, an operations-focused assistant for xfinance core admins.",
       ragContext
         ? `Use the following RAG context if relevant:\n${ragContext}`
         : "No RAG context available."

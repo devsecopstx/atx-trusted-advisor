@@ -32,7 +32,7 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "You are a test agent.",
       userPrompt: "What is the answer?",
-      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      tools: [{ type: "function", function: { name: "xfinance", parameters: {} } }],
       executor: async () => ({ result: "unused" })
     });
 
@@ -50,7 +50,7 @@ describe("respondWithXaiToolLoop", () => {
           {
             type: "function_call",
             call_id: "call_001",
-            name: "atxfinance",
+            name: "xfinance",
             arguments: JSON.stringify({ operation: "watchlist_snapshot" })
           }
         ]
@@ -69,10 +69,10 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "You are a test agent.",
       userPrompt: "Show my watchlist.",
-      tools: [{ type: "function", function: { name: "atxfinance" } }],
+      tools: [{ type: "function", function: { name: "xfinance" } }],
       maxTurns: 5,
       executor: async (name, args) => {
-        expect(name).toBe("atxfinance");
+        expect(name).toBe("xfinance");
         expect(args).toEqual({ operation: "watchlist_snapshot" });
         return { result: JSON.stringify({ symbols: ["TSLA"] }) };
       }
@@ -80,7 +80,7 @@ describe("respondWithXaiToolLoop", () => {
 
     expect(result.outputText).toBe("Your watchlist has TSLA.");
     expect(result.toolCalls).toHaveLength(1);
-    expect(result.toolCalls[0].name).toBe("atxfinance");
+    expect(result.toolCalls[0].name).toBe("xfinance");
     expect(result.toolCalls[0].durationMs).toBeGreaterThanOrEqual(0);
     expect(result.turnsUsed).toBe(2);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -96,7 +96,7 @@ describe("respondWithXaiToolLoop", () => {
             {
               type: "function_call",
               call_id: `call_${i}`,
-              name: "atxfinance",
+              name: "xfinance",
               arguments: "{}"
             }
           ]
@@ -127,7 +127,7 @@ describe("respondWithXaiToolLoop", () => {
           {
             type: "function_call",
             call_id: "call_err",
-            name: "atxfinance",
+            name: "xfinance",
             arguments: "{}"
           }
         ]

@@ -97,4 +97,4 @@ export function getMongoConnectionLabel(): string {
   return `${hosts}/${resolvedDbName}`;
 }
 
-export const MONGODB_DB_NAME = "atxfinancedb";
+export const MONGODB_DB_NAME = "xfinancedb";

@@ -1,6 +1,6 @@
 # Secret Rotation Runbook
 
-Controlled credential rotation for atxFinance with minimal downtime and no secret leakage.
+Controlled credential rotation for xFinance with minimal downtime and no secret leakage.
 
 ## MONGODB_URI_B64
 
@@ -13,7 +13,7 @@ Controlled credential rotation for atxFinance with minimal downtime and no secre
 ### 2. Base64 encode
 
 ```bash
-echo -n "mongodb+srv://user:password@cluster.mongodb.net/atxfinancedb?retryWrites=true&w=majority&appName=atxFinance" | base64
+echo -n "mongodb+srv://user:password@cluster.mongodb.net/xfinancedb?retryWrites=true&w=majority&appName=xFinance" | base64
 ```
 
 Copy the output (no newline).
@@ -61,7 +61,7 @@ Cursor Cloud → **Secrets** → set `MONGODB_URI_B64` to the new base64 value.
 - Staging: `curl -sSf https://staging.atx.fintech-advisor.ai/api/health`
 - Production: `curl -sSf https://atx.fintech-advisor.ai/api/health`
 
-Expected: `{"status":"ok","service":"atxfinance-core-app","db":"atxfinancedb"}`
+Expected: `{"status":"ok","service":"xfinance-core-app","db":"xfinancedb"}`
 
 ### 7. Revoke old credentials (after 24–48h stable)
 
@@ -73,7 +73,7 @@ Atlas → **Database Access** → delete or disable old user.
 
 ### 1. Create new credentials (X Developer Portal)
 
-1. [developer.x.com](https://developer.x.com) → **Projects & Apps** → your app (e.g. `atxfinance-advisory`)
+1. [developer.x.com](https://developer.x.com) → **Projects & Apps** → your app (e.g. `xfinance-advisory`)
 2. **Keys and Tokens** → **OAuth 2.0**
 3. **Regenerate** Client Secret (or create a new app if rotating Client ID too)
 4. Copy Client ID and Client Secret immediately (secret is shown only once)

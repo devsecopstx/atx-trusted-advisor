@@ -1,7 +1,7 @@
 ---
 id: development-devtest
 name: development-devtest
-description: Run atxFinance local dev test loop by restarting backend/frontend from fresh env and validating login/health quickly.
+description: Run xFinance local dev test loop by restarting backend/frontend from fresh env and validating login/health quickly.
 ---
 
 # Development DevTest (Global)
@@ -24,7 +24,7 @@ Provide a repeatable local dev-test workflow that always reloads `.env` changes 
 3. Verify core routes quickly (`/api/health`, `/login`, auth redirect).
 4. Report concrete pass/fail with next debugging step.
 
-## Canonical Commands (atxfinance repo)
+## Canonical Commands (xfinance repo)
 
 - Backend restart path:
   - `docker compose --env-file .env down && docker compose --env-file .env up`
@@ -35,9 +35,9 @@ Provide a repeatable local dev-test workflow that always reloads `.env` changes 
 
 The repository task setup should include:
 
-- `atxfinance-core: start backend` (background, dedicated panel)
-- `atxfinance-core: start frontend` (background, dedicated panel)
-- `atxfinance-core: start backend + frontend (default)` with parallel `dependsOn`
+- `xfinance-core: start backend` (background, dedicated panel)
+- `xfinance-core: start frontend` (background, dedicated panel)
+- `xfinance-core: start backend + frontend (default)` with parallel `dependsOn`
 
 Default task must behave like a restart, not a no-op start.
 

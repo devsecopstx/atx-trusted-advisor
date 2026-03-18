@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
-import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
+import { XFinanceLogo } from "@/app/ui/xfinance-logo";
 
 import { PersonaDirectory } from "./ui/persona-directory";
 
@@ -15,7 +15,7 @@ export default async function PersonasPage() {
   return (
     <main className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <AtxFinanceLogo size="sm" />
+        <XFinanceLogo size="sm" />
         <h1 className="hero-title">xPersona Directory</h1>
         <p className="hero-copy">
           Read-only directory of configured xPersonas and their capabilities.

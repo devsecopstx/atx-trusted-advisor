@@ -1,7 +1,7 @@
 {
-  "name": "atxfinance-core-app",
+  "name": "xfinance-core-app",
   "version": "2.1.1",
-  "description": "atxFinance Advisory software and services for finance professionals",
+  "description": "xFinance Advisory software and services for finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
     "dev": "next dev",

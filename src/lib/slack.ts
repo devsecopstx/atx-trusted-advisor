@@ -43,7 +43,7 @@ export function buildAccessRequestNotification(params: {
 }): SlackNotification {
   const who = params.username ? `@${params.username} (${params.email})` : params.email;
   return {
-    text: `🔔 New atxFinance access request from ${who}`,
+    text: `🔔 New xFinance access request from ${who}`,
     blocks: [
       {
         type: "header",

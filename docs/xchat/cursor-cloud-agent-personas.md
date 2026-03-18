@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define a stable, repo-local baseline for atxfinance multi-agent execution in Cursor Cloud.
+Define a stable, repo-local baseline for xfinance multi-agent execution in Cursor Cloud.
 
 ## Persona Files
 

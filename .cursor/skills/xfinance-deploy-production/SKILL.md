@@ -1,0 +1,76 @@
+---
+name: xfinance-deploy-production
+description: Deploy xfinance to GCP Cloud Run production from signed release tags using GitHub Actions with strict verification, smoke checks, and rollback-first guidance. Use when releasing to production or auditing production deploy readiness.
+---
+
+# xfinance Deploy Production
+
+Prerequisite: run `xfinance-gcp-foundation` first when domain/LB/host rules are not already finalized.
+
+## Goal
+
+Promote a tagged release to production Cloud Run safely and predictably.
+
+## When To Use
+
+- User requests a production deploy
+- A new release tag matching `v*` is created
+- Production release readiness or rollback planning is requested
+
+## Inputs Required
+
+- `GCP_PROJECT_ID`
+- `GAR_LOCATION`
+- `GAR_REPOSITORY`
+- `CLOUD_RUN_SERVICE_PROD`
+- `CLOUD_RUN_REGION`
+- `PROD_BASE_URL`
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_SERVICE_ACCOUNT_EMAIL`
+
+Also confirm:
+
+- production hostname routes through HTTPS LB to the prod backend
+- cert for `PROD_BASE_URL` is active
+- production `X_OAUTH_CALLBACK_URL` matches exact hostname
+- production runtime secrets include required `XAI_MANAGEMENT_API_KEY`
+
+## Workflow
+
+1. Confirm trigger is a release tag (`v*`) and capture tag + commit SHA.
+2. Verify CI gate status for the release commit.
+3. Build and push immutable image tagged by version and SHA.
+4. Deploy to production Cloud Run service.
+5. Execute post-deploy health checks and smoke checks.
+6. Report release result and rollback command.
+
+## Mapping Contract
+
+Use this stable mapping:
+
+- Host: `atx.<domain>` (or apex if explicitly chosen)
+- LB host rule target: production backend service
+- Serverless NEG target: Cloud Run `xfinance-core-prod`
+- App callback: `https://atx.<domain>/api/auth/x/callback` (or apex callback)
+
+## Required Safety Rules
+
+- Only deploy from tag-triggered workflow unless explicitly overridden.
+- Never deploy directly from untagged commits.
+- Never skip health checks in production.
+- If smoke checks fail, stop rollout and provide rollback steps immediately.
+
+## Health Validation
+
+- API health endpoint: `GET /api/health`
+- Core app route check: `/`
+- Optional critical endpoint checks
+
+## Output Format
+
+- Result: `success` or `failure`
+- Environment: `production`
+- Release tag and commit SHA
+- Deployed image reference
+- Service URL and health/smoke summary
+- Rollback command template
