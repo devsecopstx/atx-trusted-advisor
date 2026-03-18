@@ -1,11 +1,11 @@
 ---
 id: test-commit-push
 name: test-commit-push
-version: 2.1.1
+version: 2.2.0
 description: Execute a safe local validation flow (test, lint, typecheck), then prepare clean commit and push guidance.
 ---
 
-# Test Commit Push v2.1.1
+# Test Commit Push v2.2.0
 
 ## Goal
 
@@ -30,12 +30,14 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 7. Verify app version consistency (`package.json` -> `src/lib/app-version.ts` surfaces).
 8. Prepare concise commit message reflecting intent.
 9. Confirm push readiness and branch status.
+10. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
 
 ## Output
 
 - Validation results
 - Outstanding blockers (if any)
 - Commit/push readiness summary
+- PR URL (created or updated)
 
 ## Checklist
 

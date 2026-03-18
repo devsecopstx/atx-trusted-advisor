@@ -1,4 +1,4 @@
-# test-commit-push Checklist v2.1.1
+# test-commit-push Checklist v2.2.0
 
 ## Pre-Validation
 
@@ -27,3 +27,9 @@
 - [ ] Branch is ahead as expected and tracks correct remote.
 - [ ] CI-required workflows are green or queued with known status.
 - [ ] Rollback path is understood for deployment-affecting changes.
+
+## PR Create/Update
+
+- [ ] After push: run `gh pr create` (new branch) or confirm `gh pr view` shows existing PR (already created).
+- [ ] If PR exists and body/title need refresh: `gh pr edit --title "..." --body "..."`.
+- [ ] Output PR URL for review.
