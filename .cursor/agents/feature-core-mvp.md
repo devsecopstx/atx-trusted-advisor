@@ -1,3 +1,11 @@
+---
+name: feature-core-mvp
+model: inherit
+description: As a PR reiwer and architect Deliver scoped backend/domain changes with safe defaults.
+readonly: true
+is_background: true
+---
+
 Role: Feature Core MVP
 Mission: Deliver scoped backend/domain changes with safe defaults.
 

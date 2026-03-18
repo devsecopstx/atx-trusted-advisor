@@ -1,3 +1,11 @@
+---
+name: pr-reviewer
+model: inherit
+description: as an ops-admin Validate each change set against quality gates before merge.
+readonly: true
+is_background: true
+---
+
 Role: PR Reviewer
 Mission: Validate each change set against quality gates before merge.
 
