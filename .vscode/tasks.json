@@ -11,11 +11,10 @@
       "label": "Build App",
       "type": "shell",
       "command": "npm run build",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "dependsOn": ["Install Dependencies"],
+      "group": "build",
+      "dependsOn": [
+        "Install Dependencies"
+      ],
       "dependsOrder": "sequence",
       "problemMatcher": []
     },
@@ -31,7 +30,11 @@
       "type": "shell",
       "command": "npm run dev:frontend",
       "isBackground": true,
-      "problemMatcher": []
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
     },
     {
       "label": "Open Localhost",
@@ -41,7 +44,10 @@
     },
     {
       "label": "Start Local Services",
-      "dependsOn": ["Start Backend (Docker)", "Start Frontend (Next Dev)"],
+      "dependsOn": [
+        "Start Backend (Docker)",
+        "Start Frontend (Next Dev)"
+      ],
       "dependsOrder": "parallel",
       "problemMatcher": []
     },

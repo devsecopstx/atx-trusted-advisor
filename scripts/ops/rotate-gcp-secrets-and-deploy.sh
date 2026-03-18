@@ -15,6 +15,7 @@ set -euo pipefail
 #   bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target staging
 #   bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target both --execute
 #   bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target production --execute --trigger-deploy --approve-production
+#   bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target staging --keys MONGODB_URI_B64 --execute
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env"
@@ -23,14 +24,16 @@ TARGET="staging"
 EXECUTE=false
 TRIGGER_DEPLOY=false
 APPROVE_PRODUCTION=false
+KEYS_FILTER=""
 
-REQUIRED_KEYS=(
+ALL_KEYS=(
   "MONGODB_URI_B64"
   "XAI_API_KEY"
   "XAI_MANAGEMENT_API_KEY"
   "X_OAUTH_CLIENT_ID"
   "X_OAUTH_CLIENT_SECRET"
   "AUTH_SECRET"
+  "SLACK_WEBHOOK_URL"
 )
 
 usage() {
@@ -40,6 +43,7 @@ Usage:
 
 Options:
   --target <staging|production|both>   Rotation target (default: staging)
+  --keys <key1,key2,...>               Rotate only these keys (default: all). Example: MONGODB_URI_B64
   --env-file <path>                    Env file to load if present (default: .env in repo root)
   --project-staging <project-id>       Override staging project
   --project-prod <project-id>          Override production project
@@ -61,6 +65,10 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --target)
       TARGET="${2:-}"
+      shift 2
+      ;;
+    --keys)
+      KEYS_FILTER="${2:-}"
       shift 2
       ;;
     --env-file)
@@ -108,6 +116,24 @@ case "${TARGET}" in
     ;;
 esac
 
+# Resolve which keys to rotate
+if [ -n "${KEYS_FILTER}" ]; then
+  IFS=',' read -ra KEYS_ARRAY <<< "${KEYS_FILTER}"
+  REQUIRED_KEYS=()
+  for k in "${KEYS_ARRAY[@]}"; do
+    k_trimmed="${k// /}"
+    if [ -n "${k_trimmed}" ]; then
+      REQUIRED_KEYS+=("${k_trimmed}")
+    fi
+  done
+  if [ "${#REQUIRED_KEYS[@]}" -eq 0 ]; then
+    echo "Invalid --keys: must specify at least one key" >&2
+    exit 2
+  fi
+else
+  REQUIRED_KEYS=("${ALL_KEYS[@]}")
+fi
+
 if [ -f "${ENV_FILE}" ]; then
   echo "Loading env file: ${ENV_FILE}"
   set -a
@@ -131,8 +157,12 @@ require_command() {
 require_non_empty_required_keys() {
   local missing=()
   local key
+  local optional_keys=("SLACK_WEBHOOK_URL")
 
   for key in "${REQUIRED_KEYS[@]}"; do
+    if [[ " ${optional_keys[*]} " == *" ${key} "* ]]; then
+      continue
+    fi
     if [ -z "${!key:-}" ]; then
       missing+=("${key}")
     fi
@@ -187,7 +217,7 @@ trigger_workflow_if_requested() {
     gh workflow run "Deploy Cloud Run" -f target=production -f approval=approve-production
     echo "Triggered Deploy Cloud Run workflow for production."
   else
-    gh workflow run "Deploy Cloud Run" -f target=staging
+    gh workflow run "Deploy Cloud Run" -f target=staging -f approval=approve-production
     echo "Triggered Deploy Cloud Run workflow for staging."
   fi
 }
@@ -197,6 +227,7 @@ require_non_empty_required_keys
 
 echo "Mode: $([ "${EXECUTE}" = true ] && echo "execute" || echo "dry-run")"
 echo "Target: ${TARGET}"
+echo "Keys: ${REQUIRED_KEYS[*]}"
 echo "Project staging: ${PROJECT_STAGING}"
 echo "Project production: ${PROJECT_PROD}"
 
