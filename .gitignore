@@ -141,6 +141,7 @@ vite.config.ts.timestamp-*
 # Cursor workspace artifacts
 .cursor/*
 !.cursor/environment.json
+!.cursor/worktrees.json
 !.cursor/settings.json
 !.cursor/skills/
 !.cursor/skills/**
