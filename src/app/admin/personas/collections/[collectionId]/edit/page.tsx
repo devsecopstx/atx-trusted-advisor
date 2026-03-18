@@ -21,7 +21,7 @@ export default async function AdminEditCollectionPage({ params }: RouteContext) 
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">xfinance core admin</p>
+        <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Edit Collection Binding</h1>
         <p className="hero-copy">
           Assign this collection to a persona from a dedicated collection edit page.

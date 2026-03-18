@@ -1,6 +1,6 @@
-import { XFinanceLogo } from "./xfinance-logo";
+import { AtxFinanceLogo } from "./atxfinance-logo";
 
-function XFinanceIcon() {
+function AtxFinanceIcon() {
   return (
     <svg
       aria-hidden="true"
@@ -108,7 +108,7 @@ export function MarketingHero() {
 
       <div className="mh-content">
         <div className="mh-left">
-          <XFinanceLogo size="md" showSubtitle />
+          <AtxFinanceLogo size="md" showSubtitle />
           <p className="mh-descriptor">
             AI-native software &amp; services for finance professionals
           </p>
@@ -133,24 +133,27 @@ export function MarketingHero() {
             </span>
           </div>
 
-          <div className="mh-oauth-row">
-            <OAuthButton provider="X" href="/api/auth/x/login" icon={<XIcon />} />
-            <OAuthButton provider="Google" href="#" icon={<GoogleIcon />} disabled />
-            <OAuthButton provider="GitHub" href="#" icon={<GitHubIcon />} disabled />
+          <div className="mh-cta-row">
+            <a className="mh-cta-primary" href="/login">
+              atxFinance Advisory
+            </a>
+            <a className="mh-cta-secondary" href="/admin">
+              Admin Console
+            </a>
           </div>
         </div>
 
         <div className="mh-right">
           <div className="mh-product-stack">
             <ProductCard
-              icon={<XFinanceIcon />}
-              name="xFinance"
+              icon={<AtxFinanceIcon />}
+              name="atxFinance"
               description="Portfolio management, watchlists, accounts, and strategy execution for finance professionals."
             />
             <ProductCard
               icon={<XChatIcon />}
               name="xChat"
-              description="AI advisor with persona-driven tools, RAG context, and real-time xFinance data access."
+              description="AI advisor with persona-driven tools, RAG context, and real-time atxFinance data access."
             />
           </div>
         </div>

@@ -354,14 +354,14 @@ export async function ensureDefaultTenant(): Promise<Tenant> {
   await ensureIdentityIndexes();
   const db = await getDb();
   const now = new Date();
-  const slug = "xfinance-core";
+  const slug = "atxfinance-core";
 
   await db.collection<Tenant>(collections.tenants).updateOne(
     { slug },
     {
       $setOnInsert: {
         slug,
-        name: "xFinance Core",
+        name: "atxFinance Core",
         createdAt: now
       },
       $set: {

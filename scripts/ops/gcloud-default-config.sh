@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set gcloud defaults for xfinance Cloud Run deploys.
+# Set gcloud defaults for atxfinance Cloud Run deploys.
 # Run once: bash scripts/ops/gcloud-default-config.sh
 
 set -euo pipefail

@@ -15,7 +15,7 @@ type ToolSelections = {
   web_search: boolean;
   x_search: boolean;
   file_search: boolean;
-  xfinance: boolean;
+  atxfinance: boolean;
 };
 
 type PersonaPayload = {
@@ -47,7 +47,7 @@ const EMPTY_FORM: PersonaPayload = {
   xapiMode: "responses",
   xapiToolChoice: "auto",
   xapiMaxTurns: "5",
-  tools: { web_search: true, x_search: false, file_search: false, xfinance: false }
+  tools: { web_search: true, x_search: false, file_search: false, atxfinance: false }
 };
 
 function toolSelectionsFromArray(
@@ -57,7 +57,7 @@ function toolSelectionsFromArray(
     web_search: tools.some((t) => t.type === "web_search"),
     x_search: tools.some((t) => t.type === "x_search"),
     file_search: tools.some((t) => t.type === "file_search"),
-    xfinance: tools.some((t) => t.type === "xfinance")
+    atxfinance: tools.some((t) => t.type === "atxfinance")
   };
 }
 
@@ -76,7 +76,7 @@ function toolSelectionsToArray(
         : { type: "file_search" }
     );
   }
-  if (selections.xfinance) tools.push({ type: "xfinance" });
+  if (selections.atxfinance) tools.push({ type: "atxfinance" });
   return tools;
 }
 
@@ -272,11 +272,11 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             </label>
             <label className="checkbox-label">
               <input
-                checked={form.tools.xfinance}
-                onChange={() => toggleTool("xfinance")}
+                checked={form.tools.atxfinance}
+                onChange={() => toggleTool("atxfinance")}
                 type="checkbox"
               />
-              xfinance
+              atxfinance
               <small className="status-text">portfolio, watchlist, accounts, tasks</small>
             </label>
           </fieldset>
