@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { AtxFinanceLogo } from "../ui/atxfinance-logo";
+import { XFinanceLogo } from "../ui/xfinance-logo";
 import { LoginProductPanel } from "./ui/login-product-panel";
 import { LinkEmailForm } from "./ui/link-email-form";
 
@@ -20,7 +20,7 @@ const errorCopy: Record<string, string> = {
   userinfo_failed: "Could not load your X profile.",
   invalid_user_profile: "Your X profile payload is invalid.",
   not_authorized_admin: "Your X account is not authorized for core admin.",
-  not_authorized_user: "Your account is not yet approved for atxFinance access.",
+  not_authorized_user: "Your account is not yet approved for xFinance access.",
   access_request_pending:
     "Access request pending. An admin must approve your access before you can continue.",
   email_link_required:
@@ -42,10 +42,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <main className="core-shell login-shell">
       <div className="login-grid">
         <section className="hero-card xf-noise-overlay login-hero">
-          <AtxFinanceLogo size="lg" showSubtitle />
+          <XFinanceLogo size="lg" showSubtitle />
           <h1 className="hero-title">Sign In</h1>
           <p className="hero-copy">
-            Authenticate with X to access the atxFinance control plane.
+            Authenticate with X to access the xFinance control plane.
           </p>
           {message ? <p className="status-text status-error">{message}</p> : null}
           {errorDetails ? (

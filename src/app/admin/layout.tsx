@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
 import { APP_VERSION_LABEL } from "@/lib/app-version";
 import { getMongoConnectionLabel } from "@/lib/env";
-import { AtxFinanceLogo } from "../ui/atxfinance-logo";
+import { XFinanceLogo } from "../ui/xfinance-logo";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 
 type AdminLayoutProps = {
@@ -37,7 +37,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
     <div className="admin-layout">
       <header className="admin-topbar">
         <Link className="admin-topbar-brand" href="/admin">
-          <AtxFinanceLogo size="sm" />
+          <XFinanceLogo size="sm" />
         </Link>
         <nav className="admin-topbar-nav">
           {NAV_LINKS.map((link) => (
@@ -60,7 +60,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
       <main className="admin-layout-content">{children}</main>
       <footer className="admin-layout-footer">
         <span className="admin-layout-footer-text">
-          atxfinance-core-app {APP_VERSION_LABEL}
+          xfinance-core-app {APP_VERSION_LABEL}
         </span>
       </footer>
     </div>

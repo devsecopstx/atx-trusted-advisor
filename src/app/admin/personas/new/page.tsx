@@ -16,7 +16,7 @@ export default async function AdminCreatePersonaPage() {
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">atxfinance core admin</p>
+        <p className="eyebrow">xfinance core admin</p>
         <h1 className="hero-title">Create xPersona</h1>
         <p className="hero-copy">Create a persona in a dedicated onboarding step.</p>
       </section>

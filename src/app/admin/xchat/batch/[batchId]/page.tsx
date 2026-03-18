@@ -50,7 +50,7 @@ export default async function AdminBatchDetailPage({
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">atxfinance core admin</p>
+        <p className="eyebrow">xfinance core admin</p>
         <h1 className="hero-title">Batch Detail</h1>
         <p className="hero-copy">
           Drilldown for <code>{job.xaiBatchId}</code> with progress and item-level results.

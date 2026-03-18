@@ -29,7 +29,7 @@ describe("admin audit route", () => {
         action: "updated",
         actor: {
           userId: "507f1f77bcf86cd799439011",
-          email: "admin@atxfinance.ai"
+          email: "admin@xfinance.ai"
         },
         details: { changedFields: ["systemPrompt"] },
         createdAt: new Date("2026-03-16T00:00:00.000Z")

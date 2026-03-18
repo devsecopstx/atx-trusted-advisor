@@ -1,0 +1,126 @@
+/* ── Product Plans ───────────────────────────── */
+
+.pp-section {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+  text-align: center;
+}
+
+.pp-heading {
+  margin: 0 0 0.4rem;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+}
+
+.pp-sub {
+  margin: 0 0 2rem;
+  color: var(--xf-text-400);
+  font-size: 0.9rem;
+}
+
+.pp-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .pp-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── Card ─────────────────────────────────── */
+
+.pp-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.8rem 1.2rem 1.4rem;
+  border-radius: var(--xf-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(145deg, rgba(30, 33, 38, 0.5), rgba(12, 14, 18, 0.8));
+  cursor: pointer;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.pp-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.pp-card-active {
+  border-color: var(--xf-gain-green);
+  box-shadow: 0 0 24px rgba(57, 255, 20, 0.12);
+}
+
+.pp-card-highlight {
+  border-color: rgba(57, 255, 20, 0.3);
+}
+
+.pp-card-highlight.pp-card-active {
+  box-shadow: 0 0 32px rgba(57, 255, 20, 0.2);
+}
+
+.pp-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pp-tag {
+  position: absolute;
+  top: -0.55rem;
+  right: 1rem;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--xf-bg-900);
+  background: var(--xf-gain-green);
+}
+
+.pp-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.pp-price {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--xf-text-100);
+}
+
+.pp-price small {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--xf-text-400);
+}
+
+.pp-limits {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pp-limits li {
+  font-size: 0.82rem;
+  color: var(--xf-text-300);
+}
+
+.pp-limits li::before {
+  content: "✓ ";
+  color: var(--xf-gain-green);
+  font-weight: 700;
+}

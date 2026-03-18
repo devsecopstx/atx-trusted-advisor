@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId } from "mongodb";
 
-const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
+const DB_NAME = process.env.MONGODB_DB_NAME ?? "xfinancedb";
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
 const DEFAULT_WATCHLIST_NAME = "Default Watchlist";

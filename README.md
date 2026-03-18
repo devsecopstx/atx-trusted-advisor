@@ -1,6 +1,6 @@
-# atxFinance Core App
+# xFinance Core App
 
-Admin-only operations platform for atxFinance. This repo powers:
+Admin-only operations platform for xFinance. This repo powers:
 
 - access request governance
 - persona and collection management

@@ -1,6 +1,6 @@
 # Cursor Agent Personas
 
-This folder defines repo-local agent personas for atxfinance Cursor Cloud usage.
+This folder defines repo-local agent personas for xfinance Cursor Cloud usage.
 
 Current personas:
 
