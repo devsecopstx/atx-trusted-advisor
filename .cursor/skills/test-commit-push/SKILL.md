@@ -1,11 +1,11 @@
 ---
 id: test-commit-push
 name: test-commit-push
-version: 2.1.0
+version: 2.1.1
 description: Execute a safe local validation flow (test, lint, typecheck), then prepare clean commit and push guidance.
 ---
 
-# Test Commit Push v2.1.0
+# Test Commit Push v2.1.1
 
 ## Goal
 
