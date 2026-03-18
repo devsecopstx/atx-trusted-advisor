@@ -9,7 +9,7 @@ export async function GET() {
 
     return NextResponse.json({
       status: "ok",
-      service: "xfinance-core-app",
+      service: "atxfinance-core-app",
       db: db.databaseName
     });
   } catch (error) {

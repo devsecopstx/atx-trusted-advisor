@@ -167,19 +167,19 @@ export function createXfinanceToolExecutor(
   };
 }
 
-export const XFINANCE_TOOL_DEFINITION = {
+export const ATXFINANCE_TOOL_DEFINITION = {
   type: "function" as const,
   function: {
-    name: "xfinance",
+    name: "atxfinance",
     description:
-      "Query xFinance portfolio, watchlist, account, and task data for the authenticated user.",
+      "Query atxFinance portfolio, watchlist, account, and task data for the authenticated user.",
     parameters: {
       type: "object",
       properties: {
         operation: {
           type: "string",
           enum: ["portfolio_summary", "watchlist_snapshot", "account_health", "task_status"],
-          description: "The xFinance operation to execute."
+          description: "The atxFinance operation to execute."
         }
       },
       required: ["operation"]

@@ -1,7 +1,6 @@
 ---
 id: design-review-best-practices
 name: design-review-best-practices
-version: "1.0.0"
 description: Review the repository and suggest best practices or improvements. Use when the user asks for a design review, repo review, code review, best practices, or improvements.
 ---
 
