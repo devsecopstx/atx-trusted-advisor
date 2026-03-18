@@ -17,6 +17,7 @@ Set up Cursor cloud agents with deterministic behavior for xfinance:
 ## Standard Decisions (Default)
 
 - Repo target: `xfinance`
+- Agents reference: `https://vscode.dev/github/devsecopstx/xfinance/blob/main/.cursor/agents`
 - Production host: `https://core.fintech-advisor.ai`
 - Staging host: `https://staging.core.fintech-advisor.ai`
 - GCP model: separate projects for staging and production
