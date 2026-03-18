@@ -187,7 +187,7 @@ export function XchatConversation() {
         <input
           maxLength={4000}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask xchat anything..."
+          placeholder="Hit me – portfolio questions, optimizations, whatever"
           value={input}
         />
         <button disabled={loading || !input.trim()} type="submit">

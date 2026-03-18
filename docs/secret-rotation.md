@@ -61,7 +61,7 @@ Cursor Cloud → **Secrets** → set `MONGODB_URI_B64` to the new base64 value.
 - Staging: `curl -sSf https://staging.atx.fintech-advisor.ai/api/health`
 - Production: `curl -sSf https://atx.fintech-advisor.ai/api/health`
 
-Expected: `{"status":"ok","service":"xfinance-core-app",...}` (db name may vary)
+Expected: `{"status":"ok","service":"xfinance-core-app","db":"xfinancedb"}`
 
 ### 7. Revoke old credentials (after 24–48h stable)
 

@@ -105,7 +105,7 @@ npm run dev          # Next.js dev server on :3000
 npm run seed:admin   # Idempotent — safe to re-run
 ```
 
-Verify: `curl http://localhost:3000/api/health` should return `{"status":"ok","service":"xfinance-core-app",...}`.
+Verify: `curl http://localhost:3000/api/health` should return `{"status":"ok","service":"xfinance-core-app","db":"xfinancedb"}`.
 
 ### Session cookie for testing authenticated endpoints
 

@@ -175,7 +175,7 @@ curl -s "https://staging.atx.fintech-advisor.ai/api/health"
 curl -s "https://atx.fintech-advisor.ai/api/health"
 ```
 
-Expected: `{"status":"ok","service":"xfinance-core-app",...}` (db name may vary)
+Expected: `{"status":"ok","service":"xfinance-core-app","db":"xfinancedb"}`
 
 ---
 
