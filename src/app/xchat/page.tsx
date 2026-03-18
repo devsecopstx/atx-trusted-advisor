@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
 import { XFinanceLogo } from "@/app/ui/xfinance-logo";
 
 import { PlansLanding } from "./ui/plans-landing";
 import { XchatConversation } from "./ui/xchat-conversation";
+import { XchatGuestPanel } from "./ui/xchat-guest-panel";
 import "./xchat.css";
 
 function hasXfinanceAccess(roles: string[]): boolean {
@@ -15,7 +15,18 @@ function hasXfinanceAccess(roles: string[]): boolean {
 export default async function XchatPage() {
   const session = await getSessionUser();
   if (!session) {
-    redirect("/login");
+    return (
+      <div className="xchat-shell">
+        <header className="xchat-header">
+          <Link className="xchat-header-brand" href="/xchat">
+            <XFinanceLogo size="sm" />
+          </Link>
+        </header>
+        <div className="xchat-body">
+          <XchatGuestPanel />
+        </div>
+      </div>
+    );
   }
 
   const approved = hasXfinanceAccess(session.roles);

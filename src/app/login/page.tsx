@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
+
 import { XFinanceLogo } from "../ui/xfinance-logo";
+import { LoginProductPanel } from "./ui/login-product-panel";
 import { LinkEmailForm } from "./ui/link-email-form";
 
 type LoginPageProps = {
@@ -30,27 +33,33 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const errorCode = params.error;
   const errorDetails = params.details;
+  if (!errorCode && !errorDetails) {
+    redirect("/xchat");
+  }
   const message = errorCode ? (errorCopy[errorCode] ?? "Login failed.") : null;
 
   return (
     <main className="core-shell login-shell">
-      <section className="hero-card xf-noise-overlay login-hero">
-        <XFinanceLogo size="lg" showSubtitle />
-        <h1 className="hero-title">Sign In</h1>
-        <p className="hero-copy">
-          Authenticate with X to access the xFinance control plane.
-        </p>
-        {message ? <p className="status-text status-error">{message}</p> : null}
-        {errorDetails ? (
-          <p className="status-text status-error">details: {errorDetails}</p>
-        ) : null}
-        <div className="cta-row">
-          <a className="cta cta-primary" href="/api/auth/x/login">
-            Login with X
-          </a>
-        </div>
-        {errorCode === "email_link_required" ? <LinkEmailForm /> : null}
-      </section>
+      <div className="login-grid">
+        <section className="hero-card xf-noise-overlay login-hero">
+          <XFinanceLogo size="lg" showSubtitle />
+          <h1 className="hero-title">Sign In</h1>
+          <p className="hero-copy">
+            Authenticate with X to access the xFinance control plane.
+          </p>
+          {message ? <p className="status-text status-error">{message}</p> : null}
+          {errorDetails ? (
+            <p className="status-text status-error">details: {errorDetails}</p>
+          ) : null}
+          <div className="cta-row">
+            <a className="cta cta-primary" href="/api/auth/x/login">
+              Login with X
+            </a>
+          </div>
+          {errorCode === "email_link_required" ? <LinkEmailForm /> : null}
+        </section>
+        <LoginProductPanel />
+      </div>
     </main>
   );
 }
