@@ -22,7 +22,7 @@ export function XchatGuestPanel() {
       <form className="xchat-input-bar">
         <input
           aria-label="xchat guest prompt"
-          placeholder="Ask xchat anything..."
+          placeholder="Hit me – portfolio questions, optimizations, whatever"
           readOnly
           value=""
         />

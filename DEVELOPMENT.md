@@ -96,6 +96,13 @@ OAuth flow cookies are host-scoped. Keep these values aligned to avoid `missing_
 
 If they do not match exactly, state/verifier cookies can be missing on callback.
 
+### Login Error Routing Notes
+
+- `email_link_required`: X OAuth succeeded but X did not return an email claim. Use the link-email form on `/login` to bind the X identity to a real email.
+- `access_request_pending`: account exists but has no login-allowed role (`global_admin`, `advisor`, `operator`, `viewer`).
+- If the entered email already belongs to an approved admin account, `/api/auth/link-email` now unlinks stale X mappings and re-links to the approved user.
+- For Atlas-only setups, if login/link-email email matches `ADMIN_SEED_EMAIL` (fallback `atxbogart@gmail.com`), auth flow auto-applies seeded global-admin role and tenant membership. Local Mongo is not required.
+
 ## Validation Commands
 
 - Typecheck: `npm run typecheck`
@@ -120,6 +127,32 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 - [ ] Workflow env vars set and validated in `.github/workflows/deploy-cloud-run.yml`
 - [ ] GitHub environment secrets set (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`)
 - [ ] Cloud Run runtime secrets provisioned (Secret Manager recommended)
+
+### GCP Secret Manager — Required Secrets (Staging & Production)
+
+All secrets below must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
+
+| Secret name | Purpose | Required |
+| --- | --- | --- |
+| `MONGODB_URI_B64` | Base64-encoded Atlas connection string | Yes |
+| `XAI_API_KEY` | xAI API key for chat completions | Yes |
+| `XAI_MANAGEMENT_API_KEY` | xAI management key for collection ops | Yes |
+| `X_OAUTH_CLIENT_ID` | X OAuth 2.0 client ID (raw, not base64) | Yes |
+| `X_OAUTH_CLIENT_SECRET` | X OAuth 2.0 client secret | Yes |
+| `AUTH_SECRET` | Session signing secret (min 16 chars) | Yes |
+| `ADMIN_SEED_EMAIL` | Email auto-seeded as global_admin on first login | Yes |
+| `ALLOW_ANY_X_USER_LOGIN` | Feature flag — `true` allows any authenticated X user to reach `/xchat` | Yes (set `false` if unused) |
+| `SLACK_WEBHOOK_URL` | Slack incoming webhook for access-request notifications | Yes (set empty string if unused) |
+
+Create missing secrets with:
+
+```bash
+# Example for staging project
+for SECRET in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET ADMIN_SEED_EMAIL ALLOW_ANY_X_USER_LOGIN SLACK_WEBHOOK_URL; do
+  gcloud secrets create "$SECRET" --project="<staging-project-id>" --replication-policy=automatic 2>/dev/null || true
+  echo -n "<value>" | gcloud secrets versions add "$SECRET" --project="<staging-project-id>" --data-file=-
+done
+```
 
 ### GitHub Environment Variables
 
@@ -336,6 +369,7 @@ gcloud run services update-traffic atxfinance-core-prod \
 ### Health and auth
 
 - `GET /api/health`
+- `GET /api/openapi` (OpenAPI 3.1 current-state inventory used by admin Swagger UI)
 - `GET /api/auth/x/login`
 - `GET /api/auth/x/callback`
 - `POST /api/auth/link-email` (email-first fallback link flow)
@@ -418,6 +452,14 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/xchat/batch`
 - `GET /api/xchat/batch/:batchId`
 - `POST /api/xchat/batch/:batchId`
+
+### API docs validation (pre/post deploy)
+
+Validate docs surfaces as part of release checks:
+
+1. `GET /api/openapi` returns HTTP 200 and includes documented paths for all `src/app/api/**/route.ts` handlers.
+2. `GET /admin/api-docs` loads Swagger UI in an authenticated admin session.
+3. `tests/integration/openapi-current-state-coverage.test.ts` passes in CI (`npm run ci:gate`), preventing route/doc drift.
 
 ## Access Request State Machine
 
