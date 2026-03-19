@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { requireSessionUser } from "@/lib/auth";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
   createAuditEvent,
   listLatestAuditEventsForEntities
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const statusParam = url.searchParams.get("status");
-  const isAdmin = session.roles.includes("global_admin");
+  const isAdmin = isGlobalAdmin(session.roles);
 
   let personas: PersonaConfig[];
   if (!isAdmin) {

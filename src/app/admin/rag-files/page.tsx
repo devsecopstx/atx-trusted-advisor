@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { RagFilesConsole } from "./ui/rag-files-console";
 
@@ -9,7 +10,7 @@ export default async function AdminRagFilesPage() {
   if (!session) {
     redirect("/login");
   }
-  if (!session.roles.includes("global_admin")) {
+  if (!isGlobalAdmin(session.roles)) {
     redirect("/admin?error=forbidden");
   }
 
@@ -17,9 +18,9 @@ export default async function AdminRagFilesPage() {
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
         <p className="eyebrow">atxfinance core admin</p>
-        <h1 className="hero-title">RAG Uploads</h1>
+        <h1 className="hero-title">RAG collections</h1>
         <p className="hero-copy">
-          Upload scoped documents and review the latest ingestion status for knowledge files.
+          Read-only view of xAI collections visible to this app&apos;s management API key (team scope).
         </p>
       </section>
 

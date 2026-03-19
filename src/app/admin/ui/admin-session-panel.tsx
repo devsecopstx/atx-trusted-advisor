@@ -38,7 +38,7 @@ export function AdminSessionPanel({
       if (!response.ok) {
         throw new Error("Logout failed");
       }
-      window.location.href = "/login";
+      window.location.href = "/";
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Logout failed");
     } finally {

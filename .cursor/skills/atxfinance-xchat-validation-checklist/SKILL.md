@@ -21,15 +21,18 @@ Verify xChat behavior, persona wiring, and retrieval/fallback outcomes with repr
 - `AGENTS.md` quick health checks and validation gates
 - `tests/integration/xchat-ask-route.test.ts`
 - `src/app/api/xchat/ask/route.ts`
-- Persona configuration from `/api/personas`
+- `src/modules/xchat/repository.ts` (`resolveDefaultXchatPersonaForSession`, `ensureDefaultXfinancePersonaExists`)
+- `src/modules/xchat/default-xpersonas.ts`
+- Persona configuration from `/api/personas` (directory vs xChat default persona are separate: xChat does not use client-selected `personaId`)
 
 ## Validation Checklist
 
 1. Confirm baseline endpoints are healthy (`/api/health`, `/api/personas`).
-2. Validate xChat ask happy path with authenticated admin session.
-3. Validate context source behavior (`xai_collection`, `mongo_scope`, `none`).
-4. Validate provider failure path (`502` with retryable metadata).
-5. Validate persona tool constraints (`file_search` requires collection binding).
+2. Validate xChat ask with **global_admin** (expects resolved **Super-Agent** — keep this persona **published**; **503** if missing).
+3. Validate xChat ask with a **non-admin** session (expects resolved **xFinance** — keep **published** in prod; auto-created on first ask only if still absent).
+4. Validate context source behavior (`xai_collection`, `mongo_scope`, `none`).
+5. Validate provider failure path (`502` with retryable metadata).
+6. Validate persona tool constraints (`file_search` / `collections_search` require `xaiCollection.collectionId` on create/update payloads per `persona-validation.ts`).
 
 ## Guardrails
 

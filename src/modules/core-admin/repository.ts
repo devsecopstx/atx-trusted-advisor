@@ -2,19 +2,20 @@ import { ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import type { CoreUser } from "@/modules/identity/types";
-import type {
-  AccessRequest,
-  AccessRequestListItem,
-  ApprovedUserListItem,
-  AccessRequestStatus,
-  Account,
-  AccountType,
-  ScheduledTask,
-  TaskRun,
-  UserAdminSettings,
-  Portfolio,
-  Position,
-  Watchlist
+import {
+  ACTIONABLE_ACCESS_REQUEST_STATUSES,
+  type AccessRequest,
+  type AccessRequestListItem,
+  type AccessRequestStatus,
+  type ApprovedUserListItem,
+  type Account,
+  type AccountType,
+  type ScheduledTask,
+  type TaskRun,
+  type UserAdminSettings,
+  type Portfolio,
+  type Position,
+  type Watchlist
 } from "@/modules/core-admin/types";
 
 const collections = {
@@ -162,18 +163,22 @@ export async function ensurePortfolioIndexes(): Promise<void> {
 export async function listAccessRequests(options?: {
   limit?: number;
   status?: AccessRequestStatus;
+  statuses?: AccessRequestStatus[];
   tenantId?: string;
 }): Promise<AccessRequestListItem[]> {
   const limit = options?.limit ?? 50;
   const db = await getDb();
+
+  let statusQuery: Record<string, unknown> = {};
+  if (options?.statuses && options.statuses.length > 0) {
+    statusQuery = { status: { $in: options.statuses } };
+  } else if (options?.status) {
+    statusQuery = { status: options.status };
+  }
+
   const requests = await db
     .collection<AccessRequest>(collections.accessRequests)
-    .find(
-      withTenantScope(
-        options?.status ? { status: options.status } : {},
-        options?.tenantId
-      )
-    )
+    .find(withTenantScope(statusQuery, options?.tenantId))
     .sort({ requestedAt: -1 })
     .limit(limit)
     .toArray();
@@ -332,7 +337,7 @@ export async function updateAccessRequestPlanById(input: {
   const db = await getDb();
   const _id = new ObjectId(input.requestId);
   await db.collection<AccessRequest>(collections.accessRequests).updateOne(
-    withTenantScope({ _id, status: "pending" }, input.tenantId),
+    withTenantScope({ _id, status: { $in: ACTIONABLE_ACCESS_REQUEST_STATUSES } }, input.tenantId),
     {
       $set: {
         requestedPlan: input.requestedPlan

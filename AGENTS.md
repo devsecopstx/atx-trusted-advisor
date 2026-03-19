@@ -17,9 +17,12 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 - Lint: `npm run lint`
 - Types: `npm run typecheck`
 - Tests: `npm run test`
+- Integration-only: `npm run test:integration` (optional; `npm run test` already includes `tests/integration/**`)
 - Build: `npm run build`
 - CI gate: `npm run ci:gate`
 - Release gate: `npm run ci:gate && npm run build`
+
+OpenAPI inventory is guarded by route parity + document build tests under `tests/integration/openapi-*.test.ts` (see `DEVELOPMENT.md#api-docs-validation`).
 
 ## Critical Env Keys
 
@@ -37,7 +40,8 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 - Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
 - Personas API: `GET /api/personas`
-- xChat ask API: `POST /api/xchat/ask`
+- xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (`global_admin`), **xFinance** (all other signed-in roles); body `personaId` is ignored
+- App-user feedback: `POST /api/feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
 
 ## Quick Ops Status Task
 
@@ -52,7 +56,9 @@ echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 
 - Keep secrets only in `.env`; never commit real tokens.
 - Prefer updating existing docs over creating duplicates.
+- Non-blocking backlog / design TBD: `docs/PLAN.md`.
 - For persona/xchat/admin-audit changes, run at least build + typecheck before PR.
+- **Roles:** platform roles vs `tenantRole` — see `DEVELOPMENT.md` → *Platform roles vs tenant membership (session)*. Use `isGlobalAdmin()` / `canUserLogin()` from `@/modules/identity/authorization` (and `requireGlobalAdminSession` for admin APIs); avoid ad-hoc `roles.includes("global_admin")`.
 
 ## Cursor Cloud specific instructions
 
@@ -190,6 +196,6 @@ All three share the same update script and secret requirements above.
 - Payment rails brand surface, `--xf-xmoney-*` tokens, logo lockup variant.
 
 **Standing design rules:**
-- Personas vs Collections separation — `/admin/personas` shows persona configs only (prompts, tools, collectionId links). Collections management stays in RAG Uploads or a dedicated `/admin/collections` page.
+- Personas vs Collections separation — `/admin/personas` shows persona configs only (prompts, tools, collectionId links). Read-only xAI collection inventory is under **RAG collections** (`/admin/rag-files`); create/link flows stay in Personas or xAI console.
 - All admin sub-pages delegate auth + session panel to the shared admin layout (`src/app/admin/layout.tsx`). Do not add duplicate `AdminSessionPanel` imports.
 - No hardcoded hex in app CSS — use `--xf-*` tokens from `design-system/atxfinance-brand-kit.css`.

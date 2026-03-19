@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { getSessionUser } from "@/lib/auth";
 import { APP_VERSION_LABEL } from "@/lib/app-version";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getMongoConnectionLabel } from "@/lib/env";
 import { AtxFinanceLogo } from "../ui/atxfinance-logo";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
@@ -20,7 +21,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin/xchat/batch", label: "Batch Ops" },
   { href: "/admin/portfolios", label: "Portfolios" },
   { href: "/admin/tasks", label: "Tasks" },
-  { href: "/admin/rag-files", label: "RAG" },
+  { href: "/admin/rag-files", label: "RAG collections" },
   { href: "/admin/api-docs", label: "API Docs" },
   { href: "/admin/user-settings", label: "Users" },
   { href: "/admin/audit", label: "Audit" }
@@ -30,6 +31,9 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
+  }
+  if (!isGlobalAdmin(session.roles)) {
+    redirect("/xchat");
   }
 
   const mongoConnection = getMongoConnectionLabel();

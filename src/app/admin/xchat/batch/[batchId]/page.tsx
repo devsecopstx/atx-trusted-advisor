@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { toBatchDashboardJob } from "@/modules/xchat/batch-dashboard";
 import {
   getBatchJobRecord,
@@ -19,7 +20,7 @@ export default async function AdminBatchDetailPage({
   if (!session) {
     redirect("/login");
   }
-  if (!session.roles.includes("global_admin")) {
+  if (!isGlobalAdmin(session.roles)) {
     redirect("/xchat");
   }
 

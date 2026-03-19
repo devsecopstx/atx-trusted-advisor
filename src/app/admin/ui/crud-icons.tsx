@@ -163,6 +163,37 @@ export function UploadIcon({ className }: IconProps) {
   );
 }
 
+export function CopyIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      height="14"
+      viewBox="0 0 24 24"
+      width="14"
+    >
+      <rect
+        height="13"
+        rx="2"
+        ry="2"
+        stroke="currentColor"
+        strokeWidth="2"
+        width="13"
+        x="8"
+        y="8"
+      />
+      <path
+        d="M4 16V6a2 2 0 0 1 2-2h10"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
 export function AskIcon({ className }: IconProps) {
   return (
     <svg

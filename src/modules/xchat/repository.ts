@@ -1,6 +1,12 @@
 import { MongoServerError, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
+import {
+  buildDefaultXfinancePersonaPayload,
+  isGlobalAdminRole,
+  XPERSONA_SUPER_AGENT_NAME,
+  XPERSONA_XFINANCE_NAME
+} from "@/modules/xchat/default-xpersonas";
 import type {
   PersonaCollectionVerification,
   PersonaConfig,
@@ -55,7 +61,7 @@ async function createPersonaIndexes(): Promise<void> {
     }
     await personaCollection.updateOne(
       { _id: persona._id },
-      { $set: { nameNormalized: normalizePersonaName(persona.name) } }
+      { $set: { nameNormalized: normalizePersonaNameKey(persona.name) } }
     );
   }
 
@@ -109,7 +115,7 @@ export async function createPersona(
   const now = new Date();
   const document: PersonaConfig = {
     ...payload,
-    nameNormalized: normalizePersonaName(payload.name),
+    nameNormalized: normalizePersonaNameKey(payload.name),
     createdAt: now,
     updatedAt: now
   };
@@ -135,6 +141,46 @@ export async function getPersonaById(id: string): Promise<PersonaConfig | null> 
     .findOne({ _id: new ObjectId(id) });
 }
 
+export async function getPersonaByNormalizedName(
+  nameNormalized: string
+): Promise<PersonaConfig | null> {
+  await ensurePersonaIndexes();
+  const db = await getDb();
+  const key = nameNormalized.trim().toLowerCase();
+  if (!key) {
+    return null;
+  }
+  return db.collection<PersonaConfig>(collections.personas).findOne({ nameNormalized: key });
+}
+
+export async function ensureDefaultXfinancePersonaExists(): Promise<PersonaConfig> {
+  const key = normalizePersonaNameKey(XPERSONA_XFINANCE_NAME);
+  const existing = await getPersonaByNormalizedName(key);
+  if (existing) {
+    return existing;
+  }
+  try {
+    return await createPersona(buildDefaultXfinancePersonaPayload());
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      const again = await getPersonaByNormalizedName(key);
+      if (again) {
+        return again;
+      }
+    }
+    throw error;
+  }
+}
+
+export async function resolveDefaultXchatPersonaForSession(
+  roles: string[]
+): Promise<PersonaConfig | null> {
+  if (isGlobalAdminRole(roles)) {
+    return getPersonaByNormalizedName(normalizePersonaNameKey(XPERSONA_SUPER_AGENT_NAME));
+  }
+  return ensureDefaultXfinancePersonaExists();
+}
+
 export async function updatePersona(
   id: string,
   payload: Partial<Omit<PersonaConfig, "_id" | "createdAt" | "updatedAt" | "nameNormalized">>
@@ -150,7 +196,7 @@ export async function updatePersona(
     updatedAt: new Date()
   };
   if (payload.name !== undefined) {
-    setPayload.nameNormalized = normalizePersonaName(payload.name);
+    setPayload.nameNormalized = normalizePersonaNameKey(payload.name);
   }
 
   try {
@@ -457,7 +503,7 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function normalizePersonaName(name: string): string {
+export function normalizePersonaNameKey(name: string): string {
   return name.trim().toLowerCase();
 }
 

@@ -50,7 +50,13 @@ describe("persona tool validation", () => {
   });
 
   it("PERSONA_XAPI_TOOL_TYPES includes all supported tools", () => {
-    expect(PERSONA_XAPI_TOOL_TYPES).toEqual(["web_search", "x_search", "file_search", "atxfinance"]);
+    expect(PERSONA_XAPI_TOOL_TYPES).toEqual([
+      "web_search",
+      "x_search",
+      "file_search",
+      "collections_search",
+      "atxfinance"
+    ]);
   });
 
   it("SUPER_AGENT_DEFAULT_TOOLS has web_search, x_search, file_search, and atxfinance", () => {
@@ -65,9 +71,10 @@ describe("persona tool validation", () => {
     expect(fileSearch).toHaveProperty("source");
   });
 
-  it("hasFileSearchTool detects file_search in tool array", () => {
+  it("hasFileSearchTool detects file_search or collections_search in tool array", () => {
     expect(hasFileSearchTool([{ type: "web_search" }])).toBe(false);
     expect(hasFileSearchTool([{ type: "file_search" }])).toBe(true);
+    expect(hasFileSearchTool([{ type: "collections_search" }])).toBe(true);
     expect(hasFileSearchTool(undefined)).toBe(false);
     expect(hasFileSearchTool([])).toBe(false);
   });
@@ -101,6 +108,51 @@ describe("persona tool validation", () => {
       }
     });
     expect(result.success).toBe(true);
+  });
+
+  it("createPersonaPayloadSchema rejects collections_search without collection", () => {
+    const result = createPersonaPayloadSchema.safeParse({
+      name: "Test Agent",
+      systemPrompt: "You are a test agent for validation.",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "collections_search", collection_ids: ["collection_x"] }]
+      }
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("createPersonaPayloadSchema allows collections_search with xaiCollection link", () => {
+    const result = createPersonaPayloadSchema.safeParse({
+      name: "Test Agent",
+      systemPrompt: "You are a test agent for validation.",
+      xaiCollection: {
+        collectionId: "collection_abc-123"
+      },
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "collections_search", collection_ids: ["collection_abc-123"] }]
+      }
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("normalizePersonaXapiConfig keeps only one collection tool when both are present", () => {
+    const result = normalizePersonaXapiConfig({
+      mode: "responses",
+      toolChoice: "auto",
+      maxTurns: 5,
+      tools: [
+        { type: "file_search", source: { collection_ids: ["a"] } },
+        { type: "collections_search", collection_ids: ["b"] }
+      ]
+    });
+    expect(result.tools).toHaveLength(1);
+    expect(result.tools[0].type).toBe("file_search");
   });
 
   it("createPersonaPayloadSchema rejects unknown tool type", () => {

@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const protectedPathPrefixes = ["/admin", "/api/admin", "/api/personas", "/api/rag", "/api/xchat"];
+const protectedPathPrefixes = [
+  "/admin",
+  "/api/admin",
+  "/api/personas",
+  "/api/rag",
+  "/api/xchat",
+  "/xfinance",
+  "/xcoach"
+];
 
 function isProtectedPath(pathname: string): boolean {
   return protectedPathPrefixes.some((prefix) => pathname.startsWith(prefix));
@@ -28,5 +36,13 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*", "/api/personas/:path*", "/api/rag/:path*", "/api/xchat/:path*"]
+  matcher: [
+    "/admin/:path*",
+    "/api/admin/:path*",
+    "/api/personas/:path*",
+    "/api/rag/:path*",
+    "/api/xchat/:path*",
+    "/xfinance/:path*",
+    "/xcoach/:path*"
+  ]
 };

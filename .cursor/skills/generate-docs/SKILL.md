@@ -53,6 +53,6 @@ When introducing new subsystems, prefer extending `DEVELOPMENT.md` and linking f
 ## Output
 
 - Docs updated/created
-- Coverage gaps still open
+- Coverage gaps still open — prefer capturing non-blocking items in **`docs/PLAN.md`** (TODO / design TBD) instead of orphan comments
 - Recommended doc owners/follow-ups
 - TODO: remove dependency on global Cursor skills; keep docs operations project-local.

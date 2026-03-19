@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { countPersonaLinkedCollections } from "@/modules/xchat/persona-linked-collections";
 
 type PersonaListItem = {
   _id?: string;
@@ -93,7 +94,9 @@ export function PersonaDirectory() {
               </div>
 
               <div className="persona-card-meta">
-                <small>Collection: {collectionLabel}</small>
+                <small>
+                  Linked collections: {countPersonaLinkedCollections(persona)} · {collectionLabel}
+                </small>
                 <small>
                   xAPI: {persona.xapi.mode} | tools: {persona.xapi.tools.length} | tool_choice:{" "}
                   {persona.xapi.toolChoice} | max_turns: {persona.xapi.maxTurns}

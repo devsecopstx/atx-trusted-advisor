@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { countPersonaLinkedCollections } from "@/modules/xchat/persona-linked-collections";
 
 type PersonaStatus = "draft" | "published" | "archived";
 
@@ -153,6 +154,7 @@ export function PersonasOnboardingHome() {
 
       <div className="persona-directory-grid">
         {filtered.map((persona) => {
+          const linkedCollectionCount = countPersonaLinkedCollections(persona);
           const collectionLabel = persona.xaiCollection.collectionId
             ? persona.xaiCollection.collectionName || persona.xaiCollection.collectionId
             : null;
@@ -182,11 +184,13 @@ export function PersonasOnboardingHome() {
                   xAPI: {persona.xapi.mode} | tool_choice: {persona.xapi.toolChoice} |
                   max_turns: {persona.xapi.maxTurns} | tools: {persona.xapi.tools.length}
                 </small>
-                {collectionLabel ? (
-                  <small>Collection: {collectionLabel}</small>
-                ) : (
-                  <small className="status-text">No collection linked</small>
-                )}
+                <small>
+                  Linked collections: {linkedCollectionCount}
+                  {collectionLabel ? ` · primary: ${collectionLabel}` : ""}
+                </small>
+                {!collectionLabel && linkedCollectionCount === 0 ? (
+                  <small className="status-text">No collection binding on persona</small>
+                ) : null}
                 {persona.publishedAt ? (
                   <small>Published: {new Date(persona.publishedAt).toLocaleString()}</small>
                 ) : null}

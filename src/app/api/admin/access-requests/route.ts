@@ -42,7 +42,10 @@ const createAccessRequestSchema = z.object({
 });
 
 const accessRequestQuerySchema = z.object({
-  status: z.union([z.enum(accessRequestStatusValues), z.literal("all")]).optional().default("pending")
+  status: z
+    .union([z.enum(accessRequestStatusValues), z.literal("all"), z.literal("open")])
+    .optional()
+    .default("open")
 });
 
 export async function GET(request: Request) {
@@ -62,10 +65,16 @@ export async function GET(request: Request) {
     );
   }
 
-  const requests = await listAccessRequests({
-    status: parsed.data.status === "all" ? undefined : parsed.data.status,
-    tenantId: session.tenantId
-  });
+  const raw = parsed.data.status;
+  const requests =
+    raw === "all"
+      ? await listAccessRequests({ tenantId: undefined })
+      : raw === "open"
+        ? await listAccessRequests({
+            statuses: ["new", "triaged", "pending"],
+            tenantId: undefined
+          })
+        : await listAccessRequests({ status: raw, tenantId: undefined });
   const serialized = requests.map(serializeAccessRequest);
   const latestAuditByRequestId = await listLatestAuditEventsForEntities({
     entityType: "access_request",
@@ -119,7 +128,7 @@ export async function POST(request: Request) {
   const existingPending = await getPendingAccessRequestByUserAndRole({
     userId: resolvedUserId,
     requestedRole: parsed.data.requestedRole,
-    tenantId: session.tenantId
+    tenantId: undefined
   });
   if (existingPending) {
     return NextResponse.json(

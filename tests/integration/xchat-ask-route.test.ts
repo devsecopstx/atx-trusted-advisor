@@ -17,7 +17,7 @@ const xaiMocks = vi.hoisted(() => ({
 }));
 
 const repositoryMocks = vi.hoisted(() => ({
-  getPersonaById: vi.fn(),
+  resolveDefaultXchatPersonaForSession: vi.fn(),
   retrieveRagChunks: vi.fn(),
   saveXChatLog: vi.fn()
 }));
@@ -55,7 +55,7 @@ describe("xchat ask route collection retrieval", () => {
       outputText: "xAI answer",
       model: "grok-4-latest"
     });
-    repositoryMocks.getPersonaById.mockResolvedValue({
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue({
       _id: new ObjectId("507f1f77bcf86cd799439055"),
       name: "Ops",
       nameNormalized: "ops",
@@ -201,7 +201,7 @@ describe("xchat ask route collection retrieval", () => {
   });
 
   it("uses mongo retrieval directly when persona has no collection id", async () => {
-    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce({
       _id: new ObjectId("507f1f77bcf86cd799439055"),
       name: "Ops",
       nameNormalized: "ops",
@@ -257,7 +257,7 @@ describe("xchat ask route collection retrieval", () => {
   });
 
   it("keeps context empty when rag is disabled", async () => {
-    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce({
       _id: new ObjectId("507f1f77bcf86cd799439055"),
       name: "Ops",
       nameNormalized: "ops",
@@ -302,7 +302,7 @@ describe("xchat ask route collection retrieval", () => {
   });
 
   it("uses chat completions mode when persona xapi mode is chat_completions", async () => {
-    repositoryMocks.getPersonaById.mockResolvedValueOnce({
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce({
       _id: new ObjectId("507f1f77bcf86cd799439055"),
       name: "Ops",
       nameNormalized: "ops",

@@ -1,40 +1,38 @@
 import { describe, expect, it } from "vitest";
 
-function hasXfinanceAccess(roles: string[]): boolean {
-  return roles.length > 0;
-}
+import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
 describe("xchat page access logic", () => {
   it("grants access to global_admin", () => {
-    expect(hasXfinanceAccess(["global_admin"])).toBe(true);
+    expect(canUserLogin(["global_admin"])).toBe(true);
   });
 
   it("grants access to viewer", () => {
-    expect(hasXfinanceAccess(["viewer"])).toBe(true);
+    expect(canUserLogin(["viewer"])).toBe(true);
   });
 
   it("grants access to advisor", () => {
-    expect(hasXfinanceAccess(["advisor"])).toBe(true);
+    expect(canUserLogin(["advisor"])).toBe(true);
   });
 
   it("grants access to operator", () => {
-    expect(hasXfinanceAccess(["operator"])).toBe(true);
+    expect(canUserLogin(["operator"])).toBe(true);
   });
 
   it("grants access to users with multiple roles", () => {
-    expect(hasXfinanceAccess(["viewer", "advisor"])).toBe(true);
+    expect(canUserLogin(["viewer", "advisor"])).toBe(true);
   });
 
   it("denies access to users with no roles", () => {
-    expect(hasXfinanceAccess([])).toBe(false);
+    expect(canUserLogin([])).toBe(false);
   });
 
   it("admin nav link is shown only for global_admin", () => {
-    const isAdmin = (roles: string[]) => roles.includes("global_admin");
-    expect(isAdmin(["global_admin"])).toBe(true);
-    expect(isAdmin(["viewer"])).toBe(false);
-    expect(isAdmin(["advisor", "operator"])).toBe(false);
-    expect(isAdmin([])).toBe(false);
+    expect(isGlobalAdmin(["global_admin"])).toBe(true);
+    expect(isGlobalAdmin(["admin"])).toBe(true);
+    expect(isGlobalAdmin(["viewer"])).toBe(false);
+    expect(isGlobalAdmin(["advisor", "operator"])).toBe(false);
+    expect(isGlobalAdmin([])).toBe(false);
   });
 });
 
@@ -68,7 +66,7 @@ describe("xchat conversation contract", () => {
 
     expect(payload).toHaveProperty("message");
     expect(payload).not.toHaveProperty("prompt");
-    expect(payload.message).toBe("What is TSLA at?");
+    expect(payload.message).toBe(prompt);
   });
 
   it("omits personaId when empty", () => {
@@ -80,19 +78,5 @@ describe("xchat conversation contract", () => {
     };
 
     expect(payload.personaId).toBeUndefined();
-  });
-
-  it("caps input at 4000 characters", () => {
-    const MAX_INPUT_LENGTH = 4000;
-    const longInput = "a".repeat(MAX_INPUT_LENGTH + 1);
-    const capped = longInput.slice(0, MAX_INPUT_LENGTH);
-    expect(capped.length).toBe(MAX_INPUT_LENGTH);
-  });
-
-  it("trims empty input", () => {
-    const input = "   ";
-    const prompt = input.trim();
-    expect(prompt).toBe("");
-    expect(!prompt).toBe(true);
   });
 });

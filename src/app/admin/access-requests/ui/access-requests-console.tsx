@@ -45,7 +45,7 @@ type AccessRequest = {
   } | null;
 };
 
-type AccessRequestFilter = AccessRequestStatus | "all";
+type AccessRequestFilter = AccessRequestStatus | "all" | "open";
 
 const STATUS_STEPS: AccessRequestStatus[] = ["new", "triaged", "pending", "approved"];
 const TERMINAL_STATUSES: AccessRequestStatus[] = ["approved", "rejected", "expired"];
@@ -103,7 +103,7 @@ function StatusStepIndicator({ current }: { current: AccessRequestStatus }) {
 export function AccessRequestsConsole() {
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
   const [status, setStatus] = useState("Ready - tap refresh");
-  const [statusFilter, setStatusFilter] = useState<AccessRequestFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<AccessRequestFilter>("open");
   const [emailEdits, setEmailEdits] = useState<Record<string, string>>({});
   const [planEdits, setPlanEdits] = useState<Record<string, AccessRequest["requestedPlan"]>>({});
 
@@ -111,7 +111,9 @@ export function AccessRequestsConsole() {
     setStatus("Loading requests...");
     try {
       const payload = await parseJson<{ data: AccessRequest[] }>(
-        await fetch(`/api/admin/access-requests?status=${encodeURIComponent(statusFilter)}`)
+        await fetch(`/api/admin/access-requests?status=${encodeURIComponent(statusFilter)}`, {
+          cache: "no-store"
+        })
       );
       setAccessRequests(payload.data);
       setEmailEdits((previous) => {
@@ -147,6 +149,7 @@ export function AccessRequestsConsole() {
       await parseJson(
         await fetch("/api/admin/access-requests", {
           method: "POST",
+          cache: "no-store",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: userId || undefined,
@@ -175,7 +178,10 @@ export function AccessRequestsConsole() {
     setStatus("Updating user email...");
     try {
       await parseJson(await fetch(`/api/admin/users/${encodeURIComponent(userId)}/email`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email })
+        method: "PATCH",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
       }));
       await refreshAccessRequests();
     } catch (error) {
@@ -187,7 +193,10 @@ export function AccessRequestsConsole() {
     setStatus(`${statusValue === "approved" ? "Approving" : "Rejecting"}...`);
     try {
       await parseJson(await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
-        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: statusValue })
+        method: "PUT",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: statusValue })
       }));
       await refreshAccessRequests();
     } catch (error) {
@@ -199,7 +208,9 @@ export function AccessRequestsConsole() {
     setStatus("Updating plan...");
     try {
       await parseJson(await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
+        method: "PUT",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestedPlan: planEdits[requestId] ?? "free" })
       }));
       await refreshAccessRequests();
@@ -228,8 +239,9 @@ export function AccessRequestsConsole() {
           onChange={(e) => setStatusFilter(e.target.value as AccessRequestFilter)}
           value={statusFilter}
         >
-          <option value="all">all</option>
-          <option value="new">new</option>
+          <option value="open">open (new / triaged / pending)</option>
+          <option value="all">all statuses</option>
+          <option value="new">new only</option>
           <option value="triaged">triaged</option>
           <option value="pending">pending</option>
           <option value="approved">approved</option>

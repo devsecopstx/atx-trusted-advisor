@@ -5,7 +5,7 @@ import { LoginProductPanel } from "./ui/login-product-panel";
 import { LinkEmailForm } from "./ui/link-email-form";
 
 type LoginPageProps = {
-  searchParams: Promise<{ error?: string; details?: string }>;
+  searchParams: Promise<{ error?: string; details?: string; next?: string }>;
 };
 
 const errorCopy: Record<string, string> = {
@@ -33,7 +33,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const errorCode = params.error;
   const errorDetails = params.details;
-  if (!errorCode && !errorDetails) {
+  const hasReturnTo = typeof params.next === "string" && params.next.trim().length > 0;
+  if (!errorCode && !errorDetails && !hasReturnTo) {
     redirect("/xchat");
   }
   const message = errorCode ? (errorCopy[errorCode] ?? "Login failed.") : null;

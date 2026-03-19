@@ -1,10 +1,11 @@
 # atxFinance Core App
 
-Admin-only operations platform for atxFinance. This repo powers:
+Admin console **and** signed-in **app-user** product surfaces for atxFinance. This repo powers:
 
 - access request governance
 - persona and collection management
-- xChat operational workflows
+- xChat / xCoach / portfolio / watchlist for approved app users (viewer+ platform roles)
+- xChat operational workflows (default **published** personas: **Super-Agent** for `global_admin`, **xFinance** for other signed-in roles)
 - audit visibility for admin actions
 - portfolio/account bootstrap defaults
 
@@ -29,12 +30,15 @@ Admin-only operations platform for atxFinance. This repo powers:
 
 ## Core Routes
 
-- UI: `/login`, `/xchat`, `/admin`, `/admin/access-requests`, `/admin/personas`, `/admin/portfolios`, `/admin/tasks`, `/admin/xchat`, `/admin/rag-files`, `/admin/user-settings`, `/admin/audit`, `/admin/api-docs`, `/personas`
-- API: `/api/health`, `/api/openapi` (OpenAPI 3.1 current-state JSON), `/api/personas`, `/api/access-requests`, `/api/xchat/ask`, `/api/xchat/batch`, `/api/admin/*`, `/api/portfolios/*`, `/api/positions`
+- UI: `/` (marketing), `/login`, `/xchat`, `/xcoach`, `/xfinance` (default portfolio), `/watchlist` (stub), `/personas` (directory), `/admin/*` ( **`global_admin` only** — layout redirects others to `/xchat`)
+- API: `/api/health`, `/api/openapi` (OpenAPI 3.1 current-state JSON), `/api/personas`, `/api/access-requests`, `/api/feedback` (signed-in app feedback → optional Slack), `/api/xchat/ask`, `/api/xchat/batch`, `/api/admin/*`, `/api/portfolios/*`, `/api/positions`
+
+Platform roles vs session: see [DEVELOPMENT.md — Platform roles vs tenant membership](DEVELOPMENT.md#platform-roles-vs-tenant-membership-session).
 
 ## Docs
 
 - Full setup/runbook: `DEVELOPMENT.md`
 - Operator runbook: `AGENTS.md`
 - Contribution workflow: `CONTRIBUTING.md`
+- Backlog / open gaps (TODO, design TBD): `docs/PLAN.md`
 - **API inventory & Swagger:** `GET /api/openapi` (public JSON spec); admin Swagger UI at `/admin/api-docs` (signed-in admin). Validation steps: [DEVELOPMENT.md — API docs validation](DEVELOPMENT.md#api-docs-validation).

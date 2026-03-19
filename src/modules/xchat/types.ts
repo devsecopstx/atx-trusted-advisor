@@ -11,7 +11,13 @@ export type PersonaXapiMode = "responses" | "chat_completions";
 
 export type PersonaXapiToolChoice = "auto" | "required" | "none";
 
-export const PERSONA_XAPI_TOOL_TYPES = ["web_search", "x_search", "file_search", "atxfinance"] as const;
+export const PERSONA_XAPI_TOOL_TYPES = [
+  "web_search",
+  "x_search",
+  "file_search",
+  "collections_search",
+  "atxfinance"
+] as const;
 export type PersonaXapiToolType = (typeof PERSONA_XAPI_TOOL_TYPES)[number];
 
 export type PersonaXapiToolDefinition = {
@@ -166,6 +172,15 @@ export function normalizePersonaXapiConfig(input?: Partial<PersonaXapiConfig> | 
   const seenTypes = new Set<string>();
   const tools: PersonaXapiToolDefinition[] = [];
   for (const tool of rawTools) {
+    const isCollectionTool = tool.type === "file_search" || tool.type === "collections_search";
+    if (isCollectionTool) {
+      if (seenTypes.has("__collection__")) {
+        continue;
+      }
+      seenTypes.add("__collection__");
+      tools.push(tool);
+      continue;
+    }
     if (!seenTypes.has(tool.type)) {
       seenTypes.add(tool.type);
       tools.push(tool);

@@ -80,7 +80,7 @@ export async function PUT(request: Request, context: RouteContext) {
       return NextResponse.json(
         {
           error:
-            "Invalid persona payload: file_search requires xaiCollection.collectionId (existing or in update payload)"
+            "Invalid persona payload: collection search requires xaiCollection.collectionId (existing or in update payload)"
         },
         { status: 400 }
       );

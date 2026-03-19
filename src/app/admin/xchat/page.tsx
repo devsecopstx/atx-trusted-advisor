@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { XchatConsole } from "./ui/xchat-console";
 
@@ -10,7 +11,7 @@ export default async function AdminXchatPage() {
   if (!session) {
     redirect("/login");
   }
-  if (!session.roles.includes("global_admin")) {
+  if (!isGlobalAdmin(session.roles)) {
     redirect("/xchat");
   }
 

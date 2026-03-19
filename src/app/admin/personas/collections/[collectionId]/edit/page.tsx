@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { CollectionBindingEditorPage } from "../../../ui/collection-binding-editor-page";
 
@@ -13,7 +14,7 @@ export default async function AdminEditCollectionPage({ params }: RouteContext) 
   if (!session) {
     redirect("/login");
   }
-  if (!session.roles.includes("global_admin")) {
+  if (!isGlobalAdmin(session.roles)) {
     redirect("/admin?error=forbidden");
   }
   const { collectionId } = await params;

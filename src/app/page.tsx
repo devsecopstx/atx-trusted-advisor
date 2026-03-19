@@ -1,9 +1,20 @@
+import { redirect } from "next/navigation";
+
 import "./ui/marketing-hero.css";
 import "./ui/product-plans.css";
 import { MarketingHero } from "./ui/marketing-hero";
+import { getSessionUser } from "@/lib/auth";
 import { getEnv } from "@/lib/env";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 export default async function HomePage() {
+  const session = await getSessionUser();
+  const adminSession = session ? isGlobalAdmin(session.roles) : false;
+
+  if (session && !adminSession) {
+    redirect("/xchat");
+  }
+
   const env = getEnv();
   const oauthStatus =
     env.X_OAUTH_CLIENT_ID.trim().length > 0 && env.X_OAUTH_CLIENT_SECRET.trim().length > 0
@@ -12,7 +23,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <MarketingHero />
+      <MarketingHero isGlobalAdmin={adminSession} signedIn={Boolean(session)} />
 
       <div className="core-shell">
         <section className="panel">
@@ -29,23 +40,6 @@ export default async function HomePage() {
               X OAuth {oauthStatus}
             </span>
             <span className="status-badge">Dark Launch</span>
-          </div>
-
-          <div className="surface-grid two-col">
-            <article className="surface-card xf-widget">
-              <h3>atxFinance</h3>
-              <p>
-                Portfolio management, account configuration, watchlists, and strategy execution
-                tools for approved finance professionals.
-              </p>
-            </article>
-            <article className="surface-card xf-widget">
-              <h3>xChat</h3>
-              <p>
-                AI-powered advisor with persona-driven tools, xAI collection RAG, and real-time
-                atxFinance data access via the atxfinance tool.
-              </p>
-            </article>
           </div>
         </section>
       </div>

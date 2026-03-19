@@ -18,6 +18,7 @@ import {
   type PersonaFormState,
   type XaiCollectionInventoryOption
 } from "@/app/admin/personas/ui/personas-onboarding";
+import { countPersonaLinkedCollections } from "@/modules/xchat/persona-linked-collections";
 
 type Persona = {
   _id?: string;
@@ -777,6 +778,11 @@ export function PersonasConsole({
                     {persona.xaiCollection.collectionName
                       ? ` (${persona.xaiCollection.collectionName})`
                       : ""}
+                  </small>
+                  <br />
+                  <small>
+                    Linked collections: {countPersonaLinkedCollections(persona)} (binding + tool
+                    collection_ids)
                   </small>
                   <br />
                   <small>

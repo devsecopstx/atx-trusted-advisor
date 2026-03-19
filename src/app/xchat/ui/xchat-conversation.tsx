@@ -1,14 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-
-type PersonaOption = {
-  _id?: string;
-  name: string;
-  model: string;
-  defaultScope: string;
-  enableRag: boolean;
-};
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 type Message = {
   id: string;
@@ -18,42 +10,20 @@ type Message = {
   timestamp: number;
 };
 
-export function XchatConversation() {
-  const [personas, setPersonas] = useState<PersonaOption[]>([]);
-  const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
+type XchatConversationProps = {
+  /** Published default persona name for this session’s role (Super-Agent vs xFinance). */
+  defaultPublishedPersonaName: string;
+};
+
+export function XchatConversation({ defaultPublishedPersonaName }: XchatConversationProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [personaStatus, setPersonaStatus] = useState("Loading personas...");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  const loadPersonas = useCallback(async () => {
-    try {
-      const response = await fetch("/api/personas");
-      if (!response.ok) {
-        setPersonaStatus("Failed to load personas");
-        return;
-      }
-      const payload = (await response.json()) as { data: PersonaOption[] };
-      setPersonas(payload.data);
-      if (payload.data.length > 0 && !selectedPersonaId) {
-        setSelectedPersonaId(payload.data[0]._id ?? "");
-      }
-      setPersonaStatus(`${payload.data.length} persona${payload.data.length === 1 ? "" : "s"} available`);
-    } catch {
-      setPersonaStatus("Failed to load personas");
-    }
-  }, [selectedPersonaId]);
-
-  useEffect(() => {
-    void loadPersonas();
-  }, [loadPersonas]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const selectedPersona = personas.find((p) => p._id === selectedPersonaId);
 
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,13 +47,12 @@ export function XchatConversation() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: prompt,
-          scope: selectedPersona?.defaultScope ?? "global",
-          personaId: selectedPersonaId || undefined
+          scope: "global"
         })
       });
 
       const payload = (await response.json().catch(() => ({}))) as {
-        data?: { response: string };
+        data?: { response: string; personaName?: string };
         error?: string;
       };
 
@@ -106,7 +75,7 @@ export function XchatConversation() {
           id: `ai-${Date.now()}`,
           role: "ai",
           content: payload.data?.response ?? "",
-          persona: selectedPersona?.name,
+          persona: payload.data?.personaName ?? defaultPublishedPersonaName,
           timestamp: Date.now()
         }
       ]);
@@ -128,23 +97,10 @@ export function XchatConversation() {
   return (
     <div className="xchat-main">
       <div className="xchat-persona-bar">
-        <select
-          onChange={(e) => setSelectedPersonaId(e.target.value)}
-          value={selectedPersonaId}
-        >
-          {personas.map((persona) => (
-            <option key={persona._id ?? persona.name} value={persona._id ?? ""}>
-              {persona.name} ({persona.model})
-            </option>
-          ))}
-        </select>
-        {selectedPersona ? (
-          <span className="status-badge status-ready">
-            {selectedPersona.defaultScope}
-          </span>
-        ) : null}
-        <span className="status-text" style={{ fontSize: "0.75rem" }}>
-          {personaStatus}
+        <span className="status-badge status-ready">Published default</span>
+        <span className="status-text" style={{ fontSize: "0.8rem" }}>
+          xChat uses <strong>{defaultPublishedPersonaName}</strong> for your role (Super-Agent for admins,
+          xFinance for members). No persona picker — both should stay published in Admin → Personas.
         </span>
       </div>
 
@@ -152,17 +108,13 @@ export function XchatConversation() {
         {messages.length === 0 ? (
           <div style={{ textAlign: "center", padding: "3rem 0" }}>
             <p className="status-text">
-              Start a conversation with{" "}
-              {selectedPersona ? selectedPersona.name : "xChat"}.
+              Start a conversation with the published default <strong>{defaultPublishedPersonaName}</strong>.
             </p>
           </div>
         ) : null}
 
         {messages.map((msg) => (
-          <div
-            className={`xchat-msg xchat-msg-${msg.role}`}
-            key={msg.id}
-          >
+          <div className={`xchat-msg xchat-msg-${msg.role}`} key={msg.id}>
             {msg.role === "ai" && msg.persona ? (
               <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>
                 {msg.persona}

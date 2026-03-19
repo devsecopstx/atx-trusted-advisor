@@ -12,10 +12,13 @@ import {
   updateAccessRequestPlanById
 } from "@/modules/core-admin/repository";
 import {
+  ACTIONABLE_ACCESS_REQUEST_STATUSES,
+  type AccessRequest
+} from "@/modules/core-admin/types";
+import {
   addRoleToCoreUser,
   updateCoreUserSubscriptionPlan
 } from "@/modules/identity/repository";
-import type { AccessRequest } from "@/modules/core-admin/types";
 
 const reviewAccessRequestSchema = z.object({
   status: z.enum(["approved", "rejected"]).optional(),
@@ -42,7 +45,7 @@ export async function GET(_: Request, context: RouteContext) {
 
   const { requestId } = await context.params;
   const existing = await getAccessRequestById(requestId, {
-    tenantId: session.tenantId
+    tenantId: undefined
   });
   if (!existing) {
     return NextResponse.json({ error: "Access request not found" }, { status: 404 });
@@ -82,13 +85,13 @@ async function handleUpdate(request: Request, context: RouteContext) {
   }
 
   const existing = await getAccessRequestById(requestId, {
-    tenantId: session.tenantId
+    tenantId: undefined
   });
   if (!existing?._id) {
     return NextResponse.json({ error: "Access request not found" }, { status: 404 });
   }
 
-  if (existing.status !== "pending") {
+  if (!ACTIONABLE_ACCESS_REQUEST_STATUSES.includes(existing.status)) {
     return NextResponse.json(
       { error: "Access request already reviewed", data: existing },
       { status: 409 }
@@ -99,7 +102,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
     const updatedRequest = await updateAccessRequestPlanById({
       requestId,
       requestedPlan: parsed.data.requestedPlan,
-      tenantId: session.tenantId
+      tenantId: undefined
     });
     if (!updatedRequest) {
       return NextResponse.json({ error: "Access request not found" }, { status: 404 });
@@ -164,7 +167,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
     requestId,
     status: parsed.data.status,
     reviewedBy: session.userId,
-    tenantId: session.tenantId
+    tenantId: undefined
   });
 
   if (!reviewed) {
@@ -200,7 +203,7 @@ export async function DELETE(_: Request, context: RouteContext) {
   }
 
   const deleted = await deleteAccessRequest(requestId, {
-    tenantId: session.tenantId
+    tenantId: undefined
   });
   if (!deleted) {
     return NextResponse.json({ error: "Access request not found" }, { status: 404 });

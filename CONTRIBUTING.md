@@ -29,7 +29,7 @@ When you add or change handlers under `src/app/api/**/route.ts`:
 
 1. Register the path and HTTP methods in `src/lib/openapi/current-state.ts` (`CURRENT_STATE_ROUTES`).
 2. Add operation-level detail in `src/lib/openapi/current-state-overrides.ts` when the default generic operation is not enough.
-3. Ensure `npm run test -- tests/integration/openapi-current-state-coverage.test.ts` passes (also covered by `npm run ci:gate`).
+3. Ensure `npm run test -- tests/integration/openapi-current-state-coverage.test.ts` and `tests/integration/openapi-document-build.test.ts` pass (both covered by `npm run ci:gate`).
 
 See [DEVELOPMENT.md — API docs validation](DEVELOPMENT.md#api-docs-validation).
 

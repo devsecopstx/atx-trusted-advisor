@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { PortfolioConsole } from "./ui/portfolio-console";
 
@@ -9,7 +10,7 @@ export default async function AdminPortfoliosPage() {
   if (!session) {
     redirect("/login");
   }
-  if (!session.roles.includes("global_admin")) {
+  if (!isGlobalAdmin(session.roles)) {
     redirect("/admin?error=forbidden");
   }
 

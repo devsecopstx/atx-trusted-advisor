@@ -59,7 +59,13 @@ const xaiCollectionSchema = z.object({
   collectionName: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.xaiCollectionNameLength)
 });
 
-const SUPPORTED_XAPI_TOOL_TYPES = ["web_search", "x_search", "file_search", "atxfinance"] as const;
+const SUPPORTED_XAPI_TOOL_TYPES = [
+  "web_search",
+  "x_search",
+  "file_search",
+  "collections_search",
+  "atxfinance"
+] as const;
 
 const xapiToolSchema = z
   .object({
@@ -68,7 +74,8 @@ const xapiToolSchema = z
       .object({
         collection_ids: z.array(z.string().trim().min(1)).min(1)
       })
-      .optional()
+      .optional(),
+    collection_ids: z.array(z.string().trim().min(1)).optional()
   })
   .passthrough();
 
@@ -109,7 +116,7 @@ export const createPersonaPayloadSchema = z.object({
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["xaiCollection", "collectionId"],
-      message: "file_search requires xaiCollection.collectionId"
+      message: "Collection search (file_search / collections_search) requires xaiCollection.collectionId"
     });
   }
 });
@@ -135,7 +142,10 @@ export const updatePersonaPayloadSchema = z.object({
 export function hasFileSearchTool(
   tools: Array<{ type: string; [key: string]: unknown }> | undefined
 ): boolean {
-  return Array.isArray(tools) && tools.some((tool) => tool.type === "file_search");
+  return (
+    Array.isArray(tools) &&
+    tools.some((tool) => tool.type === "file_search" || tool.type === "collections_search")
+  );
 }
 
 export function isPersonaPayloadTooLargeByHeader(request: Request): boolean {
