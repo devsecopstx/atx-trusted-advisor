@@ -257,7 +257,6 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
 
 const TAG_DESCRIPTIONS: Record<string, string> = {
   health: "Health and runtime diagnostics endpoints.",
-  docs: "OpenAPI and API documentation endpoints.",
   auth: "Authentication and session management flows.",
   "access-requests": "User-submitted access and onboarding requests.",
   "admin-access": "Admin workflows for triaging and deciding access requests.",
@@ -389,8 +388,8 @@ function buildResponses(auth: AuthScope): Record<string, OpenApiResponse> {
 function buildOperation(path: string, op: RouteOperation, tag: string): OpenApiOperation {
   const pathParams = extractPathParameters(path);
   const methodHasBody = op.hasRequestBody ?? ["POST", "PUT", "PATCH"].includes(op.method);
-  const operationOverride = getCurrentStateOperationOverride(op.method, path);
-  const baseOperation: OpenApiOperation = {
+
+  return {
     operationId: toOperationId(op.method, path),
     summary: op.summary ?? inferSummary(op.method, path),
     description:
