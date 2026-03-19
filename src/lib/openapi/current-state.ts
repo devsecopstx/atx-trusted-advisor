@@ -389,7 +389,7 @@ function buildOperation(path: string, op: RouteOperation, tag: string): OpenApiO
   const pathParams = extractPathParameters(path);
   const methodHasBody = op.hasRequestBody ?? ["POST", "PUT", "PATCH"].includes(op.method);
 
-  return {
+  const baseOperation: OpenApiOperation = {
     operationId: toOperationId(op.method, path),
     summary: op.summary ?? inferSummary(op.method, path),
     description:
@@ -411,6 +411,8 @@ function buildOperation(path: string, op: RouteOperation, tag: string): OpenApiO
     responses: buildResponses(op.auth),
     security: op.auth === "public" ? undefined : [{ cookieAuth: [] }]
   };
+
+  const operationOverride = getCurrentStateOperationOverride(op.method, path);
 
   if (!operationOverride) {
     return baseOperation;
