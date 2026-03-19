@@ -133,10 +133,13 @@ export function MarketingHero() {
             </span>
           </div>
 
-          <div className="mh-oauth-row">
-            <OAuthButton provider="X" href="/api/auth/x/login" icon={<XIcon />} />
-            <OAuthButton provider="Google" href="#" icon={<GoogleIcon />} disabled />
-            <OAuthButton provider="GitHub" href="#" icon={<GitHubIcon />} disabled />
+          <div className="mh-cta-row">
+            <a className="mh-cta-primary" href="/login">
+              atxFinance Advisory
+            </a>
+            <a className="mh-cta-secondary" href="/admin">
+              Admin Console
+            </a>
           </div>
         </div>
 

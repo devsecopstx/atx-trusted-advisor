@@ -14,7 +14,7 @@ export function XchatGuestPanel() {
             xChat
           </small>
           <span style={{ whiteSpace: "pre-wrap" }}>
-            Hey, welcome to xFinance xChat. Sign in with X → optimize vibes.
+            Welcome to atxFinance xChat. Sign in with X to continue this conversation.
           </span>
         </div>
       </div>
