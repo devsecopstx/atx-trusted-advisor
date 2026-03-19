@@ -454,6 +454,15 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/xchat/batch/:batchId`
 - `POST /api/xchat/batch/:batchId`
 
+**Default published xChat personas (operators should keep both in `published` status):**
+
+| Persona | Audience | `nameNormalized` | Purpose |
+|---|---|---|---|
+| **Super-Agent** | `global_admin` | `super-agent` | Full admin tool surface (web/X/collections/atxfinance) |
+| **xFinance** | All other signed-in roles | `xfinance` | FinExpert — finance & licensing-exam focus (`default-xpersonas.ts`) |
+
+Seed creates **Super-Agent**; **xFinance** can be created manually or on first non-admin ask if absent. In staging/production, **publish both** so governance, directory (`GET /api/personas` for non-admins), and ops docs stay aligned.
+
 **Persona resolution (`POST /api/xchat/ask`):** The active persona is chosen from the **signed-in user’s roles**, not from the client. The optional body field `personaId` is **deprecated and ignored** (kept for backward-compatible clients).
 
 | Session roles | Persona used | `nameNormalized` key |
@@ -551,7 +560,7 @@ After running `npm run seed:admin`, verify:
    - `systemPrompt` set to the Architect administrative prompt
    - `xaiCollection.collectionId: "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"` (Finance collection)
    - `xapi.tools`: `web_search`, `x_search`, `file_search` (Finance collection ids), and `atxfinance`
-5. **xFinance** (`nameNormalized: "xfinance"`) is not required in Mongo after seed; the first non-admin `POST /api/xchat/ask` creates it if absent (same defaults as `default-xpersonas.ts`). You may also create/publish it manually in Admin → Personas.
+5. **xFinance** (`nameNormalized: "xfinance"`): publish this persona for non-admin xChat (FinExpert). If it is missing, the first non-admin `POST /api/xchat/ask` still creates it from `default-xpersonas.ts` — prefer publishing a seeded or hand-crafted row so environments stay explicit.
 6. `portfolio_portfolios` contains one default portfolio for the seeded admin user.
 7. `portfolio_accounts` contains one default account (`type: "fidelity"`) linked to that default portfolio.
 8. `portfolio_watchlists` contains `DefaultWatchlist` linked to that default portfolio with `symbols: [{ symbol: "TSLA" }]`.
@@ -630,7 +639,7 @@ with payload shape:
 ## Admin Step-by-Step Validation (xChat readiness)
 
 1. Run `npm run seed:admin`.
-2. Confirm default `Super-Agent` persona is visible in admin personas.
+2. Confirm **Super-Agent** and **xFinance** are visible in admin personas and **published** (default xChat personas).
 3. Confirm default portfolio/account surfaces load for the seeded admin user.
 4. Open `/xchat` (or `/admin/xchat`) and run a prompt — persona is **implicit** (Super-Agent for `global_admin`, xFinance for other roles); there is no persona picker.
 5. Optionally create/select an xAI collection and re-run validation with RAG enabled on **Super-Agent**.
@@ -642,7 +651,7 @@ Use this checklist to validate "admin can start using xChat" in an authenticated
 1. Start app: `npm run dev`.
 2. Open `http://localhost:3000/login` and complete admin login.
 3. Open `/admin/personas`:
-   - verify `Super-Agent` is visible,
+   - verify **Super-Agent** and **xFinance** are visible and published,
    - verify no-collection mode is allowed,
    - verify collection-dependent actions show clear guidance when collection is not bound.
 4. Open `/dashboard` or `/holdings`:

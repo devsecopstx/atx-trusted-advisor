@@ -40,7 +40,7 @@ OpenAPI inventory is guarded by route parity + document build tests under `tests
 - Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
 - Personas API: `GET /api/personas`
-- xChat ask API: `POST /api/xchat/ask` (persona is resolved from session role: **Super-Agent** for `global_admin`, **xFinance** for other signed-in users; body `personaId` is ignored)
+- xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (`global_admin`), **xFinance** (all other signed-in roles); body `personaId` is ignored
 
 ## Quick Ops Status Task
 

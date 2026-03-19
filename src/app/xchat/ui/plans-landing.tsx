@@ -21,7 +21,8 @@ const PLANS: PlanTier[] = [
     period: "/month",
     features: [
       { text: "5 xchat prompts per day" },
-      { text: "Default persona (Super-Agent)" },
+      { text: "Default xChat: published xFinance (FinExpert)" },
+      { text: "Admins use published Super-Agent" },
       { text: "Web search + X search tools" },
       { text: "Basic portfolio view" },
       { text: "Community support" }

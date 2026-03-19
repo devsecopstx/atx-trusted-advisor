@@ -1,3 +1,8 @@
+/**
+ * Published default xChat personas (operators keep both in `published` status):
+ * - Super-Agent → global_admin (seeded; see `scripts/seed-admin-user.mjs`)
+ * - xFinance → all other signed-in roles (FinExpert; created here or on first ask if missing)
+ */
 import type { PersonaConfig } from "@/modules/xchat/types";
 import { DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
 

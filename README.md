@@ -4,7 +4,7 @@ Admin-only operations platform for atxFinance. This repo powers:
 
 - access request governance
 - persona and collection management
-- xChat operational workflows
+- xChat operational workflows (default **published** personas: **Super-Agent** for admins, **xFinance** for members)
 - audit visibility for admin actions
 - portfolio/account bootstrap defaults
 

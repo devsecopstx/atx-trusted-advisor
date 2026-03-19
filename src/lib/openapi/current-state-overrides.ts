@@ -492,7 +492,11 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     properties: {
       response: { type: "string" },
       model: { type: "string" },
-      personaName: { type: "string", description: "Resolved persona display name (e.g. Super-Agent, xFinance)." },
+      personaName: {
+        type: "string",
+        description:
+          "Resolved persona display name. Published defaults: Super-Agent (global_admin), xFinance (other roles)."
+      },
       contextCount: { type: "integer", minimum: 0 },
       contextSource: { type: "string", enum: ["none", "mongo_scope", "xai_collection"] },
       toolCalls: { type: "array", items: refSchema("XChatToolCallSummary") }
