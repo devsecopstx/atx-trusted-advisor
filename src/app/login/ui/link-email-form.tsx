@@ -2,8 +2,13 @@
 
 import { FormEvent, useState } from "react";
 
-export function LinkEmailForm() {
-  const [email, setEmail] = useState("atxbogart@gmail.com");
+type LinkEmailFormProps = {
+  /** X handle from pending-link cookie (server-read); confirms which account is being linked. */
+  xHandle?: string;
+};
+
+export function LinkEmailForm({ xHandle }: LinkEmailFormProps) {
+  const [email, setEmail] = useState("");
   const [status, setStatus] = useState("Enter your email to link your X login.");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -28,9 +33,15 @@ export function LinkEmailForm() {
 
   return (
     <form className="stack-form" onSubmit={handleSubmit}>
+      {xHandle ? (
+        <p className="status-text">
+          Linking X <strong>@{xHandle}</strong> — enter <em>your</em> email (not another user&apos;s).
+        </p>
+      ) : null}
       <input
         onChange={(event) => setEmail(event.target.value)}
-        placeholder="your email"
+        autoComplete="email"
+        placeholder="you@example.com"
         required
         type="email"
         value={email}

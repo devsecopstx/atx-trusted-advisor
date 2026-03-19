@@ -46,7 +46,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `AUTH_SECRET` (recommended for session signing)
 - `ALLOW_ANY_X_USER_LOGIN` (optional feature flag; set `true` to allow any authenticated X user into `/xchat` with non-admin permissions, default disabled)
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
-- `ADMIN_SEED_EMAIL` (optional, default `atxbogart@gmail.com`)
+- `ADMIN_SEED_EMAIL` (required for `npm run seed:admin` and OAuth seed-admin promotion; **no default** — set explicitly in `.env`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
 - `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications and **app-user feedback** from `POST /api/feedback`)
 - `APP_USER_SHOW_DB_ENDPOINT` (optional; set `true` to show the Mongo host/db chip in the app-user header when `NODE_ENV=production` — e.g. beta staging builds)
@@ -120,7 +120,7 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 - `email_link_required`: X OAuth succeeded but X did not return an email claim **and** the user still has no login-allowed platform role. Use the link-email form on `/login` to bind a real email, **or** complete X OAuth again after an admin approves the access request (placeholder `@x.identity.local` users can sign in once they have e.g. `viewer`).
 - `access_request_pending`: account exists but has no login-allowed role (`global_admin`, `advisor`, `operator`, `viewer`).
 - If the entered email already belongs to an approved admin account, `/api/auth/link-email` now unlinks stale X mappings and re-links to the approved user.
-- For Atlas-only setups, if login/link-email email matches `ADMIN_SEED_EMAIL` (fallback `atxbogart@gmail.com`), auth flow auto-applies seeded global-admin role and tenant membership. Local Mongo is not required.
+- For Atlas-only setups, if login/link-email email matches `ADMIN_SEED_EMAIL` (must be set in env), auth flow auto-applies seeded global-admin role and tenant membership. Local Mongo is not required.
 
 ## Validation Commands
 
@@ -575,7 +575,7 @@ Tool result caching in `src/modules/xchat/tool-cache.ts` (60s TTL, 200 max entri
 
 After running `npm run seed:admin`, verify:
 
-1. `core_users` has `atxbogart@gmail.com` with role `global_admin`
+1. `core_users` has the email from `ADMIN_SEED_EMAIL` with role `global_admin`
 2. `core_tenants` has `slug: atxfinance-core` with `isDefault: true`
 3. `core_tenant_memberships` has one default membership linking the admin user and default tenant
 4. `xchat_personas` contains default **Super-Agent** persona with:

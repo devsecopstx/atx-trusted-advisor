@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { readPendingXLinkCookie } from "@/lib/auth";
+
 import { AtxFinanceLogo } from "../ui/atxfinance-logo";
 import { LoginProductPanel } from "./ui/login-product-panel";
 import { LinkEmailForm } from "./ui/link-email-form";
@@ -39,6 +41,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
   const message = errorCode ? (errorCopy[errorCode] ?? "Login failed.") : null;
 
+  const pendingXHandle =
+    errorCode === "email_link_required" ? (await readPendingXLinkCookie())?.username : undefined;
+
   return (
     <main className="core-shell login-shell">
       <div className="login-grid">
@@ -57,7 +62,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               Login with X
             </a>
           </div>
-          {errorCode === "email_link_required" ? <LinkEmailForm /> : null}
+          {errorCode === "email_link_required" ? (
+            <LinkEmailForm xHandle={pendingXHandle} />
+          ) : null}
         </section>
         <LoginProductPanel />
       </div>

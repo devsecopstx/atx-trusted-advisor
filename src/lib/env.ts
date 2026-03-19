@@ -17,7 +17,18 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().min(16).optional(),
   ALLOW_ANY_X_USER_LOGIN: z.union([z.string(), z.boolean()]).optional(),
   SLACK_WEBHOOK_URL: z.union([z.string().url(), z.literal("")]).optional(),
-  ADMIN_SEED_EMAIL: z.string().email().optional(),
+  ADMIN_SEED_EMAIL: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null) {
+        return undefined;
+      }
+      if (typeof val === "string" && val.trim() === "") {
+        return undefined;
+      }
+      return typeof val === "string" ? val.trim() : val;
+    },
+    z.string().email().optional()
+  ),
   ADMIN_X_USERNAMES: z.string().optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
