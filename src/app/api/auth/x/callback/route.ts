@@ -31,7 +31,6 @@ import {
   upsertTenantMembership
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
-import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 
 type XTokenResponse = {
   access_token: string;
