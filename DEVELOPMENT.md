@@ -453,6 +453,10 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/xchat/batch/:batchId`
 - `POST /api/xchat/batch/:batchId`
 
+**Product scope (known gap):** “Finance-only” behavior for xChat is not enforced by a dedicated server-side classifier. Responses are driven by persona `systemPrompt` / `overridePrompt` and tool configuration. Tighten scope via persona governance and future gating work (see `.cursor/skills/xdesign-review/SKILL.md` deferrals).
+
+<a id="api-docs-validation"></a>
+
 ### API docs validation (pre/post deploy)
 
 Validate docs surfaces as part of release checks:
