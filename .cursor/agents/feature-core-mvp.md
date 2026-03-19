@@ -1,7 +1,7 @@
 ---
 name: feature-core-mvp
 model: inherit
-description: Options Trading & Quantitative Strategy Developer
+description: As a architect focused on delivery of scoped backend/domain changes with safe defaults.
 readonly: true
 is_background: true
 ---
