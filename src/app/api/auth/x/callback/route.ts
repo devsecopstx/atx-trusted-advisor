@@ -30,6 +30,7 @@ import {
   upsertTenantMembership
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
+import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 
 type XTokenResponse = {
   access_token: string;
@@ -383,9 +384,3 @@ function isSameUserId(
   return left.toHexString() === right.toHexString();
 }
 
-function isSeedAdminEmail(email: string, configuredAdminSeedEmail?: string): boolean {
-  const seedEmail = (configuredAdminSeedEmail ?? "atxbogart@gmail.com")
-    .trim()
-    .toLowerCase();
-  return email === seedEmail;
-}

@@ -18,14 +18,17 @@ export async function GET() {
 
   const db = await getDb();
   const env = getEnv();
-  const seedEmail = (env.ADMIN_SEED_EMAIL ?? "atxbogart@gmail.com").toLowerCase();
+  const seedEmailConfigured = Boolean(env.ADMIN_SEED_EMAIL?.trim());
+  const seedEmail = env.ADMIN_SEED_EMAIL?.trim().toLowerCase() ?? null;
 
   const [userIndexes, tenantIndexes, membershipIndexes, seededUser, defaultTenant] =
     await Promise.all([
       db.collection("core_users").indexes(),
       db.collection("core_tenants").indexes(),
       db.collection("core_tenant_memberships").indexes(),
-      db.collection("core_users").findOne({ email: seedEmail }),
+      seedEmail
+        ? db.collection("core_users").findOne({ email: seedEmail })
+        : Promise.resolve(null),
       db.collection("core_tenants").findOne({ isDefault: true })
     ]);
 
@@ -51,9 +54,17 @@ export async function GET() {
 
   const hasSeededMembership = Boolean(seededMembership?._id);
 
+  const healthy =
+    hasAllIndexes &&
+    hasSeededUser &&
+    hasDefaultTenant &&
+    hasSeededMembership &&
+    seedEmailConfigured;
+
   return NextResponse.json({
     data: {
-      healthy: hasAllIndexes && hasSeededUser && hasDefaultTenant && hasSeededMembership,
+      healthy,
+      seedEmailConfigured,
       seedEmail,
       indexes: {
         healthy: hasAllIndexes,

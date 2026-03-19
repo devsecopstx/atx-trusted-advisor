@@ -9,6 +9,7 @@ import {
   provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import {
   ensureDefaultTenant,
   ensureCoreUserByEmail,
@@ -175,9 +176,3 @@ function isSameUserId(
   return left.toHexString() === right.toHexString();
 }
 
-function isSeedAdminEmail(email: string, configuredAdminSeedEmail?: string): boolean {
-  const seedEmail = (configuredAdminSeedEmail ?? "atxbogart@gmail.com")
-    .trim()
-    .toLowerCase();
-  return email === seedEmail;
-}

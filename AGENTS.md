@@ -125,7 +125,7 @@ const crypto = require('crypto');
 const secret = process.env.AUTH_SECRET || process.env.X_OAUTH_CLIENT_SECRET;
 const payload = JSON.stringify({
   userId: '<userId from seed output>',
-  email: 'atxbogart@gmail.com',
+  email: '<same as ADMIN_SEED_EMAIL in .env>',
   roles: ['global_admin'],
   tenantId: '<tenantId from seed output>',
   tenantRole: 'tenant_admin',

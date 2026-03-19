@@ -1,6 +1,13 @@
 import { MongoClient } from "mongodb";
 
-const ADMIN_EMAIL = process.env.ADMIN_SEED_EMAIL ?? "atxbogart@gmail.com";
+const ADMIN_SEED_RAW = (process.env.ADMIN_SEED_EMAIL ?? "").trim();
+if (!ADMIN_SEED_RAW) {
+  console.error(
+    "ADMIN_SEED_EMAIL is required in .env for seed:admin (no default — set your bootstrap admin email)."
+  );
+  process.exit(1);
+}
+const ADMIN_EMAIL = normalizeEmail(ADMIN_SEED_RAW);
 const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core";
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
 const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
