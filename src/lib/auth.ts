@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { getEnv } from "@/lib/env";
+import { normalizeCoreRoles } from "@/modules/identity/authorization";
 
 const SESSION_COOKIE_NAME = "xf_core_session";
 const OAUTH_STATE_COOKIE_NAME = "xf_x_oauth_state";
@@ -11,9 +12,14 @@ const OAUTH_VERIFIER_COOKIE_NAME = "xf_x_oauth_verifier";
 const PENDING_LINK_COOKIE_NAME = "xf_x_pending_link";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const OAUTH_FLOW_TTL_SECONDS = 60 * 10;
-const LEGACY_ADMIN_ROLE = "admin";
-const GLOBAL_ADMIN_ROLE = "global_admin";
 
+/**
+ * Signed session payload. Naming:
+ * - **Platform roles** (`roles`): global_admin | advisor | operator | viewer — what the user can do app-wide.
+ *   Only `global_admin` may use `/admin` (admin console). Advisor/operator/viewer are **app-users** (xChat, xCoach, etc.).
+ * - **Tenant membership role** (`tenantRole`): `tenant_admin` | `member` — scoped to `tenantId`; does **not** grant admin console.
+ *   Treat as billing/tenant ops for now; plans default to free until billing ships.
+ */
 export type SessionUser = {
   userId: string;
   email: string;
@@ -36,18 +42,6 @@ export type PendingXLink = {
 type SessionPayload = SessionUser & {
   exp: number;
 };
-
-function normalizeSessionRoles(roles: string[] | undefined): string[] {
-  if (!roles || roles.length === 0) {
-    return [];
-  }
-
-  return Array.from(
-    new Set(
-      roles.map((role) => (role === LEGACY_ADMIN_ROLE ? GLOBAL_ADMIN_ROLE : role))
-    )
-  );
-}
 
 function getSigningSecret(): string {
   const env = getEnv();
@@ -95,7 +89,7 @@ function parseSessionCookie(raw: string): SessionPayload | null {
 
 export async function createSession(user: SessionUser): Promise<void> {
   const cookieStore = await cookies();
-  const normalizedRoles = normalizeSessionRoles(user.roles);
+  const normalizedRoles = normalizeCoreRoles(user.roles);
   const payload: SessionPayload = {
     ...user,
     roles: normalizedRoles,
@@ -133,7 +127,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return {
     userId: payload.userId,
     email: payload.email,
-    roles: normalizeSessionRoles(payload.roles),
+    roles: normalizeCoreRoles(payload.roles),
     tenantId: payload.tenantId,
     tenantRole: payload.tenantRole,
     xUserId: payload.xUserId,

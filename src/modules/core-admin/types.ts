@@ -10,6 +10,13 @@ export const accessRequestStatusValues = [
 ] as const;
 export type AccessRequestStatus = (typeof accessRequestStatusValues)[number];
 
+/** Request states an admin can still approve/reject or edit plan for */
+export const ACTIONABLE_ACCESS_REQUEST_STATUSES: AccessRequestStatus[] = [
+  "new",
+  "triaged",
+  "pending"
+];
+
 export const ACCESS_REQUEST_SLA_DAYS = 7;
 
 export type AccessRequestPolicyViolation = {

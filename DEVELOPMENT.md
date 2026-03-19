@@ -2,18 +2,36 @@
 
 ## Scope
 
-This app is the admin-only core backend for atxFinance operations:
+Core backend and UI for atxFinance **admin operations** and **signed-in app users**:
 
 - user access request management
 - task scheduling metadata
 - user broker/portfolio/account defaults
 - notification defaults
+- app-user surfaces: xChat, xCoach, portfolio (`/xfinance`), watchlist (`/watchlist`) with shared header (profile, logout, feedback, optional DB chip)
 
 ## Tech Stack
 
 - Next.js App Router (`src/app/api/*`) for backend routes
 - MongoDB database: `atxfinancedb`
 - TypeScript + Zod validation
+
+## Platform roles vs tenant membership (session)
+
+Session payload (`SessionUser` in `src/lib/auth.ts`):
+
+| Field | Name in docs | Meaning |
+| --- | --- | --- |
+| `roles` | **Platform roles** | `global_admin` \| `advisor` \| `operator` \| `viewer` — app-wide capability. Use `isGlobalAdmin()` / `canUserLogin()` from `src/modules/identity/authorization.ts`. Legacy session value `admin` is normalized to `global_admin` via `normalizeCoreRole()` / `normalizeCoreRoles()` (single source of truth). |
+| `tenantRole` | **Tenant membership role** | `tenant_admin` \| `member` for `tenantId` — billing/tenant ops; **does not** grant `/admin`. Treat as **app-user** vs **tenant admin** at the tenant level; product plans default to **free** until billing ships. |
+
+**Product rules**
+
+- **Admin console** (`/admin/*`, `requireGlobalAdminSession` / `requireAdminSession`): **only** `global_admin` (after normalization). The admin layout redirects everyone else to `/xchat`.
+- **App-user surfaces** (approved login): `advisor`, `operator`, `viewer` — xChat, xCoach, Portfolio (`/xfinance`), Watchlist (`/watchlist`). Shared chrome: `AppUserApprovedHeader` (`src/app/ui/app-user-approved-header.tsx`) = product links (`AppUserProductNav`) + `AppUserHeaderSession` (profile popover, logout, feedback modal, optional Mongo host/db pill per `shouldShowAppUserDbLabel()` in `src/lib/env.ts`).
+- **Access requests** are **onboarding**, not a role: unapproved users have no login-allowed platform role (unless `ALLOW_ANY_X_USER_LOGIN`); after approval, admins assign a platform role (typically `viewer`).
+
+**Feature flags** (e.g. `ALLOW_ANY_X_USER_LOGIN`) are **env-driven capabilities** — do not represent them as platform roles in Mongo.
 
 ## Required Environment Keys
 
@@ -30,7 +48,8 @@ Use `.env` only (do not use `.env.local` for this app).
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
 - `ADMIN_SEED_EMAIL` (optional, default `atxbogart@gmail.com`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
-- `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications)
+- `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications and **app-user feedback** from `POST /api/feedback`)
+- `APP_USER_SHOW_DB_ENDPOINT` (optional; set `true` to show the Mongo host/db chip in the app-user header when `NODE_ENV=production` — e.g. beta staging builds)
 
 ## Local Setup
 
@@ -98,7 +117,7 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 
 ### Login Error Routing Notes
 
-- `email_link_required`: X OAuth succeeded but X did not return an email claim. Use the link-email form on `/login` to bind the X identity to a real email.
+- `email_link_required`: X OAuth succeeded but X did not return an email claim **and** the user still has no login-allowed platform role. Use the link-email form on `/login` to bind a real email, **or** complete X OAuth again after an admin approves the access request (placeholder `@x.identity.local` users can sign in once they have e.g. `viewer`).
 - `access_request_pending`: account exists but has no login-allowed role (`global_admin`, `advisor`, `operator`, `viewer`).
 - If the entered email already belongs to an approved admin account, `/api/auth/link-email` now unlinks stale X mappings and re-links to the approved user.
 - For Atlas-only setups, if login/link-email email matches `ADMIN_SEED_EMAIL` (fallback `atxbogart@gmail.com`), auth flow auto-applies seeded global-admin role and tenant membership. Local Mongo is not required.
@@ -379,6 +398,10 @@ gcloud run services update-traffic atxfinance-core-prod \
 ### Self-service access requests
 
 - `POST /api/access-requests` (authenticated users request their own access; sends Slack notification if `SLACK_WEBHOOK_URL` is configured)
+
+### App-user feedback
+
+- `POST /api/feedback` — session required; JSON `{ "message": string (3–4000 chars), "page"?: string }`. Always returns **201** `{ "ok": true }` on success. If `SLACK_WEBHOOK_URL` is set, posts a Slack message (same webhook as access requests); if unset, logs only (see `sendSlackNotification`).
 
 ### Admin — access requests
 

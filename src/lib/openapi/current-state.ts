@@ -53,6 +53,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }]
   },
   {
+    path: "/api/feedback",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "xchat"
+  },
+  {
     path: "/api/admin/access-requests",
     operations: [
       { method: "GET", auth: "admin" },

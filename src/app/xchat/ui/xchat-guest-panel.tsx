@@ -26,8 +26,8 @@ export function XchatGuestPanel() {
           readOnly
           value=""
         />
-        <a className="cta cta-primary" href="/api/auth/x/login">
-          Login with X
+        <a className="cta cta-primary" href="/login?next=%2Fxchat">
+          Sign in with X
         </a>
       </form>
     </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { getSessionUser } from "@/lib/auth";
 import { APP_VERSION_LABEL } from "@/lib/app-version";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getMongoConnectionLabel } from "@/lib/env";
 import { AtxFinanceLogo } from "../ui/atxfinance-logo";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
@@ -30,6 +31,9 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
+  }
+  if (!isGlobalAdmin(session.roles)) {
+    redirect("/xchat");
   }
 
   const mongoConnection = getMongoConnectionLabel();

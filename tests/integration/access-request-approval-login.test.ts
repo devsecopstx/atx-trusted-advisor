@@ -459,7 +459,57 @@ describe("access request approval login flow", () => {
       email: "xid-x-user-1@x.identity.local"
     });
     expect(authMocks.setPendingXLinkCookie).toHaveBeenCalledTimes(1);
-    expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
+    expect(coreAdminMocks.getPendingAccessRequestByUserAndRole).toHaveBeenCalledWith({
+      userId: state.userId,
+      requestedRole: "viewer"
+    });
+    expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledWith({
+      userId: state.userId,
+      requestedRole: "viewer",
+      reason:
+        "Auto-created: X login without email on profile — user on link-email step (email_link_required)"
+    });
+  });
+
+  it("completes OAuth to xchat when X has no email but admin already approved (placeholder email + viewer)", async () => {
+    const approvedPlaceholder = {
+      _id: {
+        toHexString: () => state.userId
+      },
+      email: "xid-x-user-1@x.identity.local",
+      roles: ["viewer"] as string[],
+      status: "active" as const
+    };
+    identityMocks.getCoreUserByXIdentity.mockResolvedValueOnce(approvedPlaceholder);
+    identityMocks.linkXAccountToUser.mockResolvedValueOnce(approvedPlaceholder);
+    authMocks.setPendingXLinkCookie.mockClear();
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "x-user-1",
+            username: "approved_user"
+          }
+        })
+      }) as typeof fetch;
+
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+
+    expect(response.headers.get("location")).toContain("/xchat");
+    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
+    expect(authMocks.setPendingXLinkCookie).not.toHaveBeenCalled();
   });
 
   it("returns 500 and does not review when provisioning fails", async () => {

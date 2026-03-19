@@ -249,6 +249,24 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "503": jsonResponse("Default admin persona (Super-Agent) missing from database.", "ErrorResponse")
     }
   },
+  "POST /api/feedback": {
+    summary: "Submit signed-in user feedback",
+    description:
+      "App-user header flow. Optional Slack notification when SLACK_WEBHOOK_URL is configured (fire-and-forget).",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("AppUserFeedbackRequest")
+        }
+      }
+    },
+    responses: {
+      "201": jsonResponse("Feedback accepted.", "AppUserFeedbackResponse"),
+      "400": jsonResponse("Invalid JSON or validation failed.", "ValidationErrorResponse"),
+      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse")
+    }
+  },
   "GET /api/admin/users": {
     summary: "List users",
     parameters: [
@@ -424,6 +442,21 @@ export function getCurrentStateOperationOverride(method: RouteMethod, path: stri
 }
 
 export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
+  AppUserFeedbackRequest: {
+    type: "object",
+    required: ["message"],
+    properties: {
+      message: { type: "string", minLength: 3, maxLength: 4000 },
+      page: { type: "string", maxLength: 500, description: "Optional UI context (e.g. xChat)." }
+    }
+  },
+  AppUserFeedbackResponse: {
+    type: "object",
+    required: ["ok"],
+    properties: {
+      ok: { type: "boolean", enum: [true] }
+    }
+  },
   ValidationErrorResponse: {
     type: "object",
     required: ["error"],

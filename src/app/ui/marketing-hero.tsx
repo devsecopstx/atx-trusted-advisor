@@ -84,11 +84,12 @@ function ProductCard(props: { icon: React.ReactNode; name: string; description: 
 }
 
 type MarketingHeroProps = {
-  /** Logged-in users get xFinance / xChat / xCoach CTAs; guests get sign-in + admin. */
   signedIn?: boolean;
+  /** Only global admins see the admin console entry and full product shortcuts on `/`. */
+  isGlobalAdmin?: boolean;
 };
 
-export function MarketingHero({ signedIn = false }: MarketingHeroProps) {
+export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: MarketingHeroProps) {
   return (
     <section className="mh-hero">
       <div className="mh-grid-lines" aria-hidden="true" />
@@ -117,7 +118,7 @@ export function MarketingHero({ signedIn = false }: MarketingHeroProps) {
             <span className="mh-badge">xAI Collection RAG</span>
           </div>
 
-          {signedIn ? (
+          {signedIn && isGlobalAdmin ? (
             <div className="cta-row mh-cta-row mh-cta-row--triple" role="group" aria-label="Product shortcuts">
               <Link className="cta cta-primary" href="/xfinance">
                 xFinance
@@ -128,15 +129,21 @@ export function MarketingHero({ signedIn = false }: MarketingHeroProps) {
               <Link className="cta cta-secondary" href="/xcoach">
                 xCoach
               </Link>
-            </div>
-          ) : (
-            <div className="cta-row mh-cta-row">
-              <Link className="cta cta-primary" href="/login?next=%2F">
-                atxFinance Advisory
-              </Link>
               <Link className="cta cta-secondary" href="/admin">
                 Admin Console
               </Link>
+            </div>
+          ) : (
+            <div className="mh-guest-signin" role="group" aria-label="Sign in">
+              <div className="cta-row mh-cta-row">
+                <Link className="cta cta-primary" href="/login?next=%2Fxchat">
+                  Sign in with X
+                </Link>
+              </div>
+              <p className="mh-login-hint">
+                Free plan is pre-selected on the next step. After approval you land in <strong>xChat</strong> by
+                default.
+              </p>
             </div>
           )}
         </div>

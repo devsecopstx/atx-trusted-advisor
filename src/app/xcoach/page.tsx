@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
+import { AppUserApprovedHeader } from "@/app/ui/app-user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 
 import "../xchat/xchat.css";
@@ -13,31 +13,9 @@ export default async function XcoachPage() {
     redirect("/login?next=/xcoach");
   }
 
-  const isAdmin = session.roles.includes("global_admin");
-
   return (
     <div className="xchat-shell">
-      <header className="xchat-header">
-        <Link className="xchat-header-brand" href="/">
-          <AtxFinanceLogo size="sm" />
-        </Link>
-        <nav className="xchat-header-nav" aria-label="xCoach product navigation">
-          <Link className="xchat-header-link" href="/xfinance">
-            xFinance
-          </Link>
-          <Link className="xchat-header-link" href="/xchat">
-            xChat
-          </Link>
-          <Link className="xchat-header-link" href="/xcoach" aria-current="page">
-            xCoach
-          </Link>
-          {isAdmin ? (
-            <Link className="xchat-header-link" href="/admin">
-              Admin
-            </Link>
-          ) : null}
-        </nav>
-      </header>
+      <AppUserApprovedHeader current="xcoach" feedbackPageLabel="xCoach" session={session} />
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
         <section className="hero-card xf-noise-overlay xc-hero" style={{ maxWidth: "720px", margin: "0 auto" }}>

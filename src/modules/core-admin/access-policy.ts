@@ -4,6 +4,7 @@ import type {
   AccessRequestStatus
 } from "@/modules/core-admin/types";
 import { ACCESS_REQUEST_SLA_DAYS } from "@/modules/core-admin/types";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import type { SubscriptionPlan } from "@/modules/identity/types";
 
 export type PolicyCheckInput = {
@@ -26,7 +27,7 @@ export function checkAccessRequestPolicy(
     });
   }
 
-  if (input.currentRoles.includes("global_admin")) {
+  if (isGlobalAdmin(input.currentRoles)) {
     violations.push({
       code: "ADMIN_CANNOT_DOWNGRADE",
       message: "Global admin cannot request a lower role via self-service"

@@ -41,6 +41,7 @@ OpenAPI inventory is guarded by route parity + document build tests under `tests
 - Auth callback path configured in X app: `/api/auth/x/callback`
 - Personas API: `GET /api/personas`
 - xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (`global_admin`), **xFinance** (all other signed-in roles); body `personaId` is ignored
+- App-user feedback: `POST /api/feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
 
 ## Quick Ops Status Task
 
@@ -55,7 +56,9 @@ echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 
 - Keep secrets only in `.env`; never commit real tokens.
 - Prefer updating existing docs over creating duplicates.
+- Non-blocking backlog / design TBD: `docs/PLAN.md`.
 - For persona/xchat/admin-audit changes, run at least build + typecheck before PR.
+- **Roles:** platform roles vs `tenantRole` — see `DEVELOPMENT.md` → *Platform roles vs tenant membership (session)*. Use `isGlobalAdmin()` / `canUserLogin()` from `@/modules/identity/authorization` (and `requireGlobalAdminSession` for admin APIs); avoid ad-hoc `roles.includes("global_admin")`.
 
 ## Cursor Cloud specific instructions
 

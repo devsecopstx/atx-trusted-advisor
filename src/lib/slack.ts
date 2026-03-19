@@ -35,6 +35,37 @@ export async function sendSlackNotification(
   }
 }
 
+export function buildUserFeedbackNotification(params: {
+  message: string;
+  email: string;
+  username?: string;
+  userId: string;
+  page?: string;
+}): SlackNotification {
+  const who = params.username ? `@${params.username}` : params.email;
+  const page = params.page?.trim() ? ` • ${params.page.trim()}` : "";
+  return {
+    text: `💬 atxFinance app feedback${page} — ${who} (${params.userId})`,
+    blocks: [
+      {
+        type: "header",
+        text: { type: "plain_text", text: "💬 App user feedback" }
+      },
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: `*Who:*\n${who} (${params.email})` },
+          { type: "mrkdwn", text: `*User ID:*\n\`${params.userId}\`` }
+        ]
+      },
+      {
+        type: "section",
+        text: { type: "mrkdwn", text: `*Message:*\n${params.message.slice(0, 2800)}` }
+      }
+    ]
+  };
+}
+
 export function buildAccessRequestNotification(params: {
   email: string;
   username?: string;

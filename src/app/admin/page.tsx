@@ -1,13 +1,10 @@
 import Link from "next/link";
 
-import { getSessionUser } from "@/lib/auth";
-
 type AdminFunction = {
   href: string;
   icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory" | "audit" | "portfolio" | "strategy" | "batch";
   title: string;
   description: string;
-  adminOnly?: boolean;
   comingSoon?: boolean;
 };
 
@@ -64,8 +61,7 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     href: "/personas",
     icon: "directory",
     title: "xPersona Directory",
-    description: "Read-only list of configured xPersonas.",
-    adminOnly: false
+    description: "Read-only list of configured xPersonas."
   },
   {
     href: "/admin/audit",
@@ -188,26 +184,7 @@ function AdminFunctionIcon({ name }: IconProps) {
   }
 }
 
-type AdminPageProps = {
-  searchParams: Promise<{
-    error?: string;
-    target?: string;
-  }>;
-};
-
-export default async function AdminPage({ searchParams }: AdminPageProps) {
-  const params = await searchParams;
-  const session = await getSessionUser();
-  const isAdmin = session?.roles.includes("global_admin") ?? false;
-  const showForbiddenNotice = params.error === "forbidden";
-  const forbiddenTarget = params.target?.trim().toLowerCase();
-  const forbiddenTargetLabel =
-    forbiddenTarget === "personas"
-      ? "xPersona Configuration"
-      : forbiddenTarget === "xchat"
-        ? "xchat Ask"
-        : "that function";
-
+export default function AdminPage() {
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
@@ -222,17 +199,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       <section className="panel stack-gap">
         <div className="panel-header">
           <h2>Admin Functions</h2>
-          <p>
-            {isAdmin
-              ? "Large tap targets designed for quick mobile navigation."
-              : "Authenticated. Admin functions are visible but locked for non-admin users."}
-          </p>
-          {showForbiddenNotice ? (
-            <p className="status-text status-error">
-              Access denied for {forbiddenTargetLabel}. Your account is authenticated but not a global
-              admin.
-            </p>
-          ) : null}
+          <p>Large tap targets designed for quick mobile navigation.</p>
         </div>
         <div className="admin-function-grid">
           {ADMIN_FUNCTIONS.map((item) =>
@@ -249,7 +216,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <span>{item.description}</span>
                 </span>
               </article>
-            ) : isAdmin || item.adminOnly === false ? (
+            ) : (
               <Link className="admin-function-card" href={item.href} key={item.href}>
                 <span aria-hidden="true" className="admin-function-icon">
                   <AdminFunctionIcon name={item.icon} />
@@ -259,21 +226,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <span>{item.description}</span>
                 </span>
               </Link>
-            ) : (
-              <article
-                className="admin-function-card admin-function-card-disabled"
-                key={item.href}
-              >
-                <span aria-hidden="true" className="admin-function-icon">
-                  <AdminFunctionIcon name={item.icon} />
-                </span>
-                <span className="admin-function-copy">
-                  <strong>
-                    {item.title} (locked)
-                  </strong>
-                  <span>Request global admin role to access this function.</span>
-                </span>
-              </article>
             )
           )}
         </div>

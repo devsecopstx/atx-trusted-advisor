@@ -29,6 +29,7 @@ import {
   resolveAuthContext,
   upsertTenantMembership
 } from "@/modules/identity/repository";
+import type { CoreUser } from "@/modules/identity/types";
 
 type XTokenResponse = {
   access_token: string;
@@ -44,6 +45,29 @@ type XUserResponse = {
     email?: string;
   };
 };
+
+async function ensurePendingViewerAccessRequestAfterOAuth(user: CoreUser): Promise<void> {
+  const oid = user._id;
+  if (!oid) {
+    return;
+  }
+  const userId = oid.toHexString();
+  const requestedRole = "viewer" as const;
+  const existingPending = await getPendingAccessRequestByUserAndRole({
+    userId,
+    requestedRole
+  });
+  if (existingPending) {
+    return;
+  }
+  await createAccessRequest({
+    userId,
+    requestedRole,
+    reason: isPlaceholderEmail(user.email)
+      ? "Auto-created: X login without email on profile — user on link-email step (email_link_required)"
+      : "Auto-created from unapproved X login attempt"
+  });
+}
 
 export async function GET(request: Request) {
   const env = getEnv();
@@ -198,7 +222,14 @@ export async function GET(request: Request) {
     });
   }
 
-  if (isPlaceholderEmail(user.email)) {
+  // Placeholder email only blocks OAuth completion until the user has a login-eligible *platform* role.
+  // After an admin approves the access request (e.g. viewer), allow sign-in even without X email / real email.
+  if (
+    isPlaceholderEmail(user.email) &&
+    user._id &&
+    !canUserLogin(user.roles)
+  ) {
+    await ensurePendingViewerAccessRequestAfterOAuth(user);
     await setPendingXLinkCookie(xIdentity);
     return NextResponse.redirect(new URL("/login?error=email_link_required", origin));
   }
@@ -210,21 +241,7 @@ export async function GET(request: Request) {
 
   if (!user?._id || !hasLoginRole) {
     if (user?._id) {
-      const userId = user._id.toHexString();
-      const requestedRole = "viewer";
-      const existingPending = await getPendingAccessRequestByUserAndRole({
-        userId,
-        requestedRole
-      });
-      if (!existingPending) {
-        await createAccessRequest({
-          userId,
-          requestedRole,
-          reason: isPlaceholderEmail(user.email)
-            ? "Auto-created from unapproved X login attempt (not-valid: email-link required)"
-            : "Auto-created from unapproved X login attempt"
-        });
-      }
+      await ensurePendingViewerAccessRequestAfterOAuth(user);
     }
 
     if (!shouldAllowFallbackLogin) {

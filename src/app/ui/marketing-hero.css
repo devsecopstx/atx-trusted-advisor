@@ -151,6 +151,24 @@
   justify-content: center;
 }
 
+.mh-guest-signin {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.mh-login-hint {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--xf-text-400);
+}
+
+.mh-login-hint strong {
+  color: var(--xf-text-200);
+  font-weight: 600;
+}
+
 /* ── OAuth row ────────────────────────────── */
 
 .mh-oauth-row {

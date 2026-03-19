@@ -3,6 +3,7 @@
  * - Super-Agent → global_admin (seeded; see `scripts/seed-admin-user.mjs`)
  * - xFinance → all other signed-in roles (FinExpert; created here or on first ask if missing)
  */
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import type { PersonaConfig } from "@/modules/xchat/types";
 import { DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
 
@@ -44,5 +45,5 @@ export function buildDefaultXfinancePersonaPayload(): DefaultXfinancePersonaInse
 }
 
 export function isGlobalAdminRole(roles: string[] | undefined): boolean {
-  return Array.isArray(roles) && roles.includes("global_admin");
+  return Array.isArray(roles) && isGlobalAdmin(roles);
 }

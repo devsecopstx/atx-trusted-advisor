@@ -1,16 +1,14 @@
 import Link from "next/link";
 
-import { getSessionUser } from "@/lib/auth";
+import { AppUserApprovedHeader } from "@/app/ui/app-user-approved-header";
 import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
+import { getSessionUser } from "@/lib/auth";
+import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { PlansLanding } from "./ui/plans-landing";
 import { XchatConversation } from "./ui/xchat-conversation";
 import { XchatGuestPanel } from "./ui/xchat-guest-panel";
 import "./xchat.css";
-
-function hasXfinanceAccess(roles: string[]): boolean {
-  return roles.length > 0;
-}
 
 export default async function XchatPage() {
   const session = await getSessionUser();
@@ -29,31 +27,25 @@ export default async function XchatPage() {
     );
   }
 
-  const approved = hasXfinanceAccess(session.roles);
-  const isAdmin = session.roles.includes("global_admin");
+  const approved = canUserLogin(session.roles);
+  const admin = isGlobalAdmin(session.roles);
 
   return (
     <div className="xchat-shell">
-      <header className="xchat-header">
-        <Link className="xchat-header-brand" href="/xchat">
-          <AtxFinanceLogo size="sm" />
-        </Link>
-        <nav className="xchat-header-nav">
-          {isAdmin ? (
-            <Link className="xchat-header-link" href="/admin">
-              Admin
-            </Link>
-          ) : null}
-          <Link className="xchat-header-link" href="/personas">
-            Personas
+      {approved ? (
+        <AppUserApprovedHeader current="xchat" feedbackPageLabel="xChat" session={session} />
+      ) : (
+        <header className="xchat-header">
+          <Link className="xchat-header-brand" href="/xchat">
+            <AtxFinanceLogo size="sm" />
           </Link>
-        </nav>
-      </header>
+        </header>
+      )}
 
       <div className="xchat-body">
         {approved ? (
           <XchatConversation
-            defaultPublishedPersonaName={isAdmin ? "Super-Agent" : "xFinance"}
+            defaultPublishedPersonaName={admin ? "Super-Agent" : "xFinance"}
           />
         ) : (
           <PlansLanding userEmail={session.email} username={session.username} />

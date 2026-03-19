@@ -25,11 +25,12 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 3. Run project validation commands (including release gate when applicable).
 4. Fix blocking failures in scope.
 5. Re-run validation until clean.
-6. Confirm docs/skill updates for any changed runbooks or delivery workflow.
+6. Confirm docs/skill updates for any changed runbooks or delivery workflow. Deferred doc/product gaps live in **`docs/PLAN.md`** (TODO / design TBD) — no need to block commit unless you are closing an item.
 7. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version strings in skills or UI).
 8. Prepare concise commit message reflecting intent.
 9. Confirm push readiness and branch status.
 10. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
+11. **Staging first (when applicable):** If the team ships to staging before prod, push the branch, open/merge PR per policy, then run staging deploy/verify (see `AGENTS.md` / deploy skills). Production can wait until staging checks pass.
 
 ## Output
 

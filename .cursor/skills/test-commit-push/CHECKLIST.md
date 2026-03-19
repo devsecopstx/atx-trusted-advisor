@@ -21,6 +21,11 @@
 - [ ] Docs/runbooks updated when behavior or operations changed.
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.
+- [ ] Open gaps (if any) are in **`docs/PLAN.md`** as TODO / design TBD, or consciously not applicable to this change.
+
+## Staging-before-prod (optional)
+
+- [ ] Push branch and merge PR per team policy, then deploy **staging** and smoke before production (see deploy runbooks / `AGENTS.md`).
 
 ## Push Readiness
 

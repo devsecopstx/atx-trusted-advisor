@@ -1,0 +1,48 @@
+import Link from "next/link";
+
+import type { SessionUser } from "@/lib/auth";
+import {
+  getMongoConnectionLabel,
+  shouldShowAppUserDbLabel
+} from "@/lib/env";
+
+import { AppUserHeaderSession } from "./app-user-header-session";
+import { AppUserProductNav, type AppUserProductNavCurrent } from "./app-user-product-nav";
+import { AtxFinanceLogo } from "./atxfinance-logo";
+
+type AppUserApprovedHeaderProps = {
+  session: SessionUser;
+  current: AppUserProductNavCurrent;
+  /** Shown with feedback for context (e.g. xChat, Portfolio). */
+  feedbackPageLabel?: string;
+};
+
+export function AppUserApprovedHeader({
+  session,
+  current,
+  feedbackPageLabel
+}: AppUserApprovedHeaderProps) {
+  const mongoConnection = shouldShowAppUserDbLabel()
+    ? getMongoConnectionLabel()
+    : "";
+
+  return (
+    <header className="xchat-header">
+      <Link className="xchat-header-brand" href="/xchat">
+        <AtxFinanceLogo size="sm" />
+      </Link>
+      <div className="xchat-header-main">
+        <AppUserProductNav current={current} roles={session.roles} />
+        <AppUserHeaderSession
+          email={session.email}
+          feedbackPageLabel={feedbackPageLabel}
+          mongoConnection={mongoConnection}
+          displayName={session.displayName}
+          avatarUrl={session.avatarUrl}
+          username={session.username}
+          xUserId={session.xUserId}
+        />
+      </div>
+    </header>
+  );
+}

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
+import { AppUserApprovedHeader } from "@/app/ui/app-user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { getDefaultPortfolio } from "@/modules/core-admin/repository";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import "../xchat/xchat.css";
 
@@ -14,32 +15,12 @@ export default async function XfinancePage() {
   }
 
   const portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
-  const isAdmin = session.roles.includes("global_admin");
+  const admin = isGlobalAdmin(session.roles);
   const portfolioIdHex = portfolio?._id?.toHexString?.() ?? null;
 
   return (
     <div className="xchat-shell">
-      <header className="xchat-header">
-        <Link className="xchat-header-brand" href="/">
-          <AtxFinanceLogo size="sm" />
-        </Link>
-        <nav className="xchat-header-nav" aria-label="xCoach product navigation">
-          <Link className="xchat-header-link" href="/xfinance">
-            xFinance
-          </Link>
-          <Link className="xchat-header-link" href="/xchat">
-            xChat
-          </Link>
-          <Link className="xchat-header-link" href="/xcoach">
-            xCoach
-          </Link>
-          {isAdmin ? (
-            <Link className="xchat-header-link" href="/admin">
-              Admin
-            </Link>
-          ) : null}
-        </nav>
-      </header>
+      <AppUserApprovedHeader current="xfinance" feedbackPageLabel="Portfolio / xFinance" session={session} />
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
         <section className="hero-card xf-noise-overlay" style={{ maxWidth: "640px", margin: "0 auto" }}>
@@ -70,7 +51,7 @@ export default async function XfinancePage() {
             <Link className="cta cta-secondary" href="/">
               Home
             </Link>
-            {isAdmin ? (
+            {admin ? (
               <Link className="cta cta-primary" href="/admin/portfolios">
                 Open in admin console
               </Link>
