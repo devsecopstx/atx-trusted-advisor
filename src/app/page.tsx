@@ -1,9 +1,15 @@
 import "./ui/marketing-hero.css";
 import "./ui/product-plans.css";
 import { MarketingHero } from "./ui/marketing-hero";
-import { ProductPlans } from "./ui/product-plans";
+import { getEnv } from "@/lib/env";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const env = getEnv();
+  const oauthStatus =
+    env.X_OAUTH_CLIENT_ID.trim().length > 0 && env.X_OAUTH_CLIENT_SECRET.trim().length > 0
+      ? "configured"
+      : "not configured";
+
   return (
     <>
       <MarketingHero />
