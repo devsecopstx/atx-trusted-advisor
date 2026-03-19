@@ -10,6 +10,7 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 const envMocks = vi.hoisted(() => ({
+  getEnv: vi.fn(),
   isAllowAnyXUserLoginEnabled: vi.fn()
 }));
 
@@ -24,10 +25,12 @@ const identityMocks = vi.hoisted(() => ({
   ensureCoreUserByEmail: vi.fn(),
   getCoreUserByEmail: vi.fn(),
   getCoreUserByXIdentity: vi.fn(),
+  unlinkXAccountFromUser: vi.fn(),
   linkXAccountToUser: vi.fn(),
   resolveAuthContext: vi.fn(),
   updateCoreUserEmail: vi.fn(),
-  upsertTenantMembership: vi.fn()
+  upsertTenantMembership: vi.fn(),
+  ensureSeededGlobalAdmin: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -49,6 +52,9 @@ describe("auth link-email route", () => {
     });
     authMocks.createSession.mockResolvedValue(undefined);
 
+    envMocks.getEnv.mockReturnValue({
+      ADMIN_SEED_EMAIL: "atxbogart@gmail.com"
+    });
     envMocks.isAllowAnyXUserLoginEnabled.mockReturnValue(false);
 
     coreAdminMocks.createAccessRequest.mockResolvedValue({
@@ -68,6 +74,7 @@ describe("auth link-email route", () => {
       status: "active"
     });
     identityMocks.getCoreUserByXIdentity.mockResolvedValue(null);
+    identityMocks.unlinkXAccountFromUser.mockResolvedValue(undefined);
     identityMocks.updateCoreUserEmail.mockResolvedValue(null);
     identityMocks.ensureCoreUserByEmail.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
@@ -86,6 +93,14 @@ describe("auth link-email route", () => {
     });
     identityMocks.upsertTenantMembership.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439033" }
+    });
+    identityMocks.ensureSeededGlobalAdmin.mockResolvedValue({
+      user: {
+        _id: { toHexString: () => "507f1f77bcf86cd799439011" },
+        email: "atxbogart@gmail.com",
+        roles: ["global_admin"],
+        status: "active"
+      }
     });
     identityMocks.resolveAuthContext.mockImplementation(async () => ({
       userId: { toHexString: () => "507f1f77bcf86cd799439011" },
@@ -152,5 +167,102 @@ describe("auth link-email route", () => {
     expect(response.status).toBe(200);
     expect(payload.redirectTo).toBe("/admin");
     expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
+  });
+
+  it("auto-seeds configured admin email and redirects to /admin", async () => {
+    identityMocks.linkXAccountToUser.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439011" },
+      email: "atxbogart@gmail.com",
+      roles: ["global_admin"],
+      xAccount: {
+        xUserId: "x-user-1",
+        username: "new_user",
+        linkedAt: new Date()
+      },
+      status: "active"
+    });
+    identityMocks.resolveAuthContext.mockResolvedValueOnce({
+      userId: { toHexString: () => "507f1f77bcf86cd799439011" },
+      email: "atxbogart@gmail.com",
+      roles: ["global_admin"],
+      tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
+      tenantRole: "tenant_admin",
+      xUserId: "x-user-1",
+      username: "new_user"
+    });
+
+    const response = await linkEmailPost(
+      new Request("http://127.0.0.1:3000/api/auth/link-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "atxbogart@gmail.com" })
+      })
+    );
+
+    const payload = (await response.json()) as { redirectTo: string };
+    expect(response.status).toBe(200);
+    expect(payload.redirectTo).toBe("/admin");
+    expect(identityMocks.ensureSeededGlobalAdmin).toHaveBeenCalledWith(
+      "atxbogart@gmail.com"
+    );
+  });
+
+  it("relinks stale X identity to existing approved admin email user", async () => {
+    const staleUserId = "507f1f77bcf86cd7994390aa";
+    const approvedAdminId = "507f1f77bcf86cd7994390bb";
+
+    identityMocks.getCoreUserByEmail.mockResolvedValueOnce({
+      _id: { toHexString: () => approvedAdminId },
+      email: "admin@atxfinance.ai",
+      roles: ["global_admin"],
+      status: "active"
+    });
+    identityMocks.getCoreUserByXIdentity.mockResolvedValueOnce({
+      _id: { toHexString: () => staleUserId },
+      email: "xid-x-user-1@x.identity.local",
+      roles: [],
+      status: "active"
+    });
+    identityMocks.linkXAccountToUser.mockResolvedValueOnce({
+      _id: { toHexString: () => approvedAdminId },
+      email: "admin@atxfinance.ai",
+      roles: ["global_admin"],
+      xAccount: {
+        xUserId: "x-user-1",
+        username: "new_user",
+        linkedAt: new Date()
+      },
+      status: "active"
+    });
+    identityMocks.resolveAuthContext.mockResolvedValueOnce({
+      userId: { toHexString: () => approvedAdminId },
+      email: "admin@atxfinance.ai",
+      roles: ["global_admin"],
+      tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
+      tenantRole: "tenant_admin",
+      xUserId: "x-user-1",
+      username: "new_user"
+    });
+
+    const response = await linkEmailPost(
+      new Request("http://127.0.0.1:3000/api/auth/link-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "admin@atxfinance.ai" })
+      })
+    );
+
+    const payload = (await response.json()) as { redirectTo: string };
+    expect(response.status).toBe(200);
+    expect(payload.redirectTo).toBe("/admin");
+    expect(identityMocks.unlinkXAccountFromUser).toHaveBeenCalledWith({
+      userId: expect.objectContaining({ toHexString: expect.any(Function) })
+    });
+    expect(identityMocks.linkXAccountToUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: expect.objectContaining({ toHexString: expect.any(Function) }),
+        xUserId: "x-user-1"
+      })
+    );
   });
 });

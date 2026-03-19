@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { consumePendingXLinkCookie, createSession } from "@/lib/auth";
-import { isAllowAnyXUserLoginEnabled } from "@/lib/env";
+import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import {
   createAccessRequest,
   getPendingAccessRequestByUserAndRole,
@@ -12,8 +12,10 @@ import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
   ensureDefaultTenant,
   ensureCoreUserByEmail,
+  ensureSeededGlobalAdmin,
   getCoreUserByEmail,
   getCoreUserByXIdentity,
+  unlinkXAccountFromUser,
   linkXAccountToUser,
   resolveAuthContext,
   updateCoreUserEmail,
@@ -25,6 +27,7 @@ const linkSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const env = getEnv();
   const body = await request.json();
   const parsed = linkSchema.safeParse(body);
   if (!parsed.success) {
@@ -39,17 +42,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No pending X login context found" }, { status: 400 });
   }
 
-  let user = await getCoreUserByEmail(parsed.data.email);
+  const requestedEmail = parsed.data.email.trim().toLowerCase();
+  const seededAdmin =
+    isSeedAdminEmail(requestedEmail, env.ADMIN_SEED_EMAIL)
+      ? await ensureSeededGlobalAdmin(requestedEmail)
+      : null;
+  let user = seededAdmin?.user ?? (await getCoreUserByEmail(requestedEmail));
   const existingByXIdentity = await getCoreUserByXIdentity(pending.xUserId);
-  if (existingByXIdentity?._id && isPlaceholderEmail(existingByXIdentity.email)) {
+  const emailUserId = user?._id;
+  const xIdentityUserId = existingByXIdentity?._id;
+
+  if (user && xIdentityUserId && emailUserId && !isSameUserId(xIdentityUserId, emailUserId)) {
+    // If the requested email already belongs to an approved admin, re-link X identity to that account.
+    if (isGlobalAdmin(user.roles)) {
+      await unlinkXAccountFromUser({ userId: xIdentityUserId });
+      user = await linkXAccountToUser({
+        userId: emailUserId,
+        xUserId: pending.xUserId,
+        username: pending.username,
+        displayName: pending.displayName,
+        avatarUrl: pending.avatarUrl
+      });
+    }
+  } else if (xIdentityUserId && isPlaceholderEmail(existingByXIdentity.email)) {
     user = await updateCoreUserEmail({
-      userId: existingByXIdentity._id,
-      email: parsed.data.email
+      userId: xIdentityUserId,
+      email: requestedEmail
     });
   }
+
   if (!user?._id) {
     user = await ensureCoreUserByEmail({
-      email: parsed.data.email
+      email: requestedEmail
     });
   }
   if (!user?._id) {
@@ -59,13 +83,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const linkedUser = await linkXAccountToUser({
-    userId: user._id,
-    xUserId: pending.xUserId,
-    username: pending.username,
-    displayName: pending.displayName,
-    avatarUrl: pending.avatarUrl
-  });
+  const linkedUser =
+    user.xAccount?.xUserId === pending.xUserId &&
+    user.xAccount?.username === pending.username
+      ? user
+      : await linkXAccountToUser({
+          userId: user._id,
+          xUserId: pending.xUserId,
+          username: pending.username,
+          displayName: pending.displayName,
+          avatarUrl: pending.avatarUrl
+        });
 
   const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
   const hasLoginRole = canUserLogin(linkedUser.roles);
@@ -138,4 +166,18 @@ export async function POST(request: Request) {
 
 function isPlaceholderEmail(email: string): boolean {
   return email.toLowerCase().endsWith("@x.identity.local");
+}
+
+function isSameUserId(
+  left: { toHexString: () => string },
+  right: { toHexString: () => string }
+): boolean {
+  return left.toHexString() === right.toHexString();
+}
+
+function isSeedAdminEmail(email: string, configuredAdminSeedEmail?: string): boolean {
+  const seedEmail = (configuredAdminSeedEmail ?? "atxbogart@gmail.com")
+    .trim()
+    .toLowerCase();
+  return email === seedEmail;
 }

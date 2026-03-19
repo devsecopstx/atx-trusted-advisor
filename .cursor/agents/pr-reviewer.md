@@ -1,10 +1,6 @@
 ---
 name: pr-reviewer
 model: inherit
-<<<<<<< HEAD
-description: as an ops-admin Validate each change set against quality gates before merge.
-=======
->>>>>>> bde1cfc (chore merge local ops)
 readonly: true
 is_background: true
 ---

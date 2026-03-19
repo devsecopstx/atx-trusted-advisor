@@ -1,4 +1,8 @@
 import { APP_VERSION } from "@/lib/app-version";
+import {
+  CURRENT_STATE_COMPONENT_SCHEMAS,
+  getCurrentStateOperationOverride
+} from "@/lib/openapi/current-state-overrides";
 import type {
   HttpMethod,
   OpenApiDocument,
@@ -24,8 +28,9 @@ type RouteDefinition = {
   tag?: string;
 };
 
-const CURRENT_STATE_ROUTES: RouteDefinition[] = [
+export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   { path: "/api/health", operations: [{ method: "GET", auth: "public" }] },
+  { path: "/api/openapi", operations: [{ method: "GET", auth: "public" }], tag: "docs" },
   { path: "/api/auth/me", operations: [{ method: "GET", auth: "public" }], tag: "auth" },
   {
     path: "/api/auth/logout",
@@ -406,6 +411,18 @@ function buildOperation(path: string, op: RouteOperation, tag: string): OpenApiO
     responses: buildResponses(op.auth),
     security: op.auth === "public" ? undefined : [{ cookieAuth: [] }]
   };
+
+  if (!operationOverride) {
+    return baseOperation;
+  }
+
+  return {
+    ...baseOperation,
+    ...operationOverride,
+    parameters: operationOverride.parameters ?? baseOperation.parameters,
+    requestBody: operationOverride.requestBody ?? baseOperation.requestBody,
+    responses: operationOverride.responses ?? baseOperation.responses
+  };
 }
 
 function buildPaths(): Record<string, OpenApiPathItem> {
@@ -478,7 +495,8 @@ export function buildCurrentStateOpenApi(): OpenApiDocument {
           additionalProperties: true,
           description:
             "Broad placeholder request body schema for architecture-level documentation."
-        }
+        },
+        ...CURRENT_STATE_COMPONENT_SCHEMAS
       }
     }
   };

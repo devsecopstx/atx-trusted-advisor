@@ -350,6 +350,24 @@ export async function linkXAccountToUser(input: {
   return user;
 }
 
+export async function unlinkXAccountFromUser(input: {
+  userId: ObjectId;
+}): Promise<void> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: input.userId },
+    {
+      $unset: {
+        xAccount: ""
+      },
+      $set: {
+        updatedAt: new Date()
+      }
+    }
+  );
+}
+
 export async function ensureDefaultTenant(): Promise<Tenant> {
   await ensureIdentityIndexes();
   const db = await getDb();
