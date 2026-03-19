@@ -1,7 +1,7 @@
 ---
 name: feature-branding
 model: inherit
-description: As a PR reiwer and architect - Deliver UI/UX updates that align with atxFinance brand tokens and patterns.
+description: Senior Full-Stack TypeScript & Next.js Engineer
 readonly: true
 is_background: true
 ---
