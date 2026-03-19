@@ -12,7 +12,7 @@ import {
   type ToolCallLog
 } from "@/lib/xai";
 import {
-  getPersonaById,
+  resolveDefaultXchatPersonaForSession,
   retrieveRagChunks,
   saveXChatLog
 } from "@/modules/xchat/repository";
@@ -25,6 +25,7 @@ import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-v
 
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
+  /** @deprecated Ignored — persona is chosen from session role (xFinance vs Super-Agent). */
   personaId: z.string().optional(),
   scope: z.string().min(1).max(128).optional(),
   topK: z.number().int().min(1).max(10).optional()
@@ -75,8 +76,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const { message, personaId, topK = 4 } = parsed.data;
-  const persona = personaId ? await getPersonaById(personaId) : null;
+  const { message, topK = 4 } = parsed.data;
+  void parsed.data.personaId;
+
+  const persona = await resolveDefaultXchatPersonaForSession(session.roles);
+  if (!persona) {
+    return NextResponse.json(
+      {
+        error:
+          "Default admin xChat persona (Super-Agent) is missing. Run npm run seed:admin or create it in Admin → Personas."
+      },
+      { status: 503 }
+    );
+  }
   const xapiConfig = normalizePersonaXapiConfig(persona?.xapi);
   const scope = parsed.data.scope ?? persona?.defaultScope ?? "global";
   const tenantId = ObjectId.isValid(session.tenantId)
@@ -171,7 +183,9 @@ export async function POST(request: Request) {
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
-        ]
+        ],
+        tools: xapiConfig.tools,
+        toolChoice: xapiConfig.toolChoice
       });
     } else if (hasXfinanceTool) {
       const xaiTools: Array<Record<string, unknown>> = xapiConfig.tools
@@ -249,6 +263,7 @@ export async function POST(request: Request) {
     data: {
       response: xaiResponse.outputText,
       model: xaiResponse.model,
+      personaName: persona.name,
       contextCount,
       contextSource,
       toolCalls: toolCallLogs.length > 0

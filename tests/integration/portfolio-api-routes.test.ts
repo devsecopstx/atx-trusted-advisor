@@ -5,6 +5,10 @@ const authMocks = vi.hoisted(() => ({
   requireAdminSession: vi.fn()
 }));
 
+const sessionMocks = vi.hoisted(() => ({
+  requireSessionUser: vi.fn()
+}));
+
 const repositoryMocks = vi.hoisted(() => ({
   getDefaultPortfolio: vi.fn(),
   listPortfolioAccounts: vi.fn(),
@@ -13,6 +17,15 @@ const repositoryMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
+
+vi.mock("@/lib/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/auth")>();
+  return {
+    ...actual,
+    requireSessionUser: sessionMocks.requireSessionUser
+  };
+});
+
 vi.mock("@/modules/core-admin/repository", async () => {
   const actual = await vi.importActual<typeof import("@/modules/core-admin/repository")>(
     "@/modules/core-admin/repository"
@@ -31,6 +44,15 @@ import { PositionValidationError } from "@/modules/core-admin/repository";
 
 describe("portfolio API routes", () => {
   beforeEach(() => {
+    sessionMocks.requireSessionUser.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      roles: ["global_admin"],
+      email: "admin@test.local",
+      tenantRole: "tenant_admin",
+      xUserId: "x1",
+      username: "adminuser"
+    });
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -105,11 +127,11 @@ describe("portfolio API routes", () => {
     expect(response.status).toBe(404);
   });
 
-  it("returns auth response directly when non-admin", async () => {
-    authMocks.requireAdminSession.mockResolvedValueOnce(
-      NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  it("returns 401 when default portfolio route has no session", async () => {
+    sessionMocks.requireSessionUser.mockResolvedValueOnce(
+      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
     const response = await getDefaultPortfolio();
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
   });
 });

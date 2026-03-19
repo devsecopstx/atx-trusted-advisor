@@ -62,6 +62,15 @@
   gap: 1.2rem;
 }
 
+.mh-suite-brand {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--xf-gain-green);
+}
+
 .mh-descriptor {
   margin: 0;
   color: var(--xf-text-300);
@@ -117,6 +126,29 @@
 .mh-badge-grok {
   border-color: rgba(57, 255, 20, 0.2);
   color: var(--xf-gain-green);
+}
+
+/* Hero CTAs: use shared .cta / .cta-row from globals; tune spacing for this section */
+.mh-cta-row {
+  margin-top: 0.25rem;
+}
+
+.mh-cta-row .cta {
+  min-height: 2.75rem;
+  padding: 0.7rem 1.15rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.mh-cta-row--triple {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mh-cta-row--triple .cta {
+  flex: 1 1 auto;
+  min-width: min(100%, 8.5rem);
+  justify-content: center;
 }
 
 /* ── OAuth row ────────────────────────────── */
@@ -182,6 +214,16 @@
   gap: 1rem;
   width: 100%;
   max-width: 380px;
+}
+
+.mh-product-stack--three {
+  max-width: 420px;
+}
+
+@media (min-width: 860px) {
+  .mh-product-stack--three {
+    max-width: 100%;
+  }
 }
 
 .mh-product-card {

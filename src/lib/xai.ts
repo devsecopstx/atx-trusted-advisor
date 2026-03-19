@@ -1,4 +1,5 @@
 import { getEnv } from "@/lib/env";
+import { toXaiRequestTools } from "@/lib/xai-tools";
 
 type XaiChatMessage = {
   role: "system" | "user" | "assistant";
@@ -171,19 +172,31 @@ export async function chatWithXai(input: {
   model?: string;
   messages: XaiChatMessage[];
   temperature?: number;
+  tools?: Array<Record<string, unknown>>;
+  toolChoice?: XaiToolChoice;
 }): Promise<XaiChatResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
+  const toolChoice = input.toolChoice ?? "auto";
+  const mappedTools =
+    toolChoice !== "none" && input.tools && input.tools.length > 0
+      ? toXaiRequestTools(input.tools)
+      : [];
+  const body: Record<string, unknown> = {
+    model: input.model ?? defaultModel,
+    messages: input.messages,
+    temperature: input.temperature ?? 0.2
+  };
+  if (mappedTools.length > 0) {
+    body.tools = mappedTools;
+    body.tool_choice = toolChoice;
+  }
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      model: input.model ?? defaultModel,
-      messages: input.messages,
-      temperature: input.temperature ?? 0.2
-    })
+    body: JSON.stringify(body)
   });
 
   const payload = (await response.json()) as {
@@ -217,6 +230,7 @@ export async function respondWithXai(input: {
   maxTurns?: number;
 }): Promise<XaiResponsesResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
+  const tools = toXaiRequestTools(input.tools ?? []);
   const response = await fetch(`${baseUrl}/responses`, {
     method: "POST",
     headers: {
@@ -227,7 +241,7 @@ export async function respondWithXai(input: {
       model: input.model ?? defaultModel,
       system_prompt: input.systemPrompt,
       input: input.userPrompt,
-      tools: input.tools ?? [],
+      tools,
       tool_choice: input.toolChoice ?? "auto",
       max_turns: input.maxTurns ?? 5
     })
@@ -284,6 +298,7 @@ export async function respondWithXaiToolLoop(input: {
   const model = input.model ?? defaultModel;
   const maxTurns = input.maxTurns ?? 5;
   const toolCalls: ToolCallLog[] = [];
+  const tools = toXaiRequestTools(input.tools);
 
   let conversationInput: unknown = input.userPrompt;
   let turnsUsed = 0;
@@ -302,7 +317,7 @@ export async function respondWithXaiToolLoop(input: {
         model,
         system_prompt: input.systemPrompt,
         input: conversationInput,
-        tools: input.tools,
+        tools,
         tool_choice: input.toolChoice ?? "auto",
         max_turns: 1
       })

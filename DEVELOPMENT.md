@@ -435,25 +435,39 @@ gcloud run services update-traffic atxfinance-core-prod \
 
 ### Portfolios
 
-- `GET /api/portfolios/default`
+- `GET /api/portfolios/default` (any signed-in user — returns caller’s default portfolio; admin console uses the same endpoint)
 - `GET /api/portfolios/:portfolioId/accounts`
 - `GET /api/portfolios/:portfolioId/watchlist`
 - `POST /api/positions`
 
 ### RAG files
 
-- `GET /api/rag/files`
-- `POST /api/rag/files`
+- `GET /api/rag/files` — scoped Mongo-backed file metadata (legacy / other flows)
+- `POST /api/rag/files` — upload pipeline for scoped files
+- Admin **RAG collections** (`/admin/rag-files`) lists xAI collections via `GET /api/personas/collections` (management API — read-only in UI)
 
 ### xChat
 
-- `POST /api/xchat/ask` (supports atxfinance tool loop when persona has atxfinance tool)
+- `POST /api/xchat/ask` (supports atxfinance tool loop when the **resolved** persona includes the `atxfinance` tool)
 - `POST /api/xchat/batch`
 - `GET /api/xchat/batch`
 - `GET /api/xchat/batch/:batchId`
 - `POST /api/xchat/batch/:batchId`
 
-**Product scope (known gap):** “Finance-only” behavior for xChat is not enforced by a dedicated server-side classifier. Responses are driven by persona `systemPrompt` / `overridePrompt` and tool configuration. Tighten scope via persona governance and future gating work (see `.cursor/skills/xdesign-review/SKILL.md` deferrals).
+**Persona resolution (`POST /api/xchat/ask`):** The active persona is chosen from the **signed-in user’s roles**, not from the client. The optional body field `personaId` is **deprecated and ignored** (kept for backward-compatible clients).
+
+| Session roles | Persona used | `nameNormalized` key |
+|---|---|---|
+| Includes `global_admin` | **Super-Agent** | `super-agent` |
+| Otherwise | **xFinance** (FinExpert) | `xfinance` |
+
+- If **Super-Agent** is missing for an admin session, the route returns **503** with guidance to run `npm run seed:admin` or create the persona in Admin → Personas.
+- If **xFinance** is missing for a non-admin session, it is **created on first ask** from defaults in `src/modules/xchat/default-xpersonas.ts` (`ensureDefaultXfinancePersonaExists` in `src/modules/xchat/repository.ts`).
+- Success responses include `data.personaName` (human-readable persona name).
+
+Personas may store batch-style `collections_search` tools; outbound xAI requests map those to `file_search` + `source.collection_ids` (`src/lib/xai-tools.ts`).
+
+**Product scope:** Non-admin xChat is framed for **finance / licensing-exam** Q&A via the **xFinance** persona `systemPrompt`. There is still no separate server-side topic classifier; admin **Super-Agent** remains broader. Further tightening is persona-governance and product work (see `.cursor/skills/xdesign-review/SKILL.md` deferrals).
 
 <a id="api-docs-validation"></a>
 
@@ -491,6 +505,7 @@ Personas have a `status` field: `draft` (default), `published`, `archived`.
 - Non-admin users (`GET /api/personas`) only see `published` personas.
 - Admin can filter by `?status=draft|published|archived`.
 - All actions create audit events (`entityType: "xpersona"`).
+- Admin persona UIs show a **linked collections** count: unique ids from `xaiCollection.collectionId` plus `file_search` / `collections_search` tool `collection_ids` (`src/modules/xchat/persona-linked-collections.ts`).
 
 ## Plan Limits and Cost Controls
 
@@ -531,14 +546,15 @@ After running `npm run seed:admin`, verify:
 1. `core_users` has `atxbogart@gmail.com` with role `global_admin`
 2. `core_tenants` has `slug: atxfinance-core` with `isDefault: true`
 3. `core_tenant_memberships` has one default membership linking the admin user and default tenant
-4. `xchat_personas` contains default `Super-Agent` persona with:
+4. `xchat_personas` contains default **Super-Agent** persona with:
    - `nameNormalized: "super-agent"`
    - `systemPrompt` set to the Architect administrative prompt
    - `xaiCollection.collectionId: "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"` (Finance collection)
-   - `xapi.tools: [web_search, x_search, file_search]` with Finance collection wired into `file_search`
-5. `portfolio_portfolios` contains one default portfolio for the seeded admin user.
-6. `portfolio_accounts` contains one default account (`type: "fidelity"`) linked to that default portfolio.
-7. `portfolio_watchlists` contains `DefaultWatchlist` linked to that default portfolio with `symbols: [{ symbol: "TSLA" }]`.
+   - `xapi.tools`: `web_search`, `x_search`, `file_search` (Finance collection ids), and `atxfinance`
+5. **xFinance** (`nameNormalized: "xfinance"`) is not required in Mongo after seed; the first non-admin `POST /api/xchat/ask` creates it if absent (same defaults as `default-xpersonas.ts`). You may also create/publish it manually in Admin → Personas.
+6. `portfolio_portfolios` contains one default portfolio for the seeded admin user.
+7. `portfolio_accounts` contains one default account (`type: "fidelity"`) linked to that default portfolio.
+8. `portfolio_watchlists` contains `DefaultWatchlist` linked to that default portfolio with `symbols: [{ symbol: "TSLA" }]`.
 
 Re-running `npm run seed:admin` should remain idempotent (no duplicates).
 
@@ -616,8 +632,8 @@ with payload shape:
 1. Run `npm run seed:admin`.
 2. Confirm default `Super-Agent` persona is visible in admin personas.
 3. Confirm default portfolio/account surfaces load for the seeded admin user.
-4. Open xChat and run a non-RAG prompt with the default persona.
-5. Optionally create/select an xAI collection and re-run validation with RAG enabled.
+4. Open `/xchat` (or `/admin/xchat`) and run a prompt — persona is **implicit** (Super-Agent for `global_admin`, xFinance for other roles); there is no persona picker.
+5. Optionally create/select an xAI collection and re-run validation with RAG enabled on **Super-Agent**.
 
 ### Authenticated smoke checklist (admin session)
 
@@ -632,7 +648,7 @@ Use this checklist to validate "admin can start using xChat" in an authenticated
 4. Open `/dashboard` or `/holdings`:
    - verify default portfolio/account data surfaces load for seeded admin.
 5. Open `/admin/xchat`:
-   - submit a non-RAG prompt with default persona and verify a response returns.
+   - submit a prompt and verify a response returns (Super-Agent for seeded admin).
 6. Optional RAG validation:
    - bind a collection,
    - run file sync/recheck actions,

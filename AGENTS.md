@@ -40,7 +40,7 @@ OpenAPI inventory is guarded by route parity + document build tests under `tests
 - Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
 - Personas API: `GET /api/personas`
-- xChat ask API: `POST /api/xchat/ask`
+- xChat ask API: `POST /api/xchat/ask` (persona is resolved from session role: **Super-Agent** for `global_admin`, **xFinance** for other signed-in users; body `personaId` is ignored)
 
 ## Quick Ops Status Task
 
@@ -193,6 +193,6 @@ All three share the same update script and secret requirements above.
 - Payment rails brand surface, `--xf-xmoney-*` tokens, logo lockup variant.
 
 **Standing design rules:**
-- Personas vs Collections separation — `/admin/personas` shows persona configs only (prompts, tools, collectionId links). Collections management stays in RAG Uploads or a dedicated `/admin/collections` page.
+- Personas vs Collections separation — `/admin/personas` shows persona configs only (prompts, tools, collectionId links). Read-only xAI collection inventory is under **RAG collections** (`/admin/rag-files`); create/link flows stay in Personas or xAI console.
 - All admin sub-pages delegate auth + session panel to the shared admin layout (`src/app/admin/layout.tsx`). Do not add duplicate `AdminSessionPanel` imports.
 - No hardcoded hex in app CSS — use `--xf-*` tokens from `design-system/atxfinance-brand-kit.css`.

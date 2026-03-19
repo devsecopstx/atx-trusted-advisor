@@ -231,7 +231,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "Send xChat ask request",
     requestBody: {
       required: true,
-      description: "User message with optional persona/scope context.",
+      description:
+        "User message with optional scope/topK. Persona is chosen from session role (Super-Agent for global_admin, xFinance otherwise). Field personaId is deprecated and ignored.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -244,7 +245,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
       "413": jsonResponse("Payload too large.", "ErrorResponse"),
       "429": jsonResponse("Rate limit exceeded.", "RateLimitErrorResponse"),
-      "502": jsonResponse("xAI provider request failed.", "XaiProviderErrorResponse")
+      "502": jsonResponse("xAI provider request failed.", "XaiProviderErrorResponse"),
+      "503": jsonResponse("Default admin persona (Super-Agent) missing from database.", "ErrorResponse")
     }
   },
   "GET /api/admin/users": {
@@ -468,7 +470,10 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["message"],
     properties: {
       message: { type: "string", minLength: 2, maxLength: 8000 },
-      personaId: { type: "string" },
+      personaId: {
+        type: "string",
+        description: "Deprecated — ignored. Persona is resolved from session role."
+      },
       scope: { type: "string", minLength: 1, maxLength: 128 },
       topK: { type: "integer", minimum: 1, maximum: 10 }
     }
@@ -483,10 +488,11 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
   },
   XChatAskResponseData: {
     type: "object",
-    required: ["response", "model", "contextCount", "contextSource"],
+    required: ["response", "model", "personaName", "contextCount", "contextSource"],
     properties: {
       response: { type: "string" },
       model: { type: "string" },
+      personaName: { type: "string", description: "Resolved persona display name (e.g. Super-Agent, xFinance)." },
       contextCount: { type: "integer", minimum: 0 },
       contextSource: { type: "string", enum: ["none", "mongo_scope", "xai_collection"] },
       toolCalls: { type: "array", items: refSchema("XChatToolCallSummary") }

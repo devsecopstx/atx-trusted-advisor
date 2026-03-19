@@ -45,8 +45,8 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
   {
     href: "/admin/rag-files",
     icon: "book",
-    title: "RAG Uploads",
-    description: "Upload and review RAG knowledge files by scope."
+    title: "RAG collections",
+    description: "Read-only xAI collection inventory for this management API key."
   },
   {
     href: "/admin/xchat",

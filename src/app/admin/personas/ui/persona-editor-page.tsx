@@ -14,7 +14,7 @@ type PersonaEditorPageProps = {
 type ToolSelections = {
   web_search: boolean;
   x_search: boolean;
-  file_search: boolean;
+  collection_search: boolean;
   atxfinance: boolean;
 };
 
@@ -34,6 +34,12 @@ type PersonaPayload = {
   tools: ToolSelections;
 };
 
+type CollectionRow = {
+  id: string;
+  name?: string;
+  stats: { documentCount: number | null; createdAt: string | null; updatedAt: string | null };
+};
+
 const EMPTY_FORM: PersonaPayload = {
   name: "",
   systemPrompt: DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT,
@@ -47,7 +53,12 @@ const EMPTY_FORM: PersonaPayload = {
   xapiMode: "responses",
   xapiToolChoice: "auto",
   xapiMaxTurns: "5",
-  tools: { web_search: true, x_search: false, file_search: false, atxfinance: false }
+  tools: {
+    web_search: true,
+    x_search: true,
+    collection_search: true,
+    atxfinance: false
+  }
 };
 
 function toolSelectionsFromArray(
@@ -56,7 +67,9 @@ function toolSelectionsFromArray(
   return {
     web_search: tools.some((t) => t.type === "web_search"),
     x_search: tools.some((t) => t.type === "x_search"),
-    file_search: tools.some((t) => t.type === "file_search"),
+    collection_search: tools.some(
+      (t) => t.type === "file_search" || t.type === "collections_search"
+    ),
     atxfinance: tools.some((t) => t.type === "atxfinance")
   };
 }
@@ -68,12 +81,12 @@ function toolSelectionsToArray(
   const tools: Array<{ type: string; [key: string]: unknown }> = [];
   if (selections.web_search) tools.push({ type: "web_search" });
   if (selections.x_search) tools.push({ type: "x_search" });
-  if (selections.file_search) {
+  if (selections.collection_search) {
     const boundId = collectionId.trim();
     tools.push(
       boundId
-        ? { type: "file_search", source: { collection_ids: [boundId] } }
-        : { type: "file_search" }
+        ? { type: "collections_search", collection_ids: [boundId] }
+        : { type: "collections_search" }
     );
   }
   if (selections.atxfinance) tools.push({ type: "atxfinance" });
@@ -85,10 +98,27 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
   const [status, setStatus] = useState("Ready");
   const [loading, setLoading] = useState(mode === "edit");
   const [showAdvanced, setShowAdvanced] = useState(mode === "edit");
+  const [collections, setCollections] = useState<CollectionRow[]>([]);
+  const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
   const router = useRouter();
 
-  const fileSearchMissingCollection =
-    form.tools.file_search && !form.xaiCollectionId.trim();
+  const collectionSearchMissingCollection =
+    form.tools.collection_search && !form.xaiCollectionId.trim();
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const payload = await parseJson<{ data: CollectionRow[] }>(
+          await fetch("/api/personas/collections")
+        );
+        setCollections(payload.data);
+      } catch (error) {
+        setCollectionsStatus(
+          error instanceof Error ? error.message : "Could not load RAG collections"
+        );
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (mode !== "edit" || !personaId) {
@@ -150,8 +180,10 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       setStatus("max_turns must be an integer between 1 and 10");
       return;
     }
-    if (fileSearchMissingCollection) {
-      setStatus("file_search requires a collection id. Link a collection or deselect file_search.");
+    if (collectionSearchMissingCollection) {
+      setStatus(
+        "Collection search requires a linked collection id. Pick one from the list or paste an id."
+      );
       return;
     }
 
@@ -200,6 +232,23 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
     }));
   }
 
+  function applyCollection(row: CollectionRow) {
+    setForm((current) => ({
+      ...current,
+      xaiCollectionId: row.id,
+      xaiCollectionName: row.name ?? current.xaiCollectionName
+    }));
+  }
+
+  async function copyCollectionId(id: string) {
+    try {
+      await navigator.clipboard.writeText(id);
+      setStatus("Copied collection id");
+    } catch {
+      setStatus("Copy failed — select the id manually");
+    }
+  }
+
   return (
     <section className="panel stack-gap">
       <article className="surface-card xf-widget section-card">
@@ -214,16 +263,72 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           />
           <textarea
             onChange={(event) => setForm((current) => ({ ...current, systemPrompt: event.target.value }))}
-            placeholder="system prompt"
+            placeholder="system prompt (sent as chat system message)"
             required
             rows={6}
             value={form.systemPrompt}
           />
+          <textarea
+            onChange={(event) =>
+              setForm((current) => ({ ...current, overridePrompt: event.target.value }))
+            }
+            placeholder="override prompt — prepended to each user message for xChat"
+            rows={4}
+            value={form.overridePrompt}
+          />
+          <label className="status-text">
+            Linked collection id (for RAG + collections_search tools)
+          </label>
           <input
             onChange={(event) => setForm((current) => ({ ...current, xaiCollectionId: event.target.value }))}
-            placeholder="collection id"
+            placeholder="collection_…"
             value={form.xaiCollectionId}
           />
+          {collectionsStatus ? (
+            <p className="status-text status-error">{collectionsStatus}</p>
+          ) : collections.length > 0 ? (
+            <div className="stack-gap" style={{ maxHeight: "14rem", overflow: "auto" }}>
+              <table className="crud-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Collection id</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {collections.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.name ?? "—"}</td>
+                      <td>
+                        <code className="status-text">{row.id}</code>
+                      </td>
+                      <td>
+                        <div className="tool-row">
+                          <button
+                            className="tiny-button"
+                            onClick={() => applyCollection(row)}
+                            type="button"
+                          >
+                            Use
+                          </button>
+                          <button
+                            className="tiny-button"
+                            onClick={() => void copyCollectionId(row.id)}
+                            type="button"
+                          >
+                            Copy id
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="status-text">No collections returned from xAI inventory.</p>
+          )}
           <input
             onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
             placeholder="model"
@@ -257,17 +362,17 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
               />
               x_search
             </label>
-            <label className={`checkbox-label${fileSearchMissingCollection ? " status-error" : ""}`}>
+            <label
+              className={`checkbox-label${collectionSearchMissingCollection ? " status-error" : ""}`}
+            >
               <input
-                checked={form.tools.file_search}
-                onChange={() => toggleTool("file_search")}
+                checked={form.tools.collection_search}
+                onChange={() => toggleTool("collection_search")}
                 type="checkbox"
               />
-              file_search
-              {fileSearchMissingCollection ? (
-                <small className="status-text status-error">
-                  requires collection id
-                </small>
+              collection_search (stored as collections_search → file_search at xAI)
+              {collectionSearchMissingCollection ? (
+                <small className="status-text status-error">requires linked collection id</small>
               ) : null}
             </label>
             <label className="checkbox-label">
@@ -286,19 +391,11 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           </button>
           {showAdvanced ? (
             <>
-              <textarea
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, overridePrompt: event.target.value }))
-                }
-                placeholder="override prompt"
-                rows={4}
-                value={form.overridePrompt}
-              />
               <input
                 onChange={(event) =>
                   setForm((current) => ({ ...current, xaiCollectionName: event.target.value }))
                 }
-                placeholder="collection name"
+                placeholder="collection display name"
                 value={form.xaiCollectionName}
               />
               <input
@@ -361,7 +458,11 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             the final response.
           </small>
           <div className="tool-row">
-            <button className="cta cta-primary" disabled={loading || fileSearchMissingCollection} type="submit">
+            <button
+              className="cta cta-primary"
+              disabled={loading || collectionSearchMissingCollection}
+              type="submit"
+            >
               {mode === "create" ? "Create persona" : "Save persona"}
             </button>
             <button className="cta cta-secondary" onClick={() => router.push("/admin/personas")} type="button">

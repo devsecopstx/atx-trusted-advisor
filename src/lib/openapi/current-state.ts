@@ -206,7 +206,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/portfolios/default",
-    operations: [{ method: "GET", auth: "admin" }],
+    operations: [{ method: "GET", auth: "session" }],
     tag: "portfolios"
   },
   {
@@ -267,7 +267,7 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   personas: "Persona and collection lifecycle APIs.",
   portfolios: "Portfolio and account read APIs for admin views.",
   positions: "Position capture and persistence APIs.",
-  rag: "RAG file listing and upload integration endpoints.",
+  rag: "Mongo-backed scoped RAG file list/upload; xAI collection inventory is GET /api/personas/collections.",
   xchat: "xChat sync and async ask/batch workflows."
 };
 

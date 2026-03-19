@@ -29,7 +29,7 @@ Admin-only operations platform for atxFinance. This repo powers:
 
 ## Core Routes
 
-- UI: `/login`, `/xchat`, `/admin`, `/admin/access-requests`, `/admin/personas`, `/admin/portfolios`, `/admin/tasks`, `/admin/xchat`, `/admin/rag-files`, `/admin/user-settings`, `/admin/audit`, `/admin/api-docs`, `/personas`
+- UI: `/` (marketing + xCoach suite), `/xfinance` (default portfolio — signed-in), `/xcoach` (exam stub — signed-in), `/login`, `/xchat`, `/admin`, `/admin/access-requests`, `/admin/personas`, `/admin/portfolios`, `/admin/tasks`, `/admin/xchat`, `/admin/rag-files` (RAG collections — xAI inventory), `/admin/user-settings`, `/admin/audit`, `/admin/api-docs`, `/personas`
 - API: `/api/health`, `/api/openapi` (OpenAPI 3.1 current-state JSON), `/api/personas`, `/api/access-requests`, `/api/xchat/ask`, `/api/xchat/batch`, `/api/admin/*`, `/api/portfolios/*`, `/api/positions`
 
 ## Docs

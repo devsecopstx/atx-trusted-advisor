@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireSessionUser } from "@/lib/auth";
 import { getDefaultPortfolio } from "@/modules/core-admin/repository";
 
 export async function GET() {
-  const session = await requireAdminSession();
+  const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }

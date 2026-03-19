@@ -11,6 +11,7 @@ import {
   uploadBatchInputFile
 } from "@/lib/xai-batch";
 import { searchDocumentsInCollections } from "@/lib/xai";
+import { toXaiRequestTools } from "@/lib/xai-tools";
 import { getDb } from "@/lib/mongodb";
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
@@ -87,7 +88,9 @@ export async function submitBatchJob(
   }
 
   const xapiConfig = normalizePersonaXapiConfig(input.persona.xapi);
-  const batchTools = xapiConfig.tools.filter((t) => t.type !== "atxfinance");
+  const batchTools = toXaiRequestTools(
+    xapiConfig.tools.filter((t) => t.type !== "atxfinance").map((t) => ({ ...t }))
+  );
   const collectionId = input.persona.xaiCollection?.collectionId?.trim();
   const endpoint =
     xapiConfig.mode === "chat_completions"
@@ -137,16 +140,22 @@ export async function submitBatchJob(
       ? `${input.persona.overridePrompt}\n\nUser message:\n${item.message}`
       : item.message;
 
+    const baseChatBody: Record<string, unknown> = {
+      model: input.persona.model ?? "grok-4-1-fast",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: input.persona.temperature ?? 0.2
+    };
+    if (xapiConfig.toolChoice !== "none" && batchTools.length > 0) {
+      baseChatBody.tools = batchTools;
+      baseChatBody.tool_choice = xapiConfig.toolChoice;
+    }
+
     const body: Record<string, unknown> =
       xapiConfig.mode === "chat_completions"
-        ? {
-            model: input.persona.model ?? "grok-4-1-fast",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
-            ],
-            temperature: input.persona.temperature ?? 0.2
-          }
+        ? baseChatBody
         : {
             model: input.persona.model ?? "grok-4-1-fast",
             system_prompt: systemPrompt,
