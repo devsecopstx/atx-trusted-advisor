@@ -80,6 +80,12 @@ from injected secrets.
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
 - Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/atxfinance-tool-stub.md`.
 
+### Project Cursor rules (optional)
+
+- File-backed rules live in **`.cursor/rules/*.mdc`** (tracked; see `.gitignore` exceptions alongside `.cursor/skills/`).
+- Example: **`xfinance-chat-expert.mdc`** — xChat/mobile/performance expert workflow; attaches via `globs` under `**/xchat/**`, `src/modules/xchat/**`, `docs/xchat/**`, etc.
+- When editing rules, follow **`generate-docs`** (Cursor rules section) and **`test-commit-push`** checklist (frontmatter + no patch noise).
+
 ### Local skill maintenance policy
 
 - Treat `.cursor/skills/` as the source of truth for this repo.

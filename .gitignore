@@ -147,6 +147,8 @@ vite.config.ts.timestamp-*
 !.cursor/skills/**
 !.cursor/agents/
 !.cursor/agents/**
+!.cursor/rules/
+!.cursor/rules/**
 
 # macOS Finder metadata
 .DS_Store

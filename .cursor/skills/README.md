@@ -7,6 +7,7 @@ Project-local skills in this directory are safe for Cursor Cloud Agents to reuse
 - `atxfinance-docs-ops`: update operational docs and runbooks without runtime changes.
 - `generate-docs`: keep README, DEVELOPMENT, AGENTS, and related docs aligned with code and ops reality.
 - `test-commit-push`: run lint/typecheck/test (and build when needed), then commit/push/PR with checklist hygiene.
+- **Cursor rules** (sibling folder `../rules/*.mdc`, tracked in git): optional file rules with `globs` — e.g. `xfinance-chat-expert.mdc` for xChat-focused sessions. See `generate-docs` and `test-commit-push` checklists when editing.
 - `atxfinance-xchat-validation-checklist`: run repeatable local/staging xChat validation checks.
 - `atxfinance-runbook-navigator`: route operators to the right runbook section and next command.
 - `atxfinance-design-ops`: run concise design/ops review gates for core tools and xPersona contracts.

@@ -26,6 +26,7 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 4. Fix blocking failures in scope.
 5. Re-run validation until clean.
 6. Confirm docs/skill updates for any changed runbooks or delivery workflow. Deferred doc/product gaps live in **`docs/PLAN.md`** (TODO / design TBD) — no need to block commit unless you are closing an item.
+6b. **Cursor rules (`.cursor/rules/*.mdc`)**: if changed, verify single valid YAML frontmatter, correct `globs` for this repo, and no patch/diff line noise (`+` prefixes). Use **`generate-docs`** § *Cursor rules* for the doc gap list.
 7. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version strings in skills or UI).
 8. Prepare concise commit message reflecting intent.
 9. Confirm push readiness and branch status.

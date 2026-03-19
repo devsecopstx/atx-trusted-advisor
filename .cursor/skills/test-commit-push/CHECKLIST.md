@@ -17,6 +17,7 @@
 ## Commit Hygiene
 
 - [ ] `.env.example` keeps empty `KEY=` values only (no credential-shaped placeholders or real identifiers).
+- [ ] `.cursor/rules/*.mdc` files have valid frontmatter, repo-aligned `globs`, and no merge/patch artifacts (e.g. leading `+` lines).
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.
 - [ ] Docs/runbooks updated when behavior or operations changed.
