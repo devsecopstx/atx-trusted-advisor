@@ -44,9 +44,7 @@ export default async function XchatPage() {
 
       <div className="xchat-body">
         {approved ? (
-          <XchatConversation
-            defaultPublishedPersonaName={admin ? "Super-Agent" : "xFinance"}
-          />
+          <XchatConversation defaultPublishedPersonaName={admin ? "Super-Agent" : "xFinance"} />
         ) : (
           <PlansLanding userEmail={session.email} username={session.username} />
         )}
