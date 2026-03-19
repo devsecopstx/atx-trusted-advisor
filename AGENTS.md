@@ -33,6 +33,8 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 ## Quick Health Checks
 
 - API health: `GET /api/health`
+- OpenAPI inventory: `GET /api/openapi`
+- Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
 - Personas API: `GET /api/personas`
 - xChat ask API: `POST /api/xchat/ask`

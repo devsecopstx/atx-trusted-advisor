@@ -14,7 +14,7 @@ export function XchatGuestPanel() {
             xChat
           </small>
           <span style={{ whiteSpace: "pre-wrap" }}>
-            Welcome to atxFinance xChat. Sign in with X to continue this conversation.
+            Hey, welcome to xFinance xChat. Sign in with X → optimize vibes.
           </span>
         </div>
       </div>
@@ -22,7 +22,7 @@ export function XchatGuestPanel() {
       <form className="xchat-input-bar">
         <input
           aria-label="xchat guest prompt"
-          placeholder="Ask xchat anything..."
+          placeholder="Hit me – portfolio questions, optimizations, whatever"
           readOnly
           value=""
         />

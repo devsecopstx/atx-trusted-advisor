@@ -119,46 +119,53 @@
   color: var(--xf-gain-green);
 }
 
-/* ── CTAs ──────────────────────────────────── */
+/* ── OAuth row ────────────────────────────── */
 
-.mh-cta-row {
+.mh-oauth-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
 }
 
-.mh-cta-primary,
-.mh-cta-secondary {
+.mh-oauth-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
   border-radius: var(--xf-radius-sm);
   padding: 0.75rem 1.5rem;
   font-weight: 700;
   font-size: 0.92rem;
   text-decoration: none;
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-
-.mh-cta-primary:hover,
-.mh-cta-secondary:hover {
-  transform: translateY(-1px);
-}
-
-.mh-cta-primary {
   color: var(--xf-bg-900);
   background: var(--xf-gain-green);
   box-shadow: 0 0 20px rgba(57, 255, 20, 0.25);
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-.mh-cta-primary:hover {
+.mh-oauth-btn:hover {
+  transform: translateY(-1px);
   box-shadow: 0 0 32px rgba(57, 255, 20, 0.4);
 }
 
-.mh-cta-secondary {
-  color: var(--xf-text-100);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.mh-oauth-btn-disabled {
+  color: var(--xf-text-400);
   background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+
+.mh-oauth-btn-disabled small {
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.mh-oauth-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 /* ── Right: product cards ─────────────────── */
@@ -219,10 +226,6 @@
 }
 
 @media (max-width: 859px) {
-  .mh-right {
-    order: -1;
-  }
-
   .mh-product-stack {
     max-width: 100%;
   }

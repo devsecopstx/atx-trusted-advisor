@@ -23,7 +23,8 @@ const identityMocks = vi.hoisted(() => ({
   linkXAccountToUser: vi.fn(),
   ensureDefaultTenant: vi.fn(),
   upsertTenantMembership: vi.fn(),
-  resolveAuthContext: vi.fn()
+  resolveAuthContext: vi.fn(),
+  ensureSeededGlobalAdmin: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -78,6 +79,14 @@ describe("oauth host normalization smoke", () => {
       tenantRole: "tenant_admin",
       xUserId: "x-user-1",
       username: "adminuser"
+    });
+    identityMocks.ensureSeededGlobalAdmin.mockResolvedValue({
+      user: {
+        _id: { toHexString: () => "507f1f77bcf86cd799439011" },
+        email: "admin@atxfinance.ai",
+        roles: ["global_admin"],
+        status: "active"
+      }
     });
 
     global.fetch = vi
