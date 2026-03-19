@@ -21,8 +21,10 @@ import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
   ensureDefaultTenant,
   ensureCoreUserByEmail,
+  ensureSeededGlobalAdmin,
   getCoreUserByEmail,
   getCoreUserByXIdentity,
+  unlinkXAccountFromUser,
   linkXAccountToUser,
   resolveAuthContext,
   upsertTenantMembership
@@ -136,10 +138,31 @@ export async function GET(request: Request) {
     displayName: userInfoJson.data.name,
     avatarUrl: userInfoJson.data.profile_image_url
   };
+  const emailFromProvider = userInfoJson.data.email?.trim().toLowerCase();
+  const seededAdmin =
+    emailFromProvider && isSeedAdminEmail(emailFromProvider, env.ADMIN_SEED_EMAIL)
+      ? await ensureSeededGlobalAdmin(emailFromProvider)
+      : null;
 
   let user = await getCoreUserByXIdentity(xIdentity.xUserId);
+  if (user?._id && emailFromProvider) {
+    const userByEmail = seededAdmin?.user ?? (await getCoreUserByEmail(emailFromProvider));
+    const approvedEmailUserId = userByEmail?._id;
+    if (approvedEmailUserId !== undefined) {
+      const shouldRelinkToApprovedEmailUser =
+        !isSameUserId(user._id, approvedEmailUserId) &&
+        canUserLogin(userByEmail?.roles ?? []);
+
+      if (shouldRelinkToApprovedEmailUser) {
+        await unlinkXAccountFromUser({ userId: user._id });
+        user = await linkXAccountToUser({
+          userId: approvedEmailUserId,
+          ...xIdentity
+        });
+      }
+    }
+  }
   if (!user) {
-    const emailFromProvider = userInfoJson.data.email?.trim().toLowerCase();
     if (!emailFromProvider) {
       const placeholderEmail = buildXIdentityPlaceholderEmail(xIdentity.xUserId);
       user = await ensureCoreUserByEmail({
@@ -154,7 +177,7 @@ export async function GET(request: Request) {
         ...xIdentity
       });
     } else {
-      user = await getCoreUserByEmail(emailFromProvider);
+      user = seededAdmin?.user ?? (await getCoreUserByEmail(emailFromProvider));
       if (!user?._id) {
         user = await ensureCoreUserByEmail({
           email: emailFromProvider
@@ -173,6 +196,11 @@ export async function GET(request: Request) {
       userId: user._id,
       ...xIdentity
     });
+  }
+
+  if (isPlaceholderEmail(user.email)) {
+    await setPendingXLinkCookie(xIdentity);
+    return NextResponse.redirect(new URL("/login?error=email_link_required", origin));
   }
 
   const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
@@ -202,11 +230,6 @@ export async function GET(request: Request) {
     if (!shouldAllowFallbackLogin) {
       return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
     }
-  }
-
-  if (isPlaceholderEmail(user.email)) {
-    await setPendingXLinkCookie(xIdentity);
-    return NextResponse.redirect(new URL("/login?error=email_link_required", origin));
   }
   if (!user._id) {
     return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
@@ -334,4 +357,18 @@ function buildXIdentityPlaceholderEmail(xUserId: string): string {
 
 function isPlaceholderEmail(email: string): boolean {
   return email.toLowerCase().endsWith("@x.identity.local");
+}
+
+function isSameUserId(
+  left: { toHexString: () => string },
+  right: { toHexString: () => string }
+): boolean {
+  return left.toHexString() === right.toHexString();
+}
+
+function isSeedAdminEmail(email: string, configuredAdminSeedEmail?: string): boolean {
+  const seedEmail = (configuredAdminSeedEmail ?? "atxbogart@gmail.com")
+    .trim()
+    .toLowerCase();
+  return email === seedEmail;
 }

@@ -30,7 +30,7 @@ import { POST } from "@/app/api/access-requests/route";
 describe("POST /api/access-requests (self-service)", () => {
   const session = {
     userId: "user_abc",
-    email: "viewer@xfinance.ai",
+    email: "viewer@atxfinance.ai",
     username: "viewer_test",
     roles: ["viewer"],
     tenantId: "tenant_xyz",
@@ -180,7 +180,7 @@ describe("POST /api/access-requests (self-service)", () => {
       expect.objectContaining({
         entityType: "access_request",
         action: "self_requested",
-        actor: expect.objectContaining({ userId: "user_abc", email: "viewer@xfinance.ai" })
+        actor: expect.objectContaining({ userId: "user_abc", email: "viewer@atxfinance.ai" })
       })
     );
   });
@@ -194,7 +194,7 @@ describe("POST /api/access-requests (self-service)", () => {
       })
     );
     expect(slackMocks.buildAccessRequestNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "viewer@xfinance.ai", requestedRole: "viewer" })
+      expect.objectContaining({ email: "viewer@atxfinance.ai", requestedRole: "viewer" })
     );
   });
 });

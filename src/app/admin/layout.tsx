@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
 import { APP_VERSION_LABEL } from "@/lib/app-version";
 import { getMongoConnectionLabel } from "@/lib/env";
-import { XFinanceLogo } from "../ui/xfinance-logo";
+import { AtxFinanceLogo } from "../ui/atxfinance-logo";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 
 type AdminLayoutProps = {
@@ -21,6 +21,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin/portfolios", label: "Portfolios" },
   { href: "/admin/tasks", label: "Tasks" },
   { href: "/admin/rag-files", label: "RAG" },
+  { href: "/admin/api-docs", label: "API Docs" },
   { href: "/admin/user-settings", label: "Users" },
   { href: "/admin/audit", label: "Audit" }
 ];
@@ -37,7 +38,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
     <div className="admin-layout">
       <header className="admin-topbar">
         <Link className="admin-topbar-brand" href="/admin">
-          <XFinanceLogo size="sm" />
+          <AtxFinanceLogo size="sm" />
         </Link>
         <nav className="admin-topbar-nav">
           {NAV_LINKS.map((link) => (
@@ -60,7 +61,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
       <main className="admin-layout-content">{children}</main>
       <footer className="admin-layout-footer">
         <span className="admin-layout-footer-text">
-          xfinance-core-app {APP_VERSION_LABEL}
+          atxfinance-core-app {APP_VERSION_LABEL}
         </span>
       </footer>
     </div>

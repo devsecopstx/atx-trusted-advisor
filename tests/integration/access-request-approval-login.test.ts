@@ -29,11 +29,13 @@ const identityMocks = vi.hoisted(() => ({
   updateCoreUserSubscriptionPlan: vi.fn(),
   getCoreUserByXIdentity: vi.fn(),
   getCoreUserByEmail: vi.fn(),
+  unlinkXAccountFromUser: vi.fn(),
   linkXAccountToUser: vi.fn(),
   ensureDefaultTenant: vi.fn(),
   upsertTenantMembership: vi.fn(),
   resolveAuthContext: vi.fn(),
-  ensureCoreUserByEmail: vi.fn()
+  ensureCoreUserByEmail: vi.fn(),
+  ensureSeededGlobalAdmin: vi.fn()
 }));
 
 const auditMocks = vi.hoisted(() => ({
@@ -63,7 +65,7 @@ function makeUser() {
     _id: {
       toHexString: () => state.userId
     },
-    email: "approved.user@xfinance.ai",
+    email: "approved.user@atxfinance.ai",
     roles: [...state.userRoles],
     status: "active" as const
   };
@@ -133,13 +135,14 @@ describe("access request approval login flow", () => {
     identityMocks.updateCoreUserSubscriptionPlan.mockImplementation(async () => makeUser());
     identityMocks.getCoreUserByXIdentity.mockResolvedValue(null);
     identityMocks.getCoreUserByEmail.mockImplementation(async () => makeUser());
+    identityMocks.unlinkXAccountFromUser.mockResolvedValue(undefined);
     identityMocks.linkXAccountToUser.mockImplementation(async () => makeUser());
     identityMocks.ensureDefaultTenant.mockResolvedValue({
       _id: {
         toHexString: () => "507f1f77bcf86cd799439033"
       },
-      slug: "xfinance-core",
-      name: "xFinance Core",
+      slug: "atxfinance-core",
+      name: "atxFinance Core",
       isDefault: true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -153,7 +156,7 @@ describe("access request approval login flow", () => {
       userId: {
         toHexString: () => state.userId
       },
-      email: "approved.user@xfinance.ai",
+      email: "approved.user@atxfinance.ai",
       roles: [...state.userRoles],
       tenantId: {
         toHexString: () => "507f1f77bcf86cd799439033"
@@ -163,6 +166,19 @@ describe("access request approval login flow", () => {
       username: "approved_user"
     }));
     identityMocks.ensureCoreUserByEmail.mockResolvedValue(makeUser());
+    identityMocks.ensureSeededGlobalAdmin.mockResolvedValue({
+      user: makeUser(),
+      tenant: {
+        _id: {
+          toHexString: () => "507f1f77bcf86cd799439033"
+        }
+      },
+      membership: {
+        _id: {
+          toHexString: () => "507f1f77bcf86cd799439044"
+        }
+      }
+    });
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     auditMocks.listLatestAuditEventsForEntities.mockResolvedValue({});
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
@@ -193,7 +209,7 @@ describe("access request approval login flow", () => {
           data: {
             id: "x-user-1",
             username: "approved_user",
-            email: "approved.user@xfinance.ai"
+            email: "approved.user@atxfinance.ai"
           }
         })
       }) as typeof fetch;
@@ -243,7 +259,7 @@ describe("access request approval login flow", () => {
           data: {
             id: "x-user-1",
             username: "approved_user",
-            email: "approved.user@xfinance.ai"
+            email: "approved.user@atxfinance.ai"
           }
         })
       }) as typeof fetch;
@@ -282,7 +298,7 @@ describe("access request approval login flow", () => {
           data: {
             id: "x-user-1",
             username: "approved_user",
-            email: "approved.user@xfinance.ai"
+            email: "approved.user@atxfinance.ai"
           }
         })
       }) as typeof fetch;
@@ -295,6 +311,99 @@ describe("access request approval login flow", () => {
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
     expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledTimes(1);
     expect(authMocks.createSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats legacy admin role as global admin during login redirect", async () => {
+    state.userRoles = ["admin"];
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "x-user-1",
+            username: "approved_user",
+            email: "approved.user@atxfinance.ai"
+          }
+        })
+      }) as typeof fetch;
+
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+
+    expect(response.headers.get("location")).toContain("/admin");
+    expect(authMocks.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roles: ["admin"]
+      })
+    );
+  });
+
+  it("relinks stale X identity to approved email user and redirects to admin", async () => {
+    const staleUserId = "507f1f77bcf86cd7994390aa";
+    const staleUser = {
+      _id: {
+        toHexString: () => staleUserId
+      },
+      email: "xid-x-user-1@x.identity.local",
+      roles: [] as string[],
+      status: "active" as const
+    };
+    const approvedUser = {
+      _id: {
+        toHexString: () => state.userId
+      },
+      email: "approved.user@atxfinance.ai",
+      roles: ["global_admin"],
+      status: "active" as const
+    };
+
+    identityMocks.getCoreUserByXIdentity.mockResolvedValueOnce(staleUser);
+    identityMocks.getCoreUserByEmail.mockResolvedValueOnce(approvedUser);
+    identityMocks.linkXAccountToUser.mockImplementationOnce(async ({ userId }) => {
+      if (userId.toHexString() === state.userId) {
+        state.userRoles = ["global_admin"];
+      }
+      return makeUser();
+    });
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "x-user-1",
+            username: "approved_user",
+            email: "approved.user@atxfinance.ai"
+          }
+        })
+      }) as typeof fetch;
+
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+
+    expect(identityMocks.unlinkXAccountFromUser).toHaveBeenCalledWith({
+      userId: staleUser._id
+    });
+    expect(response.headers.get("location")).toContain("/admin");
   });
 
   it("allows non-admin authentication but denies admin API access", async () => {
@@ -310,7 +419,18 @@ describe("access request approval login flow", () => {
     expect(adminApiResponse.status).toBe(403);
   });
 
-  it("creates pending access request when X profile has no email", async () => {
+  it("prompts email linking when X profile has no email", async () => {
+    const placeholderUser = {
+      _id: {
+        toHexString: () => state.userId
+      },
+      email: "xid-x-user-1@x.identity.local",
+      roles: [] as string[],
+      status: "active" as const
+    };
+    identityMocks.ensureCoreUserByEmail.mockResolvedValueOnce(placeholderUser);
+    identityMocks.linkXAccountToUser.mockResolvedValueOnce(placeholderUser);
+
     global.fetch = vi
       .fn()
       .mockResolvedValueOnce({
@@ -334,11 +454,12 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
 
-    expect(response.headers.get("location")).toContain("/login?error=access_request_pending");
+    expect(response.headers.get("location")).toContain("/login?error=email_link_required");
     expect(identityMocks.ensureCoreUserByEmail).toHaveBeenCalledWith({
       email: "xid-x-user-1@x.identity.local"
     });
-    expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
+    expect(authMocks.setPendingXLinkCookie).toHaveBeenCalledTimes(1);
+    expect(coreAdminMocks.createAccessRequest).not.toHaveBeenCalled();
   });
 
   it("returns 500 and does not review when provisioning fails", async () => {

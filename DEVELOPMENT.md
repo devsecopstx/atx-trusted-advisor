@@ -1,8 +1,8 @@
-# xFinance Core App Development
+# atxFinance Core App Development
 
 ## Scope
 
-This app is the admin-only core backend for xFinance operations:
+This app is the admin-only core backend for atxFinance operations:
 
 - user access request management
 - task scheduling metadata
@@ -12,7 +12,7 @@ This app is the admin-only core backend for xFinance operations:
 ## Tech Stack
 
 - Next.js App Router (`src/app/api/*`) for backend routes
-- MongoDB database: `xfinancedb`
+- MongoDB database: `atxfinancedb`
 - TypeScript + Zod validation
 
 ## Required Environment Keys
@@ -96,6 +96,13 @@ OAuth flow cookies are host-scoped. Keep these values aligned to avoid `missing_
 
 If they do not match exactly, state/verifier cookies can be missing on callback.
 
+### Login Error Routing Notes
+
+- `email_link_required`: X OAuth succeeded but X did not return an email claim. Use the link-email form on `/login` to bind the X identity to a real email.
+- `access_request_pending`: account exists but has no login-allowed role (`global_admin`, `advisor`, `operator`, `viewer`).
+- If the entered email already belongs to an approved admin account, `/api/auth/link-email` now unlinks stale X mappings and re-links to the approved user.
+- For Atlas-only setups, if login/link-email email matches `ADMIN_SEED_EMAIL` (fallback `atxbogart@gmail.com`), auth flow auto-applies seeded global-admin role and tenant membership. Local Mongo is not required.
+
 ## Validation Commands
 
 - Typecheck: `npm run typecheck`
@@ -121,6 +128,32 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 - [ ] GitHub environment secrets set (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`)
 - [ ] Cloud Run runtime secrets provisioned (Secret Manager recommended)
 
+### GCP Secret Manager — Required Secrets (Staging & Production)
+
+All secrets below must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
+
+| Secret name | Purpose | Required |
+| --- | --- | --- |
+| `MONGODB_URI_B64` | Base64-encoded Atlas connection string | Yes |
+| `XAI_API_KEY` | xAI API key for chat completions | Yes |
+| `XAI_MANAGEMENT_API_KEY` | xAI management key for collection ops | Yes |
+| `X_OAUTH_CLIENT_ID` | X OAuth 2.0 client ID (raw, not base64) | Yes |
+| `X_OAUTH_CLIENT_SECRET` | X OAuth 2.0 client secret | Yes |
+| `AUTH_SECRET` | Session signing secret (min 16 chars) | Yes |
+| `ADMIN_SEED_EMAIL` | Email auto-seeded as global_admin on first login | Yes |
+| `ALLOW_ANY_X_USER_LOGIN` | Feature flag — `true` allows any authenticated X user to reach `/xchat` | Yes (set `false` if unused) |
+| `SLACK_WEBHOOK_URL` | Slack incoming webhook for access-request notifications | Yes (set empty string if unused) |
+
+Create missing secrets with:
+
+```bash
+# Example for staging project
+for SECRET in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET ADMIN_SEED_EMAIL ALLOW_ANY_X_USER_LOGIN SLACK_WEBHOOK_URL; do
+  gcloud secrets create "$SECRET" --project="<staging-project-id>" --replication-policy=automatic 2>/dev/null || true
+  echo -n "<value>" | gcloud secrets versions add "$SECRET" --project="<staging-project-id>" --data-file=-
+done
+```
+
 ### GitHub Environment Variables
 
 Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-scoped.
@@ -130,8 +163,8 @@ Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-sc
 | `GCP_PROJECT_ID_STAGING` | `<your-staging-project-id>` | same value (staging-only variable) |
 | `GCP_PROJECT_ID_PROD` | same value (prod-only variable) | `<your-prod-project-id>` |
 | `CLOUD_RUN_REGION` | `us-central1` (recommended) | `us-central1` (recommended) |
-| `CLOUD_RUN_SERVICE_STAGING` | `xfinance-core-staging` | same value (staging-only variable) |
-| `CLOUD_RUN_SERVICE_PROD` | same value (prod-only variable) | `xfinance-core-prod` |
+| `CLOUD_RUN_SERVICE_STAGING` | `atxfinance-core-staging` | same value (staging-only variable) |
+| `CLOUD_RUN_SERVICE_PROD` | same value (prod-only variable) | `atxfinance-core-prod` |
 | `STAGING_BASE_URL` | `https://staging.atx.fintech-advisor.ai` | same value (staging-only variable) |
 | `PROD_BASE_URL` | same value (prod-only variable) | `https://atx.fintech-advisor.ai` |
 | `EXPECTED_GITHUB_REPOSITORY` | `devsecopstx/xfinance` | same value |
@@ -155,8 +188,8 @@ GH_REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 gh variable set GCP_PROJECT_ID_STAGING --repo "$GH_REPO" --body "$STAGING_PROJECT_ID"
 gh variable set GCP_PROJECT_ID_PROD --repo "$GH_REPO" --body "$PROD_PROJECT_ID"
 gh variable set CLOUD_RUN_REGION --repo "$GH_REPO" --body "us-central1"
-gh variable set CLOUD_RUN_SERVICE_STAGING --repo "$GH_REPO" --body "xfinance-core-staging"
-gh variable set CLOUD_RUN_SERVICE_PROD --repo "$GH_REPO" --body "xfinance-core-prod"
+gh variable set CLOUD_RUN_SERVICE_STAGING --repo "$GH_REPO" --body "atxfinance-core-staging"
+gh variable set CLOUD_RUN_SERVICE_PROD --repo "$GH_REPO" --body "atxfinance-core-prod"
 gh variable set STAGING_BASE_URL --repo "$GH_REPO" --body "https://staging.atx.fintech-advisor.ai"
 gh variable set PROD_BASE_URL --repo "$GH_REPO" --body "https://atx.fintech-advisor.ai"
 gh variable set EXPECTED_GITHUB_REPOSITORY --repo "$GH_REPO" --body "$GH_REPO"
@@ -275,9 +308,9 @@ For a full GCP recreate with `atx` instead of `core` subdomain, see [docs/gcp-en
 Use this ordered checklist for first live rollout:
 
 - [ ] Create runtime secrets in both GCP projects (`fintech-advisor-staging`, `fintech-advisor-prod`)
-- [ ] Deploy staging raw (`gcloud run deploy ...` to `xfinance-core-staging`)
+- [ ] Deploy staging raw (`gcloud run deploy ...` to `atxfinance-core-staging`)
 - [ ] Validate staging health (`GET https://staging.atx.fintech-advisor.ai/api/health`)
-- [ ] Deploy prod raw (`gcloud run deploy ...` to `xfinance-core-prod`)
+- [ ] Deploy prod raw (`gcloud run deploy ...` to `atxfinance-core-prod`)
 - [ ] Add Route53 records for mapped domains
 
 Route53 TODO details:
@@ -307,7 +340,7 @@ Route53 TODO details:
 Use GitHub Actions workflow `Rollback Cloud Run` with:
 
 - `target`: `staging` or `production`
-- `revision`: known good Cloud Run revision (for example, `xfinance-core-prod-00023-abc`)
+- `revision`: known good Cloud Run revision (for example, `atxfinance-core-prod-00023-abc`)
 
 The workflow:
 
@@ -320,15 +353,15 @@ The workflow:
 ```bash
 # List revisions (replace service/project)
 gcloud run revisions list \
-  --service xfinance-core-prod \
+  --service atxfinance-core-prod \
   --region us-central1 \
   --project fintech-advisor-prod
 
 # Shift traffic to a known good revision
-gcloud run services update-traffic xfinance-core-prod \
+gcloud run services update-traffic atxfinance-core-prod \
   --region us-central1 \
   --platform managed \
-  --to-revisions xfinance-core-prod-00023-abc=100
+  --to-revisions atxfinance-core-prod-00023-abc=100
 ```
 
 ## API Endpoints
@@ -336,6 +369,7 @@ gcloud run services update-traffic xfinance-core-prod \
 ### Health and auth
 
 - `GET /api/health`
+- `GET /api/openapi` (OpenAPI 3.1 current-state inventory used by admin Swagger UI)
 - `GET /api/auth/x/login`
 - `GET /api/auth/x/callback`
 - `POST /api/auth/link-email` (email-first fallback link flow)
@@ -413,11 +447,19 @@ gcloud run services update-traffic xfinance-core-prod \
 
 ### xChat
 
-- `POST /api/xchat/ask` (supports xfinance tool loop when persona has xfinance tool)
+- `POST /api/xchat/ask` (supports atxfinance tool loop when persona has atxfinance tool)
 - `POST /api/xchat/batch`
 - `GET /api/xchat/batch`
 - `GET /api/xchat/batch/:batchId`
 - `POST /api/xchat/batch/:batchId`
+
+### API docs validation (pre/post deploy)
+
+Validate docs surfaces as part of release checks:
+
+1. `GET /api/openapi` returns HTTP 200 and includes documented paths for all `src/app/api/**/route.ts` handlers.
+2. `GET /admin/api-docs` loads Swagger UI in an authenticated admin session.
+3. `tests/integration/openapi-current-state-coverage.test.ts` passes in CI (`npm run ci:gate`), preventing route/doc drift.
 
 ## Access Request State Machine
 
@@ -482,7 +524,7 @@ Tool result caching in `src/modules/xchat/tool-cache.ts` (60s TTL, 200 max entri
 After running `npm run seed:admin`, verify:
 
 1. `core_users` has `atxbogart@gmail.com` with role `global_admin`
-2. `core_tenants` has `slug: xfinance-core` with `isDefault: true`
+2. `core_tenants` has `slug: atxfinance-core` with `isDefault: true`
 3. `core_tenant_memberships` has one default membership linking the admin user and default tenant
 4. `xchat_personas` contains default `Super-Agent` persona with:
    - `nameNormalized: "super-agent"`
@@ -516,7 +558,7 @@ To make files visible inside a collection, perform both steps:
 
 ```bash
 # 0) Set known Finance collection id (provided by team)
-export XFINANCE_COLLECTION_ID="collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
+export ATXFINANCE_COLLECTION_ID="collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
 
 # 1) Upload file using standard key
 UPLOAD_RESPONSE="$(curl -sS -X POST https://api.x.ai/v1/files \
@@ -528,7 +570,7 @@ echo "${UPLOAD_RESPONSE}"
 FILE_ID="$(echo "${UPLOAD_RESPONSE}" | jq -r '.id')"
 
 # 3) Attach uploaded file to collection using management key
-curl -sS -X POST "https://management-api.x.ai/v1/collections/${XFINANCE_COLLECTION_ID}/documents/${FILE_ID}" \
+curl -sS -X POST "https://management-api.x.ai/v1/collections/${ATXFINANCE_COLLECTION_ID}/documents/${FILE_ID}" \
   -H "Authorization: Bearer ${XAI_MANAGEMENT_API_KEY}"
 ```
 
@@ -550,7 +592,7 @@ with payload shape:
 
 ```json
 {
-  "name": "xfinance-smoke-<timestamp>",
+  "name": "atxfinance-smoke-<timestamp>",
   "acls": ["api-key:model:*", "api-key:endpoint:*"],
   "qps": 3,
   "qpm": 10,
@@ -560,9 +602,9 @@ with payload shape:
 
 ## Design and Branding
 
-- **Branding prompts and tags:** `branding/xfinance-brand-prompts.md`, `branding/xfinance-branding-tags.md`, `branding/xfinance-color-palette.md`, `branding/xfinance-typography.md`
-- **Design system:** `design-system/xfinance-brand-kit.md`, `design-system/xfinance-brand-kit.css`
-- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/xfinance-brand-kit.md` § Admin Console Direction. UX review findings: `docs/xchat/xdesign-review-admin-console-ux.md`
+- **Branding prompts and tags:** `branding/atxfinance-brand-prompts.md`, `branding/atxfinance-branding-tags.md`, `branding/atxfinance-color-palette.md`, `branding/atxfinance-typography.md`
+- **Design system:** `design-system/atxfinance-brand-kit.md`, `design-system/atxfinance-brand-kit.css`
+- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `docs/xchat/xdesign-review-admin-console-ux.md`
 
 ## Admin Step-by-Step Validation (xChat readiness)
 
@@ -611,7 +653,7 @@ Use this checklist to validate "admin can start using xChat" in an authenticated
 
 ```json
 {
-  "email": "analyst@xfinance.ai",
+  "email": "analyst@atxfinance.ai",
   "requestedRole": "operator",
   "reason": "Onboarding from admin console"
 }

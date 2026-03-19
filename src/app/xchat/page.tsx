@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { getSessionUser } from "@/lib/auth";
-import { XFinanceLogo } from "@/app/ui/xfinance-logo";
+import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
 
 import { PlansLanding } from "./ui/plans-landing";
 import { XchatConversation } from "./ui/xchat-conversation";
@@ -19,7 +19,7 @@ export default async function XchatPage() {
       <div className="xchat-shell">
         <header className="xchat-header">
           <Link className="xchat-header-brand" href="/xchat">
-            <XFinanceLogo size="sm" />
+            <AtxFinanceLogo size="sm" />
           </Link>
         </header>
         <div className="xchat-body">
@@ -36,7 +36,7 @@ export default async function XchatPage() {
     <div className="xchat-shell">
       <header className="xchat-header">
         <Link className="xchat-header-brand" href="/xchat">
-          <XFinanceLogo size="sm" />
+          <AtxFinanceLogo size="sm" />
         </Link>
         <nav className="xchat-header-nav">
           {isAdmin ? (

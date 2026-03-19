@@ -23,7 +23,8 @@ const identityMocks = vi.hoisted(() => ({
   linkXAccountToUser: vi.fn(),
   ensureDefaultTenant: vi.fn(),
   upsertTenantMembership: vi.fn(),
-  resolveAuthContext: vi.fn()
+  resolveAuthContext: vi.fn(),
+  ensureSeededGlobalAdmin: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -53,13 +54,13 @@ describe("oauth host normalization smoke", () => {
 
     identityMocks.getCoreUserByXIdentity.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "admin@xfinance.ai",
+      email: "admin@atxfinance.ai",
       roles: ["global_admin"],
       status: "active"
     });
     identityMocks.linkXAccountToUser.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "admin@xfinance.ai",
+      email: "admin@atxfinance.ai",
       roles: ["global_admin"],
       status: "active"
     });
@@ -72,12 +73,20 @@ describe("oauth host normalization smoke", () => {
     });
     identityMocks.resolveAuthContext.mockResolvedValue({
       userId: { toHexString: () => "507f1f77bcf86cd799439011" },
-      email: "admin@xfinance.ai",
+      email: "admin@atxfinance.ai",
       roles: ["global_admin"],
       tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
       tenantRole: "tenant_admin",
       xUserId: "x-user-1",
       username: "adminuser"
+    });
+    identityMocks.ensureSeededGlobalAdmin.mockResolvedValue({
+      user: {
+        _id: { toHexString: () => "507f1f77bcf86cd799439011" },
+        email: "admin@atxfinance.ai",
+        roles: ["global_admin"],
+        status: "active"
+      }
     });
 
     global.fetch = vi
@@ -95,7 +104,7 @@ describe("oauth host normalization smoke", () => {
           data: {
             id: "x-user-1",
             username: "adminuser",
-            email: "admin@xfinance.ai"
+            email: "admin@atxfinance.ai"
           }
         })
       }) as typeof fetch;

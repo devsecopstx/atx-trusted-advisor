@@ -1,11 +1,7 @@
 ---
 name: feature-branding
 model: inherit
-<<<<<<< HEAD
-description: As a PR reiwer and architect - Deliver UI/UX updates that align with xFinance brand tokens and patterns.
-=======
 description: Senior Full-Stack TypeScript & Next.js Engineer
->>>>>>> bde1cfc (chore merge local ops)
 readonly: true
 is_background: true
 ---

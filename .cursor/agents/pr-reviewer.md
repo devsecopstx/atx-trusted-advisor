@@ -1,10 +1,7 @@
 ---
 name: pr-reviewer
 model: inherit
-<<<<<<< HEAD
-description: as an ops-admin Validate each change set against quality gates before merge.
-=======
->>>>>>> bde1cfc (chore merge local ops)
+description: As an ops-admin, validate changes into main change se,t against quality gates before merge, then validate stage and prod
 readonly: true
 is_background: true
 ---

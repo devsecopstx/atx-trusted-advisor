@@ -21,7 +21,7 @@ export default async function AdminEditPersonaPage({ params }: RouteContext) {
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">xfinance core admin</p>
+        <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Edit xPersona</h1>
         <p className="hero-copy">Edit a persona in a dedicated page for complex settings.</p>
       </section>
