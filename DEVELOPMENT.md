@@ -149,7 +149,9 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 
 ### GCP Secret Manager — Required Secrets (Staging & Production)
 
-All secrets below must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
+These must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
+
+`ADMIN_SEED_EMAIL` and `ALLOW_ANY_X_USER_LOGIN` are **not** GCP secrets for deploy: the workflow sets `ALLOW_ANY_X_USER_LOGIN=false` on the service and passes `ADMIN_SEED_EMAIL` from the GitHub Environment secret `ADMIN_SEED_EMAIL` (see below).
 
 | Secret name | Purpose | Required |
 | --- | --- | --- |
@@ -159,15 +161,13 @@ All secrets below must exist in GCP Secret Manager for each project. The deploy 
 | `X_OAUTH_CLIENT_ID` | X OAuth 2.0 client ID (raw, not base64) | Yes |
 | `X_OAUTH_CLIENT_SECRET` | X OAuth 2.0 client secret | Yes |
 | `AUTH_SECRET` | Session signing secret (min 16 chars) | Yes |
-| `ADMIN_SEED_EMAIL` | Email auto-seeded as global_admin on first login | Yes |
-| `ALLOW_ANY_X_USER_LOGIN` | Feature flag — `true` allows any authenticated X user to reach `/xchat` | Yes (set `false` if unused) |
 | `SLACK_WEBHOOK_URL` | Slack incoming webhook for access-request notifications | Yes (set empty string if unused) |
 
 Create missing secrets with:
 
 ```bash
 # Example for staging project
-for SECRET in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET ADMIN_SEED_EMAIL ALLOW_ANY_X_USER_LOGIN SLACK_WEBHOOK_URL; do
+for SECRET in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL; do
   gcloud secrets create "$SECRET" --project="<staging-project-id>" --replication-policy=automatic 2>/dev/null || true
   echo -n "<value>" | gcloud secrets versions add "$SECRET" --project="<staging-project-id>" --data-file=-
 done
@@ -240,6 +240,15 @@ Use environment-scoped secrets in GitHub:
 | --- | --- | --- |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `<staging-provider-resource-name>` | `<prod-provider-resource-name>` |
 | `GCP_SERVICE_ACCOUNT_EMAIL` | `<staging-deploy-sa>@<staging-project>.iam.gserviceaccount.com` | `<prod-deploy-sa>@<prod-project>.iam.gserviceaccount.com` |
+| `ADMIN_SEED_EMAIL` | Same value as local `.env` / seed admin email | Same (prod admin email) |
+
+Set after creating environments:
+
+```bash
+GH_REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+gh secret set ADMIN_SEED_EMAIL --repo "$GH_REPO" --env staging --body "you@example.com"
+gh secret set ADMIN_SEED_EMAIL --repo "$GH_REPO" --env production --body "you@example.com"
+```
 
 ### Org/Repo Migration OIDC Fix
 

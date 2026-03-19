@@ -95,7 +95,7 @@ For both envs, set required app keys:
 | `X_OAUTH_CLIENT_SECRET` | required | required | separate app creds preferred |
 | `AUTH_SECRET` | strongly required | strongly required | minimum 16 chars |
 | `X_OAUTH_CALLBACK_URL` | `https://staging.atx.<domain>/api/auth/x/callback` | `https://atx.<domain>/api/auth/x/callback` | pin callbacks in production-like envs |
-| `ADMIN_SEED_EMAIL` | optional | optional | default seed admin email |
+| `ADMIN_SEED_EMAIL` | optional | optional | GitHub Environment secret `ADMIN_SEED_EMAIL` on Cloud Run deploy (not GCP Secret Manager) |
 | `ADMIN_X_USERNAMES` | optional | optional | comma-separated allowlist |
 
 ## OAuth and Cookie Safety
