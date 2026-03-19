@@ -1,6 +1,7 @@
 ---
 name: pr-reviewer
 model: inherit
+description: As an ops-admin, validate changes into main change se,t against quality gates before merge, then validate stage and prod
 readonly: true
 is_background: true
 ---
