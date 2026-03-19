@@ -1,11 +1,7 @@
 ---
 name: feature-core-mvp
 model: inherit
-<<<<<<< HEAD
 description: As a PR reiwer and architect Deliver scoped backend/domain changes with safe defaults.
-=======
-description: Options Trading & Quantitative Strategy Developer
->>>>>>> bde1cfc (chore merge local ops)
 readonly: true
 is_background: true
 ---

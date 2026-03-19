@@ -11,6 +11,8 @@ const OAUTH_VERIFIER_COOKIE_NAME = "xf_x_oauth_verifier";
 const PENDING_LINK_COOKIE_NAME = "xf_x_pending_link";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const OAUTH_FLOW_TTL_SECONDS = 60 * 10;
+const LEGACY_ADMIN_ROLE = "admin";
+const GLOBAL_ADMIN_ROLE = "global_admin";
 
 export type SessionUser = {
   userId: string;
@@ -34,6 +36,18 @@ export type PendingXLink = {
 type SessionPayload = SessionUser & {
   exp: number;
 };
+
+function normalizeSessionRoles(roles: string[] | undefined): string[] {
+  if (!roles || roles.length === 0) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      roles.map((role) => (role === LEGACY_ADMIN_ROLE ? GLOBAL_ADMIN_ROLE : role))
+    )
+  );
+}
 
 function getSigningSecret(): string {
   const env = getEnv();
@@ -81,8 +95,10 @@ function parseSessionCookie(raw: string): SessionPayload | null {
 
 export async function createSession(user: SessionUser): Promise<void> {
   const cookieStore = await cookies();
+  const normalizedRoles = normalizeSessionRoles(user.roles);
   const payload: SessionPayload = {
     ...user,
+    roles: normalizedRoles,
     exp: Date.now() + SESSION_TTL_SECONDS * 1000
   };
   const encodedPayload = toBase64Url(JSON.stringify(payload));
@@ -117,7 +133,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return {
     userId: payload.userId,
     email: payload.email,
-    roles: payload.roles,
+    roles: normalizeSessionRoles(payload.roles),
     tenantId: payload.tenantId,
     tenantRole: payload.tenantRole,
     xUserId: payload.xUserId,
