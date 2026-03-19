@@ -121,12 +121,6 @@ export function AppUserHeaderSession({
 
   return (
     <div className="xchat-header-session">
-      {mongoConnection ? (
-        <span className="xchat-header-db-pill" title={`MongoDB (beta) — ${mongoConnection}`}>
-          <span className="xchat-header-db-pill-label">DB</span>
-          <span className="xchat-header-db-pill-value">{mongoConnection}</span>
-        </span>
-      ) : null}
       <button
         className="tiny-button xchat-header-session-btn"
         onClick={() => {

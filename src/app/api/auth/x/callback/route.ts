@@ -12,6 +12,7 @@ import {
   getXOauthClientId,
   isAllowAnyXUserLoginEnabled
 } from "@/lib/env";
+import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import {
   createAccessRequest,
   getPendingAccessRequestByUserAndRole,
@@ -30,7 +31,6 @@ import {
   upsertTenantMembership
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
-import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 
 type XTokenResponse = {
   access_token: string;
