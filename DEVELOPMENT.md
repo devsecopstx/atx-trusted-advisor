@@ -464,6 +464,7 @@ Validate docs surfaces as part of release checks:
 1. `GET /api/openapi` returns HTTP 200 and includes documented paths for all `src/app/api/**/route.ts` handlers.
 2. `GET /admin/api-docs` loads Swagger UI in an authenticated admin session.
 3. `tests/integration/openapi-current-state-coverage.test.ts` passes in CI (`npm run ci:gate`), preventing route/doc drift.
+4. `tests/integration/openapi-document-build.test.ts` asserts the generated OpenAPI 3.1 document shape (info, paths, security schemes, override merge) so builder regressions fail in CI.
 
 ## Access Request State Machine
 

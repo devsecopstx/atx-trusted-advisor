@@ -17,9 +17,12 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 - Lint: `npm run lint`
 - Types: `npm run typecheck`
 - Tests: `npm run test`
+- Integration-only: `npm run test:integration` (optional; `npm run test` already includes `tests/integration/**`)
 - Build: `npm run build`
 - CI gate: `npm run ci:gate`
 - Release gate: `npm run ci:gate && npm run build`
+
+OpenAPI inventory is guarded by route parity + document build tests under `tests/integration/openapi-*.test.ts` (see `DEVELOPMENT.md#api-docs-validation`).
 
 ## Critical Env Keys
 
