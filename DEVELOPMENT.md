@@ -583,7 +583,7 @@ After running `npm run seed:admin`, verify:
    - `systemPrompt` set to the Architect administrative prompt
    - `xaiCollection.collectionId: "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"` (Finance collection)
    - `xapi.tools`: `web_search`, `x_search`, `file_search` (Finance collection ids), and `atxfinance`
-5. **xFinance** (`nameNormalized: "xfinance"`): publish this persona for non-admin xChat (FinExpert). If it is missing, the first non-admin `POST /api/xchat/ask` still creates it from `default-xpersonas.ts` — prefer publishing a seeded or hand-crafted row so environments stay explicit.
+5. **xFinance** (`nameNormalized: "xfinance"`): not created by seed — the first non-admin `POST /api/xchat/ask` creates it from `default-xpersonas.ts` if absent. **Publish** this persona for non-admin xChat (FinExpert); prefer an explicit seeded or hand-crafted row in Admin → Personas so environments stay clear.
 6. `portfolio_portfolios` contains one default portfolio for the seeded admin user.
 7. `portfolio_accounts` contains one default account (`type: "fidelity"`) linked to that default portfolio.
 8. `portfolio_watchlists` contains `DefaultWatchlist` linked to that default portfolio with `symbols: [{ symbol: "TSLA" }]`.
