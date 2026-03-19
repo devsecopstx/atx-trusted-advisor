@@ -37,6 +37,19 @@ Default to maintaining this minimum docs set:
 
 When introducing new subsystems, prefer extending `DEVELOPMENT.md` and linking from `README.md` instead of creating scattered top-level docs.
 
+## Cursor rules (`.cursor/rules/*.mdc`)
+
+**Gaps to avoid**
+
+- **Patch noise**: rule files must not contain leading `+` lines or duplicate frontmatter blocks (merge artifacts break Cursor parsing).
+- **Wrong globs**: paths must match **this** repo (e.g. xChat → `src/app/xchat/**`, `src/app/api/xchat/**`, `src/modules/xchat/**`, `docs/xchat/**` — not other monorepo layouts).
+- **Drift**: if a rule references APIs or folders that moved, update the rule in the same PR as the code move.
+
+**When to document**
+
+- New or heavily updated `.mdc` files: add a **one-line pointer** in `DEVELOPMENT.md` or `AGENTS.md` under Cursor / agent setup *if* operators need to discover them; otherwise the rule is self-describing via `description` + `globs`.
+- xChat-specific product/agent notes stay in **`docs/xchat/`**; keep rules short and link out.
+
 ## Version Consistency Rules
 
 - Canonical app version lives only in `package.json`.
@@ -49,6 +62,7 @@ When introducing new subsystems, prefer extending `DEVELOPMENT.md` and linking f
   - `.cursor/skills/test-commit-push/SKILL.md`
   - `.cursor/skills/test-commit-push/CHECKLIST.md`
   - `AGENTS.md`
+- Rule changes under `.cursor/rules/` ship with the same validation pass as skills (see test-commit-push checklist).
 
 ## Output
 
