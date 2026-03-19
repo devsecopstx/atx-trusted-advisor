@@ -336,6 +336,7 @@ gcloud run services update-traffic atxfinance-core-prod \
 ### Health and auth
 
 - `GET /api/health`
+- `GET /api/openapi` (OpenAPI 3.1 current-state inventory used by admin Swagger UI)
 - `GET /api/auth/x/login`
 - `GET /api/auth/x/callback`
 - `POST /api/auth/link-email` (email-first fallback link flow)
@@ -418,6 +419,14 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/xchat/batch`
 - `GET /api/xchat/batch/:batchId`
 - `POST /api/xchat/batch/:batchId`
+
+### API docs validation (pre/post deploy)
+
+Validate docs surfaces as part of release checks:
+
+1. `GET /api/openapi` returns HTTP 200 and includes documented paths for all `src/app/api/**/route.ts` handlers.
+2. `GET /admin/api-docs` loads Swagger UI in an authenticated admin session.
+3. `tests/integration/openapi-current-state-coverage.test.ts` passes in CI (`npm run ci:gate`), preventing route/doc drift.
 
 ## Access Request State Machine
 
