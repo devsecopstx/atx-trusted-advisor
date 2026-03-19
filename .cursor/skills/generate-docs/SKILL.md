@@ -31,7 +31,7 @@ Default to maintaining this minimum docs set:
 
 - `README.md`: product scope + fast local start.
 - `DEVELOPMENT.md`: full setup, required env keys, runbooks, API map.
-- `.env.example`: safe placeholders and required key names only.
+- `.env.example`: empty `KEY=` lines and required key names only (no credential-shaped placeholders).
 - `AGENTS.md`: operator-centric commands/checks and troubleshooting.
 - `CONTRIBUTING.md`: local validation + PR quality gates.
 
