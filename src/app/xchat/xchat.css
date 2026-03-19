@@ -21,6 +21,10 @@
   align-items: center;
 }
 
+.xchat-header-brand-atx {
+  color: var(--xf-gain-green);
+}
+
 .xchat-header-main {
   flex: 1;
   display: flex;
@@ -86,35 +90,6 @@
 .xchat-header-code {
   font-size: 0.75em;
   word-break: break-all;
-}
-
-.xchat-header-db-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  max-width: min(200px, 38vw);
-  padding: 0.2rem 0.45rem;
-  border-radius: 6px;
-  font-size: 0.65rem;
-  line-height: 1.2;
-  color: var(--xf-text-300);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.xchat-header-db-pill-label {
-  flex-shrink: 0;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--xf-text-100);
-  opacity: 0.85;
-}
-
-.xchat-header-db-pill-value {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: ui-monospace, monospace;
 }
 
 .xchat-header-session-err {

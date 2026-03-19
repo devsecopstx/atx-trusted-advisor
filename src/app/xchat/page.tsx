@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { AppUserApprovedHeader } from "@/app/ui/app-user-approved-header";
-import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
+import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
 import { getSessionUser } from "@/lib/auth";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
@@ -16,8 +16,8 @@ export default async function XchatPage() {
     return (
       <div className="xchat-shell">
         <header className="xchat-header">
-          <Link className="xchat-header-brand" href="/xchat">
-            <AtxFinanceLogo size="sm" />
+          <Link aria-label="aTx Finance — xChat home" className="xchat-header-brand" href="/xchat">
+            <XchatHeaderBrand />
           </Link>
         </header>
         <div className="xchat-body">
@@ -36,8 +36,8 @@ export default async function XchatPage() {
         <AppUserApprovedHeader current="xchat" feedbackPageLabel="xChat" session={session} />
       ) : (
         <header className="xchat-header">
-          <Link className="xchat-header-brand" href="/xchat">
-            <AtxFinanceLogo size="sm" />
+          <Link aria-label="aTx Finance — xChat home" className="xchat-header-brand" href="/xchat">
+            <XchatHeaderBrand />
           </Link>
         </header>
       )}

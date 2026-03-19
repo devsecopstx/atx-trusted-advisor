@@ -8,7 +8,7 @@ import {
 
 import { AppUserHeaderSession } from "./app-user-header-session";
 import { AppUserProductNav, type AppUserProductNavCurrent } from "./app-user-product-nav";
-import { AtxFinanceLogo } from "./atxfinance-logo";
+import { XchatHeaderBrand } from "./xchat-header-brand";
 
 type AppUserApprovedHeaderProps = {
   session: SessionUser;
@@ -28,8 +28,8 @@ export function AppUserApprovedHeader({
 
   return (
     <header className="xchat-header">
-      <Link className="xchat-header-brand" href="/xchat">
-        <AtxFinanceLogo size="sm" />
+      <Link aria-label="aTx Finance — xChat home" className="xchat-header-brand" href="/xchat">
+        <XchatHeaderBrand />
       </Link>
       <div className="xchat-header-main">
         <AppUserProductNav current={current} roles={session.roles} />
