@@ -15,7 +15,8 @@ const coreAdminMocks = vi.hoisted(() => ({
 
 const identityMocks = vi.hoisted(() => ({
   addRoleToCoreUser: vi.fn(),
-  updateCoreUserSubscriptionPlan: vi.fn()
+  updateCoreUserSubscriptionPlan: vi.fn(),
+  getCoreUserById: vi.fn()
 }));
 
 const auditMocks = vi.hoisted(() => ({
@@ -23,15 +24,20 @@ const auditMocks = vi.hoisted(() => ({
   listAuditEventsForEntity: vi.fn()
 }));
 
+const bootstrapMocks = vi.hoisted(() => ({
+  enqueueAccessRequestBootstrap: vi.fn()
+}));
+
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 
 import {
-  DELETE as deleteAccessRequest,
-  GET as getAccessRequest,
-  PUT as putAccessRequest
+    DELETE as deleteAccessRequest,
+    GET as getAccessRequest,
+    PUT as putAccessRequest
 } from "@/app/api/admin/access-requests/[requestId]/route";
 
 describe("access request item CRUD route", () => {
@@ -78,8 +84,12 @@ describe("access request item CRUD route", () => {
     });
     identityMocks.addRoleToCoreUser.mockResolvedValue({});
     identityMocks.updateCoreUserSubscriptionPlan.mockResolvedValue({});
+    identityMocks.getCoreUserById.mockResolvedValue({
+      email: "viewer@atxfinance.ai"
+    });
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
+    bootstrapMocks.enqueueAccessRequestBootstrap.mockResolvedValue(undefined);
   });
 
   it("gets access request by id", async () => {

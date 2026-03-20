@@ -27,6 +27,7 @@ const coreAdminMocks = vi.hoisted(() => ({
 const identityMocks = vi.hoisted(() => ({
   addRoleToCoreUser: vi.fn(),
   updateCoreUserSubscriptionPlan: vi.fn(),
+  getCoreUserById: vi.fn(),
   getCoreUserByXIdentity: vi.fn(),
   getCoreUserByEmail: vi.fn(),
   unlinkXAccountFromUser: vi.fn(),
@@ -44,6 +45,10 @@ const auditMocks = vi.hoisted(() => ({
   listAuditEventsForEntity: vi.fn()
 }));
 
+const bootstrapMocks = vi.hoisted(() => ({
+  enqueueAccessRequestBootstrap: vi.fn()
+}));
+
 const envMocks = vi.hoisted(() => ({
   getEnv: vi.fn(),
   getXOauthClientId: vi.fn(),
@@ -54,10 +59,11 @@ vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/lib/env", () => envMocks);
 
-import { GET as getAccessRequests } from "@/app/api/admin/access-requests/route";
 import { PATCH as patchAccessRequest } from "@/app/api/admin/access-requests/[requestId]/route";
+import { GET as getAccessRequests } from "@/app/api/admin/access-requests/route";
 import { GET as oauthCallback } from "@/app/api/auth/x/callback/route";
 
 function makeUser() {
@@ -133,6 +139,7 @@ describe("access request approval login flow", () => {
       return makeUser();
     });
     identityMocks.updateCoreUserSubscriptionPlan.mockImplementation(async () => makeUser());
+    identityMocks.getCoreUserById.mockResolvedValue(makeUser());
     identityMocks.getCoreUserByXIdentity.mockResolvedValue(null);
     identityMocks.getCoreUserByEmail.mockImplementation(async () => makeUser());
     identityMocks.unlinkXAccountFromUser.mockResolvedValue(undefined);
@@ -182,6 +189,7 @@ describe("access request approval login flow", () => {
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     auditMocks.listLatestAuditEventsForEntities.mockResolvedValue({});
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
+    bootstrapMocks.enqueueAccessRequestBootstrap.mockResolvedValue(undefined);
 
     envMocks.getEnv.mockReturnValue({
       X_OAUTH_CLIENT_SECRET: "test-secret",
@@ -243,6 +251,7 @@ describe("access request approval login flow", () => {
     expect(approvalResponse.status).toBe(200);
     expect(state.userRoles).toContain("viewer");
     expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledTimes(1);
+    expect(bootstrapMocks.enqueueAccessRequestBootstrap).toHaveBeenCalledTimes(1);
 
     global.fetch = vi
       .fn()

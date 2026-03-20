@@ -4,20 +4,22 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
+import { enqueueAccessRequestBootstrap } from "@/modules/core-admin/access-request-bootstrap";
 import {
-  deleteAccessRequest,
-  getAccessRequestById,
-  provisionDefaultPortfolioForUser,
-  reviewAccessRequestById,
-  updateAccessRequestPlanById
+    deleteAccessRequest,
+    getAccessRequestById,
+    provisionDefaultPortfolioForUser,
+    reviewAccessRequestById,
+    updateAccessRequestPlanById
 } from "@/modules/core-admin/repository";
 import {
-  ACTIONABLE_ACCESS_REQUEST_STATUSES,
-  type AccessRequest
+    ACTIONABLE_ACCESS_REQUEST_STATUSES,
+    type AccessRequest
 } from "@/modules/core-admin/types";
 import {
-  addRoleToCoreUser,
-  updateCoreUserSubscriptionPlan
+    addRoleToCoreUser,
+    getCoreUserById,
+    updateCoreUserSubscriptionPlan
 } from "@/modules/identity/repository";
 
 const reviewAccessRequestSchema = z.object({
@@ -126,6 +128,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
   }
 
   const effectivePlan = parsed.data.requestedPlan ?? existing.requestedPlan ?? "free";
+  let approvedUserObjectId: ObjectId | null = null;
 
   if (parsed.data.status === "approved") {
     if (!ObjectId.isValid(existing.userId)) {
@@ -135,6 +138,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
       );
     }
     const userId = new ObjectId(existing.userId);
+    approvedUserObjectId = userId;
     await addRoleToCoreUser({
       userId,
       role: existing.requestedRole
@@ -187,6 +191,41 @@ async function handleUpdate(request: Request, context: RouteContext) {
       requestedPlan: effectivePlan
     }
   });
+
+  if (parsed.data.status === "approved") {
+    const approvedUser = approvedUserObjectId
+      ? await getCoreUserById(approvedUserObjectId)
+      : null;
+    if (!approvedUser?.email) {
+      await createAuditEvent({
+        entityType: "access_request",
+        entityId: requestId,
+        action: "alert-user-not-sync-warning",
+        actor: {
+          userId: session.userId,
+          email: session.email,
+          username: session.username
+        },
+        details: {
+          reason: "approved user email missing; skipped xchat bootstrap sync",
+          userId: existing.userId
+        }
+      });
+    } else {
+      await enqueueAccessRequestBootstrap({
+        requestId,
+        userId: existing.userId,
+        userEmail: approvedUser.email,
+        tenantId: session.tenantId,
+        requestedPlan: effectivePlan,
+        actor: {
+          userId: session.userId,
+          email: session.email,
+          username: session.username
+        }
+      });
+    }
+  }
 
   return NextResponse.json({ data: serializeAccessRequest(reviewed) });
 }
