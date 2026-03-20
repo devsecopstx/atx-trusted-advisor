@@ -95,7 +95,7 @@ For both envs, set required app keys:
 | `X_OAUTH_CLIENT_SECRET` | required | required | separate app creds preferred |
 | `AUTH_SECRET` | strongly required | strongly required | minimum 16 chars |
 | `X_OAUTH_CALLBACK_URL` | `https://staging.atx.<domain>/api/auth/x/callback` | `https://atx.<domain>/api/auth/x/callback` | pin callbacks in production-like envs |
-| `ADMIN_SEED_EMAIL` | optional | optional | GitHub Environment secret `ADMIN_SEED_EMAIL` on Cloud Run deploy (not GCP Secret Manager) |
+| `ADMIN_SEED_EMAIL` | required | required | GCP Secret Manager secret `ADMIN_SEED_EMAIL` mounted like other runtime secrets (see `deploy-cloud-run.yml`) |
 | `ALLOW_ANY_X_USER_LOGIN` | optional `true` for open `/xchat` | omit / `false` | GitHub Variable per environment; prod should stay unset or `false` |
 | `ADMIN_X_USERNAMES` | optional | optional | comma-separated allowlist |
 

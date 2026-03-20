@@ -151,7 +151,9 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 
 These must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
 
-`ADMIN_SEED_EMAIL` and `ALLOW_ANY_X_USER_LOGIN` are **not** mounted from GCP Secret Manager: the workflow passes `ADMIN_SEED_EMAIL` from the GitHub Environment secret `ADMIN_SEED_EMAIL` (see below) and sets `ALLOW_ANY_X_USER_LOGIN` from the GitHub **variable** of that name (default `false` when unset). Use **`true` only on staging** if you want any signed-in X user on `/xchat`; on **production**, leave it unset or `false` so only registered / access-approved users reach `/xchat`.
+**Single source of truth (Cloud Run runtime):** All app credentials below live in **GCP Secret Manager** per project and are mounted via `gcloud run deploy … --set-secrets` (see `.github/workflows/deploy-cloud-run.yml`). Do **not** duplicate them as GitHub Environment secrets for deploy — the workflow verifies each name exists with `gcloud secrets describe` after OIDC auth.
+
+`ALLOW_ANY_X_USER_LOGIN` is **not** a GCP secret: the workflow sets it from the GitHub **variable** of that name (default `false`). Use **`true` only on staging** if you want any signed-in X user on `/xchat`; on **production**, leave it unset or `false`.
 
 | Secret name | Purpose | Required |
 | --- | --- | --- |
@@ -161,13 +163,14 @@ These must exist in GCP Secret Manager for each project. The deploy workflow mou
 | `X_OAUTH_CLIENT_ID` | X OAuth 2.0 client ID (raw, not base64) | Yes |
 | `X_OAUTH_CLIENT_SECRET` | X OAuth 2.0 client secret | Yes |
 | `AUTH_SECRET` | Session signing secret (min 16 chars) | Yes |
-| `SLACK_WEBHOOK_URL` | Slack incoming webhook for access-request notifications | Yes (set empty string if unused) |
+| `SLACK_WEBHOOK_URL` | Slack incoming webhook (may be empty string) | Yes (create secret; use empty payload if unused) |
+| `ADMIN_SEED_EMAIL` | Plain admin bootstrap email (same semantics as local `.env`) | Yes |
 
 Create missing secrets with:
 
 ```bash
 # Example for staging project
-for SECRET in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL; do
+for SECRET in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
   gcloud secrets create "$SECRET" --project="<staging-project-id>" --replication-policy=automatic 2>/dev/null || true
   echo -n "<value>" | gcloud secrets versions add "$SECRET" --project="<staging-project-id>" --data-file=-
 done
@@ -218,7 +221,7 @@ gh variable set EXPECTED_GITHUB_OWNER --repo "$GH_REPO" --body "${GH_REPO%%/*}"
 # Optional: staging only — any signed-in X user can use /xchat. Production: omit this variable (defaults to false).
 gh variable set ALLOW_ANY_X_USER_LOGIN --repo "$GH_REPO" --env staging --body "true"
 
-# Environment secrets
+# Environment secrets (deploy OIDC only — app secrets stay in GCP Secret Manager)
 gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$GH_REPO" --env staging --body "$STAGING_WIP"
 gh secret set GCP_SERVICE_ACCOUNT_EMAIL --repo "$GH_REPO" --env staging --body "$STAGING_SA"
 gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$GH_REPO" --env production --body "$PROD_WIP"
@@ -238,24 +241,28 @@ echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 
 ### Deploy Cloud Run: common failures
 
-- **`Cannot update environment variable [ALLOW_ANY_X_USER_LOGIN] to string literal because it has already been set with a different type`** — The live service still maps that name to Secret Manager. The workflow passes `--remove-secrets=ALLOW_ANY_X_USER_LOGIN` before setting literals so the next revision can switch to GitHub-driven values. If you ever bound `ADMIN_SEED_EMAIL` the same way and hit the same error, remove it once with `gcloud run services update SERVICE --region REGION --remove-secrets=ADMIN_SEED_EMAIL` (or add that key to the workflow remove list for one deploy).
+- **`Cannot update environment variable [ALLOW_ANY_X_USER_LOGIN] to string literal because it has already been set with a different type`** — The live service still maps that name to Secret Manager. The workflow passes `--remove-secrets=ALLOW_ANY_X_USER_LOGIN` before setting literals so the next revision can switch to env literals.
+- **`ADMIN_SEED_EMAIL` type clashes** — The workflow clears prior Cloud Run bindings (`--remove-secrets` + `--remove-env-vars`) before mounting `ADMIN_SEED_EMAIL` from Secret Manager. If deploy still fails, confirm the secret exists in the **target GCP project** and the deploy SA has `secretAccessor`.
 
 ### GitHub Environment Secrets
 
-Use environment-scoped secrets in GitHub:
+Only **OIDC deploy identity** should live in GitHub Environment secrets (plus nothing else for app runtime):
 
 | Secret | Staging | Production |
 | --- | --- | --- |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `<staging-provider-resource-name>` | `<prod-provider-resource-name>` |
 | `GCP_SERVICE_ACCOUNT_EMAIL` | `<staging-deploy-sa>@<staging-project>.iam.gserviceaccount.com` | `<prod-deploy-sa>@<prod-project>.iam.gserviceaccount.com` |
-| `ADMIN_SEED_EMAIL` | Same value as local `.env` / seed admin email | Same (prod admin email) |
+
+`MONGODB_DB_NAME` is not a deploy variable — the app uses the fixed DB name `atxfinancedb` unless the Mongo URI path overrides it. `XAI_TEAM_ID` / `ATXFINANCE_COLLECTION_ID` in `.env.example` are dev hints only; they are not mounted by the deploy workflow.
 
 Set after creating environments:
 
 ```bash
 GH_REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
-gh secret set ADMIN_SEED_EMAIL --repo "$GH_REPO" --env staging --body "you@example.com"
-gh secret set ADMIN_SEED_EMAIL --repo "$GH_REPO" --env production --body "you@example.com"
+gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$GH_REPO" --env staging --body "$STAGING_WIP"
+gh secret set GCP_SERVICE_ACCOUNT_EMAIL --repo "$GH_REPO" --env staging --body "$STAGING_SA"
+gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$GH_REPO" --env production --body "$PROD_WIP"
+gh secret set GCP_SERVICE_ACCOUNT_EMAIL --repo "$GH_REPO" --env production --body "$PROD_SA"
 ```
 
 ### Org/Repo Migration OIDC Fix
@@ -316,7 +323,7 @@ For availability and change control:
 
 ### Cloud Run Runtime Secrets (per environment)
 
-Required:
+Required (GCP Secret Manager; mounted by `deploy-cloud-run.yml`):
 
 - `MONGODB_URI_B64`
 - `XAI_API_KEY`
@@ -324,11 +331,10 @@ Required:
 - `X_OAUTH_CLIENT_ID`
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET`
-
-Optional:
-
+- `SLACK_WEBHOOK_URL` (value may be empty)
 - `ADMIN_SEED_EMAIL`
-- `ADMIN_X_USERNAMES`
+
+`ADMIN_X_USERNAMES` is **not** in the default `deploy-cloud-run.yml` env list; set it on the Cloud Run service manually if you use the global-admin X username allowlist in that environment.
 
 ### OAuth Callback URLs (single X app)
 

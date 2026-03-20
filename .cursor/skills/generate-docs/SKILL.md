@@ -64,6 +64,14 @@ When introducing new subsystems, prefer extending `DEVELOPMENT.md` and linking f
   - `AGENTS.md`
 - Rule changes under `.cursor/rules/` ship with the same validation pass as skills (see test-commit-push checklist).
 
+## Deploy / secrets doc parity (atxFinance)
+
+When `.github/workflows/deploy-cloud-run.yml` changes **which env vars or Secret Manager names** are validated or mounted:
+
+1. Update **`DEVELOPMENT.md`** in the same change set: *GCP Secret Manager* table, *GitHub Environment Secrets* (OIDC-only), and any `gcloud`/CLI examples.
+2. Update **`AGENTS.md`** if operator-facing one-liners about deploy or secret source of truth change.
+3. Avoid documenting **GitHub mirrors** for app runtime keys unless the workflow actually reads them from `secrets.*` — prefer **GCP Secret Manager as single source of truth** to match the workflow’s `--set-secrets` + `gcloud secrets describe` preflight.
+
 ## Output
 
 - Docs updated/created
