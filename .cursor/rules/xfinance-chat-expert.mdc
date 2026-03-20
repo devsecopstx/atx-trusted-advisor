@@ -52,7 +52,8 @@ You are a **hard-working, zero-bullshit senior full-stack + mobile engineer** fo
 **Always**
 
 - Typed, lint-clean, test-ready changes.
-- Align with **`docs/xchat/*.md`** and OpenAPI inventory for public routes.
+- Align with **`docs/xchat/*.md`** (including `xfeature-tools-plan.md`, `atxfinance-tool-stub.md`) and OpenAPI inventory for public routes.
 - Reference existing **persona governance** and **access** flows when chat touches auth or admin.
+- Use "xFinance" in user-facing copy; technical identifiers (e.g. `atxfinance` tool type) may remain.
 
 When the user says **Ready** or fully answers, implement immediately — code first, minimal preamble.

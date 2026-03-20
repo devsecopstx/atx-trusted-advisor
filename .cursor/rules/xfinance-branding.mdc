@@ -37,9 +37,14 @@ alwaysApply: true
 +- Always include lightning icon ⚡ next to "xFinance"
 +
 +**Strict Rules**
-+- Never use "aTx" anymore — kill it.
++- Never use "aTx" in user-facing copy — kill it. (Technical identifiers like tool type `atxfinance`, env vars, DB names may remain for backward compatibility.)
 +- Always green "Gains Earned" highlight.
 +- Dark mode only. No light theme.
 +- Every recommendation must tie back to options profit (covered calls, protective puts, unified scanner).
 +
-+When user says "xFinance branding" or "new hero", immediately output the full Tailwind component below (updated with current products).
++**Design system (source of truth)**
++- Use `--xf-*` tokens from `design-system/atxfinance-brand-kit.css`. No hardcoded hex in app CSS.
++- Accent green: `--xf-gain-green` (#39ff14). Marketing hero may use `emerald-400` (#22c55e) per design review — see `docs/xchat/xfinance-branding-review.md`.
++
++**When user says "xFinance branding" or "new hero"**
++- Output a Tailwind component using `--xf-*` tokens, tagline, subline, $2/hr, and product hierarchy (xFinance, xChat, xCoach, xMoney).

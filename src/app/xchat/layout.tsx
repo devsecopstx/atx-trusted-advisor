@@ -6,7 +6,7 @@ import { APP_VERSION_LABEL } from "@/lib/app-version";
 import "./xchat.css";
 
 export const metadata: Metadata = {
-  title: "xchat — atxFinance"
+  title: "xChat"
 };
 
 type XchatLayoutProps = {

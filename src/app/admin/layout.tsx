@@ -1,16 +1,21 @@
-import type { ReactNode } from "react";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
-import { getSessionUser } from "@/lib/auth";
 import { APP_VERSION_LABEL } from "@/lib/app-version";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { getSessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel } from "@/lib/env";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { AtxFinanceLogo } from "../ui/atxfinance-logo";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 
 type AdminLayoutProps = {
   children: ReactNode;
+};
+
+export const metadata: Metadata = {
+  title: "admin_console"
 };
 
 const NAV_LINKS: { href: string; label: string }[] = [

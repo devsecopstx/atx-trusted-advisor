@@ -97,7 +97,6 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
 
       <div className="mh-content">
         <div className="mh-left">
-          <p className="mh-suite-brand">xCoach</p>
           <AtxFinanceLogo size="md" showSubtitle />
           <p className="mh-descriptor">
             xFinance · xChat · xCoach — portfolio execution, AI advisory, and exam readiness in one workspace.
