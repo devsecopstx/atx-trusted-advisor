@@ -111,8 +111,10 @@ export default async function AdminBatchDetailPage({
                 <tr>
                   <th>Item ID</th>
                   <th>Status</th>
+                  <th>xAI State</th>
                   <th>Scope</th>
                   <th>Message</th>
+                  <th>xAI Error</th>
                   <th>Response / Error</th>
                 </tr>
               </thead>
@@ -123,8 +125,10 @@ export default async function AdminBatchDetailPage({
                       <code>{item.itemId}</code>
                     </td>
                     <td>{item.status}</td>
+                    <td>{item.xaiRequestState ?? "-"}</td>
                     <td>{item.scope}</td>
                     <td>{item.message}</td>
+                    <td>{item.xaiErrorCode ?? "-"}</td>
                     <td>{item.responseText ?? item.errorMessage ?? "-"}</td>
                   </tr>
                 ))}

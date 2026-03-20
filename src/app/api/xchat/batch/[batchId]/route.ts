@@ -64,6 +64,9 @@ export async function GET(_: Request, context: RouteContext) {
         message: item.message,
         scope: item.scope,
         status: item.status,
+        xaiRequestState: item.xaiRequestState ?? null,
+        xaiStatusCode: item.xaiStatusCode ?? null,
+        xaiErrorCode: item.xaiErrorCode ?? null,
         responseText: item.responseText ?? null,
         errorMessage: item.errorMessage ?? null
       }))

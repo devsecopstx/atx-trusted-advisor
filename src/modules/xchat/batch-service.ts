@@ -66,6 +66,9 @@ export type BatchItemRecord = {
   ragContext?: string;
   responseText?: string;
   status: "pending" | "completed" | "failed";
+  xaiRequestState?: "pending" | "succeeded" | "failed" | "cancelled";
+  xaiStatusCode?: number;
+  xaiErrorCode?: string;
   errorMessage?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -369,17 +372,35 @@ async function correlateResults(
   outputFileId: string,
   batchJobId: ObjectId
 ): Promise<void> {
-  const results = await listBatchJobResults(outputFileId);
+  const results = await listBatchJobResults({
+    batchId: xaiBatchId,
+    outputFileId
+  });
   const db = await getDb();
   const now = new Date();
 
   for (const result of results) {
     const responseText = extractOutputText(result);
-    const errorMessage = result.error?.message;
-    const status: BatchItemRecord["status"] =
-      result.response?.status_code === 200 && responseText
+    const state = result.state;
+    const statusFromState: BatchItemRecord["status"] | undefined =
+      state === "succeeded"
         ? "completed"
-        : "failed";
+        : state === "failed" || state === "cancelled"
+          ? "failed"
+          : state === "pending"
+            ? "pending"
+            : undefined;
+    const status: BatchItemRecord["status"] =
+      statusFromState ??
+      (result.response?.status_code === 200 ? "completed" : "failed");
+    const statusCode = result.response?.status_code;
+    const fallbackError =
+      status === "failed" && !result.error?.message
+        ? statusCode
+          ? `Batch item failed with status ${statusCode}`
+          : "Batch item failed"
+        : undefined;
+    const errorMessage = result.error?.message || fallbackError;
 
     await db
       .collection<BatchItemRecord>(BATCH_ITEMS_COLLECTION)
@@ -389,6 +410,9 @@ async function correlateResults(
           $set: {
             responseText: responseText || undefined,
             status,
+            xaiRequestState: state,
+            xaiStatusCode: statusCode,
+            xaiErrorCode: result.error?.code,
             errorMessage: errorMessage || undefined,
             updatedAt: now
           }

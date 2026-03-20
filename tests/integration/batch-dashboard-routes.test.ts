@@ -87,6 +87,9 @@ describe("xchat batch dashboard read model routes", () => {
         message: "one",
         scope: "global",
         status: "failed",
+        xaiRequestState: "failed",
+        xaiStatusCode: 500,
+        xaiErrorCode: "provider_error",
         errorMessage: "provider timeout"
       },
       {
@@ -94,6 +97,8 @@ describe("xchat batch dashboard read model routes", () => {
         message: "two",
         scope: "global",
         status: "completed",
+        xaiRequestState: "succeeded",
+        xaiStatusCode: 200,
         responseText: "done"
       }
     ]);
@@ -129,10 +134,15 @@ describe("xchat batch dashboard read model routes", () => {
     );
     expect(response.status).toBe(200);
     const payload = (await response.json()) as {
-      data: { job: { dashboard: { lastError: string | null; pendingCount: number } } };
+      data: {
+        job: { dashboard: { lastError: string | null; pendingCount: number } };
+        items: Array<{ xaiRequestState: string | null; xaiErrorCode: string | null }>;
+      };
     };
     expect(payload.data.job.dashboard.lastError).toBe("provider timeout");
     expect(payload.data.job.dashboard.pendingCount).toBe(3);
+    expect(payload.data.items[0].xaiRequestState).toBe("failed");
+    expect(payload.data.items[0].xaiErrorCode).toBe("provider_error");
   });
 
   it("returns poll payload with dashboard projection", async () => {
