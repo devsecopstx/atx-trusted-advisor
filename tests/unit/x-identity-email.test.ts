@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    formatUserFacingIdentityLabel,
-    isXIdentityPlaceholderEmail
+  formatUserFacingIdentityLabel,
+  isXIdentityPlaceholderEmail
 } from "@/lib/x-identity-email";
 
 describe("isXIdentityPlaceholderEmail", () => {
