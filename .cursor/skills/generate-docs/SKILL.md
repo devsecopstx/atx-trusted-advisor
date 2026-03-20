@@ -37,6 +37,17 @@ Default to maintaining this minimum docs set:
 
 When introducing new subsystems, prefer extending `DEVELOPMENT.md` and linking from `README.md` instead of creating scattered top-level docs.
 
+## API docs & OpenAPI (route changes)
+
+When **`src/app/api/**`** or public HTTP contracts change:
+
+- Keep **`DEVELOPMENT.md`** *api-docs-validation* section accurate (inventory build, route parity).
+- CI guards OpenAPI via `tests/integration/openapi-*.test.ts` — run **`npm run ci:gate`** (and **`npm run build`** if release-sensitive) before merge.
+
+## PR review handoff
+
+For combined Core MVP + Branding PRs, the final gate sequence lives in **`xdesign-review`** (reviewer order + acceptance checks). Use this skill for doc/runbook updates; use **`test-commit-push`** for the local validation pass.
+
 ## Cursor rules (`.cursor/rules/*.mdc`)
 
 **Gaps to avoid**

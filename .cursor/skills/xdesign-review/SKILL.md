@@ -56,15 +56,16 @@ If any reviewer is skipped, final review is incomplete.
 
 - No hidden coupling between branding refactors and core runtime logic.
 - No accidental API behavior drift from UI-driven model changes.
-- Docs parity is updated where behavior changed (`AGENTS.md`, `DEVELOPMENT.md`, skills index).
+- Docs parity is updated where behavior changed — follow **`generate-docs`** baseline set (`AGENTS.md`, `DEVELOPMENT.md`, `README.md`, etc.).
+- API/route changes keep **OpenAPI inventory** and route-parity tests green (`tests/integration/openapi-*.test.ts`; see `DEVELOPMENT.md#api-docs-validation`).
 - Tests cover changed logic; missing tests are called out explicitly.
 
 ## Required Evidence Checklist
 
 - Route contract evidence is captured (request/response samples for changed `/api/*` endpoints).
 - Auth/tenant boundary evidence is captured (expected 401/403 behavior for protected routes).
-- Test evidence is captured (`npm run test`, targeted integration tests for touched logic).
-- Validation evidence is captured (`npm run lint`, `npm run typecheck`, `npm run build`).
+- Test evidence is captured (`npm run test` / `npm run test:integration` when routes or contracts changed).
+- Validation evidence is captured: **`npm run ci:gate`** (lint + typecheck + test); add **`npm run build`** for release/deploy-sensitive changes (see `AGENTS.md` release gate).
 
 ## Output Format (Required)
 
@@ -88,8 +89,8 @@ If any reviewer is skipped, final review is incomplete.
 - accept | accept-with-conditions | reject
 
 ## Gaps
-- missing tests
-- missing docs sync
+- missing tests (including OpenAPI/route parity when `/api/*` changed)
+- missing docs sync (`generate-docs` baseline; operator runbooks)
 - residual risk notes
 ```
 
