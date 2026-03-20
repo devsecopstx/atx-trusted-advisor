@@ -192,6 +192,13 @@ for SECRET in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_
 done
 ```
 
+Automated preflight (recommended before any deploy):
+
+```bash
+npm run ops:secrets:verify:staging
+npm run ops:secrets:verify:prod
+```
+
 ### Sync production Secret Manager from `.env.prod` (local)
 
 Cloud Run mounts the eight secrets in the table above. Keep `.env.prod` gitignored; it is a convenience snapshot, not the source of truth in Git.

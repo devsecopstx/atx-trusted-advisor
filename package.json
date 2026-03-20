@@ -22,7 +22,10 @@
     "migrate:persona-name-normalized": "node --env-file=.env scripts/backfill-persona-name-normalized.mjs",
     "migrate:persona-tools": "node --env-file=.env scripts/backfill-persona-tools.mjs",
     "status:deploy": "bash scripts/ops/print-deploy-status.sh",
-    "ops:rotate:oauth": "bash scripts/ops/rotate-oauth-secrets.sh"
+    "ops:rotate:oauth": "bash scripts/ops/rotate-oauth-secrets.sh",
+    "ops:secrets:verify": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID:?set GCP_PROJECT_ID}\"",
+    "ops:secrets:verify:staging": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_STAGING:-fintech-advisor-staging}\"",
+    "ops:secrets:verify:prod": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\""
   },
   "keywords": [],
   "author": "",

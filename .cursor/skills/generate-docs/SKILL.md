@@ -210,6 +210,14 @@ When `.github/workflows/deploy-cloud-run.yml` changes
    Prefer **GCP Secret Manager as single source of truth** to match the
    workflow `--set-secrets` plus
    `gcloud secrets describe` preflight.
+4. Keep SRE automation commands current:
+   - `npm run ops:secrets:verify:staging`
+   - `npm run ops:secrets:verify:prod`
+   - `scripts/ops/verify-gcp-runtime-secrets.sh`
+   If required secrets change, update script + docs in the same PR.
+5. Treat `ADMIN_SEED_EMAIL` as a required runtime secret for deploy preflight
+   and admin bootstrap workflows; do not leave it undocumented or optional in
+   production readiness checklists.
 
 ## Output
 

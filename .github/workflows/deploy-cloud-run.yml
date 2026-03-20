@@ -42,7 +42,7 @@ env:
 
 jobs:
   deploy-staging:
-    if: startsWith(github.ref, 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.target == 'staging')
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main')) || (github.event_name == 'workflow_dispatch' && inputs.target == 'staging')
     name: Deploy Staging
     runs-on: ubuntu-latest
     concurrency:
