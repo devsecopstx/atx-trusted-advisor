@@ -176,6 +176,22 @@ for SECRET in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_
 done
 ```
 
+### Sync production Secret Manager from `.env.prod` (local)
+
+Cloud Run only mounts the seven secrets in the table above. Keep `.env.prod` gitignored; it is a convenience snapshot, not the source of truth in Git.
+
+1. **GCP**: Authenticate and select the production project (or export `GCP_PROJECT_ID_PROD`).
+2. **Dry-run** (no writes):  
+   `bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target production --env-file .env.prod`
+3. **Apply** (adds new secret versions; same names the deploy workflow expects):  
+   `bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target production --env-file .env.prod --execute`  
+   If a name is missing in Secret Manager, add `--create-missing` once alongside `--execute`.
+4. **GitHub**: Set or update the **production** environment secret `ADMIN_SEED_EMAIL` to match `.env.prod` (the workflow injects it as a plain env var at deploy time; it is not read from GCP).
+5. **Callback URL**: Production uses `X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback` from the workflow. Do **not** point `PROD_BASE_URL` or any prod callback at `127.0.0.1`. Your X Developer Portal app must list the same HTTPS callback host.
+6. **Roll forward**: Deploy a new Cloud Run revision (workflow or manual) so the service picks up `*:latest` secret versions.
+
+Keys in `.env.prod` such as `GOOGLE_CLIENT_*`, `GITHUB_*`, `XAI_TEAM_ID`, or `ATXFINANCE_COLLECTION_ID` are **not** part of the default `--set-secrets` bundle unless you extend the workflow.
+
 ### GitHub Environment Variables
 
 Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-scoped.

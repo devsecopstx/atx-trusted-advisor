@@ -57,6 +57,13 @@ jobs:
           EXPECTED_GITHUB_OWNER: ${{ vars.EXPECTED_GITHUB_OWNER }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          XAI_MANAGEMENT_API_KEY: ${{ secrets.XAI_MANAGEMENT_API_KEY }}
+          X_OAUTH_CLIENT_ID: ${{ secrets.X_OAUTH_CLIENT_ID }}
+          X_OAUTH_CLIENT_SECRET: ${{ secrets.X_OAUTH_CLIENT_SECRET }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
+
         run: |
           set -euo pipefail
           # Runtime secrets: single source of truth is GCP Secret Manager (verified after gcloud auth).
