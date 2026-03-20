@@ -8,7 +8,8 @@ description: Add or improve automated tests around changed behavior with emphasi
 
 ## Goal
 
-Increase confidence in changed code by adding focused automated tests with meaningful assertions.
+Increase confidence in changed code by adding focused automated tests with
+meaningful assertions.
 
 ## Use This Skill When
 
@@ -25,16 +26,28 @@ Increase confidence in changed code by adding focused automated tests with meani
 
 ## atxFinance conventions (this repo)
 
-- **Runner:** Vitest — `npm run test` (includes `tests/unit/**` and `tests/integration/**`).
-- **Gate:** Prefer **`npm run ci:gate`** before merge (lint + typecheck + test); add **`npm run build`** when App Router or build-time code changes.
-- **Integration tests** mock I/O (Mongo, xAI fetch) — see existing patterns under `tests/integration/*xchat*`, `tests/integration/*persona*`, `tests/integration/openapi-*.test.ts`.
-- **OpenAPI / route inventory:** If `src/app/api/**` contracts change, update or extend **`tests/integration/openapi-*.test.ts`** and keep **`DEVELOPMENT.md`** *api-docs-validation* accurate (see **`generate-docs`**).
+- **Runner:** Vitest — `npm run test` (includes `tests/unit/**` and
+  `tests/integration/**`).
+- **Gate:** Prefer **`npm run ci:gate`** before merge (lint + typecheck + test);
+  add **`npm run build`** when App Router or build-time code changes.
+- **Integration tests** mock I/O (Mongo, xAI fetch) — see patterns under
+  `tests/integration/*xchat*`, `*persona*`, `openapi-*.test.ts`.
+- **OpenAPI / route inventory:** If `src/app/api/**` contracts change, update
+  **`tests/integration/openapi-*.test.ts`** and **`DEVELOPMENT.md`**
+  *api-docs-validation* (see **`generate-docs`**).
 
 ### xChat / batch surfaces
 
-- **Ask route** (`POST /api/xchat/ask`): integration tests for auth, rate limits, RAG/tool paths; keep aligned with `docs/xchat/*.md`.
-- **Batch** (`POST /api/xchat/batch`, polling, `batch-service`): mock `submitBatchJob` / xAI batch client where routes are tested; add **unit** tests for pure helpers (e.g. prompt augmentation in `src/modules/xchat/batch-prompt-context.ts`).
-- **Async batch jobs:** server-side flow is **submit → poll** (`pollBatchJob` / dashboard); tests should assert **correlation** of `custom_id` → stored item, not assume synchronous completion in a single HTTP round-trip. For upstream behavior (JSONL shape, polling, results pagination), see [xAI Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api).
+- **Ask route** (`POST /api/xchat/ask`): integration tests for auth, rate limits,
+  RAG/tool paths; keep aligned with `docs/xchat/*.md`.
+- **Batch** (`POST /api/xchat/batch`, polling, `batch-service`): mock
+  `submitBatchJob` / xAI batch client where routes are tested; add **unit**
+  tests for pure helpers (e.g. `src/modules/xchat/batch-prompt-context.ts`).
+- **Async batch jobs:** server-side flow is **submit → poll**
+  (`pollBatchJob` / dashboard); tests should assert **correlation** of
+  `custom_id` → stored item, not assume synchronous completion in one HTTP
+  round-trip. Upstream:
+  [xAI Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api).
 
 ## Output
 

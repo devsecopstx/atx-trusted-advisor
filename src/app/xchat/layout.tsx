@@ -24,7 +24,7 @@ export default function XchatLayout({ children }: XchatLayoutProps) {
             ·
           </span>
           <span className="xchat-footer-disclaimer">
-            <strong>Not financial advice</strong>, don&apos;t sue me bro.
+            <strong>not financial advice</strong>, don&apos;t, sue me bro.
           </span>
         </p>
       </footer>

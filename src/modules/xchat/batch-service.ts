@@ -3,14 +3,14 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { searchDocumentsInCollections } from "@/lib/xai";
 import {
-  createBatchJob,
-  getBatchJobStatus,
-  isBatchJobTerminal,
-  listBatchJobResults,
-  uploadBatchInputFile,
-  type XaiBatchJob,
-  type XaiBatchRequestItem,
-  type XaiBatchResultItem
+    createBatchJob,
+    getBatchJobStatus,
+    isBatchJobTerminal,
+    listBatchJobResults,
+    uploadBatchInputFile,
+    type XaiBatchJob,
+    type XaiBatchRequestItem,
+    type XaiBatchResultItem
 } from "@/lib/xai-batch";
 import { toXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatBatchDebug } from "@/lib/xchat-debug";
