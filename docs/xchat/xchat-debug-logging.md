@@ -40,9 +40,11 @@ Cloud Logging retention is configured at the **project** or **log bucket** level
 To retain xChat debug logs for 30 days:
 
 1. **Default _Default bucket**:**
+
    ```bash
    gcloud logging buckets update _Default --location=global --retention-days=30 --project=<project-id>
    ```
+
 2. **Or** create a dedicated bucket for `[xchat/debug]` with 30-day retention and route via a log sink.
 
 ## Privacy & compliance

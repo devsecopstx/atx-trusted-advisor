@@ -2,7 +2,6 @@
 
 ## Validation Checklist
 
-
 - [ ] Tool contracts are fully typed and schema-validated
 - [ ] Memory mode is explicit and bounded
 - [ ] Retries apply only to transient classes

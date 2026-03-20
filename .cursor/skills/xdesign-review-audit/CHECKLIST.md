@@ -2,7 +2,6 @@
 
 ## Validation Checklist
 
-
 - [ ] Any sampled material decision can be replayed end-to-end
 - [ ] Hash/signature validation detects log tampering
 - [ ] RAG lineage includes exact chunk/version references

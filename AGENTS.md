@@ -194,6 +194,7 @@ All three share the same update script and secret requirements above.
 ### Branding TODOs
 
 **Completed:**
+
 - Phase 1: Token hygiene — badge variants, marketing-hero hex→tokens, chart bar tokens, admin hub hero alignment.
 - Phase 2: Chart tokens (`--xf-chart-*`), xStrategyBuilder coming-soon card, `value-gain`/`value-loss` CSS utilities.
 - Phase 3: User-facing `/xchat` — plans landing, Slack access-request notifications, chat conversation UI.
@@ -202,24 +203,29 @@ All three share the same update script and secret requirements above.
 - Phase 6: Docs sync — persona governance routes, plan limits table, access request state machine, tool cache documented.
 
 **Deferred — plan limits UI (connect runtime limits to branding):**
+
 - Drive plans landing feature bullets from `getPlanLimits()` instead of static text.
 - Add usage meter component to xchat UI showing prompts used / daily limit.
 - Add soft-limit warning banner when `softLimitReached` is true.
 - CSS tokens: `--xf-meter-fill`, `--xf-meter-bg`, `--xf-meter-warn`.
 
 **Deferred — persona version history viewer:**
+
 - Version timeline UI in persona editor (list of snapshots with action/actor/date).
 - Visual diff between current and selected version.
 - One-click rollback in the timeline.
 
 **Deferred — atxfinance tool surface branding (when tool ships):**
+
 - Tool-result card component with branded output formatting using `--xf-surface-700` + `--xf-chart-*` tokens.
 - xChat console tool invocation visual treatment.
 
 **Deferred — xMoney (when available):**
+
 - Payment rails brand surface, `--xf-xmoney-*` tokens, logo lockup variant.
 
 **Standing design rules:**
+
 - Personas vs Collections separation — `/admin/personas` shows persona configs only (prompts, tools, collectionId links). Read-only xAI collection inventory is under **RAG collections** (`/admin/rag-files`); create/link flows stay in Personas or xAI console.
 - All admin sub-pages delegate auth + session panel to the shared admin layout (`src/app/admin/layout.tsx`). Do not add duplicate `AdminSessionPanel` imports.
 - No hardcoded hex in app CSS — use `--xf-*` tokens from `design-system/atxfinance-brand-kit.css`.

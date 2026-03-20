@@ -29,12 +29,14 @@ This is the **tool-use loop** pattern. The current `respondWithXai` in `src/lib/
 
 ## Phase 1: Tool-Use Loop in xAI Client
 
-### Scope
+### Phase 2 Scope
+
 - Extend `respondWithXai` (or add `respondWithXaiToolLoop`) in `src/lib/xai.ts` to support multi-turn tool calls.
 - Define a `ToolExecutor` callback type: `(name: string, args: Record<string, unknown>) => Promise<string>`.
 - The loop calls xAI, checks output for `tool_call` items, invokes the executor, appends `function_call_output`, and re-calls until text output or max turns.
 
 ### Contracts
+
 ```ts
 type ToolExecutor = (
   name: string,
@@ -52,19 +54,22 @@ type RespondWithToolLoopInput = {
 };
 ```
 
-### Safety
+### Phase 2 Safety
+
 - Hard cap on loop iterations (default 5, configurable via persona `maxTurns`).
 - If executor throws, return a structured error result to the model (do not crash the loop).
 - Log each tool call (name, args summary, duration, success/failure) for audit.
 
-### Testing
+### Phase 2 Testing
+
 - Unit test the loop with mocked fetch: model calls tool → executor returns → model produces text.
 - Test max-turns enforcement.
 - Test executor failure handling.
 
 ## Phase 2: atxFinance Tool Executor
 
-### Scope
+### Phase 3 Scope
+
 - Create `src/modules/xchat/tool-executor.ts` implementing the four operations from the stub.
 - Each operation is a pure read against existing repository functions (no mutations in v1).
 
@@ -78,59 +83,70 @@ type RespondWithToolLoopInput = {
 | `task_status` | `listScheduledTasks` + `listTaskRuns` | `{ tasks[], recentRuns[] }` |
 
 ### Auth/Scope
+
 - Executor receives `userId` and `tenantId` from the session context (passed through the ask route).
 - Each operation is scoped to the authenticated user's tenant. No cross-tenant access.
 - No secret or credential material in outputs.
 
 ### Safety
+
 - Read-only: no `$set`, no `updateOne`, no inserts.
 - Output is serialized to a string (JSON) with a max length cap (e.g. 8KB) to prevent prompt overflow.
 - Unknown operation names return `{ error: "unknown_operation" }`.
 
 ### Testing
+
 - Unit tests for each operation with mocked repository.
 - Test unknown operation rejection.
 - Test output length cap.
 
 ## Phase 3: Persona Tool Validation Update
 
-### Scope
+### Phase 4 Scope
+
 - Add `"atxfinance"` to `PERSONA_XAPI_TOOL_TYPES` in `src/modules/xchat/types.ts`.
 - Update persona validation in `src/modules/xchat/persona-validation.ts` to accept `atxfinance` as a tool type.
 - Update `normalizePersonaXapiConfig` to pass through `atxfinance` tools.
 - Update the persona editor multi-select UI to include an `atxfinance` checkbox.
 
 ### Compatibility
+
 - Existing personas without `atxfinance` tool are unaffected.
 - The tool is opt-in per persona.
 - `atxfinance` tool definition: `{ type: "atxfinance" }` (no `source` required).
 
 ### Migration
+
 - No schema migration needed. `atxfinance` is a new tool type, not a field change.
 - Optionally add `atxfinance` to Super-Agent default tools via seed update.
 
 ## Phase 4: Wire Tool Loop into Ask Route
 
-### Scope
+### Phase 5 Scope
+
 - In `src/app/api/xchat/ask/route.ts`, when the persona has an `atxfinance` tool in `xapi.tools`, use `respondWithXaiToolLoop` instead of `respondWithXai`.
 - Pass the `atxFinanceToolExecutor` as the executor.
 - Session context (`userId`, `tenantId`) flows from the route handler to the executor.
 
 ### Fallback
+
 - If the persona has no custom tools (only `web_search`/`x_search`/`file_search`), use the existing single-request path. No loop overhead for built-in-only personas.
 
 ### Audit
+
 - Add `xapiToolCalls` field to `XChatSessionLog` to record which tools were invoked and their results.
 
 ## Phase 5: Batch Support for Custom Tools
 
 ### Scope
+
 - xAI Batch API does not support multi-turn tool loops. Batch items are single-request.
 - For batch workloads with `atxfinance` tool: pre-execute tool calls during prompt assembly (similar to the existing collection pre-search pattern).
 - Inject tool output into the system prompt as structured context.
 
 ### Pattern
-```
+
+```text
 For each batch item:
   1. Run portfolio_summary / watchlist_snapshot as applicable.
   2. Serialize output into system prompt context block.

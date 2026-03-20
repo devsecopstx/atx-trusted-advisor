@@ -18,7 +18,7 @@ echo -n "mongodb+srv://user:password@cluster.mongodb.net/atxfinancedb?retryWrite
 
 Copy the output (no newline).
 
-### 3. Update local .env
+### X OAuth: 3. Update local .env
 
 ```bash
 # In .env
@@ -32,7 +32,7 @@ npm run dev
 curl -sSf http://localhost:3000/api/health
 ```
 
-### 4. Update GCP Secret Manager
+### X OAuth: 4. Update GCP Secret Manager
 
 Dry-run first:
 
@@ -52,18 +52,18 @@ For production (after staging verification):
 bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target production --keys MONGODB_URI_B64 --execute --trigger-deploy --approve-production
 ```
 
-### 5. Update Cursor Cloud (if using cloud agents)
+### X OAuth: 5. Update Cursor Cloud (if using cloud agents)
 
 Cursor Cloud → **Secrets** → set `MONGODB_URI_B64` to the new base64 value.
 
-### 6. Verify
+### X OAuth: 6. Verify
 
 - Staging: `curl -sSf https://staging.atx.fintech-advisor.ai/api/health`
 - Production: `curl -sSf https://atx.fintech-advisor.ai/api/health`
 
 Expected: `{"status":"ok","service":"xfinance-core-app",...}` (db name may vary)
 
-### 7. Revoke old credentials (after 24–48h stable)
+### X OAuth: 7. Revoke old credentials (after 24–48h stable)
 
 Atlas → **Database Access** → delete or disable old user.
 

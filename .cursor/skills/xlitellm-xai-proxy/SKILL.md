@@ -9,6 +9,7 @@ description: Starts and verifies a local LiteLLM proxy for Cursor using xAI Grok
 ## Goal
 
 Run LiteLLM on port `4000` using `~/litellm-config.yaml` with these aliases:
+
 - `grok-code-fast`
 - `grok-code-fast-1`
 - `grok-imagine-image-pro`
@@ -28,19 +29,19 @@ export XAI_API_KEY="<new_xai_key_here>"
 export LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY:-$(openssl rand -hex 32)}"
 ```
 
-2) Start the proxy:
+1) Start the proxy:
 
 ```bash
 litellm --config ~/litellm-config.yaml --port 4000
 ```
 
-3) Verify model registry in a new terminal:
+1) Verify model registry in a new terminal:
 
 ```bash
 curl http://localhost:4000/v1/models
 ```
 
-4) Verify chat completion path:
+1) Verify chat completion path:
 
 ```bash
 curl http://localhost:4000/v1/chat/completions \

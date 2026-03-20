@@ -38,6 +38,7 @@ Build reliable, production-grade LangChain agent executors with explicit control
 ## Tooling Pattern
 
 Rules:
+
 - Each tool must validate inputs before execution.
 - Tool results must be normalized to a stable shape.
 - Reject ambiguous tool names and overlapping responsibilities.
@@ -46,11 +47,13 @@ Rules:
 ## Memory Pattern
 
 Use explicit memory modes:
+
 - `none`: stateless tasks (recommended default)
 - `short`: bounded per-session context
 - `thread`: durable thread history for multi-turn flows
 
 Guardrails:
+
 - Never persist secrets in memory blobs.
 - Truncate/summarize context by token budget.
 - Store source-of-truth domain data outside memory.
@@ -58,15 +61,18 @@ Guardrails:
 ## Retry + Failure Strategy
 
 Apply retries only for transient failures:
+
 - model rate limits / transport failures
 - temporary tool dependency outages
 
 Do not retry:
+
 - schema validation failures
 - deterministic tool misuse
 - authorization failures
 
 Policy template:
+
 - `maxAttempts`: 3
 - exponential backoff with jitter
 - phase timeout + global deadline
@@ -75,12 +81,14 @@ Policy template:
 ## Observability Requirements
 
 Each run must include:
+
 - `runId`, `sessionId`, `taskId`, `correlationId`
 - model name + latency + token usage
 - selected tools + duration + success/failure
 - retry count and failure reason taxonomy
 
 Emit structured events for:
+
 - executor start/end
 - llm call start/end
 - tool call start/end

@@ -71,12 +71,14 @@ export type ApiError = {
 ## PWA Delivery Pattern
 
 Required pieces:
+
 - `manifest.webmanifest` with icons, theme, start URL, display mode
 - service worker registration with versioned cache strategy
 - offline fallback route for critical onboarding/read-only surfaces
 - runtime cache policy tuned by asset type (static vs API)
 
 Rules:
+
 - Cache immutable static assets aggressively.
 - Use stale-while-revalidate for non-critical API reads.
 - Never cache sensitive authenticated responses blindly.

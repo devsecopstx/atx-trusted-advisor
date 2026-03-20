@@ -2,7 +2,6 @@
 
 ## Validation Checklist
 
-
 - [ ] Shared TypeScript contracts match live API responses
 - [ ] Mobile onboarding flow works on narrow viewports
 - [ ] PWA install prompt and manifest validation succeed

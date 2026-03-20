@@ -2,7 +2,6 @@
 
 ## Mandatory Checklist
 
-
 ### 1) Pre-rotation inventory
 
 - [ ] Identify exactly which credentials are rotating and why.

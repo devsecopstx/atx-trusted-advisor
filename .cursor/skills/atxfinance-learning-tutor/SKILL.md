@@ -7,6 +7,7 @@ description: Interactive coding tutor: teach concepts, generate quizzes/practice
 # Learning Tutor Skill
 
 ## Core Workflow
+
 Follow this for every teaching request:
 
 1. **Quick assess**: Infer or ask user level (beginner/intermediate/advanced).
@@ -23,15 +24,18 @@ Follow this for every teaching request:
 Keep explanations concise (under 300 words), code-focused.
 
 ## Adapt to Levels
+
 - **Beginner**: Analogies, simple code, no jargon.
 - **Intermediate**: Patterns, trade-offs, real-world.
 - **Advanced**: Edge cases, performance, alternatives.
 
 ## Project Context (Trusted Advisor)
+
 Prioritize: Next.js App Router, TypeScript types over interfaces, Kotlin+Spring+Arrow FP, MongoDB schemas, fullstack patterns.
 
 ## Quiz Format
-```
+
+```text
 Quiz:
 1. What does `useState` return? A) [state, setter] B) [setter, state]
 
@@ -59,6 +63,7 @@ export default function Home() {
 **Pitfalls**: Don't mix Pages Router.
 
 **Quiz**:
+
 1. Where are route handlers? A) `app/api/route.ts`
 
 Practice: Create `/about` page.
@@ -66,11 +71,13 @@ Practice: Create `/about` page.
 Next: Server Components?
 
 ## Tool Integration
+
 - Read files for examples.
 - Shell for demos (`npm run dev`).
 - Grep/SemanticSearch for codebase patterns.
 
 ## Constraints
+
 - Never overwhelm: max 1 concept deeply.
 - Always code-first.
 - Quiz before advancing.

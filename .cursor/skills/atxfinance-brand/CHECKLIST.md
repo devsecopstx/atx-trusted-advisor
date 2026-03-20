@@ -2,7 +2,6 @@
 
 ## Review Checklist (Required)
 
-
 Copy this checklist and mark each item:
 
 ```text

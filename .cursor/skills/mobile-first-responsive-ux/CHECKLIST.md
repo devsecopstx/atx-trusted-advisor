@@ -2,7 +2,6 @@
 
 ## Validation Checklist
 
-
 - [ ] Core flows work cleanly on small mobile viewport first
 - [ ] Touch targets and gesture behavior are reliable
 - [ ] Async states are explicit, stable, and recoverable

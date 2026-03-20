@@ -2,7 +2,6 @@
 
 ## Red-Team Checklist
 
-
 - [ ] Injection attempts cannot alter protected system instructions
 - [ ] Retrieval poisoning does not escalate privileges or leak restricted data
 - [ ] Invalid schema outputs never reach trading/risk side effects

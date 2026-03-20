@@ -66,6 +66,7 @@ curl -sSf "<APP_URL>/api/health/live"
 ```
 
 Post-rotation checks (manual):
+
 - Sign in with X, Google, and GitHub.
 - Verify Stripe checkout + webhook flow.
 - Verify Smart Grok/xAI request path.

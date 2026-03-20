@@ -3,6 +3,7 @@
 Recreate atxfinance GCP staging and production from scratch with apex `atx` (replacing `core`).
 
 **New hostnames:**
+
 - Staging: `https://staging.atx.fintech-advisor.ai`
 - Production: `https://atx.fintech-advisor.ai`
 

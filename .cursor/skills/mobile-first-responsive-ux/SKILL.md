@@ -62,12 +62,14 @@ Build adaptive, touch-first web interfaces that feel native on mobile while scal
 ## Async UX Pattern
 
 For every async action, define:
+
 - `pending`: non-blocking indicator + disabled conflicting actions
 - `success`: clear completion state and next-step affordance
 - `error`: actionable message + retry path + preserved input
 - `stale`: background refresh indicator where applicable
 
 Rules:
+
 - Never show blank screens during fetch; use skeleton or stable placeholder.
 - Keep layout stable between loading and loaded states.
 - Favor optimistic updates only when rollback behavior is clear.

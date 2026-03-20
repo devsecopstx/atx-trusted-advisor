@@ -78,6 +78,7 @@ export type AgentTask = {
 - `POST /api/agents/tasks/:taskId/cancel` -> best-effort cancellation
 
 Polling guidance:
+
 - Client starts at 1s interval, backs off to 2s/3s/5s after stable phases.
 - Stop polling on terminal states.
 - Resume from last known version to avoid duplicate UI updates.
@@ -109,6 +110,7 @@ export type CardContextDelta = {
 ```
 
 Rules:
+
 - Monotonic `version` per `taskId + cardId`
 - Apply deltas atomically on the client
 - Reconcile with full snapshot every N deltas or on reconnect

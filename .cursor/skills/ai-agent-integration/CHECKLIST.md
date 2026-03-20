@@ -2,7 +2,6 @@
 
 ## Validation Checklist
 
-
 - [ ] Task lifecycle transitions are exhaustive and type-safe
 - [ ] Every emitted event includes `taskId` + `correlationId`
 - [ ] Polling and SSE both converge to the same final state

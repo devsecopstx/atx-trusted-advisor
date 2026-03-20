@@ -25,7 +25,7 @@ Session payload (`SessionUser` in `src/lib/auth.ts`):
 | `roles` | **Platform roles** | `global_admin` \| `advisor` \| `operator` \| `viewer` — app-wide capability. Use `isGlobalAdmin()` / `canUserLogin()` from `src/modules/identity/authorization.ts`. Legacy session value `admin` is normalized to `global_admin` via `normalizeCoreRole()` / `normalizeCoreRoles()` (single source of truth). |
 | `tenantRole` | **Tenant membership role** | `tenant_admin` \| `member` for `tenantId` — billing/tenant ops; **does not** grant `/admin`. Treat as **app_user** vs **tenant admin** at the tenant level; product plans default to **free** until billing ships. |
 
-**Product rules**
+### Product rules
 
 - **Admin console** (`/admin/*`, `requireGlobalAdminSession` / `requireAdminSession`): **only** `global_admin` (after normalization). The admin layout redirects everyone else to `/xchat`.
 - **App_user surfaces** (approved login): `advisor`, `operator`, `viewer` — xChat, xCoach, Portfolio (`/xfinance`), Watchlist (`/watchlist`). Shared chrome: `AppUserApprovedHeader` (`src/app/ui/app_user-approved-header.tsx`) = product links (`AppUserProductNav`) + `AppUserHeaderSession` (profile popover, logout, feedback modal, optional Mongo host/db pill per `shouldShowAppUserDbLabel()` in `src/lib/env.ts`).
