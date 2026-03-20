@@ -534,12 +534,6 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/xchat/batch/:batchId`
 - `POST /api/xchat/batch/:batchId`
 
-#### Future architecture TODO (parallel agents)
-
-- Current ask flow is a **single synchronous pipeline** per request (one persona/system-prompt path, optional tool loop). A 4-agent fan-out mode will require explicit turn correlation (`conversationId` / `turnId`) and per-agent trace records.
-- If implemented as async, define dedicated submit/status/cancel endpoints and keep OpenAPI parity tests in the same change set.
-- Add per-user in-flight concurrency limits and cancellation behavior before enabling multi-agent fan-out to avoid runaway cost/latency.
-
 **Default published xChat personas (operators should keep both in `published` status):**
 
 | Persona | Audience | `nameNormalized` | Purpose |
