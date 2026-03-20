@@ -145,8 +145,12 @@ export async function requireSessionUser(): Promise<SessionUser | NextResponse> 
   return session;
 }
 
-export async function setOAuthFlowCookies(state: string, verifier: string): Promise<void> {
-  const cookieStore = await cookies();
+/** PKCE cookies must be set on the same `NextResponse` as the redirect or they may not be sent to the browser (App Router). */
+export function applyOAuthFlowCookiesToRedirect(
+  response: NextResponse,
+  state: string,
+  verifier: string
+): void {
   const baseCookie = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -154,9 +158,8 @@ export async function setOAuthFlowCookies(state: string, verifier: string): Prom
     path: "/",
     maxAge: OAUTH_FLOW_TTL_SECONDS
   };
-
-  cookieStore.set(OAUTH_STATE_COOKIE_NAME, state, baseCookie);
-  cookieStore.set(OAUTH_VERIFIER_COOKIE_NAME, verifier, baseCookie);
+  response.cookies.set(OAUTH_STATE_COOKIE_NAME, state, baseCookie);
+  response.cookies.set(OAUTH_VERIFIER_COOKIE_NAME, verifier, baseCookie);
 }
 
 export async function setPendingXLinkCookie(value: PendingXLink): Promise<void> {

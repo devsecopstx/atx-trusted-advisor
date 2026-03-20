@@ -22,6 +22,7 @@ ENV_FILE="${ROOT_DIR}/.env"
 
 TARGET="staging"
 EXECUTE=false
+CREATE_MISSING=false
 TRIGGER_DEPLOY=false
 APPROVE_PRODUCTION=false
 KEYS_FILTER=""
@@ -48,6 +49,7 @@ Options:
   --project-staging <project-id>       Override staging project
   --project-prod <project-id>          Override production project
   --execute                            Apply changes (default is dry-run)
+  --create-missing                     Create Secret Manager entries if absent (then add first version)
   --trigger-deploy                     Trigger GitHub "Deploy Cloud Run" workflow after rotation
   --approve-production                 Required for production workflow dispatch
   --help                               Show help
@@ -85,6 +87,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --execute)
       EXECUTE=true
+      shift
+      ;;
+    --create-missing)
+      CREATE_MISSING=true
       shift
       ;;
     --trigger-deploy)
@@ -175,13 +181,22 @@ require_non_empty_required_keys() {
   fi
 }
 
-assert_secret_exists() {
+ensure_secret_resource_exists() {
   local project="$1"
   local key="$2"
-  if ! gcloud secrets describe "${key}" --project "${project}" >/dev/null 2>&1; then
-    echo "Secret does not exist in project ${project}: ${key}" >&2
-    exit 1
+  if gcloud secrets describe "${key}" --project "${project}" >/dev/null 2>&1; then
+    return 0
   fi
+  if [ "${CREATE_MISSING}" = true ] && [ "${EXECUTE}" = true ]; then
+    gcloud secrets create "${key}" --project="${project}" --replication-policy=automatic
+    echo "created Secret Manager resource: ${key} (${project})"
+    return 0
+  fi
+  echo "Secret does not exist in project ${project}: ${key}" >&2
+  if [ "${CREATE_MISSING}" = true ] && [ "${EXECUTE}" != true ]; then
+    echo "Tip: run again with --execute --create-missing to create it." >&2
+  fi
+  exit 1
 }
 
 rotate_project() {
@@ -191,7 +206,7 @@ rotate_project() {
 
   echo "---- ${label} (${project}) ----"
   for key in "${REQUIRED_KEYS[@]}"; do
-    assert_secret_exists "${project}" "${key}"
+    ensure_secret_resource_exists "${project}" "${key}"
     if [ "${EXECUTE}" = true ]; then
       printf '%s' "${!key}" | gcloud secrets versions add "${key}" --data-file=- --project "${project}" >/dev/null
       echo "rotated ${key} (new version added)"

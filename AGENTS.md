@@ -172,6 +172,7 @@ All three share the same update script and secret requirements above.
 - The xAI management key-create smoke test is opt-in via `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true` and requires real API keys.
 - `*.code-workspace` files are gitignored — they are local IDE config and not used by cloud agents.
 - See `DEVELOPMENT.md` for the full Cloud Agent Atlas Mode setup and OAuth host-consistency notes.
+- **X OAuth (prod):** PKCE cookies must ride the same `NextResponse` as the redirect to X (`applyOAuthFlowCookiesToRedirect` in `src/lib/auth.ts`). Cloud Run sets `X_OAUTH_CALLBACK_URL` from the `PROD_BASE_URL` GitHub variable — keep the X app callback identical. Rotate mounted runtime secrets with `bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target production --env-file .env.prod` (see `DEVELOPMENT.md` → *Sync production Secret Manager*).
 
 ### Branding TODOs
 

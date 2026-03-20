@@ -4,7 +4,7 @@ const authMocks = vi.hoisted(() => ({
   createCodeChallenge: vi.fn(() => "challenge"),
   createCodeVerifier: vi.fn(() => "verifier"),
   createOAuthState: vi.fn(() => "state"),
-  setOAuthFlowCookies: vi.fn(),
+  applyOAuthFlowCookiesToRedirect: vi.fn(),
   readOAuthFlowCookies: vi.fn(),
   clearOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn(),
@@ -41,7 +41,7 @@ describe("oauth host normalization smoke", () => {
       X_OAUTH_CLIENT_SECRET: "secret"
     });
     envMocks.getXOauthClientId.mockReturnValue("bWpuN2Vva1FNUG90U0dEVmZoRjA6MTpjaQ");
-    authMocks.setOAuthFlowCookies.mockResolvedValue(undefined);
+    authMocks.applyOAuthFlowCookiesToRedirect.mockImplementation(() => {});
 
     authMocks.readOAuthFlowCookies.mockResolvedValue({
       state: "state",

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import {
   clearOAuthFlowCookies,
   createSession,
@@ -73,17 +74,13 @@ async function ensurePendingViewerAccessRequestAfterOAuth(user: CoreUser): Promi
 export async function GET(request: Request) {
   const env = getEnv();
   const url = new URL(request.url);
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const hostHeader = request.headers.get("host");
-  const effectiveHostWithPort = forwardedHost ?? hostHeader ?? url.host;
-  const effectiveHost = effectiveHostWithPort.split(":")[0];
-  const proto = request.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "");
+  const effectiveHost = getEffectiveHostname(request);
   if (env.NODE_ENV !== "production" && effectiveHost === "localhost") {
     const devHostUrl = new URL(url.pathname + url.search, url.toString());
     devHostUrl.hostname = "127.0.0.1";
     return NextResponse.redirect(devHostUrl.toString());
   }
-  const origin = `${proto}://${effectiveHostWithPort}`;
+  const origin = getPublicOriginFromRequest(request);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const tokenUrl = env.X_OAUTH_TOKEN_URL ?? "https://api.x.com/2/oauth2/token";
