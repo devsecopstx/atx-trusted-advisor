@@ -16,14 +16,18 @@ const optionalAuthSecret = z.preprocess(
   emptyToUndefined,
   z.string().min(16).optional()
 );
+const optionalNonEmptyString = z.preprocess(
+  emptyToUndefined,
+  z.string().min(1).optional()
+);
 
 const envSchema = z.object({
   MONGODB_URI_B64: z.string().min(1).optional(),
   MONGODB_URI_B4: z.string().min(1).optional(),
   XAI_API_KEY: z.string().min(1),
   XAI_MANAGEMENT_API_KEY: z.string().min(1),
-  XAI_TEAM_ID: z.string().min(1),
-  ATXFINANCE_COLLECTION_ID: z.string().min(1),
+  XAI_TEAM_ID: optionalNonEmptyString,
+  ATXFINANCE_COLLECTION_ID: optionalNonEmptyString,
   X_OAUTH_CLIENT_ID: z.string().min(1),
   X_OAUTH_CLIENT_SECRET: z.string().min(1),
   X_OAUTH_CALLBACK_URL: optionalUrl,
