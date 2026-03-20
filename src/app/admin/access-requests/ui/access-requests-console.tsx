@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
 import Image from "next/image";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
-import { parseJson } from "@/app/admin/ui/http";
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { parseJson } from "@/app/admin/ui/http";
+import { formatUserFacingIdentityLabel } from "@/lib/x-identity-email";
 
 type AccessRequestStatus = "new" | "triaged" | "pending" | "approved" | "rejected" | "expired";
 
@@ -294,22 +295,25 @@ export function AccessRequestsConsole() {
               {accessRequests.map((item) => {
                 const days = daysUntilExpiry(item.requestedAt);
                 const slaUrgent = days <= 2 && isActionable(item.status);
+                const primaryLabel = formatUserFacingIdentityLabel(item.user, item.userId);
+                const avatarLetter =
+                  primaryLabel.replace(/^@/, "").trim().slice(0, 1).toUpperCase() || "?";
                 return (
                   <tr key={item._id ?? `${item.userId}-${item.requestedAt}`}>
                     <td>
                       <div className="user-summary">
                         {item.user?.avatarUrl ? (
                           <Image
-                            alt={`${item.user?.displayName ?? item.user?.username ?? "user"} avatar`}
+                            alt={`${item.user?.displayName ?? primaryLabel} avatar`}
                             className="user-avatar" height={32} src={item.user.avatarUrl} width={32}
                           />
                         ) : (
                           <span className="user-avatar user-avatar-fallback">
-                            {(item.user?.displayName ?? item.user?.username ?? item.userId).slice(0, 1).toUpperCase()}
+                            {avatarLetter}
                           </span>
                         )}
                         <div className="user-summary-copy">
-                          <strong>{item.user?.email ?? item.user?.username ?? item.userId}</strong>
+                          <strong>{primaryLabel}</strong>
                           <span>{item.user?.displayName ?? ""}</span>
                         </div>
                       </div>

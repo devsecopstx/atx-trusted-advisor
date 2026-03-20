@@ -385,6 +385,12 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.cta-danger {
+  color: var(--xf-danger-400);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.08);
+}
+
 .panel {
   border-radius: var(--xf-radius-md);
   border: 1px solid rgba(255, 255, 255, 0.16);

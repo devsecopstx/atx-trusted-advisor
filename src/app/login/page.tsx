@@ -15,7 +15,7 @@ const errorCopy: Record<string, string> = {
     "OAuth context is missing. Use the same host for app + callback and retry login.",
   missing_oauth_callback_params: "OAuth callback is missing code/state. Retry login from this page.",
   missing_oauth_cookie_context:
-    "OAuth cookies were not found. Use the same host for app + callback (127.0.0.1) and retry login.",
+    "OAuth cookies were not found. Start login from this page (same host as callback), clear cookies if needed, and retry.",
   invalid_oauth_state: "Invalid OAuth state. Please retry login.",
   token_exchange_failed: "X token exchange failed. Verify client credentials.",
   missing_access_token: "X OAuth did not return an access token.",

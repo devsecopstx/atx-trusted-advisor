@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { BatchDetailPolling } from "./batch-detail-polling";
 import { toBatchDashboardJob } from "@/modules/xchat/batch-dashboard";
 import {
   getBatchJobRecord,
@@ -90,6 +91,9 @@ export default async function AdminBatchDetailPage({
         </div>
         {dashboard.lastError ? (
           <p className="status-text status-error">Last error: {dashboard.lastError}</p>
+        ) : null}
+        {!dashboard.isTerminal ? (
+          <BatchDetailPolling batchId={batchId} isTerminal={dashboard.isTerminal} />
         ) : null}
       </section>
 

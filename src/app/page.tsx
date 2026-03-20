@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 
+import { getSessionUser } from "@/lib/auth";
+import { getEnv } from "@/lib/env";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { MarketingHero } from "./ui/marketing-hero";
 import "./ui/marketing-hero.css";
 import "./ui/product-plans.css";
-import { MarketingHero } from "./ui/marketing-hero";
-import { getSessionUser } from "@/lib/auth";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getEnv } from "@/lib/env";
 
 export default async function HomePage() {
   const session = await getSessionUser();

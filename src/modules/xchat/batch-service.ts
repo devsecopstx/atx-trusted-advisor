@@ -1,18 +1,20 @@
 import { ObjectId } from "mongodb";
 
-import {
-  type XaiBatchJob,
-  type XaiBatchRequestItem,
-  type XaiBatchResultItem,
-  createBatchJob,
-  getBatchJobStatus,
-  isBatchJobTerminal,
-  listBatchJobResults,
-  uploadBatchInputFile
-} from "@/lib/xai-batch";
-import { searchDocumentsInCollections } from "@/lib/xai";
-import { toXaiRequestTools } from "@/lib/xai-tools";
 import { getDb } from "@/lib/mongodb";
+import { searchDocumentsInCollections } from "@/lib/xai";
+import {
+    createBatchJob,
+    getBatchJobStatus,
+    isBatchJobTerminal,
+    listBatchJobResults,
+    uploadBatchInputFile,
+    type XaiBatchJob,
+    type XaiBatchRequestItem,
+    type XaiBatchResultItem
+} from "@/lib/xai-batch";
+import { toXaiRequestTools } from "@/lib/xai-tools";
+import { logXchatBatchDebug } from "@/lib/xchat-debug";
+import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
 const BATCH_JOBS_COLLECTION = "xchat_batch_jobs";
@@ -129,16 +131,33 @@ export async function submitBatchJob(
     itemContextMap.set(item.itemId, ragContext);
 
     const systemPrompt = [
-      input.persona.systemPrompt ??
-        "You are xchat, an operations-focused assistant for atxfinance core admins.",
+      input.persona.systemPrompt?.trim() || "You are a helpful assistant.",
       ragContext
         ? `Use the following RAG context if relevant:\n${ragContext}`
         : "No RAG context available."
     ].join("\n\n");
 
-    const userPrompt = input.persona.overridePrompt?.trim()
+    const userPromptBase = input.persona.overridePrompt?.trim()
       ? `${input.persona.overridePrompt}\n\nUser message:\n${item.message}`
       : item.message;
+
+    const batchMeta = buildBatchUserPromptAugmentation({
+      tools: xapiConfig.tools,
+      personaRagCollectionId: collectionId
+    });
+    const userPrompt = `${userPromptBase}\n\n${batchMeta}`;
+
+    logXchatBatchDebug({
+      personaId: input.persona._id?.toHexString(),
+      personaName: input.persona.name,
+      itemCount: input.items.length,
+      itemId: item.itemId,
+      messagePreview: item.message.slice(0, 150) + (item.message.length > 150 ? "…" : ""),
+      systemPromptLength: systemPrompt.length,
+      userPromptLength: userPrompt.length,
+      ragContextLength: ragContext.length,
+      tools: batchTools.map((t) => (t as { type?: string }).type ?? "unknown")
+    });
 
     const baseChatBody: Record<string, unknown> = {
       model: input.persona.model ?? "grok-4-1-fast",
@@ -153,17 +172,19 @@ export async function submitBatchJob(
       baseChatBody.tool_choice = xapiConfig.toolChoice;
     }
 
+    const responsesBody: Record<string, unknown> = {
+      model: input.persona.model ?? "grok-4-1-fast",
+      system_prompt: systemPrompt,
+      input: userPrompt,
+      max_turns: xapiConfig.maxTurns
+    };
+    if (xapiConfig.toolChoice !== "none" && batchTools.length > 0) {
+      responsesBody.tools = batchTools;
+      responsesBody.tool_choice = xapiConfig.toolChoice;
+    }
+
     const body: Record<string, unknown> =
-      xapiConfig.mode === "chat_completions"
-        ? baseChatBody
-        : {
-            model: input.persona.model ?? "grok-4-1-fast",
-            system_prompt: systemPrompt,
-            input: userPrompt,
-            tools: batchTools,
-            tool_choice: xapiConfig.toolChoice,
-            max_turns: xapiConfig.maxTurns
-          };
+      xapiConfig.mode === "chat_completions" ? baseChatBody : responsesBody;
 
     batchRequestItems.push({
       custom_id: item.itemId,
@@ -207,6 +228,13 @@ export async function submitBatchJob(
     .collection<BatchJobRecord>(BATCH_JOBS_COLLECTION)
     .insertOne(jobRecord);
   jobRecord._id = jobInsert.insertedId;
+
+  logXchatBatchDebug({
+    batchId: batchJob.id,
+    personaId: input.personaId,
+    personaName: input.persona.name,
+    itemCount: input.items.length
+  });
 
   const itemDocs: BatchItemRecord[] = input.items.map((item) => ({
     batchJobId: jobInsert.insertedId,

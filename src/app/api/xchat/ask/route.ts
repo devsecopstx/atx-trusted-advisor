@@ -5,22 +5,23 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
-  chatWithXai,
-  respondWithXai,
-  respondWithXaiToolLoop,
-  searchDocumentsInCollections,
-  type ToolCallLog
+    chatWithXai,
+    respondWithXai,
+    respondWithXaiToolLoop,
+    searchDocumentsInCollections,
+    type ToolCallLog
 } from "@/lib/xai";
+import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import {
-  resolveDefaultXchatPersonaForSession,
-  retrieveRagChunks,
-  saveXChatLog
+    resolveDefaultXchatPersonaForSession,
+    retrieveRagChunks,
+    saveXChatLog
 } from "@/modules/xchat/repository";
-import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 import {
-  createXfinanceToolExecutor,
-  ATXFINANCE_TOOL_DEFINITION
+    ATXFINANCE_TOOL_DEFINITION,
+    createXfinanceToolExecutor
 } from "@/modules/xchat/tool-executor";
+import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 
 const askSchema = z.object({
@@ -175,18 +176,40 @@ export async function POST(request: Request) {
   let xaiResponse: { outputText: string; model: string };
   let toolCallLogs: ToolCallLog[] = [];
 
+  const chatCompletionsWithTools = () =>
+    chatWithXai({
+      model: persona?.model,
+      temperature: persona?.temperature ?? 0.2,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      tools: xapiConfig.tools,
+      toolChoice: xapiConfig.toolChoice
+    });
+
+  const chatCompletionsNoTools = () =>
+    chatWithXai({
+      model: persona?.model,
+      temperature: persona?.temperature ?? 0.2,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      toolChoice: "none"
+    });
+
+  const fallbackToChat = async (): Promise<{ outputText: string; model: string }> => {
+    try {
+      return await chatCompletionsWithTools();
+    } catch {
+      return chatCompletionsNoTools();
+    }
+  };
+
   try {
     if (xapiConfig.mode === "chat_completions") {
-      xaiResponse = await chatWithXai({
-        model: persona?.model,
-        temperature: persona?.temperature ?? 0.2,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: xapiConfig.tools,
-        toolChoice: xapiConfig.toolChoice
-      });
+      xaiResponse = await chatCompletionsWithTools();
     } else if (hasXfinanceTool) {
       const xaiTools: Array<Record<string, unknown>> = xapiConfig.tools
         .filter((t) => t.type !== "atxfinance")
@@ -197,26 +220,40 @@ export async function POST(request: Request) {
         userId: session.userId,
         tenantId: session.tenantId
       });
-      const loopResult = await respondWithXaiToolLoop({
-        model: persona?.model,
-        systemPrompt,
-        userPrompt,
-        tools: xaiTools,
-        toolChoice: xapiConfig.toolChoice,
-        maxTurns: xapiConfig.maxTurns,
-        executor
-      });
-      xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
-      toolCallLogs = loopResult.toolCalls;
+      try {
+        const loopResult = await respondWithXaiToolLoop({
+          model: persona?.model,
+          systemPrompt,
+          userPrompt,
+          tools: xaiTools,
+          toolChoice: xapiConfig.toolChoice,
+          maxTurns: xapiConfig.maxTurns,
+          executor
+        });
+        xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
+        toolCallLogs = loopResult.toolCalls;
+      } catch (responsesErr) {
+        console.warn("[xchat/ask] responses mode failed, falling back to chat_completions", {
+          error: responsesErr instanceof Error ? responsesErr.message : String(responsesErr)
+        });
+        xaiResponse = await fallbackToChat();
+      }
     } else {
-      xaiResponse = await respondWithXai({
-        model: persona?.model,
-        systemPrompt,
-        userPrompt,
-        tools: xapiConfig.tools,
-        toolChoice: xapiConfig.toolChoice,
-        maxTurns: xapiConfig.maxTurns
-      });
+      try {
+        xaiResponse = await respondWithXai({
+          model: persona?.model,
+          systemPrompt,
+          userPrompt,
+          tools: xapiConfig.tools,
+          toolChoice: xapiConfig.toolChoice,
+          maxTurns: xapiConfig.maxTurns
+        });
+      } catch (responsesErr) {
+        console.warn("[xchat/ask] responses mode failed, falling back to chat_completions", {
+          error: responsesErr instanceof Error ? responsesErr.message : String(responsesErr)
+        });
+        xaiResponse = await fallbackToChat();
+      }
     }
   } catch (error) {
     console.error("[xchat/ask] xAI provider call failed", {
@@ -235,6 +272,34 @@ export async function POST(request: Request) {
   }
 
   const contextChunkIds = ragChunks.flatMap((chunk) => (chunk._id ? [chunk._id] : []));
+
+  logXchatAskDebug({
+    userId: session.userId,
+    email: session.email,
+    personaId: persona?._id?.toHexString(),
+    personaName: persona?.name,
+    message,
+    systemPrompt,
+    userPrompt,
+    ragContextLength: ragContext.length,
+    contextSource,
+    contextCount,
+    tools: xapiConfig.tools.map((t) => t.type),
+    model: persona?.model,
+    responseLength: xaiResponse.outputText.length,
+    mode: xapiConfig.mode
+  });
+  logXchatAskFullPayload({
+    userId: session.userId,
+    personaName: persona?.name,
+    systemPrompt,
+    userPrompt,
+    ragContext,
+    tools: xapiConfig.tools.map((t) => t.type),
+    model: persona?.model,
+    responseText: xaiResponse.outputText
+  });
+
   await saveXChatLog({
     userId,
     tenantId: tenantId ?? undefined,

@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
-import { parseJson } from "@/app/admin/ui/http";
 import { DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT } from "@/app/admin/personas/ui/personas-onboarding";
+import { DeleteIcon } from "@/app/admin/ui/crud-icons";
+import { parseJson } from "@/app/admin/ui/http";
 
 type PersonaEditorPageProps = {
   mode: "create" | "edit";
@@ -249,6 +250,23 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
     }
   }
 
+  async function onDelete() {
+    if (!personaId || mode !== "edit") return;
+    if (!window.confirm(`Delete persona "${form.name}"? This cannot be undone.`)) return;
+    setStatus("Deleting persona...");
+    try {
+      const res = await fetch(`/api/personas/${personaId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `Delete failed (${res.status})`);
+      }
+      router.push("/admin/personas");
+      router.refresh();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to delete persona");
+    }
+  }
+
   return (
     <section className="panel stack-gap">
       <article className="surface-card xf-widget section-card">
@@ -468,6 +486,17 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             <button className="cta cta-secondary" onClick={() => router.push("/admin/personas")} type="button">
               Cancel
             </button>
+            {mode === "edit" && personaId ? (
+              <button
+                className="cta cta-danger"
+                disabled={loading}
+                onClick={() => void onDelete()}
+                type="button"
+                aria-label="Delete persona"
+              >
+                <DeleteIcon className="crud-icon" /> Delete
+              </button>
+            ) : null}
           </div>
         </form>
       </article>

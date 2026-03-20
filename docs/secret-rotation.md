@@ -71,12 +71,17 @@ Atlas → **Database Access** → delete or disable old user.
 
 ## X OAuth (X_OAUTH_CLIENT_ID, X_OAUTH_CLIENT_SECRET)
 
+**Token types (do not confuse):**
+
+- **Client ID + Client Secret** — app credentials from Keys and Tokens. Store in `.env` / GCP Secret Manager. Used to exchange the auth code for tokens during login.
+- **Access token + Refresh token** — shown once after a test OAuth flow. User-level; the app obtains these per-user during the PKCE flow. Do **not** put them in `.env.prod` or GCP secrets.
+
 ### 1. Create new credentials (X Developer Portal)
 
 1. [developer.x.com](https://developer.x.com) → **Projects & Apps** → your app (e.g. `atxfinance-advisory`)
 2. **Keys and Tokens** → **OAuth 2.0**
 3. **Regenerate** Client Secret (or create a new app if rotating Client ID too)
-4. Copy Client ID and Client Secret immediately (secret is shown only once)
+4. Copy **Client ID** and **Client Secret** immediately (secret is shown only once)
 
 ### 2. Callback URLs (must match exactly)
 
