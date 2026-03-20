@@ -1,0 +1,45 @@
+---
+alwaysApply: true
+---
++
++# xFinance Branding — Production Rules for Cursor
++
++**Core Positioning (use everywhere)**
++- Tagline: **"No Atoms Moved. Just Gains Earned."**
++- Subline: **"Cheapest xFinance at $2/hr • Options Profits Powered by Grok"**
++- Promise: Turn options into daily gains (covered calls, protective puts, straddles, unified scanner). Zero fluff. Institutional tools at retail price.
++
++**Visual Identity (match first screenshot lightning style + second screenshot green cyber-finance vibe)**
++- **Primary Icon**: Lightning bolt ⚡ + stylized "xF" (use first screenshot’s clean geometric dark X style)
++- **Color Palette**:
++  - Background: `#050505` (pure black like xAI API)
++  - Accent Green: `#22c55e` (neon gains — use exactly as in second screenshot)
++  - Text: `#f1f5f9` / `#94a3b8`
++  - Lightning Yellow highlight: `#eab308` on hover
++- **Typography**:
++  - Heading: `font-bold tracking-tighter text-5xl md:text-7xl` (Inter or system-ui)
++  - Sub: `font-medium text-2xl text-emerald-400`
++  - Body: `font-mono text-sm text-slate-400` for financial data
++  - Tagline: `font-black uppercase tracking-[4px] text-emerald-400`
++
++**Product Hierarchy**
++- xFinance     → Core portfolio + scanners
++- xChat        → AI advisor (the chat interface we’re building)
++- xCoach       → Learning / exam readiness
++- xMoney       → Coming soon (execution / money movement)
++
++**Pricing Lock-in**
++- Every page, every button, every hero must show **"$2/hr"** in emerald-400 with tooltip: "Cheapest xFinance on earth — pay only for what you use."
++
++**When to use this rule**
++- Any new page/component with xFinance, xChat, xCoach, xMoney
++- Hero sections, nav, chat header, pricing cards
++- Always include lightning icon ⚡ next to "xFinance"
++
++**Strict Rules**
++- Never use "aTx" anymore — kill it.
++- Always green "Gains Earned" highlight.
++- Dark mode only. No light theme.
++- Every recommendation must tie back to options profit (covered calls, protective puts, unified scanner).
++
++When user says "xFinance branding" or "new hero", immediately output the full Tailwind component below (updated with current products).
