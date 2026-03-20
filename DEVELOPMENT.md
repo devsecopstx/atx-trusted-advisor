@@ -121,6 +121,17 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 - `access_request_pending`: account exists but has no login-allowed role (`global_admin`, `advisor`, `operator`, `viewer`).
 - If the entered email already belongs to an approved admin account, `/api/auth/link-email` now unlinks stale X mappings and re-links to the approved user.
 - For Atlas-only setups, if login/link-email email matches `ADMIN_SEED_EMAIL` (must be set in env), auth flow auto-applies seeded global-admin role and tenant membership. Local Mongo is not required.
+- `bootstrap_failed`: tenant membership, default portfolio provisioning, or session cookie creation threw after X OAuth succeeded. Check **Cloud Run logs** for `[auth/x/callback] session bootstrap failed` (Mongo index errors, duplicate keys, or DB connectivity). User is redirected to `/login` with this code instead of a raw **500** when the catch path is deployed.
+
+### App-user HTTP 500
+
+If **`/admin` works** but **`/xchat` or `/xfinance` returns 500** (staging or prod):
+
+1. Confirm **`GET /api/health`** returns `200` with `status: ok` (rules out broken `MONGODB_URI_B64` for that revision).
+2. **Cloud Run → Logs** — filter for the request path and `Error` / `x/callback` / `getDefaultPortfolio`.
+3. **OAuth callback** — empty env values like `X_OAUTH_CALLBACK_URL=` (literal empty) used to fail `getEnv()` at runtime; optional URL vars now treat blank as unset. Ensure **`X_OAUTH_CALLBACK_URL`** in production matches the live host if set explicitly.
+4. **New app-user first login** — `provisionDefaultPortfolioForUser` runs in the callback; failures are logged and redirect to `bootstrap_failed` instead of exposing a 500 when that path is active.
+5. Clear site cookies and retry sign-in if the session cookie was signed with a rotated **`AUTH_SECRET`** (invalid cookies yield logged-out behavior, not usually 500).
 
 ## Validation Commands
 

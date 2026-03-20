@@ -1,35 +1,35 @@
 import { NextResponse } from "next/server";
 
-import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import {
-  clearOAuthFlowCookies,
-  createSession,
-  getSessionUser,
-  readOAuthFlowCookies,
-  setPendingXLinkCookie
+    clearOAuthFlowCookies,
+    createSession,
+    getSessionUser,
+    readOAuthFlowCookies,
+    setPendingXLinkCookie
 } from "@/lib/auth";
 import {
-  getEnv,
-  getXOauthClientId,
-  isAllowAnyXUserLoginEnabled
+    getEnv,
+    getXOauthClientId,
+    isAllowAnyXUserLoginEnabled
 } from "@/lib/env";
+import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import {
-  createAccessRequest,
-  getPendingAccessRequestByUserAndRole,
-  provisionDefaultPortfolioForUser
+    createAccessRequest,
+    getPendingAccessRequestByUserAndRole,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-  ensureDefaultTenant,
-  ensureCoreUserByEmail,
-  ensureSeededGlobalAdmin,
-  getCoreUserByEmail,
-  getCoreUserByXIdentity,
-  unlinkXAccountFromUser,
-  linkXAccountToUser,
-  resolveAuthContext,
-  upsertTenantMembership
+    ensureCoreUserByEmail,
+    ensureDefaultTenant,
+    ensureSeededGlobalAdmin,
+    getCoreUserByEmail,
+    getCoreUserByXIdentity,
+    linkXAccountToUser,
+    resolveAuthContext,
+    unlinkXAccountFromUser,
+    upsertTenantMembership
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
 
@@ -268,39 +268,48 @@ export async function GET(request: Request) {
   if (!tenant._id) {
     return NextResponse.redirect(new URL("/login?error=tenant_bootstrap_failed", origin));
   }
-  await upsertTenantMembership({
-    userId: userObjectId,
-    tenantId: tenant._id,
-    role: "tenant_admin",
-    isDefaultTenant: true
-  });
-  const authContext = await resolveAuthContext({ user });
-  const sessionRoles = hasLoginRole
-    ? authContext.roles
-    : authContext.roles.length > 0
+
+  try {
+    await upsertTenantMembership({
+      userId: userObjectId,
+      tenantId: tenant._id,
+      role: "tenant_admin",
+      isDefaultTenant: true
+    });
+    const authContext = await resolveAuthContext({ user });
+    const sessionRoles = hasLoginRole
       ? authContext.roles
-      : ["viewer"];
+      : authContext.roles.length > 0
+        ? authContext.roles
+        : ["viewer"];
 
-  await provisionDefaultPortfolioForUser({
-    userId: authContext.userId.toHexString(),
-    tenantId: authContext.tenantId.toHexString()
-  });
+    await provisionDefaultPortfolioForUser({
+      userId: authContext.userId.toHexString(),
+      tenantId: authContext.tenantId.toHexString()
+    });
 
-  await createSession({
-    userId: authContext.userId.toHexString(),
-    email: authContext.email,
-    roles: sessionRoles,
-    tenantId: authContext.tenantId.toHexString(),
-    tenantRole: authContext.tenantRole,
-    xUserId: authContext.xUserId ?? xIdentity.xUserId,
-    username: authContext.username ?? xIdentity.username,
-    displayName: authContext.displayName ?? xIdentity.displayName,
-    avatarUrl: authContext.avatarUrl ?? xIdentity.avatarUrl
-  });
+    await createSession({
+      userId: authContext.userId.toHexString(),
+      email: authContext.email,
+      roles: sessionRoles,
+      tenantId: authContext.tenantId.toHexString(),
+      tenantRole: authContext.tenantRole,
+      xUserId: authContext.xUserId ?? xIdentity.xUserId,
+      username: authContext.username ?? xIdentity.username,
+      displayName: authContext.displayName ?? xIdentity.displayName,
+      avatarUrl: authContext.avatarUrl ?? xIdentity.avatarUrl
+    });
 
-  return NextResponse.redirect(
-    new URL(isGlobalAdmin(sessionRoles) ? "/admin" : "/xchat", origin)
-  );
+    return NextResponse.redirect(
+      new URL(isGlobalAdmin(sessionRoles) ? "/admin" : "/xchat", origin)
+    );
+  } catch (error) {
+    console.error("[auth/x/callback] session bootstrap failed", {
+      userId: userObjectId.toHexString(),
+      message: error instanceof Error ? error.message : String(error)
+    });
+    return NextResponse.redirect(new URL("/login?error=bootstrap_failed", origin));
+  }
 }
 
 async function fetchXUserProfile(
