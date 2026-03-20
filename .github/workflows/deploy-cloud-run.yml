@@ -118,8 +118,20 @@ jobs:
           set -euo pipefail
           PROJECT="${{ vars.GCP_PROJECT_ID_STAGING }}"
           for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
-            gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null \
-              || { echo "::error::Missing GCP secret '${s}' in project ${PROJECT}"; exit 1; }
+            errfile="$(mktemp)"
+            if gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null 2>"$errfile"; then
+              rm -f "$errfile"
+              continue
+            fi
+            err="$(cat "$errfile")"
+            rm -f "$errfile"
+            if echo "$err" | grep -qE 'PERMISSION_DENIED|permission.*denied|403'; then
+              echo "::error::Secret Manager IAM denied for '${s}' in ${PROJECT} (need secretmanager.secrets.get). Grant the GitHub deploy SA (secret GCP_SERVICE_ACCOUNT_EMAIL) roles/secretmanager.viewer or roles/secretmanager.admin on this project — see DEVELOPMENT.md (GCP Secret Manager)."
+            else
+              echo "::error::Missing or unreachable GCP secret '${s}' in project ${PROJECT}"
+              echo "$err"
+            fi
+            exit 1
           done
 
       - name: Clear legacy ADMIN_SEED_EMAIL bindings (literal or old secret ref)
@@ -235,8 +247,20 @@ jobs:
           set -euo pipefail
           PROJECT="${{ vars.GCP_PROJECT_ID_PROD }}"
           for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
-            gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null \
-              || { echo "::error::Missing GCP secret '${s}' in project ${PROJECT}"; exit 1; }
+            errfile="$(mktemp)"
+            if gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null 2>"$errfile"; then
+              rm -f "$errfile"
+              continue
+            fi
+            err="$(cat "$errfile")"
+            rm -f "$errfile"
+            if echo "$err" | grep -qE 'PERMISSION_DENIED|permission.*denied|403'; then
+              echo "::error::Secret Manager IAM denied for '${s}' in ${PROJECT} (need secretmanager.secrets.get). Grant the GitHub deploy SA (secret GCP_SERVICE_ACCOUNT_EMAIL) roles/secretmanager.viewer or roles/secretmanager.admin on this project — see DEVELOPMENT.md (GCP Secret Manager)."
+            else
+              echo "::error::Missing or unreachable GCP secret '${s}' in project ${PROJECT}"
+              echo "$err"
+            fi
+            exit 1
           done
 
       - name: Clear legacy ADMIN_SEED_EMAIL bindings (literal or old secret ref)
@@ -351,8 +375,20 @@ jobs:
           set -euo pipefail
           PROJECT="${{ vars.GCP_PROJECT_ID_PROD }}"
           for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
-            gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null \
-              || { echo "::error::Missing GCP secret '${s}' in project ${PROJECT}"; exit 1; }
+            errfile="$(mktemp)"
+            if gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null 2>"$errfile"; then
+              rm -f "$errfile"
+              continue
+            fi
+            err="$(cat "$errfile")"
+            rm -f "$errfile"
+            if echo "$err" | grep -qE 'PERMISSION_DENIED|permission.*denied|403'; then
+              echo "::error::Secret Manager IAM denied for '${s}' in ${PROJECT} (need secretmanager.secrets.get). Grant the GitHub deploy SA (secret GCP_SERVICE_ACCOUNT_EMAIL) roles/secretmanager.viewer or roles/secretmanager.admin on this project — see DEVELOPMENT.md (GCP Secret Manager)."
+            else
+              echo "::error::Missing or unreachable GCP secret '${s}' in project ${PROJECT}"
+              echo "$err"
+            fi
+            exit 1
           done
 
       - name: Clear legacy ADMIN_SEED_EMAIL bindings (literal or old secret ref)
