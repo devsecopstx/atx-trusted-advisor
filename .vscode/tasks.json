@@ -5,7 +5,12 @@
       "label": "Install Dependencies",
       "type": "shell",
       "command": "npm ci",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
     },
     {
       "label": "Build App",
@@ -16,14 +21,24 @@
         "Install Dependencies"
       ],
       "dependsOrder": "sequence",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
     },
     {
       "label": "Start Backend (Docker)",
       "type": "shell",
       "command": "npm run dev:backend",
       "isBackground": true,
-      "problemMatcher": []
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
     },
     {
       "label": "Start Frontend (Next Dev)",
@@ -34,13 +49,23 @@
       "group": {
         "kind": "build",
         "isDefault": true
+      },
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
       }
     },
     {
       "label": "Open Localhost",
       "type": "shell",
       "command": "sleep 3 && open http://localhost:3000",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
     },
     {
       "label": "Start Local Services",
@@ -49,7 +74,12 @@
         "Start Frontend (Next Dev)"
       ],
       "dependsOrder": "parallel",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
     },
     {
       "label": "Run Localhost App (Backend + Frontend)",
@@ -58,7 +88,12 @@
         "Open Localhost"
       ],
       "dependsOrder": "sequence",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
     }
   ]
 }

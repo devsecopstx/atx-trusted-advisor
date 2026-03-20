@@ -28,7 +28,7 @@ export function AtxFinanceMark({ size, className }: AtxFinanceMarkProps) {
   );
 }
 
-/** Lightning bolt in gain-green, sits between aTx and Finance in the lockup. */
+/** Lightning bolt in lightning-yellow — sits between gain-green aTx and white Finance. */
 export function LightningBolt({ size }: { size: number }) {
   return (
     <svg
@@ -38,7 +38,10 @@ export function LightningBolt({ size }: { size: number }) {
       viewBox="0 0 24 24"
       width={size}
     >
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="var(--xf-gain-green)" />
+      <path
+        d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+        fill="var(--xf-lightning-yellow)"
+      />
     </svg>
   );
 }

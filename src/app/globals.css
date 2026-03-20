@@ -30,6 +30,11 @@ h1, h2, h3, h4, h5, h6 {
   flex: 0 0 auto;
 }
 
+.xf-logo-lightning {
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--xf-lightning-yellow) 55%, transparent));
+}
+
 .xf-logo-text {
   font-weight: 750;
   letter-spacing: -0.03em;

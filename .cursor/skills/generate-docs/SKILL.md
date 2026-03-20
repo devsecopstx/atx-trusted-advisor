@@ -39,6 +39,8 @@ When introducing new subsystems, prefer extending `DEVELOPMENT.md` and linking f
 
 **xChat / branding:** Keep **`docs/xchat/xfinance-branding-review.md`** in sync when **`xfinance-branding.mdc`** or logo/hero/pricing messaging changes materially.
 
+**xChat / observability:** When changing **`ENABLE_XCHAT_DEBUG`**, **`src/lib/xchat-debug.ts`**, or ask/batch logging prefixes — update **`docs/xchat/xchat-debug-logging.md`** (taxonomy, `type` values, privacy).
+
 ## API docs & OpenAPI (route changes)
 
 When **`src/app/api/**`** or public HTTP contracts change:

@@ -2,7 +2,7 @@
 
 Review against **`.cursor/rules/xfinance-branding.mdc`** (expert pass).
 
-**Logo lockup (current):** **aTx⚡Finance** — **aTx** (gain-green) + **⚡** + **Finance** (white), implemented in `src/app/ui/atxfinance-logo.tsx`. This supersedes older review text that suggested removing "aTx" from the mark.
+**Logo lockup (current):** **aTx⚡Finance** — **aTx** (gain-green) + **⚡** (lightning yellow, `--xf-lightning-yellow`) + **Finance** (white), implemented in `src/app/ui/atxfinance-logo.tsx`. This supersedes older review text that suggested removing "aTx" from the mark.
 
 **Product decision:** Keep the current **AtxFinanceLogo** + **MarketingHero** for the landing. Do **not** add a separate full-page hero with inline ⚡ + "xF" + "xFinance Coach" + custom CTAs; that treatment was reverted and is not desired.
 

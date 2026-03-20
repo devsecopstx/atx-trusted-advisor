@@ -5,21 +5,21 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
-    chatWithXai,
-    respondWithXai,
-    respondWithXaiToolLoop,
-    searchDocumentsInCollections,
-    type ToolCallLog
+  chatWithXai,
+  respondWithXai,
+  respondWithXaiToolLoop,
+  searchDocumentsInCollections,
+  type ToolCallLog
 } from "@/lib/xai";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import {
-    resolveDefaultXchatPersonaForSession,
-    retrieveRagChunks,
-    saveXChatLog
+  resolveDefaultXchatPersonaForSession,
+  retrieveRagChunks,
+  saveXChatLog
 } from "@/modules/xchat/repository";
 import {
-    ATXFINANCE_TOOL_DEFINITION,
-    createXfinanceToolExecutor
+  ATXFINANCE_TOOL_DEFINITION,
+  createXfinanceToolExecutor
 } from "@/modules/xchat/tool-executor";
 import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
@@ -287,7 +287,10 @@ export async function POST(request: Request) {
     tools: xapiConfig.tools.map((t) => t.type),
     model: persona?.model,
     responseLength: xaiResponse.outputText.length,
-    mode: xapiConfig.mode
+    mode: xapiConfig.mode,
+    scope,
+    collectionId,
+    toolCallCount: toolCallLogs.length
   });
   logXchatAskFullPayload({
     userId: session.userId,

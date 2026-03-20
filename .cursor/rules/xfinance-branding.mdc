@@ -37,7 +37,7 @@ When the share and this rule disagree, **this rule + repo implementation** win; 
 - **Investor & deck roadmap:** **Freemium → tiered subscriptions** (illustrative: **~$29/mo** advisor tier, **~$99/mo** full execution + coach) — use in **investor decks**, waitlist **secondary** copy, or `/plans` when implemented. If both appear, lead with **$2/hr** transparency, then tiers as “also available” or “coming”.
 
 **Visual Identity (lightning + green cyber-finance vibe)**
-- **Logo lockup (mandatory):** **aTx** (gain-green, `--xf-gain-green`) + **⚡** (lightning bolt, gain-green) + **Finance** (white) = **aTx⚡Finance**. Do not drop the bolt between **aTx** and **Finance** in the wordmark. Code: `src/app/ui/atxfinance-logo.tsx` (`AtxFinanceMark`, `LightningBolt`, span).
+- **Logo lockup (mandatory):** **aTx** (gain-green, `--xf-gain-green`) + **⚡** (lightning bolt, **`--xf-lightning-yellow`**) + **Finance** (white) = **aTx⚡Finance**. Do not drop the bolt between **aTx** and **Finance** in the wordmark. Code: `src/app/ui/atxfinance-logo.tsx` (`AtxFinanceMark`, `LightningBolt`, span).
 - **Primary Icon (standalone / heroes):** Lightning ⚡ + stylized **xF** where a full lockup is not used (e.g. large marketing marks).
 - **Color Palette:**
   - Background: `#050505` (pure black like xAI API)

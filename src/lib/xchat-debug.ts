@@ -2,10 +2,33 @@
  * xChat debug logging — enabled via ENABLE_XCHAT_DEBUG=true.
  * Emits structured payloads for RAG/expert learning. Configure Cloud Logging
  * retention (e.g. 30 days) at project or log-bucket level.
+ *
+ * **Taxonomy (for Cloud Logging filters):**
+ * - **`[xchat/debug]`** — opt-in JSON lines (`ENABLE_XCHAT_DEBUG=true`). Fields
+ *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_batch`. See
+ *   `docs/xchat/xchat-debug-logging.md`.
+ * - **`[xchat/ask]`** — operational `console.warn` / `console.error` on RAG or
+ *   provider failures (always on; no full prompts).
+ * - **`[xchat/batch]`** — operational errors on batch submit/poll (always on).
  */
 import { isXchatDebugEnabled } from "@/lib/env";
 
+export const XCHAT_DEBUG_LOG_TYPES = [
+  "xchat_ask",
+  "xchat_ask_full",
+  "xchat_batch"
+] as const;
+
+export type XchatDebugLogType = (typeof XCHAT_DEBUG_LOG_TYPES)[number];
+
 const LOG_PREFIX = "[xchat/debug]";
+
+function maskCollectionId(id: string | undefined): string | undefined {
+  if (!id?.trim()) return undefined;
+  const t = id.trim();
+  if (t.length <= 8) return "***";
+  return `${t.slice(0, 4)}…${t.slice(-4)}`;
+}
 
 function maskUserId(id: string | undefined): string {
   if (!id) return "?";
@@ -36,12 +59,17 @@ export function logXchatAskDebug(payload: {
   model?: string;
   responseLength?: number;
   mode?: string;
+  /** RAG / tenant scope label (not PII). */
+  scope?: string;
+  /** Masked xAI collection id when collection search was used. */
+  collectionId?: string;
+  toolCallCount?: number;
 }): void {
   if (!isXchatDebugEnabled()) return;
 
   const safe = {
     ts: new Date().toISOString(),
-    type: "xchat_ask",
+    type: "xchat_ask" satisfies XchatDebugLogType,
     userId: maskUserId(payload.userId),
     email: maskEmail(payload.email),
     personaId: payload.personaId,
@@ -58,7 +86,10 @@ export function logXchatAskDebug(payload: {
     tools: payload.tools,
     model: payload.model,
     responseLength: payload.responseLength,
-    mode: payload.mode
+    mode: payload.mode,
+    scope: payload.scope,
+    collectionId: maskCollectionId(payload.collectionId),
+    toolCallCount: payload.toolCallCount
   };
 
   console.info(LOG_PREFIX, JSON.stringify(safe));
@@ -78,7 +109,7 @@ export function logXchatAskFullPayload(payload: {
 
   const safe = {
     ts: new Date().toISOString(),
-    type: "xchat_ask_full",
+    type: "xchat_ask_full" satisfies XchatDebugLogType,
     userId: maskUserId(payload.userId),
     personaName: payload.personaName,
     systemPrompt: payload.systemPrompt,
@@ -93,6 +124,8 @@ export function logXchatAskFullPayload(payload: {
 }
 
 export function logXchatBatchDebug(payload: {
+  /** `item_prepare` = per line while building JSONL; `job_created` = after xAI batch id is known. */
+  batchPhase: "item_prepare" | "job_created";
   batchId?: string;
   personaId?: string;
   personaName?: string;
@@ -103,12 +136,14 @@ export function logXchatBatchDebug(payload: {
   userPromptLength?: number;
   ragContextLength?: number;
   tools?: string[];
+  collectionId?: string;
 }): void {
   if (!isXchatDebugEnabled()) return;
 
   const safe = {
     ts: new Date().toISOString(),
-    type: "xchat_batch",
+    type: "xchat_batch" satisfies XchatDebugLogType,
+    batchPhase: payload.batchPhase,
     batchId: payload.batchId,
     personaId: payload.personaId,
     personaName: payload.personaName,
@@ -118,7 +153,8 @@ export function logXchatBatchDebug(payload: {
     systemPromptLength: payload.systemPromptLength,
     userPromptLength: payload.userPromptLength,
     ragContextLength: payload.ragContextLength,
-    tools: payload.tools
+    tools: payload.tools,
+    collectionId: maskCollectionId(payload.collectionId)
   };
 
   console.info(LOG_PREFIX, JSON.stringify(safe));

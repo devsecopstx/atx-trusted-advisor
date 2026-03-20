@@ -3,14 +3,14 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { searchDocumentsInCollections } from "@/lib/xai";
 import {
-    createBatchJob,
-    getBatchJobStatus,
-    isBatchJobTerminal,
-    listBatchJobResults,
-    uploadBatchInputFile,
-    type XaiBatchJob,
-    type XaiBatchRequestItem,
-    type XaiBatchResultItem
+  createBatchJob,
+  getBatchJobStatus,
+  isBatchJobTerminal,
+  listBatchJobResults,
+  uploadBatchInputFile,
+  type XaiBatchJob,
+  type XaiBatchRequestItem,
+  type XaiBatchResultItem
 } from "@/lib/xai-batch";
 import { toXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatBatchDebug } from "@/lib/xchat-debug";
@@ -148,6 +148,7 @@ export async function submitBatchJob(
     const userPrompt = `${userPromptBase}\n\n${batchMeta}`;
 
     logXchatBatchDebug({
+      batchPhase: "item_prepare",
       personaId: input.persona._id?.toHexString(),
       personaName: input.persona.name,
       itemCount: input.items.length,
@@ -156,7 +157,8 @@ export async function submitBatchJob(
       systemPromptLength: systemPrompt.length,
       userPromptLength: userPrompt.length,
       ragContextLength: ragContext.length,
-      tools: batchTools.map((t) => (t as { type?: string }).type ?? "unknown")
+      tools: batchTools.map((t) => (t as { type?: string }).type ?? "unknown"),
+      collectionId
     });
 
     const baseChatBody: Record<string, unknown> = {
@@ -230,10 +232,12 @@ export async function submitBatchJob(
   jobRecord._id = jobInsert.insertedId;
 
   logXchatBatchDebug({
+    batchPhase: "job_created",
     batchId: batchJob.id,
     personaId: input.personaId,
     personaName: input.persona.name,
-    itemCount: input.items.length
+    itemCount: input.items.length,
+    collectionId
   });
 
   const itemDocs: BatchItemRecord[] = input.items.map((item) => ({

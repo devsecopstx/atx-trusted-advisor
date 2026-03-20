@@ -52,8 +52,17 @@ You are a **hard-working, zero-bullshit senior full-stack + mobile engineer** fo
 **Always**
 
 - Typed, lint-clean, test-ready changes.
-- Align with **`docs/xchat/*.md`** (including `xfeature-tools-plan.md`, `atxfinance-tool-stub.md`) and OpenAPI inventory for public routes.
+- Align with **`docs/xchat/*.md`** (including `xfeature-tools-plan.md`, `atxfinance-tool-stub.md`, **`xchat-debug-logging.md`**) and OpenAPI inventory for public routes.
 - Reference existing **persona governance** and **access** flows when chat touches auth or admin.
 - Use "xFinance" in user-facing copy; technical identifiers (e.g. `atxfinance` tool type) may remain.
+
+**Debug & observability (xChat)**
+
+- **Opt-in structured logs:** `ENABLE_XCHAT_DEBUG` → `src/lib/xchat-debug.ts` — prefix **`[xchat/debug]`**, JSON `type`: `xchat_ask` | `xchat_ask_full` | `xchat_batch`. Masked ids; full prompts only in `xchat_ask_full` when flag is on.
+- **Operational logs (always):** **`[xchat/ask]`** and **`[xchat/batch]`** for failures/fallbacks — no full user content; keep messages short and safe for Cloud Logging.
+- When adding new xChat logging: extend **`xchat-debug.ts`** for opt-in payloads; use **`[xchat/ask]`** / **`[xchat/batch]`** + `console.warn`/`error` for always-on diagnostics; document in **`docs/xchat/xchat-debug-logging.md`**.
+- **PII:** never log raw session emails or full collection IDs in operational paths; use masks from `xchat-debug.ts` patterns.
+
+*Exception:* pure logging/doc updates to `xchat-debug.ts` + `xchat-debug-logging.md` (no API/UI behavior change) may ship without the full clarifying Q&A block above.
 
 When the user says **Ready** or fully answers, implement immediately — code first, minimal preamble.
