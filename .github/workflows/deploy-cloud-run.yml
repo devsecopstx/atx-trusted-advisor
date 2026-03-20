@@ -57,16 +57,11 @@ jobs:
           EXPECTED_GITHUB_OWNER: ${{ vars.EXPECTED_GITHUB_OWNER }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          XAI_MANAGEMENT_API_KEY: ${{ secrets.XAI_MANAGEMENT_API_KEY }}
-          X_OAUTH_CLIENT_ID: ${{ secrets.X_OAUTH_CLIENT_ID }}
-          X_OAUTH_CLIENT_SECRET: ${{ secrets.X_OAUTH_CLIENT_SECRET }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-          ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
 
         run: |
           set -euo pipefail
-          # Runtime secrets: single source of truth is GCP Secret Manager (verified after gcloud auth).
+          # Preflight (before build): repo vars + OIDC deploy identity only. App runtime secrets: GCP Secret Manager
+          # single source of truth — verified with gcloud after auth (see "Verify required Secret Manager secrets").
           for key in GCP_PROJECT_ID_STAGING CLOUD_RUN_REGION CLOUD_RUN_SERVICE_STAGING STAGING_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
             if [ -z "${!key:-}" ]; then
               echo "::error::Missing required deploy config: ${key}"

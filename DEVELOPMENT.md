@@ -151,7 +151,9 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 
 These must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
 
-**Single source of truth (Cloud Run runtime):** All app credentials below live in **GCP Secret Manager** per project and are mounted via `gcloud run deploy … --set-secrets` (see `.github/workflows/deploy-cloud-run.yml`). Do **not** duplicate them as GitHub Environment secrets for deploy — the workflow verifies each name exists with `gcloud secrets describe` after OIDC auth.
+**Single source of truth (Cloud Run runtime):** App credentials exist only in **GCP Secret Manager** per project. The workflow mounts them with `gcloud run deploy … --set-secrets` and verifies each name with `gcloud secrets describe` **after** OIDC to Google Cloud (see `.github/workflows/deploy-cloud-run.yml`). Do **not** store `XAI_*`, `X_OAUTH_*`, `AUTH_SECRET`, `MONGODB_URI_B64`, `ADMIN_SEED_EMAIL`, or `SLACK_WEBHOOK_URL` in GitHub Environment secrets — GitHub should hold **only** the OIDC deploy credentials (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`).
+
+**Merge / deploy preflight:** Pushes to `main` run the staging deploy job. If required GCP secrets are missing, the job fails at **Verify required Secret Manager secrets** (after `npm run build` and GCP auth). Before merging changes that must ship to staging immediately, confirm the **staging** GCP project already has every secret in the table below (or accept a red deploy and fix GSM before retrying).
 
 `ALLOW_ANY_X_USER_LOGIN` is **not** a GCP secret: the workflow sets it from the GitHub **variable** of that name (default `false`). Use **`true` only on staging** if you want any signed-in X user on `/xchat`; on **production**, leave it unset or `false`.
 
@@ -178,7 +180,7 @@ done
 
 ### Sync production Secret Manager from `.env.prod` (local)
 
-Cloud Run only mounts the seven secrets in the table above. Keep `.env.prod` gitignored; it is a convenience snapshot, not the source of truth in Git.
+Cloud Run mounts the eight secrets in the table above. Keep `.env.prod` gitignored; it is a convenience snapshot, not the source of truth in Git.
 
 1. **GCP**: Authenticate and select the production project (or export `GCP_PROJECT_ID_PROD`).
 2. **Dry-run** (no writes):  
@@ -186,7 +188,7 @@ Cloud Run only mounts the seven secrets in the table above. Keep `.env.prod` git
 3. **Apply** (adds new secret versions; same names the deploy workflow expects):  
    `bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target production --env-file .env.prod --execute`  
    If a name is missing in Secret Manager, add `--create-missing` once alongside `--execute`.
-4. **GitHub**: Set or update the **production** environment secret `ADMIN_SEED_EMAIL` to match `.env.prod` (the workflow injects it as a plain env var at deploy time; it is not read from GCP).
+4. **GCP `ADMIN_SEED_EMAIL`**: Ensure the `ADMIN_SEED_EMAIL` secret exists in the **production** project and matches `.env.prod` (the deploy workflow mounts it from Secret Manager like the other runtime secrets — not from GitHub).
 5. **Callback URL**: Production uses `X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback` from the workflow. Do **not** point `PROD_BASE_URL` or any prod callback at `127.0.0.1`. Your X Developer Portal app must list the same HTTPS callback host.
 6. **Roll forward**: Deploy a new Cloud Run revision (workflow or manual) so the service picks up `*:latest` secret versions.
 
@@ -262,7 +264,7 @@ echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 
 ### GitHub Environment Secrets
 
-Only **OIDC deploy identity** should live in GitHub Environment secrets (plus nothing else for app runtime):
+Only **OIDC deploy identity** — do not add app runtime secrets here (they belong in GCP Secret Manager only):
 
 | Secret | Staging | Production |
 | --- | --- | --- |
