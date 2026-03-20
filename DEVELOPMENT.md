@@ -208,6 +208,47 @@ Cloud Run mounts the eight secrets in the table above. Keep `.env.prod` gitignor
 
 Keys in `.env.prod` such as `GOOGLE_CLIENT_*`, `GITHUB_*`, `XAI_TEAM_ID`, or `ATXFINANCE_COLLECTION_ID` are **not** part of the default `--set-secrets` bundle unless you extend the workflow.
 
+### Production-only OAuth env checklist (GH + GCP)
+
+Use this checklist before or after a production callback/login incident:
+
+- [ ] **GitHub Environment secrets (production)** contain only OIDC deploy identity:
+  - `GCP_WORKLOAD_IDENTITY_PROVIDER`
+  - `GCP_SERVICE_ACCOUNT_EMAIL`
+- [ ] **GitHub Environment secrets do not contain OAuth runtime keys**:
+  - `X_OAUTH_CLIENT_ID`
+  - `X_OAUTH_CLIENT_SECRET`
+- [ ] **GCP Secret Manager (production project)** contains OAuth runtime keys:
+  - `X_OAUTH_CLIENT_ID`
+  - `X_OAUTH_CLIENT_SECRET`
+- [ ] **Cloud Run production runtime env** mounts OAuth keys from Secret Manager refs (not literal values).
+- [ ] **Cloud Run production runtime env** sets:
+  - `X_OAUTH_CALLBACK_URL=https://atx.fintech-advisor.ai/api/auth/x/callback`
+
+Interactive helper (auth checks + env/project prompts + optional deploy trigger):
+
+```bash
+npm run ops:rotate:oauth
+```
+
+Quick validation commands:
+
+```bash
+# GH production env secrets: should show OIDC keys only
+gh secret list --env production
+
+# GCP prod OAuth secrets: both should exist
+for s in X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET; do
+  gcloud secrets describe "$s" --project fintech-advisor-prod --format="value(name)"
+done
+
+# Cloud Run prod env: callback URL + secretKeyRef wiring
+gcloud run services describe xfinance-core-prod \
+  --project fintech-advisor-prod \
+  --region us-central1 \
+  --format="value(spec.template.spec.containers[0].env)"
+```
+
 ### GitHub Environment Variables
 
 Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-scoped.
