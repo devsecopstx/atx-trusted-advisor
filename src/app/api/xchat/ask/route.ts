@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import {
     chatWithXai,
     respondWithXai,
