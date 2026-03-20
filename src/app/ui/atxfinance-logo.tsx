@@ -3,25 +3,27 @@ type AtxFinanceMarkProps = {
   className?: string;
 };
 
-/** Square mark (X) used in logo lockups and xChat header brand. */
+/** Logo mark: "aTx" in gain-green, used in logo lockups and xChat header. */
 export function AtxFinanceMark({ size, className }: AtxFinanceMarkProps) {
   return (
     <svg
       aria-hidden="true"
       className={`xf-logo-mark${className ? ` ${className}` : ""}`}
-      fill="none"
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 52 24"
       width={size}
     >
-      <rect fill="var(--xf-bg-900)" height="32" rx="8" width="32" />
-      <path
-        d="M9.5 8.5L16 16.5M16 16.5L22.5 24.5M16 16.5L22.5 8.5M16 16.5L9.5 24.5"
-        stroke="var(--xf-gain-green)"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.4"
-      />
+      <text
+        fill="var(--xf-gain-green)"
+        fontFamily="var(--font-inter, Inter, system-ui, sans-serif)"
+        fontSize="16"
+        fontWeight="700"
+        letterSpacing="-0.04em"
+        x="4"
+        y="18"
+      >
+        aTx
+      </text>
     </svg>
   );
 }
@@ -44,9 +46,7 @@ export function AtxFinanceLogo({
     <div className={`xf-logo-lockup-inline${className ? ` ${className}` : ""}`}>
       <div className="xf-logo-row">
         <AtxFinanceMark size={markSize} />
-        <span className={titleClass}>
-          <span className="xf-logo-x-letter">x</span>Finance
-        </span>
+        <span className={titleClass}>xFinance</span>
       </div>
       {showSubtitle ? (
         <p className="xf-logo-powered">Powered by xAI</p>

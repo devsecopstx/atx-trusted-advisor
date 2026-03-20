@@ -14,7 +14,7 @@ export default async function XchatPage() {
     return (
       <div className="xchat-shell">
         <header className="xchat-header">
-          <Link aria-label="aTx Finance — xChat home" className="xchat-header-brand" href="/xchat">
+          <Link aria-label="aTX Finance — xChat home" className="xchat-header-brand" href="/xchat">
             <XchatHeaderBrand />
           </Link>
         </header>
@@ -34,7 +34,7 @@ export default async function XchatPage() {
         <AppUserApprovedHeader current="xchat" feedbackPageLabel="xChat" session={session} />
       ) : (
         <header className="xchat-header">
-          <Link aria-label="aTx Finance — xChat home" className="xchat-header-brand" href="/xchat">
+          <Link aria-label="aTX Finance — xChat home" className="xchat-header-brand" href="/xchat">
             <XchatHeaderBrand />
           </Link>
         </header>

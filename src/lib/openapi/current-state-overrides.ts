@@ -249,6 +249,44 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "503": jsonResponse("Default admin persona (Super-Agent) missing from database.", "ErrorResponse")
     }
   },
+  "POST /api/xchat/batch": {
+    summary: "Submit xChat batch job",
+    description:
+      "Uses persona from DB for system prompt, override prompt, and tool list (no hardcoded prompt/tools). See docs/xchat/batch-persona-contract.md.",
+    requestBody: {
+      required: true,
+      description: "Persona id and list of message items.",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+            required: ["personaId", "items"],
+            properties: {
+              personaId: { type: "string" },
+              items: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    itemId: { type: "string" },
+                    message: { type: "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    responses: {
+      "200": { description: "Batch job submitted; poll via GET /api/xchat/batch/{batchId}." },
+      "400": jsonResponse("Invalid batch payload.", "ValidationErrorResponse"),
+      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
+      "403": jsonResponse("Admin role required.", "ErrorResponse"),
+      "404": jsonResponse("Persona not found.", "ErrorResponse"),
+      "500": jsonResponse("Batch submit failed.", "ErrorResponse")
+    }
+  },
   "POST /api/feedback": {
     summary: "Submit signed-in user feedback",
     description:

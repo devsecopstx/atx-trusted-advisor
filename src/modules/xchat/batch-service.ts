@@ -1,18 +1,18 @@
 import { ObjectId } from "mongodb";
 
-import {
-  type XaiBatchJob,
-  type XaiBatchRequestItem,
-  type XaiBatchResultItem,
-  createBatchJob,
-  getBatchJobStatus,
-  isBatchJobTerminal,
-  listBatchJobResults,
-  uploadBatchInputFile
-} from "@/lib/xai-batch";
-import { searchDocumentsInCollections } from "@/lib/xai";
-import { toXaiRequestTools } from "@/lib/xai-tools";
 import { getDb } from "@/lib/mongodb";
+import { searchDocumentsInCollections } from "@/lib/xai";
+import {
+    createBatchJob,
+    getBatchJobStatus,
+    isBatchJobTerminal,
+    listBatchJobResults,
+    uploadBatchInputFile,
+    type XaiBatchJob,
+    type XaiBatchRequestItem,
+    type XaiBatchResultItem
+} from "@/lib/xai-batch";
+import { toXaiRequestTools } from "@/lib/xai-tools";
 import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
@@ -130,8 +130,7 @@ export async function submitBatchJob(
     itemContextMap.set(item.itemId, ragContext);
 
     const systemPrompt = [
-      input.persona.systemPrompt ??
-        "You are xchat, an operations-focused assistant for atxfinance core admins.",
+      input.persona.systemPrompt?.trim() || "You are a helpful assistant.",
       ragContext
         ? `Use the following RAG context if relevant:\n${ragContext}`
         : "No RAG context available."
