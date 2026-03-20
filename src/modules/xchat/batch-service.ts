@@ -147,7 +147,6 @@ export async function submitBatchJob(
     });
     const userPrompt = `${userPromptBase}\n\n${batchMeta}`;
 
-<<<<<<< HEAD
     logXchatBatchDebug({
       personaId: input.persona._id?.toHexString(),
       personaName: input.persona.name,
@@ -160,8 +159,6 @@ export async function submitBatchJob(
       tools: batchTools.map((t) => (t as { type?: string }).type ?? "unknown")
     });
 
-=======
->>>>>>> e7c667d (feat(xchat): batch KB-style prompt context + app footer disclaimer)
     const baseChatBody: Record<string, unknown> = {
       model: input.persona.model ?? "grok-4-1-fast",
       messages: [
