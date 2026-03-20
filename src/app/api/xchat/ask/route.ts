@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import {
   chatWithXai,
   respondWithXai,
@@ -235,6 +236,34 @@ export async function POST(request: Request) {
   }
 
   const contextChunkIds = ragChunks.flatMap((chunk) => (chunk._id ? [chunk._id] : []));
+
+  logXchatAskDebug({
+    userId: session.userId,
+    email: session.email,
+    personaId: persona?._id?.toHexString(),
+    personaName: persona?.name,
+    message,
+    systemPrompt,
+    userPrompt,
+    ragContextLength: ragContext.length,
+    contextSource,
+    contextCount,
+    tools: xapiConfig.tools.map((t) => t.type),
+    model: persona?.model,
+    responseLength: xaiResponse.outputText.length,
+    mode: xapiConfig.mode
+  });
+  logXchatAskFullPayload({
+    userId: session.userId,
+    personaName: persona?.name,
+    systemPrompt,
+    userPrompt,
+    ragContext,
+    tools: xapiConfig.tools.map((t) => t.type),
+    model: persona?.model,
+    responseText: xaiResponse.outputText
+  });
+
   await saveXChatLog({
     userId,
     tenantId: tenantId ?? undefined,

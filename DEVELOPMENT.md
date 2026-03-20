@@ -45,6 +45,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET` (recommended for session signing)
 - `ALLOW_ANY_X_USER_LOGIN` (optional feature flag; set `true` to allow any authenticated X user into `/xchat` with non-admin permissions, default disabled)
+- `ENABLE_XCHAT_DEBUG` (optional; set `true` in GCP to emit detailed xChat payload logs — RAG context, prompts, tools — for expert learning; default `false`; configure Cloud Logging retention e.g. 30 days at project or log-bucket level)
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
 - `ADMIN_SEED_EMAIL` (required for `npm run seed:admin` and OAuth seed-admin promotion; **no default** — set explicitly in `.env`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
@@ -221,6 +222,7 @@ Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-sc
 | `EXPECTED_GITHUB_REPOSITORY` | `devsecopstx/xfinance` | same value |
 | `EXPECTED_GITHUB_OWNER` | `devsecopstx` | same value |
 | `ALLOW_ANY_X_USER_LOGIN` | Optional `true` for open `/xchat` smoke testing | **Do not set** (or `false`) — registered users only |
+| `ENABLE_XCHAT_DEBUG` | Optional `true` for detailed xChat payload logs (RAG, prompts) | Optional `true`; ensure Cloud Logging retention ≥30 days for debug logs |
 
 ### GitHub CLI Setup (Variables + Secrets)
 

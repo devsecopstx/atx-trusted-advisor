@@ -13,6 +13,7 @@ import {
     type XaiBatchResultItem
 } from "@/lib/xai-batch";
 import { toXaiRequestTools } from "@/lib/xai-tools";
+import { logXchatBatchDebug } from "@/lib/xchat-debug";
 import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
@@ -146,6 +147,18 @@ export async function submitBatchJob(
     });
     const userPrompt = `${userPromptBase}\n\n${batchMeta}`;
 
+    logXchatBatchDebug({
+      personaId: input.persona._id?.toHexString(),
+      personaName: input.persona.name,
+      itemCount: input.items.length,
+      itemId: item.itemId,
+      messagePreview: item.message.slice(0, 150) + (item.message.length > 150 ? "…" : ""),
+      systemPromptLength: systemPrompt.length,
+      userPromptLength: userPrompt.length,
+      ragContextLength: ragContext.length,
+      tools: batchTools.map((t) => (t as { type?: string }).type ?? "unknown")
+    });
+
     const baseChatBody: Record<string, unknown> = {
       model: input.persona.model ?? "grok-4-1-fast",
       messages: [
@@ -215,6 +228,13 @@ export async function submitBatchJob(
     .collection<BatchJobRecord>(BATCH_JOBS_COLLECTION)
     .insertOne(jobRecord);
   jobRecord._id = jobInsert.insertedId;
+
+  logXchatBatchDebug({
+    batchId: batchJob.id,
+    personaId: input.personaId,
+    personaName: input.persona.name,
+    itemCount: input.items.length
+  });
 
   const itemDocs: BatchItemRecord[] = input.items.map((item) => ({
     batchJobId: jobInsert.insertedId,

@@ -47,6 +47,7 @@ const envSchema = z.object({
     z.string().email().optional()
   ),
   ADMIN_X_USERNAMES: z.string().optional(),
+  ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .optional()
@@ -109,6 +110,18 @@ export function isAllowAnyXUserLoginEnabled(): boolean {
   }
   if (typeof ALLOW_ANY_X_USER_LOGIN === "string") {
     return ALLOW_ANY_X_USER_LOGIN.trim().toLowerCase() === "true";
+  }
+  return false;
+}
+
+/** When true, xChat emits detailed payload logs for RAG/expert learning. Set ENABLE_XCHAT_DEBUG=true in GCP. */
+export function isXchatDebugEnabled(): boolean {
+  const val = process.env.ENABLE_XCHAT_DEBUG;
+  if (typeof val === "boolean") {
+    return val;
+  }
+  if (typeof val === "string") {
+    return val.trim().toLowerCase() === "true";
   }
   return false;
 }
