@@ -48,6 +48,10 @@ Deploy: Cloud Run runtime secrets are **GCP Secret Manager only** (verified in w
 
 ## Quick Ops Status Task
 
+Stage/prod URLs and latest deploy run: **`npm run status:deploy`** (runs `scripts/ops/print-deploy-status.sh`; requires `gh`).
+
+Full snapshot including CI:
+
 ```bash
 printf "stage_url=%s\n" "$(gh variable get STAGING_BASE_URL)" && \
 printf "prod_url=%s\n" "$(gh variable get PROD_BASE_URL)" && \

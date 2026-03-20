@@ -20,7 +20,8 @@
     "migrate:xchat-identity": "node --env-file=.env scripts/backfill-xchat-identity.mjs",
     "migrate:default-portfolios": "node --env-file=.env scripts/backfill-default-portfolios.mjs",
     "migrate:persona-name-normalized": "node --env-file=.env scripts/backfill-persona-name-normalized.mjs",
-    "migrate:persona-tools": "node --env-file=.env scripts/backfill-persona-tools.mjs"
+    "migrate:persona-tools": "node --env-file=.env scripts/backfill-persona-tools.mjs",
+    "status:deploy": "bash scripts/ops/print-deploy-status.sh"
   },
   "keywords": [],
   "author": "",

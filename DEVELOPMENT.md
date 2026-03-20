@@ -259,7 +259,7 @@ gh secret set GCP_SERVICE_ACCOUNT_EMAIL --repo "$GH_REPO" --env production --bod
 
 ### Short Ops Task (status snapshot)
 
-Use this command to print stage/prod URLs and latest CI + deploy outcomes:
+Stage/prod URLs and latest deploy: **`npm run status:deploy`** (script: `scripts/ops/print-deploy-status.sh`). Full snapshot including CI:
 
 ```bash
 printf "stage_url=%s\n" "$(gh variable get STAGING_BASE_URL)" && \
