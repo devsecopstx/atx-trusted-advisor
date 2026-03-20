@@ -8,8 +8,6 @@ import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { PlansLanding } from "./ui/plans-landing";
 import { XchatConversation } from "./ui/xchat-conversation";
 import { XchatGuestPanel } from "./ui/xchat-guest-panel";
-import "./xchat.css";
-
 export default async function XchatPage() {
   const session = await getSessionUser();
   if (!session) {

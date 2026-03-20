@@ -13,6 +13,7 @@ import {
 import { searchDocumentsInCollections } from "@/lib/xai";
 import { toXaiRequestTools } from "@/lib/xai-tools";
 import { getDb } from "@/lib/mongodb";
+import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
 const BATCH_JOBS_COLLECTION = "xchat_batch_jobs";
@@ -136,9 +137,15 @@ export async function submitBatchJob(
         : "No RAG context available."
     ].join("\n\n");
 
-    const userPrompt = input.persona.overridePrompt?.trim()
+    const userPromptBase = input.persona.overridePrompt?.trim()
       ? `${input.persona.overridePrompt}\n\nUser message:\n${item.message}`
       : item.message;
+
+    const batchMeta = buildBatchUserPromptAugmentation({
+      tools: xapiConfig.tools,
+      personaRagCollectionId: collectionId
+    });
+    const userPrompt = `${userPromptBase}\n\n${batchMeta}`;
 
     const baseChatBody: Record<string, unknown> = {
       model: input.persona.model ?? "grok-4-1-fast",
@@ -153,17 +160,19 @@ export async function submitBatchJob(
       baseChatBody.tool_choice = xapiConfig.toolChoice;
     }
 
+    const responsesBody: Record<string, unknown> = {
+      model: input.persona.model ?? "grok-4-1-fast",
+      system_prompt: systemPrompt,
+      input: userPrompt,
+      max_turns: xapiConfig.maxTurns
+    };
+    if (xapiConfig.toolChoice !== "none" && batchTools.length > 0) {
+      responsesBody.tools = batchTools;
+      responsesBody.tool_choice = xapiConfig.toolChoice;
+    }
+
     const body: Record<string, unknown> =
-      xapiConfig.mode === "chat_completions"
-        ? baseChatBody
-        : {
-            model: input.persona.model ?? "grok-4-1-fast",
-            system_prompt: systemPrompt,
-            input: userPrompt,
-            tools: batchTools,
-            tool_choice: xapiConfig.toolChoice,
-            max_turns: xapiConfig.maxTurns
-          };
+      xapiConfig.mode === "chat_completions" ? baseChatBody : responsesBody;
 
     batchRequestItems.push({
       custom_id: item.itemId,

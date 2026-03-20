@@ -1,9 +1,45 @@
 /* ── xchat layout ───────────────────────────── */
 
-.xchat-shell {
+.xchat-layout-root {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+}
+
+.xchat-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.xchat-footer {
+  flex-shrink: 0;
+  padding: 0.65rem 1rem 1rem;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--xf-bg-800);
+}
+
+.xchat-footer-line {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--xf-text-400);
+}
+
+.xchat-footer-version {
+  color: var(--xf-text-300);
+  font-variant-numeric: tabular-nums;
+}
+
+.xchat-footer-sep {
+  margin: 0 0.35rem;
+  opacity: 0.6;
+}
+
+.xchat-footer-disclaimer {
+  color: var(--xf-text-400);
 }
 
 .xchat-header {
