@@ -28,6 +28,21 @@ export function AtxFinanceMark({ size, className }: AtxFinanceMarkProps) {
   );
 }
 
+/** Lightning bolt in gain-green, sits between aTx and Finance in the lockup. */
+export function LightningBolt({ size }: { size: number }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className="xf-logo-lightning"
+      height={size}
+      viewBox="0 0 24 24"
+      width={size}
+    >
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="var(--xf-gain-green)" />
+    </svg>
+  );
+}
+
 type AtxFinanceLogoProps = {
   size?: "sm" | "md" | "lg";
   showSubtitle?: boolean;
@@ -42,11 +57,13 @@ export function AtxFinanceLogo({
   const markSize = size === "sm" ? 24 : size === "md" ? 32 : 44;
   const titleClass = `xf-logo-text xf-logo-text--${size}`;
 
+  const boltSize = size === "sm" ? 18 : size === "md" ? 22 : 28;
   return (
     <div className={`xf-logo-lockup-inline${className ? ` ${className}` : ""}`}>
       <div className="xf-logo-row">
         <AtxFinanceMark size={markSize} />
-        <span className={titleClass}>xFinance</span>
+        <LightningBolt size={boltSize} />
+        <span className={titleClass}>Finance</span>
       </div>
       {showSubtitle ? (
         <p className="xf-logo-powered">Powered by xAI</p>

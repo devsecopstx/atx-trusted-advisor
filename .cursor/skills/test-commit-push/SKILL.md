@@ -26,7 +26,10 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 4. Fix blocking failures in scope.
 5. Re-run validation until clean.
 6. Confirm docs/skill updates for any changed runbooks or delivery workflow. Deferred doc/product gaps live in **`docs/PLAN.md`** (TODO / design TBD) — no need to block commit unless you are closing an item. For **`/api/*` or OpenAPI inventory** changes, follow **`generate-docs`** § *API docs & OpenAPI*; combined Core MVP + Branding PRs may need the final gate in **`xdesign-review`**.
-7. **Cursor rules (`.cursor/rules/*.mdc`)**: if changed, verify single valid YAML frontmatter, correct `globs` for this repo, and no patch/diff line noise (`+` prefixes). Use **`generate-docs`** § *Cursor rules* for the gap list.
+7. **Cursor rules (`.cursor/rules/*.mdc`)**: if changed, verify single valid YAML
+   frontmatter, correct `globs`, no patch/diff noise (`+` prefixes). When logo
+   or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).
+   Use **`generate-docs`** § *Cursor rules* for the gap list.
 8. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
 9. Prepare concise commit message reflecting intent.
 10. Confirm push readiness and branch status.
