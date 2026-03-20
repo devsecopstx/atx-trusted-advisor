@@ -101,16 +101,26 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT_ID_STAGING }}
 
+      # gcloud run deploy cannot combine --remove-secrets with --set-secrets; strip legacy binding first.
+      - name: Drop legacy ALLOW_ANY_X_USER_LOGIN secret binding (if present)
+        run: |
+          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
+            --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
+
       - name: Deploy to Cloud Run (staging)
         env:
           ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
+          ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
             --source . \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.STAGING_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=false,ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL}" \
+            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.STAGING_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL}" \
             --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest" \
             --quiet
 
@@ -193,16 +203,25 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT_ID_PROD }}
 
+      - name: Drop legacy ALLOW_ANY_X_USER_LOGIN secret binding (if present)
+        run: |
+          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
+            --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
+
       - name: Deploy to Cloud Run (production)
         env:
           ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
+          ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
             --source . \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=false,ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL}" \
+            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL}" \
             --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest" \
             --quiet
 
@@ -284,16 +303,25 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT_ID_PROD }}
 
+      - name: Drop legacy ALLOW_ANY_X_USER_LOGIN secret binding (if present)
+        run: |
+          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
+            --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
+
       - name: Deploy to Cloud Run (production)
         env:
           ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
+          ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
             --source . \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=false,ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL}" \
+            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL}" \
             --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest" \
             --quiet
 
