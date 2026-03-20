@@ -151,7 +151,11 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 
 These must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
 
+<<<<<<< HEAD
 `ADMIN_SEED_EMAIL` and `ALLOW_ANY_X_USER_LOGIN` are **not** GCP secrets for deploy: the workflow sets `ALLOW_ANY_X_USER_LOGIN=false` on the service and passes `ADMIN_SEED_EMAIL` from the GitHub Environment secret `ADMIN_SEED_EMAIL` (see below).
+=======
+`ADMIN_SEED_EMAIL` is **not** a GCP secret for deploy: the workflow passes it from the GitHub Environment secret `ADMIN_SEED_EMAIL` (see below). `ALLOW_ANY_X_USER_LOGIN` comes from the GitHub Variable of the same name on **staging** or **production** (default `false` when unset). Use **`true` only on staging** if you want any signed-in X user on `/xchat`; on **production**, leave it unset or `false` so only registered / access-approved users reach `/xchat`.
+>>>>>>> feature/mvpcleanup
 
 | Secret name | Purpose | Required |
 | --- | --- | --- |
@@ -188,6 +192,7 @@ Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-sc
 | `PROD_BASE_URL` | same value (prod-only variable) | `https://atx.fintech-advisor.ai` |
 | `EXPECTED_GITHUB_REPOSITORY` | `devsecopstx/xfinance` | same value |
 | `EXPECTED_GITHUB_OWNER` | `devsecopstx` | same value |
+| `ALLOW_ANY_X_USER_LOGIN` | Optional `true` for open `/xchat` smoke testing | **Do not set** (or `false`) — registered users only |
 
 ### GitHub CLI Setup (Variables + Secrets)
 
@@ -214,6 +219,9 @@ gh variable set PROD_BASE_URL --repo "$GH_REPO" --body "https://atx.fintech-advi
 gh variable set EXPECTED_GITHUB_REPOSITORY --repo "$GH_REPO" --body "$GH_REPO"
 gh variable set EXPECTED_GITHUB_OWNER --repo "$GH_REPO" --body "${GH_REPO%%/*}"
 
+# Optional: staging only — any signed-in X user can use /xchat. Production: omit this variable (defaults to false).
+gh variable set ALLOW_ANY_X_USER_LOGIN --repo "$GH_REPO" --env staging --body "true"
+
 # Environment secrets
 gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --repo "$GH_REPO" --env staging --body "$STAGING_WIP"
 gh secret set GCP_SERVICE_ACCOUNT_EMAIL --repo "$GH_REPO" --env staging --body "$STAGING_SA"
@@ -231,6 +239,10 @@ printf "prod_url=%s\n" "$(gh variable get PROD_BASE_URL)" && \
 echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
 echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 ```
+
+### Deploy Cloud Run: common failures
+
+- **`Cannot update environment variable [ALLOW_ANY_X_USER_LOGIN] to string literal because it has already been set with a different type`** — The live service still maps that name to Secret Manager. The workflow passes `--remove-secrets=ALLOW_ANY_X_USER_LOGIN` before setting literals so the next revision can switch to GitHub-driven values. If you ever bound `ADMIN_SEED_EMAIL` the same way and hit the same error, remove it once with `gcloud run services update SERVICE --region REGION --remove-secrets=ADMIN_SEED_EMAIL` (or add that key to the workflow remove list for one deploy).
 
 ### GitHub Environment Secrets
 
