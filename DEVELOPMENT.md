@@ -151,11 +151,7 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 
 These must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
 
-<<<<<<< HEAD
-`ADMIN_SEED_EMAIL` and `ALLOW_ANY_X_USER_LOGIN` are **not** GCP secrets for deploy: the workflow sets `ALLOW_ANY_X_USER_LOGIN=false` on the service and passes `ADMIN_SEED_EMAIL` from the GitHub Environment secret `ADMIN_SEED_EMAIL` (see below).
-=======
-`ADMIN_SEED_EMAIL` is **not** a GCP secret for deploy: the workflow passes it from the GitHub Environment secret `ADMIN_SEED_EMAIL` (see below). `ALLOW_ANY_X_USER_LOGIN` comes from the GitHub Variable of the same name on **staging** or **production** (default `false` when unset). Use **`true` only on staging** if you want any signed-in X user on `/xchat`; on **production**, leave it unset or `false` so only registered / access-approved users reach `/xchat`.
->>>>>>> feature/mvpcleanup
+`ADMIN_SEED_EMAIL` and `ALLOW_ANY_X_USER_LOGIN` are **not** mounted from GCP Secret Manager: the workflow passes `ADMIN_SEED_EMAIL` from the GitHub Environment secret `ADMIN_SEED_EMAIL` (see below) and sets `ALLOW_ANY_X_USER_LOGIN` from the GitHub **variable** of that name (default `false` when unset). Use **`true` only on staging** if you want any signed-in X user on `/xchat`; on **production**, leave it unset or `false` so only registered / access-approved users reach `/xchat`.
 
 | Secret name | Purpose | Required |
 | --- | --- | --- |
