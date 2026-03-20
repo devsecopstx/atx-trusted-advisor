@@ -44,6 +44,14 @@ When **`src/app/api/**`** or public HTTP contracts change:
 - Keep **`DEVELOPMENT.md`** *api-docs-validation* section accurate (inventory build, route parity).
 - CI guards OpenAPI via `tests/integration/openapi-*.test.ts` — run **`npm run ci:gate`** (and **`npm run build`** if release-sensitive) before merge.
 
+## xAI tools & collections (external reference)
+
+When documenting persona tools, RAG, or batch behavior for xChat:
+
+- **Collections search** (knowledge bases): upstream docs describe **`collections_search`** in the xAI SDK vs **`file_search`** in OpenAI-compatible Responses API — same capability, different names. See [xAI — Collections Search tool](https://docs.x.ai/developers/tools/collections-search).
+- **This codebase** maps persona `collections_search` → `file_search` with `source.collection_ids` in **`src/lib/xai-tools.ts`** (`toXaiRequestTools`). Document that mapping when touching personas or batch payloads so operators are not confused by SDK vs HTTP naming.
+- **Batch API:** xChat batch jobs are **asynchronous** (upload input file → create batch job → poll until terminal → download results). Runbooks should describe **polling** / admin dashboard expectations, not a single synchronous “batch response” HTTP body from the initial POST.
+
 ## PR review handoff
 
 For combined Core MVP + Branding PRs, the final gate sequence lives in **`xdesign-review`** (reviewer order + acceptance checks). Use this skill for doc/runbook updates; use **`test-commit-push`** for the local validation pass.
@@ -72,6 +80,7 @@ For combined Core MVP + Branding PRs, the final gate sequence lives in **`xdesig
 - Keep docs-ops guidance aligned with:
   - `.cursor/skills/test-commit-push/SKILL.md`
   - `.cursor/skills/test-commit-push/CHECKLIST.md`
+  - `.cursor/skills/test-automation/SKILL.md` (when adding or scoping tests)
   - `AGENTS.md`
 - Rule changes under `.cursor/rules/` ship with the same validation pass as skills (see test-commit-push checklist).
 
