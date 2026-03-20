@@ -24,6 +24,8 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 
 OpenAPI inventory is guarded by route parity + document build tests under `tests/integration/openapi-*.test.ts` (see `DEVELOPMENT.md#api-docs-validation`).
 
+Deploy: Cloud Run runtime secrets are **GCP Secret Manager only** (verified in workflow via `gcloud secrets describe`). GitHub Environment secrets are **OIDC only** (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`). See `DEVELOPMENT.md` → *GCP Secret Manager* and *GitHub Environment Secrets*.
+
 ## Critical Env Keys
 
 - `MONGODB_URI_B64`

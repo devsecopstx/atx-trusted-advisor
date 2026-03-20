@@ -57,18 +57,10 @@ jobs:
           EXPECTED_GITHUB_OWNER: ${{ vars.EXPECTED_GITHUB_OWNER }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          XAI_MANAGEMENT_API_KEY: ${{ secrets.XAI_MANAGEMENT_API_KEY }}
-          X_OAUTH_CLIENT_ID: ${{ secrets.X_OAUTH_CLIENT_ID }}
-          X_OAUTH_CLIENT_SECRET: ${{ secrets.X_OAUTH_CLIENT_SECRET }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-          ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
-
         run: |
           set -euo pipefail
-          # Preflight: infra + GitHub copies of values that must also exist in GCP Secret Manager for Cloud Run.
-          # DB name is fixed in app code (`atxfinancedb`). SLACK webhook is optional (empty allowed at runtime).
-          for key in GCP_PROJECT_ID_STAGING CLOUD_RUN_REGION CLOUD_RUN_SERVICE_STAGING STAGING_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET ADMIN_SEED_EMAIL; do
+          # Runtime secrets: single source of truth is GCP Secret Manager (verified after gcloud auth).
+          for key in GCP_PROJECT_ID_STAGING CLOUD_RUN_REGION CLOUD_RUN_SERVICE_STAGING STAGING_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
             if [ -z "${!key:-}" ]; then
               echo "::error::Missing required deploy config: ${key}"
               exit 1
@@ -119,17 +111,24 @@ jobs:
             --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
             --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
 
-      - name: Drop legacy ADMIN_SEED_EMAIL secret binding (if present)
+      - name: Verify required Secret Manager secrets exist (staging)
         run: |
-          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
-            --region "${{ vars.CLOUD_RUN_REGION }}" \
-            --platform managed \
-            --remove-secrets=ADMIN_SEED_EMAIL \
-            --quiet || echo "::notice::No ADMIN_SEED_EMAIL secret binding to remove (ok)"
+          set -euo pipefail
+          PROJECT="${{ vars.GCP_PROJECT_ID_STAGING }}"
+          for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
+            gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null \
+              || { echo "::error::Missing GCP secret '${s}' in project ${PROJECT}"; exit 1; }
+          done
+
+      - name: Clear legacy ADMIN_SEED_EMAIL bindings (literal or old secret ref)
+        run: |
+          SVC="${{ vars.CLOUD_RUN_SERVICE_STAGING }}"
+          R="${{ vars.CLOUD_RUN_REGION }}"
+          gcloud run services update "$SVC" --region "$R" --platform managed --remove-secrets=ADMIN_SEED_EMAIL --quiet || true
+          gcloud run services update "$SVC" --region "$R" --platform managed --remove-env-vars=ADMIN_SEED_EMAIL --quiet || true
 
       - name: Deploy to Cloud Run (staging)
         env:
-          ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
           ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
@@ -137,8 +136,8 @@ jobs:
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.STAGING_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL}" \
-            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest" \
+            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.STAGING_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN}" \
+            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest" \
             --quiet
 
       - name: Health check staging
@@ -228,17 +227,24 @@ jobs:
             --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
             --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
 
-      - name: Drop legacy ADMIN_SEED_EMAIL secret binding (if present)
+      - name: Verify required Secret Manager secrets exist (production)
         run: |
-          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
-            --region "${{ vars.CLOUD_RUN_REGION }}" \
-            --platform managed \
-            --remove-secrets=ADMIN_SEED_EMAIL \
-            --quiet || echo "::notice::No ADMIN_SEED_EMAIL secret binding to remove (ok)"
+          set -euo pipefail
+          PROJECT="${{ vars.GCP_PROJECT_ID_PROD }}"
+          for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
+            gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null \
+              || { echo "::error::Missing GCP secret '${s}' in project ${PROJECT}"; exit 1; }
+          done
+
+      - name: Clear legacy ADMIN_SEED_EMAIL bindings (literal or old secret ref)
+        run: |
+          SVC="${{ vars.CLOUD_RUN_SERVICE_PROD }}"
+          R="${{ vars.CLOUD_RUN_REGION }}"
+          gcloud run services update "$SVC" --region "$R" --platform managed --remove-secrets=ADMIN_SEED_EMAIL --quiet || true
+          gcloud run services update "$SVC" --region "$R" --platform managed --remove-env-vars=ADMIN_SEED_EMAIL --quiet || true
 
       - name: Deploy to Cloud Run (production)
         env:
-          ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
           ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
@@ -246,8 +252,8 @@ jobs:
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL}" \
-            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest" \
+            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN}" \
+            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest" \
             --quiet
 
       - name: Health check production
@@ -336,17 +342,24 @@ jobs:
             --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
             --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
 
-      - name: Drop legacy ADMIN_SEED_EMAIL secret binding (if present)
+      - name: Verify required Secret Manager secrets exist (production)
         run: |
-          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
-            --region "${{ vars.CLOUD_RUN_REGION }}" \
-            --platform managed \
-            --remove-secrets=ADMIN_SEED_EMAIL \
-            --quiet || echo "::notice::No ADMIN_SEED_EMAIL secret binding to remove (ok)"
+          set -euo pipefail
+          PROJECT="${{ vars.GCP_PROJECT_ID_PROD }}"
+          for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
+            gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null \
+              || { echo "::error::Missing GCP secret '${s}' in project ${PROJECT}"; exit 1; }
+          done
+
+      - name: Clear legacy ADMIN_SEED_EMAIL bindings (literal or old secret ref)
+        run: |
+          SVC="${{ vars.CLOUD_RUN_SERVICE_PROD }}"
+          R="${{ vars.CLOUD_RUN_REGION }}"
+          gcloud run services update "$SVC" --region "$R" --platform managed --remove-secrets=ADMIN_SEED_EMAIL --quiet || true
+          gcloud run services update "$SVC" --region "$R" --platform managed --remove-env-vars=ADMIN_SEED_EMAIL --quiet || true
 
       - name: Deploy to Cloud Run (production)
         env:
-          ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
           ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
@@ -354,8 +367,8 @@ jobs:
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ADMIN_SEED_EMAIL=${ADMIN_SEED_EMAIL}" \
-            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest" \
+            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN}" \
+            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest" \
             --quiet
 
       - name: Health check production
