@@ -101,6 +101,7 @@ from injected secrets.
 - TODO: refine skills naming conventions; keep current names for now.
 - TODO: remove imported global Cursor skills from the repo once local skill parity is confirmed.
 - Ops/review skills: `atxfinance-docs-ops`, `atxfinance-xchat-validation-checklist`, `atxfinance-runbook-navigator`, `atxfinance-design-ops`, `xdesign-review`.
+- Backend (multi-node agents) skills: `atxfinance-backend-architecture`, `atxfinance-backend-deploy-staging`, `atxfinance-backend-deploy-production`, `atxfinance-backend-runbook`, `atxfinance-backend-ci`.
 - xDesign review outputs: `docs/xchat/xdesign-review-admin-console-ux.md` (and other `docs/xchat/*.md`).
 - Strategy skills: 10 `atxfinance-strategy-*` skills (options strategy references).
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
