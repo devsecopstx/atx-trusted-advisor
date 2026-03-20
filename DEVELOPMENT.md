@@ -498,6 +498,7 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/personas`
 - `POST /api/personas`
 - `GET /api/personas/collections`
+- `GET /api/personas/collections/:collectionId` (RAG index stats: documentCount, chunkCount, fileCount, indexStatus)
 - `POST /api/personas/collections`
 - `GET /api/personas/:personaId`
 - `PUT /api/personas/:personaId`
@@ -610,7 +611,8 @@ Tool result caching in `src/modules/xchat/tool-cache.ts` (60s TTL, 200 max entri
 
 ## xPersona Collection Endpoint Notes
 
-- `GET /api/personas/collections` returns `{ data: CollectionInventoryItem[] }` for admin onboarding collection selection.
+- `GET /api/personas/collections` returns `{ data: CollectionInventoryItem[] }` for admin onboarding collection selection (includes RAG index stats when xAI API provides them).
+- `GET /api/personas/collections/:collectionId` returns enriched stats for a single collection (documentCount, chunkCount, fileCount, indexStatus).
 - `POST /api/personas/collections` accepts `{ name: string }` and creates a new xAI collection for onboarding.
 - xPersona can be created without a bound xAI collection (`xaiCollection.collectionId` empty). This enables step-by-step onboarding before RAG wiring.
 - Management operations require `XAI_MANAGEMENT_API_KEY`.

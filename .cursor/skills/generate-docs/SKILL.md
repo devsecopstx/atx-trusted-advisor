@@ -25,7 +25,7 @@ Keep project documentation aligned with code changes and operational reality.
 5. Validate commands and paths in docs.
 6. Keep version references consistent across docs and UI surfaces.
 
-## Baseline Docs Set (atxFinance Core)
+## Baseline Docs Set (xFinance Core)
 
 Default to maintaining this minimum docs set:
 
@@ -50,6 +50,7 @@ When documenting persona tools, RAG, or batch behavior for xChat:
 
 - **Collections search** (knowledge bases): upstream docs describe **`collections_search`** in the xAI SDK vs **`file_search`** in OpenAI-compatible Responses API — same capability, different names. See [xAI — Collections Search tool](https://docs.x.ai/developers/tools/collections-search).
 - **This codebase** maps persona `collections_search` → `file_search` with `source.collection_ids` in **`src/lib/xai-tools.ts`** (`toXaiRequestTools`). Document that mapping when touching personas or batch payloads so operators are not confused by SDK vs HTTP naming.
+- **RAG index stats:** `GET /api/personas/collections` and `GET /api/personas/collections/:collectionId` return documentCount, chunkCount, fileCount, indexStatus when the xAI Management API provides them. Admin RAG console (`/admin/rag-files`) displays these. Update `DEVELOPMENT.md` and OpenAPI inventory when adding or changing collection stats fields.
 - **Batch API (canonical upstream):** [xAI — Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api) — create batch → add requests (or **JSONL** upload with `custom_id`, `method`, `url`, `body`) → **poll** status until pending reaches zero → **paginate results**. Processing is typically **async** (often within 24 hours per docs); not a synchronous response from the submit call. **Tool use:** server-side tools run during batch processing; **client-side / function** tools return `tool_calls` in the response — multi-turn requires **new** batch requests with tool results (see doc *Tool Use* section). This repo’s JSONL path uses `src/lib/xai-batch.ts` + `src/modules/xchat/batch-service.ts` with `/v1/responses` or `/v1/chat/completions` per line.
 
 ## PR review handoff
@@ -84,7 +85,7 @@ For combined Core MVP + Branding PRs, the final gate sequence lives in **`xdesig
   - `AGENTS.md`
 - Rule changes under `.cursor/rules/` ship with the same validation pass as skills (see test-commit-push checklist).
 
-## Deploy / secrets doc parity (atxFinance)
+## Deploy / secrets doc parity (xFinance)
 
 When `.github/workflows/deploy-cloud-run.yml` changes **which env vars or Secret Manager names** are validated or mounted:
 
