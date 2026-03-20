@@ -4,7 +4,6 @@ import "./ui/marketing-hero.css";
 import "./ui/product-plans.css";
 import { MarketingHero } from "./ui/marketing-hero";
 import { getSessionUser } from "@/lib/auth";
-import { getEnv } from "@/lib/env";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getEnv } from "@/lib/env";
 
