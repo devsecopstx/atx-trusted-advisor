@@ -62,6 +62,15 @@ Run this gate whenever PR scope includes persona orchestration, prompt config, t
   - persona remains a thin wrapper (unique name, enabled tools list, prompts)
   - defaults/fallbacks are explicit and deterministic when optional fields are omitted
 
+## Legacy Prompt + Asset Capture Gate
+
+Run this gate whenever PR scope includes prompt migration, persona parity checks, or legacy branding references:
+
+- [ ] Example prompt inventory captured from legacy/source app and stored in `docs/xchat/xdesign-review-legacy-prompts-inventory.md`
+- [ ] Default legacy persona fallback behavior documented (default persona + no-persona backward compatibility)
+- [ ] `xf-legacy-*` assets in `branding/` enumerated and validated against docs references
+- [ ] If prompts/assets changed, sync `branding/README.md` and `branding/atxfinance-brand-validation.md` as needed
+
 ## Phase 1 PR Review Report Requirement
 
 For Phase 1 scope, final report must use the `Phase 1 PR Review Template` in `xdesign-review/SKILL.md` and include all sections:
