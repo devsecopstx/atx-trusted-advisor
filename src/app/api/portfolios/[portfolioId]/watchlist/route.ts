@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireSessionUser } from "@/lib/auth";
 import { getPortfolioWatchlist } from "@/modules/core-admin/repository";
 
 type RouteContext = {
@@ -10,7 +10,7 @@ type RouteContext = {
 };
 
 export async function GET(_: Request, context: RouteContext) {
-  const session = await requireAdminSession();
+  const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }

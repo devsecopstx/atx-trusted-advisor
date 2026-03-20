@@ -226,7 +226,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/portfolios/{portfolioId}/watchlist",
-    operations: [{ method: "GET", auth: "admin" }],
+    operations: [{ method: "GET", auth: "session" }],
     tag: "portfolios"
   },
   {
@@ -275,7 +275,7 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "admin-tasks": "Admin task catalog and task-run controls.",
   "admin-users": "Admin management of user records, roles, plans, and settings.",
   personas: "Persona and collection lifecycle APIs.",
-  portfolios: "Portfolio and account read APIs for admin views.",
+  portfolios: "Default portfolio and watchlist read APIs for signed-in users; portfolio accounts remain admin-only.",
   positions: "Position capture and persistence APIs.",
   rag: "Mongo-backed scoped RAG file list/upload; xAI collection inventory is GET /api/personas/collections.",
   xchat: "xChat sync and async ask/batch workflows."
