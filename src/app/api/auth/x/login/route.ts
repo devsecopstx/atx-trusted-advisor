@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
 import {
-  applyOAuthFlowCookiesToRedirect,
-  createCodeChallenge,
-  createCodeVerifier,
-  createOAuthState
+    applyOAuthFlowCookiesToRedirect,
+    createCodeChallenge,
+    createCodeVerifier,
+    createOAuthState
 } from "@/lib/auth";
 import { getEnv, getXOauthClientId } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
@@ -19,6 +19,23 @@ export async function GET(request: Request) {
     devHostUrl.hostname = "127.0.0.1";
     return NextResponse.redirect(devHostUrl.toString());
   }
+
+  const configuredCallbackUrl = env.X_OAUTH_CALLBACK_URL?.trim();
+  if (env.NODE_ENV === "production" && configuredCallbackUrl) {
+    try {
+      const callbackHost = new URL(configuredCallbackUrl).host.toLowerCase();
+      const currentHost = getPublicOriginFromRequest(request)
+        .replace(/^https?:\/\//, "")
+        .toLowerCase();
+      if (callbackHost !== currentHost) {
+        const canonical = new URL(requestUrl.pathname + requestUrl.search, configuredCallbackUrl);
+        return NextResponse.redirect(canonical.toString());
+      }
+    } catch {
+      // invalid callback URL is handled later by normal auth failures
+    }
+  }
+
   const origin = getPublicOriginFromRequest(request);
   const authorizeUrl = env.X_OAUTH_AUTHORIZE_URL ?? "https://twitter.com/i/oauth2/authorize";
   const callbackUrl =

@@ -31,8 +31,8 @@ vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/env", () => envMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 
-import { GET as loginGet } from "@/app/api/auth/x/login/route";
 import { GET as callbackGet } from "@/app/api/auth/x/callback/route";
+import { GET as loginGet } from "@/app/api/auth/x/login/route";
 
 describe("oauth host normalization smoke", () => {
   beforeEach(() => {
@@ -134,6 +134,36 @@ describe("oauth host normalization smoke", () => {
     );
     expect(response.headers.get("location")).toBe(
       "http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state"
+    );
+  });
+
+  it("forces canonical production host on login before oauth cookies", async () => {
+    envMocks.getEnv.mockReturnValue({
+      NODE_ENV: "production",
+      X_OAUTH_CLIENT_SECRET: "secret",
+      X_OAUTH_CALLBACK_URL: "https://atx.fintech-advisor.ai/api/auth/x/callback"
+    });
+    const response = await loginGet(
+      new Request("https://www.fintech-advisor.ai/api/auth/x/login")
+    );
+    expect(response.headers.get("location")).toBe(
+      "https://atx.fintech-advisor.ai/api/auth/x/login"
+    );
+  });
+
+  it("forces canonical production host on callback before cookie checks", async () => {
+    envMocks.getEnv.mockReturnValue({
+      NODE_ENV: "production",
+      X_OAUTH_CLIENT_SECRET: "secret",
+      X_OAUTH_CALLBACK_URL: "https://atx.fintech-advisor.ai/api/auth/x/callback"
+    });
+    const response = await callbackGet(
+      new Request(
+        "https://www.fintech-advisor.ai/api/auth/x/callback?code=abc&state=state"
+      )
+    );
+    expect(response.headers.get("location")).toBe(
+      "https://atx.fintech-advisor.ai/api/auth/x/callback?code=abc&state=state"
     );
   });
 
