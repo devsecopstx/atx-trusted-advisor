@@ -178,7 +178,7 @@ done
 
 ### Sync production Secret Manager from `.env.prod` (local)
 
-Cloud Run only mounts the seven secrets in the table above. Keep `.env.prod` gitignored; it is a convenience snapshot, not the source of truth in Git.
+Cloud Run mounts the eight secrets in the table above. Keep `.env.prod` gitignored; it is a convenience snapshot, not the source of truth in Git.
 
 1. **GCP**: Authenticate and select the production project (or export `GCP_PROJECT_ID_PROD`).
 2. **Dry-run** (no writes):  
@@ -186,7 +186,7 @@ Cloud Run only mounts the seven secrets in the table above. Keep `.env.prod` git
 3. **Apply** (adds new secret versions; same names the deploy workflow expects):  
    `bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target production --env-file .env.prod --execute`  
    If a name is missing in Secret Manager, add `--create-missing` once alongside `--execute`.
-4. **GitHub**: Set or update the **production** environment secret `ADMIN_SEED_EMAIL` to match `.env.prod` (the workflow injects it as a plain env var at deploy time; it is not read from GCP).
+4. **GCP `ADMIN_SEED_EMAIL`**: Ensure the `ADMIN_SEED_EMAIL` secret exists in the **production** project and matches `.env.prod` (the deploy workflow mounts it from Secret Manager like the other runtime secrets — not from GitHub).
 5. **Callback URL**: Production uses `X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback` from the workflow. Do **not** point `PROD_BASE_URL` or any prod callback at `127.0.0.1`. Your X Developer Portal app must list the same HTTPS callback host.
 6. **Roll forward**: Deploy a new Cloud Run revision (workflow or manual) so the service picks up `*:latest` secret versions.
 
