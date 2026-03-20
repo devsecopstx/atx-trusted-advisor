@@ -161,6 +161,11 @@ For each batch item:
 - No cross-tenant tool execution.
 - No custom tool support in `chat_completions` mode (only `responses` mode has tool loop).
 
+## Upstream references (xAI)
+
+- **Batch API** — workflow, JSONL lines, polling, results: [Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api) (e.g. [Step 1 — create a batch](https://docs.x.ai/developers/advanced-api-usage/batch-api#step-1-create-a-batch)).
+- **Collections / KB search** — SDK `collections_search` vs HTTP `file_search`: [Collections Search tool](https://docs.x.ai/developers/tools/collections-search).
+
 ---
 
 ## xDesign review (planning snapshot)

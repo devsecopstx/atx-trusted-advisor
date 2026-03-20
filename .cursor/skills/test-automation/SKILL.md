@@ -34,7 +34,7 @@ Increase confidence in changed code by adding focused automated tests with meani
 
 - **Ask route** (`POST /api/xchat/ask`): integration tests for auth, rate limits, RAG/tool paths; keep aligned with `docs/xchat/*.md`.
 - **Batch** (`POST /api/xchat/batch`, polling, `batch-service`): mock `submitBatchJob` / xAI batch client where routes are tested; add **unit** tests for pure helpers (e.g. prompt augmentation in `src/modules/xchat/batch-prompt-context.ts`).
-- **Async batch jobs:** server-side flow is **submit → poll** (`pollBatchJob` / dashboard); tests should assert **correlation** of `custom_id` → stored item, not assume synchronous completion in a single HTTP round-trip.
+- **Async batch jobs:** server-side flow is **submit → poll** (`pollBatchJob` / dashboard); tests should assert **correlation** of `custom_id` → stored item, not assume synchronous completion in a single HTTP round-trip. For upstream behavior (JSONL shape, polling, results pagination), see [xAI Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api).
 
 ## Output
 

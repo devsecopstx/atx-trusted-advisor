@@ -50,7 +50,7 @@ When documenting persona tools, RAG, or batch behavior for xChat:
 
 - **Collections search** (knowledge bases): upstream docs describe **`collections_search`** in the xAI SDK vs **`file_search`** in OpenAI-compatible Responses API — same capability, different names. See [xAI — Collections Search tool](https://docs.x.ai/developers/tools/collections-search).
 - **This codebase** maps persona `collections_search` → `file_search` with `source.collection_ids` in **`src/lib/xai-tools.ts`** (`toXaiRequestTools`). Document that mapping when touching personas or batch payloads so operators are not confused by SDK vs HTTP naming.
-- **Batch API:** xChat batch jobs are **asynchronous** (upload input file → create batch job → poll until terminal → download results). Runbooks should describe **polling** / admin dashboard expectations, not a single synchronous “batch response” HTTP body from the initial POST.
+- **Batch API (canonical upstream):** [xAI — Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api) — create batch → add requests (or **JSONL** upload with `custom_id`, `method`, `url`, `body`) → **poll** status until pending reaches zero → **paginate results**. Processing is typically **async** (often within 24 hours per docs); not a synchronous response from the submit call. **Tool use:** server-side tools run during batch processing; **client-side / function** tools return `tool_calls` in the response — multi-turn requires **new** batch requests with tool results (see doc *Tool Use* section). This repo’s JSONL path uses `src/lib/xai-batch.ts` + `src/modules/xchat/batch-service.ts` with `/v1/responses` or `/v1/chat/completions` per line.
 
 ## PR review handoff
 
