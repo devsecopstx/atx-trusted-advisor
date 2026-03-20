@@ -10,7 +10,7 @@ export function AtxFinanceMark({ size, className }: AtxFinanceMarkProps) {
       aria-hidden="true"
       className={`xf-logo-mark${className ? ` ${className}` : ""}`}
       height={size}
-      viewBox="0 0 52 24"
+      viewBox="0 0 32 32"
       width={size}
     >
       <text
