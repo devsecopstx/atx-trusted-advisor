@@ -26,15 +26,20 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 4. Fix blocking failures in scope.
 5. Re-run validation until clean.
 6. Confirm docs/skill updates for any changed runbooks or delivery workflow. Deferred doc/product gaps live in **`docs/PLAN.md`** (TODO / design TBD) — no need to block commit unless you are closing an item. For **`/api/*` or OpenAPI inventory** changes, follow **`generate-docs`** § *API docs & OpenAPI*. **Branding / investor / GTM / logo** changes: sync **`.cursor/rules/xfinance-branding.mdc`** and **`docs/xchat/xfinance-branding-review.md`** per **`generate-docs`** § *Branding, investor narrative & xChat product copy*. Combined Core MVP + Branding or **pre-prod release** PRs: run **`xdesign-review`** (includes production deploy lock); after deploy, **`AGENTS.md` → Production validation (post-deploy)**.
-7. **Cursor rules (`.cursor/rules/*.mdc`)**: if changed, verify single valid YAML
+7. For auth/xchat/runtime config changes, verify env provenance:
+   - runtime app secrets in GCP Secret Manager,
+   - GH env secrets OIDC-only,
+   - deploy-time literals in GH variables.
+   Ensure required xChat keys are present in env/schema (`XAI_TEAM_ID`, `ATXFINANCE_COLLECTION_ID`).
+8. **Cursor rules (`.cursor/rules/*.mdc`)**: if changed, verify single valid YAML
    frontmatter, correct `globs`, no patch/diff noise (`+` prefixes). When logo
    or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).
    Use **`generate-docs`** § *Cursor rules* for the gap list.
-8. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
-9. Prepare concise commit message reflecting intent.
-10. Confirm push readiness and branch status.
-11. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
-12. **Staging first (when applicable):** If the team ships to staging before prod, push the branch, open/merge PR per policy, then run staging deploy/verify (see `AGENTS.md` / deploy skills). Production can wait until staging checks pass.
+9. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
+10. Prepare concise commit message reflecting intent.
+11. Confirm push readiness and branch status.
+12. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
+13. **Staging first (when applicable):** If the team ships to staging before prod, push the branch, open/merge PR per policy, then run staging deploy/verify (see `AGENTS.md` / deploy skills). Production can wait until staging checks pass.
 
 ## Output
 

@@ -48,6 +48,19 @@ Each material inference must store immutable records for:
    - Audit retrieval query paths are tested for completeness and latency.
 4. **Policy trace**
    - Every allow/deny/escalate action cites the policy rule and version.
+5. **Config provenance (finance runtime)**
+   - Runtime secret source-of-truth is explicit and auditable:
+     `XAI_*`, `X_OAUTH_*`, `AUTH_SECRET`, `MONGODB_URI_B64`, `SLACK_WEBHOOK_URL`,
+     `ADMIN_SEED_EMAIL` must be from GCP Secret Manager in stage/prod.
+   - GitHub Environment secrets are deploy-identity only
+     (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`).
+   - GitHub Variables are used for deploy-time literals
+     (`PROD_BASE_URL`, `STAGING_BASE_URL`, `ALLOW_ANY_X_USER_LOGIN`, etc.).
+6. **Bootstrap evidence (access approval)**
+   - Access approval bootstrap actions are auditable end-to-end:
+     resource creation/reuse, async enqueue record, and failure warning record.
+   - Warning path emits an explicit audit action and operator-visible signal
+     (for this repo: `alert-user-not-sync-warning`).
 
 ## Checklist
 

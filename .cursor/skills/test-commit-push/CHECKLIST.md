@@ -17,6 +17,8 @@
 ## Commit Hygiene
 
 - [ ] `.env.example` keeps empty `KEY=` values only (no credential-shaped placeholders or real identifiers).
+- [ ] Auth/xchat env provenance is consistent: runtime secrets in GCP Secret Manager, GH env secrets OIDC-only, deploy literals in GH vars.
+- [ ] Required xChat keys are present where expected: `XAI_TEAM_ID`, `ATXFINANCE_COLLECTION_ID`.
 - [ ] `.cursor/rules/*.mdc` files have valid frontmatter, repo-aligned `globs`, and no merge/patch artifacts (e.g. leading `+` lines).
 - [ ] When logo or visual identity changes: update
   **`.cursor/rules/xfinance-branding.mdc`** to match (e.g. aTx⚡Finance).
