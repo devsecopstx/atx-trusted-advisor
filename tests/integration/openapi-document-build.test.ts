@@ -45,4 +45,19 @@ describe("buildCurrentStateOpenApi", () => {
       expect.objectContaining({ $ref: "#/components/schemas/PersonaListResponseEnvelope" })
     );
   });
+
+  it("merges operation overrides for POST /api/personas (strict body + 201 response)", () => {
+    const doc = buildCurrentStateOpenApi();
+    const postPersonas = doc.paths["/api/personas"]?.post;
+
+    expect(postPersonas?.summary?.toLowerCase()).toContain("create");
+    expect(postPersonas?.requestBody?.required).toBe(true);
+    expect(postPersonas?.requestBody?.content?.["application/json"]?.schema).toEqual(
+      expect.objectContaining({ $ref: "#/components/schemas/PersonaCreateRequest" })
+    );
+    expect(postPersonas?.responses?.["201"]?.content?.["application/json"]?.schema).toEqual(
+      expect.objectContaining({ $ref: "#/components/schemas/PersonaResponseEnvelope" })
+    );
+    expect(postPersonas?.responses?.["409"]).toBeDefined();
+  });
 });
