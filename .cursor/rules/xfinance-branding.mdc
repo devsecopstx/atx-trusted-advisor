@@ -37,7 +37,7 @@ alwaysApply: true
 +- Always include lightning icon ⚡ next to "xFinance"
 +
 +**Strict Rules**
-+- Never use "aTx" in user-facing copy — kill it. (Technical identifiers like tool type `atxfinance`, env vars, DB names may remain for backward compatibility.)
++- Use **aTxFinance** or **xFinance** in user-facing copy — both are acceptable. (Technical identifiers like tool type `atxfinance`, env vars, DB names may remain for backward compatibility.)
 +- Always green "Gains Earned" highlight.
 +- Dark mode only. No light theme.
 +- Every recommendation must tie back to options profit (covered calls, protective puts, unified scanner).
