@@ -60,7 +60,8 @@ jobs:
 
         run: |
           set -euo pipefail
-          # Runtime app secrets: GCP Secret Manager only (see "Verify required Secret Manager secrets" after OIDC).
+          # Preflight (before build): repo vars + OIDC deploy identity only. App runtime secrets: GCP Secret Manager
+          # single source of truth — verified with gcloud after auth (see "Verify required Secret Manager secrets").
           for key in GCP_PROJECT_ID_STAGING CLOUD_RUN_REGION CLOUD_RUN_SERVICE_STAGING STAGING_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
             if [ -z "${!key:-}" ]; then
               echo "::error::Missing required deploy config: ${key}"

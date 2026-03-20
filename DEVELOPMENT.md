@@ -151,7 +151,9 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 
 These must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
 
-**Single source of truth (Cloud Run runtime):** All app credentials below live in **GCP Secret Manager** per project and are mounted via `gcloud run deploy … --set-secrets` (see `.github/workflows/deploy-cloud-run.yml`). Do **not** duplicate them as GitHub Environment secrets for deploy — the workflow verifies each name exists with `gcloud secrets describe` after OIDC auth.
+**Single source of truth (Cloud Run runtime):** App credentials exist only in **GCP Secret Manager** per project. The workflow mounts them with `gcloud run deploy … --set-secrets` and verifies each name with `gcloud secrets describe` **after** OIDC to Google Cloud (see `.github/workflows/deploy-cloud-run.yml`). Do **not** store `XAI_*`, `X_OAUTH_*`, `AUTH_SECRET`, `MONGODB_URI_B64`, `ADMIN_SEED_EMAIL`, or `SLACK_WEBHOOK_URL` in GitHub Environment secrets — GitHub should hold **only** the OIDC deploy credentials (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`).
+
+**Merge / deploy preflight:** Pushes to `main` run the staging deploy job. If required GCP secrets are missing, the job fails at **Verify required Secret Manager secrets** (after `npm run build` and GCP auth). Before merging changes that must ship to staging immediately, confirm the **staging** GCP project already has every secret in the table below (or accept a red deploy and fix GSM before retrying).
 
 `ALLOW_ANY_X_USER_LOGIN` is **not** a GCP secret: the workflow sets it from the GitHub **variable** of that name (default `false`). Use **`true` only on staging** if you want any signed-in X user on `/xchat`; on **production**, leave it unset or `false`.
 
@@ -262,7 +264,7 @@ echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 
 ### GitHub Environment Secrets
 
-Only **OIDC deploy identity** should live in GitHub Environment secrets (plus nothing else for app runtime):
+Only **OIDC deploy identity** — do not add app runtime secrets here (they belong in GCP Secret Manager only):
 
 | Secret | Staging | Production |
 | --- | --- | --- |
