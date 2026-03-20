@@ -1,5 +1,22 @@
 import { z } from "zod";
 
+/** Cloud Run / GitHub sometimes inject `KEY=` (empty); treat as unset so `.url()` does not fail startup. */
+function emptyToUndefined(val: unknown): unknown {
+  if (val === undefined || val === null) {
+    return undefined;
+  }
+  if (typeof val === "string" && val.trim() === "") {
+    return undefined;
+  }
+  return val;
+}
+
+const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional());
+const optionalAuthSecret = z.preprocess(
+  emptyToUndefined,
+  z.string().min(16).optional()
+);
+
 const envSchema = z.object({
   MONGODB_URI_B64: z.string().min(1).optional(),
   MONGODB_URI_B4: z.string().min(1).optional(),
@@ -7,14 +24,14 @@ const envSchema = z.object({
   XAI_MANAGEMENT_API_KEY: z.string().min(1),
   X_OAUTH_CLIENT_ID: z.string().min(1),
   X_OAUTH_CLIENT_SECRET: z.string().min(1),
-  X_OAUTH_CALLBACK_URL: z.string().url().optional(),
-  X_OAUTH_AUTHORIZE_URL: z.string().url().optional(),
-  X_OAUTH_TOKEN_URL: z.string().url().optional(),
-  X_OAUTH_USERINFO_URL: z.string().url().optional(),
-  XAI_BASE_URL: z.string().url().optional(),
-  XAI_MANAGEMENT_BASE_URL: z.string().url().optional(),
+  X_OAUTH_CALLBACK_URL: optionalUrl,
+  X_OAUTH_AUTHORIZE_URL: optionalUrl,
+  X_OAUTH_TOKEN_URL: optionalUrl,
+  X_OAUTH_USERINFO_URL: optionalUrl,
+  XAI_BASE_URL: optionalUrl,
+  XAI_MANAGEMENT_BASE_URL: optionalUrl,
   XAI_CHAT_MODEL: z.string().min(1).optional(),
-  AUTH_SECRET: z.string().min(16).optional(),
+  AUTH_SECRET: optionalAuthSecret,
   ALLOW_ANY_X_USER_LOGIN: z.union([z.string(), z.boolean()]).optional(),
   SLACK_WEBHOOK_URL: z.union([z.string().url(), z.literal("")]).optional(),
   ADMIN_SEED_EMAIL: z.preprocess(

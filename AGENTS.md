@@ -44,6 +44,7 @@ Deploy: Cloud Run runtime secrets are **GCP Secret Manager only** (verified in w
 - Personas API: `GET /api/personas`
 - xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (`global_admin`), **xFinance** (all other signed-in roles); body `personaId` is ignored
 - App-user feedback: `POST /api/feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
+- **App-user 500 while admin works:** see [DEVELOPMENT.md — App-user HTTP 500](DEVELOPMENT.md#app-user-http-500); check Cloud Run logs for `[auth/x/callback]` and Mongo/provisioning errors
 
 ## Quick Ops Status Task
 

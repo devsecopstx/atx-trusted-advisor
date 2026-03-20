@@ -14,7 +14,18 @@ export default async function XfinancePage() {
     redirect("/login?next=/xfinance");
   }
 
-  const portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
+  let portfolio: Awaited<ReturnType<typeof getDefaultPortfolio>> = null;
+  let portfolioLoadError: string | null = null;
+  try {
+    portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
+  } catch (error) {
+    console.error("[xfinance] getDefaultPortfolio failed", {
+      userId: session.userId,
+      message: error instanceof Error ? error.message : String(error)
+    });
+    portfolioLoadError = "Could not load portfolio data. Check MongoDB and try again.";
+  }
+
   const admin = isGlobalAdmin(session.roles);
   const portfolioIdHex = portfolio?._id?.toHexString?.() ?? null;
 
@@ -30,6 +41,11 @@ export default async function XfinancePage() {
             Your provisioned default portfolio, accounts, and watchlist context for atxFinance execution
             surfaces.
           </p>
+          {portfolioLoadError ? (
+            <p className="status-text status-error" style={{ marginTop: "1rem" }}>
+              {portfolioLoadError}
+            </p>
+          ) : null}
           {portfolio ? (
             <ul className="stack-gap" style={{ listStyle: "none", padding: 0, margin: "1rem 0 0" }}>
               <li>
@@ -42,11 +58,11 @@ export default async function XfinancePage() {
                 </li>
               ) : null}
             </ul>
-          ) : (
+          ) : !portfolioLoadError ? (
             <p className="status-text status-warn" style={{ marginTop: "1rem" }}>
               No default portfolio found yet. It is created when your account is approved and bootstrapped.
             </p>
-          )}
+          ) : null}
           <div className="cta-row" style={{ marginTop: "1.25rem" }}>
             <Link className="cta cta-secondary" href="/">
               Home

@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { readPendingXLinkCookie } from "@/lib/auth";
 
 import { AtxFinanceLogo } from "../ui/atxfinance-logo";
-import { LoginProductPanel } from "./ui/login-product-panel";
 import { LinkEmailForm } from "./ui/link-email-form";
+import { LoginProductPanel } from "./ui/login-product-panel";
 
 type LoginPageProps = {
   searchParams: Promise<{ error?: string; details?: string; next?: string }>;
@@ -28,7 +28,9 @@ const errorCopy: Record<string, string> = {
   email_link_required:
     "X login succeeded but no email claim was returned. Link your email to continue.",
   not_seeded_email: "Your email is not seeded in core_users.",
-  tenant_bootstrap_failed: "Could not attach your account to the default tenant."
+  tenant_bootstrap_failed: "Could not attach your account to the default tenant.",
+  bootstrap_failed:
+    "Sign-in almost worked, but finishing your account (tenant, portfolio, or session) failed. Retry once; if it persists, check Cloud Run logs for [auth/x/callback] or MongoDB connectivity."
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
