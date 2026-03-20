@@ -48,6 +48,14 @@ When **`src/app/api/**`** or public HTTP contracts change:
 - Keep **`DEVELOPMENT.md`** *api-docs-validation* section accurate (inventory build, route parity).
 - CI guards OpenAPI via `tests/integration/openapi-*.test.ts` — run **`npm run ci:gate`** (and **`npm run build`** if release-sensitive) before merge.
 
+### Cross-repo API examples (xfinance-strategy)
+
+If implementation ideas are imported from sibling repos (for example **`xfinance-strategy/api-spec/openapi.yaml`**):
+
+- Treat external specs as **reference only**; this repo’s public contract remains **`src/lib/openapi/current-state.ts`** + generated `/api/openapi`.
+- When adopting endpoint patterns from external OpenAPI docs, explicitly verify auth model, path naming, and response shape against this app’s session/tenant rules before documenting parity.
+- If a route or tag description is changed here, sync local docs/tests first (`DEVELOPMENT.md` API map + `tests/integration/openapi-*.test.ts`) before noting “aligned with strategy examples”.
+
 ## xAI tools & collections (external reference)
 
 When documenting persona tools, RAG, or batch behavior for xChat:
@@ -64,6 +72,15 @@ When **positioning, GTM, waitlist, investor deck copy**, or **logo / visual iden
 - **Cursor rule (source of truth):** **`.cursor/rules/xfinance-branding.mdc`** — tagline, **aTx⚡Finance** lockup, **$2/hr** lock-in vs roadmap tiers, differentiation, weak-spot honesty, channels, compliance narrative.
 - **Expert review doc:** **`docs/xchat/xfinance-branding-review.md`** — logo/hero/design-system alignment with the rule; link or summarize rule updates here when the review doc is the stakeholder-facing explainer.
 - Do **not** duplicate conflicting pricing: shipped UI keeps **$2/hr** on primary surfaces; roadmap subscription tiers stay secondary (deck/waitlist) until productized.
+
+### Branding assets folder gaps (`branding/`)
+
+When files under **`branding/`** are added, replaced, or deleted:
+
+- Update **`branding/README.md`** if the asset set, naming convention, or “how to use” workflow changed.
+- Record a quick QA pass in **`branding/atxfinance-brand-validation.md`** (or link to equivalent review output) for non-trivial creative refreshes.
+- If deletions are intentional, note rationale in PR summary and ensure no docs/rules still reference removed filenames.
+- Keep generated assets and source prompts consistent: if prompt taxonomy changes, sync `branding/atxfinance-brand-prompts.md` and `branding/atxfinance-branding-tags.md`.
 
 ## PR review handoff
 
