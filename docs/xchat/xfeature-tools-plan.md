@@ -160,3 +160,46 @@ For each batch item:
 - No real-time market data (tool returns stored portfolio data, not live prices).
 - No cross-tenant tool execution.
 - No custom tool support in `chat_completions` mode (only `responses` mode has tool loop).
+
+---
+
+## xDesign review (planning snapshot)
+
+Structured pass against `.cursor/skills/xdesign-review/SKILL.md` before implementation sign-off. **This section is documentation only** until phases are approved.
+
+### Findings
+
+#### High
+
+1. **Tool-args injection / over-broad reads** — The executor receives structured args from the model. Without strict validation (allowed keys, max depth, symbol allowlists where applicable), a malicious or confused model could widen reads or force oversized responses. **Mitigation:** validate each operation’s args with Zod (or equivalent) inside the executor; reject unknown keys; keep the documented output cap.
+
+2. **Audit gap vs finance-grade expectations** — Phase 4 adds `xapiToolCalls` to chat logs; Phase 1 mentions logging. If compliance expects parity with `admin_audit_events`, the plan should explicitly state **either** “tool calls are operational logs in `xchat_logs` only” **or** a follow-up to emit audit events for tool invocation. **Mitigation:** add one sentence under Phase 4 *Audit* choosing the model; if dual-write is required, scope it before Phase 4 ships.
+
+#### Medium
+
+1. **Batch staleness** — Phase 5 admits stale pre-executed context. Document maximum acceptable age or a “as of” timestamp in the injected block so batch consumers know freshness limits.
+
+2. **Rate / cost** — No per-user or per-tenant cap on tool-loop turns in addition to `maxTurns`. Consider aligning with existing xChat rate limits (`plan-limits` / ask route) to avoid cost spikes.
+
+#### Low
+
+1. **Persona UX** — Phase 3 adds an `atxfinance` checkbox; ensure admin copy explains that enabling it enables portfolio-linked data in the model context (privacy/trust).
+
+### Reviewer completion (template)
+
+| Reviewer | Status |
+|----------|--------|
+| design-review-best-practices | pending (re-run at implementation PR) |
+| xdesign-review | **complete** (this doc) |
+| xdesign-review-adversarial | pending |
+| xdesign-review-reliability | pending |
+| xdesign-review-audit | pending |
+
+### Merge recommendation (for this plan doc)
+
+- **accept-with-conditions** — Approve the phased roadmap; **block Phase 4 production** until High #1 (arg validation) is explicit in the executor design and High #2 (audit posture) is explicitly decided.
+
+### Gaps
+
+- OpenAPI / route inventory unchanged until ask route behavior changes (Phase 4).
+- Integration tests for the tool loop should land with Phase 1 + 4 (mocked xAI + executor).
