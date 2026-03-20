@@ -37,6 +37,8 @@ Default to maintaining this minimum docs set:
 
 When introducing new subsystems, prefer extending `DEVELOPMENT.md` and linking from `README.md` instead of creating scattered top-level docs.
 
+**xChat / branding:** Keep **`docs/xchat/xfinance-branding-review.md`** in sync when **`xfinance-branding.mdc`** or logo/hero/pricing messaging changes materially.
+
 ## API docs & OpenAPI (route changes)
 
 When **`src/app/api/**`** or public HTTP contracts change:
@@ -53,9 +55,17 @@ When documenting persona tools, RAG, or batch behavior for xChat:
 - **RAG index stats:** `GET /api/personas/collections` and `GET /api/personas/collections/:collectionId` return documentCount, chunkCount, fileCount, indexStatus when the xAI Management API provides them. Admin RAG console (`/admin/rag-files`) displays these. Update `DEVELOPMENT.md` and OpenAPI inventory when adding or changing collection stats fields.
 - **Batch API (canonical upstream):** [xAI — Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api) — create batch → add requests (or **JSONL** upload with `custom_id`, `method`, `url`, `body`) → **poll** status until pending reaches zero → **paginate results**. Processing is typically **async** (often within 24 hours per docs); not a synchronous response from the submit call. **Tool use:** server-side tools run during batch processing; **client-side / function** tools return `tool_calls` in the response — multi-turn requires **new** batch requests with tool results (see doc *Tool Use* section). This repo’s JSONL path uses `src/lib/xai-batch.ts` + `src/modules/xchat/batch-service.ts` with `/v1/responses` or `/v1/chat/completions` per line.
 
+## Branding, investor narrative & xChat product copy
+
+When **positioning, GTM, waitlist, investor deck copy**, or **logo / visual identity** change:
+
+- **Cursor rule (source of truth):** **`.cursor/rules/xfinance-branding.mdc`** — tagline, **aTx⚡Finance** lockup, **$2/hr** lock-in vs roadmap tiers, differentiation, weak-spot honesty, channels, compliance narrative.
+- **Expert review doc:** **`docs/xchat/xfinance-branding-review.md`** — logo/hero/design-system alignment with the rule; link or summarize rule updates here when the review doc is the stakeholder-facing explainer.
+- Do **not** duplicate conflicting pricing: shipped UI keeps **$2/hr** on primary surfaces; roadmap subscription tiers stay secondary (deck/waitlist) until productized.
+
 ## PR review handoff
 
-For combined Core MVP + Branding PRs, the final gate sequence lives in **`xdesign-review`** (reviewer order + acceptance checks). Use this skill for doc/runbook updates; use **`test-commit-push`** for the local validation pass.
+For combined Core MVP + Branding PRs, the final gate sequence lives in **`xdesign-review`** (reviewer order + production deploy lock). Use this skill for doc/runbook updates; use **`test-commit-push`** for the local validation pass. Post-deploy smoke steps: **`AGENTS.md` → Production validation (post-deploy)**.
 
 ## Cursor rules (`.cursor/rules/*.mdc`)
 
@@ -82,6 +92,7 @@ For combined Core MVP + Branding PRs, the final gate sequence lives in **`xdesig
   - `.cursor/skills/test-commit-push/SKILL.md`
   - `.cursor/skills/test-commit-push/CHECKLIST.md`
   - `.cursor/skills/test-automation/SKILL.md` (when adding or scoping tests)
+  - `.cursor/skills/xdesign-review/SKILL.md` (combined MVP + branding + pre-prod lock)
   - `AGENTS.md`
 - Rule changes under `.cursor/rules/` ship with the same validation pass as skills (see test-commit-push checklist).
 
@@ -98,4 +109,4 @@ When `.github/workflows/deploy-cloud-run.yml` changes **which env vars or Secret
 - Docs updated/created
 - Coverage gaps still open — prefer capturing non-blocking items in **`docs/PLAN.md`** (TODO / design TBD) instead of orphan comments
 - Recommended doc owners/follow-ups
-- TODO: remove dependency on global Cursor skills; keep docs operations project-local.
+- Prefer **project-local** `.cursor/skills/` and this repo’s rules/docs over duplicating global Cursor defaults.

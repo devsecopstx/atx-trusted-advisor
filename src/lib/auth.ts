@@ -16,7 +16,7 @@ const OAUTH_FLOW_TTL_SECONDS = 60 * 10;
 /**
  * Signed session payload. Naming:
  * - **Platform roles** (`roles`): global_admin | advisor | operator | viewer — what the user can do app-wide.
- *   Only `global_admin` may use `/admin` (admin console). Advisor/operator/viewer are **app-users** (xChat, xCoach, etc.).
+ *   Only `global_admin` may use `/admin` (admin console). Advisor/operator/viewer are **app_user** roles (xChat, xCoach, etc.).
  * - **Tenant membership role** (`tenantRole`): `tenant_admin` | `member` — scoped to `tenantId`; does **not** grant admin console.
  *   Treat as billing/tenant ops for now; plans default to free until billing ships.
  */

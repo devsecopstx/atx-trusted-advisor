@@ -27,7 +27,7 @@ export const loginAllowedRoles = [
   "viewer"
 ] as const satisfies readonly CoreUserRole[];
 
-/** App-user roles: any login-eligible role except global admin (product / routing). */
+/** App_user roles: any login-eligible role except global admin (product / routing). */
 export const appUserRoles = ["advisor", "operator", "viewer"] as const satisfies readonly CoreUserRole[];
 
 export function isRoleLoginAllowed(role: string): role is CoreUserRole {

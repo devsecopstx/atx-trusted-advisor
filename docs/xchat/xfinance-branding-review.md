@@ -2,55 +2,65 @@
 
 Review against **`.cursor/rules/xfinance-branding.mdc`** (expert pass).
 
-**Product decision:** Keep the current **AtxFinanceLogo** (mark + "xFinance") and **MarketingHero** for the landing. Do **not** add a separate full-page hero with inline ⚡ + "xF" + "xFinance Coach" + custom CTAs; that treatment was reverted and is not desired.
+**Logo lockup (current):** **aTx⚡Finance** — **aTx** (gain-green) + **⚡** + **Finance** (white), implemented in `src/app/ui/atxfinance-logo.tsx`. This supersedes older review text that suggested removing "aTx" from the mark.
+
+**Product decision:** Keep the current **AtxFinanceLogo** + **MarketingHero** for the landing. Do **not** add a separate full-page hero with inline ⚡ + "xF" + "xFinance Coach" + custom CTAs; that treatment was reverted and is not desired.
+
+**Investor / GTM / waitlist:** Differentiation, channel targets, MVP priority (xChat + portfolio first), compliance narrative, and roadmap tiered pricing live in **`.cursor/rules/xfinance-branding.mdc`** — keep **$2/hr** as the canonical hero number in product UI; waitlist/deck may reference roadmap tiers as secondary copy.
 
 ---
 
-## 1. Critical: “Never use aTx anymore — kill it”
+## 1. Logo wordmark vs “aTx” (updated)
 
-**Rule:** *Strict Rules — Never use "aTx" anymore — kill it.*
+**Current rule:** Wordmark is **aTx⚡Finance** (bolt between **aTx** and **Finance**). See `xfinance-branding.mdc` and `atxfinance-logo.tsx`.
 
-**Current code:**
+**A11y / copy:** Prefer **"xFinance"** in `aria-label` and screen-reader strings where a short product name is enough; avoid awkward spellings like "aTX" unless testing a specific string.
 
-| Location | Current | Rule |
-|----------|--------|------|
-| `src/app/ui/atxfinance-logo.tsx` | `AtxFinanceMark` renders SVG text **"aTx"** in gain-green | Primary icon must be **⚡ + stylized "xF"** |
-| `src/app/xchat/page.tsx` | `aria-label="aTX Finance — xChat home"` | No "aTx" / "aTX" in copy or a11y |
-| Admin topbar, login, personas, `MarketingHero` | Use `AtxFinanceLogo` → mark is "aTx" | Same as above |
-
-**Action:** Replace the logo mark with **lightning + "xF"** (or "xF" only in accent green). Update all aria-labels to **"xFinance — xChat home"** (or equivalent) with no "aTx"/"aTX". Use the rule’s primary icon (⚡ + xF) in shared logo and xChat header.
+**Standalone hero icon:** Where a full lockup is not used (e.g. large marketing or deck slides), **⚡ + stylized "xF"** remains valid per the rule — distinct from the in-app **aTx⚡Finance** lockup.
 
 ---
 
-## 2. Hero (when used) vs rule
+## 2. Marketing hero & guests (`MarketingHero`)
 
-If the new landing hero (⚡ + xF, tagline, $2/hr) is re‑introduced and shown to guests:
+The **home** experience uses **`MarketingHero`** + shared chrome — not the reverted full-page alternate hero. When editing `MarketingHero` or guest-visible landing:
 
-| Item | Rule | Current / note |
-|------|------|-----------------|
-| Background | `#050505` | ✅ `bg-[#050505]` |
-| Primary icon | ⚡ + "xF" | ✅ Lightning + "xF" |
-| Tagline | "No Atoms Moved. Just Gains Earned." | ✅ Copy correct |
-| Tagline typography | `font-black uppercase tracking-[4px] text-emerald-400` | Use uppercase + `tracking-[4px]` for tagline |
-| Subline | "Cheapest xFinance at $2/hr • Options Profits Powered by Grok" | Add **"Options Profits Powered by Grok"** (rule subline) |
-| $2/hr | In emerald-400 + tooltip "Cheapest xFinance on earth — pay only for what you use." | Add `title` (or `aria-describedby`) on $2/hr and primary CTA |
-| Accent green | `#22c55e` (rule) | Tailwind `emerald-400` is `#34d399`. For exact rule color use `text-[#22c55e]` or a token. |
-| Product hierarchy | xFinance, xChat, xCoach, xMoney • coming soon | ✅ Footer list aligns |
-| CTAs | Buttons/links to xChat and xMoney | Prefer `<Link href="/xchat">` etc. so CTAs work |
+| Item | Rule | Note |
+|------|------|------|
+| Background / dark | `#050505`, dark-only | Use `--xf-*` / tokens per brand kit where possible |
+| Lockup | **aTx⚡Finance** in **`AtxFinanceLogo`** | Bolt between aTx and Finance |
+| Tagline | "No Atoms Moved. Just Gains Earned." | ✅ |
+| Subline | "Cheapest xFinance at $2/hr • Options Profits Powered by Grok" | Keep subline when hero is refreshed |
+| $2/hr | emerald-400 + tooltip | Add `title` / `aria-describedby` on $2/hr and primary CTA |
+| Accent green | Rule `#22c55e` vs `--xf-gain-green` | See §3 |
+| Product hierarchy | xFinance, xChat, xCoach, xMoney | Footer / descriptor |
+| CTAs | Real `<Link>` targets | `/xchat`, plans, etc. |
+
+**Waitlist / one-slide landings (future):** Follow **`xfinance-branding.mdc`** — differentiation + $2/hr + secondary roadmap copy; no fake metrics or testimonials.
 
 ---
 
 ## 3. Design system vs rule green
 
-- **Rule:** Accent green `#22c55e` (neon gains).
-- **Design system:** `--xf-gain-green: #39ff14` (atxfinance-brand-kit.css).
+- **Rule / marketing:** Accent green **`#22c55e`** (neon gains) in prose.
+- **Design system:** `--xf-gain-green: #39ff14` (`design-system/atxfinance-brand-kit.css`).
 
-Decide a single source of truth: either the rule’s `#22c55e` for the new “xFinance” hero/brand, or keep `#39ff14` for existing atxfinance surfaces. If both stay, document which is used where (e.g. “hero / marketing = #22c55e”, “admin / charts = --xf-gain-green”).
+**Resolution:** App surfaces and charts use **`--xf-*`**; marketing hero may use `emerald-400` / `#22c55e` per rule. Document any new surface in the same PR if both greens appear side-by-side.
 
 ---
 
-## 4. Summary
+## 4. Gaps & follow-ups (non-blocking)
 
-- **Must fix for rule compliance:** Remove "aTx" from the logo mark and from aria-labels; use ⚡ + "xF" (or "xF" only) and "xFinance" in copy/a11y.
-- **When (re)shipping the new hero:** Add rule subline (“Options Profits Powered by Grok”), tagline typography (uppercase, tracking), $2/hr tooltip, and real links for CTAs.
-- **Optional:** Align accent green (rule #22c55e vs design-system #39ff14) and document in the rule or brand kit.
+| Topic | Gap | Where to track |
+|-------|-----|----------------|
+| Hero refresh | Subline, $2/hr tooltip, CTA links if drift | This doc + PR |
+| Green tokens | Single table “where which green” if confusion returns | Brand kit or `DEVELOPMENT.md` |
+| Waitlist page | Not in core app yet — copy lives in rule until routed | `xfinance-branding.mdc` + `docs/PLAN.md` if needed |
+| Credential upload | Rule = roadmap only; don’t ship fake FINRA/SEC UI | `xfinance-branding.mdc` |
+
+---
+
+## 5. Summary
+
+- **Logo:** **aTx⚡Finance** lockup in UI; use **"xFinance"** in concise aria-labels where appropriate.
+- **Docs sync:** When **`xfinance-branding.mdc`** changes materially, update this file and follow **`generate-docs`** + **`test-commit-push`**.
+- **Optional:** Align accent green story across hero vs admin (§3) if stakeholders ask.

@@ -26,6 +26,16 @@ OpenAPI inventory is guarded by route parity + document build tests under `tests
 
 Deploy: Cloud Run runtime secrets are **GCP Secret Manager only** (verified in workflow via `gcloud secrets describe`). GitHub Environment secrets are **OIDC only** (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`). See `DEVELOPMENT.md` → *GCP Secret Manager* and *GitHub Environment Secrets*.
 
+## Production validation (post-deploy)
+
+After merging and deploying to production (or staging first):
+
+1. **Health:** `GET https://<base>/api/health` → `200` with `status: ok`.
+2. **Admin:** Sign in as `global_admin` → `/admin` loads; `GET /api/personas` → `200` with session cookie.
+3. **App_user:** Sign in with X as a user who has platform role **`viewer`**, **`operator`**, or **`advisor`** (Admin → Access approved + role assigned). **The string `app_user` is not a role** — use those roles. Then `/xchat` loads full chat (not plans only); `POST /api/xchat/ask` → `200` (not `401`).
+4. If still `401` / `access_request_pending` / guest xChat: confirm Mongo user has `roles` including one of `advisor`/`operator`/`viewer` (`canUserLogin` in `src/modules/identity/authorization.ts`). Optional dev: `ALLOW_ANY_X_USER_LOGIN=true` (not for prod unless intended).
+5. See `.cursor/skills/atxfinance-deploy-production/SKILL.md` and `DEVELOPMENT.md` for deploy + rollback; run **`npm run status:deploy`** for URLs and latest workflow runs.
+
 ## Critical Env Keys
 
 - `MONGODB_URI_B64`
@@ -42,9 +52,9 @@ Deploy: Cloud Run runtime secrets are **GCP Secret Manager only** (verified in w
 - Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
 - Personas API: `GET /api/personas`
-- xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (admin), **xFinance** (app-user); each has at least one RAG collection (ids may change over time via Admin → Personas or `ATXFINANCE_COLLECTION_ID`); body `personaId` is ignored
-- App-user feedback: `POST /api/feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
-- **App-user 500 while admin works:** see [DEVELOPMENT.md — App-user HTTP 500](DEVELOPMENT.md#app-user-http-500); check Cloud Run logs for `[auth/x/callback]` and Mongo/provisioning errors
+- xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (admin), **xFinance** (app_user); each has at least one RAG collection (ids may change over time via Admin → Personas or `ATXFINANCE_COLLECTION_ID`); body `personaId` is ignored
+- App_user feedback: `POST /api/feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
+- **App_user 500 while admin works:** see [DEVELOPMENT.md — App_user HTTP 500](DEVELOPMENT.md#app_user-http-500); check Cloud Run logs for `[auth/x/callback]` and Mongo/provisioning errors
 
 ## Quick Ops Status Task
 

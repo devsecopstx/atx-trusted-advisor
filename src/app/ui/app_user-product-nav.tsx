@@ -17,7 +17,7 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string }[] = [
 ];
 
 /**
- * Approved app-users: xChat, xCoach, Portfolio (xFinance surface), Watchlist.
+ * Approved app_user accounts: xChat, xCoach, Portfolio (xFinance surface), Watchlist.
  * `global_admin` also gets Admin (console). Not shown for guests / unapproved sessions.
  */
 export function AppUserProductNav({ current, roles }: AppUserProductNavProps) {

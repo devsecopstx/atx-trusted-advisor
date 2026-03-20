@@ -20,6 +20,9 @@
 - [ ] `.cursor/rules/*.mdc` files have valid frontmatter, repo-aligned `globs`, and no merge/patch artifacts (e.g. leading `+` lines).
 - [ ] When logo or visual identity changes: update
   **`.cursor/rules/xfinance-branding.mdc`** to match (e.g. aTx⚡Finance).
+- [ ] When branding, investor, or GTM copy changes: update
+  **`docs/xchat/xfinance-branding-review.md`** if the expert review doc should
+  reflect it (see **`generate-docs`**).
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.
 - [ ] Docs/runbooks updated when behavior or operations changed.

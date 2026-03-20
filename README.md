@@ -1,10 +1,10 @@
 # atxFinance Core App
 
-Admin console **and** signed-in **app-user** product surfaces for atxFinance. This repo powers:
+Admin console **and** signed-in **app_user** product surfaces for atxFinance. This repo powers:
 
 - access request governance
 - persona and collection management
-- xChat / xCoach / portfolio / watchlist for approved app users (viewer+ platform roles)
+- xChat / xCoach / portfolio / watchlist for approved app_user accounts (viewer+ platform roles)
 - xChat operational workflows (default **published** personas: **Super-Agent** for `global_admin`, **xFinance** for other signed-in roles)
 - audit visibility for admin actions
 - portfolio/account bootstrap defaults

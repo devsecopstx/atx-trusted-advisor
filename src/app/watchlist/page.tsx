@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AppUserApprovedHeader } from "@/app/ui/app-user-approved-header";
+import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
@@ -28,7 +28,7 @@ export default async function WatchlistPage() {
           <p className="eyebrow">Watchlist</p>
           <h1 className="hero-title">Symbols & alerts</h1>
           <p className="hero-copy">
-            App-user watchlist UI will live here (linked to your default portfolio context). Stub until the
+            App_user watchlist UI will live here (linked to your default portfolio context). Stub until the
             execution surface ships.
           </p>
           <div className="cta-row" style={{ marginTop: "1.25rem" }}>

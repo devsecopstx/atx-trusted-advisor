@@ -25,7 +25,7 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 3. Run **`npm run ci:gate`** (lint + typecheck + test). Add **`npm run build`** when the change is release/deploy-sensitive or touches App Router/build artifacts (same as `AGENTS.md` release gate: `ci:gate && build`).
 4. Fix blocking failures in scope.
 5. Re-run validation until clean.
-6. Confirm docs/skill updates for any changed runbooks or delivery workflow. Deferred doc/product gaps live in **`docs/PLAN.md`** (TODO / design TBD) — no need to block commit unless you are closing an item. For **`/api/*` or OpenAPI inventory** changes, follow **`generate-docs`** § *API docs & OpenAPI*; combined Core MVP + Branding PRs may need the final gate in **`xdesign-review`**.
+6. Confirm docs/skill updates for any changed runbooks or delivery workflow. Deferred doc/product gaps live in **`docs/PLAN.md`** (TODO / design TBD) — no need to block commit unless you are closing an item. For **`/api/*` or OpenAPI inventory** changes, follow **`generate-docs`** § *API docs & OpenAPI*. **Branding / investor / GTM / logo** changes: sync **`.cursor/rules/xfinance-branding.mdc`** and **`docs/xchat/xfinance-branding-review.md`** per **`generate-docs`** § *Branding, investor narrative & xChat product copy*. Combined Core MVP + Branding or **pre-prod release** PRs: run **`xdesign-review`** (includes production deploy lock); after deploy, **`AGENTS.md` → Production validation (post-deploy)**.
 7. **Cursor rules (`.cursor/rules/*.mdc`)**: if changed, verify single valid YAML
    frontmatter, correct `globs`, no patch/diff noise (`+` prefixes). When logo
    or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).

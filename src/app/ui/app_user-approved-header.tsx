@@ -6,8 +6,8 @@ import {
   shouldShowAppUserDbLabel
 } from "@/lib/env";
 
-import { AppUserHeaderSession } from "./app-user-header-session";
-import { AppUserProductNav, type AppUserProductNavCurrent } from "./app-user-product-nav";
+import { AppUserHeaderSession } from "./app_user-header-session";
+import { AppUserProductNav, type AppUserProductNavCurrent } from "./app_user-product-nav";
 import { XchatHeaderBrand } from "./xchat-header-brand";
 
 type AppUserApprovedHeaderProps = {

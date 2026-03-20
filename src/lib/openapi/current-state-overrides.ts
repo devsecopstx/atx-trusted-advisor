@@ -300,7 +300,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "POST /api/feedback": {
     summary: "Submit signed-in user feedback",
     description:
-      "App-user header flow. Optional Slack notification when SLACK_WEBHOOK_URL is configured (fire-and-forget).",
+      "App_user header flow. Optional Slack notification when SLACK_WEBHOOK_URL is configured (fire-and-forget).",
     requestBody: {
       required: true,
       content: {

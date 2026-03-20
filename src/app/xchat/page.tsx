@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AppUserApprovedHeader } from "@/app/ui/app-user-approved-header";
+import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
 import { getSessionUser } from "@/lib/auth";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";

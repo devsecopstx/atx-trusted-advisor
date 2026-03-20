@@ -4,30 +4,63 @@ alwaysApply: true
 
 # xFinance Branding — Production Rules for Cursor
 
+**Reference (Grok one-slide review & scaling feedback)**  
+Narrative alignment: [xFinance One-Slide Review & Scaling Feedback (shared Grok)](https://grok.com/share/bGVnYWN5LWNvcHk_d2f3a353-3fe4-4fa9-a5d8-f6ff41642993).  
+When the share and this rule disagree, **this rule + repo implementation** win; refresh the rule if the Grok thread updates.
+
 **Core Positioning (use everywhere)**
 - Tagline: **"No Atoms Moved. Just Gains Earned."**
 - Subline: **"Cheapest xFinance at $2/hr • Options Profits Powered by Grok"**
 - Promise: Turn options into daily gains (covered calls, protective puts, straddles, unified scanner). Zero fluff. Institutional tools at retail price.
+- **One-slide discipline:** Lead with outcome (gains / defined-risk options income), then stack (portfolio → xChat → exam/coach), then proof ($2/hr, pay-per-use). Avoid feature dumps before the hook.
 
-**Visual Identity (match first screenshot lightning style + second screenshot green cyber-finance vibe)**
-- **Logo lockup:** **aTx** (gain-green) + **⚡** (lightning bolt, gain-green) + **Finance** (white) = aTx⚡Finance. Implemented in `src/app/ui/atxfinance-logo.tsx` (`AtxFinanceMark`, `LightningBolt`, span).
-- **Primary Icon**: Lightning bolt ⚡ + stylized "xF" (use first screenshot's clean geometric dark X style)
-- **Color Palette**:
+**Differentiation (investor + GTM — current state)**
+- **Bundle:** Execution-style portfolio tools + **advisory chat (Grok / xAI)** + **exam prep (xCoach)** in **one workspace** — a rare combination vs point-solution chatbots or read-only dashboards alone.
+- **MVP priority (perceived value):** Ship **xChat** + **basic portfolio tracking** first; advisory runs on **Grok API** / xAI Responses. Layer xCoach and deeper execution as the stack matures.
+
+**Honest weak spots (copy & creative — fix over time)**
+- Avoid **early-stage** vibes: “stub”, “picker shipping now”, generic “start free — upgrade” **without** proof. Prefer concrete outcomes and dark-launch / access clarity.
+- **Not yet in product:** Live usage metrics, customer testimonials, rich proof-of-concept visuals — do **not** invent them; use “approved access”, “waitlist”, or roadmap language until shipped.
+
+**GTM, partnerships & waitlist (targets)**
+- **Near-term goal:** **~1k signups in 30 days** to validate demand before heavy build — frame as **waitlist / early access**, not mass-market scale claims.
+- **Channels:** FinTwit / crypto Twitter; RIA & wealth-management pros; **Series 7 / 65 / 66** candidates on LinkedIn & Reddit.
+- **Partnerships:** Finance influencers for **early-access reviews** — offer clear narrative: bundle + Grok advisory + compliance-forward positioning.
+- **Waitlist landing:** Use the **one-slide / hero** story (differentiation + $2/hr + product stack); single CTA to join waitlist; optional credential step below.
+
+**Compliance narrative (trust, not legal advice)**
+- Emphasize **for approved professionals** and **controlled access** — aligns with dark-launch and Admin → Access flows.
+- **Roadmap:** Waitlist can mention **credential upload (FINRA / SEC)** to filter serious users — **only when productized**; never fake a flow in UI. Copy stays “not financial advice” where disclaimers exist (e.g. xChat footer).
+
+**Monetization: roadmap vs pricing lock-in**
+- **Shipped / canonical customer UI:** **$2/hr** usage + tooltip (Pricing Lock-in below) — do not remove from primary surfaces without an explicit product change.
+- **Investor & deck roadmap:** **Freemium → tiered subscriptions** (illustrative: **~$29/mo** advisor tier, **~$99/mo** full execution + coach) — use in **investor decks**, waitlist **secondary** copy, or `/plans` when implemented. If both appear, lead with **$2/hr** transparency, then tiers as “also available” or “coming”.
+
+**Visual Identity (lightning + green cyber-finance vibe)**
+- **Logo lockup (mandatory):** **aTx** (gain-green, `--xf-gain-green`) + **⚡** (lightning bolt, gain-green) + **Finance** (white) = **aTx⚡Finance**. Do not drop the bolt between **aTx** and **Finance** in the wordmark. Code: `src/app/ui/atxfinance-logo.tsx` (`AtxFinanceMark`, `LightningBolt`, span).
+- **Primary Icon (standalone / heroes):** Lightning ⚡ + stylized **xF** where a full lockup is not used (e.g. large marketing marks).
+- **Color Palette:**
   - Background: `#050505` (pure black like xAI API)
-  - Accent Green: `#22c55e` (neon gains — use exactly as in second screenshot)
+  - Accent Green: `#22c55e` (neon gains — marketing hero); app surfaces also use `--xf-gain-green` (#39ff14) per brand kit
   - Text: `#f1f5f9` / `#94a3b8`
   - Lightning Yellow highlight: `#eab308` on hover
-- **Typography**:
+- **Typography:**
   - Heading: `font-bold tracking-tighter text-5xl md:text-7xl` (Inter or system-ui)
   - Sub: `font-medium text-2xl text-emerald-400`
   - Body: `font-mono text-sm text-slate-400` for financial data
   - Tagline: `font-black uppercase tracking-[4px] text-emerald-400`
 
 **Product Hierarchy**
-- xFinance     → Core portfolio + scanners
-- xChat        → AI advisor (the chat interface we're building)
-- xCoach       → Learning / exam readiness
-- xMoney       → Coming soon (execution / money movement)
+- xFinance → Core portfolio + scanners
+- xChat → AI advisor (Grok / xAI-backed)
+- xCoach → Learning / exam readiness
+- xMoney → Coming soon (execution / money movement)
+
+**Scaling narrative (copy-level, not infra)**
+- **Usage-based:** $2/hr, pay only for what you use — say it near every primary CTA.
+- **Trust path:** Dark-launch / access workflow is a feature, not an apology; approved users first.
+- **Heavy workloads:** Batch / async flows (e.g. xChat batch) are “scale without pretending everything is real-time.”
+- **Governance:** Personas, plans, and audit trails support scaling teams without diluting the retail story.
 
 **Pricing Lock-in**
 - Every page, every button, every hero must show **"$2/hr"** in emerald-400 with tooltip: "Cheapest xFinance on earth — pay only for what you use."
@@ -35,11 +68,11 @@ alwaysApply: true
 **When to use this rule**
 - Any new page/component with xFinance, xChat, xCoach, xMoney
 - Hero sections, nav, chat header, pricing cards
-- Always include lightning icon ⚡ next to "xFinance"
+- One-pagers, investor or partner-facing blurbs, **waitlist landings**, and “single slide” exports
 
 **Strict Rules**
-- Use **aTxFinance** or **xFinance** in user-facing copy — both are acceptable. (Technical identifiers like tool type `atxfinance`, env vars, DB names may remain for backward compatibility.)
-- Always green "Gains Earned" highlight.
+- Use **aTx⚡Finance** (wordmark), **aTxFinance**, or **xFinance** in user-facing copy as appropriate; technical identifiers (`atxfinance` tool type, env vars, DB names) may remain.
+- Always green **"Gains Earned"** highlight.
 - Dark mode only. No light theme.
 - Every recommendation must tie back to options profit (covered calls, protective puts, unified scanner).
 
@@ -47,5 +80,5 @@ alwaysApply: true
 - Use `--xf-*` tokens from `design-system/atxfinance-brand-kit.css`. No hardcoded hex in app CSS.
 - Accent green: `--xf-gain-green` (#39ff14). Marketing hero may use `emerald-400` (#22c55e) per design review — see `docs/xchat/xfinance-branding-review.md`.
 
-**When user says "xFinance branding" or "new hero"**
-- Output a Tailwind component using `--xf-*` tokens, tagline, subline, $2/hr, and product hierarchy (xFinance, xChat, xCoach, xMoney).
+**When user says "xFinance branding", "new hero", or "investor / waitlist slide"**
+- Output a Tailwind component using `--xf-*` tokens, tagline, subline, **$2/hr**, product hierarchy (xFinance, xChat, xCoach, xMoney), **aTx⚡Finance** lockup (bolt between aTx and Finance), and **differentiation** (execution + advisory + exam prep in one place). For waitlist/investor context, add a **secondary** line on early access / professionals / roadmap tiers without inventing metrics or testimonials.

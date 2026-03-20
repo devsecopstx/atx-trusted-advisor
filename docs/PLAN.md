@@ -8,13 +8,13 @@ Tracked follow-ups from doc/ops reviews. **Not blocking** staging or merge unles
 |--------|------|
 | **TODO** | **CONTRIBUTING.md** — Optional one-liner: new session-facing product APIs should be listed in `DEVELOPMENT.md` § API and linked from `README.md` when user-visible. |
 | **TODO** | **test-commit-push CHECKLIST** — Optional checkbox: “Deferred items captured in `docs/PLAN.md` (if any) reviewed or consciously skipped.” |
-| **Design TBD** | **User-facing privacy / retention** — Short note for app-user **Feedback** (`POST /api/feedback`): what is stored (Slack vs logs only), retention, and whether copy in the modal should link to a policy page. |
+| **Design TBD** | **User-facing privacy / retention** — Short note for app_user **Feedback** (`POST /api/feedback`): what is stored (Slack vs logs only), retention, and whether copy in the modal should link to a policy page. |
 
 ## Testing & QA
 
 | Status | Item |
 |--------|------|
-| **TODO** | **E2E / Playwright** — Smoke for app-user header: profile popover, logout, feedback modal submit (happy path + unauthenticated). |
+| **TODO** | **E2E / Playwright** — Smoke for app_user header: profile popover, logout, feedback modal submit (happy path + unauthenticated). |
 | **Design TBD** | Where E2E lives (`tests/e2e` vs CI job) and whether it runs on every PR or nightly. |
 
 ## Product / UX

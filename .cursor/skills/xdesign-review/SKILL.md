@@ -1,10 +1,10 @@
 ---
 id: xdesign-review
 name: xdesign-review
-description: Final MVP PR review gate for atxFinance when combining Core MVP and Branding cloud-agent changes.
+description: Final PR + production-readiness review gate for atxFinance when combining Core MVP and Branding changes (and pre-prod lock).
 ---
 
-# xDesign Review: Final MVP Gate
+# xDesign Review: Final MVP / Production Gate
 
 ## Goal
 
@@ -13,16 +13,25 @@ Provide a strict final review gate before accepting combined PR changes from:
 - Core MVP cloud agent (API/domain/runtime)
 - Branding cloud agent (UI/UX/visual system)
 
+Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy only after this gate + **`npm run ci:gate && npm run build`** (see `AGENTS.md`).
+
 ## Core MVP Scope (Revisit)
 
-- **xChat** — Finance-enabled Grok session that **only responds to finance questions**. Implemented as a constrained chat experience; xPersona config and how search/RAG tools are used will be refined in a later TODO.
-- **xCoach** — Currently a **stub**. Planned: licensing exam (timed test). Further scope (TODO) to be discussed.
+- **xChat** — Finance-enabled Grok session; persona/RAG/tool behavior governed by published personas and `POST /api/xchat/ask`. See `docs/xchat/*.md` for contracts.
+- **xCoach** — Currently a **stub**. Planned: licensing exam (timed test). Further scope (TODO).
 
 ## When to Use
 
 - Final review before merging MVP changes to `main`.
 - Any PR that includes both product logic and visual/brand changes.
 - Any `xPersona`, `xChat`, `xCoach`, tool-routing, or admin-contract changes.
+- **Before production deploy:** run this gate after CI green; confirm **`generate-docs`** / OpenAPI parity if routes changed.
+
+## Versioning (SemVer — single source of truth)
+
+- **Canonical app version** lives only in **`package.json`** (`version` field). Runtime UIs read **`src/lib/app-version.ts`** (`APP_VERSION_LABEL`). Do **not** hardcode version strings in skills or UI.
+- Follow **SemVer 2.0.0**: **MAJOR.MINOR.PATCH** — bump MAJOR for breaking API/contract changes, MINOR for backward-compatible features, PATCH for fixes.
+- Do **not** downgrade version numbers (e.g. never 1.0.6 → 1.0.0). “v1” product line = **1.x** on `main`; tag releases from signed tags per deploy runbooks (`.cursor/skills/atxfinance-deploy-production/SKILL.md`).
 
 ## Mandatory Reviewer Sequence
 
@@ -40,15 +49,15 @@ If any reviewer is skipped, final review is incomplete.
 
 - Route contract compatibility is preserved (`/api/*` responses, status codes, payload shape).
 - Auth and tenant boundaries remain enforced (no privilege broadening).
-- **xChat**: finance-only scope is preserved; validation and error paths remain stable. (TODO: xPersona config and search-tool usage reviewed in later pass.)
+- **xChat**: validation and error paths remain stable; plan limits and persona resolution behave as documented.
 - **xCoach**: stub behavior is acceptable until licensing-exam scope is defined (TODO).
 - No regressions in retries, fallbacks, or deploy-health checks.
 - Critical env/secret assumptions are documented and unchanged unless explicitly approved.
 
 ## Branding Acceptance Checks
 
-- Dark/light mode remains legible and consistent.
-- Brand palette and typography remain coherent with existing atxFinance direction.
+- **xFinance** is **dark mode only** — legibility, contrast, and focus states; no light-theme requirement (see **`.cursor/rules/xfinance-branding.mdc`**). Wordmark lockup **aTx⚡Finance** (bolt between aTx and Finance) must match implementation in `src/app/ui/atxfinance-logo.tsx` when logo changes.
+- Brand palette and typography remain coherent with **`design-system/atxfinance-brand-kit.css`** (`--xf-*` tokens; no stray hex in app CSS).
 - UI changes do not break core task flows or accessibility basics.
 - New visuals do not hide errors, states, or operator controls.
 
@@ -59,6 +68,16 @@ If any reviewer is skipped, final review is incomplete.
 - Docs parity is updated where behavior changed — follow **`generate-docs`** baseline set (`AGENTS.md`, `DEVELOPMENT.md`, `README.md`, etc.).
 - API/route changes keep **OpenAPI inventory** and route-parity tests green (`tests/integration/openapi-*.test.ts`; see `DEVELOPMENT.md#api-docs-validation`).
 - Tests cover changed logic; missing tests are called out explicitly.
+
+## Production Deploy Lock (additional)
+
+Ship checklist (align with **`test-commit-push`** / **`AGENTS.md`**):
+
+- [ ] **`npm run ci:gate`** and **`npm run build`** pass locally (or CI green on the merge commit).
+- [ ] No conflict markers; branch rebased/merged per team policy.
+- [ ] **Post-deploy validation:** health (`GET /api/health`), admin session, **app_user** path (`viewer`/`operator`/`advisor` + `/xchat` / `POST /api/xchat/ask`) — see **`AGENTS.md` → Production validation (post-deploy)**.
+- [ ] Secrets only in GCP Secret Manager / env — never committed (see `DEVELOPMENT.md`).
+- [ ] Optional: **`npm run status:deploy`** for stage/prod URLs and latest GitHub Actions runs.
 
 ## Required Evidence Checklist
 
@@ -97,8 +116,8 @@ If any reviewer is skipped, final review is incomplete.
 ## Deferred / TODO (Out of Scope for This Revisit)
 
 - **xPersona**: detailed config and how it gates xChat scope — later TODO.
-- **Search/RAG tools**: how they are used in xChat — later TODO.
-- **xCoach**: full licensing-exam (timed test) design and implementation — stub only for now; will discuss more.
+- **Search/RAG tools**: advanced tuning — see `docs/xchat/`.
+- **xCoach**: full licensing-exam (timed test) design and implementation — stub only for now.
 
 ## Guardrails
 
@@ -106,4 +125,4 @@ If any reviewer is skipped, final review is incomplete.
 - Do not invent behavior; verify from code/diff/tests.
 - Treat auth, tenant isolation, and contract drift as high severity.
 - Keep recommendations actionable and scoped to the touched changes.
-- TODO: remove dependency on global Cursor skills; keep this project-local skill pack as source of truth.
+- Keep this project-local skill pack as source of truth; avoid duplicating global Cursor skills.

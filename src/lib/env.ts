@@ -126,7 +126,7 @@ export function isXchatDebugEnabled(): boolean {
   return false;
 }
 
-/** App-user header “stealth” DB chip: on in dev/test; in production only if `APP_USER_SHOW_DB_ENDPOINT=true`. */
+/** App_user header “stealth” DB chip: on in dev/test; in production only if `APP_USER_SHOW_DB_ENDPOINT=true`. */
 export function shouldShowAppUserDbLabel(): boolean {
   const n = process.env.NODE_ENV ?? "development";
   if (n !== "production") {
