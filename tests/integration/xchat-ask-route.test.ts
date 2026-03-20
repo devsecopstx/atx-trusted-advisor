@@ -375,6 +375,7 @@ describe("xchat ask route collection retrieval", () => {
 
   it("returns structured 502 when xai provider call fails", async () => {
     xaiMocks.respondWithXai.mockRejectedValueOnce(new Error("provider outage"));
+    xaiMocks.chatWithXai.mockRejectedValue(new Error("provider outage"));
 
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {

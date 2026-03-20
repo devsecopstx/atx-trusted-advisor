@@ -247,9 +247,16 @@ export async function respondWithXai(input: {
     })
   });
 
-  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  const payload = (await response.json().catch(async () => {
+    const text = await response.text();
+    return { _raw: text || `(empty body, status ${response.status})` };
+  })) as Record<string, unknown>;
   if (!response.ok) {
-    throw new Error(`xAI responses failed: ${JSON.stringify(payload.error ?? payload)}`);
+    const errDetail =
+      payload.error ?? payload._raw ?? payload;
+    throw new Error(
+      `xAI responses failed (${response.status} ${response.statusText}): ${JSON.stringify(errDetail)}`
+    );
   }
 
   const outputText = extractResponseOutputText(payload);
@@ -323,11 +330,17 @@ export async function respondWithXaiToolLoop(input: {
       })
     });
 
-    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    const payload = (await response.json().catch(async () => {
+      const text = await response.text();
+      return { _raw: text || `(empty body, status ${response.status})` };
+    })) as Record<string, unknown>;
     lastPayload = payload;
 
     if (!response.ok) {
-      throw new Error(`xAI responses failed: ${JSON.stringify(payload.error ?? payload)}`);
+      const errDetail = payload.error ?? payload._raw ?? payload;
+      throw new Error(
+        `xAI responses failed (${response.status} ${response.statusText}): ${JSON.stringify(errDetail)}`
+      );
     }
 
     const pendingToolCalls = extractToolCalls(payload);
