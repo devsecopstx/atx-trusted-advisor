@@ -110,6 +110,14 @@ jobs:
             --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
             --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
 
+      - name: Drop legacy ADMIN_SEED_EMAIL secret binding (if present)
+        run: |
+          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --remove-secrets=ADMIN_SEED_EMAIL \
+            --quiet || echo "::notice::No ADMIN_SEED_EMAIL secret binding to remove (ok)"
+
       - name: Deploy to Cloud Run (staging)
         env:
           ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
@@ -211,6 +219,14 @@ jobs:
             --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
             --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
 
+      - name: Drop legacy ADMIN_SEED_EMAIL secret binding (if present)
+        run: |
+          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --remove-secrets=ADMIN_SEED_EMAIL \
+            --quiet || echo "::notice::No ADMIN_SEED_EMAIL secret binding to remove (ok)"
+
       - name: Deploy to Cloud Run (production)
         env:
           ADMIN_SEED_EMAIL: ${{ secrets.ADMIN_SEED_EMAIL }}
@@ -310,6 +326,14 @@ jobs:
             --platform managed \
             --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
             --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
+
+      - name: Drop legacy ADMIN_SEED_EMAIL secret binding (if present)
+        run: |
+          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --remove-secrets=ADMIN_SEED_EMAIL \
+            --quiet || echo "::notice::No ADMIN_SEED_EMAIL secret binding to remove (ok)"
 
       - name: Deploy to Cloud Run (production)
         env:
