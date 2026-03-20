@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import {
     clearOAuthFlowCookies,
     createSession,
