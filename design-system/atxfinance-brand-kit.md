@@ -2,17 +2,17 @@
 
 ## Brand Positioning
 
-- **Core promise:** AI-native personal finance with premium UX and clear decision support.
-- **Tone:** trustworthy, forward-looking, and approachable.
+- **Core promise:** AI-powered institutional options alpha with premium UX and clear decision support.
+- **Tone:** trustworthy, performance-focused, and procurement-ready.
 - **Tagline lockup:** `atxFinance` + `Powered by xAI`.
-- **Ecosystem naming:** `Grok` for AI assistant surfaces, `xMoney` for payment rails and transfer actions.
+- **Ecosystem naming:** `Grok` for AI strategy surfaces, `xStrategyBuilder` for strategy generation and risk analytics.
 
 ## Visual Direction
 
 - **Aesthetic:** clean Grok-like minimal fintech, dark-first, geometric, low-noise.
 - **UI style:** monochrome surfaces, subtle depth, thin borders, no saturated icon colors.
 - **Motifs:** simple token glyphs, node-link structures, restrained chart overlays.
-- **Mockup framing:** smartphone-led composition with supporting floating feature cards.
+- **Mockup framing:** strategy-console-led composition with supporting licensing/compliance cards.
 
 ## Color System
 
@@ -62,8 +62,8 @@
 
 - Use a **4:5 vertical** social-ready frame.
 - Keep the **atxFinance logo top-left/top-center** with subtitle `Powered by xAI`.
-- Place the **phone mockup center-right** as the primary focal object.
-- Place **Grok** and **xMoney** glass cards on the left.
+- Place the **strategy console mockup center-right** as the primary focal object.
+- Place **Grok** and **xStrategyBuilder** glass cards on the left.
 - Keep negative space around logo and key UI metrics; avoid overpacking.
 
 ## Admin Console Direction (console.x.ai inspired)
@@ -91,7 +91,7 @@ Use this direction for operator/admin surfaces where fast scanning matters more 
    - Standardize icon stroke style (single-weight outline icons) across app screenshots and marketing cards.
 4. **Phase 4 - QA gate before merge**
    - Apply the `atxfinance-brand` checklist and block release for any legibility or brand naming errors.
-   - Verify mobile crop safety (4:5), text readability, and consistency across `atxFinance`, `Grok`, and `xMoney`.
+   - Verify mobile crop safety (4:5), text readability, and consistency across `atxFinance`, `Grok`, and `xStrategyBuilder`.
 
 ## Ready-to-Use Files
 
@@ -103,16 +103,16 @@ Use this direction for operator/admin surfaces where fast scanning matters more 
 Use this with image models when creating social creatives:
 
 ```text
-Create a premium mobile fintech marketing hero image for atxFinance powered by xAI, Grok, and xMoney.
+Create a premium mobile fintech marketing hero image for atxFinance powered by xAI, Grok, and xStrategyBuilder.
 
 Style: modern, sleek, futuristic fintech aesthetic; professional yet approachable; clean lines; dark mode UI; subtle monochrome depth.
 Palette: deep charcoal/black base with silver-gray and soft white accents.
 Composition: vertical 4:5 social-ready hero.
 - Top: prominent atxFinance logo with small subtitle "Powered by xAI".
-- Right/center: realistic smartphone mockup showing dark-mode finance app UI (optimus coach, exam, finance charts, AI assistant panel).
+- Right/center: realistic strategy console mockup showing dark-mode options UI (strategy builder, Greeks panel, backtesting timeline, AI assistant panel).
 - Left: floating glassmorphism cards with:
   - "Grok" AI assistant card/icon
-  - xMoney payment card with transfer/payment symbols
+  - xStrategyBuilder licensing card with risk/compliance symbols
   - crypto/AI motifs (token glyphs, node-link graphics, abstract neural lines) in monochrome
 Visual quality: crisp, high-detail, premium product render, balanced layout, minimal clutter.
 Mood: high-tech finance brand, trustworthy and innovative.

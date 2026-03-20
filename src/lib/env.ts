@@ -36,7 +36,7 @@ const envSchema = z.object({
   X_OAUTH_USERINFO_URL: optionalUrl,
   XAI_BASE_URL: optionalUrl,
   XAI_MANAGEMENT_BASE_URL: optionalUrl,
-  XAI_CHAT_MODEL: z.string().min(1).optional(),
+  XAI_CHAT_MODEL: optionalNonEmptyString,
   AUTH_SECRET: optionalAuthSecret,
   ALLOW_ANY_X_USER_LOGIN: z.union([z.string(), z.boolean()]).optional(),
   SLACK_WEBHOOK_URL: z.union([z.string().url(), z.literal("")]).optional(),

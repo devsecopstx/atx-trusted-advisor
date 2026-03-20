@@ -1,32 +1,32 @@
-# atxFinance Branding Tags (2026 Refresh)
+# atxFinance Branding Tags (Institutional Pivot)
 
 ## Intent
 
-Use this tag system to generate consistent atxFinance visuals across social, web, product marketing, and store assets.
+Use this tag system to generate consistent atxFinance visuals across enterprise decks, licensing pages, and product marketing.
 
 ## Required Identity Tags
 
 - `brand:atxFinance`
 - `brand:poweredByXai`
-- `entity:grokAssistant`
-- `entity:xmoneyRails`
+- `entity:grokStrategyEngine`
+- `entity:xstrategyBuilder`
 
-All four tags are mandatory in any hero or campaign prompt.
+All four tags are mandatory in any hero, licensing, or campaign prompt.
 
 ## Style Tags
 
 - `style:premiumFintech`
 - `style:darkFirst`
 - `style:lowNoise`
-- `style:glassDepthSubtle`
+- `style:institutionalControlPlane`
 - `style:cleanGeometry`
 
 ## Composition Tags
 
 - `layout:mobileFirst`
 - `layout:centerSafe70`
-- `layout:focalPhoneMockup`
-- `layout:supportCardsLeft`
+- `layout:consoleFocalPanel`
+- `layout:licensingCardsLeft`
 - `layout:balancedWhitespace`
 
 ## Trust and Credibility Tags
@@ -35,31 +35,31 @@ All four tags are mandatory in any hero or campaign prompt.
 - `trust:believableFinancialUi`
 - `trust:noHypeClaims`
 - `trust:governedTone`
-- `trust:conversionReady`
+- `trust:institutionalProcurementReady`
 
 ## Color and Motion Tags
 
 - `color:charcoalBase`
 - `color:neutralSurfaceRamp`
-- `color:cyanAccentControlled`
-- `color:violetAccentControlled`
+- `color:gainGreenAccentControlled`
+- `color:lightningYellowHighlight`
 - `motion:restrainedGlow`
 
 ## Content Tags
 
-- `content:portfolioSnapshot`
-- `content:performanceChart`
-- `content:aiAssistantPanel`
-- `content:paymentActivityCard`
-- `content:securityConfidenceCue`
+- `content:optionsStrategyBoard`
+- `content:greeksHeatmap`
+- `content:backtestPanel`
+- `content:riskControlCard`
+- `content:complianceAuditTrail`
 
 ## Platform Tags
 
 - `platform:social4x5`
 - `platform:landing16x9`
-- `platform:appStoreScreenshot`
+- `platform:investorOneSlide`
 - `platform:darkModeUi`
-- `platform:adminConsole`
+- `platform:enterpriseConsole`
 
 ## Anti-Pattern Tags (Blocklist)
 
@@ -68,15 +68,16 @@ All four tags are mandatory in any hero or campaign prompt.
 - `block:overcrowdedComposition`
 - `block:aggressiveNeonBloom`
 - `block:misleadingFinancialValues`
+- `block:retailMemeAesthetic`
 
 ## Quick Tag Presets
 
 ### Preset: Social Hero
 
 ```text
-brand:atxFinance brand:poweredByXai entity:grokAssistant entity:xmoneyRails
+brand:atxFinance brand:poweredByXai entity:grokStrategyEngine entity:xstrategyBuilder
 style:premiumFintech style:darkFirst style:lowNoise
-layout:mobileFirst layout:centerSafe70 layout:focalPhoneMockup
+layout:mobileFirst layout:centerSafe70 layout:consoleFocalPanel
 trust:legibleAtMobile trust:believableFinancialUi
 platform:social4x5
 block:gibberishText block:misspelledBranding
@@ -85,34 +86,34 @@ block:gibberishText block:misspelledBranding
 ### Preset: Landing Hero
 
 ```text
-brand:atxFinance brand:poweredByXai entity:grokAssistant entity:xmoneyRails
-style:premiumFintech style:cleanGeometry
-layout:balancedWhitespace layout:focalPhoneMockup
-trust:conversionReady trust:governedTone
-platform:landing16x9
-block:overcrowdedComposition block:aggressiveNeonBloom
+brand:atxFinance brand:poweredByXai entity:grokStrategyEngine entity:xstrategyBuilder
+style:premiumFintech style:cleanGeometry style:institutionalControlPlane
+layout:balancedWhitespace layout:consoleFocalPanel
+trust:institutionalProcurementReady trust:governedTone
+platform:landing16x9 platform:investorOneSlide
+block:overcrowdedComposition block:aggressiveNeonBloom block:retailMemeAesthetic
 ```
 
 ### Preset: App Store
 
 ```text
-brand:atxFinance entity:grokAssistant entity:xmoneyRails
+brand:atxFinance entity:grokStrategyEngine entity:xstrategyBuilder
 style:darkFirst style:lowNoise
 layout:mobileFirst layout:centerSafe70
 trust:legibleAtMobile trust:believableFinancialUi
-platform:appStoreScreenshot platform:darkModeUi
+platform:investorOneSlide platform:darkModeUi
 block:gibberishText block:misleadingFinancialValues
 ```
 
 ### Preset: Admin Console Clean (console.x.ai inspired)
 
 ```text
-brand:atxFinance brand:poweredByXai
-style:darkFirst style:lowNoise style:cleanGeometry
+brand:atxFinance brand:poweredByXai entity:xstrategyBuilder
+style:darkFirst style:lowNoise style:cleanGeometry style:institutionalControlPlane
 layout:balancedWhitespace layout:mobileFirst
-trust:legibleAtMobile trust:governedTone trust:conversionReady
-platform:adminConsole platform:darkModeUi
-block:overcrowdedComposition block:aggressiveNeonBloom
+trust:legibleAtMobile trust:governedTone trust:institutionalProcurementReady
+platform:enterpriseConsole platform:darkModeUi
+block:overcrowdedComposition block:aggressiveNeonBloom block:retailMemeAesthetic
 ```
 
 ## Admin Console UX Traits

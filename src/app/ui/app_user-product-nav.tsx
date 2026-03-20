@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-export type AppUserProductNavCurrent = "xchat" | "xcoach" | "xfinance" | "watchlist";
+export type AppUserProductNavCurrent = "xchat" | "xstrategybuilder" | "xfinance" | "watchlist";
 
 type AppUserProductNavProps = {
   current: AppUserProductNavCurrent;
@@ -11,13 +11,13 @@ type AppUserProductNavProps = {
 
 const NAV: { id: AppUserProductNavCurrent; label: string; href: string }[] = [
   { id: "xchat", label: "xChat", href: "/xchat" },
-  { id: "xcoach", label: "xCoach", href: "/xcoach" },
+  { id: "xstrategybuilder", label: "xStrategyBuilder", href: "/xstrategybuilder" },
   { id: "xfinance", label: "Portfolio", href: "/xfinance" },
   { id: "watchlist", label: "Watchlist", href: "/watchlist" }
 ];
 
 /**
- * Approved app_user accounts: xChat, xCoach, Portfolio (xFinance surface), Watchlist.
+ * Approved app_user accounts: xChat, xStrategyBuilder, Portfolio (xFinance surface), Watchlist.
  * `global_admin` also gets Admin (console). Not shown for guests / unapproved sessions.
  */
 export function AppUserProductNav({ current, roles }: AppUserProductNavProps) {

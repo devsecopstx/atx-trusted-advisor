@@ -21,6 +21,9 @@ Tracked follow-ups from doc/ops reviews. **Not blocking** staging or merge unles
 
 | Status | Item |
 |--------|------|
+| **Design TBD** | **Brand pivot execution (institutional licensing)** — xCoach is deprecated; xStrategyBuilder is now the primary product story. Complete copy/token updates across marketing, nav, and pricing surfaces to reflect B2B white-label/API/SaaS offerings. |
+| **TODO** | **Licensing packaging matrix** — Define contractual SKUs for (1) white-label, (2) API-first, (3) managed hosted SaaS with seat/usage add-ons and support tiers. |
+| **TODO** | **Institutional proof points** — Add measurable benchmarks for strategy generation, Greeks latency, and backtest throughput to support enterprise procurement review. |
 | **Design TBD** | **Plans landing** (signed-in, not yet approved) — Header is minimal vs full `AppUserApprovedHeader`; decide if parity (e.g. logout only) is desired. |
 | **Design TBD** | **Watchlist** (`/watchlist`) — Stub only; define data model + API surface vs portfolio watchlist endpoints. |
 | **Design TBD** | **xChat 4-agent parallel mode** — Add optional orchestration where one user ask can fan out to up to 4 specialized agents and synthesize a final answer. Define UI affordance (single response vs per-agent panes), latency budget, and fallback when 1+ agents fail/time out. |
@@ -44,6 +47,14 @@ Tracked follow-ups from doc/ops reviews. **Not blocking** staging or merge unles
 | **TODO** | **Merge strategy** — implement deterministic reducer prompt for agent outputs with confidence/error metadata and source attribution. |
 | **TODO** | **Rate limits / plan limits** — update plan controls for `maxParallelAgents`, max tool calls per ask, and cost guardrails by subscription tier. |
 | **TODO** | **Admin observability** — add per-agent status/error columns to admin xChat views and expose last failure class (timeout, rate limit, tool error, upstream error). |
+
+## Institutional licensing hard requirements
+
+| Status | Item |
+|--------|------|
+| **TODO** | **Ultra-low latency** — Set hard SLOs for strategy generation/Greeks/backtesting (target sub-second, stretch target <100ms for API responses where feasible), plus cache and market-data feed strategy. |
+| **TODO** | **Compliance + encryption baseline** — Define SOC2 Type II workstream, FINRA/SEC audit-log coverage, encryption-at-rest/in-transit controls, explainability artifacts, and tenant isolation controls. |
+| **TODO** | **Cybersecurity + model integrity** — Ship MFA, rate limiting, key rotation cadence, strategy IP protection controls, and scheduled drift/overfitting checks (backtest vs live). |
 
 ---
 

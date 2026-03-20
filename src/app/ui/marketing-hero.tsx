@@ -40,7 +40,7 @@ function XChatIcon() {
   );
 }
 
-function XCoachIcon() {
+function XStrategyBuilderIcon() {
   return (
     <svg
       aria-hidden="true"
@@ -48,25 +48,10 @@ function XCoachIcon() {
       fill="none"
       viewBox="0 0 64 64"
     >
-      <path
-        d="M20 46V22l12-8 12 8v24"
-        stroke="var(--xf-text-300)"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M16 46h32"
-        stroke="var(--xf-text-300)"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M28 30h8M32 26v8"
-        stroke="var(--xf-gain-green)"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <circle cx="44" cy="24" r="6" stroke="var(--xf-text-300)" strokeWidth="1.5" fill="none" />
+      <path d="M10 48l10-14 10 8 14-20 10 10" stroke="var(--xf-text-300)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 52h44" stroke="var(--xf-text-300)" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="30" cy="42" r="3.2" fill="none" stroke="var(--xf-gain-green)" strokeWidth="1.8" />
+      <path d="M44 18h10v10" stroke="var(--xf-gain-green)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -98,9 +83,7 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
       <div className="mh-content">
         <div className="mh-left">
           <AtxFinanceLogo size="md" showSubtitle />
-          <p className="mh-descriptor">
-            xFinance · xChat · xCoach — portfolio execution, AI advisory, and exam readiness in one workspace.
-          </p>
+          <p className="mh-descriptor">xFinance · xChat · xStrategyBuilder — institutional options alpha in one workspace.</p>
 
           <h1 className="mh-tagline">
             No Atoms Moved.{" "}
@@ -108,9 +91,7 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
             Just <span className="mh-tagline-glow">Gains</span> Earned.
           </h1>
 
-          <p className="mh-sub">
-            Institutional-grade tools powered by xAI. Start free — upgrade when you need more.
-          </p>
+          <p className="mh-sub">Institutional-grade options tooling powered by xAI/Grok for RIAs, investment firms, and hedge teams.</p>
 
           <div className="mh-badges">
             <span className="mh-badge mh-badge-grok">Powered by Grok</span>
@@ -125,8 +106,8 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
               <Link className="cta cta-secondary" href="/xchat">
                 xChat
               </Link>
-              <Link className="cta cta-secondary" href="/xcoach">
-                xCoach
+              <Link className="cta cta-secondary" href="/xstrategybuilder">
+                xStrategyBuilder
               </Link>
               <Link className="cta cta-secondary" href="/admin">
                 Admin Console
@@ -160,9 +141,9 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
               description="xAI powered expert xFinance advisor."
             />
             <ProductCard
-              icon={<XCoachIcon />}
-              name="xCoach"
-              description="Licensing exam readiness — timed assessments and score paths (stub picker shipping now)."
+              icon={<XStrategyBuilderIcon />}
+              name="xStrategyBuilder"
+              description="AI-powered options strategy builder with Greeks, backtesting, and risk controls for licensed firms."
             />
           </div>
         </div>

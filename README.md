@@ -4,7 +4,7 @@ Admin console **and** signed-in **app_user** product surfaces for atxFinance. Th
 
 - access request governance
 - persona and collection management
-- xChat / xCoach / portfolio / watchlist for approved app_user accounts (viewer+ platform roles)
+- xChat / xStrategyBuilder / portfolio / watchlist for approved app_user accounts (viewer+ platform roles)
 - xChat operational workflows (default **published** personas: **Super-Agent** for `global_admin`, **xFinance** for other signed-in roles)
 - audit visibility for admin actions
 - portfolio/account bootstrap defaults
@@ -30,7 +30,7 @@ Admin console **and** signed-in **app_user** product surfaces for atxFinance. Th
 
 ## Core Routes
 
-- UI: `/` (marketing; signed-in non-admins redirect to `/xchat`), `/login`, `/xchat`, `/xcoach`, `/xfinance` (default portfolio), `/watchlist` (stub), `/personas` (directory), `/admin/*` ( **`global_admin` only** — e.g. `/admin/access-requests`, `/admin/personas`, `/admin/portfolios`, `/admin/tasks`, `/admin/xchat`, `/admin/rag-files` (xAI collection inventory), `/admin/user-settings`, `/admin/audit`, `/admin/api-docs`; layout redirects others to `/xchat`)
+- UI: `/` (marketing; signed-in non-admins redirect to `/xchat`), `/login`, `/xchat`, `/xstrategybuilder`, `/xfinance` (default portfolio), `/watchlist` (stub), `/personas` (directory), `/admin/*` ( **`global_admin` only** — e.g. `/admin/access-requests`, `/admin/personas`, `/admin/portfolios`, `/admin/tasks`, `/admin/xchat`, `/admin/rag-files` (xAI collection inventory), `/admin/user-settings`, `/admin/audit`, `/admin/api-docs`; layout redirects others to `/xchat`)
 - API: `/api/health`, `/api/openapi` (OpenAPI 3.1 current-state JSON), `/api/personas`, `/api/access-requests`, `/api/feedback` (signed-in app feedback → optional Slack), `/api/xchat/ask`, `/api/xchat/batch`, `/api/admin/*`, `/api/portfolios/*`, `/api/positions`
 
 Platform roles vs session: see [DEVELOPMENT.md — Platform roles vs tenant membership](DEVELOPMENT.md#platform-roles-vs-tenant-membership-session).

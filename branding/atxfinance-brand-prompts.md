@@ -1,33 +1,33 @@
-# atxFinance Brand Prompts (2026 Refresh)
+# atxFinance Brand Prompts (Institutional Pivot)
 
 ## Purpose
 
-This prompt set recreates atxFinance marketing assets with a premium, low-noise fintech style that stays legible on mobile and consistent with `atxFinance`, `Powered by xAI`, `Grok`, and `xMoney`.
+This prompt set recreates atxFinance marketing assets with a premium, low-noise institutional fintech style that stays legible on mobile and consistent with `atxFinance`, `Powered by xAI`, `Grok`, and `xStrategyBuilder`.
 
 ## Core Prompt (Primary)
 
 ```text
-Create a premium vertical 4:5 fintech hero for atxFinance.
+Create a premium vertical 4:5 institutional fintech hero for atxFinance.
 
 Brand lockup:
 - Primary mark: "atxFinance"
 - Subtitle: "Powered by xAI"
-- Product entities in scene: "Grok" and "xMoney"
+- Product entities in scene: "Grok" and "xStrategyBuilder"
 
 Visual direction:
 - Dark-first, modern fintech interface
-- Monochrome-forward base with controlled cyan and violet accents
+- Monochrome-forward base with controlled gain-green and lightning-yellow accents
 - Thin borders, subtle glow, glass depth, no visual clutter
-- Professional and trustworthy mood with strong conversion intent
+- Professional and trustworthy mood with procurement-ready credibility
 
 Composition:
 - Top area: atxFinance lockup with clean whitespace
-- Center-right: realistic smartphone mockup showing believable finance UI:
-  - portfolio snapshot
-  - performance chart
-  - Grok assistant card
-  - xMoney transfer/payment activity card
-- Left area: supporting floating cards and restrained AI/crypto motifs
+- Center-right: realistic strategy console mockup showing believable options UI:
+  - strategy construction panel
+  - Greeks/risk heatmap
+  - backtesting timeline
+  - compliance/audit status card
+- Left area: supporting licensing cards and restrained AI/market-data motifs
 - Preserve clear hierarchy for mobile readability
 
 Constraints:
@@ -35,39 +35,40 @@ Constraints:
 - No misspellings
 - No misleading financial claims or impossible values
 - No overbloom neon effects
+- No retail meme aesthetic
 - Keep all labels legible at mobile size
 ```
 
 ## Variants
 
-### Variant A - Enterprise Trust
+### Variant A - White-Label Licensing
 
 ```text
 Use the core prompt with these overrides:
 - Increase whitespace by 20%
 - Reduce glow intensity and background effects
-- Emphasize governance, stability, and clarity
+- Emphasize partner branding swap zones and governance controls
 - Keep all metrics conservative and realistic
 ```
 
-### Variant B - Growth Momentum
+### Variant B - API-First Integration
 
 ```text
 Use the core prompt with these overrides:
-- Slightly stronger chart movement and momentum cues
-- Highlight onboarding speed and action-focused CTA framing
-- Keep palette restrained (do not increase saturation globally)
+- Promote API telemetry and strategy request flow card as primary support panel
+- Highlight low-latency response framing (<100ms benchmark target)
+- Keep palette restrained and operational
 - Preserve clean typography and spacing
 ```
 
-### Variant C - AI First
+### Variant C - Managed Hosted SaaS
 
 ```text
 Use the core prompt with these overrides:
-- Promote Grok assistant surface as the primary support card
-- Keep finance context obvious (portfolio + payment rails always visible)
-- Use subtle node-link motif to imply AI reasoning
-- Ensure xMoney is still present and legible
+- Promote compliance dashboard and role-based controls as primary support cards
+- Keep strategy/risk context obvious (builder + Greeks + audit)
+- Use subtle node-link motif to imply explainable AI decisions
+- Ensure enterprise hosting posture is visible and legible
 ```
 
 ## Asset-Specific Prompts
@@ -82,15 +83,15 @@ Keep logo and key metrics inside center 70% safe zone.
 ### Landing Hero (16:9)
 
 ```text
-Generate a 16:9 website hero for atxFinance with left-aligned copy space and right-aligned phone mockup.
-Retain Powered by xAI lockup and Grok/xMoney feature cards.
+Generate a 16:9 website hero for atxFinance with left-aligned copy space and right-aligned strategy console mockup.
+Retain Powered by xAI lockup and Grok/xStrategyBuilder feature cards.
 ```
 
 ### App Store Screenshot Style
 
 ```text
-Generate app-store-ready screenshot scene for atxFinance:
-- iOS-friendly dark theme
+Generate institutional landing screenshot scene for atxFinance:
+- enterprise-ready dark theme
 - concise, readable headline region
 - realistic in-app numbers
 - no decorative clutter
@@ -118,7 +119,7 @@ Constraints:
 
 ```text
 gibberish text, misspellings, illegible UI labels, over-saturated neon gradients,
-cartoon icons, exaggerated PnL claims, fake ticker spam, crowded composition,
+cartoon icons, exaggerated PnL claims, fake ticker spam, crowded composition, retail meme aesthetic,
 unreadable tiny labels, low-contrast body text
 ```
 
