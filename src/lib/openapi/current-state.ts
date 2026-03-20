@@ -1,15 +1,15 @@
 import { APP_VERSION } from "@/lib/app-version";
 import {
-  CURRENT_STATE_COMPONENT_SCHEMAS,
-  getCurrentStateOperationOverride
+    CURRENT_STATE_COMPONENT_SCHEMAS,
+    getCurrentStateOperationOverride
 } from "@/lib/openapi/current-state-overrides";
 import type {
-  HttpMethod,
-  OpenApiDocument,
-  OpenApiOperation,
-  OpenApiParameter,
-  OpenApiPathItem,
-  OpenApiResponse
+    HttpMethod,
+    OpenApiDocument,
+    OpenApiOperation,
+    OpenApiParameter,
+    OpenApiPathItem,
+    OpenApiResponse
 } from "@/lib/openapi/types";
 
 type AuthScope = "public" | "session" | "admin";
@@ -163,6 +163,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
       { method: "GET", auth: "admin" },
       { method: "POST", auth: "admin", hasRequestBody: true }
     ],
+    tag: "personas"
+  },
+  {
+    path: "/api/personas/collections/{collectionId}",
+    operations: [{ method: "GET", auth: "admin" }],
     tag: "personas"
   },
   {

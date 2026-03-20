@@ -115,6 +115,16 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "502": jsonResponse("Upstream xAI collections inventory failed.", "UpstreamErrorResponse")
     }
   },
+  "GET /api/personas/collections/{collectionId}": {
+    summary: "Get xAI collection stats (RAG index)",
+    responses: {
+      "200": jsonResponse("Collection stats with document/chunk/file counts.", "PersonaCollectionStatsResponseEnvelope"),
+      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
+      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "404": jsonResponse("Collection not found.", "ErrorResponse"),
+      "502": jsonResponse("Upstream xAI collection lookup failed.", "UpstreamErrorResponse")
+    }
+  },
   "POST /api/personas/collections": {
     summary: "Create xAI collection",
     requestBody: {
@@ -756,10 +766,20 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         required: ["documentCount", "createdAt", "updatedAt"],
         properties: {
           documentCount: { type: "integer", nullable: true },
+          chunkCount: { type: "integer", nullable: true },
+          fileCount: { type: "integer", nullable: true },
+          indexStatus: { type: "string", nullable: true },
           createdAt: { type: "string", nullable: true },
           updatedAt: { type: "string", nullable: true }
         }
       }
+    }
+  },
+  PersonaCollectionStatsResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: refSchema("PersonaCollectionInventoryItem")
     }
   },
   PersonaCollectionsListResponseEnvelope: {

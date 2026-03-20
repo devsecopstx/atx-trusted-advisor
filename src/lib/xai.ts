@@ -475,10 +475,18 @@ export async function searchDocumentsInCollections(input: {
   return extractCollectionSnippets(payload, input.limit);
 }
 
-export async function getXaiCollectionById(collectionId: string): Promise<{
+export type XaiCollectionStats = {
   id: string;
   name?: string;
-}> {
+  documentCount?: number;
+  chunkCount?: number;
+  fileCount?: number;
+  indexStatus?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export async function getXaiCollectionById(collectionId: string): Promise<XaiCollectionStats> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
 
   const normalizedId = collectionId.trim();
@@ -507,7 +515,37 @@ export async function getXaiCollectionById(collectionId: string): Promise<{
     (typeof payload.name === "string" ? payload.name : undefined) ??
     (typeof payload.collection_name === "string" ? payload.collection_name : undefined);
 
-  return { id, name };
+  const documentCount =
+    asNumber(payload.document_count) ??
+    asNumber(payload.documents_count) ??
+    asNumber(payload.total_documents) ??
+    asNumber(payload.size);
+  const chunkCount =
+    asNumber(payload.chunk_count) ??
+    asNumber(payload.chunks_count) ??
+    asNumber(payload.total_chunks) ??
+    asNumber(payload.vector_count);
+  const fileCount =
+    asNumber(payload.file_count) ??
+    asNumber(payload.files_count) ??
+    asNumber(payload.total_files);
+  const indexStatus =
+    asString(payload.index_status) ??
+    asString(payload.embedding_status) ??
+    asString(payload.status);
+  const createdAt = asString(payload.created_at) ?? asString(payload.createdAt);
+  const updatedAt = asString(payload.updated_at) ?? asString(payload.updatedAt);
+
+  return {
+    id,
+    name,
+    documentCount,
+    chunkCount,
+    fileCount,
+    indexStatus,
+    createdAt,
+    updatedAt
+  };
 }
 
 export async function listXaiCollections(): Promise<XaiCollectionInventoryItem[]> {
