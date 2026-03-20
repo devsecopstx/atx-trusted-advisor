@@ -218,6 +218,15 @@ When `.github/workflows/deploy-cloud-run.yml` changes
 5. Treat `ADMIN_SEED_EMAIL` as a required runtime secret for deploy preflight
    and admin bootstrap workflows; do not leave it undocumented or optional in
    production readiness checklists.
+6. Document secret **value-quality** checks, not just existence checks:
+   include examples of invalid values (e.g., trailing comma in
+   `ADMIN_SEED_EMAIL`) and the expected health symptom (`Invalid environment configuration`).
+7. Document workflow-dispatch input contract for production runs:
+   `target=production` + `approval=approve-production`; note that wrong inputs
+   can produce fully skipped deploy runs.
+8. Keep staging/prod job gating rules documented when workflow conditions change
+   (for example, staging should run on main push or explicit staging target, not
+   on production-only dispatches).
 
 ## Output
 

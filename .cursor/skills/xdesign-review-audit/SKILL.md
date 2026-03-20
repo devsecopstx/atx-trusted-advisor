@@ -56,11 +56,20 @@ Each material inference must store immutable records for:
      (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`).
    - GitHub Variables are used for deploy-time literals
      (`PROD_BASE_URL`, `STAGING_BASE_URL`, `ALLOW_ANY_X_USER_LOGIN`, etc.).
+   - Secret value integrity is validated, not just secret existence:
+     `ADMIN_SEED_EMAIL` must parse as an RFC-like email (no trailing commas/spaces),
+     and required runtime secrets must be non-empty latest versions.
 6. **Bootstrap evidence (access approval)**
    - Access approval bootstrap actions are auditable end-to-end:
      resource creation/reuse, async enqueue record, and failure warning record.
    - Warning path emits an explicit audit action and operator-visible signal
      (for this repo: `alert-user-not-sync-warning`).
+7. **Deploy path correctness (workflow dispatch)**
+   - Manual production dispatch uses explicit input contract:
+     `target=production` and `approval=approve-production`.
+   - Reviewer confirms staging job guardrails prevent accidental staging deploy on
+     production-only dispatches.
+   - Skipped-run outcomes are recorded as control evidence (input mismatch vs policy gate).
 
 ## Checklist
 

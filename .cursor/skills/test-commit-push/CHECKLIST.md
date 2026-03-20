@@ -18,6 +18,8 @@
 
 - [ ] `.env.example` keeps empty `KEY=` values only (no credential-shaped placeholders or real identifiers).
 - [ ] Auth/xchat env provenance is consistent: runtime secrets in GCP Secret Manager, GH env secrets OIDC-only, deploy literals in GH vars.
+- [ ] Runtime secret preflight passes: `npm run ops:secrets:verify:staging` and `npm run ops:secrets:verify:prod`.
+- [ ] Secret values satisfy parser constraints (for example `ADMIN_SEED_EMAIL` is valid and has no trailing comma/space).
 - [ ] Required xChat keys are present where expected: `XAI_TEAM_ID`, `ATXFINANCE_COLLECTION_ID`.
 - [ ] `.cursor/rules/*.mdc` files have valid frontmatter, repo-aligned `globs`, and no merge/patch artifacts (e.g. leading `+` lines).
 - [ ] When logo or visual identity changes: update
@@ -35,6 +37,7 @@
 ## Staging-before-prod (optional)
 
 - [ ] Push branch and merge PR per team policy, then deploy **staging** and smoke before production (see deploy runbooks / `AGENTS.md`).
+- [ ] Manual production dispatch uses `target=production` + `approval=approve-production` (avoid all-jobs-skipped runs).
 
 ## Push Readiness
 

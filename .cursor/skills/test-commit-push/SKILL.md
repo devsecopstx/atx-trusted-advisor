@@ -31,6 +31,10 @@ Ship changes safely by validating locally and preparing an accurate commit workf
    - GH env secrets OIDC-only,
    - deploy-time literals in GH variables.
    Ensure required xChat keys are present in env/schema (`XAI_TEAM_ID`, `ATXFINANCE_COLLECTION_ID`).
+   - Run runtime secret preflight for both environments:
+     `npm run ops:secrets:verify:staging` and `npm run ops:secrets:verify:prod`.
+   - Validate secret value quality for strict parsers (example:
+     `ADMIN_SEED_EMAIL` must be a valid email with no trailing comma/space).
 8. **Cursor rules (`.cursor/rules/*.mdc`)**: if changed, verify single valid YAML
    frontmatter, correct `globs`, no patch/diff noise (`+` prefixes). When logo
    or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).
@@ -40,6 +44,11 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 11. Confirm push readiness and branch status.
 12. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
 13. **Staging first (when applicable):** If the team ships to staging before prod, push the branch, open/merge PR per policy, then run staging deploy/verify (see `AGENTS.md` / deploy skills). Production can wait until staging checks pass.
+14. **Production dispatch correctness (manual runs):**
+   - For workflow-dispatch production deploys, use explicit inputs:
+     `target=production` and `approval=approve-production`.
+   - If all deploy jobs show `skipped`, treat as input-contract mismatch first,
+     then investigate workflow guards.
 
 ## Output
 

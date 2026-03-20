@@ -1,37 +1,142 @@
-Welcome to the aTx⚡Finance beta (no hype, just access), aTx⚡Finance beta is live for you
+# aTxFinance Beta Circle Intro (Institutional / Advisory)
 
-**You're in the aTx⚡Finance beta circle**
+This file is a SendGrid-ready template spec for onboarding advisory and institutional users.
 
-Once your register and I get a chance to approve and we talk, then your, part of the early group for aTx⚡Finance.  
+## Subject options
 
-No fluff — we're building something useful for people in Austin and beyond who want straightforward professional finance tools without the usual noise.
+- Early Access: aTxFinance Institutional Advisory Console
+- Your Advisory Beta Access Is Ready - aTxFinance
+- Institutional Beta Invite: aTxFinance
 
-The beta is now ready for you to try.
+## Preheader
 
-**What you can do right now:**
-- Head to: [https://atx.fintech-advisor.ai/](https://atx.fintech-advisor.ai) (or whatever your actual link is)
-- Log in with: [your login instructions / magic link / email + temp password]
-- Play around with the core features: [brief 2–3 bullet list of what's actually usable right now, e.g.]
-  - Track spending categories without 47 sub-tags
-  - Set simple alerts for bills / unusual charges
-  - See basic net worth snapshot
+No Atoms Moved. Just Gains Earned. Institutional tools, controlled access.
 
-It's still early — expect rough edges, missing pieces, and things that will change based on what you and the rest of the circle tell us.
+## Dynamic template variables
 
-**We actually want your honest feedback**  
-Reply to this email or use the in-app feedback button (top-right corner) and tell us:
-- What works and feels useful
-- What sucks or is confusing
-- What you'd actually pay for (or never use)
+- `first_name`
+- `login_url`
+- `environment_label`
+- `support_email`
+- `founder_name`
+- `x_handle`
 
-No pressure to respond right away — just use it when you have a few minutes and let us know what you think.
+## Plain-text version
 
-If you run into any login issues or something breaks, hit reply or email support@atxfinance.com.
+Hi {{first_name}},
 
-Appreciate you being one of the first.  
-Let's make this better together.
+You are in the aTxFinance beta circle.
 
-Samuel Perez  
-Founder, aTx⚡Finance  
-Austin, TX  
-@AtxBogart
+Once you register, I will review and approve your access as admin. After a quick intro call, you are part of the early aTxFinance advisory group.
+
+No fluff. We are building practical institutional workflows for advisory teams that need clear signal, controlled access, and fast iteration.
+
+What you can do right now:
+- Go to: {{login_url}}
+- Sign in with X and submit your access request
+- After approval, access:
+  - xChat advisory workflows
+  - Portfolio and watchlist surfaces
+  - Admin-governed access and feedback loop
+
+This is early access. Expect rapid updates based on your direct feedback.
+
+Reply to this email and tell us:
+- What is genuinely useful
+- What is confusing or missing
+- What you would require for team rollout
+
+If anything breaks, contact {{support_email}}.
+
+{{founder_name}}
+Founder, aTxFinance
+Austin, TX
+{{x_handle}}
+
+## SendGrid Dynamic Template HTML (with watermark)
+
+```html
+<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#050505;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#050505;">
+      <tr>
+        <td align="center" style="padding:24px;">
+          <table
+            role="presentation"
+            width="640"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              width:640px;
+              max-width:640px;
+              background:#0b0b0b url('https://assets.atxfinance.com/brand/atx-watermark.png') center/420px no-repeat;
+              border:1px solid #1f2937;
+              border-radius:12px;
+            "
+          >
+            <tr>
+              <td style="padding:28px;font-family:Arial,Helvetica,sans-serif;color:#f1f5f9;line-height:1.6;">
+                <p style="margin:0 0 12px;">Hi {{first_name}},</p>
+                <p style="margin:0 0 12px;">
+                  You are in the <strong>aTxFinance beta circle</strong>.
+                </p>
+                <p style="margin:0 0 12px;">
+                  Once you register, I will review and approve your access as admin. After a quick intro call, you are part of the early aTxFinance advisory group.
+                </p>
+                <p style="margin:0 0 12px;">
+                  No Atoms Moved. Just Gains Earned.
+                </p>
+                <p style="margin:0 0 8px;"><strong>What you can do right now:</strong></p>
+                <ul style="margin:0 0 12px 18px;padding:0;">
+                  <li>Go to: <a href="{{login_url}}" style="color:#39ff14;">{{login_url}}</a></li>
+                  <li>Sign in with X and submit your access request</li>
+                  <li>After approval: xChat, portfolio/watchlist, admin-governed workflows</li>
+                </ul>
+                <p style="margin:0 0 12px;">
+                  Environment: <strong>{{environment_label}}</strong>
+                </p>
+                <p style="margin:0 0 12px;">
+                  Reply with what works, what is missing, and what you need for team rollout.
+                </p>
+                <p style="margin:0 0 12px;">
+                  Support: <a href="mailto:{{support_email}}" style="color:#39ff14;">{{support_email}}</a>
+                </p>
+                <p style="margin:0;">
+                  {{founder_name}}<br />
+                  Founder, aTxFinance<br />
+                  Austin, TX<br />
+                  {{x_handle}}
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+```
+
+## SendGrid API payload example
+
+```json
+{
+  "from": { "email": "support@atxfinance.com", "name": "aTxFinance" },
+  "template_id": "d-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "personalizations": [
+    {
+      "to": [{ "email": "advisor@firm.com", "name": "Jane Doe" }],
+      "dynamic_template_data": {
+        "first_name": "Jane",
+        "login_url": "https://atx.fintech-advisor.ai",
+        "environment_label": "Production",
+        "support_email": "support@atxfinance.com",
+        "founder_name": "Samuel Perez",
+        "x_handle": "@AtxBogart"
+      }
+    }
+  ],
+  "categories": ["institutional-beta", "advisory-onboarding"]
+}
+```
