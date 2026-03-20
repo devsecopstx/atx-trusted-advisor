@@ -3,11 +3,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { APP_VERSION_LABEL } from "@/lib/app-version";
 import { getSessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel } from "@/lib/env";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { AtxFinanceLogo } from "../ui/atxfinance-logo";
+import { GlobalFooter } from "../ui/global-footer";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 
 type AdminLayoutProps = {
@@ -68,11 +68,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </header>
       <main className="admin-layout-content">{children}</main>
-      <footer className="admin-layout-footer">
-        <span className="admin-layout-footer-text">
-          atxfinance-core-app {APP_VERSION_LABEL}
-        </span>
-      </footer>
+      <GlobalFooter />
     </div>
   );
 }

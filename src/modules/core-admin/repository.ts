@@ -1,28 +1,30 @@
 import { ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
-import type { CoreUser } from "@/modules/identity/types";
 import {
-  ACTIONABLE_ACCESS_REQUEST_STATUSES,
-  type AccessRequest,
-  type AccessRequestListItem,
-  type AccessRequestStatus,
-  type ApprovedUserListItem,
-  type Account,
-  type AccountType,
-  type ScheduledTask,
-  type TaskRun,
-  type UserAdminSettings,
-  type Portfolio,
-  type Position,
-  type Watchlist
+    ACTIONABLE_ACCESS_REQUEST_STATUSES,
+    type AccessRequest,
+    type AccessRequestListItem,
+    type AccessRequestStatus,
+    type Account,
+    type AccountType,
+    type ApprovedUserListItem,
+    type DeployNoteConfig,
+    type Portfolio,
+    type Position,
+    type ScheduledTask,
+    type TaskRun,
+    type UserAdminSettings,
+    type Watchlist
 } from "@/modules/core-admin/types";
+import type { CoreUser } from "@/modules/identity/types";
 
 const collections = {
   accessRequests: "admin_access_requests",
   scheduledTasks: "admin_scheduled_tasks",
   taskRuns: "admin_task_runs",
   userSettings: "admin_user_settings",
+  deployNoteConfigs: "admin_deploy_note_configs",
   portfolios: "portfolio_portfolios",
   accounts: "portfolio_accounts",
   watchlists: "portfolio_watchlists",
@@ -598,6 +600,103 @@ export async function upsertUserAdminSettings(
     throw new Error("Failed to upsert admin settings");
   }
   return document;
+}
+
+export async function listDeployNoteConfigs(options?: {
+  limit?: number;
+  environment?: DeployNoteConfig["environment"];
+  tenantId?: string;
+}): Promise<DeployNoteConfig[]> {
+  const db = await getDb();
+  const limit = options?.limit ?? 100;
+  const filter: Record<string, unknown> = {};
+  if (options?.environment) {
+    filter.environment = options.environment;
+  }
+  return db
+    .collection<DeployNoteConfig>(collections.deployNoteConfigs)
+    .find(withTenantScope(filter, options?.tenantId))
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .limit(limit)
+    .toArray();
+}
+
+export async function createDeployNoteConfig(
+  payload: Omit<DeployNoteConfig, "_id" | "tenantId" | "createdAt" | "updatedAt"> & {
+    tenantId?: string;
+  }
+): Promise<DeployNoteConfig> {
+  const db = await getDb();
+  const now = new Date();
+  const document: DeployNoteConfig = {
+    tenantId: toTenantObjectId(payload.tenantId),
+    name: payload.name,
+    environment: payload.environment,
+    enabled: payload.enabled,
+    includeRunUrl: payload.includeRunUrl,
+    includeActor: payload.includeActor,
+    defaultDeploymentNotes: payload.defaultDeploymentNotes,
+    defaultHotfixNotes: payload.defaultHotfixNotes,
+    createdAt: now,
+    updatedAt: now
+  };
+  const result = await db
+    .collection<DeployNoteConfig>(collections.deployNoteConfigs)
+    .insertOne(document);
+  return { ...document, _id: result.insertedId };
+}
+
+export async function getDeployNoteConfigById(
+  id: string,
+  options?: TenantScopedOptions
+): Promise<DeployNoteConfig | null> {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+  const db = await getDb();
+  return db
+    .collection<DeployNoteConfig>(collections.deployNoteConfigs)
+    .findOne(withTenantScope({ _id: new ObjectId(id) }, options?.tenantId));
+}
+
+export async function updateDeployNoteConfigById(input: {
+  configId: string;
+  patch: Partial<
+    Omit<DeployNoteConfig, "_id" | "tenantId" | "createdAt" | "updatedAt">
+  >;
+  tenantId?: string;
+}): Promise<DeployNoteConfig | null> {
+  if (!ObjectId.isValid(input.configId)) {
+    return null;
+  }
+  const db = await getDb();
+  const _id = new ObjectId(input.configId);
+  await db.collection<DeployNoteConfig>(collections.deployNoteConfigs).updateOne(
+    withTenantScope({ _id }, input.tenantId),
+    {
+      $set: {
+        ...input.patch,
+        updatedAt: new Date()
+      }
+    }
+  );
+  return db
+    .collection<DeployNoteConfig>(collections.deployNoteConfigs)
+    .findOne(withTenantScope({ _id }, input.tenantId));
+}
+
+export async function deleteDeployNoteConfigById(
+  configId: string,
+  options?: TenantScopedOptions
+): Promise<boolean> {
+  if (!ObjectId.isValid(configId)) {
+    return false;
+  }
+  const db = await getDb();
+  const result = await db
+    .collection<DeployNoteConfig>(collections.deployNoteConfigs)
+    .deleteOne(withTenantScope({ _id: new ObjectId(configId) }, options?.tenantId));
+  return result.deletedCount === 1;
 }
 
 export async function getDefaultPortfolio(

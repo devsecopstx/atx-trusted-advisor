@@ -130,6 +130,22 @@ export type UserAdminSettings = {
   updatedAt: Date;
 };
 
+export type DeployNoteEnvironment = "staging" | "production";
+
+export type DeployNoteConfig = {
+  _id?: ObjectId;
+  tenantId?: ObjectId;
+  name: string;
+  environment: DeployNoteEnvironment;
+  enabled: boolean;
+  includeRunUrl: boolean;
+  includeActor: boolean;
+  defaultDeploymentNotes?: string;
+  defaultHotfixNotes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export const accountTypeValues = ["merrill", "robinhood", "fidelity"] as const;
 export type AccountType = (typeof accountTypeValues)[number];
 

@@ -20,6 +20,14 @@ on:
         options:
           - no
           - approve-production
+      deployment_notes:
+        description: "Optional deployment notes for Slack post-deploy message"
+        required: false
+        type: string
+      hotfix_notes:
+        description: "Optional hotfix notes for Slack post-deploy message"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -296,6 +304,39 @@ jobs:
             "18" \
             "15"
 
+      - name: Post production deploy note to Slack
+        env:
+          DEPLOYMENT_NOTES: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_notes || '' }}
+          HOTFIX_NOTES: ${{ github.event_name == 'workflow_dispatch' && inputs.hotfix_notes || '' }}
+        run: |
+          set -euo pipefail
+          WEBHOOK_URL="$(gcloud secrets versions access latest --secret=SLACK_WEBHOOK_URL --project='${{ vars.GCP_PROJECT_ID_PROD }}' 2>/dev/null || true)"
+          if [ -z "${WEBHOOK_URL}" ]; then
+            echo "::notice::SLACK_WEBHOOK_URL is empty in production Secret Manager; skipping post-deploy Slack note."
+            exit 0
+          fi
+          if [ "${WEBHOOK_URL}" = "__EMPTY__" ]; then
+            echo "::notice::SLACK_WEBHOOK_URL placeholder indicates disabled Slack notifications; skipping."
+            exit 0
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          DEPLOYMENT_NOTES_VALUE="${DEPLOYMENT_NOTES:-}"
+          HOTFIX_NOTES_VALUE="${HOTFIX_NOTES:-}"
+          export RUN_URL
+          export DEPLOYMENT_NOTES_VALUE
+          export HOTFIX_NOTES_VALUE
+          export CLOUD_RUN_SERVICE_PROD="${{ vars.CLOUD_RUN_SERVICE_PROD }}"
+          export PROD_BASE_URL="${{ vars.PROD_BASE_URL }}"
+
+          PAYLOAD="$(python3 -c 'import json,os; run_url=os.getenv("RUN_URL",""); notes=(os.getenv("DEPLOYMENT_NOTES_VALUE") or "").strip(); hotfix=(os.getenv("HOTFIX_NOTES_VALUE") or "").strip(); actor=os.getenv("GITHUB_ACTOR","unknown"); sha=(os.getenv("GITHUB_SHA","") or "")[:7]; ref_name=os.getenv("GITHUB_REF_NAME",""); service=os.getenv("CLOUD_RUN_SERVICE_PROD",""); base_url=os.getenv("PROD_BASE_URL",""); lines=["✅ Production deploy succeeded", f"• Service: {service}", f"• Ref: {ref_name} @ {sha}", f"• Actor: {actor}", f"• URL: {base_url}", f"• Run: {run_url}"]; lines += [f"• Deployment notes: {notes}"] if notes else []; lines += [f"• Hotfix notes: {hotfix}"] if hotfix else []; print(json.dumps({"text":"\\n".join(lines)}))')"
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Content-Type: application/json" \
+            --data "${PAYLOAD}" \
+            "${WEBHOOK_URL}" >/dev/null
+
   deploy-production-direct:
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'production' && inputs.approval == 'approve-production'
     name: Deploy Production (Manual Approval Only)
@@ -424,3 +465,36 @@ jobs:
             "${{ vars.CLOUD_RUN_REGION }}" \
             "18" \
             "15"
+
+      - name: Post production deploy note to Slack
+        env:
+          DEPLOYMENT_NOTES: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_notes || '' }}
+          HOTFIX_NOTES: ${{ github.event_name == 'workflow_dispatch' && inputs.hotfix_notes || '' }}
+        run: |
+          set -euo pipefail
+          WEBHOOK_URL="$(gcloud secrets versions access latest --secret=SLACK_WEBHOOK_URL --project='${{ vars.GCP_PROJECT_ID_PROD }}' 2>/dev/null || true)"
+          if [ -z "${WEBHOOK_URL}" ]; then
+            echo "::notice::SLACK_WEBHOOK_URL is empty in production Secret Manager; skipping post-deploy Slack note."
+            exit 0
+          fi
+          if [ "${WEBHOOK_URL}" = "__EMPTY__" ]; then
+            echo "::notice::SLACK_WEBHOOK_URL placeholder indicates disabled Slack notifications; skipping."
+            exit 0
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          DEPLOYMENT_NOTES_VALUE="${DEPLOYMENT_NOTES:-}"
+          HOTFIX_NOTES_VALUE="${HOTFIX_NOTES:-}"
+          export RUN_URL
+          export DEPLOYMENT_NOTES_VALUE
+          export HOTFIX_NOTES_VALUE
+          export CLOUD_RUN_SERVICE_PROD="${{ vars.CLOUD_RUN_SERVICE_PROD }}"
+          export PROD_BASE_URL="${{ vars.PROD_BASE_URL }}"
+
+          PAYLOAD="$(python3 -c 'import json,os; run_url=os.getenv("RUN_URL",""); notes=(os.getenv("DEPLOYMENT_NOTES_VALUE") or "").strip(); hotfix=(os.getenv("HOTFIX_NOTES_VALUE") or "").strip(); actor=os.getenv("GITHUB_ACTOR","unknown"); sha=(os.getenv("GITHUB_SHA","") or "")[:7]; ref_name=os.getenv("GITHUB_REF_NAME",""); service=os.getenv("CLOUD_RUN_SERVICE_PROD",""); base_url=os.getenv("PROD_BASE_URL",""); lines=["✅ Production deploy succeeded", f"• Service: {service}", f"• Ref: {ref_name} @ {sha}", f"• Actor: {actor}", f"• URL: {base_url}", f"• Run: {run_url}"]; lines += [f"• Deployment notes: {notes}"] if notes else []; lines += [f"• Hotfix notes: {hotfix}"] if hotfix else []; print(json.dumps({"text":"\\n".join(lines)}))')"
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Content-Type: application/json" \
+            --data "${PAYLOAD}" \
+            "${WEBHOOK_URL}" >/dev/null

@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 
-export type AuditEntityType = "xpersona" | "access_request" | "core_user";
+export type AuditEntityType = "xpersona" | "access_request" | "core_user" | "deploy_note_config";
 
 export type AuditActor = {
   userId: string;

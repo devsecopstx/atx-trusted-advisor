@@ -100,6 +100,23 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tasks"
   },
   {
+    path: "/api/admin/deploy-note-configs",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-system"
+  },
+  {
+    path: "/api/admin/deploy-note-configs/{configId}",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PUT", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-system"
+  },
+  {
     path: "/api/admin/tasks/{taskId}/run",
     operations: [{ method: "POST", auth: "admin" }],
     tag: "admin-tasks"
@@ -476,7 +493,10 @@ export function buildCurrentStateOpenApi(): OpenApiDocument {
       description:
         "Internal architecture snapshot generated from current Next.js route handlers. This spec prioritizes endpoint coverage, auth boundaries, and route-level inventory for review."
     },
-    servers: [{ url: "/", description: "Same-origin server" }],
+    servers: [
+      { url: "https://staging.atx.fintech-advisor.ai", description: "Staging server" },
+      { url: "https://atx.fintech-advisor.ai", description: "Production server" }
+    ],
     tags: collectTags(),
     paths: buildPaths(),
     components: {

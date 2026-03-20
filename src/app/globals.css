@@ -140,6 +140,37 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1;
 }
 
+/* ── Shared app footer ─────────────────────── */
+
+.app-footer {
+  flex-shrink: 0;
+  padding: 0.65rem 1rem 1rem;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--xf-bg-800);
+}
+
+.app-footer-line {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--xf-text-400);
+}
+
+.app-footer-version {
+  color: var(--xf-text-300);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-footer-sep {
+  margin: 0 0.35rem;
+  opacity: 0.6;
+}
+
+.app-footer-disclaimer {
+  color: var(--xf-text-400);
+}
+
 .admin-layout-footer {
   padding: 0.65rem 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);

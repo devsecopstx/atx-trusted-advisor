@@ -37,7 +37,7 @@ export function AppUserProductNav({ current, roles }: AppUserProductNavProps) {
       ))}
       {admin ? (
         <Link className="xchat-header-link" href="/admin">
-          Admin
+          Admin Console
         </Link>
       ) : null}
     </nav>
