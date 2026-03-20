@@ -6,6 +6,7 @@ import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { MarketingHero } from "./ui/marketing-hero";
 import "./ui/marketing-hero.css";
 import "./ui/product-plans.css";
+
 export default async function HomePage() {
   const session = await getSessionUser();
   const adminSession = session ? isGlobalAdmin(session.roles) : false;
