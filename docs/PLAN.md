@@ -23,12 +23,27 @@ Tracked follow-ups from doc/ops reviews. **Not blocking** staging or merge unles
 |--------|------|
 | **Design TBD** | **Plans landing** (signed-in, not yet approved) — Header is minimal vs full `AppUserApprovedHeader`; decide if parity (e.g. logout only) is desired. |
 | **Design TBD** | **Watchlist** (`/watchlist`) — Stub only; define data model + API surface vs portfolio watchlist endpoints. |
+| **Design TBD** | **xChat 4-agent parallel mode** — Add optional orchestration where one user ask can fan out to up to 4 specialized agents and synthesize a final answer. Define UI affordance (single response vs per-agent panes), latency budget, and fallback when 1+ agents fail/time out. |
+| **TODO** | **xChat conversation identity** — Introduce stable `conversationId` / `turnId` in ask/batch logs. Current logs are per-message records only; parallel fan-out needs correlation ids for replay, debugging, and per-agent traceability. |
+| **TODO** | **Per-agent persistence model** — Extend `xchat_logs` (or adjacent collection) with `agentId`, `agentRole`, `parentTurnId`, status, and token/cost usage fields for each parallel branch. |
+| **TODO** | **Concurrency guardrails** — Add per-user in-flight limits and cancellation semantics so repeated asks do not create unbounded parallel jobs. |
 
 ## OpenAPI / API inventory
 
 | Status | Item |
 |--------|------|
 | **TODO** | When adding handlers under `src/app/api/**/route.ts`, keep `current-state.ts` + overrides in sync (existing CONTRIBUTING rule); consider a CI grep or script later. |
+| **Design TBD** | If xChat parallel mode introduces async submit/poll/cancel routes, define route contracts first and keep OpenAPI parity + integration tests in the same PR. |
+
+## xChat parallelization (architecture)
+
+| Status | Item |
+|--------|------|
+| **Design TBD** | **Execution model** — choose between single-request fan-out inside `POST /api/xchat/ask` vs explicit async job API (`POST /api/xchat/parallel` + `GET /api/xchat/parallel/:id`). |
+| **TODO** | **Timeout budget** — define hard timeout per agent and overall wall-clock cap (e.g., 60s total, with best-effort partial synthesis). |
+| **TODO** | **Merge strategy** — implement deterministic reducer prompt for agent outputs with confidence/error metadata and source attribution. |
+| **TODO** | **Rate limits / plan limits** — update plan controls for `maxParallelAgents`, max tool calls per ask, and cost guardrails by subscription tier. |
+| **TODO** | **Admin observability** — add per-agent status/error columns to admin xChat views and expose last failure class (timeout, rate limit, tool error, upstream error). |
 
 ---
 
