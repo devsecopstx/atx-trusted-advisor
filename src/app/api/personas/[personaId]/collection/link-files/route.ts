@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { addFileToXaiCollection } from "@/lib/xai";
+import { evaluateRagFileReadiness, isRagFileReadyForSemanticSearch } from "@/modules/xchat/rag-file-readiness";
 import { getPersonaById, listRagFiles } from "@/modules/xchat/repository";
 
 type RouteContext = {
@@ -55,11 +56,15 @@ export async function POST(request: Request, context: RouteContext) {
   const uploadedFiles = candidateFiles.filter(
     (file) => file.xaiUploadStatus === "uploaded" && typeof file.xaiFileId === "string"
   );
+  const readyFiles = uploadedFiles.filter((file) => isRagFileReadyForSemanticSearch(file));
+  const blockedFiles = uploadedFiles
+    .filter((file) => !isRagFileReadyForSemanticSearch(file))
+    .map((file) => evaluateRagFileReadiness(file));
 
   let linkedCount = 0;
   let alreadyLinkedCount = 0;
   const failed: Array<{ fileId: string; error: string }> = [];
-  for (const file of uploadedFiles) {
+  for (const file of readyFiles) {
     const fileId = file.xaiFileId?.trim();
     if (!fileId) {
       continue;
@@ -86,6 +91,9 @@ export async function POST(request: Request, context: RouteContext) {
       selectedFileIds: Array.from(selectedFileIds),
       selectedCount: selectedFileIds.size,
       candidateFiles: uploadedFiles.length,
+      readyCandidates: readyFiles.length,
+      blockedCount: blockedFiles.length,
+      blockedFiles,
       linkedCount,
       alreadyLinkedCount,
       failed

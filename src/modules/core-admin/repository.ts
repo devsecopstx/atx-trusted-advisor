@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { type Filter, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import {
@@ -15,7 +15,8 @@ import {
     type ScheduledTask,
     type TaskRun,
     type UserAdminSettings,
-    type Watchlist
+    type Watchlist,
+    type WatchlistSymbol
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
 
@@ -36,8 +37,68 @@ let ensurePortfolioIndexesPromise: Promise<void> | null = null;
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_ACCOUNT_NAME = "defaultaccount";
 const DEFAULT_ACCOUNT_REF = "fidelity-default-account";
-const DEFAULT_ACCOUNT_CASH_BALANCE = 25_000;
+/** Default paper cash for provision + read-time coalesce when Mongo field is missing. */
+export const DEFAULT_ACCOUNT_CASH_BALANCE = 25_000;
 const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
+/** Ensured on every default watchlist read/provision (xChat + portfolio UX). */
+const DEFAULT_WATCHLIST_SYMBOL = "TSLA";
+
+function coerceWatchlistSymbolEntry(
+  item: unknown,
+  fallbackAddedAt: Date
+): WatchlistSymbol | null {
+  if (typeof item === "string") {
+    const symbol = item.trim().toUpperCase();
+    return symbol ? { symbol, addedAt: fallbackAddedAt } : null;
+  }
+  if (item && typeof item === "object" && "symbol" in item) {
+    const symbol = String((item as { symbol: unknown }).symbol).trim().toUpperCase();
+    if (!symbol) {
+      return null;
+    }
+    const rawAdded = (item as { addedAt?: unknown }).addedAt;
+    let addedAt = fallbackAddedAt;
+    if (rawAdded instanceof Date && !Number.isNaN(rawAdded.getTime())) {
+      addedAt = rawAdded;
+    } else if (typeof rawAdded === "string") {
+      const parsed = new Date(rawAdded);
+      if (!Number.isNaN(parsed.getTime())) {
+        addedAt = parsed;
+      }
+    }
+    return { symbol, addedAt };
+  }
+  return null;
+}
+
+/** Normalizes legacy string[] rows and guarantees `ensureSymbols` exist (deduped, stable insert order). */
+export function normalizeWatchlistDocumentSymbols(
+  raw: unknown,
+  ensureSymbols: string[]
+): WatchlistSymbol[] {
+  const now = new Date();
+  const arr = Array.isArray(raw) ? raw : [];
+  const bySymbol = new Map<string, WatchlistSymbol>();
+  for (const item of arr) {
+    const coerced = coerceWatchlistSymbolEntry(item, now);
+    if (coerced && !bySymbol.has(coerced.symbol)) {
+      bySymbol.set(coerced.symbol, coerced);
+    }
+  }
+  const ensureUnique = Array.from(
+    new Set(
+      ensureSymbols
+        .map((s) => s.trim().toUpperCase())
+        .filter((s): s is string => Boolean(s))
+    )
+  );
+  for (const symbol of ensureUnique) {
+    if (!bySymbol.has(symbol)) {
+      bySymbol.set(symbol, { symbol, addedAt: now });
+    }
+  }
+  return Array.from(bySymbol.values());
+}
 
 type TenantScopedOptions = {
   tenantId?: string;
@@ -785,7 +846,105 @@ export async function getPortfolioWatchlist(input: {
     )
   );
   if (!doc) return null;
-  return { ...doc, symbols: doc.symbols ?? [] };
+  const symbols = normalizeWatchlistDocumentSymbols(doc.symbols, [DEFAULT_WATCHLIST_SYMBOL]);
+  return { ...doc, symbols };
+}
+
+const MAX_WATCHLIST_SYMBOLS = 75;
+
+export type MutatePortfolioWatchlistInput = {
+  userId: string;
+  portfolioId: string;
+  tenantId?: string;
+  addSymbols?: string[];
+  removeSymbols?: string[];
+  dedupe?: boolean;
+};
+
+export async function mutatePortfolioWatchlistSymbols(
+  input: MutatePortfolioWatchlistInput
+): Promise<Watchlist | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId)) {
+    return null;
+  }
+  const hasMutation =
+    Boolean(input.addSymbols?.length) ||
+    Boolean(input.removeSymbols?.length) ||
+    Boolean(input.dedupe);
+  if (!hasMutation) {
+    return getPortfolioWatchlist({
+      userId: input.userId,
+      portfolioId: input.portfolioId,
+      tenantId: input.tenantId
+    });
+  }
+
+  const db = await getDb();
+  const portfolioOid = new ObjectId(input.portfolioId);
+  const filter = withStrictTenantScope(
+    {
+      userId: input.userId,
+      portfolioId: portfolioOid
+    },
+    input.tenantId
+  );
+  const doc = await db.collection<Watchlist>(collections.watchlists).findOne(filter);
+  if (!doc?._id) {
+    return null;
+  }
+
+  const now = new Date();
+  let symbols = normalizeWatchlistDocumentSymbols(doc.symbols, []);
+
+  if (input.dedupe) {
+    const seen = new Map<string, WatchlistSymbol>();
+    for (const s of symbols) {
+      if (!seen.has(s.symbol)) {
+        seen.set(s.symbol, s);
+      }
+    }
+    symbols = Array.from(seen.values());
+  }
+
+  if (input.removeSymbols?.length) {
+    const removeSet = new Set(
+      input.removeSymbols.map((s) => s.trim().toUpperCase()).filter(Boolean)
+    );
+    symbols = symbols.filter((s) => !removeSet.has(s.symbol));
+  }
+
+  if (input.addSymbols?.length) {
+    const existing = new Set(symbols.map((s) => s.symbol));
+    for (const raw of input.addSymbols) {
+      const symbol = raw.trim().toUpperCase();
+      if (!symbol || !/^[A-Z0-9.\-]{1,32}$/.test(symbol)) {
+        continue;
+      }
+      if (existing.has(symbol)) {
+        continue;
+      }
+      if (symbols.length >= MAX_WATCHLIST_SYMBOLS) {
+        break;
+      }
+      symbols.push({ symbol, addedAt: now });
+      existing.add(symbol);
+    }
+  }
+
+  if (symbols.length === 0) {
+    symbols = [{ symbol: DEFAULT_WATCHLIST_SYMBOL, addedAt: now }];
+  }
+
+  await db.collection<Watchlist>(collections.watchlists).updateOne(filter, {
+    $set: { symbols, updatedAt: now }
+  });
+
+  return getPortfolioWatchlist({
+    userId: input.userId,
+    portfolioId: input.portfolioId,
+    tenantId: input.tenantId
+  });
 }
 
 export async function provisionDefaultPortfolioForUser(
@@ -799,9 +958,8 @@ export async function provisionDefaultPortfolioForUser(
   const accountName = input.accountName ?? DEFAULT_ACCOUNT_NAME;
   const watchlistName = input.watchlistName ?? DEFAULT_WATCHLIST_NAME;
   const accountType: AccountType = "fidelity";
-  const watchlistSymbols = (input.watchlistSymbols ?? ["TSLA"]).map(
-    (symbol) => ({ symbol: symbol.toUpperCase(), addedAt: now })
-  );
+  const seedSymbolStrings =
+    input.watchlistSymbols !== undefined ? input.watchlistSymbols : [DEFAULT_WATCHLIST_SYMBOL];
 
   const portfolioFilter = withStrictTenantScope(
     { userId: input.userId, isDefault: true },
@@ -868,12 +1026,38 @@ export async function provisionDefaultPortfolioForUser(
     throw new Error("Failed to provision default account");
   }
 
+  const cashBackfillFilter = {
+    ...withStrictTenantScope(
+      {
+        userId: input.userId,
+        portfolioId: portfolio._id
+      },
+      input.tenantId
+    ),
+    $or: [{ cashBalance: { $exists: false } }, { cashBalance: null }]
+  } as Filter<Account>;
+  await db.collection<Account>(collections.accounts).updateMany(cashBackfillFilter, {
+    $set: {
+      cashBalance: DEFAULT_ACCOUNT_CASH_BALANCE,
+      updatedAt: now
+    }
+  });
+
   const watchlistFilter = withStrictTenantScope(
     {
       userId: input.userId,
       portfolioId: portfolio._id
     },
     input.tenantId
+  );
+  const existingWatchlist = await db
+    .collection<Watchlist>(collections.watchlists)
+    .findOne(watchlistFilter);
+  const mergedWatchlistSymbols = normalizeWatchlistDocumentSymbols(
+    existingWatchlist?.symbols ?? [],
+    Array.from(
+      new Set([DEFAULT_WATCHLIST_SYMBOL, ...seedSymbolStrings.map((s) => s.trim().toUpperCase())])
+    ).filter(Boolean)
   );
   await db.collection<Watchlist>(collections.watchlists).updateOne(
     watchlistFilter,
@@ -886,7 +1070,7 @@ export async function provisionDefaultPortfolioForUser(
       },
       $set: {
         name: watchlistName,
-        symbols: watchlistSymbols,
+        symbols: mergedWatchlistSymbols,
         isDefault: true,
         updatedAt: now
       }

@@ -1,0 +1,401 @@
+/* Public watchlist — legacy xStrategyBuilder layout, xFinance dark tokens */
+
+.xf-watchlist-app {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.xf-watchlist-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+}
+
+@media (min-width: 900px) {
+  .xf-watchlist-layout {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+.xf-watchlist-sidebar {
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--xf-surface-700);
+  padding: 1rem 1.1rem;
+}
+
+@media (min-width: 900px) {
+  .xf-watchlist-sidebar {
+    width: 220px;
+    border-bottom: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+.xf-watchlist-sidebar-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xf-watchlist-new-btn {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xf-text-300);
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: var(--xf-radius-sm);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.xf-watchlist-nav-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.65rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--xf-text-100);
+  background: rgba(57, 255, 20, 0.08);
+  border: 1px solid rgba(57, 255, 20, 0.22);
+  border-radius: var(--xf-radius-sm);
+  cursor: default;
+}
+
+.xf-watchlist-nav-item small {
+  display: block;
+  margin-top: 0.2rem;
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--xf-text-400);
+}
+
+.xf-watchlist-main {
+  flex: 1;
+  min-width: 0;
+  padding: 1rem 1.1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.xf-watchlist-card {
+  position: relative;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--xf-surface-700);
+  box-shadow: var(--xf-shadow-card);
+  overflow: hidden;
+}
+
+.xf-watchlist-card-header {
+  padding: 1rem 1.1rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.xf-watchlist-card-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+}
+
+.xf-watchlist-card-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--xf-text-400);
+  max-width: 52ch;
+  line-height: 1.45;
+}
+
+.xf-watchlist-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.75rem 1.1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.xf-watchlist-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--xf-surface-600);
+  color: var(--xf-text-300);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.xf-watchlist-toolbar-btn:hover:not(:disabled) {
+  border-color: rgba(234, 179, 8, 0.45);
+  color: var(--xf-text-100);
+}
+
+.xf-watchlist-toolbar-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.xf-watchlist-toolbar-btn--warn {
+  background: rgba(223, 199, 141, 0.12);
+  border-color: rgba(223, 199, 141, 0.35);
+  color: var(--xf-warning-400);
+}
+
+.xf-watchlist-toolbar-btn--danger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--xf-danger-400);
+}
+
+.xf-watchlist-toolbar-btn--primary {
+  margin-left: auto;
+  border-color: rgba(57, 255, 20, 0.45);
+  background: rgba(57, 255, 20, 0.12);
+  color: var(--xf-gain-green);
+}
+
+.xf-watchlist-toolbar-btn--primary:hover:not(:disabled) {
+  border-color: var(--xf-gain-green);
+}
+
+.xf-watchlist-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.xf-watchlist-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.xf-watchlist-table th {
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+
+.xf-watchlist-table td {
+  padding: 0.75rem 0.85rem;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--xf-text-300);
+}
+
+.xf-watchlist-table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.xf-watchlist-table-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.xf-watchlist-empty {
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: var(--xf-text-400);
+  font-size: 0.9rem;
+}
+
+.xf-watchlist-status {
+  font-size: 0.8rem;
+  color: var(--xf-text-400);
+  padding: 0 1.1rem 0.75rem;
+}
+
+.xf-watchlist-status--err {
+  color: var(--xf-danger-400);
+}
+
+/* Yahoo-style symbol block (dark adaptation) */
+
+.xf-symbol-shape {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-width: 220px;
+  max-width: 420px;
+}
+
+.xf-symbol-shape__logo {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--xf-surface-600);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.xf-symbol-shape__logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--xf-gain-green);
+}
+
+.xf-symbol-shape__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.xf-symbol-shape__exchange {
+  margin: 0 0 0.15rem;
+  font-size: 0.68rem;
+  color: var(--xf-text-400);
+  letter-spacing: 0.02em;
+}
+
+.xf-symbol-shape__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.2rem;
+}
+
+.xf-symbol-shape__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+  line-height: 1.25;
+}
+
+.xf-symbol-shape__star {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--xf-radius-sm);
+  background: transparent;
+  color: var(--xf-lightning-yellow);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.xf-symbol-shape__star:hover:not(:disabled) {
+  background: rgba(234, 179, 8, 0.1);
+  border-color: rgba(234, 179, 8, 0.45);
+}
+
+.xf-symbol-shape__star:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.xf-symbol-shape__star svg {
+  width: 18px;
+  height: 18px;
+}
+
+.xf-symbol-shape__price-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.65rem;
+  margin: 0.15rem 0 0.2rem;
+}
+
+.xf-symbol-shape__price {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--xf-text-100);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.xf-symbol-shape__delta {
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.xf-symbol-shape__delta--up {
+  color: var(--xf-chart-gain);
+}
+
+.xf-symbol-shape__delta--down {
+  color: var(--xf-chart-loss);
+}
+
+.xf-symbol-shape__delta--flat {
+  color: var(--xf-text-400);
+}
+
+.xf-symbol-shape__meta {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--xf-text-400);
+  line-height: 1.4;
+}
+
+.xf-symbol-shape__asof {
+  margin: 0.2rem 0 0;
+  font-size: 0.65rem;
+  color: var(--xf-text-400);
+}
+
+.xf-symbol-shape__blurb {
+  margin: 0.25rem 0 0;
+  font-size: 0.65rem;
+  color: var(--xf-text-400);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.xf-watchlist-action-icon {
+  display: inline-flex;
+  padding: 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--xf-text-400);
+  cursor: pointer;
+  border-radius: var(--xf-radius-sm);
+}
+
+.xf-watchlist-action-icon:hover {
+  color: var(--xf-text-100);
+  background: rgba(255, 255, 255, 0.06);
+}

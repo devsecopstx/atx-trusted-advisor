@@ -590,6 +590,12 @@ gcloud run services update-traffic atxfinance-core-prod \
 - **Disclaimer source of truth:** `MARKET_DATA_DISCLAIMER` in `src/modules/xchat/market-data.ts` (returned with market quote payloads).
 - `web_search` remains available for narrative context; quote-sensitive responses should prefer `market_quote`.
 
+**xChat turn artifact retention (policy/compliance):**
+
+- `POST /api/xchat/ask` appends each prompt/response turn to the user's xAI collection and stores evidence pointers in `xchat_logs` (`requestId`, `correlationId`, `xaiTurnFileId`, `xaiTurnPayloadHash`).
+- Retention policy is **30 days** for xAI turn artifacts (`XCHAT_TURN_RETENTION_DAYS=30` in `src/modules/core-admin/access-request-bootstrap.ts`).
+- Turn documents include `retentionExpiresAt` metadata; cleanup/attestation jobs should purge expired xAI artifacts and emit proof logs/audit events.
+
 **Default published xChat personas (operators should keep both in `published` status):**
 
 | Persona | Audience | `nameNormalized` | Purpose |

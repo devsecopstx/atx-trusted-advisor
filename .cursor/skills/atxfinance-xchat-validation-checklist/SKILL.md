@@ -33,6 +33,7 @@ Verify xChat behavior, persona wiring, and retrieval/fallback outcomes with repr
 4. Validate context source behavior (`xai_collection`, `mongo_scope`, `none`).
 5. Validate provider failure path (`502` with retryable metadata).
 6. Validate persona tool constraints (`file_search` / `collections_search` require `xaiCollection.collectionId` on create/update payloads per `persona-validation.ts`).
+7. Validate RAG readiness lifecycle: uploaded files surface `processingStatus`; poll `GET /api/rag/files/:fileId/readiness`; ensure non-ready files are labeled/blocked from collection-link and xChat collection retrieval until status is `complete`/`skipped`.
 
 ## Guardrails
 

@@ -113,6 +113,22 @@ function buildFakeDb() {
         }
         store.push(created);
         return { matchedCount: 0, modifiedCount: 0, upsertedId: created._id };
+      },
+      updateMany: async (
+        filter: Record<string, unknown>,
+        update: { $set?: Record<string, unknown> }
+      ) => {
+        let modified = 0;
+        for (const doc of store) {
+          if (!docMatchesFilter(doc, filter)) {
+            continue;
+          }
+          if (update.$set) {
+            Object.assign(doc, update.$set);
+            modified += 1;
+          }
+        }
+        return { matchedCount: modified, modifiedCount: modified };
       }
     };
   }

@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import { getPortfolioWatchlist } from "@/modules/core-admin/repository";
-import { LOOKUP_ROUTE } from "@/modules/watchlist/yahoo-symbol-lookup";
+import {
+    getPortfolioWatchlist,
+    mutatePortfolioWatchlistSymbols
+} from "@/modules/core-admin/repository";
+import type { Watchlist } from "@/modules/core-admin/types";
+import {
+    LOOKUP_ROUTE,
+    lookupSymbols,
+    type SymbolLookupResult
+} from "@/modules/watchlist/yahoo-symbol-lookup";
 
 type RouteContext = {
   params: Promise<{
@@ -10,13 +19,72 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_: Request, context: RouteContext) {
+const patchBodySchema = z
+  .object({
+    addSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
+    removeSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
+    dedupe: z.boolean().optional()
+  })
+  .refine(
+    (data) =>
+      Boolean(data.addSymbols?.length) ||
+      Boolean(data.removeSymbols?.length) ||
+      data.dedupe === true,
+    { message: "Provide addSymbols, removeSymbols, or dedupe: true" }
+  );
+
+function toIsoSymbolRows(watchlist: Watchlist) {
+  return (watchlist.symbols ?? []).map((item) => ({
+    symbol: item.symbol,
+    addedAt: item.addedAt.toISOString()
+  }));
+}
+
+async function buildJsonPayload(
+  watchlist: Watchlist,
+  quotes: boolean
+): Promise<Record<string, unknown>> {
+  const symbols = toIsoSymbolRows(watchlist);
+  const symbolsDetailed = symbols;
+
+  let symbolsWithQuotes:
+    | Array<{
+        symbol: string;
+        addedAt: string;
+        quote: SymbolLookupResult | null;
+      }>
+    | undefined;
+
+  if (quotes) {
+    const map = await lookupSymbols(symbols.map((s) => s.symbol));
+    symbolsWithQuotes = symbols.map((s) => ({
+      ...s,
+      quote: map.get(s.symbol) ?? null
+    }));
+  }
+
+  return {
+    data: {
+      ...watchlist,
+      symbols,
+      symbolsDetailed,
+      ...(symbolsWithQuotes ? { symbolsWithQuotes } : {})
+    },
+    metadata: {
+      lookupRoute: LOOKUP_ROUTE,
+      symbolLookupEnabled: quotes
+    }
+  };
+}
+
+export async function GET(request: Request, context: RouteContext) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }
 
   const { portfolioId } = await context.params;
+  const quotes = new URL(request.url).searchParams.get("quotes") === "1";
   const watchlist = await getPortfolioWatchlist({
     userId: session.userId,
     portfolioId,
@@ -26,24 +94,46 @@ export async function GET(_: Request, context: RouteContext) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
 
-  // API-first default: skip external symbol lookup unless explicitly requested.
-  const symbolsDetailed = (watchlist.symbols ?? []).map((item) => ({
-    ...item,
-    addedAt: item.addedAt.toISOString()
-  }));
+  const payload = await buildJsonPayload(watchlist, quotes);
+  return NextResponse.json(payload);
+}
 
-  return NextResponse.json({
-    data: {
-      ...watchlist,
-      symbols: (watchlist.symbols ?? []).map((item) => ({
-        ...item,
-        addedAt: item.addedAt.toISOString()
-      })),
-      symbolsDetailed
-    },
-    metadata: {
-      lookupRoute: LOOKUP_ROUTE,
-      symbolLookupEnabled: false
-    }
+export async function PATCH(request: Request, context: RouteContext) {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const { portfolioId } = await context.params;
+  let json: unknown;
+  try {
+    json = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const parsed = patchBodySchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const updated = await mutatePortfolioWatchlistSymbols({
+    userId: session.userId,
+    portfolioId,
+    tenantId: session.tenantId,
+    addSymbols: parsed.data.addSymbols,
+    removeSymbols: parsed.data.removeSymbols,
+    dedupe: parsed.data.dedupe
   });
+
+  if (!updated) {
+    return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
+  }
+
+  const quotes = new URL(request.url).searchParams.get("quotes") === "1";
+  const payload = await buildJsonPayload(updated, quotes);
+  return NextResponse.json(payload);
 }

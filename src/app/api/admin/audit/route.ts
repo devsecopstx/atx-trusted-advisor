@@ -6,7 +6,9 @@ import { listAuditEvents } from "@/modules/audit/repository";
 import type { AuditEvent } from "@/modules/audit/types";
 
 const auditQuerySchema = z.object({
-  entityType: z.enum(["xpersona", "access_request", "core_user", "deploy_note_config"]).optional(),
+  entityType: z
+    .enum(["xpersona", "access_request", "core_user", "deploy_note_config", "xchat_session"])
+    .optional(),
   entityId: z.string().trim().min(1).optional(),
   action: z.string().trim().min(1).optional(),
   actor: z.string().trim().min(1).optional(),

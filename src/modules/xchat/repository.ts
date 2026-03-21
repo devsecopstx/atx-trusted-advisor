@@ -262,6 +262,29 @@ export async function listRagFiles(input?: {
     .toArray();
 }
 
+export async function getRagFileById(fileId: ObjectId): Promise<RagSourceFile | null> {
+  const db = await getDb();
+  return db.collection<RagSourceFile>(collections.ragFiles).findOne({ _id: fileId });
+}
+
+export async function updateRagFileProcessingState(
+  fileId: ObjectId,
+  payload: Pick<RagSourceFile, "xaiProcessingStatus" | "xaiProcessingCheckedAt" | "xaiUploadError">
+): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.collection<RagSourceFile>(collections.ragFiles).updateOne(
+    { _id: fileId },
+    {
+      $set: {
+        xaiProcessingStatus: payload.xaiProcessingStatus,
+        xaiProcessingCheckedAt: payload.xaiProcessingCheckedAt,
+        xaiUploadError: payload.xaiUploadError
+      }
+    }
+  );
+  return result.modifiedCount === 1;
+}
+
 export async function replaceRagChunks(
   fileId: ObjectId,
   scope: string,

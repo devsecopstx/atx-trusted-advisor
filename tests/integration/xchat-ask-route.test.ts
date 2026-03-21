@@ -30,11 +30,20 @@ const verifierMocks = vi.hoisted(() => ({
 }));
 
 const bootstrapMocks = vi.hoisted(() => ({
-  getUserBootstrapCollectionByUserId: vi.fn()
+  resolveOrCreateUserBootstrapCollection: vi.fn(),
+  appendXchatTurnToUserCollection: vi.fn()
 }));
 
 const coreAdminRepositoryMocks = vi.hoisted(() => ({
   getUserAdminSettings: vi.fn()
+}));
+
+const ragReadinessMocks = vi.hoisted(() => ({
+  getScopeReadinessSummary: vi.fn()
+}));
+
+const auditMocks = vi.hoisted(() => ({
+  createAuditEvent: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -44,6 +53,8 @@ vi.mock("@/modules/xchat/repository", () => repositoryMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
+vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
+vi.mock("@/modules/audit/repository", () => auditMocks);
 
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
 
@@ -110,12 +121,22 @@ describe("xchat ask route collection retrieval", () => {
     repositoryMocks.retrieveRagChunks.mockResolvedValue([]);
     repositoryMocks.saveXChatLog.mockResolvedValue(undefined);
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
-    bootstrapMocks.getUserBootstrapCollectionByUserId.mockResolvedValue({
+    bootstrapMocks.resolveOrCreateUserBootstrapCollection.mockResolvedValue({
       collectionId: "collection_user-personal",
       collectionName: "Personal Docs"
     });
+    bootstrapMocks.appendXchatTurnToUserCollection.mockResolvedValue({
+      fileId: "file_xchat_turn",
+      payloadHash: "abc123",
+      retentionExpiresAt: new Date("2026-04-22T00:00:00.000Z")
+    });
+    auditMocks.createAuditEvent.mockResolvedValue(undefined);
     coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValue(null);
     verifierMocks.verifyXaiCollectionNonBlocking.mockImplementation(() => {});
+    ragReadinessMocks.getScopeReadinessSummary.mockResolvedValue({
+      blocked: false,
+      nonReadyFiles: []
+    });
   });
 
   it("uses xai collection snippets first when available", async () => {
@@ -169,6 +190,19 @@ describe("xchat ask route collection retrieval", () => {
             snippetFingerprint: expect.stringMatching(/^f[0-9a-f]{8}$/)
           })
         ]
+      })
+    );
+    expect(bootstrapMocks.appendXchatTurnToUserCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "507f1f77bcf86cd799439011",
+        collectionId: "collection_user-personal",
+        prompt: "How do we run daily controls?"
+      })
+    );
+    expect(auditMocks.createAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "xchat_session",
+        action: "xchat_turn_synced"
       })
     );
   });
@@ -420,6 +454,57 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextCount).toBe(0);
   });
 
+  it("blocks collection search when embeddings are not ready and labels response", async () => {
+    ragReadinessMocks.getScopeReadinessSummary.mockResolvedValueOnce({
+      blocked: true,
+      nonReadyFiles: [
+        {
+          fileId: "507f1f77bcf86cd799439199",
+          xaiFileId: "file_pending",
+          readiness: "pending_embeddings",
+          processingStatus: "pending",
+          checkedAt: "2026-03-20T00:00:00.000Z"
+        }
+      ]
+    });
+    repositoryMocks.retrieveRagChunks.mockResolvedValueOnce([
+      {
+        _id: new ObjectId("507f1f77bcf86cd799439188"),
+        fileId: new ObjectId("507f1f77bcf86cd799439066"),
+        scope: "global",
+        chunkIndex: 0,
+        text: "Mongo fallback while embeddings pending",
+        tokenEstimate: 42,
+        createdAt: new Date("2026-03-16T00:00:00.000Z")
+      }
+    ]);
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "Should use fallback while indexing",
+          topK: 4
+        })
+      })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        contextSource: string;
+        collectionSearchStatus: string;
+        collectionSearchNonReadyFileCount: number;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.contextSource).toBe("mongo_scope");
+    expect(payload.data.collectionSearchStatus).toBe("blocked_non_ready_files");
+    expect(payload.data.collectionSearchNonReadyFileCount).toBe(1);
+    expect(xaiMocks.searchDocumentsInCollections).not.toHaveBeenCalled();
+  });
+
   it("returns structured 502 when xai provider call fails", async () => {
     xaiMocks.respondWithXaiToolLoop.mockRejectedValueOnce(new Error("provider outage"));
     xaiMocks.chatWithXai.mockRejectedValue(new Error("provider outage"));
@@ -447,6 +532,28 @@ describe("xchat ask route collection retrieval", () => {
       retryable: true
     });
     expect(repositoryMocks.saveXChatLog).not.toHaveBeenCalled();
+  });
+
+  it("writes sync-failed audit event when xAI turn collection append fails", async () => {
+    bootstrapMocks.appendXchatTurnToUserCollection.mockRejectedValueOnce(
+      new Error("xai collection offline")
+    );
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "sync failure audit path"
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(auditMocks.createAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "xchat_session",
+        action: "xchat_turn_sync_failed"
+      })
+    );
   });
 
   it("continues when unauthenticated by returning auth response", async () => {
@@ -528,6 +635,53 @@ describe("xchat ask route collection retrieval", () => {
 
     expect(response.status).toBe(200);
     expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439077");
+  });
+
+  it("injects atxfinance tool for app_user when persona xapi omits it", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    repositoryMocks.getPersonaById.mockResolvedValueOnce(
+      buildPersona({
+        _id: new ObjectId("507f1f77bcf86cd799439077"),
+        name: "Industry Pro",
+        nameNormalized: "industry pro",
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "web_search" }]
+        }
+      })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439077",
+          message: "what is in my portfolio"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tools: expect.arrayContaining([
+          expect.objectContaining({
+            type: "function",
+            function: expect.objectContaining({ name: "atxfinance" })
+          })
+        ]),
+        systemPrompt: expect.stringContaining("You MUST use the atxfinance tool")
+      })
+    );
   });
 
   it("uses assigned persona when request persona differs for app_user", async () => {

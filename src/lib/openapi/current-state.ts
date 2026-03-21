@@ -243,7 +243,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/portfolios/{portfolioId}/watchlist",
-    operations: [{ method: "GET", auth: "session" }],
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "PATCH", auth: "session", hasRequestBody: true }
+    ],
     tag: "portfolios"
   },
   {
@@ -260,8 +263,18 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "rag"
   },
   {
+    path: "/api/rag/files/{fileId}/readiness",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "rag"
+  },
+  {
     path: "/api/xchat/ask",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "xchat"
+  },
+  {
+    path: "/api/xchat/collections",
+    operations: [{ method: "GET", auth: "session" }],
     tag: "xchat"
   },
   {

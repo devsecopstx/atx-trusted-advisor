@@ -7,9 +7,9 @@ import { chunkText, isTextLikeMimeType } from "@/lib/rag";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { uploadFileToXai } from "@/lib/xai";
 import {
-  createRagFile,
-  listRagFiles,
-  replaceRagChunks
+    createRagFile,
+    listRagFiles,
+    replaceRagChunks
 } from "@/modules/xchat/repository";
 
 const querySchema = z.object({
@@ -110,13 +110,17 @@ export async function POST(request: Request) {
 
   let xaiFileId: string | undefined;
   let xaiUploadStatus: "uploaded" | "failed" | "skipped" = "skipped";
+  let xaiProcessingStatus: "pending" | "processing" | "complete" | "failed" | "skipped" | "unknown" =
+    "unknown";
   let xaiUploadError: string | undefined;
   try {
     const upload = await uploadFileToXai(file.name, bytes);
     xaiFileId = upload.fileId;
     xaiUploadStatus = "uploaded";
+    xaiProcessingStatus = upload.processingStatus;
   } catch (error) {
     xaiUploadStatus = "failed";
+    xaiProcessingStatus = "failed";
     xaiUploadError = error instanceof Error ? error.message : "Unknown upload error";
   }
 
@@ -135,6 +139,8 @@ export async function POST(request: Request) {
     scope,
     xaiFileId,
     xaiUploadStatus,
+    xaiProcessingStatus,
+    xaiProcessingCheckedAt: new Date(),
     xaiUploadError,
     contentPreview
   });

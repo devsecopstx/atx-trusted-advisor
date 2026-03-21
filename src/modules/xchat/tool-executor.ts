@@ -1,15 +1,19 @@
 import type { ToolExecutor } from "@/lib/xai";
 import {
-  getDefaultPortfolio,
-  getPortfolioWatchlist,
-  listPortfolioAccounts,
-  listScheduledTasks,
-  listTaskRuns
+    DEFAULT_ACCOUNT_CASH_BALANCE,
+    getDefaultPortfolio,
+    getPortfolioWatchlist,
+    listPortfolioAccounts,
+    listPortfolioPositionsByAccount,
+    listScheduledTasks,
+    listTaskRuns
 } from "@/modules/core-admin/repository";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { getCachedToolResult, setCachedToolResult } from "@/modules/xchat/tool-cache";
 
 const MAX_OUTPUT_BYTES = 8 * 1024;
+/** Cap rows returned by positions_snapshot before JSON serialization (freshness; not cached). */
+const MAX_POSITIONS_RETURNED = 200;
 const CACHEABLE_OPERATIONS = new Set(["portfolio_summary", "watchlist_snapshot", "account_health"]);
 
 type ExecutorContext = {
@@ -22,6 +26,17 @@ type OperationHandler = (
   ctx: ExecutorContext
 ) => Promise<unknown>;
 
+function positionCountsByAccountId(
+  positions: Array<{ accountId: { toHexString: () => string } }>
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const p of positions) {
+    const id = p.accountId.toHexString();
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 const operations: Record<string, OperationHandler> = {
   portfolio_summary: async (_args, ctx) => {
     const portfolio = await getDefaultPortfolio(ctx.userId, {
@@ -31,21 +46,39 @@ const operations: Record<string, OperationHandler> = {
       return { error: "no_default_portfolio" };
     }
 
+    const portfolioId = portfolio._id.toHexString();
     const accounts = await listPortfolioAccounts({
       userId: ctx.userId,
-      portfolioId: portfolio._id.toHexString(),
+      portfolioId,
       tenantId: ctx.tenantId
     });
+
+    const accountIds = accounts
+      .map((a) => a._id)
+      .filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
+    const positions =
+      accountIds.length > 0
+        ? await listPortfolioPositionsByAccount({
+            userId: ctx.userId,
+            portfolioId,
+            accountIds,
+            tenantId: ctx.tenantId
+          })
+        : [];
+    const counts = positionCountsByAccountId(positions);
 
     return {
       name: portfolio.name,
       isDefault: portfolio.isDefault,
       accountCount: accounts.length,
+      totalPositionCount: positions.length,
       accounts: accounts.map((a) => ({
         name: a.name,
         type: a.type,
         extAccountId: a.extAccountId,
-        isDefault: a.isDefault
+        isDefault: a.isDefault,
+        cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
+        positionCount: a._id ? (counts.get(a._id.toHexString()) ?? 0) : 0
       }))
     };
   },
@@ -71,7 +104,11 @@ const operations: Record<string, OperationHandler> = {
     return {
       name: watchlist.name,
       symbolCount: symbols.length,
-      symbols: symbols.map((s) => s.symbol)
+      symbols: symbols.map((s) => ({
+        symbol: s.symbol,
+        addedAt:
+          s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt)
+      }))
     };
   },
 
@@ -89,14 +126,93 @@ const operations: Record<string, OperationHandler> = {
       tenantId: ctx.tenantId
     });
 
+    const defaultAccount = accounts.find((a) => a.isDefault);
+
     return {
       accountCount: accounts.length,
       accounts: accounts.map((a) => ({
         name: a.name,
         type: a.type,
         extAccountId: a.extAccountId,
-        isDefault: a.isDefault
-      }))
+        isDefault: a.isDefault,
+        cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE
+      })),
+      defaultAccountName: defaultAccount?.name
+    };
+  },
+
+  positions_snapshot: async (_args, ctx) => {
+    const portfolio = await getDefaultPortfolio(ctx.userId, {
+      tenantId: ctx.tenantId
+    });
+    if (!portfolio?._id) {
+      return { error: "no_default_portfolio" };
+    }
+
+    const portfolioId = portfolio._id.toHexString();
+    const accounts = await listPortfolioAccounts({
+      userId: ctx.userId,
+      portfolioId,
+      tenantId: ctx.tenantId
+    });
+    const accountIds = accounts
+      .map((a) => a._id)
+      .filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
+
+    if (accountIds.length === 0) {
+      return {
+        portfolioName: portfolio.name,
+        accounts: [],
+        totalPositionsReturned: 0,
+        totalPositionsAvailable: 0,
+        truncated: false
+      };
+    }
+
+    const allPositions = await listPortfolioPositionsByAccount({
+      userId: ctx.userId,
+      portfolioId,
+      accountIds,
+      tenantId: ctx.tenantId
+    });
+
+    const totalAvailable = allPositions.length;
+    const truncated = totalAvailable > MAX_POSITIONS_RETURNED;
+    const sliced = allPositions.slice(0, MAX_POSITIONS_RETURNED);
+
+    const byAccountHex = new Map<string, typeof sliced>();
+    for (const p of sliced) {
+      const hex = p.accountId.toHexString();
+      const list = byAccountHex.get(hex) ?? [];
+      list.push(p);
+      byAccountHex.set(hex, list);
+    }
+
+    const accountsWithPositions = accounts
+      .filter((a) => a._id)
+      .map((a) => {
+        const hex = a._id!.toHexString();
+        const rows = byAccountHex.get(hex) ?? [];
+        return {
+          name: a.name,
+          isDefault: a.isDefault,
+          positions: rows.map((p) => ({
+            symbol: p.symbol,
+            qty: p.qty,
+            avgCost: p.avgCost
+          }))
+        };
+      });
+
+    return {
+      portfolioName: portfolio.name,
+      accounts: accountsWithPositions,
+      totalPositionsReturned: sliced.length,
+      totalPositionsAvailable: totalAvailable,
+      truncated,
+      ...(truncated
+        ? { omittedCount: totalAvailable - sliced.length }
+        : {})
     };
   },
 
@@ -128,7 +244,8 @@ const operations: Record<string, OperationHandler> = {
     };
   },
 
-  market_quote: async (args, _ctx) => {
+  market_quote: async (args, ctx: ExecutorContext) => {
+    void ctx;
     const symbol = typeof args.symbol === "string" ? args.symbol : undefined;
     return getYahooMarketQuote({ symbol });
   }
@@ -183,7 +300,7 @@ export const ATXFINANCE_TOOL_DEFINITION = {
   function: {
     name: "atxfinance",
     description:
-      "Query atxFinance portfolio, watchlist, account, task, and market quote data for the authenticated user.",
+      "Read-only queries for the authenticated user's portfolio, linked accounts (including cash balances), watchlist symbols, open positions (holdings), scheduled task status, and market quotes. Data is scoped to the signed-in user; do not pass a user id. Use positions_snapshot for symbol/qty/avgCost; portfolio_summary for overview and per-account position counts.",
     parameters: {
       type: "object",
       properties: {
@@ -191,12 +308,14 @@ export const ATXFINANCE_TOOL_DEFINITION = {
           type: "string",
           enum: [
             "portfolio_summary",
+            "positions_snapshot",
             "watchlist_snapshot",
             "account_health",
             "task_status",
             "market_quote"
           ],
-          description: "The atxFinance operation to execute."
+          description:
+            "portfolio_summary: portfolio + accounts with cashBalance and position counts. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_snapshot: symbols with addedAt. account_health: accounts with cashBalance and default account name. task_status: scheduled tasks/runs. market_quote: Yahoo quote for symbol."
         },
         symbol: {
           type: "string",

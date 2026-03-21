@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
@@ -11,6 +10,8 @@ import {
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
 import "../xchat/xchat.css";
+import { WatchlistConsole } from "./ui/watchlist-console";
+import "./watchlist.css";
 
 export default async function WatchlistPage() {
   const session = await getSessionUser();
@@ -36,7 +37,7 @@ export default async function WatchlistPage() {
   }
   const portfolioId = portfolio._id.toHexString();
 
-  let watchlist = await getPortfolioWatchlist({
+  const watchlist = await getPortfolioWatchlist({
     userId: session.userId,
     tenantId: session.tenantId,
     portfolioId
@@ -47,13 +48,7 @@ export default async function WatchlistPage() {
       tenantId: session.tenantId,
       watchlistSymbols: ["TSLA"]
     });
-    watchlist = await getPortfolioWatchlist({
-      userId: session.userId,
-      tenantId: session.tenantId,
-      portfolioId
-    });
   }
-  const symbols = watchlist?.symbols ?? [];
 
   const admin = isGlobalAdmin(session.roles);
 
@@ -61,34 +56,8 @@ export default async function WatchlistPage() {
     <div className="xchat-shell">
       <AppUserApprovedHeader current="watchlist" feedbackPageLabel="Watchlist" session={session} />
 
-      <div className="xchat-body" style={{ padding: "1rem" }}>
-        <section className="hero-card xf-noise-overlay" style={{ maxWidth: "640px", margin: "0 auto" }}>
-          <p className="eyebrow">Watchlist</p>
-          <h1 className="hero-title">Symbols & alerts</h1>
-          <p className="hero-copy">
-            Your default watchlist is auto-healed for legacy users. If missing or empty, it is seeded with
-            <strong> TSLA</strong>.
-          </p>
-          <ul className="stack-gap" style={{ listStyle: "none", padding: 0, margin: "1rem 0 0" }}>
-            <li>
-              <strong>Watchlist:</strong> {watchlist?.name ?? "DefaultWatchlist"}
-            </li>
-            <li>
-              <strong>Symbols:</strong>{" "}
-              {symbols.length > 0 ? symbols.map((item) => item.symbol).join(", ") : "TSLA"}
-            </li>
-          </ul>
-          <div className="cta-row" style={{ marginTop: "1.25rem" }}>
-            <Link className="cta cta-secondary" href="/xfinance">
-              Back to portfolio
-            </Link>
-            {admin ? (
-              <Link className="cta cta-primary" href="/admin/portfolios">
-                Open in admin console
-              </Link>
-            ) : null}
-          </div>
-        </section>
+      <div className="xchat-body" style={{ padding: 0 }}>
+        <WatchlistConsole isAdmin={admin} portfolioId={portfolioId} />
       </div>
     </div>
   );

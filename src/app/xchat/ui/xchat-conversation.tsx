@@ -26,12 +26,19 @@ type HistoryStats = {
   activeDays: number;
   referencedFileCount: number;
   lastPromptAt?: string;
-  collectionId?: string | null;
 };
 
 type XchatConversationProps = {
   /** Published default persona name for this session’s role (Super-Agent vs xFinance). */
   defaultPublishedPersonaName: string;
+};
+
+const ATXFINANCE_COLLECTION_ID_FALLBACK = "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
+
+type VisibleCollection = {
+  collectionId: string;
+  collectionName?: string;
+  source: "atxfinance_default" | "user_history" | "assigned_persona";
 };
 
 export function XchatConversation({ defaultPublishedPersonaName }: XchatConversationProps) {
@@ -45,6 +52,10 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   const [exampleExpanded, setExampleExpanded] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
+  const [visibleCollections, setVisibleCollections] = useState<VisibleCollection[]>([]);
+  const [associatedCollectionCount, setAssociatedCollectionCount] = useState(1);
+  const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -60,6 +71,42 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadVisibleCollections() {
+      try {
+        const response = await fetch("/api/xchat/collections");
+        const payload = (await response.json().catch(() => ({}))) as {
+          data?: VisibleCollection[];
+          metadata?: { activePersonaName?: string; associatedCollectionCount?: number };
+          error?: string;
+        };
+        if (!response.ok) {
+          throw new Error(payload.error ?? `Failed to load xChat collections (${response.status})`);
+        }
+        if (!active) {
+          return;
+        }
+        setVisibleCollections(payload.data ?? []);
+        setActivePersonaName(payload.metadata?.activePersonaName ?? defaultPublishedPersonaName);
+        setAssociatedCollectionCount(
+          Number.isInteger(payload.metadata?.associatedCollectionCount)
+            ? (payload.metadata?.associatedCollectionCount ?? 1)
+            : (payload.data ?? []).length || 1
+        );
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        setCollectionsStatus(error instanceof Error ? error.message : "Failed to load visible collections");
+      }
+    }
+    void loadVisibleCollections();
+    return () => {
+      active = false;
+    };
+  }, [defaultPublishedPersonaName]);
 
   useEffect(() => {
     if (!historyExpanded || historyLoaded) {
@@ -170,7 +217,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           id: `ai-${Date.now()}`,
           role: "ai",
           content: payload.data?.response ?? "",
-          persona: payload.data?.personaName ?? defaultPublishedPersonaName,
+            persona: payload.data?.personaName ?? activePersonaName,
           timestamp: Date.now()
         }
       ]);
@@ -194,67 +241,22 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       <div className="xchat-persona-bar">
         <span className="status-badge status-ready">Published default</span>
         <span className="status-text" style={{ fontSize: "0.8rem" }}>
-          xChat uses <strong>{defaultPublishedPersonaName}</strong> for your role (Super-Agent for admins,
-          xFinance for members). No persona picker — both should stay published in Admin → Personas.
+          USER_STATS
         </span>
+        <span className="status-text" style={{ fontSize: "0.75rem" }}>
+          Collection list loaded for ask:{" "}
+          {visibleCollections.length > 0
+            ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
+            : ATXFINANCE_COLLECTION_ID_FALLBACK}
+        </span>
+        {collectionsStatus ? <span className="status-text status-error">{collectionsStatus}</span> : null}
       </div>
-
-      <section className="xchat-history-panel">
-        <div className="xchat-history-panel-header">
-          <div>
-            <p className="status-badge status-ready">Saved history (beta)</p>
-            <p className="status-text xchat-history-subtext">
-              Past sessions are API-first. Current session prompts stay in the live thread below.
-            </p>
-          </div>
-          <div className="xchat-history-actions">
-            <button className="tiny-button" type="button">
-              TODO: Service link
-            </button>
-            <button className="tiny-button" type="button">
-              TODO: Share
-            </button>
-            <button className="tiny-button" type="button">
-              TODO: History tools
-            </button>
-          </div>
-        </div>
-
-        <div className="xchat-history-stats">
-          <span className="chip">Prompts: {historyStats?.totalPrompts ?? 0}</span>
-          <span className="chip">Active days: {historyStats?.activeDays ?? 0}</span>
-          <span className="chip">Collection files seen: {historyStats?.referencedFileCount ?? 0}</span>
-          <span className="chip">
-            Collection ID: {historyStats?.collectionId?.slice(0, 22) ?? "not-linked"}
-          </span>
-        </div>
-
-        {historyLoading ? <p className="status-text">Loading past-session history...</p> : null}
-        {historyError ? <p className="status-text status-error">{historyError}</p> : null}
-        {!historyLoading && !historyError && savedHistory.length === 0 ? (
-          <p className="status-text">No saved history yet. Ask your first prompt below.</p>
-        ) : null}
-
-        {!historyLoading && !historyError && savedHistory.length > 0 ? (
-          <ul className="xchat-history-list">
-            {savedHistory.map((item) => (
-              <li className="xchat-history-item" key={item.id}>
-                <div className="xchat-history-item-head">
-                  <strong>{new Date(item.createdAt).toLocaleString()}</strong>
-                  <span>{item.model}</span>
-                </div>
-                <p className="xchat-history-item-prompt">{item.message}</p>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </section>
 
       <div className="xchat-messages">
         {messages.length === 0 ? (
           <div style={{ textAlign: "center", padding: "3rem 0" }}>
             <p className="status-text">
-              Start a conversation with the published default <strong>{defaultPublishedPersonaName}</strong>.
+              Start a conversation with the published default <strong>{activePersonaName}</strong>.
             </p>
           </div>
         ) : null}

@@ -51,6 +51,7 @@ describe("persona collection routes", () => {
       {
         _id: new ObjectId("507f1f77bcf86cd799439066"),
         xaiUploadStatus: "uploaded",
+        xaiProcessingStatus: "complete",
         xaiFileId: "file_abc",
         scope: "global"
       },
@@ -109,12 +110,14 @@ describe("persona collection routes", () => {
       {
         _id: new ObjectId("507f1f77bcf86cd799439066"),
         xaiUploadStatus: "uploaded",
+        xaiProcessingStatus: "complete",
         xaiFileId: "file_abc",
         scope: "global"
       },
       {
         _id: new ObjectId("507f1f77bcf86cd799439068"),
         xaiUploadStatus: "uploaded",
+        xaiProcessingStatus: "complete",
         xaiFileId: "file_xyz",
         scope: "global"
       }
@@ -164,6 +167,39 @@ describe("persona collection routes", () => {
     expect(payload.data.failed[0]?.error).toBe("Failed to link file to xAI collection");
     expect(payload.data.failed[0]?.error).not.toContain("internal_ref");
     expect(payload.data.failed[0]?.error).not.toContain("xai_");
+  });
+
+  it("blocks non-ready uploaded files from linking and labels readiness", async () => {
+    repositoryMocks.listRagFiles.mockResolvedValueOnce([
+      {
+        _id: new ObjectId("507f1f77bcf86cd799439166"),
+        xaiUploadStatus: "uploaded",
+        xaiProcessingStatus: "pending",
+        xaiFileId: "file_pending",
+        scope: "global"
+      }
+    ]);
+
+    const response = await postLinkFiles(new Request("http://test"), {
+      params: Promise.resolve({ personaId: "507f1f77bcf86cd799439055" })
+    });
+    const payload = (await response.json()) as {
+      data: {
+        candidateFiles: number;
+        readyCandidates: number;
+        blockedCount: number;
+        blockedFiles: Array<{ readiness: string }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.candidateFiles).toBe(1);
+    expect(payload.data.readyCandidates).toBe(0);
+    expect(payload.data.blockedCount).toBe(1);
+    expect(payload.data.blockedFiles[0]?.readiness).toBe("pending_embeddings");
+    expect(xaiMocks.addFileToXaiCollection).not.toHaveBeenCalledWith(
+      expect.objectContaining({ fileId: "file_pending" })
+    );
   });
 
   it("returns auth response when unauthorized", async () => {

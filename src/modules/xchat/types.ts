@@ -102,6 +102,14 @@ export type RagSourceFile = {
   scope: string;
   xaiFileId?: string;
   xaiUploadStatus: "uploaded" | "failed" | "skipped";
+  xaiProcessingStatus?:
+    | "pending"
+    | "processing"
+    | "complete"
+    | "failed"
+    | "skipped"
+    | "unknown";
+  xaiProcessingCheckedAt?: Date;
   xaiUploadError?: string;
   contentPreview: string;
   createdAt: Date;
@@ -126,6 +134,8 @@ export type XChatMessage = {
 
 export type XChatSessionLog = {
   _id?: ObjectId;
+  requestId: string;
+  correlationId: string;
   userId?: ObjectId;
   tenantId?: ObjectId;
   userEmail?: string;
@@ -146,9 +156,14 @@ export type XChatSessionLog = {
   }>;
   xapiToolCalls?: Array<{
     name: string;
+    args?: Record<string, unknown>;
+    resultHash?: string;
     durationMs: number;
     error?: string;
   }>;
+  xaiTurnFileId?: string;
+  xaiTurnPayloadHash?: string;
+  xaiTurnRetentionExpiresAt?: Date;
   createdAt: Date;
 };
 

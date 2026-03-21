@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { createHash } from "node:crypto";
 
 import { getDb } from "@/lib/mongodb";
 import { sendSlackNotification } from "@/lib/slack";
@@ -15,9 +16,11 @@ import {
     createScheduledTask,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
+import { getCoreUserById, updateCoreUserXaiCollection } from "@/modules/identity/repository";
 
 const USER_BOOTSTRAP_COLLECTION = "admin_user_bootstrap_profiles";
 const PROFILE_RETENTION_DAYS = 30;
+export const XCHAT_TURN_RETENTION_DAYS = 30;
 const PORTFOLIO_COLLECTION = "portfolio_portfolios";
 const ACCOUNT_COLLECTION = "portfolio_accounts";
 const WATCHLIST_COLLECTION = "portfolio_watchlists";
@@ -137,6 +140,130 @@ export async function getUserBootstrapCollectionByUserId(input: {
   };
 }
 
+export async function resolveOrCreateUserBootstrapCollection(input: {
+  userId: string;
+  tenantId?: string;
+  email?: string;
+}): Promise<UserBootstrapCollectionContext | null> {
+  const normalizedUserId = input.userId.trim();
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const existing = await getUserBootstrapCollectionByUserId({
+    userId: normalizedUserId,
+    tenantId: input.tenantId
+  });
+  if (existing) {
+    await persistCoreUserCollectionBinding({
+      userId: normalizedUserId,
+      collectionId: existing.collectionId,
+      collectionName: existing.collectionName
+    });
+    return existing;
+  }
+
+  await ensureBootstrapIndexes();
+  const coreUser = ObjectId.isValid(normalizedUserId)
+    ? await getCoreUserById(new ObjectId(normalizedUserId))
+    : null;
+  const collection = await ensureUserCollection({
+    userId: normalizedUserId,
+    existingCollectionId: coreUser?.xaiCollectionId
+  });
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + PROFILE_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  await upsertBootstrapProfile({
+    emailNormalized: resolveBootstrapProfileKey({
+      userId: normalizedUserId,
+      email: coreUser?.email ?? input.email
+    }),
+    userId: normalizedUserId,
+    tenantId: input.tenantId,
+    xaiCollectionId: collection.id,
+    xaiCollectionName: collection.name,
+    syncStatus: "synced",
+    syncError: undefined,
+    expiresAt
+  });
+  await persistCoreUserCollectionBinding({
+    userId: normalizedUserId,
+    collectionId: collection.id,
+    collectionName: collection.name
+  });
+
+  return {
+    collectionId: collection.id,
+    collectionName: collection.name
+  };
+}
+
+/** Writes a retention-bounded markdown file into the user xAI collection. Does not include persona systemPrompt, overridePrompt, or injected system instructions — only user prompt + assistant response + turn metadata. */
+export async function appendXchatTurnToUserCollection(input: {
+  userId: string;
+  tenantId?: string;
+  email?: string;
+  collectionId?: string;
+  personaName?: string;
+  model?: string;
+  scope?: string;
+  prompt: string;
+  response: string;
+  createdAt?: Date;
+}): Promise<{
+  fileId: string;
+  payloadHash: string;
+  retentionExpiresAt: Date;
+}> {
+  const collectionId =
+    input.collectionId?.trim() ||
+    (await resolveOrCreateUserBootstrapCollection({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      email: input.email
+    }))?.collectionId;
+  if (!collectionId) {
+    throw new Error("Missing user xAI collection for xchat turn sync");
+  }
+
+  const createdAt = input.createdAt ?? new Date();
+  const retentionExpiresAt = new Date(
+    createdAt.getTime() + XCHAT_TURN_RETENTION_DAYS * 24 * 60 * 60 * 1000
+  );
+  const turnDoc = [
+    "# xChat Prompt/Response",
+    "",
+    `userId: ${input.userId}`,
+    `tenantId: ${input.tenantId ?? "none"}`,
+    `persona: ${input.personaName ?? "unknown"}`,
+    `model: ${input.model ?? "unknown"}`,
+    `scope: ${input.scope ?? "global"}`,
+    `createdAt: ${createdAt.toISOString()}`,
+    `retentionDays: ${String(XCHAT_TURN_RETENTION_DAYS)}`,
+    `retentionExpiresAt: ${retentionExpiresAt.toISOString()}`,
+    "",
+    "## Prompt",
+    input.prompt,
+    "",
+    "## Response",
+    input.response
+  ].join("\n");
+  const payloadHash = createHash("sha256").update(turnDoc).digest("hex");
+  const filename = `xchat-turn-${toFileTimestamp(createdAt)}-${input.userId.slice(-8)}.md`;
+  const bytes = new TextEncoder().encode(turnDoc);
+  const uploaded = await uploadFileToXai(filename, bytes);
+  await addFileToXaiCollection({
+    collectionId,
+    fileId: uploaded.fileId
+  });
+  return {
+    fileId: uploaded.fileId,
+    payloadHash,
+    retentionExpiresAt
+  };
+}
+
 async function runAccessRequestBootstrap(
   input: EnqueueAccessRequestBootstrapInput
 ): Promise<void> {
@@ -153,8 +280,13 @@ async function runAccessRequestBootstrap(
   });
 
   const collection = await ensureUserCollection({
-    email: normalizedEmail,
+    userId: input.userId,
     existingCollectionId: existing?.xaiCollectionId
+  });
+  await persistCoreUserCollectionBinding({
+    userId: input.userId,
+    collectionId: collection.id,
+    collectionName: collection.name
   });
 
   await seedInitialCollectionContext({
@@ -197,10 +329,10 @@ async function runAccessRequestBootstrap(
 }
 
 async function ensureUserCollection(input: {
-  email: string;
+  userId: string;
   existingCollectionId?: string;
 }): Promise<{ id: string; name: string }> {
-  const collectionName = buildUserCollectionName(input.email);
+  const collectionName = buildUserCollectionNameByUserId(input.userId);
   const existingCollectionId = input.existingCollectionId?.trim();
 
   if (existingCollectionId) {
@@ -416,8 +548,35 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function buildUserCollectionName(email: string): string {
-  return `atx-finance-${slugifyEmail(email)}-xchat`;
+function buildUserCollectionNameByUserId(userId: string): string {
+  return `atx-finance-user-${userId.trim().toLowerCase()}-xchat`;
+}
+
+function resolveBootstrapProfileKey(input: { userId: string; email?: string }): string {
+  const normalizedEmail = input.email?.trim().toLowerCase();
+  if (normalizedEmail) {
+    return normalizedEmail;
+  }
+  return `user:${input.userId.trim().toLowerCase()}`;
+}
+
+async function persistCoreUserCollectionBinding(input: {
+  userId: string;
+  collectionId: string;
+  collectionName?: string;
+}): Promise<void> {
+  if (!ObjectId.isValid(input.userId)) {
+    return;
+  }
+  await updateCoreUserXaiCollection({
+    userId: new ObjectId(input.userId),
+    xaiCollectionId: input.collectionId,
+    xaiCollectionName: input.collectionName
+  });
+}
+
+function toFileTimestamp(value: Date): string {
+  return value.toISOString().replace(/[:.]/g, "-");
 }
 
 function slugifyEmail(email: string): string {

@@ -8,6 +8,8 @@ export type CoreUser = {
   email: string;
   roles: CoreUserRole[];
   subscriptionPlan?: SubscriptionPlan;
+  xaiCollectionId?: string;
+  xaiCollectionName?: string;
   status: "active" | "suspended";
   xAccount?: {
     xUserId: string;

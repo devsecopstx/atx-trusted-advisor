@@ -2,10 +2,10 @@ import { ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import type {
-  AuthContext,
-  CoreUser,
-  Tenant,
-  TenantMembership
+    AuthContext,
+    CoreUser,
+    Tenant,
+    TenantMembership
 } from "@/modules/identity/types";
 
 const collections = {
@@ -245,6 +245,36 @@ export async function updateCoreUserSubscriptionPlan(input: {
   const user = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
   if (!user?._id) {
     throw new Error("Failed to update user subscription plan");
+  }
+  return user;
+}
+
+export async function updateCoreUserXaiCollection(input: {
+  userId: ObjectId;
+  xaiCollectionId: string;
+  xaiCollectionName?: string;
+}): Promise<CoreUser> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const normalizedCollectionId = input.xaiCollectionId.trim();
+  if (!normalizedCollectionId) {
+    throw new Error("xAI collection id is required");
+  }
+
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: input.userId },
+    {
+      $set: {
+        xaiCollectionId: normalizedCollectionId,
+        xaiCollectionName: input.xaiCollectionName?.trim() || undefined,
+        updatedAt: now
+      }
+    }
+  );
+  const user = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
+  if (!user?._id) {
+    throw new Error("Failed to update user xAI collection");
   }
   return user;
 }

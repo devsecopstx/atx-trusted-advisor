@@ -1,9 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ObjectId } from "mongodb";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const repositoryMocks = vi.hoisted(() => ({
+  DEFAULT_ACCOUNT_CASH_BALANCE: 25_000,
   getDefaultPortfolio: vi.fn(),
   listPortfolioAccounts: vi.fn(),
+  listPortfolioPositionsByAccount: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
   listScheduledTasks: vi.fn(),
   listTaskRuns: vi.fn()
@@ -21,13 +23,14 @@ vi.mock("@/modules/xchat/tool-cache", () => ({
 }));
 
 import {
-  createXfinanceToolExecutor,
-  ATXFINANCE_TOOL_DEFINITION
+    ATXFINANCE_TOOL_DEFINITION,
+    createXfinanceToolExecutor
 } from "@/modules/xchat/tool-executor";
 
 describe("atxfinance tool executor", () => {
   const ctx = { userId: "user_123", tenantId: "tenant_456" };
   const portfolioId = new ObjectId();
+  const accountId = new ObjectId();
 
   beforeEach(() => {
     repositoryMocks.getDefaultPortfolio.mockResolvedValue({
@@ -37,10 +40,22 @@ describe("atxfinance tool executor", () => {
     });
     repositoryMocks.listPortfolioAccounts.mockResolvedValue([
       {
+        _id: accountId,
         name: "Default Account",
         type: "fidelity",
         extAccountId: "fidelity-default-user_123",
-        isDefault: true
+        isDefault: true,
+        cashBalance: 25_000
+      }
+    ]);
+    repositoryMocks.listPortfolioPositionsByAccount.mockResolvedValue([
+      {
+        symbol: "TSLA",
+        qty: 10,
+        avgCost: 200,
+        accountId,
+        portfolioId,
+        userId: "user_123"
       }
     ]);
     repositoryMocks.getPortfolioWatchlist.mockResolvedValue({
@@ -67,16 +82,35 @@ describe("atxfinance tool executor", () => {
     const data = JSON.parse(result.result);
     expect(data.name).toBe("Default Portfolio");
     expect(data.accountCount).toBe(1);
+    expect(data.totalPositionCount).toBe(1);
     expect(data.accounts[0].type).toBe("fidelity");
+    expect(data.accounts[0].cashBalance).toBe(25_000);
+    expect(data.accounts[0].positionCount).toBe(1);
     expect(result.error).toBeUndefined();
   });
 
-  it("watchlist_snapshot returns symbols", async () => {
+  it("portfolio_summary coalesces missing cashBalance to 25_000", async () => {
+    repositoryMocks.listPortfolioAccounts.mockResolvedValueOnce([
+      {
+        _id: accountId,
+        name: "Default Account",
+        type: "fidelity",
+        extAccountId: "fidelity-default-user_123",
+        isDefault: true
+      }
+    ]);
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", { operation: "portfolio_summary" });
+    const data = JSON.parse(result.result);
+    expect(data.accounts[0].cashBalance).toBe(25_000);
+  });
+
+  it("watchlist_snapshot returns symbols with addedAt", async () => {
     const executor = createXfinanceToolExecutor(ctx);
     const result = await executor("atxfinance", { operation: "watchlist_snapshot" });
     const data = JSON.parse(result.result);
     expect(data.name).toBe("DefaultWatchlist");
-    expect(data.symbols).toEqual(["TSLA"]);
+    expect(data.symbols).toEqual([{ symbol: "TSLA", addedAt: expect.any(String) }]);
     expect(data.symbolCount).toBe(1);
   });
 
@@ -86,6 +120,42 @@ describe("atxfinance tool executor", () => {
     const data = JSON.parse(result.result);
     expect(data.accountCount).toBe(1);
     expect(data.accounts[0].name).toBe("Default Account");
+    expect(data.accounts[0].cashBalance).toBe(25_000);
+    expect(data.defaultAccountName).toBe("Default Account");
+  });
+
+  it("positions_snapshot returns holdings grouped by account", async () => {
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", { operation: "positions_snapshot" });
+    const data = JSON.parse(result.result);
+    expect(data.portfolioName).toBe("Default Portfolio");
+    expect(data.totalPositionsAvailable).toBe(1);
+    expect(data.totalPositionsReturned).toBe(1);
+    expect(data.truncated).toBe(false);
+    expect(data.accounts[0].positions[0]).toMatchObject({
+      symbol: "TSLA",
+      qty: 10,
+      avgCost: 200
+    });
+  });
+
+  it("positions_snapshot truncates when over cap", async () => {
+    const many = Array.from({ length: 250 }, (_, i) => ({
+      symbol: `S${i}`,
+      qty: 1,
+      avgCost: 1,
+      accountId,
+      portfolioId,
+      userId: "user_123"
+    }));
+    repositoryMocks.listPortfolioPositionsByAccount.mockResolvedValueOnce(many);
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", { operation: "positions_snapshot" });
+    const data = JSON.parse(result.result);
+    expect(data.truncated).toBe(true);
+    expect(data.totalPositionsReturned).toBe(200);
+    expect(data.totalPositionsAvailable).toBe(250);
+    expect(data.omittedCount).toBe(50);
   });
 
   it("task_status returns tasks and runs", async () => {
@@ -127,6 +197,7 @@ describe("atxfinance tool executor", () => {
     expect(ATXFINANCE_TOOL_DEFINITION.function.name).toBe("atxfinance");
     expect(ATXFINANCE_TOOL_DEFINITION.function.parameters.properties.operation.enum).toEqual([
       "portfolio_summary",
+      "positions_snapshot",
       "watchlist_snapshot",
       "account_health",
       "task_status",

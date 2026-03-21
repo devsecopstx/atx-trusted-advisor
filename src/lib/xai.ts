@@ -39,6 +39,15 @@ export type XaiCollectionInventoryItem = {
   updatedAt?: string;
 };
 
+export type XaiFileProcessingStatus = "pending" | "processing" | "complete" | "failed" | "skipped" | "unknown";
+
+type XaiFileMetadata = {
+  fileId: string;
+  uploadStatus?: string;
+  uploadErrorMessage?: string;
+  processingStatus: XaiFileProcessingStatus;
+};
+
 function getXaiConfig() {
   const env = getEnv();
   return {
@@ -148,7 +157,7 @@ export async function addFileToXaiCollection(input: {
 export async function uploadFileToXai(
   filename: string,
   bytes: Uint8Array
-): Promise<{ fileId: string }> {
+): Promise<{ fileId: string; processingStatus: XaiFileProcessingStatus }> {
   const { apiKey, baseUrl } = getXaiConfig();
   const formData = new FormData();
   const stableBytes = Uint8Array.from(bytes);
@@ -166,11 +175,48 @@ export async function uploadFileToXai(
     body: formData
   });
 
-  const payload = (await response.json()) as { id?: string; error?: unknown };
-  if (!response.ok || !payload.id) {
+  const payload = (await response.json()) as Record<string, unknown>;
+  const fileId =
+    (typeof payload.id === "string" ? payload.id : undefined) ??
+    (typeof payload.file_id === "string" ? payload.file_id : undefined);
+  if (!response.ok || !fileId) {
     throw new Error(`xAI file upload failed: ${JSON.stringify(payload.error ?? payload)}`);
   }
-  return { fileId: payload.id };
+  return {
+    fileId,
+    processingStatus: toXaiProcessingStatus(payload.processing_status)
+  };
+}
+
+export async function getXaiFileMetadata(fileId: string): Promise<XaiFileMetadata> {
+  const { apiKey, baseUrl } = getXaiConfig();
+  const normalizedFileId = fileId.trim();
+  if (!normalizedFileId) {
+    throw new Error("xAI file metadata requires a file id");
+  }
+
+  const response = await fetch(`${baseUrl}/files/${normalizedFileId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${apiKey}`
+    }
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) {
+    throw new Error(`xAI file metadata fetch failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
+
+  const resolvedFileId =
+    (typeof payload.file_id === "string" ? payload.file_id : undefined) ??
+    (typeof payload.id === "string" ? payload.id : undefined) ??
+    normalizedFileId;
+  return {
+    fileId: resolvedFileId,
+    uploadStatus: asString(payload.upload_status),
+    uploadErrorMessage: asString(payload.upload_error_message),
+    processingStatus: toXaiProcessingStatus(payload.processing_status)
+  };
 }
 
 export async function chatWithXai(input: {
@@ -699,6 +745,23 @@ function extractCollectionSnippets(
 
 function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function toXaiProcessingStatus(value: unknown): XaiFileProcessingStatus {
+  if (typeof value !== "string") {
+    return "unknown";
+  }
+  const normalized = value.trim().toLowerCase();
+  switch (normalized) {
+    case "pending":
+    case "processing":
+    case "complete":
+    case "failed":
+    case "skipped":
+      return normalized;
+    default:
+      return "unknown";
+  }
 }
 
 function extractResponseOutputText(payload: Record<string, unknown>): string {

@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
@@ -12,10 +13,19 @@ import {
     type ToolCallLog
 } from "@/lib/xai";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
-import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
+import { createAuditEvent } from "@/modules/audit/repository";
+import {
+    appendXchatTurnToUserCollection,
+    resolveOrCreateUserBootstrapCollection
+} from "@/modules/core-admin/access-request-bootstrap";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { XPERSONA_SUPER_AGENT_NAME, XPERSONA_XFINANCE_NAME } from "@/modules/xchat/default-xpersonas";
+import {
+    ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
+    XPERSONA_SUPER_AGENT_NAME,
+    XPERSONA_XFINANCE_NAME
+} from "@/modules/xchat/default-xpersonas";
+import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     getPersonaById,
     listPersonas,
@@ -207,6 +217,21 @@ export async function POST(request: Request) {
 
   const baseXapiConfig: PersonaXapiConfig = normalizePersonaXapiConfig(persona?.xapi);
   const scope = parsed.data.scope ?? persona?.defaultScope ?? "global";
+  const requestId = buildDeterministicId(
+    "xreq",
+    session.userId,
+    session.tenantId ?? "tenant:none",
+    effectivePersonaId ?? persona?._id?.toHexString() ?? persona?.name ?? "persona:none",
+    message,
+    effectiveModel,
+    scope
+  );
+  const correlationId = buildDeterministicId(
+    "xcorr",
+    requestId,
+    session.userId,
+    session.tenantId ?? "tenant:none"
+  );
   const tenantId = ObjectId.isValid(session.tenantId)
     ? new ObjectId(session.tenantId)
     : null;
@@ -214,9 +239,10 @@ export async function POST(request: Request) {
     ? new ObjectId(session.userId)
     : undefined;
   const personaCollectionId = persona?.xaiCollection?.collectionId?.trim();
-  const userCollection = await getUserBootstrapCollectionByUserId({
+  const userCollection = await resolveOrCreateUserBootstrapCollection({
     userId: session.userId,
-    tenantId: session.tenantId
+    tenantId: session.tenantId,
+    email: session.email
   });
   const teamCollectionIds = isAdminSession ? await resolveAdminTeamCollectionIds() : [];
   const linkedCollectionIds = resolveLinkedCollectionIds({
@@ -227,10 +253,15 @@ export async function POST(request: Request) {
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
-  const xapiConfig = withLinkedCollectionTools(
-    ensureInternalFinanceToolsForPersona(baseXapiConfig, persona?.name),
-    linkedCollectionIds
-  );
+  const withFinanceTools = ensureInternalFinanceToolsForPersona(baseXapiConfig, persona?.name);
+  const withAppMemberPortfolioTool =
+    hasAppRole && !withFinanceTools.tools.some((tool) => tool.type === "atxfinance")
+      ? {
+          ...withFinanceTools,
+          tools: [...withFinanceTools.tools, { type: "atxfinance" as const }]
+        }
+      : withFinanceTools;
+  const xapiConfig = withLinkedCollectionTools(withAppMemberPortfolioTool, linkedCollectionIds);
 
   let contextSource: "none" | "mongo_scope" | "xai_collection" = "none";
   let ragChunks: Awaited<ReturnType<typeof retrieveRagChunks>> = [];
@@ -241,9 +272,24 @@ export async function POST(request: Request) {
   }> = [];
   let ragContext = "";
   let contextCount = 0;
+  let collectionSearchStatus: "ready" | "blocked_non_ready_files" | "skipped_no_collections" = "ready";
+  let collectionSearchNonReadyFileCount = 0;
 
   if (persona?.enableRag !== false) {
     if (linkedCollectionIds.length > 0) {
+      const readinessSummary = await getScopeReadinessSummary({
+        scope,
+        tenantId: tenantId ?? undefined
+      });
+      collectionSearchNonReadyFileCount = readinessSummary.nonReadyFiles.length;
+      if (readinessSummary.blocked) {
+        collectionSearchStatus = "blocked_non_ready_files";
+      }
+    } else {
+      collectionSearchStatus = "skipped_no_collections";
+    }
+
+    if (linkedCollectionIds.length > 0 && collectionSearchStatus === "ready") {
       try {
         const collectionSnippets = await searchDocumentsInCollections({
           query: message,
@@ -292,17 +338,18 @@ export async function POST(request: Request) {
     }
   }
 
+  const hasXfinanceTool = xapiConfig.tools.some((t) => t.type === "atxfinance");
+  const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
+
   const systemPrompt = [
     persona?.systemPrompt ?? "You are xchat, an operations-focused assistant for atxfinance core admins.",
-    ragContext ? `Use the following RAG context if relevant:\n${ragContext}` : "No RAG context available."
+    ragContext ? `Use the following RAG context if relevant:\n${ragContext}` : "No RAG context available.",
+    ...(hasXfinanceTool ? [ATXFINANCE_SESSION_TOOL_INSTRUCTIONS] : [])
   ].join("\n\n");
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
   const userPrompt = userPromptTemplate
     ? `${userPromptTemplate}\n\nUser message:\n${message}`
     : message;
-
-  const hasXfinanceTool = xapiConfig.tools.some((t) => t.type === "atxfinance");
-  const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
   let xaiResponse: { outputText: string; model: string };
   let toolCallLogs: ToolCallLog[] = [];
 
@@ -443,7 +490,70 @@ export async function POST(request: Request) {
     responseText: xaiResponse.outputText
   });
 
+  let xaiTurnFileId: string | undefined;
+  let xaiTurnPayloadHash: string | undefined;
+  let xaiTurnRetentionExpiresAt: Date | undefined;
+  let turnSyncAuditAction: "xchat_turn_synced" | "xchat_turn_sync_failed" = "xchat_turn_synced";
+  let turnSyncAuditError: string | undefined;
+  try {
+    const syncedTurn = await appendXchatTurnToUserCollection({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      email: session.email,
+      collectionId: userCollection?.collectionId,
+      personaName: persona.name,
+      model: xaiResponse.model,
+      scope,
+      prompt: message,
+      response: xaiResponse.outputText
+    });
+    xaiTurnFileId = syncedTurn.fileId;
+    xaiTurnPayloadHash = syncedTurn.payloadHash;
+    xaiTurnRetentionExpiresAt = syncedTurn.retentionExpiresAt;
+  } catch (error) {
+    turnSyncAuditAction = "xchat_turn_sync_failed";
+    turnSyncAuditError = error instanceof Error ? error.message : String(error);
+    console.warn("[xchat/ask] failed to sync prompt/response to user xAI collection", {
+      userId: session.userId,
+      error: turnSyncAuditError
+    });
+  }
+  try {
+    await createAuditEvent({
+      entityType: "xchat_session",
+      entityId: requestId,
+      action: turnSyncAuditAction,
+      actor: {
+        userId: session.userId,
+        email: session.email,
+        username: session.username
+      },
+      details: {
+        correlationId,
+        userIdMasked: maskIdentifier(session.userId),
+        tenantIdMasked: maskIdentifier(session.tenantId),
+        personaId: persona?._id?.toHexString(),
+        model: xaiResponse.model,
+        scope,
+        xaiTurnFileIdMasked: maskIdentifier(xaiTurnFileId),
+        xaiTurnPayloadHash: xaiTurnPayloadHash
+          ? `${xaiTurnPayloadHash.slice(0, 12)}...${xaiTurnPayloadHash.slice(-6)}`
+          : undefined,
+        xaiTurnRetentionExpiresAt: xaiTurnRetentionExpiresAt?.toISOString(),
+        error: turnSyncAuditError
+      }
+    });
+  } catch (auditError) {
+    console.error("[xchat/ask] failed to write xchat turn sync audit event", {
+      requestId,
+      correlationId,
+      error: auditError instanceof Error ? auditError.message : String(auditError)
+    });
+  }
+
   await saveXChatLog({
+    requestId,
+    correlationId,
     userId,
     tenantId: tenantId ?? undefined,
     userEmail: session.email,
@@ -461,10 +571,15 @@ export async function POST(request: Request) {
     xapiToolCalls: toolCallLogs.length > 0
       ? toolCallLogs.map((tc) => ({
           name: tc.name,
+          args: tc.args,
+          resultHash: buildSha256Hex(tc.result),
           durationMs: tc.durationMs,
           error: tc.error
         }))
-      : undefined
+      : undefined,
+    xaiTurnFileId,
+    xaiTurnPayloadHash,
+    xaiTurnRetentionExpiresAt
   });
 
   return NextResponse.json({
@@ -475,6 +590,8 @@ export async function POST(request: Request) {
       modelSelectionSource,
       contextCount,
       contextSource,
+      collectionSearchStatus,
+      collectionSearchNonReadyFileCount,
       toolCalls: toolCallLogs.length > 0
         ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
         : undefined
@@ -490,6 +607,27 @@ function createSnippetFingerprint(input: string): string {
       (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
   return `f${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
+function buildSha256Hex(input: string): string {
+  return createHash("sha256").update(input).digest("hex");
+}
+
+function buildDeterministicId(prefix: string, ...parts: Array<string | undefined>): string {
+  const normalized = parts.map((part) => (part ?? "").trim()).join("|");
+  const digest = buildSha256Hex(normalized);
+  return `${prefix}_${digest.slice(0, 24)}`;
+}
+
+function maskIdentifier(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  if (normalized.length <= 8) {
+    return "***";
+  }
+  return `${normalized.slice(0, 4)}...${normalized.slice(-4)}`;
 }
 
 function canSessionUsePersona(input: {
