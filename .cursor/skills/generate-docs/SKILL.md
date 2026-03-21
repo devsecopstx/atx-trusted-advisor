@@ -47,6 +47,17 @@ changes materially.
 **`src/lib/xchat-debug.ts`**, or ask/batch logging prefixes, update
 **`docs/xchat/xchat-debug-logging.md`**
 (`type` taxonomy, values, privacy).
+If `GET /api/xchat/history` or `GET /api/xchat/history/stats` logging changes,
+include `xchat_history_list` / `xchat_history_stats` in the taxonomy docs.
+
+**Auth identity placeholders:** When changing X OAuth identity-email behavior
+(`src/lib/x-identity-email.ts`, `/api/auth/x/callback`, `/api/auth/link-email`):
+- Document synthetic login identifier format and compatibility rules
+  (for example legacy `@x.identity.local` support and current placeholder domain).
+- Keep operator guidance explicit that synthetic login identifiers are not
+  user contact emails.
+- If access-request payload shape changes, sync API/runbook docs with the
+  `AccessRequest` contract (for example `contactEmail` tracked separately).
 
 ## API docs & OpenAPI (route changes)
 
@@ -227,6 +238,16 @@ When `.github/workflows/deploy-cloud-run.yml` changes
 8. Keep staging/prod job gating rules documented when workflow conditions change
    (for example, staging should run on main push or explicit staging target, not
    on production-only dispatches).
+
+## xChat prompt docs parity
+
+When updating prompt tips/chips or persona examples in xChat:
+
+1. Keep **`docs/xchat/atxfinance-xchat-prompts.md`** in sync with the actual
+   UI surface (`src/app/xchat/ui/xchat-conversation.tsx`).
+2. Do not document persona chips that are not currently rendered.
+3. If prompts are "planned" and not shipped, label them as backlog/TODO and
+   keep shipped behavior first.
 
 ## Output
 

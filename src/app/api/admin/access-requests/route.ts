@@ -3,13 +3,13 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import {
-  createAuditEvent,
-  listLatestAuditEventsForEntities
+    createAuditEvent,
+    listLatestAuditEventsForEntities
 } from "@/modules/audit/repository";
 import {
-  createAccessRequest,
-  getPendingAccessRequestByUserAndRole,
-  listAccessRequests
+    createAccessRequest,
+    getPendingAccessRequestByUserAndRole,
+    listAccessRequests
 } from "@/modules/core-admin/repository";
 import type { AccessRequestListItem } from "@/modules/core-admin/types";
 import { accessRequestStatusValues } from "@/modules/core-admin/types";
@@ -143,6 +143,7 @@ export async function POST(request: Request) {
   const created = await createAccessRequest({
     tenantId: session.tenantId,
     userId: resolvedUserId,
+    contactEmail: resolvedEmail,
     requestedRole: parsed.data.requestedRole,
     requestedPlan: parsed.data.requestedPlan,
     reason: parsed.data.reason,

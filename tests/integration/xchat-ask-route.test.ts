@@ -28,11 +28,21 @@ const verifierMocks = vi.hoisted(() => ({
   verifyXaiCollectionNonBlocking: vi.fn()
 }));
 
+const bootstrapMocks = vi.hoisted(() => ({
+  getUserBootstrapCollectionByUserId: vi.fn()
+}));
+
+const coreAdminRepositoryMocks = vi.hoisted(() => ({
+  getUserAdminSettings: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/rate-limit", () => rateLimitMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/xchat/repository", () => repositoryMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
+vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
+vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
 
@@ -91,6 +101,11 @@ describe("xchat ask route collection retrieval", () => {
     repositoryMocks.retrieveRagChunks.mockResolvedValue([]);
     repositoryMocks.saveXChatLog.mockResolvedValue(undefined);
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
+    bootstrapMocks.getUserBootstrapCollectionByUserId.mockResolvedValue({
+      collectionId: "collection_user-personal",
+      collectionName: "Personal Docs"
+    });
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValue(null);
     verifierMocks.verifyXaiCollectionNonBlocking.mockImplementation(() => {});
   });
 
@@ -116,6 +131,19 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextSource).toBe("xai_collection");
     expect(payload.data.contextCount).toBe(1);
     expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_ops-global");
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith(
+      "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
+    );
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_user-personal");
+    expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collectionIds: [
+          "collection_ops-global",
+          "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236",
+          "collection_user-personal"
+        ]
+      })
+    );
     expect(repositoryMocks.retrieveRagChunks).not.toHaveBeenCalled();
     expect(xaiMocks.respondWithXai).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -210,7 +238,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(repositoryMocks.retrieveRagChunks).toHaveBeenCalledTimes(1);
   });
 
-  it("uses mongo retrieval directly when persona has no collection id", async () => {
+  it("uses mongo retrieval when linked collection search has no hits", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         xaiCollection: {
@@ -246,8 +274,52 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(payload.data.contextSource).toBe("mongo_scope");
     expect(payload.data.contextCount).toBe(1);
-    expect(xaiMocks.searchDocumentsInCollections).not.toHaveBeenCalled();
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).not.toHaveBeenCalled();
+    expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledTimes(1);
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith(
+      "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
+    );
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_user-personal");
+  });
+
+  it("injects linked collection ids into persona file_search tools", async () => {
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "file_search", source: { collection_ids: ["collection_ops-global"] } }]
+        }
+      })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "merge linked collection ids into tool"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXai).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tools: [
+          {
+            type: "file_search",
+            source: {
+              collection_ids: [
+                "collection_ops-global",
+                "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236",
+                "collection_user-personal"
+              ]
+            }
+          }
+        ]
+      })
+    );
   });
 
   it("keeps context empty when rag is disabled", async () => {

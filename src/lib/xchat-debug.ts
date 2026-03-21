@@ -5,7 +5,8 @@
  *
  * **Taxonomy (for Cloud Logging filters):**
  * - **`[xchat/debug]`** — opt-in JSON lines (`ENABLE_XCHAT_DEBUG=true`). Fields
- *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_batch`. See
+ *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_batch` |
+ *   `xchat_history_list` | `xchat_history_stats`. See
  *   `docs/xchat/xchat-debug-logging.md`.
  * - **`[xchat/ask]`** — operational `console.warn` / `console.error` on RAG or
  *   provider failures (always on; no full prompts).
@@ -16,7 +17,9 @@ import { isXchatDebugEnabled } from "@/lib/env";
 export const XCHAT_DEBUG_LOG_TYPES = [
   "xchat_ask",
   "xchat_ask_full",
-  "xchat_batch"
+  "xchat_batch",
+  "xchat_history_list",
+  "xchat_history_stats"
 ] as const;
 
 export type XchatDebugLogType = (typeof XCHAT_DEBUG_LOG_TYPES)[number];
@@ -157,6 +160,52 @@ export function logXchatBatchDebug(payload: {
     ragContextLength: payload.ragContextLength,
     tools: payload.tools,
     collectionId: maskCollectionId(payload.collectionId)
+  };
+
+  console.info(LOG_PREFIX, JSON.stringify(safe));
+}
+
+export function logXchatHistoryListDebug(payload: {
+  userId?: string;
+  email?: string;
+  limit: number;
+  itemCount: number;
+  hasMore: boolean;
+  nextCursor?: string | null;
+}): void {
+  if (!isXchatDebugEnabled()) return;
+
+  const safe = {
+    ts: new Date().toISOString(),
+    type: "xchat_history_list" satisfies XchatDebugLogType,
+    userId: maskUserId(payload.userId),
+    email: maskEmail(payload.email),
+    limit: payload.limit,
+    itemCount: payload.itemCount,
+    hasMore: payload.hasMore,
+    nextCursor: payload.nextCursor ?? null
+  };
+
+  console.info(LOG_PREFIX, JSON.stringify(safe));
+}
+
+export function logXchatHistoryStatsDebug(payload: {
+  userId?: string;
+  email?: string;
+  totalPrompts: number;
+  lastPromptAt?: string;
+  collectionId?: string | null;
+}): void {
+  if (!isXchatDebugEnabled()) return;
+
+  const safe = {
+    ts: new Date().toISOString(),
+    type: "xchat_history_stats" satisfies XchatDebugLogType,
+    userId: maskUserId(payload.userId),
+    email: maskEmail(payload.email),
+    totalPrompts: payload.totalPrompts,
+    lastPromptAt: payload.lastPromptAt ?? null,
+    collectionId: maskCollectionId(payload.collectionId ?? undefined)
   };
 
   console.info(LOG_PREFIX, JSON.stringify(safe));

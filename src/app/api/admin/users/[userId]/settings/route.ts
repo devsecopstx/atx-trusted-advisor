@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
@@ -9,6 +10,8 @@ import {
 } from "@/modules/core-admin/repository";
 
 const updateSettingsSchema = z.object({
+  assignedPersonaId: z.string().trim().optional(),
+  finraLicenseUploadUrl: z.string().trim().max(500).optional(),
   broker: z.object({
     provider: z.enum(["alpaca", "interactive-brokers", "paper"]),
     accountRef: z.string().min(1),
@@ -71,9 +74,39 @@ export async function PUT(request: Request, context: RouteContext) {
     );
   }
 
-  const updated = await upsertUserAdminSettings(userId, parsed.data, {
+  const assignedPersonaId =
+    parsed.data.assignedPersonaId && parsed.data.assignedPersonaId.length > 0
+      ? parsed.data.assignedPersonaId
+      : undefined;
+  const finraLicenseUploadUrl =
+    parsed.data.finraLicenseUploadUrl && parsed.data.finraLicenseUploadUrl.length > 0
+      ? parsed.data.finraLicenseUploadUrl
+      : undefined;
+  if (assignedPersonaId && !ObjectId.isValid(assignedPersonaId)) {
+    return NextResponse.json(
+      {
+        error: "Invalid request payload",
+        details: {
+          fieldErrors: {
+            assignedPersonaId: ["assignedPersonaId must be a valid persona ObjectId"]
+          }
+        }
+      },
+      { status: 400 }
+    );
+  }
+
+  const updated = await upsertUserAdminSettings(
+    userId,
+    {
+      ...parsed.data,
+      assignedPersonaId,
+      finraLicenseUploadUrl
+    },
+    {
     tenantId: session.tenantId
-  });
+    }
+  );
   await createAuditEvent({
     entityType: "core_user",
     entityId: userId,

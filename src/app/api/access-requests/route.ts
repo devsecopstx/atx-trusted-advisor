@@ -3,10 +3,11 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { buildAccessRequestNotification, sendSlackNotification } from "@/lib/slack";
+import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
-  createAccessRequest,
-  getPendingAccessRequestByUserAndRole
+    createAccessRequest,
+    getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
 
 const selfRequestSchema = z.object({
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
   const created = await createAccessRequest({
     tenantId: session.tenantId,
     userId: session.userId,
+    contactEmail: isXIdentityPlaceholderEmail(session.email) ? undefined : session.email,
     requestedRole: parsed.data.requestedRole,
     reason: parsed.data.reason
   });

@@ -28,6 +28,8 @@ export type AccessRequest = {
   _id?: ObjectId;
   tenantId?: ObjectId;
   userId: string;
+  /** Optional real contact email; distinct from synthetic X identity login email. */
+  contactEmail?: string;
   requestedRole: "advisor" | "operator" | "viewer";
   requestedPlan: "free" | "pro" | "enterprise";
   reason: string;
@@ -123,6 +125,10 @@ export type UserAdminSettings = {
   _id?: ObjectId;
   tenantId?: ObjectId;
   userId: string;
+  /** Optional explicit xPersona assignment for ask routing. */
+  assignedPersonaId?: string;
+  /** Investor compliance placeholder for future FINRA evidence links. */
+  finraLicenseUploadUrl?: string;
   broker: BrokerBinding;
   portfolio: PortfolioSettings;
   account: AccountSettings;

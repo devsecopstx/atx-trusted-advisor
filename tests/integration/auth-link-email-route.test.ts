@@ -219,7 +219,7 @@ describe("auth link-email route", () => {
     });
     identityMocks.getCoreUserByXIdentity.mockResolvedValueOnce({
       _id: { toHexString: () => staleUserId },
-      email: "xid-x-user-1@x.identity.local",
+      email: "xlogin-x-user-1@x.oauth.local",
       roles: [],
       status: "active"
     });

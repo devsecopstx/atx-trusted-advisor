@@ -14,6 +14,7 @@ import {
 } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
+import { buildXIdentityPlaceholderEmail, isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
   createAccessRequest,
   getPendingAccessRequestByUserAndRole,
@@ -65,6 +66,7 @@ async function ensurePendingViewerAccessRequestAfterOAuth(user: CoreUser): Promi
   await createAccessRequest({
     userId,
     requestedRole,
+    contactEmail: isXIdentityPlaceholderEmail(user.email) ? undefined : user.email,
     reason: isPlaceholderEmail(user.email)
       ? "Auto-created: X login without email on profile — user on link-email step (email_link_required)"
       : "Auto-created from unapproved X login attempt"
@@ -240,7 +242,7 @@ export async function GET(request: Request) {
   // Placeholder email only blocks OAuth completion until the user has a login-eligible *platform* role.
   // After an admin approves the access request (e.g. viewer), allow sign-in even without X email / real email.
   if (
-    isPlaceholderEmail(user.email) &&
+    isXIdentityPlaceholderEmail(user.email) &&
     user._id &&
     !canUserLogin(user.roles)
   ) {
@@ -405,12 +407,8 @@ function extractHost(url: string): string {
   }
 }
 
-function buildXIdentityPlaceholderEmail(xUserId: string): string {
-  return `xid-${xUserId.toLowerCase()}@x.identity.local`;
-}
-
 function isPlaceholderEmail(email: string): boolean {
-  return email.toLowerCase().endsWith("@x.identity.local");
+  return isXIdentityPlaceholderEmail(email);
 }
 
 function isSameUserId(

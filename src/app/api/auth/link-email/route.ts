@@ -3,24 +3,25 @@ import { z } from "zod";
 
 import { consumePendingXLinkCookie, createSession } from "@/lib/auth";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
+import { isSeedAdminEmail } from "@/lib/seed-admin-email";
+import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
-  createAccessRequest,
-  getPendingAccessRequestByUserAndRole,
-  provisionDefaultPortfolioForUser
+    createAccessRequest,
+    getPendingAccessRequestByUserAndRole,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
-import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import {
-  ensureDefaultTenant,
-  ensureCoreUserByEmail,
-  ensureSeededGlobalAdmin,
-  getCoreUserByEmail,
-  getCoreUserByXIdentity,
-  unlinkXAccountFromUser,
-  linkXAccountToUser,
-  resolveAuthContext,
-  updateCoreUserEmail,
-  upsertTenantMembership
+    ensureCoreUserByEmail,
+    ensureDefaultTenant,
+    ensureSeededGlobalAdmin,
+    getCoreUserByEmail,
+    getCoreUserByXIdentity,
+    linkXAccountToUser,
+    resolveAuthContext,
+    unlinkXAccountFromUser,
+    updateCoreUserEmail,
+    upsertTenantMembership
 } from "@/modules/identity/repository";
 
 const linkSchema = z.object({
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
         avatarUrl: pending.avatarUrl
       });
     }
-  } else if (xIdentityUserId && isPlaceholderEmail(existingByXIdentity.email)) {
+  } else if (xIdentityUserId && isXIdentityPlaceholderEmail(existingByXIdentity.email)) {
     user = await updateCoreUserEmail({
       userId: xIdentityUserId,
       email: requestedEmail
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
         await createAccessRequest({
           userId,
           requestedRole,
+          contactEmail: requestedEmail,
           reason: "Auto-created from email-link login attempt"
         });
       }
@@ -163,10 +165,6 @@ export async function POST(request: Request) {
     ok: true,
     redirectTo: isGlobalAdmin(sessionRoles) ? "/admin" : "/xchat"
   });
-}
-
-function isPlaceholderEmail(email: string): boolean {
-  return email.toLowerCase().endsWith("@x.identity.local");
 }
 
 function isSameUserId(

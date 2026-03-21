@@ -55,6 +55,11 @@ type UserBootstrapProfile = {
   expiresAt: Date;
 };
 
+export type UserBootstrapCollectionContext = {
+  collectionId: string;
+  collectionName?: string;
+};
+
 let ensureBootstrapIndexesPromise: Promise<void> | null = null;
 
 export async function enqueueAccessRequestBootstrap(
@@ -99,6 +104,37 @@ export async function enqueueAccessRequestBootstrap(
       });
     });
   });
+}
+
+export async function getUserBootstrapCollectionByUserId(input: {
+  userId: string;
+  tenantId?: string;
+}): Promise<UserBootstrapCollectionContext | null> {
+  const normalizedUserId = input.userId.trim();
+  if (!normalizedUserId) {
+    return null;
+  }
+  const filter: { userId: string; tenantId?: string } = {
+    userId: normalizedUserId
+  };
+  if (input.tenantId) {
+    filter.tenantId = input.tenantId.trim();
+  }
+  const db = await getDb();
+  const profile = await db
+    .collection<UserBootstrapProfile>(USER_BOOTSTRAP_COLLECTION)
+    .find(filter)
+    .sort({ updatedAt: -1 })
+    .limit(1)
+    .next();
+  const collectionId = profile?.xaiCollectionId?.trim();
+  if (!collectionId) {
+    return null;
+  }
+  return {
+    collectionId,
+    collectionName: profile?.xaiCollectionName?.trim() || undefined
+  };
 }
 
 async function runAccessRequestBootstrap(

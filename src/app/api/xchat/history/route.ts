@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import { logXchatHistoryListDebug } from "@/lib/xchat-debug";
 import { listXChatHistoryByUser } from "@/modules/xchat/repository";
 
 const historyQuerySchema = z.object({
@@ -47,6 +48,14 @@ export async function GET(request: Request) {
   const hasMore = rows.length > take;
   const items = hasMore ? rows.slice(0, take) : rows;
   const nextCursor = hasMore ? items[items.length - 1]?.createdAt.toISOString() : null;
+  logXchatHistoryListDebug({
+    userId: session.userId,
+    email: session.email,
+    limit: take,
+    itemCount: items.length,
+    hasMore,
+    nextCursor
+  });
 
   return NextResponse.json({
     data: {

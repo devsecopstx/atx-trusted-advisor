@@ -6,7 +6,8 @@ import {
 } from "@/lib/x-identity-email";
 
 describe("isXIdentityPlaceholderEmail", () => {
-  it("detects synthetic x.identity.local emails", () => {
+  it("detects synthetic x oauth placeholder emails", () => {
+    expect(isXIdentityPlaceholderEmail("xlogin-abc@x.oauth.local")).toBe(true);
     expect(isXIdentityPlaceholderEmail("xid-abc@x.identity.local")).toBe(true);
     expect(isXIdentityPlaceholderEmail(undefined)).toBe(false);
     expect(isXIdentityPlaceholderEmail("real@example.com")).toBe(false);
@@ -26,7 +27,7 @@ describe("formatUserFacingIdentityLabel", () => {
   it("skips placeholder email for username", () => {
     expect(
       formatUserFacingIdentityLabel(
-        { email: "xid-abc@x.identity.local", username: "grokfan", xUserId: "99" },
+        { email: "xlogin-abc@x.oauth.local", username: "grokfan", xUserId: "99" },
         "507f1f77bcf86cd799439011"
       )
     ).toBe("@grokfan");
@@ -35,7 +36,7 @@ describe("formatUserFacingIdentityLabel", () => {
   it("uses xUserId when no real email or username", () => {
     expect(
       formatUserFacingIdentityLabel(
-        { email: "xid-abc@x.identity.local", xUserId: "224499" },
+        { email: "xlogin-abc@x.oauth.local", xUserId: "224499" },
         "507f1f77bcf86cd799439011"
       )
     ).toBe("224499");

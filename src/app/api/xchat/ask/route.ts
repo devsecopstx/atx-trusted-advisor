@@ -12,6 +12,8 @@ import {
   type ToolCallLog
 } from "@/lib/xai";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
+import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
+import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import {
@@ -24,7 +26,12 @@ import {
   ATXFINANCE_TOOL_DEFINITION,
   createXfinanceToolExecutor
 } from "@/modules/xchat/tool-executor";
-import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
+import {
+  ATXFINANCE_COLLECTION_ID,
+  normalizePersonaXapiConfig,
+  type PersonaXapiConfig,
+  type PersonaXapiToolDefinition
+} from "@/modules/xchat/types";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 
 const askSchema = z.object({
@@ -118,8 +125,26 @@ export async function POST(request: Request) {
     );
   }
   let persona = defaultPersona;
-  if (parsed.data.personaId) {
-    const requestedPersona = await getPersonaById(parsed.data.personaId);
+  const userSettings = await getUserAdminSettings(session.userId, {
+    tenantId: session.tenantId
+  });
+  const requestedPersonaId = parsed.data.personaId?.trim();
+  const assignedPersonaId = userSettings?.assignedPersonaId?.trim();
+  const hasAppRole = session.roles.some((role) =>
+    role === "advisor" || role === "operator" || role === "viewer"
+  );
+  if (assignedPersonaId && requestedPersonaId && assignedPersonaId !== requestedPersonaId) {
+    return NextResponse.json(
+      {
+        error: "Requested persona does not match assigned persona",
+        code: "persona_not_assigned"
+      },
+      { status: 403 }
+    );
+  }
+  const effectivePersonaId = assignedPersonaId || requestedPersonaId;
+  if (effectivePersonaId) {
+    const requestedPersona = await getPersonaById(effectivePersonaId);
     if (!requestedPersona) {
       return NextResponse.json(
         { error: "Persona not found", code: "persona_not_found" },
@@ -128,6 +153,7 @@ export async function POST(request: Request) {
     }
     const access = canSessionUsePersona({
       isAdminSession,
+      hasAppRole,
       personaName: requestedPersona.name,
       personaStatus: requestedPersona.status
     });
@@ -181,7 +207,7 @@ export async function POST(request: Request) {
   }
   const parallelAgentConfig = parallelAgentConfigResult.config;
 
-  const xapiConfig = normalizePersonaXapiConfig(persona?.xapi);
+  const baseXapiConfig: PersonaXapiConfig = normalizePersonaXapiConfig(persona?.xapi);
   const scope = parsed.data.scope ?? persona?.defaultScope ?? "global";
   const tenantId = ObjectId.isValid(session.tenantId)
     ? new ObjectId(session.tenantId)
@@ -189,10 +215,19 @@ export async function POST(request: Request) {
   const userId = ObjectId.isValid(session.userId)
     ? new ObjectId(session.userId)
     : undefined;
-  const collectionId = persona?.xaiCollection?.collectionId?.trim();
-  if (collectionId) {
+  const personaCollectionId = persona?.xaiCollection?.collectionId?.trim();
+  const userCollection = await getUserBootstrapCollectionByUserId({
+    userId: session.userId,
+    tenantId: session.tenantId
+  });
+  const linkedCollectionIds = resolveLinkedCollectionIds({
+    personaCollectionId,
+    userCollectionId: userCollection?.collectionId
+  });
+  for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
+  const xapiConfig = withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds);
 
   let contextSource: "none" | "mongo_scope" | "xai_collection" = "none";
   let ragChunks: Awaited<ReturnType<typeof retrieveRagChunks>> = [];
@@ -205,11 +240,11 @@ export async function POST(request: Request) {
   let contextCount = 0;
 
   if (persona?.enableRag !== false) {
-    if (collectionId) {
+    if (linkedCollectionIds.length > 0) {
       try {
         const collectionSnippets = await searchDocumentsInCollections({
           query: message,
-          collectionIds: [collectionId],
+          collectionIds: linkedCollectionIds,
           limit: topK
         });
         if (collectionSnippets.length > 0) {
@@ -229,7 +264,7 @@ export async function POST(request: Request) {
         }
       } catch (error) {
         console.error(
-          `[xchat/ask] xAI collection search failed for ${collectionId}:`,
+          `[xchat/ask] xAI collection search failed for ${linkedCollectionIds.join(",")}:`,
           error instanceof Error ? error.message : error
         );
       }
@@ -384,7 +419,7 @@ export async function POST(request: Request) {
     responseLength: xaiResponse.outputText.length,
     mode: xapiConfig.mode,
     scope,
-    collectionId,
+    collectionId: linkedCollectionIds[0],
     toolCallCount: toolCallLogs.length,
     modelSelectionSource
   });
@@ -450,11 +485,20 @@ function createSnippetFingerprint(input: string): string {
 
 function canSessionUsePersona(input: {
   isAdminSession: boolean;
+  hasAppRole: boolean;
   personaName: string;
   personaStatus: string | undefined;
 }): AskPersonaAccessResult {
   if (input.isAdminSession) {
     return { ok: true };
+  }
+  if (!input.hasAppRole) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Persona is not available for current role",
+      code: "persona_not_allowed_for_role"
+    };
   }
 
   const status = input.personaStatus ?? "draft";
@@ -508,4 +552,64 @@ function resolveParallelAgentConfig(input: {
       reasoningEffort: effort
     }
   };
+}
+
+function resolveLinkedCollectionIds(input: {
+  personaCollectionId?: string;
+  userCollectionId?: string;
+}): string[] {
+  const ids = [input.personaCollectionId, ATXFINANCE_COLLECTION_ID, input.userCollectionId]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+  return Array.from(new Set(ids));
+}
+
+function withLinkedCollectionTools(
+  config: PersonaXapiConfig,
+  linkedCollectionIds: string[]
+): PersonaXapiConfig {
+  if (linkedCollectionIds.length === 0) {
+    return config;
+  }
+  return {
+    ...config,
+    tools: config.tools.map((tool) => mergeCollectionIdsIntoTool(tool, linkedCollectionIds))
+  };
+}
+
+function mergeCollectionIdsIntoTool(
+  tool: PersonaXapiToolDefinition,
+  linkedCollectionIds: string[]
+): PersonaXapiToolDefinition {
+  if (tool.type === "file_search") {
+    const source = (tool.source ?? {}) as Record<string, unknown>;
+    const existingIds = Array.isArray(source.collection_ids)
+      ? source.collection_ids
+          .filter((id): id is string => typeof id === "string")
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0)
+      : [];
+    return {
+      ...tool,
+      source: {
+        ...source,
+        collection_ids: Array.from(new Set([...existingIds, ...linkedCollectionIds]))
+      }
+    };
+  }
+
+  if (tool.type === "collections_search") {
+    const existingIds = Array.isArray(tool.collection_ids)
+      ? tool.collection_ids
+          .filter((id): id is string => typeof id === "string")
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0)
+      : [];
+    return {
+      ...tool,
+      collection_ids: Array.from(new Set([...existingIds, ...linkedCollectionIds]))
+    };
+  }
+
+  return tool;
 }

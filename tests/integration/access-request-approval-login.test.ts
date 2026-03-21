@@ -407,7 +407,7 @@ describe("access request approval login flow", () => {
       _id: {
         toHexString: () => staleUserId
       },
-      email: "xid-x-user-1@x.identity.local",
+      email: "xlogin-x-user-1@x.oauth.local",
       roles: [] as string[],
       status: "active" as const
     };
@@ -477,7 +477,7 @@ describe("access request approval login flow", () => {
       _id: {
         toHexString: () => state.userId
       },
-      email: "xid-x-user-1@x.identity.local",
+      email: "xlogin-x-user-1@x.oauth.local",
       roles: [] as string[],
       status: "active" as const
     };
@@ -509,7 +509,7 @@ describe("access request approval login flow", () => {
 
     expect(response.headers.get("location")).toContain("/login?error=email_link_required");
     expect(identityMocks.ensureCoreUserByEmail).toHaveBeenCalledWith({
-      email: "xid-x-user-1@x.identity.local"
+      email: "xlogin-x-user-1@x.oauth.local"
     });
     expect(authMocks.setPendingXLinkCookie).toHaveBeenCalledTimes(1);
     expect(coreAdminMocks.getPendingAccessRequestByUserAndRole).toHaveBeenCalledWith({
@@ -529,7 +529,7 @@ describe("access request approval login flow", () => {
       _id: {
         toHexString: () => state.userId
       },
-      email: "xid-x-user-1@x.identity.local",
+      email: "xlogin-x-user-1@x.oauth.local",
       roles: ["viewer"] as string[],
       status: "active" as const
     };

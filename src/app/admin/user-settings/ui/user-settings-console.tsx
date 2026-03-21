@@ -31,11 +31,18 @@ type NotificationDefaults = {
 };
 
 type UserAdminSettingsPayload = {
+  assignedPersonaId?: string;
+  finraLicenseUploadUrl?: string;
   broker: BrokerSettings;
   portfolio: PortfolioSettings;
   account: AccountSettings;
   notificationDefaults: NotificationDefaults;
   updatedAt?: string;
+};
+
+type PersonaOption = {
+  id: string;
+  name: string;
 };
 
 type ApprovedUser = {
@@ -82,6 +89,8 @@ type ApiUser = {
 type EditableRole = Exclude<ApprovedUser["role"], "unknown">;
 
 const DEFAULT_SETTINGS: UserAdminSettingsPayload = {
+  assignedPersonaId: "",
+  finraLicenseUploadUrl: "",
   broker: { provider: "paper", accountRef: "paper-main", enabled: true },
   portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
   account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
@@ -103,6 +112,8 @@ export function UserSettingsConsole() {
   const [settingsForm, setSettingsForm] = useState<UserAdminSettingsPayload>(DEFAULT_SETTINGS);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsLastSaved, setSettingsLastSaved] = useState<string | null>(null);
+  const [personaOptions, setPersonaOptions] = useState<PersonaOption[]>([]);
+  const [personaByUserId, setPersonaByUserId] = useState<Record<string, string>>({});
 
   const refreshApprovedUsers = useCallback(async () => {
     try {
@@ -139,8 +150,41 @@ export function UserSettingsConsole() {
         }
         return next;
       });
+      const personaEntries = await Promise.all(
+        normalizedUsers.map(async (user) => {
+          try {
+            const settingsPayload = await parseJson<{ data: UserAdminSettingsPayload }>(
+              await fetch(`/api/admin/users/${encodeURIComponent(user.userId)}/settings`)
+            );
+            return [user.userId, settingsPayload.data.assignedPersonaId ?? ""] as const;
+          } catch {
+            return [user.userId, ""] as const;
+          }
+        })
+      );
+      setPersonaByUserId(Object.fromEntries(personaEntries));
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to load approved users");
+    }
+  }, []);
+
+  const refreshPersonaOptions = useCallback(async () => {
+    try {
+      const payload = await parseJson<{
+        data: Array<{
+          _id?: string;
+          name: string;
+        }>;
+      }>(await fetch("/api/personas?status=published"));
+      const options = payload.data
+        .filter((persona): persona is { _id: string; name: string } => Boolean(persona._id))
+        .map((persona) => ({
+          id: persona._id,
+          name: persona.name
+        }));
+      setPersonaOptions(options);
+    } catch {
+      setPersonaOptions([]);
     }
   }, []);
 
@@ -152,6 +196,8 @@ export function UserSettingsConsole() {
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}/settings`)
       );
       setSettingsForm({
+        assignedPersonaId: payload.data.assignedPersonaId ?? "",
+        finraLicenseUploadUrl: payload.data.finraLicenseUploadUrl ?? "",
         broker: payload.data.broker,
         portfolio: payload.data.portfolio,
         account: payload.data.account,
@@ -184,6 +230,19 @@ export function UserSettingsConsole() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, role, subscriptionPlan })
+        })
+      );
+      const settingsPayload = await parseJson<{ data: UserAdminSettingsPayload }>(
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}/settings`)
+      ).catch(() => ({ data: DEFAULT_SETTINGS }));
+      await parseJson(
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}/settings`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...settingsPayload.data,
+            assignedPersonaId: personaByUserId[userId] ?? ""
+          })
         })
       );
       await refreshApprovedUsers();
@@ -267,11 +326,12 @@ export function UserSettingsConsole() {
   useEffect(() => {
     const refreshTimer = window.setTimeout(() => {
       void refreshApprovedUsers();
+      void refreshPersonaOptions();
     }, 0);
     return () => {
       window.clearTimeout(refreshTimer);
     };
-  }, [refreshApprovedUsers]);
+  }, [refreshApprovedUsers, refreshPersonaOptions]);
 
   return (
     <section className="panel stack-gap">
@@ -318,6 +378,7 @@ export function UserSettingsConsole() {
                 <th>Email</th>
                 <th>Role</th>
                 <th>Plan</th>
+                <th>xPersona</th>
                 <th>Audit</th>
                 <th>Actions</th>
               </tr>
@@ -368,6 +429,25 @@ export function UserSettingsConsole() {
                       <option value="free">free</option>
                       <option value="pro">pro</option>
                       <option value="enterprise">enterprise</option>
+                    </select>
+                  </td>
+                  <td>
+                    <select
+                      disabled={editingUserId !== user.userId}
+                      onChange={(event) =>
+                        setPersonaByUserId((previous) => ({
+                          ...previous,
+                          [user.userId]: event.target.value
+                        }))
+                      }
+                      value={personaByUserId[user.userId] ?? ""}
+                    >
+                      <option value="">(default by app role)</option>
+                      {personaOptions.map((persona) => (
+                        <option key={persona.id} value={persona.id}>
+                          {persona.name}
+                        </option>
+                      ))}
                     </select>
                   </td>
                   <td>
@@ -428,6 +508,52 @@ export function UserSettingsConsole() {
             <p className="status-text">Loading settings...</p>
           ) : (
             <form className="stack-form" onSubmit={saveSettings}>
+              <fieldset>
+                <legend>xPersona Assignment</legend>
+                <label>
+                  Assigned Persona
+                  <select
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        assignedPersonaId: e.target.value
+                      }))
+                    }
+                    value={settingsForm.assignedPersonaId ?? ""}
+                  >
+                    <option value="">(default by app role)</option>
+                    {personaOptions.map((persona) => (
+                      <option key={persona.id} value={persona.id}>
+                        {persona.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="status-text">
+                  This controls ask persona routing only. Page visibility remains driven by app role.
+                </p>
+              </fieldset>
+
+              <fieldset>
+                <legend>Compliance Placeholder</legend>
+                <label>
+                  FINRA License Upload URL
+                  <input
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        finraLicenseUploadUrl: e.target.value
+                      }))
+                    }
+                    placeholder="https://compliance.example.com/uploads/finra-license.pdf"
+                    value={settingsForm.finraLicenseUploadUrl ?? ""}
+                  />
+                </label>
+                <p className="status-text">
+                  Placeholder for investor compliance workflow. Upload handling is a later integration.
+                </p>
+              </fieldset>
+
               <fieldset>
                 <legend>Broker</legend>
                 <label>
