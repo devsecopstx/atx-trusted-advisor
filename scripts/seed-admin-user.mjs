@@ -15,6 +15,7 @@ const DEFAULT_PERSONA_NAME = "Super-Agent";
 const DEFAULT_PERSONA_SYSTEM_PROMPT =
   "You are The Architect, an elite administrative agent with full access to the xAI ecosystem. You have a multi-layered toolset including Web Search, X (Twitter) Search, a Python Code Sandbox, and Private Collection Search.";
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
+const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
 const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
@@ -22,6 +23,17 @@ const DEFAULT_WATCHLIST_SYMBOLS = ["TSLA"];
 const DEFAULT_COLLECTION_ID =
   (process.env.ATXFINANCE_COLLECTION_ID || "").trim() || "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
 const DEFAULT_COLLECTION_NAME = "Finance";
+const TENANT_PORTFOLIOS_COLLECTION = "tenant_portfolios";
+const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
+  (process.env.TENANT_PORTFOLIO_ORG_KEY || "").trim() || "org-atx-finance";
+
+/** Matches `UserAdminSettings` defaults used in admin user-settings tests / UI. */
+const DEFAULT_SEED_ADMIN_USER_SETTINGS = {
+  broker: { provider: "paper", accountRef: "paper-main", enabled: true },
+  portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
+  account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
+  notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
+};
 
 function decodeMongoUri() {
   const encoded = process.env.MONGODB_URI_B64 ?? process.env.MONGODB_URI_B4;
@@ -204,7 +216,7 @@ async function seed() {
       throw new Error("Failed to create or fetch default Super-Agent persona");
     }
 
-    await db.collection("portfolio_portfolios").updateOne(
+    await db.collection(TENANT_PORTFOLIOS_COLLECTION).updateOne(
       { tenantId: tenant._id, userId: user._id, isDefault: true },
       {
         $setOnInsert: {
@@ -215,13 +227,15 @@ async function seed() {
         $set: {
           name: DEFAULT_PORTFOLIO_NAME,
           isDefault: true,
+          ext_broker_ref: DEFAULT_EXT_BROKER_REF,
+          tenantPortfolioOrgKey: DEFAULT_TENANT_PORTFOLIO_ORG_KEY,
           updatedAt: now
         }
       },
       { upsert: true }
     );
     const portfolio = await db
-      .collection("portfolio_portfolios")
+      .collection(TENANT_PORTFOLIOS_COLLECTION)
       .findOne({ tenantId: tenant._id, userId: user._id, isDefault: true });
     if (!portfolio?._id) {
       throw new Error("Failed to create or fetch default portfolio");
@@ -286,6 +300,28 @@ async function seed() {
     });
     if (!watchlist?._id) {
       throw new Error("Failed to create or fetch default watchlist");
+    }
+
+    const adminSettingsFilter = { userId: String(user._id), tenantId: tenant._id };
+    const existingAdminSettings = await db.collection("admin_user_settings").findOne(adminSettingsFilter);
+    if (!existingAdminSettings) {
+      await db.collection("admin_user_settings").insertOne({
+        ...adminSettingsFilter,
+        assignedPersonaId: String(persona._id),
+        ...DEFAULT_SEED_ADMIN_USER_SETTINGS,
+        createdAt: now,
+        updatedAt: now
+      });
+    } else {
+      const assigned = existingAdminSettings.assignedPersonaId;
+      const missingAssignment =
+        assigned == null || (typeof assigned === "string" && assigned.trim() === "");
+      if (missingAssignment) {
+        await db.collection("admin_user_settings").updateOne(
+          { _id: existingAdminSettings._id },
+          { $set: { assignedPersonaId: String(persona._id), updatedAt: now } }
+        );
+      }
     }
 
     console.log(

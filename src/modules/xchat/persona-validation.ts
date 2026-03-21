@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
+import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 export const PERSONA_VALIDATION_LIMITS = {
   payloadBytes: 32 * 1024,
@@ -13,8 +14,6 @@ export const PERSONA_VALIDATION_LIMITS = {
   scopeLength: 80,
   xapiToolsLength: 32
 } as const;
-const DEFAULT_XCHAT_PERSONA_MODEL = "grok-4-1-fast-reasoning";
-
 const temperatureSchema = z.preprocess(
   (value) => {
     if (typeof value === "string") {
@@ -108,7 +107,7 @@ export const createPersonaPayloadSchema = z.object({
     .trim()
     .min(1)
     .max(PERSONA_VALIDATION_LIMITS.modelLength)
-    .default(DEFAULT_XCHAT_PERSONA_MODEL),
+    .default(XAI_PERSONA_CHAT_MODEL_FALLBACK_ID),
   temperature: temperatureSchema.default(0.2),
   enableRag: booleanSchema.default(true),
   defaultScope: z

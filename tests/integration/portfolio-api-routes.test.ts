@@ -108,6 +108,12 @@ describe("portfolio API routes", () => {
     const payload = (await response.json()) as { data: { name: string } };
     expect(response.status).toBe(200);
     expect(payload.data.name).toBe("Default Portfolio");
+    expect(
+      (payload as { data: { ext_broker_ref?: string } }).data.ext_broker_ref
+    ).toBe("extBrokerName");
+    expect(
+      (payload as { data: { tenantPortfolioOrgKey?: string } }).data.tenantPortfolioOrgKey
+    ).toBe("org-atx-finance");
   });
 
   it("returns account list for portfolio", async () => {

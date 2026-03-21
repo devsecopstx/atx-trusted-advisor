@@ -1,3 +1,5 @@
+import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
+
 export type PersonaFormState = {
   name: string;
   systemPrompt: string;
@@ -33,7 +35,7 @@ export const EMPTY_CREATE_FORM: PersonaFormState = {
   overridePrompt: "",
   xaiCollectionId: "",
   xaiCollectionName: "",
-  model: "grok-4-1-fast-reasoning",
+  model: XAI_PERSONA_CHAT_MODEL_FALLBACK_ID,
   temperature: "0.2",
   enableRag: true,
   defaultScope: "global",

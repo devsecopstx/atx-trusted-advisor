@@ -7,6 +7,7 @@
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import type { PersonaConfig } from "@/modules/xchat/types";
 import { ATXFINANCE_COLLECTION_ID, DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
+import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 export const XPERSONA_SUPER_AGENT_NAME = "Super-Agent";
 
@@ -15,6 +16,7 @@ export const XPERSONA_XFINANCE_NAME = "xFinance";
 /** Appended to the ask-route system prompt whenever atxfinance is in the effective tool list (all app members + xFinance + admins with the tool). */
 export const ATXFINANCE_SESSION_TOOL_INSTRUCTIONS = `Workspace tools (this signed-in user only):
 You MUST use the atxfinance tool when the user asks about their own portfolio, accounts, cash balances, watchlist tickers, or stock/option positions (holdings). Call it before answering—do not ask them to paste holdings or balances if a tool can retrieve them.
+Do not print JSON, markdown code fences, or pseudo tool calls (e.g. {"tool":"atxfinance"})—the platform only runs tools via the API function-calling channel; text that mimics a tool call will not load workspace data.
 Operations: portfolio_summary (overview, per-account cashBalance, position counts), positions_snapshot (symbol, qty, avgCost per account; may truncate), watchlist_snapshot (symbols + addedAt), account_health (balances + default account). For live quotes use yahoo_finance or atxfinance with operation market_quote.
 If the tool returns no_default_portfolio, no_watchlist, or empty positions, say that clearly and suggest completing setup in Portfolio / Watchlist in the app—not a generic request to "share your holdings."`;
 
@@ -37,14 +39,12 @@ export type DefaultXfinancePersonaInsert = Omit<
 
 /** Default RAG collection for xFinance (and optionally Super-Agent); may change over time. */
 export const DEFAULT_XFINANCE_COLLECTION_NAME = "Finance";
-const DEFAULT_XCHAT_PERSONA_MODEL = "grok-4-1-fast-reasoning";
-
 export function buildDefaultXfinancePersonaPayload(): DefaultXfinancePersonaInsert {
   return {
     name: XPERSONA_XFINANCE_NAME,
     systemPrompt: XFINANCE_SYSTEM_PROMPT,
     overridePrompt: "",
-    model: DEFAULT_XCHAT_PERSONA_MODEL,
+    model: XAI_PERSONA_CHAT_MODEL_FALLBACK_ID,
     temperature: 0.2,
     enableRag: true,
     defaultScope: "global",

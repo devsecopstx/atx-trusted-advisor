@@ -67,7 +67,7 @@ export function logXchatAskDebug(payload: {
   /** Masked xAI collection id when collection search was used. */
   collectionId?: string;
   toolCallCount?: number;
-  modelSelectionSource?: "default" | "override";
+  modelSelectionSource?: "default" | "persona";
 }): void {
   if (!isXchatDebugEnabled()) return;
 

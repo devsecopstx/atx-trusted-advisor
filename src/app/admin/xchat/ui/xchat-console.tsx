@@ -4,8 +4,9 @@ import { FormEvent, useCallback, useMemo, useState } from "react";
 
 import { AskIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 
-type PersonaOption = {
+export type AdminXchatPersonaOption = {
   _id?: string;
   name: string;
   model: string;
@@ -18,23 +19,58 @@ type AskResponse = {
   };
 };
 
-export function XchatConsole() {
-  const [personas, setPersonas] = useState<PersonaOption[]>([]);
-  const [selectedPersona, setSelectedPersona] = useState("");
+function resolveSuperAgentPersonaId(personas: AdminXchatPersonaOption[]): string {
+  const key = XPERSONA_SUPER_AGENT_NAME.trim().toLowerCase();
+  for (const p of personas) {
+    const id = typeof p._id === "string" ? p._id.trim() : "";
+    if (id && p.name.trim().toLowerCase() === key) {
+      return id;
+    }
+  }
+  return "";
+}
+
+type XchatConsoleProps = {
+  initialPersonas: AdminXchatPersonaOption[];
+};
+
+export function XchatConsole({ initialPersonas }: XchatConsoleProps) {
+  const [personas, setPersonas] = useState<AdminXchatPersonaOption[]>(initialPersonas);
+  const [selectedPersona, setSelectedPersona] = useState(
+    () => resolveSuperAgentPersonaId(initialPersonas) || ""
+  );
   const [message, setMessage] = useState("");
-  const [status, setStatus] = useState("Ready - refresh personas first");
+  const [status, setStatus] = useState(
+    initialPersonas.length > 0
+      ? "Personas synced — refresh for latest from API"
+      : "No personas in DB — run seed or create in Admin → Personas"
+  );
   const [chatResponse, setChatResponse] = useState("");
 
   const personaOptions = useMemo(
-    () => [{ _id: "", name: "Default xchat", model: "", defaultScope: "global" }, ...personas],
+    () => [
+      {
+        _id: "",
+        name: "Server default (omit personaId — Super-Agent for global_admin)",
+        model: "",
+        defaultScope: "global"
+      },
+      ...personas
+    ],
     [personas]
   );
 
   const refreshPersonas = useCallback(async () => {
     setStatus("Loading personas...");
     try {
-      const payload = await parseJson<{ data: PersonaOption[] }>(await fetch("/api/personas"));
+      const payload = await parseJson<{ data: AdminXchatPersonaOption[] }>(await fetch("/api/personas"));
       setPersonas(payload.data);
+      setSelectedPersona((prev) => {
+        if (prev && payload.data.some((p) => String(p._id ?? "").trim() === prev)) {
+          return prev;
+        }
+        return resolveSuperAgentPersonaId(payload.data) || "";
+      });
       setStatus("Personas synced");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to load personas");

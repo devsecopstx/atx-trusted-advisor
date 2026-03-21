@@ -1,7 +1,11 @@
 import { MongoClient, ObjectId } from "mongodb";
 
 const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
+const TENANT_PORTFOLIOS_COLLECTION = "tenant_portfolios";
+const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
+  (process.env.TENANT_PORTFOLIO_ORG_KEY || "").trim() || "org-atx-finance";
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
+const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
 const DEFAULT_WATCHLIST_NAME = "Default Watchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
@@ -20,7 +24,7 @@ function decodeMongoUri() {
 
 async function ensurePortfolioIndexes(db) {
   await Promise.all([
-    db.collection("portfolio_portfolios").createIndex(
+    db.collection(TENANT_PORTFOLIOS_COLLECTION).createIndex(
       { tenantId: 1, userId: 1, isDefault: 1 },
       {
         unique: true,
@@ -28,12 +32,16 @@ async function ensurePortfolioIndexes(db) {
         name: "uniq_default_portfolio_per_user"
       }
     ),
-    db.collection("portfolio_portfolios").createIndex(
+    db.collection(TENANT_PORTFOLIOS_COLLECTION).createIndex(
       { tenantId: 1, userId: 1, name: 1 },
       {
         unique: true,
         name: "uniq_portfolio_name_per_user"
       }
+    ),
+    db.collection(TENANT_PORTFOLIOS_COLLECTION).createIndex(
+      { tenantPortfolioOrgKey: 1, tenantId: 1 },
+      { name: "idx_tenant_portfolios_org_tenant" }
     ),
     db.collection("portfolio_accounts").createIndex(
       { tenantId: 1, portfolioId: 1, isDefault: 1 },
@@ -55,7 +63,7 @@ async function ensurePortfolioIndexes(db) {
 
 async function provisionDefaultsForUser(db, { userId, tenantId }) {
   const now = new Date();
-  const portfolios = db.collection("portfolio_portfolios");
+  const portfolios = db.collection(TENANT_PORTFOLIOS_COLLECTION);
   const accounts = db.collection("portfolio_accounts");
   const watchlists = db.collection("portfolio_watchlists");
 
@@ -70,6 +78,8 @@ async function provisionDefaultsForUser(db, { userId, tenantId }) {
       $set: {
         name: DEFAULT_PORTFOLIO_NAME,
         isDefault: true,
+        ext_broker_ref: DEFAULT_EXT_BROKER_REF,
+        tenantPortfolioOrgKey: DEFAULT_TENANT_PORTFOLIO_ORG_KEY,
         updatedAt: now
       }
     },

@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { listPersonas } from "@/modules/xchat/repository";
 
-import { XchatConsole } from "./ui/xchat-console";
+import { type AdminXchatPersonaOption, XchatConsole } from "./ui/xchat-console";
 
 export default async function AdminXchatPage() {
   const session = await getSessionUser();
@@ -14,6 +15,14 @@ export default async function AdminXchatPage() {
   if (!isGlobalAdmin(session.roles)) {
     redirect("/xchat");
   }
+
+  const personaDocs = await listPersonas();
+  const initialPersonas: AdminXchatPersonaOption[] = personaDocs.map((p) => ({
+    _id: p._id?.toHexString(),
+    name: p.name,
+    model: p.model,
+    defaultScope: p.defaultScope
+  }));
 
   return (
     <div className="core-shell">
@@ -25,7 +34,7 @@ export default async function AdminXchatPage() {
         </p>
       </section>
 
-      <XchatConsole />
+      <XchatConsole initialPersonas={initialPersonas} />
 
       <section className="panel stack-gap">
         <Link className="admin-function-card" href="/admin/xchat/batch">

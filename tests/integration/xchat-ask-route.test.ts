@@ -46,6 +46,10 @@ const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
 
+const identityMocks = vi.hoisted(() => ({
+  getCoreUserById: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/rate-limit", () => rateLimitMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
@@ -55,6 +59,7 @@ vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/modules/identity/repository", () => identityMocks);
 
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
 
@@ -131,6 +136,7 @@ describe("xchat ask route collection retrieval", () => {
       retentionExpiresAt: new Date("2026-04-22T00:00:00.000Z")
     });
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
+    identityMocks.getCoreUserById.mockResolvedValue(null);
     coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValue(null);
     verifierMocks.verifyXaiCollectionNonBlocking.mockImplementation(() => {});
     ragReadinessMocks.getScopeReadinessSummary.mockResolvedValue({
@@ -395,7 +401,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(repositoryMocks.retrieveRagChunks).not.toHaveBeenCalled();
   });
 
-  it("uses chat completions mode when persona xapi mode is chat_completions", async () => {
+  it("uses responses tool loop when persona mode is chat_completions but yahoo_finance requires local execution", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         xapi: {
@@ -419,9 +425,9 @@ describe("xchat ask route collection retrieval", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(xaiMocks.chatWithXai).toHaveBeenCalledTimes(1);
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledTimes(1);
+    expect(xaiMocks.chatWithXai).not.toHaveBeenCalled();
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
-    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
     expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
       expect.objectContaining({
         xapiMode: "chat_completions",
@@ -783,7 +789,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
   });
 
-  it("denies app_user model override request", async () => {
+  it("uses persona model for effective xAI model (body model field is not accepted)", async () => {
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -791,33 +797,49 @@ describe("xchat ask route collection retrieval", () => {
       username: "xf-viewer",
       roles: ["viewer"]
     });
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        name: "xFinance",
+        model: "grok-from-persona-doc"
+      })
+    );
 
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: "model override should fail",
+          message: "which model runs",
           model: "grok-4.20-multi-agent"
         })
       })
     );
-    const payload = (await response.json()) as { error: string; code: string };
+    const payload = (await response.json()) as {
+      data?: { modelSelectionSource?: string };
+    };
 
-    expect(response.status).toBe(403);
-    expect(payload.code).toBe("model_override_not_allowed");
-    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
-    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(payload.data?.modelSelectionSource).toBe("persona");
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "grok-from-persona-doc"
+      })
+    );
   });
 
-  it("maps multi-agent effort high to 16 agents for admin override", async () => {
+  it("maps multi-agent effort high to 16 agents when persona model is grok-4.20-multi-agent", async () => {
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        model: "grok-4.20-multi-agent"
+      })
+    );
+
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: "run multi-agent",
-          model: "grok-4.20-multi-agent",
           reasoningEffort: "high"
         })
       })
@@ -833,6 +855,7 @@ describe("xchat ask route collection retrieval", () => {
         }
       })
     );
+    expect(identityMocks.getCoreUserById).not.toHaveBeenCalled();
   });
 
   it("rejects reasoningEffort when model is not multi-agent", async () => {
@@ -852,5 +875,39 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.code).toBe("invalid_reasoning_effort");
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
     expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+  });
+
+  it("loads core user for non-admin ask to apply multi-agent plan clamp", async () => {
+    identityMocks.getCoreUserById.mockResolvedValueOnce({
+      subscriptionPlan: "enterprise"
+    } as never);
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "viewer plan clamp path",
+          topK: 4
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(identityMocks.getCoreUserById).toHaveBeenCalledTimes(1);
+    const firstArg = identityMocks.getCoreUserById.mock.calls[0]?.[0] as ObjectId;
+    expect(firstArg.toHexString()).toBe("507f1f77bcf86cd799439011");
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parallelism: undefined
+      })
+    );
   });
 });

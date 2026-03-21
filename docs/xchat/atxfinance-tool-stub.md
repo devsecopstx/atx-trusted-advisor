@@ -2,7 +2,7 @@
 
 ## Status
 
-**Shipped** for `POST /api/xchat/ask` when the effective persona tools include `atxfinance` (or for **app members** — roles `advisor` / `operator` / `viewer` — the ask route **merges** `{ "type": "atxfinance" }` if the persona omitted it). Execution lives in [`src/modules/xchat/tool-executor.ts`](../../src/modules/xchat/tool-executor.ts) behind the Responses API tool loop ([`respondWithXaiToolLoop`](../../src/lib/xai.ts)).
+**Shipped** for `POST /api/xchat/ask` when the effective persona tools include `atxfinance` (or for **app members** — roles `advisor` / `operator` / `viewer` — the ask route **merges** `{ "type": "atxfinance" }` if the persona omitted it). Execution lives in [`src/modules/xchat/tool-executor.ts`](../../src/modules/xchat/tool-executor.ts) behind the Responses API tool loop ([`respondWithXaiToolLoop`](../../src/lib/xai.ts)). If persona `xapi.mode` is `chat_completions` but `atxfinance` or `yahoo_finance` is present (including auto-injected Yahoo), the ask route still uses that tool loop — plain `chat/completions` does not execute these custom tools server-side. If the model returns assistant **text** that looks like a fenced JSON `atxfinance` call (instead of a real `function_call` output item), the tool loop **parses and runs** that operation once so portfolio-style prompts still hit Mongo-backed data.
 
 ## Security
 
@@ -15,7 +15,7 @@ Single function tool `atxfinance` with JSON args `{ "operation": "<name>", "symb
 
 | Operation | Purpose |
 |-----------|---------|
-| `portfolio_summary` | Default portfolio name, per-account metadata (`name`, `type`, `extAccountId`, `isDefault`, **`cashBalance`**, **`positionCount`**), **`totalPositionCount`**. |
+| `portfolio_summary` | Default portfolio name, **`ext_broker_ref`** (default `extBrokerName` for cohort grouping until linked), per-account metadata (`name`, `type`, `extAccountId`, `isDefault`, **`cashBalance`**, **`positionCount`**), **`totalPositionCount`**. If no default portfolio exists yet, the executor runs **`provisionDefaultPortfolioForUser`** once (aligned with `GET /api/portfolios/default`) before returning `no_default_portfolio`. |
 | `positions_snapshot` | Holdings per account: `symbol`, `qty`, `avgCost`. Response is **capped** (200 positions); **`truncated`** / **`omittedCount`** when clipped. **Not** tool-cached (fresher data). |
 | `watchlist_snapshot` | Watchlist name and symbols with **`addedAt`** (ISO string). |
 | `account_health` | Accounts with **`cashBalance`**, plus **`defaultAccountName`**. |

@@ -1,5 +1,11 @@
 import type { SubscriptionPlan } from "@/modules/identity/types";
 
+/** Parallelism payload for `grok-4.20-multi-agent` (xAI `agent_count` + `reasoning.effort`). */
+export type ParallelismPlanClamp = {
+  agentCount: 4 | 16;
+  reasoningEffort: "low" | "medium" | "high";
+};
+
 export type PlanTierLimits = {
   maxPromptsPerDay: number;
   maxTurns: number;
@@ -12,6 +18,11 @@ export type PlanTierLimits = {
   maxBatchItemsPerJob: number;
   monthlyBudgetCents: number;
   softLimitPercent: number;
+  /**
+   * Max `agent_count` for multi-agent model calls for **non–global_admin** sessions (subscription plan).
+   * `0` strips parallelism entirely (no multi-agent surcharge) until ops raises caps per tier.
+   */
+  multiAgentParallelMaxAgents: 0 | 4 | 16;
 };
 
 const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
@@ -26,7 +37,8 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     batchEnabled: false,
     maxBatchItemsPerJob: 0,
     monthlyBudgetCents: 0,
-    softLimitPercent: 100
+    softLimitPercent: 100,
+    multiAgentParallelMaxAgents: 0
   },
   pro: {
     maxPromptsPerDay: 200,
@@ -39,7 +51,8 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     batchEnabled: true,
     maxBatchItemsPerJob: 100,
     monthlyBudgetCents: 5000,
-    softLimitPercent: 80
+    softLimitPercent: 80,
+    multiAgentParallelMaxAgents: 0
   },
   enterprise: {
     maxPromptsPerDay: 2000,
@@ -52,7 +65,8 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     batchEnabled: true,
     maxBatchItemsPerJob: 500,
     monthlyBudgetCents: 50000,
-    softLimitPercent: 80
+    softLimitPercent: 80,
+    multiAgentParallelMaxAgents: 0
   }
 };
 
@@ -97,6 +111,39 @@ export type BudgetCheckResult = {
   limitCents: number;
   softLimitReached: boolean;
 };
+
+/**
+ * Applies subscription-tier ceiling to multi-agent parallelism.
+ * When `maxAgents` is `0`, callers should omit `agent_count` / parallelism from xAI requests.
+ */
+export function clampMultiAgentParallelismWithMax(
+  config: ParallelismPlanClamp | undefined,
+  maxAgents: 0 | 4 | 16
+): ParallelismPlanClamp | undefined {
+  if (!config) {
+    return undefined;
+  }
+  if (maxAgents === 0) {
+    return undefined;
+  }
+  if (config.agentCount <= maxAgents) {
+    return config;
+  }
+  return {
+    agentCount: 4,
+    reasoningEffort: config.reasoningEffort
+  };
+}
+
+export function clampMultiAgentParallelismForPlan(
+  config: ParallelismPlanClamp | undefined,
+  plan?: SubscriptionPlan
+): ParallelismPlanClamp | undefined {
+  return clampMultiAgentParallelismWithMax(
+    config,
+    getPlanLimits(plan).multiAgentParallelMaxAgents
+  );
+}
 
 export function checkBudget(
   usedCents: number,

@@ -9,7 +9,7 @@ Final pass before release — gaps in documentation and security focus. Align wi
 | Gap | Location | Recommendation |
 |-----|----------|----------------|
 | **No single xChat “contract” doc** | `docs/xchat/` | Add `docs/xchat/README.md` (or extend existing) with: public routes (`POST /api/xchat/ask`, batch), persona resolution (Super-Agent vs xFinance from session role), and pointer to OpenAPI + persona governance. |
-| **Plan limits not wired in API** | `src/modules/xchat/plan-limits.ts` vs `ask/route.ts` | Document in `DEVELOPMENT.md` or `docs/xchat/`: `getPlanLimits()` exists; **daily prompt caps and plan-based gating are not enforced** in `POST /api/xchat/ask` (only fixed rate limit 20/60s). AGENTS.md “Deferred — plan limits UI” already notes usage meter / soft-limit copy; add one line that ask route does not yet enforce `maxPromptsPerDay`. |
+| **Plan limits partially wired in API** | `src/modules/xchat/plan-limits.ts` vs `ask/route.ts` | **`multiAgentParallelMaxAgents`** is enforced for non–`global_admin` (see `clampMultiAgentParallelismForPlan` + [`context-routing-multi-agent-policy.md`](./context-routing-multi-agent-policy.md)). **`maxPromptsPerDay` / budget** are still not enforced on ask (only fixed rate limit 20/60s). |
 | **Tool stub vs runtime** | `docs/xchat/atxfinance-tool-stub.md`, `xfeature-tools-plan.md` | Stub and plan are accurate (deferred runtime). No change; ensure new contributors see stub before adding tool execution. |
 | **Feedback retention (PLAN.md)** | `docs/PLAN.md` | “User-facing privacy / retention” is Design TBD for **Feedback** only. Extend to **xChat**: short note that `xchat_logs` stores message, response, user identifiers, and collection refs; retention and export policy TBD unless already defined elsewhere. |
 

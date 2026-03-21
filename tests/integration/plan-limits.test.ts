@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  checkBudget,
-  clampTopK,
-  clampTurns,
-  getPlanLimits,
-  resolveModel
+    checkBudget,
+    clampMultiAgentParallelismForPlan,
+    clampMultiAgentParallelismWithMax,
+    clampTopK,
+    clampTurns,
+    getPlanLimits,
+    resolveModel
 } from "@/modules/xchat/plan-limits";
 
 describe("plan tier limits", () => {
@@ -115,5 +117,38 @@ describe("budget checks", () => {
     const result = checkBudget(10000, "enterprise");
     expect(result.allowed).toBe(true);
     expect(result.limitCents).toBe(50000);
+  });
+});
+
+describe("multi-agent plan clamp", () => {
+  const highParallelism = { agentCount: 16 as const, reasoningEffort: "high" as const };
+  const lowParallelism = { agentCount: 4 as const, reasoningEffort: "medium" as const };
+
+  it("all tiers default multiAgentParallelMaxAgents to 0", () => {
+    expect(getPlanLimits("free").multiAgentParallelMaxAgents).toBe(0);
+    expect(getPlanLimits("pro").multiAgentParallelMaxAgents).toBe(0);
+    expect(getPlanLimits("enterprise").multiAgentParallelMaxAgents).toBe(0);
+  });
+
+  it("clampMultiAgentParallelismWithMax returns undefined when max is 0", () => {
+    expect(clampMultiAgentParallelismWithMax(highParallelism, 0)).toBeUndefined();
+    expect(clampMultiAgentParallelismWithMax(undefined, 0)).toBeUndefined();
+  });
+
+  it("clampMultiAgentParallelismWithMax passes through when agentCount within max", () => {
+    expect(clampMultiAgentParallelismWithMax(lowParallelism, 4)).toEqual(lowParallelism);
+    expect(clampMultiAgentParallelismWithMax(highParallelism, 16)).toEqual(highParallelism);
+  });
+
+  it("clampMultiAgentParallelismWithMax reduces 16 to 4 when max is 4", () => {
+    expect(clampMultiAgentParallelismWithMax(highParallelism, 4)).toEqual({
+      agentCount: 4,
+      reasoningEffort: "high"
+    });
+  });
+
+  it("clampMultiAgentParallelismForPlan uses tier max (currently all 0)", () => {
+    expect(clampMultiAgentParallelismForPlan(highParallelism, "enterprise")).toBeUndefined();
+    expect(clampMultiAgentParallelismForPlan(highParallelism, undefined)).toBeUndefined();
   });
 });

@@ -3,21 +3,22 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { PersonaModelSelect } from "@/app/admin/personas/ui/persona-model-select";
 import {
-  AddIcon,
-  BackIcon,
-  DeleteIcon,
-  EditIcon,
-  RefreshIcon,
-  UploadIcon
+    EMPTY_CREATE_FORM,
+    applySelectedCollectionToPersonaForm,
+    type PersonaFormState,
+    type XaiCollectionInventoryOption
+} from "@/app/admin/personas/ui/personas-onboarding";
+import {
+    AddIcon,
+    BackIcon,
+    DeleteIcon,
+    EditIcon,
+    RefreshIcon,
+    UploadIcon
 } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
-import {
-  EMPTY_CREATE_FORM,
-  applySelectedCollectionToPersonaForm,
-  type PersonaFormState,
-  type XaiCollectionInventoryOption
-} from "@/app/admin/personas/ui/personas-onboarding";
 import { countPersonaLinkedCollections } from "@/modules/xchat/persona-linked-collections";
 
 type Persona = {
@@ -639,11 +640,9 @@ export function PersonasConsole({
               placeholder="optional collection display name"
               value={createForm.xaiCollectionName}
             />
-            <input
-              maxLength={120}
+            <PersonaModelSelect
               name="model"
-              onChange={(event) => updateCreateForm("model", event.target.value)}
-              placeholder="model id"
+              onChange={(modelId) => updateCreateForm("model", modelId)}
               required
               value={createForm.model}
             />
@@ -1103,11 +1102,9 @@ export function PersonasConsole({
               placeholder="optional collection display name"
               value={editForm.xaiCollectionName}
             />
-            <input
-              maxLength={120}
+            <PersonaModelSelect
               name="model"
-              onChange={(event) => updateEditForm("model", event.target.value)}
-              placeholder="model id"
+              onChange={(modelId) => updateEditForm("model", modelId)}
               required
               value={editForm.model}
             />

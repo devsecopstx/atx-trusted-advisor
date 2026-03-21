@@ -30,6 +30,7 @@
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.
 - [ ] Docs/runbooks updated when behavior or operations changed.
+- [ ] xChat `POST /api/xchat/ask` changes: update OpenAPI inventory (`src/lib/openapi/current-state-overrides.ts`), `tests/integration/xchat-ask-route.test.ts`, and xChat docs as needed (`docs/xchat/context-routing-multi-agent-policy.md`, `atxfinance-tool-stub.md`, `AGENTS.md` quick ref). **Contract:** effective xAI model id comes from the **resolved persona’s `model`** (server default if empty); **no** request-body `model`; `modelSelectionSource` is `persona` | `default`.
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.
 - [ ] Open gaps (if any) are in **`docs/PLAN.md`** as TODO / design TBD, or consciously not applicable to this change.

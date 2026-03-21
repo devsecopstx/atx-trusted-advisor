@@ -19,6 +19,8 @@ import {
     type WatchlistSymbol
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
+import { TENANT_PORTFOLIOS_COLLECTION } from "@/modules/core-admin/collection-names";
+import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 
 const collections = {
   accessRequests: "admin_access_requests",
@@ -26,7 +28,7 @@ const collections = {
   taskRuns: "admin_task_runs",
   userSettings: "admin_user_settings",
   deployNoteConfigs: "admin_deploy_note_configs",
-  portfolios: "portfolio_portfolios",
+  portfolios: TENANT_PORTFOLIOS_COLLECTION,
   accounts: "portfolio_accounts",
   watchlists: "portfolio_watchlists",
   positions: "portfolio_positions"
@@ -35,6 +37,8 @@ const collections = {
 let ensurePortfolioIndexesPromise: Promise<void> | null = null;
 
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
+/** Default broker bucket on new portfolios for future trader cohort grouping. */
+export const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "defaultaccount";
 const DEFAULT_ACCOUNT_REF = "fidelity-default-account";
 /** Default paper cash for provision + read-time coalesce when Mongo field is missing. */
@@ -192,6 +196,10 @@ async function createPortfolioIndexes(): Promise<void> {
         unique: true,
         name: "uniq_portfolio_name_per_user"
       }
+    ),
+    db.collection<Portfolio>(collections.portfolios).createIndex(
+      { tenantPortfolioOrgKey: 1, tenantId: 1 },
+      { name: "idx_tenant_portfolios_org_tenant" }
     ),
     db.collection<Account>(collections.accounts).createIndex(
       { tenantId: 1, portfolioId: 1, isDefault: 1 },
@@ -976,6 +984,8 @@ export async function provisionDefaultPortfolioForUser(
       $set: {
         name: portfolioName,
         isDefault: true,
+        ext_broker_ref: DEFAULT_EXT_BROKER_REF,
+        tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
         updatedAt: now
       }
     },

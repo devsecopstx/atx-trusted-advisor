@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import {
+    DEFAULT_EXT_BROKER_REF,
     getDefaultPortfolio,
     listPortfolioAccounts,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
+import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 
 export async function GET() {
   const session = await requireSessionUser();
@@ -73,6 +75,8 @@ export async function GET() {
       // Legacy compatibility fields.
       userId: portfolio.userId,
       isDefault: portfolio.isDefault,
+      ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
+      tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey ?? getTenantPortfolioOrgKey(),
       createdAt: portfolio.createdAt.toISOString(),
       updatedAt: portfolio.updatedAt.toISOString()
     }

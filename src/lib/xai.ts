@@ -415,6 +415,42 @@ export async function respondWithXaiToolLoop(input: {
     const pendingToolCalls = extractToolCalls(payload);
     if (pendingToolCalls.length === 0) {
       const outputText = extractResponseOutputText(payload);
+      const syntheticArgs = trySyntheticAtxfinanceToolArgs(outputText, input.tools);
+      if (
+        syntheticArgs &&
+        turn < maxTurns - 1
+      ) {
+        const syntheticCallId = `synthetic_atxfinance_${turn}`;
+        const start = Date.now();
+        let executorResult: { result: string; error?: string };
+        try {
+          executorResult = await input.executor("atxfinance", syntheticArgs);
+        } catch (error) {
+          executorResult = {
+            result: "",
+            error: error instanceof Error ? error.message : "executor_error"
+          };
+        }
+        const durationMs = Date.now() - start;
+        toolCalls.push({
+          name: "atxfinance",
+          args: syntheticArgs,
+          result: executorResult.result,
+          error: executorResult.error,
+          durationMs
+        });
+        const toolOutput = executorResult.error
+          ? JSON.stringify({ error: executorResult.error })
+          : executorResult.result;
+        conversationInput = [
+          {
+            type: "function_call_output",
+            call_id: syntheticCallId,
+            output: toolOutput
+          }
+        ];
+        continue;
+      }
       return {
         model: asString(payload.model) ?? model,
         outputText,
@@ -475,6 +511,74 @@ type ParsedToolCall = {
   name: string;
   args: Record<string, unknown>;
 };
+
+/** Matches `ATXFINANCE_TOOL_DEFINITION.function.parameters.properties.operation.enum` — recover when the model prints JSON instead of using API function_call. */
+const ATXFINANCE_SYNTHETIC_OPERATIONS = new Set([
+  "portfolio_summary",
+  "positions_snapshot",
+  "watchlist_snapshot",
+  "account_health",
+  "task_status",
+  "market_quote"
+]);
+
+function requestToolsIncludeAtxfinance(tools: Array<Record<string, unknown>>): boolean {
+  for (const t of tools) {
+    const fn = t.function as Record<string, unknown> | undefined;
+    const name = fn && typeof fn === "object" ? asString(fn.name) : "";
+    if (name === "atxfinance") {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Some models return ```json { "tool": "atxfinance", "operation": "..." } ``` as assistant text
+ * instead of emitting `function_call` items; the host then never runs the executor.
+ */
+function trySyntheticAtxfinanceToolArgs(
+  assistantText: string,
+  tools: Array<Record<string, unknown>>
+): Record<string, unknown> | null {
+  if (!requestToolsIncludeAtxfinance(tools) || !assistantText.trim()) {
+    return null;
+  }
+  const fenced = assistantText.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const jsonSlice = fenced ? fenced[1].trim() : assistantText.trim();
+  if (!jsonSlice.startsWith("{")) {
+    return null;
+  }
+  let obj: Record<string, unknown>;
+  try {
+    obj = JSON.parse(jsonSlice) as Record<string, unknown>;
+  } catch {
+    const opQuoted = assistantText.match(/"operation"\s*:\s*"([a-z_]+)"/);
+    if (!opQuoted?.[1] || !ATXFINANCE_SYNTHETIC_OPERATIONS.has(opQuoted[1])) {
+      return null;
+    }
+    if (!/\batxfinance\b/i.test(assistantText)) {
+      return null;
+    }
+    return { operation: opQuoted[1] };
+  }
+  const op = obj.operation;
+  if (typeof op !== "string" || !ATXFINANCE_SYNTHETIC_OPERATIONS.has(op)) {
+    return null;
+  }
+  const toolField = obj.tool;
+  if (toolField !== undefined && toolField !== "atxfinance") {
+    return null;
+  }
+  if (toolField === undefined && !/\batxfinance\b/i.test(assistantText)) {
+    return null;
+  }
+  const out: Record<string, unknown> = { operation: op };
+  if (typeof obj.symbol === "string" && obj.symbol.trim()) {
+    out.symbol = obj.symbol.trim();
+  }
+  return out;
+}
 
 function extractToolCalls(payload: Record<string, unknown>): ParsedToolCall[] {
   const output = Array.isArray(payload.output) ? payload.output : [];

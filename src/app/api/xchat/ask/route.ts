@@ -20,11 +20,14 @@ import {
 } from "@/modules/core-admin/access-request-bootstrap";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { getCoreUserById } from "@/modules/identity/repository";
+import type { SubscriptionPlan } from "@/modules/identity/types";
 import {
     ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
     XPERSONA_SUPER_AGENT_NAME,
     XPERSONA_XFINANCE_NAME
 } from "@/modules/xchat/default-xpersonas";
+import { clampMultiAgentParallelismForPlan } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     getPersonaById,
@@ -49,7 +52,6 @@ import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-v
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
   personaId: z.string().optional(),
-  model: z.string().min(1).max(128).optional(),
   reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
   scope: z.string().min(1).max(128).optional(),
   topK: z.number().int().min(1).max(10).optional()
@@ -60,12 +62,11 @@ const ASK_RATE_WINDOW_MS = 60_000;
 const ASK_RATE_MAX = 20;
 const DEFAULT_XCHAT_MODEL = "grok-4-1-fast-reasoning";
 const MULTI_AGENT_MODEL = "grok-4.20-multi-agent";
-const ADMIN_ALLOWED_MODEL_OVERRIDES = new Set<string>([MULTI_AGENT_MODEL]);
 const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>([
   normalizeNameKey(XPERSONA_SUPER_AGENT_NAME)
 ]);
 
-type ModelSelectionSource = "default" | "override";
+type ModelSelectionSource = "default" | "persona";
 type ParallelReasoningEffort = "low" | "medium" | "high";
 
 type ParallelAgentConfig = {
@@ -174,31 +175,12 @@ export async function POST(request: Request) {
     persona = requestedPersona;
   }
 
-  const requestedModel = parsed.data.model?.trim();
-  let effectiveModel = DEFAULT_XCHAT_MODEL;
-  let modelSelectionSource: ModelSelectionSource = "default";
-  if (requestedModel) {
-    if (!isAdminSession) {
-      return NextResponse.json(
-        {
-          error: "Model override is not allowed for this role",
-          code: "model_override_not_allowed"
-        },
-        { status: 403 }
-      );
-    }
-    if (requestedModel !== DEFAULT_XCHAT_MODEL && !ADMIN_ALLOWED_MODEL_OVERRIDES.has(requestedModel)) {
-      return NextResponse.json(
-        {
-          error: "Requested model override is not in the approved set",
-          code: "model_override_disallowed_model"
-        },
-        { status: 403 }
-      );
-    }
-    effectiveModel = requestedModel;
-    modelSelectionSource = "override";
-  }
+  const personaModelRaw =
+    typeof persona?.model === "string" ? persona.model.trim().slice(0, 128) : "";
+  const effectiveModel =
+    personaModelRaw.length > 0 ? personaModelRaw : DEFAULT_XCHAT_MODEL;
+  const modelSelectionSource: ModelSelectionSource =
+    personaModelRaw.length > 0 ? "persona" : "default";
 
   const parallelAgentConfigResult = resolveParallelAgentConfig({
     model: effectiveModel,
@@ -213,7 +195,18 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const parallelAgentConfig = parallelAgentConfigResult.config;
+  let parallelAgentConfig = parallelAgentConfigResult.config;
+  if (!isAdminSession) {
+    let subscriptionPlan: SubscriptionPlan | undefined;
+    if (ObjectId.isValid(session.userId)) {
+      const coreUser = await getCoreUserById(new ObjectId(session.userId));
+      subscriptionPlan = coreUser?.subscriptionPlan;
+    }
+    parallelAgentConfig = clampMultiAgentParallelismForPlan(
+      parallelAgentConfig,
+      subscriptionPlan
+    );
+  }
 
   const baseXapiConfig: PersonaXapiConfig = normalizePersonaXapiConfig(persona?.xapi);
   const scope = parsed.data.scope ?? persona?.defaultScope ?? "global";
@@ -340,6 +333,8 @@ export async function POST(request: Request) {
 
   const hasXfinanceTool = xapiConfig.tools.some((t) => t.type === "atxfinance");
   const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
+  /** Custom tools must run through `respondWithXaiToolLoop`; `chatWithXai` does not execute tool_calls. */
+  const needsLocalToolLoop = hasXfinanceTool || hasYahooFinanceTool;
 
   const systemPrompt = [
     persona?.systemPrompt ?? "You are xchat, an operations-focused assistant for atxfinance core admins.",
@@ -387,9 +382,9 @@ export async function POST(request: Request) {
   };
 
   try {
-    if (xapiConfig.mode === "chat_completions") {
+    if (xapiConfig.mode === "chat_completions" && !needsLocalToolLoop) {
       xaiResponse = await chatCompletionsWithTools();
-    } else if (hasXfinanceTool || hasYahooFinanceTool) {
+    } else if (needsLocalToolLoop) {
       const xaiTools: Array<Record<string, unknown>> = xapiConfig.tools
         .filter((t) => t.type !== "atxfinance" && t.type !== "yahoo_finance")
         .map((t) => ({ ...t }));

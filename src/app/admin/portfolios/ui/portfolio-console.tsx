@@ -10,6 +10,7 @@ type Portfolio = {
   userId: string;
   name: string;
   isDefault: boolean;
+  tenantPortfolioOrgKey?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -91,12 +92,13 @@ export function PortfolioConsole() {
       </div>
 
       <article className="surface-card xf-widget section-card">
-        <h3>Default Portfolio</h3>
+        <h3>Your default tenant portfolio</h3>
         {portfolio ? (
           <div className="crud-table-wrap">
             <table className="crud-table">
               <thead>
                 <tr>
+                  <th>Tenant org key</th>
                   <th>Name</th>
                   <th>Default</th>
                   <th>User ID</th>
@@ -106,6 +108,9 @@ export function PortfolioConsole() {
               </thead>
               <tbody>
                 <tr>
+                  <td className="font-mono text-xs">
+                    {portfolio.tenantPortfolioOrgKey ?? "—"}
+                  </td>
                   <td>{portfolio.name}</td>
                   <td>{portfolio.isDefault ? "Yes" : "No"}</td>
                   <td>{portfolio.userId}</td>

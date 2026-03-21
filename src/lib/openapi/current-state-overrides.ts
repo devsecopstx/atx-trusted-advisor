@@ -591,14 +591,11 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "string",
         description: "Optional persona selection. App users are restricted to published allowlisted personas."
       },
-      model: {
-        type: "string",
-        description: "Optional model override (admin-approved models only)."
-      },
       reasoningEffort: {
         type: "string",
         enum: ["low", "medium", "high"],
-        description: "Only valid with model `grok-4.20-multi-agent`."
+        description:
+          "Only valid when the resolved persona’s `model` is `grok-4.20-multi-agent` (set in Admin → Personas). Non–global_admin sessions may have multi-agent parallelism stripped per subscription plan (`multiAgentParallelMaxAgents` in plan limits; defaults cap app users at 0 until raised)."
       },
       scope: { type: "string", minLength: 1, maxLength: 128 },
       topK: { type: "integer", minimum: 1, maximum: 10 }
@@ -625,8 +622,9 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       },
       modelSelectionSource: {
         type: "string",
-        enum: ["default", "override"],
-        description: "Indicates whether model came from persona default or authorized request override."
+        enum: ["default", "persona"],
+        description:
+          "`persona` when the effective xAI model id came from the resolved persona document; `default` when the persona has no model set (server fallback)."
       },
       contextCount: { type: "integer", minimum: 0 },
       contextSource: { type: "string", enum: ["none", "mongo_scope", "xai_collection"] },

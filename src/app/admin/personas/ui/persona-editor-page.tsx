@@ -3,13 +3,17 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
+import { PersonaModelSelect } from "@/app/admin/personas/ui/persona-model-select";
 import { DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT } from "@/app/admin/personas/ui/personas-onboarding";
 import { DeleteIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 type PersonaEditorPageProps = {
   mode: "create" | "edit";
   personaId?: string;
+  /** From server `XAI_CHAT_MODEL` (create flow default). */
+  defaultChatModelId?: string;
 };
 
 type ToolSelections = {
@@ -47,7 +51,7 @@ const EMPTY_FORM: PersonaPayload = {
   overridePrompt: "",
   xaiCollectionId: "",
   xaiCollectionName: "",
-  model: "grok-4-1-fast-reasoning",
+  model: XAI_PERSONA_CHAT_MODEL_FALLBACK_ID,
   temperature: "0.2",
   enableRag: true,
   defaultScope: "global",
@@ -347,9 +351,8 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           ) : (
             <p className="status-text">No collections returned from xAI inventory.</p>
           )}
-          <input
-            onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
-            placeholder="model"
+          <PersonaModelSelect
+            onChange={(modelId) => setForm((current) => ({ ...current, model: modelId }))}
             required
             value={form.model}
           />

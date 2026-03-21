@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/env", () => ({
   getEnv: () => ({
@@ -39,6 +39,44 @@ describe("respondWithXaiToolLoop", () => {
     expect(result.outputText).toBe("The answer is 42.");
     expect(result.toolCalls).toHaveLength(0);
     expect(result.turnsUsed).toBe(1);
+  });
+
+  it("runs atxfinance executor when model prints fenced JSON instead of function_call", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        model: "grok-4-1-fast",
+        output_text:
+          '```json\n{\n  "tool": "atxfinance",\n  "operation": "portfolio_summary"\n}\n```'
+      })
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        model: "grok-4-1-fast",
+        output_text: "Here is your portfolio overview."
+      })
+    });
+
+    const { respondWithXaiToolLoop } = await import("@/lib/xai");
+    const result = await respondWithXaiToolLoop({
+      systemPrompt: "Test",
+      userPrompt: "Show my portfolio allocation",
+      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      maxTurns: 5,
+      executor: async (name, args) => {
+        expect(name).toBe("atxfinance");
+        expect(args).toEqual({ operation: "portfolio_summary" });
+        return { result: JSON.stringify({ name: "Default", accountCount: 1 }) };
+      }
+    });
+
+    expect(result.outputText).toBe("Here is your portfolio overview.");
+    expect(result.toolCalls).toHaveLength(1);
+    expect(result.toolCalls[0].name).toBe("atxfinance");
+    expect(result.turnsUsed).toBe(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("executes tool call and returns final text", async () => {

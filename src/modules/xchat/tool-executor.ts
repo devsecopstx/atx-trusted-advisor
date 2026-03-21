@@ -1,12 +1,14 @@
 import type { ToolExecutor } from "@/lib/xai";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
+    DEFAULT_EXT_BROKER_REF,
     getDefaultPortfolio,
     getPortfolioWatchlist,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     listScheduledTasks,
-    listTaskRuns
+    listTaskRuns,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { getCachedToolResult, setCachedToolResult } from "@/modules/xchat/tool-cache";
@@ -20,6 +22,25 @@ type ExecutorContext = {
   userId: string;
   tenantId?: string;
 };
+
+async function getDefaultPortfolioOrProvision(
+  ctx: ExecutorContext
+): Promise<Awaited<ReturnType<typeof getDefaultPortfolio>>> {
+  const existing = await getDefaultPortfolio(ctx.userId, { tenantId: ctx.tenantId });
+  if (existing?._id) {
+    return existing;
+  }
+  try {
+    const { portfolio } = await provisionDefaultPortfolioForUser({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      watchlistSymbols: ["TSLA"]
+    });
+    return portfolio;
+  } catch {
+    return null;
+  }
+}
 
 type OperationHandler = (
   args: Record<string, unknown>,
@@ -39,9 +60,7 @@ function positionCountsByAccountId(
 
 const operations: Record<string, OperationHandler> = {
   portfolio_summary: async (_args, ctx) => {
-    const portfolio = await getDefaultPortfolio(ctx.userId, {
-      tenantId: ctx.tenantId
-    });
+    const portfolio = await getDefaultPortfolioOrProvision(ctx);
     if (!portfolio?._id) {
       return { error: "no_default_portfolio" };
     }
@@ -70,6 +89,7 @@ const operations: Record<string, OperationHandler> = {
     return {
       name: portfolio.name,
       isDefault: portfolio.isDefault,
+      ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
       accountCount: accounts.length,
       totalPositionCount: positions.length,
       accounts: accounts.map((a) => ({
@@ -84,9 +104,7 @@ const operations: Record<string, OperationHandler> = {
   },
 
   watchlist_snapshot: async (_args, ctx) => {
-    const portfolio = await getDefaultPortfolio(ctx.userId, {
-      tenantId: ctx.tenantId
-    });
+    const portfolio = await getDefaultPortfolioOrProvision(ctx);
     if (!portfolio?._id) {
       return { error: "no_default_portfolio" };
     }
@@ -113,9 +131,7 @@ const operations: Record<string, OperationHandler> = {
   },
 
   account_health: async (_args, ctx) => {
-    const portfolio = await getDefaultPortfolio(ctx.userId, {
-      tenantId: ctx.tenantId
-    });
+    const portfolio = await getDefaultPortfolioOrProvision(ctx);
     if (!portfolio?._id) {
       return { error: "no_default_portfolio" };
     }
@@ -142,9 +158,7 @@ const operations: Record<string, OperationHandler> = {
   },
 
   positions_snapshot: async (_args, ctx) => {
-    const portfolio = await getDefaultPortfolio(ctx.userId, {
-      tenantId: ctx.tenantId
-    });
+    const portfolio = await getDefaultPortfolioOrProvision(ctx);
     if (!portfolio?._id) {
       return { error: "no_default_portfolio" };
     }

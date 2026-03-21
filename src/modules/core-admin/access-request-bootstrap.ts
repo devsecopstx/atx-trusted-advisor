@@ -12,6 +12,7 @@ import {
     XaiCollectionNotFoundError
 } from "@/lib/xai";
 import { createAuditEvent } from "@/modules/audit/repository";
+import { TENANT_PORTFOLIOS_COLLECTION } from "@/modules/core-admin/collection-names";
 import {
     createScheduledTask,
     provisionDefaultPortfolioForUser
@@ -21,7 +22,7 @@ import { getCoreUserById, updateCoreUserXaiCollection } from "@/modules/identity
 const USER_BOOTSTRAP_COLLECTION = "admin_user_bootstrap_profiles";
 const PROFILE_RETENTION_DAYS = 30;
 export const XCHAT_TURN_RETENTION_DAYS = 30;
-const PORTFOLIO_COLLECTION = "portfolio_portfolios";
+const PORTFOLIO_COLLECTION = TENANT_PORTFOLIOS_COLLECTION;
 const ACCOUNT_COLLECTION = "portfolio_accounts";
 const WATCHLIST_COLLECTION = "portfolio_watchlists";
 

@@ -161,6 +161,15 @@ export type Portfolio = {
   userId: string;
   name: string;
   isDefault: boolean;
+  /**
+   * Cohort / broker grouping key (e.g. linked integration). Defaults to `extBrokerName` until set.
+   */
+  ext_broker_ref?: string;
+  /**
+   * Deployment org bucket (e.g. `org-atx-finance`): all app_user “client” portfolios for this instance.
+   * See `getTenantPortfolioOrgKey()` / `TENANT_PORTFOLIO_ORG_KEY`.
+   */
+  tenantPortfolioOrgKey?: string;
   createdAt: Date;
   updatedAt: Date;
 };

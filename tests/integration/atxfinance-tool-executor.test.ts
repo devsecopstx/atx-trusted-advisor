@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const repositoryMocks = vi.hoisted(() => ({
   DEFAULT_ACCOUNT_CASH_BALANCE: 25_000,
+  DEFAULT_EXT_BROKER_REF: "extBrokerName",
   getDefaultPortfolio: vi.fn(),
+  provisionDefaultPortfolioForUser: vi.fn(),
   listPortfolioAccounts: vi.fn(),
   listPortfolioPositionsByAccount: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
@@ -81,6 +83,7 @@ describe("atxfinance tool executor", () => {
     const result = await executor("atxfinance", { operation: "portfolio_summary" });
     const data = JSON.parse(result.result);
     expect(data.name).toBe("Default Portfolio");
+    expect(data.ext_broker_ref).toBe("extBrokerName");
     expect(data.accountCount).toBe(1);
     expect(data.totalPositionCount).toBe(1);
     expect(data.accounts[0].type).toBe("fidelity");
@@ -176,12 +179,34 @@ describe("atxfinance tool executor", () => {
     expect(result.error).toContain("unknown_operation");
   });
 
-  it("returns error when no default portfolio exists", async () => {
+  it("returns error when no default portfolio and provision fails", async () => {
     repositoryMocks.getDefaultPortfolio.mockResolvedValueOnce(null);
+    repositoryMocks.provisionDefaultPortfolioForUser.mockRejectedValueOnce(
+      new Error("provision failed")
+    );
     const executor = createXfinanceToolExecutor(ctx);
     const result = await executor("atxfinance", { operation: "portfolio_summary" });
     const data = JSON.parse(result.result);
     expect(data.error).toBe("no_default_portfolio");
+  });
+
+  it("provisions default portfolio when missing then returns summary", async () => {
+    repositoryMocks.getDefaultPortfolio.mockResolvedValueOnce(null);
+    repositoryMocks.provisionDefaultPortfolioForUser.mockResolvedValueOnce({
+      portfolio: { _id: portfolioId, name: "Provisioned", isDefault: true },
+      account: { _id: accountId },
+      watchlist: { _id: new ObjectId() }
+    } as never);
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", { operation: "portfolio_summary" });
+    const data = JSON.parse(result.result);
+    expect(repositoryMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledWith({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      watchlistSymbols: ["TSLA"]
+    });
+    expect(data.name).toBe("Provisioned");
+    expect(data.accountCount).toBe(1);
   });
 
   it("returns error when no watchlist exists", async () => {
