@@ -129,20 +129,6 @@ function withTenantScope(
   };
 }
 
-function withStrictTenantScope(
-  query: Record<string, unknown>,
-  tenantId?: string
-): Record<string, unknown> {
-  const tenantObjectId = toTenantObjectId(tenantId);
-  if (!tenantObjectId) {
-    return query;
-  }
-  return {
-    ...query,
-    tenantId: tenantObjectId
-  };
-}
-
 export type ProvisionDefaultPortfolioInput = {
   userId: string;
   tenantId?: string;
@@ -778,7 +764,7 @@ export async function getDefaultPortfolio(
   const db = await getDb();
   return db
     .collection<Portfolio>(collections.portfolios)
-    .findOne(withStrictTenantScope({ userId, isDefault: true }, options?.tenantId));
+    .findOne(withTenantScope({ userId, isDefault: true }, options?.tenantId));
 }
 
 export async function listPortfolioAccounts(input: {
@@ -794,7 +780,7 @@ export async function listPortfolioAccounts(input: {
   return db
     .collection<Account>(collections.accounts)
     .find(
-      withStrictTenantScope(
+      withTenantScope(
         {
           userId: input.userId,
           portfolioId: new ObjectId(input.portfolioId)
@@ -821,7 +807,7 @@ export async function listPortfolioPositionsByAccount(input: {
   return db
     .collection<Position>(collections.positions)
     .find(
-      withStrictTenantScope(
+      withTenantScope(
         {
           userId: input.userId,
           portfolioId: new ObjectId(input.portfolioId),
@@ -845,7 +831,7 @@ export async function getPortfolioWatchlist(input: {
   }
   const db = await getDb();
   const doc = await db.collection<Watchlist>(collections.watchlists).findOne(
-    withStrictTenantScope(
+    withTenantScope(
       {
         userId: input.userId,
         portfolioId: new ObjectId(input.portfolioId)
@@ -890,7 +876,7 @@ export async function mutatePortfolioWatchlistSymbols(
 
   const db = await getDb();
   const portfolioOid = new ObjectId(input.portfolioId);
-  const filter = withStrictTenantScope(
+  const filter = withTenantScope(
     {
       userId: input.userId,
       portfolioId: portfolioOid
@@ -969,7 +955,7 @@ export async function provisionDefaultPortfolioForUser(
   const seedSymbolStrings =
     input.watchlistSymbols !== undefined ? input.watchlistSymbols : [DEFAULT_WATCHLIST_SYMBOL];
 
-  const portfolioFilter = withStrictTenantScope(
+  const portfolioFilter = withTenantScope(
     { userId: input.userId, isDefault: true },
     input.tenantId
   );
@@ -986,7 +972,8 @@ export async function provisionDefaultPortfolioForUser(
         isDefault: true,
         ext_broker_ref: DEFAULT_EXT_BROKER_REF,
         tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
-        updatedAt: now
+        updatedAt: now,
+        ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
       }
     },
     { upsert: true }
@@ -1000,7 +987,7 @@ export async function provisionDefaultPortfolioForUser(
   }
 
   const extAccountId = DEFAULT_ACCOUNT_REF;
-  const accountFilter = withStrictTenantScope(
+  const accountFilter = withTenantScope(
     {
       userId: input.userId,
       portfolioId: portfolio._id,
@@ -1023,7 +1010,8 @@ export async function provisionDefaultPortfolioForUser(
         extAccountId,
         cashBalance: DEFAULT_ACCOUNT_CASH_BALANCE,
         isDefault: true,
-        updatedAt: now
+        updatedAt: now,
+        ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
       }
     },
     { upsert: true }
@@ -1037,14 +1025,16 @@ export async function provisionDefaultPortfolioForUser(
   }
 
   const cashBackfillFilter = {
-    ...withStrictTenantScope(
-      {
-        userId: input.userId,
-        portfolioId: portfolio._id
-      },
-      input.tenantId
-    ),
-    $or: [{ cashBalance: { $exists: false } }, { cashBalance: null }]
+    $and: [
+      withTenantScope(
+        {
+          userId: input.userId,
+          portfolioId: portfolio._id
+        },
+        input.tenantId
+      ),
+      { $or: [{ cashBalance: { $exists: false } }, { cashBalance: null }] }
+    ]
   } as Filter<Account>;
   await db.collection<Account>(collections.accounts).updateMany(cashBackfillFilter, {
     $set: {
@@ -1053,7 +1043,7 @@ export async function provisionDefaultPortfolioForUser(
     }
   });
 
-  const watchlistFilter = withStrictTenantScope(
+  const watchlistFilter = withTenantScope(
     {
       userId: input.userId,
       portfolioId: portfolio._id
@@ -1082,7 +1072,8 @@ export async function provisionDefaultPortfolioForUser(
         name: watchlistName,
         symbols: mergedWatchlistSymbols,
         isDefault: true,
-        updatedAt: now
+        updatedAt: now,
+        ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
       }
     },
     { upsert: true }
@@ -1108,7 +1099,7 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
   const portfolioId = new ObjectId(input.portfolioId);
   const accountId = new ObjectId(input.accountId);
   const normalizedSymbol = input.symbol.trim().toUpperCase();
-  const tenantScopedAccountFilter = withStrictTenantScope(
+  const tenantScopedAccountFilter = withTenantScope(
     {
       _id: accountId,
       userId: input.userId
@@ -1136,7 +1127,7 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
 
   const now = new Date();
   const tenantObjectId = toTenantObjectId(input.tenantId);
-  const filter = withStrictTenantScope(
+  const filter = withTenantScope(
     {
       userId: input.userId,
       portfolioId,

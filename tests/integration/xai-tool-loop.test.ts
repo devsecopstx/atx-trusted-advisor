@@ -79,6 +79,41 @@ describe("respondWithXaiToolLoop", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("runs atxfinance executor for bare operation JSON without tool key", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        model: "grok-4-1-fast",
+        output_text: '{"operation":"portfolio_summary"}'
+      })
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        model: "grok-4-1-fast",
+        output_text: "Summary ready."
+      })
+    });
+
+    const { respondWithXaiToolLoop } = await import("@/lib/xai");
+    const result = await respondWithXaiToolLoop({
+      systemPrompt: "Test",
+      userPrompt: "Portfolio",
+      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      maxTurns: 5,
+      executor: async (name, args) => {
+        expect(name).toBe("atxfinance");
+        expect(args).toEqual({ operation: "portfolio_summary" });
+        return { result: "{}" };
+      }
+    });
+
+    expect(result.outputText).toBe("Summary ready.");
+    expect(result.toolCalls).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("executes tool call and returns final text", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,

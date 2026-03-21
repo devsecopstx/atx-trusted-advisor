@@ -572,9 +572,7 @@ function trySyntheticAtxfinanceToolArgs(
   if (toolField !== undefined && toolField !== "atxfinance") {
     return null;
   }
-  if (toolField === undefined && !/\batxfinance\b/i.test(assistantText)) {
-    return null;
-  }
+  // Models often emit only { "operation": "portfolio_summary" } with no "tool" key; still run atxfinance.
   const out: Record<string, unknown> = { operation: op };
   if (typeof obj.symbol === "string" && obj.symbol.trim()) {
     out.symbol = obj.symbol.trim();
