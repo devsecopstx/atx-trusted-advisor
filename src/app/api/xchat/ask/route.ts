@@ -5,11 +5,11 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
-  chatWithXai,
-  respondWithXai,
-  respondWithXaiToolLoop,
-  searchDocumentsInCollections,
-  type ToolCallLog
+    chatWithXai,
+    respondWithXai,
+    respondWithXaiToolLoop,
+    searchDocumentsInCollections,
+    type ToolCallLog
 } from "@/lib/xai";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
@@ -17,20 +17,22 @@ import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { XPERSONA_SUPER_AGENT_NAME, XPERSONA_XFINANCE_NAME } from "@/modules/xchat/default-xpersonas";
 import {
-  getPersonaById,
-  resolveDefaultXchatPersonaForSession,
-  retrieveRagChunks,
-  saveXChatLog
+    getPersonaById,
+    listPersonas,
+    resolveDefaultXchatPersonaForSession,
+    retrieveRagChunks,
+    saveXChatLog
 } from "@/modules/xchat/repository";
 import {
-  ATXFINANCE_TOOL_DEFINITION,
-  createXfinanceToolExecutor
+    ATXFINANCE_TOOL_DEFINITION,
+    createXfinanceToolExecutor,
+    YAHOO_FINANCE_TOOL_DEFINITION
 } from "@/modules/xchat/tool-executor";
 import {
-  ATXFINANCE_COLLECTION_ID,
-  normalizePersonaXapiConfig,
-  type PersonaXapiConfig,
-  type PersonaXapiToolDefinition
+    ATXFINANCE_COLLECTION_ID,
+    normalizePersonaXapiConfig,
+    type PersonaXapiConfig,
+    type PersonaXapiToolDefinition
 } from "@/modules/xchat/types";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 
@@ -133,16 +135,11 @@ export async function POST(request: Request) {
   const hasAppRole = session.roles.some((role) =>
     role === "advisor" || role === "operator" || role === "viewer"
   );
-  if (assignedPersonaId && requestedPersonaId && assignedPersonaId !== requestedPersonaId) {
-    return NextResponse.json(
-      {
-        error: "Requested persona does not match assigned persona",
-        code: "persona_not_assigned"
-      },
-      { status: 403 }
-    );
-  }
+  // If admin assigned a persona, it is authoritative for app_user sessions.
   const effectivePersonaId = assignedPersonaId || requestedPersonaId;
+  const isAssignedPersonaOverride = Boolean(
+    assignedPersonaId && effectivePersonaId && assignedPersonaId === effectivePersonaId
+  );
   if (effectivePersonaId) {
     const requestedPersona = await getPersonaById(effectivePersonaId);
     if (!requestedPersona) {
@@ -155,7 +152,8 @@ export async function POST(request: Request) {
       isAdminSession,
       hasAppRole,
       personaName: requestedPersona.name,
-      personaStatus: requestedPersona.status
+      personaStatus: requestedPersona.status,
+      isAssignedPersona: isAssignedPersonaOverride
     });
     if (!access.ok) {
       return NextResponse.json(
@@ -220,15 +218,17 @@ export async function POST(request: Request) {
     userId: session.userId,
     tenantId: session.tenantId
   });
+  const teamCollectionIds = isAdminSession ? await resolveAdminTeamCollectionIds() : [];
   const linkedCollectionIds = resolveLinkedCollectionIds({
     personaCollectionId,
-    userCollectionId: userCollection?.collectionId
+    userCollectionId: userCollection?.collectionId,
+    teamCollectionIds
   });
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
   const xapiConfig = withLinkedCollectionTools(
-    ensureAtxfinanceToolForPersona(baseXapiConfig, persona?.name),
+    ensureInternalFinanceToolsForPersona(baseXapiConfig, persona?.name),
     linkedCollectionIds
   );
 
@@ -302,6 +302,7 @@ export async function POST(request: Request) {
     : message;
 
   const hasXfinanceTool = xapiConfig.tools.some((t) => t.type === "atxfinance");
+  const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
   let xaiResponse: { outputText: string; model: string };
   let toolCallLogs: ToolCallLog[] = [];
 
@@ -341,11 +342,16 @@ export async function POST(request: Request) {
   try {
     if (xapiConfig.mode === "chat_completions") {
       xaiResponse = await chatCompletionsWithTools();
-    } else if (hasXfinanceTool) {
+    } else if (hasXfinanceTool || hasYahooFinanceTool) {
       const xaiTools: Array<Record<string, unknown>> = xapiConfig.tools
-        .filter((t) => t.type !== "atxfinance")
+        .filter((t) => t.type !== "atxfinance" && t.type !== "yahoo_finance")
         .map((t) => ({ ...t }));
-      xaiTools.push(ATXFINANCE_TOOL_DEFINITION);
+      if (hasXfinanceTool) {
+        xaiTools.push(ATXFINANCE_TOOL_DEFINITION);
+      }
+      if (hasYahooFinanceTool) {
+        xaiTools.push(YAHOO_FINANCE_TOOL_DEFINITION);
+      }
 
       const executor = createXfinanceToolExecutor({
         userId: session.userId,
@@ -491,6 +497,7 @@ function canSessionUsePersona(input: {
   hasAppRole: boolean;
   personaName: string;
   personaStatus: string | undefined;
+  isAssignedPersona: boolean;
 }): AskPersonaAccessResult {
   if (input.isAdminSession) {
     return { ok: true };
@@ -514,7 +521,7 @@ function canSessionUsePersona(input: {
     };
   }
 
-  if (APP_USER_BLOCKED_PERSONA_KEYS.has(normalizeNameKey(input.personaName))) {
+  if (APP_USER_BLOCKED_PERSONA_KEYS.has(normalizeNameKey(input.personaName)) && !input.isAssignedPersona) {
     return {
       ok: false,
       status: 403,
@@ -560,8 +567,14 @@ function resolveParallelAgentConfig(input: {
 function resolveLinkedCollectionIds(input: {
   personaCollectionId?: string;
   userCollectionId?: string;
+  teamCollectionIds?: string[];
 }): string[] {
-  const ids = [input.personaCollectionId, ATXFINANCE_COLLECTION_ID, input.userCollectionId]
+  const ids = [
+    input.personaCollectionId,
+    ATXFINANCE_COLLECTION_ID,
+    input.userCollectionId,
+    ...(input.teamCollectionIds ?? [])
+  ]
     .map((value) => value?.trim())
     .filter((value): value is string => Boolean(value));
   return Array.from(new Set(ids));
@@ -580,21 +593,58 @@ function withLinkedCollectionTools(
   };
 }
 
-function ensureAtxfinanceToolForPersona(
+function ensureInternalFinanceToolsForPersona(
   config: PersonaXapiConfig,
   personaName: string | undefined
 ): PersonaXapiConfig {
   const normalizedPersonaName = personaName?.trim().toLowerCase();
-  const shouldInject =
+  const shouldInjectAtxfinance =
     normalizedPersonaName === XPERSONA_XFINANCE_NAME.toLowerCase() &&
     !config.tools.some((tool) => tool.type === "atxfinance");
-  if (!shouldInject) {
-    return config;
+  let tools = config.tools;
+  if (shouldInjectAtxfinance) {
+    tools = [...tools, { type: "atxfinance" }];
+  }
+  // Internal market-data rule: market quote path is always Yahoo-backed.
+  if (!tools.some((tool) => tool.type === "yahoo_finance")) {
+    tools = [...tools, { type: "yahoo_finance" }];
   }
   return {
     ...config,
-    tools: [...config.tools, { type: "atxfinance" }]
+    tools
   };
+}
+
+async function resolveAdminTeamCollectionIds(): Promise<string[]> {
+  const personas = await listPersonas();
+  const ids: string[] = [];
+  for (const persona of personas) {
+    const boundCollectionId = persona.xaiCollection?.collectionId?.trim();
+    if (boundCollectionId) {
+      ids.push(boundCollectionId);
+    }
+    const tools = normalizePersonaXapiConfig(persona.xapi).tools;
+    for (const tool of tools) {
+      if (tool.type === "collections_search" && Array.isArray(tool.collection_ids)) {
+        for (const collectionId of tool.collection_ids) {
+          if (typeof collectionId === "string" && collectionId.trim()) {
+            ids.push(collectionId.trim());
+          }
+        }
+      }
+      if (tool.type === "file_search") {
+        const source = (tool.source ?? {}) as Record<string, unknown>;
+        if (Array.isArray(source.collection_ids)) {
+          for (const collectionId of source.collection_ids) {
+            if (typeof collectionId === "string" && collectionId.trim()) {
+              ids.push(collectionId.trim());
+            }
+          }
+        }
+      }
+    }
+  }
+  return Array.from(new Set(ids));
 }
 
 function mergeCollectionIdsIntoTool(

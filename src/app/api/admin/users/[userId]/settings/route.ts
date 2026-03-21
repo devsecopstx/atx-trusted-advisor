@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { createAuditEvent } from "@/modules/audit/repository";
+import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
 import {
-  getUserAdminSettings,
-  upsertUserAdminSettings
+    getUserAdminSettings,
+    upsertUserAdminSettings
 } from "@/modules/core-admin/repository";
+import { getCoreUserById } from "@/modules/identity/repository";
+import { getPersonaById } from "@/modules/xchat/repository";
+import { ATXFINANCE_COLLECTION_ID } from "@/modules/xchat/types";
 
 const updateSettingsSchema = z.object({
   assignedPersonaId: z.string().trim().optional(),
@@ -39,6 +43,12 @@ type RouteContext = {
   params: Promise<{ userId: string }>;
 };
 
+type LinkedCollection = {
+  collectionId: string;
+  collectionName?: string;
+  source: "atxfinance_default" | "user_bootstrap" | "assigned_persona";
+};
+
 export async function GET(_: Request, context: RouteContext) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
@@ -46,6 +56,9 @@ export async function GET(_: Request, context: RouteContext) {
   }
 
   const { userId } = await context.params;
+  if (!ObjectId.isValid(userId)) {
+    return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
+  }
   const settings = await getUserAdminSettings(userId, {
     tenantId: session.tenantId
   });
@@ -54,7 +67,18 @@ export async function GET(_: Request, context: RouteContext) {
     return NextResponse.json({ error: "User settings not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ data: settings });
+  const linkedCollections = await resolveUserLinkedCollections({
+    userId,
+    tenantId: session.tenantId,
+    assignedPersonaId: settings.assignedPersonaId
+  });
+
+  return NextResponse.json({
+    data: settings,
+    metadata: {
+      linkedCollections
+    }
+  });
 }
 
 export async function PUT(request: Request, context: RouteContext) {
@@ -64,6 +88,15 @@ export async function PUT(request: Request, context: RouteContext) {
   }
 
   const { userId } = await context.params;
+  if (!ObjectId.isValid(userId)) {
+    return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
+  }
+
+  const user = await getCoreUserById(new ObjectId(userId));
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
   const json = await request.json();
   const parsed = updateSettingsSchema.safeParse(json);
 
@@ -95,6 +128,38 @@ export async function PUT(request: Request, context: RouteContext) {
       { status: 400 }
     );
   }
+  if (assignedPersonaId) {
+    const isAppUser = user.roles.some((role) => role === "advisor" || role === "operator" || role === "viewer");
+    if (!isAppUser) {
+      return NextResponse.json(
+        {
+          error: "Assigned persona is only supported for app_user roles (advisor/operator/viewer)",
+          code: "persona_assignment_requires_app_user"
+        },
+        { status: 400 }
+      );
+    }
+
+    const assignedPersona = await getPersonaById(assignedPersonaId);
+    if (!assignedPersona) {
+      return NextResponse.json(
+        {
+          error: "Assigned persona not found",
+          code: "assigned_persona_not_found"
+        },
+        { status: 404 }
+      );
+    }
+    if (assignedPersona.status !== "published") {
+      return NextResponse.json(
+        {
+          error: "Assigned persona must be published",
+          code: "assigned_persona_not_published"
+        },
+        { status: 400 }
+      );
+    }
+  }
 
   const updated = await upsertUserAdminSettings(
     userId,
@@ -121,4 +186,54 @@ export async function PUT(request: Request, context: RouteContext) {
     }
   });
   return NextResponse.json({ data: updated });
+}
+
+async function resolveUserLinkedCollections(input: {
+  userId: string;
+  tenantId?: string;
+  assignedPersonaId?: string;
+}): Promise<LinkedCollection[]> {
+  const linked: LinkedCollection[] = [
+    {
+      collectionId: ATXFINANCE_COLLECTION_ID,
+      collectionName: "aTxFinance Default",
+      source: "atxfinance_default"
+    }
+  ];
+
+  const bootstrapCollection = await getUserBootstrapCollectionByUserId({
+    userId: input.userId,
+    tenantId: input.tenantId
+  });
+  if (bootstrapCollection?.collectionId) {
+    linked.push({
+      collectionId: bootstrapCollection.collectionId,
+      collectionName: bootstrapCollection.collectionName,
+      source: "user_bootstrap"
+    });
+  }
+
+  const assignedPersonaId = input.assignedPersonaId?.trim();
+  if (assignedPersonaId && ObjectId.isValid(assignedPersonaId)) {
+    const assignedPersona = await getPersonaById(assignedPersonaId);
+    const personaCollectionId = assignedPersona?.xaiCollection?.collectionId?.trim();
+    if (personaCollectionId) {
+      linked.push({
+        collectionId: personaCollectionId,
+        collectionName: assignedPersona?.xaiCollection?.collectionName,
+        source: "assigned_persona"
+      });
+    }
+  }
+
+  const deduped = new Map<string, LinkedCollection>();
+  for (const item of linked) {
+    const id = item.collectionId.trim();
+    if (!id || deduped.has(id)) {
+      continue;
+    }
+    deduped.set(id, { ...item, collectionId: id });
+  }
+
+  return Array.from(deduped.values());
 }

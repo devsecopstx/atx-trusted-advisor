@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  normalizePersonaXapiConfig,
-  PERSONA_XAPI_TOOL_TYPES,
-  SUPER_AGENT_DEFAULT_TOOLS
-} from "@/modules/xchat/types";
-import {
-  createPersonaPayloadSchema,
-  hasFileSearchTool
+    createPersonaPayloadSchema,
+    hasFileSearchTool
 } from "@/modules/xchat/persona-validation";
+import {
+    normalizePersonaXapiConfig,
+    PERSONA_XAPI_TOOL_TYPES,
+    SUPER_AGENT_DEFAULT_TOOLS
+} from "@/modules/xchat/types";
 
 describe("persona tool validation", () => {
   it("normalizePersonaXapiConfig dedupes tools by type", () => {
@@ -55,20 +55,24 @@ describe("persona tool validation", () => {
       "x_search",
       "file_search",
       "collections_search",
+      "yahoo_finance",
       "atxfinance"
     ]);
   });
 
-  it("SUPER_AGENT_DEFAULT_TOOLS has web_search, x_search, file_search, and atxfinance", () => {
-    expect(SUPER_AGENT_DEFAULT_TOOLS).toHaveLength(4);
+  it("SUPER_AGENT_DEFAULT_TOOLS has web_search, x_search, collections_search, yahoo_finance, and atxfinance", () => {
+    expect(SUPER_AGENT_DEFAULT_TOOLS).toHaveLength(5);
     expect(SUPER_AGENT_DEFAULT_TOOLS.map((t) => t.type)).toEqual([
       "web_search",
       "x_search",
-      "file_search",
+      "collections_search",
+      "yahoo_finance",
       "atxfinance"
     ]);
-    const fileSearch = SUPER_AGENT_DEFAULT_TOOLS.find((t) => t.type === "file_search");
-    expect(fileSearch).toHaveProperty("source");
+    const collectionsSearch = SUPER_AGENT_DEFAULT_TOOLS.find(
+      (t) => t.type === "collections_search"
+    );
+    expect(collectionsSearch).toHaveProperty("collection_ids");
   });
 
   it("hasFileSearchTool detects file_search or collections_search in tool array", () => {

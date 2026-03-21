@@ -585,6 +585,8 @@ gcloud run services update-traffic atxfinance-core-prod \
 **Market data path (API-first tooling):**
 
 - `atxfinance` tool operation `market_quote` uses Yahoo (`yahoo-finance2`) as a dedicated quote source for higher fidelity than generic web search.
+- **Price source-of-truth (current):** Yahoo Finance (`yahoo-finance2`) via `getYahooMarketQuote()` in `src/modules/xchat/market-data.ts`.
+- **Where to change provider later:** update `src/modules/xchat/market-data.ts` (provider client + normalization contract), then keep `market_quote` routing in `src/modules/xchat/tool-executor.ts` aligned so both `atxfinance.market_quote` and `yahoo_finance` tool calls resolve through the same provider path.
 - **Disclaimer source of truth:** `MARKET_DATA_DISCLAIMER` in `src/modules/xchat/market-data.ts` (returned with market quote payloads).
 - `web_search` remains available for narrative context; quote-sensitive responses should prefer `market_quote`.
 

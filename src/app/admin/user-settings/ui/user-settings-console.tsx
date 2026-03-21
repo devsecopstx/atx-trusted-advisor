@@ -40,6 +40,19 @@ type UserAdminSettingsPayload = {
   updatedAt?: string;
 };
 
+type LinkedCollection = {
+  collectionId: string;
+  collectionName?: string;
+  source: "atxfinance_default" | "user_bootstrap" | "assigned_persona";
+};
+
+type UserSettingsResponse = {
+  data: UserAdminSettingsPayload;
+  metadata?: {
+    linkedCollections?: LinkedCollection[];
+  };
+};
+
 type PersonaOption = {
   id: string;
   name: string;
@@ -114,6 +127,9 @@ export function UserSettingsConsole() {
   const [settingsLastSaved, setSettingsLastSaved] = useState<string | null>(null);
   const [personaOptions, setPersonaOptions] = useState<PersonaOption[]>([]);
   const [personaByUserId, setPersonaByUserId] = useState<Record<string, string>>({});
+  const [linkedCollectionsByUserId, setLinkedCollectionsByUserId] = useState<
+    Record<string, LinkedCollection[]>
+  >({});
 
   const refreshApprovedUsers = useCallback(async () => {
     try {
@@ -150,19 +166,32 @@ export function UserSettingsConsole() {
         }
         return next;
       });
-      const personaEntries = await Promise.all(
+      const settingsEntries = await Promise.all(
         normalizedUsers.map(async (user) => {
           try {
-            const settingsPayload = await parseJson<{ data: UserAdminSettingsPayload }>(
+            const settingsPayload = await parseJson<UserSettingsResponse>(
               await fetch(`/api/admin/users/${encodeURIComponent(user.userId)}/settings`)
             );
-            return [user.userId, settingsPayload.data.assignedPersonaId ?? ""] as const;
+            return {
+              userId: user.userId,
+              assignedPersonaId: settingsPayload.data.assignedPersonaId ?? "",
+              linkedCollections: settingsPayload.metadata?.linkedCollections ?? []
+            } as const;
           } catch {
-            return [user.userId, ""] as const;
+            return {
+              userId: user.userId,
+              assignedPersonaId: "",
+              linkedCollections: []
+            } as const;
           }
         })
       );
-      setPersonaByUserId(Object.fromEntries(personaEntries));
+      setPersonaByUserId(
+        Object.fromEntries(settingsEntries.map((entry) => [entry.userId, entry.assignedPersonaId]))
+      );
+      setLinkedCollectionsByUserId(
+        Object.fromEntries(settingsEntries.map((entry) => [entry.userId, entry.linkedCollections]))
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to load approved users");
     }
@@ -192,7 +221,7 @@ export function UserSettingsConsole() {
     setSettingsLoading(true);
     setSettingsLastSaved(null);
     try {
-      const payload = await parseJson<{ data: UserAdminSettingsPayload }>(
+      const payload = await parseJson<UserSettingsResponse>(
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}/settings`)
       );
       setSettingsForm({
@@ -206,9 +235,17 @@ export function UserSettingsConsole() {
       if (payload.data.updatedAt) {
         setSettingsLastSaved(payload.data.updatedAt);
       }
+      setLinkedCollectionsByUserId((previous) => ({
+        ...previous,
+        [userId]: payload.metadata?.linkedCollections ?? []
+      }));
       setStatus(`Settings loaded for ${userId}`);
     } catch {
       setSettingsForm(DEFAULT_SETTINGS);
+      setLinkedCollectionsByUserId((previous) => ({
+        ...previous,
+        [userId]: []
+      }));
       setStatus("No existing settings — defaults loaded");
     } finally {
       setSettingsLoading(false);
@@ -332,6 +369,10 @@ export function UserSettingsConsole() {
       window.clearTimeout(refreshTimer);
     };
   }, [refreshApprovedUsers, refreshPersonaOptions]);
+
+  const selectedLinkedCollections = selectedUserId
+    ? linkedCollectionsByUserId[selectedUserId] ?? []
+    : [];
 
   return (
     <section className="panel stack-gap">
@@ -532,6 +573,23 @@ export function UserSettingsConsole() {
                 <p className="status-text">
                   This controls ask persona routing only. Page visibility remains driven by app role.
                 </p>
+                <div className="status-text" role="status">
+                  Linked user collections:
+                  {selectedLinkedCollections.length === 0 ? (
+                    " none"
+                  ) : (
+                    <ul>
+                      {selectedLinkedCollections.map((collection) => (
+                        <li key={`${collection.source}:${collection.collectionId}`}>
+                          {collection.collectionName
+                            ? `${collection.collectionName} (${collection.collectionId})`
+                            : collection.collectionId}{" "}
+                          [{collection.source}]
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </fieldset>
 
               <fieldset>

@@ -16,6 +16,7 @@ export const PERSONA_XAPI_TOOL_TYPES = [
   "x_search",
   "file_search",
   "collections_search",
+  "yahoo_finance",
   "atxfinance"
 ] as const;
 export type PersonaXapiToolType = (typeof PERSONA_XAPI_TOOL_TYPES)[number];
@@ -44,7 +45,8 @@ export const ATXFINANCE_COLLECTION_ID = "collection_b75e188e-e7e6-4aa8-8e01-23ca
 export const SUPER_AGENT_DEFAULT_TOOLS: PersonaXapiToolDefinition[] = [
   { type: "web_search" },
   { type: "x_search" },
-  { type: "file_search", source: { collection_ids: [ATXFINANCE_COLLECTION_ID] } },
+  { type: "collections_search", collection_ids: [ATXFINANCE_COLLECTION_ID] },
+  { type: "yahoo_finance" },
   { type: "atxfinance" }
 ];
 

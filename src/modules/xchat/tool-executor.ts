@@ -144,8 +144,13 @@ function truncateOutput(output: string): string {
 export function createXfinanceToolExecutor(
   ctx: ExecutorContext
 ): ToolExecutor {
-  return async (_name: string, args: Record<string, unknown>) => {
-    const operation = typeof args.operation === "string" ? args.operation : "";
+  return async (name: string, args: Record<string, unknown>) => {
+    const operation =
+      name === "yahoo_finance"
+        ? "market_quote"
+        : typeof args.operation === "string"
+          ? args.operation
+          : "";
     const handler = operations[operation];
     if (!handler) {
       return {
@@ -200,6 +205,24 @@ export const ATXFINANCE_TOOL_DEFINITION = {
         }
       },
       required: ["operation"]
+    }
+  }
+};
+
+export const YAHOO_FINANCE_TOOL_DEFINITION = {
+  type: "function" as const,
+  function: {
+    name: "yahoo_finance",
+    description:
+      "Fetch market quote data from Yahoo Finance (internal canonical market data source).",
+    parameters: {
+      type: "object",
+      properties: {
+        symbol: {
+          type: "string",
+          description: "Ticker symbol to quote (for example TSLA). Optional; defaults to TSLA."
+        }
+      }
     }
   }
 };

@@ -19,6 +19,7 @@ const xaiMocks = vi.hoisted(() => ({
 
 const repositoryMocks = vi.hoisted(() => ({
   getPersonaById: vi.fn(),
+  listPersonas: vi.fn(),
   resolveDefaultXchatPersonaForSession: vi.fn(),
   retrieveRagChunks: vi.fn(),
   saveXChatLog: vi.fn()
@@ -96,7 +97,15 @@ describe("xchat ask route collection retrieval", () => {
       outputText: "xAI answer",
       model: "grok-4-latest"
     });
+    xaiMocks.respondWithXaiToolLoop.mockResolvedValue({
+      outputText: "xAI answer",
+      model: "grok-4-latest",
+      toolCalls: [],
+      turnsUsed: 1,
+      raw: {}
+    });
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue(buildPersona());
+    repositoryMocks.listPersonas.mockResolvedValue([]);
     repositoryMocks.getPersonaById.mockResolvedValue(buildPersona());
     repositoryMocks.retrieveRagChunks.mockResolvedValue([]);
     repositoryMocks.saveXChatLog.mockResolvedValue(undefined);
@@ -145,7 +154,7 @@ describe("xchat ask route collection retrieval", () => {
       })
     );
     expect(repositoryMocks.retrieveRagChunks).not.toHaveBeenCalled();
-    expect(xaiMocks.respondWithXai).toHaveBeenCalledWith(
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
         systemPrompt: expect.stringContaining("Collection context snippet"),
         toolChoice: "auto",
@@ -194,15 +203,21 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextSource).toBe("mongo_scope");
     expect(payload.data.contextCount).toBe(1);
     expect(repositoryMocks.retrieveRagChunks).toHaveBeenCalledTimes(1);
-    expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        xapiMode: "responses",
-        xapiToolChoice: "auto",
-        xapiMaxTurns: 5,
-        xapiToolCount: 1,
-        contextChunkIds: [expect.any(ObjectId)]
-      })
+    const savedLogInput = repositoryMocks.saveXChatLog.mock.calls.at(-1)?.[0] as {
+      xapiMode?: string;
+      xapiToolChoice?: string;
+      xapiMaxTurns?: number;
+      xapiToolCount?: number;
+      contextChunkIds?: Array<ObjectId | string>;
+    };
+    expect(savedLogInput?.xapiMode).toBe("responses");
+    expect(savedLogInput?.xapiToolChoice).toBe("auto");
+    expect(savedLogInput?.xapiMaxTurns).toBe(5);
+    expect(savedLogInput?.xapiToolCount).toBe(2);
+    const normalizedChunkIds = (savedLogInput?.contextChunkIds ?? []).map((chunkId) =>
+      typeof chunkId === "string" ? chunkId : chunkId.toHexString()
     );
+    expect(normalizedChunkIds).toEqual(["507f1f77bcf86cd799439099"]);
   });
 
   it("falls back to mongo rag chunks when collection search throws", async () => {
@@ -304,9 +319,9 @@ describe("xchat ask route collection retrieval", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(xaiMocks.respondWithXai).toHaveBeenCalledWith(
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        tools: [
+        tools: expect.arrayContaining([
           {
             type: "file_search",
             source: {
@@ -317,7 +332,7 @@ describe("xchat ask route collection retrieval", () => {
               ]
             }
           }
-        ]
+        ])
       })
     );
   });
@@ -372,12 +387,13 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(xaiMocks.chatWithXai).toHaveBeenCalledTimes(1);
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
     expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
       expect.objectContaining({
         xapiMode: "chat_completions",
         xapiToolChoice: "auto",
         xapiMaxTurns: 5,
-        xapiToolCount: 0
+        xapiToolCount: 1
       })
     );
   });
@@ -405,7 +421,7 @@ describe("xchat ask route collection retrieval", () => {
   });
 
   it("returns structured 502 when xai provider call fails", async () => {
-    xaiMocks.respondWithXai.mockRejectedValueOnce(new Error("provider outage"));
+    xaiMocks.respondWithXaiToolLoop.mockRejectedValueOnce(new Error("provider outage"));
     xaiMocks.chatWithXai.mockRejectedValue(new Error("provider outage"));
 
     const response = await postAsk(
@@ -514,6 +530,73 @@ describe("xchat ask route collection retrieval", () => {
     expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439077");
   });
 
+  it("uses assigned persona when request persona differs for app_user", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce({
+      assignedPersonaId: "507f1f77bcf86cd799439088"
+    });
+    repositoryMocks.getPersonaById.mockResolvedValueOnce(
+      buildPersona({
+        _id: new ObjectId("507f1f77bcf86cd799439088"),
+        name: "xFinance",
+        nameNormalized: "xfinance"
+      })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439077",
+          message: "somegoodnewstx"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439088");
+  });
+
+  it("allows app_user assigned Super-Agent when persona is published", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce({
+      assignedPersonaId: "507f1f77bcf86cd799439099"
+    });
+    repositoryMocks.getPersonaById.mockResolvedValueOnce(
+      buildPersona({
+        _id: new ObjectId("507f1f77bcf86cd799439099"),
+        name: "Super-Agent",
+        nameNormalized: "super-agent",
+        status: "published"
+      })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "somegoodnewstx"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+  });
+
   it("denies app_user selecting draft persona", async () => {
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",
@@ -543,6 +626,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(403);
     expect(payload.code).toBe("persona_not_allowed");
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
   });
 
   it("denies app_user model override request", async () => {
@@ -569,6 +653,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(403);
     expect(payload.code).toBe("model_override_not_allowed");
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
   });
 
   it("maps multi-agent effort high to 16 agents for admin override", async () => {
@@ -585,7 +670,7 @@ describe("xchat ask route collection retrieval", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(xaiMocks.respondWithXai).toHaveBeenCalledWith(
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "grok-4.20-multi-agent",
         parallelism: {
@@ -612,5 +697,6 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(400);
     expect(payload.code).toBe("invalid_reasoning_effort");
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
   });
 });

@@ -187,7 +187,8 @@ async function seed() {
             tools: [
               { type: "web_search" },
               { type: "x_search" },
-              { type: "file_search", source: { collection_ids: [DEFAULT_COLLECTION_ID] } },
+              { type: "collections_search", collection_ids: [DEFAULT_COLLECTION_ID] },
+              { type: "yahoo_finance" },
               { type: "atxfinance" }
             ]
           },
