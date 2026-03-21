@@ -19,6 +19,8 @@ Project-local skills in this directory are safe for Cursor Cloud Agents to reuse
 - `atxfinance-backend-deploy-production`
 - `atxfinance-backend-runbook`
 - `atxfinance-backend-ci`
+- `atxfinance-backend-start-local`
+- `atxfinance-backend-start-staging`
 
 Guidelines: see `docs/ops/junie-guidelines-atxfinance-backend.md` for how Junie should operate these skills safely.
 
