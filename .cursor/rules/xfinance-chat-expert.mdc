@@ -32,6 +32,8 @@ You are a **hard-working, zero-bullshit senior full-stack + mobile engineer** fo
 
 - Persona + xAI Responses vs extra RAG / collection scopes; max context and PII boundaries?
 - Disclaimers and what must **not** be sent to the model?
+- Model routing policy for this slice: persona-locked model vs per-request override vs plan-based fallback?
+- If parallel agents are in scope, is `grok-4.20-multi-agent` explicitly enabled and what `agent_count`/`reasoning.effort` is required?
 
 **5. UI/UX**
 
@@ -41,6 +43,7 @@ You are a **hard-working, zero-bullshit senior full-stack + mobile engineer** fo
 **6. Security & compliance**
 
 - Required disclaimers, audit/logging, rate limits, retention — what is in scope for this change?
+- Who is allowed to choose persona/model at runtime (`global_admin`, `advisor`, `operator`, `viewer`), and what allowlist applies to app_user?
 
 **After answers**
 
@@ -48,6 +51,30 @@ You are a **hard-working, zero-bullshit senior full-stack + mobile engineer** fo
 2. Then output concrete diffs/files using repo conventions: **Types** (not interfaces where project prefers), no hardcoded hex (use `--xf-*`), admin layout patterns from `AGENTS.md`.
 3. Prefer streaming + minimal client JS; SWR/server components where the codebase already does.
 4. Touch tests for API/routes you change (`tests/integration/*`).
+5. Include a model/persona decision table (precedence + fallbacks + deny paths).
+
+**Model and persona selection policy (required for xChat changes)**
+
+- **Default policy:** persona defines default model (`persona.model`) and tool/RAG scope. Requests inherit this unless an explicit override is allowed by role and plan.
+- **Precedence:** `request override (if authorized)` -> `published persona.model` -> `safe system default`.
+- **Parallel model rule:** only use `grok-4.20-multi-agent` when task class requires multi-agent reasoning; map effort to agent count:
+  - low/medium effort -> 4 agents (focused KB lookups).
+  - high effort -> 16 agents (broad multi-perspective research).
+- **Guardrail:** never let anonymous/unauthorized users set raw model ids directly; expose approved presets only.
+- **App_user persona choice (industry-professional launch):**
+  - Allow selecting from **published + allowlisted** professional personas.
+  - Deny archived/draft/admin-only personas.
+  - Enforce access via existing authorization gates and plan limits.
+- **Fallback behavior:** if requested persona/model is disallowed or unavailable, fail closed with explicit error code (no silent escalation to privileged persona/model).
+- **Auditability:** log selected persona id, effective model, and selection source (`default` | `override`) via masked/debug-safe patterns.
+
+**High-risk gaps checklist (must be resolved before merge)**
+
+- Missing precedence contract between request payload and persona default model.
+- Missing server-side allowlist/role gate for app_user persona selection.
+- Missing validation for multi-agent model routing (`grok-4.20-multi-agent` + effort/agent_count compatibility).
+- Missing fail-closed behavior when persona/model becomes invalid mid-request.
+- Missing test coverage for unauthorized model/persona overrides.
 
 **Always**
 
@@ -55,6 +82,27 @@ You are a **hard-working, zero-bullshit senior full-stack + mobile engineer** fo
 - Align with **`docs/xchat/*.md`** (including `xfeature-tools-plan.md`, `atxfinance-tool-stub.md`, **`xchat-debug-logging.md`**) and OpenAPI inventory for public routes.
 - Reference existing **persona governance** and **access** flows when chat touches auth or admin.
 - Use "xFinance" in user-facing copy; technical identifiers (e.g. `atxfinance` tool type) may remain.
+- For model-routing features, update docs with request/response schema and effective-model semantics.
+- For parallel-agent usage, document latency/cost tradeoffs and plan gating.
+
+**Testing plan for persona/model routing (required)**
+
+- **Unit tests**
+  - Model resolution precedence (`override` vs `persona.model` vs fallback).
+  - Role/plan authorization checks for persona override and model override.
+  - Multi-agent mapping: effort -> expected agent_count/model constraints.
+- **Integration tests (`tests/integration/*`)**
+  - `POST /api/xchat/ask` with app_user selecting allowed published persona -> `200`.
+  - app_user selecting draft/archived/admin persona -> `403` (or product-standard denial code).
+  - app_user attempting raw disallowed model id -> denied.
+  - authorized professional role using approved override path -> success with expected effective model.
+  - unavailable model/provider failure -> deterministic fail-closed response.
+- **Observability checks**
+  - Debug logs show masked persona/model selection metadata.
+  - Operational logs include short safe diagnostics without raw prompt/PII.
+- **Contract checks**
+  - OpenAPI inventory updated for any new request fields (persona/model override, effort/agent_count).
+  - Backward compatibility test for clients that omit new fields.
 
 **Debug & observability (xChat)**
 

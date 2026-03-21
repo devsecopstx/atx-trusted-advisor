@@ -5,29 +5,33 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
-  chatWithXai,
-  respondWithXai,
-  respondWithXaiToolLoop,
-  searchDocumentsInCollections,
-  type ToolCallLog
+    chatWithXai,
+    respondWithXai,
+    respondWithXaiToolLoop,
+    searchDocumentsInCollections,
+    type ToolCallLog
 } from "@/lib/xai";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import {
-  resolveDefaultXchatPersonaForSession,
-  retrieveRagChunks,
-  saveXChatLog
+    getPersonaById,
+    resolveDefaultXchatPersonaForSession,
+    retrieveRagChunks,
+    saveXChatLog
 } from "@/modules/xchat/repository";
 import {
-  ATXFINANCE_TOOL_DEFINITION,
-  createXfinanceToolExecutor
+    ATXFINANCE_TOOL_DEFINITION,
+    createXfinanceToolExecutor
 } from "@/modules/xchat/tool-executor";
 import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
-  /** @deprecated Ignored — persona is chosen from session role (xFinance vs Super-Agent). */
   personaId: z.string().optional(),
+  model: z.string().min(1).max(128).optional(),
+  reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
   scope: z.string().min(1).max(128).optional(),
   topK: z.number().int().min(1).max(10).optional()
 });
@@ -35,6 +39,28 @@ const askSchema = z.object({
 const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
 const ASK_RATE_WINDOW_MS = 60_000;
 const ASK_RATE_MAX = 20;
+const MULTI_AGENT_MODEL = "grok-4.20-multi-agent";
+const ADMIN_ALLOWED_MODEL_OVERRIDES = new Set<string>([MULTI_AGENT_MODEL]);
+const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>([
+  normalizeNameKey(XPERSONA_SUPER_AGENT_NAME)
+]);
+
+type ModelSelectionSource = "default" | "override";
+type ParallelReasoningEffort = "low" | "medium" | "high";
+
+type ParallelAgentConfig = {
+  agentCount: 4 | 16;
+  reasoningEffort: ParallelReasoningEffort;
+};
+
+type AskPersonaAccessResult =
+  | { ok: true }
+  | {
+      ok: false;
+      status: number;
+      error: string;
+      code: string;
+    };
 
 export async function POST(request: Request) {
   const session = await requireSessionUser();
@@ -78,10 +104,10 @@ export async function POST(request: Request) {
   }
 
   const { message, topK = 4 } = parsed.data;
-  void parsed.data.personaId;
+  const isAdminSession = isGlobalAdmin(session.roles);
 
-  const persona = await resolveDefaultXchatPersonaForSession(session.roles);
-  if (!persona) {
+  const defaultPersona = await resolveDefaultXchatPersonaForSession(session.roles);
+  if (!defaultPersona) {
     return NextResponse.json(
       {
         error:
@@ -90,6 +116,73 @@ export async function POST(request: Request) {
       { status: 503 }
     );
   }
+  let persona = defaultPersona;
+  if (parsed.data.personaId) {
+    const requestedPersona = await getPersonaById(parsed.data.personaId);
+    if (!requestedPersona) {
+      return NextResponse.json(
+        { error: "Persona not found", code: "persona_not_found" },
+        { status: 404 }
+      );
+    }
+    const access = canSessionUsePersona({
+      isAdminSession,
+      personaName: requestedPersona.name,
+      personaStatus: requestedPersona.status
+    });
+    if (!access.ok) {
+      return NextResponse.json(
+        { error: access.error, code: access.code },
+        { status: access.status }
+      );
+    }
+    persona = requestedPersona;
+  }
+
+  const requestedModel = parsed.data.model?.trim();
+  let effectiveModel = persona.model;
+  let modelSelectionSource: ModelSelectionSource = "default";
+  if (requestedModel) {
+    if (!isAdminSession) {
+      return NextResponse.json(
+        {
+          error: "Model override is not allowed for this role",
+          code: "model_override_not_allowed"
+        },
+        { status: 403 }
+      );
+    }
+    if (
+      requestedModel !== persona.model &&
+      !ADMIN_ALLOWED_MODEL_OVERRIDES.has(requestedModel)
+    ) {
+      return NextResponse.json(
+        {
+          error: "Requested model override is not in the approved set",
+          code: "model_override_disallowed_model"
+        },
+        { status: 403 }
+      );
+    }
+    effectiveModel = requestedModel;
+    modelSelectionSource = "override";
+  }
+
+  const parallelAgentConfigResult = resolveParallelAgentConfig({
+    model: effectiveModel,
+    reasoningEffort: parsed.data.reasoningEffort
+  });
+  if (!parallelAgentConfigResult.ok) {
+    return NextResponse.json(
+      {
+        error: parallelAgentConfigResult.error,
+        code: parallelAgentConfigResult.code
+      },
+      { status: 400 }
+    );
+  }
+  const parallelAgentConfig = parallelAgentConfigResult.config;
+
   const xapiConfig = normalizePersonaXapiConfig(persona?.xapi);
   const scope = parsed.data.scope ?? persona?.defaultScope ?? "global";
   const tenantId = ObjectId.isValid(session.tenantId)
@@ -178,25 +271,27 @@ export async function POST(request: Request) {
 
   const chatCompletionsWithTools = () =>
     chatWithXai({
-      model: persona?.model,
+      model: effectiveModel,
       temperature: persona?.temperature ?? 0.2,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
       tools: xapiConfig.tools,
-      toolChoice: xapiConfig.toolChoice
+      toolChoice: xapiConfig.toolChoice,
+      parallelism: parallelAgentConfig
     });
 
   const chatCompletionsNoTools = () =>
     chatWithXai({
-      model: persona?.model,
+      model: effectiveModel,
       temperature: persona?.temperature ?? 0.2,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      toolChoice: "none"
+      toolChoice: "none",
+      parallelism: parallelAgentConfig
     });
 
   const fallbackToChat = async (): Promise<{ outputText: string; model: string }> => {
@@ -222,13 +317,14 @@ export async function POST(request: Request) {
       });
       try {
         const loopResult = await respondWithXaiToolLoop({
-          model: persona?.model,
+          model: effectiveModel,
           systemPrompt,
           userPrompt,
           tools: xaiTools,
           toolChoice: xapiConfig.toolChoice,
           maxTurns: xapiConfig.maxTurns,
-          executor
+          executor,
+          parallelism: parallelAgentConfig
         });
         xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
         toolCallLogs = loopResult.toolCalls;
@@ -241,12 +337,13 @@ export async function POST(request: Request) {
     } else {
       try {
         xaiResponse = await respondWithXai({
-          model: persona?.model,
+          model: effectiveModel,
           systemPrompt,
           userPrompt,
           tools: xapiConfig.tools,
           toolChoice: xapiConfig.toolChoice,
-          maxTurns: xapiConfig.maxTurns
+          maxTurns: xapiConfig.maxTurns,
+          parallelism: parallelAgentConfig
         });
       } catch (responsesErr) {
         console.warn("[xchat/ask] responses mode failed, falling back to chat_completions", {
@@ -285,12 +382,13 @@ export async function POST(request: Request) {
     contextSource,
     contextCount,
     tools: xapiConfig.tools.map((t) => t.type),
-    model: persona?.model,
+    model: effectiveModel,
     responseLength: xaiResponse.outputText.length,
     mode: xapiConfig.mode,
     scope,
     collectionId,
-    toolCallCount: toolCallLogs.length
+    toolCallCount: toolCallLogs.length,
+    modelSelectionSource
   });
   logXchatAskFullPayload({
     userId: session.userId,
@@ -299,7 +397,7 @@ export async function POST(request: Request) {
     userPrompt,
     ragContext,
     tools: xapiConfig.tools.map((t) => t.type),
-    model: persona?.model,
+    model: effectiveModel,
     responseText: xaiResponse.outputText
   });
 
@@ -332,6 +430,7 @@ export async function POST(request: Request) {
       response: xaiResponse.outputText,
       model: xaiResponse.model,
       personaName: persona.name,
+      modelSelectionSource,
       contextCount,
       contextSource,
       toolCalls: toolCallLogs.length > 0
@@ -349,4 +448,66 @@ function createSnippetFingerprint(input: string): string {
       (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
   return `f${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
+function canSessionUsePersona(input: {
+  isAdminSession: boolean;
+  personaName: string;
+  personaStatus: string | undefined;
+}): AskPersonaAccessResult {
+  if (input.isAdminSession) {
+    return { ok: true };
+  }
+
+  const status = input.personaStatus ?? "draft";
+  if (status !== "published") {
+    return {
+      ok: false,
+      status: 403,
+      error: "Persona is not available for app users",
+      code: "persona_not_allowed"
+    };
+  }
+
+  if (APP_USER_BLOCKED_PERSONA_KEYS.has(normalizeNameKey(input.personaName))) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Persona is not available for app users",
+      code: "persona_not_allowed"
+    };
+  }
+
+  return { ok: true };
+}
+
+function normalizeNameKey(input: string): string {
+  return input.trim().toLowerCase();
+}
+
+function resolveParallelAgentConfig(input: {
+  model: string;
+  reasoningEffort: ParallelReasoningEffort | undefined;
+}):
+  | { ok: true; config?: ParallelAgentConfig }
+  | { ok: false; error: string; code: string } {
+  if (input.model !== MULTI_AGENT_MODEL) {
+    if (input.reasoningEffort) {
+      return {
+        ok: false,
+        error: "reasoningEffort is only supported with grok-4.20-multi-agent",
+        code: "invalid_reasoning_effort"
+      };
+    }
+    return { ok: true, config: undefined };
+  }
+
+  const effort = input.reasoningEffort ?? "medium";
+  return {
+    ok: true,
+    config: {
+      agentCount: effort === "high" ? 16 : 4,
+      reasoningEffort: effort
+    }
+  };
 }

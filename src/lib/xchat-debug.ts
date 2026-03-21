@@ -64,6 +64,7 @@ export function logXchatAskDebug(payload: {
   /** Masked xAI collection id when collection search was used. */
   collectionId?: string;
   toolCallCount?: number;
+  modelSelectionSource?: "default" | "override";
 }): void {
   if (!isXchatDebugEnabled()) return;
 
@@ -89,7 +90,8 @@ export function logXchatAskDebug(payload: {
     mode: payload.mode,
     scope: payload.scope,
     collectionId: maskCollectionId(payload.collectionId),
-    toolCallCount: payload.toolCallCount
+    toolCallCount: payload.toolCallCount,
+    modelSelectionSource: payload.modelSelectionSource
   };
 
   console.info(LOG_PREFIX, JSON.stringify(safe));

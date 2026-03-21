@@ -13,6 +13,11 @@ type XaiChatResult = {
 };
 
 type XaiToolChoice = "auto" | "required" | "none";
+type XaiReasoningEffort = "low" | "medium" | "high";
+type XaiParallelismConfig = {
+  agentCount: number;
+  reasoningEffort: XaiReasoningEffort;
+};
 
 type XaiResponsesResult = {
   model: string;
@@ -174,6 +179,7 @@ export async function chatWithXai(input: {
   temperature?: number;
   tools?: Array<Record<string, unknown>>;
   toolChoice?: XaiToolChoice;
+  parallelism?: XaiParallelismConfig;
 }): Promise<XaiChatResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const toolChoice = input.toolChoice ?? "auto";
@@ -189,6 +195,10 @@ export async function chatWithXai(input: {
   if (mappedTools.length > 0) {
     body.tools = mappedTools;
     body.tool_choice = toolChoice;
+  }
+  if (input.parallelism) {
+    body.agent_count = input.parallelism.agentCount;
+    body.reasoning = { effort: input.parallelism.reasoningEffort };
   }
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -228,23 +238,29 @@ export async function respondWithXai(input: {
   tools?: Array<Record<string, unknown>>;
   toolChoice?: XaiToolChoice;
   maxTurns?: number;
+  parallelism?: XaiParallelismConfig;
 }): Promise<XaiResponsesResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const tools = toXaiRequestTools(input.tools ?? []);
+  const body: Record<string, unknown> = {
+    model: input.model ?? defaultModel,
+    system_prompt: input.systemPrompt,
+    input: input.userPrompt,
+    tools,
+    tool_choice: input.toolChoice ?? "auto",
+    max_turns: input.maxTurns ?? 5
+  };
+  if (input.parallelism) {
+    body.agent_count = input.parallelism.agentCount;
+    body.reasoning = { effort: input.parallelism.reasoningEffort };
+  }
   const response = await fetch(`${baseUrl}/responses`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      model: input.model ?? defaultModel,
-      system_prompt: input.systemPrompt,
-      input: input.userPrompt,
-      tools,
-      tool_choice: input.toolChoice ?? "auto",
-      max_turns: input.maxTurns ?? 5
-    })
+    body: JSON.stringify(body)
   });
 
   const payload = (await response.json().catch(async () => {
@@ -300,6 +316,7 @@ export async function respondWithXaiToolLoop(input: {
   toolChoice?: XaiToolChoice;
   maxTurns?: number;
   executor: ToolExecutor;
+  parallelism?: XaiParallelismConfig;
 }): Promise<XaiToolLoopResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const model = input.model ?? defaultModel;
@@ -314,20 +331,26 @@ export async function respondWithXaiToolLoop(input: {
   for (let turn = 0; turn < maxTurns; turn++) {
     turnsUsed = turn + 1;
 
+    const requestBody: Record<string, unknown> = {
+      model,
+      system_prompt: input.systemPrompt,
+      input: conversationInput,
+      tools,
+      tool_choice: input.toolChoice ?? "auto",
+      max_turns: 1
+    };
+    if (input.parallelism) {
+      requestBody.agent_count = input.parallelism.agentCount;
+      requestBody.reasoning = { effort: input.parallelism.reasoningEffort };
+    }
+
     const response = await fetch(`${baseUrl}/responses`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        model,
-        system_prompt: input.systemPrompt,
-        input: conversationInput,
-        tools,
-        tool_choice: input.toolChoice ?? "auto",
-        max_turns: 1
-      })
+      body: JSON.stringify(requestBody)
     });
 
     const payload = (await response.json().catch(async () => {

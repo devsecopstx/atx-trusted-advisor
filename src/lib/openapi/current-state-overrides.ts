@@ -242,7 +242,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional scope/topK. Persona is chosen from session role (Super-Agent for global_admin, xFinance otherwise). Field personaId is deprecated and ignored.",
+        "User message with optional persona/model selection. Non-admin users can only select published professional personas and cannot override model ids.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -253,6 +253,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "200": jsonResponse("xChat ask response.", "XChatAskResponseEnvelope"),
       "400": jsonResponse("Invalid ask payload.", "ValidationErrorResponse"),
       "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
+      "403": jsonResponse("Persona/model selection not allowed for current role.", "ErrorResponse"),
+      "404": jsonResponse("Requested persona not found.", "ErrorResponse"),
       "413": jsonResponse("Payload too large.", "ErrorResponse"),
       "429": jsonResponse("Rate limit exceeded.", "RateLimitErrorResponse"),
       "502": jsonResponse("xAI provider request failed.", "XaiProviderErrorResponse"),
@@ -553,7 +555,16 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       message: { type: "string", minLength: 2, maxLength: 8000 },
       personaId: {
         type: "string",
-        description: "Deprecated — ignored. Persona is resolved from session role."
+        description: "Optional persona selection. App users are restricted to published allowlisted personas."
+      },
+      model: {
+        type: "string",
+        description: "Optional model override (admin-approved models only)."
+      },
+      reasoningEffort: {
+        type: "string",
+        enum: ["low", "medium", "high"],
+        description: "Only valid with model `grok-4.20-multi-agent`."
       },
       scope: { type: "string", minLength: 1, maxLength: 128 },
       topK: { type: "integer", minimum: 1, maximum: 10 }
@@ -577,6 +588,11 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "string",
         description:
           "Resolved persona display name. Published defaults: Super-Agent (global_admin), xFinance (other roles)."
+      },
+      modelSelectionSource: {
+        type: "string",
+        enum: ["default", "override"],
+        description: "Indicates whether model came from persona default or authorized request override."
       },
       contextCount: { type: "integer", minimum: 0 },
       contextSource: { type: "string", enum: ["none", "mongo_scope", "xai_collection"] },

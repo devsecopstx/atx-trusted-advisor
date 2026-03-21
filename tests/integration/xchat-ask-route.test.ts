@@ -13,10 +13,12 @@ const rateLimitMocks = vi.hoisted(() => ({
 const xaiMocks = vi.hoisted(() => ({
   chatWithXai: vi.fn(),
   respondWithXai: vi.fn(),
+  respondWithXaiToolLoop: vi.fn(),
   searchDocumentsInCollections: vi.fn()
 }));
 
 const repositoryMocks = vi.hoisted(() => ({
+  getPersonaById: vi.fn(),
   resolveDefaultXchatPersonaForSession: vi.fn(),
   retrieveRagChunks: vi.fn(),
   saveXChatLog: vi.fn()
@@ -34,8 +36,37 @@ vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
 
+function buildPersona(overrides?: Record<string, unknown>) {
+  return {
+    _id: new ObjectId("507f1f77bcf86cd799439055"),
+    name: "Ops",
+    nameNormalized: "ops",
+    systemPrompt: "You are ops.",
+    overridePrompt: "Use checklist output.",
+    xaiCollection: {
+      collectionId: "collection_ops-global",
+      collectionName: "Ops Docs"
+    },
+    model: "grok-4-latest",
+    temperature: 0.2,
+    enableRag: true,
+    defaultScope: "global",
+    status: "published",
+    xapi: {
+      mode: "responses",
+      toolChoice: "auto",
+      maxTurns: 5,
+      tools: [{ type: "web_search" }]
+    },
+    createdAt: new Date("2026-03-16T00:00:00.000Z"),
+    updatedAt: new Date("2026-03-16T00:00:00.000Z"),
+    ...overrides
+  };
+}
+
 describe("xchat ask route collection retrieval", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -55,29 +86,8 @@ describe("xchat ask route collection retrieval", () => {
       outputText: "xAI answer",
       model: "grok-4-latest"
     });
-    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue({
-      _id: new ObjectId("507f1f77bcf86cd799439055"),
-      name: "Ops",
-      nameNormalized: "ops",
-      systemPrompt: "You are ops.",
-      overridePrompt: "Use checklist output.",
-      xaiCollection: {
-        collectionId: "collection_ops-global",
-        collectionName: "Ops Docs"
-      },
-      model: "grok-4-latest",
-      temperature: 0.2,
-      enableRag: true,
-      defaultScope: "global",
-      xapi: {
-        mode: "responses",
-        toolChoice: "auto",
-        maxTurns: 5,
-        tools: [{ type: "web_search" }]
-      },
-      createdAt: new Date("2026-03-16T00:00:00.000Z"),
-      updatedAt: new Date("2026-03-16T00:00:00.000Z")
-    });
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue(buildPersona());
+    repositoryMocks.getPersonaById.mockResolvedValue(buildPersona());
     repositoryMocks.retrieveRagChunks.mockResolvedValue([]);
     repositoryMocks.saveXChatLog.mockResolvedValue(undefined);
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
@@ -201,29 +211,14 @@ describe("xchat ask route collection retrieval", () => {
   });
 
   it("uses mongo retrieval directly when persona has no collection id", async () => {
-    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce({
-      _id: new ObjectId("507f1f77bcf86cd799439055"),
-      name: "Ops",
-      nameNormalized: "ops",
-      systemPrompt: "You are ops.",
-      overridePrompt: "Use checklist output.",
-      xaiCollection: {
-        collectionId: "",
-        collectionName: ""
-      },
-      model: "grok-4-latest",
-      temperature: 0.2,
-      enableRag: true,
-      defaultScope: "global",
-      xapi: {
-        mode: "responses",
-        toolChoice: "auto",
-        maxTurns: 5,
-        tools: [{ type: "web_search" }]
-      },
-      createdAt: new Date("2026-03-16T00:00:00.000Z"),
-      updatedAt: new Date("2026-03-16T00:00:00.000Z")
-    });
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xaiCollection: {
+          collectionId: "",
+          collectionName: ""
+        }
+      })
+    );
     repositoryMocks.retrieveRagChunks.mockResolvedValueOnce([
       {
         _id: new ObjectId("507f1f77bcf86cd799439129"),
@@ -241,7 +236,6 @@ describe("xchat ask route collection retrieval", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          personaId: "507f1f77bcf86cd799439055",
           message: "No collection id path",
           topK: 4
         })
@@ -257,36 +251,15 @@ describe("xchat ask route collection retrieval", () => {
   });
 
   it("keeps context empty when rag is disabled", async () => {
-    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce({
-      _id: new ObjectId("507f1f77bcf86cd799439055"),
-      name: "Ops",
-      nameNormalized: "ops",
-      systemPrompt: "You are ops.",
-      overridePrompt: "Use checklist output.",
-      xaiCollection: {
-        collectionId: "collection_ops-global",
-        collectionName: "Ops Docs"
-      },
-      model: "grok-4-latest",
-      temperature: 0.2,
-      enableRag: false,
-      defaultScope: "global",
-      xapi: {
-        mode: "responses",
-        toolChoice: "auto",
-        maxTurns: 5,
-        tools: [{ type: "web_search" }]
-      },
-      createdAt: new Date("2026-03-16T00:00:00.000Z"),
-      updatedAt: new Date("2026-03-16T00:00:00.000Z")
-    });
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({ enableRag: false })
+    );
 
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          personaId: "507f1f77bcf86cd799439055",
           message: "RAG disabled",
           topK: 4
         })
@@ -302,36 +275,22 @@ describe("xchat ask route collection retrieval", () => {
   });
 
   it("uses chat completions mode when persona xapi mode is chat_completions", async () => {
-    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce({
-      _id: new ObjectId("507f1f77bcf86cd799439055"),
-      name: "Ops",
-      nameNormalized: "ops",
-      systemPrompt: "You are ops.",
-      overridePrompt: "Use checklist output.",
-      xaiCollection: {
-        collectionId: "collection_ops-global",
-        collectionName: "Ops Docs"
-      },
-      model: "grok-4-latest",
-      temperature: 0.2,
-      enableRag: true,
-      defaultScope: "global",
-      xapi: {
-        mode: "chat_completions",
-        toolChoice: "auto",
-        maxTurns: 5,
-        tools: []
-      },
-      createdAt: new Date("2026-03-16T00:00:00.000Z"),
-      updatedAt: new Date("2026-03-16T00:00:00.000Z")
-    });
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "chat_completions",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: []
+        }
+      })
+    );
 
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          personaId: "507f1f77bcf86cd799439055",
           message: "Use fallback mode",
           topK: 4
         })
@@ -450,5 +409,136 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(400);
     const payload = (await response.json()) as { error: string };
     expect(payload.error).toBe("Invalid ask payload");
+  });
+
+  it("allows app_user to choose a published persona", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    repositoryMocks.getPersonaById.mockResolvedValueOnce(
+      buildPersona({
+        _id: new ObjectId("507f1f77bcf86cd799439077"),
+        name: "Industry Pro",
+        nameNormalized: "industry pro"
+      })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439077",
+          message: "use selected professional persona"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439077");
+  });
+
+  it("denies app_user selecting draft persona", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    repositoryMocks.getPersonaById.mockResolvedValueOnce(
+      buildPersona({
+        status: "draft"
+      })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "deny draft persona"
+        })
+      })
+    );
+    const payload = (await response.json()) as { error: string; code: string };
+
+    expect(response.status).toBe(403);
+    expect(payload.code).toBe("persona_not_allowed");
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+  });
+
+  it("denies app_user model override request", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "model override should fail",
+          model: "grok-4.20-multi-agent"
+        })
+      })
+    );
+    const payload = (await response.json()) as { error: string; code: string };
+
+    expect(response.status).toBe(403);
+    expect(payload.code).toBe("model_override_not_allowed");
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+  });
+
+  it("maps multi-agent effort high to 16 agents for admin override", async () => {
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "run multi-agent",
+          model: "grok-4.20-multi-agent",
+          reasoningEffort: "high"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXai).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "grok-4.20-multi-agent",
+        parallelism: {
+          agentCount: 16,
+          reasoningEffort: "high"
+        }
+      })
+    );
+  });
+
+  it("rejects reasoningEffort when model is not multi-agent", async () => {
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "invalid effort usage",
+          reasoningEffort: "low"
+        })
+      })
+    );
+    const payload = (await response.json()) as { error: string; code: string };
+
+    expect(response.status).toBe(400);
+    expect(payload.code).toBe("invalid_reasoning_effort");
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
   });
 });
