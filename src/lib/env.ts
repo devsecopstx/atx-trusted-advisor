@@ -57,7 +57,7 @@ const envSchema = z.object({
   ),
   ADMIN_X_USERNAMES: z.string().optional(),
   ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
-  /** Optional B2B licensing line on `/xstrategybuilder` (no defaults — avoids PII in repo). */
+  /** Optional overrides for `/xstrategybuilder` licensing line (see `LICENSING_PITCH_CONTACT_DEFAULTS`). */
   XSTRATEGYBUILDER_LICENSING_EMAIL: optionalEmail,
   XSTRATEGYBUILDER_LICENSING_X_URL: optionalUrl,
   XSTRATEGYBUILDER_LICENSING_X_LABEL: optionalNonEmptyString,
@@ -136,14 +136,41 @@ export type LicensingPitchContact = {
   companyEmail?: string;
 };
 
-/** Values for the xStrategyBuilder licensing CTA; all optional. */
+/**
+ * Default public licensing contact on `/xstrategybuilder` (committed on `main`).
+ * Override per deploy with `XSTRATEGYBUILDER_LICENSING_*` / `XSTRATEGYBUILDER_COMPANY_EMAIL`.
+ */
+export const LICENSING_PITCH_CONTACT_DEFAULTS: Readonly<
+  Pick<LicensingPitchContact, "licensingEmail" | "licensingXUrl" | "licensingXLabel">
+> = {
+  licensingEmail: "sperezintexas@gmail.com",
+  licensingXUrl: "https://x.com/sperezintexas",
+  licensingXLabel: "@sperezintexas"
+};
+
+function trimEnv(value: string | undefined): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  const t = String(value).trim();
+  return t.length > 0 ? t : undefined;
+}
+
+/**
+ * xStrategyBuilder licensing CTA. Uses `process.env` (not `getEnv()`) so defaults work in tests/scripts
+ * without full app env; optional fields from zod remain available via `getEnv()` elsewhere.
+ */
 export function getLicensingPitchContact(): LicensingPitchContact {
-  const e = getEnv();
+  const emailOverride = trimEnv(process.env.XSTRATEGYBUILDER_LICENSING_EMAIL);
+  const xUrlOverride = trimEnv(process.env.XSTRATEGYBUILDER_LICENSING_X_URL);
+  const xLabelOverride = trimEnv(process.env.XSTRATEGYBUILDER_LICENSING_X_LABEL);
+  const companyOverride = trimEnv(process.env.XSTRATEGYBUILDER_COMPANY_EMAIL);
+
   return {
-    licensingEmail: e.XSTRATEGYBUILDER_LICENSING_EMAIL,
-    licensingXUrl: e.XSTRATEGYBUILDER_LICENSING_X_URL,
-    licensingXLabel: e.XSTRATEGYBUILDER_LICENSING_X_LABEL,
-    companyEmail: e.XSTRATEGYBUILDER_COMPANY_EMAIL
+    licensingEmail: emailOverride ?? LICENSING_PITCH_CONTACT_DEFAULTS.licensingEmail,
+    licensingXUrl: xUrlOverride ?? LICENSING_PITCH_CONTACT_DEFAULTS.licensingXUrl,
+    licensingXLabel: xLabelOverride ?? LICENSING_PITCH_CONTACT_DEFAULTS.licensingXLabel,
+    companyEmail: companyOverride
   };
 }
 
