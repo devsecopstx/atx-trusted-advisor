@@ -175,23 +175,23 @@ export function UserSettingsConsole() {
             return {
               userId: user.userId,
               assignedPersonaId: settingsPayload.data.assignedPersonaId ?? "",
-              linkedCollections: settingsPayload.metadata?.linkedCollections ?? []
-            } as const;
+              linkedCollections: settingsPayload.metadata?.linkedCollections ?? ([] as LinkedCollection[])
+            };
           } catch {
             return {
               userId: user.userId,
               assignedPersonaId: "",
-              linkedCollections: []
-            } as const;
+              linkedCollections: [] as LinkedCollection[]
+            };
           }
         })
       );
-      setPersonaByUserId(
-        Object.fromEntries(settingsEntries.map((entry) => [entry.userId, entry.assignedPersonaId]))
-      );
-      setLinkedCollectionsByUserId(
-        Object.fromEntries(settingsEntries.map((entry) => [entry.userId, entry.linkedCollections]))
-      );
+      setPersonaByUserId(Object.fromEntries(settingsEntries.map((entry) => [entry.userId, entry.assignedPersonaId])));
+      const linkedCollectionsRecord: Record<string, LinkedCollection[]> = {};
+      for (const entry of settingsEntries) {
+        linkedCollectionsRecord[entry.userId] = entry.linkedCollections;
+      }
+      setLinkedCollectionsByUserId(linkedCollectionsRecord);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to load approved users");
     }

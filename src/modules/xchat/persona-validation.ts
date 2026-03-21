@@ -65,6 +65,7 @@ const SUPPORTED_XAPI_TOOL_TYPES = [
   "x_search",
   "file_search",
   "collections_search",
+  "yahoo_finance",
   "atxfinance"
 ] as const;
 
