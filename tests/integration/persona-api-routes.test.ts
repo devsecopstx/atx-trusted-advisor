@@ -16,6 +16,7 @@ const repositoryMocks = vi.hoisted(() => ({
     }
   },
   listPersonas: vi.fn(),
+  listPersonasByStatus: vi.fn(),
   createPersona: vi.fn(),
   getPersonaById: vi.fn(),
   updatePersona: vi.fn(),
@@ -162,6 +163,7 @@ describe("persona API routes", () => {
       updatedAt: now
     });
     repositoryMocks.deletePersona.mockResolvedValue(true);
+    repositoryMocks.listPersonasByStatus.mockResolvedValue([]);
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
     auditMocks.listLatestAuditEventsForEntities.mockResolvedValue({});
@@ -189,6 +191,60 @@ describe("persona API routes", () => {
     expect(payload.data[0]?.xaiCollectionVerification?.status).toBe("verified");
     expect(payload.data[0]?.xaiCollectionVerification?.checkedAt).toBe(now.toISOString());
     expect((payload.data[0] as { xapi?: { mode?: string } }).xapi?.mode).toBe("responses");
+  });
+
+  it("uses listPersonas for global_admin GET without status (admin User Settings persona dropdown)", async () => {
+    repositoryMocks.listPersonas.mockClear();
+    repositoryMocks.listPersonasByStatus.mockClear();
+
+    const response = await getPersonas(new Request("http://localhost/api/personas"));
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.listPersonas).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listPersonasByStatus).not.toHaveBeenCalled();
+  });
+
+  it("uses listPersonasByStatus for global_admin GET with status=published", async () => {
+    repositoryMocks.listPersonas.mockClear();
+    repositoryMocks.listPersonasByStatus.mockClear();
+    repositoryMocks.listPersonasByStatus.mockResolvedValueOnce([
+      {
+        _id: new ObjectId("507f1f77bcf86cd799439033"),
+        name: "Analyst",
+        nameNormalized: "analyst",
+        systemPrompt: "You are an analyst persona for atxFinance admins.",
+        overridePrompt: "Rewrite user input as a technical brief.",
+        status: "published" as const,
+        xaiCollection: {
+          collectionId: "collection_analyst-global",
+          collectionName: "Analyst Global Docs"
+        },
+        xaiCollectionVerification: {
+          status: "verified",
+          checkedAt: now,
+          resolvedCollectionName: "Analyst Global Docs"
+        },
+        model: "grok-4-latest",
+        temperature: 0.2,
+        enableRag: true,
+        defaultScope: "global",
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "web_search" }]
+        },
+        createdAt: now,
+        updatedAt: now
+      }
+    ]);
+
+    const response = await getPersonas(new Request("http://localhost/api/personas?status=published"));
+    const payload = (await response.json()) as { data: Array<{ status: string }> };
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.listPersonasByStatus).toHaveBeenCalledWith("published");
+    expect(repositoryMocks.listPersonas).not.toHaveBeenCalled();
+    expect(payload.data[0]?.status).toBe("published");
   });
 
   it("creates persona with admin permissions", async () => {

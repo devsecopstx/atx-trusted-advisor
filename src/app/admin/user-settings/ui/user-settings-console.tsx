@@ -56,6 +56,7 @@ type UserSettingsResponse = {
 type PersonaOption = {
   id: string;
   name: string;
+  status: string;
 };
 
 type ApprovedUser = {
@@ -203,14 +204,24 @@ export function UserSettingsConsole() {
         data: Array<{
           _id?: string;
           name: string;
+          status?: string;
         }>;
-      }>(await fetch("/api/personas?status=published"));
+      }>(await fetch("/api/personas"));
       const options = payload.data
-        .filter((persona): persona is { _id: string; name: string } => Boolean(persona._id))
+        .filter((persona): persona is { _id: string; name: string; status?: string } => Boolean(persona._id))
         .map((persona) => ({
           id: persona._id,
-          name: persona.name
-        }));
+          name: persona.name,
+          status: persona.status ?? "draft"
+        }))
+        .sort((a, b) => {
+          const rank = (s: string) => (s === "published" ? 0 : s === "draft" ? 1 : 2);
+          const byStatus = rank(a.status) - rank(b.status);
+          if (byStatus !== 0) {
+            return byStatus;
+          }
+          return a.name.localeCompare(b.name);
+        });
       setPersonaOptions(options);
     } catch {
       setPersonaOptions([]);
@@ -551,25 +562,41 @@ export function UserSettingsConsole() {
             <form className="stack-form" onSubmit={saveSettings}>
               <fieldset>
                 <legend>xPersona Assignment</legend>
-                <label>
-                  Assigned Persona
-                  <select
-                    onChange={(e) =>
-                      setSettingsForm((s) => ({
-                        ...s,
-                        assignedPersonaId: e.target.value
-                      }))
-                    }
-                    value={settingsForm.assignedPersonaId ?? ""}
+                <div className="tool-row">
+                  <label className="min-w-0 grow basis-48">
+                    Assigned Persona
+                    <select
+                      onChange={(e) =>
+                        setSettingsForm((s) => ({
+                          ...s,
+                          assignedPersonaId: e.target.value
+                        }))
+                      }
+                      value={settingsForm.assignedPersonaId ?? ""}
+                    >
+                      <option value="">(default by app role)</option>
+                      {personaOptions.map((persona) => (
+                        <option key={persona.id} value={persona.id}>
+                          {persona.status === "published"
+                            ? persona.name
+                            : `${persona.name} (${persona.status})`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    className="cta cta-secondary"
+                    onClick={() => void refreshPersonaOptions()}
+                    type="button"
                   >
-                    <option value="">(default by app role)</option>
-                    {personaOptions.map((persona) => (
-                      <option key={persona.id} value={persona.id}>
-                        {persona.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <RefreshIcon className="crud-icon" /> Refresh personas
+                  </button>
+                </div>
+                <p className="status-text">
+                  List includes draft and published personas from Admin → Personas. Saving still requires a{" "}
+                  <strong>published</strong> persona for app users (advisor/operator/viewer) — publish the xPersona
+                  first, then assign.
+                </p>
                 <p className="status-text">
                   This controls ask persona routing only. Page visibility remains driven by app role.
                 </p>
