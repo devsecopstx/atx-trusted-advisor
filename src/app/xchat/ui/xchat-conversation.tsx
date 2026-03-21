@@ -10,6 +10,25 @@ type Message = {
   timestamp: number;
 };
 
+type HistoryItem = {
+  id: string;
+  message: string;
+  response: string;
+  model: string;
+  createdAt: string;
+  personaId?: string;
+  contextReferenceCount: number;
+  toolCallCount: number;
+};
+
+type HistoryStats = {
+  totalPrompts: number;
+  activeDays: number;
+  referencedFileCount: number;
+  lastPromptAt?: string;
+  collectionId?: string | null;
+};
+
 type XchatConversationProps = {
   /** Published default persona name for this session’s role (Super-Agent vs xFinance). */
   defaultPublishedPersonaName: string;
@@ -17,6 +36,10 @@ type XchatConversationProps = {
 
 export function XchatConversation({ defaultPublishedPersonaName }: XchatConversationProps) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
+  const [historyStats, setHistoryStats] = useState<HistoryStats | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -24,6 +47,56 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadHistory() {
+      setHistoryLoading(true);
+      setHistoryError(null);
+      try {
+        const [historyRes, statsRes] = await Promise.all([
+          fetch("/api/xchat/history?limit=12"),
+          fetch("/api/xchat/history/stats")
+        ]);
+        const historyPayload = (await historyRes.json().catch(() => ({}))) as {
+          data?: { items?: HistoryItem[] };
+          error?: string;
+        };
+        const statsPayload = (await statsRes.json().catch(() => ({}))) as {
+          data?: HistoryStats;
+          error?: string;
+        };
+
+        if (!historyRes.ok || !statsRes.ok) {
+          throw new Error(
+            historyPayload.error ??
+              statsPayload.error ??
+              `History request failed (${historyRes.status}/${statsRes.status})`
+          );
+        }
+
+        if (!active) {
+          return;
+        }
+        setSavedHistory(historyPayload.data?.items ?? []);
+        setHistoryStats(statsPayload.data ?? null);
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        setHistoryError(error instanceof Error ? error.message : "Failed to load history");
+      } finally {
+        if (active) {
+          setHistoryLoading(false);
+        }
+      }
+    }
+
+    void loadHistory();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,6 +176,57 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           xFinance for members). No persona picker — both should stay published in Admin → Personas.
         </span>
       </div>
+
+      <section className="xchat-history-panel">
+        <div className="xchat-history-panel-header">
+          <div>
+            <p className="status-badge status-ready">Saved history (beta)</p>
+            <p className="status-text xchat-history-subtext">
+              Past sessions are API-first. Current session prompts stay in the live thread below.
+            </p>
+          </div>
+          <div className="xchat-history-actions">
+            <button className="tiny-button" type="button">
+              TODO: Service link
+            </button>
+            <button className="tiny-button" type="button">
+              TODO: Share
+            </button>
+            <button className="tiny-button" type="button">
+              TODO: History tools
+            </button>
+          </div>
+        </div>
+
+        <div className="xchat-history-stats">
+          <span className="chip">Prompts: {historyStats?.totalPrompts ?? 0}</span>
+          <span className="chip">Active days: {historyStats?.activeDays ?? 0}</span>
+          <span className="chip">Collection files seen: {historyStats?.referencedFileCount ?? 0}</span>
+          <span className="chip">
+            Collection ID: {historyStats?.collectionId?.slice(0, 22) ?? "not-linked"}
+          </span>
+        </div>
+
+        {historyLoading ? <p className="status-text">Loading past-session history...</p> : null}
+        {historyError ? <p className="status-text status-error">{historyError}</p> : null}
+        {!historyLoading && !historyError && savedHistory.length === 0 ? (
+          <p className="status-text">No saved history yet. Ask your first prompt below.</p>
+        ) : null}
+
+        {!historyLoading && !historyError && savedHistory.length > 0 ? (
+          <ul className="xchat-history-list">
+            {savedHistory.map((item) => (
+              <li className="xchat-history-item" key={item.id}>
+                <div className="xchat-history-item-head">
+                  <strong>{new Date(item.createdAt).toLocaleString()}</strong>
+                  <span>{item.model}</span>
+                </div>
+                <p className="xchat-history-item-prompt">{item.message}</p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
 
       <div className="xchat-messages">
         {messages.length === 0 ? (

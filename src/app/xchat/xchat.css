@@ -438,6 +438,76 @@
   font-size: 0.7rem;
 }
 
+.xchat-history-panel {
+  margin-top: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.xchat-history-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.xchat-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.xchat-history-subtext {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.xchat-history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.xchat-history-stats .chip {
+  font-size: 0.66rem;
+}
+
+.xchat-history-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.xchat-history-item {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0.5rem 0.6rem;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.xchat-history-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.45rem;
+  color: var(--xf-text-300);
+  font-size: 0.72rem;
+}
+
+.xchat-history-item-prompt {
+  margin: 0.35rem 0 0;
+  color: var(--xf-text-100);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
 .xchat-messages {
   flex: 1;
   overflow-y: auto;

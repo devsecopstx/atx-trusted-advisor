@@ -249,7 +249,7 @@ describe("access request approval login flow", () => {
       }
     );
     expect(approvalResponse.status).toBe(200);
-    expect(state.userRoles).toContain("viewer");
+    expect(state.userRoles).toContain("global_admin");
     expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledTimes(1);
     expect(bootstrapMocks.enqueueAccessRequestBootstrap).toHaveBeenCalledTimes(1);
 
@@ -276,7 +276,7 @@ describe("access request approval login flow", () => {
     const afterApprovalResponse = await oauthCallback(
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
-    expect(afterApprovalResponse.headers.get("location")).toContain("/xchat");
+    expect(afterApprovalResponse.headers.get("location")).toContain("/admin");
     expect(authMocks.createSession).toHaveBeenCalledTimes(1);
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
   });
@@ -320,6 +320,50 @@ describe("access request approval login flow", () => {
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
     expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledTimes(1);
     expect(authMocks.createSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to viewer session when admin allowlist blocks a global admin and ALLOW_ANY_X_USER_LOGIN is enabled", async () => {
+    state.userRoles = ["global_admin"];
+    envMocks.getEnv.mockReturnValue({
+      X_OAUTH_CLIENT_SECRET: "test-secret",
+      X_OAUTH_TOKEN_URL: "https://x.test/token",
+      X_OAUTH_USERINFO_URL: "https://x.test/me",
+      ADMIN_X_USERNAMES: "atxbogart",
+      ALLOW_ANY_X_USER_LOGIN: "true",
+      NODE_ENV: "test"
+    });
+    envMocks.isAllowAnyXUserLoginEnabled.mockReturnValue(true);
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "x-user-1",
+            username: "approved_user",
+            email: "approved.user@atxfinance.ai"
+          }
+        })
+      }) as typeof fetch;
+
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+
+    expect(response.headers.get("location")).toContain("/xchat");
+    expect(authMocks.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roles: ["viewer"]
+      })
+    );
   });
 
   it("treats legacy admin role as global admin during login redirect", async () => {

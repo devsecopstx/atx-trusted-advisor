@@ -28,13 +28,14 @@ export type DefaultXfinancePersonaInsert = Omit<
 
 /** Default RAG collection for xFinance (and optionally Super-Agent); may change over time. */
 export const DEFAULT_XFINANCE_COLLECTION_NAME = "Finance";
+const DEFAULT_XCHAT_PERSONA_MODEL = "grok-4-1-fast-reasoning";
 
 export function buildDefaultXfinancePersonaPayload(): DefaultXfinancePersonaInsert {
   return {
     name: XPERSONA_XFINANCE_NAME,
     systemPrompt: XFINANCE_SYSTEM_PROMPT,
     overridePrompt: "",
-    model: "grok-4-1-fast",
+    model: DEFAULT_XCHAT_PERSONA_MODEL,
     temperature: 0.2,
     enableRag: true,
     defaultScope: "global",

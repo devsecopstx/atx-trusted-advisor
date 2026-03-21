@@ -5,24 +5,24 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
-    chatWithXai,
-    respondWithXai,
-    respondWithXaiToolLoop,
-    searchDocumentsInCollections,
-    type ToolCallLog
+  chatWithXai,
+  respondWithXai,
+  respondWithXaiToolLoop,
+  searchDocumentsInCollections,
+  type ToolCallLog
 } from "@/lib/xai";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import {
-    getPersonaById,
-    resolveDefaultXchatPersonaForSession,
-    retrieveRagChunks,
-    saveXChatLog
+  getPersonaById,
+  resolveDefaultXchatPersonaForSession,
+  retrieveRagChunks,
+  saveXChatLog
 } from "@/modules/xchat/repository";
 import {
-    ATXFINANCE_TOOL_DEFINITION,
-    createXfinanceToolExecutor
+  ATXFINANCE_TOOL_DEFINITION,
+  createXfinanceToolExecutor
 } from "@/modules/xchat/tool-executor";
 import { normalizePersonaXapiConfig } from "@/modules/xchat/types";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
@@ -39,6 +39,7 @@ const askSchema = z.object({
 const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
 const ASK_RATE_WINDOW_MS = 60_000;
 const ASK_RATE_MAX = 20;
+const DEFAULT_XCHAT_MODEL = "grok-4-1-fast-reasoning";
 const MULTI_AGENT_MODEL = "grok-4.20-multi-agent";
 const ADMIN_ALLOWED_MODEL_OVERRIDES = new Set<string>([MULTI_AGENT_MODEL]);
 const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>([
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
   }
 
   const requestedModel = parsed.data.model?.trim();
-  let effectiveModel = persona.model;
+  let effectiveModel = DEFAULT_XCHAT_MODEL;
   let modelSelectionSource: ModelSelectionSource = "default";
   if (requestedModel) {
     if (!isAdminSession) {
@@ -152,10 +153,7 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
-    if (
-      requestedModel !== persona.model &&
-      !ADMIN_ALLOWED_MODEL_OVERRIDES.has(requestedModel)
-    ) {
+    if (requestedModel !== DEFAULT_XCHAT_MODEL && !ADMIN_ALLOWED_MODEL_OVERRIDES.has(requestedModel)) {
       return NextResponse.json(
         {
           error: "Requested model override is not in the approved set",

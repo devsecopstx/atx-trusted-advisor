@@ -13,6 +13,7 @@ export const PERSONA_VALIDATION_LIMITS = {
   scopeLength: 80,
   xapiToolsLength: 32
 } as const;
+const DEFAULT_XCHAT_PERSONA_MODEL = "grok-4-1-fast-reasoning";
 
 const temperatureSchema = z.preprocess(
   (value) => {
@@ -101,7 +102,12 @@ export const createPersonaPayloadSchema = z.object({
   systemPrompt: z.string().trim().min(10).max(PERSONA_VALIDATION_LIMITS.systemPromptLength),
   overridePrompt: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.overridePromptLength),
   xaiCollection: xaiCollectionSchema.optional(),
-  model: z.string().trim().min(1).max(PERSONA_VALIDATION_LIMITS.modelLength).default("grok-4-1-fast"),
+  model: z
+    .string()
+    .trim()
+    .min(1)
+    .max(PERSONA_VALIDATION_LIMITS.modelLength)
+    .default(DEFAULT_XCHAT_PERSONA_MODEL),
   temperature: temperatureSchema.default(0.2),
   enableRag: booleanSchema.default(true),
   defaultScope: z

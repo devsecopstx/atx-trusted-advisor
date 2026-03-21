@@ -261,6 +261,40 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "503": jsonResponse("Default admin persona (Super-Agent) missing from database.", "ErrorResponse")
     }
   },
+  "GET /api/xchat/history": {
+    summary: "List saved xChat prompt history",
+    description:
+      "Returns persisted prompt/response history for the signed-in user. Current in-memory session messages are client-side and not included until persisted.",
+    parameters: [
+      {
+        name: "limit",
+        in: "query",
+        required: false,
+        description: "Maximum number of history items to return (1-50).",
+        schema: { type: "integer", minimum: 1, maximum: 50, default: 20 }
+      },
+      {
+        name: "cursor",
+        in: "query",
+        required: false,
+        description: "ISO datetime cursor. Returns items older than this timestamp.",
+        schema: { type: "string", format: "date-time" }
+      }
+    ],
+    responses: {
+      "200": jsonResponse("Saved xChat history list.", "XChatHistoryListResponseEnvelope"),
+      "400": jsonResponse("Invalid history query.", "ValidationErrorResponse"),
+      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse")
+    }
+  },
+  "GET /api/xchat/history/stats": {
+    summary: "Read saved xChat history stats",
+    responses: {
+      "200": jsonResponse("Saved xChat history stats.", "XChatHistoryStatsResponseEnvelope"),
+      "400": jsonResponse("Invalid session user id.", "ErrorResponse"),
+      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse")
+    }
+  },
   "POST /api/xchat/batch": {
     summary: "Submit xChat batch job",
     description:
@@ -604,6 +638,52 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["data"],
     properties: {
       data: refSchema("XChatAskResponseData")
+    }
+  },
+  XChatHistoryItem: {
+    type: "object",
+    required: ["id", "message", "response", "model", "createdAt", "contextReferenceCount", "toolCallCount"],
+    properties: {
+      id: { type: "string" },
+      message: { type: "string" },
+      response: { type: "string" },
+      model: { type: "string" },
+      createdAt: { type: "string", format: "date-time" },
+      personaId: { type: "string" },
+      contextReferenceCount: { type: "integer", minimum: 0 },
+      toolCallCount: { type: "integer", minimum: 0 }
+    }
+  },
+  XChatHistoryListResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["items", "nextCursor", "hasMore"],
+        properties: {
+          items: { type: "array", items: refSchema("XChatHistoryItem") },
+          nextCursor: { type: "string", format: "date-time", nullable: true },
+          hasMore: { type: "boolean" }
+        }
+      }
+    }
+  },
+  XChatHistoryStatsResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["totalPrompts", "activeDays", "referencedFileCount"],
+        properties: {
+          totalPrompts: { type: "integer", minimum: 0 },
+          activeDays: { type: "integer", minimum: 0 },
+          referencedFileCount: { type: "integer", minimum: 0 },
+          lastPromptAt: { type: "string", format: "date-time", nullable: true },
+          collectionId: { type: "string", nullable: true }
+        }
+      }
     }
   },
   PersonaStatus: {

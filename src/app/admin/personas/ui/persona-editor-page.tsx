@@ -47,7 +47,7 @@ const EMPTY_FORM: PersonaPayload = {
   overridePrompt: "",
   xaiCollectionId: "",
   xaiCollectionName: "",
-  model: "grok-4-1-fast",
+  model: "grok-4-1-fast-reasoning",
   temperature: "0.2",
   enableRag: true,
   defaultScope: "global",

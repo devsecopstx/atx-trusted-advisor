@@ -22,6 +22,7 @@ const BATCH_ITEMS_COLLECTION = "xchat_batch_items";
 const MAX_ITEMS_PER_BATCH = 500;
 const POLL_INTERVAL_MS = 15_000;
 const MAX_POLL_ATTEMPTS = 200;
+const DEFAULT_XCHAT_BATCH_MODEL = "grok-4-1-fast-reasoning";
 
 export type BatchWorkloadItem = {
   itemId: string;
@@ -165,7 +166,7 @@ export async function submitBatchJob(
     });
 
     const baseChatBody: Record<string, unknown> = {
-      model: input.persona.model ?? "grok-4-1-fast",
+      model: input.persona.model ?? DEFAULT_XCHAT_BATCH_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -178,7 +179,7 @@ export async function submitBatchJob(
     }
 
     const responsesBody: Record<string, unknown> = {
-      model: input.persona.model ?? "grok-4-1-fast",
+      model: input.persona.model ?? DEFAULT_XCHAT_BATCH_MODEL,
       system_prompt: systemPrompt,
       input: userPrompt,
       max_turns: xapiConfig.maxTurns

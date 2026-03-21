@@ -2,19 +2,21 @@ import { MongoServerError, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import {
-  buildDefaultXfinancePersonaPayload,
-  isGlobalAdminRole,
-  XPERSONA_SUPER_AGENT_NAME,
-  XPERSONA_XFINANCE_NAME
+    buildDefaultXfinancePersonaPayload,
+    isGlobalAdminRole,
+    XPERSONA_SUPER_AGENT_NAME,
+    XPERSONA_XFINANCE_NAME
 } from "@/modules/xchat/default-xpersonas";
 import type {
-  PersonaCollectionVerification,
-  PersonaConfig,
-  PersonaStatus,
-  PersonaVersionSnapshot,
-  RagChunk,
-  RagSourceFile,
-  XChatSessionLog
+    PersonaCollectionVerification,
+    PersonaConfig,
+    PersonaStatus,
+    PersonaVersionSnapshot,
+    RagChunk,
+    RagSourceFile,
+    XChatHistoryItem,
+    XChatHistoryStats,
+    XChatSessionLog
 } from "@/modules/xchat/types";
 
 const collections = {
@@ -342,6 +344,108 @@ export async function saveXChatLog(
   });
 }
 
+export async function listXChatHistoryByUser(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+  limit: number;
+  before?: Date;
+}): Promise<XChatHistoryItem[]> {
+  const db = await getDb();
+  const query: Record<string, unknown> = {
+    userId: input.userId
+  };
+  if (input.before) {
+    query.createdAt = { $lt: input.before };
+  }
+  const scopedQuery = withTenantScopeForLogs(query, input.tenantId);
+  const logs = await db
+    .collection<XChatSessionLog>(collections.chatLogs)
+    .find(scopedQuery)
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(input.limit)
+    .toArray();
+
+  return logs.map((log) => ({
+    id: log._id?.toHexString() ?? "",
+    message: log.message,
+    response: log.response,
+    model: log.model,
+    createdAt: log.createdAt,
+    personaId: log.personaId?.toHexString(),
+    contextReferenceCount: log.collectionContextReferences?.length ?? 0,
+    toolCallCount: log.xapiToolCalls?.length ?? 0
+  }));
+}
+
+export async function getXChatHistoryStatsByUser(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+}): Promise<XChatHistoryStats> {
+  const db = await getDb();
+  const match = withTenantScopeForLogs({ userId: input.userId }, input.tenantId);
+
+  const totals = await db
+    .collection<XChatSessionLog>(collections.chatLogs)
+    .aggregate<{
+      totalPrompts: number;
+      lastPromptAt?: Date;
+      activeDays: number;
+    }>([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          totalPrompts: { $sum: 1 },
+          lastPromptAt: { $max: "$createdAt" },
+          days: {
+            $addToSet: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "UTC" }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalPrompts: 1,
+          lastPromptAt: 1,
+          activeDays: { $size: "$days" }
+        }
+      }
+    ])
+    .toArray();
+
+  const referencedFiles = await db
+    .collection<XChatSessionLog>(collections.chatLogs)
+    .aggregate<{ referencedFileCount: number }>([
+      { $match: match },
+      { $unwind: { path: "$collectionContextReferences", preserveNullAndEmptyArrays: false } },
+      {
+        $addFields: {
+          refKey: {
+            $ifNull: [
+              "$collectionContextReferences.documentId",
+              "$collectionContextReferences.documentName"
+            ]
+          }
+        }
+      },
+      { $match: { refKey: { $type: "string" } } },
+      { $group: { _id: "$refKey" } },
+      { $group: { _id: null, referencedFileCount: { $sum: 1 } } },
+      { $project: { _id: 0, referencedFileCount: 1 } }
+    ])
+    .toArray();
+
+  const totalRow = totals[0];
+  return {
+    totalPrompts: totalRow?.totalPrompts ?? 0,
+    activeDays: totalRow?.activeDays ?? 0,
+    referencedFileCount: referencedFiles[0]?.referencedFileCount ?? 0,
+    lastPromptAt: totalRow?.lastPromptAt
+  };
+}
+
 export async function updatePersonasCollectionVerification(
   collectionId: string,
   verification: PersonaCollectionVerification
@@ -509,4 +613,17 @@ export function normalizePersonaNameKey(name: string): string {
 
 function isDuplicateKeyError(error: unknown): boolean {
   return error instanceof MongoServerError && error.code === 11000;
+}
+
+function withTenantScopeForLogs(
+  query: Record<string, unknown>,
+  tenantId?: ObjectId | null
+): Record<string, unknown> {
+  if (!tenantId) {
+    return query;
+  }
+  return {
+    ...query,
+    $or: [{ tenantId }, { tenantId: { $exists: false } }]
+  };
 }

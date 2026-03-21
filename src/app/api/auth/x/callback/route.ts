@@ -1,35 +1,35 @@
 import { NextResponse } from "next/server";
 
 import {
-    clearOAuthFlowCookies,
-    createSession,
-    getSessionUser,
-    readOAuthFlowCookies,
-    setPendingXLinkCookie
+  clearOAuthFlowCookies,
+  createSession,
+  getSessionUser,
+  readOAuthFlowCookies,
+  setPendingXLinkCookie
 } from "@/lib/auth";
 import {
-    getEnv,
-    getXOauthClientId,
-    isAllowAnyXUserLoginEnabled
+  getEnv,
+  getXOauthClientId,
+  isAllowAnyXUserLoginEnabled
 } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import {
-    createAccessRequest,
-    getPendingAccessRequestByUserAndRole,
-    provisionDefaultPortfolioForUser
+  createAccessRequest,
+  getPendingAccessRequestByUserAndRole,
+  provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-    ensureCoreUserByEmail,
-    ensureDefaultTenant,
-    ensureSeededGlobalAdmin,
-    getCoreUserByEmail,
-    getCoreUserByXIdentity,
-    linkXAccountToUser,
-    resolveAuthContext,
-    unlinkXAccountFromUser,
-    upsertTenantMembership
+  ensureCoreUserByEmail,
+  ensureDefaultTenant,
+  ensureSeededGlobalAdmin,
+  getCoreUserByEmail,
+  getCoreUserByXIdentity,
+  linkXAccountToUser,
+  resolveAuthContext,
+  unlinkXAccountFromUser,
+  upsertTenantMembership
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
 
@@ -273,10 +273,11 @@ export async function GET(request: Request) {
     .split(",")
     .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean);
+  const usernameIsAllowlisted = allowlist.includes(userInfoJson.data.username.toLowerCase());
+  const adminAllowlistDenied = allowlist.length > 0 && isGlobalAdmin(user.roles) && !usernameIsAllowlisted;
   if (
-    allowlist.length > 0 &&
-    isGlobalAdmin(user.roles) &&
-    !allowlist.includes(userInfoJson.data.username.toLowerCase())
+    adminAllowlistDenied &&
+    !allowAnyXUserLogin
   ) {
     return NextResponse.redirect(new URL("/login?error=not_authorized_admin", origin));
   }
@@ -299,6 +300,18 @@ export async function GET(request: Request) {
       : authContext.roles.length > 0
         ? authContext.roles
         : ["viewer"];
+    const effectiveSessionRoles = adminAllowlistDenied
+      ? sessionRoles.filter((role) => role !== "global_admin" && role !== "admin")
+      : sessionRoles;
+    const finalSessionRoles =
+      effectiveSessionRoles.length > 0 ? effectiveSessionRoles : ["viewer"];
+
+    if (adminAllowlistDenied) {
+      console.warn("[auth/x/callback] admin allowlist denied, falling back to app_user session", {
+        userId: userObjectId.toHexString(),
+        username: userInfoJson.data.username
+      });
+    }
 
     await provisionDefaultPortfolioForUser({
       userId: authContext.userId.toHexString(),
@@ -308,7 +321,7 @@ export async function GET(request: Request) {
     await createSession({
       userId: authContext.userId.toHexString(),
       email: authContext.email,
-      roles: sessionRoles,
+      roles: finalSessionRoles,
       tenantId: authContext.tenantId.toHexString(),
       tenantRole: authContext.tenantRole,
       xUserId: authContext.xUserId ?? xIdentity.xUserId,
@@ -318,7 +331,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.redirect(
-      new URL(isGlobalAdmin(sessionRoles) ? "/admin" : "/xchat", origin)
+      new URL(isGlobalAdmin(finalSessionRoles) ? "/admin" : "/xchat", origin)
     );
   } catch (error) {
     console.error("[auth/x/callback] session bootstrap failed", {

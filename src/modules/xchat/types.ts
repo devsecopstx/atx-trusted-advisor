@@ -150,6 +150,24 @@ export type XChatSessionLog = {
   createdAt: Date;
 };
 
+export type XChatHistoryItem = {
+  id: string;
+  message: string;
+  response: string;
+  model: string;
+  createdAt: Date;
+  personaId?: string;
+  contextReferenceCount: number;
+  toolCallCount: number;
+};
+
+export type XChatHistoryStats = {
+  totalPrompts: number;
+  activeDays: number;
+  referencedFileCount: number;
+  lastPromptAt?: Date;
+};
+
 export function normalizePersonaXapiConfig(input?: Partial<PersonaXapiConfig> | null): PersonaXapiConfig {
   const mode = input?.mode === "chat_completions" ? "chat_completions" : "responses";
   const toolChoice =

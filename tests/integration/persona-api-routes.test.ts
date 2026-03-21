@@ -42,13 +42,13 @@ vi.mock("@/modules/xchat/repository", () => repositoryMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 
-import { GET as getPersonas, POST as postPersona } from "@/app/api/personas/route";
 import {
   DELETE as deletePersonaById,
   GET as getPersonaByIdRoute,
   PUT as putPersonaById
 } from "@/app/api/personas/[personaId]/route";
 import { POST as postVerifyPersonaCollection } from "@/app/api/personas/[personaId]/verify-collection/route";
+import { GET as getPersonas, POST as postPersona } from "@/app/api/personas/route";
 
 describe("persona API routes", () => {
   const now = new Date("2026-03-16T00:00:00.000Z");
@@ -826,7 +826,7 @@ describe("persona API routes", () => {
     expect(repositoryMocks.createPersona).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "DefaultsOnly",
-        model: "grok-4-1-fast",
+        model: "grok-4-1-fast-reasoning",
         enableRag: true,
         defaultScope: "global",
         xapi: {

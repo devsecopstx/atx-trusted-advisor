@@ -22,6 +22,8 @@ import {
     updateCoreUserSubscriptionPlan
 } from "@/modules/identity/repository";
 
+const BETA_DEFAULT_APPROVED_ROLE = "global_admin" as const;
+
 const reviewAccessRequestSchema = z.object({
   status: z.enum(["approved", "rejected"]).optional(),
   requestedPlan: z.enum(["free", "pro", "enterprise"]).optional()
@@ -141,7 +143,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
     approvedUserObjectId = userId;
     await addRoleToCoreUser({
       userId,
-      role: existing.requestedRole
+      role: BETA_DEFAULT_APPROVED_ROLE
     });
     await updateCoreUserSubscriptionPlan({
       userId,
