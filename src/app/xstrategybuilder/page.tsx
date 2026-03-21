@@ -1,41 +1,101 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
+import { getLicensingPitchContact } from "@/lib/env";
 
 import "../xchat/xchat.css";
 import "../xcoach/xcoach.css";
 
-const LICENSING_MODELS: { title: string; detail: string }[] = [
+const PRICING_TOOLTIP = "Cheapest xFinance on earth — pay only for what you use.";
+
+type MetricBadge = {
+  label: string;
+  detail: string;
+};
+
+const METRIC_BADGES: MetricBadge[] = [
   {
-    title: "White-label licensing",
-    detail: "Firm-branded deployment with custom theme and role controls for advisors and clients."
+    label: "5–10% weekly range",
+    detail:
+      "Illustrative options-flow band from backtests and simulation (2026-style vol & trend regimes) — not live P/L or a guarantee."
   },
   {
-    title: "API-first integration",
-    detail: "Secure APIs for strategy generation, Greeks, backtesting, and execution hooks."
+    label: "20–50% annual (illustrative)",
+    detail:
+      "Compounded, risk-adjusted framing for desk-level deployment; hypothetical until validated on your book and compliance sign-off."
   },
   {
-    title: "Managed hosted SaaS",
-    detail: "Compliance-wrapped cloud tenancy with audit trails and enterprise support."
+    label: "Austin RIA / allocator focus",
+    detail:
+      "Local GTM: LeafHouse (~$15B AUM), Hub (~$9B), EPIC (~$5B). Figures are public-scale references — verify independently."
   }
 ];
 
-const INSTITUTIONAL_REQUIREMENTS: { title: string; detail: string }[] = [
+const LICENSING_MODELS: { title: string; detail: string }[] = [
   {
-    title: "Ultra-low latency and real-time data",
-    detail: "Sub-second generation targets with cache-aware Grok calls and dedicated market-data feeds."
+    title: "White-label desk",
+    detail: "Firm-branded xStrategyBuilder: themes, roles, and advisor workflows under your mark."
   },
   {
-    title: "Encryption and compliance controls",
-    detail: "SOC2/FINRA/SEC-ready posture, encrypted transit/storage, explainable strategy rationale, and tenant isolation."
+    title: "API integration",
+    detail: "Greeks, scenario backtests, scanner hooks, and execution adapters — secure tenant APIs."
   },
   {
-    title: "Cybersecurity and model integrity",
-    detail: "API rate controls, MFA, IP protection, and recurring validation against live trading outcomes."
+    title: "Pilot → firm-wide",
+    detail: "Start with a trading pod or sleeve; expand to full-firm rollout with audit trails and governance."
   }
 ];
+
+function PitchContactLine() {
+  const c = getLicensingPitchContact();
+  const parts: ReactNode[] = [];
+
+  if (c.licensingEmail) {
+    parts.push(
+      <a key="email" href={`mailto:${c.licensingEmail}`}>
+        {c.licensingEmail}
+      </a>
+    );
+  }
+  if (c.licensingXUrl) {
+    const label = c.licensingXLabel?.trim() || "X";
+    parts.push(
+      <a key="x" href={c.licensingXUrl} rel="noopener noreferrer" target="_blank">
+        {label}
+      </a>
+    );
+  }
+  if (c.companyEmail) {
+    parts.push(
+      <a key="company" href={`mailto:${c.companyEmail}`}>
+        {c.companyEmail}
+      </a>
+    );
+  }
+
+  if (parts.length === 0) {
+    return (
+      <p className="xsb-pitch-cta-sub">
+        Licensing inquiries — reach your workspace or tenant administrator, or use approved sign-in below.
+      </p>
+    );
+  }
+
+  return (
+    <p className="xsb-pitch-cta-sub">
+      Contact:{" "}
+      {parts.map((node, i) => (
+        <span key={i}>
+          {i > 0 ? " · " : null}
+          {node}
+        </span>
+      ))}
+    </p>
+  );
+}
 
 export default async function XstrategyBuilderPage() {
   const session = await getSessionUser();
@@ -48,15 +108,62 @@ export default async function XstrategyBuilderPage() {
       <AppUserApprovedHeader current="xstrategybuilder" feedbackPageLabel="xStrategyBuilder" session={session} />
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
-        <section className="hero-card xf-noise-overlay xc-hero" style={{ maxWidth: "860px", margin: "0 auto" }}>
-          <p className="eyebrow">xStrategyBuilder</p>
-          <h1 className="hero-title">Institutional options alpha, licensed your way</h1>
+        <section className="hero-card xf-noise-overlay xc-hero xsb-pitch">
+          <p className="eyebrow">xStrategyBuilder · B2B licensing</p>
+
+          <div className="xsb-hero-lockup">
+            <h1 className="hero-title">aTx⚡Finance — Powered by xAI</h1>
+            <p className="xsb-tagline">No Atoms Moved. Just Gains Earned.</p>
+          </div>
+
           <p className="hero-copy">
-            No Atoms Moved. Just Gains Earned. xStrategyBuilder is now the core xFinance surface for B2B deployment
-            across RIAs, investment firms, and hedge teams.
+            AI-powered options strategy builder — license to your Austin traders and PMs. Covered calls, protective puts,
+            spreads, and unified scanner-style workflows in one institutional-dark workspace built for RIAs and hedge
+            funds.
           </p>
 
-          <div className="xc-exam-grid" role="list">
+          <div className="xsb-badges" role="list">
+            {METRIC_BADGES.map((b) => (
+              <article key={b.label} className="xsb-metric-badge" role="listitem">
+                <div className="xsb-metric-badge-top">
+                  <span className="xsb-metric-arrow" aria-hidden>
+                    ↑
+                  </span>
+                  {b.label}
+                </div>
+                <p className="xsb-metric-detail">{b.detail}</p>
+              </article>
+            ))}
+          </div>
+
+          <p className="xsb-disclaimer">
+            Hypothetical and backtested results have inherent limitations; past or simulated performance does not
+            guarantee future results. Not an offer or solicitation — diligence and compliance review required.
+          </p>
+
+          <div className="xsb-value-card">
+            <h2>Value proposition</h2>
+            <ul className="xsb-value-list">
+              <li>
+                <strong>White-label or API</strong>
+                <span>Ship under your brand or wire our engines into OMS/EMS and research stacks.</span>
+              </li>
+              <li>
+                <strong>Real-time Greeks &amp; backtests</strong>
+                <span>Scenario analysis, execution hooks, and Grok-grounded rationale for defined-risk options income.</span>
+              </li>
+              <li>
+                <strong>Compliance-forward</strong>
+                <span>SOC 2–aligned roadmap, tenant isolation, immutable audit trails for approvals and overrides.</span>
+              </li>
+              <li>
+                <strong>Pilot, then scale</strong>
+                <span>Pod-level pilot with measurable desk KPIs; expand to full-firm deployment when ready.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="xc-exam-grid" role="list" style={{ marginTop: "1rem" }}>
             {LICENSING_MODELS.map((item) => (
               <article key={item.title} className="xc-exam-card" role="listitem" aria-label={item.title}>
                 <strong>{item.title}</strong>
@@ -66,14 +173,20 @@ export default async function XstrategyBuilderPage() {
             ))}
           </div>
 
-          <div className="xc-exam-grid" role="list" style={{ marginTop: "1rem" }}>
-            {INSTITUTIONAL_REQUIREMENTS.map((item) => (
-              <article key={item.title} className="xc-exam-card" role="listitem" aria-label={item.title}>
-                <strong>{item.title}</strong>
-                <span>{item.detail}</span>
-                <span className="xc-exam-badge">Required</span>
-              </article>
-            ))}
+          <div className="xsb-pitch-cta">
+            <p className="xsb-pitch-cta-lead">
+              Boost your traders&apos; edge — license aTx⚡Finance xStrategyBuilder today. Demo in 15 minutes.
+            </p>
+            <PitchContactLine />
+            <p className="xsb-pitch-cta-sub xsb-pitch-cta-sub--tight">
+              <Link href="/">aTx⚡Finance</Link>
+              {" · "}
+              <Link href="/login?next=/xstrategybuilder">Sign in with X</Link> (approved access)
+            </p>
+            <p className="xsb-pricing-hint">
+              Retail / pay-per-use from <abbr title={PRICING_TOOLTIP}>$2/hr</abbr> — enterprise licensing quoted
+              separately.
+            </p>
           </div>
 
           <div className="cta-row" style={{ marginTop: "1.25rem" }}>

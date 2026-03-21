@@ -50,6 +50,32 @@ export const SUPER_AGENT_DEFAULT_TOOLS: PersonaXapiToolDefinition[] = [
   { type: "atxfinance" }
 ];
 
+/** Matches `nameNormalized` / display name lowercased for the seeded admin persona (see `scripts/seed-admin-user.mjs`). */
+export const SUPER_AGENT_NAME_NORMALIZED = "super-agent";
+
+/**
+ * If Mongo `xapi.tools` was cleared or edited down, Super-Agent can lose `web_search` / `x_search` / collections
+ * while the ask route still injects Yahoo. Restore the full hosted + workspace surface for that persona only.
+ */
+export function ensureSuperAgentDefaultTools(
+  config: PersonaXapiConfig,
+  personaDisplayName: string | undefined
+): PersonaXapiConfig {
+  const key = personaDisplayName?.trim().toLowerCase();
+  if (key !== SUPER_AGENT_NAME_NORMALIZED) {
+    return config;
+  }
+  const have = new Set(config.tools.map((t) => t.type));
+  const merged: PersonaXapiToolDefinition[] = [...config.tools];
+  for (const def of SUPER_AGENT_DEFAULT_TOOLS) {
+    if (!have.has(def.type)) {
+      merged.push({ ...def });
+      have.add(def.type);
+    }
+  }
+  return { ...config, tools: merged };
+}
+
 export const personaStatusValues = ["draft", "published", "archived"] as const;
 export type PersonaStatus = (typeof personaStatusValues)[number];
 

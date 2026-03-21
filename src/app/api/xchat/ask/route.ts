@@ -43,6 +43,7 @@ import {
 } from "@/modules/xchat/tool-executor";
 import {
     ATXFINANCE_COLLECTION_ID,
+    ensureSuperAgentDefaultTools,
     normalizePersonaXapiConfig,
     type PersonaXapiConfig,
     type PersonaXapiToolDefinition
@@ -247,13 +248,14 @@ export async function POST(request: Request) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
   const withFinanceTools = ensureInternalFinanceToolsForPersona(baseXapiConfig, persona?.name);
+  const withSuperAgentTools = ensureSuperAgentDefaultTools(withFinanceTools, persona?.name);
   const withAppMemberPortfolioTool =
-    hasAppRole && !withFinanceTools.tools.some((tool) => tool.type === "atxfinance")
+    hasAppRole && !withSuperAgentTools.tools.some((tool) => tool.type === "atxfinance")
       ? {
-          ...withFinanceTools,
-          tools: [...withFinanceTools.tools, { type: "atxfinance" as const }]
+          ...withSuperAgentTools,
+          tools: [...withSuperAgentTools.tools, { type: "atxfinance" as const }]
         }
-      : withFinanceTools;
+      : withSuperAgentTools;
   const xapiConfig = withLinkedCollectionTools(withAppMemberPortfolioTool, linkedCollectionIds);
 
   let contextSource: "none" | "mongo_scope" | "xai_collection" = "none";

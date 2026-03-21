@@ -5,9 +5,11 @@ import {
     hasFileSearchTool
 } from "@/modules/xchat/persona-validation";
 import {
+    ensureSuperAgentDefaultTools,
     normalizePersonaXapiConfig,
     PERSONA_XAPI_TOOL_TYPES,
-    SUPER_AGENT_DEFAULT_TOOLS
+    SUPER_AGENT_DEFAULT_TOOLS,
+    SUPER_AGENT_NAME_NORMALIZED
 } from "@/modules/xchat/types";
 
 describe("persona tool validation", () => {
@@ -73,6 +75,25 @@ describe("persona tool validation", () => {
       (t) => t.type === "collections_search"
     );
     expect(collectionsSearch).toHaveProperty("collection_ids");
+  });
+
+  it("ensureSuperAgentDefaultTools restores hosted tools when Mongo xapi.tools was stripped", () => {
+    expect(SUPER_AGENT_NAME_NORMALIZED).toBe("super-agent");
+    const stripped = normalizePersonaXapiConfig({
+      mode: "responses",
+      toolChoice: "auto",
+      maxTurns: 5,
+      tools: []
+    });
+    const yahooOnly = {
+      ...stripped,
+      tools: [...stripped.tools, { type: "yahoo_finance" as const }]
+    };
+    const restored = ensureSuperAgentDefaultTools(yahooOnly, "Super-Agent");
+    expect(restored.tools.map((t) => t.type).sort()).toEqual(
+      [...SUPER_AGENT_DEFAULT_TOOLS.map((t) => t.type)].sort()
+    );
+    expect(ensureSuperAgentDefaultTools(yahooOnly, "xFinance")).toEqual(yahooOnly);
   });
 
   it("hasFileSearchTool detects file_search or collections_search in tool array", () => {

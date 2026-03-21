@@ -367,6 +367,8 @@ export async function respondWithXaiToolLoop(input: {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const model = input.model ?? defaultModel;
   const maxTurns = input.maxTurns ?? 5;
+  /** Let xAI run built-in tools (web_search, x_search, file_search) server-side inside one HTTP call; `1` broke live search for Super-Agent when mixed with local tools. */
+  const perRequestMaxTurns = Math.min(Math.max(maxTurns, 1), 16);
   const toolCalls: ToolCallLog[] = [];
   const tools = toXaiRequestTools(input.tools);
 
@@ -383,7 +385,7 @@ export async function respondWithXaiToolLoop(input: {
       input: conversationInput,
       tools,
       tool_choice: input.toolChoice ?? "auto",
-      max_turns: 1
+      max_turns: perRequestMaxTurns
     };
     if (input.parallelism) {
       requestBody.agent_count = input.parallelism.agentCount;

@@ -20,6 +20,7 @@ const optionalNonEmptyString = z.preprocess(
   emptyToUndefined,
   z.string().min(1).optional()
 );
+const optionalEmail = z.preprocess(emptyToUndefined, z.string().email().optional());
 
 const envSchema = z.object({
   MONGODB_URI_B64: z.string().min(1).optional(),
@@ -56,6 +57,11 @@ const envSchema = z.object({
   ),
   ADMIN_X_USERNAMES: z.string().optional(),
   ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
+  /** Optional B2B licensing line on `/xstrategybuilder` (no defaults — avoids PII in repo). */
+  XSTRATEGYBUILDER_LICENSING_EMAIL: optionalEmail,
+  XSTRATEGYBUILDER_LICENSING_X_URL: optionalUrl,
+  XSTRATEGYBUILDER_LICENSING_X_LABEL: optionalNonEmptyString,
+  XSTRATEGYBUILDER_COMPANY_EMAIL: optionalEmail,
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .optional()
@@ -123,6 +129,24 @@ export function isAllowAnyXUserLoginEnabled(): boolean {
 }
 
 /** When true, xChat emits detailed payload logs for RAG/expert learning. Set ENABLE_XCHAT_DEBUG=true in GCP. */
+export type LicensingPitchContact = {
+  licensingEmail?: string;
+  licensingXUrl?: string;
+  licensingXLabel?: string;
+  companyEmail?: string;
+};
+
+/** Values for the xStrategyBuilder licensing CTA; all optional. */
+export function getLicensingPitchContact(): LicensingPitchContact {
+  const e = getEnv();
+  return {
+    licensingEmail: e.XSTRATEGYBUILDER_LICENSING_EMAIL,
+    licensingXUrl: e.XSTRATEGYBUILDER_LICENSING_X_URL,
+    licensingXLabel: e.XSTRATEGYBUILDER_LICENSING_X_LABEL,
+    companyEmail: e.XSTRATEGYBUILDER_COMPANY_EMAIL
+  };
+}
+
 export function isXchatDebugEnabled(): boolean {
   const val = process.env.ENABLE_XCHAT_DEBUG;
   if (typeof val === "boolean") {

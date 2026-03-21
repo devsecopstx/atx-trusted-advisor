@@ -44,3 +44,189 @@
   letter-spacing: 0.06em;
   color: var(--xf-gain-green);
 }
+
+/* xStrategyBuilder — investor / licensing pitch panels */
+
+.xsb-pitch {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.xsb-hero-lockup {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
+.xsb-tagline {
+  margin: 0;
+  font-weight: 800;
+  font-size: clamp(0.95rem, 2.8vw, 1.15rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--xf-gain-green);
+}
+
+.xsb-badges {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1.1rem;
+}
+
+@media (min-width: 640px) {
+  .xsb-badges {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.xsb-metric-badge {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.08), 0 0 24px rgba(57, 255, 20, 0.06);
+}
+
+.xsb-metric-badge-top {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--xf-gain-green);
+}
+
+.xsb-metric-arrow {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.xsb-metric-detail {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--xf-text-400);
+}
+
+.xsb-disclaimer {
+  margin: 0.75rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--xf-text-400);
+}
+
+.xsb-value-card {
+  margin-top: 1.15rem;
+  padding: 1.1rem 1.15rem;
+  border-radius: var(--xf-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(
+    145deg,
+    rgba(57, 255, 20, 0.06),
+    rgba(255, 255, 255, 0.03) 45%,
+    rgba(10, 12, 16, 0.5)
+  );
+  box-shadow: 0 0 40px rgba(57, 255, 20, 0.07);
+}
+
+.xsb-value-card h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--xf-text-100);
+}
+
+.xsb-value-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.xsb-value-list li {
+  display: grid;
+  gap: 0.2rem;
+  padding-left: 0.85rem;
+  border-left: 2px solid var(--xf-gain-green);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--xf-text-300);
+}
+
+.xsb-value-list strong {
+  color: var(--xf-text-100);
+  font-size: 0.88rem;
+}
+
+.xsb-pitch-cta {
+  margin-top: 1.2rem;
+  padding: 1rem 1.05rem;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid rgba(57, 255, 20, 0.35);
+  background: rgba(57, 255, 20, 0.07);
+}
+
+.xsb-pitch-cta-lead {
+  margin: 0;
+  font-size: clamp(1rem, 2.5vw, 1.12rem);
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--xf-gain-green);
+}
+
+.xsb-pitch-cta-sub {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--xf-text-300);
+}
+
+.xsb-pitch-cta-sub a {
+  color: var(--xf-text-100);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.xsb-pitch-cta-sub a:hover {
+  color: var(--xf-gain-green);
+}
+
+.xsb-pitch-cta-sub--tight {
+  margin-top: 0.35rem;
+}
+
+.xsb-pitch-contact-tbd {
+  color: var(--xf-text-400);
+  font-style: italic;
+}
+
+.xsb-pitch-cta-sub a[href^="http"] {
+  color: var(--xf-text-100);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.xsb-pitch-cta-sub a[href^="http"]:hover {
+  color: var(--xf-gain-green);
+}
+
+.xsb-pricing-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  color: var(--xf-text-400);
+}
+
+.xsb-pricing-hint abbr {
+  cursor: help;
+  font-weight: 800;
+  color: var(--xf-gain-green);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}

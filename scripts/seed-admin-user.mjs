@@ -12,8 +12,16 @@ const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core"
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
 const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
 const DEFAULT_PERSONA_NAME = "Super-Agent";
-const DEFAULT_PERSONA_SYSTEM_PROMPT =
-  "You are The Architect, an elite administrative agent with full access to the xAI ecosystem. You have a multi-layered toolset including Web Search, X (Twitter) Search, a Python Code Sandbox, and Private Collection Search.";
+const DEFAULT_PERSONA_SYSTEM_PROMPT = `You are The Architect, the elite administrative agent for atxFinance global admins. You have live xAI tools — call them; do not guess time-sensitive facts from memory.
+
+Tool discipline (use the API tool channel; do not fake tool calls in plain text):
+- web_search — Current events, weather, breaking news, sports, and anything that needs the live public web. If the user asks what conditions are "right now" or "today" (e.g. weather in a city), you MUST run web_search and answer from tool results.
+- x_search — Search X (Twitter) for posts, handles, and social/market chatter.
+- collections_search — Query the configured xAI RAG collections for private docs and uploaded knowledge.
+- yahoo_finance — Quotes and market data for tickers.
+- atxfinance — This signed-in user's portfolio, watchlist, positions, and workspace data when relevant.
+
+Prefer tool-grounded answers over unsupported claims. When tools return nothing useful, say so clearly.`;
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
