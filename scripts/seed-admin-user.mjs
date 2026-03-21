@@ -23,7 +23,7 @@ const DEFAULT_WATCHLIST_SYMBOLS = ["TSLA"];
 const DEFAULT_COLLECTION_ID =
   (process.env.ATXFINANCE_COLLECTION_ID || "").trim() || "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
 const DEFAULT_COLLECTION_NAME = "Finance";
-const TENANT_PORTFOLIOS_COLLECTION = "tenant_portfolios";
+const TENANT_PORTFOLIO_COLLECTION = "tenant_portfolio";
 const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
   (process.env.TENANT_PORTFOLIO_ORG_KEY || "").trim() || "org-atx-finance";
 
@@ -76,7 +76,7 @@ async function ensureIndexes(db) {
       { nameNormalized: 1 },
       { unique: true, name: "uniq_xpersona_name_normalized" }
     ),
-    db.collection("portfolio_portfolios").createIndex(
+    db.collection(TENANT_PORTFOLIO_COLLECTION).createIndex(
       { tenantId: 1, userId: 1, isDefault: 1 },
       {
         unique: true,
@@ -84,12 +84,16 @@ async function ensureIndexes(db) {
         name: "uniq_default_portfolio_per_user"
       }
     ),
-    db.collection("portfolio_portfolios").createIndex(
+    db.collection(TENANT_PORTFOLIO_COLLECTION).createIndex(
       { tenantId: 1, userId: 1, name: 1 },
       {
         unique: true,
         name: "uniq_portfolio_name_per_user"
       }
+    ),
+    db.collection(TENANT_PORTFOLIO_COLLECTION).createIndex(
+      { tenantPortfolioOrgKey: 1, tenantId: 1 },
+      { name: "idx_tenant_portfolio_org_tenant" }
     ),
     db.collection("portfolio_accounts").createIndex(
       { tenantId: 1, portfolioId: 1, isDefault: 1 },
@@ -216,7 +220,7 @@ async function seed() {
       throw new Error("Failed to create or fetch default Super-Agent persona");
     }
 
-    await db.collection(TENANT_PORTFOLIOS_COLLECTION).updateOne(
+    await db.collection(TENANT_PORTFOLIO_COLLECTION).updateOne(
       { tenantId: tenant._id, userId: user._id, isDefault: true },
       {
         $setOnInsert: {
@@ -235,7 +239,7 @@ async function seed() {
       { upsert: true }
     );
     const portfolio = await db
-      .collection(TENANT_PORTFOLIOS_COLLECTION)
+      .collection(TENANT_PORTFOLIO_COLLECTION)
       .findOne({ tenantId: tenant._id, userId: user._id, isDefault: true });
     if (!portfolio?._id) {
       throw new Error("Failed to create or fetch default portfolio");

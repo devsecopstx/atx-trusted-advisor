@@ -166,7 +166,7 @@ describe("portfolio provisioning repository", () => {
     expect(first.portfolio._id?.toHexString()).toBe(second.portfolio._id?.toHexString());
     expect(first.account._id?.toHexString()).toBe(second.account._id?.toHexString());
     expect(first.watchlist._id?.toHexString()).toBe(second.watchlist._id?.toHexString());
-    expect(fakeDb.count("tenant_portfolios")).toBe(1);
+    expect(fakeDb.count("tenant_portfolio")).toBe(1);
     expect(fakeDb.count("portfolio_accounts")).toBe(1);
     expect(fakeDb.count("portfolio_watchlists")).toBe(1);
     expect(first.portfolio.ext_broker_ref).toBe("extBrokerName");

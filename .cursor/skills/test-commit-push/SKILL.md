@@ -26,7 +26,8 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 4. Fix blocking failures in scope.
 5. Re-run validation until clean.
 6. Confirm docs/skill updates for any changed runbooks or delivery workflow. Deferred doc/product gaps live in **`docs/PLAN.md`** (TODO / design TBD) — no need to block commit unless you are closing an item. For **`/api/*` or OpenAPI inventory** changes, follow **`generate-docs`** § *API docs & OpenAPI*. **`POST /api/xchat/ask`:** keep OpenAPI + `xchat-ask-route` integration tests aligned with the live contract (persona-driven model, no body `model`; see **`test-commit-push/CHECKLIST.md`**). **Branding / investor / GTM / logo** changes: sync **`.cursor/rules/xfinance-branding.mdc`** and **`docs/xchat/xfinance-branding-review.md`** per **`generate-docs`** § *Branding, investor narrative & xChat product copy*. Combined Core MVP + Branding or **pre-prod release** PRs: run **`xdesign-review`** (includes production deploy lock); after deploy, **`AGENTS.md` → Production validation (post-deploy)**.
-7. For auth/xchat/runtime config changes, verify env provenance:
+7. **Mongo `tenant_portfolio` (singular):** if you change portfolio collection naming or provisioning, keep `collection-names.ts`, seed/backfill/migration scripts, and `DEVELOPMENT.md` aligned; ship checklist item in **`CHECKLIST.md`**; operators run **`npm run migrate:tenant-portfolio`** on existing DBs that still use legacy collection names.
+8. For auth/xchat/runtime config changes, verify env provenance:
    - runtime app secrets in GCP Secret Manager,
    - GH env secrets OIDC-only,
    - deploy-time literals in GH variables.
@@ -35,16 +36,16 @@ Ship changes safely by validating locally and preparing an accurate commit workf
      `npm run ops:secrets:verify:staging` and `npm run ops:secrets:verify:prod`.
    - Validate secret value quality for strict parsers (example:
      `ADMIN_SEED_EMAIL` must be a valid email with no trailing comma/space).
-8. **Cursor rules (`.cursor/rules/*.mdc`)**: if changed, verify single valid YAML
+9. **Cursor rules (`.cursor/rules/*.mdc`)**: if changed, verify single valid YAML
    frontmatter, correct `globs`, no patch/diff noise (`+` prefixes). When logo
    or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).
    Use **`generate-docs`** § *Cursor rules* for the gap list.
-9. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
-10. Prepare concise commit message reflecting intent.
-11. Confirm push readiness and branch status.
-12. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
-13. **Staging first (when applicable):** If the team ships to staging before prod, push the branch, open/merge PR per policy, then run staging deploy/verify (see `AGENTS.md` / deploy skills). Production can wait until staging checks pass.
-14. **Production dispatch correctness (manual runs):**
+10. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
+11. Prepare concise commit message reflecting intent.
+12. Confirm push readiness and branch status.
+13. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
+14. **Staging first (when applicable):** If the team ships to staging before prod, push the branch, open/merge PR per policy, then run staging deploy/verify (see `AGENTS.md` / deploy skills). Production can wait until staging checks pass.
+15. **Production dispatch correctness (manual runs):**
    - For workflow-dispatch production deploys, use explicit inputs:
      `target=production` and `approval=approve-production`.
    - If all deploy jobs show `skipped`, treat as input-contract mismatch first,

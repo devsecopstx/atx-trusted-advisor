@@ -1,17 +1,22 @@
 /**
- * One-shot Mongo migration:
- * 1. Renames legacy collection `portfolio_portfolios` → `tenant_portfolios` (if needed).
- * 2. Backfills `tenantPortfolioOrgKey` when missing (default `org-atx-finance`, or `TENANT_PORTFOLIO_ORG_KEY`).
+ * One-shot Mongo migration to canonical collection name `tenant_portfolio` (singular).
  *
- * Run: node --env-file=.env scripts/migrate-portfolio-portfolios-to-tenant-portfolios.mjs
+ * Rename order (first match wins):
+ * - `portfolio_portfolios` → `tenant_portfolio` if final name absent
+ * - `tenant_portfolios` (plural interim) → `tenant_portfolio` if final absent
  *
- * Safe to re-run: skips rename if `tenant_portfolios` already exists; updateMany only touches docs missing the field.
+ * Then: backfill `tenantPortfolioOrgKey`, ensure indexes.
+ *
+ * Run: npm run migrate:tenant-portfolio
+ *
+ * Safe to re-run: skips rename when `tenant_portfolio` exists; updateMany only for missing org key.
  */
 import { MongoClient } from "mongodb";
 
 const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
-const LEGACY = "portfolio_portfolios";
-const NEXT = "tenant_portfolios";
+const FINAL = "tenant_portfolio";
+const LEGACY_DOUBLE = "portfolio_portfolios";
+const LEGACY_PLURAL = "tenant_portfolios";
 const DEFAULT_ORG =
   (process.env.TENANT_PORTFOLIO_ORG_KEY || "").trim() || "org-atx-finance";
 
@@ -33,23 +38,26 @@ async function main() {
   const db = client.db(DB_NAME);
   try {
     const collNames = new Set((await db.listCollections().toArray()).map((c) => c.name));
-    const hasLegacy = collNames.has(LEGACY);
-    const hasNext = collNames.has(NEXT);
+    const hasFinal = collNames.has(FINAL);
+    const hasLegacyDouble = collNames.has(LEGACY_DOUBLE);
+    const hasLegacyPlural = collNames.has(LEGACY_PLURAL);
 
-    if (hasLegacy && hasNext) {
+    if (hasFinal && (hasLegacyDouble || hasLegacyPlural)) {
       throw new Error(
-        `Both ${LEGACY} and ${NEXT} exist. Merge or drop one manually before running this script.`
+        `${FINAL} exists alongside legacy collection(s). Resolve duplicates manually before re-running.`
       );
     }
+    if (hasLegacyDouble && hasLegacyPlural) {
+      throw new Error(`Both ${LEGACY_DOUBLE} and ${LEGACY_PLURAL} exist. Merge manually before running this script.`);
+    }
 
-    if (!hasLegacy && !hasNext) {
+    if (!hasFinal && !hasLegacyDouble && !hasLegacyPlural) {
       console.log(
         JSON.stringify(
           {
             ok: true,
             step: "noop",
-            message:
-              "No portfolio collection found; the app will create tenant_portfolios on first provision — nothing to migrate."
+            message: `No portfolio collection found; the app will create ${FINAL} on first provision.`
           },
           null,
           2
@@ -59,14 +67,17 @@ async function main() {
       return;
     }
 
-    if (hasLegacy && !hasNext) {
-      await db.collection(LEGACY).rename(NEXT);
-      console.log(JSON.stringify({ ok: true, step: "renamed", from: LEGACY, to: NEXT }, null, 2));
+    if (!hasFinal && hasLegacyPlural) {
+      await db.collection(LEGACY_PLURAL).rename(FINAL);
+      console.log(JSON.stringify({ ok: true, step: "renamed", from: LEGACY_PLURAL, to: FINAL }, null, 2));
+    } else if (!hasFinal && hasLegacyDouble) {
+      await db.collection(LEGACY_DOUBLE).rename(FINAL);
+      console.log(JSON.stringify({ ok: true, step: "renamed", from: LEGACY_DOUBLE, to: FINAL }, null, 2));
     } else {
-      console.log(JSON.stringify({ ok: true, step: "rename_skipped", message: `${NEXT} already present` }, null, 2));
+      console.log(JSON.stringify({ ok: true, step: "rename_skipped", message: `${FINAL} already present` }, null, 2));
     }
 
-    const target = db.collection(NEXT);
+    const target = db.collection(FINAL);
     const backfill = await target.updateMany(
       { tenantPortfolioOrgKey: { $exists: false } },
       { $set: { tenantPortfolioOrgKey: DEFAULT_ORG } }
@@ -100,7 +111,7 @@ async function main() {
       ),
       target.createIndex(
         { tenantPortfolioOrgKey: 1, tenantId: 1 },
-        { name: "idx_tenant_portfolios_org_tenant" }
+        { name: "idx_tenant_portfolio_org_tenant" }
       )
     ]);
     console.log(JSON.stringify({ ok: true, step: "indexes_ensured" }, null, 2));

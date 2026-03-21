@@ -4,25 +4,25 @@ import { createHash } from "node:crypto";
 import { getDb } from "@/lib/mongodb";
 import { sendSlackNotification } from "@/lib/slack";
 import {
-    addFileToXaiCollection,
-    createXaiCollection,
-    getXaiCollectionById,
-    listXaiCollections,
-    uploadFileToXai,
-    XaiCollectionNotFoundError
+  addFileToXaiCollection,
+  createXaiCollection,
+  getXaiCollectionById,
+  listXaiCollections,
+  uploadFileToXai,
+  XaiCollectionNotFoundError
 } from "@/lib/xai";
 import { createAuditEvent } from "@/modules/audit/repository";
-import { TENANT_PORTFOLIOS_COLLECTION } from "@/modules/core-admin/collection-names";
+import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import {
-    createScheduledTask,
-    provisionDefaultPortfolioForUser
+  createScheduledTask,
+  provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { getCoreUserById, updateCoreUserXaiCollection } from "@/modules/identity/repository";
 
 const USER_BOOTSTRAP_COLLECTION = "admin_user_bootstrap_profiles";
 const PROFILE_RETENTION_DAYS = 30;
 export const XCHAT_TURN_RETENTION_DAYS = 30;
-const PORTFOLIO_COLLECTION = TENANT_PORTFOLIOS_COLLECTION;
+const PORTFOLIO_COLLECTION = TENANT_PORTFOLIO_COLLECTION;
 const ACCOUNT_COLLECTION = "portfolio_accounts";
 const WATCHLIST_COLLECTION = "portfolio_watchlists";
 

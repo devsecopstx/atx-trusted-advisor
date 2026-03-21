@@ -1,26 +1,26 @@
 import { type Filter, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
+import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
+import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 import {
-    ACTIONABLE_ACCESS_REQUEST_STATUSES,
-    type AccessRequest,
-    type AccessRequestListItem,
-    type AccessRequestStatus,
-    type Account,
-    type AccountType,
-    type ApprovedUserListItem,
-    type DeployNoteConfig,
-    type Portfolio,
-    type Position,
-    type ScheduledTask,
-    type TaskRun,
-    type UserAdminSettings,
-    type Watchlist,
-    type WatchlistSymbol
+  ACTIONABLE_ACCESS_REQUEST_STATUSES,
+  type AccessRequest,
+  type AccessRequestListItem,
+  type AccessRequestStatus,
+  type Account,
+  type AccountType,
+  type ApprovedUserListItem,
+  type DeployNoteConfig,
+  type Portfolio,
+  type Position,
+  type ScheduledTask,
+  type TaskRun,
+  type UserAdminSettings,
+  type Watchlist,
+  type WatchlistSymbol
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
-import { TENANT_PORTFOLIOS_COLLECTION } from "@/modules/core-admin/collection-names";
-import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 
 const collections = {
   accessRequests: "admin_access_requests",
@@ -28,7 +28,7 @@ const collections = {
   taskRuns: "admin_task_runs",
   userSettings: "admin_user_settings",
   deployNoteConfigs: "admin_deploy_note_configs",
-  portfolios: TENANT_PORTFOLIOS_COLLECTION,
+  portfolios: TENANT_PORTFOLIO_COLLECTION,
   accounts: "portfolio_accounts",
   watchlists: "portfolio_watchlists",
   positions: "portfolio_positions"
@@ -199,7 +199,7 @@ async function createPortfolioIndexes(): Promise<void> {
     ),
     db.collection<Portfolio>(collections.portfolios).createIndex(
       { tenantPortfolioOrgKey: 1, tenantId: 1 },
-      { name: "idx_tenant_portfolios_org_tenant" }
+      { name: "idx_tenant_portfolio_org_tenant" }
     ),
     db.collection<Account>(collections.accounts).createIndex(
       { tenantId: 1, portfolioId: 1, isDefault: 1 },

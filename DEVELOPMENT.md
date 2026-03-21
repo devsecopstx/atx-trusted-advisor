@@ -704,13 +704,13 @@ After running `npm run seed:admin`, verify:
    - `xaiCollection.collectionId: "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"` (Finance collection)
    - `xapi.tools`: `web_search`, `x_search`, `file_search` (Finance collection ids), and `atxfinance`
 5. **xFinance** (`nameNormalized: "xfinance"`): not created by seed — the first non-admin `POST /api/xchat/ask` creates it from `default-xpersonas.ts` if absent. **Publish** this persona for non-admin xChat (FinExpert); prefer an explicit seeded or hand-crafted row in Admin → Personas so environments stay clear.
-6. `tenant_portfolios` (legacy name: `portfolio_portfolios`) contains one default portfolio for the seeded admin user with `tenantPortfolioOrgKey` defaulting to `org-atx-finance` (override via `TENANT_PORTFOLIO_ORG_KEY`).
+6. `tenant_portfolio` (singular; legacy: `portfolio_portfolios` or `tenant_portfolios`) contains one default portfolio for the seeded admin user with `tenantPortfolioOrgKey` defaulting to `org-atx-finance` (override via `TENANT_PORTFOLIO_ORG_KEY`).
 7. `portfolio_accounts` contains one default account (`type: "fidelity"`) linked to that default portfolio.
 8. `portfolio_watchlists` contains `DefaultWatchlist` linked to that default portfolio with `symbols: [{ symbol: "TSLA" }]`.
 
 **Existing databases:** run once per environment:
 
-`npm run migrate:tenant-portfolios`
+`npm run migrate:tenant-portfolio`
 
 Re-running `npm run seed:admin` should remain idempotent (no duplicates).
 
