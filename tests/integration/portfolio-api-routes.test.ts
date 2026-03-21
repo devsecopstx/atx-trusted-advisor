@@ -38,9 +38,9 @@ vi.mock("@/modules/core-admin/repository", async () => {
   };
 });
 
-import { GET as getDefaultPortfolio } from "@/app/api/portfolios/default/route";
 import { GET as getPortfolioAccounts } from "@/app/api/portfolios/[portfolioId]/accounts/route";
 import { GET as getPortfolioWatchlist } from "@/app/api/portfolios/[portfolioId]/watchlist/route";
+import { GET as getDefaultPortfolio } from "@/app/api/portfolios/default/route";
 import { POST as postPosition } from "@/app/api/positions/route";
 import { PositionValidationError } from "@/modules/core-admin/repository";
 
