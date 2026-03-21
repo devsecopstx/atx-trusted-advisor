@@ -50,7 +50,8 @@ export function buildDefaultXfinancePersonaPayload(): DefaultXfinancePersonaInse
       ...DEFAULT_PERSONA_XAPI_CONFIG,
       tools: [
         { type: "web_search" },
-        { type: "file_search", source: { collection_ids: [ATXFINANCE_COLLECTION_ID] } }
+        { type: "file_search", source: { collection_ids: [ATXFINANCE_COLLECTION_ID] } },
+        { type: "atxfinance" }
       ]
     }
   };

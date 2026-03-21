@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { GlobalFooter } from "@/app/ui/global-footer";
+import { APP_VERSION_LABEL } from "@/lib/app-version";
 
 import "./xchat.css";
 
@@ -17,7 +17,21 @@ export default function XchatLayout({ children }: XchatLayoutProps) {
   return (
     <div className="xchat-layout-root">
       {children}
-      <GlobalFooter />
+      <footer className="xchat-footer">
+        <p className="xchat-footer-line">
+          Powered by xAI · aTx⚡Finance watermark · Finance Advisory
+          <span aria-hidden className="xchat-footer-sep">
+            |
+          </span>
+          <span className="xchat-footer-disclaimer">
+            <strong>not financial advice</strong>, don&apos;t sue me bro
+          </span>
+          <span aria-hidden className="xchat-footer-sep">
+            |
+          </span>
+          <span className="xchat-footer-version">{APP_VERSION_LABEL}</span>
+        </p>
+      </footer>
     </div>
   );
 }

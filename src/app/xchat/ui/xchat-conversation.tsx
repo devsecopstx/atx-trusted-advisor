@@ -38,24 +38,40 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   const [messages, setMessages] = useState<Message[]>([]);
   const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
   const [historyStats, setHistoryStats] = useState<HistoryStats | null>(null);
-  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [exampleExpanded, setExampleExpanded] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+  const promptExamples = [
+    "Show my portfolio allocation",
+    "What are my top movers today",
+    "Covered call ideas for my holdings",
+    "Compare SPY vs QQQ trend today",
+    "Stress test portfolio for volatility spike",
+    "xStrategy"
+  ] as const;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
+    if (!historyExpanded || historyLoaded) {
+      return;
+    }
     let active = true;
     async function loadHistory() {
       setHistoryLoading(true);
       setHistoryError(null);
       try {
         const [historyRes, statsRes] = await Promise.all([
-          fetch("/api/xchat/history?limit=12"),
+          fetch("/api/xchat/history?limit=30"),
           fetch("/api/xchat/history/stats")
         ]);
         const historyPayload = (await historyRes.json().catch(() => ({}))) as {
@@ -78,8 +94,14 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
         if (!active) {
           return;
         }
-        setSavedHistory(historyPayload.data?.items ?? []);
+        const nowMs = Date.now();
+        const filteredRecentHistory = (historyPayload.data?.items ?? []).filter((item) => {
+          const createdAtMs = new Date(item.createdAt).getTime();
+          return Number.isFinite(createdAtMs) && nowMs - createdAtMs <= THIRTY_DAY_WINDOW_MS;
+        });
+        setSavedHistory(filteredRecentHistory);
         setHistoryStats(statsPayload.data ?? null);
+        setHistoryLoaded(true);
       } catch (error) {
         if (!active) {
           return;
@@ -96,7 +118,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
     return () => {
       active = false;
     };
-  }, []);
+  }, [historyExpanded, historyLoaded]);
 
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -270,6 +292,83 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           Send
         </button>
       </form>
+
+      <section className="xchat-below-input-panels">
+        <article className="xchat-collapsible-panel">
+          <button
+            aria-expanded={exampleExpanded}
+            className="xchat-panel-toggle"
+            onClick={() => setExampleExpanded((prev) => !prev)}
+            type="button"
+          >
+            <span className="status-badge status-ready">Example prompts</span>
+            <span className="status-text">{exampleExpanded ? "Collapse" : "Expand"}</span>
+          </button>
+          {exampleExpanded ? (
+            <div className="xchat-panel-body">
+              <p className="status-text xchat-panel-hint">
+                Finance-focused examples for quick starts. Click one to copy into the input.
+              </p>
+              <div className="xchat-example-grid">
+                {promptExamples.map((prompt) => (
+                  <button
+                    className="xchat-example-chip"
+                    key={prompt}
+                    onClick={() => setInput(prompt)}
+                    type="button"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </article>
+
+        <article className="xchat-collapsible-panel">
+          <button
+            aria-expanded={historyExpanded}
+            className="xchat-panel-toggle"
+            onClick={() => setHistoryExpanded((prev) => !prev)}
+            type="button"
+          >
+            <span className="status-badge status-ready">Chat history</span>
+            <span className="status-text">{historyExpanded ? "Collapse" : "Expand"}</span>
+          </button>
+          {historyExpanded ? (
+            <div className="xchat-panel-body">
+              <p className="status-text xchat-panel-hint">
+                Last 30 days of saved prompts (lazy-loaded on first expand).
+              </p>
+              <div className="xchat-history-stats">
+                <span className="chip">Prompts: {historyStats?.totalPrompts ?? 0}</span>
+                <span className="chip">Active days: {historyStats?.activeDays ?? 0}</span>
+                <span className="chip">
+                  Collection files seen: {historyStats?.referencedFileCount ?? 0}
+                </span>
+              </div>
+              {historyLoading ? <p className="status-text">Loading history...</p> : null}
+              {historyError ? <p className="status-text status-error">{historyError}</p> : null}
+              {!historyLoading && !historyError && savedHistory.length === 0 ? (
+                <p className="status-text">No recent history yet in the last 30 days.</p>
+              ) : null}
+              {!historyLoading && !historyError && savedHistory.length > 0 ? (
+                <ul className="xchat-history-list">
+                  {savedHistory.map((item) => (
+                    <li className="xchat-history-item" key={item.id}>
+                      <div className="xchat-history-item-head">
+                        <strong>{new Date(item.createdAt).toLocaleString()}</strong>
+                        <span>{item.model}</span>
+                      </div>
+                      <p className="xchat-history-item-prompt">{item.message}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+        </article>
+      </section>
     </div>
   );
 }

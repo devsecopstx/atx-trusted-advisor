@@ -9,7 +9,12 @@ const repositoryMocks = vi.hoisted(() => ({
   listTaskRuns: vi.fn()
 }));
 
+const marketDataMocks = vi.hoisted(() => ({
+  getYahooMarketQuote: vi.fn()
+}));
+
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
+vi.mock("@/modules/xchat/market-data", () => marketDataMocks);
 vi.mock("@/modules/xchat/tool-cache", () => ({
   getCachedToolResult: () => null,
   setCachedToolResult: () => undefined
@@ -48,6 +53,12 @@ describe("atxfinance tool executor", () => {
     repositoryMocks.listTaskRuns.mockResolvedValue([
       { taskName: "Daily Sync", status: "success", triggeredBy: "admin", durationMs: 250 }
     ]);
+    marketDataMocks.getYahooMarketQuote.mockResolvedValue({
+      symbol: "TSLA",
+      price: 250.12,
+      source: "yahoo-finance2",
+      disclaimer: "market disclaimer"
+    });
   });
 
   it("portfolio_summary returns portfolio with accounts", async () => {
@@ -118,8 +129,22 @@ describe("atxfinance tool executor", () => {
       "portfolio_summary",
       "watchlist_snapshot",
       "account_health",
-      "task_status"
+      "task_status",
+      "market_quote"
     ]);
+  });
+
+  it("market_quote returns provider-backed quote snapshot", async () => {
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", {
+      operation: "market_quote",
+      symbol: "tsla"
+    });
+    const data = JSON.parse(result.result);
+    expect(marketDataMocks.getYahooMarketQuote).toHaveBeenCalledWith({ symbol: "tsla" });
+    expect(data.symbol).toBe("TSLA");
+    expect(data.source).toBe("yahoo-finance2");
+    expect(data.disclaimer).toBeDefined();
   });
 
   it("truncates output exceeding 8KB", async () => {

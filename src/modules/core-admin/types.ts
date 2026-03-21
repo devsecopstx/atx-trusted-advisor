@@ -152,7 +152,7 @@ export type DeployNoteConfig = {
   updatedAt: Date;
 };
 
-export const accountTypeValues = ["merrill", "robinhood", "fidelity"] as const;
+export const accountTypeValues = ["merrill", "fidelity", "etrade"] as const;
 export type AccountType = (typeof accountTypeValues)[number];
 
 export type Portfolio = {
@@ -173,6 +173,7 @@ export type Account = {
   name: string;
   type: AccountType;
   extAccountId: string;
+  cashBalance?: number;
   isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;

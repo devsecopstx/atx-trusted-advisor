@@ -6,6 +6,7 @@ import {
   listScheduledTasks,
   listTaskRuns
 } from "@/modules/core-admin/repository";
+import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import { getCachedToolResult, setCachedToolResult } from "@/modules/xchat/tool-cache";
 
 const MAX_OUTPUT_BYTES = 8 * 1024;
@@ -125,6 +126,11 @@ const operations: Record<string, OperationHandler> = {
         durationMs: r.durationMs
       }))
     };
+  },
+
+  market_quote: async (args, _ctx) => {
+    const symbol = typeof args.symbol === "string" ? args.symbol : undefined;
+    return getYahooMarketQuote({ symbol });
   }
 };
 
@@ -172,14 +178,25 @@ export const ATXFINANCE_TOOL_DEFINITION = {
   function: {
     name: "atxfinance",
     description:
-      "Query atxFinance portfolio, watchlist, account, and task data for the authenticated user.",
+      "Query atxFinance portfolio, watchlist, account, task, and market quote data for the authenticated user.",
     parameters: {
       type: "object",
       properties: {
         operation: {
           type: "string",
-          enum: ["portfolio_summary", "watchlist_snapshot", "account_health", "task_status"],
+          enum: [
+            "portfolio_summary",
+            "watchlist_snapshot",
+            "account_health",
+            "task_status",
+            "market_quote"
+          ],
           description: "The atxFinance operation to execute."
+        },
+        symbol: {
+          type: "string",
+          description:
+            "Ticker symbol for market_quote (for example TSLA). Optional; defaults to TSLA."
         }
       },
       required: ["operation"]

@@ -12,6 +12,8 @@ const sessionMocks = vi.hoisted(() => ({
 const repositoryMocks = vi.hoisted(() => ({
   getDefaultPortfolio: vi.fn(),
   listPortfolioAccounts: vi.fn(),
+  listPortfolioPositionsByAccount: vi.fn(),
+  provisionDefaultPortfolioForUser: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
   upsertPositionForAccount: vi.fn()
 }));
@@ -62,9 +64,35 @@ describe("portfolio API routes", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       userId: "507f1f77bcf86cd799439011",
       name: "Default Portfolio",
-      isDefault: true
+      isDefault: true,
+      createdAt: new Date("2025-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-01T00:00:00.000Z")
     });
-    repositoryMocks.listPortfolioAccounts.mockResolvedValue([]);
+    repositoryMocks.listPortfolioAccounts.mockResolvedValue([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+        userId: "507f1f77bcf86cd799439011",
+        portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+        name: "defaultaccount",
+        type: "fidelity",
+        extAccountId: "fidelity-default-account",
+        cashBalance: 25_000,
+        isDefault: true,
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-01T00:00:00.000Z")
+      }
+    ]);
+    repositoryMocks.listPortfolioPositionsByAccount.mockResolvedValue([]);
+    repositoryMocks.provisionDefaultPortfolioForUser.mockResolvedValue({
+      portfolio: {
+        _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+        userId: "507f1f77bcf86cd799439011",
+        name: "Default Portfolio",
+        isDefault: true,
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-01T00:00:00.000Z")
+      }
+    });
     repositoryMocks.getPortfolioWatchlist.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439044" },
       name: "Default Watchlist"

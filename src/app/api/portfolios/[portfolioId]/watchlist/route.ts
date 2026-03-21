@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { getPortfolioWatchlist } from "@/modules/core-admin/repository";
+import { LOOKUP_ROUTE } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 type RouteContext = {
   params: Promise<{
@@ -25,5 +26,24 @@ export async function GET(_: Request, context: RouteContext) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ data: watchlist });
+  // API-first default: skip external symbol lookup unless explicitly requested.
+  const symbolsDetailed = (watchlist.symbols ?? []).map((item) => ({
+    ...item,
+    addedAt: item.addedAt.toISOString()
+  }));
+
+  return NextResponse.json({
+    data: {
+      ...watchlist,
+      symbols: (watchlist.symbols ?? []).map((item) => ({
+        ...item,
+        addedAt: item.addedAt.toISOString()
+      })),
+      symbolsDetailed
+    },
+    metadata: {
+      lookupRoute: LOOKUP_ROUTE,
+      symbolLookupEnabled: false
+    }
+  });
 }

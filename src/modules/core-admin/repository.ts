@@ -34,7 +34,9 @@ const collections = {
 let ensurePortfolioIndexesPromise: Promise<void> | null = null;
 
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
-const DEFAULT_ACCOUNT_NAME = "Default Account";
+const DEFAULT_ACCOUNT_NAME = "defaultaccount";
+const DEFAULT_ACCOUNT_REF = "fidelity-default-account";
+const DEFAULT_ACCOUNT_CASH_BALANCE = 25_000;
 const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 
 type TenantScopedOptions = {
@@ -735,6 +737,34 @@ export async function listPortfolioAccounts(input: {
     .toArray();
 }
 
+export async function listPortfolioPositionsByAccount(input: {
+  userId: string;
+  portfolioId: string;
+  accountIds: ObjectId[];
+  tenantId?: string;
+}): Promise<Position[]> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId) || input.accountIds.length === 0) {
+    return [];
+  }
+
+  const db = await getDb();
+  return db
+    .collection<Position>(collections.positions)
+    .find(
+      withStrictTenantScope(
+        {
+          userId: input.userId,
+          portfolioId: new ObjectId(input.portfolioId),
+          accountId: { $in: input.accountIds }
+        },
+        input.tenantId
+      )
+    )
+    .sort({ createdAt: 1 })
+    .toArray();
+}
+
 export async function getPortfolioWatchlist(input: {
   userId: string;
   portfolioId: string;
@@ -768,7 +798,7 @@ export async function provisionDefaultPortfolioForUser(
   const portfolioName = input.portfolioName ?? DEFAULT_PORTFOLIO_NAME;
   const accountName = input.accountName ?? DEFAULT_ACCOUNT_NAME;
   const watchlistName = input.watchlistName ?? DEFAULT_WATCHLIST_NAME;
-  const accountType = input.accountType ?? "fidelity";
+  const accountType: AccountType = "fidelity";
   const watchlistSymbols = (input.watchlistSymbols ?? ["TSLA"]).map(
     (symbol) => ({ symbol: symbol.toUpperCase(), addedAt: now })
   );
@@ -801,7 +831,7 @@ export async function provisionDefaultPortfolioForUser(
     throw new Error("Failed to provision default portfolio");
   }
 
-  const extAccountId = `${accountType}-default-${input.userId}`;
+  const extAccountId = DEFAULT_ACCOUNT_REF;
   const accountFilter = withStrictTenantScope(
     {
       userId: input.userId,
@@ -823,6 +853,7 @@ export async function provisionDefaultPortfolioForUser(
         name: accountName,
         type: accountType,
         extAccountId,
+        cashBalance: DEFAULT_ACCOUNT_CASH_BALANCE,
         isDefault: true,
         updatedAt: now
       }

@@ -15,7 +15,7 @@ import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
+import { XPERSONA_SUPER_AGENT_NAME, XPERSONA_XFINANCE_NAME } from "@/modules/xchat/default-xpersonas";
 import {
   getPersonaById,
   resolveDefaultXchatPersonaForSession,
@@ -227,7 +227,10 @@ export async function POST(request: Request) {
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
-  const xapiConfig = withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds);
+  const xapiConfig = withLinkedCollectionTools(
+    ensureAtxfinanceToolForPersona(baseXapiConfig, persona?.name),
+    linkedCollectionIds
+  );
 
   let contextSource: "none" | "mongo_scope" | "xai_collection" = "none";
   let ragChunks: Awaited<ReturnType<typeof retrieveRagChunks>> = [];
@@ -574,6 +577,23 @@ function withLinkedCollectionTools(
   return {
     ...config,
     tools: config.tools.map((tool) => mergeCollectionIdsIntoTool(tool, linkedCollectionIds))
+  };
+}
+
+function ensureAtxfinanceToolForPersona(
+  config: PersonaXapiConfig,
+  personaName: string | undefined
+): PersonaXapiConfig {
+  const normalizedPersonaName = personaName?.trim().toLowerCase();
+  const shouldInject =
+    normalizedPersonaName === XPERSONA_XFINANCE_NAME.toLowerCase() &&
+    !config.tools.some((tool) => tool.type === "atxfinance");
+  if (!shouldInject) {
+    return config;
+  }
+  return {
+    ...config,
+    tools: [...config.tools, { type: "atxfinance" }]
   };
 }
 

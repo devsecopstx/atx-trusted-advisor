@@ -582,6 +582,12 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/xchat/batch/:batchId`
 - `POST /api/xchat/batch/:batchId`
 
+**Market data path (API-first tooling):**
+
+- `atxfinance` tool operation `market_quote` uses Yahoo (`yahoo-finance2`) as a dedicated quote source for higher fidelity than generic web search.
+- **Disclaimer source of truth:** `MARKET_DATA_DISCLAIMER` in `src/modules/xchat/market-data.ts` (returned with market quote payloads).
+- `web_search` remains available for narrative context; quote-sensitive responses should prefer `market_quote`.
+
 **Default published xChat personas (operators should keep both in `published` status):**
 
 | Persona | Audience | `nameNormalized` | Purpose |
