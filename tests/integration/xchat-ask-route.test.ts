@@ -256,7 +256,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(savedLogInput?.xapiMode).toBe("responses");
     expect(savedLogInput?.xapiToolChoice).toBe("auto");
     expect(savedLogInput?.xapiMaxTurns).toBe(5);
-    expect(savedLogInput?.xapiToolCount).toBe(1);
+    expect(savedLogInput?.xapiToolCount).toBe(2);
     const normalizedChunkIds = (savedLogInput?.contextChunkIds ?? []).map((chunkId) =>
       typeof chunkId === "string" ? chunkId : chunkId.toHexString()
     );
@@ -429,7 +429,7 @@ describe("xchat ask route collection retrieval", () => {
         xapiMode: "chat_completions",
         xapiToolChoice: "auto",
         xapiMaxTurns: 5,
-        xapiToolCount: 1
+        xapiToolCount: 3
       })
     );
   });

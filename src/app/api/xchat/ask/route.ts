@@ -47,6 +47,7 @@ import {
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import {
     ensureSuperAgentDefaultTools,
+    mergeXchatHostedToolBaseline,
     normalizePersonaXapiConfig,
     type PersonaXapiConfig
 } from "@/modules/xchat/types";
@@ -174,7 +175,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Default admin xChat persona (Super-Agent) is missing. Run npm run seed:admin or create it in Admin → Personas."
+          "Default xChat persona is unavailable. For admins, seed Super-Agent (`npm run seed:admin`). For app users, ensure the xFinance persona exists (Admin → Personas) or rely on first-ask auto-create."
       },
       { status: 503 }
     );
@@ -284,7 +285,9 @@ export async function POST(request: Request) {
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
-  const xapiConfig = withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds);
+  const xapiConfig = mergeXchatHostedToolBaseline(
+    withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds)
+  );
 
   let contextSource: "none" | "mongo_scope" | "xai_collection" = "none";
   let ragChunks: Awaited<ReturnType<typeof retrieveRagChunks>> = [];

@@ -76,6 +76,20 @@ export function ensureSuperAgentDefaultTools(
   return { ...config, tools: merged };
 }
 
+/**
+ * xChat always exposes hosted `web_search` + `x_search` on the wire; Mongo may omit them after admin edits.
+ * Call after `withLinkedCollectionTools` so collection merges stay intact.
+ */
+export function mergeXchatHostedToolBaseline(config: PersonaXapiConfig): PersonaXapiConfig {
+  const rest = config.tools.filter(
+    (t) => t.type !== "web_search" && t.type !== "x_search"
+  );
+  return {
+    ...config,
+    tools: [{ type: "web_search" }, { type: "x_search" }, ...rest]
+  };
+}
+
 export const personaStatusValues = ["draft", "published", "archived"] as const;
 export type PersonaStatus = (typeof personaStatusValues)[number];
 

@@ -1,6 +1,7 @@
 import { MongoServerError, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
     buildDefaultXfinancePersonaPayload,
     XPERSONA_SUPER_AGENT_NAME,
@@ -199,15 +200,20 @@ export async function ensureDefaultXfinancePersonaExists(): Promise<PersonaConfi
   }
 }
 
-/** Default xChat persona for any signed-in session: Super-Agent when present, else seeded xFinance. */
+/**
+ * Default persona when the client does not select one: **Super-Agent** for `global_admin` when seeded;
+ * **xFinance** (created if missing) for app_user and other non-admin roles.
+ */
 export async function resolveDefaultXchatPersonaForSession(
-  _roles: string[]
+  roles: string[]
 ): Promise<PersonaConfig | null> {
-  const superAgent = await getPersonaByNormalizedName(
-    normalizePersonaNameKey(XPERSONA_SUPER_AGENT_NAME)
-  );
-  if (superAgent) {
-    return superAgent;
+  if (isGlobalAdmin(roles)) {
+    const superAgent = await getPersonaByNormalizedName(
+      normalizePersonaNameKey(XPERSONA_SUPER_AGENT_NAME)
+    );
+    if (superAgent) {
+      return superAgent;
+    }
   }
   return ensureDefaultXfinancePersonaExists();
 }

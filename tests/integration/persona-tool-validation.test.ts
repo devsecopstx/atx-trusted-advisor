@@ -6,6 +6,7 @@ import {
 } from "@/modules/xchat/persona-validation";
 import {
     ensureSuperAgentDefaultTools,
+    mergeXchatHostedToolBaseline,
     normalizePersonaXapiConfig,
     PERSONA_XAPI_TOOL_TYPES,
     SUPER_AGENT_DEFAULT_TOOLS,
@@ -94,6 +95,21 @@ describe("persona tool validation", () => {
       [...SUPER_AGENT_DEFAULT_TOOLS.map((t) => t.type)].sort()
     );
     expect(ensureSuperAgentDefaultTools(yahooOnly, "xFinance")).toEqual(yahooOnly);
+  });
+
+  it("mergeXchatHostedToolBaseline prepends web_search and x_search and dedupes", () => {
+    const cfg = normalizePersonaXapiConfig({
+      mode: "responses",
+      toolChoice: "auto",
+      maxTurns: 5,
+      tools: [{ type: "atxfinance" }, { type: "web_search" }, { type: "x_search" }]
+    });
+    const merged = mergeXchatHostedToolBaseline(cfg);
+    expect(merged.tools.map((t) => t.type)).toEqual([
+      "web_search",
+      "x_search",
+      "atxfinance"
+    ]);
   });
 
   it("hasFileSearchTool detects file_search or collections_search in tool array", () => {

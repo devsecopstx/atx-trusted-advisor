@@ -146,7 +146,7 @@ flowchart TB
 
 ## 4. Persona tool markers → wire format
 
-Stored on persona as `xapi.tools[]` (`PersonaXapiToolDefinition`). Expanded for outbound xAI requests in `personaXapiToolsToXaiRequestTools` (`src/lib/xai-tools.ts`):
+Stored on persona as `xapi.tools[]` (`PersonaXapiToolDefinition`). **Before** expansion, ask and batch call `mergeXchatHostedToolBaseline` (`src/modules/xchat/types.ts`) so `web_search` and `x_search` are always present even if Mongo omits them (e.g. admin persona editor). Expanded for outbound xAI requests in `personaXapiToolsToXaiRequestTools` (`src/lib/xai-tools.ts`):
 
 | Marker | Becomes |
 |--------|---------|

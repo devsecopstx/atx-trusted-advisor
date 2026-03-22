@@ -309,10 +309,9 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           />
 
           <p className="status-text">
-            Hosted tools (<code>web_search</code>, <code>x_search</code>, collection search) are configured by the
-            platform for xChat — not editable here. This form persists workspace markers{" "}
-            <code>atxfinance</code> / <code>yahoo_finance</code> only when already present on the persona; use the
-            personas list JSON editor or API to add or remove those markers.
+            Hosted search (<code>web_search</code>, <code>x_search</code>) and collection search are merged server-side
+            for every ask. This form only preserves <code>atxfinance</code> / <code>yahoo_finance</code> markers already
+            on the persona; use Admin → Personas (list) JSON or the API to change those.
           </p>
 
           <button className="tiny-button" onClick={() => setShowAdvanced((current) => !current)} type="button">
