@@ -213,10 +213,17 @@ h1, h2, h3, h4, h5, h6 {
   user-select: none;
 }
 
-.app-footer-subline {
+.app-footer-subline-stack {
   margin-top: 0.45rem;
   padding-top: 0.45rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.app-footer-subline {
+  margin: 0;
+  padding: 0;
+  border: none;
   text-align: center;
   font-size: 0.7rem;
   line-height: 1.45;

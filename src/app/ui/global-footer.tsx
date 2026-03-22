@@ -47,7 +47,11 @@ export function GlobalFooter({ subline }: GlobalFooterProps) {
           <span className="app-footer-version">{APP_VERSION_LABEL}</span>
         </div>
       </div>
-      {subline ? <div className="app-footer-subline">{subline}</div> : null}
+      {subline ? (
+        <div className="app-footer-subline-stack">
+          <div className="app-footer-subline">{subline}</div>
+        </div>
+      ) : null}
     </footer>
   );
 }
