@@ -18,4 +18,4 @@ atxFinance xChat, personas, RAG, batch jobs, and tool wiring are built against *
 - **Batch:** `POST /api/xchat/batch` → `submitBatchJob` (`src/modules/xchat/batch-service.ts`) using the Batch API.
 - **Tool schemas:** Persona `xapi.tools` are mapped to xAI request tools in `src/lib/xai-tools.ts` (hosted tools + `atxfinance` / `yahoo_finance` function tools).
 
-If xAI changes field names, endpoints, or tool semantics, update implementation **and** this folder’s contracts (`batch-persona-contract.md`, `atxfinance-tool-stub.md`, `xfeature-tools-plan.md`, [`xchat-tools-guide.md`](./xchat-tools-guide.md)) after verifying against the official docs.
+If xAI changes field names, endpoints, or tool semantics, update implementation **and** this folder’s contracts (`atxfinance-tool-stub.md`, `xfeature-tools-plan.md`, [`xchat-tools-guide.md`](./xchat-tools-guide.md)) after verifying against the official docs.

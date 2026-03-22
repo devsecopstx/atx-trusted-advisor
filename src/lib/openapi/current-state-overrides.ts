@@ -336,7 +336,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "POST /api/xchat/batch": {
     summary: "Submit xChat batch job",
     description:
-      "Uses persona from DB for system prompt, override prompt, and tool list (no hardcoded prompt/tools). See docs/xchat/batch-persona-contract.md.",
+      "Uses persona from DB for system prompt, override prompt, and tool list (no hardcoded prompt/tools). See docs/xchat/xchat-tools-guide.md (Batch section).",
     requestBody: {
       required: true,
       description: "Persona id and list of message items.",

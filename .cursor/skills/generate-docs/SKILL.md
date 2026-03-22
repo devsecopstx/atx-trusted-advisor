@@ -57,7 +57,7 @@ batch persona parity, or RAG/tool routing, update **`docs/xchat/xchat-tools-guid
 
 - **`src/modules/xchat/xchat-prompt-build.ts`** — `buildXchatSystemPrompt`, `buildSessionToolInstructions` (session tool copy; formerly exported strings on `default-xpersonas.ts`).
 - **`src/modules/xchat/batch-prompt-context.ts`** — `appendXchatKbMetadata` (KB suffix on user turns for ask + batch; do not use the old name `buildBatchUserPromptAugmentation` in docs).
-- **`docs/xchat/batch-persona-contract.md`**, **`docs/xchat/atxfinance-tool-stub.md`** — cross-check when session blocks or KB metadata change.
+- **`docs/xchat/atxfinance-tool-stub.md`** — cross-check when session blocks or KB metadata change (batch behavior lives under **Batch** in `xchat-tools-guide.md`).
 
 **Auth identity placeholders:** When changing X OAuth identity-email behavior
 (`src/lib/x-identity-email.ts`, `/api/auth/x/callback`, `/api/auth/link-email`):

@@ -47,9 +47,17 @@ flowchart TD
 
 ---
 
-## Batch
+## Batch (`POST /api/xchat/batch`)
 
-[`batch-persona-contract.md`](./batch-persona-contract.md) — same system/user **assembly** as ask; xAI **Batch** endpoint per item; no local tool loop.
+Jobs use the **persona from the database** (Admin → Personas); nothing is hardcoded server-side except the shared builders below. Transport: **[xAI Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api)** via `submitBatchJob` in `batch-service.ts`.
+
+| | |
+|--|--|
+| System / user | Same as ask: `buildXchatSystemPrompt`, `appendXchatKbMetadata`, and the same effective-tool pipeline ending in `personaXapiToolsToXaiRequestTools` → `toXaiRequestTools`. |
+| Execution | **Single-shot** JSONL per item — **no** local `respondWithXaiToolLoop`; provider-side tool chains are best-effort. |
+| RAG | If `enableRag !== false` and at least one resolved collection id exists, pre-search feeds the RAG segment of the system prompt (same `resolveXchatLinkedCollectionIds` / user bootstrap behavior as ask). |
+
+**Modules:** `batch-service.ts`, `batch-prompt-context.ts`, `xchat-prompt-build.ts`.
 
 ---
 
@@ -67,4 +75,4 @@ flowchart TD
 
 ## Related
 
-[`xai-api-standard.md`](./xai-api-standard.md) · [`atxfinance-tool-stub.md`](./atxfinance-tool-stub.md) · [`batch-persona-contract.md`](./batch-persona-contract.md) · [`xfeature-tools-plan.md`](./xfeature-tools-plan.md) · [`xchat-debug-logging.md`](./xchat-debug-logging.md)
+[`xai-api-standard.md`](./xai-api-standard.md) · [`atxfinance-tool-stub.md`](./atxfinance-tool-stub.md) · [`xfeature-tools-plan.md`](./xfeature-tools-plan.md) · [`xchat-debug-logging.md`](./xchat-debug-logging.md)
