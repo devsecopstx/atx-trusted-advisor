@@ -7,11 +7,24 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: "Manual redeploy (staging only). Production deploys automatically after staging succeeds on push to main — there is no manual production job."
+        description: "staging = redeploy staging only. manual_only_prod = production deploy (push to main no longer deploys prod)."
         required: true
         type: choice
         options:
           - staging
+          - manual_only_prod
+      confirm_manual_prod:
+        description: "Must be yes when target is manual_only_prod (fat-finger guard). Ignored for staging."
+        required: true
+        type: choice
+        default: "no"
+        options:
+          - "no"
+          - "yes"
+      deployment_notes:
+        description: "Optional notes included in the post-deploy Slack message (manual_only_prod only)."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -25,6 +38,16 @@ env:
   GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
+  guard-manual-prod-confirm:
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'manual_only_prod' && inputs.confirm_manual_prod != 'yes'
+    name: Block unconfirmed manual production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail — confirmation required
+        run: |
+          echo "::error::Select confirm_manual_prod=yes to run manual_only_prod production deploy."
+          exit 1
+
   deploy-staging:
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main')) || (github.event_name == 'workflow_dispatch' && inputs.target == 'staging')
     name: Deploy Staging
@@ -158,10 +181,9 @@ jobs:
             "18" \
             "15"
 
-  deploy-production-main:
-    needs: [deploy-staging]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main')
-    name: Deploy Production (after staging)
+  deploy-production-manual:
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'manual_only_prod' && inputs.confirm_manual_prod == 'yes'
+    name: Deploy Production (manual_only_prod)
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-production
@@ -199,7 +221,7 @@ jobs:
             echo "::error::Owner mismatch: expected ${EXPECTED_GITHUB_OWNER}, got ${GH_REPOSITORY_OWNER}"
             exit 1
           fi
-          echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=production-main"
+          echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=manual_only_prod"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -290,7 +312,7 @@ jobs:
 
       - name: Post production deploy note to Slack
         env:
-          DEPLOYMENT_NOTES: ""
+          DEPLOYMENT_NOTES: ${{ inputs.deployment_notes || '' }}
           HOTFIX_NOTES: ""
         run: |
           set -euo pipefail
@@ -313,7 +335,7 @@ jobs:
           export CLOUD_RUN_SERVICE_PROD="${{ vars.CLOUD_RUN_SERVICE_PROD }}"
           export PROD_BASE_URL="${{ vars.PROD_BASE_URL }}"
 
-          PAYLOAD="$(python3 -c 'import json,os; run_url=os.getenv("RUN_URL",""); notes=(os.getenv("DEPLOYMENT_NOTES_VALUE") or "").strip(); hotfix=(os.getenv("HOTFIX_NOTES_VALUE") or "").strip(); actor=os.getenv("GITHUB_ACTOR","unknown"); sha=(os.getenv("GITHUB_SHA","") or "")[:7]; ref_name=os.getenv("GITHUB_REF_NAME",""); service=os.getenv("CLOUD_RUN_SERVICE_PROD",""); base_url=os.getenv("PROD_BASE_URL",""); lines=["✅ Production deploy succeeded (staging-gated)", f"• Service: {service}", f"• Ref: {ref_name} @ {sha}", f"• Actor: {actor}", f"• URL: {base_url}", f"• Run: {run_url}"]; lines += [f"• Deployment notes: {notes}"] if notes else []; lines += [f"• Hotfix notes: {hotfix}"] if hotfix else []; print(json.dumps({"text":"\\n".join(lines)}))')"
+          PAYLOAD="$(python3 -c 'import json,os; run_url=os.getenv("RUN_URL",""); notes=(os.getenv("DEPLOYMENT_NOTES_VALUE") or "").strip(); hotfix=(os.getenv("HOTFIX_NOTES_VALUE") or "").strip(); actor=os.getenv("GITHUB_ACTOR","unknown"); sha=(os.getenv("GITHUB_SHA","") or "")[:7]; ref_name=os.getenv("GITHUB_REF_NAME",""); service=os.getenv("CLOUD_RUN_SERVICE_PROD",""); base_url=os.getenv("PROD_BASE_URL",""); lines=["✅ Production deploy succeeded (manual_only_prod)", f"• Service: {service}", f"• Ref: {ref_name} @ {sha}", f"• Actor: {actor}", f"• URL: {base_url}", f"• Run: {run_url}"]; lines += [f"• Deployment notes: {notes}"] if notes else []; lines += [f"• Hotfix notes: {hotfix}"] if hotfix else []; print(json.dumps({"text":"\\n".join(lines)}))')"
 
           curl --fail --silent --show-error \
             -X POST \

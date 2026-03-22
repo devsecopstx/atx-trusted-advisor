@@ -58,6 +58,19 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xchat"
   },
   {
+    path: "/api/recommendations",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "POST", auth: "session", hasRequestBody: true }
+    ],
+    tag: "recommendations"
+  },
+  {
+    path: "/api/recommendations/{recommendationId}",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "recommendations"
+  },
+  {
     path: "/api/admin/access-requests",
     operations: [
       { method: "GET", auth: "admin" },
@@ -356,6 +369,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   health: "Health and runtime diagnostics endpoints.",
   auth: "Authentication and session management flows.",
   "access-requests": "User-submitted access and onboarding requests.",
+  recommendations:
+    "App_user-scoped recommendations; optional Pub/Sub events for downstream agent workers (see DEVELOPMENT.md).",
   "admin-access": "Admin workflows for triaging and deciding access requests.",
   "admin-audit": "Admin audit and activity timeline endpoints.",
   "admin-system": "Admin system-level diagnostics and scheduled task controls.",

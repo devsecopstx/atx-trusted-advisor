@@ -1,13 +1,20 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
+
 const protectedPathPrefixes = [
   "/admin",
   "/api/admin",
   "/api/personas",
   "/api/rag",
   "/api/xchat",
+  "/api/recommendations",
   "/portfolio",
+  "/watchlist",
+  "/xchat",
+  "/xstrategybuilder",
+  "/recommendations",
   "/xfinance",
   "/xcoach"
 ];
@@ -22,7 +29,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasSession = Boolean(request.cookies.get("xf_core_session")?.value);
+  const hasSession = Boolean(request.cookies.get(SESSION_COOKIE_NAME)?.value);
   if (hasSession) {
     return NextResponse.next();
   }
@@ -43,7 +50,12 @@ export const config = {
     "/api/personas/:path*",
     "/api/rag/:path*",
     "/api/xchat/:path*",
+    "/api/recommendations/:path*",
     "/portfolio/:path*",
+    "/watchlist/:path*",
+    "/xchat/:path*",
+    "/xstrategybuilder/:path*",
+    "/recommendations/:path*",
     "/xfinance/:path*",
     "/xcoach/:path*"
   ]

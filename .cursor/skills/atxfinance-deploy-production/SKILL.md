@@ -1,6 +1,6 @@
 ---
 name: atxfinance-deploy-production
-description: Deploy atxfinance to GCP Cloud Run production from signed release tags using GitHub Actions with strict verification, smoke checks, and rollback-first guidance. Use when releasing to production or auditing production deploy readiness.
+description: Deploy atxfinance to GCP Cloud Run production via GitHub Actions manual dispatch (`manual_only_prod`) with CI gate, build, health checks, and rollback-first guidance. Use when releasing to production or auditing production deploy readiness.
 ---
 
 # atxfinance Deploy Production
@@ -35,14 +35,14 @@ Also confirm:
 - production `X_OAUTH_CALLBACK_URL` matches exact hostname
 - production runtime secrets include required `XAI_MANAGEMENT_API_KEY`
 
-## Workflow
+## Workflow (this repo — core app)
 
-1. Confirm trigger is a release tag (`v*`) and capture tag + commit SHA.
-2. Verify CI gate status for the release commit.
-3. Build and push immutable image tagged by version and SHA.
-4. Deploy to production Cloud Run service.
-5. Execute post-deploy health checks and smoke checks.
-6. Report release result and rollback command.
+1. Confirm **staging** is healthy for the commit you are promoting (push to `main` or manual staging deploy).
+2. In GitHub **Actions → Deploy Cloud Run → Run workflow**: set **`target=manual_only_prod`**, **`confirm_manual_prod=yes`**, optional **`deployment_notes`**.
+3. The workflow runs **`npm run ci:gate`**, **`npm run build`**, deploys **`CLOUD_RUN_SERVICE_PROD`**, then production health checks (see `.github/workflows/deploy-cloud-run.yml`).
+4. Report result and rollback command if checks fail.
+
+**Tags / immutable images:** this workflow uses **`gcloud run deploy --source .`** from the selected ref; align release bookkeeping with `package.json` version and merge commit SHA.
 
 ## Mapping Contract
 
@@ -55,8 +55,7 @@ Use this stable mapping:
 
 ## Required Safety Rules
 
-- Only deploy from tag-triggered workflow unless explicitly overridden.
-- Never deploy directly from untagged commits.
+- Do not assume **push to `main`** updates production — it does **not**; use **`manual_only_prod`** dispatch only after staging verification.
 - Never skip health checks in production.
 - If smoke checks fail, stop rollout and provide rollback steps immediately.
 

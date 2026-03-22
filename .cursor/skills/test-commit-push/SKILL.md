@@ -49,8 +49,8 @@ Ship changes safely by validating locally and preparing an accurate commit workf
     - **Optional git hook:** `.githooks/commit-msg` can **hint** (or strictly enforce via `XFINANCE_ENFORCE_CURSOR_COMMIT=1`) on `agent/*`, `cursor/*`, and `release/*` branches — see **`.githooks/README.md`**. Hooks complement this doc; they do not replace it.
 12. Confirm push readiness and branch status.
 13. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
-14. **Deploy path (`Deploy Cloud Run` workflow):** **Push to `main`** runs **staging** first, then **production** only if staging succeeds (`deploy-production-main` **needs** `deploy-staging`). There is **no** manual production job.
-15. **Manual `workflow_dispatch`:** **Staging redeploy only** — choose **target** `staging`. Production is not available via dispatch; ship prod by merging to `main` and letting the gated pipeline run.
+14. **Deploy path (`Deploy Cloud Run` workflow):** **Push to `main`** runs **staging only** — production does **not** auto-deploy.
+15. **Manual `workflow_dispatch`:** **`target=staging`** redeploys staging. **`target=manual_only_prod`** plus **`confirm_manual_prod=yes`** runs **`deploy-production-manual`** (optional **`deployment_notes`** for Slack). Operators should verify staging before promoting prod out-of-band.
 
 ## Output
 

@@ -26,6 +26,11 @@ OpenAPI inventory is guarded by route parity + document build tests under `tests
 
 Deploy: Cloud Run runtime secrets are **GCP Secret Manager only** (verified in workflow via `gcloud secrets describe`). GitHub Environment secrets are **OIDC only** (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`). See `DEVELOPMENT.md` → *GCP Secret Manager* and *GitHub Environment Secrets*.
 
+## Surfaces: app_user vs admin_console
+
+- **admin_console:** `/admin/*` and `/api/admin/*` — `global_admin` only (`src/proxy.ts` sends unauthenticated users to login for protected paths; layout/API still enforce role).
+- **app_user:** Product routes under prefixes in `src/modules/surface-policy.ts` (`APP_USER_PRODUCT_PATH_PREFIXES`). Expressed as platform roles **`viewer`**, **`operator`**, **`advisor`** (not a string `app_user` in Mongo). `global_admin` may still use app_user routes (e.g. xChat from the admin topbar).
+
 ## Production validation (post-deploy)
 
 After merging and deploying to production (or staging first):
@@ -81,7 +86,7 @@ echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
 echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 ```
 
-**Production deploy:** happens **only** on **push to `main`**, **after** the **staging** job succeeds (`deploy-production-main` **needs** `deploy-staging`). **Manual** `workflow_dispatch` → Deploy Cloud Run is **staging redeploy only** (`target=staging`); there is no manual production path in GitHub Actions.
+**Deploy:** **push to `main`** runs **staging only** (production is not deployed automatically). **Production** runs only via **manual** `workflow_dispatch` on **Deploy Cloud Run**: `target=manual_only_prod` and **`confirm_manual_prod=yes`** (job `deploy-production-manual`). **Staging redeploy:** `target=staging` (confirmation input is ignored).
 
 ## Guardrails
 

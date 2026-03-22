@@ -113,8 +113,8 @@ Mismatch can trigger auth cookie context failures.
 
 Recommended:
 
-1. Push to `main` -> staging deploy
-2. Tag `v*` -> production deploy
+1. Push to `main` -> staging deploy only
+2. Production -> **Deploy Cloud Run** `workflow_dispatch` with **`target=manual_only_prod`** (see `atxfinance-deploy-production`)
 3. CI gate before deploy: lint + typecheck + tests + build
 4. Post-deploy checks:
    - `GET /api/health`

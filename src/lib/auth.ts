@@ -4,9 +4,8 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { getEnv } from "@/lib/env";
+import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { normalizeCoreRoles } from "@/modules/identity/authorization";
-
-const SESSION_COOKIE_NAME = "xf_core_session";
 const OAUTH_STATE_COOKIE_NAME = "xf_x_oauth_state";
 const OAUTH_VERIFIER_COOKIE_NAME = "xf_x_oauth_verifier";
 const PENDING_LINK_COOKIE_NAME = "xf_x_pending_link";
