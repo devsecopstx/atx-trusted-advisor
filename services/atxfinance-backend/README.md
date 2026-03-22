@@ -13,8 +13,9 @@ Defaults approved:
 
 Prereqs:
 - JDK 21 (Temurin recommended)
-- Apache Maven 3.9+
 - MongoDB (Atlas or local) URI — do not commit real secrets; use `.env` or local export
+
+Build tool: **Gradle** (`build.gradle.kts`, `gradlew`). There is **no** `pom.xml`; the repo-root `Dockerfile` runs `gradle bootJar` against this module.
 
 Environment vars (example) — use empty placeholders in `.env.example` at repo root when we wire secrets:
 - `MONGODB_URI` — for Spring Data + ShedLock (Mongo lock collection)
@@ -26,7 +27,13 @@ Environment vars (example) — use empty placeholders in `.env.example` at repo 
 Run:
 ```
 cd services/atxfinance-backend
-mvn spring-boot:run
+chmod +x ./gradlew   # once, if needed
+./gradlew bootRun
+```
+
+Tests:
+```
+./gradlew test
 ```
 
 Health:

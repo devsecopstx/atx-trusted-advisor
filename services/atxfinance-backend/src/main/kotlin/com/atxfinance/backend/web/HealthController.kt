@@ -23,9 +23,20 @@ class HealthController(
             mapOf("status" to "error", "message" to (e.message ?: "mongo error"))
         }
 
-        // Secrets check (presence only; do not leak values)
-        val secretsOk = (System.getenv("MONGODB_URI") != null)
-        details["secrets"] = if (secretsOk) "ok" else mapOf("status" to "missing", "keys" to listOf("MONGODB_URI"))
+        // Secrets check (presence only; do not leak values) — align with Docker Compose + Atlas (B64) flows
+        val secretsOk = listOf(
+            System.getenv("MONGODB_URI"),
+            System.getenv("SPRING_DATA_MONGODB_URI"),
+            System.getenv("MONGODB_URI_B64")
+        ).any { !it.isNullOrBlank() }
+        details["secrets"] = if (secretsOk) {
+            "ok"
+        } else {
+            mapOf(
+                "status" to "missing",
+                "keys" to listOf("MONGODB_URI", "SPRING_DATA_MONGODB_URI", "MONGODB_URI_B64")
+            )
+        }
 
         val body = mapOf(
             "status" to "ok",

@@ -3,13 +3,15 @@ name: atxfinance-backend (Kotlin/Spring) — CI
 on:
   pull_request:
     paths:
-      - 'services/atxfinance-backend/**'
-      - '.github/workflows/backend-java-ci.yml'
+      - "services/atxfinance-backend/**"
+      - "Dockerfile"
+      - ".github/workflows/backend-java-ci.yml"
   push:
-    branches: [ feature/** ]
+    branches: [feature/**]
     paths:
-      - 'services/atxfinance-backend/**'
-      - '.github/workflows/backend-java-ci.yml'
+      - "services/atxfinance-backend/**"
+      - "Dockerfile"
+      - ".github/workflows/backend-java-ci.yml"
 
 jobs:
   build-and-test:
@@ -22,19 +24,22 @@ jobs:
       - name: Set up Temurin JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
-          cache: 'maven'
-      - name: Build (tests)
-        run: mvn -B -e -DskipTests=false verify
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+          cache-dependency-path: |
+            services/atxfinance-backend/*.gradle*
+            services/atxfinance-backend/gradle/*.toml
+      - name: Gradle test
+        run: chmod +x ./gradlew && ./gradlew test --no-daemon
       - name: Archive unit test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-reports
           path: |
-            services/atxfinance-backend/target/surefire-reports
-            services/atxfinance-backend/target/failsafe-reports
+            services/atxfinance-backend/build/reports/tests/test
+            services/atxfinance-backend/build/test-results/test
 
   container-build:
     runs-on: ubuntu-latest
@@ -50,7 +55,8 @@ jobs:
       - name: Build container image (no push)
         uses: docker/build-push-action@v6
         with:
-          context: services/atxfinance-backend
+          context: .
+          file: Dockerfile
           push: false
           platforms: linux/amd64
           tags: atxfinance/atxfinance-backend:ci

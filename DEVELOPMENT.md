@@ -71,15 +71,17 @@ Follow these steps to run the backend first, then the frontend.
 4. Start backend + MongoDB (Docker Compose, from repo root)
    - `npm run dev:backend`
    - Behavior:
-     - If `MONGODB_URI_B64` is set, backend decodes and uses it (cloud/Atlas) and will NOT use local Mongo.
-     - If `MONGODB_URI_B64` is NOT set, Compose starts `mongo:8` with:
+     - Compose always starts `mongo:8` with:
        - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfintechdb}`
        - `MONGO_INITDB_ROOT_USERNAME=${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}`
        - `MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-atxrocks!}`
-     - Backend connects via `SPRING_DATA_MONGODB_URI` to `mongodb:27017` inside the Compose network.
+     - The Spring service receives `SPRING_DATA_MONGODB_URI` pointing at `mongodb:27017` with **auth** and `authSource=admin`, using the same username/password/db name defaults as above (see `docker-compose.yml`).
+     - If **`MONGODB_URI_B64`** is set in `.env`, `MongoUriEnvPostProcessor` injects the decoded URI as `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
 5. Verify backend
-   - Health: http://localhost:8080/actuator/health (expect `{ "status": "UP" }` once ready)
-   - Swagger UI: http://localhost:8080/swagger-ui.html
+   - Actuator: http://localhost:8080/actuator/health (standard Spring Boot JSON)
+   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`docs/ops/atxfinance-backend-http-api.md`**)
+   - Compatibility: http://localhost:8080/api/health
+   - Swagger UI: http://localhost:8080/swagger-ui.html (may redirect to `/swagger-ui/index.html`); OpenAPI JSON: `/v3/api-docs`
 6. Start frontend (Next.js dev server)
    - `npm run dev:frontend`
    - App URL: http://localhost:3000
