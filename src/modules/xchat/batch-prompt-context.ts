@@ -7,15 +7,26 @@ import type { PersonaXapiToolDefinition } from "@/modules/xchat/types";
 export function buildBatchUserPromptAugmentation(input: {
   tools: PersonaXapiToolDefinition[];
   linkedCollectionIds: string[];
+  /** Session user bootstrap id when `includeUserBootstrapCollection` is true on the persona. */
+  userBootstrapCollectionId?: string | null;
+  includeUserBootstrapCollection?: boolean;
 }): string {
   const toolLines = input.tools.map((tool) => describePersonaToolForKbPrompt(tool));
   const linked = input.linkedCollectionIds.filter((id) => id.trim().length > 0);
+  const uid = input.userBootstrapCollectionId?.trim();
+  const userLine =
+    input.includeUserBootstrapCollection && uid
+      ? `User bootstrap xAI collection (xPersona includeUserBootstrapCollection): ${uid}`
+      : input.includeUserBootstrapCollection
+        ? "User bootstrap xAI collection: enabled on persona but id not resolved for this session"
+        : null;
 
   const lines = [
     "[Persona / KB metadata — xChat and batch; use when relevant; do not echo as the user]",
     linked.length > 0
-      ? `Persona-linked xAI collection ids (RAG / file_search scope): ${linked.join(", ")}`
-      : "Persona-linked xAI collection ids: (none declared on this persona)",
+      ? `Resolved xAI collection ids (persona team KB + tool ids + optional user bootstrap): ${linked.join(", ")}`
+      : "Resolved xAI collection ids: (none — check xPersona xaiCollection, teamCollection, tools, includeUserBootstrapCollection)",
+    ...(userLine ? [userLine] : []),
     "Persona xAPI tools (as configured in admin):",
     ...(toolLines.length > 0 ? toolLines : ["- (none)"])
   ];

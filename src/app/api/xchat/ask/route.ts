@@ -5,44 +5,44 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import {
-  respondWithXaiToolLoop,
-  searchDocumentsInCollections,
-  type ToolCallLog
+    respondWithXaiToolLoop,
+    searchDocumentsInCollections,
+    type ToolCallLog
 } from "@/lib/xai";
 import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
-  appendXchatTurnToUserCollection,
-  resolveOrCreateUserBootstrapCollection
+    appendXchatTurnToUserCollection,
+    resolveOrCreateUserBootstrapCollection
 } from "@/modules/core-admin/access-request-bootstrap";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
 import type { SubscriptionPlan } from "@/modules/identity/types";
+import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
 import {
-  ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
-  HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS,
-  XPERSONA_SUPER_AGENT_NAME
+    ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
+    HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS,
+    XPERSONA_SUPER_AGENT_NAME
 } from "@/modules/xchat/default-xpersonas";
-import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import {
-  getPersonaLinkedCollectionIds,
-  withLinkedCollectionTools
+    resolveXchatLinkedCollectionIds,
+    withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
-  getPersonaById,
-  resolveDefaultXchatPersonaForSession,
-  retrieveRagChunks,
-  saveXChatLog
+    getPersonaById,
+    resolveDefaultXchatPersonaForSession,
+    retrieveRagChunks,
+    saveXChatLog
 } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import {
-  normalizePersonaXapiConfig,
-  type PersonaXapiConfig
+    normalizePersonaXapiConfig,
+    type PersonaXapiConfig
 } from "@/modules/xchat/types";
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
@@ -267,8 +267,11 @@ export async function POST(request: Request) {
     tenantId: session.tenantId,
     email: session.email
   });
-  /** RAG / file_search wiring: only ids declared on the persona (bound collection + tool `collection_ids`). */
-  const linkedCollectionIds = getPersonaLinkedCollectionIds(persona);
+  /** RAG / file_search wiring: persona `xaiCollection` + `teamCollection` + tool `collection_ids` + optional user bootstrap. */
+  const linkedCollectionIds = resolveXchatLinkedCollectionIds({
+    persona,
+    userBootstrapCollectionId: userCollection?.collectionId
+  });
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
@@ -387,7 +390,9 @@ export async function POST(request: Request) {
     : message;
   const personaKbAugmentation = buildBatchUserPromptAugmentation({
     tools: xapiConfig.tools,
-    linkedCollectionIds
+    linkedCollectionIds,
+    userBootstrapCollectionId: userCollection?.collectionId ?? null,
+    includeUserBootstrapCollection: persona?.includeUserBootstrapCollection === true
   });
   const userPrompt = `${userPromptBase}\n\n${personaKbAugmentation}`;
   let xaiResponse: { outputText: string; model: string };

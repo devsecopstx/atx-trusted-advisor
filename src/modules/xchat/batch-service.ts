@@ -14,13 +14,14 @@ import {
 } from "@/lib/xai-batch";
 import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatBatchDebug } from "@/lib/xchat-debug";
+import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
 import {
     ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
     HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS
 } from "@/modules/xchat/default-xpersonas";
 import {
-    getPersonaLinkedCollectionIds,
+    resolveXchatLinkedCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
@@ -103,7 +104,19 @@ export async function submitBatchJob(
   }
 
   const xapiConfig = normalizePersonaXapiConfig(input.persona.xapi);
-  const linkedCollectionIds = getPersonaLinkedCollectionIds(input.persona);
+  let userBootstrapCollectionId: string | undefined;
+  if (input.persona.includeUserBootstrapCollection === true) {
+    userBootstrapCollectionId = (
+      await resolveOrCreateUserBootstrapCollection({
+        userId: input.userId,
+        tenantId: input.tenantId
+      })
+    )?.collectionId;
+  }
+  const linkedCollectionIds = resolveXchatLinkedCollectionIds({
+    persona: input.persona,
+    userBootstrapCollectionId
+  });
   const xapiConfigMerged = withLinkedCollectionTools(xapiConfig, linkedCollectionIds);
   const batchTools = personaXapiToolsToXaiRequestTools(xapiConfigMerged.tools);
   const hasAtxfinancePersonaTool = xapiConfigMerged.tools.some((t) => t.type === "atxfinance");
@@ -179,7 +192,9 @@ export async function submitBatchJob(
 
     const batchMeta = buildBatchUserPromptAugmentation({
       tools: xapiConfigMerged.tools,
-      linkedCollectionIds
+      linkedCollectionIds,
+      userBootstrapCollectionId: userBootstrapCollectionId ?? null,
+      includeUserBootstrapCollection: input.persona.includeUserBootstrapCollection === true
     });
     const userPrompt = `${userPromptBase}\n\n${batchMeta}`;
 

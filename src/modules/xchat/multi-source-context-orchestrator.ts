@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 
 import { respondWithXai, searchDocumentsInCollections } from "@/lib/xai";
 import { getYahooMarketQuote, type MarketQuoteSnapshot } from "@/modules/xchat/market-data";
-import { getPersonaLinkedCollectionIds } from "@/modules/xchat/persona-linked-collections";
+import { resolveXchatLinkedCollectionIds } from "@/modules/xchat/persona-linked-collections";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import { retrieveRagChunks } from "@/modules/xchat/repository";
 import {
@@ -265,6 +265,8 @@ export type MultiSourceOrchestratorInput = {
   scope?: string;
   topK?: number;
   maxParallelYahoo?: number;
+  /** Resolved user bootstrap xAI collection id when persona has `includeUserBootstrapCollection`. */
+  userBootstrapCollectionId?: string | null;
 };
 
 function personaAllowsAtxfinance(xapi: PersonaXapiConfig): boolean {
@@ -331,7 +333,10 @@ export async function gatherMultiSourceWorkspaceContext(
   const maxYahoo = input.maxParallelYahoo ?? DEFAULT_MAX_YAHOO_PARALLEL;
   const persona = input.persona ?? null;
   const xapi = normalizePersonaXapiConfig(persona?.xapi);
-  const linkedCollectionIds = getPersonaLinkedCollectionIds(persona ?? undefined);
+  const linkedCollectionIds = resolveXchatLinkedCollectionIds({
+    persona: persona ?? undefined,
+    userBootstrapCollectionId: input.userBootstrapCollectionId ?? undefined
+  });
   const scope = (input.scope ?? persona?.defaultScope ?? "global").trim() || "global";
   const tenantOid = ObjectId.isValid(input.tenantId) ? new ObjectId(input.tenantId) : null;
 

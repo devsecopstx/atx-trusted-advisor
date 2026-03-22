@@ -35,6 +35,8 @@ type XchatConversationProps = {
 
 const ATXFINANCE_COLLECTION_ID_FALLBACK = "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
 
+const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
 type VisibleCollection = {
   collectionId: string;
   collectionName?: string;
@@ -54,10 +56,9 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
   const [visibleCollections, setVisibleCollections] = useState<VisibleCollection[]>([]);
-  const [associatedCollectionCount, setAssociatedCollectionCount] = useState(1);
+  const [, setAssociatedCollectionCount] = useState(1);
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
   const promptExamples = [
     "Show my portfolio allocation",

@@ -583,6 +583,13 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `POST /api/rag/files` — upload pipeline for scoped files
 - Admin **RAG collections** (`/admin/rag-files`) lists xAI collections via `GET /api/personas/collections` (management API — read-only in UI)
 
+### xStrategyBuilder (options chain)
+
+- UI: `/xstrategybuilder/strategy-options` — signed-in app_user; loads Yahoo expirations + option chain (same behavior family as xfinance-strategy `GET /api/options` and `GET /api/options/expirations`).
+- `GET /api/strategy-options/expirations?underlying=TSLA` — normalized `YYYY-MM-DD` expiration list (session required).
+- `GET /api/strategy-options?underlying=TSLA&expiration=2026-02-27&strike=250` — combined call/put chain per strike; `dataSource` is `yahoo` or `synthetic` fallback (session required).
+- Implementation: `src/modules/strategy-options/options-chain.ts`, `src/modules/strategy-options/expirations.ts`.
+
 ### xChat
 
 - `POST /api/xchat/ask` (supports atxfinance tool loop when the **resolved** persona includes the `atxfinance` tool)

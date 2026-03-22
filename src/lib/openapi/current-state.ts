@@ -289,6 +289,16 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "positions"
   },
   {
+    path: "/api/strategy-options",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "strategy-options"
+  },
+  {
+    path: "/api/strategy-options/expirations",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "strategy-options"
+  },
+  {
     path: "/api/rag/files",
     operations: [
       { method: "GET", auth: "admin" },
@@ -351,6 +361,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   personas: "Persona and collection lifecycle APIs.",
   portfolios: "Default portfolio, account, and watchlist read APIs for signed-in users.",
   positions: "Position capture and persistence APIs.",
+  "strategy-options":
+    "Option expirations and chain (Yahoo + synthetic fallback) for xStrategyBuilder; aligned with xfinance-strategy GET /api/options.",
   rag: "Mongo-backed scoped RAG file list/upload; xAI collection inventory is GET /api/personas/collections.",
   xchat: "xChat sync and async ask/batch workflows."
 };

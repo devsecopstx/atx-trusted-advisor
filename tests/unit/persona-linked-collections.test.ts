@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  countPersonaLinkedCollections,
-  getPersonaLinkedCollectionIds
+    countPersonaLinkedCollections,
+    getPersonaLinkedCollectionIds,
+    resolveXchatLinkedCollectionIds
 } from "@/modules/xchat/persona-linked-collections";
 
 describe("persona linked collections", () => {
@@ -36,5 +37,38 @@ describe("persona linked collections", () => {
         xapi: { tools: [{ type: "web_search" }] }
       })
     ).toBe(0);
+  });
+
+  it("includes teamCollection id in union", () => {
+    const ids = getPersonaLinkedCollectionIds({
+      xaiCollection: { collectionId: "collection_a" },
+      teamCollection: { collectionId: "collection_team" },
+      xapi: { tools: [] }
+    });
+    expect(ids.sort()).toEqual(["collection_a", "collection_team"]);
+  });
+
+  it("merges user bootstrap id when persona flag is set", () => {
+    const ids = resolveXchatLinkedCollectionIds({
+      persona: {
+        xaiCollection: { collectionId: "collection_a" },
+        includeUserBootstrapCollection: true,
+        xapi: { tools: [] }
+      },
+      userBootstrapCollectionId: "collection_user"
+    });
+    expect(ids.sort()).toEqual(["collection_a", "collection_user"]);
+  });
+
+  it("does not merge user bootstrap when flag is false", () => {
+    const ids = resolveXchatLinkedCollectionIds({
+      persona: {
+        xaiCollection: { collectionId: "collection_a" },
+        includeUserBootstrapCollection: false,
+        xapi: { tools: [] }
+      },
+      userBootstrapCollectionId: "collection_user"
+    });
+    expect(ids).toEqual(["collection_a"]);
   });
 });

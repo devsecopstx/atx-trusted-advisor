@@ -3,16 +3,17 @@ import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/api-auth";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import {
-  hasFileSearchTool,
-  isPersonaPayloadTooLargeByBody,
-  isPersonaPayloadTooLargeByHeader,
-  updatePersonaPayloadSchema
+    hasFileSearchTool,
+    isPersonaPayloadTooLargeByBody,
+    isPersonaPayloadTooLargeByHeader,
+    personaSatisfiesFileSearchCollectionRequirement,
+    updatePersonaPayloadSchema
 } from "@/modules/xchat/persona-validation";
 import {
-  PersonaNameConflictError,
-  deletePersona,
-  getPersonaById,
-  updatePersona
+    PersonaNameConflictError,
+    deletePersona,
+    getPersonaById,
+    updatePersona
 } from "@/modules/xchat/repository";
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
@@ -73,18 +74,32 @@ export async function PUT(request: Request, context: RouteContext) {
   if (!existingPersona) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }
-  if (hasFileSearchTool(parsed.data.xapi?.tools)) {
-    const resolvedCollectionId =
-      parsed.data.xaiCollection?.collectionId ?? existingPersona.xaiCollection?.collectionId ?? "";
-    if (!resolvedCollectionId.trim()) {
-      return NextResponse.json(
-        {
-          error:
-            "Invalid persona payload: collection search requires xaiCollection.collectionId (existing or in update payload)"
-        },
-        { status: 400 }
-      );
-    }
+  const mergedForFileSearch = {
+    xaiCollection:
+      parsed.data.xaiCollection !== undefined
+        ? parsed.data.xaiCollection
+        : existingPersona.xaiCollection,
+    teamCollection:
+      parsed.data.teamCollection !== undefined
+        ? parsed.data.teamCollection
+        : existingPersona.teamCollection,
+    includeUserBootstrapCollection:
+      parsed.data.includeUserBootstrapCollection !== undefined
+        ? parsed.data.includeUserBootstrapCollection
+        : existingPersona.includeUserBootstrapCollection,
+    xapi: normalizePersonaXapiConfig(parsed.data.xapi ?? existingPersona.xapi)
+  };
+  if (
+    hasFileSearchTool(mergedForFileSearch.xapi.tools) &&
+    !personaSatisfiesFileSearchCollectionRequirement(mergedForFileSearch)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Invalid persona payload: collection search requires xaiCollection, teamCollection, collection ids on tools, or includeUserBootstrapCollection"
+      },
+      { status: 400 }
+    );
   }
 
   const updates = Object.fromEntries(
@@ -172,6 +187,11 @@ function serializePersona(persona: PersonaConfig) {
       collectionId: persona.xaiCollection?.collectionId ?? "",
       collectionName: persona.xaiCollection?.collectionName
     },
+    teamCollection: {
+      collectionId: persona.teamCollection?.collectionId ?? "",
+      collectionName: persona.teamCollection?.collectionName
+    },
+    includeUserBootstrapCollection: persona.includeUserBootstrapCollection === true,
     model: persona.model,
     temperature: persona.temperature,
     enableRag: persona.enableRag,

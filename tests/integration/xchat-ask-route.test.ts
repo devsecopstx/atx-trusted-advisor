@@ -186,7 +186,7 @@ describe("xchat ask route collection retrieval", () => {
         maxTurns: 5,
         tools: expect.arrayContaining([{ type: "web_search" }]),
         userPrompt: expect.stringMatching(
-          /\[Persona \/ KB metadata — xChat and batch[\s\S]*Persona-linked xAI collection ids \(RAG \/ file_search scope\): collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
+          /\[Persona \/ KB metadata — xChat and batch[\s\S]*Resolved xAI collection ids \(persona team KB \+ tool ids \+ optional user bootstrap\): collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
         )
       })
     );

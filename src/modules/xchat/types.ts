@@ -79,6 +79,12 @@ export function ensureSuperAgentDefaultTools(
 export const personaStatusValues = ["draft", "published", "archived"] as const;
 export type PersonaStatus = (typeof personaStatusValues)[number];
 
+/** xAI collection id + optional display name (persona-bound KB, team KB, etc.). */
+export type PersonaCollectionRef = {
+  collectionId?: string;
+  collectionName?: string;
+};
+
 export type PersonaConfig = {
   _id?: ObjectId;
   name: string;
@@ -89,6 +95,16 @@ export type PersonaConfig = {
     collectionId?: string;
     collectionName?: string;
   };
+  /**
+   * Optional team/org KB (merged with `xaiCollection` and tool `collection_ids` for RAG + file_search).
+   * Use when the persona should search two distinct xAI collections (e.g. curated + team).
+   */
+  teamCollection?: PersonaCollectionRef;
+  /**
+   * When true, merge the signed-in user's bootstrap xAI collection into RAG + file_search scope
+   * (`POST /api/xchat/ask` and batch). The id is resolved per session; not stored on the persona doc.
+   */
+  includeUserBootstrapCollection?: boolean;
   xaiCollectionVerification?: PersonaCollectionVerification;
   model: string;
   temperature: number;

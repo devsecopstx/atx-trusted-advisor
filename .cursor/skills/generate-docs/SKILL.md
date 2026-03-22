@@ -74,6 +74,16 @@ When **`src/app/api/**`** or public HTTP contracts change:
   Run **`npm run ci:gate`** (and **`npm run build`** if release-sensitive)
   before merge.
 
+**xStrategyBuilder / strategy-options (Yahoo option chain):** When changing
+`GET /api/strategy-options`, `GET /api/strategy-options/expirations`, UI under
+`/xstrategybuilder/strategy-options`, or **`src/modules/strategy-options/**`**:
+
+- Update **`DEVELOPMENT.md`** (xStrategyBuilder options chain subsection).
+- Update **`README.md`** Core Routes (UI + API lines).
+- Update **`src/lib/openapi/current-state.ts`** (and tag description if the surface meaning changes).
+- Keep **`tests/integration/strategy-options*.test.ts`** aligned with query params and response shape.
+- Treat **xfinance-strategy** `GET /api/options` / expirations as **behavioral reference**; this app’s paths and auth are session-scoped — verify parity notes in docs if contracts diverge.
+
 ### Cross-repo API examples (xfinance-strategy)
 
 If implementation ideas are imported from sibling repos

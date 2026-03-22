@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
+import { getPersonaLinkedCollectionIds } from "@/modules/xchat/persona-linked-collections";
+import {
+    DEFAULT_PERSONA_XAPI_CONFIG,
+    normalizePersonaXapiConfig,
+    type PersonaXapiConfig
+} from "@/modules/xchat/types";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 export const PERSONA_VALIDATION_LIMITS = {
@@ -97,11 +102,43 @@ const xapiSchema = z.object({
   tools: z.array(xapiToolSchema).max(PERSONA_VALIDATION_LIMITS.xapiToolsLength).default([])
 });
 
+export function hasFileSearchTool(
+  tools: Array<{ type: string; [key: string]: unknown }> | undefined
+): boolean {
+  return (
+    Array.isArray(tools) &&
+    tools.some((tool) => tool.type === "file_search" || tool.type === "collections_search")
+  );
+}
+
+/** At least one static collection binding, or user-bootstrap merge at runtime, when file_search is enabled. */
+export function personaSatisfiesFileSearchCollectionRequirement(value: {
+  xaiCollection?: { collectionId?: string };
+  teamCollection?: { collectionId?: string };
+  includeUserBootstrapCollection?: boolean;
+  xapi: PersonaXapiConfig;
+}): boolean {
+  if (!hasFileSearchTool(value.xapi.tools)) {
+    return true;
+  }
+  const ids = getPersonaLinkedCollectionIds({
+    xaiCollection: value.xaiCollection,
+    teamCollection: value.teamCollection,
+    xapi: value.xapi
+  });
+  if (ids.length > 0) {
+    return true;
+  }
+  return value.includeUserBootstrapCollection === true;
+}
+
 export const createPersonaPayloadSchema = z.object({
   name: z.string().trim().min(2).max(PERSONA_VALIDATION_LIMITS.nameLength),
   systemPrompt: z.string().trim().min(10).max(PERSONA_VALIDATION_LIMITS.systemPromptLength),
   overridePrompt: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.overridePromptLength),
   xaiCollection: xaiCollectionSchema.optional(),
+  teamCollection: xaiCollectionSchema.optional(),
+  includeUserBootstrapCollection: booleanSchema.optional(),
   model: z
     .string()
     .trim()
@@ -118,11 +155,13 @@ export const createPersonaPayloadSchema = z.object({
     .default("global"),
   xapi: xapiSchema.default(DEFAULT_PERSONA_XAPI_CONFIG)
 }).superRefine((value, context) => {
-  if (hasFileSearchTool(value.xapi.tools) && !value.xaiCollection?.collectionId) {
+  const xapi = normalizePersonaXapiConfig(value.xapi);
+  if (!personaSatisfiesFileSearchCollectionRequirement({ ...value, xapi })) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["xaiCollection", "collectionId"],
-      message: "Collection search (file_search / collections_search) requires xaiCollection.collectionId"
+      message:
+        "Collection search (file_search / collections_search) requires xaiCollection.collectionId, teamCollection.collectionId, collection ids on tools, or includeUserBootstrapCollection"
     });
   }
 });
@@ -138,21 +177,14 @@ export const updatePersonaPayloadSchema = z.object({
   ),
   overridePrompt: z.string().trim().max(PERSONA_VALIDATION_LIMITS.overridePromptLength).optional(),
   xaiCollection: xaiCollectionSchema.optional(),
+  teamCollection: xaiCollectionSchema.optional(),
+  includeUserBootstrapCollection: booleanSchema.optional(),
   model: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.modelLength),
   temperature: temperatureSchema.optional(),
   enableRag: booleanSchema.optional(),
   defaultScope: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.scopeLength),
   xapi: xapiSchema.optional()
 });
-
-export function hasFileSearchTool(
-  tools: Array<{ type: string; [key: string]: unknown }> | undefined
-): boolean {
-  return (
-    Array.isArray(tools) &&
-    tools.some((tool) => tool.type === "file_search" || tool.type === "collections_search")
-  );
-}
 
 export function isPersonaPayloadTooLargeByHeader(request: Request): boolean {
   const contentLengthHeader = request.headers.get("content-length");

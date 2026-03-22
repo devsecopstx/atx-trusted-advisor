@@ -135,7 +135,21 @@ describe("persona tool validation", () => {
     expect(result.success).toBe(true);
   });
 
-  it("createPersonaPayloadSchema rejects collections_search without collection", () => {
+  it("createPersonaPayloadSchema rejects collections_search without any collection binding", () => {
+    const result = createPersonaPayloadSchema.safeParse({
+      name: "Test Agent",
+      systemPrompt: "You are a test agent for validation.",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "collections_search" }]
+      }
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("createPersonaPayloadSchema allows collections_search with collection_ids on tool only", () => {
     const result = createPersonaPayloadSchema.safeParse({
       name: "Test Agent",
       systemPrompt: "You are a test agent for validation.",
@@ -146,7 +160,7 @@ describe("persona tool validation", () => {
         tools: [{ type: "collections_search", collection_ids: ["collection_x"] }]
       }
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("createPersonaPayloadSchema allows collections_search with xaiCollection link", () => {

@@ -14,19 +14,29 @@ vi.mock("@/lib/env", () => ({
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock);
 
+/** `parseXaiResponseJson` prefers `response.text()`; plain objects without `text` can break undici-style mocks. */
+function xaiResponsesOk(body: Record<string, unknown>) {
+  const json = JSON.stringify(body);
+  return {
+    ok: true,
+    status: 200,
+    text: async () => json,
+    json: async () => JSON.parse(json) as Record<string, unknown>
+  };
+}
+
 describe("respondWithXaiToolLoop", () => {
   beforeEach(() => {
     fetchMock.mockReset();
   });
 
   it("returns text directly when model does not call tools", async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
+    fetchMock.mockResolvedValueOnce(
+      xaiResponsesOk({
         model: "grok-4-1-fast",
         output_text: "The answer is 42."
       })
-    });
+    );
 
     const { respondWithXaiToolLoop } = await import("@/lib/xai");
     const result = await respondWithXaiToolLoop({
@@ -42,22 +52,20 @@ describe("respondWithXaiToolLoop", () => {
   });
 
   it("runs atxfinance executor when model prints fenced JSON instead of function_call", async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
+    fetchMock.mockResolvedValueOnce(
+      xaiResponsesOk({
         model: "grok-4-1-fast",
         output_text:
           '```json\n{\n  "tool": "atxfinance",\n  "operation": "portfolio_summary"\n}\n```'
       })
-    });
+    );
 
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
+    fetchMock.mockResolvedValueOnce(
+      xaiResponsesOk({
         model: "grok-4-1-fast",
         output_text: "Here is your portfolio overview."
       })
-    });
+    );
 
     const { respondWithXaiToolLoop } = await import("@/lib/xai");
     const result = await respondWithXaiToolLoop({

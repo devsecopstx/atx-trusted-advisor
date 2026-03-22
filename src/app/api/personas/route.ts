@@ -2,23 +2,23 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { requireSessionUser } from "@/lib/auth";
+import {
+    createAuditEvent,
+    listLatestAuditEventsForEntities
+} from "@/modules/audit/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-  createAuditEvent,
-  listLatestAuditEventsForEntities
-} from "@/modules/audit/repository";
-import {
-  createPersonaPayloadSchema,
-  isPersonaPayloadTooLargeByBody,
-  isPersonaPayloadTooLargeByHeader
+    createPersonaPayloadSchema,
+    isPersonaPayloadTooLargeByBody,
+    isPersonaPayloadTooLargeByHeader
 } from "@/modules/xchat/persona-validation";
 import {
-  PersonaNameConflictError,
-  createPersona,
-  listPersonas,
-  listPersonasByStatus
+    PersonaNameConflictError,
+    createPersona,
+    listPersonas,
+    listPersonasByStatus
 } from "@/modules/xchat/repository";
-import { normalizePersonaXapiConfig, type PersonaConfig, type PersonaStatus, personaStatusValues } from "@/modules/xchat/types";
+import { normalizePersonaXapiConfig, personaStatusValues, type PersonaConfig, type PersonaStatus } from "@/modules/xchat/types";
 
 export async function GET(request: Request) {
   const session = await requireSessionUser();
@@ -88,6 +88,11 @@ export async function POST(request: Request) {
         collectionId: parsed.data.xaiCollection?.collectionId ?? "",
         collectionName: parsed.data.xaiCollection?.collectionName
       },
+      teamCollection: {
+        collectionId: parsed.data.teamCollection?.collectionId ?? "",
+        collectionName: parsed.data.teamCollection?.collectionName
+      },
+      includeUserBootstrapCollection: parsed.data.includeUserBootstrapCollection === true,
       xapi: normalizePersonaXapiConfig(parsed.data.xapi)
     });
   } catch (error) {
@@ -140,6 +145,11 @@ function serializePersona(persona: PersonaConfig) {
       collectionId: persona.xaiCollection?.collectionId ?? "",
       collectionName: persona.xaiCollection?.collectionName
     },
+    teamCollection: {
+      collectionId: persona.teamCollection?.collectionId ?? "",
+      collectionName: persona.teamCollection?.collectionName
+    },
+    includeUserBootstrapCollection: persona.includeUserBootstrapCollection === true,
     model: persona.model,
     temperature: persona.temperature,
     enableRag: persona.enableRag,

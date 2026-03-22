@@ -266,7 +266,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback), and tools/collection scope follow the resolved persona document only (no implicit merges). If persona model is unset, server defaults to `grok-4.20-multi-agent-0309`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `buildBatchUserPromptAugmentation`, and `getPersonaLinkedCollectionIds`.",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback), and tools/collection scope follow the resolved persona document only (no implicit merges). If persona model is unset, server defaults to `grok-4.20-multi-agent-0309`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `buildBatchUserPromptAugmentation`, and `resolveXchatLinkedCollectionIds` (persona `xaiCollection` + `teamCollection` + tool ids + optional user bootstrap when `includeUserBootstrapCollection`).",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -759,6 +759,14 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           collectionName: { type: "string", nullable: true }
         }
       },
+      teamCollection: {
+        type: "object",
+        properties: {
+          collectionId: { type: "string" },
+          collectionName: { type: "string", nullable: true }
+        }
+      },
+      includeUserBootstrapCollection: { type: "boolean" },
       model: { type: "string" },
       temperature: { type: "number" },
       enableRag: { type: "boolean" },
@@ -863,7 +871,15 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           collectionId: { type: "string" },
           collectionName: { type: "string" }
         }
-      }
+      },
+      teamCollection: {
+        type: "object",
+        properties: {
+          collectionId: { type: "string" },
+          collectionName: { type: "string" }
+        }
+      },
+      includeUserBootstrapCollection: { type: "boolean" }
     }
   },
   PersonaUpdateRequest: {
@@ -883,7 +899,15 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           collectionId: { type: "string" },
           collectionName: { type: "string" }
         }
-      }
+      },
+      teamCollection: {
+        type: "object",
+        properties: {
+          collectionId: { type: "string" },
+          collectionName: { type: "string" }
+        }
+      },
+      includeUserBootstrapCollection: { type: "boolean" }
     },
     additionalProperties: false
   },

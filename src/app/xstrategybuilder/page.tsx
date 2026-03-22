@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
@@ -279,10 +279,13 @@ export default async function XstrategyBuilderPage() {
           </div>
 
           <div className="cta-row" style={{ marginTop: "1.25rem" }}>
+            <Link className="cta cta-primary" href="/xstrategybuilder/strategy-options">
+              Open strategy options chain
+            </Link>
             <Link className="cta cta-secondary" href="/xchat">
               Open xChat
             </Link>
-            <Link className="cta cta-primary" href="/">
+            <Link className="cta cta-secondary" href="/">
               Home
             </Link>
           </div>

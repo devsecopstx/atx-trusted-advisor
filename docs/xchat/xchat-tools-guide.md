@@ -22,7 +22,7 @@ flowchart TD
 
   subgraph config["Persona xAPI config (DB only)"]
     D --> E["normalizePersonaXapiConfig"]
-    E --> L2["getPersonaLinkedCollectionIds (xaiCollection + tool collection_ids)"]
+    E --> L2["resolveXchatLinkedCollectionIds (xaiCollection + teamCollection + tool ids + optional user bootstrap)"]
     L2 --> K["withLinkedCollectionTools → effective xapi.tools"]
   end
 

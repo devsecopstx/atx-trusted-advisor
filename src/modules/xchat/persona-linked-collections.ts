@@ -7,10 +7,12 @@ import {
 /** Admin/API list shapes may use loose `xapi.tools` typing; values are normalized before use. */
 export type PersonaLinkedIdSource = {
   xaiCollection?: { collectionId?: string; collectionName?: string };
+  teamCollection?: { collectionId?: string; collectionName?: string };
   xapi?: unknown;
+  includeUserBootstrapCollection?: boolean;
 };
 
-/** Union of `xaiCollection.collectionId` plus any `collection_ids` on `file_search` / `collections_search` tools (normalized config). */
+/** Union of `xaiCollection.collectionId`, `teamCollection.collectionId`, plus any `collection_ids` on `file_search` / `collections_search` tools (normalized config). */
 export function collectionIdsDeclaredOnPersona(
   persona: PersonaLinkedIdSource | null | undefined,
   xapi: PersonaXapiConfig
@@ -19,6 +21,10 @@ export function collectionIdsDeclaredOnPersona(
   const bound = persona?.xaiCollection?.collectionId?.trim();
   if (bound) {
     ids.push(bound);
+  }
+  const team = persona?.teamCollection?.collectionId?.trim();
+  if (team) {
+    ids.push(team);
   }
   for (const tool of xapi.tools) {
     if (tool.type === "collections_search" && Array.isArray(tool.collection_ids)) {
@@ -56,6 +62,23 @@ export function countPersonaLinkedCollections(
   persona: PersonaLinkedIdSource | null | undefined
 ): number {
   return getPersonaLinkedCollectionIds(persona).length;
+}
+
+/**
+ * Persona-declared ids + optional session user bootstrap id when `includeUserBootstrapCollection` is true.
+ * Use for `POST /api/xchat/ask`, batch, and multi-source gather (same union as `withLinkedCollectionTools`).
+ */
+export function resolveXchatLinkedCollectionIds(input: {
+  persona: PersonaLinkedIdSource | null | undefined;
+  userBootstrapCollectionId?: string | null;
+}): string[] {
+  const base = getPersonaLinkedCollectionIds(input.persona);
+  const includeUser = input.persona?.includeUserBootstrapCollection === true;
+  const uid = input.userBootstrapCollectionId?.trim();
+  if (includeUser && uid) {
+    return Array.from(new Set([...base, uid]));
+  }
+  return base;
 }
 
 export function withLinkedCollectionTools(
