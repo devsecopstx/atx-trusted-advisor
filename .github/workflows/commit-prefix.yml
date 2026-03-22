@@ -24,8 +24,6 @@ jobs:
             [[ -n "$s" ]] || return 1
             [[ "$s" == Merge\ * ]] && return 0
             [[ "$s" == Revert\ * ]] && return 0
-            [[ "$s" =~ ^cursor-chore: ]] && return 0
-            [[ "$s" =~ ^cursor-hotfix: ]] && return 0
             [[ "$s" =~ ^chore:\ aTx⚡ ]] && return 0
             # Legacy Junie-style (optional)
             [[ "$s" =~ ^junie-aTx⚡dev-agent[[:space:]].+[[:space:]][0-9]+\.[0-9]+\.[0-9]+([\-+][0-9A-Za-z\.-]+)?$ ]] && return 0
@@ -42,7 +40,7 @@ jobs:
             subject="$(git log -1 --pretty=%s "$sha" | tr -d '\r')"
             if ! subject_ok "$subject"; then
               echo "::error title=Commit subject not allowed::$sha: $subject"
-              echo "Allowed: cursor-chore:/cursor-hotfix:/chore: aTx⚡…, legacy junie-aTx⚡dev-agent … semver, Conventional Commits (feat|fix|chore|…), or Merge/Revert — see test-commit-push SKILL step 11."
+              echo "Allowed: chore: aTx⚡… (agents), legacy junie-aTx⚡dev-agent … semver, Conventional Commits (feat|fix|chore|…), or Merge/Revert — see test-commit-push SKILL step 11."
               failed=1
             fi
           done < <(git rev-list --reverse "$base..$head")

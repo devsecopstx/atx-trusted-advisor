@@ -41,17 +41,16 @@ Ship changes safely by validating locally and preparing an accurate commit workf
    or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).
    Use **`generate-docs`** § *Cursor rules* for the gap list.
 10. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
-11. **Commit message (Cursor agents):** **Default** subject line: **`chore: aTx⚡ <summary>`** — use this for **both** routine chores and urgent hotfixes (same Conventional Commits `chore` type; filter history with `git log --grep=aTx⚡`). The brand sits at the start of the description after the colon.
-    - **Legacy (optional):** `cursor-chore: <summary>` or `cursor-hotfix: <summary>` if you need to grep those strings specifically.
+11. **Commit message (Cursor agents):** Subject line: **`chore: aTx⚡ <summary>`** — use for **both** routine chores and urgent hotfixes (Conventional Commits `chore` type; filter with `git log --grep=aTx⚡`). The brand sits right after the colon.
     - Include **`package.json` version** in the subject when shipping a release — use the **current** version from step 10 / `package.json` (do not paste a stale version literal from this doc).
-    - **Examples (substitute `vX.Y.Z` from `package.json`):** `chore: aTx⚡ release vX.Y.Z (xChat UX, personas)` · `chore: aTx⚡ hotfix empty tools guard in persona save` · `chore: aTx⚡ deps — bump vitest` · `cursor-chore: release vX.Y.Z (tooling)` (legacy)
+    - **Examples (substitute `vX.Y.Z` from `package.json`):** `chore: aTx⚡ release vX.Y.Z (xChat UX, personas)` · `chore: aTx⚡ hotfix empty tools guard in persona save` · `chore: aTx⚡ deps — bump vitest`
     - One-line subject is enough; add a body after a blank line only when context helps reviewers.
     - **Optional git hook:** `.githooks/commit-msg` can **hint** (or strictly enforce via `XFINANCE_ENFORCE_CURSOR_COMMIT=1`) on `agent/*`, `cursor/*`, and `release/*` branches — see **`.githooks/README.md`**. Hooks complement this doc; they do not replace it.
 12. Confirm push readiness and branch status.
 13. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
 14. **Staging first (when applicable):** Push branch, open/merge PR per policy, and verify staging before production (see `AGENTS.md` / deploy skills).
-15. **Deploy path:** **Deploy Cloud Run** — **push to `main`** runs **staging only**; production does **not** auto-deploy.
-16. **Manual `workflow_dispatch`:** **Deploy Cloud Run** (no inputs) redeploys staging. **Deploy Cloud Run Production** (`workflow_dispatch` only) with **`confirm_manual_prod=yes`** runs production deploy (optional **`deployment_notes`** for Slack). Operators should verify staging before promoting prod (see `AGENTS.md` / `.github/workflows/deploy-cloud-run-production.yml`). If jobs show `skipped`, verify workflow and input names first.
+15. **Deploy path:** **Push to `main`** runs **staging only** via **Deploy Cloud Run** — production does **not** auto-deploy.
+16. **Manual `workflow_dispatch`:** **Deploy Cloud Run** (no inputs) redeploys staging. **Deploy Cloud Run Production** (`workflow_dispatch` only; **no `push` trigger**) with **`confirm_manual_prod=yes`** runs production deploy (optional **`deployment_notes`** for Slack). Operators should verify staging before promoting prod (see `AGENTS.md` / `.github/workflows/deploy-cloud-run-production.yml`). If jobs show `skipped`, verify workflow and input names first.
 
 ## Output
 

@@ -16,6 +16,37 @@ class BackendHealthController(
     private val mongoClient: MongoClient,
 ) {
 
+    /** Compatibility shim for load balancers / parity with core app health shape (see docs/ops/atxfinance-backend-http-api.md). */
+    @GetMapping("/api/health")
+    fun apiHealthCompat(): ResponseEntity<Map<String, Any>> {
+        val details = mutableMapOf<String, Any>()
+        details["mongo"] = try {
+            mongoClient.listDatabaseNames().first()
+            "ok"
+        } catch (e: Exception) {
+            mapOf("status" to "error", "message" to (e.message ?: "mongo error"))
+        }
+        val secretsOk = listOf(
+            System.getenv("MONGODB_URI"),
+            System.getenv("SPRING_DATA_MONGODB_URI"),
+            System.getenv("MONGODB_URI_B64")
+        ).any { !it.isNullOrBlank() }
+        details["secrets"] = if (secretsOk) {
+            "ok"
+        } else {
+            mapOf(
+                "status" to "missing",
+                "keys" to listOf("MONGODB_URI", "SPRING_DATA_MONGODB_URI", "MONGODB_URI_B64")
+            )
+        }
+        val body = mapOf(
+            "status" to "ok",
+            "service" to "atxfinance-backend",
+            "details" to details
+        )
+        return ResponseEntity.ok(body)
+    }
+
     @GetMapping("/api/backend/health")
     fun backendHealth(): ResponseEntity<Map<String, Any?>> {
         val now = OffsetDateTime.now(ZoneOffset.UTC).toString()

@@ -29,7 +29,7 @@
   reflect it (see **`generate-docs`**).
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.
-- [ ] **Cursor agent commits** default to **`chore: aTx⚡ …`** (see **`test-commit-push`** step 11). Legacy optional: **`cursor-chore:`** / **`cursor-hotfix:`**.
+- [ ] **Cursor agent commits** use **`chore: aTx⚡ …`** (see **`test-commit-push`** step 11).
 - [ ] Docs/runbooks updated when behavior or operations changed.
 - [ ] **Mongo portfolio store:** canonical collection is **`tenant_portfolio`** (singular), constant `TENANT_PORTFOLIO_COLLECTION` in `src/modules/core-admin/collection-names.ts`. Legacy names `portfolio_portfolios` / `tenant_portfolios` → run **`npm run migrate:tenant-portfolio`** once per database before or right after deploy (see `DEVELOPMENT.md` → *Multi-tenant Seed Verification*).
 - [ ] xChat `POST /api/xchat/ask` changes: update OpenAPI inventory (`src/lib/openapi/current-state-overrides.ts`), `tests/integration/xchat-ask-route.test.ts`, and xChat docs as needed (`docs/xchat/xchat-tools-guide.md`, `context-routing-multi-agent-policy.md`, `atxfinance-tool-stub.md`, `AGENTS.md` quick ref). **Contract:** effective xAI model id comes from the **resolved persona’s `model`** (server default if empty); **no** request-body `model`; `modelSelectionSource` is `persona` | `default`. **Prompt assembly:** if `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` change, sync **`generate-docs`** § *xChat / tools & prompts*.
@@ -40,8 +40,8 @@
 
 ## Staging and production
 
-- [ ] Push branch and merge PR per team policy; **`main`** deploys **staging** only (see `AGENTS.md` / `.github/workflows/deploy-cloud-run.yml`).
-- [ ] **Production** is **manual**: `workflow_dispatch` with **`target=manual_only_prod`** and **`confirm_manual_prod=yes`**. Verify staging before running prod.
+- [ ] Push branch and merge PR per team policy; **`main`** deploys **staging** only (see `AGENTS.md` / `.github/workflows/deploy-cloud-run.yml`; production is `.github/workflows/deploy-cloud-run-production.yml`).
+- [ ] **Production** is **manual**: **Deploy Cloud Run Production** (`workflow_dispatch` only) with **`confirm_manual_prod=yes`**. Verify staging before running prod; optional **Required reviewers** on GitHub environment **`production`**.
 
 ## Push Readiness
 

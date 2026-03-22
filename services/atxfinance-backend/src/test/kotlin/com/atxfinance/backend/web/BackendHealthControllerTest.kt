@@ -2,6 +2,7 @@ package com.atxfinance.backend.web
 
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoDatabase
+import com.mongodb.client.MongoIterable
 import org.bson.Document
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -58,6 +59,34 @@ class BackendHealthControllerTest {
         // Host and database extracted
         assertEquals("localhost:27017", mongo["host"])
         assertEquals("atxfintechdb", mongo["database"]) 
+    }
+
+    @Test
+    @Suppress("UNCHECKED_CAST")
+    fun `apiHealthCompat returns ok when mongo lists databases`() {
+        val env = MockEnvironment()
+        env.setActiveProfiles("test")
+        env.withProperty("spring.application.name", "atxfinance-backend")
+        env.withProperty("spring.data.mongodb.uri", "mongodb://localhost:27017/atxfintechdb")
+
+        val mongoClient = mock(MongoClient::class.java)
+        val names = mock(MongoIterable::class.java) as MongoIterable<String>
+        `when`(mongoClient.listDatabaseNames()).thenReturn(names)
+        `when`(names.first()).thenReturn("admin")
+
+        val controller = BackendHealthController(env, mongoClient)
+        val response = controller.apiHealthCompat()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val body = response.body!!
+        assertEquals("ok", body["status"])
+        assertEquals("atxfinance-backend", body["service"])
+        @Suppress("UNCHECKED_CAST")
+        val details = body["details"] as Map<String, Any>
+        assertEquals("ok", details["mongo"])
+        // secrets uses System.getenv (not Spring env); CI/unit JVM often has none → missing map is valid
+        val sec = details["secrets"]
+        assertTrue(sec == "ok" || sec is Map<*, *>)
     }
 
     @Test

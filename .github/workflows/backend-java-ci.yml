@@ -13,6 +13,10 @@ on:
       - "Dockerfile"
       - ".github/workflows/backend-java-ci.yml"
 
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -31,7 +35,16 @@ jobs:
             services/atxfinance-backend/*.gradle*
             services/atxfinance-backend/gradle/*.toml
       - name: Gradle test
+        id: gradle_test
         run: chmod +x ./gradlew && ./gradlew test --no-daemon
+      - name: Publish backend test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always() && steps.gradle_test.outcome != 'skipped'
+        with:
+          check_name: Backend (Gradle / JUnit)
+          files: services/atxfinance-backend/build/test-results/test/*.xml
+          comment_mode: off
+          report_individual_runs: true
       - name: Archive unit test reports
         if: always()
         uses: actions/upload-artifact@v4

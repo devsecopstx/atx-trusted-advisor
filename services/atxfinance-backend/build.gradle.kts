@@ -10,10 +10,17 @@ plugins {
 group = "com.atxfinance"
 version = "0.1.0-SNAPSHOT"
 
+// Align Kotlin compiler JDK + bytecode with Java (avoids JVM 17 vs 1.8 inline mismatch in IDE/Gradle).
+kotlin {
+    jvmToolchain(21)
+}
+
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(21))
     }
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 repositories {

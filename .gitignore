@@ -22,6 +22,9 @@ lib-cov
 coverage
 *.lcov
 
+# Vitest JUnit output (CI / local parity with GitHub test results)
+test-results/
+
 # nyc test coverage
 .nyc_output
 

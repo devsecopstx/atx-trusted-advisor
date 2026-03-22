@@ -36,9 +36,10 @@ Tests:
 ./gradlew test
 ```
 
-Health:
+Health (`BackendHealthController` + Actuator):
 - Actuator: `GET http://localhost:8080/actuator/health`
 - Compatibility shim: `GET http://localhost:8080/api/health`
+- Diagnostics: `GET http://localhost:8080/api/backend/health`
 
 Swagger UI:
 - `GET http://localhost:8080/swagger-ui.html`

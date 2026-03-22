@@ -46,29 +46,9 @@
       {
         "label": "Start Backend (Gradle)",
         "type": "shell",
-        "command": "bash -lc '
-set -a;
-[ -f "${workspaceFolder}/.env" ] && source "${workspaceFolder}/.env";
-# Derive Mongo URI from provided variables and expose Spring Boot standard env names
-if [ -z "${SPRING_DATA_MONGODB_URI:-}" ]; then
-  if [ -n "${MONGODB_URI:-}" ]; then
-    export SPRING_DATA_MONGODB_URI="${MONGODB_URI}"
-  elif [ -n "${MONGODB_URI_B64:-}" ]; then
-    export SPRING_DATA_MONGODB_URI="$(echo "$MONGODB_URI_B64" | base64 -d)"
-  fi
-fi
-# Also set non-Spring alias for compatibility
-if [ -z "${MONGODB_URI:-}" ] && [ -n "${SPRING_DATA_MONGODB_URI:-}" ]; then
-  export MONGODB_URI="${SPRING_DATA_MONGODB_URI}"
-fi
-# Provide database name if present (for cases where URI lacks a path)
-if [ -z "${SPRING_DATA_MONGODB_DATABASE:-}" ] && [ -n "${MONGODB_DB_NAME:-}" ]; then
-  export SPRING_DATA_MONGODB_DATABASE="${MONGODB_DB_NAME}"
-fi
-set +a;
-if [ -x ./gradlew ]; then ./gradlew bootRun; else gradle bootRun; fi'",
+        "command": "bash scripts/dev/bootrun-atxfinance-backend.sh",
         "options": {
-          "cwd": "services/atxfinance-backend"
+          "cwd": "${workspaceFolder}"
         },
         "isBackground": true,
         "problemMatcher": {

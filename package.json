@@ -14,6 +14,7 @@
     "smoke:verify": "vitest run tests/smoke",
     "smoke:xai-key-create": "vitest run tests/smoke/xai-management-api-key-create-smoke.test.ts",
     "test": "vitest run",
+    "test:ci": "mkdir -p test-results && vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/vitest-junit.xml",
     "test:integration": "vitest run tests/integration",
     "typecheck": "tsc --noEmit",
     "seed:admin": "node --env-file=.env scripts/seed-admin-user.mjs",
