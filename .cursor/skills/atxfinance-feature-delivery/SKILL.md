@@ -30,7 +30,7 @@ Always prefer small PRs:
 2. Create branch: `agent/feature/<ticket-or-scope>`.
 3. Implement minimal complete change.
 4. Run validation (`npm run lint`, `npm run typecheck`, `npm run test`).
-5. Commit with a traceable subject: **`cursor-chore:`**, **`chore: aTx⚡`**, or **`cursor-hotfix:`** (see **`test-commit-push`** skill step 11). Open PR with concise summary + test evidence.
+5. Commit with default subject **`chore: aTx⚡ <summary>`** (see **`test-commit-push`** skill step 11). Open PR with concise summary + test evidence.
 6. Hand off for human review; no direct deployment from this workflow.
 
 ## Required Safety Rules

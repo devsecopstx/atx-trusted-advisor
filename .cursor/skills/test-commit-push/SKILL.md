@@ -41,10 +41,10 @@ Ship changes safely by validating locally and preparing an accurate commit workf
    or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).
    Use **`generate-docs`** § *Cursor rules* for the gap list.
 10. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
-11. **Commit message (Cursor agents):** **Default** subject line: **`chore: aTx⚡ <summary>`** — use for **both** routine chores and urgent hotfixes (same Conventional Commits `chore` type; filter history with `git log --grep=aTx⚡`). The brand sits at the start of the description after the colon.
+11. **Commit message (Cursor agents):** **Default** subject line: **`chore: aTx⚡ <summary>`** — use this for **both** routine chores and urgent hotfixes (same Conventional Commits `chore` type; filter history with `git log --grep=aTx⚡`). The brand sits at the start of the description after the colon.
     - **Legacy (optional):** `cursor-chore: <summary>` or `cursor-hotfix: <summary>` if you need to grep those strings specifically.
     - Include **`package.json` version** in the subject when shipping a release — use the **current** version from step 10 / `package.json` (do not paste a stale version literal from this doc).
-    - **Examples (substitute `vX.Y.Z` from `package.json`):** `chore: aTx⚡ release vX.Y.Z (xChat UX, personas)` · `chore: aTx⚡ hotfix empty tools guard in persona save` · `cursor-chore: release vX.Y.Z (tooling)` (legacy)
+    - **Examples (substitute `vX.Y.Z` from `package.json`):** `chore: aTx⚡ release vX.Y.Z (xChat UX, personas)` · `chore: aTx⚡ hotfix empty tools guard in persona save` · `chore: aTx⚡ deps — bump vitest` · `cursor-chore: release vX.Y.Z (tooling)` (legacy)
     - One-line subject is enough; add a body after a blank line only when context helps reviewers.
     - **Optional git hook:** `.githooks/commit-msg` can **hint** (or strictly enforce via `XFINANCE_ENFORCE_CURSOR_COMMIT=1`) on `agent/*`, `cursor/*`, and `release/*` branches — see **`.githooks/README.md`**. Hooks complement this doc; they do not replace it.
 12. Confirm push readiness and branch status.

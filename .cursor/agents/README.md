@@ -17,9 +17,8 @@ Usage guidance:
 
 ## Commit messages (agent traceability)
 
-For commits authored via Cursor agents, use subject prefixes so history is easy to filter:
+For commits authored via Cursor agents, **default** subject prefix:
 
-- **Chores:** `cursor-chore: <summary>` **or** `chore: aTx⚡ <summary>` (Conventional Commits–friendly)
-- **Hotfixes:** `cursor-hotfix: <summary>`
+- **`chore: aTx⚡ <summary>`** — use for both routine work and hotfixes (filter with `git log --grep=aTx⚡`).
 
-Full convention: **`.cursor/skills/test-commit-push/SKILL.md`** (workflow step 11).
+Optional legacy: `cursor-chore:` / `cursor-hotfix:` — see **`.cursor/skills/test-commit-push/SKILL.md`** (workflow step 11).
