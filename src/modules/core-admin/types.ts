@@ -191,6 +191,20 @@ export type Account = {
 export type WatchlistSymbol = {
   symbol: string;
   addedAt: Date;
+  /** CSV / UI "Type" (e.g. Stock, Option). */
+  lineType?: string;
+  strategy?: string;
+  quantity?: number;
+  entryPrice?: number;
+};
+
+/** Payload for PATCH `addEntries` (merge into existing row or append). */
+export type WatchlistSymbolImportEntry = {
+  symbol: string;
+  lineType?: string;
+  strategy?: string;
+  quantity?: number;
+  entryPrice?: number;
 };
 
 export type Watchlist = {

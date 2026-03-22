@@ -18,9 +18,11 @@ import {
     type TaskRun,
     type UserAdminSettings,
     type Watchlist,
-    type WatchlistSymbol
+    type WatchlistSymbol,
+    type WatchlistSymbolImportEntry
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
+import { MAX_WATCHLIST_SYMBOLS } from "@/modules/watchlist/constants";
 
 const collections = {
   accessRequests: "admin_access_requests",
@@ -47,6 +49,17 @@ const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 /** Ensured on every default watchlist read/provision (xChat + portfolio UX). */
 const DEFAULT_WATCHLIST_SYMBOL = "TSLA";
 
+function parseOptionalFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const n = Number.parseFloat(value.replaceAll(/[$,\s]/g, ""));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
 function coerceWatchlistSymbolEntry(
   item: unknown,
   fallbackAddedAt: Date
@@ -56,11 +69,12 @@ function coerceWatchlistSymbolEntry(
     return symbol ? { symbol, addedAt: fallbackAddedAt } : null;
   }
   if (item && typeof item === "object" && "symbol" in item) {
-    const symbol = String((item as { symbol: unknown }).symbol).trim().toUpperCase();
+    const o = item as Record<string, unknown>;
+    const symbol = String(o.symbol).trim().toUpperCase();
     if (!symbol) {
       return null;
     }
-    const rawAdded = (item as { addedAt?: unknown }).addedAt;
+    const rawAdded = o.addedAt;
     let addedAt = fallbackAddedAt;
     if (rawAdded instanceof Date && !Number.isNaN(rawAdded.getTime())) {
       addedAt = rawAdded;
@@ -70,7 +84,20 @@ function coerceWatchlistSymbolEntry(
         addedAt = parsed;
       }
     }
-    return { symbol, addedAt };
+    const lineType =
+      typeof o.lineType === "string" ? o.lineType.trim().slice(0, 128) : undefined;
+    const strategy =
+      typeof o.strategy === "string" ? o.strategy.trim().slice(0, 512) : undefined;
+    const quantity = parseOptionalFiniteNumber(o.quantity);
+    const entryPrice = parseOptionalFiniteNumber(o.entryPrice);
+    return {
+      symbol,
+      addedAt,
+      ...(lineType ? { lineType } : {}),
+      ...(strategy ? { strategy } : {}),
+      ...(quantity !== undefined ? { quantity } : {}),
+      ...(entryPrice !== undefined ? { entryPrice } : {})
+    };
   }
   return null;
 }
@@ -926,16 +953,46 @@ export async function getPortfolioWatchlist(input: {
   return { ...doc, symbols };
 }
 
-const MAX_WATCHLIST_SYMBOLS = 75;
-
 export type MutatePortfolioWatchlistInput = {
   userId: string;
   portfolioId: string;
   tenantId?: string;
   addSymbols?: string[];
+  /** Merge metadata on existing symbols or append new rows (CSV import). */
+  addEntries?: WatchlistSymbolImportEntry[];
   removeSymbols?: string[];
   dedupe?: boolean;
 };
+
+function mergeImportEntryIntoSymbol(
+  base: WatchlistSymbol,
+  entry: WatchlistSymbolImportEntry
+): WatchlistSymbol {
+  const next: WatchlistSymbol = { ...base };
+  if (entry.lineType !== undefined) {
+    const v = entry.lineType.trim();
+    if (v.length === 0) {
+      delete next.lineType;
+    } else {
+      next.lineType = v.slice(0, 128);
+    }
+  }
+  if (entry.strategy !== undefined) {
+    const v = entry.strategy.trim();
+    if (v.length === 0) {
+      delete next.strategy;
+    } else {
+      next.strategy = v.slice(0, 512);
+    }
+  }
+  if (entry.quantity !== undefined) {
+    next.quantity = Number.isFinite(entry.quantity) ? entry.quantity : undefined;
+  }
+  if (entry.entryPrice !== undefined) {
+    next.entryPrice = Number.isFinite(entry.entryPrice) ? entry.entryPrice : undefined;
+  }
+  return next;
+}
 
 export async function mutatePortfolioWatchlistSymbols(
   input: MutatePortfolioWatchlistInput
@@ -946,6 +1003,7 @@ export async function mutatePortfolioWatchlistSymbols(
   }
   const hasMutation =
     Boolean(input.addSymbols?.length) ||
+    Boolean(input.addEntries?.length) ||
     Boolean(input.removeSymbols?.length) ||
     Boolean(input.dedupe);
   if (!hasMutation) {
@@ -1005,6 +1063,24 @@ export async function mutatePortfolioWatchlistSymbols(
       }
       symbols.push({ symbol, addedAt: now });
       existing.add(symbol);
+    }
+  }
+
+  if (input.addEntries?.length) {
+    for (const entry of input.addEntries) {
+      const symbol = entry.symbol.trim().toUpperCase();
+      if (!symbol || !/^[A-Z0-9.\-]{1,32}$/.test(symbol)) {
+        continue;
+      }
+      const idx = symbols.findIndex((s) => s.symbol === symbol);
+      if (idx >= 0) {
+        symbols[idx] = mergeImportEntryIntoSymbol(symbols[idx]!, entry);
+        continue;
+      }
+      if (symbols.length >= MAX_WATCHLIST_SYMBOLS) {
+        break;
+      }
+      symbols.push(mergeImportEntryIntoSymbol({ symbol, addedAt: now }, entry));
     }
   }
 

@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 
+import {
+  MAX_WATCHLIST_SYMBOLS,
+  MAX_WATCHLIST_SYMBOLS_PER_PATCH
+} from "@/modules/watchlist/constants";
+import { parseWatchlistCsv } from "@/modules/watchlist/parse-watchlist-csv";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 import { WatchlistSymbolShape } from "./watchlist-symbol-shape";
@@ -28,6 +33,14 @@ function buildRows(data: WatchlistApiData): WatchlistRow[] {
     addedAt: s.addedAt,
     quote: null
   }));
+}
+
+function chunkSymbols<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
 }
 
 function toCsv(rows: WatchlistRow[]): string {
@@ -70,6 +83,7 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
   const [error, setError] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
   const [removingSymbol, setRemovingSymbol] = useState<string | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -165,10 +179,89 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `xfinance-watchlist-${listName.replace(/\s+/g, "-").toLowerCase()}.csv`;
+    a.download = `atxfinance-watchlist-${listName.replace(/\s+/g, "-").toLowerCase()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }, [listName, rows]);
+
+  const onPickImportFile = useCallback(() => {
+    importFileRef.current?.click();
+  }, []);
+
+  const onImportFileChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) {
+        return;
+      }
+      let text: string;
+      try {
+        text = await file.text();
+      } catch {
+        window.alert("Could not read that file.");
+        return;
+      }
+      const { symbols, invalidRowCount } = parseWatchlistCsv(text);
+      if (symbols.length === 0) {
+        window.alert("No valid tickers found. Use a column named Symbol (or put tickers in the first column).");
+        return;
+      }
+      const existing = new Set(rows.map((r) => r.symbol));
+      const newSyms = symbols.filter((s) => !existing.has(s));
+      const remainingSlots = MAX_WATCHLIST_SYMBOLS - rows.length;
+      if (remainingSlots <= 0) {
+        window.alert(
+          `Watchlist is full (${MAX_WATCHLIST_SYMBOLS} symbols max). Remove some before importing.`
+        );
+        return;
+      }
+      const toAdd = newSyms.slice(0, remainingSlots);
+      if (toAdd.length === 0) {
+        window.alert("All symbols from the file are already on your watchlist.");
+        return;
+      }
+      const droppedByCap = newSyms.length - toAdd.length;
+      setMutating(true);
+      setError(null);
+      try {
+        for (const batch of chunkSymbols(toAdd, MAX_WATCHLIST_SYMBOLS_PER_PATCH)) {
+          const res = await fetch(
+            `/api/portfolios/${encodeURIComponent(portfolioId)}/watchlist?quotes=1`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ addSymbols: batch })
+            }
+          );
+          const json = (await res.json()) as { data?: WatchlistApiData; error?: string };
+          if (!res.ok) {
+            throw new Error(json.error ?? "Update failed");
+          }
+          if (json.data) {
+            setListName(json.data.name ?? "Default");
+            setRows(buildRows(json.data));
+          }
+        }
+        const parts = [`Imported ${toAdd.length} symbol${toAdd.length === 1 ? "" : "s"}.`];
+        if (invalidRowCount > 0) {
+          parts.push(`Skipped ${invalidRowCount} invalid row${invalidRowCount === 1 ? "" : "s"}.`);
+        }
+        if (droppedByCap > 0) {
+          parts.push(
+            `${droppedByCap} not added (watchlist holds at most ${MAX_WATCHLIST_SYMBOLS} symbols).`
+          );
+        }
+        window.alert(parts.join(" "));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Import failed");
+      } finally {
+        setMutating(false);
+      }
+    },
+    [portfolioId, rows]
+  );
 
   return (
     <div className="xf-watchlist-app">
@@ -194,6 +287,16 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
               </p>
             </header>
 
+            <input
+              ref={importFileRef}
+              accept=".csv,text/csv"
+              aria-hidden
+              className="xf-watchlist-import-input"
+              style={{ display: "none" }}
+              tabIndex={-1}
+              type="file"
+              onChange={(e) => void onImportFileChange(e)}
+            />
             <div className="xf-watchlist-toolbar">
               <button className="xf-watchlist-toolbar-btn" disabled type="button">
                 Edit
@@ -207,7 +310,16 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
                 type="button"
                 onClick={onExport}
               >
-                Export
+                Export CSV
+              </button>
+              <button
+                aria-label="Import watchlist from a CSV file"
+                className="xf-watchlist-toolbar-btn"
+                disabled={mutating || loading}
+                type="button"
+                onClick={onPickImportFile}
+              >
+                Import CSV
               </button>
               <button
                 className="xf-watchlist-toolbar-btn xf-watchlist-toolbar-btn--warn"
@@ -240,7 +352,10 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
             ) : null}
 
             {!loading && rows.length === 0 ? (
-              <p className="xf-watchlist-empty">No symbols yet. Use + Add or open xChat to seed defaults.</p>
+              <p className="xf-watchlist-empty">
+                No symbols yet. Use + Add, Import CSV (e.g. <code>atxfinance-watchlist.csv</code>), or open xChat to
+                seed defaults.
+              </p>
             ) : null}
 
             {!loading && rows.length > 0 ? (
