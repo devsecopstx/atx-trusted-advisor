@@ -40,5 +40,21 @@ services:
     ports:
       - "8080:8080"
 
+  atxfinance-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: atxfinance-backend
+    depends_on:
+      - mongodb
+    env_file:
+      - .env
+    environment:
+      # If MONGODB_URI_B64 is set, the app will prefer it (decoded) via EnvironmentPostProcessor.
+      # Otherwise, use local Mongo with credentials and db name.
+      SPRING_DATA_MONGODB_URI: "mongodb://${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}:${MONGO_ROOT_PASSWORD:-atxrocks!}@mongodb:27017/${MONGODB_DB_NAME:-atxfintechdb}?authSource=admin"
+    ports:
+      - "8080:8080"
+
 volumes:
   atxfinance_mongo_data:
