@@ -38,10 +38,10 @@
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.
 - [ ] Open gaps (if any) are in **`docs/PLAN.md`** as TODO / design TBD, or consciously not applicable to this change.
 
-## Staging-before-prod (optional)
+## Staging-before-prod
 
-- [ ] Push branch and merge PR per team policy, then deploy **staging** and smoke before production (see deploy runbooks / `AGENTS.md`).
-- [ ] Manual production dispatch uses `target=production` + `approval=approve-production` (avoid all-jobs-skipped runs).
+- [ ] Push branch and merge PR per team policy; **production** deploys only after **staging** succeeds on **`main`** (see `AGENTS.md` / `.github/workflows/deploy-cloud-run.yml`).
+- [ ] Manual **`workflow_dispatch`** is **staging only** (`target=staging`). There is no manual production dispatch — do not expect `target=production` inputs.
 
 ## Push Readiness
 

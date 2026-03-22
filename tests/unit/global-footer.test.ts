@@ -17,8 +17,9 @@ describe("GlobalFooter", () => {
     expect(source).toMatch(/app-footer-watermark[^>]*aria-hidden/s);
   });
 
-  it("renders optional subline stack only when subline is passed", () => {
-    expect(source).toContain("subline ?");
+  it("always renders watermark stack; subline disclaimer row is optional", () => {
     expect(source).toContain("app-footer-subline-stack");
+    expect(source).toContain("app-footer-watermark");
+    expect(source).toMatch(/subline \? <div className="app-footer-subline"/);
   });
 });

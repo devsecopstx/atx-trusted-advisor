@@ -6,6 +6,7 @@ import { PortfolioPositionQuickAdd } from "@/app/portfolio/ui/portfolio-position
 import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { GlobalFooter } from "@/app/ui/global-footer";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import {
@@ -354,6 +355,7 @@ export default async function PortfolioPage() {
           </div>
         </section>
       </div>
+      <GlobalFooter />
     </div>
   );
 }

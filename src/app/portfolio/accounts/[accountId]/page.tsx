@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-workspace";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { GlobalFooter } from "@/app/ui/global-footer";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import {
@@ -126,6 +127,7 @@ export default async function PortfolioAccountPage({
           />
         </section>
       </div>
+      <GlobalFooter />
     </div>
   );
 }
