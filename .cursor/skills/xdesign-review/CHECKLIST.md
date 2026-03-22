@@ -53,8 +53,12 @@ Run this gate whenever PR scope includes persona orchestration, prompt config, t
   - `web_search` and `code_interpreter` are enabled only when needed by product behavior
   - top-level `tools` array is used (no ad hoc tool declarations inside user content)
 - [ ] Routing behavior:
+  - Ask route uses one `/v1/responses` tool-loop execution path (no mixed chat-completions fallback) unless explicitly documented as a rollback exception
   - `tool_choice` defaults to `auto` unless constrained policy is documented
   - runtime behavior avoids fabricated internal-doc claims when retrieval misses
+- [ ] Multi-agent model policy:
+  - ask fallback model remains `grok-4.20-multi-agent-0309` (or approved `grok-4.20-multi-agent`)
+  - `reasoningEffort` constraints match multi-agent-only behavior and route validation
 - [ ] Admin ownership constraints:
   - persona `name`, `systemPrompt`, `overridePrompt`, and `collectionIds` are mutable by admin role only
   - non-admin mutation attempts are denied with clear contract-safe errors

@@ -6,7 +6,7 @@ import {
     getPortfolioWatchlist,
     mutatePortfolioWatchlistSymbols
 } from "@/modules/core-admin/repository";
-import type { Watchlist } from "@/modules/core-admin/types";
+import type { Watchlist, WatchlistSymbol } from "@/modules/core-admin/types";
 import {
     LOOKUP_ROUTE,
     lookupSymbols,
@@ -19,25 +19,43 @@ type RouteContext = {
   }>;
 };
 
+const watchlistAddEntrySchema = z.object({
+  symbol: z.string().trim().min(1).max(32),
+  lineType: z.string().trim().max(128).optional(),
+  strategy: z.string().trim().max(512).optional(),
+  quantity: z.number().finite().optional(),
+  entryPrice: z.number().finite().optional()
+});
+
 const patchBodySchema = z
   .object({
     addSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
+    addEntries: z.array(watchlistAddEntrySchema).max(20).optional(),
     removeSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
     dedupe: z.boolean().optional()
   })
   .refine(
     (data) =>
       Boolean(data.addSymbols?.length) ||
+      Boolean(data.addEntries?.length) ||
       Boolean(data.removeSymbols?.length) ||
       data.dedupe === true,
-    { message: "Provide addSymbols, removeSymbols, or dedupe: true" }
+    { message: "Provide addSymbols, addEntries, removeSymbols, or dedupe: true" }
   );
 
-function toIsoSymbolRows(watchlist: Watchlist) {
-  return (watchlist.symbols ?? []).map((item) => ({
+function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
+  return {
     symbol: item.symbol,
-    addedAt: item.addedAt.toISOString()
-  }));
+    addedAt: item.addedAt.toISOString(),
+    ...(item.lineType !== undefined ? { lineType: item.lineType } : {}),
+    ...(item.strategy !== undefined ? { strategy: item.strategy } : {}),
+    ...(item.quantity !== undefined ? { quantity: item.quantity } : {}),
+    ...(item.entryPrice !== undefined ? { entryPrice: item.entryPrice } : {})
+  };
+}
+
+function toIsoSymbolRows(watchlist: Watchlist) {
+  return (watchlist.symbols ?? []).map(watchlistSymbolToJsonRow);
 }
 
 async function buildJsonPayload(
@@ -51,14 +69,19 @@ async function buildJsonPayload(
     | Array<{
         symbol: string;
         addedAt: string;
+        lineType?: string;
+        strategy?: string;
+        quantity?: number;
+        entryPrice?: number;
         quote: SymbolLookupResult | null;
       }>
     | undefined;
 
+  const rawSymbols = watchlist.symbols ?? [];
   if (quotes) {
-    const map = await lookupSymbols(symbols.map((s) => s.symbol));
-    symbolsWithQuotes = symbols.map((s) => ({
-      ...s,
+    const map = await lookupSymbols(rawSymbols.map((s) => s.symbol));
+    symbolsWithQuotes = rawSymbols.map((s) => ({
+      ...watchlistSymbolToJsonRow(s),
       quote: map.get(s.symbol) ?? null
     }));
   }
@@ -125,6 +148,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     portfolioId,
     tenantId: session.tenantId,
     addSymbols: parsed.data.addSymbols,
+    addEntries: parsed.data.addEntries,
     removeSymbols: parsed.data.removeSymbols,
     dedupe: parsed.data.dedupe
   });

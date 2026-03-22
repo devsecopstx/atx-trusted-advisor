@@ -120,7 +120,11 @@ export async function buildWorkspaceServerSnapshotBlock(
           symbols: (watchlist.symbols ?? []).map((s) => ({
             symbol: s.symbol,
             addedAt:
-              s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt)
+              s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt),
+            ...(s.lineType !== undefined ? { lineType: s.lineType } : {}),
+            ...(s.strategy !== undefined ? { strategy: s.strategy } : {}),
+            ...(s.quantity !== undefined ? { quantity: s.quantity } : {}),
+            ...(s.entryPrice !== undefined ? { entryPrice: s.entryPrice } : {})
           }))
         }
       : { error: "no_watchlist" as const }

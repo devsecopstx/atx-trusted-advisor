@@ -1,19 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PortfolioPositionQuickAdd } from "@/app/portfolio/ui/portfolio-position-quick-add";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
     listPortfolioAccounts,
+    listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import type { Account } from "@/modules/core-admin/types";
+import type { Account, Position } from "@/modules/core-admin/types";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import "../xchat/xchat.css";
+
+export const dynamic = "force-dynamic";
 
 function formatBrokerType(type: string): string {
   return type
@@ -31,6 +36,7 @@ export default async function PortfolioPage() {
 
   let portfolio: Awaited<ReturnType<typeof getDefaultPortfolio>> = null;
   let accounts: Account[] = [];
+  let positionsByAccountId: Map<string, Pick<Position, "symbol">[]> = new Map();
   let portfolioLoadError: string | null = null;
   let accountsLoadError: string | null = null;
 
@@ -80,10 +86,39 @@ export default async function PortfolioPage() {
       accountsLoadError =
         "Linked accounts could not be loaded. Refresh the page; your portfolio above should still be valid.";
     }
+    if (accounts.length > 0 && portfolio._id) {
+      try {
+        const accountIds = accounts.flatMap((a) => (a._id ? [a._id] : []));
+        const positions = await listPortfolioPositionsByAccount({
+          userId: session.userId,
+          tenantId: session.tenantId,
+          portfolioId: portfolio._id.toHexString(),
+          accountIds
+        });
+        const map = new Map<string, Pick<Position, "symbol">[]>();
+        for (const p of positions) {
+          const key = p.accountId.toHexString();
+          const list = map.get(key) ?? [];
+          list.push({ symbol: p.symbol });
+          map.set(key, list);
+        }
+        positionsByAccountId = map;
+      } catch (error) {
+        const detail = caughtErrorMessage(error);
+        console.error(`[portfolio] positions load failed userId=${session.userId} detail=${detail}`);
+      }
+    }
   }
 
   const admin = isGlobalAdmin(session.roles);
   const portfolioIdHex = portfolio?._id?.toHexString?.() ?? null;
+  const quickAddAccounts = accounts
+    .filter((account): account is Account & { _id: NonNullable<Account["_id"]> } => Boolean(account._id))
+    .map((account) => ({
+      id: account._id.toHexString(),
+      name: account.name,
+      brokerType: account.type
+    }));
 
   return (
     <div className="xchat-shell">
@@ -131,89 +166,142 @@ export default async function PortfolioPage() {
 
           {!portfolioLoadError && portfolio?._id ? (
             <div style={{ marginTop: "1.25rem" }}>
-              <h2
+              <div
                 style={{
-                  fontSize: "1rem",
-                  fontWeight: 600,
-                  margin: "1.25rem 0 0.5rem",
-                  color: "var(--xf-text-100)"
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.5rem",
+                  margin: "1.25rem 0 0.5rem"
                 }}
               >
-                Accounts
-              </h2>
+                <h2
+                  style={{
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    margin: 0,
+                    color: "var(--xf-text-100)"
+                  }}
+                >
+                  Accounts
+                </h2>
+                <PortfolioRefreshButton label="Refresh holdings" />
+              </div>
               {accountsLoadError ? (
                 <p className="status-text status-error">{accountsLoadError}</p>
               ) : accounts.length === 0 ? (
                 <p className="status-text">No linked accounts yet.</p>
               ) : (
-                <div className="crud-table-wrap">
-                  <table className="crud-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Account</th>
-                        <th scope="col">Broker type</th>
-                        <th scope="col">Reference</th>
-                        <th scope="col">Cash</th>
-                        <th scope="col">Holdings</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {accounts.map((account) => (
-                        <tr key={account._id?.toHexString() ?? account.extAccountId}>
-                          <td>
-                            {account.name}
-                            {account.isDefault ? (
-                              <span
-                                className="status-text"
-                                style={{ marginLeft: "0.35rem", fontSize: "0.75rem", display: "inline" }}
+                <>
+                  <div className="crud-table-wrap">
+                    <table className="crud-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Account</th>
+                          <th scope="col">Broker type</th>
+                          <th scope="col">Reference</th>
+                          <th scope="col">Cash</th>
+                          <th scope="col">Holdings</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accounts.map((account) => (
+                          <tr key={account._id?.toHexString() ?? account.extAccountId}>
+                            <td>
+                              {account.name}
+                              {account.isDefault ? (
+                                <span
+                                  className="status-text"
+                                  style={{ marginLeft: "0.35rem", fontSize: "0.75rem", display: "inline" }}
+                                >
+                                  (default)
+                                </span>
+                              ) : null}
+                            </td>
+                            <td>{formatBrokerType(account.type)}</td>
+                            <td>
+                              <code
+                                style={{
+                                  fontSize: "0.8em",
+                                  color: "var(--xf-text-300)",
+                                  fontFamily: "ui-monospace, monospace"
+                                }}
                               >
-                                (default)
-                              </span>
-                            ) : null}
-                          </td>
-                          <td>{formatBrokerType(account.type)}</td>
-                          <td>
-                            <code
+                                {account.extAccountId || "—"}
+                              </code>
+                            </td>
+                            <td
                               style={{
-                                fontSize: "0.8em",
                                 color: "var(--xf-text-300)",
-                                fontFamily: "ui-monospace, monospace"
+                                fontFamily: "ui-monospace, monospace",
+                                fontSize: "0.9rem"
                               }}
                             >
-                              {account.extAccountId || "—"}
-                            </code>
-                          </td>
-                          <td
-                            style={{
-                              color: "var(--xf-text-300)",
-                              fontFamily: "ui-monospace, monospace",
-                              fontSize: "0.9rem"
-                            }}
-                          >
-                            {(account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE).toLocaleString("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                              maximumFractionDigits: 0
-                            })}
-                          </td>
-                          <td>
-                            {account._id ? (
-                              <Link
-                                className="cta cta-secondary"
-                                style={{ fontSize: "0.8rem", padding: "0.35rem 0.65rem", display: "inline-block" }}
-                                href={`/portfolio/accounts/${account._id.toHexString()}`}
-                              >
-                                Select &amp; edit
-                              </Link>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                              {(account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE).toLocaleString("en-US", {
+                                style: "currency",
+                                currency: "USD",
+                                maximumFractionDigits: 0
+                              })}
+                            </td>
+                            <td>
+                              {account._id ? (
+                                <div className="stack-gap" style={{ gap: "0.35rem" }}>
+                                  {(() => {
+                                    const rows =
+                                      positionsByAccountId.get(account._id.toHexString()) ?? [];
+                                    const count = rows.length;
+                                    const preview = rows
+                                      .slice(0, 4)
+                                      .map((r) => r.symbol)
+                                      .join(", ");
+                                    return (
+                                      <>
+                                        <div
+                                          style={{
+                                            fontFamily: "ui-monospace, monospace",
+                                            fontSize: "0.85rem",
+                                            color: "var(--xf-text-300)"
+                                          }}
+                                        >
+                                          {count === 0
+                                            ? "No positions yet"
+                                            : `${count} ${count === 1 ? "position" : "positions"}`}
+                                          {preview ? (
+                                            <span style={{ display: "block", marginTop: "0.15rem" }}>
+                                              {preview}
+                                              {count > 4 ? "…" : ""}
+                                            </span>
+                                          ) : null}
+                                        </div>
+                                        <Link
+                                          className="cta cta-secondary"
+                                          style={{
+                                            fontSize: "0.8rem",
+                                            padding: "0.35rem 0.65rem",
+                                            display: "inline-block"
+                                          }}
+                                          href={`/portfolio/accounts/${account._id.toHexString()}`}
+                                        >
+                                          Select &amp; edit
+                                        </Link>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {portfolioIdHex ? (
+                    <PortfolioPositionQuickAdd portfolioId={portfolioIdHex} accounts={quickAddAccounts} />
+                  ) : null}
+                </>
               )}
             </div>
           ) : null}

@@ -34,6 +34,8 @@ Verify xChat behavior, persona wiring, and retrieval/fallback outcomes with repr
 5. Validate provider failure path (`502` with retryable metadata).
 6. Validate persona tool constraints (`file_search` / `collections_search` require `xaiCollection.collectionId` on create/update payloads per `persona-validation.ts`).
 7. Validate RAG readiness lifecycle: uploaded files surface `processingStatus`; poll `GET /api/rag/files/:fileId/readiness`; ensure non-ready files are labeled/blocked from collection-link and xChat collection retrieval until status is `complete`/`skipped`.
+8. Validate execution-path lock for ask hotfix: `/api/xchat/ask` uses a single `respondWithXaiToolLoop` flow (no chat-completions fallback) to reduce live-search drift.
+9. Validate model policy: default ask fallback model is `grok-4.20-multi-agent-0309` (or persona-pinned `grok-4.20-multi-agent`), and `reasoningEffort` is accepted only for multi-agent models.
 
 ## Guardrails
 

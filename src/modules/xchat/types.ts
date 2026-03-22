@@ -190,6 +190,7 @@ export type XChatSessionLog = {
   xaiTurnFileId?: string;
   xaiTurnPayloadHash?: string;
   xaiTurnRetentionExpiresAt?: Date;
+  retentionExpiresAt?: Date;
   createdAt: Date;
 };
 

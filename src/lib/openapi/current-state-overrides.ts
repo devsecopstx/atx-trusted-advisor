@@ -22,6 +22,30 @@ function jsonResponse(description: string, schemaName: string): OpenApiResponse 
   };
 }
 
+function xchatLimiterHeaders(includeRetryAfter: boolean): NonNullable<OpenApiResponse["headers"]> {
+  const headers: NonNullable<OpenApiResponse["headers"]> = {
+    "x-xchat-limit-remaining-minute": {
+      description: "Remaining ask requests in the current one-minute limiter window.",
+      schema: { type: "string" }
+    },
+    "x-xchat-limit-remaining-day": {
+      description: "Remaining asks in the current UTC day for the caller plan (non-admin sessions).",
+      schema: { type: "string" }
+    },
+    "x-xchat-limit-daily": {
+      description: "Daily ask limit for the current caller plan (non-admin sessions).",
+      schema: { type: "string" }
+    }
+  };
+  if (includeRetryAfter) {
+    headers["retry-after"] = {
+      description: "Seconds until the caller can retry after limiter rejection.",
+      schema: { type: "string" }
+    };
+  }
+  return headers;
+}
+
 const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "GET /api/personas": {
     summary: "List personas visible to current user",
@@ -242,7 +266,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona/model selection. Non-admin users can only select published professional personas and cannot override model ids. Tools and xAI collection scope follow the resolved persona document only (no implicit merges). When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `buildBatchUserPromptAugmentation`, and `getPersonaLinkedCollectionIds`.",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback), and tools/collection scope follow the resolved persona document only (no implicit merges). If persona model is unset, server defaults to `grok-4.20-multi-agent-0309`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `buildBatchUserPromptAugmentation`, and `getPersonaLinkedCollectionIds`.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -250,13 +274,19 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       }
     },
     responses: {
-      "200": jsonResponse("xChat ask response.", "XChatAskResponseEnvelope"),
+      "200": {
+        ...jsonResponse("xChat ask response.", "XChatAskResponseEnvelope"),
+        headers: xchatLimiterHeaders(false)
+      },
       "400": jsonResponse("Invalid ask payload.", "ValidationErrorResponse"),
       "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
       "403": jsonResponse("Persona/model selection not allowed for current role.", "ErrorResponse"),
       "404": jsonResponse("Requested persona not found.", "ErrorResponse"),
       "413": jsonResponse("Payload too large.", "ErrorResponse"),
-      "429": jsonResponse("Rate limit exceeded.", "RateLimitErrorResponse"),
+      "429": {
+        ...jsonResponse("Rate limit exceeded.", "RateLimitErrorResponse"),
+        headers: xchatLimiterHeaders(true)
+      },
       "502": jsonResponse("xAI provider request failed.", "XaiProviderErrorResponse"),
       "503": jsonResponse("Default admin persona (Super-Agent) missing from database.", "ErrorResponse")
     }
@@ -279,6 +309,14 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
         required: false,
         description: "ISO datetime cursor. Returns items older than this timestamp.",
         schema: { type: "string", format: "date-time" }
+      },
+      {
+        name: "cursorId",
+        in: "query",
+        required: false,
+        description:
+          "Tie-break cursor ObjectId for stable pagination when multiple rows share the same createdAt timestamp.",
+        schema: { type: "string" }
       }
     ],
     responses: {
@@ -593,9 +631,9 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       },
       reasoningEffort: {
         type: "string",
-        enum: ["low", "medium", "high"],
+        enum: ["low", "medium", "high", "xhigh"],
         description:
-          "Only valid when the resolved persona’s `model` is `grok-4.20-multi-agent` (set in Admin → Personas). Non–global_admin sessions may have multi-agent parallelism stripped per subscription plan (`multiAgentParallelMaxAgents` in plan limits; defaults cap app users at 0 until raised)."
+          "Only valid when the resolved persona’s `model` is `grok-4.20-multi-agent` or `grok-4.20-multi-agent-0309` (set in Admin → Personas). Non–global_admin sessions may have multi-agent parallelism stripped per subscription plan (`multiAgentParallelMaxAgents` in plan limits; defaults cap app users at 0 until raised)."
       },
       scope: { type: "string", minLength: 1, maxLength: 128 },
       topK: { type: "integer", minimum: 1, maximum: 10 }

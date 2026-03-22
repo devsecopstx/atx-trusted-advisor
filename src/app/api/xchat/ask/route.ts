@@ -4,10 +4,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import { checkRateLimit } from "@/lib/rate-limit";
 import {
-  chatWithXai,
-  respondWithXai,
   respondWithXaiToolLoop,
   searchDocumentsInCollections,
   type ToolCallLog
@@ -29,11 +26,12 @@ import {
   HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS,
   XPERSONA_SUPER_AGENT_NAME
 } from "@/modules/xchat/default-xpersonas";
+import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import {
   getPersonaLinkedCollectionIds,
   withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
-import { clampMultiAgentParallelismForPlan } from "@/modules/xchat/plan-limits";
+import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
   getPersonaById,
@@ -52,21 +50,21 @@ import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-v
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
   personaId: z.string().optional(),
-  reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
+  reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]).optional(),
   scope: z.string().min(1).max(128).optional(),
   topK: z.number().int().min(1).max(10).optional()
 });
 
 const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
-const ASK_RATE_WINDOW_MS = 60_000;
 const ASK_RATE_MAX = 20;
-const DEFAULT_XCHAT_MODEL = "grok-4-1-fast-reasoning";
-const MULTI_AGENT_MODEL = "grok-4.20-multi-agent";
+const DEFAULT_XCHAT_MODEL = "grok-4.20-multi-agent-0309";
+const MULTI_AGENT_MODELS = new Set(["grok-4.20-multi-agent", "grok-4.20-multi-agent-0309"]);
 const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>([
   normalizeNameKey(XPERSONA_SUPER_AGENT_NAME)
 ]);
 
 type ModelSelectionSource = "default" | "persona";
+type RequestedReasoningEffort = "low" | "medium" | "high" | "xhigh";
 type ParallelReasoningEffort = "low" | "medium" | "high";
 
 type ParallelAgentConfig = {
@@ -94,21 +92,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   }
 
-  const rateLimit = checkRateLimit({
-    key: `xchat-ask:${session.userId}`,
-    windowMs: ASK_RATE_WINDOW_MS,
-    max: ASK_RATE_MAX
-  });
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      {
-        error: "Rate limit exceeded",
-        retryAfterSeconds: Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000)
-      },
-      { status: 429 }
-    );
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -124,8 +107,61 @@ export async function POST(request: Request) {
     );
   }
 
-  const { message, topK = 4 } = parsed.data;
+  const { message } = parsed.data;
   const isAdminSession = isGlobalAdmin(session.roles);
+  let subscriptionPlan: SubscriptionPlan | undefined;
+  let limiterRemainingMinute: number | undefined;
+  let limiterRemainingDay: number | undefined;
+  let limiterDailyLimit: number | undefined;
+  if (!isAdminSession && ObjectId.isValid(session.userId)) {
+    const coreUser = await getCoreUserById(new ObjectId(session.userId));
+    subscriptionPlan = coreUser?.subscriptionPlan;
+  }
+  const requestedTopK = parsed.data.topK ?? 4;
+  const topK = isAdminSession ? requestedTopK : clampTopK(requestedTopK, subscriptionPlan);
+  try {
+    const usageCheck = await enforceDistributedAskUsageLimit({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      plan: subscriptionPlan,
+      perMinuteLimit: ASK_RATE_MAX,
+      enforceDailyLimit: !isAdminSession
+    });
+    if (!usageCheck.allowed) {
+      const limiterHeaders = buildLimiterHeaders({
+        remainingMinute: usageCheck.remainingMinute,
+        remainingDay: usageCheck.remainingDay,
+        dailyLimit: usageCheck.dailyLimit,
+        retryAfterSeconds: usageCheck.retryAfterSeconds
+      });
+      return NextResponse.json(
+        {
+          error:
+            usageCheck.code === "xchat_daily_limit_exceeded"
+              ? "Daily xChat prompt limit reached for current plan"
+              : "Rate limit exceeded",
+          code: usageCheck.code,
+          retryAfterSeconds: usageCheck.retryAfterSeconds ?? 60
+        },
+        { status: 429, headers: limiterHeaders }
+      );
+    }
+    limiterRemainingMinute = usageCheck.remainingMinute;
+    limiterRemainingDay = usageCheck.remainingDay;
+    limiterDailyLimit = usageCheck.dailyLimit;
+  } catch (error) {
+    console.error("[xchat/ask] distributed usage limit check failed", {
+      userId: session.userId,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return NextResponse.json(
+      {
+        error: "xChat usage limiter is unavailable",
+        retryable: true
+      },
+      { status: 503 }
+    );
+  }
 
   const defaultPersona = await resolveDefaultXchatPersonaForSession(session.roles);
   if (!defaultPersona) {
@@ -197,11 +233,6 @@ export async function POST(request: Request) {
   }
   let parallelAgentConfig = parallelAgentConfigResult.config;
   if (!isAdminSession) {
-    let subscriptionPlan: SubscriptionPlan | undefined;
-    if (ObjectId.isValid(session.userId)) {
-      const coreUser = await getCoreUserById(new ObjectId(session.userId));
-      subscriptionPlan = coreUser?.subscriptionPlan;
-    }
     parallelAgentConfig = clampMultiAgentParallelismForPlan(
       parallelAgentConfig,
       subscriptionPlan
@@ -323,14 +354,10 @@ export async function POST(request: Request) {
   /** Custom tools must run through `respondWithXaiToolLoop`; `chatWithXai` does not execute tool_calls. */
   const needsLocalToolLoop = hasXfinanceTool || hasYahooFinanceTool;
   /**
-   * Hosted `web_search` / `x_search` use the same multi-turn Responses loop as local tools so
-   * `respondWithXaiToolLoop` can recover when the model prints pseudo `<xai-tool>` / JSON instead of
-   * real `function_call`s (`respondWithXai` is single-request only).
+   * Keep one execution workflow to avoid live-search drift: all asks use the multi-turn Responses
+   * tool loop, regardless of persona xapi.mode, so hosted and local tools share identical handling.
    */
-  const hasHostedSearchTool = xapiConfig.tools.some(
-    (t) => t.type === "web_search" || t.type === "x_search"
-  );
-  const useResponsesToolLoop = needsLocalToolLoop || hasHostedSearchTool;
+  const hasHostedSearchTool = xapiConfig.tools.some((t) => t.type === "web_search" || t.type === "x_search");
 
   let workspaceServerSnapshot: string | null = null;
   if (hasXfinanceTool) {
@@ -366,95 +393,33 @@ export async function POST(request: Request) {
   let xaiResponse: { outputText: string; model: string };
   let toolCallLogs: ToolCallLog[] = [];
 
-  const chatCompletionsWithTools = () =>
-    chatWithXai({
-      model: effectiveModel,
-      temperature: persona?.temperature ?? 0.2,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      tools: xapiConfig.tools,
-      toolChoice: xapiConfig.toolChoice,
-      parallelism: parallelAgentConfig
-    });
-
-  const chatCompletionsNoTools = () =>
-    chatWithXai({
-      model: effectiveModel,
-      temperature: persona?.temperature ?? 0.2,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      toolChoice: "none",
-      parallelism: parallelAgentConfig
-    });
-
-  const fallbackToChat = async (): Promise<{ outputText: string; model: string }> => {
-    try {
-      return await chatCompletionsWithTools();
-    } catch {
-      return chatCompletionsNoTools();
-    }
-  };
-
   try {
-    if (xapiConfig.mode === "chat_completions" && !useResponsesToolLoop) {
-      xaiResponse = await chatCompletionsWithTools();
-    } else if (useResponsesToolLoop) {
-      const xaiTools = personaXapiToolsToXaiRequestTools(xapiConfig.tools);
+    const xaiTools = personaXapiToolsToXaiRequestTools(xapiConfig.tools);
+    const executor = needsLocalToolLoop
+      ? createXfinanceToolExecutor({
+          userId: session.userId,
+          tenantId: session.tenantId
+        })
+      : async () => ({
+          result: "",
+          error: "local_tool_not_configured_for_persona"
+        });
 
-      const executor = needsLocalToolLoop
-        ? createXfinanceToolExecutor({
-            userId: session.userId,
-            tenantId: session.tenantId
-          })
-        : async () => ({
-            result: "",
-            error: "local_tool_not_configured_for_persona"
-          });
-
-      try {
-        const loopResult = await respondWithXaiToolLoop({
-          model: effectiveModel,
-          systemPrompt,
-          userPrompt,
-          tools: xaiTools,
-          toolChoice: xapiConfig.toolChoice,
-          maxTurns: xapiConfig.maxTurns,
-          executor,
-          parallelism: parallelAgentConfig
-        });
-        xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
-        toolCallLogs = loopResult.toolCalls;
-      } catch (responsesErr) {
-        console.warn("[xchat/ask] responses mode failed, falling back to chat_completions", {
-          error: responsesErr instanceof Error ? responsesErr.message : String(responsesErr)
-        });
-        xaiResponse = await fallbackToChat();
-      }
-    } else {
-      try {
-        xaiResponse = await respondWithXai({
-          model: effectiveModel,
-          systemPrompt,
-          userPrompt,
-          tools: xapiConfig.tools,
-          toolChoice: xapiConfig.toolChoice,
-          maxTurns: xapiConfig.maxTurns,
-          parallelism: parallelAgentConfig
-        });
-      } catch (responsesErr) {
-        console.warn("[xchat/ask] responses mode failed, falling back to chat_completions", {
-          error: responsesErr instanceof Error ? responsesErr.message : String(responsesErr)
-        });
-        xaiResponse = await fallbackToChat();
-      }
-    }
+    const loopResult = await respondWithXaiToolLoop({
+      model: effectiveModel,
+      systemPrompt,
+      userPrompt,
+      tools: xaiTools,
+      toolChoice: xapiConfig.toolChoice,
+      maxTurns: xapiConfig.maxTurns,
+      executor,
+      parallelism: parallelAgentConfig
+    });
+    xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
+    toolCallLogs = loopResult.toolCalls;
   } catch (error) {
     console.error("[xchat/ask] xAI provider call failed", {
-      mode: xapiConfig.mode,
+      mode: "responses_tool_loop",
       personaId: persona?._id?.toHexString(),
       error: error instanceof Error ? error.message : "Unknown provider error"
     });
@@ -593,21 +558,30 @@ export async function POST(request: Request) {
     xaiTurnRetentionExpiresAt
   });
 
-  return NextResponse.json({
-    data: {
-      response: xaiResponse.outputText,
-      model: xaiResponse.model,
-      personaName: persona.name,
-      modelSelectionSource,
-      contextCount,
-      contextSource,
-      collectionSearchStatus,
-      collectionSearchNonReadyFileCount,
-      toolCalls: toolCallLogs.length > 0
-        ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
-        : undefined
+  return NextResponse.json(
+    {
+      data: {
+        response: xaiResponse.outputText,
+        model: xaiResponse.model,
+        personaName: persona.name,
+        modelSelectionSource,
+        contextCount,
+        contextSource,
+        collectionSearchStatus,
+        collectionSearchNonReadyFileCount,
+        toolCalls: toolCallLogs.length > 0
+          ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
+          : undefined
+      }
+    },
+    {
+      headers: buildLimiterHeaders({
+        remainingMinute: limiterRemainingMinute,
+        remainingDay: limiterRemainingDay,
+        dailyLimit: limiterDailyLimit
+      })
     }
-  });
+  );
 }
 
 function createSnippetFingerprint(input: string): string {
@@ -688,22 +662,26 @@ function normalizeNameKey(input: string): string {
 
 function resolveParallelAgentConfig(input: {
   model: string;
-  reasoningEffort: ParallelReasoningEffort | undefined;
+  reasoningEffort: RequestedReasoningEffort | undefined;
 }):
   | { ok: true; config?: ParallelAgentConfig }
   | { ok: false; error: string; code: string } {
-  if (input.model !== MULTI_AGENT_MODEL) {
+  if (!MULTI_AGENT_MODELS.has(input.model)) {
     if (input.reasoningEffort) {
       return {
         ok: false,
-        error: "reasoningEffort is only supported with grok-4.20-multi-agent",
+        error:
+          "reasoningEffort is only supported with grok-4.20-multi-agent or grok-4.20-multi-agent-0309",
         code: "invalid_reasoning_effort"
       };
     }
     return { ok: true, config: undefined };
   }
 
-  const effort = input.reasoningEffort ?? "medium";
+  const effort: ParallelReasoningEffort =
+    input.reasoningEffort === "xhigh"
+      ? "high"
+      : (input.reasoningEffort ?? "medium");
   return {
     ok: true,
     config: {
@@ -711,4 +689,26 @@ function resolveParallelAgentConfig(input: {
       reasoningEffort: effort
     }
   };
+}
+
+function buildLimiterHeaders(input: {
+  remainingMinute?: number;
+  remainingDay?: number;
+  dailyLimit?: number;
+  retryAfterSeconds?: number;
+}): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (typeof input.remainingMinute === "number") {
+    headers["x-xchat-limit-remaining-minute"] = String(Math.max(0, input.remainingMinute));
+  }
+  if (typeof input.remainingDay === "number") {
+    headers["x-xchat-limit-remaining-day"] = String(Math.max(0, input.remainingDay));
+  }
+  if (typeof input.dailyLimit === "number") {
+    headers["x-xchat-limit-daily"] = String(Math.max(0, input.dailyLimit));
+  }
+  if (typeof input.retryAfterSeconds === "number") {
+    headers["retry-after"] = String(Math.max(1, Math.ceil(input.retryAfterSeconds)));
+  }
+  return headers;
 }

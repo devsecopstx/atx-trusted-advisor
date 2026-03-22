@@ -49,7 +49,7 @@ If any reviewer is skipped, final review is incomplete.
 
 - Route contract compatibility is preserved (`/api/*` responses, status codes, payload shape).
 - Auth and tenant boundaries remain enforced (no privilege broadening).
-- **xChat**: validation and error paths remain stable; plan limits and persona resolution behave as documented.
+- **xChat**: validation and error paths remain stable; plan limits and persona resolution behave as documented; ask execution stays on the locked single Responses tool-loop path (no unplanned chat fallback drift).
 - **xCoach**: stub behavior is acceptable until licensing-exam scope is defined (TODO).
 - No regressions in retries, fallbacks, or deploy-health checks.
 - Critical env/secret assumptions are documented and unchanged unless explicitly approved.

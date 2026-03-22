@@ -329,6 +329,94 @@ describe("portfolio API routes", () => {
     expect(response.status).toBe(404);
   });
 
+  it("accepts OpenAPI-style position payload for account quick add", async () => {
+    const response = await postPosition(
+      new Request("http://test/api/positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099",
+          type: "stock",
+          ticker: "tsla",
+          shares: 5,
+          purchasePrice: 199.25
+        })
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(repositoryMocks.upsertPositionForAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        portfolioId: "507f1f77bcf86cd799439033",
+        accountId: "507f1f77bcf86cd799439099",
+        symbol: "TSLA",
+        qty: 5,
+        avgCost: 199.25
+      })
+    );
+  });
+
+  it("accepts OpenAPI option payload with contracts and option metadata", async () => {
+    const response = await postPosition(
+      new Request("http://test/api/positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099",
+          type: "option",
+          ticker: "tsla",
+          contracts: 2,
+          optionType: "call",
+          strike: 250,
+          expiration: "2026-12-18",
+          purchasePrice: 12.4
+        })
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(repositoryMocks.upsertPositionForAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        portfolioId: "507f1f77bcf86cd799439033",
+        accountId: "507f1f77bcf86cd799439099",
+        symbol: "TSLA",
+        qty: 2,
+        avgCost: 12.4
+      })
+    );
+  });
+
+  it("rejects option payload when expiration is not a future date", async () => {
+    const now = new Date();
+    const pastDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1))
+      .toISOString()
+      .slice(0, 10);
+
+    const response = await postPosition(
+      new Request("http://test/api/positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099",
+          type: "option",
+          ticker: "tsla",
+          contracts: 2,
+          optionType: "call",
+          strike: 250,
+          expiration: pastDate,
+          purchasePrice: 12.4
+        })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    const payload = (await response.json()) as { error?: string };
+    expect(payload.error).toContain("future date");
+  });
+
   it("returns 401 when default portfolio route has no session", async () => {
     sessionMocks.requireSessionUser.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
