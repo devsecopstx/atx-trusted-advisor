@@ -13,6 +13,17 @@ Project-local skills in this directory are safe for Cursor Cloud Agents to reuse
 - `atxfinance-design-ops`: run concise design/ops review gates for core tools and xPersona contracts.
 - `xdesign-review`: final MVP merge gate for combined core MVP + branding cloud-agent changes.
 
+### Backend (multi-node agents)
+- `atxfinance-backend-architecture`
+- `atxfinance-backend-deploy-staging`
+- `atxfinance-backend-deploy-production`
+- `atxfinance-backend-runbook`
+- `atxfinance-backend-ci`
+- `atxfinance-backend-start-local`
+- `atxfinance-backend-start-staging`
+
+Guidelines: see `docs/ops/junie-guidelines-atxfinance-backend.md` for how Junie should operate these skills safely.
+
 ## Strategy Skills
 
 - `atxfinance-strategy-covered-calls`: covered calls on TSLA shares (very high usage, moderate risk).
