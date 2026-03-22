@@ -41,6 +41,18 @@ env:
   GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
+  # Manual runs: production deploy only runs when approval == approve-production.
+  # target=production + approval=no skips every job with no visible error — fail fast.
+  validate-workflow-dispatch:
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'production' && inputs.approval != 'approve-production'
+    name: Block invalid production dispatch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain required inputs
+        run: |
+          echo "::error::No deploy ran. For **target production** set **approval** to **approve-production**. **approval no** skips all deploy jobs. Re-run with approval **approve-production**."
+          exit 1
+
   deploy-staging:
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main')) || (github.event_name == 'workflow_dispatch' && inputs.target == 'staging')
     name: Deploy Staging
