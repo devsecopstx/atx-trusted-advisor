@@ -108,8 +108,8 @@ function AdminFunctionIcon({ name }: IconProps) {
     case "chat":
       return (
         <svg {...commonProps}>
-          <path d="M8 9.5h8M8 13h5.5" />
-          <path d="M6.5 5.5h11a2 2 0 0 1 2 2v6.2a2 2 0 0 1-2 2H9.8l-3.3 2.2V18.5a2 2 0 0 1 2-2h8a2 2 0 0 0 2-2v-7.5a2 2 0 0 0-2-2H6.5z" />
+          <path d="M5 10.5a6.5 6.5 0 0 1 13 0v3a2.5 2.5 0 0 1-2.5 2.5h-5.2L8 19v-3H7.5A2.5 2.5 0 0 1 5 13.5v-3z" />
+          <path d="M9 10.5h6M9 13.5h3.5" />
         </svg>
       );
     case "check":
