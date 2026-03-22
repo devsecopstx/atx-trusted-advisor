@@ -59,7 +59,15 @@ The **home** experience uses **`MarketingHero`** + shared chrome — not the rev
 
 ---
 
-## 5. Summary
+## 5. Global footer & compliance chrome
+
+- **`GlobalFooter`** (`src/app/ui/global-footer.tsx`): legal nav (Imprint, Security, Privacy, Report a vulnerability), copyright **aTx⚡Finance**, **`APP_VERSION_LABEL`** from `package.json` via `src/lib/app-version.ts`.
+- **Subline (product surfaces only):** Pass `subline` from layouts that need a disclaimer — e.g. **`xchat/layout.tsx`** and **`xstrategybuilder/layout.tsx`** use **Not financial advice** + provider credit. **`admin/layout.tsx`** uses `<GlobalFooter />` without a subline.
+- **Tone:** Footer and disclaimers stay **professional and compliance-oriented** — no ironic, meme, or jokey legal copy in production chrome (see **`xdesign-review`** visual + trust gate).
+
+---
+
+## 6. Summary
 
 - **Logo:** **aTx⚡Finance** lockup in UI; use **"xFinance"** in concise aria-labels where appropriate.
 - **Docs sync:** When **`xfinance-branding.mdc`** changes materially, update this file and follow **`generate-docs`** + **`test-commit-push`**.

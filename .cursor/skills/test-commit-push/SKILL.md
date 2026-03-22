@@ -41,7 +41,13 @@ Ship changes safely by validating locally and preparing an accurate commit workf
    or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).
    Use **`generate-docs`** § *Cursor rules* for the gap list.
 10. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
-11. Prepare concise commit message reflecting intent.
+11. **Commit message (Cursor agents):** Use a traceable **subject prefix** so agent-authored commits are easy to filter (`git log --grep=cursor-chore`, `git log --grep=cursor-hotfix`, or `git log --grep=aTx⚡`):
+    - **Chores** (release bumps, deps, tooling, housekeeping): `cursor-chore: <summary>` **or** conventional **`chore: aTx⚡ <summary>`** (same `chore` type as Conventional Commits — no conflict; the brand sits at the start of the description).
+    - **Hotfixes** (urgent prod fixes): `cursor-hotfix: <summary>`
+    - Include **`package.json` version** in the subject when shipping a release — use the **current** version from step 10 / `package.json` (do not paste a stale version literal from this doc).
+    - **Examples (substitute `vX.Y.Z` from `package.json`):** `cursor-chore: release vX.Y.Z (xChat UX, personas, tool usage)` · `chore: aTx⚡ release vX.Y.Z (xChat UX, personas)` · `cursor-hotfix: fix empty tools guard in persona save`
+    - One-line subject is enough; add a body after a blank line only when context helps reviewers.
+    - **Optional git hook:** `.githooks/commit-msg` can **hint** (or strictly enforce via `XFINANCE_ENFORCE_CURSOR_COMMIT=1`) on `agent/*`, `cursor/*`, and `release/*` branches — see **`.githooks/README.md`**. Hooks complement this doc; they do not replace it.
 12. Confirm push readiness and branch status.
 13. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
 14. **Staging first (when applicable):** If the team ships to staging before prod, push the branch, open/merge PR per policy, then run staging deploy/verify (see `AGENTS.md` / deploy skills). Production can wait until staging checks pass.
