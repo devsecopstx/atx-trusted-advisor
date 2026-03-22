@@ -41,6 +41,7 @@ describe("personaXapiToolsToXaiRequestTools", () => {
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({
       type: "function",
+      name: "atxfinance",
       function: expect.objectContaining({
         name: "atxfinance",
         parameters: expect.objectContaining({
@@ -61,7 +62,9 @@ describe("personaXapiToolsToXaiRequestTools", () => {
       { type: "atxfinance" }
     ]);
     expect(out.map((t) => t.type)).toEqual(["web_search", "function", "function"]);
+    expect((out[1] as { name?: string; function?: { name?: string } }).name).toBe("atxfinance");
     expect((out[1] as { function?: { name?: string } }).function?.name).toBe("atxfinance");
+    expect((out[2] as { name?: string }).name).toBe("yahoo_finance");
     expect((out[2] as { function?: { name?: string } }).function?.name).toBe("yahoo_finance");
   });
 });

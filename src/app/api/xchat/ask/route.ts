@@ -26,12 +26,9 @@ import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
 import type { SubscriptionPlan } from "@/modules/identity/types";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
-import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
-import {
-    ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
-    HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS,
-    XPERSONA_SUPER_AGENT_NAME
-} from "@/modules/xchat/default-xpersonas";
+import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
+import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
+import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
 import {
     resolveXchatLinkedCollectionIds,
     withLinkedCollectionTools
@@ -389,18 +386,21 @@ export async function POST(request: Request) {
     }
   }
 
-  const systemPrompt = [
-    persona?.systemPrompt ?? "You are xchat, an operations-focused assistant for atxfinance core admins.",
-    ragContext ? `Use the following RAG context if relevant:\n${ragContext}` : "No RAG context available.",
-    ...(workspaceServerSnapshot ? [workspaceServerSnapshot] : []),
-    ...(hasXfinanceTool ? [ATXFINANCE_SESSION_TOOL_INSTRUCTIONS] : []),
-    ...(hasHostedSearchTool ? [HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS] : [])
-  ].join("\n\n");
+  const systemPrompt = buildXchatSystemPrompt({
+    personaSystem: persona?.systemPrompt ?? "",
+    fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
+    ragContext,
+    workspaceSnapshot: workspaceServerSnapshot,
+    sessionToolInstructions: buildSessionToolInstructions({
+      hostedSearch: hasHostedSearchTool,
+      atxfinance: hasXfinanceTool
+    })
+  });
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
   const userPromptBase = userPromptTemplate
     ? `${userPromptTemplate}\n\nUser message:\n${message}`
     : message;
-  const personaKbAugmentation = buildBatchUserPromptAugmentation({
+  const personaKbAugmentation = appendXchatKbMetadata({
     tools: xapiConfig.tools,
     linkedCollectionIds,
     userBootstrapCollectionId: userCollection?.collectionId ?? null,

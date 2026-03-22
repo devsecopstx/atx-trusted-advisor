@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
+import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 
-describe("buildBatchUserPromptAugmentation", () => {
+describe("appendXchatKbMetadata", () => {
   it("lists persona-linked collection ids and tool lines", () => {
-    const text = buildBatchUserPromptAugmentation({
+    const text = appendXchatKbMetadata({
       tools: [
         { type: "web_search" },
         { type: "file_search", source: { collection_ids: ["col_a", "col_b"] } },
@@ -22,7 +22,7 @@ describe("buildBatchUserPromptAugmentation", () => {
   });
 
   it("notes when no collection ids are declared", () => {
-    const text = buildBatchUserPromptAugmentation({ tools: [], linkedCollectionIds: [] });
+    const text = appendXchatKbMetadata({ tools: [], linkedCollectionIds: [] });
     expect(text).toContain(
       "Resolved xAI collection ids: (none — check xPersona xaiCollection, teamCollection, tools, includeUserBootstrapCollection)"
     );

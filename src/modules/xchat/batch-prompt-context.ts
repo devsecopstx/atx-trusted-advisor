@@ -1,10 +1,9 @@
 import type { PersonaXapiToolDefinition } from "@/modules/xchat/types";
 
 /**
- * Appends structured KB-style context for **batch items and interactive xChat ask**:
- * persona-linked collection ids (no env/global defaults) and the persona tool list.
+ * KB suffix for **ask and batch** user turns: resolved collection ids + persona tool list (no env default).
  */
-export function buildBatchUserPromptAugmentation(input: {
+export function appendXchatKbMetadata(input: {
   tools: PersonaXapiToolDefinition[];
   linkedCollectionIds: string[];
   /** Session user bootstrap id when `includeUserBootstrapCollection` is true on the persona. */

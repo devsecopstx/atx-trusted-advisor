@@ -15,11 +15,8 @@ import {
 import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatBatchDebug } from "@/lib/xchat-debug";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
-import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
-import {
-    ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
-    HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS
-} from "@/modules/xchat/default-xpersonas";
+import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
+import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
 import {
     resolveXchatLinkedCollectionIds,
     withLinkedCollectionTools
@@ -186,21 +183,22 @@ export async function submitBatchJob(
       }
     }
 
-    const systemPrompt = [
-      input.persona.systemPrompt?.trim() || "You are a helpful assistant.",
-      ragContext
-        ? `Use the following RAG context if relevant:\n${ragContext}`
-        : "No RAG context available.",
-      ...(workspaceServerSnapshot ? [workspaceServerSnapshot] : []),
-      ...(hasAtxfinancePersonaTool ? [ATXFINANCE_SESSION_TOOL_INSTRUCTIONS] : []),
-      ...(hasHostedSearchPersonaTool ? [HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS] : [])
-    ].join("\n\n");
+    const systemPrompt = buildXchatSystemPrompt({
+      personaSystem: input.persona.systemPrompt?.trim() ?? "",
+      fallbackPersonaSystem: "You are a helpful assistant.",
+      ragContext,
+      workspaceSnapshot: workspaceServerSnapshot,
+      sessionToolInstructions: buildSessionToolInstructions({
+        hostedSearch: hasHostedSearchPersonaTool,
+        atxfinance: hasAtxfinancePersonaTool
+      })
+    });
 
     const userPromptBase = input.persona.overridePrompt?.trim()
       ? `${input.persona.overridePrompt}\n\nUser message:\n${item.message}`
       : item.message;
 
-    const batchMeta = buildBatchUserPromptAugmentation({
+    const batchMeta = appendXchatKbMetadata({
       tools: xapiConfigMerged.tools,
       linkedCollectionIds,
       userBootstrapCollectionId: userBootstrapCollectionId ?? null,

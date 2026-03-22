@@ -34,8 +34,10 @@ function fileSearchWireTool(ids: string[]): { type: "file_search"; vector_store_
 }
 
 /**
- * xAI `/v1/responses` may require a top-level `name` on each tool (Rust deserializer).
- * Function tools from OpenAI shape use `function.name`; mirror it at root when missing.
+ * xAI `/v1/responses` Rust deserializer expects a top-level `name` on each tool entry.
+ * - Hosted tools: default to `String(type)` when missing.
+ * - `type: "function"`: mirror `function.name` onto root `name` when `name` is absent (required;
+ *   omitting it yields 422 `tools[N]: missing field name`).
  */
 function ensureResponsesToolNameCompat(tool: Record<string, unknown>): Record<string, unknown> {
   const t = tool.type;

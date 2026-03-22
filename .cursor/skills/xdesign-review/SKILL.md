@@ -1,6 +1,7 @@
 ---
 id: xdesign-review
 name: xdesign-review
+version: "1.1.0"
 description: Final PR + production-readiness review gate for atxFinance when combining Core MVP and Branding changes (and pre-prod lock).
 ---
 
@@ -17,7 +18,7 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 
 ## Core MVP Scope (Revisit)
 
-- **xChat** — Finance-enabled Grok session; persona/RAG/tool behavior governed by published personas and `POST /api/xchat/ask`. See `docs/xchat/*.md` for contracts. **Prompt + tool assembly (diagrams):** `docs/xchat/xchat-tools-guide.md` — update when ask/batch prompt order or routing changes (xDesign doc parity).
+- **xChat** — Finance-enabled Grok session; persona/RAG/tool behavior governed by published personas and `POST /api/xchat/ask`. See `docs/xchat/*.md` for contracts. **Prompt assembly:** `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` in `src/modules/xchat/xchat-prompt-build.ts` and `batch-prompt-context.ts`. **Diagrams + flow:** `docs/xchat/xchat-tools-guide.md` — update when order or routing changes (xDesign doc parity).
 - **xCoach** — Currently a **stub**. Planned: licensing exam (timed test). Further scope (TODO).
 
 ## When to Use
@@ -27,9 +28,14 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 - Any `xPersona`, `xChat`, `xCoach`, tool-routing, or admin-contract changes.
 - **Before production deploy:** run this gate after CI green; confirm **`generate-docs`** / OpenAPI parity if routes changed.
 
+## Skill changelog
+
+- **1.1.0** — xChat prompt assembly is centralized (`buildXchatSystemPrompt`, `buildSessionToolInstructions`, `appendXchatKbMetadata`); doc parity pointer remains `docs/xchat/xchat-tools-guide.md`.
+
 ## Versioning (SemVer — single source of truth)
 
 - **Canonical app version** lives only in **`package.json`** (`version` field). Runtime UIs read **`src/lib/app-version.ts`** (`APP_VERSION_LABEL`). Do **not** hardcode version strings in skills or UI.
+- **This skill’s `version` field** (frontmatter) tracks review-gate doc/process changes only; bump PATCH for doc-only, MINOR when the mandatory checklist or scope changes.
 - Follow **SemVer 2.0.0**: **MAJOR.MINOR.PATCH** — bump MAJOR for breaking API/contract changes, MINOR for backward-compatible features, PATCH for fixes.
 - Do **not** downgrade version numbers (e.g. never 1.0.6 → 1.0.0). “v1” product line = **1.x** on `main`; tag releases from signed tags per deploy runbooks (`.cursor/skills/atxfinance-deploy-production/SKILL.md`).
 

@@ -39,12 +39,12 @@ Single function tool `atxfinance` with JSON args `{ "operation": "<name>", "symb
 ## Persona binding
 
 - Persona `xapi.tools` may include `{ "type": "atxfinance" }` (validated in `[persona-validation.ts](../../src/modules/xchat/persona-validation.ts)`).
-- **Effective tools and RAG collection scope** come only from the stored persona (`xapi.tools`, `xaiCollection`, and collection ids on `file_search` / `collections_search`). The ask route does **not** merge Super-Agent defaults, xFinance-name shortcuts, app-role portfolio tools, env `ATXFINANCE_COLLECTION_ID`, user bootstrap collections, or an admin “all team collections” sweep into the model request.
-- When `atxfinance` is in the persona tool list, the ask route appends `**ATXFINANCE_SESSION_TOOL_INSTRUCTIONS`** (`[default-xpersonas.ts](../../src/modules/xchat/default-xpersonas.ts)`) to the system prompt so the model calls the tool for portfolio/watchlist/position questions instead of asking the user to paste holdings.
+- **Effective tools and RAG collection scope** are built from the stored persona through the same pipeline as interactive ask (see [`xchat-tools-guide.md`](./xchat-tools-guide.md)): `normalizePersonaXapiConfig` → `ensureSuperAgentDefaultTools` (Super-Agent display name) → `resolveXchatLinkedCollectionIds` → `withLinkedCollectionTools` → `mergeXchatHostedToolBaseline`. There is no client tool override, no env-only KB injection without persona linkage, and no admin “all team collections” sweep beyond what the persona resolves.
+- When `atxfinance` is in the effective tool list, the ask route includes the workspace section of **`buildSessionToolInstructions`** (`[xchat-prompt-build.ts](../../src/modules/xchat/xchat-prompt-build.ts)`) in the system prompt so the model calls the tool for portfolio/watchlist/position questions instead of asking the user to paste holdings.
 
 ## Admin → Persona text (Mongo only)
 
-**You do not need to paste `portfolio_summary` / `positions_snapshot` / operation lists into the persona** when `atxfinance` is enabled: the ask route injects operation guidance via `**ATXFINANCE_SESSION_TOOL_INSTRUCTIONS`** (system side). Use Admin → Personas for **tone, exam rules, and disclaimers** only.
+**You do not need to paste `portfolio_summary` / `positions_snapshot` / operation lists into the persona** when `atxfinance` is enabled: the ask route injects operation guidance via **`buildSessionToolInstructions`** (system side). Use Admin → Personas for **tone, exam rules, and disclaimers** only.
 
 
 | Field              | Use for                                                                                                             | `atxfinance` operations?                                                                       |
@@ -55,7 +55,7 @@ Single function tool `atxfinance` with JSON args `{ "operation": "<name>", "symb
 
 ## What goes to the user’s xAI collection (not persona text)
 
-Turn sync (`[appendXchatTurnToUserCollection](../../src/modules/core-admin/access-request-bootstrap.ts)`) uploads **only** a small markdown artifact per ask: metadata (user id, persona **name**, model, scope, retention) plus `**## Prompt`** (user message) and `**## Response**` (assistant text). **It does not include** `systemPrompt`, `overridePrompt`, RAG snippets, or `ATXFINANCE_SESSION_TOOL_INSTRUCTIONS`. Persona prompts remain **MongoDB + server composition only** (unless you explicitly put text into a user message).
+Turn sync (`[appendXchatTurnToUserCollection](../../src/modules/core-admin/access-request-bootstrap.ts)`) uploads **only** a small markdown artifact per ask: metadata (user id, persona **name**, model, scope, retention) plus `**## Prompt`** (user message) and `**## Response**` (assistant text). **It does not include** `systemPrompt`, `overridePrompt`, RAG snippets, or server-injected session tool copy. Persona prompts remain **MongoDB + server composition only** (unless you explicitly put text into a user message).
 
 ## Limitations / notes
 
