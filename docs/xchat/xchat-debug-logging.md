@@ -25,11 +25,13 @@ Exported as `XCHAT_DEBUG_LOG_TYPES` in `src/lib/xchat-debug.ts`.
 |--------|---------|
 | `xchat_ask` | Summary per `POST /api/xchat/ask`: lengths, previews, `contextSource`, `scope`, masked `collectionId`, `toolCallCount`, `mode`, etc. |
 | `xchat_ask_full` | Full `systemPrompt`, `userPrompt`, `ragContext`, `responseText` — **high sensitivity**; only with debug flag. |
+| `xchat_ask_pre_request` | **Before** the xAI `/v1/responses` call: `wireTools` (final JSON array sent), `model`, `toolChoice`, `maxTurns`. Use when tracing 422/502 without a successful turn. |
+| `xchat_ask_provider_error` | On provider failure (same request as above): `error` message plus `wireTools` again for correlation. |
 | `xchat_batch` | Batch flows: includes `batchPhase` — `item_prepare` (per JSONL line while building upload) or `job_created` (xAI batch id known). |
 
 ## Enabling
 
-1. **Local:** `.env` → `ENABLE_XCHAT_DEBUG=true` (see `.env.example`).
+1. **Local:** `.env` → `ENABLE_XCHAT_DEBUG=true` (see `.env.example`). **Restart `next dev`** after changing env — Next only reads `.env` at process start.
 2. **GitHub variable** (recommended for Cloud Run): `ENABLE_XCHAT_DEBUG=true` for the environment. The deploy workflow passes it (see `.github/workflows/deploy-cloud-run.yml`).
 3. **Manual:** `gcloud run services update <service> --region <region> --set-env-vars ENABLE_XCHAT_DEBUG=true`
 

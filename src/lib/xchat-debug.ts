@@ -5,8 +5,8 @@
  *
  * **Taxonomy (for Cloud Logging filters):**
  * - **`[xchat/debug]`** — opt-in JSON lines (`ENABLE_XCHAT_DEBUG=true`). Fields
- *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_batch` |
- *   `xchat_history_list` | `xchat_history_stats`. See
+ *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_ask_pre_request` |
+ *   `xchat_ask_provider_error` | `xchat_batch` | `xchat_history_list` | `xchat_history_stats`. See
  *   `docs/xchat/xchat-debug-logging.md`.
  * - **`[xchat/ask]`** — operational `console.warn` / `console.error` on RAG or
  *   provider failures (always on; no full prompts).
@@ -17,6 +17,8 @@ import { isXchatDebugEnabled } from "@/lib/env";
 export const XCHAT_DEBUG_LOG_TYPES = [
   "xchat_ask",
   "xchat_ask_full",
+  "xchat_ask_pre_request",
+  "xchat_ask_provider_error",
   "xchat_batch",
   "xchat_history_list",
   "xchat_history_stats"
@@ -45,6 +47,54 @@ function maskEmail(email: string | undefined): string {
   if (!domain) return "***";
   const masked = local.length <= 2 ? "***" : `${local.slice(0, 2)}***`;
   return `${masked}@${domain}`;
+}
+
+/** Logs outbound `/v1/responses` tool wire JSON **before** the provider call (so 502/422 still have diagnostics). */
+export function logXchatAskPreRequestDebug(payload: {
+  personaId?: string;
+  personaName?: string;
+  model?: string;
+  toolChoice?: string;
+  maxTurns?: number;
+  /** Final wire tools after `buildWireToolsForXaiResponses` (same bytes as the fetch body). */
+  wireTools: Array<Record<string, unknown>>;
+}): void {
+  if (!isXchatDebugEnabled()) return;
+
+  const safe = {
+    ts: new Date().toISOString(),
+    type: "xchat_ask_pre_request" satisfies XchatDebugLogType,
+    personaId: payload.personaId,
+    personaName: payload.personaName,
+    model: payload.model,
+    toolChoice: payload.toolChoice,
+    maxTurns: payload.maxTurns,
+    toolCount: payload.wireTools.length,
+    wireTools: payload.wireTools
+  };
+
+  console.info(LOG_PREFIX, JSON.stringify(safe));
+}
+
+export function logXchatAskProviderErrorDebug(payload: {
+  personaId?: string;
+  personaName?: string;
+  error: string;
+  wireTools: Array<Record<string, unknown>>;
+}): void {
+  if (!isXchatDebugEnabled()) return;
+
+  const safe = {
+    ts: new Date().toISOString(),
+    type: "xchat_ask_provider_error" satisfies XchatDebugLogType,
+    personaId: payload.personaId,
+    personaName: payload.personaName,
+    error: payload.error,
+    toolCount: payload.wireTools.length,
+    wireTools: payload.wireTools
+  };
+
+  console.info(LOG_PREFIX, JSON.stringify(safe));
 }
 
 export function logXchatAskDebug(payload: {

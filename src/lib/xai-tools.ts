@@ -5,11 +5,59 @@ import {
 import type { PersonaXapiToolDefinition } from "@/modules/xchat/types";
 
 /**
- * Personas may store batch-style `collections_search` tools; xAI chat/responses
- * expects `file_search` with `source.collection_ids` (see xAI collections docs).
+ * xAI Responses API (`/v1/responses`) expects hosted `file_search` with
+ * `vector_store_ids` (OpenAI-compatible wire shape). Personas still store
+ * `source.collection_ids` / `collections_search` + `collection_ids`; we normalize here.
  */
+function vectorStoreIdsFromTool(tool: Record<string, unknown>): string[] {
+  const out = new Set<string>();
+  const add = (raw: unknown) => {
+    if (!Array.isArray(raw)) {
+      return;
+    }
+    for (const id of raw) {
+      if (typeof id === "string" && id.trim().length > 0) {
+        out.add(id.trim());
+      }
+    }
+  };
+  add(tool.vector_store_ids);
+  const source = tool.source;
+  if (source && typeof source === "object" && source !== null) {
+    add((source as { collection_ids?: unknown }).collection_ids);
+  }
+  return Array.from(out);
+}
+
+function fileSearchWireTool(ids: string[]): { type: "file_search"; vector_store_ids: string[] } {
+  return { type: "file_search", vector_store_ids: ids };
+}
+
+/**
+ * xAI `/v1/responses` may require a top-level `name` on each tool (Rust deserializer).
+ * Function tools from OpenAI shape use `function.name`; mirror it at root when missing.
+ */
+function ensureResponsesToolNameCompat(tool: Record<string, unknown>): Record<string, unknown> {
+  const t = tool.type;
+  if (t === "function" && tool.function && typeof tool.function === "object") {
+    const fn = tool.function as Record<string, unknown>;
+    const n = typeof fn.name === "string" ? fn.name.trim() : "";
+    if (n.length > 0 && tool.name === undefined) {
+      return { ...tool, name: n };
+    }
+  }
+  if (
+    (t === "web_search" || t === "x_search" || t === "file_search") &&
+    tool.name === undefined
+  ) {
+    return { ...tool, name: String(t) };
+  }
+  return tool;
+}
+
 export function toXaiRequestTools(tools: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
-  return tools.map((tool) => {
+  const result: Array<Record<string, unknown>> = [];
+  for (const tool of tools) {
     const type = tool.type;
     if (type === "collections_search") {
       const ids = tool.collection_ids;
@@ -17,12 +65,22 @@ export function toXaiRequestTools(tools: Array<Record<string, unknown>>): Array<
         ? ids.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
         : [];
       if (collectionIds.length === 0) {
-        return { type: "file_search" };
+        continue;
       }
-      return { type: "file_search", source: { collection_ids: collectionIds } };
+      result.push(ensureResponsesToolNameCompat(fileSearchWireTool(collectionIds) as Record<string, unknown>));
+      continue;
     }
-    return { ...tool };
-  });
+    if (type === "file_search") {
+      const ids = vectorStoreIdsFromTool(tool);
+      if (ids.length === 0) {
+        continue;
+      }
+      result.push(ensureResponsesToolNameCompat(fileSearchWireTool(ids) as Record<string, unknown>));
+      continue;
+    }
+    result.push(ensureResponsesToolNameCompat({ ...tool }));
+  }
+  return result;
 }
 
 /**
@@ -45,4 +103,13 @@ export function personaXapiToolsToXaiRequestTools(
     base.push(YAHOO_FINANCE_TOOL_DEFINITION as unknown as Record<string, unknown>);
   }
   return toXaiRequestTools(base);
+}
+
+/** Wire tools sent to `/v1/responses` — same as `respondWithXaiToolLoop` (`toXaiRequestTools` ∘ `personaXapiToolsToXaiRequestTools`). */
+export function buildWireToolsForXaiResponses(
+  personaTools: PersonaXapiToolDefinition[]
+): Array<Record<string, unknown>> {
+  return toXaiRequestTools(
+    personaXapiToolsToXaiRequestTools(personaTools) as Array<Record<string, unknown>>
+  );
 }

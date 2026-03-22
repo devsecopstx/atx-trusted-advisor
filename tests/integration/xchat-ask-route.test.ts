@@ -184,7 +184,7 @@ describe("xchat ask route collection retrieval", () => {
         systemPrompt: expect.stringContaining("Collection context snippet"),
         toolChoice: "auto",
         maxTurns: 5,
-        tools: expect.arrayContaining([{ type: "web_search" }]),
+        tools: expect.arrayContaining([{ type: "web_search", name: "web_search" }]),
         userPrompt: expect.stringMatching(
           /\[Persona \/ KB metadata — xChat and batch[\s\S]*Resolved xAI collection ids \(persona team KB \+ tool ids \+ optional user bootstrap\): collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
         )
@@ -364,9 +364,8 @@ describe("xchat ask route collection retrieval", () => {
         tools: expect.arrayContaining([
           {
             type: "file_search",
-            source: {
-              collection_ids: expect.arrayContaining(["collection_ops-global", "collection_extra"])
-            }
+            name: "file_search",
+            vector_store_ids: expect.arrayContaining(["collection_ops-global", "collection_extra"])
           }
         ])
       })

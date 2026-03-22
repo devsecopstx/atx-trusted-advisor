@@ -9,8 +9,13 @@ import {
     searchDocumentsInCollections,
     type ToolCallLog
 } from "@/lib/xai";
-import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
-import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
+import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
+import {
+    logXchatAskDebug,
+    logXchatAskFullPayload,
+    logXchatAskPreRequestDebug,
+    logXchatAskProviderErrorDebug
+} from "@/lib/xchat-debug";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
     appendXchatTurnToUserCollection,
@@ -41,6 +46,7 @@ import {
 } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import {
+    ensureSuperAgentDefaultTools,
     normalizePersonaXapiConfig,
     type PersonaXapiConfig
 } from "@/modules/xchat/types";
@@ -239,7 +245,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const baseXapiConfig: PersonaXapiConfig = normalizePersonaXapiConfig(persona?.xapi);
+  const baseXapiConfig: PersonaXapiConfig = ensureSuperAgentDefaultTools(
+    normalizePersonaXapiConfig(persona?.xapi),
+    persona?.name
+  );
   const scope = parsed.data.scope ?? persona?.defaultScope ?? "global";
   const requestId = buildDeterministicId(
     "xreq",
@@ -398,6 +407,16 @@ export async function POST(request: Request) {
   let xaiResponse: { outputText: string; model: string };
   let toolCallLogs: ToolCallLog[] = [];
 
+  const wireTools = buildWireToolsForXaiResponses(xapiConfig.tools);
+  logXchatAskPreRequestDebug({
+    personaId: persona?._id?.toHexString(),
+    personaName: persona?.name,
+    model: effectiveModel,
+    toolChoice: xapiConfig.toolChoice,
+    maxTurns: xapiConfig.maxTurns,
+    wireTools
+  });
+
   try {
     const xaiTools = personaXapiToolsToXaiRequestTools(xapiConfig.tools);
     const executor = needsLocalToolLoop
@@ -423,10 +442,17 @@ export async function POST(request: Request) {
     xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
     toolCallLogs = loopResult.toolCalls;
   } catch (error) {
+    const errMsg = error instanceof Error ? error.message : "Unknown provider error";
     console.error("[xchat/ask] xAI provider call failed", {
       mode: "responses_tool_loop",
       personaId: persona?._id?.toHexString(),
-      error: error instanceof Error ? error.message : "Unknown provider error"
+      error: errMsg
+    });
+    logXchatAskProviderErrorDebug({
+      personaId: persona?._id?.toHexString(),
+      personaName: persona?.name,
+      error: errMsg,
+      wireTools: buildWireToolsForXaiResponses(xapiConfig.tools)
     });
     return NextResponse.json(
       {

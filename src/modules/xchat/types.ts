@@ -54,8 +54,8 @@ export const SUPER_AGENT_DEFAULT_TOOLS: PersonaXapiToolDefinition[] = [
 export const SUPER_AGENT_NAME_NORMALIZED = "super-agent";
 
 /**
- * If Mongo `xapi.tools` was cleared or edited down, Super-Agent can lose `web_search` / `x_search` / collections
- * while the ask route still injects Yahoo. Restore the full hosted + workspace surface for that persona only.
+ * If Mongo `xapi.tools` was cleared or edited down, Super-Agent can lose `web_search` / `x_search` / collections.
+ * Applied in `POST /api/xchat/ask` and xChat batch after `normalizePersonaXapiConfig` so live search + KB tools match product intent.
  */
 export function ensureSuperAgentDefaultTools(
   config: PersonaXapiConfig,

@@ -113,10 +113,18 @@ describe("admin user settings route", () => {
     );
   });
 
-  it("PUT rejects persona assignment for non app_user", async () => {
+  it("PUT allows persona assignment regardless of target user platform role", async () => {
     identityMocks.getCoreUserById.mockResolvedValueOnce({
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       roles: ["global_admin"]
+    });
+    xchatRepositoryMocks.getPersonaById.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439055" },
+      status: "published",
+      xaiCollection: {
+        collectionId: "collection_persona_linked",
+        collectionName: "Persona Linked Collection"
+      }
     });
 
     const response = await PUT(
@@ -135,10 +143,9 @@ describe("admin user settings route", () => {
         params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
       }
     );
-    const payload = (await response.json()) as { code: string };
 
-    expect(response.status).toBe(400);
-    expect(payload.code).toBe("persona_assignment_requires_app_user");
+    expect(response.status).toBe(200);
+    expect(coreAdminRepositoryMocks.upsertUserAdminSettings).toHaveBeenCalled();
   });
 
   it("PUT rejects non-published persona assignment", async () => {

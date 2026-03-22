@@ -152,7 +152,7 @@ Stored on persona as `xapi.tools[]` (`PersonaXapiToolDefinition`). Expanded for 
 |--------|---------|
 | `atxfinance` | `function` tool `atxfinance` (schema in `tool-executor.ts`) |
 | `yahoo_finance` | `function` tool `yahoo_finance` |
-| `collections_search` | `file_search` + `source.collection_ids` (after merge with linked ids) |
+| `collections_search` | `file_search` + `vector_store_ids` (after merge with linked ids; stored persona tools still use `source.collection_ids`) |
 | `web_search`, `x_search`, `file_search` | Passed through / normalized via `toXaiRequestTools` |
 
 ---

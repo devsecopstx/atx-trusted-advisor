@@ -24,7 +24,11 @@ import {
     resolveXchatLinkedCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
-import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
+import {
+    ensureSuperAgentDefaultTools,
+    normalizePersonaXapiConfig,
+    type PersonaConfig
+} from "@/modules/xchat/types";
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 const BATCH_JOBS_COLLECTION = "xchat_batch_jobs";
@@ -103,7 +107,10 @@ export async function submitBatchJob(
     seenIds.add(item.itemId);
   }
 
-  const xapiConfig = normalizePersonaXapiConfig(input.persona.xapi);
+  const xapiConfig = ensureSuperAgentDefaultTools(
+    normalizePersonaXapiConfig(input.persona.xapi),
+    input.persona.name
+  );
   let userBootstrapCollectionId: string | undefined;
   if (input.persona.includeUserBootstrapCollection === true) {
     userBootstrapCollectionId = (

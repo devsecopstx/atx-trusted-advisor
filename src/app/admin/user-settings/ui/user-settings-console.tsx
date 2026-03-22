@@ -63,7 +63,6 @@ type ApprovedUser = {
   userId: string;
   name: string;
   email: string;
-  role: "global_admin" | "advisor" | "operator" | "viewer" | "unknown";
   subscriptionPlan: "free" | "pro" | "enterprise";
   approvedAt?: string;
   latestAuditEvent?: {
@@ -100,8 +99,6 @@ type ApiUser = {
   updatedAt: string;
 };
 
-type EditableRole = Exclude<ApprovedUser["role"], "unknown">;
-
 const DEFAULT_SETTINGS: UserAdminSettingsPayload = {
   assignedPersonaId: "",
   finraLicenseUploadUrl: "",
@@ -117,10 +114,8 @@ export function UserSettingsConsole() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [approvedUsers, setApprovedUsers] = useState<ApprovedUser[]>([]);
   const [emailEdits, setEmailEdits] = useState<Record<string, string>>({});
-  const [roleEdits, setRoleEdits] = useState<Record<string, EditableRole>>({});
   const [planEdits, setPlanEdits] = useState<Record<string, ApprovedUser["subscriptionPlan"]>>({});
   const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserRole, setNewUserRole] = useState<EditableRole>("viewer");
   const [newUserPlan, setNewUserPlan] = useState<ApprovedUser["subscriptionPlan"]>("free");
 
   const [settingsForm, setSettingsForm] = useState<UserAdminSettingsPayload>(DEFAULT_SETTINGS);
@@ -153,17 +148,6 @@ export function UserSettingsConsole() {
         const next = { ...previous };
         for (const user of normalizedUsers) {
           next[user.userId] = previous[user.userId] ?? user.subscriptionPlan ?? "free";
-        }
-        return next;
-      });
-      setRoleEdits((previous) => {
-        const next = { ...previous };
-        for (const user of normalizedUsers) {
-          if (user.role === "unknown") {
-            next[user.userId] = previous[user.userId] ?? "viewer";
-            continue;
-          }
-          next[user.userId] = previous[user.userId] ?? user.role;
         }
         return next;
       });
@@ -270,14 +254,13 @@ export function UserSettingsConsole() {
       return;
     }
     const subscriptionPlan = planEdits[userId] ?? "free";
-    const role = roleEdits[userId] ?? "viewer";
     setStatus(`Saving user changes for ${userId}...`);
     try {
       await parseJson(
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, role, subscriptionPlan })
+          body: JSON.stringify({ email, subscriptionPlan })
         })
       );
       const settingsPayload = await parseJson<{ data: UserAdminSettingsPayload }>(
@@ -314,11 +297,10 @@ export function UserSettingsConsole() {
         await fetch("/api/admin/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, role: newUserRole, subscriptionPlan: newUserPlan, status: "active" })
+          body: JSON.stringify({ email, subscriptionPlan: newUserPlan, status: "active" })
         })
       );
       setNewUserEmail("");
-      setNewUserRole("viewer");
       setNewUserPlan("free");
       await refreshApprovedUsers();
       setStatus("User created");
@@ -404,12 +386,6 @@ export function UserSettingsConsole() {
             type="email"
             value={newUserEmail}
           />
-          <select onChange={(event) => setNewUserRole(event.target.value as EditableRole)} value={newUserRole}>
-            <option value="global_admin">global_admin</option>
-            <option value="advisor">advisor</option>
-            <option value="operator">operator</option>
-            <option value="viewer">viewer</option>
-          </select>
           <select
             onChange={(event) => setNewUserPlan(event.target.value as ApprovedUser["subscriptionPlan"])}
             value={newUserPlan}
@@ -428,7 +404,6 @@ export function UserSettingsConsole() {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
-                <th>Role</th>
                 <th>Plan</th>
                 <th>xPersona</th>
                 <th>Audit</th>
@@ -449,23 +424,6 @@ export function UserSettingsConsole() {
                       type="email"
                       value={emailEdits[user.userId] ?? ""}
                     />
-                  </td>
-                  <td>
-                    <select
-                      disabled={editingUserId !== user.userId}
-                      onChange={(event) =>
-                        setRoleEdits((previous) => ({
-                          ...previous,
-                          [user.userId]: event.target.value as EditableRole
-                        }))
-                      }
-                      value={roleEdits[user.userId] ?? (user.role === "unknown" ? "viewer" : user.role)}
-                    >
-                      <option value="global_admin">global_admin</option>
-                      <option value="advisor">advisor</option>
-                      <option value="operator">operator</option>
-                      <option value="viewer">viewer</option>
-                    </select>
                   </td>
                   <td>
                     <select
@@ -494,7 +452,7 @@ export function UserSettingsConsole() {
                       }
                       value={personaByUserId[user.userId] ?? ""}
                     >
-                      <option value="">(default by app role)</option>
+                      <option value="">(default persona)</option>
                       {personaOptions.map((persona) => (
                         <option key={persona.id} value={persona.id}>
                           {persona.name}
@@ -574,7 +532,7 @@ export function UserSettingsConsole() {
                       }
                       value={settingsForm.assignedPersonaId ?? ""}
                     >
-                      <option value="">(default by app role)</option>
+                      <option value="">(default persona)</option>
                       {personaOptions.map((persona) => (
                         <option key={persona.id} value={persona.id}>
                           {persona.status === "published"
@@ -593,13 +551,10 @@ export function UserSettingsConsole() {
                   </button>
                 </div>
                 <p className="status-text">
-                  List includes draft and published personas from Admin → Personas. Saving still requires a{" "}
-                  <strong>published</strong> persona for app users (advisor/operator/viewer) — publish the xPersona
-                  first, then assign.
+                  List includes draft and published personas from Admin → Personas. Assigning a persona requires a{" "}
+                  <strong>published</strong> xPersona — publish first, then assign.
                 </p>
-                <p className="status-text">
-                  This controls ask persona routing only. Page visibility remains driven by app role.
-                </p>
+                <p className="status-text">This controls xChat ask persona routing for the selected user.</p>
                 <div className="status-text" role="status">
                   Linked user collections:
                   {selectedLinkedCollections.length === 0 ? (
@@ -863,13 +818,10 @@ export function UserSettingsConsole() {
 }
 
 function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
-  const firstRole = user.roles[0];
-  const role: ApprovedUser["role"] = firstRole ?? "unknown";
   return {
     userId: user._id,
     name: user.xAccount?.displayName ?? user.xAccount?.username ?? user.email,
     email: user.email,
-    role,
     subscriptionPlan: user.subscriptionPlan ?? "free",
     approvedAt: user.updatedAt,
     latestAuditEvent: user.latestAuditEvent ?? null

@@ -632,7 +632,7 @@ Seed creates **Super-Agent**; **xFinance** can be created manually or on first n
 - If **xFinance** is missing for a non-admin session, it is **created on first ask** from defaults in `src/modules/xchat/default-xpersonas.ts` (`ensureDefaultXfinancePersonaExists` in `src/modules/xchat/repository.ts`).
 - Success responses include `data.personaName` (human-readable persona name).
 
-Personas may store batch-style `collections_search` tools; outbound xAI requests map those to `file_search` + `source.collection_ids` (`src/lib/xai-tools.ts`).
+Personas may store batch-style `collections_search` tools; outbound xAI requests map those to `file_search` + `vector_store_ids` (`src/lib/xai-tools.ts`).
 
 **Product scope:** Non-admin xChat is framed for **finance / licensing-exam** Q&A via the **xFinance** persona `systemPrompt`. There is still no separate server-side topic classifier; admin **Super-Agent** remains broader. Further tightening is persona-governance and product work (see `.cursor/skills/xdesign-review/SKILL.md` deferrals).
 

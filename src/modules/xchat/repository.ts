@@ -3,7 +3,6 @@ import { MongoServerError, ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import {
     buildDefaultXfinancePersonaPayload,
-    isGlobalAdminRole,
     XPERSONA_SUPER_AGENT_NAME,
     XPERSONA_XFINANCE_NAME
 } from "@/modules/xchat/default-xpersonas";
@@ -200,11 +199,15 @@ export async function ensureDefaultXfinancePersonaExists(): Promise<PersonaConfi
   }
 }
 
+/** Default xChat persona for any signed-in session: Super-Agent when present, else seeded xFinance. */
 export async function resolveDefaultXchatPersonaForSession(
-  roles: string[]
+  _roles: string[]
 ): Promise<PersonaConfig | null> {
-  if (isGlobalAdminRole(roles)) {
-    return getPersonaByNormalizedName(normalizePersonaNameKey(XPERSONA_SUPER_AGENT_NAME));
+  const superAgent = await getPersonaByNormalizedName(
+    normalizePersonaNameKey(XPERSONA_SUPER_AGENT_NAME)
+  );
+  if (superAgent) {
+    return superAgent;
   }
   return ensureDefaultXfinancePersonaExists();
 }

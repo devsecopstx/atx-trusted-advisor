@@ -16,13 +16,6 @@ type PersonaEditorPageProps = {
   defaultChatModelId?: string;
 };
 
-type ToolSelections = {
-  web_search: boolean;
-  x_search: boolean;
-  collection_search: boolean;
-  atxfinance: boolean;
-};
-
 type PersonaPayload = {
   name: string;
   systemPrompt: string;
@@ -36,7 +29,6 @@ type PersonaPayload = {
   xapiMode: "responses" | "chat_completions";
   xapiToolChoice: "auto" | "required" | "none";
   xapiMaxTurns: string;
-  tools: ToolSelections;
 };
 
 type CollectionRow = {
@@ -57,58 +49,27 @@ const EMPTY_FORM: PersonaPayload = {
   defaultScope: "global",
   xapiMode: "responses",
   xapiToolChoice: "auto",
-  xapiMaxTurns: "5",
-  tools: {
-    web_search: true,
-    x_search: true,
-    collection_search: true,
-    atxfinance: false
-  }
+  xapiMaxTurns: "5"
 };
 
-function toolSelectionsFromArray(
+/** Hosted search + collection tools are applied server-side for xChat; persona DB keeps only custom function markers. */
+function extractCustomToolMarkers(
   tools: Array<{ type: string; [key: string]: unknown }>
-): ToolSelections {
-  return {
-    web_search: tools.some((t) => t.type === "web_search"),
-    x_search: tools.some((t) => t.type === "x_search"),
-    collection_search: tools.some(
-      (t) => t.type === "file_search" || t.type === "collections_search"
-    ),
-    atxfinance: tools.some((t) => t.type === "atxfinance")
-  };
-}
-
-function toolSelectionsToArray(
-  selections: ToolSelections,
-  collectionId: string
 ): Array<{ type: string; [key: string]: unknown }> {
-  const tools: Array<{ type: string; [key: string]: unknown }> = [];
-  if (selections.web_search) tools.push({ type: "web_search" });
-  if (selections.x_search) tools.push({ type: "x_search" });
-  if (selections.collection_search) {
-    const boundId = collectionId.trim();
-    tools.push(
-      boundId
-        ? { type: "collections_search", collection_ids: [boundId] }
-        : { type: "collections_search" }
-    );
-  }
-  if (selections.atxfinance) tools.push({ type: "atxfinance" });
-  return tools;
+  return tools.filter((t) => t.type === "atxfinance" || t.type === "yahoo_finance");
 }
 
 export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
   const [form, setForm] = useState<PersonaPayload>(EMPTY_FORM);
+  const [customToolMarkers, setCustomToolMarkers] = useState<
+    Array<{ type: string; [key: string]: unknown }>
+  >([]);
   const [status, setStatus] = useState("Ready");
   const [loading, setLoading] = useState(mode === "edit");
   const [showAdvanced, setShowAdvanced] = useState(mode === "edit");
   const [collections, setCollections] = useState<CollectionRow[]>([]);
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
   const router = useRouter();
-
-  const collectionSearchMissingCollection =
-    form.tools.collection_search && !form.xaiCollectionId.trim();
 
   useEffect(() => {
     void (async () => {
@@ -161,9 +122,9 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           defaultScope: payload.data.defaultScope,
           xapiMode: payload.data.xapi.mode,
           xapiToolChoice: payload.data.xapi.toolChoice,
-          xapiMaxTurns: String(payload.data.xapi.maxTurns),
-          tools: toolSelectionsFromArray(payload.data.xapi.tools)
+          xapiMaxTurns: String(payload.data.xapi.maxTurns)
         });
+        setCustomToolMarkers(extractCustomToolMarkers(payload.data.xapi.tools));
         setStatus("Loaded");
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Failed to load persona");
@@ -185,15 +146,6 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       setStatus("max_turns must be an integer between 1 and 10");
       return;
     }
-    if (collectionSearchMissingCollection) {
-      setStatus(
-        "Collection search requires a linked collection id. Pick one from the list or paste an id."
-      );
-      return;
-    }
-
-    const parsedTools = toolSelectionsToArray(form.tools, form.xaiCollectionId);
-
     setStatus(mode === "create" ? "Creating persona..." : "Saving persona...");
     try {
       const endpoint = mode === "create" ? "/api/personas" : `/api/personas/${personaId}`;
@@ -218,7 +170,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
               mode: form.xapiMode,
               toolChoice: form.xapiToolChoice,
               maxTurns: parsedMaxTurns,
-              tools: parsedTools
+              tools: customToolMarkers
             }
           })
         })
@@ -228,13 +180,6 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to save persona");
     }
-  }
-
-  function toggleTool(toolType: keyof ToolSelections) {
-    setForm((current) => ({
-      ...current,
-      tools: { ...current.tools, [toolType]: !current.tools[toolType] }
-    }));
   }
 
   function applyCollection(row: CollectionRow) {
@@ -298,9 +243,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             rows={4}
             value={form.overridePrompt}
           />
-          <label className="status-text">
-            Linked collection id (for RAG + collections_search tools)
-          </label>
+          <label className="status-text">Linked collection id (RAG / KB scope for xChat)</label>
           <input
             onChange={(event) => setForm((current) => ({ ...current, xaiCollectionId: event.target.value }))}
             placeholder="collection_…"
@@ -365,47 +308,12 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             value={form.defaultScope}
           />
 
-          <fieldset>
-            <legend>Tools</legend>
-            <label className="checkbox-label">
-              <input
-                checked={form.tools.web_search}
-                onChange={() => toggleTool("web_search")}
-                type="checkbox"
-              />
-              web_search
-            </label>
-            <label className="checkbox-label">
-              <input
-                checked={form.tools.x_search}
-                onChange={() => toggleTool("x_search")}
-                type="checkbox"
-              />
-              x_search
-            </label>
-            <label
-              className={`checkbox-label${collectionSearchMissingCollection ? " status-error" : ""}`}
-            >
-              <input
-                checked={form.tools.collection_search}
-                onChange={() => toggleTool("collection_search")}
-                type="checkbox"
-              />
-              collection_search (stored as collections_search → file_search at xAI)
-              {collectionSearchMissingCollection ? (
-                <small className="status-text status-error">requires linked collection id</small>
-              ) : null}
-            </label>
-            <label className="checkbox-label">
-              <input
-                checked={form.tools.atxfinance}
-                onChange={() => toggleTool("atxfinance")}
-                type="checkbox"
-              />
-              atxfinance
-              <small className="status-text">portfolio, watchlist, accounts, tasks</small>
-            </label>
-          </fieldset>
+          <p className="status-text">
+            Hosted tools (<code>web_search</code>, <code>x_search</code>, collection search) are configured by the
+            platform for xChat — not editable here. This form persists workspace markers{" "}
+            <code>atxfinance</code> / <code>yahoo_finance</code> only when already present on the persona; use the
+            personas list JSON editor or API to add or remove those markers.
+          </p>
 
           <button className="tiny-button" onClick={() => setShowAdvanced((current) => !current)} type="button">
             {showAdvanced ? "Hide optional fields" : "Show optional fields"}
@@ -479,11 +387,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             the final response.
           </small>
           <div className="tool-row">
-            <button
-              className="cta cta-primary"
-              disabled={loading || collectionSearchMissingCollection}
-              type="submit"
-            >
+            <button className="cta cta-primary" disabled={loading} type="submit">
               {mode === "create" ? "Create persona" : "Save persona"}
             </button>
             <button className="cta cta-secondary" onClick={() => router.push("/admin/personas")} type="button">

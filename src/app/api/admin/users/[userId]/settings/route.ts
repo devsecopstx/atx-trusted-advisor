@@ -129,17 +129,6 @@ export async function PUT(request: Request, context: RouteContext) {
     );
   }
   if (assignedPersonaId) {
-    const isAppUser = user.roles.some((role) => role === "advisor" || role === "operator" || role === "viewer");
-    if (!isAppUser) {
-      return NextResponse.json(
-        {
-          error: "Assigned persona is only supported for app_user roles (advisor/operator/viewer)",
-          code: "persona_assignment_requires_app_user"
-        },
-        { status: 400 }
-      );
-    }
-
     const assignedPersona = await getPersonaById(assignedPersonaId);
     if (!assignedPersona) {
       return NextResponse.json(
