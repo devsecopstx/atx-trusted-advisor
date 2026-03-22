@@ -23,12 +23,12 @@ case "$branch" in
   *) exit 0 ;;
 esac
 
-# Allowed: cursor-chore / cursor-hotfix, or conventional chore with brand prefix
-if printf '%s\n' "$first_line" | grep -qE '^cursor-(chore|hotfix): |^chore: aTx⚡'; then
+# Allowed: default chore: aTx⚡ …, or legacy cursor-chore / cursor-hotfix
+if printf '%s\n' "$first_line" | grep -qE '^chore: aTx⚡|^cursor-(chore|hotfix): '; then
   exit 0
 fi
 
-printf '%s\n' "hint: branch «${branch}» — prefer «cursor-chore: …», «cursor-hotfix: …», or «chore: aTx⚡ …» (see .cursor/skills/test-commit-push/SKILL.md step 11)." >&2
+printf '%s\n' "hint: branch «${branch}» — prefer «chore: aTx⚡ …» (default for chores + hotfixes); legacy «cursor-chore:» / «cursor-hotfix:» ok (see .cursor/skills/test-commit-push/SKILL.md step 11)." >&2
 
 if [ "${XFINANCE_ENFORCE_CURSOR_COMMIT:-}" = "1" ]; then
   printf '%s\n' "error: set XFINANCE_ENFORCE_CURSOR_COMMIT=0 to allow this commit, or fix the subject line." >&2

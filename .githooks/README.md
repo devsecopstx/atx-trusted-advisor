@@ -14,7 +14,7 @@ git config core.hooksPath .githooks
 
 ## `commit-msg`
 
-- On branches named `agent/*`, `cursor/*`, or `release/*`, if the first line is **not** one of: `cursor-chore:`, `cursor-hotfix:`, or `chore: aTx⚡` (Conventional Commits `chore` + brand), the hook prints a **hint** to stderr and still allows the commit.
+- On branches named `agent/*`, `cursor/*`, or `release/*`, if the first line is **not** **`chore: aTx⚡`** (default for agent chores and hotfixes) or legacy `cursor-chore:` / `cursor-hotfix:`, the hook prints a **hint** to stderr and still allows the commit.
 - Merge and revert commits are skipped.
 - **Strict mode (optional):** `XFINANCE_ENFORCE_CURSOR_COMMIT=1 git commit ...` fails the commit if the subject does not match one of those patterns on those branches.
 
