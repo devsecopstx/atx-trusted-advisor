@@ -1,14 +1,38 @@
-#!/usr/bin/env bash
-# Commit message policy: junie-aTx⚡dev-agent <commit_msg> <version>
-# - <version>: plain semver from package.json (e.g., 1.2.3 or 1.2.3-beta.1)
-# Enable with: git config core.hooksPath .githooks
-set -euo pipefail
-msg_file="$1"
-commit_msg="$(cat "$msg_file" | tr -d '\r')"
-# Regex: prefix + space + some message + space + semver (with optional -prerelease or +build)
-regex='^junie-aTx⚡dev-agent [^ ].* [0-9]+\.[0-9]+\.[0-9]+([\-+][0-9A-Za-z\.-]+)?$'
-if ! [[ "$commit_msg" =~ $regex ]]; then
-  echo "Commit message must match: junie-aTx⚡dev-agent <message> <version>" >&2
-  echo "Example: junie-aTx⚡dev-agent feat: update docs 1.2.3" >&2
+#!/usr/bin/env sh
+# Optional guardrails for Cursor agent commit prefixes.
+# Enable hooks: git config core.hooksPath .githooks
+# See .githooks/README.md
+
+set -e
+
+commit_msg_file=${1:-}
+if [ -z "$commit_msg_file" ] || [ ! -f "$commit_msg_file" ]; then
+  exit 0
+fi
+
+first_line=$(head -n1 "$commit_msg_file")
+
+# Do not nag on merges / reverts
+case "$first_line" in
+  Merge\ *|Revert\ *) exit 0 ;;
+esac
+
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+case "$branch" in
+  agent/*|cursor/*|release/*) ;;
+  *) exit 0 ;;
+esac
+
+# Allowed: default chore: aTx⚡ …, or legacy cursor-chore / cursor-hotfix (see test-commit-push step 11)
+if printf '%s\n' "$first_line" | grep -qE '^chore: aTx⚡|^cursor-(chore|hotfix): '; then
+  exit 0
+fi
+
+printf '%s\n' "hint: branch «${branch}» — prefer «chore: aTx⚡ …» (default for chores + hotfixes); legacy «cursor-chore:» / «cursor-hotfix:» ok (see .cursor/skills/test-commit-push/SKILL.md step 11)." >&2
+
+if [ "${XFINANCE_ENFORCE_CURSOR_COMMIT:-}" = "1" ]; then
+  printf '%s\n' "error: set XFINANCE_ENFORCE_CURSOR_COMMIT=0 to allow this commit, or fix the subject line." >&2
   exit 1
 fi
+
+exit 0

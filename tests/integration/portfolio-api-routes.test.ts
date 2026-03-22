@@ -48,7 +48,7 @@ import { GET as getPortfolioAccounts, POST as postPortfolioAccount } from "@/app
 import { GET as getPortfolioById, PATCH as patchPortfolioById } from "@/app/api/portfolios/[portfolioId]/route";
 import { GET as getPortfolioWatchlist } from "@/app/api/portfolios/[portfolioId]/watchlist/route";
 import { GET as getCurrentPortfolio } from "@/app/api/portfolios/current/route";
-import { GET as getDefaultPortfolio } from "@/app/api/portfolios/default/route";
+import { GET as getDefaultPortfolio, POST as postDefaultPortfolio } from "@/app/api/portfolios/default/route";
 import { DELETE as deletePosition } from "@/app/api/positions/[positionId]/route";
 import { GET as getPositions, POST as postPosition } from "@/app/api/positions/route";
 import { PositionValidationError } from "@/modules/core-admin/repository";
@@ -159,6 +159,17 @@ describe("portfolio API routes", () => {
     });
   });
 
+  it("POST /api/portfolios/default syncs and returns summary with synced flag", async () => {
+    repositoryMocks.getDefaultPortfolio.mockResolvedValueOnce(null);
+    repositoryMocks.listPortfolioAccounts.mockResolvedValueOnce([]);
+    const response = await postDefaultPortfolio();
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data: { name: string }; synced: boolean };
+    expect(payload.synced).toBe(true);
+    expect(payload.data.name).toBe("Default Portfolio");
+    expect(repositoryMocks.provisionDefaultPortfolioForUser).toHaveBeenCalled();
+  });
+
   it("returns default portfolio for session user", async () => {
     const response = await getDefaultPortfolio();
     const payload = (await response.json()) as { data: { name: string } };
@@ -243,6 +254,26 @@ describe("portfolio API routes", () => {
     const payload = (await response.json()) as { data: { name: string } };
     expect(response.status).toBe(200);
     expect(payload.data.name).toBe("Default Watchlist");
+  });
+
+  it("GET /api/portfolios/:id/watchlist provisions when missing then returns TSLA root", async () => {
+    const ts = new Date("2025-01-01T00:00:00.000Z");
+    repositoryMocks.getPortfolioWatchlist
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        _id: { toHexString: () => "507f1f77bcf86cd799439044" },
+        name: "Default Watchlist",
+        symbols: [{ symbol: "TSLA", addedAt: ts }]
+      });
+    const response = await getPortfolioWatchlist(new Request("http://test"), {
+      params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" })
+    });
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.provisionDefaultPortfolioForUser).toHaveBeenCalled();
+    const payload = (await response.json()) as {
+      data: { symbols: Array<{ symbol: string }> };
+    };
+    expect(payload.data.symbols.some((s) => s.symbol === "TSLA")).toBe(true);
   });
 
   it("lists positions for an owned account", async () => {

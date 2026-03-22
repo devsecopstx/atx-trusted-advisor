@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
+import { ATXFINANCE_COLLECTION_ID } from "@/modules/xchat/types";
 
 type Message = {
   id: string;
@@ -49,8 +50,6 @@ type XchatConversationProps = {
   defaultPublishedPersonaName: string;
 };
 
-const ATXFINANCE_COLLECTION_ID_FALLBACK = "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
-
 const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Saved chat history panel: last N prompts from `/api/xchat/history` (newest first). */
@@ -72,6 +71,15 @@ type VisibleCollection = {
   source: "atxfinance_default" | "user_history" | "assigned_persona";
 };
 
+/** Mirrors `GET /api/xchat/collections` default row when the API is missing (404) or unreachable. */
+const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = [
+  {
+    collectionId: ATXFINANCE_COLLECTION_ID,
+    collectionName: "aTxFinance Default",
+    source: "atxfinance_default"
+  }
+];
+
 export function XchatConversation({ defaultPublishedPersonaName }: XchatConversationProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
@@ -88,6 +96,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   const [visibleCollections, setVisibleCollections] = useState<VisibleCollection[]>([]);
   const [, setAssociatedCollectionCount] = useState(1);
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
+  const [collectionsScopeDegraded, setCollectionsScopeDegraded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const promptExamples = [
@@ -115,11 +124,20 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           error?: string;
         };
         if (!response.ok) {
-          throw new Error(payload.error ?? `Failed to load xChat collections (${response.status})`);
+          if (!active) {
+            return;
+          }
+          setVisibleCollections(DEFAULT_VISIBLE_COLLECTIONS);
+          setAssociatedCollectionCount(1);
+          setActivePersonaName(defaultPublishedPersonaName);
+          setCollectionsScopeDegraded(true);
+          setCollectionsStatus(null);
+          return;
         }
         if (!active) {
           return;
         }
+        setCollectionsScopeDegraded(false);
         setVisibleCollections(payload.data ?? []);
         setActivePersonaName(payload.metadata?.activePersonaName ?? defaultPublishedPersonaName);
         setAssociatedCollectionCount(
@@ -127,11 +145,16 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
             ? (payload.metadata?.associatedCollectionCount ?? 1)
             : (payload.data ?? []).length || 1
         );
-      } catch (error) {
+        setCollectionsStatus(null);
+      } catch {
         if (!active) {
           return;
         }
-        setCollectionsStatus(error instanceof Error ? error.message : "Failed to load visible collections");
+        setVisibleCollections(DEFAULT_VISIBLE_COLLECTIONS);
+        setAssociatedCollectionCount(1);
+        setActivePersonaName(defaultPublishedPersonaName);
+        setCollectionsScopeDegraded(true);
+        setCollectionsStatus(null);
       }
     }
     void loadVisibleCollections();
@@ -307,8 +330,13 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           Collection list loaded for ask:{" "}
           {visibleCollections.length > 0
             ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
-            : ATXFINANCE_COLLECTION_ID_FALLBACK}
+            : ATXFINANCE_COLLECTION_ID}
         </span>
+        {collectionsScopeDegraded ? (
+          <span className="status-text status-warn" style={{ fontSize: "0.75rem" }}>
+            Default Finance scope only — server collection list unavailable (404 or network).
+          </span>
+        ) : null}
         {collectionsStatus ? <span className="status-text status-error">{collectionsStatus}</span> : null}
       </div>
 

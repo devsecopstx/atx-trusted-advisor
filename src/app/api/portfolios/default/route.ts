@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 
-import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
+import type { SessionUser } from "@/lib/auth";
 import { requireSessionUser } from "@/lib/auth";
+import { caughtErrorMessage } from "@/lib/caught-error";
+import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import {
   getDefaultPortfolio,
   listPortfolioAccounts,
   provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 
-export async function GET() {
-  const session = await requireSessionUser();
-  if (session instanceof NextResponse) {
-    return session;
-  }
+type SummaryResult =
+  | NextResponse
+  | { data: Awaited<ReturnType<typeof buildPortfolioSummaryPayload>> };
 
+async function defaultPortfolioSummaryOrError(session: SessionUser): Promise<SummaryResult> {
   let portfolio = await getDefaultPortfolio(session.userId, {
     tenantId: session.tenantId
   });
@@ -46,5 +47,40 @@ export async function GET() {
   }
 
   const data = await buildPortfolioSummaryPayload(session, portfolio);
-  return NextResponse.json({ data });
+  return { data };
+}
+
+export async function GET() {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const result = await defaultPortfolioSummaryOrError(session);
+  if (result instanceof NextResponse) {
+    return result;
+  }
+  return NextResponse.json({ data: result.data });
+}
+
+export async function POST() {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  try {
+    const result = await defaultPortfolioSummaryOrError(session);
+    if (result instanceof NextResponse) {
+      return result;
+    }
+    return NextResponse.json({ data: result.data, synced: true as const });
+  } catch (error) {
+    const detail = caughtErrorMessage(error);
+    console.error(`[api/portfolios/default POST] ${detail}`);
+    return NextResponse.json(
+      { error: "Could not sync your default portfolio. Please try again in a moment." },
+      { status: 500 }
+    );
+  }
 }

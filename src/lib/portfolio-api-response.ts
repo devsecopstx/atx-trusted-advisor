@@ -8,6 +8,20 @@ import type { Portfolio } from "@/modules/core-admin/types";
 
 const DEFAULT_COALESCE_CASH = 25_000;
 
+/** Mongo / legacy docs may omit dates or store BSON as plain objects — never throw on summary build. */
+function toIsoTimestamp(value: unknown): string {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString();
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+  }
+  return new Date().toISOString();
+}
+
 /**
  * xfinance-strategy–aligned portfolio summary: `Portfolio` + `Account[]` with
  * `riskLevel` / `strategy` placeholders until desk profiles are persisted.
@@ -49,14 +63,17 @@ export async function buildPortfolioSummaryPayload(
     tenantId: session.tenantId
   });
 
+  const userId =
+    typeof portfolio.userId === "string" && portfolio.userId.length > 0 ? portfolio.userId : session.userId;
+
   return {
     _id: portfolioId,
-    name: portfolio.name,
+    name: portfolio.name?.length ? portfolio.name : "Default Portfolio",
     accounts: accounts.map((account) => ({
       _id: account._id?.toHexString(),
-      name: account.name,
-      accountRef: account.extAccountId,
-      brokerType: account.type,
+      name: account.name ?? "Account",
+      accountRef: account.extAccountId ?? "",
+      brokerType: account.type ?? "fidelity",
       balance: account.cashBalance ?? DEFAULT_COALESCE_CASH,
       riskLevel: "medium",
       strategy: "balanced",
@@ -66,11 +83,11 @@ export async function buildPortfolioSummaryPayload(
     totalValue: 0,
     dailyChange: 0,
     dailyChangePercent: 0,
-    userId: portfolio.userId,
-    isDefault: portfolio.isDefault,
+    userId,
+    isDefault: Boolean(portfolio.isDefault),
     ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
     tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey ?? getTenantPortfolioOrgKey(),
-    createdAt: portfolio.createdAt.toISOString(),
-    updatedAt: portfolio.updatedAt.toISOString()
+    createdAt: toIsoTimestamp(portfolio.createdAt),
+    updatedAt: toIsoTimestamp(portfolio.updatedAt)
   };
 }

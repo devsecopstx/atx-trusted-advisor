@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PortfolioAccountManageBar } from "@/app/portfolio/ui/portfolio-account-manage-bar";
 import { PortfolioPositionQuickAdd } from "@/app/portfolio/ui/portfolio-position-quick-add";
+import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
+import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
-import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
@@ -56,7 +58,7 @@ export default async function PortfolioPage() {
       `[portfolio] default portfolio load or provision failed userId=${session.userId} tenantId=${session.tenantId} detail=${detail}`
     );
     portfolioLoadError =
-      "Could not load your default portfolio. Try a hard refresh once after deploy; if it persists, check Cloud Run logs for MongoDB, index creation, or duplicate-key errors.";
+      "We couldn't load or create your default portfolio yet. Use Sync to provision your default portfolio, paper account, and watchlist (idempotent).";
   }
 
   if (portfolio?._id && !portfolioLoadError) {
@@ -84,7 +86,7 @@ export default async function PortfolioPage() {
         `[portfolio] accounts load or backfill failed userId=${session.userId} portfolioId=${portfolio._id.toHexString()} detail=${acctDetail}`
       );
       accountsLoadError =
-        "Linked accounts could not be loaded. Refresh the page; your portfolio above should still be valid.";
+        "Linked accounts could not be loaded. Try Sync to repair defaults, or refresh the page.";
     }
     if (accounts.length > 0 && portfolio._id) {
       try {
@@ -133,9 +135,12 @@ export default async function PortfolioPage() {
             xFinance execution surfaces.
           </p>
           {portfolioLoadError ? (
-            <p className="status-text status-error" style={{ marginTop: "1rem" }}>
-              {portfolioLoadError}
-            </p>
+            <div style={{ marginTop: "1rem" }}>
+              <p className="status-text status-error" style={{ margin: 0 }}>
+                {portfolioLoadError}
+              </p>
+              <SyncDefaultPortfolioButton />
+            </div>
           ) : null}
           {portfolio ? (
             <ul className="stack-gap" style={{ listStyle: "none", padding: 0, margin: "1rem 0 0" }}>
@@ -159,9 +164,13 @@ export default async function PortfolioPage() {
               ) : null}
             </ul>
           ) : !portfolioLoadError ? (
-            <p className="status-text status-warn" style={{ marginTop: "1rem" }}>
-              No default portfolio found yet. It is created when your account is approved and bootstrapped.
-            </p>
+            <div style={{ marginTop: "1rem" }}>
+              <p className="status-text status-warn" style={{ margin: 0 }}>
+                No default portfolio is linked yet. Use Sync to create your default portfolio, account, and
+                watchlist.
+              </p>
+              <SyncDefaultPortfolioButton />
+            </div>
           ) : null}
 
           {!portfolioLoadError && portfolio?._id ? (
@@ -184,32 +193,54 @@ export default async function PortfolioPage() {
                     color: "var(--xf-text-100)"
                   }}
                 >
-                  Accounts
+                  My accounts
                 </h2>
                 <PortfolioRefreshButton label="Refresh holdings" />
               </div>
               {accountsLoadError ? (
-                <p className="status-text status-error">{accountsLoadError}</p>
+                <div>
+                  <p className="status-text status-error" style={{ margin: 0 }}>
+                    {accountsLoadError}
+                  </p>
+                  <SyncDefaultPortfolioButton variant="secondary" />
+                </div>
               ) : accounts.length === 0 ? (
-                <p className="status-text">No linked accounts yet.</p>
+                <div>
+                  <p className="status-text" style={{ margin: 0 }}>
+                    No linked accounts yet.
+                  </p>
+                  <p className="status-text" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
+                    If this persists after a moment, use Sync to repair defaults.
+                  </p>
+                  <SyncDefaultPortfolioButton variant="secondary" />
+                </div>
               ) : (
                 <>
+                  <PortfolioAccountManageBar
+                    accounts={accounts
+                      .filter((a): a is Account & { _id: NonNullable<Account["_id"]> } => Boolean(a._id))
+                      .map((a) => ({
+                        id: a._id.toHexString(),
+                        name: a.name ?? "Account",
+                        isDefault: Boolean(a.isDefault)
+                      }))}
+                  />
                   <div className="crud-table-wrap">
                     <table className="crud-table">
                       <thead>
                         <tr>
                           <th scope="col">Account</th>
-                          <th scope="col">Broker type</th>
-                          <th scope="col">Reference</th>
+                          <th scope="col">Broker / ref</th>
+                          <th scope="col">Positions</th>
                           <th scope="col">Cash</th>
-                          <th scope="col">Holdings</th>
+                          <th scope="col">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {accounts.map((account) => (
                           <tr key={account._id?.toHexString() ?? account.extAccountId}>
                             <td>
-                              {account.name}
+                              <strong style={{ fontWeight: 600 }}>{account.name}</strong>
                               {account.isDefault ? (
                                 <span
                                   className="status-text"
@@ -219,17 +250,53 @@ export default async function PortfolioPage() {
                                 </span>
                               ) : null}
                             </td>
-                            <td>{formatBrokerType(account.type)}</td>
                             <td>
+                              <div style={{ fontSize: "0.9rem", color: "var(--xf-text-200)" }}>
+                                {formatBrokerType(account.type)}
+                              </div>
                               <code
                                 style={{
                                   fontSize: "0.8em",
                                   color: "var(--xf-text-300)",
-                                  fontFamily: "ui-monospace, monospace"
+                                  fontFamily: "ui-monospace, monospace",
+                                  display: "block",
+                                  marginTop: "0.2rem"
                                 }}
                               >
                                 {account.extAccountId || "—"}
                               </code>
+                            </td>
+                            <td>
+                              {account._id ? (
+                                (() => {
+                                  const rows =
+                                    positionsByAccountId.get(account._id.toHexString()) ?? [];
+                                  const count = rows.length;
+                                  const preview = rows
+                                    .slice(0, 4)
+                                    .map((r) => r.symbol)
+                                    .join(", ");
+                                  return (
+                                    <div
+                                      style={{
+                                        fontFamily: "ui-monospace, monospace",
+                                        fontSize: "0.85rem",
+                                        color: "var(--xf-text-300)"
+                                      }}
+                                    >
+                                      {count}
+                                      {preview ? (
+                                        <span style={{ display: "block", marginTop: "0.15rem" }}>
+                                          {preview}
+                                          {count > 4 ? "…" : ""}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })()
+                              ) : (
+                                "—"
+                              )}
                             </td>
                             <td
                               style={{
@@ -246,49 +313,18 @@ export default async function PortfolioPage() {
                             </td>
                             <td>
                               {account._id ? (
-                                <div className="stack-gap" style={{ gap: "0.35rem" }}>
-                                  {(() => {
-                                    const rows =
-                                      positionsByAccountId.get(account._id.toHexString()) ?? [];
-                                    const count = rows.length;
-                                    const preview = rows
-                                      .slice(0, 4)
-                                      .map((r) => r.symbol)
-                                      .join(", ");
-                                    return (
-                                      <>
-                                        <div
-                                          style={{
-                                            fontFamily: "ui-monospace, monospace",
-                                            fontSize: "0.85rem",
-                                            color: "var(--xf-text-300)"
-                                          }}
-                                        >
-                                          {count === 0
-                                            ? "No positions yet"
-                                            : `${count} ${count === 1 ? "position" : "positions"}`}
-                                          {preview ? (
-                                            <span style={{ display: "block", marginTop: "0.15rem" }}>
-                                              {preview}
-                                              {count > 4 ? "…" : ""}
-                                            </span>
-                                          ) : null}
-                                        </div>
-                                        <Link
-                                          className="cta cta-secondary"
-                                          style={{
-                                            fontSize: "0.8rem",
-                                            padding: "0.35rem 0.65rem",
-                                            display: "inline-block"
-                                          }}
-                                          href={`/portfolio/accounts/${account._id.toHexString()}`}
-                                        >
-                                          Select &amp; edit
-                                        </Link>
-                                      </>
-                                    );
-                                  })()}
-                                </div>
+                                <Link
+                                  className="cta cta-secondary"
+                                  style={{
+                                    fontSize: "0.8rem",
+                                    padding: "0.35rem 0.65rem",
+                                    display: "inline-block",
+                                    whiteSpace: "nowrap"
+                                  }}
+                                  href={`/portfolio/accounts/${account._id.toHexString()}`}
+                                >
+                                  Manage account
+                                </Link>
                               ) : (
                                 "—"
                               )}
