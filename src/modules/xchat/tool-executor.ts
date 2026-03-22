@@ -21,7 +21,8 @@ import {
 const MAX_OUTPUT_BYTES = 8 * 1024;
 /** Cap rows returned by positions_snapshot before JSON serialization (freshness; not cached). */
 const MAX_POSITIONS_RETURNED = 200;
-const CACHEABLE_OPERATIONS = new Set(["portfolio_summary", "watchlist_snapshot", "account_health"]);
+/** portfolio_summary omitted: must reflect live position counts after imports/trades (positions_snapshot was already uncached). */
+const CACHEABLE_OPERATIONS = new Set(["watchlist_snapshot", "account_health"]);
 /** Matches PATCH `/api/portfolios/:id/watchlist` batch size. */
 const MAX_WATCHLIST_MUTATE_PER_CALL = 20;
 

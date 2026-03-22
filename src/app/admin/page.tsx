@@ -2,7 +2,7 @@ import Link from "next/link";
 
 type AdminFunction = {
   href: string;
-  icon: "check" | "user" | "clock" | "brain" | "book" | "chat" | "directory" | "audit" | "portfolio" | "strategy" | "batch";
+  icon: "check" | "user" | "clock" | "brain" | "book" | "directory" | "audit" | "portfolio" | "strategy" | "batch";
   title: string;
   description: string;
   comingSoon?: boolean;
@@ -44,12 +44,6 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     icon: "book",
     title: "RAG collections",
     description: "Read-only xAI collection inventory for this management API key."
-  },
-  {
-    href: "/chat",
-    icon: "chat",
-    title: "xChat test (`/chat`)",
-    description: "global_admin harness: single-message ask with optional persona id (not the product `/xchat` UI)."
   },
   {
     href: "/admin/batch",
@@ -127,12 +121,6 @@ function AdminFunctionIcon({ name }: IconProps) {
         <svg {...commonProps}>
           <path d="M6 5.5h10.5a2 2 0 0 1 2 2V18H8a2 2 0 0 0-2 2z" />
           <path d="M6 5.5v14.5a2 2 0 0 1 2-2h10.5" />
-        </svg>
-      );
-    case "chat":
-      return (
-        <svg {...commonProps}>
-          <path d="M5.5 7.2A2.7 2.7 0 0 1 8.2 4.5h7.6a2.7 2.7 0 0 1 2.7 2.7v5.2a2.7 2.7 0 0 1-2.7 2.7h-4.3L8 18v-2.9H8.2a2.7 2.7 0 0 1-2.7-2.7z" />
         </svg>
       );
     case "directory":

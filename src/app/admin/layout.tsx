@@ -22,7 +22,6 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin", label: "Hub" },
   { href: "/admin/access-requests", label: "Access" },
   { href: "/admin/personas", label: "Personas" },
-  { href: "/chat", label: "Chat test" },
   { href: "/admin/batch", label: "Batch Ops" },
   { href: "/admin/portfolios", label: "Portfolios" },
   { href: "/admin/tasks", label: "Tasks" },

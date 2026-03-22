@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-  buildBatchDashboardSummary,
-  toBatchDashboardJob
+    buildBatchDashboardSummary,
+    toBatchDashboardJob
 } from "@/modules/xchat/batch-dashboard";
 import { listBatchJobs } from "@/modules/xchat/batch-service";
 
@@ -159,14 +159,6 @@ export default async function AdminBatchPage({
         )}
       </section>
 
-      <section className="panel stack-gap">
-        <Link className="admin-function-card" href="/chat">
-          <span className="admin-function-copy">
-            <strong>xChat test harness</strong>
-            <span>Open `/chat` for persona-selected `POST /api/xchat/ask` testing.</span>
-          </span>
-        </Link>
-      </section>
     </div>
   );
 }

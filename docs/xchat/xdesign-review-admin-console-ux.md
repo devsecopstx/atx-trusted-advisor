@@ -9,11 +9,9 @@
 ### Medium
 
 - Filter action on batch dashboard uses an unstyled default button, reducing affordance consistency vs the rest of admin controls. Where: `src/app/admin/batch/page.tsx`. Suggestion: apply existing CTA/tiny button system so "Apply Filters" follows the same visual language as other admin actions.
-- Async status updates in the **`/chat`** test harness: status uses `role="status"` + `aria-live="polite"` (`src/app/chat/ui/xchat-test-console.tsx`). Revisit if screen-reader coverage still feels thin.
-
 ### Low
 
-- Admin action cards are reused as navigation links for "back" actions, which can over-emphasize low-risk navigation vs primary task controls. Where: `src/app/chat/page.tsx`, `src/app/admin/batch/page.tsx`, `src/app/admin/batch/[batchId]/page.tsx`. Suggestion: use lighter secondary link/button treatment for non-primary nav actions to keep focus on table operations.
+- Admin action cards are reused as navigation links for "back" actions, which can over-emphasize low-risk navigation vs primary task controls. Where: `src/app/admin/batch/page.tsx`, `src/app/admin/batch/[batchId]/page.tsx`. Suggestion: use lighter secondary link/button treatment for non-primary nav actions to keep focus on table operations.
 
 ## Reviewer Completion
 

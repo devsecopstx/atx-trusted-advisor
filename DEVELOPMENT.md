@@ -796,7 +796,7 @@ with payload shape:
 1. Run `npm run seed:admin`.
 2. Confirm **Super-Agent** and **xFinance** are visible in admin personas and **published** (default xChat personas).
 3. Confirm default portfolio/account surfaces load for the seeded admin user.
-4. Open `/xchat` and run a prompt — persona is **implicit** (Super-Agent for `global_admin`, xFinance for other roles); there is no persona picker. For **`global_admin`** persona-selected testing, use **`/chat`** (minimal harness calling `POST /api/xchat/ask`).
+4. Open `/xchat` and run a prompt — persona is **implicit** (Super-Agent for `global_admin`, xFinance for other roles); there is no persona picker. For API-only checks, use `POST /api/xchat/ask` with a signed session cookie (see `AGENTS.md`).
 5. Optionally create/select an xAI collection and re-run validation with RAG enabled on **Super-Agent**.
 
 ### Authenticated smoke checklist (admin session)
@@ -811,8 +811,8 @@ Use this checklist to validate "admin can start using xChat" in an authenticated
    - verify collection-dependent actions show clear guidance when collection is not bound.
 4. Open `/dashboard` or `/holdings`:
    - verify default portfolio/account data surfaces load for seeded admin.
-5. Open `/chat`:
-   - submit a prompt and verify a response returns (optional persona id; default server resolution still uses Super-Agent for seeded admin when omitted).
+5. Open `/xchat`:
+   - submit a prompt and verify a response returns (implicit persona: Super-Agent for seeded admin).
 6. Optional RAG validation:
    - bind a collection,
    - run file sync/recheck actions,
