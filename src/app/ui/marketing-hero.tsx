@@ -100,8 +100,8 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
 
           {signedIn && isGlobalAdmin ? (
             <div className="cta-row mh-cta-row mh-cta-row--triple" role="group" aria-label="Product shortcuts">
-              <Link className="cta cta-primary" href="/xfinance">
-                xFinance
+              <Link className="cta cta-primary" href="/portfolio">
+                Portfolio
               </Link>
               <Link className="cta cta-secondary" href="/xchat">
                 xChat

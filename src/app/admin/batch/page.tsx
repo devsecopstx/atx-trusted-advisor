@@ -9,16 +9,16 @@ import {
 } from "@/modules/xchat/batch-dashboard";
 import { listBatchJobs } from "@/modules/xchat/batch-service";
 
-type AdminXchatBatchPageProps = {
+type AdminBatchPageProps = {
   searchParams: Promise<{
     status?: string;
     q?: string;
   }>;
 };
 
-export default async function AdminXchatBatchPage({
+export default async function AdminBatchPage({
   searchParams
-}: AdminXchatBatchPageProps) {
+}: AdminBatchPageProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
@@ -141,7 +141,7 @@ export default async function AdminXchatBatchPage({
                 {dashboardJobs.map((job) => (
                   <tr key={job.xaiBatchId}>
                     <td>
-                      <Link href={`/admin/xchat/batch/${job.xaiBatchId}`}>
+                      <Link href={`/admin/batch/${job.xaiBatchId}`}>
                         <code>{job.xaiBatchId}</code>
                       </Link>
                     </td>
@@ -160,10 +160,10 @@ export default async function AdminXchatBatchPage({
       </section>
 
       <section className="panel stack-gap">
-        <Link className="admin-function-card" href="/admin/xchat">
+        <Link className="admin-function-card" href="/chat">
           <span className="admin-function-copy">
-            <strong>Back to xChat Ask</strong>
-            <span>Return to interactive single-message xChat testing.</span>
+            <strong>xChat test harness</strong>
+            <span>Open `/chat` for persona-selected `POST /api/xchat/ask` testing.</span>
           </span>
         </Link>
       </section>

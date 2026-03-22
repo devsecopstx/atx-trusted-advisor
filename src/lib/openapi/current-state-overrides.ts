@@ -242,7 +242,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona/model selection. Non-admin users can only select published professional personas and cannot override model ids.",
+        "User message with optional persona/model selection. Non-admin users can only select published professional personas and cannot override model ids. Tools and xAI collection scope follow the resolved persona document only (no implicit merges). When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `buildBatchUserPromptAugmentation`, and `getPersonaLinkedCollectionIds`.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")

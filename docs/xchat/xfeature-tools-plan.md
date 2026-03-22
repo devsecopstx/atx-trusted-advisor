@@ -12,6 +12,7 @@ The `atxfinance` custom tool stub (`docs/xchat/atxfinance-tool-stub.md`) defines
 
 - xChat ask route forwards `xapi.tools` to xAI responses API (`web_search`, `x_search`, `file_search`).
 - xAI handles tool execution server-side for these three built-in tools.
+- `respondWithXaiToolLoop` (`src/lib/xai.ts`) sends `previous_response_id` on follow-up `/responses` requests so `function_call_output` turns stay attached to the same conversation. Hosted `web_search` / `x_search` items are acked with `{}` (no local executor). If the model prints pseudo `<xai-tool>…</xai-tool>` instead of a real call (e.g. `call="web_search"`, **`name="web_search"`**, or `tool="web_search"` on the tag with `{"query":"…"}` inside, or `{"name":"web_search","params":{"query":"…"}}` in the body with no tool-identifying attribute), or **bare JSON** `{"name":"web_search","arguments":{"query":"…"}}` (fenced or whole message, or embedded after prose), the loop re-prompts with the extracted query so the next turn can invoke `web_search` properly.
 - The `atxfinance` custom tool requires client-side execution: xAI calls the tool, we execute it, and return results back to xAI for the next turn.
 - Persona validation only allows `web_search | x_search | file_search` via `PERSONA_XAPI_TOOL_TYPES`.
 - The tool stub defines four operations: `portfolio_summary`, `watchlist_snapshot`, `account_health`, `task_status`.
@@ -178,6 +179,8 @@ For each batch item:
 - No custom tool support in `chat_completions` mode (only `responses` mode has tool loop).
 
 ## Upstream references (xAI)
+
+**Canonical standard:** [xAI documentation — overview](https://docs.x.ai/overview). Repo index: [`xai-api-standard.md`](./xai-api-standard.md).
 
 - **Batch API** — workflow, JSONL lines, polling, results: [Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api) (e.g. [Step 1 — create a batch](https://docs.x.ai/developers/advanced-api-usage/batch-api#step-1-create-a-batch)).
 - **Collections / KB search** — SDK `collections_search` vs HTTP `file_search`: [Collections Search tool](https://docs.x.ai/developers/tools/collections-search).

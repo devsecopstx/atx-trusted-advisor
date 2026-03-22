@@ -50,6 +50,11 @@ changes materially.
 If `GET /api/xchat/history` or `GET /api/xchat/history/stats` logging changes,
 include `xchat_history_list` / `xchat_history_stats` in the taxonomy docs.
 
+**xChat / tools & prompts:** When changing `POST /api/xchat/ask` prompt assembly,
+`respondWithXaiToolLoop`, `personaXapiToolsToXaiRequestTools`, workspace snapshot,
+batch persona parity, or RAG/tool routing, update **`docs/xchat/xchat-tools-guide.md`**
+(mermaid workflow + tables).
+
 **Auth identity placeholders:** When changing X OAuth identity-email behavior
 (`src/lib/x-identity-email.ts`, `/api/auth/x/callback`, `/api/auth/link-email`):
 - Document synthetic login identifier format and compatibility rules

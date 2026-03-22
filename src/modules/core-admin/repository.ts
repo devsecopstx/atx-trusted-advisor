@@ -4,21 +4,21 @@ import { getDb } from "@/lib/mongodb";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 import {
-  ACTIONABLE_ACCESS_REQUEST_STATUSES,
-  type AccessRequest,
-  type AccessRequestListItem,
-  type AccessRequestStatus,
-  type Account,
-  type AccountType,
-  type ApprovedUserListItem,
-  type DeployNoteConfig,
-  type Portfolio,
-  type Position,
-  type ScheduledTask,
-  type TaskRun,
-  type UserAdminSettings,
-  type Watchlist,
-  type WatchlistSymbol
+    ACTIONABLE_ACCESS_REQUEST_STATUSES,
+    type AccessRequest,
+    type AccessRequestListItem,
+    type AccessRequestStatus,
+    type Account,
+    type AccountType,
+    type ApprovedUserListItem,
+    type DeployNoteConfig,
+    type Portfolio,
+    type Position,
+    type ScheduledTask,
+    type TaskRun,
+    type UserAdminSettings,
+    type Watchlist,
+    type WatchlistSymbol
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
 
@@ -115,6 +115,17 @@ function toTenantObjectId(tenantId?: string): ObjectId | undefined {
   return new ObjectId(tenantId);
 }
 
+/**
+ * Session `userId` is a hex string; older rows may store `userId` as BSON ObjectId.
+ * Use this on reads and non-upsert writes so both match.
+ */
+function userIdQuery(userId: string): { userId: string | { $in: (string | ObjectId)[] } } {
+  if (ObjectId.isValid(userId)) {
+    return { userId: { $in: [userId, new ObjectId(userId)] } };
+  }
+  return { userId };
+}
+
 function withTenantScope(
   query: Record<string, unknown>,
   tenantId?: string
@@ -125,8 +136,27 @@ function withTenantScope(
   }
   return {
     ...query,
-    $or: [{ tenantId: tenantObjectId }, { tenantId: { $exists: false } }]
+    $or: [
+      { tenantId: tenantObjectId },
+      { tenantId: { $exists: false } },
+      { tenantId: { $type: "null" } }
+    ]
   };
+}
+
+/**
+ * `updateOne` upserts must not use `withTenantScope`'s `$or` — MongoDB upsert + `$or` can fail or
+ * skip matches, which breaks OAuth bootstrap (`provisionDefaultPortfolioForUser`).
+ */
+function strictWriteTenantFilter(
+  base: Record<string, unknown>,
+  tenantId?: string
+): Record<string, unknown> {
+  const tenantObjectId = toTenantObjectId(tenantId);
+  if (!tenantObjectId) {
+    return base;
+  }
+  return { ...base, tenantId: tenantObjectId };
 }
 
 export type ProvisionDefaultPortfolioInput = {
@@ -214,7 +244,10 @@ async function createPortfolioIndexes(): Promise<void> {
 
 export async function ensurePortfolioIndexes(): Promise<void> {
   if (!ensurePortfolioIndexesPromise) {
-    ensurePortfolioIndexesPromise = createPortfolioIndexes();
+    ensurePortfolioIndexesPromise = createPortfolioIndexes().catch((err: unknown) => {
+      ensurePortfolioIndexesPromise = null;
+      throw err;
+    });
   }
   await ensurePortfolioIndexesPromise;
 }
@@ -764,7 +797,7 @@ export async function getDefaultPortfolio(
   const db = await getDb();
   return db
     .collection<Portfolio>(collections.portfolios)
-    .findOne(withTenantScope({ userId, isDefault: true }, options?.tenantId));
+    .findOne(withTenantScope({ ...userIdQuery(userId), isDefault: true }, options?.tenantId));
 }
 
 export async function listPortfolioAccounts(input: {
@@ -782,7 +815,7 @@ export async function listPortfolioAccounts(input: {
     .find(
       withTenantScope(
         {
-          userId: input.userId,
+          ...userIdQuery(input.userId),
           portfolioId: new ObjectId(input.portfolioId)
         },
         input.tenantId
@@ -809,7 +842,7 @@ export async function listPortfolioPositionsByAccount(input: {
     .find(
       withTenantScope(
         {
-          userId: input.userId,
+          ...userIdQuery(input.userId),
           portfolioId: new ObjectId(input.portfolioId),
           accountId: { $in: input.accountIds }
         },
@@ -833,7 +866,7 @@ export async function getPortfolioWatchlist(input: {
   const doc = await db.collection<Watchlist>(collections.watchlists).findOne(
     withTenantScope(
       {
-        userId: input.userId,
+        ...userIdQuery(input.userId),
         portfolioId: new ObjectId(input.portfolioId)
       },
       input.tenantId
@@ -878,7 +911,7 @@ export async function mutatePortfolioWatchlistSymbols(
   const portfolioOid = new ObjectId(input.portfolioId);
   const filter = withTenantScope(
     {
-      userId: input.userId,
+      ...userIdQuery(input.userId),
       portfolioId: portfolioOid
     },
     input.tenantId
@@ -955,85 +988,173 @@ export async function provisionDefaultPortfolioForUser(
   const seedSymbolStrings =
     input.watchlistSymbols !== undefined ? input.watchlistSymbols : [DEFAULT_WATCHLIST_SYMBOL];
 
-  const portfolioFilter = withTenantScope(
-    { userId: input.userId, isDefault: true },
+  if (tenantObjectId) {
+    await db.collection<Portfolio>(collections.portfolios).updateMany(
+      {
+        ...userIdQuery(input.userId),
+        isDefault: true,
+        $or: [{ tenantId: { $exists: false } }, { tenantId: { $type: "null" } }]
+      } as Filter<Portfolio>,
+      {
+        $set: {
+          tenantId: tenantObjectId,
+          tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
+          updatedAt: now
+        }
+      }
+    );
+  }
+
+  const portfolioLookupFilter = withTenantScope(
+    { ...userIdQuery(input.userId), isDefault: true },
     input.tenantId
   );
-  await db.collection<Portfolio>(collections.portfolios).updateOne(
-    portfolioFilter,
-    {
-      $setOnInsert: {
-        tenantId: tenantObjectId,
-        userId: input.userId,
-        createdAt: now
-      },
-      $set: {
-        name: portfolioName,
-        isDefault: true,
-        ext_broker_ref: DEFAULT_EXT_BROKER_REF,
-        tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
-        updatedAt: now,
-        ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
-      }
-    },
-    { upsert: true }
-  );
-
-  const portfolio = await db
+  let portfolio = await db
     .collection<Portfolio>(collections.portfolios)
-    .findOne(portfolioFilter);
+    .findOne(portfolioLookupFilter);
+
+  const portfolioSetFields = {
+    name: portfolioName,
+    isDefault: true,
+    ext_broker_ref: DEFAULT_EXT_BROKER_REF,
+    tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
+    updatedAt: now,
+    ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
+  };
+
+  if (portfolio?._id) {
+    await db.collection<Portfolio>(collections.portfolios).updateOne(
+      { _id: portfolio._id },
+      { $set: portfolioSetFields }
+    );
+  } else {
+    const portfolioInsertFilter = strictWriteTenantFilter(
+      { userId: input.userId, isDefault: true },
+      input.tenantId
+    );
+    await db.collection<Portfolio>(collections.portfolios).updateOne(
+      portfolioInsertFilter,
+      {
+        $setOnInsert: {
+          tenantId: tenantObjectId,
+          userId: input.userId,
+          createdAt: now
+        },
+        $set: portfolioSetFields
+      },
+      { upsert: true }
+    );
+    portfolio = await db
+      .collection<Portfolio>(collections.portfolios)
+      .findOne(portfolioLookupFilter);
+  }
+
   if (!portfolio?._id) {
     throw new Error("Failed to provision default portfolio");
   }
 
+  if (typeof portfolio.userId !== "string") {
+    await db.collection<Portfolio>(collections.portfolios).updateOne(
+      { _id: portfolio._id },
+      { $set: { userId: input.userId, updatedAt: now } }
+    );
+    portfolio = { ...portfolio, userId: input.userId };
+  }
+
+  if (tenantObjectId) {
+    await db.collection<Account>(collections.accounts).updateMany(
+      {
+        ...userIdQuery(input.userId),
+        portfolioId: portfolio._id,
+        $or: [{ tenantId: { $exists: false } }, { tenantId: { $type: "null" } }]
+      } as Filter<Account>,
+      { $set: { tenantId: tenantObjectId, updatedAt: now } }
+    );
+    await db.collection<Watchlist>(collections.watchlists).updateMany(
+      {
+        ...userIdQuery(input.userId),
+        portfolioId: portfolio._id,
+        $or: [{ tenantId: { $exists: false } }, { tenantId: { $type: "null" } }]
+      } as Filter<Watchlist>,
+      { $set: { tenantId: tenantObjectId, updatedAt: now } }
+    );
+  }
+
   const extAccountId = DEFAULT_ACCOUNT_REF;
-  const accountFilter = withTenantScope(
+  const accountLookupFilter = withTenantScope(
     {
-      userId: input.userId,
+      ...userIdQuery(input.userId),
       portfolioId: portfolio._id,
       isDefault: true
     },
     input.tenantId
   );
-  await db.collection<Account>(collections.accounts).updateOne(
-    accountFilter,
-    {
-      $setOnInsert: {
-        tenantId: tenantObjectId,
+  let account = await db.collection<Account>(collections.accounts).findOne(accountLookupFilter);
+
+  const accountSetFields = {
+    name: accountName,
+    type: accountType,
+    extAccountId,
+    cashBalance: DEFAULT_ACCOUNT_CASH_BALANCE,
+    isDefault: true,
+    updatedAt: now,
+    ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
+  };
+
+  if (account?._id) {
+    await db.collection<Account>(collections.accounts).updateOne(
+      { _id: account._id },
+      { $set: accountSetFields }
+    );
+  } else {
+    const accountInsertFilter = strictWriteTenantFilter(
+      {
         userId: input.userId,
         portfolioId: portfolio._id,
-        createdAt: now
+        isDefault: true
       },
-      $set: {
-        name: accountName,
-        type: accountType,
-        extAccountId,
-        cashBalance: DEFAULT_ACCOUNT_CASH_BALANCE,
-        isDefault: true,
-        updatedAt: now,
-        ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
-      }
-    },
-    { upsert: true }
-  );
+      input.tenantId
+    );
+    await db.collection<Account>(collections.accounts).updateOne(
+      accountInsertFilter,
+      {
+        $setOnInsert: {
+          tenantId: tenantObjectId,
+          userId: input.userId,
+          portfolioId: portfolio._id,
+          createdAt: now
+        },
+        $set: accountSetFields
+      },
+      { upsert: true }
+    );
+    account = await db.collection<Account>(collections.accounts).findOne(accountLookupFilter);
+  }
 
-  const account = await db
-    .collection<Account>(collections.accounts)
-    .findOne(accountFilter);
   if (!account?._id) {
     throw new Error("Failed to provision default account");
+  }
+
+  if (typeof account.userId !== "string") {
+    await db.collection<Account>(collections.accounts).updateOne(
+      { _id: account._id },
+      { $set: { userId: input.userId, updatedAt: now } }
+    );
+    account = { ...account, userId: input.userId };
   }
 
   const cashBackfillFilter = {
     $and: [
       withTenantScope(
         {
-          userId: input.userId,
+          ...userIdQuery(input.userId),
           portfolioId: portfolio._id
         },
         input.tenantId
       ),
-      { $or: [{ cashBalance: { $exists: false } }, { cashBalance: null }] }
+      {
+        $or: [{ cashBalance: { $exists: false } }, { cashBalance: { $type: "null" } }]
+      }
     ]
   } as Filter<Account>;
   await db.collection<Account>(collections.accounts).updateMany(cashBackfillFilter, {
@@ -1043,47 +1164,72 @@ export async function provisionDefaultPortfolioForUser(
     }
   });
 
-  const watchlistFilter = withTenantScope(
+  const watchlistLookupFilter = withTenantScope(
     {
-      userId: input.userId,
+      ...userIdQuery(input.userId),
       portfolioId: portfolio._id
     },
     input.tenantId
   );
   const existingWatchlist = await db
     .collection<Watchlist>(collections.watchlists)
-    .findOne(watchlistFilter);
+    .findOne(watchlistLookupFilter);
   const mergedWatchlistSymbols = normalizeWatchlistDocumentSymbols(
     existingWatchlist?.symbols ?? [],
     Array.from(
       new Set([DEFAULT_WATCHLIST_SYMBOL, ...seedSymbolStrings.map((s) => s.trim().toUpperCase())])
     ).filter(Boolean)
   );
-  await db.collection<Watchlist>(collections.watchlists).updateOne(
-    watchlistFilter,
-    {
-      $setOnInsert: {
-        tenantId: tenantObjectId,
-        userId: input.userId,
-        portfolioId: portfolio._id,
-        createdAt: now
-      },
-      $set: {
-        name: watchlistName,
-        symbols: mergedWatchlistSymbols,
-        isDefault: true,
-        updatedAt: now,
-        ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
-      }
-    },
-    { upsert: true }
-  );
 
-  const watchlist = await db
+  const watchlistSetFields = {
+    name: watchlistName,
+    symbols: mergedWatchlistSymbols,
+    isDefault: true,
+    updatedAt: now,
+    ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
+  };
+
+  if (existingWatchlist?._id) {
+    await db.collection<Watchlist>(collections.watchlists).updateOne(
+      { _id: existingWatchlist._id },
+      { $set: watchlistSetFields }
+    );
+  } else {
+    const watchlistInsertFilter = strictWriteTenantFilter(
+      {
+        userId: input.userId,
+        portfolioId: portfolio._id
+      },
+      input.tenantId
+    );
+    await db.collection<Watchlist>(collections.watchlists).updateOne(
+      watchlistInsertFilter,
+      {
+        $setOnInsert: {
+          tenantId: tenantObjectId,
+          userId: input.userId,
+          portfolioId: portfolio._id,
+          createdAt: now
+        },
+        $set: watchlistSetFields
+      },
+      { upsert: true }
+    );
+  }
+
+  let watchlist = await db
     .collection<Watchlist>(collections.watchlists)
-    .findOne(watchlistFilter);
+    .findOne(watchlistLookupFilter);
   if (!watchlist?._id) {
     throw new Error("Failed to provision default watchlist");
+  }
+
+  if (typeof watchlist.userId !== "string") {
+    await db.collection<Watchlist>(collections.watchlists).updateOne(
+      { _id: watchlist._id },
+      { $set: { userId: input.userId, updatedAt: now } }
+    );
+    watchlist = { ...watchlist, userId: input.userId };
   }
 
   return { portfolio, account, watchlist };
@@ -1102,7 +1248,7 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
   const tenantScopedAccountFilter = withTenantScope(
     {
       _id: accountId,
-      userId: input.userId
+      ...userIdQuery(input.userId)
     },
     input.tenantId
   );
@@ -1129,7 +1275,7 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
   const tenantObjectId = toTenantObjectId(input.tenantId);
   const filter = withTenantScope(
     {
-      userId: input.userId,
+      ...userIdQuery(input.userId),
       portfolioId,
       accountId,
       symbol: normalizedSymbol

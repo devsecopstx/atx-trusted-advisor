@@ -375,8 +375,14 @@ export async function respondWithXaiToolLoop(input: {
   let conversationInput: unknown = input.userPrompt;
   let turnsUsed = 0;
   let lastPayload: Record<string, unknown> = {};
+  /** Required for follow-up `/responses` turns (tool outputs + hosted tools like web_search). */
+  let previousResponseId: string | undefined;
 
-  for (let turn = 0; turn < maxTurns; turn++) {
+  /** Pseudo tool markup recovery may need an extra host round-trip on the last configured turn; cap extensions. */
+  const syntheticRecoveryCap = maxTurns + 6;
+  let loopLimit = maxTurns;
+
+  for (let turn = 0; turn < loopLimit && turn < syntheticRecoveryCap; turn++) {
     turnsUsed = turn + 1;
 
     const requestBody: Record<string, unknown> = {
@@ -387,6 +393,9 @@ export async function respondWithXaiToolLoop(input: {
       tool_choice: input.toolChoice ?? "auto",
       max_turns: perRequestMaxTurns
     };
+    if (previousResponseId && turn > 0) {
+      requestBody.previous_response_id = previousResponseId;
+    }
     if (input.parallelism) {
       requestBody.agent_count = input.parallelism.agentCount;
       requestBody.reasoning = { effort: input.parallelism.reasoningEffort };
@@ -414,45 +423,75 @@ export async function respondWithXaiToolLoop(input: {
       );
     }
 
+    const responseId = asString(payload.id);
+    if (responseId) {
+      previousResponseId = responseId;
+    }
+
     const pendingToolCalls = extractToolCalls(payload);
     if (pendingToolCalls.length === 0) {
       const outputText = extractResponseOutputText(payload);
-      const syntheticArgs = trySyntheticAtxfinanceToolArgs(outputText, input.tools);
-      if (
-        syntheticArgs &&
-        turn < maxTurns - 1
-      ) {
-        const syntheticCallId = `synthetic_atxfinance_${turn}`;
-        const start = Date.now();
-        let executorResult: { result: string; error?: string };
-        try {
-          executorResult = await input.executor("atxfinance", syntheticArgs);
-        } catch (error) {
-          executorResult = {
-            result: "",
-            error: error instanceof Error ? error.message : "executor_error"
-          };
+      const syntheticArgsList = listSyntheticAtxfinanceToolArgs(outputText, input.tools);
+      if (syntheticArgsList.length > 0) {
+        if (turn + 1 >= loopLimit) {
+          loopLimit = Math.min(loopLimit + 1, syntheticRecoveryCap);
         }
-        const durationMs = Date.now() - start;
-        toolCalls.push({
-          name: "atxfinance",
-          args: syntheticArgs,
-          result: executorResult.result,
-          error: executorResult.error,
-          durationMs
-        });
-        const toolOutput = executorResult.error
-          ? JSON.stringify({ error: executorResult.error })
-          : executorResult.result;
-        conversationInput = [
-          {
+        const toolResults: Array<{ type: "function_call_output"; call_id: string; output: string }> = [];
+        for (let i = 0; i < syntheticArgsList.length; i++) {
+          const syntheticArgs = syntheticArgsList[i];
+          const syntheticCallId = `synthetic_atxfinance_${turn}_${i}`;
+          const start = Date.now();
+          let executorResult: { result: string; error?: string };
+          try {
+            executorResult = await input.executor("atxfinance", syntheticArgs);
+          } catch (error) {
+            executorResult = {
+              result: "",
+              error: error instanceof Error ? error.message : "executor_error"
+            };
+          }
+          const durationMs = Date.now() - start;
+          toolCalls.push({
+            name: "atxfinance",
+            args: syntheticArgs,
+            result: executorResult.result,
+            error: executorResult.error,
+            durationMs
+          });
+          const toolOutput = executorResult.error
+            ? JSON.stringify({ error: executorResult.error })
+            : executorResult.result;
+          toolResults.push({
             type: "function_call_output",
             call_id: syntheticCallId,
             output: toolOutput
-          }
-        ];
+          });
+        }
+        conversationInput = toolResults;
         continue;
       }
+
+      const syntheticWeb =
+        trySyntheticXaiToolWebSearchMarkup(outputText, input.tools) ??
+        trySyntheticWebSearchJsonPayload(outputText, input.tools);
+      if (syntheticWeb) {
+        if (turn + 1 >= loopLimit) {
+          loopLimit = Math.min(loopLimit + 1, syntheticRecoveryCap);
+        }
+        const nr = syntheticWeb.numResults;
+        conversationInput =
+          "Continue using the real web_search tool (do not print XML or JSON tool markup). " +
+          `Search the web for: ${syntheticWeb.query}` +
+          (nr != null ? ` (use up to ${nr} strong sources if the tool supports a limit).` : ".");
+        toolCalls.push({
+          name: "web_search",
+          args: { query: syntheticWeb.query, ...(nr != null ? { num_results: nr } : {}) },
+          result: "",
+          durationMs: 0
+        });
+        continue;
+      }
+
       return {
         model: asString(payload.model) ?? model,
         outputText,
@@ -464,6 +503,21 @@ export async function respondWithXaiToolLoop(input: {
 
     const toolResults: Array<{ type: "function_call_output"; call_id: string; output: string }> = [];
     for (const toolCall of pendingToolCalls) {
+      if (XAI_HOSTED_FUNCTION_NAMES.has(toolCall.name)) {
+        toolResults.push({
+          type: "function_call_output",
+          call_id: toolCall.callId,
+          output: "{}"
+        });
+        toolCalls.push({
+          name: toolCall.name,
+          args: toolCall.args,
+          result: "{}",
+          durationMs: 0
+        });
+        continue;
+      }
+
       const start = Date.now();
       let executorResult: { result: string; error?: string };
       try {
@@ -514,15 +568,44 @@ type ParsedToolCall = {
   args: Record<string, unknown>;
 };
 
+/** xAI executes these on the server; the local executor must not treat them as atxfinance ops. */
+const XAI_HOSTED_FUNCTION_NAMES = new Set(["web_search", "x_search"]);
+
 /** Matches `ATXFINANCE_TOOL_DEFINITION.function.parameters.properties.operation.enum` — recover when the model prints JSON instead of using API function_call. */
 const ATXFINANCE_SYNTHETIC_OPERATIONS = new Set([
   "portfolio_summary",
   "positions_snapshot",
   "watchlist_snapshot",
+  "watchlist_add_symbols",
+  "watchlist_remove_symbols",
   "account_health",
   "task_status",
   "market_quote"
 ]);
+
+function syntheticAtxfinanceArgsFromParsedJson(
+  obj: Record<string, unknown>
+): Record<string, unknown> | null {
+  const op = obj.operation;
+  if (typeof op !== "string" || !ATXFINANCE_SYNTHETIC_OPERATIONS.has(op)) {
+    return null;
+  }
+  const toolField = obj.tool;
+  if (toolField !== undefined && toolField !== "atxfinance") {
+    return null;
+  }
+  const out: Record<string, unknown> = { operation: op };
+  if (typeof obj.symbol === "string" && obj.symbol.trim()) {
+    out.symbol = obj.symbol.trim();
+  }
+  if (Array.isArray(obj.symbols)) {
+    const syms = obj.symbols.filter((x): x is string => typeof x === "string" && x.trim());
+    if (syms.length > 0) {
+      out.symbols = syms.map((s) => s.trim());
+    }
+  }
+  return out;
+}
 
 function requestToolsIncludeAtxfinance(tools: Array<Record<string, unknown>>): boolean {
   for (const t of tools) {
@@ -535,49 +618,268 @@ function requestToolsIncludeAtxfinance(tools: Array<Record<string, unknown>>): b
   return false;
 }
 
+function requestToolsIncludeWebSearch(tools: Array<Record<string, unknown>>): boolean {
+  return tools.some((t) => t.type === "web_search");
+}
+
 /**
- * Some models return ```json { "tool": "atxfinance", "operation": "..." } ``` as assistant text
- * instead of emitting `function_call` items; the host then never runs the executor.
+ * Grok sometimes prints pseudo `<xai-tool>…</xai-tool>` instead of a real `web_search` call. Shapes seen:
+ * - `<xai-tool call="web_search">{"query":"..."}</xai-tool>` (closing tag may be malformed)
+ * - `<xai-tool name="web_search">{"query":"..."}</xai-tool>`
+ * - `<xai-tool>{"name":"web_search","params":{"query":"..."}}</xai-tool>` (no `call=` attribute)
+ *
+ * Bare assistant JSON (no XML) is handled by {@link trySyntheticWebSearchJsonPayload}:
+ * - `{"name":"web_search","arguments":{"query":"..."}}`
  */
-function trySyntheticAtxfinanceToolArgs(
+function trySyntheticXaiToolWebSearchMarkup(
   assistantText: string,
   tools: Array<Record<string, unknown>>
-): Record<string, unknown> | null {
-  if (!requestToolsIncludeAtxfinance(tools) || !assistantText.trim()) {
+): { query: string; numResults?: number } | null {
+  if (!requestToolsIncludeWebSearch(tools) || !assistantText.trim()) {
     return null;
+  }
+  if (!/<xai-tool/i.test(assistantText)) {
+    return null;
+  }
+  const innerMatch = assistantText.match(/<xai-tool\b[^>]*>([\s\S]*?)<\/\s*xai-tool[^>]*>/i);
+  const inner = innerMatch?.[1]?.trim();
+  if (!inner) {
+    return null;
+  }
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(inner) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  const openTag = assistantText.match(/<xai-tool\b[^>]*>/i)?.[0] ?? "";
+  const callAttr = openTag.match(/\bcall\s*=\s*["']([^"']+)["']/i)?.[1]?.trim().toLowerCase();
+  const nameAttr = openTag.match(/\bname\s*=\s*["']([^"']+)["']/i)?.[1]?.trim().toLowerCase();
+  const toolAttr = openTag.match(/\btool\s*=\s*["']([^"']+)["']/i)?.[1]?.trim().toLowerCase();
+  const nameField = typeof parsed.name === "string" ? parsed.name.trim().toLowerCase() : "";
+  const toolField = typeof parsed.tool === "string" ? parsed.tool.trim().toLowerCase() : "";
+  const isWebSearch =
+    callAttr === "web_search" ||
+    nameAttr === "web_search" ||
+    toolAttr === "web_search" ||
+    nameField === "web_search" ||
+    toolField === "web_search";
+
+  if (!isWebSearch) {
+    return null;
+  }
+
+  let query = typeof parsed.query === "string" ? parsed.query.trim() : "";
+  const paramsRaw = parsed.params;
+  if (
+    !query &&
+    paramsRaw &&
+    typeof paramsRaw === "object" &&
+    !Array.isArray(paramsRaw)
+  ) {
+    const p = paramsRaw as Record<string, unknown>;
+    query = typeof p.query === "string" ? p.query.trim() : "";
+  }
+  if (!query) {
+    return null;
+  }
+
+  let numRaw: unknown = parsed.num_results ?? parsed.numResults;
+  if (numRaw === undefined && paramsRaw && typeof paramsRaw === "object" && !Array.isArray(paramsRaw)) {
+    const p = paramsRaw as Record<string, unknown>;
+    numRaw = p.num_results ?? p.numResults;
+  }
+  const numResults = asNumber(numRaw);
+  return numResults !== undefined && numResults > 0
+    ? { query, numResults: Math.min(Math.floor(numResults), 50) }
+    : { query };
+}
+
+function extractWebSearchQueryFromToolJsonObject(
+  obj: Record<string, unknown>
+): { query: string; numResults?: number } | null {
+  const name = typeof obj.name === "string" ? obj.name.trim().toLowerCase() : "";
+  if (name !== "web_search") {
+    return null;
+  }
+  const args = obj.arguments;
+  if (!args || typeof args !== "object" || Array.isArray(args)) {
+    return null;
+  }
+  const a = args as Record<string, unknown>;
+  const query = typeof a.query === "string" ? a.query.trim() : "";
+  if (!query) {
+    return null;
+  }
+  const numRaw = a.num_results ?? a.numResults;
+  const numResults = asNumber(numRaw);
+  return numResults !== undefined && numResults > 0
+    ? { query, numResults: Math.min(Math.floor(numResults), 50) }
+    : { query };
+}
+
+function trySliceBalancedJsonObject(text: string, start: number): string | null {
+  if (text[start] !== "{") {
+    return null;
+  }
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (c === "{") {
+      depth++;
+    } else if (c === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
+function findWebSearchJsonObjectSlice(text: string): string | null {
+  const marker = /"name"\s*:\s*"web_search"/;
+  let idx = 0;
+  while (idx < text.length) {
+    const rel = text.indexOf("{", idx);
+    if (rel < 0) {
+      return null;
+    }
+    const slice = trySliceBalancedJsonObject(text, rel);
+    if (slice && marker.test(slice)) {
+      return slice;
+    }
+    idx = rel + 1;
+  }
+  return null;
+}
+
+/**
+ * Model prints OpenAI-style tool JSON in assistant text instead of a real `function_call`, e.g.
+ * `{"name": "web_search", "arguments": {"query": "…"}}` (optionally inside a fenced block or after prose).
+ */
+function trySyntheticWebSearchJsonPayload(
+  assistantText: string,
+  tools: Array<Record<string, unknown>>
+): { query: string; numResults?: number } | null {
+  if (!requestToolsIncludeWebSearch(tools) || !assistantText.trim()) {
+    return null;
+  }
+
+  const tryParseSlice = (raw: string): { query: string; numResults?: number } | null => {
+    const s = raw.trim();
+    if (!s.startsWith("{")) {
+      return null;
+    }
+    try {
+      const obj = JSON.parse(s) as Record<string, unknown>;
+      return extractWebSearchQueryFromToolJsonObject(obj);
+    } catch {
+      return null;
+    }
+  };
+
+  const fenced = assistantText.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) {
+    const hit = tryParseSlice(fenced[1]);
+    if (hit) {
+      return hit;
+    }
+  }
+
+  const trimmed = assistantText.trim();
+  const whole = tryParseSlice(trimmed);
+  if (whole) {
+    return whole;
+  }
+
+  const embedded = findWebSearchJsonObjectSlice(trimmed);
+  if (embedded) {
+    return tryParseSlice(embedded);
+  }
+
+  return null;
+}
+
+/**
+ * KB-style: model prints multiple `<function_call name="atxfinance">…</function_call>` blocks in one turn.
+ * Inner body may be `<argument name="operation">…</argument>` (legacy) or a single JSON object with
+ * `operation`, optional `symbol`, and optional `symbols` (watchlist mutations).
+ */
+function parseAllAtxfinanceXmlFunctionCalls(assistantText: string): Record<string, unknown>[] {
+  const results: Record<string, unknown>[] = [];
+  const blockRe =
+    /<function_call\b[^>]*\bname\s*=\s*["']atxfinance["'][^>]*>([\s\S]*?)<\/\s*function_call\s*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = blockRe.exec(assistantText)) !== null) {
+    const inner = (m[1] ?? "").trim();
+    if (inner.startsWith("{")) {
+      try {
+        const obj = JSON.parse(inner) as Record<string, unknown>;
+        const built = syntheticAtxfinanceArgsFromParsedJson(obj);
+        if (built) {
+          results.push(built);
+        }
+      } catch {
+        /* ignore */
+      }
+      continue;
+    }
+    const opBlock = inner.match(
+      /<argument\b[^>]*\bname\s*=\s*["']operation["'][^>]*>([\s\S]*?)<\/\s*argument\s*>/i
+    );
+    const op = opBlock?.[1]?.trim().replace(/\s+/g, "");
+    if (!op || !ATXFINANCE_SYNTHETIC_OPERATIONS.has(op)) {
+      continue;
+    }
+    const out: Record<string, unknown> = { operation: op };
+    const symBlock = inner.match(
+      /<argument\b[^>]*\bname\s*=\s*["']symbol["'][^>]*>([\s\S]*?)<\/\s*argument\s*>/i
+    );
+    const sym = symBlock?.[1]?.trim();
+    if (sym) {
+      out.symbol = sym;
+    }
+    results.push(out);
+  }
+  return results;
+}
+
+/**
+ * Some models return ```json { "tool": "atxfinance", "operation": "..." } ``` or one or more XML
+ * `<function_call name="atxfinance">…</function_call>` blocks as assistant text instead of emitting
+ * API `function_call` items; the host then never runs the executor without this recovery.
+ */
+function listSyntheticAtxfinanceToolArgs(
+  assistantText: string,
+  tools: Array<Record<string, unknown>>
+): Record<string, unknown>[] {
+  if (!requestToolsIncludeAtxfinance(tools) || !assistantText.trim()) {
+    return [];
   }
   const fenced = assistantText.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const jsonSlice = fenced ? fenced[1].trim() : assistantText.trim();
-  if (!jsonSlice.startsWith("{")) {
-    return null;
-  }
-  let obj: Record<string, unknown>;
-  try {
-    obj = JSON.parse(jsonSlice) as Record<string, unknown>;
-  } catch {
-    const opQuoted = assistantText.match(/"operation"\s*:\s*"([a-z_]+)"/);
-    if (!opQuoted?.[1] || !ATXFINANCE_SYNTHETIC_OPERATIONS.has(opQuoted[1])) {
-      return null;
+  if (jsonSlice.startsWith("{")) {
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(jsonSlice) as Record<string, unknown>;
+    } catch {
+      const opQuoted = assistantText.match(/"operation"\s*:\s*"([a-z_]+)"/);
+      if (!opQuoted?.[1] || !ATXFINANCE_SYNTHETIC_OPERATIONS.has(opQuoted[1])) {
+        return [];
+      }
+      if (!/\batxfinance\b/i.test(assistantText)) {
+        return [];
+      }
+      return [{ operation: opQuoted[1] }];
     }
-    if (!/\batxfinance\b/i.test(assistantText)) {
-      return null;
-    }
-    return { operation: opQuoted[1] };
+    const built = syntheticAtxfinanceArgsFromParsedJson(obj);
+    return built ? [built] : [];
   }
-  const op = obj.operation;
-  if (typeof op !== "string" || !ATXFINANCE_SYNTHETIC_OPERATIONS.has(op)) {
-    return null;
-  }
-  const toolField = obj.tool;
-  if (toolField !== undefined && toolField !== "atxfinance") {
-    return null;
-  }
-  // Models often emit only { "operation": "portfolio_summary" } with no "tool" key; still run atxfinance.
-  const out: Record<string, unknown> = { operation: op };
-  if (typeof obj.symbol === "string" && obj.symbol.trim()) {
-    out.symbol = obj.symbol.trim();
-  }
-  return out;
+
+  const xmlList = parseAllAtxfinanceXmlFunctionCalls(assistantText);
+  return xmlList.length > 0 ? xmlList : [];
 }
 
 function extractToolCalls(payload: Record<string, unknown>): ParsedToolCall[] {

@@ -9,6 +9,7 @@ const repositoryMocks = vi.hoisted(() => ({
   listPortfolioAccounts: vi.fn(),
   listPortfolioPositionsByAccount: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
+  mutatePortfolioWatchlistSymbols: vi.fn(),
   listScheduledTasks: vi.fn(),
   listTaskRuns: vi.fn()
 }));
@@ -21,7 +22,8 @@ vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/modules/xchat/market-data", () => marketDataMocks);
 vi.mock("@/modules/xchat/tool-cache", () => ({
   getCachedToolResult: () => null,
-  setCachedToolResult: () => undefined
+  setCachedToolResult: () => undefined,
+  deleteCachedToolResult: vi.fn()
 }));
 
 import {
@@ -64,6 +66,30 @@ describe("atxfinance tool executor", () => {
       name: "DefaultWatchlist",
       symbols: [{ symbol: "TSLA", addedAt: new Date() }]
     });
+    repositoryMocks.mutatePortfolioWatchlistSymbols.mockImplementation(
+      async ({ addSymbols, removeSymbols }) => {
+        let symbols = [{ symbol: "TSLA", addedAt: new Date() }];
+        if (removeSymbols?.length) {
+          const rm = new Set(removeSymbols.map((s) => s.toUpperCase()));
+          symbols = symbols.filter((s) => !rm.has(s.symbol));
+        }
+        if (addSymbols?.length) {
+          const now = new Date();
+          for (const s of addSymbols) {
+            const sym = s.toUpperCase();
+            if (!symbols.some((x) => x.symbol === sym)) {
+              symbols.push({ symbol: sym, addedAt: now });
+            }
+          }
+        }
+        return {
+          name: "DefaultWatchlist",
+          symbols,
+          portfolioId,
+          userId: ctx.userId
+        } as never;
+      }
+    );
     repositoryMocks.listScheduledTasks.mockResolvedValue([
       { name: "Daily Sync", category: "sync-broker", enabled: true, scheduleCron: "0 2 * * *" }
     ]);
@@ -224,10 +250,64 @@ describe("atxfinance tool executor", () => {
       "portfolio_summary",
       "positions_snapshot",
       "watchlist_snapshot",
+      "watchlist_add_symbols",
+      "watchlist_remove_symbols",
       "account_health",
       "task_status",
       "market_quote"
     ]);
+  });
+
+  it("watchlist_add_symbols calls mutatePortfolioWatchlistSymbols", async () => {
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", {
+      operation: "watchlist_add_symbols",
+      symbol: "NVDA"
+    });
+    const data = JSON.parse(result.result);
+    expect(data.ok).toBe(true);
+    expect(data.requested).toEqual(["NVDA"]);
+    expect(repositoryMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: ctx.userId,
+        portfolioId: portfolioId.toHexString(),
+        tenantId: ctx.tenantId,
+        addSymbols: ["NVDA"]
+      })
+    );
+  });
+
+  it("watchlist_add_symbols accepts symbols array", async () => {
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", {
+      operation: "watchlist_add_symbols",
+      symbols: ["NVDA", "AMD"]
+    });
+    const data = JSON.parse(result.result);
+    expect(data.ok).toBe(true);
+    expect(data.requested).toEqual(["NVDA", "AMD"]);
+  });
+
+  it("watchlist_add_symbols returns no_symbols when missing tickers", async () => {
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", { operation: "watchlist_add_symbols" });
+    const data = JSON.parse(result.result);
+    expect(data.error).toBe("no_symbols");
+    expect(repositoryMocks.mutatePortfolioWatchlistSymbols).not.toHaveBeenCalled();
+  });
+
+  it("watchlist_remove_symbols removes tickers", async () => {
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", {
+      operation: "watchlist_remove_symbols",
+      symbol: "TSLA"
+    });
+    const data = JSON.parse(result.result);
+    expect(data.ok).toBe(true);
+    expect(data.removed).toEqual(["TSLA"]);
+    expect(repositoryMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
+      expect.objectContaining({ removeSymbols: ["TSLA"] })
+    );
   });
 
   it("market_quote returns provider-backed quote snapshot", async () => {

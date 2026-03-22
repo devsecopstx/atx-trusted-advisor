@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 const protectedPathPrefixes = [
   "/admin",
@@ -7,6 +7,7 @@ const protectedPathPrefixes = [
   "/api/personas",
   "/api/rag",
   "/api/xchat",
+  "/portfolio",
   "/xfinance",
   "/xcoach"
 ];
@@ -42,6 +43,7 @@ export const config = {
     "/api/personas/:path*",
     "/api/rag/:path*",
     "/api/xchat/:path*",
+    "/portfolio/:path*",
     "/xfinance/:path*",
     "/xcoach/:path*"
   ]

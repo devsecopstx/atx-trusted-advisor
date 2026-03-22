@@ -291,7 +291,7 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
           </div>
 
           <div className="cta-row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
-            <Link className="cta cta-secondary" href="/xfinance">
+            <Link className="cta cta-secondary" href="/portfolio">
               Back to portfolio
             </Link>
             {isAdmin ? (

@@ -46,13 +46,13 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     description: "Read-only xAI collection inventory for this management API key."
   },
   {
-    href: "/admin/xchat",
+    href: "/chat",
     icon: "chat",
-    title: "xchat Ask",
-    description: "Ask xchat questions with a selected persona on global scope."
+    title: "xChat test (`/chat`)",
+    description: "global_admin harness: single-message ask with optional persona id (not the product `/xchat` UI)."
   },
   {
-    href: "/admin/xchat/batch",
+    href: "/admin/batch",
     icon: "batch",
     title: "Batch Ops Dashboard",
     description: "Track xchat batch progress, failures, and completion metrics."

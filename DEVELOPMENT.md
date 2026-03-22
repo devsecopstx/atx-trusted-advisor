@@ -8,13 +8,14 @@ Core backend and UI for atxFinance **admin operations** and **signed-in app_user
 - task scheduling metadata
 - user broker/portfolio/account defaults
 - notification defaults
-- app_user surfaces: xChat, xCoach, portfolio (`/xfinance`), watchlist (`/watchlist`) with shared header (profile, logout, feedback, optional DB chip)
+- app_user surfaces: xChat, xCoach, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`) with shared header (profile, logout, feedback, optional DB chip)
 
 ## Tech Stack
 
 - Next.js App Router (`src/app/api/*`) for backend routes
 - MongoDB database: `atxfinancedb`
 - TypeScript + Zod validation
+- **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`docs/xchat/xai-api-standard.md`** for repo mapping and deep links.
 
 ## Platform roles vs tenant membership (session)
 
@@ -28,7 +29,7 @@ Session payload (`SessionUser` in `src/lib/auth.ts`):
 ### Product rules
 
 - **Admin console** (`/admin/*`, `requireGlobalAdminSession` / `requireAdminSession`): **only** `global_admin` (after normalization). The admin layout redirects everyone else to `/xchat`.
-- **App_user surfaces** (approved login): `advisor`, `operator`, `viewer` — xChat, xCoach, Portfolio (`/xfinance`), Watchlist (`/watchlist`). Shared chrome: `AppUserApprovedHeader` (`src/app/ui/app_user-approved-header.tsx`) = product links (`AppUserProductNav`) + `AppUserHeaderSession` (profile popover, logout, feedback modal, optional Mongo host/db pill per `shouldShowAppUserDbLabel()` in `src/lib/env.ts`).
+- **App_user surfaces** (approved login): `advisor`, `operator`, `viewer` — xChat, xCoach, Portfolio (`/portfolio`), Watchlist (`/watchlist`). Shared chrome: `AppUserApprovedHeader` (`src/app/ui/app_user-approved-header.tsx`) = product links (`AppUserProductNav`) + `AppUserHeaderSession` (profile popover, logout, feedback modal, optional Mongo host/db pill per `shouldShowAppUserDbLabel()` in `src/lib/env.ts`).
 - **Access requests** are **onboarding**, not a role: unapproved users have no login-allowed platform role (unless `ALLOW_ANY_X_USER_LOGIN`); after approval, admins assign a platform role (typically `viewer`).
 
 **Feature flags** (e.g. `ALLOW_ANY_X_USER_LOGIN`) are **env-driven capabilities** — do not represent them as platform roles in Mongo.
@@ -122,16 +123,16 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 - `access_request_pending`: account exists but has no login-allowed role (`global_admin`, `advisor`, `operator`, `viewer`). **Docs term `app_user` is not a DB role** — session must include one of `advisor` / `operator` / `viewer` (or `global_admin`) for `canUserLogin()`; see `src/modules/identity/authorization.ts`.
 - If the entered email already belongs to an approved admin account, `/api/auth/link-email` now unlinks stale X mappings and re-links to the approved user.
 - For Atlas-only setups, if login/link-email email matches `ADMIN_SEED_EMAIL` (must be set in env), auth flow auto-applies seeded global-admin role and tenant membership. Local Mongo is not required.
-- `bootstrap_failed`: tenant membership, default portfolio provisioning, or session cookie creation threw after X OAuth succeeded. Check **Cloud Run logs** for `[auth/x/callback] session bootstrap failed` (Mongo index errors, duplicate keys, or DB connectivity). User is redirected to `/login` with this code instead of a raw **500** when the catch path is deployed.
+- `bootstrap_failed`: tenant membership, `resolveAuthContext`, or **session cookie creation** threw after X OAuth succeeded. (**Default portfolio provisioning** is best-effort: failures log `[auth/x/callback] default portfolio provision non-fatal` and no longer block the session — portfolio is created lazily on `/portfolio` or `GET /api/portfolios/default`.) Check **Cloud Run logs** for `[auth/x/callback] session bootstrap failed` (Mongo index errors, duplicate keys, or DB connectivity). User is redirected to `/login` with this code instead of a raw **500** when the catch path is deployed.
 
 ### App_user HTTP 500
 
-If **`/admin` works** but **`/xchat` or `/xfinance` returns 500** (staging or prod):
+If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or prod):
 
 1. Confirm **`GET /api/health`** returns `200` with `status: ok` (rules out broken `MONGODB_URI_B64` for that revision).
-2. **Cloud Run → Logs** — filter for the request path and `Error` / `x/callback` / `getDefaultPortfolio`.
+2. **Cloud Run → Logs** — filter for the request path and `Error` / `x/callback` / `getDefaultPortfolio`. **Legacy data:** if `userId` on `tenant_portfolio` / `portfolio_*` was stored as BSON `ObjectId` while the session uses a hex string, reads used to miss; repository queries now match both shapes and normalize `userId` to string on provision.
 3. **OAuth callback** — empty env values like `X_OAUTH_CALLBACK_URL=` (literal empty) used to fail `getEnv()` at runtime; optional URL vars now treat blank as unset. Ensure **`X_OAUTH_CALLBACK_URL`** in production matches the live host if set explicitly.
-4. **New app_user first login** — `provisionDefaultPortfolioForUser` runs in the callback; failures are logged and redirect to `bootstrap_failed` instead of exposing a 500 when that path is active.
+4. **New app_user first login** — `provisionDefaultPortfolioForUser` runs in the callback; if it throws, sign-in still completes and the portfolio is provisioned on first Portfolio page or API access. Hard failures in membership/session still yield `bootstrap_failed`.
 5. Clear site cookies and retry sign-in if the session cookie was signed with a rotated **`AUTH_SECRET`** (invalid cookies yield logged-out behavior, not usually 500).
 
 ## Validation Commands

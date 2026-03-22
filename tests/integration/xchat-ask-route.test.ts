@@ -19,7 +19,6 @@ const xaiMocks = vi.hoisted(() => ({
 
 const repositoryMocks = vi.hoisted(() => ({
   getPersonaById: vi.fn(),
-  listPersonas: vi.fn(),
   resolveDefaultXchatPersonaForSession: vi.fn(),
   retrieveRagChunks: vi.fn(),
   saveXChatLog: vi.fn()
@@ -50,6 +49,10 @@ const identityMocks = vi.hoisted(() => ({
   getCoreUserById: vi.fn()
 }));
 
+const workspaceSnapshotMocks = vi.hoisted(() => ({
+  buildWorkspaceServerSnapshotBlock: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/rate-limit", () => rateLimitMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
@@ -60,6 +63,7 @@ vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
+vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", () => workspaceSnapshotMocks);
 
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
 
@@ -121,7 +125,6 @@ describe("xchat ask route collection retrieval", () => {
       raw: {}
     });
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue(buildPersona());
-    repositoryMocks.listPersonas.mockResolvedValue([]);
     repositoryMocks.getPersonaById.mockResolvedValue(buildPersona());
     repositoryMocks.retrieveRagChunks.mockResolvedValue([]);
     repositoryMocks.saveXChatLog.mockResolvedValue(undefined);
@@ -143,6 +146,7 @@ describe("xchat ask route collection retrieval", () => {
       blocked: false,
       nonReadyFiles: []
     });
+    workspaceSnapshotMocks.buildWorkspaceServerSnapshotBlock.mockResolvedValue(null);
   });
 
   it("uses xai collection snippets first when available", async () => {
@@ -167,17 +171,10 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextSource).toBe("xai_collection");
     expect(payload.data.contextCount).toBe(1);
     expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_ops-global");
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith(
-      "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
-    );
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_user-personal");
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledTimes(1);
     expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
       expect.objectContaining({
-        collectionIds: [
-          "collection_ops-global",
-          "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236",
-          "collection_user-personal"
-        ]
+        collectionIds: ["collection_ops-global"]
       })
     );
     expect(repositoryMocks.retrieveRagChunks).not.toHaveBeenCalled();
@@ -185,9 +182,14 @@ describe("xchat ask route collection retrieval", () => {
       expect.objectContaining({
         systemPrompt: expect.stringContaining("Collection context snippet"),
         toolChoice: "auto",
-        maxTurns: 5
+        maxTurns: 5,
+        tools: expect.arrayContaining([{ type: "web_search" }]),
+        userPrompt: expect.stringMatching(
+          /\[Persona \/ KB metadata — xChat and batch[\s\S]*Persona-linked xAI collection ids \(RAG \/ file_search scope\): collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
+        )
       })
     );
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
     expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
       expect.objectContaining({
         collectionContextReferences: [
@@ -253,7 +255,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(savedLogInput?.xapiMode).toBe("responses");
     expect(savedLogInput?.xapiToolChoice).toBe("auto");
     expect(savedLogInput?.xapiMaxTurns).toBe(5);
-    expect(savedLogInput?.xapiToolCount).toBe(2);
+    expect(savedLogInput?.xapiToolCount).toBe(1);
     const normalizedChunkIds = (savedLogInput?.contextChunkIds ?? []).map((chunkId) =>
       typeof chunkId === "string" ? chunkId : chunkId.toHexString()
     );
@@ -329,21 +331,18 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(200);
     expect(payload.data.contextSource).toBe("mongo_scope");
     expect(payload.data.contextCount).toBe(1);
-    expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledTimes(1);
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith(
-      "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
-    );
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_user-personal");
+    expect(xaiMocks.searchDocumentsInCollections).not.toHaveBeenCalled();
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).not.toHaveBeenCalled();
   });
 
-  it("injects linked collection ids into persona file_search tools", async () => {
+  it("merges persona-declared collection ids into file_search tools for xAI", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         xapi: {
           mode: "responses",
           toolChoice: "auto",
           maxTurns: 5,
-          tools: [{ type: "file_search", source: { collection_ids: ["collection_ops-global"] } }]
+          tools: [{ type: "file_search", source: { collection_ids: ["collection_extra"] } }]
         }
       })
     );
@@ -359,17 +358,13 @@ describe("xchat ask route collection retrieval", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+    expect(xaiMocks.respondWithXai).toHaveBeenCalledWith(
       expect.objectContaining({
         tools: expect.arrayContaining([
           {
             type: "file_search",
             source: {
-              collection_ids: [
-                "collection_ops-global",
-                "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236",
-                "collection_user-personal"
-              ]
+              collection_ids: expect.arrayContaining(["collection_ops-global", "collection_extra"])
             }
           }
         ])
@@ -408,7 +403,7 @@ describe("xchat ask route collection retrieval", () => {
           mode: "chat_completions",
           toolChoice: "auto",
           maxTurns: 5,
-          tools: []
+          tools: [{ type: "yahoo_finance" }]
         }
       })
     );
@@ -643,7 +638,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439077");
   });
 
-  it("injects atxfinance tool for app_user when persona xapi omits it", async () => {
+  it("does not inject atxfinance for app_user when persona omits it", async () => {
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -677,15 +672,58 @@ describe("xchat ask route collection retrieval", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalled();
+    const toolLoopArg = xaiMocks.respondWithXaiToolLoop.mock.calls[0]?.[0] as {
+      systemPrompt?: string;
+    };
+    expect(toolLoopArg?.systemPrompt ?? "").not.toContain("You MUST use the atxfinance tool");
+    expect(toolLoopArg?.systemPrompt ?? "").toContain("Hosted search (web_search / x_search):");
+  });
+
+  it("injects server workspace snapshot before model when atxfinance tool is active", async () => {
+    workspaceSnapshotMocks.buildWorkspaceServerSnapshotBlock.mockResolvedValueOnce(
+      "Workspace snapshot (loaded server-side for this request; SNAPSHOT_TEST_MARKER"
+    );
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atxfinance" }, { type: "web_search" }]
+        }
+      })
+    );
+    repositoryMocks.getPersonaById.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atxfinance" }, { type: "web_search" }]
+        }
+      })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "summarize my workspace"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(workspaceSnapshotMocks.buildWorkspaceServerSnapshotBlock).toHaveBeenCalledWith({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        tools: expect.arrayContaining([
-          expect.objectContaining({
-            type: "function",
-            function: expect.objectContaining({ name: "atxfinance" })
-          })
-        ]),
-        systemPrompt: expect.stringContaining("You MUST use the atxfinance tool")
+        systemPrompt: expect.stringContaining("SNAPSHOT_TEST_MARKER")
       })
     );
   });
@@ -825,6 +863,7 @@ describe("xchat ask route collection retrieval", () => {
         model: "grok-from-persona-doc"
       })
     );
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
   });
 
   it("maps multi-agent effort high to 16 agents when persona model is grok-4.20-multi-agent", async () => {
@@ -855,6 +894,7 @@ describe("xchat ask route collection retrieval", () => {
         }
       })
     );
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
     expect(identityMocks.getCoreUserById).not.toHaveBeenCalled();
   });
 
@@ -909,5 +949,6 @@ describe("xchat ask route collection retrieval", () => {
         parallelism: undefined
       })
     );
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
   });
 });

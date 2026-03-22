@@ -7,6 +7,7 @@ vi.mock("@/lib/mongodb", () => ({
 
 import { getDb } from "@/lib/mongodb";
 import {
+    getDefaultPortfolio,
     provisionDefaultPortfolioForUser,
     upsertPositionForAccount
 } from "@/modules/core-admin/repository";
@@ -20,6 +21,13 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function valueMatches(actual: unknown, expected: unknown): boolean {
   if (expected instanceof ObjectId) {
     return actual instanceof ObjectId && actual.equals(expected);
+  }
+  if (isPlainObject(expected) && "$type" in expected && (expected as { $type: unknown }).$type === "null") {
+    return actual === null;
+  }
+  if (isPlainObject(expected) && "$in" in expected && Array.isArray((expected as { $in: unknown }).$in)) {
+    const arr = (expected as { $in: unknown[] }).$in;
+    return arr.some((v) => valueMatches(actual, v));
   }
   if (isPlainObject(expected) && "$exists" in expected) {
     const existsValue = expected.$exists;
@@ -139,6 +147,9 @@ function buildFakeDb() {
     } as unknown as Db,
     count(collectionName: string): number {
       return ensureStore(collectionName).length;
+    },
+    seed(collectionName: string, doc: DocumentRecord) {
+      ensureStore(collectionName).push(doc);
     }
   };
 }
@@ -148,6 +159,46 @@ describe("portfolio provisioning repository", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("getDefaultPortfolio matches when userId is stored as ObjectId (legacy)", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+    const userId = "507f1f77bcf86cd799439011";
+    const tenantId = "507f1f77bcf86cd799439022";
+    fakeDb.seed("tenant_portfolio", {
+      _id: new ObjectId(),
+      userId: new ObjectId(userId),
+      isDefault: true,
+      tenantId: new ObjectId(tenantId),
+      name: "Default Portfolio",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const found = await getDefaultPortfolio(userId, { tenantId });
+    expect(found).not.toBeNull();
+    expect(found?.name).toBe("Default Portfolio");
+  });
+
+  it("getDefaultPortfolio matches default portfolio when tenantId is BSON null", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+    const userId = "507f1f77bcf86cd799439011";
+    const tenantId = "507f1f77bcf86cd799439022";
+    fakeDb.seed("tenant_portfolio", {
+      _id: new ObjectId(),
+      userId,
+      isDefault: true,
+      tenantId: null,
+      name: "Default Portfolio",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const found = await getDefaultPortfolio(userId, { tenantId });
+    expect(found).not.toBeNull();
+    expect(found?.userId).toBe(userId);
   });
 
   it("provisions defaults idempotently and keeps one watchlist per portfolio", async () => {

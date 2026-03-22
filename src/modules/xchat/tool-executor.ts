@@ -8,15 +8,48 @@ import {
     listPortfolioPositionsByAccount,
     listScheduledTasks,
     listTaskRuns,
+    mutatePortfolioWatchlistSymbols,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
-import { getCachedToolResult, setCachedToolResult } from "@/modules/xchat/tool-cache";
+import {
+    deleteCachedToolResult,
+    getCachedToolResult,
+    setCachedToolResult
+} from "@/modules/xchat/tool-cache";
 
 const MAX_OUTPUT_BYTES = 8 * 1024;
 /** Cap rows returned by positions_snapshot before JSON serialization (freshness; not cached). */
 const MAX_POSITIONS_RETURNED = 200;
 const CACHEABLE_OPERATIONS = new Set(["portfolio_summary", "watchlist_snapshot", "account_health"]);
+/** Matches PATCH `/api/portfolios/:id/watchlist` batch size. */
+const MAX_WATCHLIST_MUTATE_PER_CALL = 20;
+
+function parseTickerListFromArgs(args: Record<string, unknown>, max: number): string[] {
+  if (Array.isArray(args.symbols)) {
+    const out: string[] = [];
+    for (const item of args.symbols) {
+      if (typeof item !== "string") {
+        continue;
+      }
+      const t = item.trim().toUpperCase();
+      if (t && /^[A-Z0-9.\-]{1,32}$/.test(t)) {
+        out.push(t);
+      }
+      if (out.length >= max) {
+        break;
+      }
+    }
+    return out;
+  }
+  if (typeof args.symbol === "string") {
+    const t = args.symbol.trim().toUpperCase();
+    if (t && /^[A-Z0-9.\-]{1,32}$/.test(t)) {
+      return [t].slice(0, max);
+    }
+  }
+  return [];
+}
 
 type ExecutorContext = {
   userId: string;
@@ -126,6 +159,76 @@ const operations: Record<string, OperationHandler> = {
         symbol: s.symbol,
         addedAt:
           s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt)
+      }))
+    };
+  },
+
+  watchlist_add_symbols: async (args, ctx) => {
+    const toAdd = parseTickerListFromArgs(args, MAX_WATCHLIST_MUTATE_PER_CALL);
+    if (toAdd.length === 0) {
+      return {
+        error: "no_symbols",
+        hint: "Provide symbols (string array) or symbol (string), e.g. NVDA or [\"NVDA\",\"AMD\"]."
+      };
+    }
+    const portfolio = await getDefaultPortfolioOrProvision(ctx);
+    if (!portfolio?._id) {
+      return { error: "no_default_portfolio" };
+    }
+    const updated = await mutatePortfolioWatchlistSymbols({
+      userId: ctx.userId,
+      portfolioId: portfolio._id.toHexString(),
+      tenantId: ctx.tenantId,
+      addSymbols: toAdd
+    });
+    deleteCachedToolResult(ctx.userId, "watchlist_snapshot");
+    if (!updated) {
+      return { error: "no_watchlist" };
+    }
+    const symbols = updated.symbols ?? [];
+    return {
+      ok: true,
+      requested: toAdd,
+      watchlistName: updated.name,
+      symbolCount: symbols.length,
+      symbols: symbols.map((s) => ({
+        symbol: s.symbol,
+        addedAt: s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt)
+      }))
+    };
+  },
+
+  watchlist_remove_symbols: async (args, ctx) => {
+    const toRemove = parseTickerListFromArgs(args, MAX_WATCHLIST_MUTATE_PER_CALL);
+    if (toRemove.length === 0) {
+      return {
+        error: "no_symbols",
+        hint: "Provide symbols (string array) or symbol (string) to remove from the default watchlist."
+      };
+    }
+    const portfolio = await getDefaultPortfolioOrProvision(ctx);
+    if (!portfolio?._id) {
+      return { error: "no_default_portfolio" };
+    }
+    const updated = await mutatePortfolioWatchlistSymbols({
+      userId: ctx.userId,
+      portfolioId: portfolio._id.toHexString(),
+      tenantId: ctx.tenantId,
+      removeSymbols: toRemove
+    });
+    deleteCachedToolResult(ctx.userId, "watchlist_snapshot");
+    if (!updated) {
+      return { error: "no_watchlist" };
+    }
+    const symbols = updated.symbols ?? [];
+    return {
+      ok: true,
+      removed: toRemove,
+      watchlistName: updated.name,
+      symbolCount: symbols.length,
+      symbols: symbols.map((s) => ({
+        symbol: s.symbol,
+        addedAt: s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt)
       }))
     };
   },
@@ -314,7 +417,7 @@ export const ATXFINANCE_TOOL_DEFINITION = {
   function: {
     name: "atxfinance",
     description:
-      "Read-only queries for the authenticated user's portfolio, linked accounts (including cash balances), watchlist symbols, open positions (holdings), scheduled task status, and market quotes. Data is scoped to the signed-in user; do not pass a user id. Use positions_snapshot for symbol/qty/avgCost; portfolio_summary for overview and per-account position counts.",
+      "Portfolio, accounts, watchlist (read + add/remove symbols on the user's default watchlist), positions, scheduled tasks, and Yahoo quotes. Scoped to the signed-in user only—never pass a user id. Use watchlist_add_symbols when the user asks to add tickers (e.g. \"add NVDA to my watchlist\"); use watchlist_remove_symbols to remove.",
     parameters: {
       type: "object",
       properties: {
@@ -324,17 +427,25 @@ export const ATXFINANCE_TOOL_DEFINITION = {
             "portfolio_summary",
             "positions_snapshot",
             "watchlist_snapshot",
+            "watchlist_add_symbols",
+            "watchlist_remove_symbols",
             "account_health",
             "task_status",
             "market_quote"
           ],
           description:
-            "portfolio_summary: portfolio + accounts with cashBalance and position counts. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_snapshot: symbols with addedAt. account_health: accounts with cashBalance and default account name. task_status: scheduled tasks/runs. market_quote: Yahoo quote for symbol."
+            "portfolio_summary: portfolio + accounts with cashBalance and position counts. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_snapshot: current symbols. watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. market_quote: Yahoo quote for symbol."
         },
         symbol: {
           type: "string",
           description:
-            "Ticker symbol for market_quote (for example TSLA). Optional; defaults to TSLA."
+            "Single ticker: market_quote, or one symbol for watchlist_add_symbols / watchlist_remove_symbols."
+        },
+        symbols: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Multiple tickers for watchlist_add_symbols or watchlist_remove_symbols (max 20 per call), e.g. [\"NVDA\",\"AMD\"]."
         }
       },
       required: ["operation"]

@@ -6,48 +6,47 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
-    chatWithXai,
-    respondWithXai,
-    respondWithXaiToolLoop,
-    searchDocumentsInCollections,
-    type ToolCallLog
+  chatWithXai,
+  respondWithXai,
+  respondWithXaiToolLoop,
+  searchDocumentsInCollections,
+  type ToolCallLog
 } from "@/lib/xai";
+import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatAskDebug, logXchatAskFullPayload } from "@/lib/xchat-debug";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
-    appendXchatTurnToUserCollection,
-    resolveOrCreateUserBootstrapCollection
+  appendXchatTurnToUserCollection,
+  resolveOrCreateUserBootstrapCollection
 } from "@/modules/core-admin/access-request-bootstrap";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
 import type { SubscriptionPlan } from "@/modules/identity/types";
+import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
 import {
-    ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
-    XPERSONA_SUPER_AGENT_NAME,
-    XPERSONA_XFINANCE_NAME
+  ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
+  HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS,
+  XPERSONA_SUPER_AGENT_NAME
 } from "@/modules/xchat/default-xpersonas";
+import {
+  getPersonaLinkedCollectionIds,
+  withLinkedCollectionTools
+} from "@/modules/xchat/persona-linked-collections";
 import { clampMultiAgentParallelismForPlan } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
-    getPersonaById,
-    listPersonas,
-    resolveDefaultXchatPersonaForSession,
-    retrieveRagChunks,
-    saveXChatLog
+  getPersonaById,
+  resolveDefaultXchatPersonaForSession,
+  retrieveRagChunks,
+  saveXChatLog
 } from "@/modules/xchat/repository";
+import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import {
-    ATXFINANCE_TOOL_DEFINITION,
-    createXfinanceToolExecutor,
-    YAHOO_FINANCE_TOOL_DEFINITION
-} from "@/modules/xchat/tool-executor";
-import {
-    ATXFINANCE_COLLECTION_ID,
-    ensureSuperAgentDefaultTools,
-    normalizePersonaXapiConfig,
-    type PersonaXapiConfig,
-    type PersonaXapiToolDefinition
+  normalizePersonaXapiConfig,
+  type PersonaXapiConfig
 } from "@/modules/xchat/types";
+import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 
 const askSchema = z.object({
@@ -232,31 +231,17 @@ export async function POST(request: Request) {
   const userId = ObjectId.isValid(session.userId)
     ? new ObjectId(session.userId)
     : undefined;
-  const personaCollectionId = persona?.xaiCollection?.collectionId?.trim();
   const userCollection = await resolveOrCreateUserBootstrapCollection({
     userId: session.userId,
     tenantId: session.tenantId,
     email: session.email
   });
-  const teamCollectionIds = isAdminSession ? await resolveAdminTeamCollectionIds() : [];
-  const linkedCollectionIds = resolveLinkedCollectionIds({
-    personaCollectionId,
-    userCollectionId: userCollection?.collectionId,
-    teamCollectionIds
-  });
+  /** RAG / file_search wiring: only ids declared on the persona (bound collection + tool `collection_ids`). */
+  const linkedCollectionIds = getPersonaLinkedCollectionIds(persona);
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
-  const withFinanceTools = ensureInternalFinanceToolsForPersona(baseXapiConfig, persona?.name);
-  const withSuperAgentTools = ensureSuperAgentDefaultTools(withFinanceTools, persona?.name);
-  const withAppMemberPortfolioTool =
-    hasAppRole && !withSuperAgentTools.tools.some((tool) => tool.type === "atxfinance")
-      ? {
-          ...withSuperAgentTools,
-          tools: [...withSuperAgentTools.tools, { type: "atxfinance" as const }]
-        }
-      : withSuperAgentTools;
-  const xapiConfig = withLinkedCollectionTools(withAppMemberPortfolioTool, linkedCollectionIds);
+  const xapiConfig = withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds);
 
   let contextSource: "none" | "mongo_scope" | "xai_collection" = "none";
   let ragChunks: Awaited<ReturnType<typeof retrieveRagChunks>> = [];
@@ -337,16 +322,47 @@ export async function POST(request: Request) {
   const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
   /** Custom tools must run through `respondWithXaiToolLoop`; `chatWithXai` does not execute tool_calls. */
   const needsLocalToolLoop = hasXfinanceTool || hasYahooFinanceTool;
+  /**
+   * Hosted `web_search` / `x_search` use the same multi-turn Responses loop as local tools so
+   * `respondWithXaiToolLoop` can recover when the model prints pseudo `<xai-tool>` / JSON instead of
+   * real `function_call`s (`respondWithXai` is single-request only).
+   */
+  const hasHostedSearchTool = xapiConfig.tools.some(
+    (t) => t.type === "web_search" || t.type === "x_search"
+  );
+  const useResponsesToolLoop = needsLocalToolLoop || hasHostedSearchTool;
+
+  let workspaceServerSnapshot: string | null = null;
+  if (hasXfinanceTool) {
+    try {
+      workspaceServerSnapshot = await buildWorkspaceServerSnapshotBlock({
+        userId: session.userId,
+        tenantId: session.tenantId
+      });
+    } catch (error) {
+      console.warn("[xchat/ask] workspace server snapshot failed (non-fatal)", {
+        userId: session.userId,
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
 
   const systemPrompt = [
     persona?.systemPrompt ?? "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext ? `Use the following RAG context if relevant:\n${ragContext}` : "No RAG context available.",
-    ...(hasXfinanceTool ? [ATXFINANCE_SESSION_TOOL_INSTRUCTIONS] : [])
+    ...(workspaceServerSnapshot ? [workspaceServerSnapshot] : []),
+    ...(hasXfinanceTool ? [ATXFINANCE_SESSION_TOOL_INSTRUCTIONS] : []),
+    ...(hasHostedSearchTool ? [HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS] : [])
   ].join("\n\n");
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
-  const userPrompt = userPromptTemplate
+  const userPromptBase = userPromptTemplate
     ? `${userPromptTemplate}\n\nUser message:\n${message}`
     : message;
+  const personaKbAugmentation = buildBatchUserPromptAugmentation({
+    tools: xapiConfig.tools,
+    linkedCollectionIds
+  });
+  const userPrompt = `${userPromptBase}\n\n${personaKbAugmentation}`;
   let xaiResponse: { outputText: string; model: string };
   let toolCallLogs: ToolCallLog[] = [];
 
@@ -384,23 +400,21 @@ export async function POST(request: Request) {
   };
 
   try {
-    if (xapiConfig.mode === "chat_completions" && !needsLocalToolLoop) {
+    if (xapiConfig.mode === "chat_completions" && !useResponsesToolLoop) {
       xaiResponse = await chatCompletionsWithTools();
-    } else if (needsLocalToolLoop) {
-      const xaiTools: Array<Record<string, unknown>> = xapiConfig.tools
-        .filter((t) => t.type !== "atxfinance" && t.type !== "yahoo_finance")
-        .map((t) => ({ ...t }));
-      if (hasXfinanceTool) {
-        xaiTools.push(ATXFINANCE_TOOL_DEFINITION);
-      }
-      if (hasYahooFinanceTool) {
-        xaiTools.push(YAHOO_FINANCE_TOOL_DEFINITION);
-      }
+    } else if (useResponsesToolLoop) {
+      const xaiTools = personaXapiToolsToXaiRequestTools(xapiConfig.tools);
 
-      const executor = createXfinanceToolExecutor({
-        userId: session.userId,
-        tenantId: session.tenantId
-      });
+      const executor = needsLocalToolLoop
+        ? createXfinanceToolExecutor({
+            userId: session.userId,
+            tenantId: session.tenantId
+          })
+        : async () => ({
+            result: "",
+            error: "local_tool_not_configured_for_persona"
+          });
+
       try {
         const loopResult = await respondWithXaiToolLoop({
           model: effectiveModel,
@@ -697,124 +711,4 @@ function resolveParallelAgentConfig(input: {
       reasoningEffort: effort
     }
   };
-}
-
-function resolveLinkedCollectionIds(input: {
-  personaCollectionId?: string;
-  userCollectionId?: string;
-  teamCollectionIds?: string[];
-}): string[] {
-  const ids = [
-    input.personaCollectionId,
-    ATXFINANCE_COLLECTION_ID,
-    input.userCollectionId,
-    ...(input.teamCollectionIds ?? [])
-  ]
-    .map((value) => value?.trim())
-    .filter((value): value is string => Boolean(value));
-  return Array.from(new Set(ids));
-}
-
-function withLinkedCollectionTools(
-  config: PersonaXapiConfig,
-  linkedCollectionIds: string[]
-): PersonaXapiConfig {
-  if (linkedCollectionIds.length === 0) {
-    return config;
-  }
-  return {
-    ...config,
-    tools: config.tools.map((tool) => mergeCollectionIdsIntoTool(tool, linkedCollectionIds))
-  };
-}
-
-function ensureInternalFinanceToolsForPersona(
-  config: PersonaXapiConfig,
-  personaName: string | undefined
-): PersonaXapiConfig {
-  const normalizedPersonaName = personaName?.trim().toLowerCase();
-  const shouldInjectAtxfinance =
-    normalizedPersonaName === XPERSONA_XFINANCE_NAME.toLowerCase() &&
-    !config.tools.some((tool) => tool.type === "atxfinance");
-  let tools = config.tools;
-  if (shouldInjectAtxfinance) {
-    tools = [...tools, { type: "atxfinance" }];
-  }
-  // Internal market-data rule: market quote path is always Yahoo-backed.
-  if (!tools.some((tool) => tool.type === "yahoo_finance")) {
-    tools = [...tools, { type: "yahoo_finance" }];
-  }
-  return {
-    ...config,
-    tools
-  };
-}
-
-async function resolveAdminTeamCollectionIds(): Promise<string[]> {
-  const personas = await listPersonas();
-  const ids: string[] = [];
-  for (const persona of personas) {
-    const boundCollectionId = persona.xaiCollection?.collectionId?.trim();
-    if (boundCollectionId) {
-      ids.push(boundCollectionId);
-    }
-    const tools = normalizePersonaXapiConfig(persona.xapi).tools;
-    for (const tool of tools) {
-      if (tool.type === "collections_search" && Array.isArray(tool.collection_ids)) {
-        for (const collectionId of tool.collection_ids) {
-          if (typeof collectionId === "string" && collectionId.trim()) {
-            ids.push(collectionId.trim());
-          }
-        }
-      }
-      if (tool.type === "file_search") {
-        const source = (tool.source ?? {}) as Record<string, unknown>;
-        if (Array.isArray(source.collection_ids)) {
-          for (const collectionId of source.collection_ids) {
-            if (typeof collectionId === "string" && collectionId.trim()) {
-              ids.push(collectionId.trim());
-            }
-          }
-        }
-      }
-    }
-  }
-  return Array.from(new Set(ids));
-}
-
-function mergeCollectionIdsIntoTool(
-  tool: PersonaXapiToolDefinition,
-  linkedCollectionIds: string[]
-): PersonaXapiToolDefinition {
-  if (tool.type === "file_search") {
-    const source = (tool.source ?? {}) as Record<string, unknown>;
-    const existingIds = Array.isArray(source.collection_ids)
-      ? source.collection_ids
-          .filter((id): id is string => typeof id === "string")
-          .map((id) => id.trim())
-          .filter((id) => id.length > 0)
-      : [];
-    return {
-      ...tool,
-      source: {
-        ...source,
-        collection_ids: Array.from(new Set([...existingIds, ...linkedCollectionIds]))
-      }
-    };
-  }
-
-  if (tool.type === "collections_search") {
-    const existingIds = Array.isArray(tool.collection_ids)
-      ? tool.collection_ids
-          .filter((id): id is string => typeof id === "string")
-          .map((id) => id.trim())
-          .filter((id) => id.length > 0)
-      : [];
-    return {
-      ...tool,
-      collection_ids: Array.from(new Set([...existingIds, ...linkedCollectionIds]))
-    };
-  }
-
-  return tool;
 }

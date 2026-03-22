@@ -1,18 +1,20 @@
 # Batch (KB-style) persona contract
 
-Batch jobs use the **persona stored in the database** for prompt and tools. Nothing is hardcoded.
+Batch jobs use the **persona stored in the database** for prompt and tools. Nothing is hardcoded. Outbound requests follow the **[xAI Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api)**; see **[xAI as the integration standard](./xai-api-standard.md)** (entry: [docs.x.ai overview](https://docs.x.ai/overview)).
 
 ## Per batch item
 
-- **System prompt:** `persona.systemPrompt`; if missing or empty, fallback is the generic string `"You are a helpful assistant."` (no product-specific text).
-- **User prompt:** `persona.overridePrompt` (if any) + user message + appended metadata block (default collection id, persona RAG collection, list of persona tools for context).
-- **Tools:** `persona.xapi.tools` from DB, minus `atxfinance` (not executed in batch API). So `web_search`, `x_search`, `file_search` / `collections_search` are included only when configured on the persona.
-- **RAG:** When `persona.enableRag` is not false and `persona.xaiCollection.collectionId` is set, collection pre-search runs and context is injected into the system prompt.
+- **System prompt:** `persona.systemPrompt`; if missing or empty, fallback is the generic string `"You are a helpful assistant."` (no product-specific text). When the persona includes `atxfinance`, a **server-loaded workspace snapshot** (portfolio, accounts, watchlist, capped positions preview) is appended before tool instructions — same helper as interactive ask (`buildWorkspaceServerSnapshotBlock`). **`ATXFINANCE_SESSION_TOOL_INSTRUCTIONS`** / **`HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS`** are appended when the persona includes `atxfinance` or `web_search` / `x_search`, matching interactive ask (`default-xpersonas.ts`).
+- **User prompt:** `persona.overridePrompt` (if any) + user message + appended metadata block (**persona-linked** xAI collection ids — union of `xaiCollection.collectionId` and tool `collection_ids` — plus list of persona tools). **`POST /api/xchat/ask` appends the same block** (`buildBatchUserPromptAugmentation`) so interactive xChat and batch items see identical KB-style hints. No env default KB collection id is injected.
+- **Tools:** Full `persona.xapi.tools` from DB, expanded the same way as xChat ask: `atxfinance` / `yahoo_finance` markers become xAI `function` tool schemas (`personaXapiToolsToXaiRequestTools` in `src/lib/xai-tools.ts`). Hosted tools (`web_search`, `x_search`, `file_search`) pass through or map from `collections_search`. Batch runs as **single-shot** xAI Batch requests (no local `respondWithXaiToolLoop`); whether xAI completes multi-turn tool execution for custom functions inside a batch item depends on the provider — the request payload now matches persona configuration so models see the same tool surface as interactive ask when tools are enabled.
+- **RAG:** When `persona.enableRag` is not false and at least one persona-linked collection id exists (bound collection and/or ids on collection tools), pre-search runs against **that union** and context is injected into the system prompt (same id set as ask via `getPersonaLinkedCollectionIds` in `persona-linked-collections.ts`).
 
 Operators change behavior by editing the persona in Admin → Personas (system prompt, override prompt, tools, collection).
 
 ## See also
 
+- [`xchat-tools-guide.md`](./xchat-tools-guide.md) — ask vs batch prompt/tool workflow (mermaid)
+- [`xai-api-standard.md`](./xai-api-standard.md) — xAI docs as the standard + repo map
 - `src/modules/xchat/batch-service.ts` — `submitBatchJob`
 - `src/modules/xchat/batch-prompt-context.ts` — prompt augmentation (tool list, collection id)
 - [xAI Batch API](https://docs.x.ai/developers/advanced-api-usage/batch-api)

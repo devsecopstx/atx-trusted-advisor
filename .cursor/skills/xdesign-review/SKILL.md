@@ -17,7 +17,7 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 
 ## Core MVP Scope (Revisit)
 
-- **xChat** — Finance-enabled Grok session; persona/RAG/tool behavior governed by published personas and `POST /api/xchat/ask`. See `docs/xchat/*.md` for contracts.
+- **xChat** — Finance-enabled Grok session; persona/RAG/tool behavior governed by published personas and `POST /api/xchat/ask`. See `docs/xchat/*.md` for contracts. **Prompt + tool assembly (diagrams):** `docs/xchat/xchat-tools-guide.md` — update when ask/batch prompt order or routing changes (xDesign doc parity).
 - **xCoach** — Currently a **stub**. Planned: licensing exam (timed test). Further scope (TODO).
 
 ## When to Use

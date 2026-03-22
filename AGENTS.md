@@ -54,7 +54,8 @@ After merging and deploying to production (or staging first):
 - Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
 - Personas API: `GET /api/personas`
-- xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (global_admin), **xFinance** (app roles); RAG collection ids via Admin → Personas or `ATXFINANCE_COLLECTION_ID`. **Effective xAI model** comes from the **resolved persona’s `model`** (fallback server default if unset); optional `personaId` / admin-assigned persona selects persona — **no** request-body `model` override
+- xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (global_admin), **xFinance** (app roles); **RAG / file_search collection scope** is **only** what is declared on the resolved persona (`xaiCollection` + tool `collection_ids`), not env defaults or implicit user/team merges. **Effective xAI model** comes from the **resolved persona’s `model`** (fallback server default if unset); optional `personaId` / admin-assigned persona selects persona — **no** request-body `model` override. **`xapi.tools`** are used as stored (include `atxfinance` / `yahoo_finance` on the persona when needed).
+- **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`docs/xchat/xai-api-standard.md`**
 - Market price source-of-truth (current): Yahoo Finance via `yahoo-finance2` (`src/modules/xchat/market-data.ts`); quote-related prompts/tools should route through `market_quote` / `yahoo_finance` rather than narrative web-only lookups
 - App_user feedback: `POST /api/feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
 - **App_user 500 while admin works:** see [DEVELOPMENT.md — App_user HTTP 500](DEVELOPMENT.md#app_user-http-500); check Cloud Run logs for `[auth/x/callback]` and Mongo/provisioning errors

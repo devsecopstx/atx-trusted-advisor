@@ -33,7 +33,7 @@ export default async function AdminBatchDetailPage({
         <section className="panel stack-gap">
           <h1>Batch Not Found</h1>
           <p className="status-text">No batch exists for id: {batchId}</p>
-          <Link className="admin-function-card" href="/admin/xchat/batch">
+          <Link className="admin-function-card" href="/admin/batch">
             <span className="admin-function-copy">
               <strong>Back to Batch Ops</strong>
               <span>Return to dashboard.</span>
@@ -139,7 +139,7 @@ export default async function AdminBatchDetailPage({
       </section>
 
       <section className="panel stack-gap">
-        <Link className="admin-function-card" href="/admin/xchat/batch">
+        <Link className="admin-function-card" href="/admin/batch">
           <span className="admin-function-copy">
             <strong>Back to Batch Ops</strong>
             <span>Return to dashboard list and filters.</span>

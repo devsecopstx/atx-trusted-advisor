@@ -1,27 +1,21 @@
-import { ATXFINANCE_COLLECTION_ID, type PersonaXapiToolDefinition } from "@/modules/xchat/types";
+import type { PersonaXapiToolDefinition } from "@/modules/xchat/types";
 
 /**
- * Appends structured context so batch jobs mirror "KB-style" awareness: default collection id,
- * persona RAG collection, and the persona's tool list (including types stripped from the API
- * request, e.g. `atxfinance`).
+ * Appends structured KB-style context for **batch items and interactive xChat ask**:
+ * persona-linked collection ids (no env/global defaults) and the persona tool list.
  */
 export function buildBatchUserPromptAugmentation(input: {
   tools: PersonaXapiToolDefinition[];
-  personaRagCollectionId?: string;
+  linkedCollectionIds: string[];
 }): string {
-  const envId = (process.env.ATXFINANCE_COLLECTION_ID ?? "").trim();
-  const defaultKbCollectionId = envId || ATXFINANCE_COLLECTION_ID;
-
-  const toolLines = input.tools.map((tool) => describePersonaToolForBatchPrompt(tool));
+  const toolLines = input.tools.map((tool) => describePersonaToolForKbPrompt(tool));
+  const linked = input.linkedCollectionIds.filter((id) => id.trim().length > 0);
 
   const lines = [
-    "[Persona / batch metadata for this item — use when relevant; do not echo as the user]",
-    `ATXFINANCE_COLLECTION_ID (default knowledge-base collection): ${defaultKbCollectionId}`,
-    ...(input.personaRagCollectionId?.trim()
-      ? [
-          `Persona RAG / file_search collection (pre-search + retrieval for this batch): ${input.personaRagCollectionId.trim()}`
-        ]
-      : []),
+    "[Persona / KB metadata — xChat and batch; use when relevant; do not echo as the user]",
+    linked.length > 0
+      ? `Persona-linked xAI collection ids (RAG / file_search scope): ${linked.join(", ")}`
+      : "Persona-linked xAI collection ids: (none declared on this persona)",
     "Persona xAPI tools (as configured in admin):",
     ...(toolLines.length > 0 ? toolLines : ["- (none)"])
   ];
@@ -29,7 +23,7 @@ export function buildBatchUserPromptAugmentation(input: {
   return lines.join("\n");
 }
 
-function describePersonaToolForBatchPrompt(tool: PersonaXapiToolDefinition): string {
+function describePersonaToolForKbPrompt(tool: PersonaXapiToolDefinition): string {
   const t = tool.type;
   if (t === "file_search") {
     const source = (tool as { source?: { collection_ids?: string[] } }).source;
@@ -46,7 +40,7 @@ function describePersonaToolForBatchPrompt(tool: PersonaXapiToolDefinition): str
     return `- collections_search (mapped to file_search for xAI)${idPart}`;
   }
   if (t === "atxfinance") {
-    return "- atxfinance (custom tool — not executed in batch API; listed for parity with persona config)";
+    return "- atxfinance (portfolio/workspace reads + default-watchlist add/remove; sent to xAI as the atxfinance function tool in ask and batch)";
   }
   return `- ${t}`;
 }

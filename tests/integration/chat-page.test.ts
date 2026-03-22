@@ -13,9 +13,9 @@ const navigationMocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("next/navigation", () => navigationMocks);
 
-import AdminXchatPage from "@/app/admin/xchat/page";
+import ChatTestPage from "@/app/chat/page";
 
-describe("admin xchat page access", () => {
+describe("/chat test page access", () => {
   beforeEach(() => {
     authMocks.getSessionUser.mockReset();
     navigationMocks.redirect.mockClear();
@@ -24,7 +24,7 @@ describe("admin xchat page access", () => {
   it("redirects unauthenticated users to /login", async () => {
     authMocks.getSessionUser.mockResolvedValue(null);
 
-    await expect(AdminXchatPage()).rejects.toThrow("REDIRECT:/login");
+    await expect(ChatTestPage()).rejects.toThrow("REDIRECT:/login");
   });
 
   it("redirects non-admin users to /xchat", async () => {
@@ -33,6 +33,6 @@ describe("admin xchat page access", () => {
       roles: ["viewer"]
     });
 
-    await expect(AdminXchatPage()).rejects.toThrow("REDIRECT:/xchat");
+    await expect(ChatTestPage()).rejects.toThrow("REDIRECT:/xchat");
   });
 });

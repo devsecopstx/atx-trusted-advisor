@@ -6,7 +6,7 @@ import { AskIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 
-export type AdminXchatPersonaOption = {
+export type XchatTestPersonaOption = {
   _id?: string;
   name: string;
   model: string;
@@ -19,7 +19,7 @@ type AskResponse = {
   };
 };
 
-function resolveSuperAgentPersonaId(personas: AdminXchatPersonaOption[]): string {
+function resolveSuperAgentPersonaId(personas: XchatTestPersonaOption[]): string {
   const key = XPERSONA_SUPER_AGENT_NAME.trim().toLowerCase();
   for (const p of personas) {
     const id = typeof p._id === "string" ? p._id.trim() : "";
@@ -30,12 +30,12 @@ function resolveSuperAgentPersonaId(personas: AdminXchatPersonaOption[]): string
   return "";
 }
 
-type XchatConsoleProps = {
-  initialPersonas: AdminXchatPersonaOption[];
+type XchatTestConsoleProps = {
+  initialPersonas: XchatTestPersonaOption[];
 };
 
-export function XchatConsole({ initialPersonas }: XchatConsoleProps) {
-  const [personas, setPersonas] = useState<AdminXchatPersonaOption[]>(initialPersonas);
+export function XchatTestConsole({ initialPersonas }: XchatTestConsoleProps) {
+  const [personas, setPersonas] = useState<XchatTestPersonaOption[]>(initialPersonas);
   const [selectedPersona, setSelectedPersona] = useState(
     () => resolveSuperAgentPersonaId(initialPersonas) || ""
   );
@@ -63,7 +63,7 @@ export function XchatConsole({ initialPersonas }: XchatConsoleProps) {
   const refreshPersonas = useCallback(async () => {
     setStatus("Loading personas...");
     try {
-      const payload = await parseJson<{ data: AdminXchatPersonaOption[] }>(await fetch("/api/personas"));
+      const payload = await parseJson<{ data: XchatTestPersonaOption[] }>(await fetch("/api/personas"));
       setPersonas(payload.data);
       setSelectedPersona((prev) => {
         if (prev && payload.data.some((p) => String(p._id ?? "").trim() === prev)) {
@@ -105,7 +105,9 @@ export function XchatConsole({ initialPersonas }: XchatConsoleProps) {
         <button className="cta cta-secondary" onClick={() => void refreshPersonas()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh personas
         </button>
-        <p className="status-text">{status}</p>
+        <p className="status-text" role="status">
+          {status}
+        </p>
       </div>
 
       <article className="surface-card xf-widget section-card">

@@ -1,36 +1,36 @@
 import { NextResponse } from "next/server";
 
 import {
-  clearOAuthFlowCookies,
-  createSession,
-  getSessionUser,
-  readOAuthFlowCookies,
-  setPendingXLinkCookie
+    clearOAuthFlowCookies,
+    createSession,
+    getSessionUser,
+    readOAuthFlowCookies,
+    setPendingXLinkCookie
 } from "@/lib/auth";
 import {
-  getEnv,
-  getXOauthClientId,
-  isAllowAnyXUserLoginEnabled
+    getEnv,
+    getXOauthClientId,
+    isAllowAnyXUserLoginEnabled
 } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { buildXIdentityPlaceholderEmail, isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
-  createAccessRequest,
-  getPendingAccessRequestByUserAndRole,
-  provisionDefaultPortfolioForUser
+    createAccessRequest,
+    getPendingAccessRequestByUserAndRole,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-  ensureCoreUserByEmail,
-  ensureDefaultTenant,
-  ensureSeededGlobalAdmin,
-  getCoreUserByEmail,
-  getCoreUserByXIdentity,
-  linkXAccountToUser,
-  resolveAuthContext,
-  unlinkXAccountFromUser,
-  upsertTenantMembership
+    ensureCoreUserByEmail,
+    ensureDefaultTenant,
+    ensureSeededGlobalAdmin,
+    getCoreUserByEmail,
+    getCoreUserByXIdentity,
+    linkXAccountToUser,
+    resolveAuthContext,
+    unlinkXAccountFromUser,
+    upsertTenantMembership
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
 
@@ -315,10 +315,17 @@ export async function GET(request: Request) {
       });
     }
 
-    await provisionDefaultPortfolioForUser({
-      userId: authContext.userId.toHexString(),
-      tenantId: authContext.tenantId.toHexString()
-    });
+    try {
+      await provisionDefaultPortfolioForUser({
+        userId: authContext.userId.toHexString(),
+        tenantId: authContext.tenantId.toHexString()
+      });
+    } catch (provisionError) {
+      console.warn("[auth/x/callback] default portfolio provision non-fatal; will retry on first /portfolio or API", {
+        userId: authContext.userId.toHexString(),
+        message: provisionError instanceof Error ? provisionError.message : String(provisionError)
+      });
+    }
 
     await createSession({
       userId: authContext.userId.toHexString(),

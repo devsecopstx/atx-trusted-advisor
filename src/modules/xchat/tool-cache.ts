@@ -57,6 +57,10 @@ export function setCachedToolResult(
   });
 }
 
+export function deleteCachedToolResult(userId: string, operation: string): void {
+  cache.delete(buildKey(userId, operation));
+}
+
 export function clearToolCache(): void {
   cache.clear();
 }

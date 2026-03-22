@@ -3,19 +3,28 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { searchDocumentsInCollections } from "@/lib/xai";
 import {
-  createBatchJob,
-  getBatchJobStatus,
-  isBatchJobTerminal,
-  listBatchJobResults,
-  uploadBatchInputFile,
-  type XaiBatchJob,
-  type XaiBatchRequestItem,
-  type XaiBatchResultItem
+    createBatchJob,
+    getBatchJobStatus,
+    isBatchJobTerminal,
+    listBatchJobResults,
+    uploadBatchInputFile,
+    type XaiBatchJob,
+    type XaiBatchRequestItem,
+    type XaiBatchResultItem
 } from "@/lib/xai-batch";
-import { toXaiRequestTools } from "@/lib/xai-tools";
+import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatBatchDebug } from "@/lib/xchat-debug";
 import { buildBatchUserPromptAugmentation } from "@/modules/xchat/batch-prompt-context";
+import {
+    ATXFINANCE_SESSION_TOOL_INSTRUCTIONS,
+    HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS
+} from "@/modules/xchat/default-xpersonas";
+import {
+    getPersonaLinkedCollectionIds,
+    withLinkedCollectionTools
+} from "@/modules/xchat/persona-linked-collections";
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
+import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 const BATCH_JOBS_COLLECTION = "xchat_batch_jobs";
 const BATCH_ITEMS_COLLECTION = "xchat_batch_items";
@@ -94,12 +103,16 @@ export async function submitBatchJob(
   }
 
   const xapiConfig = normalizePersonaXapiConfig(input.persona.xapi);
-  const batchTools = toXaiRequestTools(
-    xapiConfig.tools.filter((t) => t.type !== "atxfinance").map((t) => ({ ...t }))
+  const linkedCollectionIds = getPersonaLinkedCollectionIds(input.persona);
+  const xapiConfigMerged = withLinkedCollectionTools(xapiConfig, linkedCollectionIds);
+  const batchTools = personaXapiToolsToXaiRequestTools(xapiConfigMerged.tools);
+  const hasAtxfinancePersonaTool = xapiConfigMerged.tools.some((t) => t.type === "atxfinance");
+  const hasHostedSearchPersonaTool = xapiConfigMerged.tools.some(
+    (t) => t.type === "web_search" || t.type === "x_search"
   );
-  const collectionId = input.persona.xaiCollection?.collectionId?.trim();
+  const primaryCollectionId = linkedCollectionIds[0]?.trim();
   const endpoint =
-    xapiConfig.mode === "chat_completions"
+    xapiConfigMerged.mode === "chat_completions"
       ? "/v1/chat/completions"
       : "/v1/responses";
 
@@ -109,11 +122,11 @@ export async function submitBatchJob(
   for (const item of input.items) {
     let ragContext = "";
 
-    if (input.persona.enableRag !== false && collectionId) {
+    if (input.persona.enableRag !== false && linkedCollectionIds.length > 0) {
       try {
         const snippets = await searchDocumentsInCollections({
           query: item.message,
-          collectionIds: [collectionId],
+          collectionIds: linkedCollectionIds,
           limit: 4
         });
         if (snippets.length > 0) {
@@ -134,11 +147,30 @@ export async function submitBatchJob(
 
     itemContextMap.set(item.itemId, ragContext);
 
+    let workspaceServerSnapshot: string | null = null;
+    if (hasAtxfinancePersonaTool) {
+      try {
+        workspaceServerSnapshot = await buildWorkspaceServerSnapshotBlock({
+          userId: input.userId,
+          tenantId: input.tenantId
+        });
+      } catch (error) {
+        console.warn("[xchat/batch] workspace server snapshot failed (non-fatal)", {
+          itemId: item.itemId,
+          userId: input.userId,
+          message: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
     const systemPrompt = [
       input.persona.systemPrompt?.trim() || "You are a helpful assistant.",
       ragContext
         ? `Use the following RAG context if relevant:\n${ragContext}`
-        : "No RAG context available."
+        : "No RAG context available.",
+      ...(workspaceServerSnapshot ? [workspaceServerSnapshot] : []),
+      ...(hasAtxfinancePersonaTool ? [ATXFINANCE_SESSION_TOOL_INSTRUCTIONS] : []),
+      ...(hasHostedSearchPersonaTool ? [HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS] : [])
     ].join("\n\n");
 
     const userPromptBase = input.persona.overridePrompt?.trim()
@@ -146,8 +178,8 @@ export async function submitBatchJob(
       : item.message;
 
     const batchMeta = buildBatchUserPromptAugmentation({
-      tools: xapiConfig.tools,
-      personaRagCollectionId: collectionId
+      tools: xapiConfigMerged.tools,
+      linkedCollectionIds
     });
     const userPrompt = `${userPromptBase}\n\n${batchMeta}`;
 
@@ -162,7 +194,7 @@ export async function submitBatchJob(
       userPromptLength: userPrompt.length,
       ragContextLength: ragContext.length,
       tools: batchTools.map((t) => (t as { type?: string }).type ?? "unknown"),
-      collectionId
+      collectionId: primaryCollectionId
     });
 
     const baseChatBody: Record<string, unknown> = {
@@ -173,24 +205,24 @@ export async function submitBatchJob(
       ],
       temperature: input.persona.temperature ?? 0.2
     };
-    if (xapiConfig.toolChoice !== "none" && batchTools.length > 0) {
+    if (xapiConfigMerged.toolChoice !== "none" && batchTools.length > 0) {
       baseChatBody.tools = batchTools;
-      baseChatBody.tool_choice = xapiConfig.toolChoice;
+      baseChatBody.tool_choice = xapiConfigMerged.toolChoice;
     }
 
     const responsesBody: Record<string, unknown> = {
       model: input.persona.model ?? DEFAULT_XCHAT_BATCH_MODEL,
       system_prompt: systemPrompt,
       input: userPrompt,
-      max_turns: xapiConfig.maxTurns
+      max_turns: xapiConfigMerged.maxTurns
     };
-    if (xapiConfig.toolChoice !== "none" && batchTools.length > 0) {
+    if (xapiConfigMerged.toolChoice !== "none" && batchTools.length > 0) {
       responsesBody.tools = batchTools;
-      responsesBody.tool_choice = xapiConfig.toolChoice;
+      responsesBody.tool_choice = xapiConfigMerged.toolChoice;
     }
 
     const body: Record<string, unknown> =
-      xapiConfig.mode === "chat_completions" ? baseChatBody : responsesBody;
+      xapiConfigMerged.mode === "chat_completions" ? baseChatBody : responsesBody;
 
     batchRequestItems.push({
       custom_id: item.itemId,
@@ -241,7 +273,7 @@ export async function submitBatchJob(
     personaId: input.personaId,
     personaName: input.persona.name,
     itemCount: input.items.length,
-    collectionId
+    collectionId: primaryCollectionId
   });
 
   const itemDocs: BatchItemRecord[] = input.items.map((item) => ({
