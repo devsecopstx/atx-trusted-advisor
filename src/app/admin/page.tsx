@@ -2,13 +2,30 @@ import Link from "next/link";
 
 type AdminFunction = {
   href: string;
-  icon: "check" | "user" | "clock" | "brain" | "book" | "directory" | "audit" | "portfolio" | "strategy" | "batch";
+  icon:
+    | "chat"
+    | "check"
+    | "user"
+    | "clock"
+    | "brain"
+    | "book"
+    | "directory"
+    | "audit"
+    | "portfolio"
+    | "strategy"
+    | "batch";
   title: string;
   description: string;
   comingSoon?: boolean;
 };
 
 const ADMIN_FUNCTIONS: AdminFunction[] = [
+  {
+    href: "/xchat",
+    icon: "chat",
+    title: "xChat",
+    description: "Open the advisory chat workspace (Grok / xAI) in the same session."
+  },
   {
     href: "/admin/access-requests",
     icon: "check",
@@ -88,6 +105,13 @@ function AdminFunctionIcon({ name }: IconProps) {
   };
 
   switch (name) {
+    case "chat":
+      return (
+        <svg {...commonProps}>
+          <path d="M8 9.5h8M8 13h5.5" />
+          <path d="M6.5 5.5h11a2 2 0 0 1 2 2v6.2a2 2 0 0 1-2 2H9.8l-3.3 2.2V18.5a2 2 0 0 1 2-2h8a2 2 0 0 0 2-2v-7.5a2 2 0 0 0-2-2H6.5z" />
+        </svg>
+      );
     case "check":
       return (
         <svg {...commonProps}>

@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin", label: "Hub" },
+  { href: "/xchat", label: "xChat" },
   { href: "/admin/access-requests", label: "Access" },
   { href: "/admin/personas", label: "Personas" },
   { href: "/admin/batch", label: "Batch Ops" },
