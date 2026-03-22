@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PortfolioPositionQuickAdd } from "@/app/portfolio/ui/portfolio-position-quick-add";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
@@ -84,6 +85,13 @@ export default async function PortfolioPage() {
 
   const admin = isGlobalAdmin(session.roles);
   const portfolioIdHex = portfolio?._id?.toHexString?.() ?? null;
+  const quickAddAccounts = accounts
+    .filter((account): account is Account & { _id: NonNullable<Account["_id"]> } => Boolean(account._id))
+    .map((account) => ({
+      id: account._id.toHexString(),
+      name: account.name,
+      brokerType: account.type
+    }));
 
   return (
     <div className="xchat-shell">
@@ -146,74 +154,83 @@ export default async function PortfolioPage() {
               ) : accounts.length === 0 ? (
                 <p className="status-text">No linked accounts yet.</p>
               ) : (
-                <div className="crud-table-wrap">
-                  <table className="crud-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Account</th>
-                        <th scope="col">Broker type</th>
-                        <th scope="col">Reference</th>
-                        <th scope="col">Cash</th>
-                        <th scope="col">Holdings</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {accounts.map((account) => (
-                        <tr key={account._id?.toHexString() ?? account.extAccountId}>
-                          <td>
-                            {account.name}
-                            {account.isDefault ? (
-                              <span
-                                className="status-text"
-                                style={{ marginLeft: "0.35rem", fontSize: "0.75rem", display: "inline" }}
+                <>
+                  <div className="crud-table-wrap">
+                    <table className="crud-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Account</th>
+                          <th scope="col">Broker type</th>
+                          <th scope="col">Reference</th>
+                          <th scope="col">Cash</th>
+                          <th scope="col">Holdings</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accounts.map((account) => (
+                          <tr key={account._id?.toHexString() ?? account.extAccountId}>
+                            <td>
+                              {account.name}
+                              {account.isDefault ? (
+                                <span
+                                  className="status-text"
+                                  style={{ marginLeft: "0.35rem", fontSize: "0.75rem", display: "inline" }}
+                                >
+                                  (default)
+                                </span>
+                              ) : null}
+                            </td>
+                            <td>{formatBrokerType(account.type)}</td>
+                            <td>
+                              <code
+                                style={{
+                                  fontSize: "0.8em",
+                                  color: "var(--xf-text-300)",
+                                  fontFamily: "ui-monospace, monospace"
+                                }}
                               >
-                                (default)
-                              </span>
-                            ) : null}
-                          </td>
-                          <td>{formatBrokerType(account.type)}</td>
-                          <td>
-                            <code
+                                {account.extAccountId || "—"}
+                              </code>
+                            </td>
+                            <td
                               style={{
-                                fontSize: "0.8em",
                                 color: "var(--xf-text-300)",
-                                fontFamily: "ui-monospace, monospace"
+                                fontFamily: "ui-monospace, monospace",
+                                fontSize: "0.9rem"
                               }}
                             >
-                              {account.extAccountId || "—"}
-                            </code>
-                          </td>
-                          <td
-                            style={{
-                              color: "var(--xf-text-300)",
-                              fontFamily: "ui-monospace, monospace",
-                              fontSize: "0.9rem"
-                            }}
-                          >
-                            {(account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE).toLocaleString("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                              maximumFractionDigits: 0
-                            })}
-                          </td>
-                          <td>
-                            {account._id ? (
-                              <Link
-                                className="cta cta-secondary"
-                                style={{ fontSize: "0.8rem", padding: "0.35rem 0.65rem", display: "inline-block" }}
-                                href={`/portfolio/accounts/${account._id.toHexString()}`}
-                              >
-                                Select &amp; edit
-                              </Link>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                              {(account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE).toLocaleString("en-US", {
+                                style: "currency",
+                                currency: "USD",
+                                maximumFractionDigits: 0
+                              })}
+                            </td>
+                            <td>
+                              {account._id ? (
+                                <Link
+                                  className="cta cta-secondary"
+                                  style={{
+                                    fontSize: "0.8rem",
+                                    padding: "0.35rem 0.65rem",
+                                    display: "inline-block"
+                                  }}
+                                  href={`/portfolio/accounts/${account._id.toHexString()}`}
+                                >
+                                  Select &amp; edit
+                                </Link>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {portfolioIdHex ? (
+                    <PortfolioPositionQuickAdd portfolioId={portfolioIdHex} accounts={quickAddAccounts} />
+                  ) : null}
+                </>
               )}
             </div>
           ) : null}
