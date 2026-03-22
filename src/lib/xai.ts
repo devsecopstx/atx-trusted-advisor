@@ -65,6 +65,36 @@ function getXaiManagementConfig() {
   };
 }
 
+/**
+ * Parse JSON from a fetch `Response` with a single body read.
+ * Using `response.json().catch(() => response.text())` can throw **Body has already been read** because
+ * `json()` may consume the stream before failing.
+ *
+ * Falls back to `response.json()` when `text` is missing (e.g. unit-test fetch stubs).
+ */
+async function parseXaiResponseJson(response: Response): Promise<Record<string, unknown>> {
+  if (typeof response.text === "function") {
+    const text = await response.text();
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return { _raw: `(empty body, status ${response.status})` };
+    }
+    try {
+      return JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      return { _raw: text };
+    }
+  }
+  if (typeof response.json === "function") {
+    try {
+      return (await response.json()) as Record<string, unknown>;
+    } catch {
+      return { _raw: `(invalid JSON, status ${response.status})` };
+    }
+  }
+  return { _raw: `(unreadable body, status ${response.status})` };
+}
+
 export class XaiCollectionNotFoundError extends Error {
   readonly code = "XAI_COLLECTION_NOT_FOUND";
 
@@ -309,10 +339,7 @@ export async function respondWithXai(input: {
     body: JSON.stringify(body)
   });
 
-  const payload = (await response.json().catch(async () => {
-    const text = await response.text();
-    return { _raw: text || `(empty body, status ${response.status})` };
-  })) as Record<string, unknown>;
+  const payload = await parseXaiResponseJson(response);
   if (!response.ok) {
     const errDetail =
       payload.error ?? payload._raw ?? payload;
@@ -410,10 +437,7 @@ export async function respondWithXaiToolLoop(input: {
       body: JSON.stringify(requestBody)
     });
 
-    const payload = (await response.json().catch(async () => {
-      const text = await response.text();
-      return { _raw: text || `(empty body, status ${response.status})` };
-    })) as Record<string, unknown>;
+    const payload = await parseXaiResponseJson(response);
     lastPayload = payload;
 
     if (!response.ok) {
@@ -599,7 +623,9 @@ function syntheticAtxfinanceArgsFromParsedJson(
     out.symbol = obj.symbol.trim();
   }
   if (Array.isArray(obj.symbols)) {
-    const syms = obj.symbols.filter((x): x is string => typeof x === "string" && x.trim());
+    const syms = obj.symbols.filter(
+      (x): x is string => typeof x === "string" && x.trim().length > 0
+    );
     if (syms.length > 0) {
       out.symbols = syms.map((s) => s.trim());
     }

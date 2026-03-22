@@ -15,7 +15,9 @@ const repositoryMocks = vi.hoisted(() => ({
   listPortfolioPositionsByAccount: vi.fn(),
   provisionDefaultPortfolioForUser: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
-  upsertPositionForAccount: vi.fn()
+  upsertPositionForAccount: vi.fn(),
+  deletePositionForAccount: vi.fn(),
+  updatePortfolioAccountForUser: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
@@ -38,10 +40,12 @@ vi.mock("@/modules/core-admin/repository", async () => {
   };
 });
 
+import { PATCH as patchPortfolioAccount } from "@/app/api/portfolios/[portfolioId]/accounts/[accountId]/route";
 import { GET as getPortfolioAccounts } from "@/app/api/portfolios/[portfolioId]/accounts/route";
 import { GET as getPortfolioWatchlist } from "@/app/api/portfolios/[portfolioId]/watchlist/route";
 import { GET as getDefaultPortfolio } from "@/app/api/portfolios/default/route";
-import { POST as postPosition } from "@/app/api/positions/route";
+import { DELETE as deletePosition } from "@/app/api/positions/[positionId]/route";
+import { GET as getPositions, POST as postPosition } from "@/app/api/positions/route";
 import { PositionValidationError } from "@/modules/core-admin/repository";
 
 describe("portfolio API routes", () => {
@@ -99,7 +103,22 @@ describe("portfolio API routes", () => {
     });
     repositoryMocks.upsertPositionForAccount.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439055" },
-      symbol: "AAPL"
+      symbol: "AAPL",
+      qty: 2,
+      avgCost: 190
+    });
+    repositoryMocks.deletePositionForAccount.mockResolvedValue(true);
+    repositoryMocks.updatePortfolioAccountForUser.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+      name: "Renamed",
+      type: "fidelity",
+      extAccountId: "fidelity-default-account",
+      cashBalance: 30_000,
+      isDefault: true,
+      createdAt: new Date("2025-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-02T00:00:00.000Z")
     });
   });
 
@@ -135,6 +154,66 @@ describe("portfolio API routes", () => {
     const payload = (await response.json()) as { data: { name: string } };
     expect(response.status).toBe(200);
     expect(payload.data.name).toBe("Default Watchlist");
+  });
+
+  it("lists positions for an owned account", async () => {
+    repositoryMocks.listPortfolioPositionsByAccount.mockResolvedValueOnce([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439055" },
+        userId: "507f1f77bcf86cd799439011",
+        portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+        accountId: { toHexString: () => "507f1f77bcf86cd799439099" },
+        symbol: "AAPL",
+        qty: 1,
+        avgCost: 100,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+    const response = await getPositions(
+      new Request(
+        "http://test/api/positions?portfolioId=507f1f77bcf86cd799439033&accountId=507f1f77bcf86cd799439099"
+      )
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data: { symbol: string }[] };
+    expect(payload.data[0]?.symbol).toBe("AAPL");
+  });
+
+  it("deletes a position with portfolio and account query params", async () => {
+    const response = await deletePosition(
+      new Request(
+        "http://test/api/positions/507f1f77bcf86cd799439055?portfolioId=507f1f77bcf86cd799439033&accountId=507f1f77bcf86cd799439099",
+        { method: "DELETE" }
+      ),
+      { params: Promise.resolve({ positionId: "507f1f77bcf86cd799439055" }) }
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.deletePositionForAccount).toHaveBeenCalledWith({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      portfolioId: "507f1f77bcf86cd799439033",
+      accountId: "507f1f77bcf86cd799439099",
+      positionId: "507f1f77bcf86cd799439055"
+    });
+  });
+
+  it("patches account metadata for an owned account", async () => {
+    const response = await patchPortfolioAccount(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Renamed", cashBalance: 30_000 })
+      }),
+      {
+        params: Promise.resolve({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalled();
   });
 
   it("maps position validation errors to HTTP status codes", async () => {

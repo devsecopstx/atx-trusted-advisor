@@ -4,16 +4,16 @@
 
 ### High
 
-- Batch dashboard tables are not using the styled table classes, which breaks visual hierarchy and scanability on operator-heavy screens. What: `table-wrap` and `table-grid` are used without matching CSS definitions. Where: `src/app/admin/xchat/batch/page.tsx`, `src/app/admin/xchat/batch/[batchId]/page.tsx`, `src/app/globals.css`. Suggestion: replace with `crud-table-wrap` and `crud-table` (or add consistent style aliases) to restore clean console structure.
+- Batch dashboard tables are not using the styled table classes, which breaks visual hierarchy and scanability on operator-heavy screens. What: `table-wrap` and `table-grid` are used without matching CSS definitions. Where: `src/app/admin/batch/page.tsx`, `src/app/admin/batch/[batchId]/page.tsx`, `src/app/globals.css`. Suggestion: replace with `crud-table-wrap` and `crud-table` (or add consistent style aliases) to restore clean console structure.
 
 ### Medium
 
-- Filter action on batch dashboard uses an unstyled default button, reducing affordance consistency vs the rest of admin controls. Where: `src/app/admin/xchat/batch/page.tsx`. Suggestion: apply existing CTA/tiny button system so "Apply Filters" follows the same visual language as other admin actions.
-- Async status updates in xChat Ask are visually present but not announced semantically for assistive tech. Where: `src/app/admin/xchat/ui/xchat-console.tsx`. Suggestion: add `aria-live="polite"` region for status text to improve UX accessibility for operators using screen readers.
+- Filter action on batch dashboard uses an unstyled default button, reducing affordance consistency vs the rest of admin controls. Where: `src/app/admin/batch/page.tsx`. Suggestion: apply existing CTA/tiny button system so "Apply Filters" follows the same visual language as other admin actions.
+- Async status updates in the **`/chat`** test harness: status uses `role="status"` + `aria-live="polite"` (`src/app/chat/ui/xchat-test-console.tsx`). Revisit if screen-reader coverage still feels thin.
 
 ### Low
 
-- Admin action cards are reused as navigation links for "back" actions, which can over-emphasize low-risk navigation vs primary task controls. Where: `src/app/admin/xchat/page.tsx`, `src/app/admin/xchat/batch/page.tsx`, `src/app/admin/xchat/batch/[batchId]/page.tsx`. Suggestion: use lighter secondary link/button treatment for non-primary nav actions to keep focus on table operations.
+- Admin action cards are reused as navigation links for "back" actions, which can over-emphasize low-risk navigation vs primary task controls. Where: `src/app/chat/page.tsx`, `src/app/admin/batch/page.tsx`, `src/app/admin/batch/[batchId]/page.tsx`. Suggestion: use lighter secondary link/button treatment for non-primary nav actions to keep focus on table operations.
 
 ## Reviewer Completion
 

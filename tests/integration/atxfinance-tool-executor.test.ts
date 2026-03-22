@@ -70,8 +70,8 @@ describe("atxfinance tool executor", () => {
       async ({ addSymbols, removeSymbols }) => {
         let symbols = [{ symbol: "TSLA", addedAt: new Date() }];
         if (removeSymbols?.length) {
-          const rm = new Set(removeSymbols.map((s) => s.toUpperCase()));
-          symbols = symbols.filter((s) => !rm.has(s.symbol));
+          const rm = new Set(removeSymbols.map((s: string) => s.toUpperCase()));
+          symbols = symbols.filter((s: { symbol: string }) => !rm.has(s.symbol));
         }
         if (addSymbols?.length) {
           const now = new Date();

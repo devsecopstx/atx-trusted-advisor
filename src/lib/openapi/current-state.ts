@@ -117,6 +117,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/admin/import/broker",
+    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
+    tag: "admin-system"
+  },
+  {
     path: "/api/admin/tasks/{taskId}/run",
     operations: [{ method: "POST", auth: "admin" }],
     tag: "admin-tasks"
@@ -250,8 +255,21 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "portfolios"
   },
   {
+    path: "/api/portfolios/{portfolioId}/accounts/{accountId}",
+    operations: [{ method: "PATCH", auth: "session", hasRequestBody: true }],
+    tag: "portfolios"
+  },
+  {
     path: "/api/positions",
-    operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "POST", auth: "session", hasRequestBody: true }
+    ],
+    tag: "positions"
+  },
+  {
+    path: "/api/positions/{positionId}",
+    operations: [{ method: "DELETE", auth: "session" }],
     tag: "positions"
   },
   {

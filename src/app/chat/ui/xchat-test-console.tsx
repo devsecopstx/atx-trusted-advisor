@@ -105,7 +105,7 @@ export function XchatTestConsole({ initialPersonas }: XchatTestConsoleProps) {
         <button className="cta cta-secondary" onClick={() => void refreshPersonas()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh personas
         </button>
-        <p className="status-text" role="status">
+        <p aria-live="polite" className="status-text" role="status">
           {status}
         </p>
       </div>

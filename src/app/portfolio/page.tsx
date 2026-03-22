@@ -154,6 +154,7 @@ export default async function PortfolioPage() {
                         <th scope="col">Broker type</th>
                         <th scope="col">Reference</th>
                         <th scope="col">Cash</th>
+                        <th scope="col">Holdings</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -194,6 +195,19 @@ export default async function PortfolioPage() {
                               currency: "USD",
                               maximumFractionDigits: 0
                             })}
+                          </td>
+                          <td>
+                            {account._id ? (
+                              <Link
+                                className="cta cta-secondary"
+                                style={{ fontSize: "0.8rem", padding: "0.35rem 0.65rem", display: "inline-block" }}
+                                href={`/portfolio/accounts/${account._id.toHexString()}`}
+                              >
+                                Select &amp; edit
+                              </Link>
+                            ) : (
+                              "—"
+                            )}
                           </td>
                         </tr>
                       ))}

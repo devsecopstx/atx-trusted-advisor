@@ -13,14 +13,35 @@
       }
     },
     {
+      "label": "Build Next (production)",
+      "type": "shell",
+      "command": "npm run build",
+      "group": "build",
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
       "label": "Build App",
       "type": "shell",
       "command": "npm run build",
       "group": "build",
-      "dependsOn": [
-        "Install Dependencies"
-      ],
+      "dependsOn": ["Install Dependencies"],
       "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Free Next dev port (3000)",
+      "type": "shell",
+      "command": "lsof -ti:3000 | xargs kill -9 2>/dev/null; exit 0",
       "problemMatcher": [],
       "runOptions": {
         "instanceLimit": 1,
@@ -45,11 +66,34 @@
       "type": "shell",
       "command": "npm run dev:frontend",
       "isBackground": true,
-      "problemMatcher": [],
+      "problemMatcher": {
+        "owner": "next-dev",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Ready in|Local:\\s+http|started server"
+        }
+      },
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Build and restart dev server",
+      "dependsOn": [
+        "Build Next (production)",
+        "Free Next dev port (3000)",
+        "Start Frontend (Next Dev)"
+      ],
+      "dependsOrder": "sequence",
       "group": {
         "kind": "build",
         "isDefault": true
       },
+      "problemMatcher": [],
       "runOptions": {
         "instanceLimit": 1,
         "instancePolicy": "terminateOldest",
@@ -69,10 +113,7 @@
     },
     {
       "label": "Start Local Services",
-      "dependsOn": [
-        "Start Backend (Docker)",
-        "Start Frontend (Next Dev)"
-      ],
+      "dependsOn": ["Start Backend (Docker)", "Start Frontend (Next Dev)"],
       "dependsOrder": "parallel",
       "problemMatcher": [],
       "runOptions": {
@@ -83,10 +124,7 @@
     },
     {
       "label": "Run Localhost App (Backend + Frontend)",
-      "dependsOn": [
-        "Start Local Services",
-        "Open Localhost"
-      ],
+      "dependsOn": ["Start Local Services", "Open Localhost"],
       "dependsOrder": "sequence",
       "problemMatcher": [],
       "runOptions": {

@@ -27,15 +27,23 @@
         "problemMatcher": []
       },
       {
+        "label": "Build Next (production)",
+        "type": "shell",
+        "command": "npm run build",
+        "problemMatcher": []
+      },
+      {
         "label": "Build App",
         "type": "shell",
         "command": "npm run build",
-        "group": {
-          "kind": "build",
-          "isDefault": true
-        },
         "dependsOn": ["Install Dependencies"],
         "dependsOrder": "sequence",
+        "problemMatcher": []
+      },
+      {
+        "label": "Free Next dev port (3000)",
+        "type": "shell",
+        "command": "lsof -ti:3000 | xargs kill -9 2>/dev/null; exit 0",
         "problemMatcher": []
       },
       {
@@ -50,6 +58,28 @@
         "type": "shell",
         "command": "npm run dev:frontend",
         "isBackground": true,
+        "problemMatcher": {
+          "owner": "next-dev",
+          "pattern": { "regexp": "^$" },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "Ready in|Local:\\s+http|started server"
+          }
+        }
+      },
+      {
+        "label": "Build and restart dev server",
+        "dependsOn": [
+          "Build Next (production)",
+          "Free Next dev port (3000)",
+          "Start Frontend (Next Dev)"
+        ],
+        "dependsOrder": "sequence",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
         "problemMatcher": []
       },
       {

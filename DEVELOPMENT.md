@@ -566,8 +566,15 @@ gcloud run services update-traffic atxfinance-core-prod \
 
 - `GET /api/portfolios/default` (any signed-in user — returns caller’s default portfolio; admin console uses the same endpoint)
 - `GET /api/portfolios/:portfolioId/accounts`
+- `PATCH /api/portfolios/:portfolioId/accounts/:accountId` (caller-owned account metadata: name, cash, external ref)
 - `GET /api/portfolios/:portfolioId/watchlist`
-- `POST /api/positions`
+- `GET /api/positions?portfolioId=&accountId=` (list holdings for an owned account)
+- `POST /api/positions` (upsert stock lot for an owned account; same user session as portfolio owner)
+- `DELETE /api/positions/:positionId?portfolioId=&accountId=` (remove a lot from an owned account)
+
+### Admin broker import (holdings)
+
+- `POST /api/admin/import/broker` (`global_admin` only) — Merrill or Fidelity **holdings** CSV, same request shape as xfinance-strategy `POST /api/import/broker`: `portfolioId`, `broker`, `exportType: "holdings"`, `csv`, `mappings` (broker account key → core `portfolio_accounts` id), optional `fidelityHoldingsDefaultAccountRef`, optional `dryRun` for parse-only preview. Parsed rows match strategy/OpenAPI `Position` (`ticker`, `shares`, `purchasePrice`, `type`); **stock** rows become Mongo positions (`symbol`, `qty`, `avgCost`); option/cash rows are skipped. UI: **Admin → Portfolios**.
 
 ### RAG files
 
@@ -789,7 +796,7 @@ with payload shape:
 1. Run `npm run seed:admin`.
 2. Confirm **Super-Agent** and **xFinance** are visible in admin personas and **published** (default xChat personas).
 3. Confirm default portfolio/account surfaces load for the seeded admin user.
-4. Open `/xchat` (or `/admin/xchat`) and run a prompt — persona is **implicit** (Super-Agent for `global_admin`, xFinance for other roles); there is no persona picker.
+4. Open `/xchat` and run a prompt — persona is **implicit** (Super-Agent for `global_admin`, xFinance for other roles); there is no persona picker. For **`global_admin`** persona-selected testing, use **`/chat`** (minimal harness calling `POST /api/xchat/ask`).
 5. Optionally create/select an xAI collection and re-run validation with RAG enabled on **Super-Agent**.
 
 ### Authenticated smoke checklist (admin session)
@@ -804,8 +811,8 @@ Use this checklist to validate "admin can start using xChat" in an authenticated
    - verify collection-dependent actions show clear guidance when collection is not bound.
 4. Open `/dashboard` or `/holdings`:
    - verify default portfolio/account data surfaces load for seeded admin.
-5. Open `/admin/xchat`:
-   - submit a prompt and verify a response returns (Super-Agent for seeded admin).
+5. Open `/chat`:
+   - submit a prompt and verify a response returns (optional persona id; default server resolution still uses Super-Agent for seeded admin when omitted).
 6. Optional RAG validation:
    - bind a collection,
    - run file sync/recheck actions,

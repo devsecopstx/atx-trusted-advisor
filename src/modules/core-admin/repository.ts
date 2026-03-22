@@ -800,6 +800,55 @@ export async function getDefaultPortfolio(
     .findOne(withTenantScope({ ...userIdQuery(userId), isDefault: true }, options?.tenantId));
 }
 
+/** Portfolio must belong to the session user (tenant-scoped). */
+export async function getPortfolioByIdForSessionUser(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+}): Promise<Portfolio | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId)) {
+    return null;
+  }
+  const db = await getDb();
+  return db
+    .collection<Portfolio>(collections.portfolios)
+    .findOne(
+      withTenantScope(
+        {
+          _id: new ObjectId(input.portfolioId),
+          ...userIdQuery(input.userId)
+        },
+        input.tenantId
+      )
+    );
+}
+
+/** Removes all position lots for an account (replace-before-import). Returns deleted count. */
+export async function deletePositionsForPortfolioAccount(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  accountId: string;
+}): Promise<number> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId) || !ObjectId.isValid(input.accountId)) {
+    return 0;
+  }
+  const db = await getDb();
+  const result = await db.collection<Position>(collections.positions).deleteMany(
+    withTenantScope(
+      {
+        ...userIdQuery(input.userId),
+        portfolioId: new ObjectId(input.portfolioId),
+        accountId: new ObjectId(input.accountId)
+      },
+      input.tenantId
+    )
+  );
+  return result.deletedCount ?? 0;
+}
+
 export async function listPortfolioAccounts(input: {
   userId: string;
   portfolioId: string;
@@ -1309,6 +1358,94 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
     throw new Error("Failed to upsert position");
   }
   return position;
+}
+
+export type UpdatePortfolioAccountInput = {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  accountId: string;
+  name?: string;
+  cashBalance?: number;
+  extAccountId?: string;
+};
+
+/**
+ * Patch account metadata for the owning user (name, cash, external ref). Does not change broker type here.
+ */
+export async function updatePortfolioAccountForUser(
+  input: UpdatePortfolioAccountInput
+): Promise<Account | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId) || !ObjectId.isValid(input.accountId)) {
+    return null;
+  }
+  const db = await getDb();
+  const portfolioId = new ObjectId(input.portfolioId);
+  const accountId = new ObjectId(input.accountId);
+  const filter = withTenantScope(
+    {
+      _id: accountId,
+      ...userIdQuery(input.userId),
+      portfolioId
+    },
+    input.tenantId
+  );
+  const existing = await db.collection<Account>(collections.accounts).findOne(filter);
+  if (!existing?._id) {
+    return null;
+  }
+
+  const $set: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof input.name === "string" && input.name.trim()) {
+    $set.name = input.name.trim();
+  }
+  if (typeof input.cashBalance === "number" && Number.isFinite(input.cashBalance) && input.cashBalance >= 0) {
+    $set.cashBalance = input.cashBalance;
+  }
+  if (typeof input.extAccountId === "string") {
+    const ref = input.extAccountId.trim();
+    if (ref) {
+      $set.extAccountId = ref;
+    }
+  }
+
+  if (Object.keys($set).length <= 1) {
+    return existing;
+  }
+
+  await db.collection<Account>(collections.accounts).updateOne(filter, { $set });
+  return db.collection<Account>(collections.accounts).findOne(filter);
+}
+
+export async function deletePositionForAccount(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  accountId: string;
+  positionId: string;
+}): Promise<boolean> {
+  await ensurePortfolioIndexes();
+  if (
+    !ObjectId.isValid(input.portfolioId) ||
+    !ObjectId.isValid(input.accountId) ||
+    !ObjectId.isValid(input.positionId)
+  ) {
+    return false;
+  }
+  const db = await getDb();
+  const result = await db.collection<Position>(collections.positions).deleteOne(
+    withTenantScope(
+      {
+        _id: new ObjectId(input.positionId),
+        ...userIdQuery(input.userId),
+        portfolioId: new ObjectId(input.portfolioId),
+        accountId: new ObjectId(input.accountId)
+      },
+      input.tenantId
+    )
+  );
+  return result.deletedCount === 1;
 }
 
 export async function deleteAccessRequest(
