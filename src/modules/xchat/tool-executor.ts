@@ -11,6 +11,7 @@ import {
     mutatePortfolioWatchlistSymbols,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
+import type { WatchlistSymbol } from "@/modules/core-admin/types";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import {
     deleteCachedToolResult,
@@ -25,6 +26,17 @@ const MAX_POSITIONS_RETURNED = 200;
 const CACHEABLE_OPERATIONS = new Set(["watchlist_snapshot", "account_health"]);
 /** Matches PATCH `/api/portfolios/:id/watchlist` batch size. */
 const MAX_WATCHLIST_MUTATE_PER_CALL = 20;
+
+function watchlistSymbolToJson(s: WatchlistSymbol) {
+  return {
+    symbol: s.symbol,
+    addedAt: s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt),
+    ...(s.lineType !== undefined ? { lineType: s.lineType } : {}),
+    ...(s.strategy !== undefined ? { strategy: s.strategy } : {}),
+    ...(s.quantity !== undefined ? { quantity: s.quantity } : {}),
+    ...(s.entryPrice !== undefined ? { entryPrice: s.entryPrice } : {})
+  };
+}
 
 function parseTickerListFromArgs(args: Record<string, unknown>, max: number): string[] {
   if (Array.isArray(args.symbols)) {
@@ -156,11 +168,7 @@ const operations: Record<string, OperationHandler> = {
     return {
       name: watchlist.name,
       symbolCount: symbols.length,
-      symbols: symbols.map((s) => ({
-        symbol: s.symbol,
-        addedAt:
-          s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt)
-      }))
+      symbols: symbols.map(watchlistSymbolToJson)
     };
   },
 
@@ -192,10 +200,7 @@ const operations: Record<string, OperationHandler> = {
       requested: toAdd,
       watchlistName: updated.name,
       symbolCount: symbols.length,
-      symbols: symbols.map((s) => ({
-        symbol: s.symbol,
-        addedAt: s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt)
-      }))
+      symbols: symbols.map(watchlistSymbolToJson)
     };
   },
 
@@ -227,10 +232,7 @@ const operations: Record<string, OperationHandler> = {
       removed: toRemove,
       watchlistName: updated.name,
       symbolCount: symbols.length,
-      symbols: symbols.map((s) => ({
-        symbol: s.symbol,
-        addedAt: s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt)
-      }))
+      symbols: symbols.map(watchlistSymbolToJson)
     };
   },
 

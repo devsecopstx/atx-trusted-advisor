@@ -1,9 +1,16 @@
 const SYMBOL_RE = /^[A-Z0-9.\-]{1,32}$/;
 
+export type WatchlistCsvEntry = {
+  symbol: string;
+  lineType?: string;
+  strategy?: string;
+  quantity?: number;
+  entryPrice?: number;
+};
+
 export type ParseWatchlistCsvResult = {
-  /** Unique symbols in file order, uppercased. */
-  symbols: string[];
-  /** Rows that had no valid symbol (empty or bad format). */
+  /** Last row wins per symbol (file order). */
+  entries: WatchlistCsvEntry[];
   invalidRowCount: number;
 };
 
@@ -65,12 +72,82 @@ function detectDelimiter(firstLine: string): "," | ";" | "\t" {
 }
 
 function normalizeHeaderCell(raw: string): string {
-  return raw.replace(/^"|"$/g, "").trim().toLowerCase();
+  return raw.replace(/^"|"$/g, "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function findColumnIndex(headers: string[], candidates: string[]): number {
+  const set = new Set(candidates.map((c) => c.toLowerCase()));
+  for (let i = 0; i < headers.length; i++) {
+    const h = normalizeHeaderCell(headers[i] ?? "");
+    if (set.has(h)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/** Prefer `Entry Price` over a legacy `Entry` notes column. */
+function findEntryPriceColumnIndex(headers: string[]): number {
+  const normalized = headers.map((h) => normalizeHeaderCell(h));
+  const preferOrder = [
+    "entry price",
+    "entryprice",
+    "avg entry",
+    "px entry",
+    "limit",
+    "price entry",
+    "entry"
+  ];
+  for (const want of preferOrder) {
+    const idx = normalized.findIndex((h) => h === want);
+    if (idx >= 0) {
+      return idx;
+    }
+  }
+  return -1;
+}
+
+function findTypeColumnIndex(headers: string[], symbolColumn: number): number {
+  const candidates = [
+    "type",
+    "position type",
+    "asset type",
+    "instrument type",
+    "asset class"
+  ];
+  const idx = findColumnIndex(headers, candidates);
+  if (idx >= 0 && idx !== symbolColumn) {
+    return idx;
+  }
+  for (let i = 0; i < headers.length; i++) {
+    if (i === symbolColumn) {
+      continue;
+    }
+    const h = normalizeHeaderCell(headers[i] ?? "");
+    if (h === "kind" || h.endsWith(" type")) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function parseNumericCell(raw: string): number | undefined {
+  const t = raw.replace(/^"|"$/g, "").trim();
+  if (!t) {
+    return undefined;
+  }
+  const n = Number.parseFloat(t.replaceAll(/[$,\s]/g, ""));
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function unquoteCell(raw: string): string {
+  return raw.replace(/^"|"$/g, "").trim();
 }
 
 /**
- * Parses watchlist CSV from app export (`Symbol,Company,...`) or simple one-column lists.
- * Supports comma-, semicolon-, or tab-delimited files and optional header row.
+ * Parses watchlist CSV from app export or broker sheets.
+ * Supports comma-, semicolon-, or tab-delimited files; optional header row.
+ * Imports Symbol plus Type, Strategy, Quantity, Entry Price when present.
  */
 export function parseWatchlistCsv(text: string): ParseWatchlistCsvResult {
   const normalized = text.replace(/^\uFEFF/, "");
@@ -80,46 +157,84 @@ export function parseWatchlistCsv(text: string): ParseWatchlistCsvResult {
     .filter((l) => l.length > 0);
 
   if (lines.length === 0) {
-    return { symbols: [], invalidRowCount: 0 };
+    return { entries: [], invalidRowCount: 0 };
   }
 
   const delim = detectDelimiter(lines[0]!);
   const firstCells = parseDelimitedLine(lines[0]!, delim);
-  const headerProbe = firstCells.map(normalizeHeaderCell);
-  const symbolHeaderIdx = headerProbe.findIndex((h) =>
-    ["symbol", "ticker", "instrument"].includes(h)
-  );
+  const headerProbe = firstCells.map((c) => normalizeHeaderCell(c));
 
-  let symbolCol = 0;
+  const symbolIdx = findColumnIndex(headerProbe, [
+    "symbol",
+    "ticker",
+    "instrument",
+    "sym"
+  ]);
+
   let dataStart = 0;
-  if (symbolHeaderIdx >= 0) {
-    symbolCol = symbolHeaderIdx;
+  let colSymbol = 0;
+  let colType = -1;
+  let colStrategy = -1;
+  let colQty = -1;
+  let colEntry = -1;
+
+  if (symbolIdx >= 0) {
     dataStart = 1;
+    colSymbol = symbolIdx;
+    colType = findTypeColumnIndex(firstCells, colSymbol);
+    colStrategy = findColumnIndex(firstCells, ["strategy", "strat", "play"]);
+    colQty = findColumnIndex(firstCells, ["quantity", "qty", "shares", "size"]);
+    colEntry = findEntryPriceColumnIndex(firstCells);
   }
 
-  const seen = new Set<string>();
-  const symbols: string[] = [];
+  const bySymbol = new Map<string, WatchlistCsvEntry>();
   let invalidRowCount = 0;
 
   for (let r = dataStart; r < lines.length; r++) {
     const row = lines[r]!;
     const cells = parseDelimitedLine(row, delim);
-    const raw = (cells[symbolCol] ?? "").replace(/^"|"$/g, "").trim();
-    if (!raw) {
+    const rawSym = unquoteCell(cells[colSymbol] ?? "");
+    if (!rawSym) {
       invalidRowCount += 1;
       continue;
     }
-    const sym = raw.toUpperCase();
+    const sym = rawSym.toUpperCase();
     if (!SYMBOL_RE.test(sym)) {
       invalidRowCount += 1;
       continue;
     }
-    if (seen.has(sym)) {
-      continue;
+
+    const entry: WatchlistCsvEntry = { symbol: sym };
+    if (colType >= 0) {
+      const v = unquoteCell(cells[colType] ?? "");
+      if (v) {
+        entry.lineType = v.slice(0, 128);
+      }
     }
-    seen.add(sym);
-    symbols.push(sym);
+    if (colStrategy >= 0) {
+      const v = unquoteCell(cells[colStrategy] ?? "");
+      if (v) {
+        entry.strategy = v.slice(0, 512);
+      }
+    }
+    if (colQty >= 0) {
+      const q = parseNumericCell(cells[colQty] ?? "");
+      if (q !== undefined) {
+        entry.quantity = q;
+      }
+    }
+    if (colEntry >= 0) {
+      const p = parseNumericCell(cells[colEntry] ?? "");
+      if (p !== undefined) {
+        entry.entryPrice = p;
+      }
+    }
+
+    bySymbol.set(sym, entry);
   }
 
-  return { symbols, invalidRowCount };
+  return {
+    entries: Array.from(bySymbol.values()),
+    invalidRowCount
+  };
 }

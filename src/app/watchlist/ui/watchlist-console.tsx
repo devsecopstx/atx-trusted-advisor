@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import {
-  MAX_WATCHLIST_SYMBOLS,
-  MAX_WATCHLIST_SYMBOLS_PER_PATCH
+    MAX_WATCHLIST_SYMBOLS,
+    MAX_WATCHLIST_SYMBOLS_PER_PATCH
 } from "@/modules/watchlist/constants";
-import { parseWatchlistCsv } from "@/modules/watchlist/parse-watchlist-csv";
+import {
+    parseWatchlistCsv,
+    type WatchlistCsvEntry
+} from "@/modules/watchlist/parse-watchlist-csv";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 import { WatchlistSymbolShape } from "./watchlist-symbol-shape";
@@ -16,11 +19,22 @@ type WatchlistRow = {
   symbol: string;
   addedAt: string;
   quote: SymbolLookupResult | null;
+  lineType?: string;
+  strategy?: string;
+  quantity?: number;
+  entryPrice?: number;
 };
 
 type WatchlistApiData = {
   name?: string;
-  symbols?: Array<{ symbol: string; addedAt: string }>;
+  symbols?: Array<{
+    symbol: string;
+    addedAt: string;
+    lineType?: string;
+    strategy?: string;
+    quantity?: number;
+    entryPrice?: number;
+  }>;
   symbolsWithQuotes?: WatchlistRow[];
 };
 
@@ -31,7 +45,11 @@ function buildRows(data: WatchlistApiData): WatchlistRow[] {
   return (data.symbols ?? []).map((s) => ({
     symbol: s.symbol,
     addedAt: s.addedAt,
-    quote: null
+    quote: null,
+    lineType: s.lineType,
+    strategy: s.strategy,
+    quantity: s.quantity,
+    entryPrice: s.entryPrice
   }));
 }
 
@@ -43,6 +61,36 @@ function chunkSymbols<T>(items: T[], size: number): T[][] {
   return out;
 }
 
+function formatTypeStrategyCell(row: WatchlistRow): string {
+  const a = row.lineType?.trim();
+  const b = row.strategy?.trim();
+  if (a && b) {
+    return `${a} — ${b}`;
+  }
+  if (a) {
+    return a;
+  }
+  if (b) {
+    return b;
+  }
+  return "—";
+}
+
+function formatEntryCell(row: WatchlistRow): string {
+  if (row.quantity === undefined && row.entryPrice === undefined) {
+    return "—";
+  }
+  const q = row.quantity != null ? String(row.quantity) : "";
+  const p =
+    row.entryPrice != null
+      ? row.entryPrice.toLocaleString(undefined, { maximumFractionDigits: 6 })
+      : "";
+  if (q && p) {
+    return `${q} @ ${p}`;
+  }
+  return p || q || "—";
+}
+
 function toCsv(rows: WatchlistRow[]): string {
   const headers = [
     "Symbol",
@@ -50,25 +98,57 @@ function toCsv(rows: WatchlistRow[]): string {
     "Price",
     "ChangePct",
     "Volume",
+    "Type",
     "Strategy",
-    "Entry",
+    "Quantity",
+    "Entry Price",
     "Rationale"
   ];
   const lines = rows.map((r) => {
     const q = r.quote;
     const company = (q?.companyName ?? r.symbol).replaceAll('"', '""');
+    const typeEsc = (r.lineType ?? "").replaceAll('"', '""');
+    const stratEsc = (r.strategy ?? "").replaceAll('"', '""');
     return [
       r.symbol,
       `"${company}"`,
       q?.price ?? "",
       q?.changePercent ?? "",
       q?.volume ?? "",
-      "",
-      "",
+      typeEsc ? `"${typeEsc}"` : "",
+      stratEsc ? `"${stratEsc}"` : "",
+      r.quantity ?? "",
+      r.entryPrice ?? "",
       ""
     ].join(",");
   });
   return [headers.join(","), ...lines].join("\n");
+}
+
+function buildImportWorkload(
+  entries: WatchlistCsvEntry[],
+  currentSymbols: string[]
+): { workload: WatchlistCsvEntry[]; skippedNewCount: number } {
+  const seen = new Set(currentSymbols);
+  let addBudget = Math.max(0, MAX_WATCHLIST_SYMBOLS - currentSymbols.length);
+  const workload: WatchlistCsvEntry[] = [];
+  let skippedNewCount = 0;
+
+  for (const e of entries) {
+    if (seen.has(e.symbol)) {
+      workload.push(e);
+      continue;
+    }
+    if (addBudget > 0) {
+      workload.push(e);
+      seen.add(e.symbol);
+      addBudget -= 1;
+    } else {
+      skippedNewCount += 1;
+    }
+  }
+
+  return { workload, skippedNewCount };
 }
 
 export type WatchlistConsoleProps = {
@@ -202,37 +282,34 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
         window.alert("Could not read that file.");
         return;
       }
-      const { symbols, invalidRowCount } = parseWatchlistCsv(text);
-      if (symbols.length === 0) {
+      const { entries, invalidRowCount } = parseWatchlistCsv(text);
+      if (entries.length === 0) {
         window.alert("No valid tickers found. Use a column named Symbol (or put tickers in the first column).");
         return;
       }
-      const existing = new Set(rows.map((r) => r.symbol));
-      const newSyms = symbols.filter((s) => !existing.has(s));
-      const remainingSlots = MAX_WATCHLIST_SYMBOLS - rows.length;
-      if (remainingSlots <= 0) {
-        window.alert(
-          `Watchlist is full (${MAX_WATCHLIST_SYMBOLS} symbols max). Remove some before importing.`
-        );
+      const currentSymbols = rows.map((r) => r.symbol);
+      const { workload, skippedNewCount } = buildImportWorkload(entries, currentSymbols);
+      if (workload.length === 0) {
+        if (skippedNewCount > 0) {
+          window.alert(
+            `Watchlist is full (${MAX_WATCHLIST_SYMBOLS} symbols max). Remove some before adding new tickers from this file.`
+          );
+        } else {
+          window.alert("Nothing to apply from this file.");
+        }
         return;
       }
-      const toAdd = newSyms.slice(0, remainingSlots);
-      if (toAdd.length === 0) {
-        window.alert("All symbols from the file are already on your watchlist.");
-        return;
-      }
-      const droppedByCap = newSyms.length - toAdd.length;
       setMutating(true);
       setError(null);
       try {
-        for (const batch of chunkSymbols(toAdd, MAX_WATCHLIST_SYMBOLS_PER_PATCH)) {
+        for (const batch of chunkSymbols(workload, MAX_WATCHLIST_SYMBOLS_PER_PATCH)) {
           const res = await fetch(
             `/api/portfolios/${encodeURIComponent(portfolioId)}/watchlist?quotes=1`,
             {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
-              body: JSON.stringify({ addSymbols: batch })
+              body: JSON.stringify({ addEntries: batch })
             }
           );
           const json = (await res.json()) as { data?: WatchlistApiData; error?: string };
@@ -244,13 +321,15 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
             setRows(buildRows(json.data));
           }
         }
-        const parts = [`Imported ${toAdd.length} symbol${toAdd.length === 1 ? "" : "s"}.`];
+        const parts = [
+          `Applied ${workload.length} row${workload.length === 1 ? "" : "s"} (symbols with Type / Strategy / Quantity / Entry Price when present).`
+        ];
         if (invalidRowCount > 0) {
           parts.push(`Skipped ${invalidRowCount} invalid row${invalidRowCount === 1 ? "" : "s"}.`);
         }
-        if (droppedByCap > 0) {
+        if (skippedNewCount > 0) {
           parts.push(
-            `${droppedByCap} not added (watchlist holds at most ${MAX_WATCHLIST_SYMBOLS} symbols).`
+            `${skippedNewCount} new ticker${skippedNewCount === 1 ? "" : "s"} not added (watchlist holds at most ${MAX_WATCHLIST_SYMBOLS} symbols).`
           );
         }
         window.alert(parts.join(" "));
@@ -282,8 +361,8 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
             <header className="xf-watchlist-card-header">
               <h1 className="xf-watchlist-card-title">{listName}</h1>
               <p className="xf-watchlist-card-sub">
-                Quotes load from Yahoo Finance for symbols in your default list. Strategy and entry columns
-                wire up when xStrategyBuilder execution lands.
+                Quotes load from Yahoo Finance. Type, Strategy, Quantity, and Entry Price are stored with each
+                symbol (CSV import/export).
               </p>
             </header>
 
@@ -381,8 +460,8 @@ export function WatchlistConsole({ portfolioId, isAdmin }: WatchlistConsoleProps
                             onRemoveFromWatchlist={() => void onRemoveSymbol(row.symbol)}
                           />
                         </td>
-                        <td className="xf-watchlist-table-mono">—</td>
-                        <td className="xf-watchlist-table-mono">—</td>
+                        <td className="xf-watchlist-table-mono">{formatTypeStrategyCell(row)}</td>
+                        <td className="xf-watchlist-table-mono">{formatEntryCell(row)}</td>
                         <td className="xf-watchlist-table-mono">—</td>
                         <td>
                           <button

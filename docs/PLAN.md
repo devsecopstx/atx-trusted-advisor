@@ -25,7 +25,7 @@ Tracked follow-ups from doc/ops reviews. **Not blocking** staging or merge unles
 | **TODO** | **Licensing packaging matrix** — Define contractual SKUs for (1) white-label, (2) API-first, (3) managed hosted SaaS with seat/usage add-ons and support tiers. |
 | **TODO** | **Institutional proof points** — Add measurable benchmarks for strategy generation, Greeks latency, and backtest throughput to support enterprise procurement review. |
 | **Design TBD** | **Plans landing** (signed-in, not yet approved) — Header is minimal vs full `AppUserApprovedHeader`; decide if parity (e.g. logout only) is desired. |
-| **Design TBD** | **Watchlist** (`/watchlist`) — Stub only; define data model + API surface vs portfolio watchlist endpoints. |
+| **Done (baseline)** | **Watchlist** (`/watchlist`) — Uses `portfolio_watchlists` + `PATCH .../watchlist` (`addEntries` for Type/Strategy/Quantity/Entry Price). Further UX (multi-list, rationale column) TBD. |
 | **Design TBD** | **xChat 4-agent parallel mode** — Add optional orchestration where one user ask can fan out to up to 4 specialized agents and synthesize a final answer. Define UI affordance (single response vs per-agent panes), latency budget, and fallback when 1+ agents fail/time out. |
 | **TODO** | **xChat conversation identity** — Introduce stable `conversationId` / `turnId` in ask/batch logs. Current logs are per-message records only; parallel fan-out needs correlation IDs for replay, debugging, and per-agent traceability. |
 | **TODO** | **Per-agent persistence model** — Extend `xchat_logs` (or adjacent collection) with `agentId`, `agentRole`, `parentTurnId`, status, and token/cost usage fields for each parallel branch. |

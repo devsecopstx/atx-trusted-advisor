@@ -567,7 +567,8 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/portfolios/default` (any signed-in user — returns caller’s default portfolio; admin console uses the same endpoint)
 - `GET /api/portfolios/:portfolioId/accounts`
 - `PATCH /api/portfolios/:portfolioId/accounts/:accountId` (caller-owned account metadata: name, cash, external ref)
-- `GET /api/portfolios/:portfolioId/watchlist`
+- `GET /api/portfolios/:portfolioId/watchlist` (optional `?quotes=1` for Yahoo quote enrichment)
+- `PATCH /api/portfolios/:portfolioId/watchlist` — `addSymbols` / `removeSymbols` (max 20 per array), `dedupe: true`, or **`addEntries`** (max 20 per request): `{ symbol, lineType?, strategy?, quantity?, entryPrice? }` for CSV import and metadata merges. List size cap: **75** symbols per watchlist (`src/modules/watchlist/constants.ts`). UI: **`/watchlist`** — Import/Export CSV (`src/app/watchlist/ui/watchlist-console.tsx`); parser: `src/modules/watchlist/parse-watchlist-csv.ts`. Sample sheet: `branding/atxfinance-watchlist.csv`.
 - `GET /api/positions?portfolioId=&accountId=` (list holdings for an owned account)
 - `POST /api/positions` (upsert stock lot for an owned account; same user session as portfolio owner)
 - `DELETE /api/positions/:positionId?portfolioId=&accountId=` (remove a lot from an owned account)
