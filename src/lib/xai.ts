@@ -317,7 +317,7 @@ export async function respondWithXai(input: {
   parallelism?: XaiParallelismConfig;
 }): Promise<XaiResponsesResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
-  const tools = toXaiRequestTools(input.tools ?? []);
+  const tools = toXaiRequestTools(input.tools ?? [], { forXaiResponsesApi: true });
   const body: Record<string, unknown> = {
     model: input.model ?? defaultModel,
     system_prompt: input.systemPrompt,
@@ -397,7 +397,7 @@ export async function respondWithXaiToolLoop(input: {
   /** Let xAI run built-in tools (web_search, x_search, file_search) server-side inside one HTTP call; `1` broke live search for Super-Agent when mixed with local tools. */
   const perRequestMaxTurns = Math.min(Math.max(maxTurns, 1), 16);
   const toolCalls: ToolCallLog[] = [];
-  const tools = toXaiRequestTools(input.tools);
+  const tools = toXaiRequestTools(input.tools, { forXaiResponsesApi: true });
 
   let conversationInput: unknown = input.userPrompt;
   let turnsUsed = 0;
@@ -635,9 +635,12 @@ function syntheticAtxfinanceArgsFromParsedJson(
 
 function requestToolsIncludeAtxfinance(tools: Array<Record<string, unknown>>): boolean {
   for (const t of tools) {
+    if (t.type === "function" && asString(t.name) === "atxfinance") {
+      return true;
+    }
     const fn = t.function as Record<string, unknown> | undefined;
-    const name = fn && typeof fn === "object" ? asString(fn.name) : "";
-    if (name === "atxfinance") {
+    const nestedName = fn && typeof fn === "object" ? asString(fn.name) : "";
+    if (nestedName === "atxfinance") {
       return true;
     }
   }

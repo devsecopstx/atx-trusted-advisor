@@ -30,7 +30,7 @@ flowchart TD
 |--------|---------|--------|
 | System | `buildXchatSystemPrompt` | Order: persona text → RAG line or “No RAG…” → optional workspace snapshot (`atxfinance`) → `buildSessionToolInstructions` (hosted + custom copy from effective tools). |
 | User | `appendXchatKbMetadata` | Same KB suffix for ask and batch: resolved collection ids + tool list. |
-| Tools wire | `personaXapiToolsToXaiRequestTools` → `toXaiRequestTools` | See `xai-tools.ts`. |
+| Tools wire | `personaXapiToolsToXaiRequestTools` → `toXaiRequestTools(..., { forXaiResponsesApi: true })` | **`/v1/responses`** expects **flat** function tools (`type`, `name`, `parameters` at root). OpenAI-style nesting under `function` causes **422** and the request never runs hosted **web_search** / **x_search**. Chat Completions uses `toXaiRequestTools` without the flag (nested shape). |
 
 **Model (ask):** persona `model` or `DEFAULT_XCHAT_MODEL` in `ask/route.ts`; optional `reasoningEffort` for multi-agent ids only.
 
@@ -43,7 +43,7 @@ flowchart TD
 | Path | `respondWithXaiToolLoop` + local executor when persona has `atxfinance` / `yahoo_finance`; stub for hosted-only. |
 | Recovery | Synthetic / `previous_response_id` handling in `lib/xai.ts` — see [`xfeature-tools-plan.md`](./xfeature-tools-plan.md), [`atxfinance-tool-stub.md`](./atxfinance-tool-stub.md). |
 
-**Marker → wire:** `atxfinance` / `yahoo_finance` → function schemas; `collections_search` → `file_search` + `vector_store_ids`; hosted types via `toXaiRequestTools`.
+**Marker → wire:** `atxfinance` / `yahoo_finance` → function schemas (flattened for Responses); `collections_search` → `file_search` + `vector_store_ids`; hosted types via `toXaiRequestTools`. Hosted tool **calls** are satisfied on xAI’s side; the loop acks `web_search` / `x_search` with `{}` (`lib/xai.ts`).
 
 ---
 

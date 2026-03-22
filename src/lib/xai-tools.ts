@@ -34,10 +34,46 @@ function fileSearchWireTool(ids: string[]): { type: "file_search"; vector_store_
 }
 
 /**
+ * `/v1/responses` expects function tools **flat**: `type`, `name`, `parameters` (and optional `description`)
+ * at the root. OpenAI-style `{ type, function: { name, parameters } }` yields 422
+ * `tools[N]: missing field parameters` — the request never reaches hosted web_search / x_search.
+ */
+function flattenFunctionToolForXaiResponses(tool: Record<string, unknown>): Record<string, unknown> {
+  if (tool.type !== "function") {
+    return tool;
+  }
+  const nested = tool.function;
+  if (nested && typeof nested === "object") {
+    const fn = nested as Record<string, unknown>;
+    const name =
+      (typeof tool.name === "string" && tool.name.trim().length > 0
+        ? tool.name.trim()
+        : typeof fn.name === "string"
+          ? fn.name.trim()
+          : "") || "";
+    const out: Record<string, unknown> = {
+      type: "function",
+      name,
+      parameters:
+        fn.parameters != null && typeof fn.parameters === "object"
+          ? fn.parameters
+          : { type: "object", properties: {} }
+    };
+    if (typeof fn.description === "string" && fn.description.length > 0) {
+      out.description = fn.description;
+    }
+    return out;
+  }
+  if (tool.parameters === undefined) {
+    return { ...tool, parameters: { type: "object", properties: {} } };
+  }
+  return { ...tool };
+}
+
+/**
  * xAI `/v1/responses` Rust deserializer expects a top-level `name` on each tool entry.
  * - Hosted tools: default to `String(type)` when missing.
- * - `type: "function"`: mirror `function.name` onto root `name` when `name` is absent (required;
- *   omitting it yields 422 `tools[N]: missing field name`).
+ * - Nested OpenAI `function` tools: use `flattenFunctionToolForXaiResponses` when `forXaiResponsesApi`.
  */
 function ensureResponsesToolNameCompat(tool: Record<string, unknown>): Record<string, unknown> {
   const t = tool.type;
@@ -57,7 +93,16 @@ function ensureResponsesToolNameCompat(tool: Record<string, unknown>): Record<st
   return tool;
 }
 
-export function toXaiRequestTools(tools: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+export type ToXaiRequestToolsOptions = {
+  /** When true (default false), flatten `function` tools for `POST /v1/responses`. Chat Completions keeps OpenAI nested shape. */
+  forXaiResponsesApi?: boolean;
+};
+
+export function toXaiRequestTools(
+  tools: Array<Record<string, unknown>>,
+  options?: ToXaiRequestToolsOptions
+): Array<Record<string, unknown>> {
+  const forResponses = options?.forXaiResponsesApi === true;
   const result: Array<Record<string, unknown>> = [];
   for (const tool of tools) {
     const type = tool.type;
@@ -80,7 +125,11 @@ export function toXaiRequestTools(tools: Array<Record<string, unknown>>): Array<
       result.push(ensureResponsesToolNameCompat(fileSearchWireTool(ids) as Record<string, unknown>));
       continue;
     }
-    result.push(ensureResponsesToolNameCompat({ ...tool }));
+    let wire: Record<string, unknown> = { ...tool };
+    if (forResponses) {
+      wire = flattenFunctionToolForXaiResponses(wire);
+    }
+    result.push(ensureResponsesToolNameCompat(wire));
   }
   return result;
 }
@@ -104,7 +153,7 @@ export function personaXapiToolsToXaiRequestTools(
   if (hasYahooFinance) {
     base.push(YAHOO_FINANCE_TOOL_DEFINITION as unknown as Record<string, unknown>);
   }
-  return toXaiRequestTools(base);
+  return toXaiRequestTools(base, { forXaiResponsesApi: true });
 }
 
 /** Wire tools sent to `/v1/responses` — same as `respondWithXaiToolLoop` (`toXaiRequestTools` ∘ `personaXapiToolsToXaiRequestTools`). */
@@ -112,6 +161,7 @@ export function buildWireToolsForXaiResponses(
   personaTools: PersonaXapiToolDefinition[]
 ): Array<Record<string, unknown>> {
   return toXaiRequestTools(
-    personaXapiToolsToXaiRequestTools(personaTools) as Array<Record<string, unknown>>
+    personaXapiToolsToXaiRequestTools(personaTools) as Array<Record<string, unknown>>,
+    { forXaiResponsesApi: true }
   );
 }

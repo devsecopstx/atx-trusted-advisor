@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 
+import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
+
 type Message = {
   id: string;
   role: "user" | "ai" | "error";
@@ -269,7 +271,11 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
                 {msg.persona}
               </small>
             ) : null}
-            <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
+            {msg.role === "ai" ? (
+              <XchatMarkdownBody content={msg.content} />
+            ) : (
+              <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
+            )}
           </div>
         ))}
 
