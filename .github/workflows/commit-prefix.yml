@@ -1,3 +1,5 @@
+# Validates PR commit subjects. Aligned with `.cursor/skills/test-commit-push/SKILL.md` step 11
+# (agent prefixes + conventional commits for humans). Merge/revert subjects are skipped.
 name: Commit message prefix check
 
 on:
@@ -15,15 +17,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          regex='^junie-aTx⚡dev-agent .+ [0-9]+\.[0-9]+\.[0-9]+([\-+][0-9A-Za-z\.-]+)?$'
+
+          # Return 0 if subject is acceptable, 1 otherwise
+          subject_ok() {
+            local s="$1"
+            [[ -n "$s" ]] || return 1
+            [[ "$s" == Merge\ * ]] && return 0
+            [[ "$s" == Revert\ * ]] && return 0
+            [[ "$s" =~ ^cursor-chore: ]] && return 0
+            [[ "$s" =~ ^cursor-hotfix: ]] && return 0
+            [[ "$s" =~ ^chore:\ aTx⚡ ]] && return 0
+            # Legacy Junie-style (optional)
+            [[ "$s" =~ ^junie-aTx⚡dev-agent[[:space:]].+[[:space:]][0-9]+\.[0-9]+\.[0-9]+([\-+][0-9A-Za-z\.-]+)?$ ]] && return 0
+            # Conventional Commits (human PRs): feat/fix/chore/... with optional scope and optional breaking !
+            [[ "$s" =~ ^(feat|fix|docs|style|refactor|test|chore|perf|ci|build)(\([a-zA-Z0-9._/-]+\))?!?:[[:space:]].+ ]] && return 0
+            return 1
+          }
+
           base="${{ github.event.pull_request.base.sha }}"
           head="${{ github.event.pull_request.head.sha }}"
           failed=0
           while read -r sha; do
-            msg="$(git log -1 --pretty=%B "$sha" | tr -d '\r')"
-            if ! [[ "$msg" =~ $regex ]]; then
-              echo "::error title=Bad commit message::$sha: $msg"
+            [[ -n "$sha" ]] || continue
+            subject="$(git log -1 --pretty=%s "$sha" | tr -d '\r')"
+            if ! subject_ok "$subject"; then
+              echo "::error title=Commit subject not allowed::$sha: $subject"
+              echo "Allowed: cursor-chore:/cursor-hotfix:/chore: aTx⚡…, legacy junie-aTx⚡dev-agent … semver, Conventional Commits (feat|fix|chore|…), or Merge/Revert — see test-commit-push SKILL step 11."
               failed=1
             fi
-          done < <(git rev-list "$base..$head")
-          exit $failed
+          done < <(git rev-list --reverse "$base..$head")
+          exit "$failed"

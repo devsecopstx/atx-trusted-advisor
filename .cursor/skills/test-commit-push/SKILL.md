@@ -41,21 +41,16 @@ Ship changes safely by validating locally and preparing an accurate commit workf
    or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).
    Use **`generate-docs`** § *Cursor rules* for the gap list.
 10. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
-11. **Commit message (Cursor agents):** Use a traceable **subject prefix** so agent-authored commits are easy to filter (`git log --grep=cursor-chore`, `git log --grep=cursor-hotfix`, or `git log --grep=aTx⚡`):
-    - **Chores** (release bumps, deps, tooling, housekeeping): `cursor-chore: <summary>` **or** conventional **`chore: aTx⚡ <summary>`** (same `chore` type as Conventional Commits — no conflict; the brand sits at the start of the description).
-    - **Hotfixes** (urgent prod fixes): `cursor-hotfix: <summary>`
+11. **Commit message (Cursor agents):** **Default** subject line: **`chore: aTx⚡ <summary>`** — use for **both** routine chores and urgent hotfixes (same Conventional Commits `chore` type; filter history with `git log --grep=aTx⚡`). The brand sits at the start of the description after the colon.
+    - **Legacy (optional):** `cursor-chore: <summary>` or `cursor-hotfix: <summary>` if you need to grep those strings specifically.
     - Include **`package.json` version** in the subject when shipping a release — use the **current** version from step 10 / `package.json` (do not paste a stale version literal from this doc).
-    - **Examples (substitute `vX.Y.Z` from `package.json`):** `cursor-chore: release vX.Y.Z (xChat UX, personas, tool usage)` · `chore: aTx⚡ release vX.Y.Z (xChat UX, personas)` · `cursor-hotfix: fix empty tools guard in persona save`
+    - **Examples (substitute `vX.Y.Z` from `package.json`):** `chore: aTx⚡ release vX.Y.Z (xChat UX, personas)` · `chore: aTx⚡ hotfix empty tools guard in persona save` · `cursor-chore: release vX.Y.Z (tooling)` (legacy)
     - One-line subject is enough; add a body after a blank line only when context helps reviewers.
     - **Optional git hook:** `.githooks/commit-msg` can **hint** (or strictly enforce via `XFINANCE_ENFORCE_CURSOR_COMMIT=1`) on `agent/*`, `cursor/*`, and `release/*` branches — see **`.githooks/README.md`**. Hooks complement this doc; they do not replace it.
 12. Confirm push readiness and branch status.
 13. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
 14. **Staging first (when applicable):** If the team ships to staging before prod, push the branch, open/merge PR per policy, then run staging deploy/verify (see `AGENTS.md` / deploy skills). Production can wait until staging checks pass.
-15. **Production dispatch correctness (manual runs):**
-   - For workflow-dispatch production deploys, use explicit inputs:
-     `target=production` and `approval=approve-production`.
-   - If all deploy jobs show `skipped`, treat as input-contract mismatch first,
-     then investigate workflow guards.
+15. **Production dispatch correctness (manual runs):** use **Actions → Deploy Cloud Run Production** with **`confirm_manual_prod=yes`** (see `AGENTS.md` / `.github/workflows/deploy-cloud-run-production.yml`). Staging uses **Deploy Cloud Run** (push to `main` or empty `workflow_dispatch`). If jobs show `skipped`, verify workflow and input names first.
 
 ## Output
 

@@ -16,6 +16,12 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-atxrocks!}
     volumes:
       - atxfinance_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   atxfinance-backend:
     build:
@@ -23,7 +29,8 @@ services:
       dockerfile: Dockerfile
     container_name: atxfinance-backend
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     env_file:
       - .env
     environment:

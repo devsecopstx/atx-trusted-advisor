@@ -159,3 +159,7 @@ next-env.d.ts
 
 # Ephemeral local agent-generated batch tests
 tests/integration/xchat-batch-*.test.ts
+
+# Gradle (Kotlin backend service)
+services/atxfinance-backend/.gradle/
+services/atxfinance-backend/build/
