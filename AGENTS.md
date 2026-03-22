@@ -81,7 +81,7 @@ echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
 echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 ```
 
-**Manual production deploy** (`workflow_dispatch` → Deploy Cloud Run): set **target** to **production** and **approval** to **approve-production**. If you choose **approval** **no** while **target** is **production**, every job is skipped (no staging, no prod) and the run looks “successful” but empty — re-run with **approve-production**.
+**Production deploy:** happens **only** on **push to `main`**, **after** the **staging** job succeeds (`deploy-production-main` **needs** `deploy-staging`). **Manual** `workflow_dispatch` → Deploy Cloud Run is **staging redeploy only** (`target=staging`); there is no manual production path in GitHub Actions.
 
 ## Guardrails
 

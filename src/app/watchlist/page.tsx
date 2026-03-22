@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { GlobalFooter } from "@/app/ui/global-footer";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import {
@@ -11,8 +12,8 @@ import {
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
-import "../xchat/xchat.css";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
+import "../xchat/xchat.css";
 
 import { WatchlistConsole } from "./ui/watchlist-console";
 import "./watchlist.css";
@@ -109,6 +110,7 @@ export default async function WatchlistPage() {
           <WatchlistConsole isAdmin={admin} portfolioId={portfolioId} />
         )}
       </div>
+      <GlobalFooter />
     </div>
   );
 }

@@ -64,12 +64,9 @@ Each material inference must store immutable records for:
      resource creation/reuse, async enqueue record, and failure warning record.
    - Warning path emits an explicit audit action and operator-visible signal
      (for this repo: `alert-user-not-sync-warning`).
-7. **Deploy path correctness (workflow dispatch)**
-   - Manual production dispatch uses explicit input contract:
-     `target=production` and `approval=approve-production`.
-   - Reviewer confirms staging job guardrails prevent accidental staging deploy on
-     production-only dispatches.
-   - Skipped-run outcomes are recorded as control evidence (input mismatch vs policy gate).
+7. **Deploy path correctness**
+   - Production deploy is **staging-gated** on **push to `main`** (`deploy-production-main` **needs** `deploy-staging`).
+   - Manual **`workflow_dispatch`** redeploys **staging only** (`target=staging`); there is no GitHub Actions path to dispatch production directly.
 
 ## Checklist
 

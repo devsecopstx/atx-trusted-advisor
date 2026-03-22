@@ -360,6 +360,8 @@ echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
 echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 ```
 
+**Deploy flow:** a push to **`main`** runs **staging**, then **production** only if staging succeeds. **`workflow_dispatch`** redeploys **staging** only — there is no manual production job in this workflow.
+
 ### Deploy Cloud Run: common failures
 
 - **`Cannot update environment variable [ALLOW_ANY_X_USER_LOGIN] to string literal because it has already been set with a different type`** — The live service still maps that name to Secret Manager. The workflow passes `--remove-secrets=ALLOW_ANY_X_USER_LOGIN` before setting literals so the next revision can switch to env literals.
