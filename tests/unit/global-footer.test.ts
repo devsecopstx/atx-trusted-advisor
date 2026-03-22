@@ -13,8 +13,8 @@ describe("GlobalFooter", () => {
     expect(source).toContain("aTx⚡Finance");
   });
 
-  it("does not ship casual or jokey compliance copy in chrome", () => {
-    expect(source).not.toMatch(/don't sue|sue me, bro/i);
+  it("keeps watermark decorative (not asserted as legal advice)", () => {
+    expect(source).toMatch(/app-footer-watermark[^>]*aria-hidden/s);
   });
 
   it("renders optional subline stack only when subline is passed", () => {

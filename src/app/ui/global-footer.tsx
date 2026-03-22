@@ -50,6 +50,9 @@ export function GlobalFooter({ subline }: GlobalFooterProps) {
       {subline ? (
         <div className="app-footer-subline-stack">
           <div className="app-footer-subline">{subline}</div>
+          <p className="app-footer-watermark" aria-hidden>
+            don&apos;t sue me, bro
+          </p>
         </div>
       ) : null}
     </footer>
