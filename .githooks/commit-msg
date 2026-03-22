@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Commit message policy: junie-aTx⚡dev-agent <commit_msg> <version>
+# - <version>: plain semver from package.json (e.g., 1.2.3 or 1.2.3-beta.1)
+# Enable with: git config core.hooksPath .githooks
+set -euo pipefail
+msg_file="$1"
+commit_msg="$(cat "$msg_file" | tr -d '\r')"
+# Regex: prefix + space + some message + space + semver (with optional -prerelease or +build)
+regex='^junie-aTx⚡dev-agent [^ ].* [0-9]+\.[0-9]+\.[0-9]+([\-+][0-9A-Za-z\.-]+)?$'
+if ! [[ "$commit_msg" =~ $regex ]]; then
+  echo "Commit message must match: junie-aTx⚡dev-agent <message> <version>" >&2
+  echo "Example: junie-aTx⚡dev-agent feat: update docs 1.2.3" >&2
+  exit 1
+fi
