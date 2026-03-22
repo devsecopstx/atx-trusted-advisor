@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: atxfinance-backend
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfintechdb}}}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+shedlock:
+  defaults:
+    lock-at-most-for: PT5M
+    lock-at-least-for: PT0S
+
+app:
+  pubsub:
+    project-id: ${PUBSUB_PROJECT_ID:}
+    topic: ${PUBSUB_TOPIC:atxfinance-backend-requests}
+    dlq-topic: ${PUBSUB_DLQ_TOPIC:atxfinance-backend-requests-dlq}

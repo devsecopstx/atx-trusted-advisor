@@ -32,7 +32,7 @@ Exported as `XCHAT_DEBUG_LOG_TYPES` in `src/lib/xchat-debug.ts`.
 ## Enabling
 
 1. **Local:** `.env` → `ENABLE_XCHAT_DEBUG=true` (see `.env.example`). **Restart `next dev`** after changing env — Next only reads `.env` at process start.
-2. **GitHub variable** (recommended for Cloud Run): `ENABLE_XCHAT_DEBUG=true` for the environment. The deploy workflow passes it (see `.github/workflows/deploy-cloud-run.yml`).
+2. **GitHub variable** (recommended for Cloud Run): `ENABLE_XCHAT_DEBUG=true` for the environment. The deploy workflows pass it (see `.github/workflows/deploy-cloud-run.yml` and `.github/workflows/deploy-cloud-run-production.yml`).
 3. **Manual:** `gcloud run services update <service> --region <region> --set-env-vars ENABLE_XCHAT_DEBUG=true`
 
 ## Log retention (30 days)

@@ -83,10 +83,11 @@ Full snapshot including CI:
 printf "stage_url=%s\n" "$(gh variable get STAGING_BASE_URL)" && \
 printf "prod_url=%s\n" "$(gh variable get PROD_BASE_URL)" && \
 echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
-echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
+echo "latest_staging_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1 && \
+echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run Production" --limit 1
 ```
 
-**Deploy:** **push to `main`** runs **staging only** (production is not deployed automatically). **Production** runs only via **manual** `workflow_dispatch` on **Deploy Cloud Run**: `target=manual_only_prod` and **`confirm_manual_prod=yes`** (job `deploy-production-manual`). **Staging redeploy:** `target=staging` (confirmation input is ignored).
+**Deploy:** **push to `main`** runs **staging only** via **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`). **Production** is **Deploy Cloud Run Production** (`.github/workflows/deploy-cloud-run-production.yml`, **`workflow_dispatch` only**): set **`confirm_manual_prod=yes`** (optional **`deployment_notes`**). Optional **Required reviewers** on GitHub environment **`production`**. **Staging redeploy:** **Deploy Cloud Run → Run workflow** (no inputs).
 
 ## Guardrails
 

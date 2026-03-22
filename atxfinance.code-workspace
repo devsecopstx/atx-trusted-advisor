@@ -44,16 +44,27 @@
         "problemMatcher": []
       },
       {
-        "label": "Start Backend (Docker)",
+        "label": "Start Backend (Gradle)",
         "type": "shell",
-        "command": "npm run dev:backend",
+        "command": "bash scripts/dev/bootrun-atxfinance-backend.sh",
+        "options": {
+          "cwd": "${workspaceFolder}"
+        },
         "isBackground": true,
-        "problemMatcher": []
+        "problemMatcher": {
+          "owner": "spring-boot",
+          "pattern": { "regexp": "^$" },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "Started .* in \\d+\\.\\d+ seconds \\(|Started Application"
+          }
+        }
       },
       {
         "label": "Start Frontend (Next Dev)",
         "type": "shell",
-        "command": "npm run dev:frontend",
+        "command": "bash -lc 'set -a; source ${workspaceFolder}/.env 2>/dev/null || true; set +a; npm run dev:frontend'",
         "isBackground": true,
         "problemMatcher": {
           "owner": "next-dev",
@@ -64,6 +75,12 @@
             "endsPattern": "Ready in|Local:\\s+http|started server"
           }
         }
+      },
+      {
+        "label": "Start Backend (Docker)",
+        "type": "shell",
+        "command": "bash -lc 'docker compose up -d mongodb atxfinance-backend'",
+        "problemMatcher": []
       },
       {
         "label": "Build and restart dev server",
@@ -88,7 +105,7 @@
       {
         "label": "Start Local Services",
         "dependsOn": ["Start Backend (Docker)", "Start Frontend (Next Dev)"],
-        "dependsOrder": "parallel",
+        "dependsOrder": "sequence",
         "problemMatcher": []
       },
       {

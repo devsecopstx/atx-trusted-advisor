@@ -1,0 +1,204 @@
+# Production Cloud Run deploy — workflow_dispatch ONLY (no push / no schedule).
+# Staging stays in deploy-cloud-run.yml (push to main + dispatch).
+# Optional extra gate: GitHub → Settings → Environments → production → Required reviewers.
+name: Deploy Cloud Run Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_manual_prod:
+        description: "Must be yes to deploy production (fat-finger guard)."
+        required: true
+        type: choice
+        default: "no"
+        options:
+          - "no"
+          - "yes"
+      deployment_notes:
+        description: "Optional notes included in the post-deploy Slack message."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  NODE_VERSION: "22"
+  IMAGE_NAME: "atxfinance-core-app"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  GH_REPOSITORY: ${{ github.repository }}
+  GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  guard-manual-prod-confirm:
+    if: inputs.confirm_manual_prod != 'yes'
+    name: Block unconfirmed manual production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail — confirmation required
+        run: |
+          echo "::error::Select confirm_manual_prod=yes to run production deploy."
+          exit 1
+
+  deploy-production-manual:
+    if: inputs.confirm_manual_prod == 'yes'
+    name: Deploy Production (manual)
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: ${{ vars.PROD_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate production deploy configuration
+        env:
+          GCP_PROJECT_ID_PROD: ${{ vars.GCP_PROJECT_ID_PROD }}
+          CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
+          CLOUD_RUN_SERVICE_PROD: ${{ vars.CLOUD_RUN_SERVICE_PROD }}
+          PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+          EXPECTED_GITHUB_REPOSITORY: ${{ vars.EXPECTED_GITHUB_REPOSITORY }}
+          EXPECTED_GITHUB_OWNER: ${{ vars.EXPECTED_GITHUB_OWNER }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+        run: |
+          set -euo pipefail
+          for key in GCP_PROJECT_ID_PROD CLOUD_RUN_REGION CLOUD_RUN_SERVICE_PROD PROD_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required deploy config: ${key}"
+              exit 1
+            fi
+          done
+          if [ -n "${EXPECTED_GITHUB_REPOSITORY:-}" ] && [ "${EXPECTED_GITHUB_REPOSITORY}" != "${GH_REPOSITORY}" ]; then
+            echo "::error::Repo mismatch: expected ${EXPECTED_GITHUB_REPOSITORY}, got ${GH_REPOSITORY}"
+            exit 1
+          fi
+          if [ -n "${EXPECTED_GITHUB_OWNER:-}" ] && [ "${EXPECTED_GITHUB_OWNER}" != "${GH_REPOSITORY_OWNER}" ]; then
+            echo "::error::Owner mismatch: expected ${EXPECTED_GITHUB_OWNER}, got ${GH_REPOSITORY_OWNER}"
+            exit 1
+          fi
+          echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=production (manual workflow)"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run CI gate
+        run: npm run ci:gate
+
+      - name: Build app
+        run: npm run build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID_PROD }}
+
+      - name: Drop legacy ALLOW_ANY_X_USER_LOGIN secret binding (if present)
+        run: |
+          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
+            --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
+
+      - name: Verify required Secret Manager secrets exist (production)
+        run: |
+          set -euo pipefail
+          PROJECT="${{ vars.GCP_PROJECT_ID_PROD }}"
+          for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
+            errfile="$(mktemp)"
+            if gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null 2>"$errfile"; then
+              rm -f "$errfile"
+              continue
+            fi
+            err="$(cat "$errfile")"
+            rm -f "$errfile"
+            if echo "$err" | grep -qE 'PERMISSION_DENIED|permission.*denied|403'; then
+              echo "::error::Secret Manager IAM denied for '${s}' in ${PROJECT} (need secretmanager.secrets.get). Grant the GitHub deploy SA (secret GCP_SERVICE_ACCOUNT_EMAIL) roles/secretmanager.viewer or roles/secretmanager.admin on this project — see DEVELOPMENT.md (GCP Secret Manager)."
+            else
+              echo "::error::Missing or unreachable GCP secret '${s}' in project ${PROJECT}"
+              echo "$err"
+            fi
+            exit 1
+          done
+
+      - name: Clear legacy ADMIN_SEED_EMAIL bindings (literal or old secret ref)
+        run: |
+          SVC="${{ vars.CLOUD_RUN_SERVICE_PROD }}"
+          R="${{ vars.CLOUD_RUN_REGION }}"
+          gcloud run services update "$SVC" --region "$R" --platform managed --remove-secrets=ADMIN_SEED_EMAIL --quiet || true
+          gcloud run services update "$SVC" --region "$R" --platform managed --remove-env-vars=ADMIN_SEED_EMAIL --quiet || true
+
+      - name: Deploy to Cloud Run (production)
+        env:
+          ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
+          ENABLE_XCHAT_DEBUG: ${{ vars.ENABLE_XCHAT_DEBUG || 'false' }}
+          XAI_CHAT_MODEL: ${{ vars.XAI_CHAT_MODEL || 'grok-4-1-fast-reasoning' }}
+        run: |
+          gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            --source . \
+            --region "${{ vars.CLOUD_RUN_REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "NODE_ENV=production,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL}" \
+            --set-secrets "MONGODB_URI_B64=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest" \
+            --quiet
+
+      - name: Health check production
+        run: |
+          bash scripts/ops/health-check-with-fallback.sh \
+            "production" \
+            "${{ vars.PROD_BASE_URL }}" \
+            "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
+            "${{ vars.CLOUD_RUN_REGION }}" \
+            "18" \
+            "15"
+
+      - name: Post production deploy note to Slack
+        env:
+          DEPLOYMENT_NOTES: ${{ inputs.deployment_notes || '' }}
+          HOTFIX_NOTES: ""
+        run: |
+          set -euo pipefail
+          WEBHOOK_URL="$(gcloud secrets versions access latest --secret=SLACK_WEBHOOK_URL --project='${{ vars.GCP_PROJECT_ID_PROD }}' 2>/dev/null || true)"
+          if [ -z "${WEBHOOK_URL}" ]; then
+            echo "::notice::SLACK_WEBHOOK_URL is empty in production Secret Manager; skipping post-deploy Slack note."
+            exit 0
+          fi
+          if [ "${WEBHOOK_URL}" = "__EMPTY__" ]; then
+            echo "::notice::SLACK_WEBHOOK_URL placeholder indicates disabled Slack notifications; skipping."
+            exit 0
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          DEPLOYMENT_NOTES_VALUE="${DEPLOYMENT_NOTES:-}"
+          HOTFIX_NOTES_VALUE="${HOTFIX_NOTES:-}"
+          export RUN_URL
+          export DEPLOYMENT_NOTES_VALUE
+          export HOTFIX_NOTES_VALUE
+          export CLOUD_RUN_SERVICE_PROD="${{ vars.CLOUD_RUN_SERVICE_PROD }}"
+          export PROD_BASE_URL="${{ vars.PROD_BASE_URL }}"
+
+          PAYLOAD="$(python3 -c 'import json,os; run_url=os.getenv("RUN_URL",""); notes=(os.getenv("DEPLOYMENT_NOTES_VALUE") or "").strip(); hotfix=(os.getenv("HOTFIX_NOTES_VALUE") or "").strip(); actor=os.getenv("GITHUB_ACTOR","unknown"); sha=(os.getenv("GITHUB_SHA","") or "")[:7]; ref_name=os.getenv("GITHUB_REF_NAME",""); service=os.getenv("CLOUD_RUN_SERVICE_PROD",""); base_url=os.getenv("PROD_BASE_URL",""); lines=["✅ Production deploy succeeded (manual workflow)", f"• Service: {service}", f"• Ref: {ref_name} @ {sha}", f"• Actor: {actor}", f"• URL: {base_url}", f"• Run: {run_url}"]; lines += [f"• Deployment notes: {notes}"] if notes else []; lines += [f"• Hotfix notes: {hotfix}"] if hotfix else []; print(json.dumps({"text":"\\n".join(lines)}))')"
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Content-Type: application/json" \
+            --data "${PAYLOAD}" \
+            "${WEBHOOK_URL}" >/dev/null

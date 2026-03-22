@@ -227,7 +227,7 @@ Post-deploy smoke steps live in
 
 ## Deploy / secrets doc parity (xFinance)
 
-When `.github/workflows/deploy-cloud-run.yml` changes
+When `.github/workflows/deploy-cloud-run.yml` or `.github/workflows/deploy-cloud-run-production.yml` changes
 **which env vars or Secret Manager names** are validated or mounted:
 
 1. Update **`DEVELOPMENT.md`** in the same change set:
@@ -251,7 +251,7 @@ When `.github/workflows/deploy-cloud-run.yml` changes
 6. Document secret **value-quality** checks, not just existence checks:
    include examples of invalid values (e.g., trailing comma in
    `ADMIN_SEED_EMAIL`) and the expected health symptom (`Invalid environment configuration`).
-7. Document deploy gating: **push to `main`** runs **staging only**; **production** via **`workflow_dispatch`** (`target=manual_only_prod`, **`confirm_manual_prod=yes`**, optional notes).
+7. Document deploy gating: **push to `main`** runs **staging only** (**Deploy Cloud Run**); **production** via **Deploy Cloud Run Production** (`workflow_dispatch` only, **`confirm_manual_prod=yes`**, optional notes; no `push` trigger).
 8. Keep staging/prod job gating rules documented when workflow conditions change
    (for example, when prod is removed from the push path or manual prod inputs change).
 

@@ -95,7 +95,7 @@ For both envs, set required app keys:
 | `X_OAUTH_CLIENT_SECRET` | required | required | separate app creds preferred |
 | `AUTH_SECRET` | strongly required | strongly required | minimum 16 chars |
 | `X_OAUTH_CALLBACK_URL` | `https://staging.atx.<domain>/api/auth/x/callback` | `https://atx.<domain>/api/auth/x/callback` | pin callbacks in production-like envs |
-| `ADMIN_SEED_EMAIL` | required | required | GCP Secret Manager secret `ADMIN_SEED_EMAIL` mounted like other runtime secrets (see `deploy-cloud-run.yml`) |
+| `ADMIN_SEED_EMAIL` | required | required | GCP Secret Manager secret `ADMIN_SEED_EMAIL` mounted like other runtime secrets (see deploy Cloud Run workflows under `.github/workflows/`) |
 | `ALLOW_ANY_X_USER_LOGIN` | optional `true` for open `/xchat` | omit / `false` | GitHub Variable per environment; prod should stay unset or `false` |
 | `ADMIN_X_USERNAMES` | optional | optional | comma-separated allowlist |
 
@@ -114,7 +114,7 @@ Mismatch can trigger auth cookie context failures.
 Recommended:
 
 1. Push to `main` -> staging deploy only
-2. Production -> **Deploy Cloud Run** `workflow_dispatch` with **`target=manual_only_prod`** (see `atxfinance-deploy-production`)
+2. Production -> **Deploy Cloud Run Production** `workflow_dispatch` with **`confirm_manual_prod=yes`** (see `atxfinance-deploy-production`)
 3. CI gate before deploy: lint + typecheck + tests + build
 4. Post-deploy checks:
    - `GET /api/health`

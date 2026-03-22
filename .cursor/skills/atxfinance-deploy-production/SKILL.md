@@ -1,6 +1,6 @@
 ---
 name: atxfinance-deploy-production
-description: Deploy atxfinance to GCP Cloud Run production via GitHub Actions manual dispatch (`manual_only_prod`) with CI gate, build, health checks, and rollback-first guidance. Use when releasing to production or auditing production deploy readiness.
+description: Deploy atxfinance to GCP Cloud Run production via GitHub Actions **Deploy Cloud Run Production** (`workflow_dispatch` only; `confirm_manual_prod=yes`) with CI gate, build, health checks, and rollback-first guidance. Use when releasing to production or auditing production deploy readiness.
 ---
 
 # atxfinance Deploy Production
@@ -38,8 +38,8 @@ Also confirm:
 ## Workflow (this repo — core app)
 
 1. Confirm **staging** is healthy for the commit you are promoting (push to `main` or manual staging deploy).
-2. In GitHub **Actions → Deploy Cloud Run → Run workflow**: set **`target=manual_only_prod`**, **`confirm_manual_prod=yes`**, optional **`deployment_notes`**.
-3. The workflow runs **`npm run ci:gate`**, **`npm run build`**, deploys **`CLOUD_RUN_SERVICE_PROD`**, then production health checks (see `.github/workflows/deploy-cloud-run.yml`).
+2. In GitHub **Actions → Deploy Cloud Run Production → Run workflow**: set **`confirm_manual_prod=yes`**, optional **`deployment_notes`**.
+3. The workflow runs **`npm run ci:gate`**, **`npm run build`**, deploys **`CLOUD_RUN_SERVICE_PROD`**, then production health checks (see `.github/workflows/deploy-cloud-run-production.yml`). Ensure the GitHub **`production`** environment has **Required reviewers** if you want approval before deploy steps run.
 4. Report result and rollback command if checks fail.
 
 **Tags / immutable images:** this workflow uses **`gcloud run deploy --source .`** from the selected ref; align release bookkeeping with `package.json` version and merge commit SHA.
@@ -55,7 +55,7 @@ Use this stable mapping:
 
 ## Required Safety Rules
 
-- Do not assume **push to `main`** updates production — it does **not**; use **`manual_only_prod`** dispatch only after staging verification.
+- Do not assume **push to `main`** updates production — it does **not**; the production workflow has **no `push` trigger**. Use **Deploy Cloud Run Production** dispatch only after staging verification.
 - Never skip health checks in production.
 - If smoke checks fail, stop rollout and provide rollback steps immediately.
 

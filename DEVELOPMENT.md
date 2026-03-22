@@ -12,10 +12,39 @@ Core backend and UI for atxFinance **admin operations** and **signed-in app_user
 
 ## Tech Stack
 
-- Next.js App Router (`src/app/api/*`) for backend routes
-- MongoDB database: `atxfinancedb`
-- TypeScript + Zod validation
+The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + product APIs) and the **atxfinance-backend** worker (Kotlin/Spring). Local dev typically runs MongoDB + `atxfinance-backend` via Docker Compose, then the Next dev server on the host (see *Local Setup* below).
+
+### Frontend (core app UI)
+
+- **Next.js** (App Router) — React UI under `src/app/*` (admin console, app_user surfaces: `/xchat`, `/portfolio`, `/watchlist`, etc.).
+- **Styling** — Tailwind + `--xf-*` design tokens (`design-system/atxfinance-brand-kit.css`); see branding rules in `.cursor/rules/xfinance-branding.mdc`.
+
+### Core application API (Next.js server)
+
+- **HTTP APIs** — Route handlers in `src/app/api/*` (auth, personas, xChat, portfolios, admin, OpenAPI inventory, etc.).
+- **Language & validation** — TypeScript + **Zod** for request/env parsing.
+- **Data** — **MongoDB** (primary app database; default local name often `atxfintechdb` via Compose — cloud env names follow deployment config; historical docs may reference `atxfinancedb`).
+
+### atxfinance-backend (scheduler / worker service)
+
+- **Runtime** — **Kotlin**, **Spring Boot**, **JDK 21**; build with **Gradle** (`services/atxfinance-backend`, `gradlew`).
+- **Role** — Fault-tolerant scheduler/worker surface (ShedLock + Mongo, Pub/Sub integration path, observability hooks); **not** a replacement for Next.js product APIs.
+- **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`docs/ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
+- **Container** — Repo-root **`Dockerfile`** builds the JAR from `services/atxfinance-backend`; **`docker-compose.yml`** wires `atxfinance-backend` + `mongo:8`.
+
+### Integrations (cross-cutting)
+
 - **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`docs/xchat/xai-api-standard.md`** for repo mapping and deep links.
+
+### Local dev run order (summary)
+
+| Step | What to start | Typical command / URL |
+| --- | --- | --- |
+| 1 | **MongoDB** (`mongo:8` in Compose) | Started with step 2 via `npm run dev:backend` — `localhost:27017` |
+| 2 | **atxfinance-backend** (Spring; waits on Mongo healthy) | Same Compose up — health: `http://localhost:8080/actuator/health` |
+| 3 | **Next.js core app** (UI + `src/app/api/*`) | `npm run dev` (or `npm run dev:frontend`) — `http://localhost:3000` |
+
+Detailed env, verification URLs, and troubleshooting live in **Local Setup** below; this table is the single-line sequence only (not duplicated there).
 
 ## Platform roles vs tenant membership (session)
 
@@ -55,18 +84,59 @@ Use `.env` only (do not use `.env.local` for this app).
 - `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications and **app_user feedback** from `POST /api/feedback`)
 - `APP_USER_SHOW_DB_ENDPOINT` (optional; set `true` to show the Mongo host/db chip in the app_user header when `NODE_ENV=production` — e.g. beta staging builds)
 
-## Local Setup
+## Local Setup (Backend → Frontend)
 
-1. Install dependencies:
+Follow these steps to run the backend first, then the frontend. **Run-order cheat sheet:** Mongo → `atxfinance-backend` → `npm run dev` — see *Tech Stack* → **Local dev run order (summary)** (table not repeated here).
+
+1. Install dependencies
    - `npm install`
-2. Start MongoDB:
-   - `docker compose up -d`
-3. Configure environment:
+2. Create your env file
    - `cp .env.example .env`
-4. Start dev server:
-   - `npm run dev`
-5. Seed core admin user + default tenant:
+   - Tip: Leave `MONGODB_URI_B64` unset for local development so the app uses the local Docker Mongo.
+3. (Optional) Source admin username from admin_seed.csv and set local Mongo password
+   - `export ADMIN_X_USERNAME=$(awk -F, 'NR==2{print $2}' admin_seed.csv)`
+   - `export MONGO_ROOT_PASSWORD=atxrocks!`  # change if desired
+   - `export MONGODB_DB_NAME=atxfintechdb`   # default already
+4. Start backend + MongoDB (Docker Compose, from repo root)
+   - `npm run dev:backend`
+   - Behavior:
+     - Compose always starts `mongo:8` with:
+       - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfintechdb}`
+       - `MONGO_INITDB_ROOT_USERNAME=${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}`
+       - `MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-atxrocks!}`
+     - The Spring service receives `SPRING_DATA_MONGODB_URI` pointing at `mongodb:27017` with **auth** and `authSource=admin`, using the same username/password/db name defaults as above (see `docker-compose.yml`).
+     - If **`MONGODB_URI_B64`** is set in `.env`, `MongoUriEnvPostProcessor` injects the decoded URI as `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
+5. Verify backend
+   - Actuator: http://localhost:8080/actuator/health (standard Spring Boot JSON)
+   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`docs/ops/atxfinance-backend-http-api.md`**)
+   - Compatibility: http://localhost:8080/api/health
+   - Swagger UI: http://localhost:8080/swagger-ui.html (may redirect to `/swagger-ui/index.html`); OpenAPI JSON: `/v3/api-docs`
+6. Start frontend (Next.js dev server)
+   - `npm run dev:frontend`
+   - App URL: http://localhost:3000
+7. Seed core admin user + default tenant (first-time only)
+   - Ensure `.env` has `ADMIN_SEED_EMAIL=you@example.com`
    - `npm run seed:admin`
+8. Stop services and view logs
+   - Stop backend + Mongo: `Ctrl+C` in the Compose terminal, or `docker compose down`
+   - View backend logs: `docker logs -f atxfinance-backend`
+   - View Mongo logs: `docker logs -f atxfinance-mongodb`
+9. Troubleshooting
+   - If port 27017 is already in use, stop other Mongo instances or change the published port in `docker-compose.yml`.
+   - To force local Mongo (and ignore Atlas), ensure `MONGODB_URI_B64` is unset in your environment when starting the backend.
+   - To use Atlas in dev, set `MONGODB_URI_B64` (base64 of your Mongo URI) before `npm run dev:backend`.
+
+### Notes on the new root-based Docker build (backend)
+
+- The backend `Dockerfile` now lives at the repo root and builds the service under `services/atxfinance-backend`.
+- `docker-compose.yml` includes two services:
+  - `mongodb` on port 27017 with named volume `atxfinance_mongo_data`
+  - `atxfinance-backend` on port 8080, connected to MongoDB using `SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/atxfinancedb`
+- Typical developer loop:
+  - Start/refresh backend: `npm run dev:backend` (rebuilds image if sources changed)
+  - Run frontend dev: `npm run dev:frontend`
+- If you need to run only MongoDB locally without the backend container: `docker compose up -d mongodb`
+- If you prefer Gradle `bootRun` instead of Docker for the backend during rapid iteration, the workspace task "Start Backend (Gradle)" remains available, but the default path is to use Docker from the repo root.
 
 ## Developer Prereqs (gh + local gate)
 
@@ -158,7 +228,7 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 - [ ] Separate GCP projects selected (`staging` and `production`)
 - [ ] Single X OAuth app configured with both callback URLs
 - [ ] GitHub Environments `staging` and `production` created
-- [ ] Workflow env vars set and validated in `.github/workflows/deploy-cloud-run.yml`
+- [ ] Workflow env vars set and validated in `.github/workflows/deploy-cloud-run.yml` and `.github/workflows/deploy-cloud-run-production.yml`
 - [ ] GitHub environment secrets set (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`)
 - [ ] Cloud Run runtime secrets provisioned (Secret Manager recommended)
 
@@ -166,7 +236,7 @@ Use this when locking Cursor cloud-agent and deployment config before first GCP 
 
 These must exist in GCP Secret Manager for each project. The deploy workflow mounts them via `--set-secrets`.
 
-**Single source of truth (Cloud Run runtime):** App credentials exist only in **GCP Secret Manager** per project. The workflow mounts them with `gcloud run deploy … --set-secrets` and verifies each name with `gcloud secrets describe` **after** OIDC to Google Cloud (see `.github/workflows/deploy-cloud-run.yml`). Do **not** store `XAI_*`, `X_OAUTH_*`, `AUTH_SECRET`, `MONGODB_URI_B64`, `ADMIN_SEED_EMAIL`, or `SLACK_WEBHOOK_URL` in GitHub Environment secrets — GitHub should hold **only** the OIDC deploy credentials (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`).
+**Single source of truth (Cloud Run runtime):** App credentials exist only in **GCP Secret Manager** per project. The deploy workflows mount them with `gcloud run deploy … --set-secrets` and verify each name with `gcloud secrets describe` **after** OIDC to Google Cloud (see `.github/workflows/deploy-cloud-run.yml` and `.github/workflows/deploy-cloud-run-production.yml`). Do **not** store `XAI_*`, `X_OAUTH_*`, `AUTH_SECRET`, `MONGODB_URI_B64`, `ADMIN_SEED_EMAIL`, or `SLACK_WEBHOOK_URL` in GitHub Environment secrets — GitHub should hold **only** the OIDC deploy credentials (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`).
 
 **GitHub deploy service account (IAM):** The service account in `GCP_SERVICE_ACCOUNT_EMAIL` must be allowed `secretmanager.secrets.get` on each target project (staging and production) so `gcloud secrets describe` succeeds in CI. Grant **`roles/secretmanager.viewer`** or **`roles/secretmanager.admin`** on the project (e.g. `fintech-advisor-staging`). If the job logs `PERMISSION_DENIED: secretmanager.secrets.get` but secrets exist in Console, this binding is missing. Note: **`roles/secretmanager.secretAccessor` alone does not include `secrets.get`** (metadata); runtime mounting still relies on the Cloud Run service agent’s accessor grants when you deploy with `--set-secrets`.
 
@@ -320,10 +390,11 @@ Stage/prod URLs and latest deploy: **`npm run status:deploy`** (script: `scripts
 printf "stage_url=%s\n" "$(gh variable get STAGING_BASE_URL)" && \
 printf "prod_url=%s\n" "$(gh variable get PROD_BASE_URL)" && \
 echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
-echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
+echo "latest_staging_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1 && \
+echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run Production" --limit 1
 ```
 
-**Deploy flow:** a push to **`main`** runs **staging** only. **Production** is **locked** from the push path; deploy prod with **Actions → Deploy Cloud Run → Run workflow**: **`target=manual_only_prod`** and **`confirm_manual_prod=yes`** (optional **`deployment_notes`** for Slack). **`workflow_dispatch`** with **`target=staging`** redeploys staging only.
+**Deploy flow:** a push to **`main`** runs **staging** only (**Deploy Cloud Run** — no production jobs in that file). **Production** uses **Deploy Cloud Run Production** (`.github/workflows/deploy-cloud-run-production.yml`): **`workflow_dispatch` only**, **`confirm_manual_prod=yes`** (optional **`deployment_notes`** for Slack). **Staging redeploy:** **Deploy Cloud Run → Run workflow**. Optional: **Settings → Environments → `production` → Required reviewers** for approval before `gcloud run deploy`.
 
 ### Deploy Cloud Run: common failures
 
@@ -353,7 +424,7 @@ gh secret set GCP_SERVICE_ACCOUNT_EMAIL --repo "$GH_REPO" --env production --bod
 
 ### Org/Repo Migration OIDC Fix
 
-If `Deploy Cloud Run` fails at `Authenticate to Google Cloud` with `unauthorized_client` and `attribute condition`, update both GCP providers and service account bindings to the current repo:
+If **Deploy Cloud Run** (staging) or **Deploy Cloud Run Production** fails at `Authenticate to Google Cloud` with `unauthorized_client` and `attribute condition`, update both GCP providers and service account bindings to the current repo:
 
 ```bash
 REPO="devsecopstx/xfinance"
@@ -403,13 +474,13 @@ For availability and change control:
 - `staging`:
   - No required reviewers (fast feedback).
 - `production`:
-  - Required reviewers enabled (at least 1 operator).
+  - **Required reviewers enabled** (at least one operator) — the **Deploy Cloud Run Production** job targets `environment: production`, so approvals gate production deploys after workflow dispatch.
   - Restrict admin bypass where possible.
   - Optional branch policy to limit deploy sources to `main` and release tags.
 
 ### Cloud Run Runtime Secrets (per environment)
 
-Required (GCP Secret Manager; mounted by `deploy-cloud-run.yml`):
+Required (GCP Secret Manager; mounted by **Deploy Cloud Run** and **Deploy Cloud Run Production** workflows):
 
 - `MONGODB_URI_B64`
 - `XAI_API_KEY`
@@ -420,7 +491,14 @@ Required (GCP Secret Manager; mounted by `deploy-cloud-run.yml`):
 - `SLACK_WEBHOOK_URL` (value may be empty)
 - `ADMIN_SEED_EMAIL`
 
-`ADMIN_X_USERNAMES` is **not** in the default `deploy-cloud-run.yml` env list; set it on the Cloud Run service manually if you use the global-admin X username allowlist in that environment.
+`ADMIN_X_USERNAMES` is **not** in the default Cloud Run deploy workflow env lists; set it on the Cloud Run service manually if you use the global-admin X username allowlist in that environment.
+
+### Recommendations and Pub/Sub (optional)
+
+- **Mongo:** collection `app_user_recommendations` (see `src/modules/recommendations/repository.ts`). App_user APIs: `GET`/`POST /api/recommendations`, `GET /api/recommendations/{id}` — scoped to session `userId` + `tenantId`.
+- **Env (not in default deploy workflow):** `RECOMMENDATIONS_PUBSUB_TOPIC` (short topic id, e.g. `recommendations.v1`) and a project id: `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT` or `GCP_PROJECT`. If either is unset, publish is skipped (local dev / CI need no emulator).
+- **Event body (JSON):** `event` (`created` \| `updated`), `recommendationId`, `userId`, `tenantId`, `status`, `occurredAt` (ISO), `correlationId`, `scopeTags` (string array). **Attributes:** `event`, `userId`, `tenantId` for pull-filtering before loading full docs from Mongo.
+- **IAM:** grant the **core app** Cloud Run service account `roles/pubsub.publisher` on the topic. A **future worker/agent** service account gets `roles/pubsub.subscriber` on a dedicated subscription (filter in app by `userId` / `tenantId` / tags as needed).
 
 ### Recommendations and Pub/Sub (optional)
 
@@ -464,9 +542,9 @@ Route53 TODO details:
 
 - Push to `main`:
   - deploy **staging** and run health checks
-  - **does not** promote to production
-- Manual **Deploy Cloud Run** dispatch: **`target=manual_only_prod`** and **`confirm_manual_prod=yes`**
-  - production deploy from the selected branch/ref (verify staging before running)
+  - **does not** promote to production (production workflow has **no** `push` trigger)
+- Manual **Deploy Cloud Run Production** dispatch: **`confirm_manual_prod=yes`**
+  - production deploy from the selected branch/ref (verify staging before running); optional **Required reviewers** on the `production` environment add a second approval gate
 - Health checks are centralized in `scripts/ops/health-check-with-fallback.sh` for consistent behavior across deploy and rollback workflows.
 
 ### Manual rollback (workflow)
@@ -904,3 +982,51 @@ Use this checklist to validate "admin can start using xChat" in an authenticated
   }
 }
 ```
+
+
+
+## SRE Runbook: Local Health, Tests, and CI Gate
+
+This project includes smoke checks and SRE-focused tests to prevent config/secrets regressions and infra drift.
+
+- Commands
+  - `npm run smoke:verify` — runs smoke tests only (env parity, docker-compose sanity)
+  - `npm run test` — full test suite
+  - `npm run typecheck` — TypeScript type check
+  - `npm run lint` — ESlint
+  - `npm run ci:gate` — runs lint + typecheck + tests; recommended for PRs
+
+- Env hygiene
+  - `.env.example` is kept in sync with runtime-required keys from `src/lib/env.ts` (`REQUIRED_RUNTIME_ENV_VARS`).
+  - Smoke tests prevent committing obvious live secrets (e.g., `pk_live_...`, long `xai-...` tokens) in `.env.example` or `tennat_defaults.yaml`.
+  - Use Secret Manager for all real keys in staging/prod. Keep repository defaults empty or clearly fake.
+
+- Docker Compose sanity
+  - `docker-compose.yml` must define `mongodb` and `atxfinance-backend` services and expose ports 27017 and 8080 respectively.
+  - A `healthcheck` on backend or `depends_on: condition: service_healthy` should be present so `mongodb` becomes ready before backend starts relying on it.
+
+- Backend health endpoint
+  - `GET /api/backend/health` returns service status, active profiles, and masked Mongo connection information.
+
+- Push policy (PR checklist)
+  - [ ] `npm run ci:gate` passes locally
+  - [ ] No real secrets in repo files (`.env.example`, `tennat_defaults.yaml`, docs, scripts)
+  - [ ] New env keys are added to `.env.example` and validated in `src/lib/env.ts`
+
+  ### Backend dependency version management
+
+  The Spring Boot backend (`services/atxfinance-backend`) uses a Gradle Version Catalog to avoid hard‑coding dependency and plugin versions.
+
+  - Catalog file: `services/atxfinance-backend/gradle/libs.versions.toml`
+    - Defines versions for: Spring Boot, Kotlin, SpringDoc, ShedLock, OpenTelemetry, and the Google Cloud BOM.
+    - Plugin versions are managed via `plugins` aliases in the catalog.
+  - Build script: `services/atxfinance-backend/build.gradle.kts`
+    - Uses `alias(libs.plugins.…)` for plugin versions.
+    - Uses `implementation(platform(libs.gcp.bom))` for Google Cloud libraries.
+    - Uses `libs.springdoc.webmvc.ui`, `libs.shedlock.spring`, `libs.shedlock.mongo`, `libs.otel.otlp` for library coordinates without inline versions.
+    - Spring Boot starters and Micrometer libraries rely on Spring Boot’s dependency management — no explicit versions in the module file.
+
+  How to bump versions:
+  - Edit `libs.versions.toml` and change the relevant entry under `[versions]`.
+  - For Google Cloud client libraries, update the `gcp-bom` version — individual GCP deps then follow the BOM.
+  - Re‑sync Gradle or run `./gradlew build` to apply.

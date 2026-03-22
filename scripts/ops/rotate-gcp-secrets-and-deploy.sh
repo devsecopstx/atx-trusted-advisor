@@ -50,7 +50,7 @@ Options:
   --project-prod <project-id>          Override production project
   --execute                            Apply changes (default is dry-run)
   --create-missing                     Create Secret Manager entries if absent (then add first version)
-  --trigger-deploy                     Trigger GitHub "Deploy Cloud Run" workflow after rotation
+  --trigger-deploy                     Trigger staging or production deploy workflow after rotation (see script)
   --approve-production                 Required for production workflow dispatch
   --help                               Show help
 
@@ -229,11 +229,11 @@ trigger_workflow_if_requested() {
       echo "Refusing production deploy trigger without --approve-production" >&2
       exit 1
     fi
-    gh workflow run "Deploy Cloud Run" -f target=production -f approval=approve-production
-    echo "Triggered Deploy Cloud Run workflow for production."
+    gh workflow run "Deploy Cloud Run Production" -f confirm_manual_prod=yes
+    echo "Triggered Deploy Cloud Run Production workflow."
   else
-    gh workflow run "Deploy Cloud Run" -f target=staging -f approval=approve-production
-    echo "Triggered Deploy Cloud Run workflow for staging."
+    gh workflow run "Deploy Cloud Run"
+    echo "Triggered Deploy Cloud Run workflow (staging)."
   fi
 }
 

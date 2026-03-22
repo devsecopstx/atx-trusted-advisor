@@ -1,0 +1,26 @@
+# Centralized dependency and plugin versions for atxfinance-backend
+
+[versions]
+spring-boot = "3.3.4"
+spring-depman = "1.1.6"
+kotlin = "1.9.25"
+gcp-bom = "26.48.0"
+springdoc = "2.6.0"
+shedlock = "5.13.0"
+otel = "1.41.0"
+
+[libraries]
+# BOMs
+gcp-bom = { module = "com.google.cloud:libraries-bom", version.ref = "gcp-bom" }
+
+# Libraries
+springdoc-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+shedlock-spring = { module = "net.javacrumbs.shedlock:shedlock-spring", version.ref = "shedlock" }
+shedlock-mongo = { module = "net.javacrumbs.shedlock:shedlock-provider-mongo", version.ref = "shedlock" }
+otel-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp", version.ref = "otel" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-depman = { id = "io.spring.dependency-management", version.ref = "spring-depman" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }

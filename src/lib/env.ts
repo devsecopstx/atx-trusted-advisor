@@ -66,14 +66,14 @@ const envSchema = z.object({
     .enum(["development", "test", "production"])
     .optional()
     .default("development")
-}).superRefine((value, ctx) => {
-  if (!value.MONGODB_URI_B64 && !value.MONGODB_URI_B4) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Set MONGODB_URI_B64 (or legacy alias MONGODB_URI_B4)"
-    });
-  }
 });
+
+export const REQUIRED_RUNTIME_ENV_VARS = [
+  "XAI_API_KEY",
+  "XAI_MANAGEMENT_API_KEY",
+  "X_OAUTH_CLIENT_ID",
+  "X_OAUTH_CLIENT_SECRET"
+] as const;
 
 type Env = z.infer<typeof envSchema>;
 
@@ -99,17 +99,25 @@ export function getEnv(): Env {
 export function getMongoUriFromB64(): string {
   const { MONGODB_URI_B64, MONGODB_URI_B4 } = getEnv();
   const encoded = MONGODB_URI_B64 ?? MONGODB_URI_B4;
-  if (!encoded) {
-    throw new Error("Missing Mongo URI: set MONGODB_URI_B64 or MONGODB_URI_B4");
+  if (encoded) {
+    const decoded = Buffer.from(encoded, "base64").toString("utf8").trim();
+    if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
+      throw new Error("Invalid MONGODB_URI_B64: decoded value is not a MongoDB URI");
+    }
+    return decoded;
   }
 
-  const decoded = Buffer.from(encoded, "base64").toString("utf8").trim();
+  // Fallback: local MongoDB on localhost:27017 with optional credentials from env
+  const dbName = (process.env.MONGODB_DB_NAME?.trim() || MONGODB_DB_NAME).trim();
+  const username = (process.env.ADMIN_X_USERNAME?.trim() || process.env.ADMIN_X_USERNAMES?.trim());
+  const password = process.env.MONGO_ROOT_PASSWORD?.trim();
+  const host = process.env.MONGODB_HOST?.trim() || "localhost";
 
-  if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
-    throw new Error("Invalid MONGODB_URI_B64: decoded value is not a MongoDB URI");
-  }
+  const hasAuth = Boolean(username && password);
+  const authPart = hasAuth ? `${encodeURIComponent(username!)}:${encodeURIComponent(password!)}@` : "";
+  const params = hasAuth ? "?authSource=admin" : "";
 
-  return decoded;
+  return `mongodb://${authPart}${host}:27017/${dbName}${params}`;
 }
 
 export function getXOauthClientId(): string {

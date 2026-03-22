@@ -22,6 +22,9 @@ lib-cov
 coverage
 *.lcov
 
+# Vitest JUnit output (CI / local parity with GitHub test results)
+test-results/
+
 # nyc test coverage
 .nyc_output
 
@@ -159,3 +162,7 @@ next-env.d.ts
 
 # Ephemeral local agent-generated batch tests
 tests/integration/xchat-batch-*.test.ts
+
+# Gradle (Kotlin backend service)
+services/atxfinance-backend/.gradle/
+services/atxfinance-backend/build/

@@ -66,7 +66,7 @@ Each material inference must store immutable records for:
      (for this repo: `alert-user-not-sync-warning`).
 7. **Deploy path correctness**
    - **Push to `main`** deploys **staging** only; production does **not** run on push.
-   - **`workflow_dispatch`:** **`target=staging`** redeploys staging; **`target=manual_only_prod`** with **`confirm_manual_prod=yes`** runs **`deploy-production-manual`**.
+   - **`workflow_dispatch`:** **Deploy Cloud Run** redeploys staging; **Deploy Cloud Run Production** with **`confirm_manual_prod=yes`** runs production deploy (separate workflow; no `push` trigger).
 
 ## Checklist
 
