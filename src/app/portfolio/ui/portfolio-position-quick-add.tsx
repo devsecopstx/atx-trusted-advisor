@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 
 type AccountOption = {
   id: string;
@@ -42,6 +42,7 @@ function isFutureIsoDate(value: string): boolean {
 
 export function PortfolioPositionQuickAdd({ portfolioId, accounts }: PortfolioPositionQuickAddProps) {
   const router = useRouter();
+  const [, startNavTransition] = useTransition();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -174,7 +175,9 @@ export function PortfolioPositionQuickAdd({ portfolioId, accounts }: PortfolioPo
       setStrike("");
       setExpiration("");
       setPurchasePrice("");
-      router.refresh();
+      startNavTransition(() => {
+        router.refresh();
+      });
     } catch {
       setError("Network error while saving position.");
     } finally {
