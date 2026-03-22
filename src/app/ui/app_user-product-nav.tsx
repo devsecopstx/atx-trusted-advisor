@@ -2,7 +2,12 @@ import Link from "next/link";
 
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-export type AppUserProductNavCurrent = "xchat" | "xstrategybuilder" | "portfolio" | "watchlist";
+export type AppUserProductNavCurrent =
+  | "xchat"
+  | "xstrategybuilder"
+  | "portfolio"
+  | "watchlist"
+  | "recommendations";
 
 type AppUserProductNavProps = {
   current: AppUserProductNavCurrent;
@@ -13,7 +18,8 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string }[] = [
   { id: "xchat", label: "xChat", href: "/xchat" },
   { id: "xstrategybuilder", label: "xStrategyBuilder", href: "/xstrategybuilder" },
   { id: "portfolio", label: "Portfolio", href: "/portfolio" },
-  { id: "watchlist", label: "Watchlist", href: "/watchlist" }
+  { id: "watchlist", label: "Watchlist", href: "/watchlist" },
+  { id: "recommendations", label: "Recommendations", href: "/recommendations" }
 ];
 
 /**

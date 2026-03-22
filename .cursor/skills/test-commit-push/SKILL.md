@@ -49,8 +49,9 @@ Ship changes safely by validating locally and preparing an accurate commit workf
     - **Optional git hook:** `.githooks/commit-msg` can **hint** (or strictly enforce via `XFINANCE_ENFORCE_CURSOR_COMMIT=1`) on `agent/*`, `cursor/*`, and `release/*` branches — see **`.githooks/README.md`**. Hooks complement this doc; they do not replace it.
 12. Confirm push readiness and branch status.
 13. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
-14. **Staging first (when applicable):** If the team ships to staging before prod, push the branch, open/merge PR per policy, then run staging deploy/verify (see `AGENTS.md` / deploy skills). Production can wait until staging checks pass.
-15. **Production dispatch correctness (manual runs):** use **Actions → Deploy Cloud Run Production** with **`confirm_manual_prod=yes`** (see `AGENTS.md` / `.github/workflows/deploy-cloud-run-production.yml`). Staging uses **Deploy Cloud Run** (push to `main` or empty `workflow_dispatch`). If jobs show `skipped`, verify workflow and input names first.
+14. **Staging first (when applicable):** Push branch, open/merge PR per policy, and verify staging before production (see `AGENTS.md` / deploy skills).
+15. **Deploy path:** **Deploy Cloud Run** — **push to `main`** runs **staging only**; production does **not** auto-deploy.
+16. **Manual `workflow_dispatch`:** **Deploy Cloud Run** (no inputs) redeploys staging. **Deploy Cloud Run Production** (`workflow_dispatch` only) with **`confirm_manual_prod=yes`** runs production deploy (optional **`deployment_notes`** for Slack). Operators should verify staging before promoting prod (see `AGENTS.md` / `.github/workflows/deploy-cloud-run-production.yml`). If jobs show `skipped`, verify workflow and input names first.
 
 ## Output
 

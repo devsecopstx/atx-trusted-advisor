@@ -65,8 +65,8 @@ Each material inference must store immutable records for:
    - Warning path emits an explicit audit action and operator-visible signal
      (for this repo: `alert-user-not-sync-warning`).
 7. **Deploy path correctness**
-   - Production deploy is **staging-gated** on **push to `main`** (`deploy-production-main` **needs** `deploy-staging`).
-   - Manual **`workflow_dispatch`** redeploys **staging only** (`target=staging`); there is no GitHub Actions path to dispatch production directly.
+   - **Push to `main`** deploys **staging** only; production does **not** run on push.
+   - **`workflow_dispatch`:** **`target=staging`** redeploys staging; **`target=manual_only_prod`** with **`confirm_manual_prod=yes`** runs **`deploy-production-manual`**.
 
 ## Checklist
 

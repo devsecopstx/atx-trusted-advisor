@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-core-app",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "description": "aTx⚡Finance Advisory software and services for finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -34,6 +34,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@google-cloud/pubsub": "^4.11.0",
     "mongodb": "^7.1.0",
     "next": "^16.1.6",
     "react": "^19.2.4",

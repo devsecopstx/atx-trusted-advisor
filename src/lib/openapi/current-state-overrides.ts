@@ -389,6 +389,52 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse")
     }
   },
+  "GET /api/recommendations": {
+    summary: "List recommendations for the signed-in user",
+    description:
+      "App_user only (`canUserLogin`). Returns rows scoped to session `userId` and `tenantId` from collection `app_user_recommendations`.",
+    responses: {
+      "200": jsonResponse("Recommendation list.", "RecommendationsListResponseEnvelope"),
+      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
+      "403": jsonResponse("Session is valid but login-eligible platform role is required.", "ErrorResponse")
+    }
+  },
+  "POST /api/recommendations": {
+    summary: "Create a recommendation for the signed-in user",
+    description:
+      "App_user only. `userId` is taken from the session. When `RECOMMENDATIONS_PUBSUB_TOPIC` and a GCP project id are set, a `created` event is published for downstream agents.",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("RecommendationCreateRequest")
+        }
+      }
+    },
+    responses: {
+      "201": jsonResponse("Recommendation created.", "RecommendationResponseEnvelope"),
+      "400": jsonResponse("Invalid JSON or validation failed.", "ValidationErrorResponse"),
+      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
+      "403": jsonResponse("Session is valid but login-eligible platform role is required.", "ErrorResponse")
+    }
+  },
+  "GET /api/recommendations/{recommendationId}": {
+    summary: "Get one recommendation by id",
+    parameters: [
+      {
+        name: "recommendationId",
+        in: "path",
+        required: true,
+        schema: { type: "string" }
+      }
+    ],
+    responses: {
+      "200": jsonResponse("Recommendation detail.", "RecommendationResponseEnvelope"),
+      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
+      "403": jsonResponse("Session is valid but login-eligible platform role is required.", "ErrorResponse"),
+      "404": jsonResponse("Not found or not owned by the caller.", "ErrorResponse")
+    }
+  },
   "GET /api/admin/users": {
     summary: "List users",
     parameters: [
@@ -577,6 +623,71 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["ok"],
     properties: {
       ok: { type: "boolean", enum: [true] }
+    }
+  },
+  RecommendationCreateRequest: {
+    type: "object",
+    required: ["title"],
+    properties: {
+      title: { type: "string", minLength: 1, maxLength: 500 },
+      summary: { type: "string", maxLength: 4000 },
+      scopeTags: {
+        type: "array",
+        maxItems: 32,
+        items: { type: "string", maxLength: 128 }
+      },
+      payload: { type: "object", additionalProperties: true },
+      status: {
+        type: "string",
+        enum: ["draft", "active", "dismissed", "superseded"]
+      }
+    }
+  },
+  RecommendationJson: {
+    type: "object",
+    required: [
+      "_id",
+      "userId",
+      "title",
+      "scopeTags",
+      "payload",
+      "status",
+      "source",
+      "createdAt",
+      "updatedAt"
+    ],
+    properties: {
+      _id: { type: "string" },
+      tenantId: { type: "string" },
+      userId: { type: "string" },
+      title: { type: "string" },
+      summary: { type: "string" },
+      scopeTags: { type: "array", items: { type: "string" } },
+      payload: { type: "object", additionalProperties: true },
+      status: {
+        type: "string",
+        enum: ["draft", "active", "dismissed", "superseded"]
+      },
+      source: { type: "string", enum: ["user", "system", "agent"] },
+      createdAt: { type: "string", format: "date-time" },
+      updatedAt: { type: "string", format: "date-time" }
+    }
+  },
+  RecommendationResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: { $ref: "#/components/schemas/RecommendationJson" }
+    }
+  },
+  RecommendationsListResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "array",
+        items: { $ref: "#/components/schemas/RecommendationJson" }
+      }
     }
   },
   ValidationErrorResponse: {

@@ -251,9 +251,9 @@ When `.github/workflows/deploy-cloud-run.yml` changes
 6. Document secret **value-quality** checks, not just existence checks:
    include examples of invalid values (e.g., trailing comma in
    `ADMIN_SEED_EMAIL`) and the expected health symptom (`Invalid environment configuration`).
-7. Document deploy gating: **push to `main`** runs staging then production (prod **needs** staging); **`workflow_dispatch`** is **staging only** — no manual production inputs.
+7. Document deploy gating: **push to `main`** runs **staging only**; **production** via **`workflow_dispatch`** (`target=manual_only_prod`, **`confirm_manual_prod=yes`**, optional notes).
 8. Keep staging/prod job gating rules documented when workflow conditions change
-   (for example, prod must not run without a successful staging job in the same run).
+   (for example, when prod is removed from the push path or manual prod inputs change).
 
 ## xChat prompt docs parity
 

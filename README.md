@@ -4,7 +4,7 @@ Admin console **and** signed-in **app_user** product surfaces for atxFinance. Th
 
 - access request governance
 - persona and collection management
-- xChat / xStrategyBuilder / portfolio / watchlist for approved app_user accounts (viewer+ platform roles)
+- xChat / xStrategyBuilder / portfolio / watchlist / recommendations for approved app_user accounts (viewer+ platform roles)
 - xChat operational workflows (default **published** personas: **Super-Agent** for `global_admin`, **xFinance** for other signed-in roles)
 - audit visibility for admin actions
 - portfolio/account bootstrap defaults

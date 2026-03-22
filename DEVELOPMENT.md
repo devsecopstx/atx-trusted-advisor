@@ -8,7 +8,7 @@ Core backend and UI for atxFinance **admin operations** and **signed-in app_user
 - task scheduling metadata
 - user broker/portfolio/account defaults
 - notification defaults
-- app_user surfaces: xChat, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`) with shared header (profile, logout, feedback, optional DB chip)
+- app_user surfaces: xChat, xCoach, xStrategyBuilder, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`), recommendations (`/recommendations`) with shared header (profile, logout, feedback, optional DB chip)
 
 ## Tech Stack
 
@@ -28,8 +28,10 @@ Session payload (`SessionUser` in `src/lib/auth.ts`):
 
 ### Product rules
 
+- **Surfaces (policy module):** `src/modules/surface-policy.ts` lists **app_user product** path prefixes (`/xchat`, `/xstrategybuilder`, `/portfolio`, `/watchlist`, `/recommendations`) and helpers `isAppUserProductPath`, `isAdminConsolePath`. **`app_user`** in docs means platform roles `advisor` \| `operator` \| `viewer` — not a literal Mongo role string. **`admin_console`** means `/admin/*` for `global_admin` only.
+- **Edge proxy:** `src/proxy.ts` redirects unauthenticated browser requests on protected app_user and admin paths (including `/admin`, `/xchat`, `/portfolio`, `/watchlist`, `/xstrategybuilder`, `/recommendations`, and matching `/api/*`) to `/login?next=…` when the session cookie is missing; API calls without a cookie get `401`. RBAC (`global_admin`) remains enforced in `src/app/admin/layout.tsx`.
 - **Admin console** (`/admin/*`, `requireGlobalAdminSession` / `requireAdminSession`): **only** `global_admin` (after normalization). The admin layout redirects everyone else to `/xchat`.
-- **App_user surfaces** (approved login): `advisor`, `operator`, `viewer` — xChat, xCoach, Portfolio (`/portfolio`), Watchlist (`/watchlist`). Shared chrome: `AppUserApprovedHeader` (`src/app/ui/app_user-approved-header.tsx`) = product links (`AppUserProductNav`) + `AppUserHeaderSession` (profile popover, logout, feedback modal, optional Mongo host/db pill per `shouldShowAppUserDbLabel()` in `src/lib/env.ts`).
+- **App_user surfaces** (approved login): `advisor`, `operator`, `viewer` — xChat, xCoach, xStrategyBuilder, Portfolio (`/portfolio`), Watchlist (`/watchlist`), Recommendations (`/recommendations`). Shared chrome: `AppUserApprovedHeader` (`src/app/ui/app_user-approved-header.tsx`) = product links (`AppUserProductNav`) + `AppUserHeaderSession` (profile popover, logout, feedback modal, optional Mongo host/db pill per `shouldShowAppUserDbLabel()` in `src/lib/env.ts`).
 - **Access requests** are **onboarding**, not a role: unapproved users have no login-allowed platform role (unless `ALLOW_ANY_X_USER_LOGIN`); after approval, admins assign a platform role (typically `viewer`).
 
 **Feature flags** (e.g. `ALLOW_ANY_X_USER_LOGIN`) are **env-driven capabilities** — do not represent them as platform roles in Mongo.
@@ -360,7 +362,7 @@ echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
 echo "latest_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1
 ```
 
-**Deploy flow:** a push to **`main`** runs **staging**, then **production** only if staging succeeds. **`workflow_dispatch`** redeploys **staging** only — there is no manual production job in this workflow.
+**Deploy flow:** a push to **`main`** runs **staging** only. **Production** is **locked** from the push path; deploy prod with **Actions → Deploy Cloud Run → Run workflow**: **`target=manual_only_prod`** and **`confirm_manual_prod=yes`** (optional **`deployment_notes`** for Slack). **`workflow_dispatch`** with **`target=staging`** redeploys staging only.
 
 ### Deploy Cloud Run: common failures
 
@@ -459,6 +461,13 @@ Required (GCP Secret Manager; mounted by `deploy-cloud-run.yml`):
 
 `ADMIN_X_USERNAMES` is **not** in the default `deploy-cloud-run.yml` env list; set it on the Cloud Run service manually if you use the global-admin X username allowlist in that environment.
 
+### Recommendations and Pub/Sub (optional)
+
+- **Mongo:** collection `app_user_recommendations` (see `src/modules/recommendations/repository.ts`). App_user APIs: `GET`/`POST /api/recommendations`, `GET /api/recommendations/{id}` — scoped to session `userId` + `tenantId`.
+- **Env (not in default deploy workflow):** `RECOMMENDATIONS_PUBSUB_TOPIC` (short topic id, e.g. `recommendations.v1`) and a project id: `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT` or `GCP_PROJECT`. If either is unset, publish is skipped (local dev / CI need no emulator).
+- **Event body (JSON):** `event` (`created` \| `updated`), `recommendationId`, `userId`, `tenantId`, `status`, `occurredAt` (ISO), `correlationId`, `scopeTags` (string array). **Attributes:** `event`, `userId`, `tenantId` for pull-filtering before loading full docs from Mongo.
+- **IAM:** grant the **core app** Cloud Run service account `roles/pubsub.publisher` on the topic. A **future worker/agent** service account gets `roles/pubsub.subscriber` on a dedicated subscription (filter in app by `userId` / `tenantId` / tags as needed).
+
 ### OAuth Callback URLs (single X app)
 
 - `https://atx.fintech-advisor.ai/api/auth/x/callback`
@@ -493,11 +502,10 @@ Route53 TODO details:
 ### Promotion flow
 
 - Push to `main`:
-  - deploy staging
-  - run health checks
-  - promote to production
-- Tag (`v*`) or manual dispatch (`target=production`):
-  - direct production deploy (does not depend on staging job state)
+  - deploy **staging** and run health checks
+  - **does not** promote to production
+- Manual **Deploy Cloud Run** dispatch: **`target=manual_only_prod`** and **`confirm_manual_prod=yes`**
+  - production deploy from the selected branch/ref (verify staging before running)
 - Health checks are centralized in `scripts/ops/health-check-with-fallback.sh` for consistent behavior across deploy and rollback workflows.
 
 ### Manual rollback (workflow)
