@@ -1160,8 +1160,8 @@ export async function provisionDefaultPortfolioForUser(
     await db.collection<Portfolio>(collections.portfolios).updateOne(
       portfolioInsertFilter,
       {
+        // tenantId must not appear in both $set and $setOnInsert (Mongo conflict).
         $setOnInsert: {
-          tenantId: tenantObjectId,
           userId: input.userId,
           createdAt: now
         },
@@ -1244,7 +1244,6 @@ export async function provisionDefaultPortfolioForUser(
       accountInsertFilter,
       {
         $setOnInsert: {
-          tenantId: tenantObjectId,
           userId: input.userId,
           portfolioId: portfolio._id,
           createdAt: now
@@ -1331,7 +1330,6 @@ export async function provisionDefaultPortfolioForUser(
       watchlistInsertFilter,
       {
         $setOnInsert: {
-          tenantId: tenantObjectId,
           userId: input.userId,
           portfolioId: portfolio._id,
           createdAt: now

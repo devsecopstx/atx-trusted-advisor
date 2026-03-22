@@ -10,6 +10,11 @@ const mutateMocks = vi.hoisted(() => ({
   mutatePortfolioWatchlistSymbols: vi.fn()
 }));
 
+const watchlistReadMocks = vi.hoisted(() => ({
+  /** Satisfies GET/PATCH ensure path without hitting Mongo in tests. */
+  getPortfolioWatchlist: vi.fn()
+}));
+
 vi.mock("@/lib/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth")>();
   return {
@@ -24,6 +29,7 @@ vi.mock("@/modules/core-admin/repository", async () => {
   );
   return {
     ...actual,
+    getPortfolioWatchlist: watchlistReadMocks.getPortfolioWatchlist,
     mutatePortfolioWatchlistSymbols: mutateMocks.mutatePortfolioWatchlistSymbols
   };
 });
@@ -33,6 +39,17 @@ import { PATCH as patchWatchlist } from "@/app/api/portfolios/[portfolioId]/watc
 describe("PATCH /api/portfolios/:portfolioId/watchlist addEntries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    const addedAt = new Date("2026-01-15T00:00:00.000Z");
+    watchlistReadMocks.getPortfolioWatchlist.mockResolvedValue({
+      _id: new ObjectId(),
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId: new ObjectId("507f1f77bcf86cd799439033"),
+      name: "Default",
+      isDefault: true,
+      createdAt: addedAt,
+      updatedAt: addedAt,
+      symbols: [{ symbol: "TSLA", addedAt }]
+    });
     sessionMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",

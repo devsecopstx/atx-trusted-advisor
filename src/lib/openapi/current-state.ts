@@ -238,7 +238,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/portfolios/default",
-    operations: [{ method: "GET", auth: "session" }],
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "POST", auth: "session" }
+    ],
     tag: "portfolios"
   },
   {

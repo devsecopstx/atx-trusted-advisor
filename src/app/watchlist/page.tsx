@@ -12,6 +12,8 @@ import {
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
 import "../xchat/xchat.css";
+import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
+
 import { WatchlistConsole } from "./ui/watchlist-console";
 import "./watchlist.css";
 
@@ -44,7 +46,7 @@ export default async function WatchlistPage() {
       `[watchlist] default portfolio load or provision failed userId=${session.userId} tenantId=${session.tenantId} detail=${wlDetail}`
     );
     workspaceError =
-      "Could not open your watchlist workspace (default portfolio). Open Portfolio to finish setup, or refresh after a moment.";
+      "Could not open your watchlist workspace (default portfolio). Use Sync to create defaults, or open Portfolio.";
   }
 
   const portfolioId = portfolio?._id?.toHexString() ?? null;
@@ -90,11 +92,12 @@ export default async function WatchlistPage() {
               </p>
             ) : (
               <p className="status-text status-warn" style={{ marginTop: "0.75rem" }}>
-                No default portfolio is linked yet. Open Portfolio to provision it, then return here.
+                No default portfolio is linked yet. Use Sync to provision it, or open Portfolio.
               </p>
             )}
+            <SyncDefaultPortfolioButton />
             <div className="cta-row" style={{ marginTop: "1rem" }}>
-              <Link className="cta cta-primary" href="/portfolio">
+              <Link className="cta cta-secondary" href="/portfolio">
                 Open Portfolio
               </Link>
               <Link className="cta cta-secondary" href="/">

@@ -1,0 +1,51 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+type SyncDefaultPortfolioButtonProps = {
+  /** Primary CTA on error surfaces; secondary when paired with other links */
+  variant?: "primary" | "secondary";
+};
+
+export function SyncDefaultPortfolioButton({ variant = "primary" }: SyncDefaultPortfolioButtonProps) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSync() {
+    setError(null);
+    setPending(true);
+    try {
+      const res = await fetch("/api/portfolios/default", {
+        method: "POST",
+        credentials: "include"
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(body.error ?? `Sync failed (${res.status}). Try again in a moment.`);
+        return;
+      }
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sync failed. Check your connection and try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const cls = variant === "primary" ? "cta cta-primary" : "cta cta-secondary";
+
+  return (
+    <div className="stack-gap" style={{ marginTop: "0.75rem" }}>
+      <button className={cls} disabled={pending} onClick={() => void onSync()} type="button">
+        {pending ? "Syncing…" : "Sync"}
+      </button>
+      {error ? (
+        <p className="status-text status-error" style={{ margin: 0 }}>
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

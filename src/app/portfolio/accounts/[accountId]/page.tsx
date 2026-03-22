@@ -109,14 +109,14 @@ export default async function PortfolioAccountPage({
         <section className="hero-card xf-noise-overlay" style={{ maxWidth: "720px", margin: "0 auto" }}>
           <p className="eyebrow">
             <Link href="/portfolio" style={{ color: "var(--xf-text-300)", textDecoration: "none" }}>
-              Portfolio
+              My accounts
             </Link>{" "}
-            / Account
+            / Manage account
           </p>
           <h1 className="hero-title">{account.name}</h1>
           <p className="hero-copy">
-            Select this account from the portfolio list to edit cash and reference metadata, then add or
-            adjust stock lots. Same ticker in this account updates the existing row (upsert).
+            Edit cash and external reference, then add or adjust stock lots for this account. Saving a lot with
+            the same ticker updates the existing row (upsert).
           </p>
 
           <AccountWorkspace
