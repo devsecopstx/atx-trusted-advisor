@@ -20,7 +20,7 @@ export default function XstrategyBuilderLayout({ children }: XstrategyBuilderLay
       <GlobalFooter
         subline={
           <>
-            Powered by xAI · aTx⚡Finance · B2B licensing and advisory stack
+            xStrategyBuilder · option order flow (NL → chain → review) · Powered by xAI · aTx⚡Finance · B2B licensing
             <span aria-hidden className="app-footer-sep">
               {" "}
               |{" "}

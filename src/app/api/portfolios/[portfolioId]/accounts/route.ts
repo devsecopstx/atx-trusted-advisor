@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
+import { accountTypeValues } from "@/modules/core-admin/types";
 import {
-    listPortfolioAccounts,
-    listPortfolioPositionsByAccount,
-    provisionDefaultPortfolioForUser
+  insertPortfolioAccountForUser,
+  listPortfolioAccounts,
+  listPortfolioPositionsByAccount,
+  provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 
 type RouteContext = {
@@ -13,6 +17,13 @@ type RouteContext = {
   }>;
 };
 
+const postAccountSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  type: z.enum(accountTypeValues).optional(),
+  extAccountId: z.string().trim().min(1).max(200).optional(),
+  cashBalance: z.number().finite().nonnegative().optional()
+});
+
 export async function GET(_: Request, context: RouteContext) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
@@ -20,6 +31,11 @@ export async function GET(_: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
+  const deniedGet = await requirePortfolioForSessionUser(session, portfolioId);
+  if (deniedGet) {
+    return deniedGet;
+  }
+
   const accounts = await listPortfolioAccounts({
     userId: session.userId,
     portfolioId,
@@ -91,4 +107,66 @@ export async function GET(_: Request, context: RouteContext) {
   });
 
   return NextResponse.json({ data: shaped });
+}
+
+export async function POST(request: Request, context: RouteContext) {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const { portfolioId } = await context.params;
+  const denied = await requirePortfolioForSessionUser(session, portfolioId);
+  if (denied) {
+    return denied;
+  }
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const parsed = postAccountSchema.safeParse(payload);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid request payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const created = await insertPortfolioAccountForUser({
+    userId: session.userId,
+    tenantId: session.tenantId,
+    portfolioId,
+    name: parsed.data.name,
+    type: parsed.data.type,
+    extAccountId: parsed.data.extAccountId,
+    cashBalance: parsed.data.cashBalance
+  });
+  if (!created?._id) {
+    return NextResponse.json({ error: "Could not create account" }, { status: 400 });
+  }
+
+  const row = {
+    _id: created._id.toHexString(),
+    name: created.name,
+    accountRef: created.extAccountId,
+    brokerType: created.type,
+    balance: created.cashBalance ?? 25_000,
+    riskLevel: "medium" as const,
+    strategy: "balanced" as const,
+    positions: [] as unknown[],
+    recommendations: [] as unknown[],
+    userId: created.userId,
+    portfolioId: created.portfolioId.toHexString(),
+    type: created.type,
+    extAccountId: created.extAccountId,
+    isDefault: created.isDefault,
+    createdAt: created.createdAt.toISOString(),
+    updatedAt: created.updatedAt.toISOString()
+  };
+
+  return NextResponse.json({ data: row }, { status: 201 });
 }

@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 
+import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import { requireSessionUser } from "@/lib/auth";
 import {
-    DEFAULT_EXT_BROKER_REF,
-    getDefaultPortfolio,
-    listPortfolioAccounts,
-    provisionDefaultPortfolioForUser
+  getDefaultPortfolio,
+  listPortfolioAccounts,
+  provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 
 export async function GET() {
   const session = await requireSessionUser();
@@ -45,40 +44,7 @@ export async function GET() {
       watchlistSymbols: ["TSLA"]
     });
   }
-  const refreshedAccounts =
-    accounts.length > 0
-      ? accounts
-      : await listPortfolioAccounts({
-          userId: session.userId,
-          portfolioId: portfolio._id.toHexString(),
-          tenantId: session.tenantId
-        });
 
-  return NextResponse.json({
-    data: {
-      _id: portfolio._id.toHexString(),
-      name: portfolio.name,
-      accounts: refreshedAccounts.map((account) => ({
-        _id: account._id?.toHexString(),
-        name: account.name,
-        accountRef: account.extAccountId,
-        brokerType: account.type,
-        balance: account.cashBalance ?? 25_000,
-        riskLevel: "medium",
-        strategy: "balanced",
-        positions: [],
-        recommendations: []
-      })),
-      totalValue: 0,
-      dailyChange: 0,
-      dailyChangePercent: 0,
-      // Legacy compatibility fields.
-      userId: portfolio.userId,
-      isDefault: portfolio.isDefault,
-      ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
-      tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey ?? getTenantPortfolioOrgKey(),
-      createdAt: portfolio.createdAt.toISOString(),
-      updatedAt: portfolio.updatedAt.toISOString()
-    }
-  });
+  const data = await buildPortfolioSummaryPayload(session, portfolio);
+  return NextResponse.json({ data });
 }

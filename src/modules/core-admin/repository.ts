@@ -1418,6 +1418,99 @@ export async function updatePortfolioAccountForUser(
   return db.collection<Account>(collections.accounts).findOne(filter);
 }
 
+export async function updatePortfolioForUser(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  name: string;
+}): Promise<Portfolio | null> {
+  await ensurePortfolioIndexes();
+  const existing = await getPortfolioByIdForSessionUser({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    portfolioId: input.portfolioId
+  });
+  if (!existing?._id) {
+    return null;
+  }
+  const trimmed = input.name.trim();
+  if (!trimmed) {
+    return existing;
+  }
+  const db = await getDb();
+  await db.collection<Portfolio>(collections.portfolios).updateOne(
+    { _id: existing._id },
+    { $set: { name: trimmed.slice(0, 200), updatedAt: new Date() } }
+  );
+  return getPortfolioByIdForSessionUser({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    portfolioId: input.portfolioId
+  });
+}
+
+export type InsertPortfolioAccountInput = {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  name: string;
+  type?: AccountType;
+  /** External/broker ref; generated if omitted (xfinance-strategy `accountRef` compatibility). */
+  extAccountId?: string;
+  cashBalance?: number;
+};
+
+/**
+ * Adds a non-default account under an owned portfolio (manual / multi-broker desks).
+ */
+export async function insertPortfolioAccountForUser(
+  input: InsertPortfolioAccountInput
+): Promise<Account | null> {
+  await ensurePortfolioIndexes();
+  const portfolio = await getPortfolioByIdForSessionUser({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    portfolioId: input.portfolioId
+  });
+  if (!portfolio?._id) {
+    return null;
+  }
+
+  const db = await getDb();
+  const now = new Date();
+  const tenantObjectId = toTenantObjectId(input.tenantId);
+  const name = input.name.trim().slice(0, 200);
+  if (!name) {
+    return null;
+  }
+  const type: AccountType = input.type ?? "fidelity";
+  const ext =
+    input.extAccountId?.trim().slice(0, 200) ||
+    `atx-${new ObjectId().toHexString().slice(-12)}`;
+  const cash =
+    typeof input.cashBalance === "number" &&
+    Number.isFinite(input.cashBalance) &&
+    input.cashBalance >= 0
+      ? input.cashBalance
+      : DEFAULT_ACCOUNT_CASH_BALANCE;
+
+  const doc: Account = {
+    tenantId: tenantObjectId,
+    userId: input.userId,
+    portfolioId: portfolio._id,
+    name,
+    type,
+    extAccountId: ext,
+    cashBalance: cash,
+    isDefault: false,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  const result = await db.collection<Account>(collections.accounts).insertOne(doc);
+  return db.collection<Account>(collections.accounts).findOne({ _id: result.insertedId });
+}
+
 export async function deletePositionForAccount(input: {
   userId: string;
   tenantId?: string;

@@ -1,0 +1,76 @@
+import type { SessionUser } from "@/lib/auth";
+import {
+  DEFAULT_EXT_BROKER_REF,
+  listPortfolioAccounts
+} from "@/modules/core-admin/repository";
+import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
+import type { Portfolio } from "@/modules/core-admin/types";
+
+const DEFAULT_COALESCE_CASH = 25_000;
+
+/**
+ * xfinance-strategy–aligned portfolio summary: `Portfolio` + `Account[]` with
+ * `riskLevel` / `strategy` placeholders until desk profiles are persisted.
+ */
+export async function buildPortfolioSummaryPayload(
+  session: SessionUser,
+  portfolio: Portfolio
+): Promise<{
+  _id: string;
+  name: string;
+  accounts: Array<{
+    _id?: string;
+    name: string;
+    accountRef: string;
+    brokerType: string;
+    balance: number;
+    riskLevel: "low" | "medium" | "high";
+    strategy: "growth" | "income" | "balanced" | "aggressive";
+    positions: unknown[];
+    recommendations: unknown[];
+  }>;
+  totalValue: number;
+  dailyChange: number;
+  dailyChangePercent: number;
+  userId: string;
+  isDefault: boolean;
+  ext_broker_ref: string;
+  tenantPortfolioOrgKey: string;
+  createdAt: string;
+  updatedAt: string;
+}> {
+  if (!portfolio._id) {
+    throw new Error("Portfolio missing id");
+  }
+  const portfolioId = portfolio._id.toHexString();
+  const accounts = await listPortfolioAccounts({
+    userId: session.userId,
+    portfolioId,
+    tenantId: session.tenantId
+  });
+
+  return {
+    _id: portfolioId,
+    name: portfolio.name,
+    accounts: accounts.map((account) => ({
+      _id: account._id?.toHexString(),
+      name: account.name,
+      accountRef: account.extAccountId,
+      brokerType: account.type,
+      balance: account.cashBalance ?? DEFAULT_COALESCE_CASH,
+      riskLevel: "medium",
+      strategy: "balanced",
+      positions: [],
+      recommendations: []
+    })),
+    totalValue: 0,
+    dailyChange: 0,
+    dailyChangePercent: 0,
+    userId: portfolio.userId,
+    isDefault: portfolio.isDefault,
+    ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
+    tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey ?? getTenantPortfolioOrgKey(),
+    createdAt: portfolio.createdAt.toISOString(),
+    updatedAt: portfolio.updatedAt.toISOString()
+  };
+}

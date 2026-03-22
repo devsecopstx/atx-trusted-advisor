@@ -230,3 +230,195 @@
   text-decoration: underline dotted;
   text-underline-offset: 3px;
 }
+
+/* xStrategyBuilder — option builder preview (dark brand; legacy wheel UX pattern) */
+
+.xsb-inline-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85em;
+  padding: 0.08em 0.28em;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--xf-text-300);
+}
+
+.xsb-builder-preview {
+  margin-top: 1.25rem;
+  padding: 1.15rem 1.2rem 1rem;
+  border-radius: var(--xf-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(
+    165deg,
+    rgba(57, 255, 20, 0.05),
+    rgba(255, 255, 255, 0.03) 38%,
+    var(--xf-surface-700)
+  );
+  box-shadow: var(--xf-shadow-card), 0 0 48px rgba(234, 179, 8, 0.06);
+}
+
+.xsb-builder-preview-head {
+  margin-bottom: 0.85rem;
+}
+
+.xsb-builder-title {
+  margin: 0;
+  font-size: clamp(1.15rem, 3vw, 1.35rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+}
+
+.xsb-builder-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--xf-text-400);
+}
+
+.xsb-builder-nl-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--xf-text-400);
+  margin-bottom: 0.35rem;
+}
+
+.xsb-builder-nl-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(57, 255, 20, 0.28);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--xf-text-300);
+  font-size: 0.88rem;
+  outline: none;
+  pointer-events: none;
+}
+
+.xsb-builder-nl-input::placeholder {
+  color: rgba(57, 255, 20, 0.55);
+}
+
+.xsb-builder-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.xsb-builder-step {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.xsb-builder-step--active {
+  color: var(--xf-bg-900);
+  background: linear-gradient(135deg, var(--xf-gain-green), #86efac);
+  border-color: transparent;
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.25);
+}
+
+.xsb-builder-panel {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.xsb-builder-step-heading {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--xf-text-100);
+}
+
+.xsb-builder-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.xsb-builder-search-icon {
+  color: var(--xf-lightning-yellow);
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.xsb-builder-search-placeholder {
+  font-size: 0.86rem;
+  color: var(--xf-text-400);
+}
+
+.xsb-builder-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.xsb-builder-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 1.25rem;
+  border-radius: var(--xf-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-bg-900);
+  background: linear-gradient(135deg, var(--xf-gain-green), #4ade80);
+  box-shadow: 0 0 24px rgba(57, 255, 20, 0.2);
+}
+
+.xsb-builder-watchlist-label {
+  margin: 1rem 0 0.45rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--xf-text-400);
+}
+
+.xsb-builder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.xsb-builder-chip {
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--xf-radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xf-text-300);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.xsb-builder-contract-note {
+  margin: 1rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--xf-text-400);
+}
+
+.xsb-occ-foot {
+  margin: 0.65rem 0 0;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  font-style: italic;
+  color: var(--xf-text-400);
+}

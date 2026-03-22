@@ -242,8 +242,24 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "portfolios"
   },
   {
-    path: "/api/portfolios/{portfolioId}/accounts",
+    path: "/api/portfolios/current",
     operations: [{ method: "GET", auth: "session" }],
+    tag: "portfolios"
+  },
+  {
+    path: "/api/portfolios/{portfolioId}",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "PATCH", auth: "session", hasRequestBody: true }
+    ],
+    tag: "portfolios"
+  },
+  {
+    path: "/api/portfolios/{portfolioId}/accounts",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "POST", auth: "session", hasRequestBody: true }
+    ],
     tag: "portfolios"
   },
   {

@@ -11,13 +11,16 @@ const sessionMocks = vi.hoisted(() => ({
 
 const repositoryMocks = vi.hoisted(() => ({
   getDefaultPortfolio: vi.fn(),
+  getPortfolioByIdForSessionUser: vi.fn(),
   listPortfolioAccounts: vi.fn(),
   listPortfolioPositionsByAccount: vi.fn(),
   provisionDefaultPortfolioForUser: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
   upsertPositionForAccount: vi.fn(),
   deletePositionForAccount: vi.fn(),
-  updatePortfolioAccountForUser: vi.fn()
+  updatePortfolioAccountForUser: vi.fn(),
+  updatePortfolioForUser: vi.fn(),
+  insertPortfolioAccountForUser: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
@@ -41,8 +44,10 @@ vi.mock("@/modules/core-admin/repository", async () => {
 });
 
 import { PATCH as patchPortfolioAccount } from "@/app/api/portfolios/[portfolioId]/accounts/[accountId]/route";
-import { GET as getPortfolioAccounts } from "@/app/api/portfolios/[portfolioId]/accounts/route";
+import { GET as getPortfolioAccounts, POST as postPortfolioAccount } from "@/app/api/portfolios/[portfolioId]/accounts/route";
+import { GET as getPortfolioById, PATCH as patchPortfolioById } from "@/app/api/portfolios/[portfolioId]/route";
 import { GET as getPortfolioWatchlist } from "@/app/api/portfolios/[portfolioId]/watchlist/route";
+import { GET as getCurrentPortfolio } from "@/app/api/portfolios/current/route";
 import { GET as getDefaultPortfolio } from "@/app/api/portfolios/default/route";
 import { DELETE as deletePosition } from "@/app/api/positions/[positionId]/route";
 import { GET as getPositions, POST as postPosition } from "@/app/api/positions/route";
@@ -120,6 +125,38 @@ describe("portfolio API routes", () => {
       createdAt: new Date("2025-01-01T00:00:00.000Z"),
       updatedAt: new Date("2025-01-02T00:00:00.000Z")
     });
+    repositoryMocks.getPortfolioByIdForSessionUser.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      userId: "507f1f77bcf86cd799439011",
+      name: "Default Portfolio",
+      isDefault: true,
+      ext_broker_ref: "extBrokerName",
+      tenantPortfolioOrgKey: "org-atx-finance",
+      createdAt: new Date("2025-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-01T00:00:00.000Z")
+    });
+    repositoryMocks.updatePortfolioForUser.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      userId: "507f1f77bcf86cd799439011",
+      name: "Renamed Portfolio",
+      isDefault: true,
+      ext_broker_ref: "extBrokerName",
+      tenantPortfolioOrgKey: "org-atx-finance",
+      createdAt: new Date("2025-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-02T00:00:00.000Z")
+    });
+    repositoryMocks.insertPortfolioAccountForUser.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439088" },
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+      name: "Second",
+      type: "merrill",
+      extAccountId: "merrill-2",
+      cashBalance: 10_000,
+      isDefault: false,
+      createdAt: new Date("2025-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-01T00:00:00.000Z")
+    });
   });
 
   it("returns default portfolio for session user", async () => {
@@ -133,6 +170,58 @@ describe("portfolio API routes", () => {
     expect(
       (payload as { data: { tenantPortfolioOrgKey?: string } }).data.tenantPortfolioOrgKey
     ).toBe("org-atx-finance");
+  });
+
+  it("GET /api/portfolios/current matches default portfolio", async () => {
+    const response = await getCurrentPortfolio();
+    const payload = (await response.json()) as { data: { name: string } };
+    expect(response.status).toBe(200);
+    expect(payload.data.name).toBe("Default Portfolio");
+  });
+
+  it("GET /api/portfolios/:id returns portfolio summary when owned", async () => {
+    const response = await getPortfolioById(new Request("http://test"), {
+      params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" })
+    });
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data: { name: string } };
+    expect(payload.data.name).toBe("Default Portfolio");
+    expect(repositoryMocks.getPortfolioByIdForSessionUser).toHaveBeenCalledWith({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      portfolioId: "507f1f77bcf86cd799439033"
+    });
+  });
+
+  it("PATCH /api/portfolios/:id updates portfolio name", async () => {
+    const response = await patchPortfolioById(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Desk A" })
+      }),
+      { params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" }) }
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePortfolioForUser).toHaveBeenCalledWith({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      portfolioId: "507f1f77bcf86cd799439033",
+      name: "Desk A"
+    });
+  });
+
+  it("POST /api/portfolios/:id/accounts creates an account", async () => {
+    const response = await postPortfolioAccount(
+      new Request("http://test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Second", type: "merrill", extAccountId: "merrill-2", cashBalance: 10000 })
+      }),
+      { params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" }) }
+    );
+    expect(response.status).toBe(201);
+    expect(repositoryMocks.insertPortfolioAccountForUser).toHaveBeenCalled();
   });
 
   it("returns account list for portfolio", async () => {
