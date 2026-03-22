@@ -1,10 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { PersonaModelSelect } from "@/app/admin/personas/ui/persona-model-select";
-import { DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT } from "@/app/admin/personas/ui/personas-onboarding";
+import {
+    DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT,
+    DEFAULT_XPERSONA_TOOLS_JSON,
+    mergeHostedSearchIntoPersonaTools,
+    parsePersonaXapiToolsJson,
+    personaToolsIncludeHostedSearch
+} from "@/app/admin/personas/ui/personas-onboarding";
 import { DeleteIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
@@ -29,6 +35,7 @@ type PersonaPayload = {
   xapiMode: "responses" | "chat_completions";
   xapiToolChoice: "auto" | "required" | "none";
   xapiMaxTurns: string;
+  xapiToolsJson: string;
 };
 
 type CollectionRow = {
@@ -49,26 +56,20 @@ const EMPTY_FORM: PersonaPayload = {
   defaultScope: "global",
   xapiMode: "responses",
   xapiToolChoice: "auto",
-  xapiMaxTurns: "5"
+  xapiMaxTurns: "5",
+  xapiToolsJson: DEFAULT_XPERSONA_TOOLS_JSON
 };
-
-/** Hosted search + collection tools are applied server-side for xChat; persona DB keeps only custom function markers. */
-function extractCustomToolMarkers(
-  tools: Array<{ type: string; [key: string]: unknown }>
-): Array<{ type: string; [key: string]: unknown }> {
-  return tools.filter((t) => t.type === "atxfinance" || t.type === "yahoo_finance");
-}
 
 export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
   const [form, setForm] = useState<PersonaPayload>(EMPTY_FORM);
-  const [customToolMarkers, setCustomToolMarkers] = useState<
-    Array<{ type: string; [key: string]: unknown }>
-  >([]);
   const [status, setStatus] = useState("Ready");
   const [loading, setLoading] = useState(mode === "edit");
   const [showAdvanced, setShowAdvanced] = useState(mode === "edit");
   const [collections, setCollections] = useState<CollectionRow[]>([]);
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
+  /** When true, save merges `web_search` + `x_search` into the tools array if missing. */
+  const [includeHostedSearchInTools, setIncludeHostedSearchInTools] = useState(true);
+  const [showEmptyToolsGuard, setShowEmptyToolsGuard] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -110,6 +111,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             };
           };
         }>(await fetch(`/api/personas/${personaId}`));
+        const loadedTools = payload.data.xapi.tools ?? [];
         setForm({
           name: payload.data.name,
           systemPrompt: payload.data.systemPrompt,
@@ -122,9 +124,13 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           defaultScope: payload.data.defaultScope,
           xapiMode: payload.data.xapi.mode,
           xapiToolChoice: payload.data.xapi.toolChoice,
-          xapiMaxTurns: String(payload.data.xapi.maxTurns)
+          xapiMaxTurns: String(payload.data.xapi.maxTurns),
+          xapiToolsJson: JSON.stringify(loadedTools, null, 2)
         });
-        setCustomToolMarkers(extractCustomToolMarkers(payload.data.xapi.tools));
+        setIncludeHostedSearchInTools(
+          personaToolsIncludeHostedSearch(loadedTools) || loadedTools.length === 0
+        );
+        setShowEmptyToolsGuard(false);
         setStatus("Loaded");
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Failed to load persona");
@@ -134,52 +140,76 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
     })();
   }, [mode, personaId]);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const parsedTemperature = Number(form.temperature.replace(",", ".").trim());
-    const parsedMaxTurns = Number(form.xapiMaxTurns.trim());
-    if (!Number.isFinite(parsedTemperature) || parsedTemperature < 0 || parsedTemperature > 1) {
-      setStatus("Temperature must be a number between 0 and 1");
-      return;
-    }
-    if (!Number.isInteger(parsedMaxTurns) || parsedMaxTurns < 1 || parsedMaxTurns > 10) {
-      setStatus("max_turns must be an integer between 1 and 10");
-      return;
-    }
-    setStatus(mode === "create" ? "Creating persona..." : "Saving persona...");
-    try {
-      const endpoint = mode === "create" ? "/api/personas" : `/api/personas/${personaId}`;
-      const method = mode === "create" ? "POST" : "PUT";
-      await parseJson(
-        await fetch(endpoint, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: form.name,
-            systemPrompt: form.systemPrompt,
-            overridePrompt: form.overridePrompt,
-            xaiCollection: {
-              collectionId: form.xaiCollectionId,
-              collectionName: form.xaiCollectionName
-            },
-            model: form.model,
-            temperature: parsedTemperature,
-            enableRag: form.enableRag,
-            defaultScope: form.defaultScope,
-            xapi: {
-              mode: form.xapiMode,
-              toolChoice: form.xapiToolChoice,
-              maxTurns: parsedMaxTurns,
-              tools: customToolMarkers
-            }
+  const submitPersona = useCallback(
+    async (event: FormEvent<HTMLFormElement> | null, allowEmptyTools: boolean) => {
+      event?.preventDefault();
+      const parsedTemperature = Number(form.temperature.replace(",", ".").trim());
+      const parsedMaxTurns = Number(form.xapiMaxTurns.trim());
+      if (!Number.isFinite(parsedTemperature) || parsedTemperature < 0 || parsedTemperature > 1) {
+        setStatus("Temperature must be a number between 0 and 1");
+        return;
+      }
+      if (!Number.isInteger(parsedMaxTurns) || parsedMaxTurns < 1 || parsedMaxTurns > 10) {
+        setStatus("max_turns must be an integer between 1 and 10");
+        return;
+      }
+      let parsedTools: Array<{ type: string; [key: string]: unknown }>;
+      try {
+        parsedTools = parsePersonaXapiToolsJson(form.xapiToolsJson);
+      } catch (e) {
+        setStatus(e instanceof Error ? e.message : "Invalid tools JSON");
+        return;
+      }
+      const hasAnyEffectiveTools = parsedTools.length > 0 || includeHostedSearchInTools;
+      if (!hasAnyEffectiveTools && !allowEmptyTools) {
+        setShowEmptyToolsGuard(true);
+        setStatus("Blocked: tools JSON is empty and hosted search merge is off.");
+        return;
+      }
+      setShowEmptyToolsGuard(false);
+      const toolsToSend = includeHostedSearchInTools
+        ? mergeHostedSearchIntoPersonaTools(parsedTools)
+        : parsedTools;
+      setStatus(mode === "create" ? "Creating persona..." : "Saving persona...");
+      try {
+        const endpoint = mode === "create" ? "/api/personas" : `/api/personas/${personaId}`;
+        const method = mode === "create" ? "POST" : "PUT";
+        await parseJson(
+          await fetch(endpoint, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: form.name,
+              systemPrompt: form.systemPrompt,
+              overridePrompt: form.overridePrompt,
+              xaiCollection: {
+                collectionId: form.xaiCollectionId,
+                collectionName: form.xaiCollectionName
+              },
+              model: form.model,
+              temperature: parsedTemperature,
+              enableRag: form.enableRag,
+              defaultScope: form.defaultScope,
+              xapi: {
+                mode: form.xapiMode,
+                toolChoice: form.xapiToolChoice,
+                maxTurns: parsedMaxTurns,
+                tools: toolsToSend
+              }
+            })
           })
-        })
-      );
-      router.push("/admin/personas");
-      router.refresh();
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to save persona");
-    }
+        );
+        router.push("/admin/personas");
+        router.refresh();
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Failed to save persona");
+      }
+    },
+    [form, includeHostedSearchInTools, mode, personaId, router]
+  );
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    void submitPersona(event, false);
   }
 
   function applyCollection(row: CollectionRow) {
@@ -308,11 +338,108 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             value={form.defaultScope}
           />
 
-          <p className="status-text">
-            Hosted search (<code>web_search</code>, <code>x_search</code>) and collection search are merged server-side
-            for every ask. This form only preserves <code>atxfinance</code> / <code>yahoo_finance</code> markers already
-            on the persona; use Admin → Personas (list) JSON or the API to change those.
-          </p>
+          <label className="status-text" htmlFor="persona-xapi-tools-json">
+            xAPI tools (JSON array) — default enables web, X, collections, Yahoo, and atxfinance
+          </label>
+          <textarea
+            id="persona-xapi-tools-json"
+            onChange={(event) =>
+              setForm((current) => ({ ...current, xapiToolsJson: event.target.value }))
+            }
+            placeholder='[{"type":"web_search"}, …]'
+            rows={12}
+            spellCheck={false}
+            value={form.xapiToolsJson}
+          />
+
+          <fieldset
+            className="stack-gap"
+            style={{
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+              borderRadius: 8,
+              padding: "0.75rem 1rem",
+              marginTop: "0.35rem"
+            }}
+          >
+            <legend className="status-text" style={{ padding: "0 0.35rem" }}>
+              Tools guardrails
+            </legend>
+            <label className="status-text" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+              <input
+                checked={includeHostedSearchInTools}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setIncludeHostedSearchInTools(checked);
+                  if (checked) {
+                    setShowEmptyToolsGuard(false);
+                  }
+                }}
+                type="checkbox"
+              />
+              <span>
+                On save, prepend <code>web_search</code> and <code>x_search</code> if they are missing (recommended).
+                Interactive xChat still merges these for each ask on the server; saving them keeps batch jobs,{" "}
+                <code>tool_choice</code>, and the DB consistent.
+              </span>
+            </label>
+            <div
+              className="status-text"
+              role="note"
+              style={{
+                fontSize: "0.88rem",
+                borderLeft: "3px solid rgba(0, 200, 120, 0.45)",
+                paddingLeft: "0.65rem",
+                marginTop: "0.35rem"
+              }}
+            >
+              Prefer a non-empty tools array with <code>web_search</code>, <code>x_search</code>, and usually{" "}
+              <code>atxfinance</code> (plus RAG / Yahoo as needed). Saving with no tools and merge off can break live
+              search expectations and trigger provider errors.
+            </div>
+            {showEmptyToolsGuard ? (
+              <div
+                className="status-text status-error"
+                role="alert"
+                style={{
+                  border: "1px solid rgba(220, 80, 80, 0.45)",
+                  borderRadius: 6,
+                  padding: "0.65rem 0.85rem",
+                  marginTop: "0.5rem"
+                }}
+              >
+                <strong>Empty tools configuration</strong>
+                <p style={{ margin: "0.45rem 0 0.35rem" }}>
+                  Parsed tools are empty and hosted-search merge is off. The model may skip live data, invent tool
+                  names, or return unreliable market context.
+                </p>
+                <ul style={{ margin: "0.25rem 0 0.5rem", paddingLeft: "1.1rem" }}>
+                  <li>Real-time web / X grounding may not run</li>
+                  <li>Bad tool JSON → xAI 422 errors</li>
+                  <li>Stale or hallucinated financial answers</li>
+                </ul>
+                <div className="tool-row" style={{ marginTop: "0.65rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <button
+                    className="tiny-button"
+                    type="button"
+                    onClick={() => {
+                      setIncludeHostedSearchInTools(true);
+                      setShowEmptyToolsGuard(false);
+                      setStatus("Hosted search merge enabled — click Save again.");
+                    }}
+                  >
+                    Enable hosted search merge
+                  </button>
+                  <button
+                    className="cta cta-danger"
+                    type="button"
+                    onClick={() => void submitPersona(null, true)}
+                  >
+                    Save anyway (not recommended)
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </fieldset>
 
           <button className="tiny-button" onClick={() => setShowAdvanced((current) => !current)} type="button">
             {showAdvanced ? "Hide optional fields" : "Show optional fields"}
@@ -338,7 +465,11 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
               />
             </>
           ) : null}
+          <label className="status-text" htmlFor="persona-xapi-mode">
+            xAPI mode
+          </label>
           <select
+            id="persona-xapi-mode"
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
@@ -347,10 +478,14 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             }
             value={form.xapiMode}
           >
-            <option value="responses">xAPI mode: responses</option>
-            <option value="chat_completions">xAPI mode: chat_completions</option>
+            <option value="responses">responses</option>
+            <option value="chat_completions">chat_completions</option>
           </select>
+          <label className="status-text" htmlFor="persona-xapi-tool-choice">
+            Tool choice (xAI)
+          </label>
           <select
+            id="persona-xapi-tool-choice"
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
@@ -359,11 +494,15 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             }
             value={form.xapiToolChoice}
           >
-            <option value="auto">tool_choice: auto</option>
-            <option value="required">tool_choice: required</option>
-            <option value="none">tool_choice: none</option>
+            <option value="auto">auto — model may call tools</option>
+            <option value="required">required — must call a tool</option>
+            <option value="none">none — no tools</option>
           </select>
+          <label className="status-text" htmlFor="persona-xapi-max-turns">
+            Max tool turns
+          </label>
           <input
+            id="persona-xapi-max-turns"
             max={10}
             min={1}
             onChange={(event) => setForm((current) => ({ ...current, xapiMaxTurns: event.target.value }))}

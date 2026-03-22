@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { personaXapiToolsToXaiRequestTools, toXaiRequestTools } from "@/lib/xai-tools";
+import {
+    buildWireToolsForXaiResponses,
+    personaXapiToolsToXaiRequestTools,
+    toXaiRequestTools
+} from "@/lib/xai-tools";
 
 describe("toXaiRequestTools", () => {
   it("maps collections_search with ids to file_search vector_store_ids", () => {
@@ -64,6 +68,19 @@ describe("personaXapiToolsToXaiRequestTools", () => {
     expect((out[1] as { function?: unknown }).function).toBeUndefined();
     expect((out[2] as { name?: string }).name).toBe("yahoo_finance");
     expect((out[2] as { function?: unknown }).function).toBeUndefined();
+  });
+});
+
+describe("buildWireToolsForXaiResponses", () => {
+  it("matches personaXapiToolsToXaiRequestTools (single pass — debug logs match ask route)", () => {
+    const tools = [
+      { type: "web_search" as const },
+      { type: "collections_search" as const, collection_ids: ["c1"] },
+      { type: "atxfinance" as const }
+    ];
+    const a = personaXapiToolsToXaiRequestTools(tools);
+    const b = buildWireToolsForXaiResponses(tools);
+    expect(b).toEqual(a);
   });
 });
 

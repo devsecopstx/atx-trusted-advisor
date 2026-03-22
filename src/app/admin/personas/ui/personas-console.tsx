@@ -7,6 +7,7 @@ import { PersonaModelSelect } from "@/app/admin/personas/ui/persona-model-select
 import {
     EMPTY_CREATE_FORM,
     applySelectedCollectionToPersonaForm,
+    parsePersonaXapiToolsJson,
     type PersonaFormState,
     type XaiCollectionInventoryOption
 } from "@/app/admin/personas/ui/personas-onboarding";
@@ -478,36 +479,9 @@ export function PersonasConsole({
     return parsed;
   }
 
-  function parseXapiToolsInput(value: string): Array<{ type: string; [key: string]: unknown }> {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return [];
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(trimmed);
-    } catch {
-      throw new Error("Tools JSON must be valid JSON");
-    }
-    if (!Array.isArray(parsed)) {
-      throw new Error("Tools JSON must be an array");
-    }
-    const tools = parsed.filter(
-      (entry): entry is { type: string; [key: string]: unknown } =>
-        Boolean(entry) &&
-        typeof entry === "object" &&
-        "type" in entry &&
-        typeof (entry as { type?: unknown }).type === "string"
-    );
-    if (tools.length !== parsed.length) {
-      throw new Error("Each tool must include a string 'type' field");
-    }
-    return tools;
-  }
-
   function buildPersonaPayload(form: PersonaFormState, temperature: number) {
     const maxTurns = parseMaxTurnsInput(form.xapiMaxTurns);
-    const tools = parseXapiToolsInput(form.xapiToolsJson);
+    const tools = parsePersonaXapiToolsJson(form.xapiToolsJson);
     return {
       name: form.name,
       systemPrompt: form.systemPrompt,

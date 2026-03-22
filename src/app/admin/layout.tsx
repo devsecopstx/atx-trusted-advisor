@@ -27,6 +27,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin/portfolios", label: "Portfolios" },
   { href: "/admin/tasks", label: "Tasks" },
   { href: "/admin/rag-files", label: "RAG collections" },
+  { href: "/admin/xchat-tool-usage", label: "xChat tools" },
   { href: "/admin/api-docs", label: "API Docs" },
   { href: "/admin/user-settings", label: "Users" },
   { href: "/admin/audit", label: "Audit" }

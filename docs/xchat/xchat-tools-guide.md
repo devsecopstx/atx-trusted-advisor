@@ -6,6 +6,8 @@
 
 **Code map:** `ask/route.ts`, `xchat-prompt-build.ts`, `batch-prompt-context.ts`, `batch-service.ts`, `lib/xai.ts`, `lib/xai-tools.ts`, `tool-executor.ts`, `workspace-snapshot-for-prompt.ts`.
 
+**UI (assistant bubbles):** `xchat-markdown-body.tsx` — `react-markdown` + `remark-gfm` + `rehype-sanitize`, Prism **oneDark** for fenced code, `preprocessXchatMarkdown` (`xchat-markdown-preprocess.ts`) for light cleanup before render.
+
 ---
 
 ## Flow (interactive ask)
