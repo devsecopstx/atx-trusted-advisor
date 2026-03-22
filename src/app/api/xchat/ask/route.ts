@@ -4,7 +4,6 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import { checkRateLimit } from "@/lib/rate-limit";
 import {
   chatWithXai,
   respondWithXai,
@@ -29,11 +28,12 @@ import {
   HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS,
   XPERSONA_SUPER_AGENT_NAME
 } from "@/modules/xchat/default-xpersonas";
+import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import {
   getPersonaLinkedCollectionIds,
   withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
-import { clampMultiAgentParallelismForPlan } from "@/modules/xchat/plan-limits";
+import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
   getPersonaById,
@@ -58,7 +58,6 @@ const askSchema = z.object({
 });
 
 const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
-const ASK_RATE_WINDOW_MS = 60_000;
 const ASK_RATE_MAX = 20;
 const DEFAULT_XCHAT_MODEL = "grok-4-1-fast-reasoning";
 const MULTI_AGENT_MODEL = "grok-4.20-multi-agent";
@@ -94,21 +93,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   }
 
-  const rateLimit = checkRateLimit({
-    key: `xchat-ask:${session.userId}`,
-    windowMs: ASK_RATE_WINDOW_MS,
-    max: ASK_RATE_MAX
-  });
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      {
-        error: "Rate limit exceeded",
-        retryAfterSeconds: Math.ceil((rateLimit.resetAtMs - Date.now()) / 1000)
-      },
-      { status: 429 }
-    );
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -124,8 +108,61 @@ export async function POST(request: Request) {
     );
   }
 
-  const { message, topK = 4 } = parsed.data;
+  const { message } = parsed.data;
   const isAdminSession = isGlobalAdmin(session.roles);
+  let subscriptionPlan: SubscriptionPlan | undefined;
+  let limiterRemainingMinute: number | undefined;
+  let limiterRemainingDay: number | undefined;
+  let limiterDailyLimit: number | undefined;
+  if (!isAdminSession && ObjectId.isValid(session.userId)) {
+    const coreUser = await getCoreUserById(new ObjectId(session.userId));
+    subscriptionPlan = coreUser?.subscriptionPlan;
+  }
+  const requestedTopK = parsed.data.topK ?? 4;
+  const topK = isAdminSession ? requestedTopK : clampTopK(requestedTopK, subscriptionPlan);
+  try {
+    const usageCheck = await enforceDistributedAskUsageLimit({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      plan: subscriptionPlan,
+      perMinuteLimit: ASK_RATE_MAX,
+      enforceDailyLimit: !isAdminSession
+    });
+    if (!usageCheck.allowed) {
+      const limiterHeaders = buildLimiterHeaders({
+        remainingMinute: usageCheck.remainingMinute,
+        remainingDay: usageCheck.remainingDay,
+        dailyLimit: usageCheck.dailyLimit,
+        retryAfterSeconds: usageCheck.retryAfterSeconds
+      });
+      return NextResponse.json(
+        {
+          error:
+            usageCheck.code === "xchat_daily_limit_exceeded"
+              ? "Daily xChat prompt limit reached for current plan"
+              : "Rate limit exceeded",
+          code: usageCheck.code,
+          retryAfterSeconds: usageCheck.retryAfterSeconds ?? 60
+        },
+        { status: 429, headers: limiterHeaders }
+      );
+    }
+    limiterRemainingMinute = usageCheck.remainingMinute;
+    limiterRemainingDay = usageCheck.remainingDay;
+    limiterDailyLimit = usageCheck.dailyLimit;
+  } catch (error) {
+    console.error("[xchat/ask] distributed usage limit check failed", {
+      userId: session.userId,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return NextResponse.json(
+      {
+        error: "xChat usage limiter is unavailable",
+        retryable: true
+      },
+      { status: 503 }
+    );
+  }
 
   const defaultPersona = await resolveDefaultXchatPersonaForSession(session.roles);
   if (!defaultPersona) {
@@ -197,11 +234,6 @@ export async function POST(request: Request) {
   }
   let parallelAgentConfig = parallelAgentConfigResult.config;
   if (!isAdminSession) {
-    let subscriptionPlan: SubscriptionPlan | undefined;
-    if (ObjectId.isValid(session.userId)) {
-      const coreUser = await getCoreUserById(new ObjectId(session.userId));
-      subscriptionPlan = coreUser?.subscriptionPlan;
-    }
     parallelAgentConfig = clampMultiAgentParallelismForPlan(
       parallelAgentConfig,
       subscriptionPlan
@@ -593,21 +625,30 @@ export async function POST(request: Request) {
     xaiTurnRetentionExpiresAt
   });
 
-  return NextResponse.json({
-    data: {
-      response: xaiResponse.outputText,
-      model: xaiResponse.model,
-      personaName: persona.name,
-      modelSelectionSource,
-      contextCount,
-      contextSource,
-      collectionSearchStatus,
-      collectionSearchNonReadyFileCount,
-      toolCalls: toolCallLogs.length > 0
-        ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
-        : undefined
+  return NextResponse.json(
+    {
+      data: {
+        response: xaiResponse.outputText,
+        model: xaiResponse.model,
+        personaName: persona.name,
+        modelSelectionSource,
+        contextCount,
+        contextSource,
+        collectionSearchStatus,
+        collectionSearchNonReadyFileCount,
+        toolCalls: toolCallLogs.length > 0
+          ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
+          : undefined
+      }
+    },
+    {
+      headers: buildLimiterHeaders({
+        remainingMinute: limiterRemainingMinute,
+        remainingDay: limiterRemainingDay,
+        dailyLimit: limiterDailyLimit
+      })
     }
-  });
+  );
 }
 
 function createSnippetFingerprint(input: string): string {
@@ -711,4 +752,26 @@ function resolveParallelAgentConfig(input: {
       reasoningEffort: effort
     }
   };
+}
+
+function buildLimiterHeaders(input: {
+  remainingMinute?: number;
+  remainingDay?: number;
+  dailyLimit?: number;
+  retryAfterSeconds?: number;
+}): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (typeof input.remainingMinute === "number") {
+    headers["x-xchat-limit-remaining-minute"] = String(Math.max(0, input.remainingMinute));
+  }
+  if (typeof input.remainingDay === "number") {
+    headers["x-xchat-limit-remaining-day"] = String(Math.max(0, input.remainingDay));
+  }
+  if (typeof input.dailyLimit === "number") {
+    headers["x-xchat-limit-daily"] = String(Math.max(0, input.dailyLimit));
+  }
+  if (typeof input.retryAfterSeconds === "number") {
+    headers["retry-after"] = String(Math.max(1, Math.ceil(input.retryAfterSeconds)));
+  }
+  return headers;
 }

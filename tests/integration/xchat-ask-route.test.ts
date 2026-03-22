@@ -6,8 +6,8 @@ const authMocks = vi.hoisted(() => ({
   requireSessionUser: vi.fn()
 }));
 
-const rateLimitMocks = vi.hoisted(() => ({
-  checkRateLimit: vi.fn()
+const usageLimitMocks = vi.hoisted(() => ({
+  enforceDistributedAskUsageLimit: vi.fn()
 }));
 
 const xaiMocks = vi.hoisted(() => ({
@@ -54,8 +54,8 @@ const workspaceSnapshotMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
-vi.mock("@/lib/rate-limit", () => rateLimitMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
+vi.mock("@/modules/xchat/ask-usage-limits", () => usageLimitMocks);
 vi.mock("@/modules/xchat/repository", () => repositoryMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
@@ -105,9 +105,9 @@ describe("xchat ask route collection retrieval", () => {
       username: "xf-admin",
       roles: ["global_admin"]
     });
-    rateLimitMocks.checkRateLimit.mockReturnValue({
+    usageLimitMocks.enforceDistributedAskUsageLimit.mockResolvedValue({
       allowed: true,
-      resetAtMs: Date.now() + 60_000
+      remainingMinute: 19
     });
     xaiMocks.chatWithXai.mockResolvedValue({
       outputText: "xAI answer",
@@ -168,6 +168,7 @@ describe("xchat ask route collection retrieval", () => {
 
     const payload = (await response.json()) as { data: { contextSource: string; contextCount: number } };
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-xchat-limit-remaining-minute")).toBe("19");
     expect(payload.data.contextSource).toBe("xai_collection");
     expect(payload.data.contextCount).toBe(1);
     expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_ops-global");
@@ -572,11 +573,11 @@ describe("xchat ask route collection retrieval", () => {
   });
 
   it("returns 429 when rate limit is exceeded", async () => {
-    const resetAtMs = Date.now() + 30_000;
-    rateLimitMocks.checkRateLimit.mockReturnValueOnce({
+    usageLimitMocks.enforceDistributedAskUsageLimit.mockResolvedValueOnce({
       allowed: false,
-      remaining: 0,
-      resetAtMs
+      code: "xchat_rate_limit_exceeded",
+      remainingMinute: 0,
+      retryAfterSeconds: 30
     });
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
@@ -592,6 +593,8 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.status).toBe(429);
     expect(payload.error).toBe("Rate limit exceeded");
     expect(payload.retryAfterSeconds).toBeGreaterThan(0);
+    expect(response.headers.get("x-xchat-limit-remaining-minute")).toBe("0");
+    expect(response.headers.get("retry-after")).toBe("30");
   });
 
   it("returns 400 for invalid ask payload", async () => {

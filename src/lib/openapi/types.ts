@@ -47,6 +47,13 @@ export type OpenApiParameter = {
 export type OpenApiResponse = {
   description: string;
   content?: Record<string, OpenApiMediaType>;
+  headers?: Record<
+    string,
+    {
+      description?: string;
+      schema?: OpenApiSchema;
+    }
+  >;
 };
 
 export type OpenApiRequestBody = {

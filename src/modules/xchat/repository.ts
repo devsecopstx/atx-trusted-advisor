@@ -28,6 +28,8 @@ const collections = {
 } as const;
 
 let ensurePersonaIndexesPromise: Promise<void> | null = null;
+let ensureXchatLogIndexesPromise: Promise<void> | null = null;
+const XCHAT_LOG_RETENTION_DAYS = 30;
 
 export class PersonaNameConflictError extends Error {
   readonly code = "PERSONA_NAME_CONFLICT";
@@ -43,6 +45,13 @@ export async function ensurePersonaIndexes(): Promise<void> {
     ensurePersonaIndexesPromise = createPersonaIndexes();
   }
   await ensurePersonaIndexesPromise;
+}
+
+export async function ensureXchatLogIndexes(): Promise<void> {
+  if (!ensureXchatLogIndexesPromise) {
+    ensureXchatLogIndexesPromise = createXchatLogIndexes();
+  }
+  await ensureXchatLogIndexesPromise;
 }
 
 async function createPersonaIndexes(): Promise<void> {
@@ -96,6 +105,23 @@ async function createPersonaIndexes(): Promise<void> {
   await personaCollection.createIndex(
     { nameNormalized: 1 },
     { unique: true, name: "uniq_xpersona_name_normalized" }
+  );
+}
+
+async function createXchatLogIndexes(): Promise<void> {
+  const db = await getDb();
+  const chatLogCollection = db.collection<XChatSessionLog>(collections.chatLogs);
+  await chatLogCollection.createIndex(
+    { userId: 1, createdAt: -1, _id: -1 },
+    { name: "idx_xchat_logs_user_created_desc" }
+  );
+  await chatLogCollection.createIndex(
+    { tenantId: 1, userId: 1, createdAt: -1, _id: -1 },
+    { name: "idx_xchat_logs_tenant_user_created_desc" }
+  );
+  await chatLogCollection.createIndex(
+    { retentionExpiresAt: 1 },
+    { expireAfterSeconds: 0, name: "ttl_xchat_logs_retention_expires_at" }
   );
 }
 
@@ -360,10 +386,16 @@ export async function retrieveRagChunks(
 export async function saveXChatLog(
   payload: Omit<XChatSessionLog, "_id" | "createdAt">
 ): Promise<void> {
+  await ensureXchatLogIndexes();
   const db = await getDb();
+  const createdAt = new Date();
+  const retentionExpiresAt =
+    payload.retentionExpiresAt ??
+    new Date(createdAt.getTime() + XCHAT_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
   await db.collection<XChatSessionLog>(collections.chatLogs).insertOne({
     ...payload,
-    createdAt: new Date()
+    createdAt,
+    retentionExpiresAt
   });
 }
 
@@ -372,13 +404,22 @@ export async function listXChatHistoryByUser(input: {
   tenantId?: ObjectId | null;
   limit: number;
   before?: Date;
+  beforeId?: ObjectId;
 }): Promise<XChatHistoryItem[]> {
+  await ensureXchatLogIndexes();
   const db = await getDb();
   const query: Record<string, unknown> = {
     userId: input.userId
   };
   if (input.before) {
-    query.createdAt = { $lt: input.before };
+    if (input.beforeId) {
+      query.$or = [
+        { createdAt: { $lt: input.before } },
+        { createdAt: input.before, _id: { $lt: input.beforeId } }
+      ];
+    } else {
+      query.createdAt = { $lt: input.before };
+    }
   }
   const scopedQuery = withTenantScopeForLogs(query, input.tenantId);
   const logs = await db
@@ -404,6 +445,7 @@ export async function getXChatHistoryStatsByUser(input: {
   userId: ObjectId;
   tenantId?: ObjectId | null;
 }): Promise<XChatHistoryStats> {
+  await ensureXchatLogIndexes();
   const db = await getDb();
   const match = withTenantScopeForLogs({ userId: input.userId }, input.tenantId);
 
@@ -645,8 +687,16 @@ function withTenantScopeForLogs(
   if (!tenantId) {
     return query;
   }
+  const tenantScope: Record<string, unknown> = {
+    $or: [{ tenantId }, { tenantId: { $exists: false } }]
+  };
+  if ("$or" in query || "$and" in query) {
+    return {
+      $and: [query, tenantScope]
+    };
+  }
   return {
     ...query,
-    $or: [{ tenantId }, { tenantId: { $exists: false } }]
+    ...tenantScope
   };
 }

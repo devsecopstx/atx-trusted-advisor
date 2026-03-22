@@ -82,4 +82,31 @@ describe("xchat history routes", () => {
     const response = await getHistory(new Request("http://127.0.0.1/api/xchat/history"));
     expect(response.status).toBe(401);
   });
+
+  it("accepts cursorId and forwards tie-break cursor to repository", async () => {
+    const response = await getHistory(
+      new Request(
+        "http://127.0.0.1/api/xchat/history?limit=10&cursor=2026-03-20T12:00:00.000Z&cursorId=507f1f77bcf86cd799439055"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.listXChatHistoryByUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        before: new Date("2026-03-20T12:00:00.000Z"),
+        beforeId: expect.objectContaining({
+          toHexString: expect.any(Function)
+        })
+      })
+    );
+  });
+
+  it("returns 400 for invalid cursorId", async () => {
+    const response = await getHistory(
+      new Request(
+        "http://127.0.0.1/api/xchat/history?limit=10&cursor=2026-03-20T12:00:00.000Z&cursorId=not-an-objectid"
+      )
+    );
+    expect(response.status).toBe(400);
+  });
 });
