@@ -6,13 +6,13 @@ spring:
     name: atxfinance-backend
   data:
     mongodb:
-      uri: ${MONGODB_URI:}
+      uri: ${MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfintechdb}}}}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,env,metrics,prometheus
   endpoint:
     health:
       show-details: when_authorized

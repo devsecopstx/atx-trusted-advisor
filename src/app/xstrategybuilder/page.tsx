@@ -7,7 +7,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getLicensingPitchContact } from "@/lib/env";
 
 import "../xchat/xchat.css";
-import "../xcoach/xcoach.css";
+import "./xstrategybuilder.css";
 
 const PRICING_TOOLTIP = "Cheapest xFinance on earth — pay only for what you use.";
 

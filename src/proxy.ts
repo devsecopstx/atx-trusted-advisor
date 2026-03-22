@@ -8,8 +8,7 @@ const protectedPathPrefixes = [
   "/api/rag",
   "/api/xchat",
   "/portfolio",
-  "/xfinance",
-  "/xcoach"
+  "/xfinance"
 ];
 
 function isProtectedPath(pathname: string): boolean {
@@ -44,7 +43,6 @@ export const config = {
     "/api/rag/:path*",
     "/api/xchat/:path*",
     "/portfolio/:path*",
-    "/xfinance/:path*",
-    "/xcoach/:path*"
+    "/xfinance/:path*"
   ]
 };

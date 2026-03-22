@@ -8,7 +8,7 @@ Core backend and UI for atxFinance **admin operations** and **signed-in app_user
 - task scheduling metadata
 - user broker/portfolio/account defaults
 - notification defaults
-- app_user surfaces: xChat, xCoach, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`) with shared header (profile, logout, feedback, optional DB chip)
+- app_user surfaces: xChat, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`) with shared header (profile, logout, feedback, optional DB chip)
 
 ## Tech Stack
 
@@ -53,18 +53,57 @@ Use `.env` only (do not use `.env.local` for this app).
 - `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications and **app_user feedback** from `POST /api/feedback`)
 - `APP_USER_SHOW_DB_ENDPOINT` (optional; set `true` to show the Mongo host/db chip in the app_user header when `NODE_ENV=production` — e.g. beta staging builds)
 
-## Local Setup
+## Local Setup (Backend → Frontend)
 
-1. Install dependencies:
+Follow these steps to run the backend first, then the frontend.
+
+1. Install dependencies
    - `npm install`
-2. Start MongoDB:
-   - `docker compose up -d`
-3. Configure environment:
+2. Create your env file
    - `cp .env.example .env`
-4. Start dev server:
-   - `npm run dev`
-5. Seed core admin user + default tenant:
+   - Tip: Leave `MONGODB_URI_B64` unset for local development so the app uses the local Docker Mongo.
+3. (Optional) Source admin username from admin_seed.csv and set local Mongo password
+   - `export ADMIN_X_USERNAME=$(awk -F, 'NR==2{print $2}' admin_seed.csv)`
+   - `export MONGO_ROOT_PASSWORD=atxrocks!`  # change if desired
+   - `export MONGODB_DB_NAME=atxfintechdb`   # default already
+4. Start backend + MongoDB (Docker Compose, from repo root)
+   - `npm run dev:backend`
+   - Behavior:
+     - If `MONGODB_URI_B64` is set, backend decodes and uses it (cloud/Atlas) and will NOT use local Mongo.
+     - If `MONGODB_URI_B64` is NOT set, Compose starts `mongo:8` with:
+       - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfintechdb}`
+       - `MONGO_INITDB_ROOT_USERNAME=${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}`
+       - `MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-atxrocks!}`
+     - Backend connects via `SPRING_DATA_MONGODB_URI` to `mongodb:27017` inside the Compose network.
+5. Verify backend
+   - Health: http://localhost:8080/actuator/health (expect `{ "status": "UP" }` once ready)
+   - Swagger UI: http://localhost:8080/swagger-ui.html
+6. Start frontend (Next.js dev server)
+   - `npm run dev:frontend`
+   - App URL: http://localhost:3000
+7. Seed core admin user + default tenant (first-time only)
+   - Ensure `.env` has `ADMIN_SEED_EMAIL=you@example.com`
    - `npm run seed:admin`
+8. Stop services and view logs
+   - Stop backend + Mongo: `Ctrl+C` in the Compose terminal, or `docker compose down`
+   - View backend logs: `docker logs -f atxfinance-backend`
+   - View Mongo logs: `docker logs -f atxfinance-mongodb`
+9. Troubleshooting
+   - If port 27017 is already in use, stop other Mongo instances or change the published port in `docker-compose.yml`.
+   - To force local Mongo (and ignore Atlas), ensure `MONGODB_URI_B64` is unset in your environment when starting the backend.
+   - To use Atlas in dev, set `MONGODB_URI_B64` (base64 of your Mongo URI) before `npm run dev:backend`.
+
+### Notes on the new root-based Docker build (backend)
+
+- The backend `Dockerfile` now lives at the repo root and builds the service under `services/atxfinance-backend`.
+- `docker-compose.yml` includes two services:
+  - `mongodb` on port 27017 with named volume `atxfinance_mongo_data`
+  - `atxfinance-backend` on port 8080, connected to MongoDB using `SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/atxfinancedb`
+- Typical developer loop:
+  - Start/refresh backend: `npm run dev:backend` (rebuilds image if sources changed)
+  - Run frontend dev: `npm run dev:frontend`
+- If you need to run only MongoDB locally without the backend container: `docker compose up -d mongodb`
+- If you prefer Gradle `bootRun` instead of Docker for the backend during rapid iteration, the workspace task "Start Backend (Gradle)" remains available, but the default path is to use Docker from the repo root.
 
 ## Developer Prereqs (gh + local gate)
 
@@ -894,3 +933,51 @@ Use this checklist to validate "admin can start using xChat" in an authenticated
   }
 }
 ```
+
+
+
+## SRE Runbook: Local Health, Tests, and CI Gate
+
+This project includes smoke checks and SRE-focused tests to prevent config/secrets regressions and infra drift.
+
+- Commands
+  - `npm run smoke:verify` — runs smoke tests only (env parity, docker-compose sanity)
+  - `npm run test` — full test suite
+  - `npm run typecheck` — TypeScript type check
+  - `npm run lint` — ESlint
+  - `npm run ci:gate` — runs lint + typecheck + tests; recommended for PRs
+
+- Env hygiene
+  - `.env.example` is kept in sync with runtime-required keys from `src/lib/env.ts` (`REQUIRED_RUNTIME_ENV_VARS`).
+  - Smoke tests prevent committing obvious live secrets (e.g., `pk_live_...`, long `xai-...` tokens) in `.env.example` or `tennat_defaults.yaml`.
+  - Use Secret Manager for all real keys in staging/prod. Keep repository defaults empty or clearly fake.
+
+- Docker Compose sanity
+  - `docker-compose.yml` must define `mongodb` and `atxfinance-backend` services and expose ports 27017 and 8080 respectively.
+  - A `healthcheck` on backend or `depends_on: condition: service_healthy` should be present so `mongodb` becomes ready before backend starts relying on it.
+
+- Backend health endpoint
+  - `GET /api/backend/health` returns service status, active profiles, and masked Mongo connection information.
+
+- Push policy (PR checklist)
+  - [ ] `npm run ci:gate` passes locally
+  - [ ] No real secrets in repo files (`.env.example`, `tennat_defaults.yaml`, docs, scripts)
+  - [ ] New env keys are added to `.env.example` and validated in `src/lib/env.ts`
+
+  ### Backend dependency version management
+
+  The Spring Boot backend (`services/atxfinance-backend`) uses a Gradle Version Catalog to avoid hard‑coding dependency and plugin versions.
+
+  - Catalog file: `services/atxfinance-backend/gradle/libs.versions.toml`
+    - Defines versions for: Spring Boot, Kotlin, SpringDoc, ShedLock, OpenTelemetry, and the Google Cloud BOM.
+    - Plugin versions are managed via `plugins` aliases in the catalog.
+  - Build script: `services/atxfinance-backend/build.gradle.kts`
+    - Uses `alias(libs.plugins.…)` for plugin versions.
+    - Uses `implementation(platform(libs.gcp.bom))` for Google Cloud libraries.
+    - Uses `libs.springdoc.webmvc.ui`, `libs.shedlock.spring`, `libs.shedlock.mongo`, `libs.otel.otlp` for library coordinates without inline versions.
+    - Spring Boot starters and Micrometer libraries rely on Spring Boot’s dependency management — no explicit versions in the module file.
+
+  How to bump versions:
+  - Edit `libs.versions.toml` and change the relevant entry under `[versions]`.
+  - For Google Cloud client libraries, update the `gcp-bom` version — individual GCP deps then follow the BOM.
+  - Re‑sync Gradle or run `./gradlew build` to apply.

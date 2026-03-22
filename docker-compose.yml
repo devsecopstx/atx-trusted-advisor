@@ -3,12 +3,35 @@ services:
     image: mongo:8
     container_name: atxfinance-mongodb
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_DATABASE: atxfinancedb
+      # Align DB name with .env (MONGODB_DB_NAME) and default to atxfintechdb
+      MONGO_INITDB_DATABASE: ${MONGODB_DB_NAME:-atxfintechdb}
+      # Use admin username from admin_seed.csv when exported to env as ADMIN_X_USERNAME; fallback to ADMIN_X_USERNAMES or 'admin'
+      MONGO_INITDB_ROOT_USERNAME: ${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}
+      # Use provided password or fallback to the requested default
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-atxrocks!}
     volumes:
       - atxfinance_mongo_data:/data/db
+
+  atxfinance-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: atxfinance-backend
+    depends_on:
+      - mongodb
+    env_file:
+      - .env
+    environment:
+      # If MONGODB_URI_B64 is set, the app will prefer it (decoded) via EnvironmentPostProcessor.
+      # Otherwise, use local Mongo with credentials and db name.
+      SPRING_DATA_MONGODB_URI: "mongodb://${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}:${MONGO_ROOT_PASSWORD:-atxrocks!}@mongodb:27017/${MONGODB_DB_NAME:-atxfintechdb}?authSource=admin"
+    ports:
+      - "8080:8080"
 
 volumes:
   atxfinance_mongo_data:

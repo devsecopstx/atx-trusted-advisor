@@ -4,7 +4,7 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 
 import "../../xchat/xchat.css";
-import "../../xcoach/xcoach.css";
+import "../xstrategybuilder.css";
 import { StrategyOptionsConsole } from "./strategy-options-console";
 
 export default async function StrategyOptionsPage() {

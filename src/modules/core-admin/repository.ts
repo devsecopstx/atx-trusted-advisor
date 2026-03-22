@@ -14,6 +14,7 @@ import {
     type DeployNoteConfig,
     type Portfolio,
     type Position,
+    type Recommendation,
     type ScheduledTask,
     type TaskRun,
     type UserAdminSettings,
@@ -33,7 +34,8 @@ const collections = {
   portfolios: TENANT_PORTFOLIO_COLLECTION,
   accounts: "portfolio_accounts",
   watchlists: "portfolio_watchlists",
-  positions: "portfolio_positions"
+  positions: "portfolio_positions",
+  recommendations: "portfolio_recommendations"
 } as const;
 
 let ensurePortfolioIndexesPromise: Promise<void> | null = null;
@@ -163,11 +165,7 @@ function withTenantScope(
   }
   return {
     ...query,
-    $or: [
-      { tenantId: tenantObjectId },
-      { tenantId: { $exists: false } },
-      { tenantId: { $type: "null" } }
-    ]
+    tenantId: tenantObjectId
   };
 }
 
@@ -264,6 +262,10 @@ async function createPortfolioIndexes(): Promise<void> {
       {
         name: "idx_positions_tenant_portfolio_account_symbol"
       }
+    ),
+    db.collection<Recommendation>(collections.recommendations).createIndex(
+      { tenantId: 1, portfolioId: 1, createdAt: 1 },
+      { name: "idx_recommendations_tenant_portfolio_createdAt" }
     )
   ];
   await Promise.all(indexes);
@@ -822,9 +824,19 @@ export async function getDefaultPortfolio(
 ): Promise<Portfolio | null> {
   await ensurePortfolioIndexes();
   const db = await getDb();
-  return db
-    .collection<Portfolio>(collections.portfolios)
-    .findOne(withTenantScope({ ...userIdQuery(userId), isDefault: true }, options?.tenantId));
+  const tenantObjectId = toTenantObjectId(options?.tenantId);
+  const baseFilter: Record<string, unknown> = { ...userIdQuery(userId), isDefault: true };
+  const filter = tenantObjectId
+    ? {
+        ...baseFilter,
+        $or: [
+          { tenantId: tenantObjectId },
+          { tenantId: { $type: "null" } },
+          { tenantId: { $exists: false } }
+        ]
+      }
+    : baseFilter;
+  return db.collection<Portfolio>(collections.portfolios).findOne(filter);
 }
 
 /** Portfolio must belong to the session user (tenant-scoped). */
@@ -927,6 +939,113 @@ export async function listPortfolioPositionsByAccount(input: {
     )
     .sort({ createdAt: 1 })
     .toArray();
+}
+
+// Recommendations
+export async function listRecommendations(input: { userId: string; tenantId?: string; portfolioId: string; }): Promise<Recommendation[]> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId)) return [];
+  const db = await getDb();
+  return db
+    .collection<Recommendation>(collections.recommendations)
+    .find(
+      withTenantScope(
+        { ...userIdQuery(input.userId), portfolioId: new ObjectId(input.portfolioId) },
+        input.tenantId
+      )
+    )
+    .sort({ createdAt: -1 })
+    .toArray();
+}
+
+export async function createRecommendation(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  symbol: string;
+  action: "buy" | "sell" | "hold" | "watch";
+  note?: string;
+  accountId?: string;
+  quantity?: number;
+  targetPrice?: number;
+}): Promise<Recommendation | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId)) return null;
+  const portfolio = await getPortfolioByIdForSessionUser({
+    userId: input.userId,
+    portfolioId: input.portfolioId,
+    tenantId: input.tenantId
+  });
+  if (!portfolio?._id) return null;
+  const now = new Date();
+  const doc: Recommendation = {
+    tenantId: toTenantObjectId(input.tenantId),
+    userId: input.userId,
+    portfolioId: portfolio._id,
+    accountId: input.accountId && ObjectId.isValid(input.accountId) ? new ObjectId(input.accountId) : undefined,
+    symbol: input.symbol.trim().toUpperCase(),
+    action: input.action,
+    note: input.note?.trim() || undefined,
+    quantity: typeof input.quantity === "number" && Number.isFinite(input.quantity) ? input.quantity : undefined,
+    targetPrice: typeof input.targetPrice === "number" && Number.isFinite(input.targetPrice) ? input.targetPrice : undefined,
+    status: "new",
+    createdAt: now,
+    updatedAt: now
+  };
+  const db = await getDb();
+  const res = await db.collection<Recommendation>(collections.recommendations).insertOne(doc);
+  const created = await db.collection<Recommendation>(collections.recommendations).findOne({ _id: res.insertedId });
+  return created;
+}
+
+export async function getRecommendationById(input: { userId: string; tenantId?: string; portfolioId: string; id: string; }): Promise<Recommendation | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId) || !ObjectId.isValid(input.id)) return null;
+  const db = await getDb();
+  return db.collection<Recommendation>(collections.recommendations).findOne(
+    withTenantScope(
+      { _id: new ObjectId(input.id), ...userIdQuery(input.userId), portfolioId: new ObjectId(input.portfolioId) },
+      input.tenantId
+    )
+  );
+}
+
+export async function updateRecommendationById(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  id: string;
+  patch: Partial<Pick<Recommendation, "action" | "note" | "quantity" | "targetPrice" | "status">>;
+}): Promise<Recommendation | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId) || !ObjectId.isValid(input.id)) return null;
+  const now = new Date();
+  const db = await getDb();
+  const filter = strictWriteTenantFilter(
+    { _id: new ObjectId(input.id), ...userIdQuery(input.userId), portfolioId: new ObjectId(input.portfolioId) },
+    input.tenantId
+  );
+  const set: Partial<Recommendation> = { updatedAt: now };
+  if (input.patch.action) set.action = input.patch.action;
+  if (input.patch.note !== undefined) set.note = input.patch.note?.trim() || undefined;
+  if (input.patch.quantity !== undefined) set.quantity = Number.isFinite(input.patch.quantity as number) ? (input.patch.quantity as number) : undefined;
+  if (input.patch.targetPrice !== undefined) set.targetPrice = Number.isFinite(input.patch.targetPrice as number) ? (input.patch.targetPrice as number) : undefined;
+  if (input.patch.status) set.status = input.patch.status;
+  await db.collection<Recommendation>(collections.recommendations).updateOne(filter, { $set: set });
+  return getRecommendationById({ userId: input.userId, tenantId: input.tenantId, portfolioId: input.portfolioId, id: input.id });
+}
+
+export async function deleteRecommendationById(input: { userId: string; tenantId?: string; portfolioId: string; id: string; }): Promise<boolean> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId) || !ObjectId.isValid(input.id)) return false;
+  const db = await getDb();
+  const res = await db.collection<Recommendation>(collections.recommendations).deleteOne(
+    strictWriteTenantFilter(
+      { _id: new ObjectId(input.id), ...userIdQuery(input.userId), portfolioId: new ObjectId(input.portfolioId) },
+      input.tenantId
+    )
+  );
+  return (res.deletedCount ?? 0) > 0;
 }
 
 export async function getPortfolioWatchlist(input: {

@@ -219,6 +219,29 @@ export type Watchlist = {
   updatedAt: Date;
 };
 
+export type Recommendation = {
+  _id?: ObjectId;
+  tenantId?: ObjectId;
+  userId: string;
+  portfolioId: ObjectId;
+  /** Optional linkage to an account; recommendations may be portfolio-level. */
+  accountId?: ObjectId;
+  /** Symbol or instrument identifier */
+  symbol: string;
+  /** Narrative or reasoning for the recommendation */
+  note?: string;
+  /** Action recommended */
+  action: "buy" | "sell" | "hold" | "watch";
+  /** Suggested units or amount (optional) */
+  quantity?: number;
+  /** Optional target price */
+  targetPrice?: number;
+  /** Status of recommendation lifecycle */
+  status: "new" | "accepted" | "executed" | "dismissed";
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type Position = {
   _id?: ObjectId;
   tenantId?: ObjectId;
