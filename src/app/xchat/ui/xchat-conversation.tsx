@@ -30,6 +30,20 @@ type HistoryStats = {
   lastPromptAt?: string;
 };
 
+type AskToolCallSummary = {
+  name: string;
+  durationMs: number;
+};
+
+function formatLastTurnToolSummary(calls: AskToolCallSummary[] | undefined): string {
+  if (!calls || calls.length === 0) {
+    return "No tools invoked this turn";
+  }
+  const totalMs = calls.reduce((sum, c) => sum + c.durationMs, 0);
+  const uniqNames = [...new Set(calls.map((c) => c.name))];
+  return `${calls.length} call${calls.length === 1 ? "" : "s"} · ${totalMs}ms · ${uniqNames.join(", ")}`;
+}
+
 type XchatConversationProps = {
   /** Published default persona name for this session’s role (Super-Agent vs xFinance). */
   defaultPublishedPersonaName: string;
@@ -57,6 +71,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
+  const [lastTurnToolSummary, setLastTurnToolSummary] = useState<string | null>(null);
   const [visibleCollections, setVisibleCollections] = useState<VisibleCollection[]>([]);
   const [, setAssociatedCollectionCount] = useState(1);
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
@@ -197,7 +212,11 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       });
 
       const payload = (await response.json().catch(() => ({}))) as {
-        data?: { response: string; personaName?: string };
+        data?: {
+          response: string;
+          personaName?: string;
+          toolCalls?: AskToolCallSummary[];
+        };
         error?: string;
       };
 
@@ -214,13 +233,17 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
         return;
       }
 
+      const resolvedName = payload.data?.personaName ?? activePersonaName;
+      setActivePersonaName(resolvedName);
+      setLastTurnToolSummary(formatLastTurnToolSummary(payload.data?.toolCalls));
+
       setMessages((prev) => [
         ...prev,
         {
           id: `ai-${Date.now()}`,
           role: "ai",
           content: payload.data?.response ?? "",
-            persona: payload.data?.personaName ?? activePersonaName,
+          persona: resolvedName,
           timestamp: Date.now()
         }
       ]);
@@ -243,8 +266,20 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
     <div className="xchat-main">
       <div className="xchat-persona-bar">
         <span className="status-badge status-ready">Published default</span>
-        <span className="status-text" style={{ fontSize: "0.8rem" }}>
-          USER_STATS
+        <span
+          className="status-text xchat-last-turn-tools"
+          style={{ fontSize: "0.8rem" }}
+          title={lastTurnToolSummary ?? "Tool names and durations from the last completed ask"}
+        >
+          <strong>{activePersonaName}</strong>
+          {lastTurnToolSummary ? (
+            <>
+              {" "}
+              | {lastTurnToolSummary}
+            </>
+          ) : (
+            <span style={{ opacity: 0.75 }}> | Send a message to see tool stats</span>
+          )}
         </span>
         <span className="status-text" style={{ fontSize: "0.75rem" }}>
           Collection list loaded for ask:{" "}

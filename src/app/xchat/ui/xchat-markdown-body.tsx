@@ -1,12 +1,13 @@
 "use client";
 
+import type { HTMLAttributes } from "react";
 import { useMemo } from "react";
+import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
-import type { Components } from "react-markdown";
 
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 
@@ -14,6 +15,8 @@ type XchatMarkdownBodyProps = {
   content: string;
   className?: string;
 };
+
+type MdCodeProps = HTMLAttributes<HTMLElement> & { inline?: boolean };
 
 const markdownComponents: Components = {
   a({ href, children, ...rest }) {
@@ -29,7 +32,7 @@ const markdownComponents: Components = {
       </a>
     );
   },
-  code({ className, children, inline, ...rest }) {
+  code({ className, children, inline, ...rest }: MdCodeProps) {
     const text = String(children).replace(/\n$/, "");
     if (!inline) {
       const match = /language-(\w+)/.exec(className ?? "");

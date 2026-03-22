@@ -560,6 +560,111 @@
   font-size: 0.85rem;
 }
 
+/* Assistant markdown (ReactMarkdown + GFM + Prism oneDark for fences) */
+.xchat-markdown {
+  width: 100%;
+  min-width: 0;
+}
+
+.xchat-markdown :first-child {
+  margin-top: 0;
+}
+
+.xchat-markdown :last-child {
+  margin-bottom: 0;
+}
+
+.xchat-markdown h1,
+.xchat-markdown h2,
+.xchat-markdown h3,
+.xchat-markdown h4 {
+  margin: 0.65rem 0 0.35rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+  line-height: 1.25;
+}
+
+.xchat-markdown h1 {
+  font-size: 1.05rem;
+}
+
+.xchat-markdown h2 {
+  font-size: 1rem;
+}
+
+.xchat-markdown h3 {
+  font-size: 0.95rem;
+}
+
+.xchat-markdown p {
+  margin: 0.4rem 0;
+}
+
+.xchat-markdown ul,
+.xchat-markdown ol {
+  margin: 0.35rem 0 0.35rem 1.1rem;
+  padding: 0;
+}
+
+.xchat-markdown li {
+  margin: 0.2rem 0;
+}
+
+.xchat-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.82rem;
+}
+
+.xchat-markdown th,
+.xchat-markdown td {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.35rem 0.45rem;
+  text-align: left;
+}
+
+.xchat-markdown th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--xf-text-200);
+}
+
+.xchat-markdown .xchat-md-a {
+  color: var(--xf-gain-green);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.xchat-markdown .xchat-md-a:hover {
+  opacity: 0.92;
+}
+
+.xchat-markdown .xchat-md-code-inline {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.84em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.xchat-markdown .xchat-md-code-block-wrap {
+  max-width: 100%;
+}
+
+.xchat-markdown blockquote {
+  margin: 0.45rem 0;
+  padding-left: 0.65rem;
+  border-left: 3px solid rgba(255, 255, 255, 0.15);
+  color: var(--xf-text-200);
+}
+
+.xchat-markdown hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  margin: 0.65rem 0;
+}
+
 .xchat-typing {
   align-self: flex-start;
   display: flex;

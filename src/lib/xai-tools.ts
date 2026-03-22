@@ -156,12 +156,13 @@ export function personaXapiToolsToXaiRequestTools(
   return toXaiRequestTools(base, { forXaiResponsesApi: true });
 }
 
-/** Wire tools sent to `/v1/responses` — same as `respondWithXaiToolLoop` (`toXaiRequestTools` ∘ `personaXapiToolsToXaiRequestTools`). */
+/**
+ * Wire tools sent to `/v1/responses` — identical to `personaXapiToolsToXaiRequestTools` (which already
+ * runs `toXaiRequestTools` with `forXaiResponsesApi: true`). Exposed for debug logging; do not wrap
+ * again in `toXaiRequestTools` or tools are double-normalized and logs diverge from the actual request.
+ */
 export function buildWireToolsForXaiResponses(
   personaTools: PersonaXapiToolDefinition[]
 ): Array<Record<string, unknown>> {
-  return toXaiRequestTools(
-    personaXapiToolsToXaiRequestTools(personaTools) as Array<Record<string, unknown>>,
-    { forXaiResponsesApi: true }
-  );
+  return personaXapiToolsToXaiRequestTools(personaTools);
 }

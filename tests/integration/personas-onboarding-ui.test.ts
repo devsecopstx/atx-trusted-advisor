@@ -1,16 +1,43 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT,
-  EMPTY_CREATE_FORM,
-  applySelectedCollectionToPersonaForm,
-  type XaiCollectionInventoryOption
+    DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT,
+    EMPTY_CREATE_FORM,
+    applySelectedCollectionToPersonaForm,
+    mergeHostedSearchIntoPersonaTools,
+    parsePersonaXapiToolsJson,
+    personaToolsIncludeHostedSearch,
+    type XaiCollectionInventoryOption
 } from "@/app/admin/personas/ui/personas-onboarding";
+import { SUPER_AGENT_DEFAULT_TOOLS } from "@/modules/xchat/types";
 
 describe("xpersona onboarding ui helpers", () => {
   it("uses requested default system prompt in create form", () => {
     expect(EMPTY_CREATE_FORM.systemPrompt).toBe(DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT);
     expect(DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT).toContain("You are The Architect");
+  });
+
+  it("defaults create form xapi tools to the full standard preset (all on)", () => {
+    expect(parsePersonaXapiToolsJson(EMPTY_CREATE_FORM.xapiToolsJson)).toEqual(SUPER_AGENT_DEFAULT_TOOLS);
+  });
+
+  it("detects hosted search markers in persona tools", () => {
+    expect(personaToolsIncludeHostedSearch([{ type: "atxfinance" }])).toBe(false);
+    expect(personaToolsIncludeHostedSearch([{ type: "web_search" }])).toBe(true);
+    expect(personaToolsIncludeHostedSearch([{ type: "x_search" }])).toBe(true);
+  });
+
+  it("mergeHostedSearchIntoPersonaTools prepends missing web and X search", () => {
+    expect(mergeHostedSearchIntoPersonaTools([])).toEqual([{ type: "web_search" }, { type: "x_search" }]);
+    expect(mergeHostedSearchIntoPersonaTools([{ type: "atxfinance" }])).toEqual([
+      { type: "web_search" },
+      { type: "x_search" },
+      { type: "atxfinance" }
+    ]);
+    expect(mergeHostedSearchIntoPersonaTools([{ type: "web_search" }, { type: "x_search" }])).toEqual([
+      { type: "web_search" },
+      { type: "x_search" }
+    ]);
   });
 
   it("maps selected collection to id and display name", () => {

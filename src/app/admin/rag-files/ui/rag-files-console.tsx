@@ -1,9 +1,12 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CopyIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+
+const RAG_COLLECTIONS_CACHE_KEY = "xfinance:admin:rag-collections:v1";
+const RAG_COLLECTIONS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type CollectionRow = {
   id: string;
@@ -14,6 +17,48 @@ type CollectionRow = {
     updatedAt: string | null;
   };
 };
+
+type CachedPayload = { ts: number; data: CollectionRow[] };
+
+function readCollectionsCache(): CachedPayload | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const raw = sessionStorage.getItem(RAG_COLLECTIONS_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as CachedPayload;
+    if (
+      typeof parsed.ts !== "number" ||
+      !Array.isArray(parsed.data) ||
+      parsed.data.some((r) => !r || typeof r.id !== "string")
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCollectionsCache(data: CollectionRow[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    sessionStorage.setItem(RAG_COLLECTIONS_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+async function fetchCollectionsFromApi(): Promise<CollectionRow[]> {
+  const res = await fetch("/api/personas/collections", { credentials: "include" });
+  const payload = await parseJson<{ data: CollectionRow[] }>(res);
+  return payload.data;
+}
 
 function formatWhen(value: string | null): string {
   if (!value) {
@@ -49,7 +94,8 @@ async function writeTextToClipboard(text: string): Promise<void> {
 
 export function RagFilesConsole() {
   const [collections, setCollections] = useState<CollectionRow[]>([]);
-  const [status, setStatus] = useState("Ready — refresh to load xAI collections");
+  const [status, setStatus] = useState("Loading collections…");
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -72,15 +118,63 @@ export function RagFilesConsole() {
   const refreshCollections = useCallback(async () => {
     setStatus("Loading collections…");
     try {
-      const payload = await parseJson<{ data: CollectionRow[] }>(
-        await fetch("/api/personas/collections")
-      );
-      setCollections(payload.data);
-      setStatus(`Loaded ${payload.data.length} collection(s)`);
+      const data = await fetchCollectionsFromApi();
+      setCollections(data);
+      writeCollectionsCache(data);
+      setStatus(`Loaded ${data.length} collection(s)`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to load collections");
-      setCollections([]);
+      const msg = error instanceof Error ? error.message : "Failed to load collections";
+      setStatus(`${msg} — list unchanged`);
     }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const cached = readCollectionsCache();
+    const ageMs = cached ? Date.now() - cached.ts : Infinity;
+    const cacheFresh = cached && ageMs < RAG_COLLECTIONS_CACHE_TTL_MS;
+
+    if (cached) {
+      setCollections(cached.data);
+      if (cacheFresh) {
+        setStatus(`Showing ${cached.data.length} cached collection(s) — refreshing…`);
+      } else {
+        setStatus(`Showing ${cached.data.length} cached collection(s) (stale) — refreshing…`);
+      }
+    } else {
+      setStatus("Loading collections…");
+    }
+
+    void (async () => {
+      try {
+        const data = await fetchCollectionsFromApi();
+        if (cancelled) {
+          return;
+        }
+        setCollections(data);
+        writeCollectionsCache(data);
+        setStatus(`Loaded ${data.length} collection(s)`);
+      } catch (e) {
+        if (cancelled) {
+          return;
+        }
+        const msg = e instanceof Error ? e.message : "Failed to load collections";
+        if (cached && cached.data.length > 0) {
+          setStatus(`${msg} — showing cached data (${cached.data.length} collection(s))`);
+        } else {
+          setStatus(msg);
+          setCollections([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setInitialFetchDone(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -121,8 +215,10 @@ export function RagFilesConsole() {
 
       <article className="surface-card xf-widget section-card">
         <h3>xAI collections</h3>
-        {collections.length === 0 ? (
-          <p className="status-text">No rows yet — refresh above, or verify management API credentials.</p>
+        {!initialFetchDone && collections.length === 0 ? (
+          <p className="status-text">Loading collections…</p>
+        ) : collections.length === 0 ? (
+          <p className="status-text">No rows — verify management API credentials or create collections from Personas / xAI console.</p>
         ) : (
           <div className="crud-table-wrap">
             <table className="crud-table">
