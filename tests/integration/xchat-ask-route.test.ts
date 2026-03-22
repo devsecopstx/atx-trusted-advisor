@@ -359,7 +359,7 @@ describe("xchat ask route collection retrieval", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(xaiMocks.respondWithXai).toHaveBeenCalledWith(
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
         tools: expect.arrayContaining([
           {
@@ -371,6 +371,7 @@ describe("xchat ask route collection retrieval", () => {
         ])
       })
     );
+    expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
   });
 
   it("keeps context empty when rag is disabled", async () => {
@@ -902,6 +903,11 @@ describe("xchat ask route collection retrieval", () => {
   });
 
   it("rejects reasoningEffort when model is not multi-agent", async () => {
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        model: "grok-4-1-fast-reasoning"
+      })
+    );
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
         method: "POST",

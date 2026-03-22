@@ -107,19 +107,19 @@ flowchart TB
 
 ---
 
-## 3. Tool routing after prompts are built
+## 3. Tool routing after prompts are built (locked hotfix)
 
 | Condition | xAI path | Custom tool execution |
 |-----------|----------|------------------------|
-| `atxfinance` **or** `yahoo_finance` **or** `web_search` **or** `x_search` in effective tools | `respondWithXaiToolLoop` with `personaXapiToolsToXaiRequestTools` | **Local** `createXfinanceToolExecutor` when persona has `atxfinance` / `yahoo_finance`; otherwise a stub executor (hosted tools only). `web_search` / `x_search` **acked with `{}`**; **pseudo `<xai-tool>` / JSON markup recovery** runs only in this loop. |
-| Else, `xapi.mode === "responses"` | `respondWithXai` (single multi-turn budget) | Hosted tools only (e.g. `file_search` alone) — no synthetic markup recovery |
-| Else, `chat_completions` | `chatWithXai` | No local executor for custom functions in plain chat path |
+| **All ask requests** | `respondWithXaiToolLoop` with `personaXapiToolsToXaiRequestTools` | **Local** `createXfinanceToolExecutor` when persona has `atxfinance` / `yahoo_finance`; otherwise a stub executor (hosted tools only). `web_search` / `x_search` **acked with `{}`**; **pseudo `<xai-tool>` / JSON markup recovery** runs in this single path. |
+
+`xapi.mode` on persona is treated as metadata for now; runtime ask execution is locked to one Responses tool-loop path to prevent live-search drift from mixed execution branches.
 
 **Synthetic recovery** (when the model prints tool-like text instead of real `function_call`): see `listSyntheticAtxfinanceToolArgs`, `<xai-tool>` web_search recovery, `previous_response_id` chaining — `src/lib/xai.ts`. Details: [`xfeature-tools-plan.md`](./xfeature-tools-plan.md), [`atxfinance-tool-stub.md`](./atxfinance-tool-stub.md).
 
 ---
 
-## 3b. Model ↔ tool protocol (simplification & xDesign gaps)
+## 3b. Model ↔ tool protocol (simplification + multi-agent lock)
 
 **Goal:** minimize “format drift” (pseudo XML/JSON in assistant text) and keep one place for protocol copy.
 
@@ -127,8 +127,14 @@ flowchart TB
 |----------|-----|
 | **Fewer tools on the persona** | Each extra tool increases the chance the model mixes protocols; prefer the smallest set that answers the use case (e.g. RAG-only vs `web_search`-only vs `atxfinance` for live book). |
 | **Server-injected protocol blocks** | `ATXFINANCE_SESSION_TOOL_INSTRUCTIONS` and `HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS` in `default-xpersonas.ts` — persona `systemPrompt` should focus on *domain* tone, not repeating “don’t print `<xai-tool>`”. |
-| **Route hosted search through `respondWithXaiToolLoop`** | Single place for `previous_response_id` + synthetic recovery when the model still prints markup (see §3). |
+| **Route *all ask* traffic through `respondWithXaiToolLoop`** | Single place for `previous_response_id` + synthetic recovery when the model still prints markup (see §3). |
 | **Batch stays different** | Batch items match persona tools but do **not** run `respondWithXaiToolLoop`; provider-side tool completion is best-effort. **Prompt parity:** `ATXFINANCE_SESSION_TOOL_INSTRUCTIONS` / `HOSTED_SEARCH_SESSION_TOOL_INSTRUCTIONS` and workspace snapshot (when `atxfinance`) are still appended in `submitBatchJob` — see [`batch-persona-contract.md`](./batch-persona-contract.md). |
+
+**Recommended ask defaults (Mar 2026 hotfix):**
+
+- Default/fallback model id: `grok-4.20-multi-agent-0309` (or `grok-4.20-multi-agent`).
+- `reasoningEffort`: `medium` default; `high` / `xhigh` map to higher internal parallelism.
+- Keep one prompt + one tool-loop workflow; avoid runtime branch splits that bypass drift recovery.
 
 **Review checklist (xDesign-style):**
 

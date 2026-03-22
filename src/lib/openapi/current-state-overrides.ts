@@ -266,7 +266,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona/model selection. Non-admin users can only select published professional personas and cannot override model ids. Tools and xAI collection scope follow the resolved persona document only (no implicit merges). When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `buildBatchUserPromptAugmentation`, and `getPersonaLinkedCollectionIds`.",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback), and tools/collection scope follow the resolved persona document only (no implicit merges). If persona model is unset, server defaults to `grok-4.20-multi-agent-0309`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `buildBatchUserPromptAugmentation`, and `getPersonaLinkedCollectionIds`.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -631,9 +631,9 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       },
       reasoningEffort: {
         type: "string",
-        enum: ["low", "medium", "high"],
+        enum: ["low", "medium", "high", "xhigh"],
         description:
-          "Only valid when the resolved persona’s `model` is `grok-4.20-multi-agent` (set in Admin → Personas). Non–global_admin sessions may have multi-agent parallelism stripped per subscription plan (`multiAgentParallelMaxAgents` in plan limits; defaults cap app users at 0 until raised)."
+          "Only valid when the resolved persona’s `model` is `grok-4.20-multi-agent` or `grok-4.20-multi-agent-0309` (set in Admin → Personas). Non–global_admin sessions may have multi-agent parallelism stripped per subscription plan (`multiAgentParallelMaxAgents` in plan limits; defaults cap app users at 0 until raised)."
       },
       scope: { type: "string", minLength: 1, maxLength: 128 },
       topK: { type: "integer", minimum: 1, maximum: 10 }
