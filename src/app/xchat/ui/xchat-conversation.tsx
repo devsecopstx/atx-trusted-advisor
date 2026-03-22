@@ -53,6 +53,19 @@ const ATXFINANCE_COLLECTION_ID_FALLBACK = "collection_b75e188e-e7e6-4aa8-8e01-23
 
 const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+/** Saved chat history panel: last N prompts from `/api/xchat/history` (newest first). */
+const CHAT_HISTORY_PROMPT_LIMIT = 10;
+
+/** In-memory transcript: cap turns so the thread stays bounded during long sessions. */
+const MAX_TRANSCRIPT_MESSAGES = CHAT_HISTORY_PROMPT_LIMIT * 2;
+
+function trimTranscript(msgs: Message[]): Message[] {
+  if (msgs.length <= MAX_TRANSCRIPT_MESSAGES) {
+    return msgs;
+  }
+  return msgs.slice(-MAX_TRANSCRIPT_MESSAGES);
+}
+
 type VisibleCollection = {
   collectionId: string;
   collectionName?: string;
@@ -83,7 +96,8 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
     "Covered call ideas for my holdings",
     "Compare SPY vs QQQ trend today",
     "Stress test portfolio for volatility spike",
-    "xStrategy"
+    "xStrategy",
+    "How's the weather today in Austin, TX"
   ] as const;
 
   useEffect(() => {
@@ -136,7 +150,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       setHistoryError(null);
       try {
         const [historyRes, statsRes] = await Promise.all([
-          fetch("/api/xchat/history?limit=30"),
+          fetch(`/api/xchat/history?limit=${CHAT_HISTORY_PROMPT_LIMIT}`),
           fetch("/api/xchat/history/stats")
         ]);
         const historyPayload = (await historyRes.json().catch(() => ({}))) as {
@@ -160,10 +174,12 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           return;
         }
         const nowMs = Date.now();
-        const filteredRecentHistory = (historyPayload.data?.items ?? []).filter((item) => {
-          const createdAtMs = new Date(item.createdAt).getTime();
-          return Number.isFinite(createdAtMs) && nowMs - createdAtMs <= THIRTY_DAY_WINDOW_MS;
-        });
+        const filteredRecentHistory = (historyPayload.data?.items ?? [])
+          .filter((item) => {
+            const createdAtMs = new Date(item.createdAt).getTime();
+            return Number.isFinite(createdAtMs) && nowMs - createdAtMs <= THIRTY_DAY_WINDOW_MS;
+          })
+          .slice(0, CHAT_HISTORY_PROMPT_LIMIT);
         setSavedHistory(filteredRecentHistory);
         setHistoryStats(statsPayload.data ?? null);
         setHistoryLoaded(true);
@@ -197,7 +213,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       timestamp: Date.now()
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => trimTranscript([...prev, userMsg]));
     setInput("");
     setLoading(true);
 
@@ -221,15 +237,17 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       };
 
       if (!response.ok || !payload.data) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `error-${Date.now()}`,
-            role: "error",
-            content: payload.error ?? `Request failed (${response.status})`,
-            timestamp: Date.now()
-          }
-        ]);
+        setMessages((prev) =>
+          trimTranscript([
+            ...prev,
+            {
+              id: `error-${Date.now()}`,
+              role: "error",
+              content: payload.error ?? `Request failed (${response.status})`,
+              timestamp: Date.now()
+            }
+          ])
+        );
         return;
       }
 
@@ -237,26 +255,30 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       setActivePersonaName(resolvedName);
       setLastTurnToolSummary(formatLastTurnToolSummary(payload.data?.toolCalls));
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-${Date.now()}`,
-          role: "ai",
-          content: payload.data?.response ?? "",
-          persona: resolvedName,
-          timestamp: Date.now()
-        }
-      ]);
+      setMessages((prev) =>
+        trimTranscript([
+          ...prev,
+          {
+            id: `ai-${Date.now()}`,
+            role: "ai",
+            content: payload.data?.response ?? "",
+            persona: resolvedName,
+            timestamp: Date.now()
+          }
+        ])
+      );
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}`,
-          role: "error",
-          content: "Network error. Check your connection.",
-          timestamp: Date.now()
-        }
-      ]);
+      setMessages((prev) =>
+        trimTranscript([
+          ...prev,
+          {
+            id: `error-${Date.now()}`,
+            role: "error",
+            content: "Network error. Check your connection.",
+            timestamp: Date.now()
+          }
+        ])
+      );
     } finally {
       setLoading(false);
     }
@@ -327,9 +349,15 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
 
       <form className="xchat-input-bar" onSubmit={handleSend}>
         <input
+          aria-busy={loading}
           maxLength={4000}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Hit me – portfolio questions, optimizations, whatever"
+          placeholder={
+            loading
+              ? "Thinking..."
+              : "Hit me – portfolio questions, optimizations, whatever"
+          }
+          readOnly={loading}
           value={input}
         />
         <button disabled={loading || !input.trim()} type="submit">
@@ -382,7 +410,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           {historyExpanded ? (
             <div className="xchat-panel-body">
               <p className="status-text xchat-panel-hint">
-                Last 30 days of saved prompts (lazy-loaded on first expand).
+                Last {CHAT_HISTORY_PROMPT_LIMIT} prompts in the last 30 days (lazy-loaded on first expand).
               </p>
               <div className="xchat-history-stats">
                 <span className="chip">Prompts: {historyStats?.totalPrompts ?? 0}</span>
