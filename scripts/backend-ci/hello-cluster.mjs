@@ -49,11 +49,6 @@ for (let i = 0; i < JOBS; i++) {
   }
 }
 
-/** Simple idempotency check */
-function canProcess(id) {
-  return !completed.has(id);
-}
-
 function leaseJob(workerPid) {
   // Re-queue expired leases first
   const now = Date.now();
@@ -134,7 +129,7 @@ function attachHandlers() {
         requeue(m.id);
       }
     });
-    w.on('exit', (code, sig) => {
+    w.on("exit", () => {
       // Any leases for this worker get reclaimed on next lease sweep
     });
   }

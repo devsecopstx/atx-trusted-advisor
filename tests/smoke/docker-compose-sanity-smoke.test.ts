@@ -12,7 +12,7 @@ describe("docker-compose sanity", () => {
   const composePath = resolve(process.cwd(), "docker-compose.yml");
 
   it("contains services and expected service names", () => {
-    expect(fileContains(composePath, /\nservices:\s*\n/)).toBe(true);
+    expect(fileContains(composePath, /(?:^|\n)services:\s*\n/)).toBe(true);
     expect(fileContains(composePath, /\n\s{2}mongodb:\s*\n/)).toBe(true);
     expect(fileContains(composePath, /\n\s{2}atxfinance-backend:\s*\n/)).toBe(true);
   });
