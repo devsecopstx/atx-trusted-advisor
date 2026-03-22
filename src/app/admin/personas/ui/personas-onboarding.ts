@@ -1,3 +1,4 @@
+import { SUPER_AGENT_DEFAULT_TOOLS } from "@/modules/xchat/types";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 export type PersonaFormState = {
@@ -29,6 +30,56 @@ export type XaiCollectionInventoryOption = {
 export const DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT =
   "You are The Architect, an elite administrative agent with full access to the xAI ecosystem. You have a multi-layered toolset including Web Search, X (Twitter) Search, a Python Code Sandbox, and Private Collection Search.";
 
+/** Default explicit `xapi.tools` for new personas (web, X, collections, yahoo, atxfinance). */
+export const DEFAULT_XPERSONA_TOOLS_JSON = JSON.stringify(SUPER_AGENT_DEFAULT_TOOLS, null, 2);
+
+export function parsePersonaXapiToolsJson(value: string): Array<{ type: string; [key: string]: unknown }> {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return [];
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    throw new Error("Tools JSON must be valid JSON");
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error("Tools JSON must be an array");
+  }
+  const tools = parsed.filter(
+    (entry): entry is { type: string; [key: string]: unknown } =>
+      Boolean(entry) &&
+      typeof entry === "object" &&
+      "type" in entry &&
+      typeof (entry as { type?: unknown }).type === "string"
+  );
+  if (tools.length !== parsed.length) {
+    throw new Error("Each tool must include a string 'type' field");
+  }
+  return tools;
+}
+
+export function personaToolsIncludeHostedSearch(tools: ReadonlyArray<{ type: string }>): boolean {
+  return tools.some((t) => t.type === "web_search" || t.type === "x_search");
+}
+
+/** Prepends `web_search` / `x_search` when missing so saved personas stay usable for live + batch. */
+export function mergeHostedSearchIntoPersonaTools(
+  tools: Array<{ type: string; [key: string]: unknown }>
+): Array<{ type: string; [key: string]: unknown }> {
+  const hasWeb = tools.some((t) => t.type === "web_search");
+  const hasX = tools.some((t) => t.type === "x_search");
+  const prefix: Array<{ type: string; [key: string]: unknown }> = [];
+  if (!hasWeb) {
+    prefix.push({ type: "web_search" });
+  }
+  if (!hasX) {
+    prefix.push({ type: "x_search" });
+  }
+  return [...prefix, ...tools];
+}
+
 export const EMPTY_CREATE_FORM: PersonaFormState = {
   name: "",
   systemPrompt: DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT,
@@ -42,7 +93,7 @@ export const EMPTY_CREATE_FORM: PersonaFormState = {
   xapiMode: "responses",
   xapiToolChoice: "auto",
   xapiMaxTurns: "5",
-  xapiToolsJson: "[]"
+  xapiToolsJson: DEFAULT_XPERSONA_TOOLS_JSON
 };
 
 export function applySelectedCollectionToPersonaForm(

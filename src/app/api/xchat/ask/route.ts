@@ -28,7 +28,6 @@ import type { SubscriptionPlan } from "@/modules/identity/types";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
-import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
 import {
     resolveXchatLinkedCollectionIds,
     withLinkedCollectionTools
@@ -42,6 +41,7 @@ import {
     saveXChatLog
 } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
+import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import {
     ensureSuperAgentDefaultTools,
     mergeXchatHostedToolBaseline,
@@ -50,6 +50,7 @@ import {
 } from "@/modules/xchat/types";
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
+import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
 
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
@@ -590,6 +591,14 @@ export async function POST(request: Request) {
     xaiTurnFileId,
     xaiTurnPayloadHash,
     xaiTurnRetentionExpiresAt
+  });
+
+  fireAndForgetRecordXchatToolUsage({
+    userId: session.userId,
+    personaId: persona?._id?.toHexString(),
+    personaName: persona?.name,
+    requestId,
+    toolCalls: toolCallLogs
   });
 
   return NextResponse.json(
