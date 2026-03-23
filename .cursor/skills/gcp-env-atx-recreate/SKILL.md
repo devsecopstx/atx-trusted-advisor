@@ -1,6 +1,6 @@
 ---
 name: gcp-env-atx-recreate
-description: Standalone gcloud recipe to recreate atx apex GCP (staging.atx / atx) Cloud Run for the xfinance monorepo — no GitHub Actions required. Pair with atx-gcp-foundation for LB/DNS strategy.
+description: Standalone gcloud recipe to recreate atx apex GCP (staging.atx / atx) Cloud Run for the xfinance monorepo — no GitHub Actions required. Pair with atx-sre-gcp-foundation for LB/DNS strategy.
 ---
 
 # GCP environment recreate — atx apex
@@ -8,7 +8,7 @@ description: Standalone gcloud recipe to recreate atx apex GCP (staging.atx / at
 Recreate **xfinance** GCP staging and production from scratch with hostname apex **`atx`** (replacing older `core`-style hosts). Manual `gcloud` only; wire GitHub variables later if you use Actions deploy.
 
 **Canonical copy:** `.cursor/skills/gcp-env-atx-recreate/SKILL.md` (tracked).  
-**Related:** [DEVELOPMENT.md](../../../DEVELOPMENT.md) (OAuth URLs, rollout checklist), [atx-gcp-foundation](../atx-gcp-foundation/SKILL.md), [docs/ops/junie-guidelines-atxfinance-backend.md](../../../docs/ops/junie-guidelines-atxfinance-backend.md) for backend worker (separate Cloud Run service).
+**Related:** [DEVELOPMENT.md](../../../DEVELOPMENT.md) (OAuth URLs, rollout checklist), [atx-sre-gcp-foundation](../atx-sre-gcp-foundation/SKILL.md), [docs/ops/junie-guidelines-atxfinance-backend.md](../../../docs/ops/junie-guidelines-atxfinance-backend.md) for backend worker (separate Cloud Run service).
 
 ## Path and repo conventions
 
@@ -169,7 +169,7 @@ gcloud run domain-mappings create \
   --project "$PROD_PROJECT"
 ```
 
-**Note:** If you use a **global HTTPS load balancer** instead of direct Cloud Run mapping, follow [atx-gcp-foundation](../atx-gcp-foundation/SKILL.md) and skip or adapt this section.
+**Note:** If you use a **global HTTPS load balancer** instead of direct Cloud Run mapping, follow [atx-sre-gcp-foundation](../atx-sre-gcp-foundation/SKILL.md) and skip or adapt this section.
 
 ---
 

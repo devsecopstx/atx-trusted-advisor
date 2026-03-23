@@ -21,11 +21,11 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 | Skill | |
 |-------|---|
-| [xdesign-review](xdesign-review/SKILL.md) | Core product/design review gate |
-| [xdesign-review-adversarial](xdesign-review-adversarial/SKILL.md) | Abuse, prompt injection, containment |
-| [xdesign-review-audit](xdesign-review-audit/SKILL.md) | Auditability, lineage, non-repudiation |
-| [xdesign-review-reliability](xdesign-review-reliability/SKILL.md) | Cost, latency, reliability |
-| [xrag-xai-design-review](xrag-xai-design-review/SKILL.md) | RAG + xAI routing review |
+| [atxdesign-review](atxdesign-review/SKILL.md) | Core product/design review gate |
+| [atxdesign-review-adversarial](atxdesign-review-adversarial/SKILL.md) | Abuse, prompt injection, containment |
+| [atxdesign-review-audit](atxdesign-review-audit/SKILL.md) | Auditability, lineage, non-repudiation |
+| [atxdesign-review-reliability](atxdesign-review-reliability/SKILL.md) | Cost, latency, reliability |
+| [atx-xchat-rag-xai-design-review](atx-xchat-rag-xai-design-review/SKILL.md) | RAG + xAI routing review |
 | [design-review-best-practices](design-review-best-practices/SKILL.md) | General repo / design practices |
 
 ---
@@ -41,8 +41,8 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 | [atx-backend-runbook](atx-backend-runbook/SKILL.md) | Operator runbook |
 | [atx-backend-start-local](atx-backend-start-local/SKILL.md) | Local backend |
 | [atx-backend-start-stage](atx-backend-start-stage/SKILL.md) | Staging session |
-| [atx-gcp-foundation](atx-gcp-foundation/SKILL.md) | GCP foundation |
-| [atx-sre-gcp-gke](atx-sre-gcp-gke/SKILL.md) | GKE SRE expert (GitOps, observability, AI inference) |
+| [atx-sre-gcp-foundation](atx-sre-gcp-foundation/SKILL.md) | GCP foundation |
+| [atx-sre-ops-gcp-gke](atx-sre-ops-gcp-gke/SKILL.md) | GKE SRE expert (GitOps, observability, AI inference) |
 | [gcp-env-atx-recreate](gcp-env-atx-recreate/SKILL.md) | Recreate GCP Cloud Run |
 | [atx-deploy-production](atx-deploy-production/SKILL.md) | App production deploy |
 | [atx-deploy-staging](atx-deploy-staging/SKILL.md) | App staging deploy |
@@ -53,13 +53,12 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 | Skill | |
 |-------|---|
-| [atx-xchat-validation-checklist](atx-xchat-validation-checklist/SKILL.md) | xChat validation |
+| [atx-skill-xchat-validation-checklist](atx-skill-xchat-validation-checklist/SKILL.md) | xChat validation |
 | [atx-cursor-cloud-agents](atx-cursor-cloud-agents/SKILL.md) | Cursor cloud agents |
 | [ai-agent-integration](ai-agent-integration/SKILL.md) | Async agents, LangChain-style |
 | [langchain-agent-executor](langchain-agent-executor/SKILL.md) | LangChain executors |
 | [cloud-agents-starter](cloud-agents-starter/SKILL.md) | Cloud agent bootstrap |
-| [xlitellm-xai-proxy](xlitellm-xai-proxy/SKILL.md) | LiteLLM / Grok proxy |
-| [yahoo-finance-tool](yahoo-finance-tool/SKILL.md) | Yahoo finance tool |
+| [atx-skill-yahoo-finance-tool](atx-skill-yahoo-finance-tool/SKILL.md) | Yahoo finance tool |
 
 ---
 
@@ -108,7 +107,7 @@ Each folder includes **`CHECKLIST.md`** (checkboxes for **Inputs (core setup)**,
 | Iron condor | [atx-skill-iron-condor](atx-skill-iron-condor/SKILL.md) |
 | LEAP + CC overlay | [atx-skill-leap-call-cc-overlay](atx-skill-leap-call-cc-overlay/SKILL.md) |
 | Poor man's covered call | [atx-skill-poor-mans-covered-call](atx-skill-poor-mans-covered-call/SKILL.md) |
-| Wheel | [atx-skill-wheel](atx-skill-wheel/SKILL.md) |
+| Wheel | [atx-skill-wheel-strategy](atx-skill-wheel-strategy/SKILL.md) |
 
 ---
 
@@ -116,12 +115,12 @@ Each folder includes **`CHECKLIST.md`** (checkboxes for **Inputs (core setup)**,
 
 | Skill | |
 |-------|---|
-| [atx-brand](atx-brand/SKILL.md) | Brand review |
+| [atx-design-branding](atx-design-branding/SKILL.md) | Brand review |
 | [atx-brand-generator](atx-brand-generator/SKILL.md) | Brand asset prompts |
 | [atx-design-ops](atx-design-ops/SKILL.md) | Design ops |
-| [atx-docs-ops](atx-docs-ops/SKILL.md) | Docs ops |
+| [atx-sre-docs-ops](atx-sre-docs-ops/SKILL.md) | Docs ops |
 | [atx-runbook-navigator](atx-runbook-navigator/SKILL.md) | Runbook navigation |
-| [atx-learning-tutor](atx-learning-tutor/SKILL.md) | Learning tutor |
+| [atx-skill-learning-tutor](atx-skill-learning-tutor/SKILL.md) | Learning tutor |
 
 ---
 
@@ -130,5 +129,5 @@ Each folder includes **`CHECKLIST.md`** (checkboxes for **Inputs (core setup)**,
 | Skill | |
 |-------|---|
 | [aggresive-csp-tsla](aggresive-csp-tsla/SKILL.md) | CSP / TSLA options context |
-| [options-principles](options-principles/SKILL.md) | Options principles |
-| [xrotate-keys](xrotate-keys/SKILL.md) | Key rotation |
+| [atx-skill-options-principles](atx-skill-options-principles/SKILL.md) | Options principles |
+| [sre-ops-xrotate-keys](sre-ops-xrotate-keys/SKILL.md) | Key rotation |

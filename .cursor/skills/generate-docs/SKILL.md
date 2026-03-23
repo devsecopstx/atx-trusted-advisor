@@ -175,7 +175,7 @@ When files under **`branding/`** are added, replaced, or deleted:
 ## PR review handoff
 
 For combined Core MVP + Branding PRs, the final gate sequence lives in
-**`xdesign-review`** (reviewer order + production deploy lock).
+**`atxdesign-review`** (reviewer order + production deploy lock).
 Use this skill for doc/runbook updates.
 Use **`test-commit-push`** for the local validation pass.
 Post-deploy smoke steps live in
@@ -219,8 +219,10 @@ Post-deploy smoke steps live in
   - `.cursor/skills/test-commit-push/SKILL.md`
   - `.cursor/skills/test-commit-push/CHECKLIST.md`
   - `.cursor/skills/test-automation/SKILL.md` (when adding or scoping tests)
-  - `.cursor/skills/xdesign-review/SKILL.md`
+  - `.cursor/skills/atxdesign-review/SKILL.md`
     (combined MVP + branding + pre-prod lock)
+  - `.cursor/skills/atx-sre-docs-ops/SKILL.md` (docs ops)
+  - `.cursor/skills/atx-sre-ops-gcp-gke/SKILL.md` (GKE SRE)
   - `AGENTS.md`
 - Rule changes under `.cursor/rules/` ship with the same validation pass
   as skills (see test-commit-push checklist).

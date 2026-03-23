@@ -1,4 +1,4 @@
-# atx-brand Checklist
+# atx-design-branding Checklist
 
 ## Review Checklist (Required)
 

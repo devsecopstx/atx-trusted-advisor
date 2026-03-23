@@ -1,4 +1,4 @@
-# xdesign-review Checklist
+# atxdesign-review Checklist
 
 ## Core Review Checklist
 
@@ -77,7 +77,7 @@ Run this gate whenever PR scope includes prompt migration, persona parity checks
 
 ## Phase 1 PR Review Report Requirement
 
-For Phase 1 scope, final report must use the `Phase 1 PR Review Template` in `xdesign-review/SKILL.md` and include all sections:
+For Phase 1 scope, final report must use the `Phase 1 PR Review Template` in `atxdesign-review/SKILL.md` and include all sections:
 
 - Findings (`High`, `Medium`, `Low`)
 - Reviewer completion block (`complete`/`incomplete`)

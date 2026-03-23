@@ -1,4 +1,4 @@
-# xdesign-review-adversarial Checklist
+# atxdesign-review-adversarial Checklist
 
 ## Red-Team Checklist
 

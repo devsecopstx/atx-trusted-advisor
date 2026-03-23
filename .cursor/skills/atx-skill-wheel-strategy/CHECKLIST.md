@@ -1,4 +1,4 @@
-# atx-skill-wheel — checklist
+# atx-skill-wheel-strategy Checklist
 
 Use with `SKILL.md`. Check each row before shipping advice.
 

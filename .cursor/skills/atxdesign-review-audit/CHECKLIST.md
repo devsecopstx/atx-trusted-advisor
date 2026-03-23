@@ -1,4 +1,4 @@
-# xdesign-review-audit Checklist
+# atxdesign-review-audit Checklist
 
 **Indexes:** [`docs/README.md`](../../../docs/README.md) · [`skills/README.md`](../README.md)
 

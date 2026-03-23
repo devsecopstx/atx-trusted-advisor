@@ -1,4 +1,4 @@
-# xrotate-keys Checklist
+# sre-ops-xrotate-keys Checklist
 
 ## Mandatory Checklist
 
