@@ -45,7 +45,7 @@ describe("env example parity and secrets hygiene", () => {
   });
 
   it("tenant defaults file is sanitized (no live keys/secrets)", () => {
-    const seedDefaultsPath = resolve(process.cwd(), "tennat_defaults.yaml");
+    const seedDefaultsPath = resolve(process.cwd(), "tenant_defaults.yaml");
     const content = readFileSync(seedDefaultsPath, "utf8");
 
     const forbiddenPatterns: RegExp[] = [

@@ -42,6 +42,7 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 | [atx-backend-start-local](atx-backend-start-local/SKILL.md) | Local backend |
 | [atx-backend-start-stage](atx-backend-start-stage/SKILL.md) | Staging session |
 | [atx-gcp-foundation](atx-gcp-foundation/SKILL.md) | GCP foundation |
+| [atx-sre-gcp-gke](atx-sre-gcp-gke/SKILL.md) | GKE SRE expert (GitOps, observability, AI inference) |
 | [gcp-env-atx-recreate](gcp-env-atx-recreate/SKILL.md) | Recreate GCP Cloud Run |
 | [atx-deploy-production](atx-deploy-production/SKILL.md) | App production deploy |
 | [atx-deploy-staging](atx-deploy-staging/SKILL.md) | App staging deploy |

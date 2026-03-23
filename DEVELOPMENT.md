@@ -162,7 +162,7 @@ Use this when you want a **local Compose Mongo** without Atlas and with the same
 | Fresh volume + seed admin (**wipes** `atxfinance_mongo_data`) | `RESET_LOCAL_MONGO=1 npm run mongo:reset` |
 | One-shot: Mongo up + seed (keeps existing volume) | `npm run local:bootstrap` |
 
-**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI` is unset** for Compose Mongo, or fix the URI. If `.env` sets **`ADMIN_X_USERNAMES`** (X allowlist) but **not** `MONGO_ROOT_PASSWORD`, the app uses Mongo user **`admin`** + default password — do **not** mix an allowlist-only username into the DB URI. For a custom Mongo root user, set **`MONGO_ROOT_PASSWORD` and the same username** (`ADMIN_X_USERNAME` or first `ADMIN_X_USERNAMES`) to match `docker-compose.yml`. Restart Next after changing `.env` (Mongo client is cached).
+**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI`** is unset. If local Mongo runs **without auth** (legacy volume or no `MONGO_INITDB_*`), add **`MONGODB_NO_AUTH=true`** to `.env`. Otherwise use **`MONGO_ROOT_USERNAME`** (default `admin`) and **`MONGO_ROOT_PASSWORD`** (default `atxrocks!`) to match what `docker-compose.yml` initialized. Restart Next after changing `.env` (Mongo client is cached).
 
 `mongo:reset` requires **`RESET_LOCAL_MONGO=1`** to avoid accidental data loss. After a reset, run **`npm run dev:host`**, **`npm run dev:stack`**, or **`docker compose up`** as needed.
 
@@ -269,6 +269,7 @@ If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or p
 - xAI management key-create smoke (opt-in): `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true npm run smoke:xai-key-create`
 - Seed admin: `npm run seed:admin`
 - Backfill legacy xchat identity fields: `npm run migrate:xchat-identity`
+- BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`docs/ops/api-consolidation-spring-backend.md`](./docs/ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
 
 ## Cloud Agent Config Freeze (Backoffice Core)
 

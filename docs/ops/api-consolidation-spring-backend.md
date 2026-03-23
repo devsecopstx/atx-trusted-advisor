@@ -17,7 +17,7 @@
 | `GET` / `POST /api/rag/files` | Yes | Inventory Mongo **`xai_collections`**; POST uploads via xAI + chunking. |
 | **Auth (`/api/auth/*`)** | In progress | Spring-owned session; callback on app host (`/api/auth/x/callback`); dual-run during cutover — see **Auth callback contract** below. |
 | **Deferred** | | **`xchat/*`** — streaming + tools; see **Plan: xChat** below. |
-| **Still Next-primary** | | Most other `admin/*` (users, tasks, deploy configs, …). **`/api/admin/access-requests`** is on Kotlin + BFF; full xAI bootstrap after approve still runs when handling the request on **Next** (proxy off). |
+| **Still Next-primary** | | Remaining `admin/*`: **deploy-note-configs**, **import/broker** (see **PR 4** below). **`/api/admin/access-requests`** is on Kotlin + BFF; full xAI bootstrap after approve still runs when handling the request on **Next** (proxy off). Users and **tasks / scheduler** are on Kotlin + BFF — cut over with **PR 3**. |
 
 **Target (your architecture):** Next.js focuses on **branding + UI**; **atxfinance-backend** implements **business HTTP APIs** and scheduler/worker concerns. The browser or Next server calls the Spring service instead of executing domain logic in Route Handlers.
 
@@ -42,7 +42,7 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 2. **Shared primitives** — Env: backend base URL(s), request signing or session forwarding rules, correlation IDs.
 3. **Read-only / low-risk** — e.g. `GET /api/health` parity (already duplicated conceptually), then read-only admin/bootstrap probes.
 4. **Core CRUD** — portfolios ✅; recommendations ✅; personas ✅; self-service access-requests ✅; feedback ✅; read-only admin bootstrap/audit ✅; RAG file list + upload ✅ (`xai_collections`).
-5. **Remaining admin mutations** — users, tasks, deploy configs, import, scheduler, etc. — **Next-only** until Kotlin + `BFF_PROXY_ROUTES` entries ship per subdomain. (**Admin access-request review** ✅ in Kotlin + BFF.)
+5. **Remaining admin mutations** — **users** ✅; **tasks / scheduler** ✅ (treat as **PR 3 migration** — see below). **Deploy-note-configs + import/broker** = **PR 4 migration** (Kotlin + BFF not shipped yet). (**Admin access-request review** ✅ in Kotlin + BFF.)
 6. **xChat** — **deferred** (see **Plan: xChat**).
 7. **Auth / OAuth** — move session + callback ownership to Spring with the approved contract below; run dual callback paths for 7-14 days before removing Next callback logic.
 8. **Delete Next route** only after integration tests hit Spring and UI uses the new path.
@@ -51,7 +51,53 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 
 **Proxied today:** `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` (read-only); **`/api/admin/access-requests`** (CRUD + review) — see `docs/ops/atxfinance-backend-http-api.md`.
 
-**Still Next-only (until migrated):** users CRUD, tasks, deploy-note-configs, import, scheduler tick, etc. Add Kotlin + proxy + `BFF_PROXY_ROUTES` + doc parity using the same gate as portfolio BFF.
+**Still Next-only until PR 4 ships:** deploy-note-configs, import/broker. **`portfolio-console.tsx`** uses `POST /api/admin/import/broker` for Merrill/Fidelity holdings CSV. **Tasks / scheduler** are implemented on Kotlin + BFF; enable via `ATXFINANCE_BACKEND_ORIGIN` as part of **PR 3**.
+
+## PR 3 & PR 4 — real migration slices (not “code-only” PRs)
+
+These are **vertical migration tracks**: same Mongo collections and contracts as Next, but **cutover** is an operator-controlled step (staging → prod), with rollback by clearing the BFF origin.
+
+### PR 3 — Admin tasks + scheduler (migration)
+
+**Product scope:** `GET`/`POST /api/admin/tasks`, `POST /api/admin/tasks/{taskId}/run`, `GET /api/admin/task-runs`, `POST /api/admin/scheduler/tick` — Spring `AdminScheduledTasksController` + `AdminScheduledTasksService`, Next proxies when `ATXFINANCE_BACKEND_ORIGIN` is set (`src/lib/backend-bff.ts`, `src/lib/bff-proxy-routes.ts`).
+
+**Data migration:** **No destructive backfill.** JVM reads/writes the same collections as Next: **`admin_scheduled_tasks`**, **`admin_task_runs`**. Existing documents remain valid.
+
+**Cutover checklist**
+
+1. Deploy **atxfinance-backend** containing task controllers; verify `./gradlew test` and `GET /api/backend/health` (or service health) in the target environment.
+2. In **staging**, set **`ATXFINANCE_BACKEND_ORIGIN`** to the Spring base URL (same pattern as other BFF surfaces).
+3. Validate **Admin → Tasks**: list/create, run task, task runs list, scheduler tick; compare behavior to proxy-off (Next Mongo path).
+4. **Production:** repeat after staging soak; monitor Mongo write patterns and latency.
+5. **Rollback:** remove or unset **`ATXFINANCE_BACKEND_ORIGIN`** — Next route handlers execute the Mongo again (fallback paths remain in `src/app/api/admin/tasks/*`, `task-runs`, `scheduler/tick`).
+
+### PR 4 — Deploy-note-configs + broker import (migration)
+
+**Product scope:** `GET`/`POST /api/admin/deploy-note-configs`, `GET`/`PUT`/`DELETE /api/admin/deploy-note-configs/{configId}`, and **`POST /api/admin/import/broker`** (Merrill/Fidelity holdings CSV from **`portfolio-console.tsx`**). Still **Next-primary** until Kotlin + proxy + `BFF_PROXY_ROUTES` + parity tests land; do **not** add those paths to the proxy list until Spring owns them.
+
+**Data migration**
+
+- **Deploy-note-configs:** Mongo **`admin_deploy_note_configs`** — no collection rename; migration work is **API parity + BFF cutover**, not a bulk transform. If you add JVM writers, run dual-validation in staging (create/edit on Spring vs Next) before prod.
+- **Import/broker:** Stateless CSV → **`portfolio_positions`** (and related) — **operational** migration means staging dry-runs (`dryRun` where supported), broker→account mappings verified, then BFF enablement the same way as PR 3.
+
+**Cutover checklist (when PR 4 code is ready)**
+
+1. Ship Kotlin controllers + `nextBffApi` + `BFF_PROXY_ROUTES` entries + `docs/ops/atxfinance-backend-http-api.md` — `tests/smoke/backend-http-api-parity.test.ts` must pass.
+2. Staging: set **`ATXFINANCE_BACKEND_ORIGIN`**, exercise deploy-note CRUD and **one** import with a known-good CSV.
+3. Prod: enable after soak; **rollback** = unset origin (Next handlers remain).
+
+## Risks and gaps (TODO)
+
+Track these before **PR 3** prod cutover and while **PR 4** is open.
+
+| ID | Area | Risk / gap | TODO |
+|----|------|------------|------|
+| R1 | PR 3 — JVM tasks | `AdminScheduledTasksService` blocks the HTTP thread during simulated work (`Thread.sleep`); high concurrency or long cron batches could exhaust worker threads vs Next’s async model. | Add timeouts / bounded pool or async execution; cap concurrent runs; load-test `POST /api/admin/scheduler/tick`. |
+| R2 | PR 3 — parity | Kotlin vs Next execution order: JVM runs due tasks **sequentially** in `scheduler/tick`; Next used `Promise.all` (**parallel**). Behavior differs under multi-task ticks. | Document or align ordering/parallelism; add integration test for tick with 2+ due tasks. |
+| R3 | PR 3 — tests | No `Testcontainers` / `@WebMvcTest` coverage for `AdminScheduledTasksController` in `services/atxfinance-backend` yet. | Add JVM integration or slice tests for list/create/run/tick with in-memory or test Mongo. |
+| R4 | PR 4 — missing | Deploy-note-configs + import/broker still **Next-only**; BFF proxy must not list those paths until Kotlin ships (see `src/lib/bff-proxy-routes.ts` header). | Implement PR 4 controllers + proxy + smoke needles + operational dry-run checklist. |
+| R5 | BFF generally | If `ATXFINANCE_BACKEND_ORIGIN` points at a **down** or **wrong** Spring URL, admin APIs 5xx with no Mongo fallback until origin is cleared. | Runbook: health-check Spring before enabling; feature-flag or staged rollout per env. |
+| R6 | Side effects | Task runs in Next did not publish audit/Slack events; JVM path matches today — confirm product expectations if audit is required later. | Optional: `admin_audit_events` on task success/fail if compliance needs it. |
 
 ## Auth callback contract (approved)
 

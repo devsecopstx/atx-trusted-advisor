@@ -36,6 +36,30 @@ Users with docs only in legacy bootstrap collections may need migration or re-in
 
 ---
 
+## PR 5 — RAG-readiness migration (focused scope)
+
+**Scope:** RAG-readiness only — not full RAG migration (RAG GET/POST, xAI upload, chunking are largely done on Spring + BFF).
+
+**In scope:**
+- `GET /api/rag/files/{fileId}/readiness` — poll `processingStatus`; expose `readiness` (ready, pending_embeddings, etc.).
+- Scope-level blocking: `getScopeReadinessSummary` blocks collection search when any uploaded file is non-ready (`blocked_non_ready_files`).
+- Persona link-files: block non-ready files from linking; label readiness in persona/collection UI.
+- xChat ask + multi-source context: skip `collections_search` when `readiness.blocked`.
+
+**Touch points:**
+- `src/modules/xchat/rag-file-readiness.ts` — `evaluateRagFileReadiness`, `getScopeReadinessSummary`, `pollRagFileReadiness`.
+- `src/app/api/rag/files/[fileId]/readiness/route.ts` — Next-only until Kotlin ships equivalent.
+- `src/app/api/xchat/ask/route.ts` — readiness check before collection search.
+- `src/modules/xchat/multi-source-context-orchestrator.ts` — `getScopeReadinessSummary` → `collectionSearchSkippedReason`.
+- `src/app/api/personas/[personaId]/collection/link-files/route.ts` — `isRagFileReadyForSemanticSearch`.
+- `src/app/admin/personas/ui/personas-console.tsx` — file list + readiness labels.
+- `persona-collection-routes.test.ts` — blocked files, readiness labels.
+- `.cursor/skills/atx-xchat-validation-checklist/SKILL.md` — step 7 (RAG readiness lifecycle).
+
+**Out of scope (already done or separate):** RAG GET/POST on Spring, xAI file upload pipeline, chunking, `xai_collections` inventory.
+
+---
+
 ## Deferred
 
 - xChat streaming on Spring + BFF (`docs/ops/api-consolidation-spring-backend.md`).

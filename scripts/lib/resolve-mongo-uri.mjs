@@ -45,23 +45,12 @@ export function resolveMongoUri() {
 
   const dbName = resolveSeedDbName();
   const host = process.env.MONGODB_HOST?.trim() || "localhost";
-  const adminUserFromEnv =
-    process.env.ADMIN_X_USERNAME?.trim() ||
-    process.env.ADMIN_X_USERNAMES?.trim()?.split(",")[0]?.trim();
-  const explicitMongoPassword = process.env.MONGO_ROOT_PASSWORD?.trim();
-  let username = adminUserFromEnv;
-  let password = explicitMongoPassword;
+  const noAuth = process.env.MONGODB_NO_AUTH === "true" || process.env.MONGODB_NO_AUTH === "1";
+  const mongoRootUsername = process.env.MONGO_ROOT_USERNAME?.trim() || "admin";
+  const password = process.env.MONGO_ROOT_PASSWORD?.trim() || "atxrocks!";
+  const username = mongoRootUsername;
 
-  const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);
-  if (localHosts.has(host)) {
-    const explicitMongoPair = Boolean(adminUserFromEnv && explicitMongoPassword);
-    if (!explicitMongoPair) {
-      username = "admin";
-      password = explicitMongoPassword || "atxrocks!";
-    }
-  }
-
-  const hasAuth = Boolean(username && password);
+  const hasAuth = !noAuth && Boolean(username && password);
   const authPart = hasAuth ? `${encodeURIComponent(username)}:${encodeURIComponent(password)}@` : "";
   const params = hasAuth ? "?authSource=admin" : "";
 

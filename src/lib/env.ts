@@ -137,27 +137,11 @@ export function getMongoUri(): string {
   // (Keep aligned with scripts/lib/resolve-mongo-uri.mjs for seed/migrations.)
   const dbName = (process.env.MONGODB_DB_NAME?.trim() || MONGODB_DB_NAME).trim();
   const host = process.env.MONGODB_HOST?.trim() || "localhost";
+  const noAuth = process.env.MONGODB_NO_AUTH === "true" || process.env.MONGODB_NO_AUTH === "1";
+  const username = process.env.MONGO_ROOT_USERNAME?.trim() || "admin";
+  const password = process.env.MONGO_ROOT_PASSWORD?.trim() || "atxrocks!";
 
-  const adminUserFromEnv =
-    process.env.ADMIN_X_USERNAME?.trim() ||
-    process.env.ADMIN_X_USERNAMES?.trim()?.split(",")[0]?.trim();
-  const explicitMongoPassword = process.env.MONGO_ROOT_PASSWORD?.trim();
-  let username = adminUserFromEnv;
-  let password = explicitMongoPassword;
-
-  // docker-compose.yml creates MONGO_INITDB_ROOT_USERNAME default `admin` (+ password). ADMIN_X_USERNAMES
-  // is for app allowlists — using it as Mongo user without MONGO_ROOT_PASSWORD caused wronguser:atxrocks!
-  // and Authentication failed. Only use env username for Mongo when both user + password are explicit.
-  const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);
-  if (localHosts.has(host)) {
-    const explicitMongoPair = Boolean(adminUserFromEnv && explicitMongoPassword);
-    if (!explicitMongoPair) {
-      username = "admin";
-      password = explicitMongoPassword || "atxrocks!";
-    }
-  }
-
-  const hasAuth = Boolean(username && password);
+  const hasAuth = !noAuth && Boolean(username && password);
   const authPart = hasAuth ? `${encodeURIComponent(username!)}:${encodeURIComponent(password!)}@` : "";
   const params = hasAuth ? "?authSource=admin" : "";
 

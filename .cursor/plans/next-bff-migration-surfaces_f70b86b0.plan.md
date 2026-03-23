@@ -6,7 +6,7 @@ todos:
     content: "On return: read docs/ops/api-consolidation-spring-backend.md status board; run npm run ci:gate + services/atxfinance-backend ./gradlew test; then pick a backlog row below."
     status: pending
   - id: backlog-admin-remaining
-    content: "Next-primary admin: users CRUD, tasks, deploy-note-configs, import, scheduler — Kotlin + BFF + parity when prioritized (access-requests + RAG already on Spring)."
+    content: "PR 3 migration = tasks/scheduler BFF cutover (code shipped; operators follow api-consolidation § PR 3). PR 4 migration = deploy-note-configs + import/broker Kotlin + BFF. Users already on Spring + BFF."
     status: pending
   - id: backlog-xchat-streaming
     content: "Deferred: xChat routes — streaming proxy + tools; see Plan:xChat in api-consolidation-spring-backend.md."

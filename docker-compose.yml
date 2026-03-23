@@ -10,9 +10,8 @@ services:
     environment:
       # One app DB per deployment; default matches src/lib/env.ts MONGODB_DB_NAME
       MONGO_INITDB_DATABASE: ${MONGODB_DB_NAME:-atxfinancedb}
-      # Local root user should be deterministic (`admin`) unless explicitly overridden.
-      # ADMIN_X_USERNAMES is an app allowlist and must not change Mongo root auth.
-      MONGO_INITDB_ROOT_USERNAME: ${ADMIN_X_USERNAME:-admin}
+      # Local root user: MONGO_ROOT_USERNAME for parity with resolve-mongo-uri / getMongoUri. Default admin.
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
       # Use provided password or fallback to the requested default
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-atxrocks!}
     volumes:
@@ -37,7 +36,7 @@ services:
     environment:
       # If MONGODB_URI is set (plain or base64), Spring MongoUriEnvPostProcessor resolves it.
       # Otherwise, use local Mongo with credentials and db name.
-      SPRING_DATA_MONGODB_URI: "mongodb://${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}:${MONGO_ROOT_PASSWORD:-atxrocks!}@mongodb:27017/${MONGODB_DB_NAME:-atxfinancedb}?authSource=admin"
+      SPRING_DATA_MONGODB_URI: "mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-atxrocks!}@mongodb:27017/${MONGODB_DB_NAME:-atxfinancedb}?authSource=admin"
     ports:
       - "8080:8080"
 

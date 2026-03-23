@@ -124,6 +124,22 @@ export const nextBffApi = {
     userSettings: {
       pathTemplate: "/api/admin/users/{userId}/settings",
       methods: ["GET", "PUT"]
+    },
+    tasksIndex: {
+      pathTemplate: "/api/admin/tasks",
+      methods: ["GET", "POST"]
+    },
+    tasksRun: {
+      pathTemplate: "/api/admin/tasks/{taskId}/run",
+      methods: ["POST"]
+    },
+    taskRuns: {
+      pathTemplate: "/api/admin/task-runs",
+      methods: ["GET"]
+    },
+    schedulerTick: {
+      pathTemplate: "/api/admin/scheduler/tick",
+      methods: ["POST"]
     }
   },
   rag: {

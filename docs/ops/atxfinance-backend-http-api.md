@@ -86,6 +86,10 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 | PATCH | `/api/admin/users/{userId}/plan` | **Global admin only.** Body `{ "subscriptionPlan" }`. **200** `{ userId, subscriptionPlan }`. |
 | PATCH | `/api/admin/users/{userId}/email` | **Global admin only.** Body `{ "email" }`. **409** duplicate email. |
 | GET \| PUT | `/api/admin/users/{userId}/settings` | **Global admin only.** **`admin_user_settings`** + `metadata.linkedCollections` (default + bootstrap + assigned persona). **PUT** validates published persona when `assignedPersonaId` set. **404** missing settings or persona. |
+| GET \| POST | `/api/admin/tasks` | **Global admin only.** **GET** **200** `{ "data": [...] }` from **`admin_scheduled_tasks`** (tenant-scoped, `limit` default 50). **POST** **201** `{ "data": ... }` — body `name`, `category` (`sync-broker` \| `rebalance` \| `compliance` \| `notifications`), `scheduleCron`, `enabled`; default `nextRunAt` +5m. **400** invalid payload. |
+| POST | `/api/admin/tasks/{taskId}/run` | **Global admin only.** Executes task simulation, writes **`admin_task_runs`**. **200** `{ "data": { "runId", "status", "output" } }`. **404** unknown task. |
+| GET | `/api/admin/task-runs` | **Global admin only.** **200** `{ "data": [...] }` recent runs from **`admin_task_runs`** (tenant-scoped, `limit` default 50). |
+| POST | `/api/admin/scheduler/tick` | **Global admin only.** Loads due enabled tasks (`nextRunAt` ≤ now), runs each. **200** `{ "data": { "processed", "results" } }`. |
 
 **Audit semantics:** `actor` filter behavior can differ between Next (regex on email/username) and Kotlin (exact userId/email/username match) — see `docs/ops/audit-lineage-and-controls.md`.
 

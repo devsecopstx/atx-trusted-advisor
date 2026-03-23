@@ -16,6 +16,8 @@ data class AtxfinanceProperties(
     val coreTenantMembershipsCollection: String = "core_tenant_memberships",
     val coreUsersCollection: String = "core_users",
     val auditEventsCollection: String = "admin_audit_events",
+    val scheduledTasksCollection: String = "admin_scheduled_tasks",
+    val taskRunsCollection: String = "admin_task_runs",
     val appUserRecommendationsCollection: String = "app_user_recommendations",
     val portfolioRecommendationsCollection: String = "portfolio_recommendations",
     val ragFilesCollection: String = "xai_collections",
