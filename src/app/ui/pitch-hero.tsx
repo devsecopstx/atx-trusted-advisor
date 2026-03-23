@@ -155,7 +155,7 @@ function WaitlistForm({
 
       <textarea
         name="message"
-        placeholder="Optional: HNWI vs RIA, AUM band, custodian"
+        placeholder="Optional: HNWI / trusted-family, AUM band, custodian"
         rows={3}
         className="w-full px-6 py-4 mb-4 bg-gray-900/80 border border-gray-700 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 resize-y min-h-[88px]"
       />
@@ -310,7 +310,7 @@ export default function Hero({
               >
                 <h3 className="text-xl font-bold text-emerald-400 mb-3">Serious portfolios</h3>
                 <p className="text-gray-300 text-[15px] leading-relaxed">
-                  Sized for large private wealth and RIA practice standards — exports, audit trails, risk alerts, and
+                  Sized for large private wealth and trusted-family standards — exports, audit trails, risk alerts, and
                   overrides when you need them.
                 </p>
               </motion.div>
@@ -343,7 +343,7 @@ export default function Hero({
             </motion.div>
 
             <motion.p variants={bulletItemVariants} className="text-xs sm:text-sm text-gray-500 mt-6 max-w-2xl mx-auto">
-              Not financial advice. Not a solicitation. Options involve risk of loss. For qualified HNWI and RIAs
+              Not financial advice. Not a solicitation. Options involve risk of loss. For qualified HNWI and trusted-family
               evaluating software-assisted workflows only.
             </motion.p>
           </motion.div>

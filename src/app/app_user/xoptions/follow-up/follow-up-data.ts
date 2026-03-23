@@ -84,7 +84,7 @@ export const FOLLOW_UP_SECTIONS: FollowUpSection[] = [
       {
         id: "compliance",
         prompt:
-          "On the compliance side: what specific audit logs, export formats, data privacy rules, or terms/disclaimers do we need to bake in from day one so this fits family office / RIA standards?",
+          "On the compliance side: what specific audit logs, export formats, data privacy rules, or terms/disclaimers do we need to bake in from day one so this fits family office / trusted-family standards?",
       },
     ],
   },

@@ -28,7 +28,7 @@ const METRIC_BADGES: MetricBadge[] = [
       "Compounded, risk-adjusted framing for desk-level deployment; hypothetical until validated on your book and compliance sign-off."
   },
   {
-    label: "Austin RIA / allocator focus",
+    label: "Austin allocator / trusted-family focus",
     detail:
       "Local GTM: LeafHouse (~$15B AUM), Hub (~$9B), EPIC (~$5B). Figures are public-scale references — verify independently."
   }

@@ -16,8 +16,8 @@ IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/atxfinance-backend:${TAG}"
 echo "==> Configure Docker auth for Artifact Registry"
 gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
-echo "==> docker build ($ROOT, Dockerfile.backend)"
-docker build -f "${ROOT}/Dockerfile.backend" -t "${IMAGE}" "${ROOT}"
+echo "==> docker build ($ROOT, Dockerfile.backend, platform linux/amd64 for Cloud Run)"
+docker build --platform linux/amd64 -f "${ROOT}/Dockerfile.backend" -t "${IMAGE}" "${ROOT}"
 
 echo "==> docker push ${IMAGE}"
 docker push "${IMAGE}"

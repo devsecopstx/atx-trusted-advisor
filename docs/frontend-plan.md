@@ -15,7 +15,7 @@ High-level roadmap for Next.js App Router UI, marketing surfaces, and monetizati
 
 ## Stripe integration (planned)
 
-**Goals:** Paid tiers, self-serve upgrade, invoices/receipts, and (optional) RIA billing without storing raw card data on our servers.
+**Goals:** Paid tiers, self-serve upgrade, invoices/receipts, and (optional) trusted-family billing without storing raw card data on our servers.
 
 ### Architecture (recommended)
 

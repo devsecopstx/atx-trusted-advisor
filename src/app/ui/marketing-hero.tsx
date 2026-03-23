@@ -91,7 +91,7 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
             Just <span className="mh-tagline-glow">Gains</span> Earned.
           </h1>
 
-          <p className="mh-sub">Institutional-grade options tooling powered by xAI/Grok for RIAs, investment firms, and hedge teams.</p>
+          <p className="mh-sub">Institutional-grade options tooling powered by xAI/Grok for HNWI, trusted-family offices, and institutional allocators.</p>
 
           <div className="mh-badges">
             <span className="mh-badge mh-badge-grok">Powered by Grok</span>

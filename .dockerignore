@@ -1,7 +1,9 @@
 .git
 .github
 .cursor
-services/atxfinance-backend
+# Dockerfile.backend needs sources; exclude only heavy Gradle outputs (Next Dockerfile ignores via small COPY set)
+services/atxfinance-backend/build
+services/atxfinance-backend/.gradle
 .next
 node_modules
 npm-debug.log*

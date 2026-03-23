@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export const metadata: Metadata = {
   title: "xoptions · Options income, delegated",
   description:
-    "Time-saving, hassle-free options workflows for HNWI and RIAs. Powered by xAI. No atoms moved — just clear execution.",
+    "Time-saving, hassle-free options workflows for HNWI and trusted-family. Powered by xAI. No atoms moved — just clear execution.",
 };
 
 type LayoutProps = {
