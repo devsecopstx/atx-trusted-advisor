@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
-import { ATXFINANCE_COLLECTION_ID } from "@/modules/xchat/types";
+import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection";
 
 type Message = {
   id: string;
@@ -71,14 +71,20 @@ type VisibleCollection = {
   source: "atxfinance_default" | "user_history" | "assigned_persona";
 };
 
-/** Mirrors `GET /api/xchat/collections` default row when the API is missing (404) or unreachable. */
-const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = [
-  {
-    collectionId: ATXFINANCE_COLLECTION_ID,
-    collectionName: "aTxFinance Default",
-    source: "atxfinance_default"
+/** Mirrors `GET /api/xchat/collections` default row when the API is missing (404) or unreachable (sync env only on server; client usually empty). */
+const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = (() => {
+  const cid = getTeamXaiKbCollectionIdSync();
+  if (!cid) {
+    return [];
   }
-];
+  return [
+    {
+      collectionId: cid,
+      collectionName: "aTxFinance Default",
+      source: "atxfinance_default"
+    }
+  ];
+})();
 
 export function XchatConversation({ defaultPublishedPersonaName }: XchatConversationProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -330,7 +336,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           Collection list loaded for ask:{" "}
           {visibleCollections.length > 0
             ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
-            : ATXFINANCE_COLLECTION_ID}
+            : "—"}
         </span>
         {collectionsScopeDegraded ? (
           <span className="status-text status-warn" style={{ fontSize: "0.75rem" }}>

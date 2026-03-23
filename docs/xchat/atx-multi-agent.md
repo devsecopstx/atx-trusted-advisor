@@ -16,7 +16,7 @@
 | **Isolation** | Jobs scoped **`userId` + `emailAccountId`**. No cross-tenant advisor reads. |
 | **Caps** | Hard **12** strategy jobs/user/hour (`STRATEGY_MAX_JOBS_HOURLY`); soft warn at **8**. |
 | **Traffic** | **BFF-only** — Next → Spring proxy, same-origin cookies. |
-| **xAI collections** | **TEAM_XAI** — **`XAI_TEAM_ID`** per tenant. No `ATXFINANCE_COLLECTION_ID` / per-user bootstrap in Phase 1 tickets. Chat-history collections under the team only. |
+| **xAI collections** | **TEAM_XAI** — **`XAI_TEAM_ID`** per tenant (team UUID or `collection_*` KB id). No separate legacy collection env / per-user bootstrap in Phase 1 tickets. Chat-history collections under the team only. |
 
 ---
 

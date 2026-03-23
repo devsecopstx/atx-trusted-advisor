@@ -38,7 +38,7 @@ Ship changes safely by validating locally and preparing an accurate commit workf
    - runtime app secrets in GCP Secret Manager,
    - GH env secrets OIDC-only,
    - deploy-time literals in GH variables.
-   Ensure **`XAI_TEAM_ID`** is present where team xAI collections are used. **`ATXFINANCE_COLLECTION_ID`** is legacy until fully removed (`docs/xchat/atx-multi-agent.md`).
+   Ensure **`XAI_TEAM_ID`** is present where team xAI collections are used (`docs/xchat/atx-multi-agent.md`).
    - Run runtime secret preflight for both environments:
      `npm run ops:secrets:verify:staging` and `npm run ops:secrets:verify:prod`.
    - Validate secret value quality for strict parsers (example:

@@ -66,7 +66,7 @@ After merging and deploying to production (or staging first):
 - xAI chat API key smoke (dev/SRE): `npm run smoke:xai-chat` with `XAI_API_KEY` in `.env` — see `DEVELOPMENT.md` § *xAI chat completions smoke*
 - Market price source-of-truth (current): Yahoo Finance via `yahoo-finance2` (`src/modules/xchat/market-data.ts`); quote-related prompts/tools should route through `market_quote` / `yahoo_finance` rather than narrative web-only lookups
 - Watchlist (app_user): `/watchlist` — CSV **Import/Export**; `PATCH /api/portfolios/:id/watchlist` accepts `addEntries` (`lineType`, `strategy`, `quantity`, `entryPrice`) for merged rows. Reference CSV: `branding/atxfinance-watchlist.csv`
-- App_user feedback: `POST /api/feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
+- App_user feedback: `POST /api/user-feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
 - **App_user 500 while admin works:** see [DEVELOPMENT.md — App_user HTTP 500](DEVELOPMENT.md#app_user-http-500); check Cloud Run logs for `[auth/x/callback]` and Mongo/provisioning errors
 
 ## Quick Ops Status Task
@@ -114,7 +114,7 @@ from injected secrets.
 - Project-local skills are stored in `.cursor/skills/`. See `.cursor/skills/README.md` for the full index.
 - TODO: refine skills naming conventions; keep current names for now.
 - TODO: remove imported global Cursor skills from the repo once local skill parity is confirmed.
-- Ops/review skills: `atx-docs-ops`, `atx-xchat-validation-checklist`, `atx-runbook-navigator`, `atx-design-ops`, `xdesign-review`.
+- Ops/review skills: `atx-sre-docs-ops`, `atx-skill-xchat-validation-checklist`, `atx-runbook-navigator`, `atx-design-ops`, `atxdesign-review`.
 - Backend (multi-node agents) skills: `atx-backend-architecture`, `atx-backend-deploy-stage`, `atx-backend-deploy-prod`, `atx-backend-runbook`, `atx-backend-ci`.
 - Junie guidelines for backend operations: `docs/ops/junie-guidelines-atxfinance-backend.md`.
 - xDesign review outputs: `docs/xchat/xdesign-review-admin-console-ux.md` (and other `docs/xchat/*.md`).

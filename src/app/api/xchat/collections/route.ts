@@ -4,7 +4,7 @@ import { requireSessionUser } from "@/lib/auth";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { getPersonaById, resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository";
-import { ATXFINANCE_COLLECTION_ID } from "@/modules/xchat/types";
+import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
 
 type VisibleCollection = {
   collectionId: string;
@@ -20,13 +20,15 @@ export async function GET() {
 
   const defaultPersona = await resolveDefaultXchatPersonaForSession(session.roles);
   let activePersonaName = defaultPersona?.name;
-  const visible: VisibleCollection[] = [
-    {
-      collectionId: ATXFINANCE_COLLECTION_ID,
+  const teamDefaultId = await resolveTeamKbCollectionId();
+  const visible: VisibleCollection[] = [];
+  if (teamDefaultId) {
+    visible.push({
+      collectionId: teamDefaultId,
       collectionName: "aTxFinance Default",
       source: "atxfinance_default"
-    }
-  ];
+    });
+  }
 
   try {
     const userCollection = await resolveOrCreateUserBootstrapCollection({

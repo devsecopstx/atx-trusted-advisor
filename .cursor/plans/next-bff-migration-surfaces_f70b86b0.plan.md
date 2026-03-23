@@ -46,7 +46,7 @@ Move product/business API ownership from Next route handlers to Spring controlle
 
 ## Shipped slices (summary)
 
-Portfolios/positions/watchlist, recommendations (app + per-portfolio) + Pub/Sub on JVM when BFF on, strategy-options, personas, self-service `POST /api/access-requests`, feedback, admin bootstrap + audit, **admin access-requests** (full CRUD/review), **RAG GET+POST** — see the consolidation doc status table.
+Portfolios/positions/watchlist, recommendations (app + per-portfolio) + Pub/Sub on JVM when BFF on, strategy-options, personas, self-service `POST /api/access-requests`, user-feedback, admin bootstrap + audit, **admin access-requests** (full CRUD/review), **RAG GET+POST** — see the consolidation doc status table.
 
 ## What’s next (suggested order)
 

@@ -4,7 +4,7 @@ Short policy for how `POST /api/xchat/ask` should combine **pre-call retrieval**
 
 ## Phase 1: xAI collections (TEAM only)
 
-New work: **`XAI_TEAM_ID`** per tenant; TEAM append/retrieval; chat-history collections under that team only. No new reliance on per-user bootstrap, **`ATXFINANCE_COLLECTION_ID`**, or legacy default merges — details and locked decisions in [`atx-multi-agent.md`](./atx-multi-agent.md).
+New work: **`XAI_TEAM_ID`** per tenant; TEAM append/retrieval; chat-history collections under that team only. No new reliance on per-user bootstrap or legacy default merges — details and locked decisions in [`atx-multi-agent.md`](./atx-multi-agent.md).
 
 ## Decision table (intent → path)
 

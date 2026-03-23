@@ -34,6 +34,8 @@ type XaiCollectionSearchSnippet = {
 export type XaiCollectionInventoryItem = {
   id: string;
   name?: string;
+  /** Present when the management API returns a team scope for the collection. */
+  teamId?: string;
   documentCount?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -1052,15 +1054,30 @@ export async function getXaiCollectionById(collectionId: string): Promise<XaiCol
   };
 }
 
-export async function listXaiCollections(): Promise<XaiCollectionInventoryItem[]> {
+export async function listXaiCollections(options?: {
+  /** When set, requests `GET .../collections?team_id=...` (falls back to unfiltered list + client-side filter by `teamId`). */
+  teamId?: string;
+}): Promise<XaiCollectionInventoryItem[]> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  const tid = options?.teamId?.trim();
 
-  const response = await fetch(`${managementBaseUrl}/collections`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${managementApiKey}`
-    }
-  });
+  const tryFetch = async (fetchUrl: string) =>
+    fetch(fetchUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${managementApiKey}`
+      }
+    });
+
+  let usedTeamQuery = Boolean(tid);
+  let response = await tryFetch(
+    tid ? `${managementBaseUrl}/collections?team_id=${encodeURIComponent(tid)}` : `${managementBaseUrl}/collections`
+  );
+
+  if (!response.ok && tid) {
+    usedTeamQuery = false;
+    response = await tryFetch(`${managementBaseUrl}/collections`);
+  }
 
   const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok) {
@@ -1089,6 +1106,8 @@ export async function listXaiCollections(): Promise<XaiCollectionInventoryItem[]
       continue;
     }
     const name = asString(entry.name) ?? asString(entry.collection_name);
+    const teamId =
+      asString(entry.team_id) ?? asString(entry.teamId) ?? asString(entry.team);
     const documentCount =
       asNumber(entry.document_count) ??
       asNumber(entry.documents_count) ??
@@ -1099,10 +1118,15 @@ export async function listXaiCollections(): Promise<XaiCollectionInventoryItem[]
     collections.push({
       id,
       name,
+      teamId,
       documentCount,
       createdAt,
       updatedAt
     });
+  }
+
+  if (tid && !usedTeamQuery) {
+    return collections.filter((c) => c.teamId === tid);
   }
 
   return collections;

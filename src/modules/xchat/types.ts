@@ -1,5 +1,7 @@
 import { ObjectId } from "mongodb";
 
+import { getTeamXaiKbCollectionIdSync } from "./team-xai-collection";
+
 export type PersonaCollectionVerification = {
   status: "verified" | "missing" | "error" | "skipped";
   checkedAt: Date;
@@ -40,15 +42,25 @@ export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
   tools: []
 };
 
-export const ATXFINANCE_COLLECTION_ID = "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
-
-export const SUPER_AGENT_DEFAULT_TOOLS: PersonaXapiToolDefinition[] = [
-  { type: "web_search" },
-  { type: "x_search" },
-  { type: "collections_search", collection_ids: [ATXFINANCE_COLLECTION_ID] },
-  { type: "yahoo_finance" },
-  { type: "atxfinance" }
-];
+/** Super-Agent default xAPI tools; `collections_search` is included when `XAI_TEAM_ID` resolves to a KB collection id (sync: `collection_*` on env). */
+export function getSuperAgentDefaultTools(): PersonaXapiToolDefinition[] {
+  const cid = getTeamXaiKbCollectionIdSync();
+  if (cid) {
+    return [
+      { type: "web_search" },
+      { type: "x_search" },
+      { type: "collections_search", collection_ids: [cid] },
+      { type: "yahoo_finance" },
+      { type: "atxfinance" }
+    ];
+  }
+  return [
+    { type: "web_search" },
+    { type: "x_search" },
+    { type: "yahoo_finance" },
+    { type: "atxfinance" }
+  ];
+}
 
 /** Matches `nameNormalized` / display name lowercased for the seeded admin persona (see `scripts/seed-admin-user.mjs`). */
 export const SUPER_AGENT_NAME_NORMALIZED = "super-agent";
@@ -67,7 +79,7 @@ export function ensureSuperAgentDefaultTools(
   }
   const have = new Set(config.tools.map((t) => t.type));
   const merged: PersonaXapiToolDefinition[] = [...config.tools];
-  for (const def of SUPER_AGENT_DEFAULT_TOOLS) {
+  for (const def of getSuperAgentDefaultTools()) {
     if (!have.has(def.type)) {
       merged.push({ ...def });
       have.add(def.type);

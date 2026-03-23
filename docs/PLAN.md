@@ -6,7 +6,7 @@
 
 ## TEAM-only xAI: remove legacy collection paths
 
-**Goal:** Remove **`ATXFINANCE_COLLECTION_ID`**, **`userBootstrapCollectionId`**, and per-user bootstrap xAI flows. **Anchor:** **`XAI_TEAM_ID`** (1:1 tenant) for team collection append/retrieval; chat-history collections only under that team.
+**Goal:** ~~Remove **`ATXFINANCE_COLLECTION_ID`**~~ (done). Remove **`userBootstrapCollectionId`** and per-user bootstrap xAI flows. **Anchor:** **`XAI_TEAM_ID`** (team UUID or `collection_*` KB id) for team collection append/retrieval; chat-history collections only under that team.
 
 **Why:** Phase 1 is TEAM_XAI-only; legacy merges remain until this refactor.
 
@@ -25,7 +25,7 @@
 
 ### Acceptance
 
-- [ ] No **`ATXFINANCE_COLLECTION_ID`** in app code (docs/scripts updated or removed).
+- [x] No **`ATXFINANCE_COLLECTION_ID`** in app code (use **`XAI_TEAM_ID`** only).
 - [ ] Linked-collection resolution uses **team + persona** only — no user-bootstrap branch.
 - [ ] **`XAI_TEAM_ID`** where team xAI runs; integration tests green.
 - [ ] `docs/xchat/context-routing-multi-agent-policy.md` + `xchat-tools-guide.md` match shipped behavior.
@@ -54,7 +54,7 @@ Users with docs only in legacy bootstrap collections may need migration or re-in
 - `src/app/api/personas/[personaId]/collection/link-files/route.ts` — `isRagFileReadyForSemanticSearch`.
 - `src/app/admin/personas/ui/personas-console.tsx` — file list + readiness labels.
 - `persona-collection-routes.test.ts` — blocked files, readiness labels.
-- `.cursor/skills/atx-xchat-validation-checklist/SKILL.md` — step 7 (RAG readiness lifecycle).
+- `.cursor/skills/atx-skill-xchat-validation-checklist/SKILL.md` — step 7 (RAG readiness lifecycle).
 
 **Out of scope (already done or separate):** RAG GET/POST on Spring, xAI file upload pipeline, chunking, `xai_collections` inventory.
 

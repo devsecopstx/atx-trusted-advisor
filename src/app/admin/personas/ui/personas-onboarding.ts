@@ -1,4 +1,4 @@
-import { SUPER_AGENT_DEFAULT_TOOLS } from "@/modules/xchat/types";
+import { getSuperAgentDefaultTools } from "@/modules/xchat/types";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 export type PersonaFormState = {
@@ -30,8 +30,12 @@ export type XaiCollectionInventoryOption = {
 export const DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT =
   "You are The Architect, an elite administrative agent with full access to the xAI ecosystem. You have a multi-layered toolset including Web Search, X (Twitter) Search, a Python Code Sandbox, and Private Collection Search.";
 
-/** Default explicit `xapi.tools` for new personas (web, X, collections, yahoo, atxfinance). */
-export const DEFAULT_XPERSONA_TOOLS_JSON = JSON.stringify(SUPER_AGENT_DEFAULT_TOOLS, null, 2);
+/** Default explicit `xapi.tools` for new personas (web, X, collections when env resolves, yahoo, atxfinance). */
+export function getDefaultXpersonaToolsJson(): string {
+  return JSON.stringify(getSuperAgentDefaultTools(), null, 2);
+}
+
+export const DEFAULT_XPERSONA_TOOLS_JSON = getDefaultXpersonaToolsJson();
 
 export function parsePersonaXapiToolsJson(value: string): Array<{ type: string; [key: string]: unknown }> {
   const trimmed = value.trim();
@@ -93,7 +97,7 @@ export const EMPTY_CREATE_FORM: PersonaFormState = {
   xapiMode: "responses",
   xapiToolChoice: "auto",
   xapiMaxTurns: "5",
-  xapiToolsJson: DEFAULT_XPERSONA_TOOLS_JSON
+  xapiToolsJson: getDefaultXpersonaToolsJson()
 };
 
 export function applySelectedCollectionToPersonaForm(

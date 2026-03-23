@@ -30,9 +30,29 @@ const DEFAULT_ACCOUNT_NAME = "Default Account";
 const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
 const DEFAULT_WATCHLIST_SYMBOLS = ["TSLA"];
-const DEFAULT_COLLECTION_ID =
-  (process.env.ATXFINANCE_COLLECTION_ID || "").trim() || "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
+const RAW_XAI_TEAM = (process.env.XAI_TEAM_ID || "").trim();
+const XAI_KB_COLLECTION_RE = /^collection_[A-Za-z0-9_-]+$/;
+const DEFAULT_COLLECTION_ID = XAI_KB_COLLECTION_RE.test(RAW_XAI_TEAM) ? RAW_XAI_TEAM : "";
 const DEFAULT_COLLECTION_NAME = "Finance";
+if (RAW_XAI_TEAM && !DEFAULT_COLLECTION_ID) {
+  console.warn(
+    "[seed:admin] XAI_TEAM_ID is not a collection_* id; Super-Agent is seeded without collections_search. Set XAI_TEAM_ID to your KB collection id (collection_*) for team RAG defaults."
+  );
+}
+const SUPER_AGENT_XAPI_TOOLS = DEFAULT_COLLECTION_ID
+  ? [
+      { type: "web_search" },
+      { type: "x_search" },
+      { type: "collections_search", collection_ids: [DEFAULT_COLLECTION_ID] },
+      { type: "yahoo_finance" },
+      { type: "atxfinance" }
+    ]
+  : [
+      { type: "web_search" },
+      { type: "x_search" },
+      { type: "yahoo_finance" },
+      { type: "atxfinance" }
+    ];
 const TENANT_PORTFOLIO_COLLECTION = "tenant_portfolio";
 const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
   (process.env.TENANT_PORTFOLIO_ORG_KEY || "").trim() || "org-atx-finance";
@@ -186,7 +206,7 @@ async function seed() {
           systemPrompt: DEFAULT_PERSONA_SYSTEM_PROMPT,
           overridePrompt: "",
           xaiCollection: {
-            collectionId: DEFAULT_COLLECTION_ID,
+            ...(DEFAULT_COLLECTION_ID ? { collectionId: DEFAULT_COLLECTION_ID } : {}),
             collectionName: DEFAULT_COLLECTION_NAME
           },
           model: "grok-4-1-fast",
@@ -197,13 +217,7 @@ async function seed() {
             mode: "responses",
             toolChoice: "auto",
             maxTurns: 5,
-            tools: [
-              { type: "web_search" },
-              { type: "x_search" },
-              { type: "collections_search", collection_ids: [DEFAULT_COLLECTION_ID] },
-              { type: "yahoo_finance" },
-              { type: "atxfinance" }
-            ]
+            tools: SUPER_AGENT_XAPI_TOOLS
           },
           updatedAt: now
         }

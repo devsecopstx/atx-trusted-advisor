@@ -21,7 +21,7 @@
 - [ ] Auth/xchat env provenance is consistent: runtime secrets in GCP Secret Manager, GH env secrets OIDC-only, deploy literals in GH vars.
 - [ ] Runtime secret preflight passes: `npm run ops:secrets:verify:staging` and `npm run ops:secrets:verify:prod`.
 - [ ] Secret values satisfy parser constraints (for example `ADMIN_SEED_EMAIL` is valid and has no trailing comma/space).
-- [ ] **Team xAI:** `XAI_TEAM_ID` is set per deployment/tenant where TEAM collection features run (**Phase 1** uses TEAM append/retrieval only — see `docs/xchat/atx-multi-agent.md`). `ATXFINANCE_COLLECTION_ID` is **legacy** until removed from code; not a gate for new TEAM-only work.
+- [ ] **Team xAI:** `XAI_TEAM_ID` is set per deployment/tenant where TEAM collection features run (**Phase 1** uses TEAM append/retrieval only — see `docs/xchat/atx-multi-agent.md`).
 - [ ] `.cursor/rules/*.mdc` files have valid frontmatter, repo-aligned `globs`, and no merge/patch artifacts (e.g. leading `+` lines).
 - [ ] When logo or visual identity changes: update
   **`.cursor/rules/xfinance-branding.mdc`** to match (e.g. aTx⚡Finance).

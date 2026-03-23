@@ -62,7 +62,7 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 | GET | `/api/strategy-options/expirations` | Query `underlying` (required). **200** `{ underlying, expirationDates }` or **400** / **500** on Yahoo failure. |
 | GET | `/api/strategy-options` | Query `underlying`, `expiration`, optional `strike`. **200** option chain JSON (Yahoo when available, else synthetic model). **401** if unauthenticated. |
 
-## Feedback
+## User feedback
 
 | Method | Path | Purpose |
 |--------|------|---------|

@@ -7,6 +7,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skil
 ## Table of contents
 
 - [Backlog](#backlog)
+- [Frontend plan](#frontend-plan)
 - [Operations (`docs/ops/`)](#operations-docsops)
 - [xChat & product (`docs/xchat/`)](#xchat--product-docsxchat)
 - [Diagrams & assets](#diagrams--assets)
@@ -19,6 +20,14 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skil
 | Doc | Purpose |
 |-----|---------|
 | [PLAN.md](./PLAN.md) | Short-lived migration / backlog items (TEAM xAI cleanup, deferred work) |
+
+---
+
+## Frontend plan
+
+| Doc | Purpose |
+|-----|---------|
+| [frontend-plan.md](./frontend-plan.md) | Pitch/marketing roadmap, **Stripe** (Checkout, webhooks, Customer Portal, env), feature-gating notes |
 
 ---
 

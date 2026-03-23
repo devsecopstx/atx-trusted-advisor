@@ -14,6 +14,11 @@ describe("xAI management api-key create smoke", () => {
     if (!teamId) {
       throw new Error("Missing XAI_TEAM_ID for management key-create smoke test");
     }
+    if (teamId.startsWith("collection_")) {
+      throw new Error(
+        "XAI_TEAM_ID looks like a KB collection id (collection_*). Key-create smoke posts to /auth/teams/{teamUuid}/api-keys — use your xAI team UUID for this run, or omit RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE."
+      );
+    }
     if (!managementApiKey) {
       throw new Error("Missing XAI_MANAGEMENT_API_KEY for management key-create smoke test");
     }

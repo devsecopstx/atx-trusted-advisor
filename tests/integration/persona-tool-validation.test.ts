@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+
+beforeEach(() => {
+  process.env.XAI_TEAM_ID = "collection_test_super_agent";
+});
 
 import {
     createPersonaPayloadSchema,
@@ -6,10 +10,10 @@ import {
 } from "@/modules/xchat/persona-validation";
 import {
     ensureSuperAgentDefaultTools,
+    getSuperAgentDefaultTools,
     mergeXchatHostedToolBaseline,
     normalizePersonaXapiConfig,
     PERSONA_XAPI_TOOL_TYPES,
-    SUPER_AGENT_DEFAULT_TOOLS,
     SUPER_AGENT_NAME_NORMALIZED
 } from "@/modules/xchat/types";
 
@@ -63,18 +67,17 @@ describe("persona tool validation", () => {
     ]);
   });
 
-  it("SUPER_AGENT_DEFAULT_TOOLS has web_search, x_search, collections_search, yahoo_finance, and atxfinance", () => {
-    expect(SUPER_AGENT_DEFAULT_TOOLS).toHaveLength(5);
-    expect(SUPER_AGENT_DEFAULT_TOOLS.map((t) => t.type)).toEqual([
+  it("getSuperAgentDefaultTools has web_search, x_search, collections_search, yahoo_finance, and atxfinance when XAI_TEAM_ID is a collection id", () => {
+    const tools = getSuperAgentDefaultTools();
+    expect(tools).toHaveLength(5);
+    expect(tools.map((t) => t.type)).toEqual([
       "web_search",
       "x_search",
       "collections_search",
       "yahoo_finance",
       "atxfinance"
     ]);
-    const collectionsSearch = SUPER_AGENT_DEFAULT_TOOLS.find(
-      (t) => t.type === "collections_search"
-    );
+    const collectionsSearch = tools.find((t) => t.type === "collections_search");
     expect(collectionsSearch).toHaveProperty("collection_ids");
   });
 
@@ -92,7 +95,7 @@ describe("persona tool validation", () => {
     };
     const restored = ensureSuperAgentDefaultTools(yahooOnly, "Super-Agent");
     expect(restored.tools.map((t) => t.type).sort()).toEqual(
-      [...SUPER_AGENT_DEFAULT_TOOLS.map((t) => t.type)].sort()
+      [...getSuperAgentDefaultTools().map((t) => t.type)].sort()
     );
     expect(ensureSuperAgentDefaultTools(yahooOnly, "xFinance")).toEqual(yahooOnly);
   });

@@ -12,7 +12,7 @@ import {
 } from "@/modules/core-admin/repository";
 import { getCoreUserById } from "@/modules/identity/repository";
 import { getPersonaById } from "@/modules/xchat/repository";
-import { ATXFINANCE_COLLECTION_ID } from "@/modules/xchat/types";
+import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
 
 const updateSettingsSchema = z.object({
   assignedPersonaId: z.string().trim().optional(),
@@ -193,13 +193,15 @@ async function resolveUserLinkedCollections(input: {
   tenantId?: string;
   assignedPersonaId?: string;
 }): Promise<LinkedCollection[]> {
-  const linked: LinkedCollection[] = [
-    {
-      collectionId: ATXFINANCE_COLLECTION_ID,
+  const teamDefaultId = await resolveTeamKbCollectionId();
+  const linked: LinkedCollection[] = [];
+  if (teamDefaultId) {
+    linked.push({
+      collectionId: teamDefaultId,
       collectionName: "aTxFinance Default",
       source: "atxfinance_default"
-    }
-  ];
+    });
+  }
 
   const bootstrapCollection = await getUserBootstrapCollectionByUserId({
     userId: input.userId,

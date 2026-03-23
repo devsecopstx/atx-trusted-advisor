@@ -26,18 +26,27 @@ const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
 
+const teamXaiMocks = vi.hoisted(() => ({
+  resolveTeamKbCollectionId: vi.fn()
+}));
+
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/xchat/repository", () => xchatRepositoryMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/modules/xchat/team-xai-collection", () => ({
+  resolveTeamKbCollectionId: teamXaiMocks.resolveTeamKbCollectionId
+}));
 
 import { GET, PUT } from "@/app/api/admin/users/[userId]/settings/route";
-import { ATXFINANCE_COLLECTION_ID } from "@/modules/xchat/types";
+
+const TEAM_DEFAULT_COLLECTION_ID = "collection_integration_team_default";
 
 describe("admin user settings route", () => {
   beforeEach(() => {
+    teamXaiMocks.resolveTeamKbCollectionId.mockResolvedValue(TEAM_DEFAULT_COLLECTION_ID);
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -98,7 +107,7 @@ describe("admin user settings route", () => {
     expect(payload.metadata.linkedCollections).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          collectionId: ATXFINANCE_COLLECTION_ID,
+          collectionId: TEAM_DEFAULT_COLLECTION_ID,
           source: "atxfinance_default"
         }),
         expect.objectContaining({

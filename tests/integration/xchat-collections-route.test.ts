@@ -18,17 +18,26 @@ const repositoryMocks = vi.hoisted(() => ({
   getPersonaById: vi.fn()
 }));
 
+const teamXaiMocks = vi.hoisted(() => ({
+  resolveTeamKbCollectionId: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/core-admin/repository", () => settingsMocks);
 vi.mock("@/modules/xchat/repository", () => repositoryMocks);
+vi.mock("@/modules/xchat/team-xai-collection", () => ({
+  resolveTeamKbCollectionId: teamXaiMocks.resolveTeamKbCollectionId
+}));
 
 import { GET as getCollections } from "@/app/api/xchat/collections/route";
-import { ATXFINANCE_COLLECTION_ID } from "@/modules/xchat/types";
+
+const TEAM_DEFAULT_COLLECTION_ID = "collection_integration_team_default";
 
 describe("xchat collections route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    teamXaiMocks.resolveTeamKbCollectionId.mockResolvedValue(TEAM_DEFAULT_COLLECTION_ID);
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -66,7 +75,7 @@ describe("xchat collections route", () => {
     expect(payload.data).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          collectionId: ATXFINANCE_COLLECTION_ID,
+          collectionId: TEAM_DEFAULT_COLLECTION_ID,
           source: "atxfinance_default"
         }),
         expect.objectContaining({
@@ -123,7 +132,7 @@ describe("xchat collections route", () => {
     expect(payload.data).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          collectionId: ATXFINANCE_COLLECTION_ID,
+          collectionId: TEAM_DEFAULT_COLLECTION_ID,
           source: "atxfinance_default"
         })
       ])

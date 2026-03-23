@@ -95,7 +95,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
 - `ADMIN_SEED_EMAIL` (required for `npm run seed:admin` and OAuth seed-admin promotion; **no default** — set explicitly in `.env`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
-- `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications and **app_user feedback** from `POST /api/feedback`)
+- `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications and **app_user feedback** from `POST /api/user-feedback`)
 - `APP_USER_SHOW_DB_ENDPOINT` (optional; set `true` to show the Mongo host/db chip in the app_user header when `NODE_ENV=production` — e.g. beta staging builds)
 
 ## xAI chat completions smoke (dev / SRE)
@@ -340,7 +340,7 @@ Cloud Run mounts the eight secrets in the table above. Keep `.env.prod` gitignor
 5. **Callback URL**: Production uses `X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback` from the workflow. Do **not** point `PROD_BASE_URL` or any prod callback at `127.0.0.1`. Your X Developer Portal app must list the same HTTPS callback host.
 6. **Roll forward**: Deploy a new Cloud Run revision (workflow or manual) so the service picks up `*:latest` secret versions.
 
-Keys in `.env.prod` such as `GOOGLE_CLIENT_*`, `GITHUB_*`, `XAI_TEAM_ID`, or `ATXFINANCE_COLLECTION_ID` are **not** part of the default `--set-secrets` bundle unless you extend the workflow.
+Keys in `.env.prod` such as `GOOGLE_CLIENT_*`, `GITHUB_*`, or `XAI_TEAM_ID` are **not** part of the default `--set-secrets` bundle unless you extend the workflow.
 
 ### Production-only OAuth env checklist (GH + GCP)
 
@@ -464,7 +464,7 @@ Only **OIDC deploy identity** — do not add app runtime secrets here (they belo
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `<staging-provider-resource-name>` | `<prod-provider-resource-name>` |
 | `GCP_SERVICE_ACCOUNT_EMAIL` | `<staging-deploy-sa>@<staging-project>.iam.gserviceaccount.com` | `<prod-deploy-sa>@<prod-project>.iam.gserviceaccount.com` |
 
-`MONGODB_DB_NAME` is not a deploy variable — the app uses the fixed DB name `atxfinancedb` unless the Mongo URI path overrides it. `XAI_TEAM_ID` / `ATXFINANCE_COLLECTION_ID` in `.env.example` are dev hints only; they are not mounted by the deploy workflow.
+`MONGODB_DB_NAME` is not a deploy variable — the app uses the fixed DB name `atxfinancedb` unless the Mongo URI path overrides it. `XAI_TEAM_ID` in `.env.example` is a dev hint only; it is not mounted by the deploy workflow unless you add it to Secret Manager and the deploy mapping.
 
 Set after creating environments:
 
@@ -647,7 +647,7 @@ gcloud run services update-traffic atxfinance-core-prod \
 
 ### App_user feedback
 
-- `POST /api/feedback` — session required; JSON `{ "message": string (3–4000 chars), "page"?: string }`. Always returns **201** `{ "ok": true }` on success. If `SLACK_WEBHOOK_URL` is set, posts a Slack message (same webhook as access requests); if unset, logs only (see `sendSlackNotification`).
+- `POST /api/user-feedback` — session required; JSON `{ "message": string (3–4000 chars), "page"?: string }`. Always returns **201** `{ "ok": true }` on success. If `SLACK_WEBHOOK_URL` is set, posts a Slack message (same webhook as access requests); if unset, logs only (see `sendSlackNotification`).
 
 ### Admin — access requests
 
@@ -891,8 +891,8 @@ To make files visible inside a collection, perform both steps:
 #### Practical Bash example
 
 ```bash
-# 0) Set known Finance collection id (provided by team)
-export ATXFINANCE_COLLECTION_ID="collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
+# 0) Set KB collection id (use the same `XAI_TEAM_ID` value when it is a `collection_*` id)
+export XAI_TEAM_ID="collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
 
 # 1) Upload file using standard key
 UPLOAD_RESPONSE="$(curl -sS -X POST https://api.x.ai/v1/files \
@@ -904,7 +904,7 @@ echo "${UPLOAD_RESPONSE}"
 FILE_ID="$(echo "${UPLOAD_RESPONSE}" | jq -r '.id')"
 
 # 3) Attach uploaded file to collection using management key
-curl -sS -X POST "https://management-api.x.ai/v1/collections/${ATXFINANCE_COLLECTION_ID}/documents/${FILE_ID}" \
+curl -sS -X POST "https://management-api.x.ai/v1/collections/${XAI_TEAM_ID}/documents/${FILE_ID}" \
   -H "Authorization: Bearer ${XAI_MANAGEMENT_API_KEY}"
 ```
 

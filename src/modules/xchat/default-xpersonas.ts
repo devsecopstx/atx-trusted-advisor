@@ -2,11 +2,12 @@
  * Published default xChat personas (operators keep both in `published` status):
  * - Super-Agent → global_admin (seeded; see `scripts/seed-admin-user.mjs`), with at least one collection
  * - xFinance → all other signed-in roles (FinExpert; created here or on first ask if missing), with at least one collection
- * Collection ids/names may change over time; operators update them in Admin → Personas or via seed env (ATXFINANCE_COLLECTION_ID).
+ * Collection ids/names may change over time; operators update them in Admin → Personas or via `XAI_TEAM_ID` (collection id or team UUID).
  */
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import type { PersonaConfig } from "@/modules/xchat/types";
-import { ATXFINANCE_COLLECTION_ID, DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
+import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection";
+import type { PersonaConfig, PersonaXapiToolDefinition } from "@/modules/xchat/types";
+import { DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 export const XPERSONA_SUPER_AGENT_NAME = "Super-Agent";
@@ -34,6 +35,14 @@ export type DefaultXfinancePersonaInsert = Omit<
 /** Default RAG collection for xFinance (and optionally Super-Agent); may change over time. */
 export const DEFAULT_XFINANCE_COLLECTION_NAME = "Finance";
 export function buildDefaultXfinancePersonaPayload(): DefaultXfinancePersonaInsert {
+  const cid = getTeamXaiKbCollectionIdSync();
+  const tools: PersonaXapiToolDefinition[] = [
+    { type: "web_search" },
+    { type: "x_search" },
+    ...(cid ? [{ type: "collections_search", collection_ids: [cid] } as PersonaXapiToolDefinition] : []),
+    { type: "yahoo_finance" },
+    { type: "atxfinance" }
+  ];
   return {
     name: XPERSONA_XFINANCE_NAME,
     systemPrompt: XFINANCE_SYSTEM_PROMPT,
@@ -46,18 +55,12 @@ export function buildDefaultXfinancePersonaPayload(): DefaultXfinancePersonaInse
     version: 1,
     publishedAt: new Date(),
     xaiCollection: {
-      collectionId: ATXFINANCE_COLLECTION_ID,
+      collectionId: cid,
       collectionName: DEFAULT_XFINANCE_COLLECTION_NAME
     },
     xapi: {
       ...DEFAULT_PERSONA_XAPI_CONFIG,
-      tools: [
-        { type: "web_search" },
-        { type: "x_search" },
-        { type: "collections_search", collection_ids: [ATXFINANCE_COLLECTION_ID] },
-        { type: "yahoo_finance" },
-        { type: "atxfinance" }
-      ]
+      tools
     }
   };
 }
