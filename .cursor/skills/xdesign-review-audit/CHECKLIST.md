@@ -1,5 +1,7 @@
 # xdesign-review-audit Checklist
 
+**Indexes:** [`docs/README.md`](../../../docs/README.md) · [`skills/README.md`](../README.md)
+
 Repo-specific ground truth: **`docs/ops/audit-lineage-and-controls.md`** (BFF parity, Mongo schema, test inventory, known gaps).
 
 ## Validation Checklist

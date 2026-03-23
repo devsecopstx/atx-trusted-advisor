@@ -1,6 +1,6 @@
 # Backlog & migration notes
 
-Engineering backlog (not a release blocker unless you close an item). Phase 1 multi-agent rules: [`xchat/atx-multi-agent.md`](./xchat/atx-multi-agent.md). BFF: [`ops/api-consolidation-spring-backend.md`](./ops/api-consolidation-spring-backend.md).
+**Docs index:** [`README.md`](./README.md). Phase 1 multi-agent: [`xchat/atx-multi-agent.md`](./xchat/atx-multi-agent.md). BFF: [`ops/api-consolidation-spring-backend.md`](./ops/api-consolidation-spring-backend.md).
 
 ---
 

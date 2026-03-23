@@ -72,6 +72,11 @@ Each material inference must store immutable records for:
 
 Detailed checklist moved to `CHECKLIST.md` (includes repo pointers to `docs/ops/audit-lineage-and-controls.md`).
 
+## Documentation index
+
+- **[`docs/README.md`](../../../docs/README.md)** — table of contents for all `docs/` (ops, xChat, diagrams).
+- **[`.cursor/skills/README.md`](../README.md)** — table of contents for Cursor skills.
+
 ## Output
 
 - `Replay gaps`

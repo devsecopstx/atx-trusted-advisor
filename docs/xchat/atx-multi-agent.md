@@ -1,6 +1,6 @@
 # Multi-agent orchestration & xChat ↔ xStrategyBuilder
 
-Single source for orchestration pattern, xChat integration, and scale notes. Diagram: [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).
+**Docs index:** [`../README.md`](../README.md). Diagram: [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).
 
 **Elsewhere (do not duplicate):** [`context-routing-multi-agent-policy.md`](./context-routing-multi-agent-policy.md) · [`../ops/api-consolidation-spring-backend.md`](../ops/api-consolidation-spring-backend.md) · `.cursor/skills/xdesign-review/SKILL.md` · `.cursor/plans/atx-backend-xchat-multi-agent-orchestrator.plan.md`
 
