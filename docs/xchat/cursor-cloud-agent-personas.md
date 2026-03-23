@@ -6,15 +6,15 @@ Define a stable, repo-local baseline for atxfinance multi-agent execution in Cur
 
 ## Persona Files
 
-- `.cursor/agents/pr-reviewer.md`
-- `.cursor/agents/feature-core-mvp.md`
-- `.cursor/agents/feature-branding.md`
+- `.cursor/agents/atx-reviewer.yaml`
+- `.cursor/agents/atx-backend.yaml`
+- `.cursor/agents/atx-frontend.yaml`
 
 ## Operating Model
 
-1. **PR Reviewer** validates quality gates and merge readiness.
-2. **Feature Core MVP** handles API/domain/runtime work.
-3. **Feature Branding** handles UI and brand-system work.
+1. **atx-reviewer** validates quality gates and merge readiness.
+2. **atx-backend** handles API/domain/runtime work.
+3. **atx-frontend** handles UI and brand-system work.
 
 ## Validation Baseline
 

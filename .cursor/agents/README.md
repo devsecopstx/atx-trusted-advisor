@@ -4,9 +4,9 @@ This folder defines repo-local agent personas for atxfinance Cursor Cloud usage.
 
 Current personas:
 
-- `pr-reviewer.md`
-- `feature-core-mvp.md`
-- `feature-branding.md`
+- `atx-frontend.yaml`
+- `atx-backend.yaml`
+- `atx-reviewer.yaml`
 
 Usage guidance:
 

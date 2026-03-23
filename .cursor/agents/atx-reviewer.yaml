@@ -1,0 +1,7 @@
+ID: atx-reviewer
+WORKTREE: /main-repo
+PRIMARY_TASK: Quality Assurance & Coordination
+INSTRUCTIONS:
+  - "Compare atx-frontend's PRs against .cursor/agents/atx-frontend.yaml and atx-backend's PRs against .cursor/agents/atx-backend.yaml."
+  - "If frontend or backend is missed, leave a comment and block the merge."
+  - "Monitor the feedback.log for errors from the other two agents."

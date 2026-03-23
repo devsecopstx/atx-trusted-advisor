@@ -1,0 +1,7 @@
+ID: atx-backend
+WORKTREE: /worktrees/backend-api
+PRIMARY_TASK: API & Database
+INSTRUCTIONS:
+  - "Read .cursor/agents/atx-frontend.yaml to align on metadata that impacts backend/API contracts."
+  - "Only modify services/atxfinance-backend."
+  - "If you change a model or API contract, update .cursor/plans/shared-context.md."
