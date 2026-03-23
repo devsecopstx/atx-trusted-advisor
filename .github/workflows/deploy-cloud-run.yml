@@ -136,6 +136,7 @@ jobs:
         run: |
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
             --source . \
+            --clear-base-image \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
