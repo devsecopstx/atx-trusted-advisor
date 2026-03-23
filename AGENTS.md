@@ -118,7 +118,7 @@ from injected secrets.
 - Backend (multi-node agents) skills: `atx-backend-architecture`, `atx-backend-deploy-stage`, `atx-backend-deploy-prod`, `atx-backend-runbook`, `atx-backend-ci`.
 - Junie guidelines for backend operations: `docs/ops/junie-guidelines-atxfinance-backend.md`.
 - xDesign review outputs: `docs/xchat/xdesign-review-admin-console-ux.md` (and other `docs/xchat/*.md`).
-- Options strategies: **10 structures**, each with two skills — `atx-skill-*` (generic framework) and `atx-strategy-*` (TSLA/xFinance framing); index: `.cursor/skills/README.md` § *Options strategies*.
+- Options strategies: **10** `atx-skill-*` playbooks (options structures); index: `.cursor/skills/README.md` § *Options strategies*.
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
 - Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/atxfinance-tool-stub.md`.
 

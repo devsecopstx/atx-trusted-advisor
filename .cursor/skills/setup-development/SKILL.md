@@ -42,8 +42,8 @@ Recommended allocation:
 
 1. `atxfinance-prod` (prod only)
 2. `atxfinance-nonprod` (dev + staging)
-3. `atx-strategy-nonprod` (if separate repo/app)
-4. `spare-rotation` (or future `atx-strategy-prod`)
+3. `options-stack-nonprod` (if separate repo/app)
+4. `spare-rotation` (or future `options-stack-prod`)
 
 Notes:
 

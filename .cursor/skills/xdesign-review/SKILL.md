@@ -1,7 +1,7 @@
 ---
 id: xdesign-review
 name: xdesign-review
-version: "1.1.1"
+version: "1.1.2"
 description: Final PR + production-readiness review gate for atxFinance when combining Core MVP and Branding changes (and pre-prod lock).
 ---
 
@@ -30,6 +30,7 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 
 ## Skill changelog
 
+- **1.1.2** — Options index: **`atx-strategy-*` skill folders removed** from the repo as duplicative; only **`atx-skill-*`** remains — README + AGENTS updated.
 - **1.1.1** — README options index: single table for `atx-skill-*` vs `atx-strategy-*` (no duplicate sections); AGENTS.md line aligned.
 - **1.1.0** — xChat prompt assembly is centralized (`buildXchatSystemPrompt`, `buildSessionToolInstructions`, `appendXchatKbMetadata`); doc parity pointer remains `docs/xchat/xchat-tools-guide.md`.
 
@@ -130,7 +131,7 @@ Ship checklist (align with **`test-commit-push`** / **`AGENTS.md`**):
 
 ## Skill index note (options)
 
-The `.cursor/skills/README.md` index uses **one** section for options: ten rows, each row links **both** `atx-skill-*` and `atx-strategy-*`. That is intentional — same structure, different voice (generic vs TSLA/xFinance). Do not remove either column; compare `atx-skill-wheel` vs `atx-strategy-wheel` for an example.
+The repo maintains **only** `atx-skill-*` option playbooks (see `.cursor/skills/README.md` § *Options strategies*). TSLA/xFinance nuance belongs in the chat prompt, not a parallel skill folder.
 
 ## Guardrails
 
