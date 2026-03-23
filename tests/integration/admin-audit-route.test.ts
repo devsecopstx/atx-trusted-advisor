@@ -9,13 +9,22 @@ const auditMocks = vi.hoisted(() => ({
   listAuditEvents: vi.fn()
 }));
 
+const bffMocks = vi.hoisted(() => ({
+  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+}));
+
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/lib/backend-bff", () => ({
+  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+}));
 
 import { GET as getAuditEvents } from "@/app/api/admin/audit/route";
 
 describe("admin audit route", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -64,5 +73,18 @@ describe("admin audit route", () => {
 
     const response = await getAuditEvents(new Request("http://test/api/admin/audit"));
     expect(response.status).toBe(403);
+  });
+
+  it("short-circuits to BFF response without listing from Next repository", async () => {
+    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(
+      new NextResponse(JSON.stringify({ data: [{ action: "proxied" }] }), { status: 200 })
+    );
+
+    const response = await getAuditEvents(new Request("http://test/api/admin/audit"));
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data: Array<{ action: string }> };
+    expect(payload.data[0]?.action).toBe("proxied");
+    expect(auditMocks.listAuditEvents).not.toHaveBeenCalled();
+    expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
   });
 });

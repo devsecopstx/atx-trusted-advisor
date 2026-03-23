@@ -11,6 +11,10 @@ import javax.crypto.spec.SecretKeySpec
 data class ResolvedSession(
     val userId: String,
     val tenantId: String,
+    /** Platform roles from the signed Next.js cookie (`global_admin`, `advisor`, …). */
+    val roles: List<String> = emptyList(),
+    val email: String? = null,
+    val username: String? = null,
 )
 
 @Component
@@ -40,6 +44,14 @@ class SessionCookieParser(
         }
         val userId = node.get("userId")?.asText()?.trim().orEmpty()
         val tenantId = node.get("tenantId")?.asText()?.trim().orEmpty()
+        val email = node.get("email")?.asText()?.trim()?.takeIf { it.isNotEmpty() }
+        val username = node.get("username")?.asText()?.trim()?.takeIf { it.isNotEmpty() }
+        val rolesNode = node.get("roles")
+        val roles = if (rolesNode != null && rolesNode.isArray) {
+            rolesNode.mapNotNull { it?.asText()?.trim()?.takeIf { r -> r.isNotEmpty() } }
+        } else {
+            emptyList()
+        }
         val exp = node.get("exp")?.asLong(0L) ?: 0L
         if (exp <= System.currentTimeMillis()) {
             return null
@@ -47,7 +59,13 @@ class SessionCookieParser(
         if (userId.isBlank() || tenantId.isBlank()) {
             return null
         }
-        return ResolvedSession(userId = userId, tenantId = tenantId)
+        return ResolvedSession(
+            userId = userId,
+            tenantId = tenantId,
+            roles = roles,
+            email = email,
+            username = username,
+        )
     }
 
     companion object {

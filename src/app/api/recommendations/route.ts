@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { publishRecommendationEvent } from "@/lib/pubsub/recommendations-publish";
 import { recommendationToJson } from "@/lib/recommendations-json";
 import { canUserLogin } from "@/modules/identity/authorization";
@@ -19,7 +20,12 @@ const createBodySchema = z.object({
   status: z.enum(recommendationStatusValues).optional()
 });
 
-export async function GET() {
+export async function GET(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
@@ -40,6 +46,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;

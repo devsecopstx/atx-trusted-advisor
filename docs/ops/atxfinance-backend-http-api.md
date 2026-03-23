@@ -40,6 +40,69 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 | POST | `/api/positions` | Legacy body `{ portfolioId, accountId, symbol, qty, avgCost }` or OpenAPI-style `{ portfolioId, accountId, ticker, type?, shares?, contracts?, ... }` (same normalization as Next). **201** `{ "data": ... }`. **400** invalid payload (legacy + openapi parse errors in `details`) or validation; **404** account not in portfolio; position validation errors mirror Next (`code` + `error`). |
 | DELETE | `/api/positions/{positionId}` | Query `portfolioId`, `accountId`. **200** `{ "ok": true }`. **404** account not in portfolio or position not found. |
 
+## App user recommendations (`app_user_recommendations`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/recommendations` | **200** `{ "data": [...] }`. **401** / **403** if session roles cannot log in (mirrors Next `canUserLogin`). |
+| POST | `/api/recommendations` | **201** `{ "data": ... }`. Body aligned with Next (`title`, optional `summary`, `scopeTags`, `payload`, `status`). **400** on invalid body. |
+| GET | `/api/recommendations/{recommendationId}` | **200** `{ "data": ... }` or **404**. Tenant scope matches legacy Next `withTenantScope`. |
+
+## Portfolio recommendations (`portfolio_recommendations`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/portfolios/{portfolioId}/recommendations` | **200** `{ "data": [...] }` or **404** if portfolio not accessible. |
+| POST | `/api/portfolios/{portfolioId}/recommendations` | **201** `{ "data": ... }` or **404** / **400** (invalid payload). |
+
+## Strategy options (Yahoo + synthetic fallback)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/strategy-options/expirations` | Query `underlying` (required). **200** `{ underlying, expirationDates }` or **400** / **500** on Yahoo failure. |
+| GET | `/api/strategy-options` | Query `underlying`, `expiration`, optional `strike`. **200** option chain JSON (Yahoo when available, else synthetic model). **401** if unauthenticated. |
+
+## Feedback
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/feedback` | **201** `{ "ok": true }`. Body `{ "message", "page"? }`. Posts to **`SLACK_WEBHOOK_URL`** when set (same as Next). |
+
+## Admin (global_admin session)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/admin/bootstrap-status` | **200** bootstrap/index/seed snapshot. Uses env **`ADMIN_SEED_EMAIL`** (same as Next). |
+| GET | `/api/admin/audit` | **200** `{ "data": [...] }` with optional filters (`entityType`, `entityId`, `action`, `actor`, `from`, `to`, `limit`). |
+
+**Audit semantics:** `actor` filter behavior can differ between Next (regex on email/username) and Kotlin (exact userId/email/username match) — see `docs/ops/audit-lineage-and-controls.md`.
+
+## RAG files (read)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/rag/files` | **Global admin only.** **200** `{ "data": [...] }` from `xchat_rag_files` (optional `scope` query). |
+
+## Personas (`xchat_personas`, session + roles)
+
+Session cookie must include **`roles`** (JSON array) so Kotlin can enforce **`global_admin`** for mutations (same as Next `requireAdminSession`). Legacy role `admin` is treated as `global_admin`.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/personas` | **200** `{ "data": [...] }`. Non–global-admin: `status=published` only. Global admin: optional `?status=draft\|published\|archived`, or all personas. Each row may include `latestAuditEvent` (admin only) from `admin_audit_events`. |
+| POST | `/api/personas` | **Global admin only.** **201** `{ "data": ... }`. **409**/`PERSONA_NAME_CONFLICT` on duplicate normalized name. **413** if `Content-Length` > 32 KiB. |
+| GET | `/api/personas/{personaId}` | **Global admin only.** **200** `{ "data": { ...persona, auditTrail: [...] } }` or **404**. |
+| PUT | `/api/personas/{personaId}` | **Global admin only.** **200** `{ "data": ... }`. **400** invalid payload (incl. file_search collection rules), **404**, **409** name conflict. |
+| DELETE | `/api/personas/{personaId}` | **Global admin only.** **200** `{ "ok": true }` or **404**. |
+
+**Note:** Kotlin validates persona payloads and `xapi`/`file_search` rules in line with the Next.js zod schemas; error shapes may differ slightly (e.g. `details` flatten).
+
+## Access requests (`admin_access_requests`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/access-requests` | Body `{ "requestedRole"?: "advisor"\|"operator"\|"viewer", "reason": string (3–500) }`. **201** `{ "ok": true, "data": { requestedRole, status, requestedAt } }`. **409** if a pending request exists for the same user + role. Inserts **`admin_audit_events`** (`self_requested`) and posts to **`SLACK_WEBHOOK_URL`** when configured (parity with Next). |
+
 ## OpenAPI / Swagger UI
 
 SpringDoc OpenAPI 2.x (see `services/atxfinance-backend/build.gradle.kts`):

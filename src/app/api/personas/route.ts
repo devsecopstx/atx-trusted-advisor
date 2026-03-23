@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { requireSessionUser } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     createAuditEvent,
     listLatestAuditEventsForEntities
@@ -21,6 +22,11 @@ import {
 import { normalizePersonaXapiConfig, personaStatusValues, type PersonaConfig, type PersonaStatus } from "@/modules/xchat/types";
 
 export async function GET(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
@@ -55,6 +61,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

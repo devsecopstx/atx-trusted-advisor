@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { getEnv } from "@/lib/env";
 import { getDb } from "@/lib/mongodb";
 
@@ -10,7 +11,12 @@ const expectedIndexNames = {
   memberships: ["uniq_membership_user_tenant"]
 } as const;
 
-export async function GET() {
+export async function GET(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

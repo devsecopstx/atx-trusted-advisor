@@ -2,6 +2,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { BFF_PROXY_ROUTES, toKotlinBffMappingNeedle } from "@/lib/bff-proxy-routes";
+
 const REPO_ROOT = process.cwd();
 const BACKEND_KOTLIN_MAIN = resolve(REPO_ROOT, "services/atxfinance-backend/src/main/kotlin");
 const SPEC_PATH = resolve(REPO_ROOT, "docs/ops/atxfinance-backend-http-api.md");
@@ -9,22 +11,7 @@ const SPEC_PATH = resolve(REPO_ROOT, "docs/ops/atxfinance-backend-http-api.md");
 /** Routes that must stay declared in Kotlin controllers and documented in the HTTP spec. */
 const REQUIRED_GET_ROUTES = ["/api/health", "/api/backend/health"] as const;
 
-/** Portfolio BFF surface; path variable names must match Kotlin `@*Mapping`. */
-const REQUIRED_PORTFOLIO_BFF_MAPPINGS = [
-  `@GetMapping("/api/portfolios/{portfolioId}")`,
-  `@PatchMapping("/api/portfolios/{portfolioId}")`,
-  `@GetMapping("/api/portfolios/default")`,
-  `@PostMapping("/api/portfolios/default")`,
-  `@GetMapping("/api/portfolios/current")`,
-  `@GetMapping("/api/portfolios/{portfolioId}/accounts")`,
-  `@PostMapping("/api/portfolios/{portfolioId}/accounts")`,
-  `@PatchMapping("/api/portfolios/{portfolioId}/accounts/{accountId}")`,
-  `@GetMapping("/api/portfolios/{portfolioId}/watchlist")`,
-  `@PatchMapping("/api/portfolios/{portfolioId}/watchlist")`,
-  `@GetMapping("/api/positions")`,
-  `@PostMapping("/api/positions")`,
-  `@DeleteMapping("/api/positions/{positionId}")`
-] as const;
+const REQUIRED_PORTFOLIO_BFF_MAPPINGS = BFF_PROXY_ROUTES.map(toKotlinBffMappingNeedle);
 
 function readTreeFiles(dir: string, acc: string[] = []): string[] {
   for (const name of readdirSync(dir, { withFileTypes: true })) {
@@ -49,6 +36,18 @@ describe("atxfinance-backend HTTP API parity (docs ↔ Kotlin)", () => {
     expect(spec).toContain("/api/portfolios/{portfolioId}/watchlist");
     expect(spec).toContain("/api/positions");
     expect(spec).toContain("/api/positions/{positionId}");
+    expect(spec).toContain("/api/personas");
+    expect(spec).toContain("/api/personas/{personaId}");
+    expect(spec).toContain("/api/access-requests");
+    expect(spec).toContain("/api/recommendations");
+    expect(spec).toContain("/api/recommendations/{recommendationId}");
+    expect(spec).toContain("/api/portfolios/{portfolioId}/recommendations");
+    expect(spec).toContain("/api/strategy-options");
+    expect(spec).toContain("/api/strategy-options/expirations");
+    expect(spec).toContain("/api/feedback");
+    expect(spec).toContain("/api/admin/bootstrap-status");
+    expect(spec).toContain("/api/admin/audit");
+    expect(spec).toContain("/api/rag/files");
     expect(spec).toContain("/actuator/health");
     expect(spec).toContain("/v3/api-docs");
   });
@@ -64,7 +63,7 @@ describe("atxfinance-backend HTTP API parity (docs ↔ Kotlin)", () => {
     }
   });
 
-  it("Kotlin controllers expose portfolio BFF @*Mapping paths", () => {
+  it("Kotlin controllers expose BFF @*Mapping paths (portfolios + personas + access-requests)", () => {
     const files = readTreeFiles(BACKEND_KOTLIN_MAIN);
     const combined = files.map((f) => readFileSync(f, "utf8")).join("\n");
     for (const needle of REQUIRED_PORTFOLIO_BFF_MAPPINGS) {

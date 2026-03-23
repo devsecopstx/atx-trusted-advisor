@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { buildUserFeedbackNotification, sendSlackNotification } from "@/lib/slack";
 
 const bodySchema = z.object({
@@ -10,6 +11,11 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;

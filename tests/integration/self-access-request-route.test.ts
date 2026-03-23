@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
+import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
@@ -20,10 +20,17 @@ const slackMocks = vi.hoisted(() => ({
   buildAccessRequestNotification: vi.fn()
 }));
 
+const bffMocks = vi.hoisted(() => ({
+  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/lib/slack", () => slackMocks);
+vi.mock("@/lib/backend-bff", () => ({
+  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+}));
 
 import { POST } from "@/app/api/access-requests/route";
 
@@ -38,6 +45,8 @@ describe("POST /api/access-requests (self-service)", () => {
   };
 
   beforeEach(() => {
+    vi.clearAllMocks();
+    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
     authMocks.requireSessionUser.mockResolvedValue(session);
     repositoryMocks.getPendingAccessRequestByUserAndRole.mockResolvedValue(null);
     repositoryMocks.createAccessRequest.mockResolvedValue({
@@ -196,5 +205,22 @@ describe("POST /api/access-requests (self-service)", () => {
     expect(slackMocks.buildAccessRequestNotification).toHaveBeenCalledWith(
       expect.objectContaining({ email: "viewer@atxfinance.ai", requestedRole: "viewer" })
     );
+  });
+
+  it("when BFF returns a response, skips Next repo audit/Slack (JVM owns side effects)", async () => {
+    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, data: { status: "pending" } }), { status: 201 })
+    );
+    const response = await POST(
+      new Request("http://test/api/access-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Proxied path — audit on Spring" })
+      })
+    );
+    expect(response.status).toBe(201);
+    expect(repositoryMocks.createAccessRequest).not.toHaveBeenCalled();
+    expect(auditMocks.createAuditEvent).not.toHaveBeenCalled();
+    expect(slackMocks.sendSlackNotification).not.toHaveBeenCalled();
   });
 });

@@ -33,6 +33,9 @@ app:
     accounts-collection: portfolio_accounts
     watchlists-collection: portfolio_watchlists
     positions-collection: portfolio_positions
+    app-user-recommendations-collection: app_user_recommendations
+    portfolio-recommendations-collection: portfolio_recommendations
+    rag-files-collection: xchat_rag_files
     tenant-portfolio-org-key: ${TENANT_PORTFOLIO_ORG_KEY:org-atx-finance}
   pubsub:
     project-id: ${PUBSUB_PROJECT_ID:}

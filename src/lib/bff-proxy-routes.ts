@@ -1,0 +1,72 @@
+/**
+ * Routes the Next.js App Router may forward to Spring when `ATXFINANCE_BACKEND_ORIGIN` is set
+ * (`proxyRequestToBackend` in `backend-bff.ts`). Keep in sync with Kotlin `@*Mapping` and
+ * `docs/ops/atxfinance-backend-http-api.md`.
+ *
+ * Next likely vertical slice (not proxied yet): xChat / streaming routes — see
+ * `docs/ops/api-consolidation-spring-backend.md`.
+ */
+export type BffProxyHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+export type BffProxyRoute = {
+  readonly method: BffProxyHttpMethod;
+  /** Path as in Spring/Kotlin, e.g. `/api/portfolios/{portfolioId}` */
+  readonly path: string;
+};
+
+export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
+  { method: "GET", path: "/api/portfolios/{portfolioId}" },
+  { method: "PATCH", path: "/api/portfolios/{portfolioId}" },
+  { method: "GET", path: "/api/portfolios/default" },
+  { method: "POST", path: "/api/portfolios/default" },
+  { method: "GET", path: "/api/portfolios/current" },
+  { method: "GET", path: "/api/portfolios/{portfolioId}/accounts" },
+  { method: "POST", path: "/api/portfolios/{portfolioId}/accounts" },
+  { method: "PATCH", path: "/api/portfolios/{portfolioId}/accounts/{accountId}" },
+  { method: "GET", path: "/api/portfolios/{portfolioId}/watchlist" },
+  { method: "PATCH", path: "/api/portfolios/{portfolioId}/watchlist" },
+  { method: "GET", path: "/api/positions" },
+  { method: "POST", path: "/api/positions" },
+  { method: "DELETE", path: "/api/positions/{positionId}" },
+  { method: "GET", path: "/api/recommendations" },
+  { method: "POST", path: "/api/recommendations" },
+  { method: "GET", path: "/api/recommendations/{recommendationId}" },
+  { method: "GET", path: "/api/portfolios/{portfolioId}/recommendations" },
+  { method: "POST", path: "/api/portfolios/{portfolioId}/recommendations" },
+  { method: "GET", path: "/api/strategy-options" },
+  { method: "GET", path: "/api/strategy-options/expirations" },
+  { method: "POST", path: "/api/feedback" },
+  { method: "GET", path: "/api/admin/bootstrap-status" },
+  { method: "GET", path: "/api/admin/audit" },
+  { method: "GET", path: "/api/rag/files" },
+  { method: "GET", path: "/api/personas" },
+  { method: "POST", path: "/api/personas" },
+  { method: "GET", path: "/api/personas/{personaId}" },
+  { method: "PUT", path: "/api/personas/{personaId}" },
+  { method: "DELETE", path: "/api/personas/{personaId}" },
+  { method: "POST", path: "/api/access-requests" }
+] as const;
+
+function kotlinMappingAnnotation(method: BffProxyHttpMethod): string {
+  switch (method) {
+    case "GET":
+      return "GetMapping";
+    case "POST":
+      return "PostMapping";
+    case "PUT":
+      return "PutMapping";
+    case "PATCH":
+      return "PatchMapping";
+    case "DELETE":
+      return "DeleteMapping";
+    default: {
+      const _exhaustive: never = method;
+      return _exhaustive;
+    }
+  }
+}
+
+/** `@GetMapping("/api/...")` string as stored in Kotlin sources — for smoke parity with controllers. */
+export function toKotlinBffMappingNeedle(route: BffProxyRoute): string {
+  return `@${kotlinMappingAnnotation(route.method)}("${route.path}")`;
+}

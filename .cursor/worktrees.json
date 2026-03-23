@@ -1,4 +1,19 @@
 {
-  "version": 1,
-  "worktrees": []
+  "worktrees": [
+    {
+      "name": "atx-backend",
+      "branch": "feature/atx-backend",
+      "setup": "echo 'ROLE=atx-backend' > .cursor/agents/atx-backend.md && npm install"
+    },
+    {
+      "name": "atx-ux",
+      "branch": "feature/atx-ux",
+      "setup": "echo 'ROLE=atx-ux' > .cursor/agents/atx-reviewer.md && npm install"
+    },
+    {
+      "name": "atx-reviewer",
+      "branch": "develop",
+      "setup": "echo 'ROLE=atx-reviewer' > .cursor/agents/atx-ux-agent.md"
+    }
+  ]
 }

@@ -16,6 +16,14 @@ const publishMocks = vi.hoisted(() => ({
   publishRecommendationEvent: vi.fn()
 }));
 
+const bffMocks = vi.hoisted(() => ({
+  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+}));
+
+vi.mock("@/lib/backend-bff", () => ({
+  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/recommendations/repository", () => repoMocks);
 vi.mock("@/lib/pubsub/recommendations-publish", () => publishMocks);
@@ -53,6 +61,8 @@ function sampleRecommendation(overrides: Partial<{ userId: string }> = {}) {
 
 describe("/api/recommendations", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
     authMocks.requireSessionUser.mockResolvedValue(viewerSession);
     publishMocks.publishRecommendationEvent.mockResolvedValue(undefined);
   });
@@ -61,7 +71,7 @@ describe("/api/recommendations", () => {
     authMocks.requireSessionUser.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
-    const res = await listRecommendations();
+    const res = await listRecommendations(new Request("http://test/api/recommendations"));
     expect(res.status).toBe(401);
   });
 
@@ -70,14 +80,14 @@ describe("/api/recommendations", () => {
       ...viewerSession,
       roles: []
     });
-    const res = await listRecommendations();
+    const res = await listRecommendations(new Request("http://test/api/recommendations"));
     expect(res.status).toBe(403);
   });
 
   it("GET returns list for viewer", async () => {
     const doc = sampleRecommendation();
     repoMocks.listRecommendationsForUser.mockResolvedValue([doc]);
-    const res = await listRecommendations();
+    const res = await listRecommendations(new Request("http://test/api/recommendations"));
     expect(res.status).toBe(200);
     const json = (await res.json()) as { data: { _id: string; title: string }[] };
     expect(json.data).toHaveLength(1);

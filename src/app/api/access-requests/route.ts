@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { buildAccessRequestNotification, sendSlackNotification } from "@/lib/slack";
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { createAuditEvent } from "@/modules/audit/repository";
@@ -16,6 +17,11 @@ const selfRequestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
