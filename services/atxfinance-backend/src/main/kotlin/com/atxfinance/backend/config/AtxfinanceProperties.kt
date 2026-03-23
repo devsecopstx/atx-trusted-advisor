@@ -18,6 +18,7 @@ data class AtxfinanceProperties(
     val auditEventsCollection: String = "admin_audit_events",
     val scheduledTasksCollection: String = "admin_scheduled_tasks",
     val taskRunsCollection: String = "admin_task_runs",
+    val deployNoteConfigsCollection: String = "admin_deploy_note_configs",
     val appUserRecommendationsCollection: String = "app_user_recommendations",
     val portfolioRecommendationsCollection: String = "portfolio_recommendations",
     val ragFilesCollection: String = "xai_collections",

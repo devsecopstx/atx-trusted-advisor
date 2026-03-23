@@ -16,16 +16,18 @@ Canonical proxied routes live in `src/lib/bff-proxy-routes.ts` (see `tests/smoke
 |------|--------|
 | Tasks / scheduler | `GET/POST /api/admin/tasks`, `POST .../tasks/{taskId}/run`, `GET /api/admin/task-runs`, `POST /api/admin/scheduler/tick` — **operator cutover** = set `ATXFINANCE_BACKEND_ORIGIN` per `docs/ops/api-consolidation-spring-backend.md` § **PR 3**. |
 
-## Still Next-primary — **PR 4 (deploy + import migration)**
+## Shipped on Kotlin + BFF — **PR 4 (deploy-note-configs + import/broker)**
 
-Migrate as **one slice** when ready: Kotlin + proxy + parity tests + doc updates.
+| Area | Notes |
+|------|--------|
+| **Deploy-note-configs** | `GET/POST /api/admin/deploy-note-configs`, `GET/PUT/DELETE .../{configId}` — Mongo **`admin_deploy_note_configs`**. |
+| **Import / broker** | `POST /api/admin/import/broker` — Merrill/Fidelity holdings CSV; **`portfolio-console.tsx`**. |
 
-| Area | Example Next routes | Notes |
-|------|---------------------|--------|
-| Users / tenants | admin user CRUD | **Shipped** on Kotlin + BFF (not part of PR 3/4). |
-| **Deploy-note-configs** | `GET/POST /api/admin/deploy-note-configs`, `[configId]` | Mongo **`admin_deploy_note_configs`**. Next-only until PR 4. |
-| **Import / broker** | `POST /api/admin/import/broker` | Next-only until PR 4. **`portfolio-console.tsx`** — Merrill/Fidelity holdings CSV. |
-| Alerts (future) | TBD | Pair with `ALERTS_PUBSUB_TOPIC` + `publishAppUserAlertEvent` (`src/lib/pubsub/alerts-publish.ts`) |
+## Still Next-primary / future
+
+| Area | Notes |
+|------|--------|
+| Alerts (future) | TBD; pair with `ALERTS_PUBSUB_TOPIC` + `publishAppUserAlertEvent` |
 
 ## Recommendations Pub/Sub
 
@@ -35,7 +37,7 @@ Migrate as **one slice** when ready: Kotlin + proxy + parity tests + doc updates
 ## RAG
 
 - **GET/POST** `/api/rag/files`: BFF to Spring; inventory Mongo collection **`xai_collections`** (see `docs/ops/atxfinance-backend-http-api.md`). Full RAG migration largely done.
-- **Readiness** `GET /api/rag/files/{fileId}/readiness`: Next-only until migrated. **PR 5** scopes a focused **RAG-readiness** migration (not full RAG) — see `docs/PLAN.md` § PR 5.
+- **Readiness** `GET /api/rag/files/{fileId}/readiness`: Migrated to Kotlin; proxy when `ATXFINANCE_BACKEND_ORIGIN` set.
 
 ## Related
 

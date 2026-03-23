@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -27,6 +28,7 @@ class RagFilesController(
     private val sessionCookieParser: SessionCookieParser,
     private val mongoTemplate: MongoTemplate,
     private val ragFileUploadService: RagFileUploadService,
+    private val ragFileReadinessService: com.atxfinance.backend.rag.RagFileReadinessService,
 ) {
 
     @GetMapping("/api/rag/files")
@@ -85,5 +87,33 @@ class RagFilesController(
         } catch (_: RagFileUploadService.PayloadTooLargeException) {
             ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(mapOf("error" to "Payload too large"))
         }
+    }
+
+    @GetMapping("/api/rag/files/{fileId}/readiness")
+    fun getReadiness(
+        request: HttpServletRequest,
+        @PathVariable fileId: String,
+    ): ResponseEntity<Map<String, Any?>> {
+        val session = sessionCookieParser.resolveSessionUser(
+            request.getHeader("Cookie"),
+            props.sessionCookieName,
+        ) ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(mapOf("error" to "Unauthorized"))
+        if (!session.isGlobalAdmin()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(mapOf("error" to "Forbidden"))
+        }
+        if (!ObjectId.isValid(fileId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid file id"))
+        }
+        val readiness = ragFileReadinessService.pollReadiness(ObjectId(fileId))
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "RAG file not found"))
+        val data = mapOf(
+            "fileId" to readiness.fileId,
+            "xaiFileId" to readiness.xaiFileId,
+            "readiness" to readiness.readiness,
+            "processingStatus" to readiness.processingStatus,
+            "message" to readiness.message,
+            "checkedAt" to readiness.checkedAt,
+        )
+        return ResponseEntity.ok(mapOf("data" to data))
     }
 }

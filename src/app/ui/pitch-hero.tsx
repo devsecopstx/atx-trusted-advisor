@@ -271,9 +271,9 @@ export default function Hero({
               className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed"
             >
               For <strong className="text-gray-200 font-semibold">HNWI</strong> and{" "}
-              <strong className="text-gray-200 font-semibold">RIA</strong> desks: structured options income with less
-              operational drag. AI prepares vetted wheel, covered-call, and LEAP-style ideas — you review, approve, and
-              delegate the rest.
+              <strong className="text-gray-200 font-semibold">trusted-family</strong>: structured options income with
+              less operational drag. AI prepares vetted wheel, covered-call, and LEAP-style ideas — you review
+              recommendations, and order trades in your broker, and delegate the rest.
             </motion.p>
 
             <motion.div

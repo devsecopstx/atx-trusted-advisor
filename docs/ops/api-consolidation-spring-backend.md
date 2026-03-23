@@ -15,9 +15,9 @@
 | `POST /api/user-feedback` | Yes | Slack webhook. |
 | `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` | Yes | Read-only admin probes. |
 | `GET` / `POST /api/rag/files` | Yes | Inventory Mongo **`xai_collections`**; POST uploads via xAI + chunking. |
-| **Auth (`/api/auth/*`)** | In progress | Spring-owned session; callback on app host (`/api/auth/x/callback`); dual-run during cutover — see **Auth callback contract** below. |
+| **Auth (`/api/auth/*`)** | Next-primary | OAuth callback (`/api/auth/x/callback`) on Next. To retire: implement Spring callback per **Auth callback contract**; add BFF proxy; dual-run 7–14 days before removing Next. |
 | **Deferred** | | **`xchat/*`** — streaming + tools; see **Plan: xChat** below. |
-| **Still Next-primary** | | Remaining `admin/*`: **deploy-note-configs**, **import/broker** (see **PR 4** below). **`/api/admin/access-requests`** is on Kotlin + BFF; full xAI bootstrap after approve still runs when handling the request on **Next** (proxy off). Users and **tasks / scheduler** are on Kotlin + BFF — cut over with **PR 3**. |
+| **PR 4 shipped** | | **deploy-note-configs**, **import/broker** on Kotlin + BFF. **RAG readiness** `GET /api/rag/files/{fileId}/readiness` migrated. |
 
 **Target (your architecture):** Next.js focuses on **branding + UI**; **atxfinance-backend** implements **business HTTP APIs** and scheduler/worker concerns. The browser or Next server calls the Spring service instead of executing domain logic in Route Handlers.
 

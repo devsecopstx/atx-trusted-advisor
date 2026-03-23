@@ -136,6 +136,30 @@ class PositionsService(
         return saved
     }
 
+    /**
+     * Delete all positions for a portfolio account. Used by broker holdings import.
+     */
+    fun deleteAllForAccount(
+        session: ResolvedSession,
+        portfolioId: String,
+        accountId: String,
+    ): Long {
+        if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId)) {
+            return 0L
+        }
+        val filter =
+            PortfolioMongoFilter.withTenantScopeCriteria(
+                Criteria().andOperator(
+                    PortfolioMongoFilter.userIdCriteria(session.userId),
+                    Criteria.where("portfolioId").`is`(ObjectId(portfolioId)),
+                    Criteria.where("accountId").`is`(ObjectId(accountId)),
+                ),
+                session.tenantId,
+            )
+        val result: DeleteResult = mongoTemplate.remove(Query.query(filter), props.positionsCollection)
+        return result.deletedCount
+    }
+
     fun delete(
         session: ResolvedSession,
         portfolioId: String,

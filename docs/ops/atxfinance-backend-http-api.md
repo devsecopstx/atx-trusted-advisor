@@ -90,6 +90,9 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 | POST | `/api/admin/tasks/{taskId}/run` | **Global admin only.** Executes task simulation, writes **`admin_task_runs`**. **200** `{ "data": { "runId", "status", "output" } }`. **404** unknown task. |
 | GET | `/api/admin/task-runs` | **Global admin only.** **200** `{ "data": [...] }` recent runs from **`admin_task_runs`** (tenant-scoped, `limit` default 50). |
 | POST | `/api/admin/scheduler/tick` | **Global admin only.** Loads due enabled tasks (`nextRunAt` ≤ now), runs each. **200** `{ "data": { "processed", "results" } }`. |
+| GET \| POST | `/api/admin/deploy-note-configs` | **Global admin only.** List (query `limit` 1–200, `environment` staging\|production) or create deploy-note config. **200** `{ "data": [...] }`, **201** on create. |
+| GET \| PUT \| DELETE | `/api/admin/deploy-note-configs/{configId}` | **Global admin only.** Get, update (partial), or delete config. **404** when not found. |
+| POST | `/api/admin/import/broker` | **Global admin only.** Merrill/Fidelity holdings CSV import. Body: `portfolioId`, `broker` (merrill\|fidelity), `exportType` (holdings), `csv`, `mappings` (broker account ref → core account id), optional `fidelityHoldingsDefaultAccountRef`, optional `dryRun`. **200** `{ "results": [...] }` or `{ "dryRun": true, "accounts": [...] }`. |
 
 **Audit semantics:** `actor` filter behavior can differ between Next (regex on email/username) and Kotlin (exact userId/email/username match) — see `docs/ops/audit-lineage-and-controls.md`.
 
@@ -101,6 +104,7 @@ RAG **file inventory** is stored in Mongo collection **`xai_collections`** (lega
 |--------|------|---------|
 | GET | `/api/rag/files` | **Global admin only.** **200** `{ "data": [...] }` from `xai_collections` (optional `scope` query). |
 | POST | `/api/rag/files` | **Global admin only.** `multipart/form-data` with field **`file`** and optional **`scope`** (default `global`). Uploads to xAI `POST /v1/files` (`XAI_API_KEY`, optional `XAI_BASE_URL`), inserts into `xai_collections`, chunks text-like files into `xchat_rag_chunks`. **201** `{ "data": ... }`. **400** bad input. **413** too large (max 5 MiB file). |
+| GET | `/api/rag/files/{fileId}/readiness` | **Global admin only.** Polls xAI file metadata, updates Mongo `xaiProcessingStatus`, returns **200** `{ "data": { "fileId", "xaiFileId", "readiness", "processingStatus", "message?", "checkedAt" } }`. **404** file not found. **400** invalid file id. |
 
 ## Personas (`xchat_personas`, session + roles)
 

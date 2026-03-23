@@ -15,6 +15,12 @@ data class XaiUploadResult(
     val processingStatus: String,
 )
 
+data class XaiFileMetadata(
+    val fileId: String,
+    val processingStatus: String,
+    val uploadErrorMessage: String?,
+)
+
 @Component
 class XaiFileUploadClient(
     private val env: Environment,
@@ -54,5 +60,28 @@ class XaiFileUploadClient(
             payload.get("processing_status")?.takeIf { !it.isNull }?.asText()?.takeIf { it.isNotBlank() }
                 ?: "unknown"
         return XaiUploadResult(fileId = fileId, processingStatus = processing)
+    }
+
+    fun getFileMetadata(xaiFileId: String): XaiFileMetadata {
+        val apiKey = env.getProperty("XAI_API_KEY")?.trim() ?: error("XAI_API_KEY is required")
+        val baseUrl = env.getProperty("XAI_BASE_URL")?.trim()?.takeIf { it.isNotEmpty() } ?: "https://api.x.ai/v1"
+        val url = "${baseUrl.trimEnd('/')}/files/${xaiFileId.trim()}"
+
+        val headers = HttpHeaders()
+        headers.setBearerAuth(apiKey)
+
+        val entity = HttpEntity<Void>(headers)
+        val response = restTemplate.exchange(url, org.springframework.http.HttpMethod.GET, entity, String::class.java)
+        val payload = objectMapper.readTree(response.body ?: "{}")
+        if (!response.statusCode.is2xxSuccessful) {
+            throw IllegalStateException("xAI file metadata failed: $payload")
+        }
+        val id = payload.get("id")?.takeIf { !it.isNull }?.asText()
+            ?: payload.get("file_id")?.takeIf { !it.isNull }?.asText()
+            ?: xaiFileId
+        val processing = payload.get("processing_status")?.takeIf { !it.isNull }?.asText()?.takeIf { it.isNotBlank() }
+            ?: "unknown"
+        val uploadError = payload.get("upload_error_message")?.takeIf { !it.isNull }?.asText()?.trim()?.takeIf { it.isNotEmpty() }
+        return XaiFileMetadata(fileId = id, processingStatus = processing, uploadErrorMessage = uploadError)
     }
 }

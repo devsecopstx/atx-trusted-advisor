@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requireAdminSession } from "@/lib/api-auth";
 import { getPortfolioByIdForSessionUser, listPortfolioAccounts } from "@/modules/core-admin/repository";
 import {
@@ -31,6 +32,9 @@ function isMappingsRecord(v: unknown): v is Record<string, string> {
  * Stock lots map to Mongo positions (symbol, qty, avgCost). Option/cash rows are skipped.
  */
 export async function POST(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) return proxied;
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

@@ -3,7 +3,7 @@
  * (`proxyRequestToBackend` in `backend-bff.ts`). Keep in sync with Kotlin `@*Mapping` and
  * `docs/ops/atxfinance-backend-http-api.md`.
  *
- * Next-only until PR 4 migration ships: admin/deploy-note-configs, admin/import/broker.
+ * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
  * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Tasks are PR 3 (on Spring when
  * ATXFINANCE_BACKEND_ORIGIN is set) — see docs/ops/api-consolidation-spring-backend.md.
  *
@@ -63,8 +63,15 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "POST", path: "/api/admin/tasks/{taskId}/run" },
   { method: "GET", path: "/api/admin/task-runs" },
   { method: "POST", path: "/api/admin/scheduler/tick" },
+  { method: "GET", path: "/api/admin/deploy-note-configs" },
+  { method: "POST", path: "/api/admin/deploy-note-configs" },
+  { method: "GET", path: "/api/admin/deploy-note-configs/{configId}" },
+  { method: "PUT", path: "/api/admin/deploy-note-configs/{configId}" },
+  { method: "DELETE", path: "/api/admin/deploy-note-configs/{configId}" },
+  { method: "POST", path: "/api/admin/import/broker" },
   { method: "GET", path: "/api/rag/files" },
   { method: "POST", path: "/api/rag/files" },
+  { method: "GET", path: "/api/rag/files/{fileId}/readiness" },
   { method: "GET", path: "/api/personas" },
   { method: "POST", path: "/api/personas" },
   { method: "GET", path: "/api/personas/{personaId}" },
