@@ -10,6 +10,13 @@ description: Execute a safe local validation flow (test, lint, typecheck), then 
 
 Ship changes safely by validating locally and preparing an accurate commit workflow.
 
+## Canonical branch: `main`
+
+- **Integration target:** Work lands on **`main`** via PR (or direct push only if repo policy allows and `main` is unprotected).
+- **Before commit / push:** `git fetch origin` and integrate **`origin/main`** (`git merge origin/main` or rebase per team policy) so your branch is current.
+- **PRs:** Default base is **`main`** — e.g. `gh pr create --base main` (GitHub UI: compare against **`main`**).
+- **After merge to `main`:** Staging deploy only (see workflow steps 15–16); production is manual.
+
 ## Use This Skill When
 
 - You are ready to ship a branch
@@ -18,9 +25,9 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 
 ## Workflow
 
-1. Sync branch with latest `main` before commit:
+1. Sync your branch with latest **`main`** before commit:
    - `git fetch origin`
-   - `git merge origin/main` (or rebase if team policy requires it)
+   - `git merge origin/main` (or `git rebase origin/main` if team policy requires it)
 2. If conflicts occur, resolve them first, then verify no conflict markers remain.
 3. Run **`npm run ci:gate`** (lint + typecheck + test). Add **`npm run build`** when the change is release/deploy-sensitive or touches App Router/build artifacts (same as `AGENTS.md` release gate: `ci:gate && build`).
 4. Fix blocking failures in scope.
@@ -47,7 +54,7 @@ Ship changes safely by validating locally and preparing an accurate commit workf
     - One-line subject is enough; add a body after a blank line only when context helps reviewers.
     - **Optional git hook:** `.githooks/commit-msg` can **hint** (or strictly enforce via `XFINANCE_ENFORCE_CURSOR_COMMIT=1`) on `agent/*`, `cursor/*`, and `release/*` branches — see **`.githooks/README.md`**. Hooks complement this doc; they do not replace it.
 12. Confirm push readiness and branch status.
-13. After push: create or update PR (`gh pr create` or `gh pr view` + `gh pr edit` as needed).
+13. After push: create or update PR targeting **`main`** (`gh pr create --base main` or `gh pr view` + `gh pr edit` as needed).
 14. **Staging first (when applicable):** Push branch, open/merge PR per policy, and verify staging before production (see `AGENTS.md` / deploy skills).
 15. **Deploy path:** **Push to `main`** runs **staging only** via **Deploy Cloud Run** — production does **not** auto-deploy.
 16. **Manual `workflow_dispatch`:** **Deploy Cloud Run** (no inputs) redeploys staging. **Deploy Cloud Run Production** (`workflow_dispatch` only; **no `push` trigger**) with **`confirm_manual_prod=yes`** runs production deploy (optional **`deployment_notes`** for Slack). Operators should verify staging before promoting prod (see `AGENTS.md` / `.github/workflows/deploy-cloud-run-production.yml`). If jobs show `skipped`, verify workflow and input names first.

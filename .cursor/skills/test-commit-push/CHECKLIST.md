@@ -3,7 +3,7 @@
 ## Pre-Validation
 
 - [ ] Branch is clean for intended scope (`git status --short` reviewed).
-- [ ] Main is synced (`git fetch origin` + merge/rebase policy applied).
+- [ ] **`main`** is synced (`git fetch origin` + merge/rebase `origin/main` per policy).
 - [ ] No conflict markers remain (`<<<<<<<`, `=======`, `>>>>>>>`).
 
 ## Validation Gates
