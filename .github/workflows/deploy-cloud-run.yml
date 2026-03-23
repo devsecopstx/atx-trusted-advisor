@@ -1,11 +1,9 @@
-# Staging Cloud Run deploy — push to main and optional workflow_dispatch.
-# Production is a separate workflow with NO push trigger: deploy-cloud-run-production.yml
+# Staging Cloud Run deploy — workflow_dispatch only (manual trigger + environment approval).
+# Configure required reviewers: Settings → Environments → staging → Required reviewers.
+# Production: deploy-cloud-run-production.yml (workflow_dispatch only).
 name: Deploy Cloud Run
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
@@ -21,7 +19,6 @@ env:
 
 jobs:
   deploy-staging:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     name: Deploy Staging
     runs-on: ubuntu-latest
     concurrency:
@@ -30,6 +27,7 @@ jobs:
     environment:
       name: staging
       url: ${{ vars.STAGING_BASE_URL }}
+    # Manual approval: Settings → Environments → staging → Required reviewers
     steps:
       - name: Checkout
         uses: actions/checkout@v4
