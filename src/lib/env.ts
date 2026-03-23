@@ -284,3 +284,9 @@ export function getMongoConnectionLabel(): string {
  * Override with `MONGODB_DB_NAME` only for local tooling if you must match a non-default DB path.
  */
 export const MONGODB_DB_NAME = "atxfinancedb";
+
+/** Default xAI API base URL when XAI_BASE_URL env is unset. Aligned with tenant_defaults.yaml. */
+export const XAI_BASE_URL_DEFAULT = "https://api.x.ai/v1";
+
+/** Default xAI Management API base URL when XAI_MANAGEMENT_BASE_URL env is unset. Aligned with tenant_defaults.yaml. */
+export const XAI_MANAGEMENT_BASE_URL_DEFAULT = "https://management-api.x.ai/v1";

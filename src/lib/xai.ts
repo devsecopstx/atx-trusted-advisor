@@ -1,4 +1,4 @@
-import { getEnv } from "@/lib/env";
+import { getEnv, XAI_BASE_URL_DEFAULT, XAI_MANAGEMENT_BASE_URL_DEFAULT } from "@/lib/env";
 import { toXaiRequestTools } from "@/lib/xai-tools";
 
 type XaiChatMessage = {
@@ -54,7 +54,7 @@ function getXaiConfig() {
   const env = getEnv();
   return {
     apiKey: env.XAI_API_KEY,
-    baseUrl: env.XAI_BASE_URL ?? "https://api.x.ai/v1",
+    baseUrl: env.XAI_BASE_URL ?? XAI_BASE_URL_DEFAULT,
     defaultModel: env.XAI_CHAT_MODEL ?? "grok-4.20-multi-agent-0309"
   };
 }
@@ -63,7 +63,7 @@ function getXaiManagementConfig() {
   const env = getEnv();
   return {
     managementApiKey: env.XAI_MANAGEMENT_API_KEY.trim(),
-    managementBaseUrl: env.XAI_MANAGEMENT_BASE_URL ?? "https://management-api.x.ai/v1"
+    managementBaseUrl: env.XAI_MANAGEMENT_BASE_URL ?? XAI_MANAGEMENT_BASE_URL_DEFAULT
   };
 }
 

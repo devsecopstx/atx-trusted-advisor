@@ -103,7 +103,7 @@ RAG **file inventory** is stored in Mongo collection **`xai_collections`** (lega
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/api/rag/files` | **Global admin only.** **200** `{ "data": [...] }` from `xai_collections` (optional `scope` query). |
-| POST | `/api/rag/files` | **Global admin only.** `multipart/form-data` with field **`file`** and optional **`scope`** (default `global`). Uploads to xAI `POST /v1/files` (`XAI_API_KEY`, optional `XAI_BASE_URL`), inserts into `xai_collections`, chunks text-like files into `xchat_rag_chunks`. **201** `{ "data": ... }`. **400** bad input. **413** too large (max 5 MiB file). |
+| POST | `/api/rag/files` | **Global admin only.** `multipart/form-data` with field **`file`** and optional **`scope`** (default `global`). Uploads to xAI `POST /v1/files` (`XAI_API_KEY`, optional `XAI_BASE_URL`; default `https://api.x.ai/v1` from `tenant_defaults.yaml` when unset), inserts into `xai_collections`, chunks text-like files into `xchat_rag_chunks`. **201** `{ "data": ... }`. **400** bad input. **413** too large (max 5 MiB file). |
 | GET | `/api/rag/files/{fileId}/readiness` | **Global admin only.** Polls xAI file metadata, updates Mongo `xaiProcessingStatus`, returns **200** `{ "data": { "fileId", "xaiFileId", "readiness", "processingStatus", "message?", "checkedAt" } }`. **404** file not found. **400** invalid file id. |
 
 ## Personas (`xchat_personas`, session + roles)
@@ -140,7 +140,8 @@ SpringDoc OpenAPI 2.x (see `services/atxfinance-backend/build.gradle.kts`):
 Resolution order for Spring Data Mongo URI (high level):
 
 1. **`MONGODB_URI_B64`** — if set, `MongoUriEnvPostProcessor` decodes and injects `spring.data.mongodb.uri` at highest precedence (same pattern as the core Next.js app).
-2. Else **`spring.data.mongodb.uri`** from `application.yml` / env: `MONGODB_URI` or `SPRING_DATA_MONGODB_URI` or default `mongodb://localhost:27017/${MONGODB_DB_NAME:atxfinancedb}`.
+2. Else **`spring.data.mongodb.uri`** from `application.yml` / env: `MONGODB_URI` or `SPRING_DATA_MONGODB_URI` or default `mongodb://localhost:27017/${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfinancedb}}`.
+3. **`spring.data.mongodb.database`** is set explicitly from `SPRING_DATA_MONGODB_DATABASE` or `MONGODB_DB_NAME` (default `atxfinancedb`) when using the default URI.
 
 Docker Compose sets `SPRING_DATA_MONGODB_URI` explicitly for the `atxfinance-backend` service unless overridden by `.env` / `MONGODB_URI_B64`.
 

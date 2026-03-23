@@ -10,6 +10,7 @@ spring:
       max-request-size: 7MB
   data:
     mongodb:
+      database: ${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfinancedb}}
       uri: ${MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfinancedb}}}}
 
 management:

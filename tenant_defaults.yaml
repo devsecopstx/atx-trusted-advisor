@@ -2,6 +2,11 @@
 # Purpose: Reasonable first-time defaults + minimal seed data
 # Used by: admin CLI, deployment script, docker-entrypoint, or CI seed job
 
+# xAI API base URL — fallback when XAI_BASE_URL env is unset (Spring and local tooling)
+XAI_BASE_URL: "https://api.x.ai/v1"
+# xAI Management API base URL — fallback when XAI_MANAGEMENT_BASE_URL env is unset
+XAI_MANAGEMENT_BASE_URL: "https://management-api.x.ai/v1"
+
 app:
   name: "atx-fintech-backend"
   environment: development         # can be overridden by ENV
