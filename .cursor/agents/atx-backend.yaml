@@ -7,6 +7,11 @@ description: |
 icon: "⚙️"
 color: "#0ea5e9"
 
+INSTRUCTIONS:
+  - Ship typed API and Mongo changes with Zod validation and tests when contracts move.
+  - Run `./gradlew test` in `services/atxfinance-backend` when Kotlin or BFF proxy routes change.
+  - Keep `bff-proxy-routes` and Next routes aligned per `AGENTS.md`.
+
 setup: test -f .cursor/agents/atx-backend.yaml && npm install
 
 env:

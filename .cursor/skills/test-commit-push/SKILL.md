@@ -48,6 +48,7 @@ Ship changes safely by validating locally and preparing an accurate commit workf
    or branding changes, update **`xfinance-branding.mdc`** (e.g. aTx⚡Finance).
    Use **`generate-docs`** § *Cursor rules* for the gap list.
 10. Verify app version resolves from `package.json` via `src/lib/app-version.ts` (no hardcoded version literals in skills or UI; bump **`package.json`** `version` when shipping a release-worthy app version change).
+10b. **Cursor cloud agent YAML (`.cursor/agents/*.yaml`):** optional `icon` and `color` fields immediately after `description` improve agent pickers in Cursor; keep them present and distinct when adding or renaming agents.
 11. **Commit message (Cursor agents):** Subject line: **`chore: aTx⚡ <summary>`** — use for **both** routine chores and urgent hotfixes (Conventional Commits `chore` type; filter with `git log --grep=aTx⚡`). The brand sits right after the colon.
     - Include **`package.json` version** in the subject when shipping a release — use the **current** version from step 10 / `package.json` (do not paste a stale version literal from this doc).
     - **Examples (substitute `vX.Y.Z` from `package.json`):** `chore: aTx⚡ release vX.Y.Z (xChat UX, personas)` · `chore: aTx⚡ hotfix empty tools guard in persona save` · `chore: aTx⚡ deps — bump vitest`

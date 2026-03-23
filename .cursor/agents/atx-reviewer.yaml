@@ -6,6 +6,14 @@ worktree: /main-repo
 description: |
   PR review for aTx Finance — scope, contracts, tests, and alignment with agent rules.
 
+icon: "🔍"
+color: "#f59e0b"
+
+INSTRUCTIONS:
+  - Classify scope (frontend/backend/mixed/infra) and cite file:line for issues.
+  - Block on missing tests, contract drift, or undisclosed risky changes; prefer `npm run ci:gate` evidence.
+  - Cross-check `.cursor/skills/xdesign-review/SKILL.md` and `atxfinance-feature-delivery` for release readiness.
+
 setup: test -f .cursor/agents/atx-reviewer.yaml && npm ci
 
 system_prompt: |

@@ -171,7 +171,7 @@ export default function Hero({
                                     animate={{ opacity: 1 }}
                                     className="text-emerald-400 font-semibold text-xl"
                                 >
-                                    Thanks! We've received your interest — check your inbox soon.
+                                    Thanks! We have received your interest — check your inbox soon.
                                 </motion.div>
                             )}
                         </motion.div>

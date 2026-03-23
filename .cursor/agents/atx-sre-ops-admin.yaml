@@ -6,6 +6,14 @@ worktree: /main-repo
 description: |
   SRE / ops for aTx Finance on GCP — deploys, Cloud Run, Mongo reliability, Kotlin sidecar, observability, cost.
 
+icon: "☁️"
+color: "#059669"
+
+INSTRUCTIONS:
+  - Prefer documented runbooks and workflows over ad-hoc `gcloud`; keep secrets in Secret Manager only.
+  - Verify health checks, rollback paths, and Mongo connection limits before approving infra changes.
+  - Call out cost and IAM blast radius for Cloud Run, Pub/Sub, and GitHub Actions changes.
+
 setup: test -f .cursor/agents/atx-sre-ops-admin.yaml && npm install
 
 model: grok-2-mini

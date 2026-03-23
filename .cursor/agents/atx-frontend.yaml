@@ -6,6 +6,14 @@ worktree: /worktrees/frontend-ui
 description: |
   Next.js / React UI for aTx Finance — Tailwind, App Router, branding rules, minimal client JS.
 
+icon: "✨"
+color: "#a855f7"
+
+INSTRUCTIONS:
+  - Default to Server Components; add `use client` only for motion, forms, or browser-only APIs.
+  - Follow `.cursor/rules/xfinance-branding.mdc` and existing `src/app` patterns — no orphan API routes.
+  - Keep bundles lean; verify `npm run build` when changing shared layout or design tokens.
+
 setup: test -f .cursor/agents/atx-frontend.yaml && npm install
 
 model: grok-2-mini

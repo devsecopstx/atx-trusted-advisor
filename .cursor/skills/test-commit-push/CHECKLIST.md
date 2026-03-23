@@ -31,6 +31,7 @@
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.
 - [ ] **Cursor agent commits** use **`chore: aTx⚡ …`** (see **`test-commit-push`** step 11).
+- [ ] **`.cursor/agents/*.yaml`:** when touched, keep `icon` / `color` (after `description`) aligned with Cursor UI expectations (see **`test-commit-push`** step 10b).
 - [ ] Docs/runbooks updated when behavior or operations changed.
 - [ ] **Mongo portfolio store:** canonical collection is **`tenant_portfolio`** (singular), constant `TENANT_PORTFOLIO_COLLECTION` in `src/modules/core-admin/collection-names.ts`. Legacy names `portfolio_portfolios` / `tenant_portfolios` → run **`npm run migrate:tenant-portfolio`** once per database before or right after deploy (see `DEVELOPMENT.md` → *Multi-tenant Seed Verification*).
 - [ ] xChat `POST /api/xchat/ask` changes: update OpenAPI inventory (`src/lib/openapi/current-state-overrides.ts`), `tests/integration/xchat-ask-route.test.ts`, and xChat docs as needed (`docs/xchat/xchat-tools-guide.md`, `context-routing-multi-agent-policy.md`, `atxfinance-tool-stub.md`, `AGENTS.md` quick ref). **Contract:** effective xAI model id comes from the **resolved persona’s `model`** (server default if empty); **no** request-body `model`; `modelSelectionSource` is `persona` | `default`. **Prompt assembly:** if `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` change, sync **`generate-docs`** § *xChat / tools & prompts*.
