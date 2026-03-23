@@ -4,6 +4,8 @@
 
 Operational runbook for engineers/agents working in `atxfinance` core admin app.
 
+**Cursor personas & skills:** see **DEVELOPMENT.md** → *Cursor agents & skills (repo-local)* and **`.cursor/agents/README.md`**.
+
 ## Standard Local Flow
 
 1. `cp .env.example .env` — set `ADMIN_SEED_EMAIL`; if you use **Sign in with X** and X does not return an email, also set **`ADMIN_SEED_X_USER_ID`** (your X numeric user id) so seed + OAuth can attach `xAccount` to the admin row. Leave `MONGODB_URI` unset for local Docker Mongo (auth defaults match `docker-compose.yml`).

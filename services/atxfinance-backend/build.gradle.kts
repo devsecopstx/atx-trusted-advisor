@@ -57,6 +57,7 @@ dependencies {
 
     // Tests
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.5.4")
 }
 
 tasks.withType<KotlinCompile>().configureEach {

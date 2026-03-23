@@ -196,12 +196,15 @@ export const nextBffApi = {
   }
 } as const satisfies Record<string, Record<string, BffRouteDefinition>>;
 
-/**
- * When `ATXFINANCE_BACKEND_ORIGIN` is set, forward the incoming request to Spring (same path + query).
- * Browser stays same-origin on Next; session cookie is forwarded. No CORS on the backend for this path.
- */
-export async function proxyRequestToBackend(request: Request): Promise<Response | null> {
-  const base = getAtxfinanceBackendOrigin();
+export type AtxfinanceBackendBff = {
+  getOrigin(): string | undefined;
+  proxyRequest(request: Request): Promise<Response | null>;
+};
+
+async function proxyRequestWithOrigin(
+  request: Request,
+  base: string | undefined
+): Promise<Response | null> {
   if (!base) {
     return null;
   }
@@ -242,4 +245,28 @@ export async function proxyRequestToBackend(request: Request): Promise<Response 
   }
 
   return fetch(target, init);
+}
+
+/**
+ * Injectable BFF client: same-origin Next routes delegate to Spring when `resolveOrigin()` returns a base URL.
+ */
+export function createAtxfinanceBackendBff(
+  resolveOrigin: () => string | undefined = getAtxfinanceBackendOrigin
+): AtxfinanceBackendBff {
+  return {
+    getOrigin: resolveOrigin,
+    proxyRequest(request: Request) {
+      return proxyRequestWithOrigin(request, resolveOrigin());
+    }
+  };
+}
+
+const defaultBff = createAtxfinanceBackendBff();
+
+/**
+ * When `ATXFINANCE_BACKEND_ORIGIN` is set, forward the incoming request to Spring (same path + query).
+ * Browser stays same-origin on Next; session cookie is forwarded. No CORS on the backend for this path.
+ */
+export async function proxyRequestToBackend(request: Request): Promise<Response | null> {
+  return defaultBff.proxyRequest(request);
 }
