@@ -1,24 +1,36 @@
-# Cursor Agent Personas
+# Cursor agent personas (repo-local)
 
-This folder defines repo-local agent personas for atxfinance Cursor Cloud usage.
+Markdown personas under **`.cursor/agents/`** tune Cursor Cloud / Composer for scoped work. They are **not** secrets — keep deploy steps in `DEVELOPMENT.md` / `AGENTS.md` and skills under **`.cursor/skills/`**.
 
-Current personas:
+## Current files
 
-- `pr-reviewer.md`
-- `feature-core-mvp.md`
-- `feature-branding.md`
+| File | Role | Use when |
+|------|------|----------|
+| [`atx-backend.md`](atx-backend.md) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
+| [`atx-reviewer.md`](atx-reviewer.md) | **PR / quality gate** reviewer — lint, typecheck, test, `ci:gate` | Pre-merge review, risk surface on changed files only |
+| [`atx-ux-agent.md`](atx-ux-agent.md) | **UI/UX + branding** — tokens, `src/app/**`, `design-system/**` | Visual work, a11y, responsive — avoid domain logic unless required |
 
-Usage guidance:
+## Parallel worktrees (`.cursor/worktrees.json`)
 
-- Keep persona prompts narrow and task-scoped.
-- Prefer deterministic validation commands (`lint`, `typecheck`, `test`, `build`).
-- Do not place secrets in persona files.
-- Keep operational/deploy steps in runbooks, not persona prompts.
+[`worktrees.json`](../worktrees.json) configures:
 
-## Commit messages (agent traceability)
+1. **Setup scripts** — `setup-worktree`, `setup-worktree-unix`, `setup-worktree-windows` run when Cursor creates a parallel-agent worktree (`npm ci`, copy `.env` from the primary tree via `$ROOT_WORKTREE_PATH` / `%ROOT_WORKTREE_PATH%`). See [Cursor docs — Parallel Agents](https://cursor.com/docs/configuration/worktrees).
+2. **Named worktrees** — the `worktrees` array lists `atx-ux`, `atx-backend`, and `atx-reviewer` with `description`, optional `npm` command hints, and a `setup` that stamps `ROLE=…` into **`.cursor/.atx-*`** marker files (local convenience only; not the persona `.md` bodies).
 
-For commits authored via Cursor agents, use subject prefix:
+## Conventions
 
-- **`chore: aTx⚡ <summary>`** — routine work and hotfixes (filter with `git log --grep=aTx⚡`).
+- Keep prompts **narrow** and task-scoped; prefer deterministic commands (`npm run ci:gate`, `./gradlew test`).
+- **Commit messages** for agent-authored commits: **`chore: aTx⚡ <summary>`** — see [`.cursor/skills/test-commit-push/SKILL.md`](../skills/test-commit-push/SKILL.md) (step 11).
+- **App version** lives only in `package.json` (read via `src/lib/app-version.ts`); do not hardcode versions in agent or skill bodies.
 
-Full detail: **`.cursor/skills/test-commit-push/SKILL.md`** (workflow step 11).
+## Skills index
+
+Hundreds of workflows live in **`.cursor/skills/*/SKILL.md`**. High-traffic entry points:
+
+| Area | Skill folder |
+|------|----------------|
+| Ship gate | `test-commit-push`, `test-lint`, `ci-failure` |
+| Spring backend | `atxfinance-backend-start-local`, `atxfinance-backend-architecture`, `atxfinance-backend-runbook` |
+| Deploy | `atxfinance-deploy-staging`, `atxfinance-deploy-production` |
+| Design / audit | `xdesign-review`, `xdesign-review-audit`, `xdesign-review-adversarial` |
+| Docs | `generate-docs`, `atxfinance-docs-ops` |

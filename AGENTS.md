@@ -4,6 +4,8 @@
 
 Operational runbook for engineers/agents working in `atxfinance` core admin app.
 
+**Cursor personas & skills:** see **DEVELOPMENT.md** → *Cursor agents & skills (repo-local)* and **`.cursor/agents/README.md`**.
+
 ## Standard Local Flow
 
 1. `cp .env.example .env` — set `ADMIN_SEED_EMAIL`; leave `MONGODB_URI_B64` empty for local Docker Mongo (auth defaults match `docker-compose.yml`).

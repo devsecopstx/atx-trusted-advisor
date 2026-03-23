@@ -184,6 +184,38 @@ Before changing deployment settings or running release workflows, verify:
    - `npm ci`
    - `npm run ci:gate && npm run build`
 
+## Cursor agents & skills (repo-local)
+
+Use this when picking a **Cursor Cloud / Composer persona** or finding a **workflow skill** without spelunking the whole `.cursor` tree.
+
+### Agent personas (`.cursor/agents/`)
+
+Markdown files define **narrow roles** — no secrets; operational steps stay in this doc and **`AGENTS.md`**.
+
+| File | Intent |
+|------|--------|
+| **`atx-backend.md`** | Kotlin **atxfinance-backend**, BFF migration, Spring HTTP parity, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
+| **`atx-reviewer.md`** | Pre-merge **review** — `npm run lint`, `typecheck`, `test`, `ci:gate`; scope to changed files |
+| **`atx-ux-agent.md`** | **UI/UX + branding** — `src/app/**`, `design-system/**`, tokens/a11y; avoid unrelated API/domain edits |
+
+Full detail and commit-message convention (**`chore: aTx⚡ …`**) — **`.cursor/agents/README.md`**.
+
+Optional: **`.cursor/worktrees.json`** names git worktrees; each entry’s `setup` may stamp `ROLE=…` into **`.cursor/.atx-*`** marker files (local convenience only).
+
+### Skills (`.cursor/skills/*/SKILL.md`)
+
+Reusable procedures (deploy, backend runbook, audit review, test gate). Examples:
+
+| Topic | Skill |
+|-------|--------|
+| Ship validation | `test-commit-push`, `test-lint`, `ci-failure` |
+| Spring backend | `atxfinance-backend-start-local`, `atxfinance-backend-architecture`, `atxfinance-backend-runbook` |
+| GCP deploy | `atxfinance-deploy-staging`, `atxfinance-deploy-production`, `atxfinance-gcp-foundation` |
+| Design / risk | `xdesign-review`, `xdesign-review-audit`, `xdesign-review-adversarial` |
+| Docs | `generate-docs`, `atxfinance-docs-ops` |
+
+**Rule:** Skill `.md` files must **not** embed literal app versions — version lives in **`package.json`** only (`src/lib/app-version.ts`).
+
 ## Cursor Cloud Agent Setup (Atlas Mode)
 
 Use this setup when running in Cursor Cloud with MongoDB Atlas. Do not start local MongoDB.

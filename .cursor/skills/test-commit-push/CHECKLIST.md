@@ -36,7 +36,7 @@
 - [ ] **`/api/strategy-options*`** (expirations + chain) or **`src/modules/strategy-options/**`** changes: update **`src/lib/openapi/current-state.ts`**, **`tests/integration/strategy-options*.test.ts`**, **`DEVELOPMENT.md`** (options chain section), and **`README.md`** Core Routes — see **`generate-docs`** § *xStrategyBuilder / strategy-options*.
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.
-- [ ] Open gaps (if any) are in **`docs/PLAN.md`** as TODO / design TBD, or consciously not applicable to this change.
+- [ ] Open gaps (if any) are captured in **`docs/ops/api-consolidation-spring-backend.md`**, **`.cursor/plans/*.plan.md`**, or the relevant ops doc — or consciously not applicable to this change (see **`generate-docs`**).
 
 ## Staging and production
 

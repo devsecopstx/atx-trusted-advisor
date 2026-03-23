@@ -30,11 +30,21 @@ Keep project documentation aligned with code changes and operational reality.
 Default to maintaining this minimum docs set:
 
 - `README.md`: product scope + fast local start.
-- `DEVELOPMENT.md`: full setup, required env keys, runbooks, API map.
+- `DEVELOPMENT.md`: full setup, required env keys, runbooks, API map, and (when present) **Cursor agents & skills** discovery.
 - `.env.example`: empty `KEY=` lines and required key names only
   (no credential-shaped placeholders).
 - `AGENTS.md`: operator-centric commands/checks and troubleshooting.
 - `CONTRIBUTING.md`: local validation + PR quality gates.
+
+### Cursor agents & worktrees (repo-local)
+
+When **adding, renaming, or materially changing** persona files under **`.cursor/agents/*.md`**:
+
+- Keep **`.cursor/agents/README.md`** accurate: table of files, role intent, and “use when” scope.
+- If **`.cursor/worktrees.json`** lists named worktrees / `setup` stamps, keep README prose aligned (parallel agents + optional `ROLE` stamps are local convenience only).
+- If **`AGENTS.md`** or **`DEVELOPMENT.md`** point at agent filenames, update those pointers in the **same** change set as the rename.
+
+**Naming convention:** Prefer stable, role-clear names (e.g. `atx-backend.md`, `atx-reviewer.md`, `atx-ux-agent.md`). Avoid duplicating the same role under two filenames without a README deprecation note.
 
 When introducing new subsystems, prefer extending `DEVELOPMENT.md`
 and linking from `README.md` instead of creating scattered top-level docs.
@@ -77,6 +87,15 @@ When **`src/app/api/**`** or public HTTP contracts change:
 - CI guards OpenAPI via `tests/integration/openapi-*.test.ts`.
   Run **`npm run ci:gate`** (and **`npm run build`** if release-sensitive)
   before merge.
+
+### Next.js → Spring (atxfinance-backend) BFF migration
+
+When **`ATXFINANCE_BACKEND_ORIGIN`** proxy behavior, Kotlin controllers, or BFF route lists change:
+
+- Keep **`docs/ops/api-consolidation-spring-backend.md`** (status, deferred slices, operational parity) current.
+- Keep **`docs/ops/atxfinance-backend-http-api.md`** aligned with implemented Spring routes.
+- Keep **`tests/smoke/backend-http-api-parity.test.ts`** (and any **`src/lib/bff-proxy-routes.ts`** or **`src/lib/backend-bff.ts`** registry, if present) consistent with the proxy surface.
+- For JVM changes, **`services/atxfinance-backend`** tests / HTTP API doc updates should land in the **same** slice as the Next proxy change when possible.
 
 **xStrategyBuilder / strategy-options (Yahoo option chain):** When changing
 `GET /api/strategy-options`, `GET /api/strategy-options/expirations`, UI under
@@ -216,6 +235,7 @@ Post-deploy smoke steps live in
 ## Local Skill Sync
 
 - Keep docs-ops guidance aligned with:
+  - `.cursor/agents/README.md` (persona table + worktrees notes when agents change)
   - `.cursor/skills/test-commit-push/SKILL.md`
   - `.cursor/skills/test-commit-push/CHECKLIST.md`
   - `.cursor/skills/test-automation/SKILL.md` (when adding or scoping tests)
@@ -269,8 +289,7 @@ When updating prompt tips/chips or persona examples in xChat:
 
 - Docs updated/created
 - Coverage gaps still open:
-  prefer capturing non-blocking items in **`docs/PLAN.md`**
-  (TODO / design TBD) instead of orphan comments
+  prefer capturing non-blocking items in **`docs/ops/api-consolidation-spring-backend.md`** (migration backlog), **`.cursor/plans/*.plan.md`**, or a short **TODO** in the relevant ops doc — not orphan comments. (**`docs/PLAN.md`** is not the canonical backlog file in this repo.)
 - Recommended doc owners/follow-ups
 - Prefer **project-local** `.cursor/skills/` and this repo's rules/docs
   over duplicating global Cursor defaults.

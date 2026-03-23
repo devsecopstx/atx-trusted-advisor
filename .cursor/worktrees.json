@@ -1,19 +1,55 @@
 {
+  "version": 1,
+  "setup-worktree-unix": [
+    "npm ci",
+    "if [ -f \"$ROOT_WORKTREE_PATH/.env\" ]; then cp \"$ROOT_WORKTREE_PATH/.env\" .env; elif [ -f \"$ROOT_WORKTREE_PATH/.env.example\" ]; then cp \"$ROOT_WORKTREE_PATH/.env.example\" .env; fi",
+    "chmod +x services/atxfinance-backend/gradlew 2>/dev/null || true"
+  ],
+  "setup-worktree-windows": [
+    "npm ci",
+    "if exist \"%ROOT_WORKTREE_PATH%\\.env\" (copy /Y \"%ROOT_WORKTREE_PATH%\\.env\" .env) else if exist \"%ROOT_WORKTREE_PATH%\\.env.example\" (copy /Y \"%ROOT_WORKTREE_PATH%\\.env.example\" .env)"
+  ],
+  "setup-worktree": [
+    "npm ci",
+    "if [ -f \"$ROOT_WORKTREE_PATH/.env\" ]; then cp \"$ROOT_WORKTREE_PATH/.env\" .env; elif [ -f \"$ROOT_WORKTREE_PATH/.env.example\" ]; then cp \"$ROOT_WORKTREE_PATH/.env.example\" .env; fi"
+  ],
   "worktrees": [
-    {
-      "name": "atx-backend",
-      "branch": "feature/atx-backend",
-      "setup": "echo 'ROLE=atx-backend' > .cursor/agents/atx-backend.md && npm install"
-    },
     {
       "name": "atx-ux",
       "branch": "feature/atx-ux",
-      "setup": "echo 'ROLE=atx-ux' > .cursor/agents/atx-reviewer.md && npm install"
+      "description": "Next.js UI — after setup run: npm run dev:frontend (alias: npm run dev)",
+      "setup": "echo 'ROLE=atx-ux' > .cursor/.atx-frontend && npm ci",
+      "npm": {
+        "dev": "npm run dev:frontend",
+        "devAlias": "npm run dev",
+        "build": "npm run build"
+      }
+    },
+    {
+      "name": "atx-backend",
+      "branch": "feature/atx-backend",
+      "description": "Spring BFF + stack — after setup run: npm run dev:stack (Docker backend+mongo then Next) or npm run dev:host (Gradle bootRun + Next)",
+      "setup": "echo 'ROLE=atx-backend' > .cursor/.atx-backend && npm ci && chmod +x services/atxfinance-backend/gradlew 2>/dev/null || true",
+      "npm": {
+        "devStack": "npm run dev:stack",
+        "devHost": "npm run dev:host",
+        "devSpring": "npm run dev:spring",
+        "buildBackend": "npm run build:backend"
+      }
     },
     {
       "name": "atx-reviewer",
       "branch": "develop",
-      "setup": "echo 'ROLE=atx-reviewer' > .cursor/agents/atx-ux-agent.md"
+      "description": "Pre-merge gate — after setup run: npm run ci:gate then npm run build:stack (Next + Gradle test)",
+      "setup": "echo 'ROLE=atx-reviewer' > .cursor/.atx-reviewer && npm ci && chmod +x services/atxfinance-backend/gradlew 2>/dev/null || true",
+      "npm": {
+        "ciGate": "npm run ci:gate",
+        "buildStack": "npm run build:stack",
+        "build": "npm run build",
+        "lint": "npm run lint",
+        "typecheck": "npm run typecheck",
+        "test": "npm run test"
+      }
     }
   ]
 }
