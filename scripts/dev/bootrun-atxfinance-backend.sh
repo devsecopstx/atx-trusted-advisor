@@ -19,6 +19,22 @@ if [ -z "${SPRING_DATA_MONGODB_DATABASE:-}" ] && [ -n "${MONGODB_DB_NAME:-}" ]; 
 fi
 set +a
 
+# Optional repo-root YAML for local E2E (merged after application.yml; same keys override).
+# Prefer tenant_defaults.yaml; fall back to legacy tennat_defaults.yaml filename.
+TENANT_OPT=""
+if [ -f "${ROOT}/tenant_defaults.yaml" ]; then
+  TENANT_OPT="optional:file:${ROOT}/tenant_defaults.yaml"
+elif [ -f "${ROOT}/tennat_defaults.yaml" ]; then
+  TENANT_OPT="optional:file:${ROOT}/tennat_defaults.yaml"
+fi
+if [ -n "${TENANT_OPT}" ]; then
+  if [ -n "${SPRING_CONFIG_ADDITIONAL_LOCATION:-}" ]; then
+    export SPRING_CONFIG_ADDITIONAL_LOCATION="${SPRING_CONFIG_ADDITIONAL_LOCATION},${TENANT_OPT}"
+  else
+    export SPRING_CONFIG_ADDITIONAL_LOCATION="${TENANT_OPT}"
+  fi
+fi
+
 if [ -x ./gradlew ]; then
   exec ./gradlew bootRun
 fi

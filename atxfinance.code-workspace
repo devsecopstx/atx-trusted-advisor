@@ -24,6 +24,26 @@
         "problemMatcher": []
       },
       {
+        "label": "Start backend",
+        "type": "shell",
+        "command": "npm run dev:spring",
+        "options": {
+          "cwd": "${workspaceFolder}"
+        },
+        "isBackground": true,
+        "problemMatcher": {
+          "owner": "spring-boot",
+          "pattern": {
+            "regexp": "^$"
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "Started .* in \\d+\\.\\d+ seconds|Started Application"
+          }
+        }
+      },
+      {
         "label": "Build Next (production)",
         "type": "shell",
         "command": "npm run build",
@@ -33,7 +53,9 @@
         "label": "Build App",
         "type": "shell",
         "command": "npm run build",
-        "dependsOn": ["Install Dependencies"],
+        "dependsOn": [
+          "Install Dependencies"
+        ],
         "dependsOrder": "sequence",
         "problemMatcher": []
       },
@@ -53,7 +75,9 @@
         "isBackground": true,
         "problemMatcher": {
           "owner": "spring-boot",
-          "pattern": { "regexp": "^$" },
+          "pattern": {
+            "regexp": "^$"
+          },
           "background": {
             "activeOnStart": true,
             "beginsPattern": ".",
@@ -62,7 +86,28 @@
         }
       },
       {
-        "label": "Dev build (host: Gradle bootRun → Next, no backend Docker)",
+        "label": "Run Backend dev (Gradle bootRun)",
+        "type": "shell",
+        "command": "bash scripts/dev/bootrun-atxfinance-backend.sh",
+        "detail": "Repo .env + optional tenant_defaults.yaml / tennat_defaults.yaml (Spring additional config); Mongo must be reachable.",
+        "options": {
+          "cwd": "${workspaceFolder}"
+        },
+        "isBackground": true,
+        "problemMatcher": {
+          "owner": "spring-boot",
+          "pattern": {
+            "regexp": "^$"
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "Started .* in \\d+\\.\\d+ seconds|Started Application"
+          }
+        }
+      },
+      {
+        "label": "Dev build (host: Gradle bootRun \u2192 Next, no backend Docker)",
         "type": "shell",
         "command": "npm run dev:host",
         "options": {
@@ -71,7 +116,9 @@
         "isBackground": true,
         "problemMatcher": {
           "owner": "next-dev",
-          "pattern": { "regexp": "^$" },
+          "pattern": {
+            "regexp": "^$"
+          },
           "background": {
             "activeOnStart": true,
             "beginsPattern": ".",
@@ -86,7 +133,9 @@
         "isBackground": true,
         "problemMatcher": {
           "owner": "next-dev",
-          "pattern": { "regexp": "^$" },
+          "pattern": {
+            "regexp": "^$"
+          },
           "background": {
             "activeOnStart": true,
             "beginsPattern": ".",
@@ -122,13 +171,19 @@
       },
       {
         "label": "Start Local Services",
-        "dependsOn": ["Start Backend (Docker)", "Start Frontend (Next Dev)"],
+        "dependsOn": [
+          "Start Backend (Docker)",
+          "Start Frontend (Next Dev)"
+        ],
         "dependsOrder": "sequence",
         "problemMatcher": []
       },
       {
         "label": "Run Localhost App (Backend + Frontend)",
-        "dependsOn": ["Start Local Services", "Open Localhost"],
+        "dependsOn": [
+          "Start Local Services",
+          "Open Localhost"
+        ],
         "dependsOrder": "sequence",
         "problemMatcher": []
       }
