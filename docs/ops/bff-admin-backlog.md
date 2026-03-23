@@ -39,5 +39,5 @@ Migrate as **one slice** when ready: Kotlin + proxy + parity tests + doc updates
 
 ## Related
 
-- `docs/ops/api-consolidation-spring-backend.md` — migration status board, **PR 3 / PR 4** runbooks, auth callback contract.
+- `docs/ops/api-consolidation-spring-backend.md` — migration status board, **PR 3 / PR 4** runbooks, **Risks and gaps (TODO)** table (R1–R6), auth callback contract.
 - `docs/ops/atxfinance-backend-http-api.md` — Spring route inventory.
