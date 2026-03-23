@@ -25,7 +25,18 @@ type ChainPayload = {
   error?: string;
 };
 
-export function StrategyOptionsConsole() {
+type StrategyOptionsConsoleProps = {
+  /** Defaults to xStrategyBuilder copy + link. */
+  eyebrow?: string;
+  backHref?: string;
+  backLabel?: string;
+};
+
+export function StrategyOptionsConsole({
+  eyebrow = "xStrategyBuilder · live options",
+  backHref = "/xstrategybuilder",
+  backLabel = "Back to xStrategyBuilder"
+}: StrategyOptionsConsoleProps) {
   const [underlying, setUnderlying] = useState("TSLA");
   const [strike, setStrike] = useState("250");
   const [expirations, setExpirations] = useState<string[]>([]);
@@ -92,7 +103,7 @@ export function StrategyOptionsConsole() {
 
   return (
     <div className="xchat-body" style={{ padding: "1rem", maxWidth: "960px" }}>
-      <p className="eyebrow">xStrategyBuilder · live options</p>
+      <p className="eyebrow">{eyebrow}</p>
       <h1 className="hero-title" style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>
         Strategy options chain
       </h1>
@@ -211,8 +222,8 @@ export function StrategyOptionsConsole() {
       ) : null}
 
       <div className="cta-row" style={{ marginTop: "1.25rem" }}>
-        <Link className="cta cta-secondary" href="/xstrategybuilder">
-          Back to xStrategyBuilder
+        <Link className="cta cta-secondary" href={backHref}>
+          {backLabel}
         </Link>
       </div>
     </div>

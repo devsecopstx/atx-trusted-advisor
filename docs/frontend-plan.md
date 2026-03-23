@@ -9,7 +9,7 @@ High-level roadmap for Next.js App Router UI, marketing surfaces, and monetizati
 | Item | Status | Notes |
 |------|--------|--------|
 | Reusable pitch **`Hero`** (`src/app/ui/pitch-hero.tsx`) | Shipped | Emerald growth accents, gold/bolt radial overlay, Framer Motion (page fade, staggered bullets, CTA fade-up + hover) |
-| **xOptions** pitch deck (`/app_user/xoptions`) | Shipped | `app_user` path; `Hero` with `title="xOptions"` (`src/app/app_user/xoptions/page.tsx`) |
+| xoptions pitch route | Shipped | `app_user/xoptions` — `Hero` from `src/app/ui/pitch-hero.tsx` |
 
 ---
 
@@ -41,7 +41,7 @@ High-level roadmap for Next.js App Router UI, marketing surfaces, and monetizati
 ### Frontend work
 
 - Pricing / plan UI aligned with `product-plans` or marketing pages.
-- "Manage billing" entry → Customer Portal session (server-created URL).
+- “Manage billing” entry → Customer Portal session (server-created URL).
 - Feature gating hooks (client + server) driven by subscription document from API.
 
 ### Testing

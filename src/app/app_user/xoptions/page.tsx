@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
-
 import Hero from "@/app/ui/pitch-hero";
 
-export const metadata: Metadata = {
-  title: "xOptions | xFinance",
-  description:
-    "AI-vetted options income for HNW investors and RIAs — wheel, covered calls, and LEAP recommendations with minimal time commitment."
-};
-
-export default function XOptionsPitchPage() {
-  return <Hero title="xOptions" />;
+/**
+ * xoptions pitch deck — public app_user surface.
+ * Styling uses the repo Tailwind pipeline (see tailwind / PostCSS); no CDN script required in App Router.
+ */
+export default function XoptionsPitchPage() {
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <Hero title="xoptions" contactEmail="sperezintexas@gmail.com" />
+    </div>
+  );
 }

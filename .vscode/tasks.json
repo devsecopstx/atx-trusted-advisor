@@ -109,7 +109,7 @@
     {
       "label": "Start Backend (Docker)",
       "type": "shell",
-      "command": "npm run dev:backend",
+      "command": "docker stop atxfinance-backend 2>/dev/null; npm run dev:backend",
       "isBackground": true,
       "problemMatcher": [],
       "runOptions": {

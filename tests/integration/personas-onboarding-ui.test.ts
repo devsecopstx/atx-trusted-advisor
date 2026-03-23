@@ -4,10 +4,14 @@ const teamStubs = vi.hoisted(() => ({
   resolveTeamKbCollectionId: vi.fn().mockResolvedValue("collection_for_onboarding_test")
 }));
 
-vi.mock("@/modules/xchat/team-xai-collection", () => ({
+vi.mock("@/modules/xchat/team-xai-collection-sync", () => ({
   getTeamXaiKbCollectionIdSync: () => "collection_for_onboarding_test",
-  readRawXaiTeamId: () => "collection_for_onboarding_test",
-  resolveTeamKbCollectionId: teamStubs.resolveTeamKbCollectionId
+  readRawXaiTeamId: () => "collection_for_onboarding_test"
+}));
+vi.mock("@/modules/xchat/team-xai-collection", () => ({
+  resolveTeamKbCollectionId: teamStubs.resolveTeamKbCollectionId,
+  getTeamXaiKbCollectionIdSync: () => "collection_for_onboarding_test",
+  readRawXaiTeamId: () => "collection_for_onboarding_test"
 }));
 
 import {

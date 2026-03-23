@@ -79,7 +79,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skil
 
 ## Audit & governance
 
-- **Audit skill:** [`.cursor/skills/xdesign-review-audit/SKILL.md`](../.cursor/skills/xdesign-review-audit/SKILL.md) and [`CHECKLIST.md`](../.cursor/skills/xdesign-review-audit/CHECKLIST.md)
+- **Audit skill:** [`.cursor/skills/atxdesign-review-audit/SKILL.md`](../.cursor/skills/atxdesign-review-audit/SKILL.md) and [`CHECKLIST.md`](../.cursor/skills/atxdesign-review-audit/CHECKLIST.md)
 - **Ground truth:** [audit-lineage-and-controls.md](./ops/audit-lineage-and-controls.md) (Mongo `admin_audit_events`, BFF parity, test inventory, known gaps)
 
 **Doc updates:** follow the [`generate-docs`](../.cursor/skills/generate-docs/SKILL.md) skill when changing APIs or runbooks.

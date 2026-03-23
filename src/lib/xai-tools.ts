@@ -1,8 +1,8 @@
 import {
     ATXFINANCE_TOOL_DEFINITION,
     YAHOO_FINANCE_TOOL_DEFINITION
-} from "@/modules/xchat/tool-executor";
-import type { PersonaXapiToolDefinition } from "@/modules/xchat/types";
+} from "@/modules/xchat/tool-definitions";
+import type { PersonaXapiToolDefinition } from "@/modules/xchat/tool-types";
 
 /**
  * xAI Responses API (`/v1/responses`) expects hosted `file_search` with

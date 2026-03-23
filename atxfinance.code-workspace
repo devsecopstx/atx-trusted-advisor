@@ -146,7 +146,7 @@
       {
         "label": "Start Backend (Docker)",
         "type": "shell",
-        "command": "bash -lc 'docker compose up -d mongodb atxfinance-backend'",
+        "command": "bash -lc 'docker stop atxfinance-backend 2>/dev/null; docker compose up -d mongodb atxfinance-backend'",
         "problemMatcher": []
       },
       {

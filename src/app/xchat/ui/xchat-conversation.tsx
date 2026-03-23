@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
-import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection";
+import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
 
 type Message = {
   id: string;

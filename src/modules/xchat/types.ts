@@ -1,6 +1,13 @@
 import { ObjectId } from "mongodb";
 
-import { getTeamXaiKbCollectionIdSync } from "./team-xai-collection";
+import { getTeamXaiKbCollectionIdSync } from "./team-xai-collection-sync";
+import {
+    PERSONA_XAPI_TOOL_TYPES,
+    type PersonaXapiToolDefinition,
+    type PersonaXapiToolType
+} from "./tool-types";
+
+export { PERSONA_XAPI_TOOL_TYPES, type PersonaXapiToolDefinition, type PersonaXapiToolType };
 
 export type PersonaCollectionVerification = {
   status: "verified" | "missing" | "error" | "skipped";
@@ -12,21 +19,6 @@ export type PersonaCollectionVerification = {
 export type PersonaXapiMode = "responses" | "chat_completions";
 
 export type PersonaXapiToolChoice = "auto" | "required" | "none";
-
-export const PERSONA_XAPI_TOOL_TYPES = [
-  "web_search",
-  "x_search",
-  "file_search",
-  "collections_search",
-  "yahoo_finance",
-  "atxfinance"
-] as const;
-export type PersonaXapiToolType = (typeof PERSONA_XAPI_TOOL_TYPES)[number];
-
-export type PersonaXapiToolDefinition = {
-  type: PersonaXapiToolType;
-  [key: string]: unknown;
-};
 
 export type PersonaXapiConfig = {
   mode: PersonaXapiMode;

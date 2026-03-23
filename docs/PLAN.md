@@ -4,6 +4,15 @@
 
 ---
 
+## Completed (refactor notes)
+
+| Change | Files | Purpose |
+|--------|-------|---------|
+| Client-safe team collection helpers | `team-xai-collection-sync.ts` (new), `team-xai-collection.ts` | Client components (`xchat-conversation`, `types`) import from `-sync` (env read only). Server routes use `team-xai-collection` for `resolveTeamKbCollectionId`. Prevents Mongo in client bundle. |
+| Tool definitions extraction | `tool-definitions.ts` (new), `tool-executor.ts`, `xai-tools.ts` | `ATXFINANCE_TOOL_DEFINITION`, `YAHOO_FINANCE_TOOL_DEFINITION` live in `tool-definitions`; executor and `xai-tools` import. Keeps definitions usable without pulling Mongo. |
+
+---
+
 ## TEAM-only xAI: remove legacy collection paths
 
 **Goal:** ~~Remove **`ATXFINANCE_COLLECTION_ID`**~~ (done). Remove **`userBootstrapCollectionId`** and per-user bootstrap xAI flows. **Anchor:** **`XAI_TEAM_ID`** (team UUID or `collection_*` KB id) for team collection append/retrieval; chat-history collections only under that team.

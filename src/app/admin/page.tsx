@@ -69,6 +69,12 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     description: "Track xchat batch progress, failures, and completion metrics."
   },
   {
+    href: "/admin/xoptions",
+    icon: "strategy",
+    title: "xOptions API test",
+    description: "Exercise GET strategy-options expirations and option-chain reads (BFF / backend parity)."
+  },
+  {
     href: "/personas",
     icon: "directory",
     title: "xPersona Directory",
