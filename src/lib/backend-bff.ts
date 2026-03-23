@@ -74,9 +74,9 @@ export const nextBffApi = {
       methods: ["GET"]
     }
   },
-  feedback: {
+  userFeedback: {
     post: {
-      pathTemplate: "/api/feedback",
+      pathTemplate: "/api/user-feedback",
       methods: ["POST"]
     }
   },

@@ -53,9 +53,9 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }]
   },
   {
-    path: "/api/feedback",
+    path: "/api/user-feedback",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
-    tag: "feedback"
+    tag: "user-feedback"
   },
   {
     path: "/api/recommendations",
@@ -381,7 +381,7 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   recommendations:
     "App_user-scoped recommendations; optional Pub/Sub events for downstream agent workers (see DEVELOPMENT.md).",
   "admin-access-requests": "Global admin APIs for listing, creating, reviewing, and deleting access requests.",
-  feedback: "Authenticated app_user feedback submission (Slack integration when configured).",
+  "user-feedback": "Authenticated app_user feedback submission (Slack integration when configured).",
   "admin-audit": "Admin audit and activity timeline endpoints.",
   "admin-system": "Admin system-level diagnostics and scheduled task controls.",
   "admin-tasks": "Admin task catalog and task-run controls.",
@@ -430,14 +430,108 @@ function inferSummary(method: RouteMethod, path: string): string {
   return `${actionMap[method]} ${resource}`.trim();
 }
 
+/**
+ * Produces stable operationIds for codegen: atx_<action>_<resource>.
+ * Examples: atx_submit_user_feedback, atx_list_access_requests, atx_get_portfolio.
+ */
 function toOperationId(method: RouteMethod, path: string): string {
-  const raw = `${method.toLowerCase()}_${path}`
-    .replace("/api/", "")
-    .replace(/[{}]/g, "")
-    .replace(/[^a-zA-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  return raw;
+  const key = `${method} ${path}`;
+  const override = OPERATION_ID_OVERRIDES[key];
+  if (override) {
+    return override;
+  }
+  const hasPathParam = /{[^}]+}/.test(path);
+  const action = methodToAction(method, hasPathParam);
+  const resource = pathToResource(path, action === "list");
+  return `atx_${action}_${resource}`;
 }
+
+function methodToAction(method: RouteMethod, hasPathParam: boolean): string {
+  switch (method) {
+    case "GET":
+      return hasPathParam ? "get" : "list";
+    case "POST":
+      return "create";
+    case "PUT":
+    case "PATCH":
+      return "update";
+    case "DELETE":
+      return "delete";
+    case "OPTIONS":
+      return "options";
+    case "HEAD":
+      return "head";
+    default:
+      return String(method).toLowerCase();
+  }
+}
+
+function pathToResource(path: string, usePlural: boolean): string {
+  const p = path.replace("/api/", "").replace(/\{[^}]+}/g, "");
+  const parts = p.split("/").filter(Boolean);
+  const last = parts[parts.length - 1] ?? "resource";
+  const normalized = last.replace(/-/g, "_");
+  const singular = toSingular(normalized);
+  const plural = toPlural(singular);
+  const base = parts.length > 1 ? parts.slice(0, -1).map((s) => s.replace(/-/g, "_")) : [];
+  const resource = usePlural ? [...base, plural] : [...base, singular];
+  return resource.join("_").replace(/_+/g, "_").replace(/^_+|_+$/g, "") || "resource";
+}
+
+function toSingular(word: string): string {
+  const irregular: Record<string, string> = {
+    access_requests: "access_request",
+    recommendations: "recommendation",
+    personas: "persona",
+    portfolios: "portfolio",
+    positions: "position",
+    collections: "collection",
+    tasks: "task",
+    users: "user",
+    files: "file",
+    configs: "config"
+  };
+  if (irregular[word]) return irregular[word];
+  if (word.endsWith("ies")) return word.slice(0, -3) + "y";
+  if (word.endsWith("ses") || word.endsWith("xes") || word.endsWith("zes"))
+    return word.slice(0, -2);
+  if (word.endsWith("s") && !word.endsWith("ss")) return word.slice(0, -1);
+  return word;
+}
+
+function toPlural(singular: string): string {
+  const irregular: Record<string, string> = {
+    access_request: "access_requests",
+    persona: "personas",
+    portfolio: "portfolios",
+    position: "positions",
+    collection: "collections",
+    task: "tasks",
+    user: "users",
+    file: "files",
+    config: "configs"
+  };
+  if (irregular[singular]) return irregular[singular];
+  if (singular.endsWith("y") && !/^[aeiou]/.test(singular.slice(-2, -1)))
+    return singular.slice(0, -1) + "ies";
+  if (singular.endsWith("s") || singular.endsWith("x") || singular.endsWith("z"))
+    return singular + "es";
+  return singular + "s";
+}
+
+/** Explicit operationIds for routes where convention would produce wrong names. */
+const OPERATION_ID_OVERRIDES: Record<string, string> = {
+  "POST /api/user-feedback": "atx_submit_user_feedback",
+  "POST /api/access-requests": "atx_submit_access_request",
+  "GET /api/admin/access-requests": "atx_list_access_requests",
+  "POST /api/admin/access-requests": "atx_create_access_request",
+  "GET /api/admin/access-requests/{requestId}": "atx_get_access_request",
+  "PATCH /api/admin/access-requests/{requestId}": "atx_update_access_request",
+  "PUT /api/admin/access-requests/{requestId}": "atx_update_access_request",
+  "DELETE /api/admin/access-requests/{requestId}": "atx_delete_access_request",
+  "GET /api/portfolios/{portfolioId}": "atx_get_portfolio",
+  "PATCH /api/portfolios/{portfolioId}": "atx_update_portfolio"
+};
 
 function extractPathParameters(path: string): OpenApiParameter[] {
   const matches = path.matchAll(/{([^/{}]+)}/g);
@@ -593,7 +687,7 @@ export function buildCurrentStateOpenApi(): OpenApiDocument {
         "",
         "**Naming / review notes**",
         "- Tags use `kebab-case`; admin areas are grouped as `admin-*` by domain.",
-        "- `feedback` is separate from `xchat` (feedback was previously mis-tagged).",
+        "- `user-feedback` is separate from `xchat` (user feedback was previously mis-tagged).",
         "- Prefer tag `admin-access-requests` over a generic “admin-access” label for `/api/admin/access-requests`.",
         "- Canonical product name in titles: **atxFinance** (camelCase).",
         "- For customer-facing public docs, consider a future `operationId` prefix such as `atx_` + resource + action for stable codegen.",

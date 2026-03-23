@@ -371,7 +371,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "500": jsonResponse("Batch submit failed.", "ErrorResponse")
     }
   },
-  "POST /api/feedback": {
+  "POST /api/user-feedback": {
     summary: "Submit signed-in user feedback",
     description:
       "App_user header flow. Optional Slack notification when SLACK_WEBHOOK_URL is configured (fire-and-forget).",

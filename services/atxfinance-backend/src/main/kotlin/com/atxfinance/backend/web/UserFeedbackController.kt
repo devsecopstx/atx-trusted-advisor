@@ -12,14 +12,14 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-class FeedbackController(
+class UserFeedbackController(
     private val props: AtxfinanceProperties,
     private val sessionCookieParser: SessionCookieParser,
     private val slackWebhookService: SlackWebhookService,
     private val objectMapper: ObjectMapper,
 ) {
 
-    @PostMapping("/api/feedback")
+    @PostMapping("/api/user-feedback")
     fun post(
         request: HttpServletRequest,
         @RequestBody(required = false) body: Map<String, Any?>?,

@@ -1,7 +1,7 @@
 # API consolidation: Next.js → atxfinance-backend (Spring)
 
 **Status:** in progress (extended BFF slices shipped).  
-**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **portfolios + positions**, **recommendations** (app + portfolio; optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set), **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests** (list/create/review/delete), **feedback**, **admin bootstrap-status**, **admin audit (GET)**, and **RAG files (GET + POST)** — inventory in **`xai_collections`** — see `docs/ops/atxfinance-backend-http-api.md`. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
+**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **portfolios + positions**, **recommendations** (app + portfolio; optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set), **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests** (list/create/review/delete), **user-feedback**, **admin bootstrap-status**, **admin audit (GET)**, and **RAG files (GET + POST)** — inventory in **`xai_collections`** — see `docs/ops/atxfinance-backend-http-api.md`. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
 
 ## Migration status board
 
@@ -12,7 +12,7 @@
 | Strategy-options | Yes | Yahoo + synthetic fallback on JVM. |
 | Personas | Yes | Audit writes in Kotlin (`PersonaService`). |
 | `POST /api/access-requests` | Yes | Audit + Slack webhook when `SLACK_WEBHOOK_URL` set. |
-| `POST /api/feedback` | Yes | Slack webhook. |
+| `POST /api/user-feedback` | Yes | Slack webhook. |
 | `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` | Yes | Read-only admin probes. |
 | `GET` / `POST /api/rag/files` | Yes | Inventory Mongo **`xai_collections`**; POST uploads via xAI + chunking. |
 | **Auth (`/api/auth/*`)** | In progress | Spring-owned session; callback on app host (`/api/auth/x/callback`); dual-run during cutover — see **Auth callback contract** below. |

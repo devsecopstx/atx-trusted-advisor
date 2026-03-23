@@ -13,9 +13,9 @@ const slackMocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/slack", () => slackMocks);
 
-import { POST as postFeedback } from "@/app/api/feedback/route";
+import { POST as postUserFeedback } from "@/app/api/user-feedback/route";
 
-describe("POST /api/feedback", () => {
+describe("POST /api/user-feedback", () => {
   beforeEach(() => {
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
@@ -35,8 +35,8 @@ describe("POST /api/feedback", () => {
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
 
-    const res = await postFeedback(
-      new Request("http://127.0.0.1/api/feedback", {
+    const res = await postUserFeedback(
+      new Request("http://127.0.0.1/api/user-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: "hello there feedback" })
@@ -47,8 +47,8 @@ describe("POST /api/feedback", () => {
   });
 
   it("accepts feedback and triggers slack builder", async () => {
-    const res = await postFeedback(
-      new Request("http://127.0.0.1/api/feedback", {
+    const res = await postUserFeedback(
+      new Request("http://127.0.0.1/api/user-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: "Great product so far", page: "xChat" })
@@ -69,8 +69,8 @@ describe("POST /api/feedback", () => {
   });
 
   it("returns 400 for short message", async () => {
-    const res = await postFeedback(
-      new Request("http://127.0.0.1/api/feedback", {
+    const res = await postUserFeedback(
+      new Request("http://127.0.0.1/api/user-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: "no" })

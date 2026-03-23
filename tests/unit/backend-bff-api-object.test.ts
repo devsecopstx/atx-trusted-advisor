@@ -21,7 +21,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/portfolios/{portfolioId}/recommendations", methods: ["GET", "POST"] },
   { pathTemplate: "/api/strategy-options", methods: ["GET"] },
   { pathTemplate: "/api/strategy-options/expirations", methods: ["GET"] },
-  { pathTemplate: "/api/feedback", methods: ["POST"] },
+  { pathTemplate: "/api/user-feedback", methods: ["POST"] },
   { pathTemplate: "/api/admin/bootstrap-status", methods: ["GET"] },
   { pathTemplate: "/api/admin/audit", methods: ["GET"] },
   { pathTemplate: "/api/admin/access-requests", methods: ["GET", "POST"] },

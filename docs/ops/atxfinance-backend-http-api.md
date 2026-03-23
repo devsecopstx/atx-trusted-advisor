@@ -66,7 +66,7 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/api/feedback` | **201** `{ "ok": true }`. Body `{ "message", "page"? }`. Posts to **`SLACK_WEBHOOK_URL`** when set (same as Next). |
+| POST | `/api/user-feedback` | **201** `{ "ok": true }`. Body `{ "message", "page"? }`. Posts to **`SLACK_WEBHOOK_URL`** when set (same as Next). |
 
 ## Admin (global_admin session)
 
