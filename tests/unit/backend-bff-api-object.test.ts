@@ -37,7 +37,11 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/admin/tasks/{taskId}/run", methods: ["POST"] },
   { pathTemplate: "/api/admin/task-runs", methods: ["GET"] },
   { pathTemplate: "/api/admin/scheduler/tick", methods: ["POST"] },
+  { pathTemplate: "/api/admin/deploy-note-configs", methods: ["GET", "POST"] },
+  { pathTemplate: "/api/admin/deploy-note-configs/{configId}", methods: ["GET", "PUT", "DELETE"] },
+  { pathTemplate: "/api/admin/import/broker", methods: ["POST"] },
   { pathTemplate: "/api/rag/files", methods: ["GET", "POST"] },
+  { pathTemplate: "/api/rag/files/{fileId}/readiness", methods: ["GET"] },
   { pathTemplate: "/api/access-requests", methods: ["POST"] },
   { pathTemplate: "/api/personas", methods: ["GET", "POST"] },
   { pathTemplate: "/api/personas/{personaId}", methods: ["GET", "PUT", "DELETE"] }

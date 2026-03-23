@@ -140,12 +140,28 @@ export const nextBffApi = {
     schedulerTick: {
       pathTemplate: "/api/admin/scheduler/tick",
       methods: ["POST"]
+    },
+    deployNoteConfigsIndex: {
+      pathTemplate: "/api/admin/deploy-note-configs",
+      methods: ["GET", "POST"]
+    },
+    deployNoteConfigById: {
+      pathTemplate: "/api/admin/deploy-note-configs/{configId}",
+      methods: ["GET", "PUT", "DELETE"]
+    },
+    importBroker: {
+      pathTemplate: "/api/admin/import/broker",
+      methods: ["POST"]
     }
   },
   rag: {
     files: {
       pathTemplate: "/api/rag/files",
       methods: ["GET", "POST"]
+    },
+    fileReadiness: {
+      pathTemplate: "/api/rag/files/{fileId}/readiness",
+      methods: ["GET"]
     }
   },
   accessRequests: {

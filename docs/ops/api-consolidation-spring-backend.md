@@ -42,7 +42,7 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 2. **Shared primitives** — Env: backend base URL(s), request signing or session forwarding rules, correlation IDs.
 3. **Read-only / low-risk** — e.g. `GET /api/health` parity (already duplicated conceptually), then read-only admin/bootstrap probes.
 4. **Core CRUD** — portfolios ✅; recommendations ✅; personas ✅; self-service access-requests ✅; feedback ✅; read-only admin bootstrap/audit ✅; RAG file list + upload ✅ (`xai_collections`).
-5. **Remaining admin mutations** — **users** ✅; **tasks / scheduler** ✅ (treat as **PR 3 migration** — see below). **Deploy-note-configs + import/broker** = **PR 4 migration** (Kotlin + BFF not shipped yet). (**Admin access-request review** ✅ in Kotlin + BFF.)
+5. **Remaining admin mutations** — **users** ✅; **tasks / scheduler** ✅ (PR 3 — see below). **Deploy-note-configs + import/broker** ✅ (PR 4 — Kotlin + BFF). (**Admin access-request review** ✅ in Kotlin + BFF.)
 6. **xChat** — **deferred** (see **Plan: xChat**).
 7. **Auth / OAuth** — move session + callback ownership to Spring with the approved contract below; run dual callback paths for 7-14 days before removing Next callback logic.
 8. **Delete Next route** only after integration tests hit Spring and UI uses the new path.
@@ -51,7 +51,7 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 
 **Proxied today:** `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` (read-only); **`/api/admin/access-requests`** (CRUD + review) — see `docs/ops/atxfinance-backend-http-api.md`.
 
-**Still Next-only until PR 4 ships:** deploy-note-configs, import/broker. **`portfolio-console.tsx`** uses `POST /api/admin/import/broker` for Merrill/Fidelity holdings CSV. **Tasks / scheduler** are implemented on Kotlin + BFF; enable via `ATXFINANCE_BACKEND_ORIGIN` as part of **PR 3**.
+**Proxied with Spring parity:** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), tasks / scheduler. Enable via **`ATXFINANCE_BACKEND_ORIGIN`** (PR 3 tasks; PR 4 deploy-note + import — same origin).
 
 ## PR 3 & PR 4 — real migration slices (not “code-only” PRs)
 
