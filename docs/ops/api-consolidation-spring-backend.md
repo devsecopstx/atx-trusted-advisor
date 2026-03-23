@@ -66,10 +66,13 @@ These are **vertical migration tracks**: same Mongo collections and contracts as
 **Cutover checklist**
 
 1. Deploy **atxfinance-backend** containing task controllers; verify `./gradlew test` and `GET /api/backend/health` (or service health) in the target environment.
-2. In **staging**, set **`ATXFINANCE_BACKEND_ORIGIN`** to the Spring base URL (same pattern as other BFF surfaces).
-3. Validate **Admin → Tasks**: list/create, run task, task runs list, scheduler tick; compare behavior to proxy-off (Next Mongo path).
-4. **Production:** repeat after staging soak; monitor Mongo write patterns and latency.
-5. **Rollback:** remove or unset **`ATXFINANCE_BACKEND_ORIGIN`** — Next route handlers execute the Mongo again (fallback paths remain in `src/app/api/admin/tasks/*`, `task-runs`, `scheduler/tick`).
+2. In **staging**, set **`ATXFINANCE_BACKEND_ORIGIN`** to the Spring base URL (HTTPS origin, no trailing slash). Helper (merges env; does not wipe other vars):  
+   `bash scripts/ops/set-atxfinance-backend-origin.sh staging https://<your-backend>-run.app`  
+   Requires `gcloud` auth and defaults: project `fintech-advisor-staging`, service `xfinance-core-staging`, region `us-central1` (override with `GCP_PROJECT_ID`, `CLOUD_RUN_SERVICE_STAGING`, `CLOUD_RUN_REGION`).
+3. **Soak staging:** exercise **Admin → Tasks** (list/create, run, task runs, scheduler tick) and spot-check another BFF surface (e.g. portfolios) if you already rely on the same origin. Monitor Cloud Run logs and latency.
+4. **Production:** repeat after soak; set origin on prod Cloud Run (`bash scripts/ops/set-atxfinance-backend-origin.sh prod https://…`) or mirror the same `gcloud run services update … --update-env-vars`.
+5. **Rollback:** remove **`ATXFINANCE_BACKEND_ORIGIN`** — Next route handlers execute the Mongo again (fallback paths remain in `src/app/api/admin/tasks/*`, `task-runs`, `scheduler/tick`). Example:  
+   `gcloud run services update xfinance-core-staging --project fintech-advisor-staging --region us-central1 --remove-env-vars ATXFINANCE_BACKEND_ORIGIN`
 
 ### PR 4 — Deploy-note-configs + broker import (migration)
 
