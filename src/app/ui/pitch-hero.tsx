@@ -308,7 +308,7 @@ export default function Hero({
                 variants={bulletItemVariants}
                 className="bg-gray-900/55 backdrop-blur-sm p-6 rounded-xl border border-emerald-500/15 shadow-[0_0_0_1px_rgba(16,185,129,0.08)]"
               >
-                <h3 className="text-xl font-bold text-emerald-400 mb-3">Serious portfolios & RIA controls</h3>
+                <h3 className="text-xl font-bold text-emerald-400 mb-3">Serious portfolios</h3>
                 <p className="text-gray-300 text-[15px] leading-relaxed">
                   Sized for large private wealth and RIA practice standards — exports, audit trails, risk alerts, and
                   overrides when you need them.
