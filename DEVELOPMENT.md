@@ -98,6 +98,12 @@ Use `.env` only (do not use `.env.local` for this app).
 - `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications and **app_user feedback** from `POST /api/feedback`)
 - `APP_USER_SHOW_DB_ENDPOINT` (optional; set `true` to show the Mongo host/db chip in the app_user header when `NODE_ENV=production` — e.g. beta staging builds)
 
+## xAI chat completions smoke (dev / SRE)
+
+With `XAI_API_KEY` in `.env`, verify the runtime key against the public chat API:
+
+- `npm run smoke:xai-chat` — calls `https://api.x.ai/v1/chat/completions` (non-streaming, default model `grok-4-1-fast`). Optional: `XAI_SMOKE_MODEL`, `XAI_CHAT_COMPLETIONS_URL`. Implementation: `scripts/ops/xai-chat-completions-smoke.sh`.
+
 ## Local Setup (Backend → Frontend)
 
 Follow these steps to run the backend first, then the frontend. **Run-order cheat sheet:** Mongo → `atxfinance-backend` → `npm run dev` — see *Tech Stack* → **Local dev run order (summary)** (table not repeated here).

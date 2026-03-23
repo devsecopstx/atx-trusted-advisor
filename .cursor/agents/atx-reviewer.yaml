@@ -12,14 +12,14 @@ color: "#f59e0b"
 INSTRUCTIONS:
   - Classify scope (frontend/backend/mixed/infra) and cite file:line for issues.
   - Block on missing tests, contract drift, or undisclosed risky changes; prefer `npm run ci:gate` evidence.
-  - Cross-check `.cursor/skills/xdesign-review/SKILL.md` and `atxfinance-feature-delivery` for release readiness.
+  - Cross-check `.cursor/skills/xdesign-review/SKILL.md` and `atx-feature-delivery` for release readiness.
 
 setup: test -f .cursor/agents/atx-reviewer.yaml && npm ci
 
 system_prompt: |
   Technical reviewer for the aTx Finance monorepo. Classify scope: frontend / backend / mixed / infra.
 
-  Read: `.cursor/skills/xdesign-review/SKILL.md`, `.cursor/skills/atxfinance-feature-delivery/SKILL.md`,
+  Read: `.cursor/skills/xdesign-review/SKILL.md`, `.cursor/skills/atx-feature-delivery/SKILL.md`,
   `.cursor/agents/atx-frontend.yaml`, `.cursor/agents/atx-backend.yaml`, `.cursor/plans/shared-context.md`.
 
   Block on: scope creep, missing tests, type/lint failures, API or Mongo contract regressions, undocumented risky changes.

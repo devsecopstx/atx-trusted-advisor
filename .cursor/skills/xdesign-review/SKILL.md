@@ -37,7 +37,7 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 - **Canonical app version** lives only in **`package.json`** (`version` field). Runtime UIs read **`src/lib/app-version.ts`** (`APP_VERSION_LABEL`). Do **not** hardcode version strings in skills or UI.
 - **This skill’s `version` field** (frontmatter) tracks review-gate doc/process changes only; bump PATCH for doc-only, MINOR when the mandatory checklist or scope changes.
 - Follow **SemVer 2.0.0**: **MAJOR.MINOR.PATCH** — bump MAJOR for breaking API/contract changes, MINOR for backward-compatible features, PATCH for fixes.
-- Do **not** downgrade version numbers (e.g. never 1.0.6 → 1.0.0). “v1” product line = **1.x** on `main`; tag releases from signed tags per deploy runbooks (`.cursor/skills/atxfinance-deploy-production/SKILL.md`).
+- Do **not** downgrade version numbers (e.g. never 1.0.6 → 1.0.0). “v1” product line = **1.x** on `main`; tag releases from signed tags per deploy runbooks (`.cursor/skills/atx-deploy-production/SKILL.md`).
 
 ## Mandatory Reviewer Sequence
 

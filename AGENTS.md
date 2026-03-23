@@ -41,7 +41,7 @@ After merging and deploying to production (or staging first):
 2. **Admin:** Sign in as `global_admin` → `/admin` loads; use **Hub → xChat** or the topbar **xChat** link to open `/xchat` without leaving the admin shell’s sibling routes. `GET /api/personas` → `200` with session cookie.
 3. **App_user:** Sign in with X as a user who has platform role **`viewer`**, **`operator`**, or **`advisor`** (Admin → Access approved + role assigned). **The string `app_user` is not a role** — use those roles. Then `/xchat` loads full chat (not plans only); `POST /api/xchat/ask` → `200` (not `401`).
 4. If still `401` / `access_request_pending` / guest xChat: confirm Mongo user has `roles` including one of `advisor`/`operator`/`viewer` (`canUserLogin` in `src/modules/identity/authorization.ts`). Optional dev: `ALLOW_ANY_X_USER_LOGIN=true` (not for prod unless intended).
-5. See `.cursor/skills/atxfinance-deploy-production/SKILL.md` and `DEVELOPMENT.md` for deploy + rollback; run **`npm run status:deploy`** for URLs and latest workflow runs.
+5. See `.cursor/skills/atx-deploy-production/SKILL.md` and `DEVELOPMENT.md` for deploy + rollback; run **`npm run status:deploy`** for URLs and latest workflow runs.
 
 ## Critical Env Keys
 
@@ -63,6 +63,7 @@ After merging and deploying to production (or staging first):
 - Personas API: `GET /api/personas`
 - xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (global_admin), **xFinance** (app roles); **RAG / file_search collection scope** is **only** what is declared on the resolved persona (`xaiCollection` + tool `collection_ids`), not env defaults or implicit user/team merges. **Effective xAI model** comes from the **resolved persona’s `model`** (fallback server default if unset); optional `personaId` / admin-assigned persona selects persona — **no** request-body `model` override. **`xapi.tools`** are used as stored (include `atxfinance` / `yahoo_finance` on the persona when needed).
 - **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`docs/xchat/xai-api-standard.md`**
+- xAI chat API key smoke (dev/SRE): `npm run smoke:xai-chat` with `XAI_API_KEY` in `.env` — see `DEVELOPMENT.md` § *xAI chat completions smoke*
 - Market price source-of-truth (current): Yahoo Finance via `yahoo-finance2` (`src/modules/xchat/market-data.ts`); quote-related prompts/tools should route through `market_quote` / `yahoo_finance` rather than narrative web-only lookups
 - Watchlist (app_user): `/watchlist` — CSV **Import/Export**; `PATCH /api/portfolios/:id/watchlist` accepts `addEntries` (`lineType`, `strategy`, `quantity`, `entryPrice`) for merged rows. Reference CSV: `branding/atxfinance-watchlist.csv`
 - App_user feedback: `POST /api/feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
@@ -113,11 +114,11 @@ from injected secrets.
 - Project-local skills are stored in `.cursor/skills/`. See `.cursor/skills/README.md` for the full index.
 - TODO: refine skills naming conventions; keep current names for now.
 - TODO: remove imported global Cursor skills from the repo once local skill parity is confirmed.
-- Ops/review skills: `atxfinance-docs-ops`, `atxfinance-xchat-validation-checklist`, `atxfinance-runbook-navigator`, `atxfinance-design-ops`, `xdesign-review`.
-- Backend (multi-node agents) skills: `atxfinance-backend-architecture`, `atxfinance-backend-deploy-staging`, `atxfinance-backend-deploy-production`, `atxfinance-backend-runbook`, `atxfinance-backend-ci`.
+- Ops/review skills: `atx-docs-ops`, `atx-xchat-validation-checklist`, `atx-runbook-navigator`, `atx-design-ops`, `xdesign-review`.
+- Backend (multi-node agents) skills: `atx-backend-architecture`, `atx-backend-deploy-stage`, `atx-backend-deploy-prod`, `atx-backend-runbook`, `atx-backend-ci`.
 - Junie guidelines for backend operations: `docs/ops/junie-guidelines-atxfinance-backend.md`.
 - xDesign review outputs: `docs/xchat/xdesign-review-admin-console-ux.md` (and other `docs/xchat/*.md`).
-- Strategy skills: 10 `atxfinance-strategy-*` skills (options strategy references).
+- Strategy skills: 10 `atx-strategy-*` skills (options strategy references).
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
 - Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/atxfinance-tool-stub.md`.
 

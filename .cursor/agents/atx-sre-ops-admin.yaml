@@ -45,3 +45,4 @@ never_include:
 commands:
   logs-cr: gcloud logging read 'resource.type=cloud_run_revision' --limit=20 --format='table(timestamp,textPayload)'
   cost-check: gcloud billing budgets list
+  xai-chat-smoke: npm run smoke:xai-chat

@@ -18,6 +18,7 @@
     "ci:gate": "npm run lint && npm run typecheck && npm run test",
     "smoke:verify": "vitest run tests/smoke",
     "smoke:xai-key-create": "vitest run tests/smoke/xai-management-api-key-create-smoke.test.ts",
+    "smoke:xai-chat": "bash scripts/ops/xai-chat-completions-smoke.sh",
     "test": "vitest run",
     "test:ci": "mkdir -p test-results && vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/vitest-junit.xml",
     "test:integration": "vitest run tests/integration",

@@ -12,7 +12,7 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 - [App delivery & quality](#app-delivery--quality)
 - [Developer workflow](#developer-workflow)
 - [Options strategies (atx-skill-*)](#options-strategies-atx-skill-)
-- [Options strategies (atxfinance-strategy-*)](#options-strategies-atxfinance-strategy-)
+- [Options strategies (atx-strategy-*)](#options-strategies-atx-strategy-)
 - [Brand, UX & content](#brand-ux--content)
 - [Other](#other)
 
@@ -35,17 +35,17 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 | Skill | |
 |-------|---|
-| [atxfinance-backend-architecture](atxfinance-backend-architecture/SKILL.md) | Multi-node backend architecture |
-| [atxfinance-backend-ci](atxfinance-backend-ci/SKILL.md) | CI validation |
-| [atxfinance-backend-deploy-production](atxfinance-backend-deploy-production/SKILL.md) | Production deploy |
-| [atxfinance-backend-deploy-staging](atxfinance-backend-deploy-staging/SKILL.md) | Staging deploy |
-| [atxfinance-backend-runbook](atxfinance-backend-runbook/SKILL.md) | Operator runbook |
-| [atxfinance-backend-start-local](atxfinance-backend-start-local/SKILL.md) | Local backend |
-| [atxfinance-backend-start-staging](atxfinance-backend-start-staging/SKILL.md) | Staging session |
-| [atxfinance-gcp-foundation](atxfinance-gcp-foundation/SKILL.md) | GCP foundation |
+| [atx-backend-architecture](atx-backend-architecture/SKILL.md) | Multi-node backend architecture |
+| [atx-backend-ci](atx-backend-ci/SKILL.md) | CI validation |
+| [atx-backend-deploy-prod](atx-backend-deploy-prod/SKILL.md) | Production deploy |
+| [atx-backend-deploy-stage](atx-backend-deploy-stage/SKILL.md) | Staging deploy |
+| [atx-backend-runbook](atx-backend-runbook/SKILL.md) | Operator runbook |
+| [atx-backend-start-local](atx-backend-start-local/SKILL.md) | Local backend |
+| [atx-backend-start-stage](atx-backend-start-stage/SKILL.md) | Staging session |
+| [atx-gcp-foundation](atx-gcp-foundation/SKILL.md) | GCP foundation |
 | [gcp-env-atx-recreate](gcp-env-atx-recreate/SKILL.md) | Recreate GCP Cloud Run |
-| [atxfinance-deploy-production](atxfinance-deploy-production/SKILL.md) | App production deploy |
-| [atxfinance-deploy-staging](atxfinance-deploy-staging/SKILL.md) | App staging deploy |
+| [atx-deploy-production](atx-deploy-production/SKILL.md) | App production deploy |
+| [atx-deploy-staging](atx-deploy-staging/SKILL.md) | App staging deploy |
 
 ---
 
@@ -53,8 +53,8 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 | Skill | |
 |-------|---|
-| [atxfinance-xchat-validation-checklist](atxfinance-xchat-validation-checklist/SKILL.md) | xChat validation |
-| [atxfinance-cursor-cloud-agents](atxfinance-cursor-cloud-agents/SKILL.md) | Cursor cloud agents |
+| [atx-xchat-validation-checklist](atx-xchat-validation-checklist/SKILL.md) | xChat validation |
+| [atx-cursor-cloud-agents](atx-cursor-cloud-agents/SKILL.md) | Cursor cloud agents |
 | [ai-agent-integration](ai-agent-integration/SKILL.md) | Async agents, LangChain-style |
 | [langchain-agent-executor](langchain-agent-executor/SKILL.md) | LangChain executors |
 | [cloud-agents-starter](cloud-agents-starter/SKILL.md) | Cloud agent bootstrap |
@@ -67,7 +67,7 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 | Skill | |
 |-------|---|
-| [atxfinance-feature-delivery](atxfinance-feature-delivery/SKILL.md) | Scoped PR delivery |
+| [atx-feature-delivery](atx-feature-delivery/SKILL.md) | Scoped PR delivery |
 | [generate-docs](generate-docs/SKILL.md) | Docs & OpenAPI hygiene |
 | [test-commit-push](test-commit-push/SKILL.md) | Pre-commit validation |
 | [test-automation](test-automation/SKILL.md) | Tests |
@@ -108,20 +108,20 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 ---
 
-## Options strategies (atxfinance-strategy-*)
+## Options strategies (atx-strategy-*)
 
 | Skill | |
 |-------|---|
-| [atxfinance-strategy-bull-call-debit-spread](atxfinance-strategy-bull-call-debit-spread/SKILL.md) | Bull call debit spread |
-| [atxfinance-strategy-bull-put-credit-spread](atxfinance-strategy-bull-put-credit-spread/SKILL.md) | Bull put credit spread |
-| [atxfinance-strategy-calendar-spread](atxfinance-strategy-calendar-spread/SKILL.md) | Calendar spread |
-| [atxfinance-strategy-cash-secured-puts](atxfinance-strategy-cash-secured-puts/SKILL.md) | Cash-secured puts |
-| [atxfinance-strategy-covered-calls](atxfinance-strategy-covered-calls/SKILL.md) | Covered calls |
-| [atxfinance-strategy-diagonal-spread](atxfinance-strategy-diagonal-spread/SKILL.md) | Diagonal spread |
-| [atxfinance-strategy-iron-condor](atxfinance-strategy-iron-condor/SKILL.md) | Iron condor |
-| [atxfinance-strategy-leap-call-cc-overlay](atxfinance-strategy-leap-call-cc-overlay/SKILL.md) | LEAP + CC overlay |
-| [atxfinance-strategy-poor-mans-covered-call](atxfinance-strategy-poor-mans-covered-call/SKILL.md) | PMCC |
-| [atxfinance-strategy-wheel](atxfinance-strategy-wheel/SKILL.md) | Wheel |
+| [atx-strategy-bull-call-debit-spread](atx-strategy-bull-call-debit-spread/SKILL.md) | Bull call debit spread |
+| [atx-strategy-bull-put-credit-spread](atx-strategy-bull-put-credit-spread/SKILL.md) | Bull put credit spread |
+| [atx-strategy-calendar-spread](atx-strategy-calendar-spread/SKILL.md) | Calendar spread |
+| [atx-strategy-cash-secured-puts](atx-strategy-cash-secured-puts/SKILL.md) | Cash-secured puts |
+| [atx-strategy-covered-calls](atx-strategy-covered-calls/SKILL.md) | Covered calls |
+| [atx-strategy-diagonal-spread](atx-strategy-diagonal-spread/SKILL.md) | Diagonal spread |
+| [atx-strategy-iron-condor](atx-strategy-iron-condor/SKILL.md) | Iron condor |
+| [atx-strategy-leap-call-cc-overlay](atx-strategy-leap-call-cc-overlay/SKILL.md) | LEAP + CC overlay |
+| [atx-strategy-poor-mans-covered-call](atx-strategy-poor-mans-covered-call/SKILL.md) | PMCC |
+| [atx-strategy-wheel](atx-strategy-wheel/SKILL.md) | Wheel |
 
 ---
 
@@ -129,12 +129,12 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 | Skill | |
 |-------|---|
-| [atxfinance-brand](atxfinance-brand/SKILL.md) | Brand review |
-| [atxfinance-brand-generator](atxfinance-brand-generator/SKILL.md) | Brand asset prompts |
-| [atxfinance-design-ops](atxfinance-design-ops/SKILL.md) | Design ops |
-| [atxfinance-docs-ops](atxfinance-docs-ops/SKILL.md) | Docs ops |
-| [atxfinance-runbook-navigator](atxfinance-runbook-navigator/SKILL.md) | Runbook navigation |
-| [atxfinance-learning-tutor](atxfinance-learning-tutor/SKILL.md) | Learning tutor |
+| [atx-brand](atx-brand/SKILL.md) | Brand review |
+| [atx-brand-generator](atx-brand-generator/SKILL.md) | Brand asset prompts |
+| [atx-design-ops](atx-design-ops/SKILL.md) | Design ops |
+| [atx-docs-ops](atx-docs-ops/SKILL.md) | Docs ops |
+| [atx-runbook-navigator](atx-runbook-navigator/SKILL.md) | Runbook navigation |
+| [atx-learning-tutor](atx-learning-tutor/SKILL.md) | Learning tutor |
 
 ---
 
