@@ -1,6 +1,7 @@
 .git
 .github
 .cursor
+services/atxfinance-backend
 .next
 node_modules
 npm-debug.log*

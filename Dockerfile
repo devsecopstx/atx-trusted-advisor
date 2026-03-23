@@ -1,27 +1,32 @@
-# Root-level Dockerfile to build and run the Spring Boot backend
-# Build stage
-FROM gradle:8.10.2-jdk21 AS build
-WORKDIR /workspace/services/atxfinance-backend
-
-# Copy Gradle build descriptors first to leverage layer caching
-COPY services/atxfinance-backend/build.gradle.kts services/atxfinance-backend/settings.gradle.kts ./
-# If you later add the Gradle wrapper, uncomment these lines for better reproducibility:
-COPY services/atxfinance-backend/gradle gradle
-# COPY services/atxfinance-backend/gradlew ./
-
-# Prime Gradle deps cache (ignore failure before sources are present)
-RUN --mount=type=cache,target=/home/gradle/.gradle gradle --no-daemon build -x test || true
-
-# Copy sources and build the Spring Boot fat jar
-COPY services/atxfinance-backend/src ./src
-RUN --mount=type=cache,target=/home/gradle/.gradle gradle --no-daemon bootJar -x test
-
-# Runtime stage (distroless)
-FROM gcr.io/distroless/java21-debian12:nonroot
+# Next.js App Router — production image for Cloud Run (`gcloud run deploy --source .`).
+# Spring backend image: Dockerfile.backend
+FROM node:22-bookworm-slim AS deps
 WORKDIR /app
-# Copy the boot jar without hardcoding version
-COPY --from=build /workspace/services/atxfinance-backend/build/libs/*.jar /app/app.jar
-USER nonroot
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM node:22-bookworm-slim AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN mkdir -p public
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+FROM node:22-bookworm-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+RUN chown -R nextjs:nodejs /app
+
+USER nextjs
 EXPOSE 8080
-ENV JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
-ENTRYPOINT ["/usr/bin/java", "-jar", "/app/app.jar"]
+ENV HOSTNAME=0.0.0.0
+
+CMD ["node", "server.js"]
