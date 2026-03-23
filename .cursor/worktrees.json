@@ -12,8 +12,13 @@
     },
     {
       "name": "atx-reviewer",
-      "branch": "develop",
+      "branch": "main",
       "setup": "test -f .cursor/agents/atx-reviewer.yaml && npm install"
+    },
+    {
+      "name": "atx-sre-ops-admin",
+      "branch": "main",
+      "setup": "test -f .cursor/agents/atx-sre-ops-admin.yaml && npm install"
     }
   ]
 }

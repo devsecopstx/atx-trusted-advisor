@@ -79,6 +79,13 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 | GET | `/api/admin/access-requests/{requestId}` | **Global admin only.** **200** `{ "data": { ...request, auditTrail: [...] } }` or **404**. |
 | PATCH \| PUT | `/api/admin/access-requests/{requestId}` | **Global admin only.** Review: body `status` (`approved`\|`rejected`) and/or `requestedPlan`. Plan-only updates **200**; approval applies **`global_admin`** role + subscription plan + default portfolio provision (`DefaultPortfolioProvisionService`). Full xAI/bootstrap async pipeline remains Next-only — JVM writes audit `bootstrap_deferred` or `alert-user-not-sync-warning` when email missing. **409** if already reviewed. |
 | DELETE | `/api/admin/access-requests/{requestId}` | **Global admin only.** **200** `{ "data": { deleted, requestId } }` or **404**. **400** invalid id. |
+| GET \| POST | `/api/admin/users` | **Global admin only.** List **`core_users`** (query `limit` 1–500, default 100) with `latestAuditEvent`; or create user (**201**) with `email`, `role`, `subscriptionPlan`, `status`. **409** duplicate email. Non–`global_admin` creates **`core_tenant_memberships`** `member` for session tenant. |
+| GET | `/api/admin/users/approved` | **Global admin only.** **200** `{ "data": [...] }` — approved access requests + tenant **`global_admin`** users without duplicate rows (parity with Next `listApprovedUsers`). |
+| GET \| PUT \| DELETE | `/api/admin/users/{userId}` | **Global admin only.** **GET** user + `auditTrail`; **PUT** partial update (≥1 field); **DELETE** user. **409** duplicate email on email change. |
+| PATCH | `/api/admin/users/{userId}/role` | **Global admin only.** Body `{ "role" }`. **200** `{ userId, role }`. |
+| PATCH | `/api/admin/users/{userId}/plan` | **Global admin only.** Body `{ "subscriptionPlan" }`. **200** `{ userId, subscriptionPlan }`. |
+| PATCH | `/api/admin/users/{userId}/email` | **Global admin only.** Body `{ "email" }`. **409** duplicate email. |
+| GET \| PUT | `/api/admin/users/{userId}/settings` | **Global admin only.** **`admin_user_settings`** + `metadata.linkedCollections` (default + bootstrap + assigned persona). **PUT** validates published persona when `assignedPersonaId` set. **404** missing settings or persona. |
 
 **Audit semantics:** `actor` filter behavior can differ between Next (regex on email/username) and Kotlin (exact userId/email/username match) — see `docs/ops/audit-lineage-and-controls.md`.
 

@@ -29,16 +29,16 @@ Ship changes safely by validating locally and preparing an accurate commit workf
    - `git fetch origin`
    - `git merge origin/main` (or `git rebase origin/main` if team policy requires it)
 2. If conflicts occur, resolve them first, then verify no conflict markers remain.
-3. Run **`npm run ci:gate`** (lint + typecheck + test). Add **`npm run build`** when the change is release/deploy-sensitive or touches App Router/build artifacts (same as `AGENTS.md` release gate: `ci:gate && build`).
+3. Run **`npm run ci:gate`** (lint + typecheck + test). When the change touches **`services/atxfinance-backend/**`**, also run **`./gradlew test`** from `services/atxfinance-backend` (or at least **`./gradlew compileKotlin`** for a quick compile-only pass). Add **`npm run build`** when the change is release/deploy-sensitive or touches App Router/build artifacts (same as `AGENTS.md` release gate: `ci:gate && build`).
 4. Fix blocking failures in scope.
 5. Re-run validation until clean.
-6. Confirm docs/skill updates for any changed runbooks or delivery workflow. Deferred doc/product gaps live in **`docs/PLAN.md`** (TODO / design TBD) — no need to block commit unless you are closing an item. For **`/api/*` or OpenAPI inventory** changes, follow **`generate-docs`** § *API docs & OpenAPI*. **`POST /api/xchat/ask`:** keep OpenAPI + `xchat-ask-route` integration tests aligned with the live contract (persona-driven model, no body `model`; see **`test-commit-push/CHECKLIST.md`**). **xChat prompt modules** (`xchat-prompt-build.ts`, `appendXchatKbMetadata`): keep **`docs/xchat/xchat-tools-guide.md`** and linked contracts aligned per **`generate-docs`** § *xChat / tools & prompts*. **`GET /api/strategy-options` / `GET /api/strategy-options/expirations`:** keep `current-state`, `strategy-options` integration tests, and **`DEVELOPMENT.md`** / **`README.md`** in sync with **`generate-docs`** § *xStrategyBuilder / strategy-options*. **Branding / investor / GTM / logo** changes: sync **`.cursor/rules/xfinance-branding.mdc`** and **`docs/xchat/xfinance-branding-review.md`** per **`generate-docs`** § *Branding, investor narrative & xChat product copy*. Combined Core MVP + Branding or **pre-prod release** PRs: run **`xdesign-review`** (includes production deploy lock); after deploy, **`AGENTS.md` → Production validation (post-deploy)**.
+6. **Docs & contracts:** Track deferred items in **`docs/PLAN.md`** (no need to block unless you close one). For anything you changed, update the matching checklist rows in **`CHECKLIST.md`** — Spring BFF parity (`bff-proxy-routes`, `nextBffApi`, HTTP spec, smoke parity), OpenAPI / **`generate-docs`** (xChat ask, strategy-options, branding), and run **`xdesign-review`** when the PR is Core MVP + Branding or pre-prod release scope.
 7. **Mongo `tenant_portfolio` (singular):** if you change portfolio collection naming or provisioning, keep `collection-names.ts`, seed/backfill/migration scripts, and `DEVELOPMENT.md` aligned; ship checklist item in **`CHECKLIST.md`**; operators run **`npm run migrate:tenant-portfolio`** on existing DBs that still use legacy collection names.
 8. For auth/xchat/runtime config changes, verify env provenance:
    - runtime app secrets in GCP Secret Manager,
    - GH env secrets OIDC-only,
    - deploy-time literals in GH variables.
-   Ensure required xChat keys are present in env/schema (`XAI_TEAM_ID`, `ATXFINANCE_COLLECTION_ID`).
+   Ensure **`XAI_TEAM_ID`** is present where team xAI collections are used. **`ATXFINANCE_COLLECTION_ID`** is legacy until fully removed (`docs/xchat/atx-multi-agent.md`).
    - Run runtime secret preflight for both environments:
      `npm run ops:secrets:verify:staging` and `npm run ops:secrets:verify:prod`.
    - Validate secret value quality for strict parsers (example:

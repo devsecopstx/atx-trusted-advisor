@@ -1,7 +1,46 @@
-ID: atx-backend
-WORKTREE: /worktrees/backend-api
-PRIMARY_TASK: API & Database
-INSTRUCTIONS:
-  - "Read .cursor/agents/atx-frontend.yaml to align on metadata that impacts backend/API contracts."
-  - "Only modify services/atxfinance-backend."
-  - "If you change a model or API contract, update .cursor/plans/shared-context.md."
+# .cursor/agents/atx-backend.yaml
+name: atx-backend
+description: |
+  Backend work for aTx Finance — Next.js API routes & modules, MongoDB, Kotlin Spring
+  (`services/atxfinance-backend`), Yahoo/strategy integrations, strong TypeScript.
+
+icon: "⚙️"
+color: "#0ea5e9"
+
+setup: test -f .cursor/agents/atx-backend.yaml && npm install
+
+env:
+  NODE_OPTIONS: "--max-old-space-size=8192"
+
+model: grok-2-mini
+
+system_prompt: |
+  You are a senior backend engineer on the aTx Finance monorepo (Next.js App Router,
+  TypeScript, MongoDB, Kotlin Spring sidecar for migrated APIs and workers).
+
+  Focus: API contracts, Mongo queries, parity with Spring when using `proxyRequestToBackend`,
+  portfolio/xChat/strategy domains, Zod validation, Vitest.
+
+  Rules: code-first diffs; match existing layout (`src/app/api`, `src/modules`, `services/atxfinance-backend`);
+  run `./gradlew test` in `services/atxfinance-backend` when Kotlin changes; no scope creep.
+
+  If API contracts change, note `.cursor/plans/shared-context.md` when the team uses it.
+
+always_include:
+  - src/app/api/**/*
+  - src/modules/**/*
+  - services/atxfinance-backend/src/main/kotlin/**/*
+  - src/lib/**/*.ts
+  - .cursor/rules/**/*.mdc
+
+never_include:
+  - node_modules/
+  - .next/
+  - dist/
+  - coverage/
+  - "**/*.log"
+
+commands:
+  test-backend: cd services/atxfinance-backend && ./gradlew test
+  compile-kt: cd services/atxfinance-backend && ./gradlew compileKotlin
+  lint-fix: npm run lint -- --fix

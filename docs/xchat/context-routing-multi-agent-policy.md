@@ -2,17 +2,21 @@
 
 Short policy for how `POST /api/xchat/ask` should combine **pre-call retrieval**, **built-in / custom tools**, and **parallel multi-agent** (`grok-4.20-multi-agent` + `agent_count`). Use this when tuning personas, plans, or prompts.
 
+## Phase 1: xAI collections (TEAM only)
+
+New work: **`XAI_TEAM_ID`** per tenant; TEAM append/retrieval; chat-history collections under that team only. No new reliance on per-user bootstrap, **`ATXFINANCE_COLLECTION_ID`**, or legacy default merges — details and locked decisions in [`atx-multi-agent.md`](./atx-multi-agent.md).
+
 ## Decision table (intent → path)
 
 | User intent (examples) | Prefer | Why |
 |------------------------|--------|-----|
-| Answer from **your docs** (persona collection, user history collection, team collections, Mongo RAG scope) | **Retrieval first** — server-side `searchDocumentsInCollections` / `retrieveRagChunks` injected into system context | Lowest latency and cost; grounded answers; no extra model round-trips for static knowledge. |
+| Answer from **your docs** (persona / **team** xAI collection under `XAI_TEAM_ID`, Mongo RAG scope where applicable) | **Retrieval first** — server-side `searchDocumentsInCollections` / `retrieveRagChunks` injected into system context | Lowest latency and cost; grounded answers; no extra model round-trips for static knowledge. |
 | **Live user state** (positions, balances, watchlist) | **`atxfinance` tool** (responses tool loop) | Data is per-session Mongo; not in xAI collections; must run server executor. |
 | **Live market quote** | **`yahoo_finance` or `atxfinance` + `market_quote`** | Canonical Yahoo path; avoid inventing prices from web prose. |
 | **Breaking news, sentiment, “what happened today”** | **`web_search` / `x_search` tools** (after retrieval if needed) | Collections lag; tools pull fresh web/X. |
 | **Heavy synthesis** (many conflicting sources, multi-angle research, explicit “red team”) | **Multi-agent** (`grok-4.20-multi-agent` + `reasoningEffort`) — **admin / cost-approved tiers only** by default | Higher cost and latency; use when single-pass quality is insufficient, not for every turn. |
 
-**Rule:** Multi-source context (personal + team + default collection) does **not** by itself require parallel agents. Prefer **one model + merged retrieval + selective tools**.
+**Rule:** Multi-source context (team + Mongo RAG where enabled) does **not** by itself require parallel agents. Prefer **one model + merged retrieval + selective tools**.
 
 ## Effective xAI model
 
@@ -32,6 +36,7 @@ Clamp helper: `clampMultiAgentParallelismForPlan` (used from [`src/app/api/xchat
 
 ## Related docs
 
+- [`atx-multi-agent.md`](./atx-multi-agent.md) — locked Phase 1 TEAM-only collection scope (`XAI_TEAM_ID`).
 - [`atxfinance-tool-stub.md`](./atxfinance-tool-stub.md) — portfolio / watchlist tool contract.
 - [`xchat-debug-logging.md`](./xchat-debug-logging.md) — opt-in diagnostics.
 - [`pre-release-check.md`](./pre-release-check.md) — broader xChat gaps.

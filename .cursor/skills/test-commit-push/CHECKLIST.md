@@ -13,6 +13,7 @@
 - [ ] `npm run test` passes.
 - [ ] `npm run build` passes when release-sensitive code changed.
 - [ ] `npm run ci:gate && npm run build` passes for release/deploy-impacting changes.
+- [ ] **`services/atxfinance-backend/**` changed:** `./gradlew test` passes (from `services/atxfinance-backend`), or `./gradlew compileKotlin` at minimum when only trivial edits.
 
 ## Commit Hygiene
 
@@ -20,7 +21,7 @@
 - [ ] Auth/xchat env provenance is consistent: runtime secrets in GCP Secret Manager, GH env secrets OIDC-only, deploy literals in GH vars.
 - [ ] Runtime secret preflight passes: `npm run ops:secrets:verify:staging` and `npm run ops:secrets:verify:prod`.
 - [ ] Secret values satisfy parser constraints (for example `ADMIN_SEED_EMAIL` is valid and has no trailing comma/space).
-- [ ] Required xChat keys are present where expected: `XAI_TEAM_ID`, `ATXFINANCE_COLLECTION_ID`.
+- [ ] **Team xAI:** `XAI_TEAM_ID` is set per deployment/tenant where TEAM collection features run (**Phase 1** uses TEAM append/retrieval only — see `docs/xchat/atx-multi-agent.md`). `ATXFINANCE_COLLECTION_ID` is **legacy** until removed from code; not a gate for new TEAM-only work.
 - [ ] `.cursor/rules/*.mdc` files have valid frontmatter, repo-aligned `globs`, and no merge/patch artifacts (e.g. leading `+` lines).
 - [ ] When logo or visual identity changes: update
   **`.cursor/rules/xfinance-branding.mdc`** to match (e.g. aTx⚡Finance).
@@ -34,6 +35,7 @@
 - [ ] **Mongo portfolio store:** canonical collection is **`tenant_portfolio`** (singular), constant `TENANT_PORTFOLIO_COLLECTION` in `src/modules/core-admin/collection-names.ts`. Legacy names `portfolio_portfolios` / `tenant_portfolios` → run **`npm run migrate:tenant-portfolio`** once per database before or right after deploy (see `DEVELOPMENT.md` → *Multi-tenant Seed Verification*).
 - [ ] xChat `POST /api/xchat/ask` changes: update OpenAPI inventory (`src/lib/openapi/current-state-overrides.ts`), `tests/integration/xchat-ask-route.test.ts`, and xChat docs as needed (`docs/xchat/xchat-tools-guide.md`, `context-routing-multi-agent-policy.md`, `atxfinance-tool-stub.md`, `AGENTS.md` quick ref). **Contract:** effective xAI model id comes from the **resolved persona’s `model`** (server default if empty); **no** request-body `model`; `modelSelectionSource` is `persona` | `default`. **Prompt assembly:** if `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` change, sync **`generate-docs`** § *xChat / tools & prompts*.
 - [ ] **`/api/strategy-options*`** (expirations + chain) or **`src/modules/strategy-options/**`** changes: update **`src/lib/openapi/current-state.ts`**, **`tests/integration/strategy-options*.test.ts`**, **`DEVELOPMENT.md`** (options chain section), and **`README.md`** Core Routes — see **`generate-docs`** § *xStrategyBuilder / strategy-options*.
+- [ ] **Spring BFF (proxied routes):** Kotlin **`@*Mapping`** ↔ **`bff-proxy-routes.ts`**, **`nextBffApi`** / **`backend-bff-api-object.test.ts`**, **`docs/ops/atxfinance-backend-http-api.md`**, smoke parity test, **`proxyRequestToBackend`** on affected **`src/app/api/**/route.ts`**.
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.
 - [ ] Open gaps (if any) are in **`docs/PLAN.md`** as TODO / design TBD, or consciously not applicable to this change.

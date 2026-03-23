@@ -96,6 +96,34 @@ export const nextBffApi = {
     accessRequestsById: {
       pathTemplate: "/api/admin/access-requests/{requestId}",
       methods: ["GET", "PATCH", "PUT", "DELETE"]
+    },
+    usersIndex: {
+      pathTemplate: "/api/admin/users",
+      methods: ["GET", "POST"]
+    },
+    usersApproved: {
+      pathTemplate: "/api/admin/users/approved",
+      methods: ["GET"]
+    },
+    userById: {
+      pathTemplate: "/api/admin/users/{userId}",
+      methods: ["GET", "PUT", "DELETE"]
+    },
+    userRole: {
+      pathTemplate: "/api/admin/users/{userId}/role",
+      methods: ["PATCH"]
+    },
+    userPlan: {
+      pathTemplate: "/api/admin/users/{userId}/plan",
+      methods: ["PATCH"]
+    },
+    userEmail: {
+      pathTemplate: "/api/admin/users/{userId}/email",
+      methods: ["PATCH"]
+    },
+    userSettings: {
+      pathTemplate: "/api/admin/users/{userId}/settings",
+      methods: ["GET", "PUT"]
     }
   },
   rag: {

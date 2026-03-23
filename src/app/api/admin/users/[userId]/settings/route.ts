@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
 import {
@@ -49,7 +50,12 @@ type LinkedCollection = {
   source: "atxfinance_default" | "user_bootstrap" | "assigned_persona";
 };
 
-export async function GET(_: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -82,6 +88,11 @@ export async function GET(_: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

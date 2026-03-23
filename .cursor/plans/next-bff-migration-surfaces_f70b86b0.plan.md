@@ -34,15 +34,15 @@ isProject: false
 
 ## Goal
 
-Move product/business API ownership from Next route handlers to Spring controllers using a proxy-first BFF pattern ([`proxyRequestToBackend` in `src/lib/backend-bff.ts`](../../src/lib/backend-bff.ts)), then remove Next handlers only after parity checks pass.
+Move product/business API ownership from Next route handlers to Spring controllers using a proxy-first BFF pattern (`proxyRequestToBackend` in [`src/lib/backend-bff.ts`](../../src/lib/backend-bff.ts)), then remove Next handlers only after parity checks pass.
 
 ## Baseline (reference pattern)
 
-- [`src/lib/backend-bff.ts`](../../src/lib/backend-bff.ts) — proxy + `nextBffApi` route registry (if present)
-- [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) — parity list for smoke tests
-- [`docs/ops/api-consolidation-spring-backend.md`](../../docs/ops/api-consolidation-spring-backend.md)
-- [`docs/ops/atxfinance-backend-http-api.md`](../../docs/ops/atxfinance-backend-http-api.md)
-- [`tests/smoke/backend-http-api-parity.test.ts`](../../tests/smoke/backend-http-api-parity.test.ts)
+- `[src/lib/backend-bff.ts](../../src/lib/backend-bff.ts)` — proxy + `nextBffApi` route registry (if present)
+- `[src/lib/bff-proxy-routes.ts](../../src/lib/bff-proxy-routes.ts)` — parity list for smoke tests
+- `[docs/ops/api-consolidation-spring-backend.md](../../docs/ops/api-consolidation-spring-backend.md)`
+- `[docs/ops/atxfinance-backend-http-api.md](../../docs/ops/atxfinance-backend-http-api.md)`
+- `[tests/smoke/backend-http-api-parity.test.ts](../../tests/smoke/backend-http-api-parity.test.ts)`
 
 ## Shipped slices (summary)
 
@@ -62,11 +62,11 @@ Portfolios/positions/watchlist, recommendations (app + per-portfolio) + Pub/Sub 
 
 ## Per-slice implementation checklist
 
-- Add Spring controllers/services under [`services/atxfinance-backend/src/main/kotlin`](../../services/atxfinance-backend/src/main/kotlin).
-- Update [`docs/ops/atxfinance-backend-http-api.md`](../../docs/ops/atxfinance-backend-http-api.md).
-- Extend [`tests/smoke/backend-http-api-parity.test.ts`](../../tests/smoke/backend-http-api-parity.test.ts) / [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) as appropriate.
-- Proxy-first in [`src/app/api`](../../src/app/api).
-- Integration tests in [`tests/integration`](../../tests/integration) when adding coverage.
+- Add Spring controllers/services under `[services/atxfinance-backend/src/main/kotlin](../../services/atxfinance-backend/src/main/kotlin)`.
+- Update `[docs/ops/atxfinance-backend-http-api.md](../../docs/ops/atxfinance-backend-http-api.md)`.
+- Extend `[tests/smoke/backend-http-api-parity.test.ts](../../tests/smoke/backend-http-api-parity.test.ts)` / `[src/lib/bff-proxy-routes.ts](../../src/lib/bff-proxy-routes.ts)` as appropriate.
+- Proxy-first in `[src/app/api](../../src/app/api)`.
+- Integration tests in `[tests/integration](../../tests/integration)` when adding coverage.
 - Side effects: duplicate Slack/audit/Pub/Sub on JVM per **Plan: operational parity** in the consolidation doc before enabling BFF-only traffic.
 
 ## Deletion gate for each Next route
@@ -83,3 +83,4 @@ Only delete a Next `route.ts` when all are true:
 
 - Ship one domain slice per PR.
 - Prefer proxy-first PR then deletion PR for large/risky surfaces.
+

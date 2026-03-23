@@ -69,13 +69,13 @@ initial_seed:
 
   settings:                          # key-value store style (very common)
     - key: site_name
-      value: "atx fintech backend"
+      value: "atx-fintech-advisor"
       type: string
       public: true
       description: "ATXFINANCE"
 
     - key: support_email
-      value: atxbogart@gmail.com
+      value: sperezintexas@gmail.com
       type: string
       public: true
 
@@ -127,7 +127,7 @@ initial_seed:
       sensitive: true
 
     - key: admin_seed_email
-      value: "atxbogart@gmail.com"
+      value: "sperezintexas@gmail.com"
       type: string
       public: true
       sensitive: false
@@ -155,6 +155,11 @@ initial_seed:
       type: string
       public: true
       sensitive: true                # hint for UI/admin panel
+    - key: formspree_public_key
+      value: "https://formspree.io/f/mnjgkkow"
+      type: string
+      public: true
+      sensitive: true
 
     - key: enable_beta_features
       value: "false"
