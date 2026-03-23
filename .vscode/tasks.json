@@ -290,7 +290,7 @@
         "Start Backend (Docker)",
         "Start Frontend (Next Dev)"
       ],
-      "dependsOrder": "parallel",
+      "dependsOrder": "sequence",
       "problemMatcher": [],
       "runOptions": {
         "instanceLimit": 1,
