@@ -3,8 +3,7 @@
  * (`proxyRequestToBackend` in `backend-bff.ts`). Keep in sync with Kotlin `@*Mapping` and
  * `docs/ops/atxfinance-backend-http-api.md`.
  *
- * Next likely vertical slice (not proxied yet): xChat / streaming routes — see
- * `docs/ops/api-consolidation-spring-backend.md`.
+ * Deferred vertical slice: xChat streaming routes — see `docs/ops/api-consolidation-spring-backend.md`.
  */
 export type BffProxyHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -38,7 +37,14 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "POST", path: "/api/feedback" },
   { method: "GET", path: "/api/admin/bootstrap-status" },
   { method: "GET", path: "/api/admin/audit" },
+  { method: "GET", path: "/api/admin/access-requests" },
+  { method: "POST", path: "/api/admin/access-requests" },
+  { method: "GET", path: "/api/admin/access-requests/{requestId}" },
+  { method: "PATCH", path: "/api/admin/access-requests/{requestId}" },
+  { method: "PUT", path: "/api/admin/access-requests/{requestId}" },
+  { method: "DELETE", path: "/api/admin/access-requests/{requestId}" },
   { method: "GET", path: "/api/rag/files" },
+  { method: "POST", path: "/api/rag/files" },
   { method: "GET", path: "/api/personas" },
   { method: "POST", path: "/api/personas" },
   { method: "GET", path: "/api/personas/{personaId}" },

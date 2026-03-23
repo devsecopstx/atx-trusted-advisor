@@ -71,7 +71,7 @@ async function run() {
     }
 
     const ragFiles = await db
-      .collection("xchat_rag_files")
+      .collection("xai_collections")
       .find({
         $or: [{ userId: { $exists: false } }, { tenantId: { $exists: false } }]
       })
@@ -87,7 +87,7 @@ async function run() {
         continue;
       }
       const tenantId = membershipByUserId.get(String(mappedUser._id));
-      await db.collection("xchat_rag_files").updateOne(
+      await db.collection("xai_collections").updateOne(
         { _id: file._id },
         {
           $set: {

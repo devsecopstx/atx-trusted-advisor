@@ -22,7 +22,8 @@ import type {
 const collections = {
   personas: "xchat_personas",
   personaVersions: "xchat_persona_versions",
-  ragFiles: "xchat_rag_files",
+  /** Canonical inventory for admin GET `/api/rag/files` + Spring BFF (replaces legacy `xchat_rag_files`). */
+  ragFiles: "xai_collections",
   ragChunks: "xchat_rag_chunks",
   chatLogs: "xchat_logs"
 } as const;

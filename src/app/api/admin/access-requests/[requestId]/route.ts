@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import { enqueueAccessRequestBootstrap } from "@/modules/core-admin/access-request-bootstrap";
 import {
@@ -38,10 +39,19 @@ type RouteContext = {
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
   return handleUpdate(request, context);
 }
 
-export async function GET(_: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -69,6 +79,10 @@ export async function GET(_: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
   return handleUpdate(request, context);
 }
 
@@ -232,7 +246,12 @@ async function handleUpdate(request: Request, context: RouteContext) {
   return NextResponse.json({ data: serializeAccessRequest(reviewed) });
 }
 
-export async function DELETE(_: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

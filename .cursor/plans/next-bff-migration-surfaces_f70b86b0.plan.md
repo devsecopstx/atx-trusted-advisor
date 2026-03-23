@@ -18,7 +18,7 @@ todos:
     content: "Deferred: xChat routes — streaming proxy + tools; see Plan:xChat in api-consolidation-spring-backend.md."
     status: pending
   - id: backlog-auth-oauth
-    content: "Deferred: /api/auth/* session + OAuth callback — explicit cross-host/JWT contract before moving."
+    content: "In progress: move /api/auth/* session + OAuth callback to Spring using approved single-host cookie + backend PKCE/state contract and dual-run cutover."
     status: pending
 isProject: false
 ---
@@ -51,7 +51,7 @@ Portfolios/positions/watchlist, recommendations (app + per-portfolio), strategy-
 2. **RAG POST** — upload path still Next-only; needs Spring + parity with xAI upload flow.
 3. **Recommendation Pub/Sub** — optional JVM duplicate of `publishRecommendationEvent` when BFF handles `POST /api/recommendations`.
 4. **xChat** — streaming-capable BFF path; tool loop; last major product slice per **Plan: xChat** in consolidation doc.
-5. **Auth / OAuth** — session issuance and `/api/auth/x/callback` stay on Next until an explicit contract.
+5. **Auth / OAuth** — session issuance and `/api/auth/x/callback` move to Spring per approved contract in `docs/ops/api-consolidation-spring-backend.md` (backend cookie authority + dual-run cutover).
 
 ## Per-slice implementation checklist
 

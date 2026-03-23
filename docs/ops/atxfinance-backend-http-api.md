@@ -74,14 +74,22 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 |--------|------|---------|
 | GET | `/api/admin/bootstrap-status` | **200** bootstrap/index/seed snapshot. Uses env **`ADMIN_SEED_EMAIL`** (same as Next). |
 | GET | `/api/admin/audit` | **200** `{ "data": [...] }` with optional filters (`entityType`, `entityId`, `action`, `actor`, `from`, `to`, `limit`). |
+| GET | `/api/admin/access-requests` | **Global admin only.** **200** `{ "data": [...] }`. Query `status`: `open` (default) \| `all` \| single status (`new`, `triaged`, `pending`, `approved`, `rejected`, `expired`). Rows include `user` / `reviewedByUser` summaries from **`core_users`** and optional `latestAuditEvent`. |
+| POST | `/api/admin/access-requests` | **Global admin only.** Create on behalf of a user: body `userId` **or** `email`, `requestedRole`, `reason` (≥5 chars), optional `requestedPlan`, optional `status`. **201** with `meta.resolvedUserId`. **409** if pending exists. |
+| GET | `/api/admin/access-requests/{requestId}` | **Global admin only.** **200** `{ "data": { ...request, auditTrail: [...] } }` or **404**. |
+| PATCH \| PUT | `/api/admin/access-requests/{requestId}` | **Global admin only.** Review: body `status` (`approved`\|`rejected`) and/or `requestedPlan`. Plan-only updates **200**; approval applies **`global_admin`** role + subscription plan + default portfolio provision (`DefaultPortfolioProvisionService`). Full xAI/bootstrap async pipeline remains Next-only — JVM writes audit `bootstrap_deferred` or `alert-user-not-sync-warning` when email missing. **409** if already reviewed. |
+| DELETE | `/api/admin/access-requests/{requestId}` | **Global admin only.** **200** `{ "data": { deleted, requestId } }` or **404**. **400** invalid id. |
 
 **Audit semantics:** `actor` filter behavior can differ between Next (regex on email/username) and Kotlin (exact userId/email/username match) — see `docs/ops/audit-lineage-and-controls.md`.
 
-## RAG files (read)
+## RAG files (inventory + upload)
+
+RAG **file inventory** is stored in Mongo collection **`xai_collections`** (legacy name `xchat_rag_files` may still exist for one-off migrations). Text chunks for semantic fallback remain in **`xchat_rag_chunks`**.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/rag/files` | **Global admin only.** **200** `{ "data": [...] }` from `xchat_rag_files` (optional `scope` query). |
+| GET | `/api/rag/files` | **Global admin only.** **200** `{ "data": [...] }` from `xai_collections` (optional `scope` query). |
+| POST | `/api/rag/files` | **Global admin only.** `multipart/form-data` with field **`file`** and optional **`scope`** (default `global`). Uploads to xAI `POST /v1/files` (`XAI_API_KEY`, optional `XAI_BASE_URL`), inserts into `xai_collections`, chunks text-like files into `xchat_rag_chunks`. **201** `{ "data": ... }`. **400** bad input. **413** too large (max 5 MiB file). |
 
 ## Personas (`xchat_personas`, session + roles)
 

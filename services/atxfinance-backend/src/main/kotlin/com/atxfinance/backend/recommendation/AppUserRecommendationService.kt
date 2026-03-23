@@ -16,6 +16,7 @@ import java.util.Date
 class AppUserRecommendationService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
+    private val recommendationEventPublisher: RecommendationEventPublisher,
 ) {
 
     private val allowedStatus = setOf("draft", "active", "dismissed", "superseded")
@@ -70,6 +71,7 @@ class AppUserRecommendationService(
         doc["createdAt"] = now
         doc["updatedAt"] = now
         mongoTemplate.insert(doc, props.appUserRecommendationsCollection)
+        recommendationEventPublisher.publishCreated(session, doc)
         return doc
     }
 }

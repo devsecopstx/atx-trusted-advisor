@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
 
 const AGENT_FILES = [
   ".cursor/agents/atx-frontend.yaml",
@@ -14,6 +14,7 @@ describe("cursor agent persona config sanity", () => {
       const content = readFileSync(resolve(process.cwd(), relativePath), "utf8");
       expect(content).toMatch(/(?:^|\n)INSTRUCTIONS:\n(?: {2}- .+\n?)+/);
       expect(content).not.toMatch(/(?:^|\n)INSTRUCTIONS:\n(?:\d+\.\s.+\n?)+/);
+      expect(content).not.toMatch(/\n {2}- \d+\s+[A-Z_]+:/);
     }
   });
 

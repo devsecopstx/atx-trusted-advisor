@@ -88,12 +88,20 @@ export const nextBffApi = {
     audit: {
       pathTemplate: "/api/admin/audit",
       methods: ["GET"]
+    },
+    accessRequestsIndex: {
+      pathTemplate: "/api/admin/access-requests",
+      methods: ["GET", "POST"]
+    },
+    accessRequestsById: {
+      pathTemplate: "/api/admin/access-requests/{requestId}",
+      methods: ["GET", "PATCH", "PUT", "DELETE"]
     }
   },
   rag: {
     files: {
       pathTemplate: "/api/rag/files",
-      methods: ["GET"]
+      methods: ["GET", "POST"]
     }
   },
   accessRequests: {

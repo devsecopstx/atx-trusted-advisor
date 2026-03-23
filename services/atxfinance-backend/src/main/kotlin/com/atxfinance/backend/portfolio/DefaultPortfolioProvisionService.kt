@@ -345,4 +345,17 @@ class DefaultPortfolioProvisionService(
 
         return Triple(portfolio, account, watchlist)
     }
+
+    /** Same as [provision] for an arbitrary user id (access-request approval path). */
+    fun provisionForUser(userId: String, tenantId: String): Triple<Document, Document, Document> {
+        val session =
+            ResolvedSession(
+                userId = userId,
+                tenantId = tenantId,
+                roles = emptyList(),
+                email = null,
+                username = null,
+            )
+        return provision(session)
+    }
 }

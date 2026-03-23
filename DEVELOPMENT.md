@@ -532,13 +532,12 @@ Required (GCP Secret Manager; mounted by **Deploy Cloud Run** and **Deploy Cloud
 - **Env (not in default deploy workflow):** `RECOMMENDATIONS_PUBSUB_TOPIC` (short topic id, e.g. `recommendations.v1`) and a project id: `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT` or `GCP_PROJECT`. If either is unset, publish is skipped (local dev / CI need no emulator).
 - **Event body (JSON):** `event` (`created` \| `updated`), `recommendationId`, `userId`, `tenantId`, `status`, `occurredAt` (ISO), `correlationId`, `scopeTags` (string array). **Attributes:** `event`, `userId`, `tenantId` for pull-filtering before loading full docs from Mongo.
 - **IAM:** grant the **core app** Cloud Run service account `roles/pubsub.publisher` on the topic. A **future worker/agent** service account gets `roles/pubsub.subscriber` on a dedicated subscription (filter in app by `userId` / `tenantId` / tags as needed).
+- **atxfinance-backend (BFF on):** `RecommendationEventPublisher` publishes the same shape after Mongo insert when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id are set (parity with Next when the proxy is off).
 
-### Recommendations and Pub/Sub (optional)
+### App user alerts and Pub/Sub (optional, future)
 
-- **Mongo:** collection `app_user_recommendations` (see `src/modules/recommendations/repository.ts`). App_user APIs: `GET`/`POST /api/recommendations`, `GET /api/recommendations/{id}` — scoped to session `userId` + `tenantId`.
-- **Env (not in default deploy workflow):** `RECOMMENDATIONS_PUBSUB_TOPIC` (short topic id, e.g. `recommendations.v1`) and a project id: `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT` or `GCP_PROJECT`. If either is unset, publish is skipped (local dev / CI need no emulator).
-- **Event body (JSON):** `event` (`created` \| `updated`), `recommendationId`, `userId`, `tenantId`, `status`, `occurredAt` (ISO), `correlationId`, `scopeTags` (string array). **Attributes:** `event`, `userId`, `tenantId` for pull-filtering before loading full docs from Mongo.
-- **IAM:** grant the **core app** Cloud Run service account `roles/pubsub.publisher` on the topic. A **future worker/agent** service account gets `roles/pubsub.subscriber` on a dedicated subscription (filter in app by `userId` / `tenantId` / tags as needed).
+- **Client helper:** `src/lib/pubsub/alerts-publish.ts` — `publishAppUserAlertEvent` when `ALERTS_PUBSUB_TOPIC` and a project id are set; no-op otherwise.
+- **Event body:** `event`, `alertId`, `userId`, `tenantId`, `kind`, `severity`, `occurredAt`, optional `payload`, `correlationId`. **Attributes:** `event`, `userId`, `tenantId`, `kind`, `severity`.
 
 ### OAuth Callback URLs (single X app)
 
