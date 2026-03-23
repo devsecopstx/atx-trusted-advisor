@@ -205,6 +205,10 @@ Three cloud agent configurations are supported:
 
 All three share the same update script and secret requirements above.
 
+### Running without MONGODB_URI
+
+When `MONGODB_URI` is not configured, the app falls back to `mongodb://admin:atxrocks!@localhost:27017/atxfinancedb`. Without a running Mongo instance, `GET /api/health` returns HTTP 500 (connection refused) but the dev server itself runs fine. Pages that do **not** require a DB session work: `/login`, `/app_user/xoptions`, `/app_user/xoptions/follow-up`, `/xcoach`, `/api/openapi`. Auth-gated pages (`/xchat`, `/admin/*`, `/portfolio`, `/watchlist`) and `npm run seed:admin` require a live MongoDB connection. All validation gates (`npm run ci:gate`) pass without MongoDB — tests use mocked dependencies.
+
 ### Gotchas
 
 - The env schema (`src/lib/env.ts`) requires `XAI_API_KEY`, `XAI_MANAGEMENT_API_KEY`, `X_OAUTH_CLIENT_ID`, and `X_OAUTH_CLIENT_SECRET` to be non-empty strings. The app will not start without them even if you only need non-AI endpoints.
