@@ -102,6 +102,8 @@ Track these before **PR 3** prod cutover and while **PR 4** is open.
 | R5 | BFF generally | If `ATXFINANCE_BACKEND_ORIGIN` points at a **down** or **wrong** Spring URL, admin APIs 5xx with no Mongo fallback until origin is cleared. | Runbook: health-check Spring before enabling; feature-flag or staged rollout per env. |
 | R6 | Side effects | Task runs in Next did not publish audit/Slack events; JVM path matches today — confirm product expectations if audit is required later. | Optional: `admin_audit_events` on task success/fail if compliance needs it. |
 
+| R7 | Auth / OAuth cutover | Spring does not yet own `/api/auth/x/callback`; Next cookie `SameSite` and error codes differ from the **approved** Spring contract. | Follow [`auth-oauth-spring-dual-run.md`](./auth-oauth-spring-dual-run.md): operator checklist, Next→Spring error matrix, `next` redirect gap. Add JVM callback + Redis PKCE + integration tests before dual-run soak. |
+
 ## Auth callback contract (approved)
 
 ### Authority and cookie model
@@ -172,6 +174,7 @@ When `proxyRequestToBackend` returns a Spring `Response`, the Next handler’s s
 
 ## Related
 
+- [`auth-oauth-spring-dual-run.md`](./auth-oauth-spring-dual-run.md) — Next vs Spring auth gaps, `/login?error=` matrix, dual-run checklist
 - `.cursor/plans/next-bff-migration-surfaces_f70b86b0.plan.md` — Cursor checklist for **resuming** BFF work (backlog todos + per-slice steps); this doc remains the **canonical** status board.
 - `docs/ops/atxfinance-backend-http-api.md` — current Spring surface
 - `docs/ops/audit-lineage-and-controls.md` — audit rows, BFF side-effect parity, retrieval semantics, test inventory vs xdesign-review-audit

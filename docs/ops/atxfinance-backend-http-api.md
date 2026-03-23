@@ -145,6 +145,12 @@ Resolution order for Spring Data Mongo URI (high level):
 
 Docker Compose sets `SPRING_DATA_MONGODB_URI` explicitly for the `atxfinance-backend` service unless overridden by `.env` / `MONGODB_URI_B64`.
 
+## Auth / OAuth (Next-primary; Spring cutover planned)
+
+**Today:** X OAuth **start** and **`GET /api/auth/x/callback`** run on the **Next.js** core app (`src/app/api/auth/x/*`). This Spring service validates the same **`xf_core_session`** cookie as Next when requests are BFF-proxied or forwarded with the browser `Cookie` header.
+
+**Planned:** Spring-owned callback, Redis-backed PKCE, and dual-run cutover — see [`auth-oauth-spring-dual-run.md`](./auth-oauth-spring-dual-run.md) and the *Auth callback contract* in [`api-consolidation-spring-backend.md`](./api-consolidation-spring-backend.md).
+
 ## Testing
 
 - **JVM unit tests:** from `services/atxfinance-backend`: `./gradlew test`
@@ -152,6 +158,7 @@ Docker Compose sets `SPRING_DATA_MONGODB_URI` explicitly for the `atxfinance-bac
 
 ## Related
 
+- **Auth / OAuth dual-run (gaps + checklist):** [`auth-oauth-spring-dual-run.md`](./auth-oauth-spring-dual-run.md)
 - **Consolidating product APIs in Spring (migration plan):** `docs/ops/api-consolidation-spring-backend.md`
 - Runbook-style notes: `docs/ops/junie-guidelines-atxfinance-backend.md`
 - Local stack: `DEVELOPMENT.md` → *Local Setup (Backend → Frontend)*

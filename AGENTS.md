@@ -60,6 +60,7 @@ After merging and deploying to production (or staging first):
 - OpenAPI inventory: `GET /api/openapi`
 - Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
+- **Spring OAuth cutover (dual-run):** `docs/ops/auth-oauth-spring-dual-run.md` — gaps vs approved contract, `/login?error=` matrix, operator checklist
 - Personas API: `GET /api/personas`
 - xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (global_admin), **xFinance** (app roles); **RAG / file_search collection scope** is **only** what is declared on the resolved persona (`xaiCollection` + tool `collection_ids`), not env defaults or implicit user/team merges. **Effective xAI model** comes from the **resolved persona’s `model`** (fallback server default if unset); optional `personaId` / admin-assigned persona selects persona — **no** request-body `model` override. **`xapi.tools`** are used as stored (include `atxfinance` / `yahoo_finance` on the persona when needed).
 - **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`docs/xchat/xai-api-standard.md`**
