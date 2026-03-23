@@ -5,7 +5,7 @@ description: Bull call debit spread framework for leveraged bullish exposure wit
 
 # atx-skill Bull Call Debit Spread
 
-## Core Setup
+## Core setup
 - Buy lower-strike call, sell higher-strike call (same expiration).
 - Pay net debit; thesis is moderate upside into expiry.
 - Max gain capped at strike width minus debit.
@@ -15,7 +15,7 @@ description: Bull call debit spread framework for leveraged bullish exposure wit
 - Always compute breakeven and max risk clearly.
 - Include early-profit/decay exit guidance.
 
-## Output Format
+## Output format
 1. Strike/expiration setup.
 2. Debit, max gain/loss, breakeven.
 3. Price-path scenarios.

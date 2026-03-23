@@ -5,7 +5,7 @@ description: Calendar spread framework for near-term theta capture against longe
 
 # atx-skill Calendar Spread
 
-## Core Setup
+## Core setup
 - Buy longer-dated option and sell shorter-dated option at same strike.
 - Profit thesis: front expiry decays faster than back expiry.
 - Usually centered around a target pin/price zone.
@@ -15,7 +15,7 @@ description: Calendar spread framework for near-term theta capture against longe
 - Include expiration-week management of the short leg.
 - Keep max-risk defined by net debit.
 
-## Output Format
+## Output format
 1. Strike and expiry pair.
 2. Net debit and target zone.
 3. Volatility/time-decay assumptions.

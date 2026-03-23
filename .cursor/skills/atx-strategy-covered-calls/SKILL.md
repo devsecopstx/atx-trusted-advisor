@@ -6,20 +6,21 @@ description: Covered Calls playbook for TSLA shares with weekly/bi-weekly OTM ca
 
 # atxFinance Strategy: Covered Calls
 
-## How Commonly Used
+## Core setup
 
-Very High
-
-## Strategy
-
-Sell 3-10% OTM weekly/bi-weekly calls on TSLA shares; reinvest premiums to grow TSLA holdings.
-
-## Risk Profile
-
-Moderate (capped upside)
+- **Frequency:** Very High
+- **Thesis:** Sell 3-10% OTM weekly/bi-weekly calls on TSLA shares; reinvest premiums to grow TSLA holdings.
+- **Risk profile:** Moderate (capped upside)
 
 ## Guardrails
 
 - Confirm shares are owned before recommending short calls.
 - Maintain assignment-aware decision points near expiration.
 - Preserve tax/event-awareness notes for rolling decisions.
+
+## Output format
+
+1. Entry setup (spot, strike distance, expiration).
+2. Premium target and breakeven impact.
+3. Assignment/roll decision tree.
+4. Risk summary.

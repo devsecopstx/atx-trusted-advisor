@@ -5,7 +5,7 @@ description: Covered calls playbook for TSLA share inventory with weekly/bi-week
 
 # atx-skill Covered Calls
 
-## Core Setup
+## Core setup
 - Underlying default: TSLA shares already owned.
 - Sell OTM calls (typically 3-10% above spot) on weekly or bi-weekly expirations.
 - Manage for premium yield while accepting capped upside.
@@ -15,7 +15,7 @@ description: Covered calls playbook for TSLA share inventory with weekly/bi-week
 - Include assignment path and roll/close criteria before expiration.
 - Include downside scenario if shares drop while short call premium is collected.
 
-## Output Format
+## Output format
 1. Entry setup (spot, strike distance, expiration).
 2. Premium target and breakeven impact.
 3. Assignment/roll decision tree.

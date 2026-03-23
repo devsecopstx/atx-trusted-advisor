@@ -1,7 +1,7 @@
 ---
 id: xdesign-review
 name: xdesign-review
-version: "1.1.0"
+version: "1.1.1"
 description: Final PR + production-readiness review gate for atxFinance when combining Core MVP and Branding changes (and pre-prod lock).
 ---
 
@@ -30,6 +30,7 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 
 ## Skill changelog
 
+- **1.1.1** — README options index: single table for `atx-skill-*` vs `atx-strategy-*` (no duplicate sections); AGENTS.md line aligned.
 - **1.1.0** — xChat prompt assembly is centralized (`buildXchatSystemPrompt`, `buildSessionToolInstructions`, `appendXchatKbMetadata`); doc parity pointer remains `docs/xchat/xchat-tools-guide.md`.
 
 ## Versioning (SemVer — single source of truth)
@@ -124,6 +125,12 @@ Ship checklist (align with **`test-commit-push`** / **`AGENTS.md`**):
 - **xPersona**: detailed config and how it gates xChat scope — later TODO.
 - **Search/RAG tools**: advanced tuning — see `docs/xchat/`.
 - **xCoach**: full licensing-exam (timed test) design and implementation — stub only for now.
+
+
+
+## Skill index note (options)
+
+The `.cursor/skills/README.md` index uses **one** section for options: ten rows, each row links **both** `atx-skill-*` and `atx-strategy-*`. That is intentional — same structure, different voice (generic vs TSLA/xFinance). Do not remove either column; compare `atx-skill-wheel` vs `atx-strategy-wheel` for an example.
 
 ## Guardrails
 

@@ -5,7 +5,7 @@ description: Iron condor framework for range-bound premium capture with defined 
 
 # atx-skill Iron Condor
 
-## Core Setup
+## Core setup
 - Combine bear call spread and bull put spread in same expiration.
 - Collect net credit when expecting price to remain in range.
 - Risk is defined by widest wing minus collected credit.
@@ -15,7 +15,7 @@ description: Iron condor framework for range-bound premium capture with defined 
 - Include event-risk filter (earnings, macro catalysts).
 - Include tested-wing adjustment path.
 
-## Output Format
+## Output format
 1. Short strikes and wing widths.
 2. Credit, max risk, breakeven bounds.
 3. Probability/range thesis.

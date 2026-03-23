@@ -6,20 +6,21 @@ description: Bull Put Credit Spread guide for defined-risk premium capture on TS
 
 # atxFinance Strategy: Bull Put Credit Spread
 
-## How Commonly Used
+## Core setup
 
-High
-
-## Strategy
-
-Sell OTM put spreads on TSLA dips for defined-risk income; reinvest proceeds into TSLA.
-
-## Risk Profile
-
-Moderate (limited max loss)
+- **Frequency:** High
+- **Thesis:** Sell OTM put spreads on TSLA dips for defined-risk income; reinvest proceeds into TSLA.
+- **Risk profile:** Moderate (limited max loss)
 
 ## Guardrails
 
 - Keep spread width aligned with defined max-loss limits.
 - Require explicit invalidation and exit logic.
 - Avoid overlapping spread clusters around key event dates.
+
+## Output format
+
+1. Short/long strike proposal.
+2. Credit, max profit, max loss, breakeven.
+3. Management triggers.
+4. Risk summary.

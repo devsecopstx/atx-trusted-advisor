@@ -11,8 +11,7 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 - [xChat, AI & agents](#xchat-ai--agents)
 - [App delivery & quality](#app-delivery--quality)
 - [Developer workflow](#developer-workflow)
-- [Options strategies (atx-skill-*)](#options-strategies-atx-skill-)
-- [Options strategies (atx-strategy-*)](#options-strategies-atx-strategy-)
+- [Options strategies](#options-strategies)
 - [Brand, UX & content](#brand-ux--content)
 - [Other](#other)
 
@@ -91,37 +90,31 @@ Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (a
 
 ---
 
-## Options strategies (atx-skill-*)
+## Options strategies
 
-| Skill | |
-|-------|---|
-| [atx-skill-bull-call-debit-spread](atx-skill-bull-call-debit-spread/SKILL.md) | Bull call debit spread |
-| [atx-skill-bull-put-credit-spread](atx-skill-bull-put-credit-spread/SKILL.md) | Bull put credit spread |
-| [atx-skill-calendar-spread](atx-skill-calendar-spread/SKILL.md) | Calendar spread |
-| [atx-skill-cash-secured-puts](atx-skill-cash-secured-puts/SKILL.md) | Cash-secured puts |
-| [atx-skill-covered-calls](atx-skill-covered-calls/SKILL.md) | Covered calls |
-| [atx-skill-diagonal-spread](atx-skill-diagonal-spread/SKILL.md) | Diagonal spread |
-| [atx-skill-iron-condor](atx-skill-iron-condor/SKILL.md) | Iron condor |
-| [atx-skill-leap-call-cc-overlay](atx-skill-leap-call-cc-overlay/SKILL.md) | LEAP + CC overlay |
-| [atx-skill-poor-mans-covered-call](atx-skill-poor-mans-covered-call/SKILL.md) | PMCC |
-| [atx-skill-wheel](atx-skill-wheel/SKILL.md) | Wheel |
+Same **10 option structures** appear twice on purpose — pick one track per task:
 
----
+| Track | Prefix | When to use |
+|-------|--------|-------------|
+| **Framework** | `atx-skill-*` | Generic coaching: setups, guardrails, output shape (symbol-agnostic). |
+| **xFinance / TSLA** | `atx-strategy-*` | Product-aligned copy: TSLA/proxies, risk labels, xFinance framing. |
 
-## Options strategies (atx-strategy-*)
+Each folder includes **`CHECKLIST.md`** (checkboxes for **Inputs (core setup)**, **Preferences / guardrails**, **Output format**) aligned with **`SKILL.md`** sections **`## Core setup`**, **`## Guardrails`**, **`## Output format`**.
 
-| Skill | |
-|-------|---|
-| [atx-strategy-bull-call-debit-spread](atx-strategy-bull-call-debit-spread/SKILL.md) | Bull call debit spread |
-| [atx-strategy-bull-put-credit-spread](atx-strategy-bull-put-credit-spread/SKILL.md) | Bull put credit spread |
-| [atx-strategy-calendar-spread](atx-strategy-calendar-spread/SKILL.md) | Calendar spread |
-| [atx-strategy-cash-secured-puts](atx-strategy-cash-secured-puts/SKILL.md) | Cash-secured puts |
-| [atx-strategy-covered-calls](atx-strategy-covered-calls/SKILL.md) | Covered calls |
-| [atx-strategy-diagonal-spread](atx-strategy-diagonal-spread/SKILL.md) | Diagonal spread |
-| [atx-strategy-iron-condor](atx-strategy-iron-condor/SKILL.md) | Iron condor |
-| [atx-strategy-leap-call-cc-overlay](atx-strategy-leap-call-cc-overlay/SKILL.md) | LEAP + CC overlay |
-| [atx-strategy-poor-mans-covered-call](atx-strategy-poor-mans-covered-call/SKILL.md) | PMCC |
-| [atx-strategy-wheel](atx-strategy-wheel/SKILL.md) | Wheel |
+| Structure | `atx-skill-*` | `atx-strategy-*` |
+|-----------|---------------|------------------|
+| Bull call debit spread | [atx-skill-bull-call-debit-spread](atx-skill-bull-call-debit-spread/SKILL.md) | [atx-strategy-bull-call-debit-spread](atx-strategy-bull-call-debit-spread/SKILL.md) |
+| Bull put credit spread | [atx-skill-bull-put-credit-spread](atx-skill-bull-put-credit-spread/SKILL.md) | [atx-strategy-bull-put-credit-spread](atx-strategy-bull-put-credit-spread/SKILL.md) |
+| Calendar spread | [atx-skill-calendar-spread](atx-skill-calendar-spread/SKILL.md) | [atx-strategy-calendar-spread](atx-strategy-calendar-spread/SKILL.md) |
+| Cash-secured puts | [atx-skill-cash-secured-puts](atx-skill-cash-secured-puts/SKILL.md) | [atx-strategy-cash-secured-puts](atx-strategy-cash-secured-puts/SKILL.md) |
+| Covered calls | [atx-skill-covered-calls](atx-skill-covered-calls/SKILL.md) | [atx-strategy-covered-calls](atx-strategy-covered-calls/SKILL.md) |
+| Diagonal spread | [atx-skill-diagonal-spread](atx-skill-diagonal-spread/SKILL.md) | [atx-strategy-diagonal-spread](atx-strategy-diagonal-spread/SKILL.md) |
+| Iron condor | [atx-skill-iron-condor](atx-skill-iron-condor/SKILL.md) | [atx-strategy-iron-condor](atx-strategy-iron-condor/SKILL.md) |
+| LEAP + CC overlay | [atx-skill-leap-call-cc-overlay](atx-skill-leap-call-cc-overlay/SKILL.md) | [atx-strategy-leap-call-cc-overlay](atx-strategy-leap-call-cc-overlay/SKILL.md) |
+| Poor man's covered call | [atx-skill-poor-mans-covered-call](atx-skill-poor-mans-covered-call/SKILL.md) | [atx-strategy-poor-mans-covered-call](atx-strategy-poor-mans-covered-call/SKILL.md) |
+| Wheel | [atx-skill-wheel](atx-skill-wheel/SKILL.md) | [atx-strategy-wheel](atx-strategy-wheel/SKILL.md) |
+
+Do **not** delete either family: content differs (compare e.g. `atx-skill-wheel` vs `atx-strategy-wheel`).
 
 ---
 

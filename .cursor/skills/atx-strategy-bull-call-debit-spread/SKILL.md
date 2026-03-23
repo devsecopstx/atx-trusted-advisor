@@ -6,20 +6,21 @@ description: Bull Call Debit Spread framework for leveraged bullish TSLA moves w
 
 # atxFinance Strategy: Bull Call Debit Spread
 
-## How Commonly Used
+## Core setup
 
-Medium-High
-
-## Strategy
-
-Buy a lower-strike call and sell a higher-strike call on TSLA for leveraged bullish exposure with net debit.
-
-## Risk Profile
-
-Moderate (capped risk/reward)
+- **Frequency:** Medium-High
+- **Thesis:** Buy a lower-strike call and sell a higher-strike call on TSLA for leveraged bullish exposure with net debit.
+- **Risk profile:** Moderate (capped risk/reward)
 
 ## Guardrails
 
 - Define max debit per spread and aggregate portfolio exposure.
 - Require target/stop logic relative to spread value, not underlying only.
 - Avoid earnings/event windows unless explicitly intended.
+
+## Output format
+
+1. Strike/expiration setup (TSLA).
+2. Debit, max gain/loss, breakeven.
+3. Price-path scenarios.
+4. Exit/adjustment plan.

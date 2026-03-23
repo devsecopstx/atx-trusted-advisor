@@ -5,7 +5,7 @@ description: Diagonal spread playbook using longer-dated calls and shorter-dated
 
 # atx-skill Diagonal Spread
 
-## Core Setup
+## Core setup
 - Buy farther-dated option, sell nearer-dated option at different strike.
 - Directional bias usually bullish when using call diagonals.
 - Goal: combine longer exposure with short-term decay capture.
@@ -15,7 +15,7 @@ description: Diagonal spread playbook using longer-dated calls and shorter-dated
 - Include calendar risk around expiration transitions.
 - Explain assignment/roll handling for short leg.
 
-## Output Format
+## Output format
 1. Long-leg and short-leg selection.
 2. Net debit and targeted payoff zone.
 3. Expiration management steps.

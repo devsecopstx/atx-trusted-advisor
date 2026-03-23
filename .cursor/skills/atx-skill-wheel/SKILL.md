@@ -5,7 +5,7 @@ description: Wheel strategy workflow (CSP to covered-call cycle) with premium re
 
 # atx-skill Wheel Strategy
 
-## Core Setup
+## Core setup
 - Phase 1: sell cash-secured puts to seek discounted assignment.
 - Phase 2: after assignment, sell covered calls against shares.
 - Repeat cycle with premium reinvestment and position sizing discipline.
@@ -15,7 +15,7 @@ description: Wheel strategy workflow (CSP to covered-call cycle) with premium re
 - Preserve share inventory checks in covered-call phase.
 - Include transition rules between phases.
 
-## Output Format
+## Output format
 1. Current phase assessment.
 2. Proposed next trade in cycle.
 3. Transition triggers (assign/expire/roll).

@@ -6,20 +6,21 @@ description: Diagonal Spread playbook using long-dated LEAP calls and short near
 
 # atxFinance Strategy: Diagonal Spread
 
-## How Commonly Used
+## Core setup
 
-Medium-High
-
-## Strategy
-
-Use a long far-term LEAP call plus a short near-term call on TSLA/proxies to combine theta capture and upside participation.
-
-## Risk Profile
-
-Moderate-Aggressive (time/volatility flexibility risk)
+- **Frequency:** Medium-High
+- **Thesis:** Use a long far-term LEAP call plus a short near-term call on TSLA/proxies to combine theta capture and upside participation.
+- **Risk profile:** Moderate-Aggressive (time/volatility flexibility risk)
 
 ## Guardrails
 
 - Keep long-leg duration materially beyond short-leg expiration.
 - Track term-structure and volatility shifts per roll decision.
 - Enforce consistent strike laddering and max open diagonal count.
+
+## Output format
+
+1. Long-leg and short-leg selection.
+2. Net debit and targeted payoff zone.
+3. Expiration management steps.
+4. Risk summary.

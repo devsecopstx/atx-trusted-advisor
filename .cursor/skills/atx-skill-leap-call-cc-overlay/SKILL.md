@@ -5,7 +5,7 @@ description: LEAP call plus covered-call overlay for leveraged bullish exposure 
 
 # atx-skill LEAP Call + CC Overlay
 
-## Core Setup
+## Core setup
 - Hold longer-dated call for directional exposure.
 - Sell shorter-dated OTM calls for yield against that exposure.
 - Optimize for risk-defined upside participation plus recurring income.
@@ -15,7 +15,7 @@ description: LEAP call plus covered-call overlay for leveraged bullish exposure 
 - Include scenario where short call is threatened by sharp rallies.
 - State that gains can be capped by overlay.
 
-## Output Format
+## Output format
 1. Long LEAP structure.
 2. Overlay call structure.
 3. Return paths (flat/up/down).
