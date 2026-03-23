@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { SessionUser } from "@/lib/auth";
 import { requireSessionUser } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import {
     getPortfolioByIdForSessionUser,
@@ -149,6 +150,11 @@ async function buildJsonPayload(
 }
 
 export async function GET(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
@@ -166,6 +172,11 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;

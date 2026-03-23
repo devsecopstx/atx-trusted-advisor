@@ -24,6 +24,11 @@ Project-local skills in this directory are safe for Cursor Cloud Agents to reuse
 
 Guidelines: see `docs/ops/junie-guidelines-atxfinance-backend.md` for how Junie should operate these skills safely.
 
+## GCP / infra
+
+- `atxfinance-gcp-foundation`: DNS, HTTPS LB, host rules, Cloud Run mapping, secret/env matrix.
+- `gcp-env-atx-recreate`: manual `gcloud` recreate for `staging.atx` / `atx` Cloud Run (buildpack deploy from monorepo root); pair with `atxfinance-gcp-foundation` for LB/DNS.
+
 ## Strategy Skills
 
 - `atxfinance-strategy-covered-calls`: covered calls on TSLA shares (very high usage, moderate risk).

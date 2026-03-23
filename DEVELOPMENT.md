@@ -40,9 +40,9 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 
 | Step | What to start | Typical command / URL |
 | --- | --- | --- |
-| 1 | **MongoDB** (`mongo:8` in Compose) | Started with step 2 via `npm run dev:backend` — `localhost:27017` |
+| 1 | **MongoDB** (`mongo:8` in Compose) | With `npm run dev:stack` or `npm run dev:backend` — `localhost:27017` |
 | 2 | **atxfinance-backend** (Spring; waits on Mongo healthy) | Same Compose up — health: `http://localhost:8080/actuator/health` |
-| 3 | **Next.js core app** (UI + `src/app/api/*`) | `npm run dev` (or `npm run dev:frontend`) — `http://localhost:3000` |
+| 3 | **Next.js core app** (UI + `src/app/api/*`) | After backend healthy: `npm run dev:stack` continues here, or `npm run dev` / `npm run dev:frontend` — `http://localhost:3000` |
 
 Detailed env, verification URLs, and troubleshooting live in **Local Setup** below; this table is the single-line sequence only (not duplicated there).
 
@@ -98,7 +98,10 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - `export MONGO_ROOT_PASSWORD=atxrocks!`  # change if desired
    - `export MONGODB_DB_NAME=atxfintechdb`   # default already
 4. Start backend + MongoDB (Docker Compose, from repo root)
-   - `npm run dev:backend`
+   - **Ordered one-shot (backend first, then Next):** `npm run dev:stack` — runs `docker compose up -d`, waits until `http://localhost:8080` health responds, then starts `npm run dev:frontend` in the foreground. Ctrl+C stops the Next process only; run `docker compose down` when you want to stop Mongo + the backend container.
+   - **Host Kotlin backend + Next (no backend Docker image):** `npm run dev:host` — runs `bash scripts/dev/bootrun-atxfinance-backend.sh` (Gradle `bootRun`), waits for `:8080` health, then Next dev. Mongo must already be up (e.g. `docker compose up -d mongodb` or Atlas). Ctrl+C stops Next and SIGTERM to the JVM. VS Code / Cursor: task **Dev build (host: Gradle bootRun → Next, no backend Docker)**.
+   - **Attached Compose logs (no Next):** `npm run dev:backend`
+   - **BFF — portfolio + positions on Spring:** set `ATXFINANCE_BACKEND_ORIGIN=http://127.0.0.1:8080` in `.env`. Next proxies to Kotlin (forwards `Cookie`): `GET`/`PATCH` `/api/portfolios/:portfolioId`, `GET`/`POST` `/api/portfolios/default`, `GET` `/api/portfolios/current`, `GET`/`POST` `/api/portfolios/:id/accounts`, `PATCH` `.../accounts/:accountId`, `GET`/`PATCH` `.../watchlist`, `GET`/`POST` `/api/positions`, `DELETE` `/api/positions/:positionId`. Use the same `AUTH_SECRET` (or `X_OAUTH_CLIENT_SECRET`) and Mongo DB name on both processes.
    - Behavior:
      - Compose always starts `mongo:8` with:
        - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfintechdb}`
@@ -116,7 +119,9 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - App URL: http://localhost:3000
 7. Seed core admin user + default tenant (first-time only)
    - Ensure `.env` has `ADMIN_SEED_EMAIL=you@example.com`
-   - `npm run seed:admin`
+   - **`MONGODB_URI_B64` can stay empty** when using local Docker Mongo — `seed:admin` and the Next.js app use the same localhost + auth fallback as `src/lib/env.ts` (`scripts/lib/resolve-mongo-uri.mjs`).
+   - **`npm run local:bootstrap`** — starts **only** `mongodb` via Compose, waits until healthy, then runs **`seed:admin`** (convenience for a fresh machine).
+   - Or after Mongo is up: **`npm run seed:admin`**
 8. Stop services and view logs
    - Stop backend + Mongo: `Ctrl+C` in the Compose terminal, or `docker compose down`
    - View backend logs: `docker logs -f atxfinance-backend`
@@ -125,6 +130,34 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - If port 27017 is already in use, stop other Mongo instances or change the published port in `docker-compose.yml`.
    - To force local Mongo (and ignore Atlas), ensure `MONGODB_URI_B64` is unset in your environment when starting the backend.
    - To use Atlas in dev, set `MONGODB_URI_B64` (base64 of your Mongo URI) before `npm run dev:backend`.
+
+### Clean local Mongo + seed (fallback URI)
+
+Use this when you want a **local Compose Mongo** without Atlas and with the same connection defaults as the app.
+
+| Goal | Command |
+| --- | --- |
+| Start **only** Mongo, wait until healthy | `npm run mongo:up` (`scripts/dev/mongo-up.sh`) |
+| Stop Mongo container | `npm run mongo:down` |
+| Fresh volume + seed admin (**wipes** `atxfinance_mongo_data`) | `RESET_LOCAL_MONGO=1 npm run mongo:reset` |
+| One-shot: Mongo up + seed (keeps existing volume) | `npm run local:bootstrap` |
+
+**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI_B64` is empty** for Compose Mongo, or fix the decoded URI. If `.env` sets **`ADMIN_X_USERNAMES`** (X allowlist) but **not** `MONGO_ROOT_PASSWORD`, the app uses Mongo user **`admin`** + default password — do **not** mix an allowlist-only username into the DB URI. For a custom Mongo root user, set **`MONGO_ROOT_PASSWORD` and the same username** (`ADMIN_X_USERNAME` or first `ADMIN_X_USERNAMES`) to match `docker-compose.yml`. Restart Next after changing `.env` (Mongo client is cached).
+
+`mongo:reset` requires **`RESET_LOCAL_MONGO=1`** to avoid accidental data loss. After a reset, run **`npm run dev:host`**, **`npm run dev:stack`**, or **`docker compose up`** as needed.
+
+### Two terminals — Mongo already running (clear logs)
+
+Use **separate shells** so Gradle/Spring logs and Next logs do not interleave.
+
+| Terminal | Command | URL |
+| --- | --- | --- |
+| **1 — Kotlin backend (host JVM, no backend Docker)** | `npm run dev:spring` (same as `bash scripts/dev/bootrun-atxfinance-backend.sh`) | http://localhost:8080 |
+| **2 — Next.js** | `npm run dev:frontend` | http://localhost:3000 |
+
+Requirements: **Mongo** reachable on `localhost:27017` with the same credentials as `.env` / Compose (see *Clean local Mongo + seed*). The boot script sources repo **`.env`** and sets `SPRING_DATA_MONGODB_URI` from `MONGODB_URI`, `MONGODB_URI_B64`, or defaults.
+
+VS Code / Cursor: run tasks **Start Backend (Gradle bootRun, no Docker)** in one terminal and **Start Frontend (Next Dev)** in another (each **Run Task** opens its own terminal when not using a compound task).
 
 ### Notes on the new root-based Docker build (backend)
 
@@ -135,8 +168,8 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
 - Typical developer loop:
   - Start/refresh backend: `npm run dev:backend` (rebuilds image if sources changed)
   - Run frontend dev: `npm run dev:frontend`
-- If you need to run only MongoDB locally without the backend container: `docker compose up -d mongodb`
-- If you prefer Gradle `bootRun` instead of Docker for the backend during rapid iteration, the workspace task "Start Backend (Gradle)" remains available, but the default path is to use Docker from the repo root.
+- If you need to run only MongoDB locally without the backend container: `docker compose up -d mongodb` — then **`npm run dev:spring`** in one terminal and **`npm run dev:frontend`** in another (see *Two terminals — Mongo already running*). Or use **`npm run dev:host`** to chain them in one process when you do not need split logs.
+- Workspace tasks: **Start Backend (Gradle bootRun, no Docker)** and **Start Frontend (Next Dev)** (one task per terminal), or **Dev build (host: …)** for a single combined flow.
 
 ## Developer Prereqs (gh + local gate)
 
@@ -514,7 +547,7 @@ Required (GCP Secret Manager; mounted by **Deploy Cloud Run** and **Deploy Cloud
 
 ### GCP Environment Recreate (atx Apex)
 
-For a full GCP recreate with `atx` instead of `core` subdomain, see [docs/gcp-env-atx-recreate.md](docs/gcp-env-atx-recreate.md). Standalone gcloud setup, no GitHub required.
+For a full GCP recreate with `atx` instead of `core` subdomain, see [.cursor/skills/gcp-env-atx-recreate/SKILL.md](.cursor/skills/gcp-env-atx-recreate/SKILL.md). Standalone gcloud setup from the monorepo root; no GitHub Actions required for the recipe itself.
 
 ### Immediate Rollout TODO (Raw Deploy + Route53)
 

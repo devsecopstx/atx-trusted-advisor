@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
 import { deletePositionForAccount } from "@/modules/core-admin/repository";
 
@@ -8,6 +9,11 @@ export async function DELETE(
   request: Request,
   context: { params: Promise<{ positionId: string }> }
 ) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;

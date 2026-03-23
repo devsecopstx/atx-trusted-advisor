@@ -1,13 +1,34 @@
-# GCP Environment Recreate — atx Apex
+---
+name: gcp-env-atx-recreate
+description: Standalone gcloud recipe to recreate atx apex GCP (staging.atx / atx) Cloud Run for the xfinance monorepo — no GitHub Actions required. Pair with atxfinance-gcp-foundation for LB/DNS strategy.
+---
 
-Recreate atxfinance GCP staging and production from scratch with apex `atx` (replacing `core`).
+# GCP environment recreate — atx apex
 
-**New hostnames:**
+Recreate **xfinance** GCP staging and production from scratch with hostname apex **`atx`** (replacing older `core`-style hosts). Manual `gcloud` only; wire GitHub variables later if you use Actions deploy.
+
+**Canonical copy:** `.cursor/skills/gcp-env-atx-recreate/SKILL.md` (tracked).  
+**Related:** [DEVELOPMENT.md](../../../DEVELOPMENT.md) (OAuth URLs, rollout checklist), [atxfinance-gcp-foundation](../atxfinance-gcp-foundation/SKILL.md), [docs/ops/junie-guidelines-atxfinance-backend.md](../../../docs/ops/junie-guidelines-atxfinance-backend.md) for backend worker (separate Cloud Run service).
+
+## Path and repo conventions
+
+| What | Path (from repo root) |
+|------|------------------------|
+| **Monorepo root** | Directory that contains `package.json`, `next.config.ts`, `docker-compose.yml`, and (optional) root `Dockerfile` for the Next.js Cloud Run image |
+| **Deploy `--source .` for core app** | Run `gcloud run deploy` with `cwd` = monorepo root so Buildpacks / build context see the Next app |
+| **Kotlin worker** | `services/atxfinance-backend/` — separate deploy artifact; not covered by the buildpack `--source .` block below unless you change image build |
+
+Example — always resolve root before deploy:
+
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+```
+
+**Hostnames (defaults in this doc):**
 
 - Staging: `https://staging.atx.fintech-advisor.ai`
 - Production: `https://atx.fintech-advisor.ai`
-
-**Not GitHub-dependent** — manual gcloud setup. Wire GitHub vars/secrets later if needed.
 
 ---
 
@@ -21,7 +42,7 @@ Recreate atxfinance GCP staging and production from scratch with apex `atx` (rep
 
 ---
 
-## 2. Project IDs and Region
+## 2. Project IDs and region
 
 ```bash
 DOMAIN="fintech-advisor.ai"
@@ -35,7 +56,7 @@ SERVICE_PROD="atxfinance-core-prod"
 
 ---
 
-## 3. Create/Select GCP Projects
+## 3. Create or select GCP projects
 
 ```bash
 # Create projects (or skip if they exist)
@@ -48,7 +69,7 @@ gcloud projects create "$PROD_PROJECT" --name "atxfinance-prod"
 
 ---
 
-## 4. Enable APIs (Both Projects)
+## 4. Enable APIs (both projects)
 
 ```bash
 APIS="run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com"
@@ -60,9 +81,9 @@ done
 
 ---
 
-## 5. Secret Manager — Create Secrets
+## 5. Secret Manager — create secrets
 
-Create these secrets in **both** projects. Use `echo -n "value" | gcloud secrets create ...` or Console.
+Create these secrets in **both** projects (Console or CLI).
 
 ```bash
 SECRET_NAMES="MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET"
@@ -74,22 +95,26 @@ for PROJ in "$STAGING_PROJECT" "$PROD_PROJECT"; do
 done
 ```
 
-Add secret versions with your values (do not commit):
+Add **versions** with real values (never commit secrets). `MONGODB_URI_B64` is **base64-encoded** UTF-8 of the full Mongo URI (same as core app env — see `DEVELOPMENT.md` / `src/lib/env.ts`).
+
+**Example (Linux, GNU base64):**
 
 ```bash
-# Example (replace with real values)
-gcloud secrets versions add MONGODB_URI_B64 --data-file=- --project "$STAGING_PROJECT" <<< "$(echo -n 'your-base64-mongo-uri' | base64 -w0)"
-# Repeat for each secret in each project
+printf '%s' 'mongodb+srv://user:pass@cluster/...' | base64 -w0 | gcloud secrets versions add MONGODB_URI_B64 --data-file=- --project "$STAGING_PROJECT"
 ```
+
+**macOS:** use `base64` without `-w0`, or pipe through `tr -d '\n'`.
 
 ---
 
-## 6. Cloud Run — Deploy Staging (Buildpack)
+## 6. Cloud Run — deploy staging (Buildpack, core Next app)
 
-Uses `--source .` — Cloud Build detects Node.js and builds with buildpacks. No Dockerfile required.
+Uses `gcloud run deploy --source .` from **monorepo root** — Cloud Build detects Node.js and uses buildpacks (no Dockerfile required for that path).
 
 ```bash
-cd /path/to/atxfinance
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
 STAGING_URL="https://staging.${APEX}.${DOMAIN}"
 
 gcloud run deploy "$SERVICE_STAGING" \
@@ -105,9 +130,12 @@ gcloud run deploy "$SERVICE_STAGING" \
 
 ---
 
-## 7. Cloud Run — Deploy Production (Buildpack)
+## 7. Cloud Run — deploy production (Buildpack)
 
 ```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
 PROD_URL="https://${APEX}.${DOMAIN}"
 
 gcloud run deploy "$SERVICE_PROD" \
@@ -123,9 +151,7 @@ gcloud run deploy "$SERVICE_PROD" \
 
 ---
 
-## 8. Domain Mapping (Cloud Run Custom Domains)
-
-Map custom domains to Cloud Run services:
+## 8. Domain mapping (Cloud Run custom domains)
 
 ```bash
 # Staging
@@ -143,47 +169,45 @@ gcloud run domain-mappings create \
   --project "$PROD_PROJECT"
 ```
 
-**Note:** Domain mapping may require a single project with both services, or a global HTTPS LB. If your setup uses a shared LB, use that instead.
+**Note:** If you use a **global HTTPS load balancer** instead of direct Cloud Run mapping, follow [atxfinance-gcp-foundation](../atxfinance-gcp-foundation/SKILL.md) and skip or adapt this section.
 
 ---
 
-## 9. DNS Records
-
-Add records pointing to your LB or Cloud Run mapping targets:
+## 9. DNS records
 
 | Type | Name | Target |
 |------|------|--------|
-| CNAME or A | `staging.atx.fintech-advisor.ai` | From `gcloud run domain-mappings describe` output |
-| CNAME or A | `atx.fintech-advisor.ai` | From `gcloud run domain-mappings describe` output |
-
-If using Cloud Run direct mapping (no LB), the output of `gcloud run domain-mappings describe` shows the exact target (e.g. `ghs.googlehosted.com` or similar for Cloud Run).
+| CNAME or A | `staging.atx.fintech-advisor.ai` | From `gcloud run domain-mappings describe` (or LB IP) |
+| CNAME or A | `atx.fintech-advisor.ai` | From `gcloud run domain-mappings describe` (or LB IP) |
 
 ---
 
-## 10. X OAuth Callback URLs
+## 10. X OAuth callback URLs
 
-Add these to your X app developer settings:
+Add to the X developer app:
 
 - `https://staging.atx.fintech-advisor.ai/api/auth/x/callback`
 - `https://atx.fintech-advisor.ai/api/auth/x/callback`
 
 ---
 
-## 11. Health Check
+## 11. Health check
 
 ```bash
 curl -s "https://staging.atx.fintech-advisor.ai/api/health"
 curl -s "https://atx.fintech-advisor.ai/api/health"
 ```
 
-Expected: `{"status":"ok","service":"xfinance-core-app",...}` (db name may vary)
+Expected: `{"status":"ok","service":"xfinance-core-app",...}` (fields may vary slightly).
 
 ---
 
-## 12. Optional — GitHub Variables (If Wiring CI Later)
+## 12. Optional — GitHub variables (CI deploy later)
+
+Set repository and replace `OWNER/REPO`:
 
 ```bash
-GH_REPO="devsecopstx/xfinance"
+GH_REPO="OWNER/REPO"
 
 gh variable set GCP_PROJECT_ID_STAGING --repo "$GH_REPO" --body "$STAGING_PROJECT"
 gh variable set GCP_PROJECT_ID_PROD --repo "$GH_REPO" --body "$PROD_PROJECT"
@@ -194,18 +218,17 @@ gh variable set STAGING_BASE_URL --repo "$GH_REPO" --body "https://staging.atx.f
 gh variable set PROD_BASE_URL --repo "$GH_REPO" --body "https://atx.fintech-advisor.ai"
 ```
 
+Align with [DEVELOPMENT.md](../../../DEVELOPMENT.md) → *Deploy/Rollback Operations* and `npm run status:deploy` / `AGENTS.md` for current workflow names.
+
 ---
 
-## Rollback / Teardown
-
-To tear down and start over:
+## Rollback / teardown
 
 ```bash
-# Delete Cloud Run services
 gcloud run services delete "$SERVICE_STAGING" --region "$REGION" --project "$STAGING_PROJECT" --quiet
 gcloud run services delete "$SERVICE_PROD" --region "$REGION" --project "$PROD_PROJECT" --quiet
 
-# Delete projects (nuclear)
+# Nuclear: delete entire projects (irreversible)
 # gcloud projects delete "$STAGING_PROJECT"
 # gcloud projects delete "$PROD_PROJECT"
 ```

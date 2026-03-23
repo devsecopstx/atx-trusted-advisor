@@ -25,6 +25,33 @@
       }
     },
     {
+      "label": "Build Backend (Gradle test)",
+      "type": "shell",
+      "command": "npm run build:backend",
+      "group": "build",
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Build full stack (Next + backend)",
+      "dependsOn": ["Build Next (production)", "Build Backend (Gradle test)"],
+      "dependsOrder": "parallel",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
       "label": "Build App",
       "type": "shell",
       "command": "npm run build",
@@ -82,6 +109,69 @@
       }
     },
     {
+      "label": "Start dev stack (Docker backend → Next)",
+      "type": "shell",
+      "command": "npm run dev:stack",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "next-dev",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Ready in|Local:\\s+http|started server"
+        }
+      },
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Start Backend (Gradle bootRun, no Docker)",
+      "type": "shell",
+      "command": "bash scripts/dev/bootrun-atxfinance-backend.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "spring-boot",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Started .* in \\d+\\.\\d+ seconds|Started Application"
+        }
+      },
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Dev build (host: Gradle bootRun → Next, no backend Docker)",
+      "type": "shell",
+      "command": "npm run dev:host",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "next-dev",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Ready in|Local:\\s+http|started server"
+        }
+      },
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
       "label": "Build and restart dev server",
       "dependsOn": [
         "Build Next (production)",
@@ -89,10 +179,29 @@
         "Start Frontend (Next Dev)"
       ],
       "dependsOrder": "sequence",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
+      "group": "build",
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Mongo: up (Compose mongodb only, wait healthy)",
+      "type": "shell",
+      "command": "npm run mongo:up",
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1,
+        "instancePolicy": "terminateOldest",
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Local bootstrap (mongo up + seed:admin)",
+      "type": "shell",
+      "command": "npm run local:bootstrap",
       "problemMatcher": [],
       "runOptions": {
         "instanceLimit": 1,

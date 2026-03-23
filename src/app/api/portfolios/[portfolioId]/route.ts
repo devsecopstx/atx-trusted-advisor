@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import { requireSessionUser } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
+import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import { getPortfolioByIdForSessionUser, updatePortfolioForUser } from "@/modules/core-admin/repository";
 
 type RouteContext = {
@@ -14,7 +15,12 @@ const patchPortfolioSchema = z.object({
   name: z.string().trim().min(1).max(200)
 });
 
-export async function GET(_: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
@@ -40,6 +46,11 @@ export async function GET(_: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;

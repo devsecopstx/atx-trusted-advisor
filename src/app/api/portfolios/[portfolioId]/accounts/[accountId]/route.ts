@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
 import { updatePortfolioAccountForUser } from "@/modules/core-admin/repository";
 
@@ -19,6 +20,11 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ portfolioId: string; accountId: string }> }
 ) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;

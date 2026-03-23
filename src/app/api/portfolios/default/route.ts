@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 
 import type { SessionUser } from "@/lib/auth";
 import { requireSessionUser } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import {
-  getDefaultPortfolio,
-  listPortfolioAccounts,
-  provisionDefaultPortfolioForUser
+    getDefaultPortfolio,
+    listPortfolioAccounts,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 
 type SummaryResult =
@@ -50,7 +51,12 @@ async function defaultPortfolioSummaryOrError(session: SessionUser): Promise<Sum
   return { data };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
@@ -63,7 +69,12 @@ export async function GET() {
   return NextResponse.json({ data: result.data });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;

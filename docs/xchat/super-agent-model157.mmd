@@ -1,0 +1,40 @@
+flowchart TD
+    A["User Message<br>e.g. 'TSLA strategy'"] --> B{"Load or Create Session State<br>DB: StrategySession[userId, convId]"}
+
+    B -->|Success| C{"All required inputs collected?<br>outlook, risk, horizon, etc."}
+
+    B -->|DB error / timeout| ERR1["Return error to user:<br>'Unable to load session. Please try again or start new.'<br>Log error + notify admin"]
+
+    C -- Yes --> D["Build final prompt from state<br>+ call Grok /api/xchat/ask<br>or /api/xstrategy/generate"]
+
+    D -->|Success| E["Return structured strategy response<br>with trades, greeks, P/L, rationale"]
+
+    D -->|Grok timeout / 5xx| ERR2["Return fallback:<br>'Strategy generation timed out. Please retry in a moment.'<br>Retry queue or log"]
+
+    D -->|Invalid response / parse fail| ERR3["Return:<br>'Failed to parse strategy from AI. Try rephrasing your request.'<br>Log raw output + notify"]
+
+    C -- No --> F["Determine next missing field<br>based on current step"]
+
+    F -->|Logic error / invalid step| ERR4["Reset to first step + return:<br>'Internal error – restarting questions. What is your outlook?'<br>Log stack trace"]
+
+    F --> G["Generate single targeted question<br>with numbered choices<br>e.g. '1. Bullish  2. Neutral  3. Bearish'"]
+
+    G --> H["Send question to user<br>+ update state.step"]
+
+    H -->|Update fails| ERR5["Return question anyway but log:<br>'Failed to save progress – answers may not persist.'"]
+
+    H --> I["User replies<br>e.g. '2' or 'neutral outlook'"]
+
+    I --> J["Parse reply<br>keyword match / number / Grok extraction fallback"]
+
+    J -->|Parse fails completely| ERR6["Return clarifying message:<br>'Sorry, I didn't understand. Please reply with a number (1-3) or the word (e.g. bullish).'<br>Re-ask same question"]
+
+    J --> K["Save extracted value to state<br>e.g. outlook = 'neutral'"]
+
+    K -->|Save fails| ERR7["Return success message anyway + log:<br>'Answer noted, but progress may not save. Continue.'"]
+
+    K --> B
+
+    subgraph "Error Paths"
+        ERR1 & ERR2 & ERR3 & ERR4 & ERR5 & ERR6 & ERR7
+    end

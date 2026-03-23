@@ -1,8 +1,7 @@
-
-5. Implementation pattern (backend / agent logic)
+1. Implementation pattern (backend / agent logic)
 
 - Store session state in DB (or Redis) keyed by userId + conversationId  
-  `{ userId, outlook?, risk?, capital?, step: 'outlook' | 'risk' | 'generate' }`
+`{ userId, outlook?, risk?, capital?, step: 'outlook' | 'risk' | 'generate' }`
 - On each message:
   1. Load state
   2. If missing field → return next question + choices
@@ -11,6 +10,7 @@
   5. If user says “change outlook” → reset that field and restart from there
 
 **Why this works best**  
+
 - One question at a time = low cognitive load  
 - Numbered choices = fast replies (user types "2" or "medium")  
 - Stateful = remembers previous answers across turns  
@@ -36,3 +36,5 @@ if (extracted) {
 // Otherwise ask clearly
 return getQuestionForStep(state.step);
 }
+
+

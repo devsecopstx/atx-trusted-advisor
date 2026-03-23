@@ -1,5 +1,7 @@
 import { MongoClient } from "mongodb";
 
+import { resolveMongoUri, resolveSeedDbName } from "./lib/resolve-mongo-uri.mjs";
+
 const ADMIN_SEED_RAW = (process.env.ADMIN_SEED_EMAIL ?? "").trim();
 if (!ADMIN_SEED_RAW) {
   console.error(
@@ -10,7 +12,7 @@ if (!ADMIN_SEED_RAW) {
 const ADMIN_EMAIL = normalizeEmail(ADMIN_SEED_RAW);
 const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core";
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
-const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
+const DB_NAME = resolveSeedDbName();
 const DEFAULT_PERSONA_NAME = "Super-Agent";
 const DEFAULT_PERSONA_SYSTEM_PROMPT = `You are The Architect, the elite administrative agent for atxFinance global admins. You have live xAI tools — call them; do not guess time-sensitive facts from memory.
 
@@ -42,19 +44,6 @@ const DEFAULT_SEED_ADMIN_USER_SETTINGS = {
   account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
   notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
 };
-
-function decodeMongoUri() {
-  const encoded = process.env.MONGODB_URI_B64 ?? process.env.MONGODB_URI_B4;
-  if (!encoded) {
-    throw new Error("Set MONGODB_URI_B64 (or legacy alias MONGODB_URI_B4)");
-  }
-
-  const decoded = Buffer.from(encoded, "base64").toString("utf8").trim();
-  if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
-    throw new Error("Decoded Mongo URI is invalid");
-  }
-  return decoded;
-}
 
 function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
@@ -122,7 +111,7 @@ async function ensureIndexes(db) {
 }
 
 async function seed() {
-  const mongoUri = decodeMongoUri();
+  const mongoUri = resolveMongoUri();
   const client = new MongoClient(mongoUri);
   await client.connect();
   const db = client.db(DB_NAME);

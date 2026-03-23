@@ -108,10 +108,28 @@ export function getMongoUriFromB64(): string {
   }
 
   // Fallback: local MongoDB on localhost:27017 with optional credentials from env
+  // (Keep aligned with scripts/lib/resolve-mongo-uri.mjs for seed/migrations.)
   const dbName = (process.env.MONGODB_DB_NAME?.trim() || MONGODB_DB_NAME).trim();
-  const username = (process.env.ADMIN_X_USERNAME?.trim() || process.env.ADMIN_X_USERNAMES?.trim());
-  const password = process.env.MONGO_ROOT_PASSWORD?.trim();
   const host = process.env.MONGODB_HOST?.trim() || "localhost";
+
+  const adminUserFromEnv =
+    process.env.ADMIN_X_USERNAME?.trim() ||
+    process.env.ADMIN_X_USERNAMES?.trim()?.split(",")[0]?.trim();
+  const explicitMongoPassword = process.env.MONGO_ROOT_PASSWORD?.trim();
+  let username = adminUserFromEnv;
+  let password = explicitMongoPassword;
+
+  // docker-compose.yml creates MONGO_INITDB_ROOT_USERNAME default `admin` (+ password). ADMIN_X_USERNAMES
+  // is for app allowlists — using it as Mongo user without MONGO_ROOT_PASSWORD caused wronguser:atxrocks!
+  // and Authentication failed. Only use env username for Mongo when both user + password are explicit.
+  const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);
+  if (localHosts.has(host)) {
+    const explicitMongoPair = Boolean(adminUserFromEnv && explicitMongoPassword);
+    if (!explicitMongoPair) {
+      username = "admin";
+      password = explicitMongoPassword || "atxrocks!";
+    }
+  }
 
   const hasAuth = Boolean(username && password);
   const authPart = hasAuth ? `${encodeURIComponent(username!)}:${encodeURIComponent(password!)}@` : "";
@@ -123,6 +141,40 @@ export function getMongoUriFromB64(): string {
 export function getXOauthClientId(): string {
   const { X_OAUTH_CLIENT_ID } = getEnv();
   return X_OAUTH_CLIENT_ID.trim();
+}
+
+/**
+ * Spring API base for BFF proxy (`src/lib/backend-bff.ts`). Read from `process.env` only so route handlers
+ * and tests do not require full `getEnv()` (xAI / OAuth keys). Validate with `URL` when set.
+ */
+export function getAtxfinanceBackendOrigin(): string | undefined {
+  const raw = process.env.ATXFINANCE_BACKEND_ORIGIN?.trim();
+  if (!raw) {
+    return undefined;
+  }
+  try {
+    const u = new URL(raw);
+    return u.origin.replace(/\/$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Public Spring origin for client `fetch` (only when using direct browser → backend + CORS).
+ * Does not use `getEnv()` so client bundles avoid pulling full server env validation.
+ */
+export function getPublicAtxfinanceBackendOrigin(): string | undefined {
+  const raw = process.env.NEXT_PUBLIC_ATXFINANCE_BACKEND_ORIGIN?.trim();
+  if (!raw) {
+    return undefined;
+  }
+  try {
+    const u = new URL(raw);
+    return u.origin;
+  } catch {
+    return undefined;
+  }
 }
 
 export function isAllowAnyXUserLoginEnabled(): boolean {

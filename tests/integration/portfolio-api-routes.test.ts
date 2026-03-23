@@ -162,7 +162,9 @@ describe("portfolio API routes", () => {
   it("POST /api/portfolios/default syncs and returns summary with synced flag", async () => {
     repositoryMocks.getDefaultPortfolio.mockResolvedValueOnce(null);
     repositoryMocks.listPortfolioAccounts.mockResolvedValueOnce([]);
-    const response = await postDefaultPortfolio();
+    const response = await postDefaultPortfolio(
+      new Request("http://localhost/api/portfolios/default", { method: "POST" })
+    );
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { data: { name: string }; synced: boolean };
     expect(payload.synced).toBe(true);
@@ -171,7 +173,7 @@ describe("portfolio API routes", () => {
   });
 
   it("returns default portfolio for session user", async () => {
-    const response = await getDefaultPortfolio();
+    const response = await getDefaultPortfolio(new Request("http://localhost/api/portfolios/default"));
     const payload = (await response.json()) as { data: { name: string } };
     expect(response.status).toBe(200);
     expect(payload.data.name).toBe("Default Portfolio");
@@ -184,7 +186,7 @@ describe("portfolio API routes", () => {
   });
 
   it("GET /api/portfolios/current matches default portfolio", async () => {
-    const response = await getCurrentPortfolio();
+    const response = await getCurrentPortfolio(new Request("http://localhost/api/portfolios/current"));
     const payload = (await response.json()) as { data: { name: string } };
     expect(response.status).toBe(200);
     expect(payload.data.name).toBe("Default Portfolio");
@@ -452,7 +454,7 @@ describe("portfolio API routes", () => {
     sessionMocks.requireSessionUser.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     );
-    const response = await getDefaultPortfolio();
+    const response = await getDefaultPortfolio(new Request("http://localhost/api/portfolios/default"));
     expect(response.status).toBe(401);
   });
 });

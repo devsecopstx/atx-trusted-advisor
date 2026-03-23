@@ -6,11 +6,13 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 
 ## Standard Local Flow
 
-1. `cp .env.example .env`
-2. `docker compose up -d`
-3. `npm install`
-4. `npm run seed:admin`
+1. `cp .env.example .env` — set `ADMIN_SEED_EMAIL`; leave `MONGODB_URI_B64` empty for local Docker Mongo (auth defaults match `docker-compose.yml`).
+2. `npm install`
+3. `npm run mongo:up` — MongoDB service only, waits for healthy — **or** `docker compose up -d` for Mongo + backend container
+4. `npm run seed:admin` — **or** `npm run local:bootstrap` to run step 3 + seed in one shot
 5. `npm run dev`
+
+**Wipe local DB and re-seed:** `RESET_LOCAL_MONGO=1 npm run mongo:reset` (destructive — removes the Compose Mongo volume).
 
 ## Validation Gates
 

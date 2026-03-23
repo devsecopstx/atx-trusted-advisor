@@ -44,7 +44,7 @@
         "problemMatcher": []
       },
       {
-        "label": "Start Backend (Gradle)",
+        "label": "Start Backend (Gradle bootRun, no Docker)",
         "type": "shell",
         "command": "bash scripts/dev/bootrun-atxfinance-backend.sh",
         "options": {
@@ -57,7 +57,25 @@
           "background": {
             "activeOnStart": true,
             "beginsPattern": ".",
-            "endsPattern": "Started .* in \\d+\\.\\d+ seconds \\(|Started Application"
+            "endsPattern": "Started .* in \\d+\\.\\d+ seconds|Started Application"
+          }
+        }
+      },
+      {
+        "label": "Dev build (host: Gradle bootRun → Next, no backend Docker)",
+        "type": "shell",
+        "command": "npm run dev:host",
+        "options": {
+          "cwd": "${workspaceFolder}"
+        },
+        "isBackground": true,
+        "problemMatcher": {
+          "owner": "next-dev",
+          "pattern": { "regexp": "^$" },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "Ready in|Local:\\s+http|started server"
           }
         }
       },
