@@ -69,6 +69,39 @@ Users with docs only in legacy bootstrap collections may need migration or re-in
 
 ---
 
+## Phase: xChat chat_history → XAI collection (user_history_agent)
+
+**Goal:** Store xchat conversation turns in a MongoDB collection and sync them to each user’s xAI collection via a scheduled task **`user_history_agent`**, so user chat history can be used for retrieval (collections_search) and context.
+
+### Scope
+
+- **Mongo collection:** Store chat turns (prompt + response pairs) per user in a collection (e.g. `xchat_history` or `xchat_turns`), keyed by userId.
+- **Scheduled task:** Add task category/runner **`user_history_agent`** — on schedule (e.g. hourly), read recent turns from Mongo, format as documents, and append to the user’s xAI collection (the one exposed as `user_history` in `GET /api/xchat/collections`).
+- **Integration:** Uses existing `resolveOrCreateUserBootstrapCollection` / `getUserBootstrapCollectionByUserId` for the per-user xAI collection target.
+
+### Touch points (audit before PR)
+
+| Area | Files / notes |
+|------|----------------|
+| Mongo schema | New collection; define `xchat_history` / `xchat_turns` schema (userId, turnId, prompt, response, createdAt, metadata). |
+| Ask pipeline | Ensure turns are written to Mongo after each `/api/xchat/ask` response (or confirm existing flow). |
+| Task runner | Add `user-history` category; implement `user_history_agent` runner in `task-runner.ts` (Next) and `AdminScheduledTasksService.kt` (Kotlin when BFF on). |
+| Admin tasks | Extend `category` enum to include `user-history`; add to `tasks-console.tsx`, OpenAPI. |
+| xAI API | Use `addFileToXaiCollection` or equivalent to append formatted history to user collection. |
+
+### Acceptance
+
+- [ ] Mongo collection stores chat turns; schema documented.
+- [ ] Scheduled task `user_history_agent` syncs Mongo turns → xAI user collection.
+- [ ] User’s `user_history` collection in xchat includes synced turns for retrieval.
+- [ ] Integration tests for task execution (mocked xAI append).
+
+### Out of scope
+
+- Real-time sync (task-based only); xChat streaming BFF migration.
+
+---
+
 ## Deferred
 
 - xChat streaming on Spring + BFF (`docs/ops/api-consolidation-spring-backend.md`).

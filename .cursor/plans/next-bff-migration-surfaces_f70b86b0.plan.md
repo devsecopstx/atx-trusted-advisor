@@ -14,6 +14,9 @@ todos:
   - id: backlog-auth-oauth
     content: "In progress: move /api/auth/* session + OAuth callback to Spring (single-host cookie + backend PKCE/state, dual-run cutover)."
     status: pending
+  - id: backlog-user-history-agent
+    content: "Phase: xChat chat_history Mongo collection + user_history_agent scheduled task to sync turns to xAI user collection. See docs/PLAN.md § user_history_agent."
+    status: pending
   - id: done-rag-post
     content: "Done: GET/POST /api/rag/files on Spring + BFF (xai_collections)."
     status: completed
@@ -59,6 +62,7 @@ Portfolios/positions/watchlist, recommendations (app + per-portfolio) + Pub/Sub 
 1. ~~Admin access-requests / RAG POST / recommendations Pub/Sub~~ — shipped; keep parity tests green.
 2. **xChat** — streaming proxy; align with consolidation **Plan: xChat**.
 3. **Auth** — session + `/api/auth/x/callback` cutover per approved contract.
+4. **user_history_agent** — Mongo chat_history collection + scheduled task to sync turns → xAI user collection (`docs/PLAN.md`).
 
 ## Per-slice implementation checklist
 
