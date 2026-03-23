@@ -91,7 +91,7 @@ initial_seed:
       sensitive: true
 
     - key: mongodb_db_name
-      value: "atxfintechdb"
+      value: "atxfinancedb"
       type: string
       public: true
       sensitive: false

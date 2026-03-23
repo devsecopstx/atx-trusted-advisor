@@ -23,7 +23,21 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 
 - **HTTP APIs** — Route handlers in `src/app/api/*` (auth, personas, xChat, portfolios, admin, OpenAPI inventory, etc.).
 - **Language & validation** — TypeScript + **Zod** for request/env parsing.
-- **Data** — **MongoDB** (primary app database; default local name often `atxfintechdb` via Compose — cloud env names follow deployment config; historical docs may reference `atxfinancedb`).
+- **Data** — **MongoDB** (primary app database; canonical default name **`atxfinancedb`** — one logical DB per deployment; tenant isolation is document-level (`tenantId` / org keys). Stage/prod use separate connection strings.
+
+#### MongoDB database naming (ops)
+
+- The app **does not require** different database *names* per environment. Typical patterns:
+  - **Separate Atlas clusters** (or serverless instances) per stage/prod, each URI ending with the same path segment (e.g. `/atxfinancedb`), **or**
+  - **Different database names in the URI path** on one cluster (e.g. `…mongodb.net/atxfinance_stage` vs `…/atxfinance_prod`) — purely an **ops / governance** choice, not enforced by application code.
+- Set the target DB in **`MONGODB_URI`** (or local fallback + optional **`MONGODB_DB_NAME`** for the path segment when not embedded in the URI).
+
+#### Local Mongo: reuse or start (`npm run mongo:up`)
+
+- `scripts/dev/mongo-up.sh` loads **`.env`**, then if **`mongosh`** is available, pings **`127.0.0.1:27017`** with **`ADMIN_X_USERNAME`** / **`MONGO_ROOT_PASSWORD`** (defaults `admin` / `atxrocks!`) against `admin`.
+- If ping succeeds, Compose is **skipped** (reuse your already-running Mongo).
+- Otherwise it runs **`docker compose up -d mongodb`** and waits for the container healthcheck — use before **`npm run seed:admin`** or **`npm run local:bootstrap`** for a clean admin seed against Compose defaults.
+- Override the ping URI only if needed: **`MONGO_PING_URI`**.
 
 ### atxfinance-backend (scheduler / worker service)
 
@@ -69,7 +83,7 @@ Session payload (`SessionUser` in `src/lib/auth.ts`):
 
 Use `.env` only (do not use `.env.local` for this app).
 
-- `MONGODB_URI_B64` (Base64-encoded MongoDB URI)
+- `MONGODB_URI` (plain `mongodb://` / `mongodb+srv://`, or base64-encoded; GCP Secret Manager can keep the same resource name `MONGODB_URI_B64` mapped to env `MONGODB_URI` in Cloud Run)
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY` (required for management/KB collection operations)
 - `XAI_MANAGEMENT_BASE_URL` (optional override; defaults to `https://management-api.x.ai/v1`)
@@ -92,11 +106,11 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - `npm install`
 2. Create your env file
    - `cp .env.example .env`
-   - Tip: Leave `MONGODB_URI_B64` unset for local development so the app uses the local Docker Mongo.
+   - Tip: Leave `MONGODB_URI` unset for local development so the app uses the local Docker Mongo (`atxfinancedb` path).
 3. (Optional) Source admin username from admin_seed.csv and set local Mongo password
    - `export ADMIN_X_USERNAME=$(awk -F, 'NR==2{print $2}' admin_seed.csv)`
    - `export MONGO_ROOT_PASSWORD=atxrocks!`  # change if desired
-   - `export MONGODB_DB_NAME=atxfintechdb`   # default already
+   - Omit `MONGODB_DB_NAME` unless you need a non-default DB path (code default is `atxfinancedb`).
 4. Start backend + MongoDB (Docker Compose, from repo root)
    - **Ordered one-shot (backend first, then Next):** `npm run dev:stack` — runs `docker compose up -d`, waits until `http://localhost:8080` health responds, then starts `npm run dev:frontend` in the foreground. Ctrl+C stops the Next process only; run `docker compose down` when you want to stop Mongo + the backend container.
    - **Host Kotlin backend + Next (no backend Docker image):** `npm run dev:host` — runs `bash scripts/dev/bootrun-atxfinance-backend.sh` (Gradle `bootRun`), waits for `:8080` health, then Next dev. Mongo must already be up (e.g. `docker compose up -d mongodb` or Atlas). Ctrl+C stops Next and SIGTERM to the JVM. VS Code / Cursor: task **Dev build (host: Gradle bootRun → Next, no backend Docker)**.
@@ -104,11 +118,11 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - **BFF — portfolio + positions on Spring:** set `ATXFINANCE_BACKEND_ORIGIN=http://127.0.0.1:8080` in `.env`. Next proxies to Kotlin (forwards `Cookie`): `GET`/`PATCH` `/api/portfolios/:portfolioId`, `GET`/`POST` `/api/portfolios/default`, `GET` `/api/portfolios/current`, `GET`/`POST` `/api/portfolios/:id/accounts`, `PATCH` `.../accounts/:accountId`, `GET`/`PATCH` `.../watchlist`, `GET`/`POST` `/api/positions`, `DELETE` `/api/positions/:positionId`. Use the same `AUTH_SECRET` (or `X_OAUTH_CLIENT_SECRET`) and Mongo DB name on both processes.
    - Behavior:
      - Compose always starts `mongo:8` with:
-       - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfintechdb}`
-       - `MONGO_INITDB_ROOT_USERNAME=${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}`
+       - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfinancedb}`
+       - `MONGO_INITDB_ROOT_USERNAME=${ADMIN_X_USERNAME:-admin}`
        - `MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-atxrocks!}`
      - The Spring service receives `SPRING_DATA_MONGODB_URI` pointing at `mongodb:27017` with **auth** and `authSource=admin`, using the same username/password/db name defaults as above (see `docker-compose.yml`).
-     - If **`MONGODB_URI_B64`** is set in `.env`, `MongoUriEnvPostProcessor` injects the decoded URI as `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
+     - If **`MONGODB_URI`** is set in `.env`, `MongoUriEnvPostProcessor` resolves it (plain or base64) and injects `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
 5. Verify backend
    - Actuator: http://localhost:8080/actuator/health (standard Spring Boot JSON)
    - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`docs/ops/atxfinance-backend-http-api.md`**)
@@ -119,7 +133,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - App URL: http://localhost:3000
 7. Seed core admin user + default tenant (first-time only)
    - Ensure `.env` has `ADMIN_SEED_EMAIL=you@example.com`
-   - **`MONGODB_URI_B64` can stay empty** when using local Docker Mongo — `seed:admin` and the Next.js app use the same localhost + auth fallback as `src/lib/env.ts` (`scripts/lib/resolve-mongo-uri.mjs`).
+   - **`MONGODB_URI` can stay unset** when using local Docker Mongo — `seed:admin` and the Next.js app use the same localhost + auth fallback as `src/lib/env.ts` (`scripts/lib/resolve-mongo-uri.mjs`).
    - **`npm run local:bootstrap`** — starts **only** `mongodb` via Compose, waits until healthy, then runs **`seed:admin`** (convenience for a fresh machine).
    - Or after Mongo is up: **`npm run seed:admin`**
 8. Stop services and view logs
@@ -128,8 +142,8 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - View Mongo logs: `docker logs -f atxfinance-mongodb`
 9. Troubleshooting
    - If port 27017 is already in use, stop other Mongo instances or change the published port in `docker-compose.yml`.
-   - To force local Mongo (and ignore Atlas), ensure `MONGODB_URI_B64` is unset in your environment when starting the backend.
-   - To use Atlas in dev, set `MONGODB_URI_B64` (base64 of your Mongo URI) before `npm run dev:backend`.
+   - To force local Mongo (and ignore Atlas), ensure `MONGODB_URI` is unset in your environment when starting the backend.
+   - To use Atlas in dev, set `MONGODB_URI` (plain URI or base64) before `npm run dev:backend`.
 
 ### Clean local Mongo + seed (fallback URI)
 
@@ -142,7 +156,7 @@ Use this when you want a **local Compose Mongo** without Atlas and with the same
 | Fresh volume + seed admin (**wipes** `atxfinance_mongo_data`) | `RESET_LOCAL_MONGO=1 npm run mongo:reset` |
 | One-shot: Mongo up + seed (keeps existing volume) | `npm run local:bootstrap` |
 
-**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI_B64` is empty** for Compose Mongo, or fix the decoded URI. If `.env` sets **`ADMIN_X_USERNAMES`** (X allowlist) but **not** `MONGO_ROOT_PASSWORD`, the app uses Mongo user **`admin`** + default password — do **not** mix an allowlist-only username into the DB URI. For a custom Mongo root user, set **`MONGO_ROOT_PASSWORD` and the same username** (`ADMIN_X_USERNAME` or first `ADMIN_X_USERNAMES`) to match `docker-compose.yml`. Restart Next after changing `.env` (Mongo client is cached).
+**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI` is unset** for Compose Mongo, or fix the URI. If `.env` sets **`ADMIN_X_USERNAMES`** (X allowlist) but **not** `MONGO_ROOT_PASSWORD`, the app uses Mongo user **`admin`** + default password — do **not** mix an allowlist-only username into the DB URI. For a custom Mongo root user, set **`MONGO_ROOT_PASSWORD` and the same username** (`ADMIN_X_USERNAME` or first `ADMIN_X_USERNAMES`) to match `docker-compose.yml`. Restart Next after changing `.env` (Mongo client is cached).
 
 `mongo:reset` requires **`RESET_LOCAL_MONGO=1`** to avoid accidental data loss. After a reset, run **`npm run dev:host`**, **`npm run dev:stack`**, or **`docker compose up`** as needed.
 
@@ -155,7 +169,7 @@ Use **separate shells** so Gradle/Spring logs and Next logs do not interleave.
 | **1 — Kotlin backend (host JVM, no backend Docker)** | `npm run dev:spring` (same as `bash scripts/dev/bootrun-atxfinance-backend.sh`) | http://localhost:8080 |
 | **2 — Next.js** | `npm run dev:frontend` | http://localhost:3000 |
 
-Requirements: **Mongo** reachable on `localhost:27017` with the same credentials as `.env` / Compose (see *Clean local Mongo + seed*). The boot script sources repo **`.env`** and sets `SPRING_DATA_MONGODB_URI` from `MONGODB_URI`, `MONGODB_URI_B64`, or defaults.
+Requirements: **Mongo** reachable on `localhost:27017` with the same credentials as `.env` / Compose (see *Clean local Mongo + seed*). The boot script sources repo **`.env`** and sets `SPRING_DATA_MONGODB_URI` from `MONGODB_URI` or defaults (legacy `MONGODB_URI_B64` is still resolved by Spring’s post-processor when `MONGODB_URI` is unset).
 
 VS Code / Cursor: run tasks **Start Backend (Gradle bootRun, no Docker)** in one terminal and **Start Frontend (Next Dev)** in another (each **Run Task** opens its own terminal when not using a compound task).
 
@@ -191,13 +205,13 @@ Use this setup when running in Cursor Cloud with MongoDB Atlas. Do not start loc
 ### Cloud Agent Rules
 
 - Do not run `docker compose up -d` for MongoDB in cloud agents.
-- Use Atlas connection only via `MONGODB_URI_B64`.
+- Use Atlas connection via `MONGODB_URI` (plain or base64).
 - Keep app/runtime secrets in GCP Secret Manager, not in repo.
 - Use `npm ci` before validation/build commands.
 
 ### Minimum Cloud Runtime Env Keys
 
-- `MONGODB_URI_B64`
+- `MONGODB_URI` (GSM secret may still be named `MONGODB_URI_B64`)
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY`
 - `X_OAUTH_CLIENT_ID`
@@ -234,7 +248,7 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 
 If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or prod):
 
-1. Confirm **`GET /api/health`** returns `200` with `status: ok` (rules out broken `MONGODB_URI_B64` for that revision).
+1. Confirm **`GET /api/health`** returns `200` with `status: ok` (rules out broken `MONGODB_URI` for that revision).
 2. **Cloud Run → Logs** — filter for the request path and `Error` / `x/callback` / `getDefaultPortfolio`. **Legacy data:** if `userId` on `tenant_portfolio` / `portfolio_*` was stored as BSON `ObjectId` while the session uses a hex string, reads used to miss; repository queries now match both shapes and normalize `userId` to string on provision.
 3. **OAuth callback** — empty env values like `X_OAUTH_CALLBACK_URL=` (literal empty) used to fail `getEnv()` at runtime; optional URL vars now treat blank as unset. Ensure **`X_OAUTH_CALLBACK_URL`** in production matches the live host if set explicitly.
 4. **New app_user first login** — `provisionDefaultPortfolioForUser` runs in the callback; if it throws, sign-in still completes and the portfolio is provisioned on first Portfolio page or API access. Hard failures in membership/session still yield `bootstrap_failed`.
@@ -279,7 +293,7 @@ These must exist in GCP Secret Manager for each project. The deploy workflow mou
 
 | Secret name | Purpose | Required |
 | --- | --- | --- |
-| `MONGODB_URI_B64` | Base64-encoded Atlas connection string | Yes |
+| `MONGODB_URI_B64` | Mongo connection string (typically base64 of the URI in GSM); Cloud Run maps it to env **`MONGODB_URI`** | Yes |
 | `XAI_API_KEY` | xAI API key for chat completions | Yes |
 | `XAI_MANAGEMENT_API_KEY` | xAI management key for collection ops | Yes |
 | `X_OAUTH_CLIENT_ID` | X OAuth 2.0 client ID (raw, not base64) | Yes |
@@ -515,7 +529,7 @@ For availability and change control:
 
 Required (GCP Secret Manager; mounted by **Deploy Cloud Run** and **Deploy Cloud Run Production** workflows):
 
-- `MONGODB_URI_B64`
+- `MONGODB_URI` (GSM secret often still named `MONGODB_URI_B64`; deploy maps it to env `MONGODB_URI`)
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY`
 - `X_OAUTH_CLIENT_ID`

@@ -1,8 +1,34 @@
 /**
  * Local Mongo URI resolution for Node scripts (seed, migrations).
- * Keep behavior aligned with `getMongoUriFromB64()` in `src/lib/env.ts` when MONGODB_URI_B64 is unset.
+ * Aligned with `getMongoUri()` in `src/lib/env.ts`: `MONGODB_URI` may be plain or base64;
+ * legacy `MONGODB_URI_B64` is still read when `MONGODB_URI` is unset.
  */
 const DEFAULT_DB_NAME = "atxfinancedb";
+
+export function parseMongoConnectionString(raw) {
+  const t = raw.trim();
+  if (t.startsWith("mongodb://") || t.startsWith("mongodb+srv://")) {
+    return t;
+  }
+  let decoded;
+  try {
+    decoded = Buffer.from(t, "base64").toString("utf8").trim();
+  } catch {
+    throw new Error("MONGODB_URI is not a valid MongoDB URI or base64 thereof");
+  }
+  if (decoded.startsWith("mongodb://") || decoded.startsWith("mongodb+srv://")) {
+    return decoded;
+  }
+  try {
+    decoded = Buffer.from(t, "base64url").toString("utf8").trim();
+  } catch {
+    throw new Error("MONGODB_URI is not a valid MongoDB URI or base64 thereof");
+  }
+  if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
+    throw new Error("Invalid MONGODB_URI: decoded value is not a MongoDB URI");
+  }
+  return decoded;
+}
 
 export function resolveSeedDbName() {
   return (process.env.MONGODB_DB_NAME?.trim() || DEFAULT_DB_NAME).trim();
@@ -12,13 +38,9 @@ export function resolveSeedDbName() {
  * @returns {string} Mongo connection URI
  */
 export function resolveMongoUri() {
-  const encoded = process.env.MONGODB_URI_B64 ?? process.env.MONGODB_URI_B4;
-  if (encoded) {
-    const decoded = Buffer.from(encoded, "base64").toString("utf8").trim();
-    if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
-      throw new Error("Invalid MONGODB_URI_B64: decoded value is not a MongoDB URI");
-    }
-    return decoded;
+  const raw = process.env.MONGODB_URI?.trim() || process.env.MONGODB_URI_B64?.trim();
+  if (raw) {
+    return parseMongoConnectionString(raw);
   }
 
   const dbName = resolveSeedDbName();

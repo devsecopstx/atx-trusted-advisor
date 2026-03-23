@@ -1,5 +1,7 @@
 import { MongoClient } from "mongodb";
 
+import { resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+
 const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
 const DEFAULT_COLLECTION_ID =
   (process.env.ATXFINANCE_COLLECTION_ID || "").trim() || "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
@@ -10,20 +12,8 @@ const DEFAULT_TOOLS = [
   { type: "atxfinance" }
 ];
 
-function decodeMongoUri() {
-  const encoded = process.env.MONGODB_URI_B64 ?? process.env.MONGODB_URI_B4;
-  if (!encoded) {
-    throw new Error("Set MONGODB_URI_B64 (or legacy alias MONGODB_URI_B4)");
-  }
-  const decoded = Buffer.from(encoded, "base64").toString("utf8").trim();
-  if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
-    throw new Error("Decoded Mongo URI is invalid");
-  }
-  return decoded;
-}
-
 async function backfill() {
-  const mongoUri = decodeMongoUri();
+  const mongoUri = resolveMongoUri();
   const client = new MongoClient(mongoUri);
   await client.connect();
   const db = client.db(DB_NAME);

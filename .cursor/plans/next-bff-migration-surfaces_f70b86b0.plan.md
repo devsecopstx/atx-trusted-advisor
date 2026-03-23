@@ -5,33 +5,36 @@ todos:
   - id: resume-next-session
     content: "On return: read docs/ops/api-consolidation-spring-backend.md status board; run npm run ci:gate + services/atxfinance-backend ./gradlew test; then pick a backlog row below."
     status: pending
-  - id: backlog-admin-mutations
-    content: "Deferred: Kotlin + proxy for admin mutations — /api/admin/access-requests/** (review), users, tasks, deploy-note-configs, import, scheduler tick, etc."
-    status: pending
-  - id: backlog-rag-post
-    content: "Deferred: POST /api/rag/files (upload) remains Next-only until Spring + xAI upload parity."
-    status: pending
-  - id: backlog-recommendations-pubsub
-    content: "Optional parity: emit Pub/Sub publishRecommendationEvent from Kotlin on POST /api/recommendations (currently Next-only when proxy off)."
+  - id: backlog-admin-remaining
+    content: "Next-primary admin: users CRUD, tasks, deploy-note-configs, import, scheduler — Kotlin + BFF + parity when prioritized (access-requests + RAG already on Spring)."
     status: pending
   - id: backlog-xchat-streaming
     content: "Deferred: xChat routes — streaming proxy + tools; see Plan:xChat in api-consolidation-spring-backend.md."
     status: pending
   - id: backlog-auth-oauth
-    content: "In progress: move /api/auth/* session + OAuth callback to Spring using approved single-host cookie + backend PKCE/state contract and dual-run cutover."
+    content: "In progress: move /api/auth/* session + OAuth callback to Spring (single-host cookie + backend PKCE/state, dual-run cutover)."
     status: pending
+  - id: done-rag-post
+    content: "Done: GET/POST /api/rag/files on Spring + BFF (xai_collections)."
+    status: completed
+  - id: done-recommendations-pubsub
+    content: "Done: Kotlin RecommendationEventPublisher when BFF on + RECOMMENDATIONS_PUBSUB_TOPIC."
+    status: completed
+  - id: done-admin-access-requests
+    content: "Done: /api/admin/access-requests CRUD + review on Kotlin + BFF (bootstrap deferred audit when proxy off)."
+    status: completed
 isProject: false
 ---
 
 # Next BFF Migration Plan
 
-**Source of truth for what is shipped vs deferred:** [`docs/ops/api-consolidation-spring-backend.md`](../../docs/ops/api-consolidation-spring-backend.md) (migration status board, Plan:xChat, operational parity table).
+**Source of truth for shipped vs deferred:** [api-consolidation-spring-backend.md](../../docs/ops/api-consolidation-spring-backend.md) (migration status board, Plan:xChat, operational parity).
 
-**When you return to BFF backend work:** start from that doc’s **Still Next-primary** / **Deferred** rows, then run the per-slice checklist below.
+**When you return to BFF work:** start from that doc’s **Still Next-primary** / **Deferred** rows, then run the per-slice checklist below.
 
 ## Goal
 
-Move product/business API ownership from Next route handlers to Spring controllers using a proxy-first BFF pattern (`proxyRequestToBackend` in [`src/lib/backend-bff.ts`](../../src/lib/backend-bff.ts)), then remove Next handlers only after parity checks pass.
+Move product/business API ownership from Next route handlers to Spring controllers using a proxy-first BFF pattern ([`proxyRequestToBackend` in `src/lib/backend-bff.ts`](../../src/lib/backend-bff.ts)), then remove Next handlers only after parity checks pass.
 
 ## Baseline (reference pattern)
 
@@ -43,15 +46,19 @@ Move product/business API ownership from Next route handlers to Spring controlle
 
 ## Shipped slices (summary)
 
-Portfolios/positions/watchlist, recommendations (app + per-portfolio), strategy-options, personas, self-service `POST /api/access-requests`, feedback, `GET` admin bootstrap-status + audit, `GET` RAG files list — see migration status table in the consolidation doc.
+Portfolios/positions/watchlist, recommendations (app + per-portfolio) + Pub/Sub on JVM when BFF on, strategy-options, personas, self-service `POST /api/access-requests`, feedback, admin bootstrap + audit, **admin access-requests** (full CRUD/review), **RAG GET+POST** — see the consolidation doc status table.
 
-## Backlog (resume in this order unless priorities change)
+## What’s next (suggested order)
 
-1. **Admin mutations (Next-primary today)** — access-request **review** (`/api/admin/access-requests/**`), users CRUD, tasks, deploy-note-configs, import, scheduler tick, etc. Same gate as existing slices (Kotlin controllers + proxy-first + `bff-proxy-routes` + HTTP spec + smoke).
-2. **RAG POST** — upload path still Next-only; needs Spring + parity with xAI upload flow.
-3. **Recommendation Pub/Sub** — optional JVM duplicate of `publishRecommendationEvent` when BFF handles `POST /api/recommendations`.
-4. **xChat** — streaming-capable BFF path; tool loop; last major product slice per **Plan: xChat** in consolidation doc.
-5. **Auth / OAuth** — session issuance and `/api/auth/x/callback` move to Spring per approved contract in `docs/ops/api-consolidation-spring-backend.md` (backend cookie authority + dual-run cutover).
+1. **Auth / OAuth** — highest product risk; follow **Auth callback contract** in the consolidation doc (Spring session authority, dual-run).
+2. **xChat** — streaming-capable BFF + tool loop (last large slice per **Plan: xChat**).
+3. **Remaining admin** — users, tasks, deploy configs, import, scheduler (lower traffic; same Kotlin + proxy + parity gate).
+
+## Backlog (legacy numbered list — prefer “What’s next” above)
+
+1. ~~Admin access-requests / RAG POST / recommendations Pub/Sub~~ — shipped; keep parity tests green.
+2. **xChat** — streaming proxy; align with consolidation **Plan: xChat**.
+3. **Auth** — session + `/api/auth/x/callback` cutover per approved contract.
 
 ## Per-slice implementation checklist
 
@@ -59,8 +66,8 @@ Portfolios/positions/watchlist, recommendations (app + per-portfolio), strategy-
 - Update [`docs/ops/atxfinance-backend-http-api.md`](../../docs/ops/atxfinance-backend-http-api.md).
 - Extend [`tests/smoke/backend-http-api-parity.test.ts`](../../tests/smoke/backend-http-api-parity.test.ts) / [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) as appropriate.
 - Proxy-first in [`src/app/api`](../../src/app/api).
-- Integration tests in [`tests/integration`](../../tests/integration).
-- Side effects: duplicate Slack/audit/Pub/Sub on JVM per **Plan: operational parity** in consolidation doc before enabling BFF-only traffic.
+- Integration tests in [`tests/integration`](../../tests/integration) when adding coverage.
+- Side effects: duplicate Slack/audit/Pub/Sub on JVM per **Plan: operational parity** in the consolidation doc before enabling BFF-only traffic.
 
 ## Deletion gate for each Next route
 

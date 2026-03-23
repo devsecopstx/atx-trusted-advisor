@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const requiredKeys = [
-  "MONGODB_URI_B64",
+  "MONGODB_URI",
   "XAI_API_KEY",
   "XAI_MANAGEMENT_API_KEY",
   "X_OAUTH_CLIENT_ID",

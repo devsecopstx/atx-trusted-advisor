@@ -23,8 +23,8 @@ const optionalNonEmptyString = z.preprocess(
 const optionalEmail = z.preprocess(emptyToUndefined, z.string().email().optional());
 
 const envSchema = z.object({
-  MONGODB_URI_B64: z.string().min(1).optional(),
-  MONGODB_URI_B4: z.string().min(1).optional(),
+  /** Plain `mongodb://` / `mongodb+srv://`, or base64 of either (same as Spring `MongoUriResolver`). */
+  MONGODB_URI: z.preprocess(emptyToUndefined, z.string().optional()),
   XAI_API_KEY: z.string().min(1),
   XAI_MANAGEMENT_API_KEY: z.string().min(1),
   XAI_TEAM_ID: optionalNonEmptyString,
@@ -96,15 +96,41 @@ export function getEnv(): Env {
   return envCache;
 }
 
-export function getMongoUriFromB64(): string {
-  const { MONGODB_URI_B64, MONGODB_URI_B4 } = getEnv();
-  const encoded = MONGODB_URI_B64 ?? MONGODB_URI_B4;
-  if (encoded) {
-    const decoded = Buffer.from(encoded, "base64").toString("utf8").trim();
-    if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
-      throw new Error("Invalid MONGODB_URI_B64: decoded value is not a MongoDB URI");
-    }
+/**
+ * Parses `MONGODB_URI` when it is either a real Mongo URI or base64-encoded (GCP / Cursor-friendly).
+ */
+export function parseMongoConnectionString(raw: string): string {
+  const t = raw.trim();
+  if (t.startsWith("mongodb://") || t.startsWith("mongodb+srv://")) {
+    return t;
+  }
+  let decoded: string;
+  try {
+    decoded = Buffer.from(t, "base64").toString("utf8").trim();
+  } catch {
+    throw new Error("MONGODB_URI is not a valid MongoDB URI or base64 thereof");
+  }
+  if (decoded.startsWith("mongodb://") || decoded.startsWith("mongodb+srv://")) {
     return decoded;
+  }
+  try {
+    decoded = Buffer.from(t, "base64url").toString("utf8").trim();
+  } catch {
+    throw new Error("MONGODB_URI is not a valid MongoDB URI or base64 thereof");
+  }
+  if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
+    throw new Error("Invalid MONGODB_URI: decoded value is not a MongoDB URI");
+  }
+  return decoded;
+}
+
+/** Resolved Mongo connection string (Atlas, local Docker, or compose fallback). */
+export function getMongoUri(): string {
+  const fromZod = getEnv().MONGODB_URI;
+  const legacyB64 = process.env.MONGODB_URI_B64?.trim();
+  const raw = (fromZod && fromZod.length > 0 ? fromZod : undefined) ?? (legacyB64 && legacyB64.length > 0 ? legacyB64 : undefined);
+  if (raw) {
+    return parseMongoConnectionString(raw);
   }
 
   // Fallback: local MongoDB on localhost:27017 with optional credentials from env
@@ -137,6 +163,9 @@ export function getMongoUriFromB64(): string {
 
   return `mongodb://${authPart}${host}:27017/${dbName}${params}`;
 }
+
+/** @deprecated Use {@link getMongoUri} — name kept for call sites. */
+export const getMongoUriFromB64 = getMongoUri;
 
 export function getXOauthClientId(): string {
   const { X_OAUTH_CLIENT_ID } = getEnv();
@@ -255,7 +284,7 @@ export function shouldShowAppUserDbLabel(): boolean {
 }
 
 export function getMongoConnectionLabel(): string {
-  const uri = getMongoUriFromB64();
+  const uri = getMongoUri();
   const withoutProtocol = uri.replace(/^mongodb(\+srv)?:\/\//, "");
   const withoutCredentials = withoutProtocol.includes("@")
     ? withoutProtocol.split("@").slice(1).join("@")
@@ -266,4 +295,9 @@ export function getMongoConnectionLabel(): string {
   return `${hosts}/${resolvedDbName}`;
 }
 
+/**
+ * Canonical application database name: **one MongoDB database per deployment** (staging vs production
+ * use separate clusters/URIs; tenant isolation within the app uses `tenantId` / org keys on documents).
+ * Override with `MONGODB_DB_NAME` only for local tooling if you must match a non-default DB path.
+ */
 export const MONGODB_DB_NAME = "atxfinancedb";

@@ -55,7 +55,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   {
     path: "/api/feedback",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
-    tag: "xchat"
+    tag: "feedback"
   },
   {
     path: "/api/recommendations",
@@ -76,7 +76,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
       { method: "GET", auth: "admin" },
       { method: "POST", auth: "admin", hasRequestBody: true }
     ],
-    tag: "admin-access"
+    tag: "admin-access-requests"
   },
   {
     path: "/api/admin/access-requests/{requestId}",
@@ -86,7 +86,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
       { method: "PUT", auth: "admin", hasRequestBody: true },
       { method: "DELETE", auth: "admin" }
     ],
-    tag: "admin-access"
+    tag: "admin-access-requests"
   },
   { path: "/api/admin/audit", operations: [{ method: "GET", auth: "admin" }], tag: "admin-audit" },
   {
@@ -374,12 +374,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
 ];
 
 const TAG_DESCRIPTIONS: Record<string, string> = {
+  docs: "OpenAPI / documentation meta endpoints.",
   health: "Health and runtime diagnostics endpoints.",
   auth: "Authentication and session management flows.",
   "access-requests": "User-submitted access and onboarding requests.",
   recommendations:
     "App_user-scoped recommendations; optional Pub/Sub events for downstream agent workers (see DEVELOPMENT.md).",
-  "admin-access": "Admin workflows for triaging and deciding access requests.",
+  "admin-access-requests": "Global admin APIs for listing, creating, reviewing, and deleting access requests.",
+  feedback: "Authenticated app_user feedback submission (Slack integration when configured).",
   "admin-audit": "Admin audit and activity timeline endpoints.",
   "admin-system": "Admin system-level diagnostics and scheduled task controls.",
   "admin-tasks": "Admin task catalog and task-run controls.",
@@ -583,10 +585,23 @@ export function buildCurrentStateOpenApi(): OpenApiDocument {
   return {
     openapi: "3.1.0",
     info: {
-      title: "atxFinance Core API (Current State)",
+      title: "atxFinance HTTP API — current-state inventory",
       version: APP_VERSION,
-      description:
-        "Internal architecture snapshot generated from current Next.js route handlers. This spec prioritizes endpoint coverage, auth boundaries, and route-level inventory for review."
+      description: [
+        "Machine-generated inventory of Next.js `src/app/api` routes (auth scopes, methods).",
+        "Use for architecture review and parity with Spring BFF migration — not a substitute for per-route request/response schemas yet.",
+        "",
+        "**Naming / review notes**",
+        "- Tags use `kebab-case`; admin areas are grouped as `admin-*` by domain.",
+        "- `feedback` is separate from `xchat` (feedback was previously mis-tagged).",
+        "- Prefer tag `admin-access-requests` over a generic “admin-access” label for `/api/admin/access-requests`.",
+        "- Canonical product name in titles: **atxFinance** (camelCase).",
+        "- For customer-facing public docs, consider a future `operationId` prefix such as `atx_` + resource + action for stable codegen.",
+        "",
+        "**Suggested next spec hardening**",
+        "- Replace `ApiSuccessPayload` placeholders with Zod-derived schemas per route cluster.",
+        "- Add `GET /api/openapi` response examples for 401/403 for session vs admin routes."
+      ].join("\n")
     },
     servers: [
       { url: "https://staging.atx.fintech-advisor.ai", description: "Staging server" },

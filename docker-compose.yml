@@ -8,8 +8,8 @@ services:
     ports:
       - "27017:27017"
     environment:
-      # Align DB name with .env (MONGODB_DB_NAME) and default to atxfintechdb
-      MONGO_INITDB_DATABASE: ${MONGODB_DB_NAME:-atxfintechdb}
+      # One app DB per deployment; default matches src/lib/env.ts MONGODB_DB_NAME
+      MONGO_INITDB_DATABASE: ${MONGODB_DB_NAME:-atxfinancedb}
       # Local root user should be deterministic (`admin`) unless explicitly overridden.
       # ADMIN_X_USERNAMES is an app allowlist and must not change Mongo root auth.
       MONGO_INITDB_ROOT_USERNAME: ${ADMIN_X_USERNAME:-admin}
@@ -35,9 +35,9 @@ services:
     env_file:
       - .env
     environment:
-      # If MONGODB_URI_B64 is set, the app will prefer it (decoded) via EnvironmentPostProcessor.
+      # If MONGODB_URI is set (plain or base64), Spring MongoUriEnvPostProcessor resolves it.
       # Otherwise, use local Mongo with credentials and db name.
-      SPRING_DATA_MONGODB_URI: "mongodb://${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}:${MONGO_ROOT_PASSWORD:-atxrocks!}@mongodb:27017/${MONGODB_DB_NAME:-atxfintechdb}?authSource=admin"
+      SPRING_DATA_MONGODB_URI: "mongodb://${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}:${MONGO_ROOT_PASSWORD:-atxrocks!}@mongodb:27017/${MONGODB_DB_NAME:-atxfinancedb}?authSource=admin"
     ports:
       - "8080:8080"
 

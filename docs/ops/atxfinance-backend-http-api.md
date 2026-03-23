@@ -125,7 +125,7 @@ SpringDoc OpenAPI 2.x (see `services/atxfinance-backend/build.gradle.kts`):
 Resolution order for Spring Data Mongo URI (high level):
 
 1. **`MONGODB_URI_B64`** — if set, `MongoUriEnvPostProcessor` decodes and injects `spring.data.mongodb.uri` at highest precedence (same pattern as the core Next.js app).
-2. Else **`spring.data.mongodb.uri`** from `application.yml` / env: `MONGODB_URI` or `SPRING_DATA_MONGODB_URI` or default `mongodb://localhost:27017/${MONGODB_DB_NAME:atxfintechdb}`.
+2. Else **`spring.data.mongodb.uri`** from `application.yml` / env: `MONGODB_URI` or `SPRING_DATA_MONGODB_URI` or default `mongodb://localhost:27017/${MONGODB_DB_NAME:atxfinancedb}`.
 
 Docker Compose sets `SPRING_DATA_MONGODB_URI` explicitly for the `atxfinance-backend` service unless overridden by `.env` / `MONGODB_URI_B64`.
 

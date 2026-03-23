@@ -52,7 +52,8 @@ const bootstrapMocks = vi.hoisted(() => ({
 const envMocks = vi.hoisted(() => ({
   getEnv: vi.fn(),
   getXOauthClientId: vi.fn(),
-  isAllowAnyXUserLoginEnabled: vi.fn()
+  isAllowAnyXUserLoginEnabled: vi.fn(),
+  getAtxfinanceBackendOrigin: vi.fn(() => undefined)
 }));
 
 vi.mock("@/lib/auth", () => authMocks);

@@ -14,7 +14,7 @@ class BackendHealthControllerTest {
 
     private fun buildControllerWith(
         mongoOk: Boolean,
-        uri: String = "mongodb://user:secret@localhost:27017/atxfintechdb?authSource=admin",
+        uri: String = "mongodb://user:secret@localhost:27017/atxfinancedb?authSource=admin",
         activeProfiles: Array<String> = arrayOf("test")
     ): BackendHealthController {
         val env = MockEnvironment()
@@ -24,7 +24,7 @@ class BackendHealthControllerTest {
 
         val mongoClient = mock(MongoClient::class.java)
         val db = mock(MongoDatabase::class.java)
-        `when`(mongoClient.getDatabase("atxfintechdb")).thenReturn(db)
+        `when`(mongoClient.getDatabase("atxfinancedb")).thenReturn(db)
         if (mongoOk) {
             `when`(db.runCommand(Document("ping", 1))).thenReturn(Document("ok", 1))
         } else {
@@ -58,7 +58,7 @@ class BackendHealthControllerTest {
 
         // Host and database extracted
         assertEquals("localhost:27017", mongo["host"])
-        assertEquals("atxfintechdb", mongo["database"]) 
+        assertEquals("atxfinancedb", mongo["database"])
     }
 
     @Test
@@ -67,7 +67,7 @@ class BackendHealthControllerTest {
         val env = MockEnvironment()
         env.setActiveProfiles("test")
         env.withProperty("spring.application.name", "atxfinance-backend")
-        env.withProperty("spring.data.mongodb.uri", "mongodb://localhost:27017/atxfintechdb")
+        env.withProperty("spring.data.mongodb.uri", "mongodb://localhost:27017/atxfinancedb")
 
         val mongoClient = mock(MongoClient::class.java)
         val names = mock(MongoIterable::class.java) as MongoIterable<String>
