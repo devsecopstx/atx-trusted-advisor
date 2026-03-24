@@ -86,8 +86,8 @@ function findColumnIndex(headers: string[], candidates: string[]): number {
   return -1;
 }
 
-/** Prefer `Entry Price` over a legacy `Entry` notes column. */
-function findEntryPriceColumnIndex(headers: string[]): number {
+/** Dedicated cost / limit columns (take precedence over market `Price`). */
+function findEntryPriceColumnIndex(headers: string[], symbolColumn: number): number {
   const normalized = headers.map((h) => normalizeHeaderCell(h));
   const preferOrder = [
     "entry price",
@@ -100,7 +100,31 @@ function findEntryPriceColumnIndex(headers: string[]): number {
   ];
   for (const want of preferOrder) {
     const idx = normalized.findIndex((h) => h === want);
-    if (idx >= 0) {
+    if (idx >= 0 && idx !== symbolColumn) {
+      return idx;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Quote / last columns (e.g. app export `Price`). Used as `entryPrice` when dedicated entry cell is empty.
+ */
+function findMarketPriceColumnIndex(headers: string[], symbolColumn: number): number {
+  const normalized = headers.map((h) => normalizeHeaderCell(h));
+  const preferOrder = [
+    "last price",
+    "last",
+    "close",
+    "prev close",
+    "market price",
+    "current price",
+    "mid",
+    "price"
+  ];
+  for (const want of preferOrder) {
+    const idx = normalized.findIndex((h) => h === want);
+    if (idx >= 0 && idx !== symbolColumn) {
       return idx;
     }
   }
@@ -147,7 +171,9 @@ function unquoteCell(raw: string): string {
 /**
  * Parses watchlist CSV from app export or broker sheets.
  * Supports comma-, semicolon-, or tab-delimited files; optional header row.
- * Imports Symbol plus Type, Strategy, Quantity, Entry Price when present.
+ * Imports Symbol plus Type, Strategy, Quantity, and price for **`entryPrice`**:
+ * prefers Entry Price / Entry / limit-style columns; if that cell is empty or missing, uses **Price** /
+ * Last / Close / market-style columns (matches re-importing our export with quote `Price`).
  */
 export function parseWatchlistCsv(text: string): ParseWatchlistCsvResult {
   const normalized = text.replace(/^\uFEFF/, "");
@@ -177,6 +203,7 @@ export function parseWatchlistCsv(text: string): ParseWatchlistCsvResult {
   let colStrategy = -1;
   let colQty = -1;
   let colEntry = -1;
+  let colMarketPrice = -1;
 
   if (symbolIdx >= 0) {
     dataStart = 1;
@@ -184,7 +211,8 @@ export function parseWatchlistCsv(text: string): ParseWatchlistCsvResult {
     colType = findTypeColumnIndex(firstCells, colSymbol);
     colStrategy = findColumnIndex(firstCells, ["strategy", "strat", "play"]);
     colQty = findColumnIndex(firstCells, ["quantity", "qty", "shares", "size"]);
-    colEntry = findEntryPriceColumnIndex(firstCells);
+    colEntry = findEntryPriceColumnIndex(firstCells, colSymbol);
+    colMarketPrice = findMarketPriceColumnIndex(firstCells, colSymbol);
   }
 
   const bySymbol = new Map<string, WatchlistCsvEntry>();
@@ -223,11 +251,12 @@ export function parseWatchlistCsv(text: string): ParseWatchlistCsvResult {
         entry.quantity = q;
       }
     }
-    if (colEntry >= 0) {
-      const p = parseNumericCell(cells[colEntry] ?? "");
-      if (p !== undefined) {
-        entry.entryPrice = p;
-      }
+    const fromEntry = colEntry >= 0 ? parseNumericCell(cells[colEntry] ?? "") : undefined;
+    const fromMarket =
+      colMarketPrice >= 0 ? parseNumericCell(cells[colMarketPrice] ?? "") : undefined;
+    const entryPrice = fromEntry ?? fromMarket;
+    if (entryPrice !== undefined) {
+      entry.entryPrice = entryPrice;
     }
 
     bySymbol.set(sym, entry);

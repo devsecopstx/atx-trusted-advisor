@@ -71,11 +71,13 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 ## Options — atx-options
 
+**Reviewer / agent quick index:** **[`atx-readme-coreskills.md`](./atx-options/atx-strategy-templates/atx-readme-coreskills.md)** — one table with **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook** columns, and links to **`.cursor/skills/atx-skill-*/SKILL.md`**. Use this for parity checks against persona tools and options education copy.
+
 | Doc | Purpose |
 |-----|---------|
-| **[atx-options/README.md](./atx-options/README.md)** | **Start here:** header, TOC, strategy ↔ narrative doc ↔ **Cursor `atx-skill-*`** links |
-| [atx-readme-coreskills.md](./atx-options/atx-strategy-templates/atx-readme-coreskills.md) | Compact table: `xfinance-strategy-*` id ↔ paths ↔ skill |
-| [atx-options-readme.md](./atx-options/atx-strategy-templates/atx-options-readme.md) | Redirect stub → directory README |
+| **[atx-readme-coreskills.md](./atx-options/atx-strategy-templates/atx-readme-coreskills.md)** | **★ Quick lookup:** automation id ↔ doc ↔ **detail skill** ↔ risk / outlook |
+| **[atx-options/README.md](./atx-options/README.md)** | Hub: header, TOC, full strategy ↔ narrative ↔ **`atx-skill-*`** map |
+| [atx-options-readme.md](./atx-options/atx-strategy-templates/atx-options-readme.md) | Redirect stub → `atx-options/README.md` |
 
 **Folder convention:** `atx-options/atx-strategy-templates/atx-<slug>/atx-<slug>.md` (frontmatter `xfinance-strategy-*`). Full playbooks: `.cursor/skills/atx-skill-*/SKILL.md`.
 

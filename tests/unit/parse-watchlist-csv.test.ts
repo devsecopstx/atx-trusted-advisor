@@ -19,6 +19,19 @@ describe("parseWatchlistCsv", () => {
     const { entries, invalidRowCount } = parseWatchlistCsv(csv);
     expect(entries.map((e) => e.symbol)).toEqual(["TSLA", "AAPL"]);
     expect(invalidRowCount).toBe(0);
+    expect(entries.find((e) => e.symbol === "TSLA")?.entryPrice).toBe(100);
+    expect(entries.find((e) => e.symbol === "AAPL")?.entryPrice).toBe(200);
+  });
+
+  it("uses dedicated Entry Price over quote Price when both are set", () => {
+    const csv = [
+      "Symbol,Price,Entry Price",
+      "TSLA,999.99,250.5",
+      "NVDA,500,501"
+    ].join("\n");
+    const { entries } = parseWatchlistCsv(csv);
+    expect(entries.find((e) => e.symbol === "TSLA")?.entryPrice).toBe(250.5);
+    expect(entries.find((e) => e.symbol === "NVDA")?.entryPrice).toBe(501);
   });
 
   it("parses semicolon-separated headers (Excel EU)", () => {

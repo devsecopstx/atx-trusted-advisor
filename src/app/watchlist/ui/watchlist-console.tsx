@@ -475,7 +475,7 @@ export function WatchlistConsole({
           }
         }
         const parts = [
-          `Applied ${workload.length} row${workload.length === 1 ? "" : "s"} (symbols with Type / Strategy / Quantity / Entry Price when present).`
+          `Applied ${workload.length} row${workload.length === 1 ? "" : "s"} (Type, Strategy, Quantity; Entry Price/Entry when set, else Price, Last, or Close → stored entry price).`
         ];
         if (invalidRowCount > 0) {
           parts.push(`Skipped ${invalidRowCount} invalid row${invalidRowCount === 1 ? "" : "s"}.`);
@@ -638,6 +638,7 @@ export function WatchlistConsole({
                       <th scope="col">Instrument</th>
                       <th scope="col">Type — strategy</th>
                       <th scope="col">Entry</th>
+                      {/* TODO(options-scanner): Rationale column — populate from options-scanner (planned); UI placeholder until then. */}
                       <th scope="col">Rationale</th>
                       <th scope="col">Actions</th>
                     </tr>
@@ -727,6 +728,7 @@ export function WatchlistConsole({
                             formatEntryCell(row)
                           )}
                         </td>
+                        {/* TODO(options-scanner): show rationale / scanner snippet per row when available */}
                         <td className="xf-watchlist-table-mono">—</td>
                         <td>
                           <button
