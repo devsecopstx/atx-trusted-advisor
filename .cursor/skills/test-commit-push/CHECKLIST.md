@@ -28,6 +28,7 @@
 - [ ] When branding, investor, or GTM copy changes: update
   **`atx-docs/atx-xchat/xfinance-branding-review.md`** if the expert review doc should
   reflect it (see **`generate-docs`**).
+- [ ] **Branding assets** live under **`atx-branding/`** (not `branding/`). If you add/move files there, keep **`DEVELOPMENT.md`**, **`AGENTS.md`**, **`tailwind.config.ts`**, and **`tests/unit/parse-watchlist-csv.test.ts`** paths in sync (see **`generate-docs`** → *Branding assets folder gaps*).
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.
 - [ ] **Cursor agent commits** use **`chore: aTx⚡ …`** (see **`test-commit-push`** step 11).
@@ -35,7 +36,7 @@
 - [ ] Docs/runbooks updated when behavior or operations changed.
 - [ ] **Mongo portfolio store:** canonical collection is **`tenant_portfolio`** (singular), constant `TENANT_PORTFOLIO_COLLECTION` in `src/modules/core-admin/collection-names.ts`. Legacy names `portfolio_portfolios` / `tenant_portfolios` → run **`npm run migrate:tenant-portfolio`** once per database before or right after deploy (see `DEVELOPMENT.md` → *Multi-tenant Seed Verification*).
 - [ ] xChat `POST /api/xchat/ask` changes: update OpenAPI inventory (`src/lib/openapi/current-state-overrides.ts`), `tests/integration/xchat-ask-route.test.ts`, and xChat docs as needed (`atx-docs/atx-xchat/xchat-tools-guide.md`, `atx-docs/atx-xchat/context-routing-multi-agent-policy.md`, `atx-docs/atx-xchat/atxfinance-tool-stub.md`, `AGENTS.md` quick ref). **Contract:** effective xAI model id comes from the **resolved persona’s `model`** (server default if empty); **no** request-body `model`; `modelSelectionSource` is `persona` | `default`. **Prompt assembly:** if `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` change, sync **`generate-docs`** § *xChat / tools & prompts*.
-- [ ] **`/api/strategy-options*`** (expirations + chain) or **`src/modules/strategy-options/**`** changes: update **`src/lib/openapi/current-state.ts`**, **`tests/integration/strategy-options*.test.ts`**, **`DEVELOPMENT.md`** (options chain section), and **`README.md`** Core Routes — see **`generate-docs`** § *xStrategyBuilder / strategy-options*.
+- [ ] **`/api/strategy-options*`** (expirations + chain) or **`src/modules/strategy-options/**`** changes: update **`src/lib/openapi/current-state.ts`**, **`tests/integration/strategy-options*.test.ts`**, **`DEVELOPMENT.md`** (options chain section), and **`README.md`** / **DEVELOPMENT.md** route docs as needed — see **`generate-docs`** § *xStrategyBuilder / strategy-options*.
 - [ ] **Spring BFF (proxied routes):** Kotlin **`@*Mapping`** ↔ **`bff-proxy-routes.ts`**, **`nextBffApi`** / **`backend-bff-api-object.test.ts`**, **`atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`**, smoke parity test, **`proxyRequestToBackend`** on affected **`src/app/api/**/route.ts`**.
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.

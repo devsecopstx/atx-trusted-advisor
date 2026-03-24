@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-core-app",
-  "version": "2.4.18",
+  "version": "2.4.19",
   "description": "aTx⚡Finance Advisory software and services for finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",

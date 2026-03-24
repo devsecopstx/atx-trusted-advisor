@@ -102,7 +102,7 @@ When **`ATXFINANCE_BACKEND_ORIGIN`** proxy behavior, Kotlin controllers, or BFF 
 `/xstrategybuilder/strategy-options`, or **`src/modules/strategy-options/**`**:
 
 - Update **`DEVELOPMENT.md`** (xStrategyBuilder options chain subsection).
-- Update **`README.md`** Core Routes (UI + API lines).
+- Update **`README.md`** Docs / **DEVELOPMENT.md** route pointers if the public route summary should change.
 - Update **`src/lib/openapi/current-state.ts`** (and tag description if the surface meaning changes).
 - Keep **`tests/integration/strategy-options*.test.ts`** aligned with query params and response shape.
 - Treat **xfinance-strategy** `GET /api/options` / expirations as **behavioral reference**; this app’s paths and auth are session-scoped — verify parity notes in docs if contracts diverge.
