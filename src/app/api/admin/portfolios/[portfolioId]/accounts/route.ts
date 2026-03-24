@@ -10,6 +10,7 @@ import {
 } from "@/modules/core-admin/repository";
 import type { Account } from "@/modules/core-admin/types";
 import { accountTypeValues } from "@/modules/core-admin/types";
+import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 
 type RouteContext = {
   params: Promise<{ portfolioId: string }>;
@@ -68,7 +69,7 @@ export async function GET(request: Request, context: RouteContext) {
       portfolio: {
         _id: portfolio._id.toHexString(),
         name: portfolio.name,
-        userId: portfolio.userId,
+        userId: normalizeMongoUserIdHex(portfolio.userId) ?? "",
         tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey,
         riskProfile: portfolio.riskProfile ?? null,
         outlook: portfolio.outlook ?? null

@@ -10,6 +10,7 @@ import {
     DEFAULT_ACCOUNT_CASH_BALANCE
 } from "@/modules/core-admin/repository";
 import type { Portfolio } from "@/modules/core-admin/types";
+import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 
 type RouteContext = {
   params: Promise<{ portfolioId: string }>;
@@ -19,7 +20,7 @@ function serializePortfolio(p: Portfolio) {
   return {
     _id: p._id!.toHexString(),
     tenantId: p.tenantId?.toHexString(),
-    userId: p.userId,
+    userId: normalizeMongoUserIdHex(p.userId) ?? "",
     name: p.name,
     isDefault: p.isDefault,
     tenantPortfolioOrgKey: p.tenantPortfolioOrgKey,

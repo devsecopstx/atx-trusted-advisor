@@ -1858,7 +1858,7 @@ export async function adminUpdatePortfolio(input: {
     await db.collection<Portfolio>(collections.portfolios).updateMany(
       strictWriteTenantFilter(
         {
-          ...userIdQuery(existing.userId),
+          ...userIdQuery(portfolioUserIdString(existing)),
           isDefault: true,
           _id: { $ne: existing._id }
         },
