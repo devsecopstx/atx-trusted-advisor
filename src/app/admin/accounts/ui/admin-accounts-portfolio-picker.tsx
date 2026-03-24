@@ -143,7 +143,7 @@ export function AdminAccountsPortfolioPicker() {
                     <td>{money.format(row.totalCashBalance)}</td>
                     <td className="text-xs whitespace-nowrap">{new Date(row.updatedAt).toLocaleString()}</td>
                     <td>
-                      <Link className="cta cta-primary" href={`/admin/accounts/${encodeURIComponent(row._id)}`}>
+                      <Link className="cta cta-primary" href={`/admin/portfolios/${encodeURIComponent(row._id)}/accounts`}>
                         Manage accounts
                       </Link>
                     </td>

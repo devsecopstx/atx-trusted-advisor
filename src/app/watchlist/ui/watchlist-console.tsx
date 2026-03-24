@@ -757,7 +757,7 @@ export function WatchlistConsole({
                 <Link className="cta cta-secondary" href="/admin/portfolios">
                   ← Portfolios
                 </Link>
-                <Link className="cta cta-secondary" href={`/admin/accounts/${encodeURIComponent(portfolioId)}`}>
+                <Link className="cta cta-secondary" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`}>
                   Manage accounts
                 </Link>
               </>

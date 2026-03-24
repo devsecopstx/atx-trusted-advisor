@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { adminBrokerSlugSchema, requireKnownBrokerCatalogSlug } from "@/lib/admin/broker-catalog-guard";
 import { requireAdminSession } from "@/lib/api-auth";
 import {
     adminDeletePortfolio,
@@ -36,7 +37,7 @@ function serializePortfolio(p: Portfolio) {
 const patchPortfolioSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   ext_broker_ref: z.union([z.string(), z.null()]).optional(),
-  broker_type: z.union([z.enum(["merrill", "fidelity", "etrade"]), z.null()]).optional(),
+  broker_type: z.union([adminBrokerSlugSchema, z.null()]).optional(),
   riskProfile: z.union([z.enum(["conservative", "balanced", "growth"]), z.null()]).optional(),
   outlook: z.union([z.string().max(4000), z.null()]).optional(),
   isDefault: z.literal(true).optional()
@@ -97,6 +98,13 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const p = parsed.data;
+  if (p.broker_type !== undefined && p.broker_type !== null) {
+    const denied = await requireKnownBrokerCatalogSlug(p.broker_type);
+    if (denied) {
+      return denied;
+    }
+  }
+
   const hasPayload =
     p.name !== undefined ||
     p.ext_broker_ref !== undefined ||

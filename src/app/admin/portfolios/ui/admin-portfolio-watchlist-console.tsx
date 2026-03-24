@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+
+import { PortfolioManageNav } from "./portfolio-manage-nav";
 
 type SymbolRow = {
   symbol: string;
@@ -93,13 +94,7 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
 
   return (
     <section className="panel stack-gap">
-      <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
-        <Link className="cta cta-secondary" href="/admin/portfolios">
-          ← Portfolios
-        </Link>
-        <Link className="cta cta-secondary" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`}>
-          Manage accounts
-        </Link>
+      <PortfolioManageNav portfolioId={portfolioId} active="watchlist">
         <button className="cta cta-secondary" disabled={loading} onClick={() => void refresh()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh
         </button>
@@ -107,7 +102,7 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
           Dedupe symbols
         </button>
         <p className="status-text">{status}</p>
-      </div>
+      </PortfolioManageNav>
 
       <article className="surface-card xf-widget section-card">
         <h3 className="text-sm font-semibold" style={{ marginBottom: "0.35rem" }}>

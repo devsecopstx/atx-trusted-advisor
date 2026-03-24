@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
+import { PortfolioManageNav } from "./portfolio-manage-nav";
+
 const ACCOUNT_TYPES = ["merrill", "fidelity", "etrade"] as const;
 
 const RISK_PROFILE_OPTIONS = ["conservative", "balanced", "growth"] as const;
@@ -366,37 +368,19 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
 
   return (
     <section className="panel stack-gap">
-      <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
-        <Link className="cta cta-secondary" href="/admin/accounts">
-          ← Accounts
-        </Link>
-        <Link className="cta cta-secondary" href="/admin/portfolios">
-          Portfolios
-        </Link>
+      <PortfolioManageNav portfolioId={portfolioId} active="accounts">
         <Link
-          className="cta cta-primary"
+          className="cta cta-secondary"
           href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/broker-import`}
         >
           Broker import
-        </Link>
-        <Link
-          className="cta cta-secondary"
-          href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/watchlist`}
-        >
-          Manage watchlist
-        </Link>
-        <Link
-          className="cta cta-secondary"
-          href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/tasks`}
-        >
-          Manage tasks
         </Link>
         {portfolio?.userId ? (
           <Link
             className="cta cta-secondary"
             href={`/admin/manage_account?userId=${encodeURIComponent(portfolio.userId)}&portfolioId=${encodeURIComponent(portfolioId)}`}
           >
-            Manage account
+            User settings
           </Link>
         ) : null}
         <button
@@ -411,7 +395,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
           <RefreshIcon className="crud-icon" /> Refresh
         </button>
         <p className="status-text">{status}</p>
-      </div>
+      </PortfolioManageNav>
 
       {portfolio ? (
         <article className="surface-card xf-widget section-card">

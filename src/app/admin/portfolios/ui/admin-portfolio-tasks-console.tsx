@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { AddIcon, DeleteIcon, RefreshIcon, RunIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+
+import { PortfolioManageNav } from "./portfolio-manage-nav";
 
 type ScheduledTaskRow = {
   _id?: string;
@@ -220,16 +221,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
 
   return (
     <section className="panel stack-gap">
-      <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
-        <Link className="cta cta-secondary" href="/admin/portfolios">
-          ← Portfolios
-        </Link>
-        <Link className="cta cta-secondary" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`}>
-          Manage accounts
-        </Link>
-        <Link className="cta cta-secondary" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/watchlist`}>
-          Manage watchlist
-        </Link>
+      <PortfolioManageNav portfolioId={portfolioId} active="tasks">
         <button type="button" className="cta cta-primary" disabled={loading || !hasAnyDirty} onClick={() => void saveAllDirty()}>
           Save changes
         </button>
@@ -237,7 +229,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
           <RefreshIcon className="crud-icon" /> Refresh
         </button>
         <p className="status-text">{status}</p>
-      </div>
+      </PortfolioManageNav>
 
       <article className="surface-card xf-widget section-card">
         <h3>Create task (this portfolio)</h3>

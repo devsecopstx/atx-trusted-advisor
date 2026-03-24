@@ -27,6 +27,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin/recommendations", label: "Recommendations" },
   { href: "/admin/batch", label: "Batch Ops" },
   { href: "/admin/portfolios", label: "Portfolios" },
+  { href: "/admin/brokers", label: "Brokers" },
   { href: "/admin/accounts", label: "Accounts" },
   { href: "/admin/tasks", label: "Tasks" },
   { href: "/admin/xoptions", label: "xOptions" },

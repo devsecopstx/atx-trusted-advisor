@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { adminBrokerSlugSchema, requireKnownBrokerCatalogSlug } from "@/lib/admin/broker-catalog-guard";
 import {
     adminCreatePortfolio,
     adminListPortfoliosWithStats
@@ -36,7 +37,7 @@ const postPortfolioSchema = z.object({
   name: z.string().trim().min(1).max(200),
   isDefault: z.boolean().optional(),
   tenantId: z.string().trim().optional(),
-  broker_type: z.enum(["merrill", "fidelity", "etrade"]).optional()
+  broker_type: adminBrokerSlugSchema.optional()
 });
 
 export async function GET() {
@@ -81,6 +82,13 @@ export async function POST(request: Request) {
       { error: "Invalid request payload", details: parsed.error.flatten() },
       { status: 400 }
     );
+  }
+
+  if (parsed.data.broker_type) {
+    const denied = await requireKnownBrokerCatalogSlug(parsed.data.broker_type);
+    if (denied) {
+      return denied;
+    }
   }
 
   const tenantId = parsed.data.tenantId?.trim() || session.tenantId;

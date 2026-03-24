@@ -141,6 +141,22 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/admin/brokers",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/brokers/{brokerId}",
+    operations: [
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
     path: "/api/admin/portfolios",
     operations: [
       { method: "GET", auth: "admin" },
@@ -167,6 +183,54 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}",
+    operations: [
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}/alerts",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}/alerts/{alertId}",
+    operations: [
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}/delivery-channels",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}/delivery-channels/{channelId}",
+    operations: [
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}/recommendations",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}/recommendations/{recommendationId}",
     operations: [
       { method: "PATCH", auth: "admin", hasRequestBody: true },
       { method: "DELETE", auth: "admin" }

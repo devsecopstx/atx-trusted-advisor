@@ -47,6 +47,12 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     description: "Create and edit tenant portfolios, broker metadata, and default book per user."
   },
   {
+    href: "/admin/brokers",
+    icon: "portfolio",
+    title: "Brokers",
+    description: "CRUD broker type slugs, display names, descriptions, and icon URLs for the portfolio catalog."
+  },
+  {
     href: "/admin/accounts",
     icon: "portfolio",
     title: "Accounts",

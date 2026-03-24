@@ -161,6 +161,19 @@ export type DeployNoteConfig = {
 export const accountTypeValues = ["merrill", "fidelity", "etrade"] as const;
 export type AccountType = (typeof accountTypeValues)[number];
 
+/** Admin-managed broker definitions (slug + display); seeds Merrill / Fidelity / E*TRADE. */
+export type BrokerCatalogEntry = {
+  _id?: ObjectId;
+  /** Lowercase slug used as portfolio `broker_type` (e.g. merrill). */
+  type: string;
+  name: string;
+  description?: string;
+  /** Optional icon URL for admin UI. */
+  iconUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type Portfolio = {
   _id?: ObjectId;
   tenantId?: ObjectId;
@@ -173,10 +186,9 @@ export type Portfolio = {
    */
   ext_broker_ref?: string;
   /**
-   * Primary broker / CSV format for this book (admin UI + holdings import defaults).
-   * Aligns with {@link AccountType} (`merrill` | `fidelity` | `etrade`).
+   * Broker catalog slug (see {@link BrokerCatalogEntry}); aligns with import {@link AccountType} for built-ins.
    */
-  broker_type?: AccountType;
+  broker_type?: string;
   /**
    * Deployment org bucket (e.g. `org-atx-finance`): all app_user “client” portfolios for this instance.
    * See `getTenantPortfolioOrgKey()` / `TENANT_PORTFOLIO_ORG_KEY`.
@@ -254,6 +266,35 @@ export type Recommendation = {
   targetPrice?: number;
   /** Status of recommendation lifecycle */
   status: "new" | "accepted" | "executed" | "dismissed";
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/** Desk / ops alerts scoped to a portfolio (admin-managed). */
+export type PortfolioAlert = {
+  _id?: ObjectId;
+  tenantId?: ObjectId;
+  userId: string;
+  portfolioId: ObjectId;
+  title: string;
+  body?: string;
+  severity: "info" | "warning" | "critical";
+  status: "active" | "acknowledged" | "dismissed";
+  symbol?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/** Notification delivery endpoints scoped to a portfolio (admin-managed). */
+export type PortfolioDeliveryChannel = {
+  _id?: ObjectId;
+  tenantId?: ObjectId;
+  userId: string;
+  portfolioId: ObjectId;
+  kind: "email" | "slack_webhook" | "sms" | "push";
+  label: string;
+  destination: string;
+  enabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 };

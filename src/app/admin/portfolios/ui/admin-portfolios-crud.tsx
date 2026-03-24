@@ -6,13 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
-type PortfolioBrokerType = "merrill" | "fidelity" | "etrade";
-
-const PORTFOLIO_BROKER_TYPES: readonly PortfolioBrokerType[] = [
-  "merrill",
-  "fidelity",
-  "etrade"
-];
+type BrokerCatalogOption = { type: string; name: string };
 
 type PortfolioRow = {
   _id: string;
@@ -21,7 +15,7 @@ type PortfolioRow = {
   isDefault: boolean;
   tenantPortfolioOrgKey?: string;
   ext_broker_ref?: string;
-  broker_type?: PortfolioBrokerType | null;
+  broker_type?: string | null;
   createdAt: string;
   updatedAt: string;
   accountCount: number;
@@ -46,15 +40,24 @@ export function AdminPortfoliosCrud() {
   const [createUserId, setCreateUserId] = useState("");
   const [createName, setCreateName] = useState("");
   const [createDefault, setCreateDefault] = useState(false);
-  const [createBrokerType, setCreateBrokerType] = useState<"" | PortfolioBrokerType>("");
+  const [createBrokerType, setCreateBrokerType] = useState("");
+  const [brokerCatalog, setBrokerCatalog] = useState<BrokerCatalogOption[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setStatus("Loading portfolios…");
     try {
-      const payload = await parseJson<{ data: PortfolioRow[] }>(
-        await fetch("/api/admin/portfolios", { cache: "no-store" })
-      );
+      const [portfolioRes, brokerRes] = await Promise.all([
+        fetch("/api/admin/portfolios", { cache: "no-store" }),
+        fetch("/api/admin/brokers", { cache: "no-store" })
+      ]);
+      const payload = await parseJson<{ data: PortfolioRow[] }>(portfolioRes);
+      try {
+        const brokers = await parseJson<{ data: BrokerCatalogOption[] }>(brokerRes);
+        setBrokerCatalog(brokers.data);
+      } catch {
+        setBrokerCatalog([]);
+      }
       setRows(payload.data);
       setEdits({});
       setStatus(`Loaded ${payload.data.length} portfolio(s)`);
@@ -84,6 +87,19 @@ export function AdminPortfoliosCrud() {
   };
 
   const hasDirty = useMemo(() => Object.keys(edits).length > 0, [edits]);
+
+  const catalogByType = useMemo(() => new Map(brokerCatalog.map((b) => [b.type, b])), [brokerCatalog]);
+
+  const rowBrokerSelectOptions = useCallback(
+    (currentSlug: string | null | undefined): BrokerCatalogOption[] => {
+      const cur = currentSlug ?? "";
+      if (cur && !catalogByType.has(cur)) {
+        return [{ type: cur, name: `${cur} (not in catalog)` }, ...brokerCatalog];
+      }
+      return brokerCatalog;
+    },
+    [brokerCatalog, catalogByType]
+  );
 
   const selectDefaultForUser = (userId: string, portfolioId: string) => {
     setEdits((prev) => {
@@ -233,8 +249,12 @@ export function AdminPortfoliosCrud() {
 
       <h3>All tenant portfolios</h3>
       <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-        Edit portfolio name, broker ref, and broker type (Merrill / Fidelity / E*TRADE), choose one default per user
-        (radio), then <strong>Save changes</strong>. Tenant org key is read-only (instance bucket).
+        Edit portfolio name, broker ref, and broker type (slugs from the{" "}
+        <Link className="underline font-medium" href="/admin/brokers">
+          broker catalog
+        </Link>
+        — manage display names, descriptions, and icon URLs there). Choose one default per user (radio), then{" "}
+        <strong>Save changes</strong>. Tenant org key is read-only (instance bucket).
       </p>
 
       <div className="crud-table-wrap">
@@ -329,16 +349,18 @@ export function AdminPortfoliosCrud() {
                           ...prev,
                           [row._id]: {
                             ...prev[row._id],
-                            broker_type: v === "" ? null : (v as PortfolioBrokerType)
+                            broker_type: v === "" ? null : v
                           }
                         }));
                       }}
                       aria-label="Broker type"
                     >
                       <option value="">—</option>
-                      {PORTFOLIO_BROKER_TYPES.map((bt) => (
-                        <option key={bt} value={bt}>
-                          {bt}
+                      {rowBrokerSelectOptions(
+                        draft(row._id).broker_type !== undefined ? draft(row._id).broker_type : row.broker_type
+                      ).map((bt) => (
+                        <option key={bt.type} value={bt.type}>
+                          {bt.name} ({bt.type})
                         </option>
                       ))}
                     </select>
@@ -358,7 +380,7 @@ export function AdminPortfoliosCrud() {
                   <td>
                     <Link
                       className="login-xoptions-link"
-                      href={`/admin/accounts/${row._id}`}
+                      href={`/admin/portfolios/${encodeURIComponent(row._id)}/accounts`}
                       title="Manage accounts"
                     >
                       {row.accountCount}
@@ -376,24 +398,42 @@ export function AdminPortfoliosCrud() {
                   <td>{money.format(row.totalCashBalance)}</td>
                   <td className="text-xs">{new Date(row.updatedAt).toLocaleString()}</td>
                   <td>
-                    <div className="tool-row" style={{ gap: "0.35rem", flexWrap: "wrap" }}>
+                    <div className="tool-row" style={{ gap: "0.35rem", flexWrap: "wrap", maxWidth: 420 }}>
                       <Link
-                        className="cta cta-secondary"
-                        href={`/admin/accounts/${encodeURIComponent(row._id)}`}
+                        className="cta cta-secondary text-xs"
+                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/accounts`}
                       >
-                        Manage accounts
+                        Accounts
                       </Link>
                       <Link
-                        className="cta cta-secondary"
+                        className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/watchlist`}
                       >
-                        Manage watchlist
+                        Watchlist
                       </Link>
                       <Link
-                        className="cta cta-secondary"
+                        className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/tasks`}
                       >
-                        Manage tasks
+                        Tasks
+                      </Link>
+                      <Link
+                        className="cta cta-secondary text-xs"
+                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/alerts`}
+                      >
+                        Alerts
+                      </Link>
+                      <Link
+                        className="cta cta-secondary text-xs"
+                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/recommendations`}
+                      >
+                        Recs
+                      </Link>
+                      <Link
+                        className="cta cta-secondary text-xs"
+                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/delivery-channels`}
+                      >
+                        Delivery
                       </Link>
                       <button
                         type="button"
@@ -443,14 +483,12 @@ export function AdminPortfoliosCrud() {
             <select
               className="crud-input text-xs"
               value={createBrokerType}
-              onChange={(e) =>
-                setCreateBrokerType(e.target.value === "" ? "" : (e.target.value as PortfolioBrokerType))
-              }
+              onChange={(e) => setCreateBrokerType(e.target.value === "" ? "" : e.target.value)}
             >
               <option value="">—</option>
-              {PORTFOLIO_BROKER_TYPES.map((bt) => (
-                <option key={bt} value={bt}>
-                  {bt}
+              {brokerCatalog.map((bt) => (
+                <option key={bt.type} value={bt.type}>
+                  {bt.name} ({bt.type})
                 </option>
               ))}
             </select>

@@ -3,13 +3,13 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-import { AdminPortfolioAccountsConsole } from "../../ui/admin-portfolio-accounts-console";
+import { AdminPortfolioDeliveryChannelsConsole } from "../../ui/admin-portfolio-delivery-channels-console";
 
 type PageProps = {
   params: Promise<{ portfolioId: string }>;
 };
 
-export default async function AdminPortfolioAccountsPage({ params }: PageProps) {
+export default async function AdminPortfolioDeliveryChannelsPage({ params }: PageProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
@@ -20,7 +20,7 @@ export default async function AdminPortfolioAccountsPage({ params }: PageProps) 
   const { portfolioId } = await params;
   return (
     <div className="core-shell">
-      <AdminPortfolioAccountsConsole portfolioId={portfolioId} />
+      <AdminPortfolioDeliveryChannelsConsole portfolioId={portfolioId} />
     </div>
   );
 }

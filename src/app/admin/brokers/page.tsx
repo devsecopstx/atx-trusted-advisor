@@ -1,0 +1,32 @@
+import { redirect } from "next/navigation";
+
+import { getSessionUser } from "@/lib/auth";
+import { isGlobalAdmin } from "@/modules/identity/authorization";
+
+import { AdminBrokersCrud } from "./ui/admin-brokers-crud";
+
+export default async function AdminBrokersPage() {
+  const session = await getSessionUser();
+  if (!session) {
+    redirect("/login");
+  }
+  if (!isGlobalAdmin(session.roles)) {
+    redirect("/admin?error=forbidden");
+  }
+
+  return (
+    <div className="core-shell">
+      <section className="hero-card xf-noise-overlay">
+        <p className="eyebrow">atxfinance core admin</p>
+        <h1 className="hero-title">Broker catalog</h1>
+        <p className="hero-copy">
+          Define broker <strong>type</strong> slugs (used on portfolios as <code className="font-mono text-xs">broker_type</code>
+          ), human-readable <strong>name</strong>, optional <strong>description</strong>, and <strong>icon URL</strong> for this
+          console. Defaults seed Merrill, Fidelity, and E*TRADE when the catalog is empty.
+        </p>
+      </section>
+
+      <AdminBrokersCrud />
+    </div>
+  );
+}

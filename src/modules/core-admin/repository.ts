@@ -11,8 +11,11 @@ import {
     type Account,
     type AccountType,
     type ApprovedUserListItem,
+    type BrokerCatalogEntry,
     type DeployNoteConfig,
     type Portfolio,
+    type PortfolioAlert,
+    type PortfolioDeliveryChannel,
     type Position,
     type Recommendation,
     type ScheduledTask,
@@ -20,8 +23,7 @@ import {
     type UserAdminSettings,
     type Watchlist,
     type WatchlistSymbol,
-    type WatchlistSymbolImportEntry,
-    accountTypeValues
+    type WatchlistSymbolImportEntry
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
 import { MAX_WATCHLIST_SYMBOLS } from "@/modules/watchlist/constants";
@@ -36,10 +38,16 @@ const collections = {
   accounts: "portfolio_accounts",
   watchlists: "portfolio_watchlists",
   positions: "portfolio_positions",
-  recommendations: "portfolio_recommendations"
+  recommendations: "portfolio_recommendations",
+  portfolioAlerts: "portfolio_alerts",
+  portfolioDeliveryChannels: "portfolio_delivery_channels",
+  brokerCatalog: "admin_broker_catalog"
 } as const;
 
 let ensurePortfolioIndexesPromise: Promise<void> | null = null;
+let ensureBrokerCatalogIndexesPromise: Promise<void> | null = null;
+
+const BROKER_CATALOG_TYPE_RE = /^[a-z][a-z0-9_]{0,31}$/;
 
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 /** Default broker bucket on new portfolios for future trader cohort grouping. */
@@ -267,6 +275,14 @@ async function createPortfolioIndexes(): Promise<void> {
     db.collection<Recommendation>(collections.recommendations).createIndex(
       { tenantId: 1, portfolioId: 1, createdAt: 1 },
       { name: "idx_recommendations_tenant_portfolio_createdAt" }
+    ),
+    db.collection<PortfolioAlert>(collections.portfolioAlerts).createIndex(
+      { tenantId: 1, portfolioId: 1, createdAt: -1 },
+      { name: "idx_portfolio_alerts_tenant_portfolio_createdAt" }
+    ),
+    db.collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels).createIndex(
+      { tenantId: 1, portfolioId: 1, label: 1 },
+      { name: "idx_portfolio_delivery_channels_tenant_portfolio_label" }
     )
   ];
   await Promise.all(indexes);
@@ -1106,7 +1122,7 @@ export async function updateRecommendationById(input: {
   tenantId?: string;
   portfolioId: string;
   id: string;
-  patch: Partial<Pick<Recommendation, "action" | "note" | "quantity" | "targetPrice" | "status">>;
+  patch: Partial<Pick<Recommendation, "action" | "note" | "quantity" | "targetPrice" | "status" | "symbol">>;
 }): Promise<Recommendation | null> {
   await ensurePortfolioIndexes();
   if (!ObjectId.isValid(input.portfolioId) || !ObjectId.isValid(input.id)) return null;
@@ -1122,6 +1138,12 @@ export async function updateRecommendationById(input: {
   if (input.patch.quantity !== undefined) set.quantity = Number.isFinite(input.patch.quantity as number) ? (input.patch.quantity as number) : undefined;
   if (input.patch.targetPrice !== undefined) set.targetPrice = Number.isFinite(input.patch.targetPrice as number) ? (input.patch.targetPrice as number) : undefined;
   if (input.patch.status) set.status = input.patch.status;
+  if (input.patch.symbol !== undefined) {
+    const sym = input.patch.symbol.trim().toUpperCase();
+    if (sym.length > 0) {
+      set.symbol = sym.slice(0, 32);
+    }
+  }
   await db.collection<Recommendation>(collections.recommendations).updateOne(filter, { $set: set });
   return getRecommendationById({ userId: input.userId, tenantId: input.tenantId, portfolioId: input.portfolioId, id: input.id });
 }
@@ -1136,6 +1158,516 @@ export async function deleteRecommendationById(input: { userId: string; tenantId
       input.tenantId
     )
   );
+  return (res.deletedCount ?? 0) > 0;
+}
+
+export async function adminListRecommendationsForPortfolio(portfolioId: string): Promise<Recommendation[]> {
+  const p = await adminGetPortfolioById(portfolioId);
+  if (!p?._id) {
+    return [];
+  }
+  return listRecommendations({
+    userId: portfolioOwnerUserIdString(p.userId),
+    tenantId: portfolioTenantIdString(p),
+    portfolioId
+  });
+}
+
+export async function adminCreateRecommendationForPortfolio(input: {
+  portfolioId: string;
+  symbol: string;
+  action: Recommendation["action"];
+  note?: string;
+  accountId?: string;
+  quantity?: number;
+  targetPrice?: number;
+}): Promise<Recommendation | null> {
+  await ensurePortfolioIndexes();
+  const portfolio = await adminGetPortfolioById(input.portfolioId);
+  if (!portfolio?._id || !ObjectId.isValid(input.portfolioId)) {
+    return null;
+  }
+  const userId = portfolioOwnerUserIdString(portfolio.userId);
+  const tenantId = portfolioTenantIdString(portfolio);
+  const now = new Date();
+  const doc: Recommendation = {
+    tenantId: toTenantObjectId(tenantId),
+    userId,
+    portfolioId: portfolio._id,
+    accountId: input.accountId && ObjectId.isValid(input.accountId) ? new ObjectId(input.accountId) : undefined,
+    symbol: input.symbol.trim().toUpperCase().slice(0, 32),
+    action: input.action,
+    note: input.note?.trim() || undefined,
+    quantity: typeof input.quantity === "number" && Number.isFinite(input.quantity) ? input.quantity : undefined,
+    targetPrice: typeof input.targetPrice === "number" && Number.isFinite(input.targetPrice) ? input.targetPrice : undefined,
+    status: "new",
+    createdAt: now,
+    updatedAt: now
+  };
+  const db = await getDb();
+  const res = await db.collection<Recommendation>(collections.recommendations).insertOne(doc);
+  return db.collection<Recommendation>(collections.recommendations).findOne({ _id: res.insertedId });
+}
+
+export async function adminUpdateRecommendationForPortfolio(input: {
+  portfolioId: string;
+  id: string;
+  patch: Partial<Pick<Recommendation, "action" | "note" | "quantity" | "targetPrice" | "status" | "symbol">>;
+}): Promise<Recommendation | null> {
+  const p = await adminGetPortfolioById(input.portfolioId);
+  if (!p?._id) {
+    return null;
+  }
+  return updateRecommendationById({
+    userId: portfolioOwnerUserIdString(p.userId),
+    tenantId: portfolioTenantIdString(p),
+    portfolioId: input.portfolioId,
+    id: input.id,
+    patch: input.patch
+  });
+}
+
+export async function adminDeleteRecommendationForPortfolio(portfolioId: string, id: string): Promise<boolean> {
+  const p = await adminGetPortfolioById(portfolioId);
+  if (!p?._id) {
+    return false;
+  }
+  return deleteRecommendationById({
+    userId: portfolioOwnerUserIdString(p.userId),
+    tenantId: portfolioTenantIdString(p),
+    portfolioId,
+    id
+  });
+}
+
+type PortfolioScopedWriteContext = {
+  userId: string;
+  tenantId?: string;
+  portfolioOid: ObjectId;
+};
+
+async function portfolioScopedWriteContext(portfolioId: string): Promise<PortfolioScopedWriteContext | null> {
+  const p = await adminGetPortfolioById(portfolioId);
+  if (!p?._id) {
+    return null;
+  }
+  return {
+    userId: portfolioOwnerUserIdString(p.userId),
+    tenantId: portfolioTenantIdString(p),
+    portfolioOid: p._id
+  };
+}
+
+export async function adminListPortfolioAlerts(portfolioId: string): Promise<PortfolioAlert[]> {
+  await ensurePortfolioIndexes();
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return [];
+  }
+  const db = await getDb();
+  return db
+    .collection<PortfolioAlert>(collections.portfolioAlerts)
+    .find(
+      withTenantScope(
+        { ...userIdQuery(ctx.userId), portfolioId: ctx.portfolioOid },
+        ctx.tenantId
+      )
+    )
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .toArray();
+}
+
+export async function adminCreatePortfolioAlert(input: {
+  portfolioId: string;
+  title: string;
+  body?: string;
+  severity: PortfolioAlert["severity"];
+  status?: PortfolioAlert["status"];
+  symbol?: string;
+}): Promise<PortfolioAlert | null> {
+  await ensurePortfolioIndexes();
+  const ctx = await portfolioScopedWriteContext(input.portfolioId);
+  if (!ctx) {
+    return null;
+  }
+  const now = new Date();
+  const doc: PortfolioAlert = {
+    tenantId: toTenantObjectId(ctx.tenantId),
+    userId: ctx.userId,
+    portfolioId: ctx.portfolioOid,
+    title: input.title.trim().slice(0, 200),
+    body: input.body?.trim() ? input.body.trim().slice(0, 4000) : undefined,
+    severity: input.severity,
+    status: input.status ?? "active",
+    symbol: input.symbol?.trim()
+      ? input.symbol.trim().toUpperCase().slice(0, 32)
+      : undefined,
+    createdAt: now,
+    updatedAt: now
+  };
+  const db = await getDb();
+  const res = await db.collection<PortfolioAlert>(collections.portfolioAlerts).insertOne(doc);
+  return db.collection<PortfolioAlert>(collections.portfolioAlerts).findOne({ _id: res.insertedId });
+}
+
+export async function adminUpdatePortfolioAlert(input: {
+  portfolioId: string;
+  alertId: string;
+  patch: Partial<Pick<PortfolioAlert, "title" | "body" | "severity" | "status" | "symbol">>;
+}): Promise<PortfolioAlert | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.alertId)) {
+    return null;
+  }
+  const ctx = await portfolioScopedWriteContext(input.portfolioId);
+  if (!ctx) {
+    return null;
+  }
+  const db = await getDb();
+  const filter = strictWriteTenantFilter(
+    {
+      _id: new ObjectId(input.alertId),
+      ...userIdQuery(ctx.userId),
+      portfolioId: ctx.portfolioOid
+    },
+    ctx.tenantId
+  );
+  const now = new Date();
+  const $set: Record<string, unknown> = { updatedAt: now };
+  const $unset: Record<string, string> = {};
+  if (input.patch.title !== undefined) {
+    $set.title = input.patch.title.trim().slice(0, 200);
+  }
+  if (input.patch.body !== undefined) {
+    $set.body = input.patch.body?.trim() ? input.patch.body.trim().slice(0, 4000) : undefined;
+  }
+  if (input.patch.severity !== undefined) {
+    $set.severity = input.patch.severity;
+  }
+  if (input.patch.status !== undefined) {
+    $set.status = input.patch.status;
+  }
+  if (input.patch.symbol !== undefined) {
+    const s = input.patch.symbol.trim();
+    if (s.length > 0) {
+      $set.symbol = s.toUpperCase().slice(0, 32);
+    } else {
+      $unset.symbol = "";
+    }
+  }
+  const update: Record<string, unknown> = { $set };
+  if (Object.keys($unset).length > 0) {
+    update.$unset = $unset;
+  }
+  await db.collection<PortfolioAlert>(collections.portfolioAlerts).updateOne(filter, update);
+  const row = await db.collection<PortfolioAlert>(collections.portfolioAlerts).findOne(
+    withTenantScope(
+      { _id: new ObjectId(input.alertId), ...userIdQuery(ctx.userId), portfolioId: ctx.portfolioOid },
+      ctx.tenantId
+    )
+  );
+  return row;
+}
+
+export async function adminDeletePortfolioAlert(portfolioId: string, alertId: string): Promise<boolean> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(alertId)) {
+    return false;
+  }
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return false;
+  }
+  const db = await getDb();
+  const res = await db.collection<PortfolioAlert>(collections.portfolioAlerts).deleteOne(
+    strictWriteTenantFilter(
+      {
+        _id: new ObjectId(alertId),
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid
+      },
+      ctx.tenantId
+    )
+  );
+  return (res.deletedCount ?? 0) > 0;
+}
+
+export async function adminListPortfolioDeliveryChannels(portfolioId: string): Promise<PortfolioDeliveryChannel[]> {
+  await ensurePortfolioIndexes();
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return [];
+  }
+  const db = await getDb();
+  return db
+    .collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels)
+    .find(
+      withTenantScope(
+        { ...userIdQuery(ctx.userId), portfolioId: ctx.portfolioOid },
+        ctx.tenantId
+      )
+    )
+    .sort({ label: 1 })
+    .limit(100)
+    .toArray();
+}
+
+export async function adminCreatePortfolioDeliveryChannel(input: {
+  portfolioId: string;
+  kind: PortfolioDeliveryChannel["kind"];
+  label: string;
+  destination: string;
+  enabled?: boolean;
+}): Promise<PortfolioDeliveryChannel | null> {
+  await ensurePortfolioIndexes();
+  const ctx = await portfolioScopedWriteContext(input.portfolioId);
+  if (!ctx) {
+    return null;
+  }
+  const now = new Date();
+  const doc: PortfolioDeliveryChannel = {
+    tenantId: toTenantObjectId(ctx.tenantId),
+    userId: ctx.userId,
+    portfolioId: ctx.portfolioOid,
+    kind: input.kind,
+    label: input.label.trim().slice(0, 128),
+    destination: input.destination.trim().slice(0, 2048),
+    enabled: input.enabled !== false,
+    createdAt: now,
+    updatedAt: now
+  };
+  if (!doc.label || !doc.destination) {
+    return null;
+  }
+  const db = await getDb();
+  const res = await db.collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels).insertOne(doc);
+  return db
+    .collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels)
+    .findOne({ _id: res.insertedId });
+}
+
+export async function adminUpdatePortfolioDeliveryChannel(input: {
+  portfolioId: string;
+  channelId: string;
+  patch: Partial<Pick<PortfolioDeliveryChannel, "kind" | "label" | "destination" | "enabled">>;
+}): Promise<PortfolioDeliveryChannel | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.channelId)) {
+    return null;
+  }
+  const ctx = await portfolioScopedWriteContext(input.portfolioId);
+  if (!ctx) {
+    return null;
+  }
+  const db = await getDb();
+  const filter = strictWriteTenantFilter(
+    {
+      _id: new ObjectId(input.channelId),
+      ...userIdQuery(ctx.userId),
+      portfolioId: ctx.portfolioOid
+    },
+    ctx.tenantId
+  );
+  const now = new Date();
+  const $set: Record<string, unknown> = { updatedAt: now };
+  if (input.patch.kind !== undefined) {
+    $set.kind = input.patch.kind;
+  }
+  if (input.patch.label !== undefined) {
+    $set.label = input.patch.label.trim().slice(0, 128);
+  }
+  if (input.patch.destination !== undefined) {
+    $set.destination = input.patch.destination.trim().slice(0, 2048);
+  }
+  if (input.patch.enabled !== undefined) {
+    $set.enabled = input.patch.enabled;
+  }
+  await db.collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels).updateOne(filter, { $set });
+  return db.collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels).findOne(
+    withTenantScope(
+      {
+        _id: new ObjectId(input.channelId),
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid
+      },
+      ctx.tenantId
+    )
+  );
+}
+
+export async function adminDeletePortfolioDeliveryChannel(portfolioId: string, channelId: string): Promise<boolean> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(channelId)) {
+    return false;
+  }
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return false;
+  }
+  const db = await getDb();
+  const res = await db.collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels).deleteOne(
+    strictWriteTenantFilter(
+      {
+        _id: new ObjectId(channelId),
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid
+      },
+      ctx.tenantId
+    )
+  );
+  return (res.deletedCount ?? 0) > 0;
+}
+
+async function ensureBrokerCatalogIndexes(): Promise<void> {
+  if (!ensureBrokerCatalogIndexesPromise) {
+    ensureBrokerCatalogIndexesPromise = (async () => {
+      const db = await getDb();
+      await db.collection<BrokerCatalogEntry>(collections.brokerCatalog).createIndex(
+        { type: 1 },
+        { name: "idx_admin_broker_catalog_type", unique: true }
+      );
+    })();
+  }
+  await ensureBrokerCatalogIndexesPromise;
+}
+
+async function seedBrokerCatalogIfEmpty(): Promise<void> {
+  await ensureBrokerCatalogIndexes();
+  const db = await getDb();
+  const col = db.collection<BrokerCatalogEntry>(collections.brokerCatalog);
+  const n = await col.countDocuments();
+  if (n > 0) {
+    return;
+  }
+  const now = new Date();
+  await col.insertMany([
+    {
+      type: "merrill",
+      name: "Merrill Edge",
+      description:
+        "Bank of America Merrill Edge — typical CSV exports for positions and activity (admin + broker import defaults).",
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      type: "fidelity",
+      name: "Fidelity",
+      description: "Fidelity Investments — common retail brokerage CSV layouts for holdings.",
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      type: "etrade",
+      name: "E*TRADE",
+      description: "E*TRADE from Morgan Stanley — CSV holdings and history exports.",
+      createdAt: now,
+      updatedAt: now
+    }
+  ]);
+}
+
+/** Ensures indexes and default Merrill / Fidelity / E*TRADE rows when the catalog is empty. */
+export async function adminEnsureBrokerCatalogReady(): Promise<void> {
+  await seedBrokerCatalogIfEmpty();
+}
+
+export async function adminListBrokerCatalog(): Promise<BrokerCatalogEntry[]> {
+  await adminEnsureBrokerCatalogReady();
+  const db = await getDb();
+  return db.collection<BrokerCatalogEntry>(collections.brokerCatalog).find({}).sort({ type: 1 }).toArray();
+}
+
+export async function adminBrokerCatalogHasType(typeSlug: string): Promise<boolean> {
+  await adminEnsureBrokerCatalogReady();
+  const s = typeSlug.trim().toLowerCase();
+  if (!BROKER_CATALOG_TYPE_RE.test(s)) {
+    return false;
+  }
+  const db = await getDb();
+  const hit = await db.collection<BrokerCatalogEntry>(collections.brokerCatalog).findOne({ type: s });
+  return Boolean(hit);
+}
+
+export async function adminCreateBrokerCatalogEntry(input: {
+  type: string;
+  name: string;
+  description?: string;
+  iconUrl?: string;
+}): Promise<BrokerCatalogEntry | null> {
+  await adminEnsureBrokerCatalogReady();
+  const type = input.type.trim().toLowerCase();
+  if (!BROKER_CATALOG_TYPE_RE.test(type)) {
+    return null;
+  }
+  const name = input.name.trim().slice(0, 128);
+  if (!name) {
+    return null;
+  }
+  const description = input.description?.trim() ? input.description.trim().slice(0, 2000) : undefined;
+  const iconUrl = input.iconUrl?.trim() ? input.iconUrl.trim().slice(0, 2048) : undefined;
+  const now = new Date();
+  const doc: BrokerCatalogEntry = {
+    type,
+    name,
+    ...(description ? { description } : {}),
+    ...(iconUrl ? { iconUrl } : {}),
+    createdAt: now,
+    updatedAt: now
+  };
+  const db = await getDb();
+  try {
+    const res = await db.collection<BrokerCatalogEntry>(collections.brokerCatalog).insertOne(doc);
+    return db.collection<BrokerCatalogEntry>(collections.brokerCatalog).findOne({ _id: res.insertedId });
+  } catch {
+    return null;
+  }
+}
+
+export async function adminUpdateBrokerCatalogEntry(input: {
+  id: string;
+  patch: Partial<Pick<BrokerCatalogEntry, "name" | "description" | "iconUrl">>;
+}): Promise<BrokerCatalogEntry | null> {
+  await adminEnsureBrokerCatalogReady();
+  if (!ObjectId.isValid(input.id)) {
+    return null;
+  }
+  const db = await getDb();
+  const now = new Date();
+  const $set: Record<string, unknown> = { updatedAt: now };
+  if (input.patch.name !== undefined) {
+    const n = input.patch.name.trim().slice(0, 128);
+    if (!n) {
+      return null;
+    }
+    $set.name = n;
+  }
+  if (input.patch.description !== undefined) {
+    $set.description = input.patch.description?.trim() ? input.patch.description.trim().slice(0, 2000) : undefined;
+  }
+  if (input.patch.iconUrl !== undefined) {
+    $set.iconUrl = input.patch.iconUrl?.trim() ? input.patch.iconUrl.trim().slice(0, 2048) : undefined;
+  }
+  if (Object.keys($set).length <= 1) {
+    return db.collection<BrokerCatalogEntry>(collections.brokerCatalog).findOne({ _id: new ObjectId(input.id) });
+  }
+  const res = await db.collection<BrokerCatalogEntry>(collections.brokerCatalog).updateOne(
+    { _id: new ObjectId(input.id) },
+    { $set }
+  );
+  if ((res.matchedCount ?? 0) < 1) {
+    return null;
+  }
+  return db.collection<BrokerCatalogEntry>(collections.brokerCatalog).findOne({ _id: new ObjectId(input.id) });
+}
+
+export async function adminDeleteBrokerCatalogEntry(id: string): Promise<boolean> {
+  await adminEnsureBrokerCatalogReady();
+  if (!ObjectId.isValid(id)) {
+    return false;
+  }
+  const db = await getDb();
+  const res = await db.collection<BrokerCatalogEntry>(collections.brokerCatalog).deleteOne({ _id: new ObjectId(id) });
   return (res.deletedCount ?? 0) > 0;
 }
 
@@ -1980,7 +2512,7 @@ export async function adminUpdatePortfolio(input: {
   portfolioId: string;
   name?: string;
   ext_broker_ref?: string | null;
-  broker_type?: AccountType | null;
+  broker_type?: string | null;
   riskProfile?: Portfolio["riskProfile"] | null;
   outlook?: string | null;
   /** When true, clears `isDefault` on other portfolios for the same user (and tenant scope). */
@@ -2004,10 +2536,10 @@ export async function adminUpdatePortfolio(input: {
     if (input.broker_type === null) {
       fieldSet.broker_type = null;
     } else {
-      const raw = String(input.broker_type).trim();
-      fieldSet.broker_type = (accountTypeValues as readonly string[]).includes(raw)
-        ? (raw as AccountType)
-        : null;
+      const raw = String(input.broker_type).trim().toLowerCase().slice(0, 32);
+      if (BROKER_CATALOG_TYPE_RE.test(raw)) {
+        fieldSet.broker_type = raw;
+      }
     }
   }
   if (input.riskProfile !== undefined) {
@@ -2053,7 +2585,7 @@ export async function adminCreatePortfolio(input: {
   tenantId?: string;
   name: string;
   isDefault?: boolean;
-  broker_type?: AccountType;
+  broker_type?: string;
 }): Promise<Portfolio | null> {
   await ensurePortfolioIndexes();
   const name = input.name.trim().slice(0, 200);
@@ -2080,9 +2612,11 @@ export async function adminCreatePortfolio(input: {
     tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
     createdAt: now,
     updatedAt: now,
-    ...(input.broker_type !== undefined &&
-    (accountTypeValues as readonly string[]).includes(String(input.broker_type))
-      ? { broker_type: input.broker_type as AccountType }
+    ...(input.broker_type !== undefined
+      ? (() => {
+          const raw = String(input.broker_type).trim().toLowerCase().slice(0, 32);
+          return BROKER_CATALOG_TYPE_RE.test(raw) ? { broker_type: raw } : {};
+        })()
       : {})
   };
   const res = await db.collection<Portfolio>(collections.portfolios).insertOne(doc);
@@ -2100,6 +2634,8 @@ export async function adminDeletePortfolio(portfolioId: string): Promise<boolean
   const baseFilter: Record<string, unknown> = { portfolioId: pid, ...uid };
   await db.collection<Position>(collections.positions).deleteMany(baseFilter);
   await db.collection<Recommendation>(collections.recommendations).deleteMany(baseFilter);
+  await db.collection<PortfolioAlert>(collections.portfolioAlerts).deleteMany(baseFilter);
+  await db.collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels).deleteMany(baseFilter);
   await db.collection<Account>(collections.accounts).deleteMany(baseFilter);
   await db.collection<Watchlist>(collections.watchlists).deleteMany(baseFilter);
   const res = await db.collection<Portfolio>(collections.portfolios).deleteOne({ _id: pid });

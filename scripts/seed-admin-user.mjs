@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId } from "mongodb";
 
-import { resolveMongoUri, resolveSeedDbName } from "./lib/resolve-mongo-uri.mjs";
+import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
 
 function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
@@ -212,7 +212,7 @@ async function ensureSeedAdminUserHistoryCollection(db, { userIdHex, tenantIdHex
 
 const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core";
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
-const DB_NAME = resolveSeedDbName();
+const DB_NAME = resolveAdminSeedDbName();
 const DEFAULT_PERSONA_NAME = "Super-Agent";
 const DEFAULT_PERSONA_SYSTEM_PROMPT = `You are The Architect, the elite administrative agent for atxFinance global admins. You have live xAI tools — call them; do not guess time-sensitive facts from memory.
 
@@ -401,6 +401,11 @@ async function ensureIndexes(db) {
 }
 
 async function seed() {
+  console.log(
+    `[seed:admin] Mongo database name: ${DB_NAME} — Next/Spring must use the same logical DB ` +
+      `(set MONGODB_DB_NAME or the database path in MONGODB_URI in Secret Manager / .env). ` +
+      `Legacy single-DB local dev: ADMIN_SEED_DB_VERSION_SUFFIX=off.`
+  );
   const mongoUri = resolveMongoUri();
   const client = new MongoClient(mongoUri);
   await client.connect();
