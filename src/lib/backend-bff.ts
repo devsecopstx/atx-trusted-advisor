@@ -194,6 +194,8 @@ export async function proxyRequestToBackend(request: Request): Promise<Response 
   const u = new URL(request.url);
   const target = `${base}${u.pathname}${u.search}`;
   const headers = new Headers();
+  headers.set("X-Forwarded-Host", u.host);
+  headers.set("X-Forwarded-Proto", u.protocol.replace(":", ""));
   const cookie = request.headers.get("cookie");
   if (cookie) {
     headers.set("cookie", cookie);

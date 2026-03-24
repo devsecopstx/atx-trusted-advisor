@@ -43,12 +43,12 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 
 - **Runtime** — **Kotlin**, **Spring Boot**, **JDK 21**; build with **Gradle** (`services/atxfinance-backend`, `gradlew`).
 - **Role** — Fault-tolerant scheduler/worker surface (ShedLock + Mongo, Pub/Sub integration path, observability hooks); **not** a replacement for Next.js product APIs.
-- **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`docs/ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
+- **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`docs/atx-sre-ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
 - **Container** — Repo-root **`Dockerfile`** builds the JAR from `services/atxfinance-backend`; **`docker-compose.yml`** wires `atxfinance-backend` + `mongo:8`.
 
 ### Integrations (cross-cutting)
 
-- **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`docs/xchat/xai-api-standard.md`** for repo mapping and deep links.
+- **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`docs/atx-xchat/xai-api-standard.md`** for repo mapping and deep links.
 
 ### Local dev run order (summary)
 
@@ -91,7 +91,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET` (recommended for session signing)
 - `ALLOW_ANY_X_USER_LOGIN` (optional feature flag; set `true` to allow any authenticated X user into `/xchat` with non-admin permissions, default disabled)
-- `ENABLE_XCHAT_DEBUG` (optional; set `true` to emit detailed xChat payload logs — RAG context, prompts, tools — for expert learning; default `false`; configure Cloud Logging retention e.g. 30 days at project or log-bucket level; taxonomy and privacy: **`docs/xchat/xchat-debug-logging.md`**)
+- `ENABLE_XCHAT_DEBUG` (optional; set `true` to emit detailed xChat payload logs — RAG context, prompts, tools — for expert learning; default `false`; configure Cloud Logging retention e.g. 30 days at project or log-bucket level; taxonomy and privacy: **`docs/atx-xchat/xchat-debug-logging.md`**)
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
 - `ADMIN_SEED_EMAIL` (required for `npm run seed:admin` and OAuth seed-admin promotion; **no default** — set explicitly in `.env`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
@@ -131,7 +131,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
      - If **`MONGODB_URI`** is set in `.env`, `MongoUriEnvPostProcessor` resolves it (plain or base64) and injects `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
 5. Verify backend
    - Actuator: http://localhost:8080/actuator/health (standard Spring Boot JSON)
-   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`docs/ops/atxfinance-backend-http-api.md`**)
+   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`docs/atx-sre-ops/atxfinance-backend-http-api.md`**)
    - Compatibility: http://localhost:8080/api/health
    - Swagger UI: http://localhost:8080/swagger-ui.html (may redirect to `/swagger-ui/index.html`); OpenAPI JSON: `/v3/api-docs`
 6. Start frontend (Next.js dev server)
@@ -269,7 +269,7 @@ If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or p
 - xAI management key-create smoke (opt-in): `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true npm run smoke:xai-key-create`
 - Seed admin: `npm run seed:admin`
 - Backfill legacy xchat identity fields: `npm run migrate:xchat-identity`
-- BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`docs/ops/api-consolidation-spring-backend.md`](./docs/ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
+- BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`docs/atx-sre-ops/api-consolidation-spring-backend.md`](./docs/atx-sre-ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
 
 ## Cloud Agent Config Freeze (Backoffice Core)
 
@@ -938,7 +938,7 @@ with payload shape:
 
 - **Branding prompts and tags:** `branding/atxfinance-brand-prompts.md`, `branding/atxfinance-branding-tags.md`, `branding/atxfinance-color-palette.md`, `branding/atxfinance-typography.md`
 - **Design system:** `design-system/atxfinance-brand-kit.md`, `design-system/atxfinance-brand-kit.css`
-- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `docs/xchat/xdesign-review-admin-console-ux.md`
+- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `docs/atx-xchat/xdesign-review-admin-console-ux.md`
 
 ## Admin Step-by-Step Validation (xChat readiness)
 

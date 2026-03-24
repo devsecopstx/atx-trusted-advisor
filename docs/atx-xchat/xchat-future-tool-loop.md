@@ -6,7 +6,7 @@
 
 - Harden the single Responses tool-loop path: deterministic caps on tool rounds, idempotent tool-call ids, and explicit cancellation when upstream disconnects.
 - Streaming BFF: when `POST /api/xchat/ask` moves behind Spring or a streaming-capable proxy, verify **no full-body buffering** and preserve SSE/chunked semantics end-to-end.
-- Align persona `file_search` / `collection_ids` resolution with **`xai_collections`** inventory and admin RAG flows (see `docs/ops/api-consolidation-spring-backend.md`).
+- Align persona `file_search` / `collection_ids` resolution with **`xai_collections`** inventory and admin RAG flows (see `docs/atx-sre-ops/api-consolidation-spring-backend.md`).
 
 ## Error use cases
 

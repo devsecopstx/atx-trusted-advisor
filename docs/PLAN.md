@@ -53,7 +53,7 @@
 - [x] No **`ATXFINANCE_COLLECTION_ID`** in app code (use **`XAI_TEAM_ID`** only).
 - [ ] Linked-collection resolution uses **team + persona** only — no user-bootstrap branch.
 - [ ] **`XAI_TEAM_ID`** where team xAI runs; integration tests green.
-- [ ] `docs/xchat/context-routing-multi-agent-policy.md` + `xchat-tools-guide.md` match shipped behavior.
+- [ ] `docs/atx-xchat/context-routing-multi-agent-policy.md` + `xchat-tools-guide.md` match shipped behavior.
 
 ### Risk
 
@@ -125,7 +125,7 @@ Users with docs only in legacy bootstrap collections may need migration or re-in
 | Gap | Status | Uplift |
 | --- | ------ | ------ |
 | Full inference lineage (model, params, tool calls) | Not stored | Add `model`, `personaId`, `correlationId` to `xchat_logs` schema if regulatory replay required. |
-| Tamper-evident logs | Not implemented | `xaiTurnPayloadHash` stored on sync; no hash chain. See `docs/ops/audit-lineage-and-controls.md`. |
+| Tamper-evident logs | Not implemented | `xaiTurnPayloadHash` stored on sync; no hash chain. See `docs/atx-sre-ops/audit-lineage-and-controls.md`. |
 | Task run audit | Partial | `user_history_agent` logs output; no `admin_audit_events` row per run. Optional: emit `task_run_completed` audit row. |
 | Retention | Implemented | `xaiTurnRetentionExpiresAt` + `retentionExpiresAt` TTL on `xchat_logs`; policy in ops. |
 
@@ -135,6 +135,6 @@ Users with docs only in legacy bootstrap collections may need migration or re-in
 
 ## Deferred
 
-- xChat streaming on Spring + BFF (`docs/ops/api-consolidation-spring-backend.md`).
+- xChat streaming on Spring + BFF (`docs/atx-sre-ops/api-consolidation-spring-backend.md`).
 - Strict JSON Schema for strategy artifacts (v2 — `atx-multi-agent.md`).
 

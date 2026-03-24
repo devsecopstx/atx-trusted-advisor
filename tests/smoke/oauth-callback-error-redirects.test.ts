@@ -7,7 +7,8 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 const envMocks = vi.hoisted(() => ({
-  getEnv: vi.fn()
+  getEnv: vi.fn(),
+  getAtxfinanceBackendOrigin: vi.fn(() => undefined)
 }));
 
 vi.mock("@/lib/auth", () => authMocks);

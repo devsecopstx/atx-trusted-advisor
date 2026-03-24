@@ -8,8 +8,8 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skil
 
 - [Backlog](#backlog)
 - [Frontend plan](#frontend-plan)
-- [Operations (`docs/ops/`)](#operations-docsops)
-- [xChat & product (`docs/xchat/`)](#xchat--product-docsxchat)
+- [Operations (`docs/atx-sre-ops/`)](#operations-docsops)
+- [xChat & product (`docs/atx-xchat/`)](#xchat--product-docsxchat)
 - [Diagrams & assets](#diagrams--assets)
 - [Audit & governance](#audit--governance)
 
@@ -31,7 +31,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skil
 
 ---
 
-## Operations (`docs/ops/`)
+## Operations (`docs/atx-sre-ops/`)
 
 | Doc | Purpose |
 |-----|---------|
@@ -45,7 +45,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skil
 
 ---
 
-## xChat & product (`docs/xchat/`)
+## xChat & product (`docs/atx-xchat/`)
 
 | Doc | Purpose |
 |-----|---------|

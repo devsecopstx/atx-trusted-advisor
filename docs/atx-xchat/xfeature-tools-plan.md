@@ -6,7 +6,7 @@ Planning document. No runtime changes until explicitly approved.
 
 ## Context
 
-The `atxfinance` custom tool stub (`docs/xchat/atxfinance-tool-stub.md`) defines the target tool surface for xChat personas to call controlled atxFinance capabilities. This plan turns that stub into a phased implementation roadmap.
+The `atxfinance` custom tool stub (`docs/atx-xchat/atxfinance-tool-stub.md`) defines the target tool surface for xChat personas to call controlled atxFinance capabilities. This plan turns that stub into a phased implementation roadmap.
 
 ## Current State
 

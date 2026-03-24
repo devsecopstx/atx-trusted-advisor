@@ -17,7 +17,7 @@ class BackendHealthController(
     private val mongoClient: MongoClient,
 ) {
 
-    /** Compatibility shim for load balancers / parity with core app health shape (see docs/ops/atxfinance-backend-http-api.md). */
+    /** Compatibility shim for load balancers / parity with core app health shape (see docs/atx-sre-ops/atxfinance-backend-http-api.md). */
     @GetMapping("/api/health")
     fun apiHealthCompat(): ResponseEntity<Map<String, Any>> {
         val details = mutableMapOf<String, Any>()

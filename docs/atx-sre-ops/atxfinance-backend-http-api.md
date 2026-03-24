@@ -94,7 +94,7 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 | GET \| PUT \| DELETE | `/api/admin/deploy-note-configs/{configId}` | **Global admin only.** Get, update (partial), or delete config. **404** when not found. |
 | POST | `/api/admin/import/broker` | **Global admin only.** Merrill/Fidelity holdings CSV import. Body: `portfolioId`, `broker` (merrill\|fidelity), `exportType` (holdings), `csv`, `mappings` (broker account ref → core account id), optional `fidelityHoldingsDefaultAccountRef`, optional `dryRun`. **200** `{ "results": [...] }` or `{ "dryRun": true, "accounts": [...] }`. |
 
-**Audit semantics:** `actor` filter behavior can differ between Next (regex on email/username) and Kotlin (exact userId/email/username match) — see `docs/ops/audit-lineage-and-controls.md`.
+**Audit semantics:** `actor` filter behavior can differ between Next (regex on email/username) and Kotlin (exact userId/email/username match) — see `docs/atx-sre-ops/audit-lineage-and-controls.md`.
 
 ## RAG files (inventory + upload)
 
@@ -159,6 +159,6 @@ Docker Compose sets `SPRING_DATA_MONGODB_URI` explicitly for the `atxfinance-bac
 ## Related
 
 - **Auth / OAuth dual-run (gaps + checklist):** [`auth-oauth-spring-dual-run.md`](./auth-oauth-spring-dual-run.md)
-- **Consolidating product APIs in Spring (migration plan):** `docs/ops/api-consolidation-spring-backend.md`
-- Runbook-style notes: `docs/ops/junie-guidelines-atxfinance-backend.md`
+- **Consolidating product APIs in Spring (migration plan):** `docs/atx-sre-ops/api-consolidation-spring-backend.md`
+- Runbook-style notes: `docs/atx-sre-ops/junie-guidelines-atxfinance-backend.md`
 - Local stack: `DEVELOPMENT.md` → *Local Setup (Backend → Frontend)*

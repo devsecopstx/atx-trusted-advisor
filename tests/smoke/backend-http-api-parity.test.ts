@@ -6,7 +6,7 @@ import { BFF_PROXY_ROUTES, toKotlinBffMappingNeedle } from "@/lib/bff-proxy-rout
 
 const REPO_ROOT = process.cwd();
 const BACKEND_KOTLIN_MAIN = resolve(REPO_ROOT, "services/atxfinance-backend/src/main/kotlin");
-const SPEC_PATH = resolve(REPO_ROOT, "docs/ops/atxfinance-backend-http-api.md");
+const SPEC_PATH = resolve(REPO_ROOT, "docs/atx-sre-ops/atxfinance-backend-http-api.md");
 
 /** Routes that must stay declared in Kotlin controllers and documented in the HTTP spec. */
 const REQUIRED_GET_ROUTES = ["/api/health", "/api/backend/health"] as const;

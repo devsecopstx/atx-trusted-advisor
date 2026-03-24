@@ -7,7 +7,7 @@
  * - **`[xchat/debug]`** — opt-in JSON lines (`ENABLE_XCHAT_DEBUG=true`). Fields
  *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_ask_pre_request` |
  *   `xchat_ask_provider_error` | `xchat_batch` | `xchat_history_list` | `xchat_history_stats`. See
- *   `docs/xchat/xchat-debug-logging.md`.
+ *   `docs/atx-xchat/xchat-debug-logging.md`.
  * - **`[xchat/ask]`** — operational `console.warn` / `console.error` on RAG or
  *   provider failures (always on; no full prompts).
  * - **`[xchat/batch]`** — operational errors on batch submit/poll (always on).

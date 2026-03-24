@@ -15,7 +15,6 @@ import {
 import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatBatchDebug } from "@/lib/xchat-debug";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
-import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
 import {
     resolveXchatLinkedCollectionIds,
     withLinkedCollectionTools
@@ -27,6 +26,7 @@ import {
     type PersonaConfig
 } from "@/modules/xchat/types";
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
+import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
 
 const BATCH_JOBS_COLLECTION = "xchat_batch_jobs";
 const BATCH_ITEMS_COLLECTION = "xchat_batch_items";

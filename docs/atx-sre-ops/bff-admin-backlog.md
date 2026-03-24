@@ -14,7 +14,7 @@ Canonical proxied routes live in `src/lib/bff-proxy-routes.ts` (see `tests/smoke
 
 | Area | Notes |
 |------|--------|
-| Tasks / scheduler | `GET/POST /api/admin/tasks`, `POST .../tasks/{taskId}/run`, `GET /api/admin/task-runs`, `POST /api/admin/scheduler/tick` — **operator cutover** = set `ATXFINANCE_BACKEND_ORIGIN` per `docs/ops/api-consolidation-spring-backend.md` § **PR 3**. |
+| Tasks / scheduler | `GET/POST /api/admin/tasks`, `POST .../tasks/{taskId}/run`, `GET /api/admin/task-runs`, `POST /api/admin/scheduler/tick` — **operator cutover** = set `ATXFINANCE_BACKEND_ORIGIN` per `docs/atx-sre-ops/api-consolidation-spring-backend.md` § **PR 3**. |
 
 ## Shipped on Kotlin + BFF — **PR 4 (deploy-note-configs + import/broker)**
 
@@ -36,10 +36,10 @@ Canonical proxied routes live in `src/lib/bff-proxy-routes.ts` (see `tests/smoke
 
 ## RAG
 
-- **GET/POST** `/api/rag/files`: BFF to Spring; inventory Mongo collection **`xai_collections`** (see `docs/ops/atxfinance-backend-http-api.md`). Full RAG migration largely done.
+- **GET/POST** `/api/rag/files`: BFF to Spring; inventory Mongo collection **`xai_collections`** (see `docs/atx-sre-ops/atxfinance-backend-http-api.md`). Full RAG migration largely done.
 - **Readiness** `GET /api/rag/files/{fileId}/readiness`: Migrated to Kotlin; proxy when `ATXFINANCE_BACKEND_ORIGIN` set.
 
 ## Related
 
-- `docs/ops/api-consolidation-spring-backend.md` — migration status board, **PR 3 / PR 4** runbooks, **Risks and gaps (TODO)** table (R1–R6), auth callback contract.
-- `docs/ops/atxfinance-backend-http-api.md` — Spring route inventory.
+- `docs/atx-sre-ops/api-consolidation-spring-backend.md` — migration status board, **PR 3 / PR 4** runbooks, **Risks and gaps (TODO)** table (R1–R6), auth callback contract.
+- `docs/atx-sre-ops/atxfinance-backend-http-api.md` — Spring route inventory.

@@ -7,8 +7,9 @@ import {
     readOAuthFlowCookies,
     setPendingXLinkCookie
 } from "@/lib/auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
-    getEnv,
+    getAtxfinanceBackendOrigin, getEnv,
     getXOauthClientId,
     isAllowAnyXUserLoginEnabled
 } from "@/lib/env";
@@ -74,6 +75,17 @@ async function ensurePendingViewerAccessRequestAfterOAuth(user: CoreUser): Promi
 }
 
 export async function GET(request: Request) {
+  if (
+    getAtxfinanceBackendOrigin() &&
+    process.env.AUTH_CALLBACK_USE_SPRING === "true"
+  ) {
+    const proxied = await proxyRequestToBackend(request);
+    if (proxied) {
+      const headers = new Headers(proxied.headers);
+      return new Response(proxied.body, { status: proxied.status, headers });
+    }
+  }
+
   const env = getEnv();
   const url = new URL(request.url);
   const effectiveHost = getEffectiveHostname(request);
