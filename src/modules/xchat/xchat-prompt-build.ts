@@ -6,6 +6,8 @@
 const HOSTED_SEARCH_TOOL_COPY = `Hosted search (web_search / x_search):
 Invoke these only through the API’s native tool mechanism. Do not print pseudo calls in assistant text—no \`<xai-tool>\`, \`<function_call>\`, fenced JSON tool blobs, or \`{"name":"web_search",...}\` payloads (users must never see markup). After the platform runs search, summarize results in plain language.`;
 
+const XCHAT_BETA_CLIENT_UI_INSTRUCTIONS = `Client UI (beta): The xChat composer shows attach (paperclip), an Auto model shortcut, dictation (microphone), and voice mode (waveform). These controls are not wired to the backend yet—only typed text and Send submit a turn. If the user asks about attachments, speech-to-text, hotkeys, or live voice, say they are in beta and coming soon; do not imply those features work today.`;
+
 const ATXFINANCE_TOOL_COPY = `Workspace tools (this signed-in user only):
 When a "Workspace snapshot" JSON block appears in system context, it was loaded server-side for this turn—use it as authoritative for portfolio, accounts, watchlist, and the positions preview; call atxfinance for a full positions refresh, live market_quote, task_status, or if you suspect the snapshot is stale.
 You MUST use the atxfinance tool when the user asks about their own portfolio, accounts, cash balances, watchlist tickers, or stock/option positions (holdings). Call it before answering—do not ask them to paste holdings or balances if a tool can retrieve them.
@@ -47,7 +49,7 @@ export type BuildXchatSystemPromptInput = {
 };
 
 /**
- * Locked order: **persona → RAG → snapshot → session tool instructions** (double-newline separated).
+ * Locked order: **persona → RAG → snapshot → session tool instructions → beta client UI note** (double-newline separated).
  */
 export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): string {
   const base =
@@ -70,5 +72,6 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
   if (session) {
     parts.push(session);
   }
+  parts.push(XCHAT_BETA_CLIENT_UI_INSTRUCTIONS);
   return parts.join("\n\n");
 }

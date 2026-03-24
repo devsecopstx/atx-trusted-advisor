@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildSessionToolInstructions,
-  buildXchatSystemPrompt
+    buildSessionToolInstructions,
+    buildXchatSystemPrompt
 } from "@/modules/xchat/xchat-prompt-build";
 
 describe("buildSessionToolInstructions", () => {
@@ -36,10 +36,12 @@ describe("buildXchatSystemPrompt", () => {
     const iRag = out.indexOf("Use the following RAG");
     const iSnap = out.indexOf("SNAP");
     const iSess = out.indexOf("SESS");
+    const iBeta = out.indexOf("Client UI (beta)");
     expect(iP).toBe(0);
     expect(iRag).toBeGreaterThan(iP);
     expect(iSnap).toBeGreaterThan(iRag);
     expect(iSess).toBeGreaterThan(iSnap);
+    expect(iBeta).toBeGreaterThan(iSess);
   });
 
   it("uses fallback persona when base empty", () => {
@@ -65,5 +67,6 @@ describe("buildXchatSystemPrompt", () => {
     expect(out).toContain("Hi");
     expect(out).toContain("No RAG context available.");
     expect(out).not.toContain("SNAP");
+    expect(out).toContain("Client UI (beta)");
   });
 });
