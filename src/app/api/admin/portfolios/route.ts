@@ -8,9 +8,9 @@ import {
 } from "@/modules/core-admin/repository";
 import type { Portfolio } from "@/modules/core-admin/types";
 import {
-  formatCoreUserDisplayName,
-  getCoreUsersByIds,
-  normalizeMongoUserIdHex
+    formatCoreUserDisplayName,
+    getCoreUsersByIds,
+    normalizeMongoUserIdHex
 } from "@/modules/identity/repository";
 
 function serializePortfolio(p: Portfolio) {
@@ -24,6 +24,8 @@ function serializePortfolio(p: Portfolio) {
     tenantPortfolioOrgKey: p.tenantPortfolioOrgKey,
     ext_broker_ref: p.ext_broker_ref,
     broker_type: p.broker_type ?? null,
+    riskProfile: p.riskProfile ?? null,
+    outlook: p.outlook ?? null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString()
   };

@@ -22,7 +22,7 @@ class DefaultPortfolioProvisionService(
 ) {
     private val defaultPortfolioName = "Default Portfolio"
     private val defaultAccountName = "defaultaccount"
-    private val defaultAccountRef = "fidelity-default-account"
+    private val defaultAccountRef = "ext_account_xref"
     private val defaultWatchlistName = "DefaultWatchlist"
     private val defaultWatchlistSymbol = "TSLA"
 

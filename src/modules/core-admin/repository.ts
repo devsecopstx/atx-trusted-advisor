@@ -46,7 +46,8 @@ const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 /** Default broker bucket on new portfolios for future trader cohort grouping. */
 export const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "defaultaccount";
-const DEFAULT_ACCOUNT_REF = "fidelity-default-account";
+/** Canonical external ref for the default account row (broker CSV / tooling alignment). */
+const DEFAULT_EXT_ACCOUNT_XREF = "ext_account_xref";
 /** Default paper cash for provision + read-time coalesce when Mongo field is missing. */
 export const DEFAULT_ACCOUNT_CASH_BALANCE = 25_000;
 const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
@@ -1330,7 +1331,7 @@ export async function provisionDefaultPortfolioForUser(
     );
   }
 
-  const extAccountId = DEFAULT_ACCOUNT_REF;
+  const extAccountId = DEFAULT_EXT_ACCOUNT_XREF;
   const accountLookupFilter = withTenantScope(
     {
       ...userIdQuery(input.userId),

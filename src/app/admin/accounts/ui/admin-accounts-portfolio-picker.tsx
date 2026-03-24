@@ -5,18 +5,40 @@ import { useCallback, useEffect, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
 
 type PortfolioRow = {
   _id: string;
   userId: string;
   name: string;
   isDefault: boolean;
+  riskProfile?: "conservative" | "balanced" | "growth" | null;
+  outlook?: string | null;
   accountCount: number;
   totalCashBalance: number;
   userDisplayName: string;
   userEmail: string | null;
   updatedAt: string;
 };
+
+function riskProfileLabel(value: PortfolioRow["riskProfile"] | undefined): string {
+  const v = value ?? null;
+  if (!v) {
+    return "—";
+  }
+  return RISK_LEVEL_OPTIONS.find((o) => o.riskProfile === v)?.label ?? v;
+}
+
+function truncateOutlook(text: string | null, maxChars: number): { short: string; full: string | null } {
+  const full = (text ?? "").trim();
+  if (!full) {
+    return { short: "—", full: null };
+  }
+  if (full.length <= maxChars) {
+    return { short: full, full: null };
+  }
+  return { short: `${full.slice(0, maxChars - 1)}…`, full: full };
+}
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -83,6 +105,8 @@ export function AdminAccountsPortfolioPicker() {
                 <th>Portfolio</th>
                 <th>Owner</th>
                 <th>Default</th>
+                <th>Risk</th>
+                <th>Outlook</th>
                 <th>Accounts</th>
                 <th>Total cash</th>
                 <th>Updated</th>
@@ -90,31 +114,42 @@ export function AdminAccountsPortfolioPicker() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row._id}>
-                  <td className="font-semibold">{row.name}</td>
-                  <td style={{ maxWidth: 220 }}>
-                    <div className="text-sm">{row.userDisplayName}</div>
-                    {row.userEmail ? (
-                      <div className="status-text break-all" style={{ fontSize: "0.75rem" }}>
-                        {row.userEmail}
+              {rows.map((row) => {
+                const outlook = truncateOutlook(row.outlook ?? null, 64);
+                return (
+                  <tr key={row._id}>
+                    <td className="font-semibold">{row.name}</td>
+                    <td style={{ maxWidth: 220 }}>
+                      <div className="text-sm">{row.userDisplayName}</div>
+                      {row.userEmail ? (
+                        <div className="status-text break-all" style={{ fontSize: "0.75rem" }}>
+                          {row.userEmail}
+                        </div>
+                      ) : null}
+                      <div className="font-mono opacity-70 break-all" style={{ fontSize: "0.65rem" }} title={row.userId}>
+                        {row.userId}
                       </div>
-                    ) : null}
-                    <div className="font-mono opacity-70 break-all" style={{ fontSize: "0.65rem" }} title={row.userId}>
-                      {row.userId}
-                    </div>
-                  </td>
-                  <td>{row.isDefault ? "Yes" : "—"}</td>
-                  <td>{row.accountCount}</td>
-                  <td>{money.format(row.totalCashBalance)}</td>
-                  <td className="text-xs whitespace-nowrap">{new Date(row.updatedAt).toLocaleString()}</td>
-                  <td>
-                    <Link className="cta cta-primary" href={`/admin/accounts/${encodeURIComponent(row._id)}`}>
-                      Manage accounts
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>{row.isDefault ? "Yes" : "—"}</td>
+                    <td className="text-sm whitespace-nowrap">{riskProfileLabel(row.riskProfile ?? null)}</td>
+                    <td
+                      className="text-xs max-w-[14rem]"
+                      style={{ verticalAlign: "top" }}
+                      title={outlook.full ?? (outlook.short !== "—" ? outlook.short : undefined)}
+                    >
+                      {outlook.short}
+                    </td>
+                    <td>{row.accountCount}</td>
+                    <td>{money.format(row.totalCashBalance)}</td>
+                    <td className="text-xs whitespace-nowrap">{new Date(row.updatedAt).toLocaleString()}</td>
+                    <td>
+                      <Link className="cta cta-primary" href={`/admin/accounts/${encodeURIComponent(row._id)}`}>
+                        Manage accounts
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

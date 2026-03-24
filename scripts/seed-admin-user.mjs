@@ -227,6 +227,8 @@ Prefer tool-grounded answers over unsupported claims. When tools return nothing 
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
+/** Default `portfolio_accounts.extAccountId` — matches `provisionDefaultPortfolioForUser` / Spring provision. */
+const DEFAULT_EXT_ACCOUNT_XREF = "ext_account_xref";
 const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
 const DEFAULT_WATCHLIST_SYMBOLS = ["TSLA"];
@@ -553,7 +555,7 @@ async function seed() {
       throw new Error("Failed to create or fetch default portfolio");
     }
 
-    const extAccountId = `${DEFAULT_ACCOUNT_TYPE}-default-${String(user._id)}`;
+    const extAccountId = DEFAULT_EXT_ACCOUNT_XREF;
     await db.collection("portfolio_accounts").updateOne(
       { tenantId: tenant._id, userId: user._id, portfolioId: portfolio._id, isDefault: true },
       {

@@ -9,6 +9,7 @@ const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
+const DEFAULT_EXT_ACCOUNT_XREF = "ext_account_xref";
 const DEFAULT_WATCHLIST_NAME = "Default Watchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
 
@@ -80,7 +81,7 @@ async function provisionDefaultsForUser(db, { userId, tenantId }) {
     throw new Error(`Failed to upsert portfolio for user ${String(userId)}`);
   }
 
-  const extAccountId = `${DEFAULT_ACCOUNT_TYPE}-default-${String(userId)}`;
+  const extAccountId = DEFAULT_EXT_ACCOUNT_XREF;
   await accounts.updateOne(
     { tenantId, userId, portfolioId: portfolio._id, isDefault: true },
     {

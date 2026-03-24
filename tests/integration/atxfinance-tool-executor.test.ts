@@ -47,7 +47,7 @@ describe("atxfinance tool executor", () => {
         _id: accountId,
         name: "Default Account",
         type: "fidelity",
-        extAccountId: "fidelity-default-user_123",
+        extAccountId: "ext_account_xref",
         isDefault: true,
         cashBalance: 25_000
       }
@@ -124,7 +124,7 @@ describe("atxfinance tool executor", () => {
         _id: accountId,
         name: "Default Account",
         type: "fidelity",
-        extAccountId: "fidelity-default-user_123",
+        extAccountId: "ext_account_xref",
         isDefault: true
       }
     ]);
