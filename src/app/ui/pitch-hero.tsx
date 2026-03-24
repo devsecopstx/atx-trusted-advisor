@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm, ValidationError } from "@formspree/react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 
 const pageVariants = {
@@ -202,6 +202,7 @@ export default function Hero({
   signInHref: signInHrefProp,
   loginReturnPath = DEFAULT_PITCH_LOGIN_RETURN_PATH,
 }: HeroProps) {
+  const reduceMotion = useReducedMotion();
   const signInHref =
     signInHrefProp?.trim() ||
     process.env.NEXT_PUBLIC_SIGNIN_URL?.trim() ||
@@ -230,14 +231,27 @@ export default function Hero({
         }}
       />
 
-      <div
+      <motion.div
         className="absolute right-[8%] top-[12%] h-24 w-24 md:h-32 md:w-32 pointer-events-none opacity-[0.18] md:opacity-[0.22]"
         aria-hidden
+        animate={
+          reduceMotion
+            ? undefined
+            : {
+                y: [0, -6, 0],
+                rotate: [0, 1.5, -1.5, 0]
+              }
+        }
+        transition={
+          reduceMotion
+            ? undefined
+            : { duration: 10, repeat: Infinity, ease: "easeInOut" as const }
+        }
       >
         <svg viewBox="0 0 64 64" className="h-full w-full text-amber-300/90 drop-shadow-[0_0_28px_rgba(250,204,21,0.45)]">
           <path fill="currentColor" d="M38 4L14 36h16l-6 24 28-36H36l6-20z" />
         </svg>
-      </div>
+      </motion.div>
 
       <div className="container mx-auto px-6 lg:px-8 relative z-10">
         <div className="max-w-4xl mx-auto text-center">

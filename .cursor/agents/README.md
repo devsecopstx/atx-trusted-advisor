@@ -1,23 +1,23 @@
 # Cursor agent personas (repo-local)
 
-Markdown personas under **`.cursor/agents/`** tune Cursor Cloud / Composer for scoped work. They are **not** secrets — keep deploy steps in `DEVELOPMENT.md` / `AGENTS.md` and skills under **`.cursor/skills/`**.
+YAML agents under **`.cursor/agents/*.yaml`** tune Cursor Cloud / Composer for scoped work. They are **not** secrets — keep deploy steps in `DEVELOPMENT.md` / `AGENTS.md` and skills under **`.cursor/skills/`**.
 
 ## Current files
 
 | File | Role | Use when |
 |------|------|----------|
-| [`atx-backend.md`](atx-backend.md) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
-| [`atx-reviewer.md`](atx-reviewer.md) | **PR / quality gate** reviewer — lint, typecheck, test, `ci:gate` | Pre-merge review, risk surface on changed files only |
-| [`atx-ux-agent.md`](atx-ux-agent.md) | **UI/UX + branding** — tokens, `src/app/**`, `design-system/**` | Visual work, a11y, responsive — avoid domain logic unless required |
-| [`atx-sre-ops-admin.yaml`](atx-sre-ops-admin.yaml) | SRE / ops review persona (YAML) | Infra, deploy, secrets hygiene, runbooks |
-| [`feature-branding.md`](feature-branding.md) | Full-stack branding + feature work | Broader scope when explicitly using this persona |
+| [`atx-backend.yaml`](atx-backend.yaml) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
+| [`atx-frontend.yaml`](atx-frontend.yaml) | **UI/UX + branding** — tokens, `src/app/**`, `design-system/**` | Visual work, a11y, responsive — avoid domain logic unless required |
+| [`atx-reviewer.yaml`](atx-reviewer.yaml) | **PR / quality gate** reviewer — lint, typecheck, test, `ci:gate` | Pre-merge review, risk surface on changed files only |
+| [`atx-sre-ops-admin.yaml`](atx-sre-ops-admin.yaml) | SRE / ops review persona | Infra, deploy, secrets hygiene, runbooks |
+| [`atx-feature-branding.yaml`](atx-feature-branding.yaml) | Full-stack branding + feature work | Broader scope when explicitly using this persona |
 
 ## Parallel worktrees (`.cursor/worktrees.json`)
 
 [`worktrees.json`](../worktrees.json) configures:
 
 1. **Setup scripts** — `setup-worktree`, `setup-worktree-unix`, `setup-worktree-windows` run when Cursor creates a parallel-agent worktree (`npm ci`, copy `.env` from the primary tree via `$ROOT_WORKTREE_PATH` / `%ROOT_WORKTREE_PATH%`). See [Cursor docs — Parallel Agents](https://cursor.com/docs/configuration/worktrees).
-2. **Named worktrees** — the `worktrees` array lists `atx-ux`, `atx-backend`, and `atx-reviewer` with `description`, optional `npm` command hints, and a `setup` that stamps `ROLE=…` into **`.cursor/.atx-*`** marker files (local convenience only; not the persona `.md` bodies).
+2. **Named worktrees** — the `worktrees` array lists `atx-ux`, `atx-backend`, and `atx-reviewer` with `description`, optional `npm` command hints, and a `setup` that stamps `ROLE=…` into **`.cursor/.atx-*`** marker files (local convenience only; not the agent YAML bodies).
 
 ## Conventions
 

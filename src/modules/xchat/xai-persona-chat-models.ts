@@ -6,7 +6,7 @@
 export const XAI_DOCS_MODELS_URL = "https://docs.x.ai/docs/models";
 
 /** Matches `XAI_CHAT_MODEL` / ask-route fallback when env is unset. */
-export const XAI_PERSONA_CHAT_MODEL_FALLBACK_ID = "grok-4.20-multi-agent-0309";
+export const XAI_PERSONA_CHAT_MODEL_FALLBACK_ID = "grok-4-1-fast-reasoning";
 
 export type XaiPersonaChatModelOption = {
   id: string;

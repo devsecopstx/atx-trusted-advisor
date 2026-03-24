@@ -13,6 +13,7 @@ INSTRUCTIONS:
   - Prefer documented runbooks and workflows over ad-hoc `gcloud`; keep secrets in Secret Manager only.
   - Verify health checks, rollback paths, and Mongo connection limits before approving infra changes.
   - Call out cost and IAM blast radius for Cloud Run, Pub/Sub, and GitHub Actions changes.
+  - Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
 setup: test -f .cursor/agents/atx-sre-ops-admin.yaml && npm install
 

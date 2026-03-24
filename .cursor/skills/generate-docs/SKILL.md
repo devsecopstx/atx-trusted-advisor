@@ -176,6 +176,15 @@ When **positioning, GTM, waitlist, investor deck copy**, or
   shipped UI keeps **$2/hr** on primary surfaces; roadmap subscription tiers
   stay secondary (deck/waitlist) until productized.
 
+### RAG collection sources (`atx-rag-collection/`)
+
+When adding or reorganizing persona markdown or reference PDFs under **`atx-rag-collection/`**:
+
+- Prefer **`kebab-case.md`** under **`xpersonas/`**; keep subdirectory names **lowercase** (`xpersonas`, `finance`).
+- Prefer PDF filenames **without spaces**; use a consistent prefix pattern (vendor or topic) for automation.
+- Keep **`atx-rag-collection/README.md`** accurate when layout or naming rules change.
+- Shared prompts should avoid **personal / PII** unless explicitly scoped as non-production samples.
+
 ### Branding assets folder gaps (`atx-branding/`)
 
 When files under **`atx-branding/`** are added, replaced, or deleted:

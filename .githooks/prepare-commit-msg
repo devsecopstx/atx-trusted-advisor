@@ -1,0 +1,63 @@
+#!/usr/bin/env sh
+# Prepend a commit subject prefix for CLI commits (opt-in via core.hooksPath).
+# Enable: git config core.hooksPath .githooks
+# See .githooks/README.md
+#
+# Prefix resolution (first match):
+#   1) ATX_COMMIT_PREFIX env (non-empty)
+#   2) First line of .githooks/commit-prefix (if file exists)
+#   3) Default: "chore: aTx⚡ "
+#
+# Disable once: ATX_COMMIT_NO_PREFIX=1 git commit ...
+# Clear default: ATX_COMMIT_PREFIX= git commit ...  (empty = no prepend)
+
+set -e
+
+msgfile=${1:-}
+source=${2:-}
+
+[ -n "$msgfile" ] && [ -f "$msgfile" ] || exit 0
+
+# Only rewrite `-m` / `-F` messages (`message`). Skip merge, squash, editor `template`, amend `-C`, etc.
+case "$source" in
+  message) ;;
+  *) exit 0 ;;
+esac
+
+if [ "${ATX_COMMIT_NO_PREFIX:-}" = "1" ]; then
+  exit 0
+fi
+
+prefix=
+if [ -n "${ATX_COMMIT_PREFIX+set}" ]; then
+  prefix=${ATX_COMMIT_PREFIX}
+elif [ -f .githooks/commit-prefix ]; then
+  prefix=$(head -n1 .githooks/commit-prefix | tr -d '\r')
+else
+  prefix="chore: aTx⚡ "
+fi
+
+# Explicit empty prefix from env → skip
+[ -n "$prefix" ] || exit 0
+
+first=$(head -n1 "$msgfile" | tr -d '\r')
+
+# Already prefixed
+case "$first" in
+  "$prefix"*) exit 0 ;;
+  chore:\ aTx⚡*) exit 0 ;;
+esac
+
+rest=$(tail -n +2 "$msgfile" 2>/dev/null || true)
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT INT
+
+{
+  printf '%s%s\n' "$prefix" "$first"
+  if [ -n "$rest" ]; then
+    printf '%s\n' "$rest"
+  fi
+} >"$tmp"
+
+mv "$tmp" "$msgfile"
+trap - EXIT INT

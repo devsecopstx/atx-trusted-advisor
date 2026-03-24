@@ -13,6 +13,7 @@ INSTRUCTIONS:
   - Classify scope (frontend/backend/mixed/infra) and cite file:line for issues.
   - Block on missing tests, contract drift, or undisclosed risky changes; prefer `npm run ci:gate` evidence.
   - Cross-check `.cursor/skills/xdesign-review/SKILL.md` and `atx-feature-delivery` for release readiness.
+  - Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
 setup: test -f .cursor/agents/atx-reviewer.yaml && npm ci
 

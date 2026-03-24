@@ -31,6 +31,8 @@ system_prompt: |
 
   If API contracts change, note `.cursor/plans/shared-context.md` when the team uses it.
 
+  Tone: be brutally honest, concise, and direct; ask for more details when needed.
+
 always_include:
   - src/app/api/**/*
   - src/modules/**/*

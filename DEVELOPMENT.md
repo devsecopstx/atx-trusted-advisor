@@ -94,6 +94,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY` (required for management/KB collection operations)
 - `XAI_MANAGEMENT_BASE_URL` (optional override; defaults to `https://management-api.x.ai/v1`)
+- `XAI_CHAT_MODEL` (optional; canonical default **`grok-4-1-fast-reasoning`** — xAI client default, Admin → Create xPersona preset, and **`POST /api/xchat/ask`** when the resolved persona has no `model`; set in `.env` locally and via GitHub **Variables** / Cloud Run env on deploy — see workflows `deploy-cloud-run.yml` / `deploy-cloud-run-production.yml`)
 - `X_OAUTH_CLIENT_ID` (raw client id from X app, not base64-encoded)
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET` (recommended for session signing)
@@ -446,6 +447,7 @@ Set these with GitHub Variables (`vars.*`), either repo-scoped or environment-sc
 | `EXPECTED_GITHUB_OWNER` | `devsecopstx` | same value |
 | `ALLOW_ANY_X_USER_LOGIN` | Optional `true` for open `/xchat` smoke testing | **Do not set** (or `false`) — registered users only |
 | `ENABLE_XCHAT_DEBUG` | Optional `true` for detailed xChat payload logs (RAG, prompts) | Optional `true`; ensure Cloud Logging retention ≥30 days for debug logs |
+| `XAI_CHAT_MODEL` | Optional override (workflow default **`grok-4-1-fast-reasoning`** if unset) | Same — keep aligned with `.env.example` |
 
 ### GitHub CLI Setup (Variables + Secrets)
 

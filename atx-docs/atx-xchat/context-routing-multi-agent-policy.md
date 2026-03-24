@@ -20,7 +20,7 @@ New work: **`XAI_TEAM_ID`** per tenant; TEAM append/retrieval; chat-history coll
 
 ## Effective xAI model
 
-`POST /api/xchat/ask` uses the **resolved persona’s** `model` field (Admin → Personas / Mongo). If it is empty, the server falls back to `DEFAULT_XCHAT_MODEL`. There is **no** client `model` override on the ask payload — multi-agent parallelism follows the same persona model (e.g. `grok-4.20-multi-agent`) plus optional `reasoningEffort` in the body.
+`POST /api/xchat/ask` uses the **resolved persona’s** `model` field (Admin → Personas / Mongo). If it is empty, the server uses **`XAI_CHAT_MODEL`** (env / Cloud Run), else **`grok-4-1-fast-reasoning`**. There is **no** client `model` override on the ask payload — multi-agent parallelism follows the same persona model (e.g. `grok-4.20-multi-agent`) plus optional `reasoningEffort` in the body.
 
 ## Plan limits (subscription → multi-agent cap)
 

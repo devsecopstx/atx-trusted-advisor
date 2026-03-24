@@ -57,7 +57,7 @@ Run this gate whenever PR scope includes persona orchestration, prompt config, t
   - `tool_choice` defaults to `auto` unless constrained policy is documented
   - runtime behavior avoids fabricated internal-doc claims when retrieval misses
 - [ ] Multi-agent model policy:
-  - ask fallback model remains `grok-4.20-multi-agent-0309` (or approved `grok-4.20-multi-agent`)
+  - ask default when persona omits `model` remains **`XAI_CHAT_MODEL`** / **`grok-4-1-fast-reasoning`**; multi-agent personas still use `grok-4.20-multi-agent` (or `-0309`) where approved
   - `reasoningEffort` constraints match multi-agent-only behavior and route validation
 - [ ] Admin ownership constraints:
   - persona `name`, `systemPrompt`, `overridePrompt`, and `collectionIds` are mutable by admin role only

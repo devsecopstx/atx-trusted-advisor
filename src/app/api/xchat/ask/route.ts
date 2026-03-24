@@ -9,6 +9,7 @@ import {
     searchDocumentsInCollections,
     type ToolCallLog
 } from "@/lib/xai";
+import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import {
     logXchatAskDebug,
@@ -58,7 +59,6 @@ const askSchema = z.object({
 
 const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
 const ASK_RATE_MAX = 20;
-const DEFAULT_XCHAT_MODEL = "grok-4.20-multi-agent-0309";
 const MULTI_AGENT_MODELS = new Set(["grok-4.20-multi-agent", "grok-4.20-multi-agent-0309"]);
 const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>([
   normalizeNameKey(XPERSONA_SUPER_AGENT_NAME)
@@ -215,7 +215,7 @@ export async function POST(request: Request) {
   const personaModelRaw =
     typeof persona?.model === "string" ? persona.model.trim().slice(0, 128) : "";
   const effectiveModel =
-    personaModelRaw.length > 0 ? personaModelRaw : DEFAULT_XCHAT_MODEL;
+    personaModelRaw.length > 0 ? personaModelRaw : getDefaultPersonaChatModelId();
   const modelSelectionSource: ModelSelectionSource =
     personaModelRaw.length > 0 ? "persona" : "default";
 

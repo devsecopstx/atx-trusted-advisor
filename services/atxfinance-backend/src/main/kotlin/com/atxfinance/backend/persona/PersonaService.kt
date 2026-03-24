@@ -304,7 +304,7 @@ class PersonaService(
 
     companion object {
         private val PERSONA_STATUSES = setOf("draft", "published", "archived")
-        private const val DEFAULT_MODEL = "grok-4.20-multi-agent-0309"
+        private const val DEFAULT_MODEL = "grok-4-1-fast-reasoning"
 
         fun normalizeNameKey(name: String): String = name.trim().lowercase()
 

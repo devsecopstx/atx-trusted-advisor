@@ -77,7 +77,8 @@ Current `atx-branding/` assets with `xf-legacy-` prefix:
 - `atx-branding/xf-legacy-import-broker.jpg`
 - `atx-branding/xf-legacy-optionbuilder.jpg`
 - `atx-branding/xf-legacy-schedule-task.jpg`
-- `atx-branding/xf-legacy-wheel-prompt.jpg`
+
+*(Removed from tree: `xf-legacy-wheel-prompt.jpg` — drop any stale links; see `generate-docs` branding asset checklist on intentional deletes.)*
 
 ## Notes for migration
 

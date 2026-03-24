@@ -1,7 +1,8 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
@@ -39,11 +40,42 @@ const STATUS_BADGE_CLASS: Record<PersonaStatus, string> = {
 };
 
 export function PersonasOnboardingHome() {
+  const reduceMotion = useReducedMotion();
   const [personas, setPersonas] = useState<PersonaListItem[]>([]);
   const [status, setStatus] = useState("Ready");
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const gridVariants = useMemo(
+    () => ({
+      hidden: { opacity: reduceMotion ? 1 : 0 },
+      visible: {
+        opacity: 1,
+        transition: {
+          when: "beforeChildren" as const,
+          staggerChildren: reduceMotion ? 0 : 0.055,
+          delayChildren: reduceMotion ? 0 : 0.04
+        }
+      }
+    }),
+    [reduceMotion]
+  );
+
+  const cardVariants = useMemo(
+    () => ({
+      hidden: {
+        opacity: reduceMotion ? 1 : 0,
+        y: reduceMotion ? 0 : 14
+      },
+      visible: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: reduceMotion ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] as const }
+      }
+    }),
+    [reduceMotion]
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -152,7 +184,13 @@ export function PersonasOnboardingHome() {
         ))}
       </div>
 
-      <div className="persona-directory-grid">
+      <motion.div
+        className="persona-directory-grid"
+        key={filter}
+        variants={gridVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {filtered.map((persona) => {
           const linkedCollectionCount = countPersonaLinkedCollections(persona);
           const collectionLabel = persona.xaiCollection.collectionId
@@ -162,9 +200,10 @@ export function PersonasOnboardingHome() {
           const prevVersion = persona.version > 1 ? persona.version - 1 : 0;
 
           return (
-            <article
+            <motion.article
               className="surface-card xf-widget persona-card"
               key={persona._id ?? persona.name}
+              variants={cardVariants}
             >
               <div className="persona-card-header">
                 <h3>{persona.name}</h3>
@@ -238,10 +277,10 @@ export function PersonasOnboardingHome() {
                   </>
                 ) : null}
               </div>
-            </article>
+            </motion.article>
           );
         })}
-      </div>
+      </motion.div>
 
       {filtered.length === 0 && !loading ? (
         <p className="status-text">

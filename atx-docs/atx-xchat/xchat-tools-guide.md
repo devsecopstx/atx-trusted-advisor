@@ -34,7 +34,7 @@ flowchart TD
 | User | `appendXchatKbMetadata` | Same KB suffix for ask and batch: resolved collection ids + tool list. |
 | Tools wire | `personaXapiToolsToXaiRequestTools` → `toXaiRequestTools(..., { forXaiResponsesApi: true })` | **`/v1/responses`** expects **flat** function tools (`type`, `name`, `parameters` at root). OpenAI-style nesting under `function` causes **422** and the request never runs hosted **web_search** / **x_search**. Chat Completions uses `toXaiRequestTools` without the flag (nested shape). |
 
-**Model (ask):** persona `model` or `DEFAULT_XCHAT_MODEL` in `ask/route.ts`; optional `reasoningEffort` for multi-agent ids only.
+**Model (ask):** persona `model`, else `XAI_CHAT_MODEL` or **`grok-4-1-fast-reasoning`** (`getDefaultPersonaChatModelId` in `ask/route.ts`); optional `reasoningEffort` for multi-agent ids only.
 
 ---
 

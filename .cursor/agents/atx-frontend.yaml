@@ -13,6 +13,7 @@ INSTRUCTIONS:
   - Default to Server Components; add `use client` only for motion, forms, or browser-only APIs.
   - Follow `.cursor/rules/xfinance-branding.mdc` and existing `src/app` patterns — no orphan API routes.
   - Keep bundles lean; verify `npm run build` when changing shared layout or design tokens.
+  - Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
 setup: test -f .cursor/agents/atx-frontend.yaml && npm install
 

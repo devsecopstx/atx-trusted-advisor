@@ -55,7 +55,7 @@ function getXaiConfig() {
   return {
     apiKey: env.XAI_API_KEY,
     baseUrl: env.XAI_BASE_URL ?? XAI_BASE_URL_DEFAULT,
-    defaultModel: env.XAI_CHAT_MODEL ?? "grok-4.20-multi-agent-0309"
+    defaultModel: env.XAI_CHAT_MODEL ?? "grok-4-1-fast-reasoning"
   };
 }
 

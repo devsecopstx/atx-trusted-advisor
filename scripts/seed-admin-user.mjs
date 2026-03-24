@@ -486,7 +486,7 @@ async function seed() {
             ...(superAgentCollectionId ? { collectionId: superAgentCollectionId } : {}),
             collectionName: DEFAULT_COLLECTION_NAME
           },
-          model: "grok-4-1-fast",
+          model: "grok-4-1-fast-reasoning",
           temperature: 0.2,
           enableRag: true,
           defaultScope: "global",
