@@ -1,13 +1,16 @@
-# atxFinance Core App
+# atx Trusted Advisor — Core App
 
-Admin console **and** signed-in **app_user** product surfaces for atxFinance. This repo powers:
+**Release:** v2.4.17
 
-- access request governance
-- persona and collection management
-- xChat / xStrategyBuilder / portfolio / watchlist / recommendations for approved app_user accounts (viewer+ platform roles)
-- xChat operational workflows (default **published** personas: **Super-Agent** for `global_admin`, **xFinance** for other signed-in roles)
-- audit visibility for admin actions
-- portfolio/account bootstrap defaults
+User-facing product: **atx Trusted Advisor** (whitelabel-ready chrome: Trusted Advisor lockup + subtle **whitelabel** subline in header/footer). This repository is the **atxFinance** Next.js core: admin console and signed-in **app_user** surfaces, **Powered by xAI / Grok** for institutional-grade options and portfolio workflows.
+
+## Stress-free trading — top 5 product pillars
+
+1. **Conversational desk (xChat)** — Default **FinExpert** persona (directory name **xFinance**), **Super-Agent** for global admins; optional RAG collections and tools so answers stay grounded instead of guesswork.
+2. **Portfolio + watchlist in one workspace** — Default book, linked accounts, watchlist with CSV import/export and aligned **risk / outlook** context (book, accounts, and watchlist) so execution views match how you think about risk.
+3. **xStrategyBuilder & option chains** — Strategy options UI, expirations, and structured chain data to reduce tab-hopping and manual reconstruction of setups.
+4. **Access you control** — Approval-based onboarding, platform roles (**viewer** / **operator** / **advisor**), and admin governance for personas, portfolios, and ops—no anonymous wild-west trading surface.
+5. **Compliance-minded chrome** — Legal stubs (imprint, terms, privacy, security, vulnerability reporting), in-app disclaimers, and versioned API inventory for operators who need a serious audit trail.
 
 ## Quick Start
 
@@ -16,6 +19,8 @@ Admin console **and** signed-in **app_user** product surfaces for atxFinance. Th
 3. Start MongoDB: `docker compose up -d`
 4. Seed admin defaults: `npm run seed:admin`
 5. Start app: `npm run dev`
+
+**→ Full local setup, BFF, env matrix, and troubleshooting:** [Development guide (DEVELOPMENT.md)](DEVELOPMENT.md)
 
 ## Validation
 
@@ -35,10 +40,12 @@ Admin console **and** signed-in **app_user** product surfaces for atxFinance. Th
 
 Platform roles vs session: see [DEVELOPMENT.md — Platform roles vs tenant membership](DEVELOPMENT.md#platform-roles-vs-tenant-membership-session).
 
+Branding reference for UI copy and whitelabel: [`atx-docs/atx-xchat/xfinance-branding-review.md`](atx-docs/atx-xchat/xfinance-branding-review.md) (§8 user chrome).
+
 ## Docs
 
-- Full setup/runbook: `DEVELOPMENT.md`
-- Operator runbook: `AGENTS.md`
-- Contribution workflow: `CONTRIBUTING.md`
+- **Development guide (setup, stack, API validation):** [DEVELOPMENT.md](DEVELOPMENT.md)
+- Operator runbook: [AGENTS.md](AGENTS.md)
+- Contribution workflow: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Backlog / open gaps (TODO, design TBD): [`atx-docs/PLAN.md`](atx-docs/PLAN.md) · [documentation index](atx-docs/README.md)
 - **API inventory & Swagger:** `GET /api/openapi` (public JSON spec); admin Swagger UI at `/admin/api-docs` (signed-in admin). Validation steps: [DEVELOPMENT.md — API docs validation](DEVELOPMENT.md#api-docs-validation).
