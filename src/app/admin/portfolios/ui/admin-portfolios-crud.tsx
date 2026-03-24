@@ -271,7 +271,7 @@ export function AdminPortfoliosCrud() {
       </div>
 
       <h3>All tenant portfolios</h3>
-      <p className="status-text" style={{ marginBottom: "0.75rem" }}>
+      <div className="status-text" style={{ marginBottom: "0.75rem" }}>
         <strong>Portfolio name</strong> is the first column — type directly in the field, then press{" "}
         <strong>Save changes</strong> (same flow after <code className="font-mono text-xs">seed:admin</code>).{" "}
         <strong>User</strong> shows display name + id: both link to{" "}
@@ -285,7 +285,7 @@ export function AdminPortfoliosCrud() {
           broker catalog
         </Link>
         ). Choose one default per user (radio). Tenant org key is read-only.
-      </p>
+      </div>
 
       <div className="crud-table-wrap">
         <table className="crud-table">
