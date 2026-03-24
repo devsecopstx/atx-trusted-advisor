@@ -179,6 +179,10 @@ export type Portfolio = {
    * See `getTenantPortfolioOrgKey()` / `TENANT_PORTFOLIO_ORG_KEY`.
    */
   tenantPortfolioOrgKey?: string;
+  /** Book-level risk stance for desk context (optional). */
+  riskProfile?: "conservative" | "balanced" | "growth";
+  /** Free-text market / positioning outlook for this book (optional). */
+  outlook?: string;
   createdAt: Date;
   updatedAt: Date;
 };
