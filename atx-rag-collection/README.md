@@ -12,9 +12,29 @@
 
 | Path | Convention |
 | --- | --- |
-| `atx-personas-trusted-family/` | Prefer **`kebab-case.md`** (or `atx-*.md`) for RAG **body text**. Avoid pasting full **Cursor agent YAML** here unless it is explicitly part of the product ingest contract. |
+| `atx-personas-trusted-family/` | Prefer **`kebab-case.md`** (or `atx-*.md`) for RAG **body text**. Persona **seed specs** use **`atx-*.yaml`** with the same key shape as **`.cursor/agents/*.yaml`** (see **Persona YAML schema** below). |
 | `finance-reference-docs/` | PDFs; prefer **no spaces** in filenames. |
 | `atx-xchat-example-prompts/` | Markdown examples for UX / training. |
+
+## Persona YAML schema (`atx-personas-trusted-family/*.yaml`)
+
+Aligned with **`.cursor/agents/*.yaml`** for tooling parity. These files are **not** Cursor agents; they are **xPersona / RAG seed** specs.
+
+| Key | Notes |
+| --- | --- |
+| Top comment | First line: `# atx-rag-collection/atx-personas-trusted-family/<stem>.yaml` |
+| `id` / `name` | Match filename stem (e.g. `atx-legal-advisor`) |
+| `description` | Block scalar; product-facing summary |
+| `icon` / `color` | Optional on agents; **required** here for admin/UI parity |
+| `INSTRUCTIONS` | Bullet list for operator / ingest hints |
+| `setup` | Shell one-liner; typically `test -f atx-rag-collection/.../<stem>.yaml` |
+| `model` | Default chat model id (e.g. `grok-4-1-fast-reasoning`); app may override via env |
+| `system_prompt` | Block scalar; runtime persona body |
+| `always_include` | Repo paths under `atx-rag-collection/` (or other in-repo globs), not `.cursor/` |
+| `never_include` | Standard excludes: `node_modules/`, `.next/`, `dist/`, `"**/*.log"` |
+| `commands` | Short echo hints for UX / docs (optional extensions per persona) |
+
+Cursor agents may include **`worktree:`**; persona specs omit it.
 
 ## Hygiene
 

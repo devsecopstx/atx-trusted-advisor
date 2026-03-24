@@ -882,7 +882,7 @@ describe("persona API routes", () => {
     expect(repositoryMocks.createPersona).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "DefaultsOnly",
-        model: "grok-4.20-multi-agent-0309",
+        model: "grok-4-1-fast-reasoning",
         enableRag: true,
         defaultScope: "global",
         xapi: {
