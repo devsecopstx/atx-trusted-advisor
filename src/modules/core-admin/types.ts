@@ -73,7 +73,7 @@ export type ScheduledTask = {
   _id?: ObjectId;
   tenantId?: ObjectId;
   name: string;
-  category: "sync-broker" | "rebalance" | "compliance" | "notifications";
+  category: "sync-broker" | "rebalance" | "compliance" | "notifications" | "user-history";
   scheduleCron: string;
   enabled: boolean;
   runTimeoutSeconds?: number;

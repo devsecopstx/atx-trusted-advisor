@@ -192,6 +192,7 @@ export type XChatMessage = {
   content: string;
 };
 
+/** One prompt/response turn in Mongo `xchat_logs` (TTL via retentionExpiresAt). user_history_agent syncs unsynced rows to the user xAI collection. */
 export type XChatSessionLog = {
   _id?: ObjectId;
   requestId: string;
@@ -201,6 +202,10 @@ export type XChatSessionLog = {
   userEmail?: string;
   requestedBy?: string;
   personaId?: ObjectId;
+  /** Denormalized for scheduled markdown sync (persona name at ask time). */
+  personaName?: string;
+  /** xChat scope / KB scope at ask time. */
+  scope?: string;
   message: string;
   response: string;
   contextChunkIds: ObjectId[];
@@ -224,6 +229,9 @@ export type XChatSessionLog = {
   xaiTurnFileId?: string;
   xaiTurnPayloadHash?: string;
   xaiTurnRetentionExpiresAt?: Date;
+  /** Set when markdown turn was uploaded and linked to the user xAI collection (user_history source). */
+  syncedToXaiAt?: Date;
+  xaiTurnSyncError?: string;
   retentionExpiresAt?: Date;
   createdAt: Date;
 };

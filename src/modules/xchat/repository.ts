@@ -124,6 +124,14 @@ async function createXchatLogIndexes(): Promise<void> {
     { retentionExpiresAt: 1 },
     { expireAfterSeconds: 0, name: "ttl_xchat_logs_retention_expires_at" }
   );
+  await chatLogCollection.createIndex(
+    { syncedToXaiAt: 1, createdAt: 1, _id: 1 },
+    { name: "idx_xchat_logs_synced_created" }
+  );
+  await chatLogCollection.createIndex(
+    { tenantId: 1, syncedToXaiAt: 1, createdAt: 1 },
+    { name: "idx_xchat_logs_tenant_pending_xai" }
+  );
 }
 
 export async function listPersonas(): Promise<PersonaConfig[]> {
@@ -407,6 +415,70 @@ export async function saveXChatLog(
     createdAt,
     retentionExpiresAt
   });
+}
+
+const pendingXaiSyncFilter: Record<string, unknown> = {
+  $and: [
+    {
+      $or: [{ syncedToXaiAt: { $exists: false } }, { syncedToXaiAt: null }]
+    },
+    {
+      $or: [{ xaiTurnFileId: { $exists: false } }, { xaiTurnFileId: null }, { xaiTurnFileId: "" }]
+    }
+  ]
+};
+
+export async function listXchatLogsPendingXaiSync(input: {
+  tenantId?: ObjectId | null;
+  limit: number;
+}): Promise<XChatSessionLog[]> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const query = withTenantScopeForLogs({ ...pendingXaiSyncFilter }, input.tenantId);
+  return db
+    .collection<XChatSessionLog>(collections.chatLogs)
+    .find(query)
+    .sort({ createdAt: 1, _id: 1 })
+    .limit(Math.min(200, Math.max(1, input.limit)))
+    .toArray();
+}
+
+export async function markXchatLogXaiSynced(
+  logId: ObjectId,
+  fields: {
+    xaiTurnFileId: string;
+    xaiTurnPayloadHash: string;
+    xaiTurnRetentionExpiresAt: Date;
+  }
+): Promise<void> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const now = new Date();
+  await db.collection(collections.chatLogs).updateOne(
+    { _id: logId },
+    {
+      $set: {
+        xaiTurnFileId: fields.xaiTurnFileId,
+        xaiTurnPayloadHash: fields.xaiTurnPayloadHash,
+        xaiTurnRetentionExpiresAt: fields.xaiTurnRetentionExpiresAt,
+        syncedToXaiAt: now,
+        xaiTurnSyncError: null
+      }
+    }
+  );
+}
+
+export async function markXchatLogXaiSyncFailed(logId: ObjectId, errorMessage: string): Promise<void> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  await db.collection(collections.chatLogs).updateOne(
+    { _id: logId },
+    {
+      $set: {
+        xaiTurnSyncError: errorMessage.slice(0, 2_000)
+      }
+    }
+  );
 }
 
 export async function listXChatHistoryByUser(input: {

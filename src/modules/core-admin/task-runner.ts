@@ -1,11 +1,12 @@
 import { ObjectId } from "mongodb";
 
 import {
-  createTaskRun,
-  finalizeTaskRun,
-  markTaskRunWindow
+    createTaskRun,
+    finalizeTaskRun,
+    markTaskRunWindow
 } from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
+import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
 
 export async function executeScheduledTask(
   task: ScheduledTask,
@@ -30,7 +31,7 @@ export async function executeScheduledTask(
   const startedAt = run.startedAt;
   await markTaskRunWindow(task._id, startedAt);
 
-  const execution = await simulateTaskExecution(task);
+  const execution = await runScheduledCategory(task);
   const completedAt = new Date();
   const durationMs = Math.max(1, completedAt.getTime() - startedAt.getTime());
 
@@ -48,9 +49,13 @@ export async function executeScheduledTask(
   };
 }
 
-async function simulateTaskExecution(
+async function runScheduledCategory(
   task: ScheduledTask
 ): Promise<{ status: "success" | "failed"; output: string }> {
+  if (task.category === "user-history") {
+    return runUserHistoryAgent(task);
+  }
+
   const waitMs = 120 + Math.floor(Math.random() * 220);
   await new Promise((resolve) => setTimeout(resolve, waitMs));
 

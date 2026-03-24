@@ -18,6 +18,7 @@ import kotlin.random.Random
 class AdminScheduledTasksService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
+    private val userHistoryAgentService: UserHistoryAgentService,
 ) {
 
     fun listTasks(session: ResolvedSession, limit: Int): List<Map<String, Any?>> {
@@ -106,7 +107,10 @@ class AdminScheduledTasksService(
 
         markTaskRunWindow(taskId, startedAt)
 
-        val (execStatus, execOutput) = simulateTaskExecution(taskName, category)
+        val (execStatus, execOutput) = when (category) {
+            "user-history" -> userHistoryAgentService.run(tenantOid?.toHexString())
+            else -> simulateTaskExecution(taskName, category)
+        }
         val completedAt = Date()
         val durationMs = maxOf(1L, completedAt.time - startedAt.time)
 
@@ -220,7 +224,8 @@ class AdminScheduledTasksService(
     }
 
     companion object {
-        private val ALLOWED_CATEGORIES = setOf("sync-broker", "rebalance", "compliance", "notifications")
+        private val ALLOWED_CATEGORIES =
+            setOf("sync-broker", "rebalance", "compliance", "notifications", "user-history")
         private const val FIVE_MIN_MS = 5L * 60L * 1000L
         private const val ONE_DAY_MS = 24L * 60L * 60L * 1000L
     }

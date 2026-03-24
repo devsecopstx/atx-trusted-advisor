@@ -4,18 +4,18 @@ import { createHash } from "node:crypto";
 import { getDb } from "@/lib/mongodb";
 import { sendSlackNotification } from "@/lib/slack";
 import {
-  addFileToXaiCollection,
-  createXaiCollection,
-  getXaiCollectionById,
-  listXaiCollections,
-  uploadFileToXai,
-  XaiCollectionNotFoundError
+    addFileToXaiCollection,
+    createXaiCollection,
+    getXaiCollectionById,
+    listXaiCollections,
+    uploadFileToXai,
+    XaiCollectionNotFoundError
 } from "@/lib/xai";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import {
-  createScheduledTask,
-  provisionDefaultPortfolioForUser
+    createScheduledTask,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { getCoreUserById, updateCoreUserXaiCollection } from "@/modules/identity/repository";
 
@@ -200,42 +200,34 @@ export async function resolveOrCreateUserBootstrapCollection(input: {
   };
 }
 
-/** Writes a retention-bounded markdown file into the user xAI collection. Does not include persona systemPrompt, overridePrompt, or injected system instructions — only user prompt + assistant response + turn metadata. */
-export async function appendXchatTurnToUserCollection(input: {
+export type XchatTurnMarkdownInput = {
   userId: string;
   tenantId?: string;
-  email?: string;
-  collectionId?: string;
   personaName?: string;
   model?: string;
   scope?: string;
   prompt: string;
   response: string;
   createdAt?: Date;
-}): Promise<{
-  fileId: string;
+};
+
+/** Markdown + hashes for one xChat turn (user_history xAI upload). */
+export function buildXchatTurnMarkdownPayload(input: XchatTurnMarkdownInput): {
+  markdown: string;
   payloadHash: string;
   retentionExpiresAt: Date;
-}> {
-  const collectionId =
-    input.collectionId?.trim() ||
-    (await resolveOrCreateUserBootstrapCollection({
-      userId: input.userId,
-      tenantId: input.tenantId,
-      email: input.email
-    }))?.collectionId;
-  if (!collectionId) {
-    throw new Error("Missing user xAI collection for xchat turn sync");
-  }
-
+  filename: string;
+} {
   const createdAt = input.createdAt ?? new Date();
   const retentionExpiresAt = new Date(
     createdAt.getTime() + XCHAT_TURN_RETENTION_DAYS * 24 * 60 * 60 * 1000
   );
+  const uid = input.userId.trim();
+  const suffix = uid.length >= 8 ? uid.slice(-8) : uid.padStart(8, "0");
   const turnDoc = [
     "# xChat Prompt/Response",
     "",
-    `userId: ${input.userId}`,
+    `userId: ${uid}`,
     `tenantId: ${input.tenantId ?? "none"}`,
     `persona: ${input.personaName ?? "unknown"}`,
     `model: ${input.model ?? "unknown"}`,
@@ -251,17 +243,54 @@ export async function appendXchatTurnToUserCollection(input: {
     input.response
   ].join("\n");
   const payloadHash = createHash("sha256").update(turnDoc).digest("hex");
-  const filename = `xchat-turn-${toFileTimestamp(createdAt)}-${input.userId.slice(-8)}.md`;
-  const bytes = new TextEncoder().encode(turnDoc);
-  const uploaded = await uploadFileToXai(filename, bytes);
+  const filename = `xchat-turn-${toFileTimestamp(createdAt)}-${suffix}.md`;
+  return { markdown: turnDoc, payloadHash, retentionExpiresAt, filename };
+}
+
+export async function uploadBuiltXchatTurnToXaiCollection(
+  collectionId: string,
+  built: ReturnType<typeof buildXchatTurnMarkdownPayload>
+): Promise<{ fileId: string }> {
+  const cid = collectionId.trim();
+  if (!cid) {
+    throw new Error("collectionId is required");
+  }
+  const bytes = new TextEncoder().encode(built.markdown);
+  const uploaded = await uploadFileToXai(built.filename, bytes);
   await addFileToXaiCollection({
-    collectionId,
+    collectionId: cid,
     fileId: uploaded.fileId
   });
+  return { fileId: uploaded.fileId };
+}
+
+/** Writes a retention-bounded markdown file into the user xAI collection. Does not include persona systemPrompt, overridePrompt, or injected system instructions — only user prompt + assistant response + turn metadata. */
+export async function appendXchatTurnToUserCollection(
+  input: XchatTurnMarkdownInput & {
+    email?: string;
+    collectionId?: string;
+  }
+): Promise<{
+  fileId: string;
+  payloadHash: string;
+  retentionExpiresAt: Date;
+}> {
+  const resolved =
+    input.collectionId?.trim() ||
+    (await resolveOrCreateUserBootstrapCollection({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      email: input.email
+    }))?.collectionId;
+  if (!resolved) {
+    throw new Error("Missing user xAI collection for xchat turn sync");
+  }
+  const built = buildXchatTurnMarkdownPayload(input);
+  const { fileId } = await uploadBuiltXchatTurnToXaiCollection(resolved, built);
   return {
-    fileId: uploaded.fileId,
-    payloadHash,
-    retentionExpiresAt
+    fileId,
+    payloadHash: built.payloadHash,
+    retentionExpiresAt: built.retentionExpiresAt
   };
 }
 
