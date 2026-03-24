@@ -26,7 +26,7 @@ export default async function AdminBrokerImportPage({ searchParams }: PageProps)
     <div className="core-shell">
       <section className="panel stack-gap">
         <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
-          <Link className="cta cta-secondary" href="/admin/accounts">
+          <Link className="cta cta-secondary" href="/admin/portfolios">
             Accounts
           </Link>
           <Link className="cta cta-secondary" href="/admin/portfolios">

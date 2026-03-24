@@ -40,13 +40,7 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         icon: "portfolio",
         title: "Portfolios",
         description:
-          "Private / Secure: per-user workspace portfolios in tenant_portfolio; default book uses tenantPortfolioOrgKey (org-atx-finance) under core_tenants. Edit names, tenant org ref, broker type, and default per user."
-      },
-      {
-        href: "/admin/accounts",
-        icon: "portfolio",
-        title: "Accounts",
-        description: "Pick a portfolio, then manage custodian accounts: CRUD, cash, defaults, risk & outlook."
+          "Private / Secure: per-user workspace portfolios in tenant_portfolio; default book uses tenantPortfolioOrgKey (org-atx-finance) under core_tenants. Edit names, tenant org ref, broker type, and default per user. Open each row’s Manage accounts for custodian CRUD, book-level desk risk & outlook (table columns), per-account risk & outlook, and watchlist on the sibling link."
       },
       {
         href: "/admin/brokers",

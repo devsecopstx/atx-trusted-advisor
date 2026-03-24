@@ -238,9 +238,11 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     return outDraft !== outPrev;
   }, [portfolio, portfolioRiskDraft, portfolioOutlookDraft]);
 
-  const savePortfolioBookFields = async () => {
+  const hasAnythingDirty = hasDirty || bookRiskOutlookDirty;
+
+  const buildPortfolioBookPatchBody = (): Record<string, unknown> | null => {
     if (!portfolio) {
-      return;
+      return null;
     }
     const body: Record<string, unknown> = {};
     const riskPrev = portfolio.riskProfile ?? null;
@@ -253,24 +255,22 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     if (outDraft !== outPrev) {
       body.outlook = outDraft.length > 0 ? outDraft : null;
     }
-    if (Object.keys(body).length === 0) {
-      setStatus("No book-level changes");
-      return;
+    return Object.keys(body).length > 0 ? body : null;
+  };
+
+  const persistPortfolioBookIfDirty = async (): Promise<boolean> => {
+    const body = buildPortfolioBookPatchBody();
+    if (!body) {
+      return false;
     }
-    setStatus("Saving book…");
-    try {
-      await parseJson(
-        await fetch(`/api/admin/portfolios/${encodeURIComponent(portfolioId)}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        })
-      );
-      setStatus("Saved book risk & outlook");
-      void refresh();
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Save failed");
-    }
+    await parseJson(
+      await fetch(`/api/admin/portfolios/${encodeURIComponent(portfolioId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      })
+    );
+    return true;
   };
 
   const saveAccount = async (row: AccountRow) => {
@@ -336,7 +336,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     const targets = accounts.filter(
       (row) => computeAccountPatchBody(row, draftMerged(row._id), false, undefined) !== null
     );
-    if (targets.length === 0) {
+    if (targets.length === 0 && !bookRiskOutlookDirty) {
       setStatus("No changes");
       return;
     }
@@ -347,6 +347,10 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     setLoading(true);
     setStatus("Saving…");
     try {
+      let savedBook = false;
+      if (bookRiskOutlookDirty) {
+        savedBook = await persistPortfolioBookIfDirty();
+      }
       let saved = 0;
       for (const row of targets) {
         const body = computeAccountPatchBody(row, draftMerged(row._id), false, undefined);
@@ -368,7 +372,14 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         delete mergedEdits[row._id];
       }
       setEdits({ ...mergedEdits });
-      setStatus(`Saved ${saved} account(s)`);
+      const parts: string[] = [];
+      if (savedBook) {
+        parts.push("book risk & outlook");
+      }
+      if (saved > 0) {
+        parts.push(`${saved} account(s)`);
+      }
+      setStatus(parts.length > 0 ? `Saved ${parts.join(" · ")}` : "Saved");
       void refresh();
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Save failed");
@@ -447,7 +458,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         ) : null}
         <button
           className="cta cta-primary"
-          disabled={loading || !hasDirty}
+          disabled={loading || !hasAnythingDirty}
           onClick={() => void saveAllChanges()}
           type="button"
         >
@@ -477,70 +488,13 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         </article>
       ) : null}
 
-      {portfolio ? (
-        <article className="surface-card xf-widget section-card">
-          <h3 className="text-base font-semibold" style={{ marginBottom: "0.35rem" }}>
-            Book risk &amp; outlook
-          </h3>
-          <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-            Portfolio-wide desk context (separate from per-account risk / outlook in the table). Uses{" "}
-            <code className="font-mono text-xs">PATCH /api/admin/portfolios/…</code>.
-          </p>
-          <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem", alignItems: "flex-end" }}>
-            <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              Risk profile
-              <select
-                className="crud-input text-xs"
-                value={portfolioRiskDraft}
-                onChange={(e) =>
-                  setPortfolioRiskDraft(
-                    e.target.value === "" ? "" : (e.target.value as DeskRiskProfileOption)
-                  )
-                }
-              >
-                <option value="">—</option>
-                {DESK_RISK_PROFILE_OPTIONS.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label
-              className="status-text"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.25rem",
-                flex: "1 1 16rem",
-                minWidth: "12rem"
-              }}
-            >
-              Outlook (free text)
-              <input
-                className="crud-input text-xs"
-                value={portfolioOutlookDraft}
-                onChange={(e) => setPortfolioOutlookDraft(e.target.value)}
-                placeholder="Short desk note"
-              />
-            </label>
-            <button
-              type="button"
-              className="cta cta-secondary"
-              disabled={loading || !bookRiskOutlookDirty}
-              onClick={() => void savePortfolioBookFields()}
-            >
-              Save book fields
-            </button>
-          </div>
-        </article>
-      ) : null}
-
       <article className="surface-card xf-widget section-card">
         <h3>Accounts</h3>
         <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-          Edit rows below (risk profile and outlook slug per account — user-facing copy can concatenate these elsewhere),
-          then <strong>Save changes</strong> or save a single row with the pencil control.
+          <strong>Book risk &amp; outlook</strong> columns apply to the whole portfolio (one set of controls, shown on the
+          first row). <strong>Acct risk / Acct outlook</strong> are per custodian account. Watchlist has its own desk fields
+          under <strong>Manage watchlist</strong>. Use <strong>Save changes</strong> for book + all dirty account rows, or
+          the pencil to save one account.
         </p>
         <div className="crud-table-wrap">
           <table className="crud-table">
@@ -550,122 +504,32 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                 <th>Type</th>
                 <th>External ID</th>
                 <th>Cash balance</th>
-                <th>Risk</th>
-                <th>Outlook</th>
+                <th title="Portfolio-wide desk risk (PATCH book)">Book risk</th>
+                <th title="Portfolio-wide desk outlook note (PATCH book)">Book outlook</th>
+                <th title="Per-account risk profile">Acct risk</th>
+                <th title="Per-account outlook slug">Acct outlook</th>
                 <th>Default</th>
                 <th>Updated</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {accounts.map((row) => {
-                const m = mergeRow(row);
-                return (
-                  <tr key={row._id}>
-                    <td>
-                      <input
-                        className="crud-input"
-                        value={m.name ?? ""}
-                        onChange={(e) =>
-                          setEdits((prev) => ({
-                            ...prev,
-                            [row._id]: { ...prev[row._id], name: e.target.value }
-                          }))
-                        }
-                      />
-                    </td>
-                    <td>
-                      <select
-                        className="crud-input"
-                        value={m.type ?? row.type}
-                        onChange={(e) =>
-                          setEdits((prev) => ({
-                            ...prev,
-                            [row._id]: { ...prev[row._id], type: e.target.value }
-                          }))
-                        }
-                      >
-                        {ACCOUNT_TYPES.map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <input
-                        className="crud-input font-mono text-xs"
-                        value={m.extAccountId ?? ""}
-                        onChange={(e) =>
-                          setEdits((prev) => ({
-                            ...prev,
-                            [row._id]: { ...prev[row._id], extAccountId: e.target.value }
-                          }))
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="crud-input font-mono text-sm tabular-nums"
-                        type="text"
-                        inputMode="decimal"
-                        aria-label="Cash balance"
-                        value={
-                          cashFocusId === row._id
-                            ? (cashEditText[row._id] ?? "")
-                            : money.format(cashCellNumber(row, draft(row._id).cashBalance))
-                        }
-                        onFocus={() => {
-                          const n = cashCellNumber(row, draft(row._id).cashBalance);
-                          setCashFocusId(row._id);
-                          setCashEditText((prev) => ({
-                            ...prev,
-                            [row._id]: String(n)
-                          }));
-                        }}
-                        onChange={(e) => {
-                          setCashEditText((prev) => ({
-                            ...prev,
-                            [row._id]: e.target.value
-                          }));
-                        }}
-                        onBlur={() => {
-                          const raw = cashEditText[row._id] ?? "";
-                          const parsed = parseUsdCashInput(raw);
-                          setCashFocusId((id) => (id === row._id ? null : id));
-                          setCashEditText((prev) => {
-                            const next = { ...prev };
-                            delete next[row._id];
-                            return next;
-                          });
-                          if (parsed === undefined) {
-                            return;
-                          }
-                          const current = cashCellNumber(row, draft(row._id).cashBalance);
-                          if (parsed === current) {
-                            return;
-                          }
-                          setEdits((prev) => ({
-                            ...prev,
-                            [row._id]: { ...prev[row._id], cashBalance: parsed }
-                          }));
-                        }}
-                      />
-                    </td>
-                    <td style={{ minWidth: "8.5rem" }}>
+              {accounts.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="status-text text-sm">
+                    No accounts yet — add one below. You can still set book desk fields for this portfolio.
+                  </td>
+                  <td style={{ minWidth: "8.5rem", verticalAlign: "top" }}>
+                    {portfolio ? (
                       <select
                         className="crud-input text-xs"
-                        value={normalizeRiskValue(m.riskProfile) ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setEdits((prev) => ({
-                            ...prev,
-                            [row._id]: {
-                              ...prev[row._id],
-                              riskProfile: v === "" ? null : (v as DeskRiskProfileOption)
-                            }
-                          }));
-                        }}
+                        value={portfolioRiskDraft}
+                        onChange={(e) =>
+                          setPortfolioRiskDraft(
+                            e.target.value === "" ? "" : (e.target.value as DeskRiskProfileOption)
+                          )
+                        }
+                        aria-label="Book risk profile"
                       >
                         <option value="">—</option>
                         {DESK_RISK_PROFILE_OPTIONS.map((v) => (
@@ -674,69 +538,249 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                           </option>
                         ))}
                       </select>
-                    </td>
-                    <td style={{ minWidth: "9rem" }}>
-                      <select
+                    ) : (
+                      <span className="status-text">—</span>
+                    )}
+                  </td>
+                  <td style={{ minWidth: "10rem", verticalAlign: "top" }}>
+                    {portfolio ? (
+                      <input
                         className="crud-input text-xs"
-                        value={parseAccountOutlook(m.outlook) ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setEdits((prev) => ({
-                            ...prev,
-                            [row._id]: {
-                              ...prev[row._id],
-                              outlook: v === "" ? null : (v as AccountOutlook)
-                            }
-                          }));
-                        }}
-                      >
-                        <option value="">—</option>
-                        {accountOutlookValues.map((v) => (
-                          <option key={v} value={v}>
-                            {DESK_OUTLOOK_LABELS[v]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <label className="status-text" style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                        value={portfolioOutlookDraft}
+                        onChange={(e) => setPortfolioOutlookDraft(e.target.value)}
+                        placeholder="Short desk note"
+                        aria-label="Book outlook"
+                      />
+                    ) : (
+                      <span className="status-text">—</span>
+                    )}
+                  </td>
+                  <td colSpan={5} className="status-text text-xs">
+                    —
+                  </td>
+                </tr>
+              ) : (
+                accounts.map((row, idx) => {
+                  const m = mergeRow(row);
+                  const rs = accounts.length;
+                  return (
+                    <tr key={row._id}>
+                      <td>
                         <input
-                          type="checkbox"
-                          checked={Boolean(m.isDefault ?? row.isDefault)}
+                          className="crud-input"
+                          value={m.name ?? ""}
                           onChange={(e) =>
                             setEdits((prev) => ({
                               ...prev,
-                              [row._id]: { ...prev[row._id], isDefault: e.target.checked }
+                              [row._id]: { ...prev[row._id], name: e.target.value }
                             }))
                           }
                         />
-                        default
-                      </label>
-                    </td>
-                    <td className="text-xs">{new Date(row.updatedAt).toLocaleString()}</td>
-                    <td>
-                      <div className="tool-row" style={{ gap: "0.35rem" }}>
-                        <button
-                          type="button"
-                          className="cta cta-secondary"
-                          title="Save"
-                          onClick={() => void saveAccount(row)}
+                      </td>
+                      <td>
+                        <select
+                          className="crud-input"
+                          value={m.type ?? row.type}
+                          onChange={(e) =>
+                            setEdits((prev) => ({
+                              ...prev,
+                              [row._id]: { ...prev[row._id], type: e.target.value }
+                            }))
+                          }
                         >
-                          <EditIcon className="crud-icon" />
-                        </button>
-                        <button
-                          type="button"
-                          className="cta cta-secondary"
-                          title="Delete"
-                          onClick={() => void deleteAccount(row)}
+                          {ACCOUNT_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          className="crud-input font-mono text-xs"
+                          value={m.extAccountId ?? ""}
+                          onChange={(e) =>
+                            setEdits((prev) => ({
+                              ...prev,
+                              [row._id]: { ...prev[row._id], extAccountId: e.target.value }
+                            }))
+                          }
+                        />
+                      </td>
+                      <td>
+                        <input
+                          className="crud-input font-mono text-sm tabular-nums"
+                          type="text"
+                          inputMode="decimal"
+                          aria-label="Cash balance"
+                          value={
+                            cashFocusId === row._id
+                              ? (cashEditText[row._id] ?? "")
+                              : money.format(cashCellNumber(row, draft(row._id).cashBalance))
+                          }
+                          onFocus={() => {
+                            const n = cashCellNumber(row, draft(row._id).cashBalance);
+                            setCashFocusId(row._id);
+                            setCashEditText((prev) => ({
+                              ...prev,
+                              [row._id]: String(n)
+                            }));
+                          }}
+                          onChange={(e) => {
+                            setCashEditText((prev) => ({
+                              ...prev,
+                              [row._id]: e.target.value
+                            }));
+                          }}
+                          onBlur={() => {
+                            const raw = cashEditText[row._id] ?? "";
+                            const parsed = parseUsdCashInput(raw);
+                            setCashFocusId((id) => (id === row._id ? null : id));
+                            setCashEditText((prev) => {
+                              const next = { ...prev };
+                              delete next[row._id];
+                              return next;
+                            });
+                            if (parsed === undefined) {
+                              return;
+                            }
+                            const current = cashCellNumber(row, draft(row._id).cashBalance);
+                            if (parsed === current) {
+                              return;
+                            }
+                            setEdits((prev) => ({
+                              ...prev,
+                              [row._id]: { ...prev[row._id], cashBalance: parsed }
+                            }));
+                          }}
+                        />
+                      </td>
+                      {!portfolio ? (
+                        <>
+                          <td className="status-text text-xs">—</td>
+                          <td className="status-text text-xs">—</td>
+                        </>
+                      ) : idx === 0 ? (
+                        <>
+                          <td rowSpan={rs} style={{ minWidth: "8.5rem", verticalAlign: "top" }}>
+                            <select
+                              className="crud-input text-xs"
+                              value={portfolioRiskDraft}
+                              onChange={(e) =>
+                                setPortfolioRiskDraft(
+                                  e.target.value === "" ? "" : (e.target.value as DeskRiskProfileOption)
+                                )
+                              }
+                              aria-label="Book risk profile"
+                            >
+                              <option value="">—</option>
+                              {DESK_RISK_PROFILE_OPTIONS.map((v) => (
+                                <option key={v} value={v}>
+                                  {v}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="status-text text-xs" style={{ marginTop: "0.35rem", maxWidth: "11rem" }}>
+                              Same value for every account row (portfolio scope).
+                            </p>
+                          </td>
+                          <td rowSpan={rs} style={{ minWidth: "10rem", verticalAlign: "top" }}>
+                            <input
+                              className="crud-input text-xs"
+                              value={portfolioOutlookDraft}
+                              onChange={(e) => setPortfolioOutlookDraft(e.target.value)}
+                              placeholder="Short desk note"
+                              aria-label="Book outlook"
+                            />
+                          </td>
+                        </>
+                      ) : null}
+                      <td style={{ minWidth: "8.5rem" }}>
+                        <select
+                          className="crud-input text-xs"
+                          value={normalizeRiskValue(m.riskProfile) ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setEdits((prev) => ({
+                              ...prev,
+                              [row._id]: {
+                                ...prev[row._id],
+                                riskProfile: v === "" ? null : (v as DeskRiskProfileOption)
+                              }
+                            }));
+                          }}
                         >
-                          <DeleteIcon className="crud-icon" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                          <option value="">—</option>
+                          {DESK_RISK_PROFILE_OPTIONS.map((v) => (
+                            <option key={v} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ minWidth: "9rem" }}>
+                        <select
+                          className="crud-input text-xs"
+                          value={parseAccountOutlook(m.outlook) ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setEdits((prev) => ({
+                              ...prev,
+                              [row._id]: {
+                                ...prev[row._id],
+                                outlook: v === "" ? null : (v as AccountOutlook)
+                              }
+                            }));
+                          }}
+                        >
+                          <option value="">—</option>
+                          {accountOutlookValues.map((v) => (
+                            <option key={v} value={v}>
+                              {DESK_OUTLOOK_LABELS[v]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <label className="status-text" style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(m.isDefault ?? row.isDefault)}
+                            onChange={(e) =>
+                              setEdits((prev) => ({
+                                ...prev,
+                                [row._id]: { ...prev[row._id], isDefault: e.target.checked }
+                              }))
+                            }
+                          />
+                          default
+                        </label>
+                      </td>
+                      <td className="text-xs">{new Date(row.updatedAt).toLocaleString()}</td>
+                      <td>
+                        <div className="tool-row" style={{ gap: "0.35rem" }}>
+                          <button
+                            type="button"
+                            className="cta cta-secondary"
+                            title="Save"
+                            onClick={() => void saveAccount(row)}
+                          >
+                            <EditIcon className="crud-icon" />
+                          </button>
+                          <button
+                            type="button"
+                            className="cta cta-secondary"
+                            title="Delete"
+                            onClick={() => void deleteAccount(row)}
+                          >
+                            <DeleteIcon className="crud-icon" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
