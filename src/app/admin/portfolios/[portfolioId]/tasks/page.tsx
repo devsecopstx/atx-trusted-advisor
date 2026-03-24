@@ -3,13 +3,13 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-import { AdminPortfolioWatchlistConsole } from "../../ui/admin-portfolio-watchlist-console";
+import { AdminPortfolioTasksConsole } from "../../ui/admin-portfolio-tasks-console";
 
 type PageProps = {
   params: Promise<{ portfolioId: string }>;
 };
 
-export default async function AdminPortfolioWatchlistPage({ params }: PageProps) {
+export default async function AdminPortfolioTasksPage({ params }: PageProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
@@ -20,7 +20,7 @@ export default async function AdminPortfolioWatchlistPage({ params }: PageProps)
   const { portfolioId } = await params;
   return (
     <div className="core-shell">
-      <AdminPortfolioWatchlistConsole portfolioId={portfolioId} />
+      <AdminPortfolioTasksConsole portfolioId={portfolioId} />
     </div>
   );
 }

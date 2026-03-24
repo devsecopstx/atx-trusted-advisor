@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "@/app/admin/lib/broker-import-description";
+
 import { AdminPortfoliosCrud } from "./admin-portfolios-crud";
 
 export function PortfolioConsole() {
@@ -9,12 +11,10 @@ export function PortfolioConsole() {
     <section className="panel stack-gap">
       <article className="surface-card xf-widget section-card">
         <h3 className="text-sm font-semibold" style={{ marginBottom: "0.35rem" }}>
-          Broker holdings import
+          Broker import
         </h3>
         <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-          CSV preview → account mapping → stock lots: open the <strong>Broker import</strong> hub, or jump from{" "}
-          <strong>Accounts</strong> with a portfolio pre-selected (same API{" "}
-          <code className="font-mono text-xs">/api/admin/import/broker</code>).
+          {ADMIN_BROKER_IMPORT_DESCRIPTION}
         </p>
         <Link className="cta cta-primary" href="/admin/broker-import">
           Open broker import hub

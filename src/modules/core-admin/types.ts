@@ -72,6 +72,8 @@ export type ApprovedUserListItem = {
 export type ScheduledTask = {
   _id?: ObjectId;
   tenantId?: ObjectId;
+  /** When set, task is scoped to this portfolio (admin portfolio tasks console). */
+  portfolioId?: ObjectId;
   name: string;
   category: "sync-broker" | "rebalance" | "compliance" | "notifications" | "user-history";
   scheduleCron: string;

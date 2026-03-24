@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "./lib/broker-import-description";
+
 type AdminFunction = {
   href: string;
   icon:
@@ -54,7 +56,7 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     href: "/admin/broker-import",
     icon: "batch",
     title: "Broker import",
-    description: "Merrill / Fidelity holdings CSV → map to core accounts (preview, apply, dry-run)."
+    description: ADMIN_BROKER_IMPORT_DESCRIPTION
   },
   {
     href: "/admin/tasks",
@@ -65,8 +67,8 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
   {
     href: "/admin/personas",
     icon: "brain",
-    title: "xPersona Config",
-    description: "Create and manage xchat personas and default scope presets."
+    title: "Manage xPersonas",
+    description: "Create and edit xChat personas, models, collections, and default scope presets."
   },
   {
     href: "/admin/rag-files",

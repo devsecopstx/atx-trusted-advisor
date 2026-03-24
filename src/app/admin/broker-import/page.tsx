@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
+import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "../lib/broker-import-description";
 import { BrokerHoldingsImportPanel } from "../portfolios/ui/broker-holdings-import-panel";
 
 type PageProps = {
@@ -38,13 +39,9 @@ export default async function AdminBrokerImportPage({ searchParams }: PageProps)
         <article className="surface-card xf-widget section-card">
           <p className="eyebrow">atxfinance core admin</p>
           <h1 className="hero-title" style={{ fontSize: "1.35rem" }}>
-            Broker holdings import
+            Broker import
           </h1>
-          <p className="status-text">
-            Merrill / Fidelity holdings CSV → map to core accounts (
-            <code className="font-mono text-xs">POST /api/admin/import/broker</code>
-            ). Optional <code className="font-mono text-xs">?portfolioId=</code> locks the book.
-          </p>
+          <p className="status-text">{ADMIN_BROKER_IMPORT_DESCRIPTION}</p>
         </article>
         <BrokerHoldingsImportPanel lockedPortfolioId={portfolioId || undefined} />
       </section>

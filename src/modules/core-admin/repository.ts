@@ -23,7 +23,6 @@ import {
     type WatchlistSymbolImportEntry,
     accountTypeValues
 } from "@/modules/core-admin/types";
-import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
 import { MAX_WATCHLIST_SYMBOLS } from "@/modules/watchlist/constants";
 
@@ -46,8 +45,7 @@ const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 /** Default broker bucket on new portfolios for future trader cohort grouping. */
 export const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "defaultaccount";
-/** Canonical external ref for the default account row (broker CSV / tooling alignment). */
-const DEFAULT_EXT_ACCOUNT_XREF = "ext_account_xref";
+const DEFAULT_ACCOUNT_REF = "fidelity-default-account";
 /** Default paper cash for provision + read-time coalesce when Mongo field is missing. */
 export const DEFAULT_ACCOUNT_CASH_BALANCE = 25_000;
 const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
@@ -156,10 +154,6 @@ function userIdQuery(userId: string): { userId: string | { $in: (string | Object
     return { userId: { $in: [userId, new ObjectId(userId)] } };
   }
   return { userId };
-}
-
-function portfolioUserIdString(portfolio: Pick<Portfolio, "userId">): string {
-  return normalizeMongoUserIdHex(portfolio.userId) ?? "";
 }
 
 function withTenantScope(
@@ -570,33 +564,123 @@ export async function listApprovedUsers(
 export async function listScheduledTasks(options?: {
   limit?: number;
   tenantId?: string;
+  /** When set, returns only tasks bound to this portfolio. */
+  portfolioId?: string;
 }): Promise<ScheduledTask[]> {
   const limit = options?.limit ?? 50;
   const db = await getDb();
+  const portfolioFilter =
+    options?.portfolioId && ObjectId.isValid(options.portfolioId)
+      ? { portfolioId: new ObjectId(options.portfolioId) }
+      : {
+          $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
+        };
   return db
     .collection<ScheduledTask>(collections.scheduledTasks)
-    .find(withTenantScope({}, options?.tenantId))
+    .find(withTenantScope(portfolioFilter, options?.tenantId))
     .sort({ name: 1 })
     .limit(limit)
     .toArray();
 }
 
 export async function createScheduledTask(
-  payload: Omit<ScheduledTask, "_id" | "tenantId"> & {
+  payload: Omit<ScheduledTask, "_id" | "tenantId" | "portfolioId"> & {
     tenantId?: string;
+    portfolioId?: string;
   }
 ): Promise<ScheduledTask> {
   const db = await getDb();
   const now = new Date();
+  const portfolioOid =
+    payload.portfolioId && ObjectId.isValid(payload.portfolioId)
+      ? new ObjectId(payload.portfolioId)
+      : undefined;
   const document: ScheduledTask = {
-    ...payload,
+    name: payload.name,
+    category: payload.category,
+    scheduleCron: payload.scheduleCron,
+    enabled: payload.enabled,
+    runTimeoutSeconds: payload.runTimeoutSeconds,
+    maxRetries: payload.maxRetries,
+    lastRunAt: payload.lastRunAt,
+    nextRunAt: payload.nextRunAt ?? new Date(now.getTime() + 5 * 60 * 1000),
     tenantId: toTenantObjectId(payload.tenantId),
-    nextRunAt: payload.nextRunAt ?? new Date(now.getTime() + 5 * 60 * 1000)
+    ...(portfolioOid ? { portfolioId: portfolioOid } : {})
   };
   const result = await db
     .collection<ScheduledTask>(collections.scheduledTasks)
     .insertOne(document);
   return { ...document, _id: result.insertedId };
+}
+
+export async function updateScheduledTask(input: {
+  taskId: string;
+  tenantId?: string;
+  expectedPortfolioId?: string;
+  name?: string;
+  category?: ScheduledTask["category"];
+  scheduleCron?: string;
+  enabled?: boolean;
+  nextRunAt?: Date | null;
+}): Promise<ScheduledTask | null> {
+  const existing = await getScheduledTaskById(input.taskId, { tenantId: input.tenantId });
+  if (!existing?._id) {
+    return null;
+  }
+  if (input.expectedPortfolioId !== undefined) {
+    const want = input.expectedPortfolioId;
+    const got = existing.portfolioId?.toHexString();
+    if (got !== want) {
+      return null;
+    }
+  }
+  const db = await getDb();
+  const $set: Record<string, unknown> = {};
+  if (input.name !== undefined) {
+    $set.name = input.name.trim().slice(0, 200);
+  }
+  if (input.category !== undefined) {
+    $set.category = input.category;
+  }
+  if (input.scheduleCron !== undefined) {
+    $set.scheduleCron = input.scheduleCron.trim();
+  }
+  if (input.enabled !== undefined) {
+    $set.enabled = input.enabled;
+  }
+  if (input.nextRunAt !== undefined) {
+    $set.nextRunAt = input.nextRunAt;
+  }
+  if (Object.keys($set).length === 0) {
+    return existing;
+  }
+  await db.collection<ScheduledTask>(collections.scheduledTasks).updateOne(
+    withTenantScope({ _id: existing._id }, input.tenantId),
+    { $set }
+  );
+  return getScheduledTaskById(input.taskId, { tenantId: input.tenantId });
+}
+
+export async function deleteScheduledTask(input: {
+  taskId: string;
+  tenantId?: string;
+  expectedPortfolioId?: string;
+}): Promise<boolean> {
+  const existing = await getScheduledTaskById(input.taskId, { tenantId: input.tenantId });
+  if (!existing?._id) {
+    return false;
+  }
+  if (input.expectedPortfolioId !== undefined) {
+    const got = existing.portfolioId?.toHexString();
+    if (got !== input.expectedPortfolioId) {
+      return false;
+    }
+  }
+  const db = await getDb();
+  const res = await db.collection<ScheduledTask>(collections.scheduledTasks).deleteOne(
+    withTenantScope({ _id: existing._id }, input.tenantId)
+  );
+  return (res.deletedCount ?? 0) === 1;
 }
 
 export async function getScheduledTaskById(
@@ -1253,74 +1337,61 @@ export async function mutatePortfolioWatchlistSymbols(
 }
 
 /**
- * Ensures `portfolio_watchlists` has a row for this portfolio (global-admin back office).
- * Creates a default list with {@link DEFAULT_WATCHLIST_SYMBOL} when missing.
+ * Ensures a watchlist row exists for the portfolio (upsert with default symbol) so admin PATCH can mutate.
  */
-export async function adminEnsureWatchlistForPortfolio(portfolioId: string): Promise<Watchlist | null> {
+export async function adminEnsurePortfolioWatchlist(portfolioId: string): Promise<Watchlist | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(portfolioId)) {
+    return null;
+  }
   const portfolio = await adminGetPortfolioById(portfolioId);
   if (!portfolio?._id) {
     return null;
   }
-  const userId = portfolioUserIdString(portfolio);
-  if (!userId) {
-    return null;
-  }
+  const ownerId = portfolioOwnerUserIdString(portfolio.userId);
   const tenantId = portfolioTenantIdString(portfolio);
-  const existing = await getPortfolioWatchlist({ userId, portfolioId, tenantId });
+  const existing = await getPortfolioWatchlist({
+    userId: ownerId,
+    portfolioId,
+    tenantId
+  });
   if (existing) {
     return existing;
   }
-
-  await ensurePortfolioIndexes();
   const db = await getDb();
   const now = new Date();
   const tenantObjectId = toTenantObjectId(tenantId);
-  const portfolioOid = portfolio._id;
-  const watchlistInsertFilter = strictWriteTenantFilter(
-    {
-      userId,
-      portfolioId: portfolioOid
-    },
-    tenantId
-  );
+  const mergedWatchlistSymbols = normalizeWatchlistDocumentSymbols([], [DEFAULT_WATCHLIST_SYMBOL]);
   const watchlistSetFields = {
     name: DEFAULT_WATCHLIST_NAME,
-    symbols: [{ symbol: DEFAULT_WATCHLIST_SYMBOL, addedAt: now }],
-    isDefault: true,
+    symbols: mergedWatchlistSymbols,
+    isDefault: portfolio.isDefault === true,
     updatedAt: now,
     ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
   };
+  const watchlistInsertFilter = strictWriteTenantFilter(
+    {
+      userId: ownerId,
+      portfolioId: portfolio._id
+    },
+    tenantId
+  );
   await db.collection<Watchlist>(collections.watchlists).updateOne(
     watchlistInsertFilter,
     {
       $setOnInsert: {
-        userId,
-        portfolioId: portfolioOid,
+        userId: ownerId,
+        portfolioId: portfolio._id,
         createdAt: now
       },
       $set: watchlistSetFields
     },
     { upsert: true }
   );
-  return getPortfolioWatchlist({ userId, portfolioId, tenantId });
-}
-
-/** Global-admin watchlist PATCH: resolves portfolio owner + tenant from `portfolioId`. */
-export async function adminMutatePortfolioWatchlist(
-  input: Omit<MutatePortfolioWatchlistInput, "userId" | "tenantId">
-): Promise<Watchlist | null> {
-  const portfolio = await adminGetPortfolioById(input.portfolioId);
-  if (!portfolio?._id) {
-    return null;
-  }
-  const userId = portfolioUserIdString(portfolio);
-  if (!userId) {
-    return null;
-  }
-  return mutatePortfolioWatchlistSymbols({
-    ...input,
-    userId,
-    tenantId: portfolioTenantIdString(portfolio)
+  return getPortfolioWatchlist({
+    userId: ownerId,
+    portfolioId,
+    tenantId
   });
 }
 
@@ -1430,7 +1501,7 @@ export async function provisionDefaultPortfolioForUser(
     );
   }
 
-  const extAccountId = DEFAULT_EXT_ACCOUNT_XREF;
+  const extAccountId = DEFAULT_ACCOUNT_REF;
   const accountLookupFilter = withTenantScope(
     {
       ...userIdQuery(input.userId),
@@ -1855,6 +1926,10 @@ function portfolioTenantIdString(p: Portfolio): string | undefined {
   return p.tenantId ? p.tenantId.toHexString() : undefined;
 }
 
+function portfolioOwnerUserIdString(userId: Portfolio["userId"]): string {
+  return typeof userId === "string" ? userId : userId.toHexString();
+}
+
 export async function adminGetPortfolioById(portfolioId: string): Promise<Portfolio | null> {
   await ensurePortfolioIndexes();
   if (!ObjectId.isValid(portfolioId)) {
@@ -1886,7 +1961,7 @@ export async function adminListPortfoliosWithStats(input: {
         return { ...p, accountCount: 0, totalCashBalance: 0 };
       }
       const accounts = await listPortfolioAccounts({
-        userId: portfolioUserIdString(p),
+        userId: portfolioOwnerUserIdString(p.userId),
         portfolioId: p._id.toHexString(),
         tenantId: portfolioTenantIdString(p)
       });
@@ -1906,7 +1981,7 @@ export async function adminUpdatePortfolio(input: {
   name?: string;
   ext_broker_ref?: string | null;
   broker_type?: AccountType | null;
-  riskProfile?: "conservative" | "balanced" | "growth" | null;
+  riskProfile?: Portfolio["riskProfile"] | null;
   outlook?: string | null;
   /** When true, clears `isDefault` on other portfolios for the same user (and tenant scope). */
   isDefault?: boolean;
@@ -1936,16 +2011,15 @@ export async function adminUpdatePortfolio(input: {
     }
   }
   if (input.riskProfile !== undefined) {
-    if (input.riskProfile === null) {
-      fieldSet.riskProfile = null;
-    } else {
-      const rp = input.riskProfile;
-      fieldSet.riskProfile = ["conservative", "balanced", "growth"].includes(rp) ? rp : null;
-    }
+    fieldSet.riskProfile = input.riskProfile;
   }
   if (input.outlook !== undefined) {
-    const v = input.outlook?.trim() ?? "";
-    fieldSet.outlook = v.length > 0 ? v.slice(0, 4000) : null;
+    if (input.outlook === null) {
+      fieldSet.outlook = null;
+    } else {
+      const o = input.outlook.trim();
+      fieldSet.outlook = o.length > 0 ? o.slice(0, 4000) : null;
+    }
   }
   if (Object.keys(fieldSet).length > 0) {
     await db.collection<Portfolio>(collections.portfolios).updateOne(
@@ -1958,7 +2032,7 @@ export async function adminUpdatePortfolio(input: {
     await db.collection<Portfolio>(collections.portfolios).updateMany(
       strictWriteTenantFilter(
         {
-          ...userIdQuery(portfolioUserIdString(existing)),
+          ...userIdQuery(portfolioOwnerUserIdString(existing.userId)),
           isDefault: true,
           _id: { $ne: existing._id }
         },
@@ -2022,7 +2096,7 @@ export async function adminDeletePortfolio(portfolioId: string): Promise<boolean
   }
   const db = await getDb();
   const pid = portfolio._id;
-  const uid = userIdQuery(portfolioUserIdString(portfolio));
+  const uid = userIdQuery(portfolioOwnerUserIdString(portfolio.userId));
   const baseFilter: Record<string, unknown> = { portfolioId: pid, ...uid };
   await db.collection<Position>(collections.positions).deleteMany(baseFilter);
   await db.collection<Recommendation>(collections.recommendations).deleteMany(baseFilter);
@@ -2038,7 +2112,7 @@ export async function adminListAccountsForPortfolio(portfolioId: string): Promis
     return [];
   }
   return listPortfolioAccounts({
-    userId: portfolioUserIdString(p),
+    userId: portfolioOwnerUserIdString(p.userId),
     portfolioId: p._id.toHexString(),
     tenantId: portfolioTenantIdString(p)
   });
@@ -2056,7 +2130,7 @@ export async function adminInsertAccountForPortfolio(input: {
     return null;
   }
   return insertPortfolioAccountForUser({
-    userId: portfolioUserIdString(portfolio),
+    userId: portfolioOwnerUserIdString(portfolio.userId),
     tenantId: portfolioTenantIdString(portfolio),
     portfolioId: portfolio._id.toHexString(),
     name: input.name,
@@ -2080,8 +2154,9 @@ export async function adminUpdatePortfolioAccount(input: {
     return null;
   }
   const tenantId = portfolioTenantIdString(portfolio);
+  const ownerId = portfolioOwnerUserIdString(portfolio.userId);
   const base = await updatePortfolioAccountForUser({
-    userId: portfolioUserIdString(portfolio),
+    userId: ownerId,
     tenantId,
     portfolioId: input.portfolioId,
     accountId: input.accountId,
@@ -2098,7 +2173,7 @@ export async function adminUpdatePortfolioAccount(input: {
   const filter = strictWriteTenantFilter(
     {
       _id: aid,
-      ...userIdQuery(portfolioUserIdString(portfolio)),
+      ...userIdQuery(ownerId),
       portfolioId: pid
     },
     tenantId
@@ -2113,7 +2188,7 @@ export async function adminUpdatePortfolioAccount(input: {
   }
   if (input.isDefault === true) {
     await db.collection<Account>(collections.accounts).updateMany(
-      strictWriteTenantFilter({ ...userIdQuery(portfolioUserIdString(portfolio)), portfolioId: pid }, tenantId),
+      strictWriteTenantFilter({ ...userIdQuery(ownerId), portfolioId: pid }, tenantId),
       { $set: { isDefault: false, updatedAt: new Date() } }
     );
     $set.isDefault = true;
@@ -2134,8 +2209,9 @@ export async function adminDeleteAccountForPortfolio(input: {
     return false;
   }
   const tenantId = portfolioTenantIdString(portfolio);
+  const ownerId = portfolioOwnerUserIdString(portfolio.userId);
   const accounts = await listPortfolioAccounts({
-    userId: portfolioUserIdString(portfolio),
+    userId: ownerId,
     portfolioId: portfolio._id.toHexString(),
     tenantId
   });
@@ -2151,7 +2227,7 @@ export async function adminDeleteAccountForPortfolio(input: {
   const aid = new ObjectId(input.accountId);
   const scope = withTenantScope(
     {
-      ...userIdQuery(portfolioUserIdString(portfolio)),
+      ...userIdQuery(ownerId),
       portfolioId: pid,
       accountId: aid
     },
@@ -2162,7 +2238,7 @@ export async function adminDeleteAccountForPortfolio(input: {
     strictWriteTenantFilter(
       {
         _id: aid,
-        ...userIdQuery(portfolioUserIdString(portfolio)),
+        ...userIdQuery(ownerId),
         portfolioId: pid
       },
       tenantId
@@ -2176,7 +2252,7 @@ export async function adminDeleteAccountForPortfolio(input: {
     if (next?._id) {
       await db.collection<Account>(collections.accounts).updateOne(
         strictWriteTenantFilter(
-          { _id: next._id, ...userIdQuery(portfolioUserIdString(portfolio)), portfolioId: pid },
+          { _id: next._id, ...userIdQuery(ownerId), portfolioId: pid },
           tenantId
         ),
         { $set: { isDefault: true, updatedAt: new Date() } }

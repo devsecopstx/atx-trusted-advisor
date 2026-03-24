@@ -3,16 +3,13 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import {
-    adminEnsureWatchlistForPortfolio,
-    adminGetPortfolioById,
-    adminMutatePortfolioWatchlist
+  adminEnsurePortfolioWatchlist,
+  adminGetPortfolioById,
+  getPortfolioWatchlist,
+  mutatePortfolioWatchlistSymbols
 } from "@/modules/core-admin/repository";
 import type { Watchlist, WatchlistSymbol } from "@/modules/core-admin/types";
-import {
-    LOOKUP_ROUTE,
-    lookupSymbols,
-    type SymbolLookupResult
-} from "@/modules/watchlist/yahoo-symbol-lookup";
+import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 
 type RouteContext = {
   params: Promise<{ portfolioId: string }>;
@@ -20,15 +17,14 @@ type RouteContext = {
 
 const watchlistAddEntrySchema = z.object({
   symbol: z.string().trim().min(1).max(32),
-  lineType: z.union([z.string().trim().max(128), z.null()]).optional(),
-  strategy: z.union([z.string().trim().max(512), z.null()]).optional(),
-  quantity: z.union([z.number().finite(), z.null()]).optional(),
-  entryPrice: z.union([z.number().finite(), z.null()]).optional()
+  lineType: z.string().trim().max(128).optional(),
+  strategy: z.string().trim().max(512).optional(),
+  quantity: z.number().finite().optional(),
+  entryPrice: z.number().finite().optional()
 });
 
 const patchBodySchema = z
   .object({
-    name: z.string().trim().min(1).max(128).optional(),
     addSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
     addEntries: z.array(watchlistAddEntrySchema).max(20).optional(),
     removeSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
@@ -36,12 +32,11 @@ const patchBodySchema = z
   })
   .refine(
     (data) =>
-      data.name !== undefined ||
       Boolean(data.addSymbols?.length) ||
       Boolean(data.addEntries?.length) ||
       Boolean(data.removeSymbols?.length) ||
       data.dedupe === true,
-    { message: "Provide name, addSymbols, addEntries, removeSymbols, or dedupe: true" }
+    { message: "Provide addSymbols, addEntries, removeSymbols, or dedupe: true" }
   );
 
 function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
@@ -55,49 +50,27 @@ function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
   };
 }
 
-async function buildJsonPayload(
-  watchlist: Watchlist,
-  quotes: boolean
-): Promise<Record<string, unknown>> {
-  const symbols = (watchlist.symbols ?? []).map(watchlistSymbolToJsonRow);
-  const symbolsDetailed = symbols;
+function portfolioTenantIdStringFromPortfolio(p: Awaited<ReturnType<typeof adminGetPortfolioById>>): string | undefined {
+  if (!p?._id) return undefined;
+  return p.tenantId?.toHexString();
+}
 
-  let symbolsWithQuotes:
-    | Array<{
-        symbol: string;
-        addedAt: string;
-        lineType?: string;
-        strategy?: string;
-        quantity?: number;
-        entryPrice?: number;
-        quote: SymbolLookupResult | null;
-      }>
-    | undefined;
-
-  const rawSymbols = watchlist.symbols ?? [];
-  if (quotes) {
-    const map = await lookupSymbols(rawSymbols.map((s) => s.symbol));
-    symbolsWithQuotes = rawSymbols.map((s) => ({
-      ...watchlistSymbolToJsonRow(s),
-      quote: map.get(s.symbol) ?? null
-    }));
-  }
-
+function serializeWatchlistPayload(watchlist: Watchlist) {
   return {
     data: {
-      ...watchlist,
-      symbols,
-      symbolsDetailed,
-      ...(symbolsWithQuotes ? { symbolsWithQuotes } : {})
-    },
-    metadata: {
-      lookupRoute: LOOKUP_ROUTE,
-      symbolLookupEnabled: quotes
+      _id: watchlist._id?.toHexString(),
+      userId: watchlist.userId,
+      portfolioId: watchlist.portfolioId.toHexString(),
+      name: watchlist.name,
+      isDefault: watchlist.isDefault,
+      symbols: (watchlist.symbols ?? []).map(watchlistSymbolToJsonRow),
+      createdAt: watchlist.createdAt.toISOString(),
+      updatedAt: watchlist.updatedAt.toISOString()
     }
   };
 }
 
-export async function GET(request: Request, context: RouteContext) {
+export async function GET(_request: Request, context: RouteContext) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -109,14 +82,20 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
   }
 
-  const quotes = new URL(request.url).searchParams.get("quotes") === "1";
-  const watchlist = await adminEnsureWatchlistForPortfolio(portfolioId);
+  const ownerUserId = normalizeMongoUserIdHex(portfolio.userId) ?? "";
+  let watchlist = await getPortfolioWatchlist({
+    userId: ownerUserId,
+    portfolioId,
+    tenantId: portfolioTenantIdStringFromPortfolio(portfolio)
+  });
+  if (!watchlist) {
+    watchlist = await adminEnsurePortfolioWatchlist(portfolioId);
+  }
   if (!watchlist) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
 
-  const payload = await buildJsonPayload(watchlist, quotes);
-  return NextResponse.json(payload);
+  return NextResponse.json(serializeWatchlistPayload(watchlist));
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
@@ -131,6 +110,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
   }
 
+  const tenantId = portfolioTenantIdStringFromPortfolio(portfolio);
   let json: unknown;
   try {
     json = await request.json();
@@ -146,11 +126,23 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  await adminEnsureWatchlistForPortfolio(portfolioId);
-
-  const updated = await adminMutatePortfolioWatchlist({
+  const ownerUserId = normalizeMongoUserIdHex(portfolio.userId) ?? "";
+  let ensured = await getPortfolioWatchlist({
+    userId: ownerUserId,
     portfolioId,
-    name: parsed.data.name,
+    tenantId
+  });
+  if (!ensured) {
+    ensured = await adminEnsurePortfolioWatchlist(portfolioId);
+  }
+  if (!ensured) {
+    return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
+  }
+
+  const updated = await mutatePortfolioWatchlistSymbols({
+    userId: ownerUserId,
+    portfolioId,
+    tenantId,
     addSymbols: parsed.data.addSymbols,
     addEntries: parsed.data.addEntries,
     removeSymbols: parsed.data.removeSymbols,
@@ -161,7 +153,5 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
 
-  const quotes = new URL(request.url).searchParams.get("quotes") === "1";
-  const payload = await buildJsonPayload(updated, quotes);
-  return NextResponse.json(payload);
+  return NextResponse.json(serializeWatchlistPayload(updated));
 }

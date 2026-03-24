@@ -377,7 +377,10 @@ export function AdminPortfoliosCrud() {
                   <td className="text-xs">{new Date(row.updatedAt).toLocaleString()}</td>
                   <td>
                     <div className="tool-row" style={{ gap: "0.35rem", flexWrap: "wrap" }}>
-                      <Link className="cta cta-secondary" href={`/admin/accounts/${row._id}`}>
+                      <Link
+                        className="cta cta-secondary"
+                        href={`/admin/accounts/${encodeURIComponent(row._id)}`}
+                      >
                         Manage accounts
                       </Link>
                       <Link
@@ -385,6 +388,12 @@ export function AdminPortfoliosCrud() {
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/watchlist`}
                       >
                         Manage watchlist
+                      </Link>
+                      <Link
+                        className="cta cta-secondary"
+                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/tasks`}
+                      >
+                        Manage tasks
                       </Link>
                       <button
                         type="button"

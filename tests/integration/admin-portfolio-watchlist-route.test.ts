@@ -8,12 +8,22 @@ const authMocks = vi.hoisted(() => ({
 
 const repoMocks = vi.hoisted(() => ({
   adminGetPortfolioById: vi.fn(),
-  adminEnsureWatchlistForPortfolio: vi.fn(),
-  adminMutatePortfolioWatchlist: vi.fn()
+  getPortfolioWatchlist: vi.fn(),
+  adminEnsurePortfolioWatchlist: vi.fn(),
+  mutatePortfolioWatchlistSymbols: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
-vi.mock("@/modules/core-admin/repository", () => repoMocks);
+vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/core-admin/repository")>();
+  return {
+    ...actual,
+    adminGetPortfolioById: repoMocks.adminGetPortfolioById,
+    getPortfolioWatchlist: repoMocks.getPortfolioWatchlist,
+    adminEnsurePortfolioWatchlist: repoMocks.adminEnsurePortfolioWatchlist,
+    mutatePortfolioWatchlistSymbols: repoMocks.mutatePortfolioWatchlistSymbols
+  };
+});
 
 import { GET as getAdminWatchlist, PATCH as patchAdminWatchlist } from "@/app/api/admin/portfolios/[portfolioId]/watchlist/route";
 
@@ -54,8 +64,9 @@ describe("/api/admin/portfolios/[portfolioId]/watchlist", () => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    repoMocks.adminEnsureWatchlistForPortfolio.mockResolvedValue(mockWatchlist());
-    repoMocks.adminMutatePortfolioWatchlist.mockResolvedValue(mockWatchlist());
+    repoMocks.getPortfolioWatchlist.mockResolvedValue(mockWatchlist());
+    repoMocks.adminEnsurePortfolioWatchlist.mockResolvedValue(mockWatchlist());
+    repoMocks.mutatePortfolioWatchlistSymbols.mockResolvedValue(mockWatchlist());
   });
 
   it("GET returns 404 when portfolio missing", async () => {
@@ -73,10 +84,14 @@ describe("/api/admin/portfolios/[portfolioId]/watchlist", () => {
     expect(json.data.name).toBe("DefaultWatchlist");
     expect(json.data.symbols).toHaveLength(1);
     expect(json.data.symbols[0]?.symbol).toBe("TSLA");
-    expect(repoMocks.adminEnsureWatchlistForPortfolio).toHaveBeenCalledWith(portfolioId);
+    expect(repoMocks.getPortfolioWatchlist).toHaveBeenCalledWith({
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId,
+      tenantId: undefined
+    });
   });
 
-  it("PATCH delegates to adminMutatePortfolioWatchlist", async () => {
+  it("PATCH delegates to mutatePortfolioWatchlistSymbols", async () => {
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -84,8 +99,9 @@ describe("/api/admin/portfolios/[portfolioId]/watchlist", () => {
     });
     const res = await patchAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
     expect(res.status).toBe(200);
-    expect(repoMocks.adminMutatePortfolioWatchlist).toHaveBeenCalledWith(
+    expect(repoMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
       expect.objectContaining({
+        userId: "507f1f77bcf86cd799439011",
         portfolioId,
         addSymbols: ["AAPL"]
       })

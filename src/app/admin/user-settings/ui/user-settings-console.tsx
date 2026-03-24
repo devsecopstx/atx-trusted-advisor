@@ -560,7 +560,7 @@ export function UserSettingsConsole() {
                   </button>
                 </div>
                 <p className="status-text">
-                  List includes draft and published personas from Admin → Personas. Assigning a persona requires a{" "}
+                  List includes draft and published personas from Admin Hub → Manage xPersonas. Assigning a persona requires a{" "}
                   <strong>published</strong> xPersona — publish first, then assign.
                 </p>
                 <p className="status-text">This controls xChat ask persona routing for the selected user.</p>

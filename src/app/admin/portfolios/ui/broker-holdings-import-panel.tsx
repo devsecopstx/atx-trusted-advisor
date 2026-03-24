@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "@/app/admin/lib/broker-import-description";
 import { parseJson } from "@/app/admin/ui/http";
 
 type PortfolioOption = {
@@ -198,10 +199,9 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
 
   return (
     <article className="surface-card xf-widget section-card">
-      <h3>Broker holdings import</h3>
+      <h3>Broker import</h3>
       <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-        CSV import maps broker accounts to core accounts for the selected portfolio. Same contract as{" "}
-        <code className="font-mono text-xs">POST /api/admin/import/broker</code>.
+        {ADMIN_BROKER_IMPORT_DESCRIPTION}
       </p>
       {lockedPortfolioId ? (
         <p className="status-text font-mono text-xs" style={{ marginBottom: "0.75rem" }}>

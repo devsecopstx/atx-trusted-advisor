@@ -492,7 +492,7 @@ export function WatchlistConsole({
         setMutating(false);
       }
     },
-    [editMode, portfolioId, rows, watchlistBaseUrl]
+    [editMode, rows, watchlistBaseUrl]
   );
 
   const displayRows = editMode ? draftRows : rows;

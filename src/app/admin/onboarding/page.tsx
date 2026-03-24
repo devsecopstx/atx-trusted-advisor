@@ -4,7 +4,14 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-export default async function AdminOnboardingPage() {
+import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "../lib/broker-import-description";
+import { BrokerHoldingsImportPanel } from "../portfolios/ui/broker-holdings-import-panel";
+
+type PageProps = {
+  searchParams: Promise<{ portfolioId?: string }>;
+};
+
+export default async function AdminOnboardingPage({ searchParams }: PageProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login?next=/admin/onboarding");
@@ -13,39 +20,25 @@ export default async function AdminOnboardingPage() {
     redirect("/admin?error=forbidden");
   }
 
+  const sp = await searchParams;
+  const lockedPortfolioId = typeof sp.portfolioId === "string" ? sp.portfolioId.trim() : undefined;
+
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
         <p className="eyebrow">atxfinance core admin</p>
-        <h1 className="hero-title">Onboarding</h1>
-        <p className="hero-copy">
-          Broker <strong>holdings</strong> CSV import lives on the dedicated{" "}
-          <Link className="login-xoptions-link" href="/admin/broker-import">
-            Broker import
-          </Link>{" "}
-          hub (<code className="font-mono text-xs">POST /api/admin/import/broker</code>). Ensure portfolios and accounts
-          exist under{" "}
-          <Link className="login-xoptions-link" href="/admin/accounts">
-            Accounts
-          </Link>{" "}
-          or{" "}
+        <h1 className="hero-title">Broker import</h1>
+        <p className="hero-copy">{ADMIN_BROKER_IMPORT_DESCRIPTION}</p>
+        <p className="hero-copy" style={{ marginTop: "0.75rem" }}>
+          Ensure portfolios and accounts exist under{" "}
           <Link className="login-xoptions-link" href="/admin/portfolios">
             Portfolios
           </Link>{" "}
           before importing.
         </p>
-        <div className="tool-row" style={{ marginTop: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
-          <Link className="cta cta-primary" href="/admin/broker-import">
-            Broker import hub
-          </Link>
-          <Link className="cta cta-secondary" href="/admin/accounts">
-            Accounts
-          </Link>
-          <Link className="cta cta-secondary" href="/admin/portfolios">
-            Portfolios
-          </Link>
-        </div>
       </section>
+
+      <BrokerHoldingsImportPanel lockedPortfolioId={lockedPortfolioId || undefined} />
     </div>
   );
 }

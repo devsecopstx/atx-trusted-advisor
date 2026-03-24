@@ -137,8 +137,8 @@ export function AdminRiskOutlookPreferences({
   };
 
   const accountsHref = portfolioId
-    ? `/admin/accounts/${encodeURIComponent(portfolioId)}`
-    : "/admin/accounts";
+    ? `/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`
+    : "/admin/portfolios";
   const fullPageHref = `/admin/manage_account?userId=${encodeURIComponent(userId)}${
     portfolioId ? `&portfolioId=${encodeURIComponent(portfolioId)}` : ""
   }`;

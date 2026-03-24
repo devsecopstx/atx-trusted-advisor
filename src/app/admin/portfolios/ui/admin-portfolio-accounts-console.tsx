@@ -375,15 +375,21 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         </Link>
         <Link
           className="cta cta-primary"
-          href={`/admin/broker-import?portfolioId=${encodeURIComponent(portfolioId)}`}
+          href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/broker-import`}
         >
-          Broker holdings import
+          Broker import
         </Link>
         <Link
           className="cta cta-secondary"
           href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/watchlist`}
         >
           Manage watchlist
+        </Link>
+        <Link
+          className="cta cta-secondary"
+          href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/tasks`}
+        >
+          Manage tasks
         </Link>
         {portfolio?.userId ? (
           <Link

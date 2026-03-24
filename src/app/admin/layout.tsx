@@ -25,7 +25,6 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin/onboarding", label: "Onboarding" },
   { href: "/admin/broker-import", label: "Broker import" },
   { href: "/admin/recommendations", label: "Recommendations" },
-  { href: "/admin/personas", label: "Personas" },
   { href: "/admin/batch", label: "Batch Ops" },
   { href: "/admin/portfolios", label: "Portfolios" },
   { href: "/admin/accounts", label: "Accounts" },
