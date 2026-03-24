@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactElement } from "react";
 
 import {
   LegalImprintContent,
@@ -24,7 +25,7 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-const CONTENT_BY_SLUG: Record<LegalSlug, JSX.Element> = {
+const CONTENT_BY_SLUG: Record<LegalSlug, ReactElement> = {
   imprint: <LegalImprintContent />,
   security: <LegalSecurityContent />,
   privacy: <LegalPrivacyContent />,
