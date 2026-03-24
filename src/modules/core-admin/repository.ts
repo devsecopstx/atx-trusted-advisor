@@ -2270,6 +2270,8 @@ export type UpdatePortfolioAccountInput = {
   name?: string;
   cashBalance?: number;
   extAccountId?: string;
+  riskProfile?: "conservative" | "balanced" | "growth" | null;
+  outlook?: string | null;
 };
 
 /**
@@ -2312,11 +2314,34 @@ export async function updatePortfolioAccountForUser(
     }
   }
 
-  if (Object.keys($set).length <= 1) {
+  const $unset: Record<string, string> = {};
+  if (input.riskProfile !== undefined) {
+    if (input.riskProfile === null) {
+      $unset.riskProfile = "";
+    } else {
+      $set.riskProfile = input.riskProfile;
+    }
+  }
+  if (input.outlook !== undefined) {
+    const v = input.outlook?.trim() ?? "";
+    if (v.length === 0) {
+      $unset.outlook = "";
+    } else {
+      $set.outlook = v.slice(0, 4000);
+    }
+  }
+
+  const hasScalarUpdates = Object.keys($set).length > 1;
+  const hasUnsets = Object.keys($unset).length > 0;
+  if (!hasScalarUpdates && !hasUnsets) {
     return existing;
   }
 
-  await db.collection<Account>(collections.accounts).updateOne(filter, { $set });
+  const updateDoc: Record<string, unknown> = { $set };
+  if (hasUnsets) {
+    updateDoc.$unset = $unset;
+  }
+  await db.collection<Account>(collections.accounts).updateOne(filter, updateDoc);
   return db.collection<Account>(collections.accounts).findOne(filter);
 }
 
@@ -2684,6 +2709,8 @@ export async function adminUpdatePortfolioAccount(input: {
   extAccountId?: string;
   type?: AccountType;
   isDefault?: boolean;
+  riskProfile?: "conservative" | "balanced" | "growth" | null;
+  outlook?: string | null;
 }): Promise<Account | null> {
   const portfolio = await adminGetPortfolioById(input.portfolioId);
   if (!portfolio?._id) {
@@ -2698,7 +2725,9 @@ export async function adminUpdatePortfolioAccount(input: {
     accountId: input.accountId,
     name: input.name,
     cashBalance: input.cashBalance,
-    extAccountId: input.extAccountId
+    extAccountId: input.extAccountId,
+    riskProfile: input.riskProfile,
+    outlook: input.outlook
   });
   if (input.type === undefined && input.isDefault === undefined) {
     return base;

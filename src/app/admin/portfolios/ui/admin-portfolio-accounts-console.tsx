@@ -20,6 +20,8 @@ type AccountRow = {
   extAccountId: string;
   cashBalance: number;
   isDefault: boolean;
+  riskProfile: RiskProfileOption | null;
+  outlook: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -29,8 +31,6 @@ type PortfolioMeta = {
   name: string;
   userId: string;
   tenantPortfolioOrgKey?: string;
-  riskProfile?: RiskProfileOption | null;
-  outlook?: string | null;
 };
 
 const money = new Intl.NumberFormat("en-US", {
@@ -54,6 +54,15 @@ function cashCellNumber(row: AccountRow, draftCash: number | undefined): number 
   }
   const b = row.cashBalance;
   return typeof b === "number" && Number.isFinite(b) ? b : 0;
+}
+
+function normalizeRiskValue(
+  v: AccountRow["riskProfile"] | undefined | ""
+): RiskProfileOption | null {
+  if (v === undefined || v === null || v === "") {
+    return null;
+  }
+  return (RISK_PROFILE_OPTIONS as readonly string[]).includes(v) ? (v as RiskProfileOption) : null;
 }
 
 function computeAccountPatchBody(
@@ -100,6 +109,18 @@ function computeAccountPatchBody(
   if (m.isDefault === true && row.isDefault !== true) {
     body.isDefault = true;
   }
+
+  const riskNext = normalizeRiskValue(m.riskProfile);
+  const riskPrev = normalizeRiskValue(row.riskProfile);
+  if (riskNext !== riskPrev) {
+    body.riskProfile = riskNext;
+  }
+  const outNext = (m.outlook ?? "").trim();
+  const outPrev = (row.outlook ?? "").trim();
+  if (outNext !== outPrev) {
+    body.outlook = outNext.length > 0 ? outNext : null;
+  }
+
   return Object.keys(body).length > 0 ? body : null;
 }
 
@@ -123,8 +144,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   /** Row id actively editing cash — value in `cashEditText` until blur. */
   const [cashFocusId, setCashFocusId] = useState<string | null>(null);
   const [cashEditText, setCashEditText] = useState<Record<string, string>>({});
-  const [riskProfileDraft, setRiskProfileDraft] = useState<"" | RiskProfileOption>("");
-  const [outlookDraft, setOutlookDraft] = useState("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -142,20 +161,23 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
       setPortfolio(po);
       setAccountCount(payload.data.accountCount);
       setTotalCashBalance(payload.data.totalCashBalance);
-      setAccounts(payload.data.accounts);
-      setEdits({});
-      const rp = po.riskProfile;
-      setRiskProfileDraft(
-        rp && (RISK_PROFILE_OPTIONS as readonly string[]).includes(rp) ? (rp as RiskProfileOption) : ""
+      setAccounts(
+        payload.data.accounts.map((a) => ({
+          ...a,
+          riskProfile:
+            a.riskProfile &&
+            (RISK_PROFILE_OPTIONS as readonly string[]).includes(a.riskProfile as string)
+              ? (a.riskProfile as RiskProfileOption)
+              : null,
+          outlook: typeof a.outlook === "string" ? a.outlook : null
+        }))
       );
-      setOutlookDraft(typeof po.outlook === "string" ? po.outlook : "");
+      setEdits({});
       setStatus(`Loaded ${payload.data.accounts.length} account(s)`);
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Failed to load");
       setPortfolio(null);
       setAccounts([]);
-      setRiskProfileDraft("");
-      setOutlookDraft("");
     } finally {
       setLoading(false);
     }
@@ -175,41 +197,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
       (row) => computeAccountPatchBody(row, d(row._id), cashFocusId === row._id, cashEditText[row._id]) !== null
     );
   }, [accounts, edits, cashFocusId, cashEditText]);
-
-  const hasPortfolioRiskOutlookDirty = useMemo(() => {
-    if (!portfolio) {
-      return false;
-    }
-    const savedRisk = portfolio.riskProfile ?? "";
-    const savedOut = (portfolio.outlook ?? "").trim();
-    return (riskProfileDraft || "") !== savedRisk || outlookDraft.trim() !== savedOut;
-  }, [portfolio, riskProfileDraft, outlookDraft]);
-
-  const savePortfolioRiskOutlook = async () => {
-    if (!portfolio) {
-      return;
-    }
-    setLoading(true);
-    setStatus("Saving risk & outlook…");
-    try {
-      await parseJson(
-        await fetch(`/api/admin/portfolios/${encodeURIComponent(portfolioId)}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            riskProfile: riskProfileDraft === "" ? null : riskProfileDraft,
-            outlook: outlookDraft.trim() === "" ? null : outlookDraft.trim()
-          })
-        })
-      );
-      setStatus("Saved risk & outlook");
-      void refresh();
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const saveAccount = async (row: AccountRow) => {
     const body = computeAccountPatchBody(row, draft(row._id), cashFocusId === row._id, cashEditText[row._id]);
@@ -415,77 +402,11 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         </article>
       ) : null}
 
-      {portfolio ? (
-        <article className="surface-card xf-widget section-card">
-          <h3 className="text-sm font-semibold" style={{ marginBottom: "0.35rem" }}>
-            Risk &amp; outlook
-          </h3>
-          <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-            Book-level context on this portfolio (optional). Distinct from per-user settings on{" "}
-            <Link
-              className="login-xoptions-link"
-              href={
-                portfolio.userId
-                  ? `/admin/manage_account?userId=${encodeURIComponent(portfolio.userId)}&portfolioId=${encodeURIComponent(portfolioId)}`
-                  : "/admin/manage_account"
-              }
-            >
-              Manage account
-            </Link>
-            .
-          </p>
-          <div
-            className="stack-gap"
-            style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxWidth: "42rem" }}
-          >
-            <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-              Risk profile
-              <select
-                className="crud-input"
-                value={riskProfileDraft}
-                onChange={(e) =>
-                  setRiskProfileDraft(
-                    e.target.value === "" ? "" : (e.target.value as RiskProfileOption)
-                  )
-                }
-              >
-                <option value="">— Not set</option>
-                {RISK_PROFILE_OPTIONS.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-              Outlook
-              <textarea
-                className="crud-input"
-                rows={5}
-                value={outlookDraft}
-                onChange={(e) => setOutlookDraft(e.target.value)}
-                placeholder="Market view, positioning notes, horizon…"
-                style={{ minHeight: "6rem", resize: "vertical" }}
-              />
-            </label>
-            <div>
-              <button
-                type="button"
-                className="cta cta-primary"
-                disabled={loading || !hasPortfolioRiskOutlookDirty}
-                onClick={() => void savePortfolioRiskOutlook()}
-              >
-                Save risk &amp; outlook
-              </button>
-            </div>
-          </div>
-        </article>
-      ) : null}
-
       <article className="surface-card xf-widget section-card">
         <h3>Accounts</h3>
         <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-          Edit rows below, then <strong>Save changes</strong> or save a single row with the pencil control.
+          Edit rows below (including risk profile and outlook per account), then <strong>Save changes</strong> or save a
+          single row with the pencil control.
         </p>
         <div className="crud-table-wrap">
           <table className="crud-table">
@@ -495,6 +416,8 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                 <th>Type</th>
                 <th>External ID</th>
                 <th>Cash balance</th>
+                <th>Risk</th>
+                <th>Outlook</th>
                 <th>Default</th>
                 <th>Updated</th>
                 <th />
@@ -593,6 +516,44 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                             [row._id]: { ...prev[row._id], cashBalance: parsed }
                           }));
                         }}
+                      />
+                    </td>
+                    <td style={{ minWidth: "8.5rem" }}>
+                      <select
+                        className="crud-input text-xs"
+                        value={normalizeRiskValue(m.riskProfile) ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setEdits((prev) => ({
+                            ...prev,
+                            [row._id]: {
+                              ...prev[row._id],
+                              riskProfile: v === "" ? null : (v as RiskProfileOption)
+                            }
+                          }));
+                        }}
+                      >
+                        <option value="">—</option>
+                        {RISK_PROFILE_OPTIONS.map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{ minWidth: "12rem", maxWidth: "16rem" }}>
+                      <textarea
+                        className="crud-input text-xs"
+                        rows={2}
+                        value={m.outlook ?? ""}
+                        placeholder="Notes…"
+                        onChange={(e) =>
+                          setEdits((prev) => ({
+                            ...prev,
+                            [row._id]: { ...prev[row._id], outlook: e.target.value }
+                          }))
+                        }
+                        style={{ width: "100%", resize: "vertical", minHeight: "2.5rem" }}
                       />
                     </td>
                     <td>

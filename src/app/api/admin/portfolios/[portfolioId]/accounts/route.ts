@@ -30,6 +30,8 @@ function serializeAccount(a: Account) {
         ? a.cashBalance
         : DEFAULT_ACCOUNT_CASH_BALANCE,
     isDefault: a.isDefault,
+    riskProfile: a.riskProfile ?? null,
+    outlook: a.outlook ?? null,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString()
   };

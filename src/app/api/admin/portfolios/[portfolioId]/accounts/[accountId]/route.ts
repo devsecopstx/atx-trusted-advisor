@@ -28,6 +28,8 @@ function serializeAccount(a: Account) {
         ? a.cashBalance
         : DEFAULT_ACCOUNT_CASH_BALANCE,
     isDefault: a.isDefault,
+    riskProfile: a.riskProfile ?? null,
+    outlook: a.outlook ?? null,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString()
   };
@@ -51,13 +53,19 @@ const patchSchema = z
       z.string().min(1).max(200).optional()
     ),
     type: z.enum(accountTypeValues).optional(),
-    isDefault: z.boolean().optional()
+    isDefault: z.boolean().optional(),
+    riskProfile: z
+      .union([z.enum(["conservative", "balanced", "growth"]), z.null()])
+      .optional(),
+    outlook: z.union([z.string(), z.null()]).optional()
   })
   .refine(
     (b) =>
       b.cashBalance !== undefined ||
       b.type !== undefined ||
       b.isDefault === true ||
+      b.riskProfile !== undefined ||
+      b.outlook !== undefined ||
       (typeof b.name === "string" && b.name.trim().length > 0) ||
       (typeof b.extAccountId === "string" && b.extAccountId.length > 0),
     { message: "At least one field is required" }
@@ -93,7 +101,9 @@ export async function PATCH(request: Request, context: RouteContext) {
     cashBalance: parsed.data.cashBalance,
     extAccountId: parsed.data.extAccountId,
     type: parsed.data.type,
-    isDefault: parsed.data.isDefault === true ? true : undefined
+    isDefault: parsed.data.isDefault === true ? true : undefined,
+    riskProfile: parsed.data.riskProfile,
+    outlook: parsed.data.outlook
   });
   if (!updated?._id) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });

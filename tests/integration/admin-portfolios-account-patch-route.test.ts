@@ -104,6 +104,32 @@ describe("PATCH /api/admin/portfolios/[portfolioId]/accounts/[accountId]", () =>
     );
   });
 
+  it("updates account when payload has riskProfile only", async () => {
+    repoMocks.adminUpdatePortfolioAccount.mockResolvedValueOnce({
+      ...mockAccount(),
+      riskProfile: "balanced" as const
+    });
+    const req = new Request(
+      `http://test/api/admin/portfolios/${portfolioId}/accounts/${accountId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ riskProfile: "balanced" })
+      }
+    );
+    const res = await patchAdminPortfolioAccount(req, {
+      params: Promise.resolve({ portfolioId, accountId })
+    });
+    expect(res.status).toBe(200);
+    expect(repoMocks.adminUpdatePortfolioAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        portfolioId,
+        accountId,
+        riskProfile: "balanced"
+      })
+    );
+  });
+
   it("returns 400 when extAccountId is only field and empty after trim", async () => {
     const req = new Request(
       `http://test/api/admin/portfolios/${portfolioId}/accounts/${accountId}`,

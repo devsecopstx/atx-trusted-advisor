@@ -212,6 +212,10 @@ export type Account = {
   extAccountId: string;
   cashBalance?: number;
   isDefault: boolean;
+  /** Desk risk stance for this custodian account (optional). */
+  riskProfile?: "conservative" | "balanced" | "growth" | null;
+  /** Free-text positioning / outlook for this account (optional). */
+  outlook?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
