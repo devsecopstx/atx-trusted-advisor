@@ -55,6 +55,7 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 ### Integrations (cross-cutting)
 
 - **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`atx-docs/atx-xchat/xai-api-standard.md`** for repo mapping and deep links.
+- **POST `/v1/responses` (xChat):** Outbound bodies use **`instructions`** for the system prompt (xAI API field name — not `system_prompt`). Tool-loop **continuation** turns send **`previous_response_id`** only and **omit** `instructions`, per API rules. Implementation: `respondWithXaiToolLoop` / `respondWithXai` in `src/lib/xai.ts`; batch JSONL items use the same shape in `src/modules/xchat/batch-service.ts`. **`502`** from `POST /api/xchat/ask` includes truncated upstream text in **`details`** for operators.
 
 ### Local dev run order (summary)
 
@@ -898,6 +899,7 @@ Tool result caching in `src/modules/xchat/tool-cache.ts` (60s TTL, 200 max entri
 
 After running `npm run seed:admin`, verify:
 
+0. **xAI keys** — With `XAI_API_KEY` and/or `XAI_MANAGEMENT_API_KEY` set, seed runs **`verify-xai-hello`** (minimal chat “hello world” + management collections list). Failures exit non-zero so miskeys are caught before starting Next. Skip with **`SKIP_XAI_POST_SEED_VERIFY=1`**. Run alone: **`npm run verify:xai-hello`**.
 1. `core_users` has the email from `ADMIN_SEED_EMAIL` with role `global_admin`
 2. `core_tenants` has `slug: atxfinance-core` with `isDefault: true`
 3. `core_tenant_memberships` has one default membership linking the admin user and default tenant

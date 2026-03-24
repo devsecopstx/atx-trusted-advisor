@@ -79,7 +79,8 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
 
   async function createTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     setLoading(true);
     setStatus("Creating task…");
     try {
@@ -95,7 +96,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
           })
         })
       );
-      event.currentTarget.reset();
+      form.reset();
       setStatus("Task created");
       void refresh();
     } catch (e) {

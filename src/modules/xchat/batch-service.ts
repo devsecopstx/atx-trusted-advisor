@@ -222,7 +222,7 @@ export async function submitBatchJob(
 
     const responsesBody: Record<string, unknown> = {
       model: input.persona.model ?? DEFAULT_XCHAT_BATCH_MODEL,
-      system_prompt: systemPrompt,
+      instructions: systemPrompt,
       input: userPrompt,
       max_turns: xapiConfigMerged.maxTurns
     };

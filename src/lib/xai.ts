@@ -322,7 +322,8 @@ export async function respondWithXai(input: {
   const tools = toXaiRequestTools(input.tools ?? [], { forXaiResponsesApi: true });
   const body: Record<string, unknown> = {
     model: input.model ?? defaultModel,
-    system_prompt: input.systemPrompt,
+    /** xAI `/v1/responses` documents `instructions` for system context (not `system_prompt`). */
+    instructions: input.systemPrompt,
     input: input.userPrompt,
     tools,
     tool_choice: input.toolChoice ?? "auto",
@@ -416,7 +417,6 @@ export async function respondWithXaiToolLoop(input: {
 
     const requestBody: Record<string, unknown> = {
       model,
-      system_prompt: input.systemPrompt,
       input: conversationInput,
       tools,
       tool_choice: input.toolChoice ?? "auto",
@@ -424,6 +424,9 @@ export async function respondWithXaiToolLoop(input: {
     };
     if (previousResponseId && turn > 0) {
       requestBody.previous_response_id = previousResponseId;
+    } else {
+      /** Per xAI docs, do not send `instructions` with `previous_response_id` (continuation turns). */
+      requestBody.instructions = input.systemPrompt;
     }
     if (input.parallelism) {
       requestBody.agent_count = input.parallelism.agentCount;

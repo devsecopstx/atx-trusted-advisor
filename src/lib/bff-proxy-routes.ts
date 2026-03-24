@@ -63,6 +63,8 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "PUT", path: "/api/admin/users/{userId}/settings" },
   { method: "GET", path: "/api/admin/tasks" },
   { method: "POST", path: "/api/admin/tasks" },
+  { method: "PATCH", path: "/api/admin/tasks/{taskId}" },
+  { method: "DELETE", path: "/api/admin/tasks/{taskId}" },
   { method: "POST", path: "/api/admin/tasks/{taskId}/run" },
   { method: "GET", path: "/api/admin/task-runs" },
   { method: "POST", path: "/api/admin/scheduler/tick" },

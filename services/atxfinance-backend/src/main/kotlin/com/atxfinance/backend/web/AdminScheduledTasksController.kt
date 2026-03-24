@@ -7,7 +7,9 @@ import com.atxfinance.backend.session.isGlobalAdmin
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -53,6 +55,44 @@ class AdminScheduledTasksController(
         } catch (_: AdminScheduledTasksService.BadTaskPayloadException) {
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }
+    }
+
+    @PatchMapping("/api/admin/tasks/{taskId}")
+    fun patchTask(
+        request: HttpServletRequest,
+        @PathVariable taskId: String,
+        @RequestBody(required = false) body: Map<String, Any?>?,
+    ): ResponseEntity<Map<String, Any?>> {
+        val session = when (val g = adminGate(request)) {
+            is AdminGate.Err -> return g.response
+            is AdminGate.Ok -> g.session
+        }
+        if (body == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON"))
+        }
+        return try {
+            val result = adminScheduledTasksService.patchTenantLevelTask(session, taskId, body)
+                ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Task not found"))
+            ResponseEntity.ok(result)
+        } catch (_: AdminScheduledTasksService.BadTaskPayloadException) {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
+        }
+    }
+
+    @DeleteMapping("/api/admin/tasks/{taskId}")
+    fun deleteTask(
+        request: HttpServletRequest,
+        @PathVariable taskId: String,
+    ): ResponseEntity<Map<String, Any?>> {
+        val session = when (val g = adminGate(request)) {
+            is AdminGate.Err -> return g.response
+            is AdminGate.Ok -> g.session
+        }
+        val ok = adminScheduledTasksService.deleteTenantLevelTask(session, taskId)
+        if (!ok) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Task not found"))
+        }
+        return ResponseEntity.ok(mapOf("ok" to true))
     }
 
     @PostMapping("/api/admin/tasks/{taskId}/run")

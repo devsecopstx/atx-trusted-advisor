@@ -507,13 +507,13 @@ describe("xchat ask route collection retrieval", () => {
       error: string;
       provider: string;
       retryable: boolean;
+      details?: string;
     };
     expect(response.status).toBe(502);
-    expect(payload).toEqual({
-      error: "xAI provider request failed",
-      provider: "xai",
-      retryable: true
-    });
+    expect(payload.error).toBe("xAI provider request failed");
+    expect(payload.provider).toBe("xai");
+    expect(payload.retryable).toBe(true);
+    expect(payload.details).toContain("provider outage");
     expect(repositoryMocks.saveXChatLog).not.toHaveBeenCalled();
   });
 

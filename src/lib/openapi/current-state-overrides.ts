@@ -1,8 +1,8 @@
 import type {
-  OpenApiMediaType,
-  OpenApiOperation,
-  OpenApiResponse,
-  OpenApiSchema
+    OpenApiMediaType,
+    OpenApiOperation,
+    OpenApiResponse,
+    OpenApiSchema
 } from "@/lib/openapi/types";
 
 type RouteMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
@@ -862,7 +862,11 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     properties: {
       error: { type: "string", enum: ["xAI provider request failed"] },
       provider: { type: "string", enum: ["xai"] },
-      retryable: { type: "boolean" }
+      retryable: { type: "boolean" },
+      details: {
+        type: "string",
+        description: "Truncated upstream error text for operators (no secrets redaction beyond length cap)."
+      }
     }
   },
   XChatAskRequest: {

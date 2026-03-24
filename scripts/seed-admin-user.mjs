@@ -1,6 +1,30 @@
+import { spawnSync } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { MongoClient, ObjectId } from "mongodb";
 
 import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+
+const SEED_SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(SEED_SCRIPT_DIR, "..");
+
+function runPostSeedXaiHelloVerify() {
+  const s = String(process.env.SKIP_XAI_POST_SEED_VERIFY ?? "").toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") {
+    console.log("[seed:admin] SKIP_XAI_POST_SEED_VERIFY set — skipping xAI hello verify");
+    return;
+  }
+  const script = join(SEED_SCRIPT_DIR, "verify-xai-hello.mjs");
+  const r = spawnSync(process.execPath, [script], {
+    cwd: REPO_ROOT,
+    env: process.env,
+    stdio: "inherit"
+  });
+  if (r.status !== 0) {
+    process.exit(r.status ?? 1);
+  }
+}
 
 function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
@@ -705,6 +729,7 @@ async function seed() {
   } finally {
     await client.close();
   }
+  runPostSeedXaiHelloVerify();
 }
 
 seed().catch((error) => {

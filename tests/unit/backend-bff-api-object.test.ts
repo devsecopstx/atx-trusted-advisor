@@ -37,6 +37,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/admin/users/{userId}/email", methods: ["PATCH"] },
   { pathTemplate: "/api/admin/users/{userId}/settings", methods: ["GET", "PUT"] },
   { pathTemplate: "/api/admin/tasks", methods: ["GET", "POST"] },
+  { pathTemplate: "/api/admin/tasks/{taskId}", methods: ["PATCH", "DELETE"] },
   { pathTemplate: "/api/admin/tasks/{taskId}/run", methods: ["POST"] },
   { pathTemplate: "/api/admin/task-runs", methods: ["GET"] },
   { pathTemplate: "/api/admin/scheduler/tick", methods: ["POST"] },

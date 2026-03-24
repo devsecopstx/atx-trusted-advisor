@@ -120,6 +120,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tasks"
   },
   {
+    path: "/api/admin/tasks/{taskId}",
+    operations: [
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-tasks"
+  },
+  {
     path: "/api/admin/deploy-note-configs",
     operations: [
       { method: "GET", auth: "admin" },

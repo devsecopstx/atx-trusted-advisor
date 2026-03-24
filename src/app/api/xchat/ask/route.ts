@@ -451,7 +451,8 @@ export async function POST(request: Request) {
       {
         error: "xAI provider request failed",
         provider: "xai",
-        retryable: true
+        retryable: true,
+        details: summarizeProviderErrorForClient(errMsg)
       },
       { status: 502 }
     );
@@ -688,6 +689,16 @@ function resolveParallelAgentConfig(input: {
       reasoningEffort: effort
     }
   };
+}
+
+const MAX_PROVIDER_ERROR_DETAIL_CHARS = 2048;
+
+function summarizeProviderErrorForClient(message: string): string {
+  const t = message.trim();
+  if (t.length <= MAX_PROVIDER_ERROR_DETAIL_CHARS) {
+    return t;
+  }
+  return `${t.slice(0, MAX_PROVIDER_ERROR_DETAIL_CHARS)}…`;
 }
 
 function buildLimiterHeaders(input: {

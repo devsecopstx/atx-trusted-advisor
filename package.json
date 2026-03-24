@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-core-app",
-  "version": "2.4.19",
+  "version": "2.4.20",
   "description": "aTx⚡Finance Advisory software and services for finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -26,6 +26,7 @@
     "test:integration": "vitest run tests/integration",
     "typecheck": "tsc --noEmit",
     "seed:admin": "node --env-file=.env scripts/seed-admin-user.mjs",
+    "verify:xai-hello": "node --env-file=.env scripts/verify-xai-hello.mjs",
     "mongo:up": "bash scripts/dev/mongo-up.sh",
     "mongo:down": "docker compose --env-file .env stop mongodb",
     "mongo:reset": "bash scripts/dev/mongo-reset-and-seed.sh",

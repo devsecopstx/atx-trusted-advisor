@@ -23,8 +23,16 @@ class AdminScheduledTasksService(
 
     fun listTasks(session: ResolvedSession, limit: Int): List<Map<String, Any?>> {
         val lim = limit.coerceIn(1, 500)
-        val base = Criteria()
-        val q = Query.query(PortfolioMongoFilter.withTenantScopeCriteria(base, session.tenantId.takeIf { it.isNotBlank() }))
+        val tenantLevelOnly = Criteria().orOperator(
+            Criteria.where("portfolioId").exists(false),
+            Criteria.where("portfolioId").`is`(null),
+        )
+        val q = Query.query(
+            PortfolioMongoFilter.withTenantScopeCriteria(
+                tenantLevelOnly,
+                session.tenantId.takeIf { it.isNotBlank() },
+            ),
+        )
             .with(Sort.by(Sort.Direction.ASC, "name"))
             .limit(lim)
         return mongoTemplate.find(q, Document::class.java, props.scheduledTasksCollection)
@@ -67,6 +75,92 @@ class AdminScheduledTasksService(
         val base = Criteria.where("_id").`is`(oid)
         val q = Query.query(PortfolioMongoFilter.withTenantScopeCriteria(base, session.tenantId.takeIf { it.isNotBlank() }))
         return mongoTemplate.findOne(q, Document::class.java, props.scheduledTasksCollection)
+    }
+
+    /** Tenant-level scheduled tasks only (no `portfolioId`); used for admin hub CRUD. */
+    fun getTenantLevelTask(taskId: String, session: ResolvedSession): Document? {
+        val doc = getTaskForTenant(taskId, session) ?: return null
+        if (doc.getObjectId("portfolioId") != null) {
+            return null
+        }
+        return doc
+    }
+
+    fun patchTenantLevelTask(session: ResolvedSession, taskId: String, body: Map<String, Any?>): Map<String, Any?>? {
+        val existing = getTenantLevelTask(taskId, session) ?: return null
+        val id = existing.getObjectId("_id") ?: return null
+        val allowedKeys = setOf("name", "category", "scheduleCron", "enabled", "nextRunAt")
+        if (body.keys.none { it in allowedKeys }) {
+            throw BadTaskPayloadException("At least one field is required")
+        }
+        val update = Update()
+        var modified = false
+        val name = (body["name"] as? String)?.trim()
+        if (name != null) {
+            if (name.isEmpty()) {
+                throw BadTaskPayloadException("name cannot be empty")
+            }
+            update.set("name", name)
+            modified = true
+        }
+        val category = (body["category"] as? String)?.trim()?.lowercase()
+        if (category != null) {
+            if (category !in ALLOWED_CATEGORIES) {
+                throw BadTaskPayloadException("Invalid category")
+            }
+            update.set("category", category)
+            modified = true
+        }
+        val scheduleCron = (body["scheduleCron"] as? String)?.trim()
+        if (scheduleCron != null) {
+            if (scheduleCron.length < 5) {
+                throw BadTaskPayloadException("scheduleCron is invalid")
+            }
+            update.set("scheduleCron", scheduleCron)
+            modified = true
+        }
+        if (body.containsKey("enabled")) {
+            val en = body["enabled"] as? Boolean
+            if (en == null) {
+                throw BadTaskPayloadException("enabled must be boolean")
+            }
+            update.set("enabled", en)
+            modified = true
+        }
+        if (body.containsKey("nextRunAt")) {
+            when (val v = body["nextRunAt"]) {
+                null -> {
+                    update.set("nextRunAt", null)
+                    modified = true
+                }
+                else -> {
+                    val d = parseOptionalDate(v) ?: throw BadTaskPayloadException("nextRunAt is invalid")
+                    update.set("nextRunAt", d)
+                    modified = true
+                }
+            }
+        }
+        if (!modified) {
+            return mapOf("data" to serializeScheduledTask(existing))
+        }
+        mongoTemplate.updateFirst(
+            Query.query(Criteria.where("_id").`is`(id)),
+            update,
+            props.scheduledTasksCollection,
+        )
+        val refreshed = mongoTemplate.findById(id, Document::class.java, props.scheduledTasksCollection)
+            ?: return null
+        return mapOf("data" to serializeScheduledTask(refreshed))
+    }
+
+    fun deleteTenantLevelTask(session: ResolvedSession, taskId: String): Boolean {
+        val existing = getTenantLevelTask(taskId, session) ?: return false
+        val id = existing.getObjectId("_id") ?: return false
+        val res = mongoTemplate.remove(
+            Query.query(Criteria.where("_id").`is`(id)),
+            props.scheduledTasksCollection,
+        )
+        return res.deletedCount >= 1L
     }
 
     fun listTaskRuns(session: ResolvedSession, limit: Int): List<Map<String, Any?>> {

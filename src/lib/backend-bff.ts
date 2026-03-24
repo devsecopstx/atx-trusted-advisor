@@ -143,6 +143,10 @@ export const nextBffApi = {
       pathTemplate: "/api/admin/tasks",
       methods: ["GET", "POST"]
     },
+    tasksById: {
+      pathTemplate: "/api/admin/tasks/{taskId}",
+      methods: ["PATCH", "DELETE"]
+    },
     tasksRun: {
       pathTemplate: "/api/admin/tasks/{taskId}/run",
       methods: ["POST"]

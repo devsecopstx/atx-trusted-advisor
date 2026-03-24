@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
-import { AddIcon, RefreshIcon, RunIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon, RunIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type ScheduledTask = {
@@ -29,17 +29,32 @@ type TaskRun = {
 
 const POLL_INTERVAL_MS = 30_000;
 
+const CATEGORIES = [
+  "sync-broker",
+  "rebalance",
+  "compliance",
+  "notifications",
+  "user-history"
+] as const;
+
+const TASKS_BASE = "/api/admin/tasks";
+
 export function TasksConsole() {
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [runs, setRuns] = useState<TaskRun[]>([]);
   const [status, setStatus] = useState("Ready — tap refresh");
+  const [loading, setLoading] = useState(false);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
+  const [edits, setEdits] = useState<
+    Record<string, Partial<Pick<ScheduledTask, "name" | "category" | "scheduleCron" | "enabled">>>
+  >({});
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshTasks = useCallback(async () => {
     try {
-      const payload = await parseJson<{ data: ScheduledTask[] }>(await fetch("/api/admin/tasks"));
+      const payload = await parseJson<{ data: ScheduledTask[] }>(await fetch(TASKS_BASE));
       setTasks(payload.data);
+      setEdits({});
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to refresh tasks");
     }
@@ -62,11 +77,13 @@ export function TasksConsole() {
 
   async function createTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    setLoading(true);
     setStatus("Creating task...");
     try {
       await parseJson(
-        await fetch("/api/admin/tasks", {
+        await fetch(TASKS_BASE, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -77,12 +94,130 @@ export function TasksConsole() {
           })
         })
       );
-      event.currentTarget.reset();
+      form.reset();
       await refreshAll();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to create task");
+    } finally {
+      setLoading(false);
     }
   }
+
+  const draft = (id: string) => edits[id] ?? {};
+
+  const mergeRow = (row: ScheduledTask): ScheduledTask => ({
+    ...row,
+    ...draft(row._id ?? "")
+  });
+
+  const rowDirty = (row: ScheduledTask): boolean => {
+    const d = draft(row._id ?? "");
+    return (
+      (d.name !== undefined && d.name !== row.name) ||
+      (d.category !== undefined && d.category !== row.category) ||
+      (d.scheduleCron !== undefined && d.scheduleCron !== row.scheduleCron) ||
+      (d.enabled !== undefined && d.enabled !== row.enabled)
+    );
+  };
+
+  const hasAnyDirty = tasks.some((t) => rowDirty(t));
+
+  const saveRow = async (row: ScheduledTask) => {
+    const id = row._id;
+    if (!id || !rowDirty(row)) {
+      return;
+    }
+    const m = mergeRow(row);
+    setLoading(true);
+    setStatus("Saving…");
+    try {
+      await parseJson(
+        await fetch(`${TASKS_BASE}/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: m.name,
+            category: m.category,
+            scheduleCron: m.scheduleCron,
+            enabled: m.enabled
+          })
+        })
+      );
+      setEdits((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setStatus("Saved task");
+      await refreshAll();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteRow = async (row: ScheduledTask) => {
+    const id = row._id;
+    if (!id) return;
+    if (!window.confirm(`Delete scheduled task "${row.name}"?`)) {
+      return;
+    }
+    setLoading(true);
+    setStatus("Deleting…");
+    try {
+      await parseJson(
+        await fetch(`${TASKS_BASE}/${encodeURIComponent(id)}`, {
+          method: "DELETE"
+        })
+      );
+      setStatus("Task deleted");
+      await refreshAll();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveAllDirty = async () => {
+    const targets = tasks.filter((t) => t._id && rowDirty(t));
+    if (targets.length === 0) {
+      setStatus("No changes");
+      return;
+    }
+    setLoading(true);
+    setStatus("Saving all…");
+    try {
+      for (const row of targets) {
+        const id = row._id!;
+        const m = mergeRow(row);
+        await parseJson(
+          await fetch(`${TASKS_BASE}/${encodeURIComponent(id)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: m.name,
+              category: m.category,
+              scheduleCron: m.scheduleCron,
+              enabled: m.enabled
+            })
+          })
+        );
+        setEdits((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }
+      setStatus(`Saved ${targets.length} task(s)`);
+      await refreshAll();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   async function runTask(taskId: string | undefined) {
     if (!taskId) return;
@@ -91,9 +226,7 @@ export function TasksConsole() {
     try {
       const payload = await parseJson<{
         data: { runId: string; status: string; output: string };
-      }>(
-        await fetch(`/api/admin/tasks/${taskId}/run`, { method: "POST" })
-      );
+      }>(await fetch(`${TASKS_BASE}/${encodeURIComponent(taskId)}/run`, { method: "POST" }));
       setStatus(`Task finished: ${payload.data.status}`);
       await refreshAll();
     } catch (error) {
@@ -116,25 +249,37 @@ export function TasksConsole() {
   return (
     <section className="panel stack-gap">
       <div className="tool-row">
-        <button className="cta cta-secondary" onClick={() => void refreshAll()} type="button">
+        <button
+          className="cta cta-primary"
+          disabled={loading || !hasAnyDirty}
+          onClick={() => void saveAllDirty()}
+          type="button"
+        >
+          Save changes
+        </button>
+        <button className="cta cta-secondary" disabled={loading} onClick={() => void refreshAll()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh
         </button>
         <p className="status-text">{status}</p>
       </div>
 
       <article className="surface-card xf-widget section-card">
-        <h3>Create Task</h3>
+        <h3>Create task</h3>
+        <p className="status-text" style={{ marginBottom: "0.65rem" }}>
+          Tenant-level jobs (no <code className="font-mono text-xs">portfolioId</code>). Portfolio-scoped tasks live
+          under each portfolio&apos;s manage → Tasks.
+        </p>
         <form className="stack-form" onSubmit={createTask}>
-          <input name="name" placeholder="task name" required />
-          <select name="category" defaultValue="sync-broker">
-            <option value="sync-broker">sync-broker</option>
-            <option value="rebalance">rebalance</option>
-            <option value="compliance">compliance</option>
-            <option value="notifications">notifications</option>
-            <option value="user-history">user-history</option>
+          <input name="name" placeholder="task name" required disabled={loading} />
+          <select name="category" defaultValue="sync-broker" disabled={loading}>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
-          <input name="scheduleCron" placeholder="0 2 * * *" required />
-          <button className="cta cta-primary" type="submit">
+          <input name="scheduleCron" placeholder="0 2 * * *" required disabled={loading} />
+          <button className="cta cta-primary" type="submit" disabled={loading}>
             <AddIcon className="crud-icon" /> Create task
           </button>
         </form>
@@ -156,26 +301,106 @@ export function TasksConsole() {
                 </tr>
               </thead>
               <tbody>
-                {tasks.map((task) => (
-                  <tr key={task._id ?? task.name}>
-                    <td>{task.name}</td>
-                    <td>{task.category}</td>
-                    <td><code>{task.scheduleCron}</code></td>
-                    <td>{task.enabled ? "Yes" : "No"}</td>
-                    <td>{task.nextRunAt ? new Date(task.nextRunAt).toLocaleString() : "—"}</td>
-                    <td>
-                      <button
-                        className="tiny-button"
-                        disabled={runningTaskId === task._id}
-                        onClick={() => void runTask(task._id)}
-                        type="button"
-                      >
-                        <RunIcon className="crud-icon" />{" "}
-                        {runningTaskId === task._id ? "Running..." : "Run"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {tasks.map((row) => {
+                  const id = row._id ?? "";
+                  const m = mergeRow(row);
+                  const dirty = rowDirty(row);
+                  return (
+                    <tr key={id || m.name}>
+                      <td>
+                        <input
+                          className="crud-input text-sm"
+                          disabled={loading}
+                          value={m.name}
+                          onChange={(e) =>
+                            setEdits((prev) => ({
+                              ...prev,
+                              [id]: { ...prev[id], name: e.target.value }
+                            }))
+                          }
+                        />
+                      </td>
+                      <td>
+                        <select
+                          className="crud-input text-xs"
+                          disabled={loading}
+                          value={m.category}
+                          onChange={(e) =>
+                            setEdits((prev) => ({
+                              ...prev,
+                              [id]: {
+                                ...prev[id],
+                                category: e.target.value as ScheduledTask["category"]
+                              }
+                            }))
+                          }
+                        >
+                          {CATEGORIES.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          className="crud-input font-mono text-xs"
+                          disabled={loading}
+                          value={m.scheduleCron}
+                          onChange={(e) =>
+                            setEdits((prev) => ({
+                              ...prev,
+                              [id]: { ...prev[id], scheduleCron: e.target.value }
+                            }))
+                          }
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={m.enabled}
+                          disabled={loading}
+                          onChange={(e) =>
+                            setEdits((prev) => ({
+                              ...prev,
+                              [id]: { ...prev[id], enabled: e.target.checked }
+                            }))
+                          }
+                        />
+                      </td>
+                      <td>{row.nextRunAt ? new Date(row.nextRunAt).toLocaleString() : "—"}</td>
+                      <td>
+                        <div className="tool-row" style={{ gap: "0.25rem", flexWrap: "wrap" }}>
+                          <button
+                            className="tiny-button"
+                            disabled={loading || !dirty}
+                            onClick={() => void saveRow(row)}
+                            type="button"
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="tiny-button"
+                            disabled={loading || runningTaskId === id}
+                            onClick={() => void runTask(row._id)}
+                            type="button"
+                          >
+                            <RunIcon className="crud-icon" />{" "}
+                            {runningTaskId === id ? "Running..." : "Run"}
+                          </button>
+                          <button
+                            className="tiny-button"
+                            disabled={loading}
+                            onClick={() => void deleteRow(row)}
+                            type="button"
+                          >
+                            <DeleteIcon className="crud-icon" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -206,7 +431,9 @@ export function TasksConsole() {
                     <td>{run.taskName}</td>
                     <td>{run.category}</td>
                     <td>
-                      <span className={`status-badge status-${run.status === "success" ? "ready" : run.status === "failed" ? "error" : "pending"}`}>
+                      <span
+                        className={`status-badge status-${run.status === "success" ? "ready" : run.status === "failed" ? "error" : "pending"}`}
+                      >
                         {run.status}
                       </span>
                     </td>

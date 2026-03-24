@@ -49,6 +49,47 @@ describe("respondWithXaiToolLoop", () => {
     expect(result.outputText).toBe("The answer is 42.");
     expect(result.toolCalls).toHaveLength(0);
     expect(result.turnsUsed).toBe(1);
+    const [, init0] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body0 = JSON.parse(String(init0.body)) as Record<string, unknown>;
+    expect(body0.instructions).toBe("You are a test agent.");
+    expect(body0).not.toHaveProperty("system_prompt");
+  });
+
+  it("uses instructions only on first /responses turn; continuation sends previous_response_id without instructions", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        xaiResponsesOk({
+          id: "resp_first",
+          model: "grok-4-1-fast",
+          output_text: '{"operation":"portfolio_summary"}'
+        })
+      )
+      .mockResolvedValueOnce(
+        xaiResponsesOk({
+          model: "grok-4-1-fast",
+          output_text: "Summary ready."
+        })
+      );
+
+    const { respondWithXaiToolLoop } = await import("@/lib/xai");
+    await respondWithXaiToolLoop({
+      systemPrompt: "SYS",
+      userPrompt: "Go",
+      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      maxTurns: 5,
+      executor: async () => ({ result: "{}" })
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [, init0] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body0 = JSON.parse(String(init0.body)) as Record<string, unknown>;
+    expect(body0.instructions).toBe("SYS");
+    expect(body0.previous_response_id).toBeUndefined();
+    const [, init1] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const body1 = JSON.parse(String(init1.body)) as Record<string, unknown>;
+    expect(body1.previous_response_id).toBe("resp_first");
+    expect(body1).not.toHaveProperty("instructions");
+    expect(body1).not.toHaveProperty("system_prompt");
   });
 
   it("runs atxfinance executor when model prints fenced JSON instead of function_call", async () => {
