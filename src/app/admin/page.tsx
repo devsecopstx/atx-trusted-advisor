@@ -112,7 +112,8 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/xchat",
         icon: "chat",
         title: "xChat",
-        description: "Open the advisory chat workspace (Grok / xAI) in the same session."
+        description:
+          "Same signed-in product xChat as app users (AppUserApprovedHeader shell), default persona xFinance—not the admin Super-Agent console."
       },
       {
         href: "/admin/personas",

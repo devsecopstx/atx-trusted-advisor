@@ -18,15 +18,10 @@ export const metadata: Metadata = {
   title: "admin_console"
 };
 
-/** Slim top bar: deep links live on the hub (`/admin`) by back-office function. */
+/** Slim top bar: Hub + product xChat only. Batch, RAG, tools, API docs, and audit are on the hub (`/admin`). */
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin", label: "Hub" },
-  { href: "/xchat", label: "xChat" },
-  { href: "/admin/batch", label: "Batch Ops" },
-  { href: "/admin/rag-files", label: "RAG collections" },
-  { href: "/admin/xchat-tool-usage", label: "xChat tools" },
-  { href: "/admin/api-docs", label: "API Docs" },
-  { href: "/admin/audit", label: "Audit" }
+  { href: "/xchat", label: "xChat" }
 ];
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
