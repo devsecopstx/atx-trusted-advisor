@@ -65,7 +65,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 
 ## 5. Legal pages (Privacy, Terms)
 
-- **Routes:** `/legal/privacy` (**Privacy Policy**) and `/legal/terms` (**Terms of Service**) render default copy from `src/app/legal/legal-default-content.tsx` (effective date and sections for a typical US SaaS + fintech-style release).
+- **Routes:** `/legal/imprint`, `/legal/security`, `/legal/vulnerability`, `/legal/privacy` (**Privacy Policy**), and `/legal/terms` (**Terms of Service**) render default copy from `src/app/legal/legal-default-content.tsx` (effective date and release-safe sections; counsel review still required before regulated use).
 - **Footer:** `GlobalFooter` links include **Terms** and **Privacy** alongside Imprint, Security, and vulnerability reporting.
 - **Operator note:** Treat defaults as a starting point — have counsel review entity name, governing law, contact channels, and regulated-industry obligations before relying on them in production.
 
