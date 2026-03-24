@@ -5,6 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import {
+  accountOutlookValues,
+  type AccountOutlook,
+  parseAccountOutlook
+} from "@/modules/core-admin/types";
 
 import { PortfolioManageNav } from "./portfolio-manage-nav";
 
@@ -12,6 +17,13 @@ const ACCOUNT_TYPES = ["merrill", "fidelity", "etrade"] as const;
 
 const RISK_PROFILE_OPTIONS = ["conservative", "balanced", "growth"] as const;
 type RiskProfileOption = (typeof RISK_PROFILE_OPTIONS)[number];
+
+const OUTLOOK_LABELS: Record<AccountOutlook, string> = {
+  growth: "Growth",
+  income: "Income",
+  balanced: "Balanced",
+  aggressive: "Aggressive"
+};
 
 type AccountRow = {
   _id: string;
@@ -21,7 +33,7 @@ type AccountRow = {
   cashBalance: number;
   isDefault: boolean;
   riskProfile: RiskProfileOption | null;
-  outlook: string | null;
+  outlook: AccountOutlook | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -115,10 +127,10 @@ function computeAccountPatchBody(
   if (riskNext !== riskPrev) {
     body.riskProfile = riskNext;
   }
-  const outNext = (m.outlook ?? "").trim();
-  const outPrev = (row.outlook ?? "").trim();
+  const outNext = parseAccountOutlook(m.outlook);
+  const outPrev = parseAccountOutlook(row.outlook);
   if (outNext !== outPrev) {
-    body.outlook = outNext.length > 0 ? outNext : null;
+    body.outlook = outNext;
   }
 
   return Object.keys(body).length > 0 ? body : null;
@@ -169,7 +181,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
             (RISK_PROFILE_OPTIONS as readonly string[]).includes(a.riskProfile as string)
               ? (a.riskProfile as RiskProfileOption)
               : null,
-          outlook: typeof a.outlook === "string" ? a.outlook : null
+          outlook: parseAccountOutlook(a.outlook)
         }))
       );
       setEdits({});
@@ -405,8 +417,8 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
       <article className="surface-card xf-widget section-card">
         <h3>Accounts</h3>
         <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-          Edit rows below (including risk profile and outlook per account), then <strong>Save changes</strong> or save a
-          single row with the pencil control.
+          Edit rows below (risk profile and outlook slug per account — user-facing copy can concatenate these elsewhere),
+          then <strong>Save changes</strong> or save a single row with the pencil control.
         </p>
         <div className="crud-table-wrap">
           <table className="crud-table">
@@ -541,20 +553,28 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                         ))}
                       </select>
                     </td>
-                    <td style={{ minWidth: "12rem", maxWidth: "16rem" }}>
-                      <textarea
+                    <td style={{ minWidth: "9rem" }}>
+                      <select
                         className="crud-input text-xs"
-                        rows={2}
-                        value={m.outlook ?? ""}
-                        placeholder="Notes…"
-                        onChange={(e) =>
+                        value={parseAccountOutlook(m.outlook) ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
                           setEdits((prev) => ({
                             ...prev,
-                            [row._id]: { ...prev[row._id], outlook: e.target.value }
-                          }))
-                        }
-                        style={{ width: "100%", resize: "vertical", minHeight: "2.5rem" }}
-                      />
+                            [row._id]: {
+                              ...prev[row._id],
+                              outlook: v === "" ? null : (v as AccountOutlook)
+                            }
+                          }));
+                        }}
+                      >
+                        <option value="">—</option>
+                        {accountOutlookValues.map((v) => (
+                          <option key={v} value={v}>
+                            {OUTLOOK_LABELS[v]}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td>
                       <label className="status-text" style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>

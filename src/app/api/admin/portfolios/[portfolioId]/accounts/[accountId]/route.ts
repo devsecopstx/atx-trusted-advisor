@@ -8,7 +8,7 @@ import {
     DEFAULT_ACCOUNT_CASH_BALANCE
 } from "@/modules/core-admin/repository";
 import type { Account } from "@/modules/core-admin/types";
-import { accountTypeValues } from "@/modules/core-admin/types";
+import { accountOutlookValues, accountTypeValues, parseAccountOutlook } from "@/modules/core-admin/types";
 
 type RouteContext = {
   params: Promise<{ portfolioId: string; accountId: string }>;
@@ -29,7 +29,7 @@ function serializeAccount(a: Account) {
         : DEFAULT_ACCOUNT_CASH_BALANCE,
     isDefault: a.isDefault,
     riskProfile: a.riskProfile ?? null,
-    outlook: a.outlook ?? null,
+    outlook: parseAccountOutlook(a.outlook),
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString()
   };
@@ -57,7 +57,7 @@ const patchSchema = z
     riskProfile: z
       .union([z.enum(["conservative", "balanced", "growth"]), z.null()])
       .optional(),
-    outlook: z.union([z.string(), z.null()]).optional()
+    outlook: z.union([z.enum(accountOutlookValues), z.null()]).optional()
   })
   .refine(
     (b) =>

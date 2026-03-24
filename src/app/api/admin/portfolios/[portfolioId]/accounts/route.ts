@@ -9,7 +9,7 @@ import {
     DEFAULT_ACCOUNT_CASH_BALANCE
 } from "@/modules/core-admin/repository";
 import type { Account } from "@/modules/core-admin/types";
-import { accountTypeValues } from "@/modules/core-admin/types";
+import { accountTypeValues, parseAccountOutlook } from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 
 type RouteContext = {
@@ -31,7 +31,7 @@ function serializeAccount(a: Account) {
         : DEFAULT_ACCOUNT_CASH_BALANCE,
     isDefault: a.isDefault,
     riskProfile: a.riskProfile ?? null,
-    outlook: a.outlook ?? null,
+    outlook: parseAccountOutlook(a.outlook),
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString()
   };

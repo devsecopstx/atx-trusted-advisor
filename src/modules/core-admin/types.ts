@@ -161,6 +161,18 @@ export type DeployNoteConfig = {
 export const accountTypeValues = ["merrill", "fidelity", "etrade"] as const;
 export type AccountType = (typeof accountTypeValues)[number];
 
+/** Account positioning outlook (admin pick list); user surfaces may concatenate with other context. */
+export const accountOutlookValues = ["growth", "income", "balanced", "aggressive"] as const;
+export type AccountOutlook = (typeof accountOutlookValues)[number];
+
+export function parseAccountOutlook(raw: unknown): AccountOutlook | null {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const t = raw.trim().toLowerCase();
+  return (accountOutlookValues as readonly string[]).includes(t) ? (t as AccountOutlook) : null;
+}
+
 /** Admin-managed broker definitions (slug + display); seeds Merrill / Fidelity / E*TRADE. */
 export type BrokerCatalogEntry = {
   _id?: ObjectId;
@@ -214,8 +226,8 @@ export type Account = {
   isDefault: boolean;
   /** Desk risk stance for this custodian account (optional). */
   riskProfile?: "conservative" | "balanced" | "growth" | null;
-  /** Free-text positioning / outlook for this account (optional). */
-  outlook?: string | null;
+  /** Positioning outlook slug for this account (optional); see {@link accountOutlookValues}. */
+  outlook?: AccountOutlook | null;
   createdAt: Date;
   updatedAt: Date;
 };

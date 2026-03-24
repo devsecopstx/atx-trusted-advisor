@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
+import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
@@ -100,6 +100,32 @@ describe("PATCH /api/admin/portfolios/[portfolioId]/accounts/[accountId]", () =>
       expect.objectContaining({
         name: "New label",
         extAccountId: undefined
+      })
+    );
+  });
+
+  it("updates account when payload has outlook slug only", async () => {
+    repoMocks.adminUpdatePortfolioAccount.mockResolvedValueOnce({
+      ...mockAccount(),
+      outlook: "income" as const
+    });
+    const req = new Request(
+      `http://test/api/admin/portfolios/${portfolioId}/accounts/${accountId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outlook: "income" })
+      }
+    );
+    const res = await patchAdminPortfolioAccount(req, {
+      params: Promise.resolve({ portfolioId, accountId })
+    });
+    expect(res.status).toBe(200);
+    expect(repoMocks.adminUpdatePortfolioAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        portfolioId,
+        accountId,
+        outlook: "income"
       })
     );
   });

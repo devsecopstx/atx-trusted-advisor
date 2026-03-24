@@ -9,6 +9,7 @@ import {
     type AccessRequestListItem,
     type AccessRequestStatus,
     type Account,
+    type AccountOutlook,
     type AccountType,
     type ApprovedUserListItem,
     type BrokerCatalogEntry,
@@ -23,7 +24,8 @@ import {
     type UserAdminSettings,
     type Watchlist,
     type WatchlistSymbol,
-    type WatchlistSymbolImportEntry
+    type WatchlistSymbolImportEntry,
+    parseAccountOutlook
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
 import { MAX_WATCHLIST_SYMBOLS } from "@/modules/watchlist/constants";
@@ -2271,7 +2273,7 @@ export type UpdatePortfolioAccountInput = {
   cashBalance?: number;
   extAccountId?: string;
   riskProfile?: "conservative" | "balanced" | "growth" | null;
-  outlook?: string | null;
+  outlook?: AccountOutlook | null;
 };
 
 /**
@@ -2323,11 +2325,13 @@ export async function updatePortfolioAccountForUser(
     }
   }
   if (input.outlook !== undefined) {
-    const v = input.outlook?.trim() ?? "";
-    if (v.length === 0) {
+    if (input.outlook === null) {
       $unset.outlook = "";
     } else {
-      $set.outlook = v.slice(0, 4000);
+      const slug = parseAccountOutlook(input.outlook);
+      if (slug) {
+        $set.outlook = slug;
+      }
     }
   }
 
@@ -2710,7 +2714,7 @@ export async function adminUpdatePortfolioAccount(input: {
   type?: AccountType;
   isDefault?: boolean;
   riskProfile?: "conservative" | "balanced" | "growth" | null;
-  outlook?: string | null;
+  outlook?: AccountOutlook | null;
 }): Promise<Account | null> {
   const portfolio = await adminGetPortfolioById(input.portfolioId);
   if (!portfolio?._id) {
