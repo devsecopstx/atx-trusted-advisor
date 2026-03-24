@@ -4,6 +4,15 @@
 - **TODO:** Restore `LoginProductPanel` on `/login` or fold plan tiers into registration / access-request flow (deferred).
 - **TODO:** Google OAuth — add `/api/auth/google/login` + callback + env; enable the login page Google button when shipped.
 
+### Tomorrow — admin portfolios & onboarding follow-ups
+
+| Priority | Item | Notes |
+|----------|------|--------|
+| 1 | **Spring BFF parity** for `GET/POST /api/admin/portfolios`, `PATCH/DELETE /api/admin/portfolios/{id}`, nested accounts routes | Required when `ATXFINANCE_BACKEND_ORIGIN` is set; extend Kotlin controllers, `bff-proxy-routes.ts`, `docs/atx-sre-ops/atxfinance-backend-http-api.md`, and `tests/smoke/backend-http-api-parity.test.ts` expectations. |
+| 2 | **Accounts subpage** (`/admin/portfolios/[portfolioId]/accounts`) | Match **Save changes** batch pattern + resolve **friendly user / account** labels (parity with main admin portfolios table). |
+| 3 | **Default portfolio validation** | Guardrail when a user has **multiple** portfolios: ensure **exactly one** `isDefault: true` (clear UX + server-side check; align with Mongo partial unique index). |
+| 4 | **Audit trail** | Log admin portfolio create/update/delete (and optional CSV export) via existing `admin_audit_events` / audit pipeline — traceability for tenant moves. |
+
 **Docs index:** [README.md](./README.md). Phase 1 multi-agent: [atx-xchat/atx-multi-agent.md](./atx-xchat/atx-multi-agent.md). BFF: [atx-sre-ops/api-consolidation-spring-backend.md](./atx-sre-ops/api-consolidation-spring-backend.md).
 
 ---
