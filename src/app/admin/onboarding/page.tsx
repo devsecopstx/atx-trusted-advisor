@@ -4,8 +4,6 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-import { BrokerHoldingsImportPanel } from "../portfolios/ui/broker-holdings-import-panel";
-
 export default async function AdminOnboardingPage() {
   const session = await getSessionUser();
   if (!session) {
@@ -19,19 +17,35 @@ export default async function AdminOnboardingPage() {
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
         <p className="eyebrow">atxfinance core admin</p>
-        <h1 className="hero-title">Onboarding — broker holdings import</h1>
+        <h1 className="hero-title">Onboarding</h1>
         <p className="hero-copy">
-          Map custodian CSV exports to core accounts for a tenant portfolio. Uses{" "}
-          <code className="font-mono text-xs">POST /api/admin/import/broker</code> (Merrill / Fidelity holdings).
-          Ensure portfolios and accounts exist under{" "}
+          Broker <strong>holdings</strong> CSV import lives on the dedicated{" "}
+          <Link className="login-xoptions-link" href="/admin/broker-import">
+            Broker import
+          </Link>{" "}
+          hub (<code className="font-mono text-xs">POST /api/admin/import/broker</code>). Ensure portfolios and accounts
+          exist under{" "}
+          <Link className="login-xoptions-link" href="/admin/accounts">
+            Accounts
+          </Link>{" "}
+          or{" "}
           <Link className="login-xoptions-link" href="/admin/portfolios">
             Portfolios
           </Link>{" "}
           before importing.
         </p>
+        <div className="tool-row" style={{ marginTop: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+          <Link className="cta cta-primary" href="/admin/broker-import">
+            Broker import hub
+          </Link>
+          <Link className="cta cta-secondary" href="/admin/accounts">
+            Accounts
+          </Link>
+          <Link className="cta cta-secondary" href="/admin/portfolios">
+            Portfolios
+          </Link>
+        </div>
       </section>
-
-      <BrokerHoldingsImportPanel />
     </div>
   );
 }

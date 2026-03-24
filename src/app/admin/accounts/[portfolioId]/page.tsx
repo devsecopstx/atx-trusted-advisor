@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
+import { AdminPortfolioAccountsConsole } from "../../portfolios/ui/admin-portfolio-accounts-console";
+
 type PageProps = {
   params: Promise<{ portfolioId: string }>;
 };
 
-/** @deprecated Use `/admin/accounts/[portfolioId]`. */
-export default async function AdminPortfolioAccountsRedirect({ params }: PageProps) {
+export default async function AdminAccountsPortfolioPage({ params }: PageProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
@@ -17,5 +18,9 @@ export default async function AdminPortfolioAccountsRedirect({ params }: PagePro
     redirect("/admin?error=forbidden");
   }
   const { portfolioId } = await params;
-  redirect(`/admin/accounts/${encodeURIComponent(portfolioId)}`);
+  return (
+    <div className="core-shell">
+      <AdminPortfolioAccountsConsole portfolioId={portfolioId} />
+    </div>
+  );
 }

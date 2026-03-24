@@ -1801,6 +1801,8 @@ export async function adminUpdatePortfolio(input: {
   name?: string;
   ext_broker_ref?: string | null;
   broker_type?: AccountType | null;
+  riskProfile?: "conservative" | "balanced" | "growth" | null;
+  outlook?: string | null;
   /** When true, clears `isDefault` on other portfolios for the same user (and tenant scope). */
   isDefault?: boolean;
 }): Promise<Portfolio | null> {
@@ -1827,6 +1829,18 @@ export async function adminUpdatePortfolio(input: {
         ? (raw as AccountType)
         : null;
     }
+  }
+  if (input.riskProfile !== undefined) {
+    if (input.riskProfile === null) {
+      fieldSet.riskProfile = null;
+    } else {
+      const rp = input.riskProfile;
+      fieldSet.riskProfile = ["conservative", "balanced", "growth"].includes(rp) ? rp : null;
+    }
+  }
+  if (input.outlook !== undefined) {
+    const v = input.outlook?.trim() ?? "";
+    fieldSet.outlook = v.length > 0 ? v.slice(0, 4000) : null;
   }
   if (Object.keys(fieldSet).length > 0) {
     await db.collection<Portfolio>(collections.portfolios).updateOne(

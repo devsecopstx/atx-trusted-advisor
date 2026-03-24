@@ -9,16 +9,15 @@ export function PortfolioConsole() {
     <section className="panel stack-gap">
       <article className="surface-card xf-widget section-card">
         <h3 className="text-sm font-semibold" style={{ marginBottom: "0.35rem" }}>
-          Broker holdings import (onboarding)
+          Broker holdings import
         </h3>
         <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-          CSV preview → account mapping → stock lots import: use{" "}
-          <strong>Portfolios → Manage accounts → Broker holdings import</strong> for a chosen book, or the onboarding
-          route to pick any portfolio (same API{" "}
+          CSV preview → account mapping → stock lots: open the <strong>Broker import</strong> hub, or jump from{" "}
+          <strong>Accounts</strong> with a portfolio pre-selected (same API{" "}
           <code className="font-mono text-xs">/api/admin/import/broker</code>).
         </p>
-        <Link className="cta cta-primary" href="/admin/onboarding">
-          Open onboarding — broker import
+        <Link className="cta cta-primary" href="/admin/broker-import">
+          Open broker import hub
         </Link>
       </article>
       <AdminPortfoliosCrud />
