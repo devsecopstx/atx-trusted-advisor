@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { AdminRiskOutlookPreferences } from "@/app/admin/ui/admin-risk-outlook-preferences";
 import { parseJson } from "@/app/admin/ui/http";
 
 const ACCOUNT_TYPES = ["merrill", "fidelity", "etrade"] as const;
@@ -29,8 +30,25 @@ type PortfolioMeta = {
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  maximumFractionDigits: 0
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2
 });
+
+function parseUsdCashInput(raw: string): number | undefined {
+  const n = Number.parseFloat(raw.replaceAll(/[$,\s]/g, ""));
+  if (!Number.isFinite(n) || n < 0) {
+    return undefined;
+  }
+  return n;
+}
+
+function cashCellNumber(row: AccountRow, draftCash: number | undefined): number {
+  if (typeof draftCash === "number" && Number.isFinite(draftCash)) {
+    return draftCash;
+  }
+  const b = row.cashBalance;
+  return typeof b === "number" && Number.isFinite(b) ? b : 0;
+}
 
 type AdminPortfolioAccountsConsoleProps = {
   portfolioId: string;
@@ -49,6 +67,9 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   const [newType, setNewType] = useState<(typeof ACCOUNT_TYPES)[number]>("fidelity");
   const [newExt, setNewExt] = useState("");
   const [newCash, setNewCash] = useState("");
+  /** Row id actively editing cash — value in `cashEditText` until blur. */
+  const [cashFocusId, setCashFocusId] = useState<string | null>(null);
+  const [cashEditText, setCashEditText] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -86,7 +107,26 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   const mergeRow = (row: AccountRow): AccountRow => ({ ...row, ...draft(row._id) });
 
   const saveAccount = async (row: AccountRow) => {
-    const m = mergeRow(row);
+    const d = draft(row._id);
+    let cashOverride: number | undefined;
+    if (cashFocusId === row._id) {
+      const parsed = parseUsdCashInput(cashEditText[row._id] ?? "");
+      setCashFocusId(null);
+      setCashEditText((prev) => {
+        const next = { ...prev };
+        delete next[row._id];
+        return next;
+      });
+      if (parsed !== undefined) {
+        cashOverride = parsed;
+      }
+    }
+    const m: AccountRow = {
+      ...row,
+      ...d,
+      ...(cashOverride !== undefined ? { cashBalance: cashOverride } : {})
+    };
+
     setStatus("Saving…");
     try {
       const body: Record<string, unknown> = {};
@@ -203,6 +243,14 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         <Link className="cta cta-primary" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/broker-import`}>
           Broker holdings import
         </Link>
+        {portfolio?.userId ? (
+          <Link
+            className="cta cta-secondary"
+            href={`/admin/manage_account?userId=${encodeURIComponent(portfolio.userId)}&portfolioId=${encodeURIComponent(portfolioId)}`}
+          >
+            Manage account
+          </Link>
+        ) : null}
         <button className="cta cta-secondary" disabled={loading} onClick={() => void refresh()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh
         </button>
@@ -225,6 +273,15 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
             </p>
           </div>
         </article>
+      ) : null}
+
+      {portfolio?.userId ? (
+        <AdminRiskOutlookPreferences
+          compact
+          portfolioId={portfolioId}
+          userId={portfolio.userId}
+          variant="embedded"
+        />
       ) : null}
 
       <article className="surface-card xf-widget section-card">
@@ -291,23 +348,48 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                     </td>
                     <td>
                       <input
-                        className="crud-input"
-                        type="number"
-                        min={0}
-                        step={1}
+                        className="crud-input font-mono text-sm tabular-nums"
+                        type="text"
+                        inputMode="decimal"
+                        aria-label="Cash balance"
                         value={
-                          m.cashBalance !== undefined && m.cashBalance !== null
-                            ? String(m.cashBalance)
-                            : String(row.cashBalance)
+                          cashFocusId === row._id
+                            ? (cashEditText[row._id] ?? "")
+                            : money.format(cashCellNumber(row, draft(row._id).cashBalance))
                         }
+                        onFocus={() => {
+                          const n = cashCellNumber(row, draft(row._id).cashBalance);
+                          setCashFocusId(row._id);
+                          setCashEditText((prev) => ({
+                            ...prev,
+                            [row._id]: String(n)
+                          }));
+                        }}
                         onChange={(e) => {
-                          const n = Number.parseFloat(e.target.value);
+                          setCashEditText((prev) => ({
+                            ...prev,
+                            [row._id]: e.target.value
+                          }));
+                        }}
+                        onBlur={() => {
+                          const raw = cashEditText[row._id] ?? "";
+                          const parsed = parseUsdCashInput(raw);
+                          setCashFocusId((id) => (id === row._id ? null : id));
+                          setCashEditText((prev) => {
+                            const next = { ...prev };
+                            delete next[row._id];
+                            return next;
+                          });
+                          if (parsed === undefined) {
+                            return;
+                          }
+                          const current = cashCellNumber(row, draft(row._id).cashBalance);
+                          if (parsed === current) {
+                            return;
+                          }
                           setEdits((prev) => ({
                             ...prev,
-                            [row._id]: {
-                              ...prev[row._id],
-                              cashBalance: Number.isFinite(n) ? n : row.cashBalance
-                            }
+                            [row._id]: { ...prev[row._id], cashBalance: parsed }
                           }));
                         }}
                       />
@@ -384,7 +466,12 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
           </label>
           <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
             Cash (optional)
-            <input className="crud-input" value={newCash} onChange={(e) => setNewCash(e.target.value)} placeholder="25000" />
+            <input
+              className="crud-input"
+              value={newCash}
+              onChange={(e) => setNewCash(e.target.value)}
+              placeholder="$25,000"
+            />
           </label>
           <button type="button" className="cta cta-primary" onClick={() => void addAccount()}>
             Add account

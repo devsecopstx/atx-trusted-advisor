@@ -13,6 +13,7 @@ type BrokerSettings = {
 
 type PortfolioSettings = {
   riskProfile: "conservative" | "balanced" | "growth";
+  investmentStrategy: "growth" | "income" | "balanced" | "aggressive";
   baseCurrency: "USD" | "EUR" | "GBP";
   rebalanceFrequencyDays: number;
 };
@@ -103,7 +104,12 @@ const DEFAULT_SETTINGS: UserAdminSettingsPayload = {
   assignedPersonaId: "",
   finraLicenseUploadUrl: "",
   broker: { provider: "paper", accountRef: "paper-main", enabled: true },
-  portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
+  portfolio: {
+    riskProfile: "balanced",
+    investmentStrategy: "balanced",
+    baseCurrency: "USD",
+    rebalanceFrequencyDays: 14
+  },
   account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
   notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
 };
@@ -223,7 +229,10 @@ export function UserSettingsConsole() {
         assignedPersonaId: payload.data.assignedPersonaId ?? "",
         finraLicenseUploadUrl: payload.data.finraLicenseUploadUrl ?? "",
         broker: payload.data.broker,
-        portfolio: payload.data.portfolio,
+        portfolio: {
+          ...payload.data.portfolio,
+          investmentStrategy: payload.data.portfolio.investmentStrategy ?? "balanced"
+        },
         account: payload.data.account,
         notificationDefaults: payload.data.notificationDefaults
       });
@@ -653,6 +662,26 @@ export function UserSettingsConsole() {
                     <option value="conservative">conservative</option>
                     <option value="balanced">balanced</option>
                     <option value="growth">growth</option>
+                  </select>
+                </label>
+                <label>
+                  Investment strategy
+                  <select
+                    onChange={(e) =>
+                      setSettingsForm((s) => ({
+                        ...s,
+                        portfolio: {
+                          ...s.portfolio,
+                          investmentStrategy: e.target.value as PortfolioSettings["investmentStrategy"]
+                        }
+                      }))
+                    }
+                    value={settingsForm.portfolio.investmentStrategy}
+                  >
+                    <option value="growth">growth</option>
+                    <option value="income">income</option>
+                    <option value="balanced">balanced</option>
+                    <option value="aggressive">aggressive</option>
                   </select>
                 </label>
                 <label>

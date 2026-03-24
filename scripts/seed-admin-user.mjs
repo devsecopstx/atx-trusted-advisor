@@ -153,7 +153,12 @@ const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
 /** Matches `UserAdminSettings` defaults used in admin user-settings tests / UI. */
 const DEFAULT_SEED_ADMIN_USER_SETTINGS = {
   broker: { provider: "paper", accountRef: "paper-main", enabled: true },
-  portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
+  portfolio: {
+    riskProfile: "balanced",
+    investmentStrategy: "balanced",
+    baseCurrency: "USD",
+    rebalanceFrequencyDays: 14
+  },
   account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
   notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
 };
