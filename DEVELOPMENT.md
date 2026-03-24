@@ -206,6 +206,7 @@ Before changing deployment settings or running release workflows, verify:
 
 1. GitHub CLI auth:
    - `gh auth status`
+   - **PRs / org GraphQL (`gh pr view`, `gh pr list`, …):** if **`GH_TOKEN`** is set in your shell, the CLI uses that PAT **instead of** the keyring login. A PAT without **`read:org`** then fails with missing-scope errors on org repos. For interactive PR work, run **`unset GH_TOKEN`** (or remove it from the shell profile / env that loads before `gh`), then **`gh auth status`** — the account with **`read:org`** (often keyring / `gho_`) should show **Active account: true**. Re-export `GH_TOKEN` only when a script or CI needs the narrow token.
 2. GitHub permissions:
    - You can read/write repo variables and environment secrets.
    - You can dispatch workflows.
