@@ -6,8 +6,6 @@ import { useCallback, useEffect, useState } from "react";
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
-import { BrokerHoldingsImportPanel } from "./broker-holdings-import-panel";
-
 const ACCOUNT_TYPES = ["merrill", "fidelity", "etrade"] as const;
 
 type AccountRow = {
@@ -180,6 +178,9 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
       <div className="tool-row">
         <Link className="cta cta-secondary" href="/admin/portfolios">
           ← Portfolios
+        </Link>
+        <Link className="cta cta-primary" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/broker-import`}>
+          Broker holdings import
         </Link>
         <button className="cta cta-secondary" disabled={loading} onClick={() => void refresh()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh
@@ -369,8 +370,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
           </button>
         </div>
       </article>
-
-      <BrokerHoldingsImportPanel lockedPortfolioId={portfolioId} />
     </section>
   );
 }

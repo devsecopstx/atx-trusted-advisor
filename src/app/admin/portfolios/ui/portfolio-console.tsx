@@ -12,7 +12,9 @@ export function PortfolioConsole() {
           Broker holdings import (onboarding)
         </h3>
         <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-          CSV preview → account mapping → stock lots import lives on the dedicated onboarding route (same API:{" "}
+          CSV preview → account mapping → stock lots import: use{" "}
+          <strong>Portfolios → Manage accounts → Broker holdings import</strong> for a chosen book, or the onboarding
+          route to pick any portfolio (same API{" "}
           <code className="font-mono text-xs">/api/admin/import/broker</code>).
         </p>
         <Link className="cta cta-primary" href="/admin/onboarding">
