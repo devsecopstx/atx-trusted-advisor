@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 
 import { APP_VERSION_LABEL } from "@/lib/app-version";
 
+import { USER_PRODUCT_WHITELABEL_SUBLINE } from "./product-brand-constants";
+
 const LEGAL_LINKS: { href: string; label: string }[] = [
   { href: "/legal/imprint", label: "Imprint" },
   { href: "/legal/terms", label: "Terms" },
@@ -37,7 +39,10 @@ export function GlobalFooter({ subline }: GlobalFooterProps) {
           ))}
         </nav>
         <div className="app-footer-meta" aria-label="Copyright">
-          <span className="app-footer-copy">© {year} aTx⚡Finance</span>
+          <span className="app-footer-brand-stack">
+            <span className="app-footer-copy">© {year} atx Trusted Advisor</span>
+            <span className="app-footer-whitelabel">{USER_PRODUCT_WHITELABEL_SUBLINE}</span>
+          </span>
           <span aria-hidden className="app-footer-sep">
             |
           </span>

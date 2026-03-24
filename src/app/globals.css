@@ -92,6 +92,16 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
+.xf-whitelabel-sub {
+  margin: 0;
+  font-size: 0.5625rem;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.38);
+}
+
 /* ── Admin top bar ─────────────────────────── */
 
 .admin-layout {
@@ -238,6 +248,23 @@ h1, h2, h3, h4, h5, h6 {
 .app-footer-version {
   color: var(--xf-text-400);
   font-variant-numeric: tabular-nums;
+}
+
+.app-footer-brand-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.06rem;
+}
+
+.app-footer-whitelabel {
+  font-size: 0.58rem;
+  line-height: 1.15;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  font-weight: 500;
+  color: var(--xf-text-400);
+  opacity: 0.9;
 }
 
 .app-footer-sep {

@@ -11,7 +11,8 @@ describe("GlobalFooter", () => {
     expect(source).toContain("APP_VERSION_LABEL");
     expect(source).toContain("/legal/privacy");
     expect(source).toContain("/legal/terms");
-    expect(source).toContain("aTx⚡Finance");
+    expect(source).toContain("atx Trusted Advisor");
+    expect(source).toContain("USER_PRODUCT_WHITELABEL_SUBLINE");
   });
 
   it("does not ship casual or jokey compliance copy in chrome", () => {

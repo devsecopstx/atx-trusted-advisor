@@ -133,7 +133,7 @@ export default async function PortfolioPage() {
           <h1 className="hero-title">Default portfolio</h1>
           <p className="hero-copy">
             Your provisioned default portfolio, linked accounts (broker type), and watchlist context for
-            xFinance execution surfaces.
+            atx Trusted Advisor execution surfaces.
           </p>
           {portfolioLoadError ? (
             <div style={{ marginTop: "1rem" }}>

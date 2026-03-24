@@ -73,7 +73,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 
 ## 6. Global footer & compliance chrome
 
-- `**GlobalFooter**` (`src/app/ui/global-footer.tsx`): legal nav (Imprint, Terms, Privacy, Security, Report a vulnerability), copyright **aTx⚡Finance**, `**APP_VERSION_LABEL`** from `package.json` via `src/lib/app-version.ts`.
+- `**GlobalFooter**` (`src/app/ui/global-footer.tsx`): legal nav (Imprint, Terms, Privacy, Security, Report a vulnerability), copyright **atx Trusted Advisor** + **whitelabel** subline, `**APP_VERSION_LABEL`** from `package.json` via `src/lib/app-version.ts`.
 - **Subline (product surfaces only):** Pass `subline` from layouts that need a disclaimer — e.g. `**xchat/layout.tsx`** and `**xstrategybuilder/layout.tsx**` use **Not financial advice** + provider credit. `**admin/layout.tsx`** uses `<GlobalFooter />` without a subline.
 - **Tone:** Footer and disclaimers stay **professional and compliance-oriented** — no ironic, meme, or jokey legal copy in production chrome (see `**xdesign-review`** visual + trust gate).
 
@@ -81,7 +81,19 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 
 ## 7. Summary
 
-- **Logo:** **aTx⚡Finance** lockup in UI; use **"xFinance"** in concise aria-labels where appropriate.
+- **Logo:** Primary lockup remains **aTx** mark + ⚡ + **Trusted Advisor** in `**AtxFinanceLogo**` / `**XchatHeaderBrand**` (see §8).
 - **Docs sync:** When `**xfinance-branding.mdc`** changes materially, update this file and follow `**generate-docs**` + `**test-commit-push**`.
 - **Optional:** Align accent green story across hero vs admin (§3) if stakeholders ask.
+
+---
+
+## 8. User chrome (March 2026) — **atx Trusted Advisor** + **whitelabel**
+
+- **Constants:** `**src/app/ui/product-brand-constants.ts**` — `USER_PRODUCT_HOME_ARIA_LABEL`, `USER_PRODUCT_WHITELABEL_SUBLINE` (`whitelabel`), `USER_PRODUCT_DESCRIPTOR_LINE` for marketing.
+- **xChat header:** `**XchatHeaderBrand**` — same **Trusted / Advisor** wordmark as the full logo, with a **whitelabel** subline (`**.xf-whitelabel-sub**`, tiny muted grey).
+- **App user header / guest xChat:** Home link uses `USER_PRODUCT_HOME_ARIA_LABEL` (includes “whitelabel” for screen readers).
+- **Footer:** `**GlobalFooter**` — © line **atx Trusted Advisor** + **whitelabel** in `**app-footer-whitelabel**` / `**app-footer-brand-stack**`.
+- **Marketing / plans / portfolio / xStrategyBuilder:** User-facing copy uses **atx Trusted Advisor** where the old product string **xFinance** appeared.
+- **Legal stubs:** `**legal-default-content.tsx**` uses `PRODUCT_PUBLIC_NAME = "atx Trusted Advisor"` for the web app; entity line may still read **aTx⚡Finance** where appropriate.
+- **Backend persona name:** Default published persona display name **xFinance** (FinExpert slug) is unchanged — only marketing/chrome copy moved to **atx Trusted Advisor**.
 

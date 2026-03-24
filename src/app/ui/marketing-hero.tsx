@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AtxFinanceLogo } from "./atxfinance-logo";
+import { USER_PRODUCT_DESCRIPTOR_LINE } from "./product-brand-constants";
 
 function AtxFinanceIcon() {
   return (
@@ -83,7 +84,7 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
       <div className="mh-content">
         <div className="mh-left">
           <AtxFinanceLogo size="md" showSubtitle />
-          <p className="mh-descriptor">xFinance · xChat · xStrategyBuilder — institutional options alpha in one workspace.</p>
+          <p className="mh-descriptor">{USER_PRODUCT_DESCRIPTOR_LINE}</p>
 
           <h1 className="mh-tagline">
             No Atoms Moved.{" "}
@@ -132,13 +133,13 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
           <div className="mh-product-stack mh-product-stack--three">
             <ProductCard
               icon={<AtxFinanceIcon />}
-              name="xFinance"
-              description="Default portfolio, accounts, watchlists, and execution context for approved professionals."
+              name="atx Trusted Advisor"
+              description="Default portfolio, accounts, watchlists, and execution context for approved professionals (whitelabel deployment)."
             />
             <ProductCard
               icon={<XChatIcon />}
               name="xChat"
-              description="xAI powered expert xFinance advisor."
+              description="xAI powered expert advisor — conversational desk for approved users."
             />
             <ProductCard
               icon={<XStrategyBuilderIcon />}

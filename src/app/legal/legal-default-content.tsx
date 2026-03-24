@@ -6,6 +6,8 @@
 const EFFECTIVE_NOTE = "Effective as of March 22, 2026. This summary is provided for transparency; it is not legal advice.";
 
 const LEGAL_ENTITY = "aTx⚡Finance";
+/** User-facing product name in in-app legal stubs (matches chrome / marketing). */
+const PRODUCT_PUBLIC_NAME = "atx Trusted Advisor";
 const LEGAL_CONTACT_NOTE =
   "Use the contact path in your onboarding, account, or access-request workflow for legal notices and operational requests.";
 const VULNERABILITY_TIPS =
@@ -17,20 +19,20 @@ export function LegalImprintContent() {
       <p className="legal-stub-lead">{EFFECTIVE_NOTE}</p>
       <h2>Service provider</h2>
       <p>
-        {LEGAL_ENTITY} operates the atxFinance platform and associated product surfaces, including xChat,
-        portfolio workflows, and related admin interfaces.
+        {LEGAL_ENTITY} operates the {PRODUCT_PUBLIC_NAME} platform and associated product surfaces, including
+        xChat, portfolio workflows, and related admin interfaces.
       </p>
       <h2>Scope of publication</h2>
       <p>
-        This imprint applies to information published within the atxFinance web application and official
-        product domains used for access, onboarding, and support.
+        This imprint applies to information published within the {PRODUCT_PUBLIC_NAME} web application and
+        official product domains used for access, onboarding, and support.
       </p>
       <h2>Contact and legal notices</h2>
       <p>{LEGAL_CONTACT_NOTE}</p>
       <h2>Regulatory and professional use</h2>
       <p>
-        atxFinance is designed for approved professionals and authorized users. Availability and product
-        scope may differ by role, jurisdiction, and operator policy.
+        {PRODUCT_PUBLIC_NAME} is designed for approved professionals and authorized users. Availability and
+        product scope may differ by role, jurisdiction, and operator policy.
       </p>
       <h2>Content responsibility</h2>
       <p>
@@ -52,9 +54,9 @@ export function LegalPrivacyContent() {
       <p className="legal-stub-lead">{EFFECTIVE_NOTE}</p>
       <h2>Who we are</h2>
       <p>
-        aTx⚡Finance (“we,” “us,” “our”) operates the atxFinance web application and related services
-        (the “Service”). The Service is operated for professionals and approved users; access may be
-        limited by account type or invitation.
+        aTx⚡Finance (“we,” “us,” “our”) operates the {PRODUCT_PUBLIC_NAME} web application and related
+        services (the “Service”). The Service is operated for professionals and approved users; access may
+        be limited by account type or invitation.
       </p>
       <h2>Information we collect</h2>
       <ul>
@@ -142,7 +144,7 @@ export function LegalTermsContent() {
       <p className="legal-stub-lead">{EFFECTIVE_NOTE}</p>
       <h2>Agreement</h2>
       <p>
-        By accessing or using the atxFinance web application and related services (the “Service”),
+        By accessing or using the {PRODUCT_PUBLIC_NAME} web application and related services (the “Service”),
         you agree to these Terms of Service. If you do not agree, do not use the Service.
       </p>
       <h2>The Service</h2>
@@ -275,7 +277,7 @@ export function LegalVulnerabilityContent() {
       <p className="legal-stub-lead">{EFFECTIVE_NOTE}</p>
       <h2>Report a vulnerability</h2>
       <p>
-        We welcome responsible security reports related to atxFinance. If you believe you found a
+        We welcome responsible security reports related to {PRODUCT_PUBLIC_NAME}. If you believe you found a
         vulnerability, report it privately through approved support or security channels.
       </p>
       <h2>Responsible disclosure expectations</h2>

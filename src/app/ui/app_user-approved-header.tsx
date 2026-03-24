@@ -2,12 +2,13 @@ import Link from "next/link";
 
 import type { SessionUser } from "@/lib/auth";
 import {
-  getMongoConnectionLabel,
-  shouldShowAppUserDbLabel
+    getMongoConnectionLabel,
+    shouldShowAppUserDbLabel
 } from "@/lib/env";
 
 import { AppUserHeaderSession } from "./app_user-header-session";
 import { AppUserProductNav, type AppUserProductNavCurrent } from "./app_user-product-nav";
+import { USER_PRODUCT_HOME_ARIA_LABEL } from "./product-brand-constants";
 import { XchatHeaderBrand } from "./xchat-header-brand";
 
 type AppUserApprovedHeaderProps = {
@@ -28,7 +29,7 @@ export function AppUserApprovedHeader({
 
   return (
     <header className="xchat-header">
-      <Link aria-label="aTx Finance — xChat home" className="xchat-header-brand" href="/xchat">
+      <Link aria-label={USER_PRODUCT_HOME_ARIA_LABEL} className="xchat-header-brand" href="/xchat">
         <XchatHeaderBrand />
       </Link>
       <div className="xchat-header-main">

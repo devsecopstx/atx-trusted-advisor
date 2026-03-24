@@ -2,6 +2,8 @@
 
 High-level roadmap for Next.js App Router UI, marketing surfaces, and monetization. **Living doc** — adjust as product scope changes.
 
+**User-facing product chrome (2026):** Signed-in and guest surfaces use **atx Trusted Advisor** with a **whitelabel** subline in the xChat header and global footer; strings live in `src/app/ui/product-brand-constants.ts`. Default xChat **persona** display name **xFinance** remains a separate backend/admin concept — see `atx-docs/atx-xchat/xfinance-branding-review.md` §8.
+
 ---
 
 ## Pitch / marketing

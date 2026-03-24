@@ -21,7 +21,7 @@ const PLANS: PlanTier[] = [
     period: "/month",
     features: [
       { text: "5 xchat prompts per day" },
-      { text: "Default xChat: published xFinance (FinExpert)" },
+      { text: "Default xChat: published FinExpert persona (slug xFinance)" },
       { text: "Admins use published Super-Agent" },
       { text: "Web search + X search tools" },
       { text: "Basic portfolio view" },
@@ -127,7 +127,7 @@ export function PlansLanding({ userEmail, username }: PlansLandingProps) {
           <h1>Choose Your Plan</h1>
           <p>
             {username ? `Hey @${username}` : `Hey ${userEmail}`} — you&#39;re authenticated but don&#39;t
-            have atxFinance access yet. Pick a plan and request access below.
+            have atx Trusted Advisor access yet. Pick a plan and request access below.
           </p>
         </div>
 
