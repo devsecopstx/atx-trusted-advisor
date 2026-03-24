@@ -18,22 +18,14 @@ export const metadata: Metadata = {
   title: "admin_console"
 };
 
+/** Slim top bar: deep links live on the hub (`/admin`) by back-office function. */
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin", label: "Hub" },
   { href: "/xchat", label: "xChat" },
-  { href: "/admin/onboarding", label: "Onboarding" },
-  { href: "/admin/broker-import", label: "Broker import" },
-  { href: "/admin/recommendations", label: "Recommendations" },
   { href: "/admin/batch", label: "Batch Ops" },
-  { href: "/admin/portfolios", label: "Portfolios" },
-  { href: "/admin/brokers", label: "Brokers" },
-  { href: "/admin/accounts", label: "Accounts" },
-  { href: "/admin/tasks", label: "Tasks" },
-  { href: "/admin/xoptions", label: "xOptions" },
   { href: "/admin/rag-files", label: "RAG collections" },
   { href: "/admin/xchat-tool-usage", label: "xChat tools" },
   { href: "/admin/api-docs", label: "API Docs" },
-  { href: "/admin/user-settings", label: "Manage users" },
   { href: "/admin/audit", label: "Audit" }
 ];
 

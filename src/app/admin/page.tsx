@@ -2,121 +2,195 @@ import Link from "next/link";
 
 import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "./lib/broker-import-description";
 
+type AdminFunctionIconName =
+  | "chat"
+  | "check"
+  | "user"
+  | "clock"
+  | "brain"
+  | "book"
+  | "directory"
+  | "audit"
+  | "portfolio"
+  | "strategy"
+  | "batch";
+
 type AdminFunction = {
   href: string;
-  icon:
-    | "chat"
-    | "check"
-    | "user"
-    | "clock"
-    | "brain"
-    | "book"
-    | "directory"
-    | "audit"
-    | "portfolio"
-    | "strategy"
-    | "batch";
+  icon: AdminFunctionIconName;
   title: string;
   description: string;
   comingSoon?: boolean;
 };
 
-const ADMIN_FUNCTIONS: AdminFunction[] = [
+type AdminFunctionGroup = {
+  title: string;
+  blurb?: string;
+  items: AdminFunction[];
+};
+
+const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
   {
-    href: "/xchat",
-    icon: "chat",
-    title: "xChat",
-    description: "Open the advisory chat workspace (Grok / xAI) in the same session."
+    title: "Books & custody",
+    blurb: "Tenant portfolios, custodian accounts, broker catalog, and holdings CSV import.",
+    items: [
+      {
+        href: "/admin/portfolios",
+        icon: "portfolio",
+        title: "Portfolios",
+        description: "Create and edit tenant portfolios, broker metadata, and default book per user."
+      },
+      {
+        href: "/admin/accounts",
+        icon: "portfolio",
+        title: "Accounts",
+        description: "Pick a portfolio, then manage custodian accounts: CRUD, cash, defaults, risk & outlook."
+      },
+      {
+        href: "/admin/brokers",
+        icon: "portfolio",
+        title: "Brokers",
+        description: "CRUD broker type slugs, display names, descriptions, and icon URLs for the portfolio catalog."
+      },
+      {
+        href: "/admin/broker-import",
+        icon: "batch",
+        title: "Broker import",
+        description: ADMIN_BROKER_IMPORT_DESCRIPTION
+      },
+      {
+        href: "/admin/onboarding",
+        icon: "batch",
+        title: "Onboarding",
+        description: "Broker import workspace with optional portfolio lock via query string."
+      }
+    ]
   },
   {
-    href: "/admin/access-requests",
-    icon: "check",
-    title: "Access",
-    description: "Access requests: review pending items, approve or reject, and submit new role requests."
+    title: "People & access",
+    blurb: "User lifecycle, roles, and access requests.",
+    items: [
+      {
+        href: "/admin/access-requests",
+        icon: "check",
+        title: "Access",
+        description: "Access requests: review pending items, approve or reject, and submit new role requests."
+      },
+      {
+        href: "/admin/user-settings",
+        icon: "user",
+        title: "Manage users",
+        description: "Browse approved users, adjust roles and plans, and edit per-user broker, portfolio, and notification defaults."
+      }
+    ]
   },
   {
-    href: "/admin/user-settings",
-    icon: "user",
-    title: "Manage Users",
-    description: "Browse approved users, adjust roles and plans, and edit per-user broker, portfolio, and notification defaults."
+    title: "Desk & operations",
+    blurb: "Schedulers, batches, and portfolio-scoped recommendations.",
+    items: [
+      {
+        href: "/admin/tasks",
+        icon: "clock",
+        title: "Scheduler tasks",
+        description: "Create scheduled tasks, run jobs manually, and monitor status."
+      },
+      {
+        href: "/admin/batch",
+        icon: "batch",
+        title: "Batch ops",
+        description: "Track xchat batch progress, failures, and completion metrics."
+      },
+      {
+        href: "/admin/recommendations",
+        icon: "strategy",
+        title: "Recommendations",
+        description: "Admin notes and tags (session-scoped list); portfolio book recs live under Portfolios → Recommendations."
+      }
+    ]
   },
   {
-    href: "/admin/portfolios",
-    icon: "portfolio",
-    title: "Portfolios",
-    description: "Create and edit tenant portfolios, broker metadata, and default book per user."
+    title: "AI & knowledge",
+    blurb: "Personas, RAG, and directory surfaces.",
+    items: [
+      {
+        href: "/xchat",
+        icon: "chat",
+        title: "xChat",
+        description: "Open the advisory chat workspace (Grok / xAI) in the same session."
+      },
+      {
+        href: "/admin/personas",
+        icon: "brain",
+        title: "Manage xPersonas",
+        description: "Create and edit xChat personas, models, collections, and default scope presets."
+      },
+      {
+        href: "/admin/rag-files",
+        icon: "book",
+        title: "RAG collections",
+        description: "Read-only xAI collection inventory for this management API key."
+      },
+      {
+        href: "/personas",
+        icon: "directory",
+        title: "xPersona directory",
+        description: "Read-only list of configured xPersonas."
+      }
+    ]
   },
   {
-    href: "/admin/brokers",
-    icon: "portfolio",
-    title: "Brokers",
-    description: "CRUD broker type slugs, display names, descriptions, and icon URLs for the portfolio catalog."
+    title: "Platform & compliance",
+    blurb: "Observability, docs, and audit trails.",
+    items: [
+      {
+        href: "/admin/audit",
+        icon: "audit",
+        title: "Audit explorer",
+        description: "Browse and filter change trails across users, access requests, and xPersonas."
+      },
+      {
+        href: "/admin/api-docs",
+        icon: "book",
+        title: "API docs",
+        description: "OpenAPI current-state and interactive API documentation."
+      },
+      {
+        href: "/admin/xchat-tool-usage",
+        icon: "brain",
+        title: "xChat tool usage",
+        description: "Tool call telemetry for xChat operational review."
+      }
+    ]
   },
   {
-    href: "/admin/accounts",
-    icon: "portfolio",
-    title: "Accounts",
-    description: "Pick a portfolio, then manage custodian accounts: CRUD, cash, defaults, risk & outlook."
+    title: "Developer & integration",
+    blurb: "Temporary tooling; fold into product flows when stable.",
+    items: [
+      {
+        href: "/admin/xoptions",
+        icon: "strategy",
+        title: "xOptions API test",
+        description:
+          "TODO: Remove or merge into product when strategy-options is fully integrated. Exercise GET expirations and option-chain reads (BFF / backend parity)."
+      }
+    ]
   },
   {
-    href: "/admin/broker-import",
-    icon: "batch",
-    title: "Broker import",
-    description: ADMIN_BROKER_IMPORT_DESCRIPTION
-  },
-  {
-    href: "/admin/tasks",
-    icon: "clock",
-    title: "Scheduler Tasks",
-    description: "Create scheduled tasks, run jobs manually, and monitor status."
-  },
-  {
-    href: "/admin/personas",
-    icon: "brain",
-    title: "Manage xPersonas",
-    description: "Create and edit xChat personas, models, collections, and default scope presets."
-  },
-  {
-    href: "/admin/rag-files",
-    icon: "book",
-    title: "RAG collections",
-    description: "Read-only xAI collection inventory for this management API key."
-  },
-  {
-    href: "/admin/batch",
-    icon: "batch",
-    title: "Batch Ops Dashboard",
-    description: "Track xchat batch progress, failures, and completion metrics."
-  },
-  {
-    href: "/admin/xoptions",
-    icon: "strategy",
-    title: "xOptions API test",
-    description: "Exercise GET strategy-options expirations and option-chain reads (BFF / backend parity)."
-  },
-  {
-    href: "/personas",
-    icon: "directory",
-    title: "xPersona Directory",
-    description: "Read-only list of configured xPersonas."
-  },
-  {
-    href: "/admin/audit",
-    icon: "audit",
-    title: "Audit Explorer",
-    description: "Browse and filter change trails across users, access requests, and xPersonas."
-  },
-  {
-    href: "/admin",
-    icon: "strategy",
-    title: "xStrategyBuilder",
-    description: "Build and backtest portfolio strategies with AI-assisted allocation.",
-    comingSoon: true
+    title: "Roadmap",
+    items: [
+      {
+        href: "/admin",
+        icon: "strategy",
+        title: "xStrategyBuilder",
+        description: "Build and backtest portfolio strategies with AI-assisted allocation.",
+        comingSoon: true
+      }
+    ]
   }
 ];
 
 type IconProps = {
-  name: AdminFunction["icon"];
+  name: AdminFunctionIconName;
 };
 
 function AdminFunctionIcon({ name }: IconProps) {
@@ -222,6 +296,36 @@ function AdminFunctionIcon({ name }: IconProps) {
   }
 }
 
+function AdminFunctionCard({ item }: { item: AdminFunction }) {
+  if (item.comingSoon) {
+    return (
+      <article className="admin-function-card admin-function-card-disabled">
+        <span aria-hidden="true" className="admin-function-icon">
+          <AdminFunctionIcon name={item.icon} />
+        </span>
+        <span className="admin-function-copy">
+          <strong>
+            {item.title} <span className="status-badge status-pending">Coming soon</span>
+          </strong>
+          <span>{item.description}</span>
+        </span>
+      </article>
+    );
+  }
+
+  return (
+    <Link className="admin-function-card" href={item.href}>
+      <span aria-hidden="true" className="admin-function-icon">
+        <AdminFunctionIcon name={item.icon} />
+      </span>
+      <span className="admin-function-copy">
+        <strong>{item.title}</strong>
+        <span>{item.description}</span>
+      </span>
+    </Link>
+  );
+}
+
 export default function AdminPage() {
   return (
     <div className="core-shell">
@@ -229,45 +333,27 @@ export default function AdminPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Admin Control Center</h1>
         <p className="hero-copy">
-          Pick one function at a time. Each button opens a focused mobile-friendly
-          page with large controls.
+          Back-office functions are grouped below. Use the top bar only for quick jumps (Hub, xChat, batch, RAG, tools,
+          docs, audit).
         </p>
       </section>
 
-      <section className="panel stack-gap">
-        <div className="panel-header">
-          <h2>Admin Functions</h2>
-          <p>Large tap targets designed for quick mobile navigation.</p>
-        </div>
-        <div className="admin-function-grid">
-          {ADMIN_FUNCTIONS.map((item) =>
-            item.comingSoon ? (
-              <article
-                className="admin-function-card admin-function-card-disabled"
-                key={item.title}
-              >
-                <span aria-hidden="true" className="admin-function-icon">
-                  <AdminFunctionIcon name={item.icon} />
-                </span>
-                <span className="admin-function-copy">
-                  <strong>{item.title} <span className="status-badge status-pending">Coming soon</span></strong>
-                  <span>{item.description}</span>
-                </span>
-              </article>
-            ) : (
-              <Link className="admin-function-card" href={item.href} key={item.href}>
-                <span aria-hidden="true" className="admin-function-icon">
-                  <AdminFunctionIcon name={item.icon} />
-                </span>
-                <span className="admin-function-copy">
-                  <strong>{item.title}</strong>
-                  <span>{item.description}</span>
-                </span>
-              </Link>
-            )
-          )}
-        </div>
-      </section>
+      {ADMIN_FUNCTION_GROUPS.map((group) => (
+        <section className="panel stack-gap" key={group.title}>
+          <div className="panel-header">
+            <h2>{group.title}</h2>
+            {group.blurb ? <p>{group.blurb}</p> : null}
+          </div>
+          <div className="admin-function-grid">
+            {group.items.map((item, idx) => (
+              <AdminFunctionCard
+                key={`${group.title}-${item.href}-${item.title}-${idx}`}
+                item={item}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
