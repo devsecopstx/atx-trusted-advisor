@@ -10,16 +10,17 @@ describe("GlobalFooter", () => {
   it("keeps legal links and version label contract", () => {
     expect(source).toContain("APP_VERSION_LABEL");
     expect(source).toContain("/legal/privacy");
+    expect(source).toContain("/legal/terms");
     expect(source).toContain("aTx⚡Finance");
   });
 
-  it("keeps watermark decorative (not asserted as legal advice)", () => {
-    expect(source).toMatch(/app-footer-watermark[^>]*aria-hidden/s);
+  it("does not ship casual or jokey compliance copy in chrome", () => {
+    expect(source).not.toMatch(/don't sue|sue me, bro/i);
   });
 
-  it("always renders watermark stack; subline disclaimer row is optional", () => {
+  it("renders subline stack only when subline is passed (no empty bordered block)", () => {
     expect(source).toContain("app-footer-subline-stack");
-    expect(source).toContain("app-footer-watermark");
-    expect(source).toMatch(/subline \? <div className="app-footer-subline"/);
+    expect(source).toContain("subline ?");
+    expect(source).not.toContain("app-footer-watermark");
   });
 });
