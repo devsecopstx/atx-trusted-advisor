@@ -14,10 +14,10 @@ Generate high-signal prompts and variants that match the 2026 atxFinance brand r
 
 Always align output with:
 
-- `branding/atxfinance-brand-prompts.md`
-- `branding/atxfinance-branding-tags.md`
-- `branding/atxfinance-color-palette.md`
-- `branding/atxfinance-typography.md`
+- `atx-branding/atxfinance-brand-prompts.md`
+- `atx-branding/atxfinance-branding-tags.md`
+- `atx-branding/atxfinance-color-palette.md`
+- `atx-branding/atxfinance-typography.md`
 - `design-system/atxfinance-brand-kit.md`
 
 ## Required Identity Lock
@@ -86,5 +86,5 @@ block:gibberishText block:misspelledBranding block:misleadingFinancialValues
 When asked, also provide:
 
 - Expo-ready `assets/` naming scaffold
-- dark/light token recommendations using `branding/atxfinance-color-palette.md`
+- dark/light token recommendations using `atx-branding/atxfinance-color-palette.md`
 - `app.json` or `app.config.ts` icon/splash snippet

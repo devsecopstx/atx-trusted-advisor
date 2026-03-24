@@ -5,7 +5,7 @@ const config: Config = {
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
     "./design-system/**/*.{css,js,ts,jsx,tsx,mdx}",
-    "./branding/**/*.{js,ts,jsx,tsx,mdx}",
+    "./atx-branding/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   /** Keep existing hand-authored global CSS; avoid Tailwind Preflight reset clashes. */
   corePlugins: {

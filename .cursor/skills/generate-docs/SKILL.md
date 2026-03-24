@@ -176,20 +176,20 @@ When **positioning, GTM, waitlist, investor deck copy**, or
   shipped UI keeps **$2/hr** on primary surfaces; roadmap subscription tiers
   stay secondary (deck/waitlist) until productized.
 
-### Branding assets folder gaps (`branding/`)
+### Branding assets folder gaps (`atx-branding/`)
 
-When files under **`branding/`** are added, replaced, or deleted:
+When files under **`atx-branding/`** are added, replaced, or deleted:
 
-- Update **`branding/README.md`** if the asset set, naming convention, or
+- Update **`atx-branding/README.md`** if the asset set, naming convention, or
   "how to use" workflow changed.
-- Record a quick QA pass in **`branding/atxfinance-brand-validation.md`**
+- Record a quick QA pass in **`atx-branding/atxfinance-brand-validation.md`**
   (or link equivalent review output) for non-trivial creative refreshes.
 - If deletions are intentional, note rationale in PR summary and ensure
   no docs/rules still reference removed filenames.
 - Keep generated assets and source prompts consistent:
   if prompt taxonomy changes, sync
-  `branding/atxfinance-brand-prompts.md` and
-  `branding/atxfinance-branding-tags.md`.
+  `atx-branding/atxfinance-brand-prompts.md` and
+  `atx-branding/atxfinance-branding-tags.md`.
 
 ## PR review handoff
 
