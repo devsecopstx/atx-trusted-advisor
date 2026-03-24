@@ -6,8 +6,13 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { getLicensingPitchContact } from "@/lib/env";
 
+import { loadXsbInitialWorkspace } from "./load-initial-workspace";
+import { XstrategybuilderPublicPreview } from "./ui/xstrategybuilder-public-preview";
+
 import "../xchat/xchat.css";
 import "./xstrategybuilder.css";
+
+export const dynamic = "force-dynamic";
 
 const PRICING_TOOLTIP = "Cheapest xFinance on earth — pay only for what you use.";
 
@@ -32,21 +37,6 @@ const METRIC_BADGES: MetricBadge[] = [
     detail:
       "Local GTM: LeafHouse (~$15B AUM), Hub (~$9B), EPIC (~$5B). Figures are public-scale references — verify independently."
   }
-];
-
-const BUILDER_STEPS = [
-  "Symbol",
-  "Outlook",
-  "Strategy",
-  "Contract",
-  "Review order"
-] as const;
-
-/** Illustrative CSP/CC volatility chips — matches legacy wheel prompt pattern; not live quotes. */
-const BUILDER_WATCHLIST_CHIPS: { label: string }[] = [
-  { label: "RDW IV 100%" },
-  { label: "LUNR IV 100%" },
-  { label: "TSLA IV 100%" }
 ];
 
 const LICENSING_MODELS: { title: string; detail: string }[] = [
@@ -119,6 +109,8 @@ export default async function XstrategyBuilderPage() {
     redirect("/login?next=/xstrategybuilder");
   }
 
+  const initialWorkspace = await loadXsbInitialWorkspace(session);
+
   return (
     <div className="xchat-shell">
       <AppUserApprovedHeader current="xstrategybuilder" feedbackPageLabel="xStrategyBuilder" session={session} />
@@ -138,78 +130,7 @@ export default async function XstrategyBuilderPage() {
             (outlooks, <code className="xsb-inline-code">STRATEGIES</code>, Yahoo chain rows, recommendation object).
           </p>
 
-          <div
-            aria-label="xStrategyBuilder product preview (non-interactive)"
-            className="xsb-builder-preview"
-            role="region"
-          >
-            <div className="xsb-builder-preview-head">
-              <h2 className="xsb-builder-title">xStrategyBuilder</h2>
-              <p className="xsb-builder-sub">
-                Build option structures with live chain context and P/L cues — plain language first, then precise legs.
-              </p>
-            </div>
-
-            <label className="xsb-builder-nl-label" htmlFor="xsb-nl-preview">
-              Describe your order
-            </label>
-            <input
-              readOnly
-              className="xsb-builder-nl-input"
-              id="xsb-nl-preview"
-              placeholder="Describe your order in plain language"
-              tabIndex={-1}
-              type="text"
-              value=""
-            />
-
-            <div aria-hidden className="xsb-builder-steps" role="tablist">
-              {BUILDER_STEPS.map((step, i) => (
-                <span
-                  key={step}
-                  className={i === 0 ? "xsb-builder-step xsb-builder-step--active" : "xsb-builder-step"}
-                  role="tab"
-                >
-                  {step}
-                </span>
-              ))}
-            </div>
-
-            <div className="xsb-builder-panel">
-              <h3 className="xsb-builder-step-heading">Step 1: Select a symbol</h3>
-              <div className="xsb-builder-search">
-                <span aria-hidden className="xsb-builder-search-icon">
-                  ⌕
-                </span>
-                <span className="xsb-builder-search-placeholder">Search symbol (e.g. TSLA, AAPL)</span>
-              </div>
-              <div className="xsb-builder-actions">
-                <span className="xsb-builder-next">Next</span>
-              </div>
-            </div>
-
-            <p className="xsb-builder-watchlist-label">Top from watchlist (CSP / CC volatility)</p>
-            <div className="xsb-builder-chips" role="list">
-              {BUILDER_WATCHLIST_CHIPS.map((c) => (
-                <span key={c.label} className="xsb-builder-chip" role="listitem">
-                  {c.label}
-                </span>
-              ))}
-            </div>
-
-            <p className="xsb-builder-contract-note">
-              Session tool contract: <code className="xsb-inline-code">symbol</code>, optional{" "}
-              <code className="xsb-inline-code">outlook</code>, <code className="xsb-inline-code">strategyId</code>,{" "}
-              <code className="xsb-inline-code">contractType</code>, <code className="xsb-inline-code">expiration</code>
-              , <code className="xsb-inline-code">maxRows</code> → symbol snapshot, option chain rows (call/put per
-              strike), and a recommendation block (action, strikes, breakeven, rationale) — see xfinance-strategy{" "}
-              <code className="xsb-inline-code">xstrategy-builder-service</code>.
-            </p>
-
-            <p className="xsb-occ-foot">
-              Options involve risk and are not suitable for all investors. Review OCC disclosures before trading.
-            </p>
-          </div>
+          <XstrategybuilderPublicPreview initialWorkspace={initialWorkspace} />
 
           <div className="xsb-badges" role="list">
             {METRIC_BADGES.map((b) => (

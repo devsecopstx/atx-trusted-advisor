@@ -115,6 +115,48 @@ export async function getCoreUserById(userId: ObjectId): Promise<CoreUser | null
   return db.collection<CoreUser>(collections.users).findOne({ _id: userId });
 }
 
+/** Resolve many core users by hex id (skips invalid ids). */
+export async function getCoreUsersByIds(userIds: string[]): Promise<Map<string, CoreUser>> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const oids: ObjectId[] = [];
+  const seen = new Set<string>();
+  for (const raw of userIds) {
+    const t = raw.trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    if (ObjectId.isValid(t)) {
+      oids.push(new ObjectId(t));
+    }
+  }
+  if (oids.length === 0) {
+    return new Map();
+  }
+  const users = await db
+    .collection<CoreUser>(collections.users)
+    .find({ _id: { $in: oids } })
+    .toArray();
+  const map = new Map<string, CoreUser>();
+  for (const u of users) {
+    if (u._id) {
+      map.set(u._id.toHexString(), u);
+    }
+  }
+  return map;
+}
+
+export function formatCoreUserDisplayName(user: CoreUser | undefined): string {
+  if (!user) {
+    return "Unknown user";
+  }
+  const x = user.xAccount;
+  const fromX = x?.displayName?.trim() || x?.username?.trim();
+  if (fromX) {
+    return fromX;
+  }
+  return user.email || "Unknown user";
+}
+
 export async function createCoreUser(input: {
   email: string;
   role: CoreUser["roles"][number];

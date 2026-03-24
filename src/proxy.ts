@@ -15,7 +15,6 @@ const protectedPathPrefixes = [
   "/watchlist",
   "/xchat",
   "/xstrategybuilder",
-  "/recommendations",
   "/xfinance",
   "/xcoach"
 ];
@@ -57,7 +56,6 @@ export const config = {
     "/watchlist/:path*",
     "/xchat/:path*",
     "/xstrategybuilder/:path*",
-    "/recommendations/:path*",
     "/xfinance/:path*",
     "/xcoach/:path*"
   ]

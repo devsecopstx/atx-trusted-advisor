@@ -20,7 +20,8 @@ import {
     type UserAdminSettings,
     type Watchlist,
     type WatchlistSymbol,
-    type WatchlistSymbolImportEntry
+    type WatchlistSymbolImportEntry,
+    accountTypeValues
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
 import { MAX_WATCHLIST_SYMBOLS } from "@/modules/watchlist/constants";
@@ -1743,4 +1744,325 @@ export async function deleteAccessRequest(
     .collection<AccessRequest>(collections.accessRequests)
     .deleteOne(withTenantScope({ _id: new ObjectId(id) }, options?.tenantId));
   return result.deletedCount === 1;
+}
+
+function portfolioTenantIdString(p: Portfolio): string | undefined {
+  return p.tenantId ? p.tenantId.toHexString() : undefined;
+}
+
+export async function adminGetPortfolioById(portfolioId: string): Promise<Portfolio | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(portfolioId)) {
+    return null;
+  }
+  const db = await getDb();
+  return db.collection<Portfolio>(collections.portfolios).findOne({ _id: new ObjectId(portfolioId) });
+}
+
+export async function adminListPortfolios(input: { limit?: number }): Promise<Portfolio[]> {
+  await ensurePortfolioIndexes();
+  const db = await getDb();
+  const limit = Math.min(Math.max(input.limit ?? 200, 1), 500);
+  return db
+    .collection<Portfolio>(collections.portfolios)
+    .find({})
+    .sort({ updatedAt: -1 })
+    .limit(limit)
+    .toArray();
+}
+
+export async function adminListPortfoliosWithStats(input: {
+  limit?: number;
+}): Promise<Array<Portfolio & { accountCount: number; totalCashBalance: number }>> {
+  const rows = await adminListPortfolios(input);
+  const enriched = await Promise.all(
+    rows.map(async (p) => {
+      if (!p._id) {
+        return { ...p, accountCount: 0, totalCashBalance: 0 };
+      }
+      const accounts = await listPortfolioAccounts({
+        userId: p.userId,
+        portfolioId: p._id.toHexString(),
+        tenantId: portfolioTenantIdString(p)
+      });
+      const accountCount = accounts.length;
+      const totalCashBalance = accounts.reduce((sum, a) => {
+        const b = typeof a.cashBalance === "number" && Number.isFinite(a.cashBalance) ? a.cashBalance : DEFAULT_ACCOUNT_CASH_BALANCE;
+        return sum + b;
+      }, 0);
+      return { ...p, accountCount, totalCashBalance };
+    })
+  );
+  return enriched;
+}
+
+export async function adminUpdatePortfolio(input: {
+  portfolioId: string;
+  name?: string;
+  ext_broker_ref?: string | null;
+  broker_type?: AccountType | null;
+  /** When true, clears `isDefault` on other portfolios for the same user (and tenant scope). */
+  isDefault?: boolean;
+}): Promise<Portfolio | null> {
+  const existing = await adminGetPortfolioById(input.portfolioId);
+  if (!existing?._id) {
+    return null;
+  }
+  const db = await getDb();
+  const now = new Date();
+  const fieldSet: Record<string, unknown> = {};
+  if (typeof input.name === "string" && input.name.trim()) {
+    fieldSet.name = input.name.trim().slice(0, 200);
+  }
+  if (input.ext_broker_ref !== undefined) {
+    const v = input.ext_broker_ref?.trim();
+    fieldSet.ext_broker_ref = v && v.length > 0 ? v.slice(0, 128) : null;
+  }
+  if (input.broker_type !== undefined) {
+    if (input.broker_type === null) {
+      fieldSet.broker_type = null;
+    } else {
+      const raw = String(input.broker_type).trim();
+      fieldSet.broker_type = (accountTypeValues as readonly string[]).includes(raw)
+        ? (raw as AccountType)
+        : null;
+    }
+  }
+  if (Object.keys(fieldSet).length > 0) {
+    await db.collection<Portfolio>(collections.portfolios).updateOne(
+      { _id: existing._id },
+      { $set: { ...fieldSet, updatedAt: now } }
+    );
+  }
+  if (input.isDefault === true) {
+    const tenantId = portfolioTenantIdString(existing);
+    await db.collection<Portfolio>(collections.portfolios).updateMany(
+      strictWriteTenantFilter(
+        {
+          ...userIdQuery(existing.userId),
+          isDefault: true,
+          _id: { $ne: existing._id }
+        },
+        tenantId
+      ),
+      { $set: { isDefault: false, updatedAt: now } }
+    );
+    await db.collection<Portfolio>(collections.portfolios).updateOne(
+      { _id: existing._id },
+      { $set: { isDefault: true, updatedAt: now } }
+    );
+  }
+  return adminGetPortfolioById(input.portfolioId);
+}
+
+export async function adminCreatePortfolio(input: {
+  userId: string;
+  tenantId?: string;
+  name: string;
+  isDefault?: boolean;
+  broker_type?: AccountType;
+}): Promise<Portfolio | null> {
+  await ensurePortfolioIndexes();
+  const name = input.name.trim().slice(0, 200);
+  if (!name || !input.userId.trim()) {
+    return null;
+  }
+  const db = await getDb();
+  const now = new Date();
+  const tenantObjectId = toTenantObjectId(input.tenantId);
+  const isDefault = Boolean(input.isDefault);
+
+  if (isDefault) {
+    await db.collection<Portfolio>(collections.portfolios).updateMany(
+      strictWriteTenantFilter({ ...userIdQuery(input.userId.trim()), isDefault: true }, input.tenantId),
+      { $set: { isDefault: false, updatedAt: now } }
+    );
+  }
+
+  const doc: Portfolio = {
+    tenantId: tenantObjectId,
+    userId: input.userId.trim(),
+    name,
+    isDefault,
+    tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
+    createdAt: now,
+    updatedAt: now,
+    ...(input.broker_type !== undefined &&
+    (accountTypeValues as readonly string[]).includes(String(input.broker_type))
+      ? { broker_type: input.broker_type as AccountType }
+      : {})
+  };
+  const res = await db.collection<Portfolio>(collections.portfolios).insertOne(doc);
+  return db.collection<Portfolio>(collections.portfolios).findOne({ _id: res.insertedId });
+}
+
+export async function adminDeletePortfolio(portfolioId: string): Promise<boolean> {
+  const portfolio = await adminGetPortfolioById(portfolioId);
+  if (!portfolio?._id) {
+    return false;
+  }
+  const db = await getDb();
+  const pid = portfolio._id;
+  const uid = userIdQuery(portfolio.userId);
+  const baseFilter: Record<string, unknown> = { portfolioId: pid, ...uid };
+  await db.collection<Position>(collections.positions).deleteMany(baseFilter);
+  await db.collection<Recommendation>(collections.recommendations).deleteMany(baseFilter);
+  await db.collection<Account>(collections.accounts).deleteMany(baseFilter);
+  await db.collection<Watchlist>(collections.watchlists).deleteMany(baseFilter);
+  const res = await db.collection<Portfolio>(collections.portfolios).deleteOne({ _id: pid });
+  return (res.deletedCount ?? 0) === 1;
+}
+
+export async function adminListAccountsForPortfolio(portfolioId: string): Promise<Account[]> {
+  const p = await adminGetPortfolioById(portfolioId);
+  if (!p?._id) {
+    return [];
+  }
+  return listPortfolioAccounts({
+    userId: p.userId,
+    portfolioId: p._id.toHexString(),
+    tenantId: portfolioTenantIdString(p)
+  });
+}
+
+export async function adminInsertAccountForPortfolio(input: {
+  portfolioId: string;
+  name: string;
+  type?: AccountType;
+  extAccountId?: string;
+  cashBalance?: number;
+}): Promise<Account | null> {
+  const portfolio = await adminGetPortfolioById(input.portfolioId);
+  if (!portfolio?._id) {
+    return null;
+  }
+  return insertPortfolioAccountForUser({
+    userId: portfolio.userId,
+    tenantId: portfolioTenantIdString(portfolio),
+    portfolioId: portfolio._id.toHexString(),
+    name: input.name,
+    type: input.type,
+    extAccountId: input.extAccountId,
+    cashBalance: input.cashBalance
+  });
+}
+
+export async function adminUpdatePortfolioAccount(input: {
+  portfolioId: string;
+  accountId: string;
+  name?: string;
+  cashBalance?: number;
+  extAccountId?: string;
+  type?: AccountType;
+  isDefault?: boolean;
+}): Promise<Account | null> {
+  const portfolio = await adminGetPortfolioById(input.portfolioId);
+  if (!portfolio?._id) {
+    return null;
+  }
+  const tenantId = portfolioTenantIdString(portfolio);
+  const base = await updatePortfolioAccountForUser({
+    userId: portfolio.userId,
+    tenantId,
+    portfolioId: input.portfolioId,
+    accountId: input.accountId,
+    name: input.name,
+    cashBalance: input.cashBalance,
+    extAccountId: input.extAccountId
+  });
+  if (input.type === undefined && input.isDefault === undefined) {
+    return base;
+  }
+  const db = await getDb();
+  const pid = new ObjectId(input.portfolioId);
+  const aid = new ObjectId(input.accountId);
+  const filter = strictWriteTenantFilter(
+    {
+      _id: aid,
+      ...userIdQuery(portfolio.userId),
+      portfolioId: pid
+    },
+    tenantId
+  );
+  const existing = await db.collection<Account>(collections.accounts).findOne(filter);
+  if (!existing?._id) {
+    return null;
+  }
+  const $set: Record<string, unknown> = { updatedAt: new Date() };
+  if (input.type !== undefined) {
+    $set.type = input.type;
+  }
+  if (input.isDefault === true) {
+    await db.collection<Account>(collections.accounts).updateMany(
+      strictWriteTenantFilter({ ...userIdQuery(portfolio.userId), portfolioId: pid }, tenantId),
+      { $set: { isDefault: false, updatedAt: new Date() } }
+    );
+    $set.isDefault = true;
+  }
+  if (Object.keys($set).length <= 1) {
+    return db.collection<Account>(collections.accounts).findOne(filter);
+  }
+  await db.collection<Account>(collections.accounts).updateOne(filter, { $set });
+  return db.collection<Account>(collections.accounts).findOne(filter);
+}
+
+export async function adminDeleteAccountForPortfolio(input: {
+  portfolioId: string;
+  accountId: string;
+}): Promise<boolean> {
+  const portfolio = await adminGetPortfolioById(input.portfolioId);
+  if (!portfolio?._id) {
+    return false;
+  }
+  const tenantId = portfolioTenantIdString(portfolio);
+  const accounts = await listPortfolioAccounts({
+    userId: portfolio.userId,
+    portfolioId: portfolio._id.toHexString(),
+    tenantId
+  });
+  const target = accounts.find((a) => a._id?.toHexString() === input.accountId);
+  if (!target?._id) {
+    return false;
+  }
+  if (accounts.length <= 1) {
+    return false;
+  }
+  const db = await getDb();
+  const pid = new ObjectId(input.portfolioId);
+  const aid = new ObjectId(input.accountId);
+  const scope = withTenantScope(
+    {
+      ...userIdQuery(portfolio.userId),
+      portfolioId: pid,
+      accountId: aid
+    },
+    tenantId
+  );
+  await db.collection<Position>(collections.positions).deleteMany(scope);
+  const del = await db.collection<Account>(collections.accounts).deleteOne(
+    strictWriteTenantFilter(
+      {
+        _id: aid,
+        ...userIdQuery(portfolio.userId),
+        portfolioId: pid
+      },
+      tenantId
+    )
+  );
+  if ((del.deletedCount ?? 0) === 0) {
+    return false;
+  }
+  if (target.isDefault) {
+    const next = accounts.find((a) => a._id?.toHexString() !== input.accountId);
+    if (next?._id) {
+      await db.collection<Account>(collections.accounts).updateOne(
+        strictWriteTenantFilter(
+          { _id: next._id, ...userIdQuery(portfolio.userId), portfolioId: pid },
+          tenantId
+        ),
+        { $set: { isDefault: true, updatedAt: new Date() } }
+      );
+    }
+  }
+  return true;
 }
