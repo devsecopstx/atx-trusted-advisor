@@ -116,6 +116,9 @@ describe("access request item CRUD route", () => {
     expect(response.status).toBe(200);
     expect(coreAdminMocks.updateAccessRequestPlanById).toHaveBeenCalledTimes(1);
     expect(coreAdminMocks.reviewAccessRequestById).toHaveBeenCalledTimes(1);
+    expect(identityMocks.addRoleToCoreUser).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "viewer" })
+    );
   });
 
   it("deletes access request by id", async () => {

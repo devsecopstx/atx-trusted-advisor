@@ -121,7 +121,7 @@ class AdminPortfolioAccountsService(
                     "updatedAt" to now,
                 ),
             )
-        PortfolioMongoFilter.tenantObjectId(tenantHex)?.let { doc["tenantId"] = it }
+        tenantHex?.let { PortfolioMongoFilter.tenantObjectId(it) }?.let { doc["tenantId"] = it }
         mongoTemplate.insert(doc, props.accountsCollection)
         val id = doc.getObjectId("_id") ?: return null
         return mongoTemplate.findById(id, Document::class.java, props.accountsCollection)

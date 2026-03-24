@@ -396,6 +396,14 @@ async function ensureIndexes(db) {
         unique: true,
         name: "uniq_watchlist_per_portfolio"
       }
+    ),
+    db.collection("admin_access_requests").createIndex(
+      { userId: 1, requestedRole: 1 },
+      {
+        unique: true,
+        name: "uniq_admin_access_requests_user_requestedRole_actionable",
+        partialFilterExpression: { status: { $in: ["new", "triaged", "pending"] } }
+      }
     )
   ]);
 }
@@ -497,6 +505,28 @@ async function seed() {
     const user = await db.collection("core_users").findOne({ email });
     if (!user?._id) {
       throw new Error("Failed to create or fetch seeded admin user");
+    }
+
+    const seedUserIdHex = user._id.toHexString();
+    const adminAccessRequests = "admin_access_requests";
+    const seedPaper = await db.collection(adminAccessRequests).findOne({
+      userId: seedUserIdHex,
+      requestedRole: "global_admin"
+    });
+    if (!seedPaper) {
+      await db.collection(adminAccessRequests).insertOne({
+        tenantId: tenant._id,
+        userId: seedUserIdHex,
+        contactEmail: email,
+        requestedRole: "global_admin",
+        requestedPlan: "enterprise",
+        reason:
+          "Bootstrap global_admin via npm run seed:admin (ADMIN_SEED_EMAIL); approved paper trail for elevated platform role.",
+        status: "approved",
+        requestedAt: now,
+        reviewedBy: seedUserIdHex,
+        reviewedAt: now
+      });
     }
 
     if (ADMIN_SEED_X_USER_ID) {

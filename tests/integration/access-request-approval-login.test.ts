@@ -260,7 +260,7 @@ describe("access request approval login flow", () => {
       }
     );
     expect(approvalResponse.status).toBe(200);
-    expect(state.userRoles).toContain("global_admin");
+    expect(state.userRoles).toContain("viewer");
     expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledTimes(1);
     expect(bootstrapMocks.enqueueAccessRequestBootstrap).toHaveBeenCalledTimes(1);
 
@@ -287,7 +287,7 @@ describe("access request approval login flow", () => {
     const afterApprovalResponse = await oauthCallback(
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
-    expect(afterApprovalResponse.headers.get("location")).toContain("/admin");
+    expect(afterApprovalResponse.headers.get("location")).toContain("/xchat");
     expect(authMocks.createSession).toHaveBeenCalledTimes(1);
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
   });

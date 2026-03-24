@@ -12,7 +12,7 @@ type AccessRequestStatus = "new" | "triaged" | "pending" | "approved" | "rejecte
 type AccessRequest = {
   _id?: string;
   userId: string;
-  requestedRole: "advisor" | "operator" | "viewer";
+  requestedRole: "global_admin" | "advisor" | "operator" | "viewer";
   requestedPlan: "free" | "pro" | "enterprise";
   reason: string;
   status: AccessRequestStatus;
@@ -261,6 +261,7 @@ export function AccessRequestsConsole() {
           <input name="email" placeholder="user email (preferred)" type="email" />
           <input name="userId" placeholder="user id (optional)" />
           <select name="requestedRole" defaultValue="operator">
+            <option value="global_admin">global_admin (elevated)</option>
             <option value="advisor">advisor</option>
             <option value="operator">operator</option>
             <option value="viewer">viewer</option>

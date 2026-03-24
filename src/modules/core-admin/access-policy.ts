@@ -1,7 +1,7 @@
 import type {
-  AccessRequest,
-  AccessRequestPolicyViolation,
-  AccessRequestStatus
+    AccessRequest,
+    AccessRequestPolicyViolation,
+    AccessRequestStatus
 } from "@/modules/core-admin/types";
 import { ACCESS_REQUEST_SLA_DAYS } from "@/modules/core-admin/types";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
@@ -34,21 +34,23 @@ export function checkAccessRequestPolicy(
     });
   }
 
-  if (input.requestedRole === "advisor" && input.requestedPlan === "free") {
-    violations.push({
-      code: "ADVISOR_REQUIRES_PAID_PLAN",
-      message: "Advisor role requires Pro or Enterprise plan"
-    });
-  }
+  if (input.requestedRole !== "global_admin") {
+    if (input.requestedRole === "advisor" && input.requestedPlan === "free") {
+      violations.push({
+        code: "ADVISOR_REQUIRES_PAID_PLAN",
+        message: "Advisor role requires Pro or Enterprise plan"
+      });
+    }
 
-  if (
-    input.requestedPlan === "enterprise" &&
-    input.requestedRole === "viewer"
-  ) {
-    violations.push({
-      code: "ENTERPRISE_REQUIRES_ELEVATED_ROLE",
-      message: "Enterprise plan requires advisor or operator role"
-    });
+    if (
+      input.requestedPlan === "enterprise" &&
+      input.requestedRole === "viewer"
+    ) {
+      violations.push({
+        code: "ENTERPRISE_REQUIRES_ELEVATED_ROLE",
+        message: "Enterprise plan requires advisor or operator role"
+      });
+    }
   }
 
   return violations;

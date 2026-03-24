@@ -30,7 +30,8 @@ export type AccessRequest = {
   userId: string;
   /** Optional real contact email; distinct from synthetic X identity login email. */
   contactEmail?: string;
-  requestedRole: "advisor" | "operator" | "viewer";
+  /** Product roles + `global_admin` (elevated; admin-created or seed paper trail — not self-service). */
+  requestedRole: "global_admin" | "advisor" | "operator" | "viewer";
   requestedPlan: "free" | "pro" | "enterprise";
   reason: string;
   status: AccessRequestStatus;

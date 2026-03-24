@@ -21,6 +21,7 @@ class AccessRequestService(
     private val slackWebhookService: SlackWebhookService,
     private val objectMapper: ObjectMapper,
 ) {
+    private val actionableStatuses = listOf("new", "triaged", "pending")
 
     fun findPendingForUserAndRole(
         session: ResolvedSession,
@@ -29,7 +30,7 @@ class AccessRequestService(
         val parts = mutableListOf(
             Criteria.where("userId").`is`(session.userId),
             Criteria.where("requestedRole").`is`(requestedRole),
-            Criteria.where("status").`is`("pending"),
+            Criteria.where("status").`in`(actionableStatuses),
         )
         tenantObjectId(session.tenantId)?.let { oid ->
             parts.add(Criteria.where("tenantId").`is`(oid))

@@ -127,7 +127,7 @@ describe("POST /api/access-requests (self-service)", () => {
     );
     expect(response.status).toBe(409);
     const payload = (await response.json()) as { error: string };
-    expect(payload.error).toContain("pending access request");
+    expect(payload.error).toContain("open access request");
   });
 
   it("returns 401 when unauthenticated", async () => {

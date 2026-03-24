@@ -1,4 +1,4 @@
-import { type Filter, ObjectId } from "mongodb";
+import { type Filter, MongoServerError, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
@@ -48,6 +48,18 @@ const collections = {
 
 let ensurePortfolioIndexesPromise: Promise<void> | null = null;
 let ensureBrokerCatalogIndexesPromise: Promise<void> | null = null;
+let ensureAccessRequestIndexesPromise: Promise<void> | null = null;
+
+const ACCESS_REQUEST_ACTIONABLE_USER_ROLE_UNIQ =
+  "uniq_admin_access_requests_user_requestedRole_actionable";
+
+/** Thrown when Mongo unique index blocks a second actionable row for the same userId + requestedRole. */
+export class AccessRequestDuplicatePendingError extends Error {
+  constructor() {
+    super("A pending access request already exists for this user and role.");
+    this.name = "AccessRequestDuplicatePendingError";
+  }
+}
 
 const BROKER_CATALOG_TYPE_RE = /^[a-z][a-z0-9_]{0,31}$/;
 
@@ -300,6 +312,30 @@ export async function ensurePortfolioIndexes(): Promise<void> {
   await ensurePortfolioIndexesPromise;
 }
 
+async function createAccessRequestIndexes(): Promise<void> {
+  const db = await getDb();
+  await db.collection<AccessRequest>(collections.accessRequests).createIndex(
+    { userId: 1, requestedRole: 1 },
+    {
+      unique: true,
+      name: ACCESS_REQUEST_ACTIONABLE_USER_ROLE_UNIQ,
+      partialFilterExpression: {
+        status: { $in: [...ACTIONABLE_ACCESS_REQUEST_STATUSES] }
+      }
+    }
+  );
+}
+
+export async function ensureAccessRequestIndexes(): Promise<void> {
+  if (!ensureAccessRequestIndexesPromise) {
+    ensureAccessRequestIndexesPromise = createAccessRequestIndexes().catch((err: unknown) => {
+      ensureAccessRequestIndexesPromise = null;
+      throw err;
+    });
+  }
+  await ensureAccessRequestIndexesPromise;
+}
+
 export async function listAccessRequests(options?: {
   limit?: number;
   status?: AccessRequestStatus;
@@ -387,6 +423,7 @@ export async function createAccessRequest(
     tenantId?: string;
   }
 ): Promise<AccessRequest> {
+  await ensureAccessRequestIndexes();
   const db = await getDb();
 
   const document: AccessRequest = {
@@ -397,11 +434,18 @@ export async function createAccessRequest(
     requestedAt: payload.requestedAt ?? new Date()
   };
 
-  const result = await db
-    .collection<AccessRequest>(collections.accessRequests)
-    .insertOne(document);
+  try {
+    const result = await db
+      .collection<AccessRequest>(collections.accessRequests)
+      .insertOne(document);
 
-  return { ...document, _id: result.insertedId };
+    return { ...document, _id: result.insertedId };
+  } catch (e) {
+    if (e instanceof MongoServerError && e.code === 11000) {
+      throw new AccessRequestDuplicatePendingError();
+    }
+    throw e;
+  }
 }
 
 export async function getPendingAccessRequestByUserAndRole(input: {
@@ -417,7 +461,7 @@ export async function getPendingAccessRequestByUserAndRole(input: {
         {
           userId: input.userId,
           requestedRole: input.requestedRole,
-          status: "pending"
+          status: { $in: ACTIONABLE_ACCESS_REQUEST_STATUSES }
         },
         input.tenantId
       )

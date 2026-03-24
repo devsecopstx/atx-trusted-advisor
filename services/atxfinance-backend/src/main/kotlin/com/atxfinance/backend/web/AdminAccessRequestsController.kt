@@ -65,7 +65,7 @@ class AdminAccessRequestsController(
         val reason = (body["reason"] as? String) ?: ""
         val requestedPlan = (body["requestedPlan"] as? String)?.trim()?.lowercase() ?: "free"
         val statusIn = (body["status"] as? String)?.trim()?.lowercase()
-        if (requestedRole !in setOf("advisor", "operator", "viewer")) {
+        if (requestedRole !in setOf("global_admin", "advisor", "operator", "viewer")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }
         if (requestedPlan !in setOf("free", "pro", "enterprise")) {

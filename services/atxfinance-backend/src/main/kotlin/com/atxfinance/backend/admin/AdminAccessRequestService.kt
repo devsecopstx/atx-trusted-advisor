@@ -28,7 +28,7 @@ class AdminAccessRequestService(
 ) {
     private val actionableStatuses = setOf("new", "triaged", "pending")
     private val allStatuses = setOf("new", "triaged", "pending", "approved", "rejected", "expired")
-    private val betaApprovedRole = "global_admin"
+    private val grantableRoles = setOf("global_admin", "advisor", "operator", "viewer")
 
     fun list(statusFilter: String): List<Map<String, Any?>> {
         val lim = 50
@@ -90,7 +90,7 @@ class AdminAccessRequestService(
         requestedPlan: String,
         statusInput: String?,
     ): Pair<Document, Map<String, Any?>> {
-        if (requestedRole !in setOf("advisor", "operator", "viewer")) {
+        if (requestedRole !in grantableRoles) {
             throw IllegalArgumentException("Invalid requestedRole")
         }
         if (reason.length < 5) {
@@ -224,8 +224,15 @@ class AdminAccessRequestService(
                     mapOf("error" to "Approved request has invalid user id"),
                 )
             }
+            val roleToGrant = refreshed.getString("requestedRole")?.trim()?.lowercase() ?: ""
+            if (roleToGrant !in grantableRoles) {
+                return ReviewResult.Error(
+                    HttpStatus.BAD_REQUEST,
+                    mapOf("error" to "Invalid requestedRole on access request"),
+                )
+            }
             val oid = ObjectId(targetUserId)
-            coreUserService.addRole(oid, betaApprovedRole)
+            coreUserService.addRole(oid, roleToGrant)
             coreUserService.setSubscriptionPlan(oid, effectivePlan)
             try {
                 defaultPortfolioProvisionService.provisionForUser(targetUserId, session.tenantId)
@@ -312,7 +319,7 @@ class AdminAccessRequestService(
             Criteria().andOperator(
                 PortfolioMongoFilter.userIdCriteria(userId),
                 Criteria.where("requestedRole").`is`(requestedRole),
-                Criteria.where("status").`is`("pending"),
+                Criteria.where("status").`in`(actionableStatuses.toList()),
             ),
         )
         return mongoTemplate.findOne(q, Document::class.java, props.accessRequestsCollection)

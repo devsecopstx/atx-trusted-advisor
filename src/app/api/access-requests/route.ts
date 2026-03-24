@@ -7,6 +7,7 @@ import { buildAccessRequestNotification, sendSlackNotification } from "@/lib/sla
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
+    AccessRequestDuplicatePendingError,
     createAccessRequest,
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
@@ -16,6 +17,7 @@ const selfRequestSchema = z.object({
   reason: z.string().min(3).max(500)
 });
 
+/** Signed-in self-service: prefer this URL for viewer/operator/advisor requests (`global_admin` is admin-only). */
 export async function POST(request: Request) {
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
   if (existingPending) {
     return NextResponse.json(
       {
-        error: "You already have a pending access request.",
+        error: "You already have an open access request for this role.",
         data: {
           requestedRole: existingPending.requestedRole,
           status: existingPending.status,
@@ -62,13 +64,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const created = await createAccessRequest({
-    tenantId: session.tenantId,
-    userId: session.userId,
-    contactEmail: isXIdentityPlaceholderEmail(session.email) ? undefined : session.email,
-    requestedRole: parsed.data.requestedRole,
-    reason: parsed.data.reason
-  });
+  let created;
+  try {
+    created = await createAccessRequest({
+      tenantId: session.tenantId,
+      userId: session.userId,
+      contactEmail: isXIdentityPlaceholderEmail(session.email) ? undefined : session.email,
+      requestedRole: parsed.data.requestedRole,
+      reason: parsed.data.reason
+    });
+  } catch (e) {
+    if (e instanceof AccessRequestDuplicatePendingError) {
+      return NextResponse.json({ error: e.message }, { status: 409 });
+    }
+    throw e;
+  }
 
   if (created._id) {
     await createAuditEvent({

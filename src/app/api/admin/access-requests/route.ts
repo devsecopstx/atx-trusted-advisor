@@ -8,6 +8,7 @@ import {
     listLatestAuditEventsForEntities
 } from "@/modules/audit/repository";
 import {
+    AccessRequestDuplicatePendingError,
     createAccessRequest,
     getPendingAccessRequestByUserAndRole,
     listAccessRequests
@@ -19,7 +20,7 @@ import { ensureCoreUserByEmail } from "@/modules/identity/repository";
 const createAccessRequestSchema = z.object({
   userId: z.string().trim().min(1).optional(),
   email: z.string().trim().email().optional(),
-  requestedRole: z.enum(["advisor", "operator", "viewer"]),
+  requestedRole: z.enum(["global_admin", "advisor", "operator", "viewer"]),
   requestedPlan: z.enum(["free", "pro", "enterprise"]).optional().default("free"),
   reason: z.string().min(5),
   status: z.enum(accessRequestStatusValues).optional()
@@ -144,22 +145,33 @@ export async function POST(request: Request) {
   if (existingPending) {
     return NextResponse.json(
       {
-        error: "A pending request for this user and role already exists.",
+        error: "An open access request already exists for this user and role.",
         data: serializeAccessRequest(existingPending)
       },
       { status: 409 }
     );
   }
 
-  const created = await createAccessRequest({
-    tenantId: session.tenantId,
-    userId: resolvedUserId,
-    contactEmail: resolvedEmail,
-    requestedRole: parsed.data.requestedRole,
-    requestedPlan: parsed.data.requestedPlan,
-    reason: parsed.data.reason,
-    status: parsed.data.email ? "pending" : parsed.data.status
-  });
+  let created;
+  try {
+    created = await createAccessRequest({
+      tenantId: session.tenantId,
+      userId: resolvedUserId,
+      contactEmail: resolvedEmail,
+      requestedRole: parsed.data.requestedRole,
+      requestedPlan: parsed.data.requestedPlan,
+      reason: parsed.data.reason,
+      status: parsed.data.email ? "pending" : parsed.data.status
+    });
+  } catch (e) {
+    if (e instanceof AccessRequestDuplicatePendingError) {
+      return NextResponse.json(
+        { error: e.message },
+        { status: 409 }
+      );
+    }
+    throw e;
+  }
   if (created._id) {
     await createAuditEvent({
       entityType: "access_request",
