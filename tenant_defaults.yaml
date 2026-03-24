@@ -54,7 +54,7 @@ defaults:
 initial_seed:
   roles:
     - id: 1
-      name: admin
+      name: global_admin
       description: "Full system access"
       is_system: true
 
@@ -66,8 +66,16 @@ initial_seed:
   users:                             # usually only 1–2 seed users
     - email: atxbogart@gmail.com
       name: Admin User
-      password_hash: "atxRocks!"              # ← your script should hash a default or env-provided password
-      role: admin
+      role: global_admin
+      x_user_id: "atxbogart"
+      is_active: true
+      email_verified: true
+      created_by: system
+
+    - email: sperezintexas@gmail.com
+      name: Admin User
+      role: global_admin
+      x_user_id: "sperezintexas"
       is_active: true
       email_verified: true
       created_by: system
@@ -77,7 +85,7 @@ initial_seed:
       value: "atx-fintech-advisor"
       type: string
       public: true
-      description: "ATXFINANCE"
+      description: "atxFinTech Advisor"
 
     - key: support_email
       value: sperezintexas@gmail.com
@@ -96,7 +104,13 @@ initial_seed:
       sensitive: true
 
     - key: mongodb_db_name
-      value: "atxfinancedb"
+      value: "atxfinancedb-devtest"
+      type: string
+      public: true
+      sensitive: false
+
+    - key: xai_team_id
+      value: ""
       type: string
       public: true
       sensitive: false
@@ -111,13 +125,7 @@ initial_seed:
       value: ""
       type: string
       public: true
-      sensitive: true
-
-    - key: xai_team_id
-      value: ""
-      type: string
-      public: true
-      sensitive: true
+      sensitive: false
       
     - key: x_oauth_client_id
       value: ""
@@ -138,7 +146,7 @@ initial_seed:
       sensitive: false
 
     - key: admin_seed_usernames
-      value: "atxbogart@gmail.com,sperezintexas@gmail.com"
+      value: ""
       type: string
       public: true
       sensitive: false
@@ -156,17 +164,18 @@ initial_seed:
       sensitive: false
 
     - key: stripe_public_key
-      value: ""                      # ← leave empty or supply via Secret Manager
+      value: ""
       type: string
       public: true
-      sensitive: true                # hint for UI/admin panel
+      sensitive: false                # hint for UI/admin panel
+
     - key: formspree_public_key
-      value: "https://formspree.io/f/mnjgkkow"
+      value: ""
       type: string
       public: true
-      sensitive: true
+      sensitive: false
 
     - key: enable_beta_features
-      value: "false"
+      value: "true"
       type: boolean
       public: false
