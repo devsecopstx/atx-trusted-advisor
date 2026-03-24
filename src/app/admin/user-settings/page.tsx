@@ -18,9 +18,9 @@ export default async function AdminUserSettingsPage() {
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
         <p className="eyebrow">atxfinance core admin</p>
-        <h1 className="hero-title">User Settings</h1>
+        <h1 className="hero-title">Manage Users</h1>
         <p className="hero-copy">
-          Upsert default broker, portfolio, account, and notification settings for a user.
+          Browse approved users, roles, and plans; upsert broker, portfolio, account, and notification defaults per user.
         </p>
       </section>
 

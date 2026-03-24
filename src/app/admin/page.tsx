@@ -37,8 +37,8 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
   {
     href: "/admin/user-settings",
     icon: "user",
-    title: "User Settings",
-    description: "Upsert default account, portfolio, and notification settings."
+    title: "Manage Users",
+    description: "Browse approved users, adjust roles and plans, and edit per-user broker, portfolio, and notification defaults."
   },
   {
     href: "/admin/portfolios",
