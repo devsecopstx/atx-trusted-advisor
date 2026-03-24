@@ -118,11 +118,7 @@ export type PersonaConfig = {
    * Use when the persona should search two distinct xAI collections (e.g. curated + team).
    */
   teamCollection?: PersonaCollectionRef;
-  /**
-   * When true, merge the signed-in user's bootstrap xAI collection into RAG + file_search scope
-   * (`POST /api/xchat/ask` and batch). The id is resolved per session; not stored on the persona doc.
-   */
-  includeUserBootstrapCollection?: boolean;
+  /** Last admin verification of persona-bound xAI collection (optional). */
   xaiCollectionVerification?: PersonaCollectionVerification;
   model: string;
   temperature: number;

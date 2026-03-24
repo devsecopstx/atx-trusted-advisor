@@ -111,11 +111,10 @@ export function hasFileSearchTool(
   );
 }
 
-/** At least one static collection binding, or user-bootstrap merge at runtime, when file_search is enabled. */
+/** At least one persona/team/tool collection id when file_search / collections_search is enabled. */
 export function personaSatisfiesFileSearchCollectionRequirement(value: {
   xaiCollection?: { collectionId?: string };
   teamCollection?: { collectionId?: string };
-  includeUserBootstrapCollection?: boolean;
   xapi: PersonaXapiConfig;
 }): boolean {
   if (!hasFileSearchTool(value.xapi.tools)) {
@@ -126,10 +125,7 @@ export function personaSatisfiesFileSearchCollectionRequirement(value: {
     teamCollection: value.teamCollection,
     xapi: value.xapi
   });
-  if (ids.length > 0) {
-    return true;
-  }
-  return value.includeUserBootstrapCollection === true;
+  return ids.length > 0;
 }
 
 export const createPersonaPayloadSchema = z.object({
@@ -138,7 +134,6 @@ export const createPersonaPayloadSchema = z.object({
   overridePrompt: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.overridePromptLength),
   xaiCollection: xaiCollectionSchema.optional(),
   teamCollection: xaiCollectionSchema.optional(),
-  includeUserBootstrapCollection: booleanSchema.optional(),
   model: z
     .string()
     .trim()
@@ -161,7 +156,7 @@ export const createPersonaPayloadSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["xaiCollection", "collectionId"],
       message:
-        "Collection search (file_search / collections_search) requires xaiCollection.collectionId, teamCollection.collectionId, collection ids on tools, or includeUserBootstrapCollection"
+        "Collection search (file_search / collections_search) requires xaiCollection.collectionId, teamCollection.collectionId, or collection ids on tools"
     });
   }
 });
@@ -178,7 +173,6 @@ export const updatePersonaPayloadSchema = z.object({
   overridePrompt: z.string().trim().max(PERSONA_VALIDATION_LIMITS.overridePromptLength).optional(),
   xaiCollection: xaiCollectionSchema.optional(),
   teamCollection: xaiCollectionSchema.optional(),
-  includeUserBootstrapCollection: booleanSchema.optional(),
   model: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.modelLength),
   temperature: temperatureSchema.optional(),
   enableRag: booleanSchema.optional(),

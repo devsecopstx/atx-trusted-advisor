@@ -28,10 +28,6 @@ const verifierMocks = vi.hoisted(() => ({
   verifyXaiCollectionNonBlocking: vi.fn()
 }));
 
-const bootstrapMocks = vi.hoisted(() => ({
-  resolveOrCreateUserBootstrapCollection: vi.fn()
-}));
-
 const coreAdminRepositoryMocks = vi.hoisted(() => ({
   getUserAdminSettings: vi.fn()
 }));
@@ -57,7 +53,6 @@ vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/xchat/ask-usage-limits", () => usageLimitMocks);
 vi.mock("@/modules/xchat/repository", () => repositoryMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
-vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
@@ -128,10 +123,6 @@ describe("xchat ask route collection retrieval", () => {
     repositoryMocks.retrieveRagChunks.mockResolvedValue([]);
     repositoryMocks.saveXChatLog.mockResolvedValue(undefined);
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
-    bootstrapMocks.resolveOrCreateUserBootstrapCollection.mockResolvedValue({
-      collectionId: "collection_user-personal",
-      collectionName: "Personal Docs"
-    });
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     identityMocks.getCoreUserById.mockResolvedValue(null);
     coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValue(null);
@@ -178,9 +169,12 @@ describe("xchat ask route collection retrieval", () => {
         systemPrompt: expect.stringContaining("Collection context snippet"),
         toolChoice: "auto",
         maxTurns: 5,
-        tools: expect.arrayContaining([{ type: "web_search", name: "web_search" }]),
+        tools: expect.arrayContaining([
+          { type: "web_search", name: "web_search" },
+          { type: "x_search", name: "x_search" }
+        ]),
         userPrompt: expect.stringMatching(
-          /\[Persona \/ KB metadata — xChat and batch[\s\S]*Resolved xAI collection ids \(persona team KB \+ tool ids \+ optional user bootstrap\): collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
+          /\[Persona \/ KB metadata — xChat and batch[\s\S]*Resolved xAI collection ids \(persona xaiCollection \+ teamCollection \+ tool collection_ids\): collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
         )
       })
     );

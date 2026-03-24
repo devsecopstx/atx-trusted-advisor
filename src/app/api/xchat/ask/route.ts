@@ -17,7 +17,6 @@ import {
   logXchatAskProviderErrorDebug
 } from "@/lib/xchat-debug";
 import { createAuditEvent } from "@/modules/audit/repository";
-import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
@@ -267,15 +266,9 @@ export async function POST(request: Request) {
   const userId = ObjectId.isValid(session.userId)
     ? new ObjectId(session.userId)
     : undefined;
-  const userCollection = await resolveOrCreateUserBootstrapCollection({
-    userId: session.userId,
-    tenantId: session.tenantId,
-    email: session.email
-  });
-  /** RAG / file_search wiring: persona `xaiCollection` + `teamCollection` + tool `collection_ids` + optional user bootstrap. */
+  /** RAG / file_search wiring: persona `xaiCollection` + `teamCollection` + tool `collection_ids` only (TEAM/persona KB). */
   const linkedCollectionIds = resolveXchatLinkedCollectionIds({
-    persona,
-    userBootstrapCollectionId: userCollection?.collectionId
+    persona
   });
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
@@ -300,7 +293,8 @@ export async function POST(request: Request) {
     if (linkedCollectionIds.length > 0) {
       const readinessSummary = await getScopeReadinessSummary({
         scope,
-        tenantId: tenantId ?? undefined
+        tenantId: tenantId ?? undefined,
+        linkedCollectionIds
       });
       collectionSearchNonReadyFileCount = readinessSummary.nonReadyFiles.length;
       if (readinessSummary.blocked) {
@@ -400,9 +394,7 @@ export async function POST(request: Request) {
     : message;
   const personaKbAugmentation = appendXchatKbMetadata({
     tools: xapiConfig.tools,
-    linkedCollectionIds,
-    userBootstrapCollectionId: userCollection?.collectionId ?? null,
-    includeUserBootstrapCollection: persona?.includeUserBootstrapCollection === true
+    linkedCollectionIds
   });
   const userPrompt = `${userPromptBase}\n\n${personaKbAugmentation}`;
   let xaiResponse: { outputText: string; model: string };
