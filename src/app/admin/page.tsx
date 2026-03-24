@@ -31,8 +31,8 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
   {
     href: "/admin/access-requests",
     icon: "check",
-    title: "Access Requests",
-    description: "Review pending access requests and submit new role requests."
+    title: "Access",
+    description: "Access requests: review pending items, approve or reject, and submit new role requests."
   },
   {
     href: "/admin/user-settings",

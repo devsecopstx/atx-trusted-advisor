@@ -33,7 +33,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/admin/rag-files", label: "RAG collections" },
   { href: "/admin/xchat-tool-usage", label: "xChat tools" },
   { href: "/admin/api-docs", label: "API Docs" },
-  { href: "/admin/user-settings", label: "Users" },
+  { href: "/admin/user-settings", label: "Manage users" },
   { href: "/admin/audit", label: "Audit" }
 ];
 
