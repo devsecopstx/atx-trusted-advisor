@@ -5,25 +5,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/types";
+
 import {
   accountOutlookValues,
-  type AccountOutlook,
-  parseAccountOutlook
-} from "@/modules/core-admin/types";
-
+  DESK_OUTLOOK_LABELS,
+  DESK_RISK_PROFILE_OPTIONS,
+  type DeskRiskProfileOption
+} from "./desk-risk-outlook-options";
 import { PortfolioManageNav } from "./portfolio-manage-nav";
 
 const ACCOUNT_TYPES = ["merrill", "fidelity", "etrade"] as const;
-
-const RISK_PROFILE_OPTIONS = ["conservative", "balanced", "growth"] as const;
-type RiskProfileOption = (typeof RISK_PROFILE_OPTIONS)[number];
-
-const OUTLOOK_LABELS: Record<AccountOutlook, string> = {
-  growth: "Growth",
-  income: "Income",
-  balanced: "Balanced",
-  aggressive: "Aggressive"
-};
 
 type AccountRow = {
   _id: string;
@@ -32,7 +24,7 @@ type AccountRow = {
   extAccountId: string;
   cashBalance: number;
   isDefault: boolean;
-  riskProfile: RiskProfileOption | null;
+  riskProfile: DeskRiskProfileOption | null;
   outlook: AccountOutlook | null;
   createdAt: string;
   updatedAt: string;
@@ -70,11 +62,13 @@ function cashCellNumber(row: AccountRow, draftCash: number | undefined): number 
 
 function normalizeRiskValue(
   v: AccountRow["riskProfile"] | undefined | ""
-): RiskProfileOption | null {
+): DeskRiskProfileOption | null {
   if (v === undefined || v === null || v === "") {
     return null;
   }
-  return (RISK_PROFILE_OPTIONS as readonly string[]).includes(v) ? (v as RiskProfileOption) : null;
+  return (DESK_RISK_PROFILE_OPTIONS as readonly string[]).includes(v)
+    ? (v as DeskRiskProfileOption)
+    : null;
 }
 
 function computeAccountPatchBody(
@@ -178,8 +172,8 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
           ...a,
           riskProfile:
             a.riskProfile &&
-            (RISK_PROFILE_OPTIONS as readonly string[]).includes(a.riskProfile as string)
-              ? (a.riskProfile as RiskProfileOption)
+            (DESK_RISK_PROFILE_OPTIONS as readonly string[]).includes(a.riskProfile as string)
+              ? (a.riskProfile as DeskRiskProfileOption)
               : null,
           outlook: parseAccountOutlook(a.outlook)
         }))
@@ -540,13 +534,13 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                             ...prev,
                             [row._id]: {
                               ...prev[row._id],
-                              riskProfile: v === "" ? null : (v as RiskProfileOption)
+                              riskProfile: v === "" ? null : (v as DeskRiskProfileOption)
                             }
                           }));
                         }}
                       >
                         <option value="">—</option>
-                        {RISK_PROFILE_OPTIONS.map((v) => (
+                        {DESK_RISK_PROFILE_OPTIONS.map((v) => (
                           <option key={v} value={v}>
                             {v}
                           </option>
@@ -571,7 +565,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                         <option value="">—</option>
                         {accountOutlookValues.map((v) => (
                           <option key={v} value={v}>
-                            {OUTLOOK_LABELS[v]}
+                            {DESK_OUTLOOK_LABELS[v]}
                           </option>
                         ))}
                       </select>

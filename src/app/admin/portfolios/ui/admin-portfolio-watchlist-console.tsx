@@ -1,10 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/types";
 
+import {
+  accountOutlookValues,
+  DESK_OUTLOOK_LABELS,
+  DESK_RISK_PROFILE_OPTIONS,
+  type DeskRiskProfileOption
+} from "./desk-risk-outlook-options";
 import { PortfolioManageNav } from "./portfolio-manage-nav";
 
 type SymbolRow = {
@@ -19,9 +26,20 @@ type SymbolRow = {
 type WatchlistPayload = {
   data: {
     name: string;
+    riskProfile?: DeskRiskProfileOption | null;
+    outlook?: AccountOutlook | null;
     symbols: SymbolRow[];
   };
 };
+
+function normalizeDeskRisk(raw: unknown): DeskRiskProfileOption | null {
+  if (typeof raw !== "string" || raw.length === 0) {
+    return null;
+  }
+  return (DESK_RISK_PROFILE_OPTIONS as readonly string[]).includes(raw)
+    ? (raw as DeskRiskProfileOption)
+    : null;
+}
 
 export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: string }) {
   const [name, setName] = useState("");
@@ -29,6 +47,17 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
   const [newSymbol, setNewSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("Ready — tap refresh");
+  const [riskProfile, setRiskProfile] = useState<DeskRiskProfileOption | null>(null);
+  const [outlook, setOutlook] = useState<AccountOutlook | null>(null);
+  const [serverRisk, setServerRisk] = useState<DeskRiskProfileOption | null>(null);
+  const [serverOutlook, setServerOutlook] = useState<AccountOutlook | null>(null);
+
+  const deskDirty = useMemo(() => {
+    return (
+      normalizeDeskRisk(riskProfile) !== normalizeDeskRisk(serverRisk) ||
+      parseAccountOutlook(outlook) !== parseAccountOutlook(serverOutlook)
+    );
+  }, [riskProfile, outlook, serverRisk, serverOutlook]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -41,6 +70,12 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
       );
       setName(payload.data.name);
       setSymbols(payload.data.symbols ?? []);
+      const r = normalizeDeskRisk(payload.data.riskProfile);
+      const o = parseAccountOutlook(payload.data.outlook);
+      setRiskProfile(r);
+      setOutlook(o);
+      setServerRisk(r);
+      setServerOutlook(o);
       setStatus(`Loaded ${payload.data.symbols?.length ?? 0} symbol(s)`);
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Failed to load");
@@ -92,6 +127,20 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
     await patchWatchlist({ dedupe: true }, "Deduped symbols");
   };
 
+  const saveDeskContext = async () => {
+    const body: Record<string, unknown> = {};
+    if (normalizeDeskRisk(riskProfile) !== normalizeDeskRisk(serverRisk)) {
+      body.riskProfile = riskProfile;
+    }
+    if (parseAccountOutlook(outlook) !== parseAccountOutlook(serverOutlook)) {
+      body.outlook = outlook;
+    }
+    if (Object.keys(body).length === 0) {
+      return;
+    }
+    await patchWatchlist(body, "Saved risk & outlook");
+  };
+
   return (
     <section className="panel stack-gap">
       <PortfolioManageNav portfolioId={portfolioId} active="watchlist">
@@ -100,6 +149,14 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
         </button>
         <button className="cta cta-secondary" disabled={loading} onClick={() => void dedupe()} type="button">
           Dedupe symbols
+        </button>
+        <button
+          type="button"
+          className="cta cta-primary"
+          disabled={loading || !deskDirty}
+          onClick={() => void saveDeskContext()}
+        >
+          Save risk &amp; outlook
         </button>
         <p className="status-text">{status}</p>
       </PortfolioManageNav>
@@ -112,6 +169,58 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
           Add or remove symbols for this portfolio&apos;s watchlist (same data as user{" "}
           <code className="font-mono text-xs">/api/portfolios/…/watchlist</code>).
         </p>
+
+        <div
+          className="stack-gap"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.75rem",
+            alignItems: "flex-end",
+            marginBottom: "1rem"
+          }}
+        >
+          <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <span className="text-xs font-medium">Risk profile</span>
+            <select
+              className="crud-input text-xs"
+              style={{ minWidth: "10rem" }}
+              disabled={loading}
+              value={riskProfile ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setRiskProfile(v === "" ? null : (v as DeskRiskProfileOption));
+              }}
+            >
+              <option value="">—</option>
+              {DESK_RISK_PROFILE_OPTIONS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <span className="text-xs font-medium">Outlook</span>
+            <select
+              className="crud-input text-xs"
+              style={{ minWidth: "10rem" }}
+              disabled={loading}
+              value={outlook ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setOutlook(v === "" ? null : (v as AccountOutlook));
+              }}
+            >
+              <option value="">—</option>
+              {accountOutlookValues.map((v) => (
+                <option key={v} value={v}>
+                  {DESK_OUTLOOK_LABELS[v]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <div className="stack-gap" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
           <input

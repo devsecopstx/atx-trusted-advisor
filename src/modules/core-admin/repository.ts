@@ -1708,6 +1708,10 @@ export type MutatePortfolioWatchlistInput = {
   addEntries?: WatchlistSymbolImportEntry[];
   removeSymbols?: string[];
   dedupe?: boolean;
+  /** Clears field in Mongo when `null`. */
+  riskProfile?: "conservative" | "balanced" | "growth" | null;
+  /** Clears field in Mongo when `null`. */
+  outlook?: AccountOutlook | null;
 };
 
 function mergeImportEntryIntoSymbol(
@@ -1771,7 +1775,9 @@ export async function mutatePortfolioWatchlistSymbols(
     Boolean(input.addSymbols?.length) ||
     Boolean(input.addEntries?.length) ||
     Boolean(input.removeSymbols?.length) ||
-    Boolean(input.dedupe);
+    Boolean(input.dedupe) ||
+    input.riskProfile !== undefined ||
+    input.outlook !== undefined;
   if (!hasMutation) {
     return getPortfolioWatchlist({
       userId: input.userId,
@@ -1858,10 +1864,31 @@ export async function mutatePortfolioWatchlistSymbols(
   if (hasNameUpdate && trimmedName !== undefined) {
     setDoc.name = trimmedName;
   }
+  const unsetDoc: Record<string, string> = {};
+  if (input.riskProfile !== undefined) {
+    if (input.riskProfile === null) {
+      unsetDoc.riskProfile = "";
+    } else {
+      setDoc.riskProfile = input.riskProfile;
+    }
+  }
+  if (input.outlook !== undefined) {
+    if (input.outlook === null) {
+      unsetDoc.outlook = "";
+    } else {
+      const slug = parseAccountOutlook(input.outlook);
+      if (slug) {
+        setDoc.outlook = slug;
+      }
+    }
+  }
 
-  await db.collection<Watchlist>(collections.watchlists).updateOne(filter, {
-    $set: setDoc
-  });
+  const update: Record<string, unknown> = { $set: setDoc };
+  if (Object.keys(unsetDoc).length > 0) {
+    update.$unset = unsetDoc;
+  }
+
+  await db.collection<Watchlist>(collections.watchlists).updateOne(filter, update);
 
   return getPortfolioWatchlist({
     userId: input.userId,

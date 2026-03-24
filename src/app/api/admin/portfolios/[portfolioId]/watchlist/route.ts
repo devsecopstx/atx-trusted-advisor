@@ -8,7 +8,12 @@ import {
   getPortfolioWatchlist,
   mutatePortfolioWatchlistSymbols
 } from "@/modules/core-admin/repository";
-import type { Watchlist, WatchlistSymbol } from "@/modules/core-admin/types";
+import {
+  accountOutlookValues,
+  parseAccountOutlook,
+  type Watchlist,
+  type WatchlistSymbol
+} from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 
 type RouteContext = {
@@ -23,20 +28,30 @@ const watchlistAddEntrySchema = z.object({
   entryPrice: z.number().finite().optional()
 });
 
+const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);
+const deskOutlookEnum = z.enum(accountOutlookValues);
+
 const patchBodySchema = z
   .object({
     addSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
     addEntries: z.array(watchlistAddEntrySchema).max(20).optional(),
     removeSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
-    dedupe: z.boolean().optional()
+    dedupe: z.boolean().optional(),
+    riskProfile: z.union([deskRiskEnum, z.null()]).optional(),
+    outlook: z.union([deskOutlookEnum, z.null()]).optional()
   })
   .refine(
     (data) =>
       Boolean(data.addSymbols?.length) ||
       Boolean(data.addEntries?.length) ||
       Boolean(data.removeSymbols?.length) ||
-      data.dedupe === true,
-    { message: "Provide addSymbols, addEntries, removeSymbols, or dedupe: true" }
+      data.dedupe === true ||
+      data.riskProfile !== undefined ||
+      data.outlook !== undefined,
+    {
+      message:
+        "Provide addSymbols, addEntries, removeSymbols, dedupe: true, riskProfile, or outlook"
+    }
   );
 
 function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
@@ -63,6 +78,8 @@ function serializeWatchlistPayload(watchlist: Watchlist) {
       portfolioId: watchlist.portfolioId.toHexString(),
       name: watchlist.name,
       isDefault: watchlist.isDefault,
+      riskProfile: watchlist.riskProfile ?? null,
+      outlook: parseAccountOutlook(watchlist.outlook),
       symbols: (watchlist.symbols ?? []).map(watchlistSymbolToJsonRow),
       createdAt: watchlist.createdAt.toISOString(),
       updatedAt: watchlist.updatedAt.toISOString()
@@ -146,7 +163,9 @@ export async function PATCH(request: Request, context: RouteContext) {
     addSymbols: parsed.data.addSymbols,
     addEntries: parsed.data.addEntries,
     removeSymbols: parsed.data.removeSymbols,
-    dedupe: parsed.data.dedupe
+    dedupe: parsed.data.dedupe,
+    riskProfile: parsed.data.riskProfile,
+    outlook: parsed.data.outlook
   });
 
   if (!updated) {

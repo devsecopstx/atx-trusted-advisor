@@ -37,6 +37,8 @@ function mockWatchlist() {
     userId: "507f1f77bcf86cd799439011",
     portfolioId: new ObjectId(portfolioId),
     name: "DefaultWatchlist",
+    riskProfile: "balanced" as const,
+    outlook: "growth" as const,
     symbols: [{ symbol: "TSLA", addedAt: now }],
     isDefault: true,
     createdAt: now,
@@ -80,15 +82,42 @@ describe("/api/admin/portfolios/[portfolioId]/watchlist", () => {
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`);
     const res = await getAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { data: { name: string; symbols: { symbol: string }[] } };
+    const json = (await res.json()) as {
+      data: {
+        name: string;
+        riskProfile: string | null;
+        outlook: string | null;
+        symbols: { symbol: string }[];
+      };
+    };
     expect(json.data.name).toBe("DefaultWatchlist");
     expect(json.data.symbols).toHaveLength(1);
     expect(json.data.symbols[0]?.symbol).toBe("TSLA");
+    expect(json.data.riskProfile).toBe("balanced");
+    expect(json.data.outlook).toBe("growth");
     expect(repoMocks.getPortfolioWatchlist).toHaveBeenCalledWith({
       userId: "507f1f77bcf86cd799439011",
       portfolioId,
       tenantId: undefined
     });
+  });
+
+  it("PATCH accepts riskProfile and outlook only", async () => {
+    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ riskProfile: "conservative", outlook: null })
+    });
+    const res = await patchAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
+    expect(res.status).toBe(200);
+    expect(repoMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "507f1f77bcf86cd799439011",
+        portfolioId,
+        riskProfile: "conservative",
+        outlook: null
+      })
+    );
   });
 
   it("PATCH delegates to mutatePortfolioWatchlistSymbols", async () => {

@@ -259,6 +259,10 @@ export type Watchlist = {
   name: string;
   symbols: WatchlistSymbol[];
   isDefault: boolean;
+  /** Desk risk stance for this watchlist (optional); same values as {@link Account.riskProfile}. */
+  riskProfile?: "conservative" | "balanced" | "growth" | null;
+  /** Positioning outlook slug (optional); see {@link accountOutlookValues}. */
+  outlook?: AccountOutlook | null;
   createdAt: Date;
   updatedAt: Date;
 };

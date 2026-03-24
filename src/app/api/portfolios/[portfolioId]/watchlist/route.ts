@@ -11,7 +11,11 @@ import {
     mutatePortfolioWatchlistSymbols,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import type { Watchlist, WatchlistSymbol } from "@/modules/core-admin/types";
+import {
+  accountOutlookValues,
+  type Watchlist,
+  type WatchlistSymbol
+} from "@/modules/core-admin/types";
 import {
     LOOKUP_ROUTE,
     lookupSymbols,
@@ -32,13 +36,18 @@ const watchlistAddEntrySchema = z.object({
   entryPrice: z.union([z.number().finite(), z.null()]).optional()
 });
 
+const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);
+const deskOutlookEnum = z.enum(accountOutlookValues);
+
 const patchBodySchema = z
   .object({
     name: z.string().trim().min(1).max(128).optional(),
     addSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
     addEntries: z.array(watchlistAddEntrySchema).max(20).optional(),
     removeSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
-    dedupe: z.boolean().optional()
+    dedupe: z.boolean().optional(),
+    riskProfile: z.union([deskRiskEnum, z.null()]).optional(),
+    outlook: z.union([deskOutlookEnum, z.null()]).optional()
   })
   .refine(
     (data) =>
@@ -46,8 +55,13 @@ const patchBodySchema = z
       Boolean(data.addSymbols?.length) ||
       Boolean(data.addEntries?.length) ||
       Boolean(data.removeSymbols?.length) ||
-      data.dedupe === true,
-    { message: "Provide name, addSymbols, addEntries, removeSymbols, or dedupe: true" }
+      data.dedupe === true ||
+      data.riskProfile !== undefined ||
+      data.outlook !== undefined,
+    {
+      message:
+        "Provide name, addSymbols, addEntries, removeSymbols, dedupe: true, riskProfile, or outlook"
+    }
   );
 
 function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
@@ -213,7 +227,9 @@ export async function PATCH(request: Request, context: RouteContext) {
     addSymbols: parsed.data.addSymbols,
     addEntries: parsed.data.addEntries,
     removeSymbols: parsed.data.removeSymbols,
-    dedupe: parsed.data.dedupe
+    dedupe: parsed.data.dedupe,
+    riskProfile: parsed.data.riskProfile,
+    outlook: parsed.data.outlook
   });
 
   if (!updated) {
