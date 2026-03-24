@@ -140,6 +140,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - App URL: http://localhost:3000
 7. Seed core admin user + default tenant (first-time only)
    - Ensure `.env` has `ADMIN_SEED_EMAIL=you@example.com`
+   - **Sign in with X (no email on profile):** X userinfo often omits `email`. Set **`ADMIN_SEED_X_USER_ID`** to your X account’s numeric id (same string as `data.id` from `GET /2/users/me`), then run **`npm run seed:admin`** so `core_users.xAccount` is pre-linked. The X OAuth callback also reads `ADMIN_SEED_X_USER_ID` so first login works even before re-seeding. Optional: `ADMIN_SEED_X_USERNAME`, `ADMIN_SEED_X_DISPLAY_NAME` for seed output only (login refreshes profile).
    - **`MONGODB_URI` can stay unset** when using local Docker Mongo — `seed:admin` and the Next.js app use the same localhost + auth fallback as `src/lib/env.ts` (`scripts/lib/resolve-mongo-uri.mjs`).
    - **`npm run local:bootstrap`** — starts **only** `mongodb` via Compose, waits until healthy, then runs **`seed:admin`** (convenience for a fresh machine).
    - Or after Mongo is up: **`npm run seed:admin`**

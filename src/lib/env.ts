@@ -58,6 +58,11 @@ const envSchema = z.object({
     },
     z.string().email().optional()
   ),
+  /**
+   * When X userinfo omits `email`, OAuth still matches the seeded admin if this equals the X numeric user id.
+   * Set alongside `ADMIN_SEED_EMAIL`; `npm run seed:admin` can persist the same id on `core_users.xAccount`.
+   */
+  ADMIN_SEED_X_USER_ID: optionalNonEmptyString,
   ADMIN_X_USERNAMES: z.string().optional(),
   ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
   /** Optional overrides for `/xstrategybuilder` licensing line (see `LICENSING_PITCH_CONTACT_DEFAULTS`). */

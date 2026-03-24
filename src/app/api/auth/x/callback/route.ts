@@ -189,12 +189,26 @@ export async function GET(request: Request) {
     avatarUrl: userInfoJson.data.profile_image_url
   };
   const emailFromProvider = userInfoJson.data.email?.trim().toLowerCase();
+  const adminSeedXUserId = env.ADMIN_SEED_X_USER_ID?.trim();
   const seededAdmin =
     emailFromProvider && isSeedAdminEmail(emailFromProvider, env.ADMIN_SEED_EMAIL)
       ? await ensureSeededGlobalAdmin(emailFromProvider)
       : null;
 
   let user = await getCoreUserByXIdentity(xIdentity.xUserId);
+  if (
+    !user &&
+    !emailFromProvider &&
+    adminSeedXUserId &&
+    adminSeedXUserId === xIdentity.xUserId &&
+    env.ADMIN_SEED_EMAIL
+  ) {
+    const seeded = await ensureSeededGlobalAdmin(env.ADMIN_SEED_EMAIL);
+    if (!seeded.user._id) {
+      return NextResponse.redirect(new URL("/login?error=bootstrap_failed", origin));
+    }
+    user = seeded.user;
+  }
   if (user?._id && emailFromProvider) {
     const userByEmail = seededAdmin?.user ?? (await getCoreUserByEmail(emailFromProvider));
     const approvedEmailUserId = userByEmail?._id;
