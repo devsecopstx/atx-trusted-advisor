@@ -7,12 +7,26 @@ import { fileURLToPath } from "node:url";
  * Aligned with `getMongoUri()` in `src/lib/env.ts`: `MONGODB_URI` may be plain or base64;
  * legacy `MONGODB_URI_B64` is still read when `MONGODB_URI` is unset.
  *
- * Admin seed (`seed-admin-user.mjs`) uses {@link resolveAdminSeedDbName}: base name + `_` + app version
+ * Admin seed (`seed-admin-user.mjs`) uses {@link resolveAdminSeedDbName}: base name + `-` + app version
  * (from `ADMIN_SEED_APP_VERSION`, `npm_package_version`, or repo `package.json`) so each release targets a
  * distinct database until ops updates `MONGODB_URI` / `MONGODB_DB_NAME` in Secret Manager. Set
  * `ADMIN_SEED_DB_VERSION_SUFFIX=off` to keep the legacy single-DB name for local/support.
+ *
+ * When `MONGODB_DB_NAME` is unset, `ATX_DEPLOY_TARGET` or `DEPLOY_TARGET` may be `stage`, `deploy`, or `prod`
+ * (case-insensitive) to default to `atxfinance-<target>` — aligned with `resolveDefaultMongoDatabaseName()` in `src/lib/env.ts`.
  */
-const DEFAULT_DB_NAME = "atxfinancedb";
+const DEFAULT_DB_BASE = "atxfinance";
+
+function normalizeDeployTargetToken(raw) {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  const t = String(raw).trim().toLowerCase();
+  if (t === "stage" || t === "deploy" || t === "prod") {
+    return t;
+  }
+  return undefined;
+}
 
 export function parseMongoConnectionString(raw) {
   const t = raw.trim();
@@ -40,7 +54,17 @@ export function parseMongoConnectionString(raw) {
 }
 
 export function resolveSeedDbName() {
-  return (process.env.MONGODB_DB_NAME?.trim() || DEFAULT_DB_NAME).trim();
+  const explicit = process.env.MONGODB_DB_NAME?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  const target =
+    normalizeDeployTargetToken(process.env.ATX_DEPLOY_TARGET) ??
+    normalizeDeployTargetToken(process.env.DEPLOY_TARGET);
+  if (target) {
+    return `${DEFAULT_DB_BASE}-${target}`;
+  }
+  return DEFAULT_DB_BASE;
 }
 
 function readPackageJsonVersion() {
@@ -76,8 +100,8 @@ function mongoSafeVersionToken(version) {
 }
 
 /**
- * Database name for `npm run seed:admin` only. Appends `_${versionToken}` to the logical base
- * (`MONGODB_DB_NAME` or `atxfinancedb`) unless `ADMIN_SEED_DB_VERSION_SUFFIX` is `off`, `false`, `0`, `legacy`, or `no`.
+ * Database name for `npm run seed:admin` only. Appends `-${versionToken}` to the logical base
+ * (`resolveSeedDbName()` base) unless `ADMIN_SEED_DB_VERSION_SUFFIX` is `off`, `false`, `0`, `legacy`, or `no`.
  */
 export function resolveAdminSeedDbName() {
   const base = resolveSeedDbName();
@@ -86,7 +110,7 @@ export function resolveAdminSeedDbName() {
     return base;
   }
   const token = mongoSafeVersionToken(readPackageJsonVersion());
-  const suffix = `_${token}`;
+  const suffix = `-${token}`;
   if (base.endsWith(suffix)) {
     return base;
   }

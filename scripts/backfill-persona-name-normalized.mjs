@@ -1,8 +1,8 @@
 import { MongoClient } from "mongodb";
 
-import { resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+import { resolveMongoUri, resolveSeedDbName } from "./lib/resolve-mongo-uri.mjs";
 
-const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
+const DB_NAME = resolveSeedDbName();
 const PERSONAS_COLLECTION = "xchat_personas";
 
 function normalizePersonaName(name) {

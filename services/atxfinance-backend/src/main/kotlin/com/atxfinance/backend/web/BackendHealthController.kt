@@ -55,7 +55,7 @@ class BackendHealthController(
 
         // Resolve effective Mongo URI from Spring properties
         val effectiveUri = env.getProperty("spring.data.mongodb.uri")
-            ?: "mongodb://localhost:27017/${'$'}{SPRING_DATA_MONGODB_DATABASE:${'$'}{MONGODB_DB_NAME:atxfinancedb}}" // mirror default for transparency only
+            ?: "mongodb://localhost:27017/${'$'}{SPRING_DATA_MONGODB_DATABASE:${'$'}{MONGODB_DB_NAME:atxfinance}}" // mirror default for transparency only
 
         val source = determineMongoUriSource(effectiveUri)
         val masked = maskMongoUri(effectiveUri)

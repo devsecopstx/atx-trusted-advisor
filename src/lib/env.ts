@@ -132,6 +132,41 @@ export function parseMongoConnectionString(raw: string): string {
   return decoded;
 }
 
+/**
+ * Base logical MongoDB name before deploy-target suffix. When `MONGODB_DB_NAME` is unset, Cloud Run and
+ * local tooling may set `ATX_DEPLOY_TARGET` (`stage` | `deploy` | `prod`) so the default becomes
+ * `atxfinance-<target>`. Explicit `MONGODB_DB_NAME` or the DB path inside `MONGODB_URI` always wins.
+ */
+export const MONGODB_DB_NAME = "atxfinance";
+
+export type AtxDeployTargetToken = "stage" | "deploy" | "prod";
+
+function normalizeDeployTargetToken(raw: string | undefined): AtxDeployTargetToken | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  const t = String(raw).trim().toLowerCase();
+  if (t === "stage" || t === "deploy" || t === "prod") {
+    return t;
+  }
+  return undefined;
+}
+
+/** Effective DB name for local URI fallback and `getDb()` when not embedded in `MONGODB_URI`. */
+export function resolveDefaultMongoDatabaseName(): string {
+  const explicit = process.env.MONGODB_DB_NAME?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  const target =
+    normalizeDeployTargetToken(process.env.ATX_DEPLOY_TARGET) ??
+    normalizeDeployTargetToken(process.env.DEPLOY_TARGET);
+  if (target) {
+    return `${MONGODB_DB_NAME}-${target}`;
+  }
+  return MONGODB_DB_NAME;
+}
+
 /** Resolved Mongo connection string (Atlas, local Docker, or compose fallback). */
 export function getMongoUri(): string {
   const fromZod = getEnv().MONGODB_URI;
@@ -143,7 +178,7 @@ export function getMongoUri(): string {
 
   // Fallback: local MongoDB on localhost:27017 with optional credentials from env
   // (Keep aligned with scripts/lib/resolve-mongo-uri.mjs for seed/migrations.)
-  const dbName = (process.env.MONGODB_DB_NAME?.trim() || MONGODB_DB_NAME).trim();
+  const dbName = resolveDefaultMongoDatabaseName().trim();
   const host = process.env.MONGODB_HOST?.trim() || "localhost";
   const noAuth = process.env.MONGODB_NO_AUTH === "true" || process.env.MONGODB_NO_AUTH === "1";
   const username = process.env.MONGO_ROOT_USERNAME?.trim() || "admin";
@@ -296,16 +331,9 @@ export function getMongoConnectionLabel(): string {
     : withoutProtocol;
   const [hostsAndPath] = withoutCredentials.split("?");
   const [hosts, dbName] = hostsAndPath.split("/", 2);
-  const resolvedDbName = dbName && dbName.length > 0 ? dbName : MONGODB_DB_NAME;
+  const resolvedDbName = dbName && dbName.length > 0 ? dbName : resolveDefaultMongoDatabaseName();
   return `${hosts}/${resolvedDbName}`;
 }
-
-/**
- * Canonical application database name: **one MongoDB database per deployment** (staging vs production
- * use separate clusters/URIs; tenant isolation within the app uses `tenantId` / org keys on documents).
- * Override with `MONGODB_DB_NAME` only for local tooling if you must match a non-default DB path.
- */
-export const MONGODB_DB_NAME = "atxfinancedb";
 
 /** Default xAI API base URL when XAI_BASE_URL env is unset. Aligned with tenant_defaults.yaml. */
 export const XAI_BASE_URL_DEFAULT = "https://api.x.ai/v1";

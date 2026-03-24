@@ -1,6 +1,6 @@
 import { Db, MongoClient } from "mongodb";
 
-import { getMongoUriFromB64, MONGODB_DB_NAME } from "@/lib/env";
+import { getMongoUriFromB64, resolveDefaultMongoDatabaseName } from "@/lib/env";
 
 type GlobalMongoCache = {
   client?: MongoClient;
@@ -34,6 +34,5 @@ export async function getMongoClient(): Promise<MongoClient> {
 
 export async function getDb(): Promise<Db> {
   const client = await getMongoClient();
-  const dbName = process.env.MONGODB_DB_NAME?.trim() || MONGODB_DB_NAME;
-  return client.db(dbName);
+  return client.db(resolveDefaultMongoDatabaseName());
 }

@@ -1,8 +1,8 @@
 import { MongoClient } from "mongodb";
 
-import { resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+import { resolveMongoUri, resolveSeedDbName } from "./lib/resolve-mongo-uri.mjs";
 
-const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
+const DB_NAME = resolveSeedDbName();
 const RAW_XAI_TEAM = (process.env.XAI_TEAM_ID || "").trim();
 const XAI_KB_COLLECTION_RE = /^collection_[A-Za-z0-9_-]+$/;
 const DEFAULT_COLLECTION_ID = XAI_KB_COLLECTION_RE.test(RAW_XAI_TEAM) ? RAW_XAI_TEAM : "";

@@ -27,12 +27,12 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 
 - **HTTP APIs** — Route handlers in `src/app/api/*` (auth, personas, xChat, portfolios, admin, OpenAPI inventory, etc.).
 - **Language & validation** — TypeScript + **Zod** for request/env parsing.
-- **Data** — **MongoDB** (primary app database; canonical default name **`atxfinancedb`** — one logical DB per deployment; tenant isolation is document-level (`tenantId` / org keys). Stage/prod use separate connection strings.
+- **Data** — **MongoDB** (primary app database; canonical default name **`atxfinance`** — one logical DB per deployment; tenant isolation is document-level (`tenantId` / org keys). Stage/prod use separate connection strings.
 
 #### MongoDB database naming (ops)
 
 - The app **does not require** different database *names* per environment. Typical patterns:
-  - **Separate Atlas clusters** (or serverless instances) per stage/prod, each URI ending with the same path segment (e.g. `/atxfinancedb`), **or**
+  - **Separate Atlas clusters** (or serverless instances) per stage/prod, each URI ending with the same path segment (e.g. `/atxfinance`), **or**
   - **Different database names in the URI path** on one cluster (e.g. `…mongodb.net/atxfinance_stage` vs `…/atxfinance_prod`) — purely an **ops / governance** choice, not enforced by application code.
 - Set the target DB in **`MONGODB_URI`** (or local fallback + optional **`MONGODB_DB_NAME`** for the path segment when not embedded in the URI).
 
@@ -117,11 +117,11 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - `npm install`
 2. Create your env file
    - `cp .env.example .env`
-   - Tip: Leave `MONGODB_URI` unset for local development so the app uses the local Docker Mongo (`atxfinancedb` path).
+   - Tip: Leave `MONGODB_URI` unset for local development so the app uses the local Docker Mongo (`atxfinance` path).
 3. (Optional) Source admin username from admin_seed.csv and set local Mongo password
    - `export ADMIN_X_USERNAME=$(awk -F, 'NR==2{print $2}' admin_seed.csv)`
    - `export MONGO_ROOT_PASSWORD=atxrocks!`  # change if desired
-   - Omit `MONGODB_DB_NAME` unless you need a non-default DB path (code default is `atxfinancedb`).
+   - Omit `MONGODB_DB_NAME` unless you need a non-default DB path (code default is `atxfinance`).
 4. Start backend + MongoDB (Docker Compose, from repo root)
    - **Ordered one-shot (backend first, then Next):** `npm run dev:stack` — runs `docker compose up -d`, waits until `http://localhost:8080` health responds, then starts `npm run dev:frontend` in the foreground. Ctrl+C stops the Next process only; run `docker compose down` when you want to stop Mongo + the backend container.
    - **Host Kotlin backend + Next (no backend Docker image):** `npm run dev:host` — runs `bash scripts/dev/bootrun-atxfinance-backend.sh` (Gradle `bootRun`), waits for `:8080` health, then Next dev. Mongo must already be up (e.g. `docker compose up -d mongodb` or Atlas). Ctrl+C stops Next and SIGTERM to the JVM. VS Code / Cursor: task **Dev build (host: Gradle bootRun → Next, no backend Docker)**.
@@ -130,7 +130,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - **Admin portfolios (`/api/admin/portfolios/**`)** stay on **Next only** (no BFF proxy): Spring does not expose those routes yet; proxying them returned **404** when the origin was set. Global-admin portfolio, account, and watchlist CRUD use the Next repository + Mongo. UI: **`/admin/portfolios`** (tenant books; **Manage watchlist** → **`/admin/portfolios/:id/watchlist`**, same symbol/metadata flows as app **`/watchlist`** via **`GET`/`PATCH /api/admin/portfolios/:id/watchlist`**), **`/admin/accounts`** (table lists **risk** + **outlook** per book from `GET /api/admin/portfolios`; pick a row → custodian accounts + edit book-level risk/outlook), **`/admin/broker-import`** (Merrill/Fidelity holdings CSV; optional `?portfolioId=`). Legacy paths **`/admin/portfolios/:id/accounts`** and **`…/broker-import`** redirect to those hubs.
    - Behavior:
      - Compose always starts `mongo:8` with:
-       - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfinancedb}`
+       - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfinance}`
        - `MONGO_INITDB_ROOT_USERNAME=${ADMIN_X_USERNAME:-admin}`
        - `MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-atxrocks!}`
      - The Spring service receives `SPRING_DATA_MONGODB_URI` pointing at `mongodb:27017` with **auth** and `authSource=admin`, using the same username/password/db name defaults as above (see `docker-compose.yml`).
@@ -193,7 +193,7 @@ VS Code / Cursor: run tasks **Start Backend (Gradle bootRun, no Docker)** in one
 - The backend `Dockerfile` now lives at the repo root and builds the service under `services/atxfinance-backend`.
 - `docker-compose.yml` includes two services:
   - `mongodb` on port 27017 with named volume `atxfinance_mongo_data`
-  - `atxfinance-backend` on port 8080, connected to MongoDB using `SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/atxfinancedb`
+  - `atxfinance-backend` on port 8080, connected to MongoDB using `SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/atxfinance`
 - Typical developer loop:
   - Start/refresh backend: `npm run dev:backend` (rebuilds image if sources changed)
   - Run frontend dev: `npm run dev:frontend`
@@ -506,7 +506,7 @@ Only **OIDC deploy identity** — do not add app runtime secrets here (they belo
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `<staging-provider-resource-name>` | `<prod-provider-resource-name>` |
 | `GCP_SERVICE_ACCOUNT_EMAIL` | `<staging-deploy-sa>@<staging-project>.iam.gserviceaccount.com` | `<prod-deploy-sa>@<prod-project>.iam.gserviceaccount.com` |
 
-`MONGODB_DB_NAME` is not a deploy variable — the app uses the fixed DB name `atxfinancedb` unless the Mongo URI path overrides it. `XAI_TEAM_ID` in `.env.example` is a dev hint only; it is not mounted by the deploy workflow unless you add it to Secret Manager and the deploy mapping.
+Cloud Run deploy workflows set **`ATX_DEPLOY_TARGET`** (`stage` on staging, `deploy` on production) so the default logical DB is **`atxfinance-<target>`** when **`MONGODB_DB_NAME`** is unset (see `resolveDefaultMongoDatabaseName` in `src/lib/env.ts`). Override with **`MONGODB_DB_NAME`** or the database path inside **`MONGODB_URI`** so Atlas and the app agree. `XAI_TEAM_ID` in `.env.example` is a dev hint only; it is not mounted by the deploy workflow unless you add it to Secret Manager and the deploy mapping.
 
 Set after creating environments:
 

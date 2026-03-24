@@ -13,7 +13,7 @@ Controlled credential rotation for atxFinance with minimal downtime and no secre
 ### 2. Base64 encode
 
 ```bash
-echo -n "mongodb+srv://user:password@cluster.mongodb.net/atxfinancedb?retryWrites=true&w=majority&appName=atxFinance" | base64
+echo -n "mongodb+srv://user:password@cluster.mongodb.net/atxfinance?retryWrites=true&w=majority&appName=atxFinance" | base64
 ```
 
 Copy the output (no newline).

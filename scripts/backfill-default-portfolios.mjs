@@ -1,8 +1,8 @@
 import { MongoClient, ObjectId } from "mongodb";
 
-import { resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+import { resolveMongoUri, resolveSeedDbName } from "./lib/resolve-mongo-uri.mjs";
 
-const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
+const DB_NAME = resolveSeedDbName();
 const TENANT_PORTFOLIO_COLLECTION = "tenant_portfolio";
 const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
   (process.env.TENANT_PORTFOLIO_ORG_KEY || "").trim() || "org-atx-finance";

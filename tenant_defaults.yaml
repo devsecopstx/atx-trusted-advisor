@@ -97,7 +97,14 @@ initial_seed:
       sensitive: true
 
     - key: mongodb_db_name
-      value: "atxfinancedb"
+      value: "atxfinance"
+      type: string
+      public: true
+      sensitive: false
+
+    # Illustrative: Cloud Run sets ATX_DEPLOY_TARGET (stage | deploy | prod); default DB becomes atxfinance-<target> when MONGODB_DB_NAME unset.
+    - key: atx_deploy_target
+      value: "stage"
       type: string
       public: true
       sensitive: false

@@ -404,6 +404,7 @@ async function seed() {
   console.log(
     `[seed:admin] Mongo database name: ${DB_NAME} — Next/Spring must use the same logical DB ` +
       `(set MONGODB_DB_NAME or the database path in MONGODB_URI in Secret Manager / .env). ` +
+      `When MONGODB_DB_NAME is unset, ATX_DEPLOY_TARGET=stage|deploy|prod defaults the base to atxfinance-<target> (see src/lib/env.ts). ` +
       `Legacy single-DB local dev: ADMIN_SEED_DB_VERSION_SUFFIX=off.`
   );
   const mongoUri = resolveMongoUri();

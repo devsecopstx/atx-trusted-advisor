@@ -13,9 +13,9 @@
  */
 import { MongoClient } from "mongodb";
 
-import { resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+import { resolveMongoUri, resolveSeedDbName } from "./lib/resolve-mongo-uri.mjs";
 
-const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
+const DB_NAME = resolveSeedDbName();
 const FINAL = "tenant_portfolio";
 const LEGACY_DOUBLE = "portfolio_portfolios";
 const LEGACY_PLURAL = "tenant_portfolios";

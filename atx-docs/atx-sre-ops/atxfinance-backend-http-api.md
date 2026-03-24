@@ -152,8 +152,8 @@ SpringDoc OpenAPI 2.x (see `services/atxfinance-backend/build.gradle.kts`):
 Resolution order for Spring Data Mongo URI (high level):
 
 1. **`MONGODB_URI_B64`** — if set, `MongoUriEnvPostProcessor` decodes and injects `spring.data.mongodb.uri` at highest precedence (same pattern as the core Next.js app).
-2. Else **`spring.data.mongodb.uri`** from `application.yml` / env: `MONGODB_URI` or `SPRING_DATA_MONGODB_URI` or default `mongodb://localhost:27017/${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfinancedb}}`.
-3. **`spring.data.mongodb.database`** is set explicitly from `SPRING_DATA_MONGODB_DATABASE` or `MONGODB_DB_NAME` (default `atxfinancedb`) when using the default URI.
+2. Else **`spring.data.mongodb.uri`** from `application.yml` / env: `MONGODB_URI` or `SPRING_DATA_MONGODB_URI` or default `mongodb://localhost:27017/${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfinance}}`.
+3. **`spring.data.mongodb.database`** is set explicitly from `SPRING_DATA_MONGODB_DATABASE` or `MONGODB_DB_NAME` (default `atxfinance`) when using the default URI. For parity with Next.js, `scripts/dev/bootrun-atxfinance-backend.sh` derives `MONGODB_DB_NAME=atxfinance-<target>` from `ATX_DEPLOY_TARGET` (`stage` \| `deploy` \| `prod`) when `MONGODB_DB_NAME` is unset.
 
 Docker Compose sets `SPRING_DATA_MONGODB_URI` explicitly for the `atxfinance-backend` service unless overridden by `.env` / `MONGODB_URI_B64`.
 

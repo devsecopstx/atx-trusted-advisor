@@ -19,7 +19,9 @@ describe("getMongoUriFromB64 local fallback", () => {
     delete process.env.MONGO_ROOT_PASSWORD;
     delete process.env.MONGODB_HOST;
     delete process.env.MONGODB_NO_AUTH;
-    process.env.MONGODB_DB_NAME = "atxfinancedb";
+    delete process.env.ATX_DEPLOY_TARGET;
+    delete process.env.DEPLOY_TARGET;
+    process.env.MONGODB_DB_NAME = "atxfinance";
   });
 
   it("injects compose-aligned admin credentials for localhost when URI is unset", async () => {
@@ -28,7 +30,7 @@ describe("getMongoUriFromB64 local fallback", () => {
     expect(uri).toMatch(/^mongodb:\/\/admin:/);
     expect(uri).toContain(encodeURIComponent("atxrocks!"));
     expect(uri).toContain("authSource=admin");
-    expect(uri).toContain("localhost:27017/atxfinancedb");
+    expect(uri).toContain("localhost:27017/atxfinance");
   });
 
   it("ignores ADMIN_X_USERNAMES for Mongo; uses MONGO_ROOT_USERNAME (default admin)", async () => {
@@ -36,7 +38,7 @@ describe("getMongoUriFromB64 local fallback", () => {
     vi.resetModules();
     const { getMongoUriFromB64 } = await import("@/lib/env");
     Object.assign(process.env, requiredEnv);
-    process.env.MONGODB_DB_NAME = "atxfinancedb";
+    process.env.MONGODB_DB_NAME = "atxfinance";
     delete process.env.MONGODB_URI_B64;
     delete process.env.MONGODB_URI_B4;
     delete process.env.MONGO_ROOT_PASSWORD;
@@ -51,7 +53,7 @@ describe("getMongoUriFromB64 local fallback", () => {
     vi.resetModules();
     const { getMongoUriFromB64 } = await import("@/lib/env");
     Object.assign(process.env, requiredEnv);
-    process.env.MONGODB_DB_NAME = "atxfinancedb";
+    process.env.MONGODB_DB_NAME = "atxfinance";
     delete process.env.MONGODB_URI_B64;
     delete process.env.MONGODB_URI_B4;
     const uri = getMongoUriFromB64();
@@ -59,17 +61,29 @@ describe("getMongoUriFromB64 local fallback", () => {
     expect(uri).toContain(`${encodeURIComponent("secret")}@`);
   });
 
+  it("defaults DB to atxfinance-<ATX_DEPLOY_TARGET> when MONGODB_DB_NAME is unset", async () => {
+    delete process.env.MONGODB_DB_NAME;
+    process.env.ATX_DEPLOY_TARGET = "stage";
+    vi.resetModules();
+    const { getMongoUriFromB64 } = await import("@/lib/env");
+    Object.assign(process.env, requiredEnv);
+    delete process.env.MONGODB_URI_B64;
+    delete process.env.MONGODB_URI_B4;
+    const uri = getMongoUriFromB64();
+    expect(uri).toContain("localhost:27017/atxfinance-stage");
+  });
+
   it("injects default auth for non-local host when MONGO_ROOT_USERNAME/password unset", async () => {
     process.env.MONGODB_HOST = "mongo.internal.example";
     vi.resetModules();
     const { getMongoUriFromB64 } = await import("@/lib/env");
     Object.assign(process.env, requiredEnv);
-    process.env.MONGODB_DB_NAME = "atxfinancedb";
+    process.env.MONGODB_DB_NAME = "atxfinance";
     delete process.env.MONGODB_URI_B64;
     delete process.env.MONGODB_URI_B4;
     delete process.env.MONGO_ROOT_USERNAME;
     delete process.env.MONGO_ROOT_PASSWORD;
     const uri = getMongoUriFromB64();
-    expect(uri).toBe("mongodb://admin:atxrocks!@mongo.internal.example:27017/atxfinancedb?authSource=admin");
+    expect(uri).toBe("mongodb://admin:atxrocks!@mongo.internal.example:27017/atxfinance?authSource=admin");
   });
 });
