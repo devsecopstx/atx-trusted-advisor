@@ -67,7 +67,7 @@ initial_seed:
   users:                             # illustrative only — not loaded by `scripts/seed-admin-user.mjs` (use ADMIN_SEED_EMAIL in .env)
     - email: atxbogart@gmail.com
       name: Admin User
-      password_hash: "atxRocks!"              # ← your script should hash a default or env-provided password
+      password_hash: ""              # ← your script should hash a default or env-provided password
       role: admin
       is_active: true
       email_verified: true
