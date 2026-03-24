@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-core-app",
-  "version": "2.4.2",
+  "version": "2.4.15",
   "description": "aTx⚡Finance Advisory software and services for finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -8,7 +8,9 @@
     "dev:frontend": "next dev",
     "dev:backend": "docker compose --env-file .env up",
     "dev:stack": "node scripts/dev/start-dev-stack.mjs",
+    "dev:stack:fresh": "DEV_WIPE_LOCAL_MONGO=1 node scripts/dev/start-dev-stack.mjs",
     "dev:host": "node scripts/dev/start-dev-host.mjs",
+    "dev:host:fresh": "DEV_WIPE_LOCAL_MONGO=1 node scripts/dev/start-dev-host.mjs",
     "dev:spring": "bash scripts/dev/bootrun-atxfinance-backend.sh",
     "build": "next build",
     "build:backend": "cd services/atxfinance-backend && chmod +x ./gradlew && ./gradlew test --no-daemon",
@@ -18,6 +20,7 @@
     "ci:gate": "npm run lint && npm run typecheck && npm run test",
     "smoke:verify": "vitest run tests/smoke",
     "smoke:xai-key-create": "vitest run tests/smoke/xai-management-api-key-create-smoke.test.ts",
+    "smoke:xai-chat": "bash scripts/ops/xai-chat-completions-smoke.sh",
     "test": "vitest run",
     "test:ci": "mkdir -p test-results && vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/vitest-junit.xml",
     "test:integration": "vitest run tests/integration",
@@ -44,7 +47,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@formspree/react": "^3.0.0",
     "@google-cloud/pubsub": "^4.11.0",
+    "framer-motion": "^12.38.0",
     "mongodb": "^7.1.0",
     "next": "^16.1.6",
     "react": "^19.2.4",
@@ -59,6 +64,9 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

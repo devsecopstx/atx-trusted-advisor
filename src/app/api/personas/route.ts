@@ -103,7 +103,6 @@ export async function POST(request: Request) {
         collectionId: parsed.data.teamCollection?.collectionId ?? "",
         collectionName: parsed.data.teamCollection?.collectionName
       },
-      includeUserBootstrapCollection: parsed.data.includeUserBootstrapCollection === true,
       xapi: normalizePersonaXapiConfig(parsed.data.xapi)
     });
   } catch (error) {
@@ -160,7 +159,6 @@ function serializePersona(persona: PersonaConfig) {
       collectionId: persona.teamCollection?.collectionId ?? "",
       collectionName: persona.teamCollection?.collectionName
     },
-    includeUserBootstrapCollection: persona.includeUserBootstrapCollection === true,
     model: persona.model,
     temperature: persona.temperature,
     enableRag: persona.enableRag,

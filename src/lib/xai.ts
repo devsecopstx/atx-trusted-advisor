@@ -1,4 +1,4 @@
-import { getEnv } from "@/lib/env";
+import { getEnv, XAI_BASE_URL_DEFAULT, XAI_MANAGEMENT_BASE_URL_DEFAULT } from "@/lib/env";
 import { toXaiRequestTools } from "@/lib/xai-tools";
 
 type XaiChatMessage = {
@@ -34,6 +34,8 @@ type XaiCollectionSearchSnippet = {
 export type XaiCollectionInventoryItem = {
   id: string;
   name?: string;
+  /** Present when the management API returns a team scope for the collection. */
+  teamId?: string;
   documentCount?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -52,7 +54,7 @@ function getXaiConfig() {
   const env = getEnv();
   return {
     apiKey: env.XAI_API_KEY,
-    baseUrl: env.XAI_BASE_URL ?? "https://api.x.ai/v1",
+    baseUrl: env.XAI_BASE_URL ?? XAI_BASE_URL_DEFAULT,
     defaultModel: env.XAI_CHAT_MODEL ?? "grok-4.20-multi-agent-0309"
   };
 }
@@ -61,7 +63,7 @@ function getXaiManagementConfig() {
   const env = getEnv();
   return {
     managementApiKey: env.XAI_MANAGEMENT_API_KEY.trim(),
-    managementBaseUrl: env.XAI_MANAGEMENT_BASE_URL ?? "https://management-api.x.ai/v1"
+    managementBaseUrl: env.XAI_MANAGEMENT_BASE_URL ?? XAI_MANAGEMENT_BASE_URL_DEFAULT
   };
 }
 
@@ -1052,15 +1054,30 @@ export async function getXaiCollectionById(collectionId: string): Promise<XaiCol
   };
 }
 
-export async function listXaiCollections(): Promise<XaiCollectionInventoryItem[]> {
+export async function listXaiCollections(options?: {
+  /** When set, requests `GET .../collections?team_id=...` (falls back to unfiltered list + client-side filter by `teamId`). */
+  teamId?: string;
+}): Promise<XaiCollectionInventoryItem[]> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  const tid = options?.teamId?.trim();
 
-  const response = await fetch(`${managementBaseUrl}/collections`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${managementApiKey}`
-    }
-  });
+  const tryFetch = async (fetchUrl: string) =>
+    fetch(fetchUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${managementApiKey}`
+      }
+    });
+
+  let usedTeamQuery = Boolean(tid);
+  let response = await tryFetch(
+    tid ? `${managementBaseUrl}/collections?team_id=${encodeURIComponent(tid)}` : `${managementBaseUrl}/collections`
+  );
+
+  if (!response.ok && tid) {
+    usedTeamQuery = false;
+    response = await tryFetch(`${managementBaseUrl}/collections`);
+  }
 
   const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok) {
@@ -1089,6 +1106,8 @@ export async function listXaiCollections(): Promise<XaiCollectionInventoryItem[]
       continue;
     }
     const name = asString(entry.name) ?? asString(entry.collection_name);
+    const teamId =
+      asString(entry.team_id) ?? asString(entry.teamId) ?? asString(entry.team);
     const documentCount =
       asNumber(entry.document_count) ??
       asNumber(entry.documents_count) ??
@@ -1099,10 +1118,15 @@ export async function listXaiCollections(): Promise<XaiCollectionInventoryItem[]
     collections.push({
       id,
       name,
+      teamId,
       documentCount,
       createdAt,
       updatedAt
     });
+  }
+
+  if (tid && !usedTeamQuery) {
+    return collections.filter((c) => c.teamId === tid);
   }
 
   return collections;

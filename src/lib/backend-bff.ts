@@ -74,9 +74,23 @@ export const nextBffApi = {
       methods: ["GET"]
     }
   },
-  feedback: {
+  strategyJobs: {
+    index: {
+      pathTemplate: "/api/strategy-jobs",
+      methods: ["POST"]
+    },
+    byId: {
+      pathTemplate: "/api/strategy-jobs/{jobId}",
+      methods: ["GET"]
+    },
+    turns: {
+      pathTemplate: "/api/strategy-jobs/{jobId}/turns",
+      methods: ["POST"]
+    }
+  },
+  userFeedback: {
     post: {
-      pathTemplate: "/api/feedback",
+      pathTemplate: "/api/user-feedback",
       methods: ["POST"]
     }
   },
@@ -88,11 +102,79 @@ export const nextBffApi = {
     audit: {
       pathTemplate: "/api/admin/audit",
       methods: ["GET"]
+    },
+    accessRequestsIndex: {
+      pathTemplate: "/api/admin/access-requests",
+      methods: ["GET", "POST"]
+    },
+    accessRequestsById: {
+      pathTemplate: "/api/admin/access-requests/{requestId}",
+      methods: ["GET", "PATCH", "PUT", "DELETE"]
+    },
+    usersIndex: {
+      pathTemplate: "/api/admin/users",
+      methods: ["GET", "POST"]
+    },
+    usersApproved: {
+      pathTemplate: "/api/admin/users/approved",
+      methods: ["GET"]
+    },
+    userById: {
+      pathTemplate: "/api/admin/users/{userId}",
+      methods: ["GET", "PUT", "DELETE"]
+    },
+    userRole: {
+      pathTemplate: "/api/admin/users/{userId}/role",
+      methods: ["PATCH"]
+    },
+    userPlan: {
+      pathTemplate: "/api/admin/users/{userId}/plan",
+      methods: ["PATCH"]
+    },
+    userEmail: {
+      pathTemplate: "/api/admin/users/{userId}/email",
+      methods: ["PATCH"]
+    },
+    userSettings: {
+      pathTemplate: "/api/admin/users/{userId}/settings",
+      methods: ["GET", "PUT"]
+    },
+    tasksIndex: {
+      pathTemplate: "/api/admin/tasks",
+      methods: ["GET", "POST"]
+    },
+    tasksRun: {
+      pathTemplate: "/api/admin/tasks/{taskId}/run",
+      methods: ["POST"]
+    },
+    taskRuns: {
+      pathTemplate: "/api/admin/task-runs",
+      methods: ["GET"]
+    },
+    schedulerTick: {
+      pathTemplate: "/api/admin/scheduler/tick",
+      methods: ["POST"]
+    },
+    deployNoteConfigsIndex: {
+      pathTemplate: "/api/admin/deploy-note-configs",
+      methods: ["GET", "POST"]
+    },
+    deployNoteConfigById: {
+      pathTemplate: "/api/admin/deploy-note-configs/{configId}",
+      methods: ["GET", "PUT", "DELETE"]
+    },
+    importBroker: {
+      pathTemplate: "/api/admin/import/broker",
+      methods: ["POST"]
     }
   },
   rag: {
     files: {
       pathTemplate: "/api/rag/files",
+      methods: ["GET", "POST"]
+    },
+    fileReadiness: {
+      pathTemplate: "/api/rag/files/{fileId}/readiness",
       methods: ["GET"]
     }
   },
@@ -129,6 +211,8 @@ async function proxyRequestWithOrigin(
   const u = new URL(request.url);
   const target = `${base}${u.pathname}${u.search}`;
   const headers = new Headers();
+  headers.set("X-Forwarded-Host", u.host);
+  headers.set("X-Forwarded-Proto", u.protocol.replace(":", ""));
   const cookie = request.headers.get("cookie");
   if (cookie) {
     headers.set("cookie", cookie);
@@ -140,6 +224,14 @@ async function proxyRequestWithOrigin(
   const accept = request.headers.get("accept");
   if (accept) {
     headers.set("accept", accept);
+  }
+  const idempotencyKey = request.headers.get("idempotency-key");
+  if (idempotencyKey) {
+    headers.set("idempotency-key", idempotencyKey);
+  }
+  const correlationId = request.headers.get("x-correlation-id");
+  if (correlationId) {
+    headers.set("x-correlation-id", correlationId);
   }
 
   const init: RequestInit & { duplex?: "half" } = {

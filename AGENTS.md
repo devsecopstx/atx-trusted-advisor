@@ -8,7 +8,7 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 
 ## Standard Local Flow
 
-1. `cp .env.example .env` — set `ADMIN_SEED_EMAIL`; leave `MONGODB_URI_B64` empty for local Docker Mongo (auth defaults match `docker-compose.yml`).
+1. `cp .env.example .env` — set `ADMIN_SEED_EMAIL`; if you use **Sign in with X** and X does not return an email, also set **`ADMIN_SEED_X_USER_ID`** (your X numeric user id) so seed + OAuth can attach `xAccount` to the admin row. Leave `MONGODB_URI` unset for local Docker Mongo (auth defaults match `docker-compose.yml`).
 2. `npm install`
 3. `npm run mongo:up` — MongoDB service only, waits for healthy — **or** `docker compose up -d` for Mongo + backend container
 4. `npm run seed:admin` — **or** `npm run local:bootstrap` to run step 3 + seed in one shot
@@ -43,11 +43,11 @@ After merging and deploying to production (or staging first):
 2. **Admin:** Sign in as `global_admin` → `/admin` loads; use **Hub → xChat** or the topbar **xChat** link to open `/xchat` without leaving the admin shell’s sibling routes. `GET /api/personas` → `200` with session cookie.
 3. **App_user:** Sign in with X as a user who has platform role **`viewer`**, **`operator`**, or **`advisor`** (Admin → Access approved + role assigned). **The string `app_user` is not a role** — use those roles. Then `/xchat` loads full chat (not plans only); `POST /api/xchat/ask` → `200` (not `401`).
 4. If still `401` / `access_request_pending` / guest xChat: confirm Mongo user has `roles` including one of `advisor`/`operator`/`viewer` (`canUserLogin` in `src/modules/identity/authorization.ts`). Optional dev: `ALLOW_ANY_X_USER_LOGIN=true` (not for prod unless intended).
-5. See `.cursor/skills/atxfinance-deploy-production/SKILL.md` and `DEVELOPMENT.md` for deploy + rollback; run **`npm run status:deploy`** for URLs and latest workflow runs.
+5. See `.cursor/skills/atx-deploy-production/SKILL.md` and `DEVELOPMENT.md` for deploy + rollback; run **`npm run status:deploy`** for URLs and latest workflow runs.
 
 ## Critical Env Keys
 
-- `MONGODB_URI_B64`
+- `MONGODB_URI`
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY`
 - `X_OAUTH_CLIENT_ID`
@@ -62,12 +62,14 @@ After merging and deploying to production (or staging first):
 - OpenAPI inventory: `GET /api/openapi`
 - Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
+- **Spring OAuth cutover (dual-run):** `atx-docs/atx-sre-ops/auth-oauth-spring-dual-run.md` — gaps vs approved contract, `/login?error=` matrix, operator checklist
 - Personas API: `GET /api/personas`
 - xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (global_admin), **xFinance** (app roles); **RAG / file_search collection scope** is **only** what is declared on the resolved persona (`xaiCollection` + tool `collection_ids`), not env defaults or implicit user/team merges. **Effective xAI model** comes from the **resolved persona’s `model`** (fallback server default if unset); optional `personaId` / admin-assigned persona selects persona — **no** request-body `model` override. **`xapi.tools`** are used as stored (include `atxfinance` / `yahoo_finance` on the persona when needed).
-- **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`docs/xchat/xai-api-standard.md`**
+- **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`atx-docs/atx-xchat/xai-api-standard.md`**
+- xAI chat API key smoke (dev/SRE): `npm run smoke:xai-chat` with `XAI_API_KEY` in `.env` — see `DEVELOPMENT.md` § *xAI chat completions smoke*
 - Market price source-of-truth (current): Yahoo Finance via `yahoo-finance2` (`src/modules/xchat/market-data.ts`); quote-related prompts/tools should route through `market_quote` / `yahoo_finance` rather than narrative web-only lookups
 - Watchlist (app_user): `/watchlist` — CSV **Import/Export**; `PATCH /api/portfolios/:id/watchlist` accepts `addEntries` (`lineType`, `strategy`, `quantity`, `entryPrice`) for merged rows. Reference CSV: `branding/atxfinance-watchlist.csv`
-- App_user feedback: `POST /api/feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
+- App_user feedback: `POST /api/user-feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
 - **App_user 500 while admin works:** see [DEVELOPMENT.md — App_user HTTP 500](DEVELOPMENT.md#app_user-http-500); check Cloud Run logs for `[auth/x/callback]` and Mongo/provisioning errors
 
 ## Quick Ops Status Task
@@ -97,7 +99,7 @@ echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run Pro
 
 - Keep secrets only in `.env`; never commit real tokens.
 - Prefer updating existing docs over creating duplicates.
-- Non-blocking backlog / design TBD: `docs/PLAN.md`.
+- Non-blocking backlog / design TBD: `atx-docs/PLAN.md`.
 - For persona/xchat/admin-audit changes, run at least build + typecheck before PR.
 - **Roles:** platform roles vs `tenantRole` — see `DEVELOPMENT.md` → *Platform roles vs tenant membership (session)*. Use `isGlobalAdmin()` / `canUserLogin()` from `@/modules/identity/authorization` (and `requireGlobalAdminSession` for admin APIs); avoid ad-hoc `roles.includes("global_admin")`.
 
@@ -106,7 +108,7 @@ echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run Pro
 ### Database: Atlas mode (no local Docker)
 
 Cloud agents connect to MongoDB Atlas — **do NOT run `docker compose up -d`**.
-The `MONGODB_URI_B64` secret is injected as an environment variable by the Cursor Cloud
+The `MONGODB_URI` secret is injected as an environment variable by the Cursor Cloud
 runtime. Run `npm run env:cursor-cloud` to create missing `.env` and `.cursor/worktrees.json`
 from injected secrets.
 
@@ -115,18 +117,18 @@ from injected secrets.
 - Project-local skills are stored in `.cursor/skills/`. See `.cursor/skills/README.md` for the full index.
 - TODO: refine skills naming conventions; keep current names for now.
 - TODO: remove imported global Cursor skills from the repo once local skill parity is confirmed.
-- Ops/review skills: `atxfinance-docs-ops`, `atxfinance-xchat-validation-checklist`, `atxfinance-runbook-navigator`, `atxfinance-design-ops`, `xdesign-review`.
-- Backend (multi-node agents) skills: `atxfinance-backend-architecture`, `atxfinance-backend-deploy-staging`, `atxfinance-backend-deploy-production`, `atxfinance-backend-runbook`, `atxfinance-backend-ci`.
-- Junie guidelines for backend operations: `docs/ops/junie-guidelines-atxfinance-backend.md`.
-- xDesign review outputs: `docs/xchat/xdesign-review-admin-console-ux.md` (and other `docs/xchat/*.md`).
-- Strategy skills: 10 `atxfinance-strategy-*` skills (options strategy references).
+- Ops/review skills: `atx-sre-docs-ops`, `atx-skill-xchat-validation-checklist`, `atx-runbook-navigator`, `atx-design-ops`, `atxdesign-review`.
+- Backend (multi-node agents) skills: `atx-backend-architecture`, `atx-backend-deploy-stage`, `atx-backend-deploy-prod`, `atx-backend-runbook`, `atx-backend-ci`.
+- Junie guidelines for backend operations: `atx-docs/atx-sre-ops/junie-guidelines-atxfinance-backend.md`.
+- xDesign review outputs: `atx-docs/atx-xchat/xdesign-review-admin-console-ux.md` (and other `atx-docs/atx-xchat/*.md`).
+- Options strategies: **10** `atx-skill-*` playbooks (options structures); index: `.cursor/skills/README.md` § *Options strategies*.
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
-- Runtime xChat custom-tool execution is intentionally deferred; see `docs/xchat/atxfinance-tool-stub.md`.
+- Runtime xChat custom-tool execution is intentionally deferred; see `atx-docs/atx-xchat/atxfinance-tool-stub.md`.
 
 ### Project Cursor rules (optional)
 
 - File-backed rules live in **`.cursor/rules/*.mdc`** (tracked; see `.gitignore` exceptions alongside `.cursor/skills/`).
-- Example: **`xfinance-chat-expert.mdc`** — xChat/mobile/performance expert workflow; attaches via `globs` under `**/xchat/**`, `src/modules/xchat/**`, `docs/xchat/**`, etc.
+- Example: **`xfinance-chat-expert.mdc`** — xChat/mobile/performance expert workflow; attaches via `globs` under `**/xchat/**`, `src/modules/xchat/**`, `atx-docs/atx-xchat/**`, etc.
 - When editing rules, follow **`generate-docs`** (Cursor rules section) and **`test-commit-push`** checklist (frontmatter + no patch noise).
 
 ### Local skill maintenance policy
@@ -146,7 +148,7 @@ The `.env` file is generated by `npm run env:cursor-cloud` from Cursor secrets. 
 
 | Secret name | Purpose |
 |---|---|
-| `MONGODB_URI_B64` | Base64-encoded Atlas connection string |
+| `MONGODB_URI` | Mongo connection string (plain or base64) |
 | `XAI_API_KEY` | xAI API key for chat completions |
 | `XAI_MANAGEMENT_API_KEY` | xAI management key for collection ops |
 | `X_OAUTH_CLIENT_ID` | X OAuth client ID (raw, not base64) |
@@ -206,6 +208,18 @@ Three cloud agent configurations are supported:
 
 All three share the same update script and secret requirements above.
 
+### Running without MONGODB_URI
+
+When `MONGODB_URI` is not configured, the app falls back to `mongodb://admin:atxrocks!@localhost:27017/atxfinancedb`. Without a running Mongo instance, `GET /api/health` returns HTTP 500 (connection refused) but the dev server itself runs fine. Pages that do **not** require a DB session work: `/login`, `/app_user/xoptions`, `/app_user/xoptions/follow-up`, `/xcoach`, `/api/openapi`. Auth-gated pages (`/xchat`, `/admin/*`, `/portfolio`, `/watchlist`) and `npm run seed:admin` require a live MongoDB connection. All validation gates (`npm run ci:gate`) pass without MongoDB — tests use mocked dependencies.
+
+### MONGODB_URI secret encoding caveat
+
+The Cursor Cloud runtime may inject `MONGODB_URI` as `MONGODB_URI_B64=<base64>` (the literal prefix `MONGODB_URI_B64=` embedded in the value). `npm run env:cursor-cloud` writes this verbatim, which the app's `parseMongoConnectionString` cannot decode. If `seed:admin` fails with `Invalid MONGODB_URI: decoded value is not a MongoDB URI`, strip the prefix and decode manually:
+```bash
+B64=$(printenv MONGODB_URI | sed 's/^MONGODB_URI_B64=//') && DECODED=$(echo "$B64" | base64 -d)
+```
+Then write the decoded `mongodb+srv://...` URI into `.env` and `unset MONGODB_URI` before running seed or dev (since `--env-file=.env` does not override existing shell env vars).
+
 ### Gotchas
 
 - The env schema (`src/lib/env.ts`) requires `XAI_API_KEY`, `XAI_MANAGEMENT_API_KEY`, `X_OAUTH_CLIENT_ID`, and `X_OAUTH_CLIENT_SECRET` to be non-empty strings. The app will not start without them even if you only need non-AI endpoints.
@@ -215,6 +229,7 @@ All three share the same update script and secret requirements above.
 - Tests (`npm run test`) are all unit/integration tests with mocked dependencies — they do not require MongoDB or the dev server to be running.
 - The xAI management key-create smoke test is opt-in via `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true` and requires real API keys.
 - `*.code-workspace` files are gitignored — they are local IDE config and not used by cloud agents.
+- `npm run build` requires `NODE_ENV=production` (or unset). The Cloud Agent shell defaults to `NODE_ENV=development`, which causes Next.js to warn and SSG pages to fail. Use `NODE_ENV=production npm run build`.
 - See `DEVELOPMENT.md` for the full Cloud Agent Atlas Mode setup and OAuth host-consistency notes.
 - **X OAuth (prod):** PKCE cookies must ride the same `NextResponse` as the redirect to X (`applyOAuthFlowCookiesToRedirect` in `src/lib/auth.ts`). Cloud Run sets `X_OAUTH_CALLBACK_URL` from the `PROD_BASE_URL` GitHub variable — keep the X app callback identical. Rotate mounted runtime secrets with `bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target production --env-file .env.prod` (see `DEVELOPMENT.md` → *Sync production Secret Manager*).
 

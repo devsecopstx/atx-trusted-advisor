@@ -1,4 +1,4 @@
-import { getEnv } from "@/lib/env";
+import { getEnv, XAI_BASE_URL_DEFAULT } from "@/lib/env";
 
 export type XaiBatchJobStatus =
   | "queued"
@@ -79,7 +79,7 @@ function getXaiConfig() {
   const env = getEnv();
   return {
     apiKey: env.XAI_API_KEY,
-    baseUrl: env.XAI_BASE_URL ?? "https://api.x.ai/v1"
+    baseUrl: env.XAI_BASE_URL ?? XAI_BASE_URL_DEFAULT
   };
 }
 

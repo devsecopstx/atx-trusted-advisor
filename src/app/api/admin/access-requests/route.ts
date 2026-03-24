@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     createAuditEvent,
     listLatestAuditEventsForEntities
@@ -49,6 +50,11 @@ const accessRequestQuerySchema = z.object({
 });
 
 export async function GET(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -89,6 +95,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

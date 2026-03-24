@@ -44,7 +44,7 @@ describe("admin RBAC and scheduler semantics", () => {
       NextResponse.json({ error: "Forbidden" }, { status: 403 })
     );
 
-    const response = await getTasks();
+    const response = await getTasks(new Request("http://localhost/api/admin/tasks"));
     expect(response.status).toBe(403);
     expect(repositoryMocks.listScheduledTasks).not.toHaveBeenCalled();
   });
@@ -61,7 +61,7 @@ describe("admin RBAC and scheduler semantics", () => {
       }
     ]);
 
-    const response = await getTasks();
+    const response = await getTasks(new Request("http://localhost/api/admin/tasks"));
     const payload = (await response.json()) as { data: Array<{ name: string }> };
 
     expect(response.status).toBe(200);
@@ -92,7 +92,9 @@ describe("admin RBAC and scheduler semantics", () => {
       }
     ]);
 
-    const response = await postSchedulerTick();
+    const response = await postSchedulerTick(
+      new Request("http://localhost/api/admin/scheduler/tick", { method: "POST" })
+    );
     const payload = (await response.json()) as {
       data: { processed: number };
     };

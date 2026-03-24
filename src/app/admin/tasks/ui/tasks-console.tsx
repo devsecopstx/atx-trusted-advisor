@@ -8,7 +8,7 @@ import { parseJson } from "@/app/admin/ui/http";
 type ScheduledTask = {
   _id?: string;
   name: string;
-  category: "sync-broker" | "rebalance" | "compliance" | "notifications";
+  category: "sync-broker" | "rebalance" | "compliance" | "notifications" | "user-history";
   scheduleCron: string;
   enabled: boolean;
   nextRunAt?: string;
@@ -131,6 +131,7 @@ export function TasksConsole() {
             <option value="rebalance">rebalance</option>
             <option value="compliance">compliance</option>
             <option value="notifications">notifications</option>
+            <option value="user-history">user-history</option>
           </select>
           <input name="scheduleCron" placeholder="0 2 * * *" required />
           <button className="cta cta-primary" type="submit">

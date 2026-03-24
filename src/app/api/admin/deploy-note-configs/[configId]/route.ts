@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requireAdminSession } from "@/lib/api-auth";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
@@ -50,7 +51,10 @@ const updateSchema = z
     { message: "Provide at least one field to update." }
   );
 
-export async function GET(_: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) return proxied;
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -66,6 +70,9 @@ export async function GET(_: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) return proxied;
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -118,7 +125,10 @@ export async function PUT(request: Request, context: RouteContext) {
   return NextResponse.json({ data: serializeDeployNoteConfig(updated) });
 }
 
-export async function DELETE(_: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) return proxied;
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

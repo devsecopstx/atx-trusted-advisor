@@ -42,7 +42,19 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     href: "/admin/portfolios",
     icon: "portfolio",
     title: "Portfolios",
-    description: "View default portfolio, linked accounts, and watchlist."
+    description: "Create and edit tenant portfolios, broker metadata, and default book per user."
+  },
+  {
+    href: "/admin/accounts",
+    icon: "portfolio",
+    title: "Accounts",
+    description: "Pick a portfolio, then manage custodian accounts: CRUD, cash, defaults, risk & outlook."
+  },
+  {
+    href: "/admin/broker-import",
+    icon: "batch",
+    title: "Broker import",
+    description: "Merrill / Fidelity holdings CSV → map to core accounts (preview, apply, dry-run)."
   },
   {
     href: "/admin/tasks",
@@ -67,6 +79,12 @@ const ADMIN_FUNCTIONS: AdminFunction[] = [
     icon: "batch",
     title: "Batch Ops Dashboard",
     description: "Track xchat batch progress, failures, and completion metrics."
+  },
+  {
+    href: "/admin/xoptions",
+    icon: "strategy",
+    title: "xOptions API test",
+    description: "Exercise GET strategy-options expirations and option-chain reads (BFF / backend parity)."
   },
   {
     href: "/personas",

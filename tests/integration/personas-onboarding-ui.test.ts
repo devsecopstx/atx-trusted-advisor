@@ -1,4 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const teamStubs = vi.hoisted(() => ({
+  resolveTeamKbCollectionId: vi.fn().mockResolvedValue("collection_for_onboarding_test")
+}));
+
+vi.mock("@/modules/xchat/team-xai-collection-sync", () => ({
+  getTeamXaiKbCollectionIdSync: () => "collection_for_onboarding_test",
+  readRawXaiTeamId: () => "collection_for_onboarding_test"
+}));
+vi.mock("@/modules/xchat/team-xai-collection", () => ({
+  resolveTeamKbCollectionId: teamStubs.resolveTeamKbCollectionId,
+  getTeamXaiKbCollectionIdSync: () => "collection_for_onboarding_test",
+  readRawXaiTeamId: () => "collection_for_onboarding_test"
+}));
 
 import {
     DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT,
@@ -9,7 +23,7 @@ import {
     personaToolsIncludeHostedSearch,
     type XaiCollectionInventoryOption
 } from "@/app/admin/personas/ui/personas-onboarding";
-import { SUPER_AGENT_DEFAULT_TOOLS } from "@/modules/xchat/types";
+import { getSuperAgentDefaultTools } from "@/modules/xchat/types";
 
 describe("xpersona onboarding ui helpers", () => {
   it("uses requested default system prompt in create form", () => {
@@ -18,7 +32,7 @@ describe("xpersona onboarding ui helpers", () => {
   });
 
   it("defaults create form xapi tools to the full standard preset (all on)", () => {
-    expect(parsePersonaXapiToolsJson(EMPTY_CREATE_FORM.xapiToolsJson)).toEqual(SUPER_AGENT_DEFAULT_TOOLS);
+    expect(parsePersonaXapiToolsJson(EMPTY_CREATE_FORM.xapiToolsJson)).toEqual(getSuperAgentDefaultTools());
   });
 
   it("detects hosted search markers in persona tools", () => {

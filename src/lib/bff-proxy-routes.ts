@@ -1,10 +1,13 @@
 /**
  * Routes the Next.js App Router may forward to Spring when `ATXFINANCE_BACKEND_ORIGIN` is set
  * (`proxyRequestToBackend` in `backend-bff.ts`). Keep in sync with Kotlin `@*Mapping` and
- * `docs/ops/atxfinance-backend-http-api.md`.
+ * `atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`.
  *
- * Next likely vertical slice (not proxied yet): xChat / streaming routes — see
- * `docs/ops/api-consolidation-spring-backend.md`.
+ * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
+ * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Tasks are PR 3 (on Spring when
+ * ATXFINANCE_BACKEND_ORIGIN is set) — see atx-docs/atx-sre-ops/api-consolidation-spring-backend.md.
+ *
+ * Deferred vertical slice: xChat streaming routes — see `atx-docs/atx-sre-ops/api-consolidation-spring-backend.md`.
  */
 export type BffProxyHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -35,16 +38,50 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "POST", path: "/api/portfolios/{portfolioId}/recommendations" },
   { method: "GET", path: "/api/strategy-options" },
   { method: "GET", path: "/api/strategy-options/expirations" },
-  { method: "POST", path: "/api/feedback" },
+  { method: "POST", path: "/api/strategy-jobs" },
+  { method: "GET", path: "/api/strategy-jobs/{jobId}" },
+  { method: "POST", path: "/api/strategy-jobs/{jobId}/turns" },
+  { method: "POST", path: "/api/user-feedback" },
   { method: "GET", path: "/api/admin/bootstrap-status" },
   { method: "GET", path: "/api/admin/audit" },
+  { method: "GET", path: "/api/admin/access-requests" },
+  { method: "POST", path: "/api/admin/access-requests" },
+  { method: "GET", path: "/api/admin/access-requests/{requestId}" },
+  { method: "PATCH", path: "/api/admin/access-requests/{requestId}" },
+  { method: "PUT", path: "/api/admin/access-requests/{requestId}" },
+  { method: "DELETE", path: "/api/admin/access-requests/{requestId}" },
+  { method: "GET", path: "/api/admin/users" },
+  { method: "POST", path: "/api/admin/users" },
+  { method: "GET", path: "/api/admin/users/approved" },
+  { method: "GET", path: "/api/admin/users/{userId}" },
+  { method: "PUT", path: "/api/admin/users/{userId}" },
+  { method: "DELETE", path: "/api/admin/users/{userId}" },
+  { method: "PATCH", path: "/api/admin/users/{userId}/role" },
+  { method: "PATCH", path: "/api/admin/users/{userId}/plan" },
+  { method: "PATCH", path: "/api/admin/users/{userId}/email" },
+  { method: "GET", path: "/api/admin/users/{userId}/settings" },
+  { method: "PUT", path: "/api/admin/users/{userId}/settings" },
+  { method: "GET", path: "/api/admin/tasks" },
+  { method: "POST", path: "/api/admin/tasks" },
+  { method: "POST", path: "/api/admin/tasks/{taskId}/run" },
+  { method: "GET", path: "/api/admin/task-runs" },
+  { method: "POST", path: "/api/admin/scheduler/tick" },
+  { method: "GET", path: "/api/admin/deploy-note-configs" },
+  { method: "POST", path: "/api/admin/deploy-note-configs" },
+  { method: "GET", path: "/api/admin/deploy-note-configs/{configId}" },
+  { method: "PUT", path: "/api/admin/deploy-note-configs/{configId}" },
+  { method: "DELETE", path: "/api/admin/deploy-note-configs/{configId}" },
+  { method: "POST", path: "/api/admin/import/broker" },
   { method: "GET", path: "/api/rag/files" },
+  { method: "POST", path: "/api/rag/files" },
+  { method: "GET", path: "/api/rag/files/{fileId}/readiness" },
   { method: "GET", path: "/api/personas" },
   { method: "POST", path: "/api/personas" },
   { method: "GET", path: "/api/personas/{personaId}" },
   { method: "PUT", path: "/api/personas/{personaId}" },
   { method: "DELETE", path: "/api/personas/{personaId}" },
-  { method: "POST", path: "/api/access-requests" }
+  { method: "POST", path: "/api/access-requests" },
+  { method: "GET", path: "/api/auth/x/callback" }
 ] as const;
 
 function kotlinMappingAnnotation(method: BffProxyHttpMethod): string {

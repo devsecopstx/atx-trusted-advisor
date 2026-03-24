@@ -9,6 +9,8 @@ Markdown personas under **`.cursor/agents/`** tune Cursor Cloud / Composer for s
 | [`atx-backend.md`](atx-backend.md) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
 | [`atx-reviewer.md`](atx-reviewer.md) | **PR / quality gate** reviewer — lint, typecheck, test, `ci:gate` | Pre-merge review, risk surface on changed files only |
 | [`atx-ux-agent.md`](atx-ux-agent.md) | **UI/UX + branding** — tokens, `src/app/**`, `design-system/**` | Visual work, a11y, responsive — avoid domain logic unless required |
+| [`atx-sre-ops-admin.yaml`](atx-sre-ops-admin.yaml) | SRE / ops review persona (YAML) | Infra, deploy, secrets hygiene, runbooks |
+| [`feature-branding.md`](feature-branding.md) | Full-stack branding + feature work | Broader scope when explicitly using this persona |
 
 ## Parallel worktrees (`.cursor/worktrees.json`)
 

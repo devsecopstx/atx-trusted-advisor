@@ -1,0 +1,52 @@
+---
+config:
+  theme: neo-dark
+  layout: elk
+---
+flowchart TB
+  subgraph ingress["Ingress / tenancy"]
+    A["User message<br/>xChat or xStrategyBuilder shell"] --> B{"Auth + session<br/>viewer / operator / advisor + tenant"}
+  end
+
+  subgraph orchestrator["Orchestrator (stateful, DB-backed)"]
+    B --> C{"Load job / session<br/>correlationId + idempotencyKey"}
+    C -->|missing| NEW["Create job row<br/>step = collect"]
+    NEW --> D
+    C -->|found| D{"Slots complete?<br/>outlook, risk, horizon, symbol, …"}
+    D -->|no| E["Next prompt step<br/>numbered choices / clarify"]
+    E --> F["Persist step + await user"]
+    F --> C
+    D -->|yes| G["Assemble context bundle<br/>retrieval + snapshot + policy"]
+  end
+
+  subgraph llm["LLM tier (policy-gated)"]
+    G --> H{"Route by intent<br/>see context-routing-multi-agent-policy"}
+    H -->|docs / RAG| RAG["Retrieval-first<br/>TEAM_XAI under XAI_TEAM_ID<br/>append + retrieve — no user-collection"]
+    H -->|live state| TOOL["Tool loop<br/>atxfinance / yahoo_finance"]
+    H -->|heavy synthesis| MA["Multi-agent model<br/>plan-capped agent_count"]
+    RAG --> I["POST /api/xchat/ask<br/>or worker xAI call"]
+    TOOL --> I
+    MA --> I
+  end
+
+  subgraph handoff["xStrategyBuilder handoff"]
+    I --> J{"Structured parse OK?<br/>rational_recommendation / legs"}
+    J -->|yes| K["Emit strategy artifact<br/>+ link jobId / correlationId"]
+    J -->|no| L["Clarify or retry<br/>bounded attempts"]
+    K --> M["xStrategyBuilder UI<br/>review / order flow"]
+  end
+
+  subgraph scale["Scale & safety"]
+    Q["Queue / Pub/Sub<br/>long jobs off HTTP thread"]
+    RL["Per-tenant rate limits<br/>+ plan caps"]
+    OBS["Logs: correlationId, personaId,<br/>effectiveModel — no raw PII"]
+    Q -.-> I
+    RL -.-> B
+    OBS -.-> I
+  end
+
+  subgraph errors["Error paths (short)"]
+    B -->|401/403| E401["Fail closed"]
+    C -->|timeout| ETO["Retry-safe message + job status"]
+    I -->|5xx / timeout| ELL["Degrade: queue retry or user message"]
+  end

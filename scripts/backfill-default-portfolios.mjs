@@ -1,5 +1,7 @@
 import { MongoClient, ObjectId } from "mongodb";
 
+import { resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+
 const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
 const TENANT_PORTFOLIO_COLLECTION = "tenant_portfolio";
 const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
@@ -7,20 +9,9 @@ const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
+const DEFAULT_EXT_ACCOUNT_XREF = "ext_account_xref";
 const DEFAULT_WATCHLIST_NAME = "Default Watchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
-
-function decodeMongoUri() {
-  const encoded = process.env.MONGODB_URI_B64 ?? process.env.MONGODB_URI_B4;
-  if (!encoded) {
-    throw new Error("Set MONGODB_URI_B64 (or MONGODB_URI_B4)");
-  }
-  const decoded = Buffer.from(encoded, "base64").toString("utf8").trim();
-  if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
-    throw new Error("Decoded Mongo URI is invalid");
-  }
-  return decoded;
-}
 
 async function ensurePortfolioIndexes(db) {
   await Promise.all([
@@ -90,7 +81,7 @@ async function provisionDefaultsForUser(db, { userId, tenantId }) {
     throw new Error(`Failed to upsert portfolio for user ${String(userId)}`);
   }
 
-  const extAccountId = `${DEFAULT_ACCOUNT_TYPE}-default-${String(userId)}`;
+  const extAccountId = DEFAULT_EXT_ACCOUNT_XREF;
   await accounts.updateOne(
     { tenantId, userId, portfolioId: portfolio._id, isDefault: true },
     {
@@ -131,7 +122,7 @@ async function provisionDefaultsForUser(db, { userId, tenantId }) {
 }
 
 async function run() {
-  const client = new MongoClient(decodeMongoUri());
+  const client = new MongoClient(resolveMongoUri());
   await client.connect();
   const db = client.db(DB_NAME);
 

@@ -5,7 +5,7 @@ description: Bull put credit spread guide for defined-risk premium collection on
 
 # atx-skill Bull Put Credit Spread
 
-## Core Setup
+## Core setup
 - Sell higher-strike put, buy lower-strike put (same expiration).
 - Receive net credit; thesis is price stays above short strike.
 - Defined max loss from spread width minus net credit.
@@ -15,7 +15,7 @@ description: Bull put credit spread guide for defined-risk premium collection on
 - Include break-even and probability framing.
 - Include plan for tested short strike.
 
-## Output Format
+## Output format
 1. Short/long strike proposal.
 2. Credit, max profit, max loss, breakeven.
 3. Management triggers.

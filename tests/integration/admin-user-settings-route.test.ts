@@ -26,18 +26,28 @@ const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
 
+const teamXaiMocks = vi.hoisted(() => ({
+  resolveTeamKbCollectionId: vi.fn()
+}));
+
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/xchat/repository", () => xchatRepositoryMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/modules/xchat/team-xai-collection", () => ({
+  resolveTeamKbCollectionId: teamXaiMocks.resolveTeamKbCollectionId
+}));
 
 import { GET, PUT } from "@/app/api/admin/users/[userId]/settings/route";
-import { ATXFINANCE_COLLECTION_ID } from "@/modules/xchat/types";
+import type { UserAdminSettings } from "@/modules/core-admin/types";
+
+const TEAM_DEFAULT_COLLECTION_ID = "collection_integration_team_default";
 
 describe("admin user settings route", () => {
   beforeEach(() => {
+    teamXaiMocks.resolveTeamKbCollectionId.mockResolvedValue(TEAM_DEFAULT_COLLECTION_ID);
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -49,7 +59,12 @@ describe("admin user settings route", () => {
       userId: "507f1f77bcf86cd799439033",
       assignedPersonaId: "507f1f77bcf86cd799439055",
       broker: { provider: "paper", accountRef: "paper-main", enabled: true },
-      portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
+      portfolio: {
+        riskProfile: "balanced",
+        investmentStrategy: "balanced",
+        baseCurrency: "USD",
+        rebalanceFrequencyDays: 14
+      },
       account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
       notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 },
       updatedAt: new Date("2026-03-20T00:00:00.000Z")
@@ -58,7 +73,12 @@ describe("admin user settings route", () => {
       userId: "507f1f77bcf86cd799439033",
       assignedPersonaId: "507f1f77bcf86cd799439055",
       broker: { provider: "paper", accountRef: "paper-main", enabled: true },
-      portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
+      portfolio: {
+        riskProfile: "balanced",
+        investmentStrategy: "balanced",
+        baseCurrency: "USD",
+        rebalanceFrequencyDays: 14
+      },
       account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
       notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 },
       updatedAt: new Date("2026-03-20T00:00:00.000Z")
@@ -95,10 +115,13 @@ describe("admin user settings route", () => {
 
     expect(response.status).toBe(200);
     expect(payload.data.assignedPersonaId).toBe("507f1f77bcf86cd799439055");
+    expect(
+      (payload.data as { portfolio?: { investmentStrategy?: string } }).portfolio?.investmentStrategy
+    ).toBe("balanced");
     expect(payload.metadata.linkedCollections).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          collectionId: ATXFINANCE_COLLECTION_ID,
+          collectionId: TEAM_DEFAULT_COLLECTION_ID,
           source: "atxfinance_default"
         }),
         expect.objectContaining({
@@ -111,6 +134,32 @@ describe("admin user settings route", () => {
         })
       ])
     );
+  });
+
+  it("GET defaults investmentStrategy to balanced when missing on stored portfolio", async () => {
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439033",
+      assignedPersonaId: "507f1f77bcf86cd799439055",
+      broker: { provider: "paper", accountRef: "paper-main", enabled: true },
+      portfolio: {
+        riskProfile: "growth",
+        baseCurrency: "USD",
+        rebalanceFrequencyDays: 14
+      },
+      account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
+      notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 },
+      updatedAt: new Date("2026-03-20T00:00:00.000Z")
+    } as UserAdminSettings);
+
+    const response = await GET(new Request("http://test"), {
+      params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+    });
+    const payload = (await response.json()) as {
+      data: { portfolio: { investmentStrategy: string } };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.data.portfolio.investmentStrategy).toBe("balanced");
   });
 
   it("PUT allows persona assignment regardless of target user platform role", async () => {
@@ -134,7 +183,12 @@ describe("admin user settings route", () => {
         body: JSON.stringify({
           assignedPersonaId: "507f1f77bcf86cd799439055",
           broker: { provider: "paper", accountRef: "paper-main", enabled: true },
-          portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
+          portfolio: {
+            riskProfile: "balanced",
+            investmentStrategy: "balanced",
+            baseCurrency: "USD",
+            rebalanceFrequencyDays: 14
+          },
           account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
           notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
         })
@@ -161,7 +215,12 @@ describe("admin user settings route", () => {
         body: JSON.stringify({
           assignedPersonaId: "507f1f77bcf86cd799439055",
           broker: { provider: "paper", accountRef: "paper-main", enabled: true },
-          portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
+          portfolio: {
+            riskProfile: "balanced",
+            investmentStrategy: "balanced",
+            baseCurrency: "USD",
+            rebalanceFrequencyDays: 14
+          },
           account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
           notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
         })

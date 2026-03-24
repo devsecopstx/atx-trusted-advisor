@@ -1,5 +1,14 @@
 import { ObjectId } from "mongodb";
 
+import { getTeamXaiKbCollectionIdSync } from "./team-xai-collection-sync";
+import {
+    PERSONA_XAPI_TOOL_TYPES,
+    type PersonaXapiToolDefinition,
+    type PersonaXapiToolType
+} from "./tool-types";
+
+export { PERSONA_XAPI_TOOL_TYPES, type PersonaXapiToolDefinition, type PersonaXapiToolType };
+
 export type PersonaCollectionVerification = {
   status: "verified" | "missing" | "error" | "skipped";
   checkedAt: Date;
@@ -10,21 +19,6 @@ export type PersonaCollectionVerification = {
 export type PersonaXapiMode = "responses" | "chat_completions";
 
 export type PersonaXapiToolChoice = "auto" | "required" | "none";
-
-export const PERSONA_XAPI_TOOL_TYPES = [
-  "web_search",
-  "x_search",
-  "file_search",
-  "collections_search",
-  "yahoo_finance",
-  "atxfinance"
-] as const;
-export type PersonaXapiToolType = (typeof PERSONA_XAPI_TOOL_TYPES)[number];
-
-export type PersonaXapiToolDefinition = {
-  type: PersonaXapiToolType;
-  [key: string]: unknown;
-};
 
 export type PersonaXapiConfig = {
   mode: PersonaXapiMode;
@@ -40,15 +34,25 @@ export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
   tools: []
 };
 
-export const ATXFINANCE_COLLECTION_ID = "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236";
-
-export const SUPER_AGENT_DEFAULT_TOOLS: PersonaXapiToolDefinition[] = [
-  { type: "web_search" },
-  { type: "x_search" },
-  { type: "collections_search", collection_ids: [ATXFINANCE_COLLECTION_ID] },
-  { type: "yahoo_finance" },
-  { type: "atxfinance" }
-];
+/** Super-Agent default xAPI tools; `collections_search` is included when `XAI_TEAM_ID` resolves to a KB collection id (sync: `collection_*` on env). */
+export function getSuperAgentDefaultTools(): PersonaXapiToolDefinition[] {
+  const cid = getTeamXaiKbCollectionIdSync();
+  if (cid) {
+    return [
+      { type: "web_search" },
+      { type: "x_search" },
+      { type: "collections_search", collection_ids: [cid] },
+      { type: "yahoo_finance" },
+      { type: "atxfinance" }
+    ];
+  }
+  return [
+    { type: "web_search" },
+    { type: "x_search" },
+    { type: "yahoo_finance" },
+    { type: "atxfinance" }
+  ];
+}
 
 /** Matches `nameNormalized` / display name lowercased for the seeded admin persona (see `scripts/seed-admin-user.mjs`). */
 export const SUPER_AGENT_NAME_NORMALIZED = "super-agent";
@@ -67,7 +71,7 @@ export function ensureSuperAgentDefaultTools(
   }
   const have = new Set(config.tools.map((t) => t.type));
   const merged: PersonaXapiToolDefinition[] = [...config.tools];
-  for (const def of SUPER_AGENT_DEFAULT_TOOLS) {
+  for (const def of getSuperAgentDefaultTools()) {
     if (!have.has(def.type)) {
       merged.push({ ...def });
       have.add(def.type);
@@ -114,11 +118,7 @@ export type PersonaConfig = {
    * Use when the persona should search two distinct xAI collections (e.g. curated + team).
    */
   teamCollection?: PersonaCollectionRef;
-  /**
-   * When true, merge the signed-in user's bootstrap xAI collection into RAG + file_search scope
-   * (`POST /api/xchat/ask` and batch). The id is resolved per session; not stored on the persona doc.
-   */
-  includeUserBootstrapCollection?: boolean;
+  /** Last admin verification of persona-bound xAI collection (optional). */
   xaiCollectionVerification?: PersonaCollectionVerification;
   model: string;
   temperature: number;
@@ -188,6 +188,7 @@ export type XChatMessage = {
   content: string;
 };
 
+/** One prompt/response turn in Mongo `xchat_logs` (TTL via retentionExpiresAt). user_history_agent syncs unsynced rows to the user xAI collection. */
 export type XChatSessionLog = {
   _id?: ObjectId;
   requestId: string;
@@ -197,6 +198,10 @@ export type XChatSessionLog = {
   userEmail?: string;
   requestedBy?: string;
   personaId?: ObjectId;
+  /** Denormalized for scheduled markdown sync (persona name at ask time). */
+  personaName?: string;
+  /** xChat scope / KB scope at ask time. */
+  scope?: string;
   message: string;
   response: string;
   contextChunkIds: ObjectId[];
@@ -220,6 +225,9 @@ export type XChatSessionLog = {
   xaiTurnFileId?: string;
   xaiTurnPayloadHash?: string;
   xaiTurnRetentionExpiresAt?: Date;
+  /** Set when markdown turn was uploaded and linked to the user xAI collection (user_history source). */
+  syncedToXaiAt?: Date;
+  xaiTurnSyncError?: string;
   retentionExpiresAt?: Date;
   createdAt: Date;
 };

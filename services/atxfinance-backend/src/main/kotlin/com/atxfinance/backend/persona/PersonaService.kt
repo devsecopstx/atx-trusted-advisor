@@ -82,7 +82,6 @@ class PersonaService(
         doc["overridePrompt"] = (body["overridePrompt"] as? String)?.trim().orEmpty()
         doc["xaiCollection"] = subDoc(body["xaiCollection"])
         doc["teamCollection"] = subDoc(body["teamCollection"])
-        doc["includeUserBootstrapCollection"] = body["includeUserBootstrapCollection"] as? Boolean ?: false
         doc["model"] = (body["model"] as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_MODEL
         doc["temperature"] = (body["temperature"] as? Number)?.toDouble() ?: 0.2
         doc["enableRag"] = body["enableRag"] as? Boolean ?: true
@@ -95,7 +94,7 @@ class PersonaService(
         if (!personaSatisfiesFileSearch(doc)) {
             throw PersonaPayloadException(
                 400,
-                "Collection search (file_search / collections_search) requires xaiCollection.collectionId, teamCollection.collectionId, collection ids on tools, or includeUserBootstrapCollection",
+                "Collection search (file_search / collections_search) requires xaiCollection.collectionId, teamCollection.collectionId, or collection ids on tools",
             )
         }
         try {
@@ -122,7 +121,7 @@ class PersonaService(
         if (!personaSatisfiesFileSearch(merged)) {
             throw PersonaPayloadException(
                 400,
-                "Invalid persona payload: collection search requires xaiCollection, teamCollection, collection ids on tools, or includeUserBootstrapCollection",
+                "Invalid persona payload: collection search requires xaiCollection, teamCollection, or collection ids on tools",
             )
         }
         val set = Document()
@@ -138,7 +137,6 @@ class PersonaService(
                 "overridePrompt" -> set["overridePrompt"] = v.toString().trim()
                 "xaiCollection" -> set["xaiCollection"] = subDoc(v)
                 "teamCollection" -> set["teamCollection"] = subDoc(v)
-                "includeUserBootstrapCollection" -> set["includeUserBootstrapCollection"] = v
                 "model" -> set["model"] = v.toString().trim()
                 "temperature" -> set["temperature"] = (v as Number).toDouble()
                 "enableRag" -> set["enableRag"] = v
@@ -188,7 +186,6 @@ class PersonaService(
                 "overridePrompt" -> copy["overridePrompt"] = v.toString().trim()
                 "xaiCollection" -> copy["xaiCollection"] = subDoc(v)
                 "teamCollection" -> copy["teamCollection"] = subDoc(v)
-                "includeUserBootstrapCollection" -> copy["includeUserBootstrapCollection"] = v
                 "xapi" -> copy["xapi"] = normalizeXapiDoc(v)
                 "model" -> copy["model"] = v.toString().trim()
                 "temperature" -> copy["temperature"] = (v as Number).toDouble()
@@ -276,8 +273,7 @@ class PersonaService(
     private fun personaSatisfiesFileSearch(persona: Document): Boolean {
         val xapi = normalizeXapiDoc(persona["xapi"])
         if (!hasFileSearchTool(xapi)) return true
-        if (linkedCollectionIds(persona, xapi).isNotEmpty()) return true
-        return persona.getBoolean("includeUserBootstrapCollection", false)
+        return linkedCollectionIds(persona, xapi).isNotEmpty()
     }
 
     private fun validateCreatePayload(body: Map<String, Any?>): String? {
@@ -321,7 +317,6 @@ class PersonaService(
             map["overridePrompt"] = doc.getString("overridePrompt") ?: ""
             map["xaiCollection"] = doc["xaiCollection"] ?: Document()
             map["teamCollection"] = doc["teamCollection"] ?: Document()
-            map["includeUserBootstrapCollection"] = doc.getBoolean("includeUserBootstrapCollection", false)
             map["model"] = doc.getString("model")
             map["temperature"] = (doc["temperature"] as? Number)?.toDouble() ?: 0.2
             map["enableRag"] = doc.getBoolean("enableRag", true)

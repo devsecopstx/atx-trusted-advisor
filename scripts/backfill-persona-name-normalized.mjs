@@ -1,26 +1,16 @@
 import { MongoClient } from "mongodb";
 
+import { resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+
 const DB_NAME = process.env.MONGODB_DB_NAME ?? "atxfinancedb";
 const PERSONAS_COLLECTION = "xchat_personas";
-
-function decodeMongoUri() {
-  const encoded = process.env.MONGODB_URI_B64 ?? process.env.MONGODB_URI_B4;
-  if (!encoded) {
-    throw new Error("Set MONGODB_URI_B64 (or MONGODB_URI_B4)");
-  }
-  const decoded = Buffer.from(encoded, "base64").toString("utf8").trim();
-  if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
-    throw new Error("Decoded Mongo URI is invalid");
-  }
-  return decoded;
-}
 
 function normalizePersonaName(name) {
   return String(name ?? "").trim().toLowerCase();
 }
 
 async function run() {
-  const client = new MongoClient(decodeMongoUri());
+  const client = new MongoClient(resolveMongoUri());
   await client.connect();
   const db = client.db(DB_NAME);
   const personas = db.collection(PERSONAS_COLLECTION);

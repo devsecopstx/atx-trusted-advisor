@@ -50,6 +50,12 @@
         "typecheck": "npm run typecheck",
         "test": "npm run test"
       }
+    },
+    {
+      "name": "atx-sre-ops-admin",
+      "branch": "main",
+      "description": "SRE / ops — persona `atx-sre-ops-admin.yaml`",
+      "setup": "test -f .cursor/agents/atx-sre-ops-admin.yaml && npm install"
     }
   ]
 }

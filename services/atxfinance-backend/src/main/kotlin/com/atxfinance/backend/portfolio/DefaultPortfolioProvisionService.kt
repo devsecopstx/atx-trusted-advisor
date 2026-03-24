@@ -22,7 +22,7 @@ class DefaultPortfolioProvisionService(
 ) {
     private val defaultPortfolioName = "Default Portfolio"
     private val defaultAccountName = "defaultaccount"
-    private val defaultAccountRef = "fidelity-default-account"
+    private val defaultAccountRef = "ext_account_xref"
     private val defaultWatchlistName = "DefaultWatchlist"
     private val defaultWatchlistSymbol = "TSLA"
 
@@ -344,5 +344,18 @@ class DefaultPortfolioProvisionService(
         }
 
         return Triple(portfolio, account, watchlist)
+    }
+
+    /** Same as [provision] for an arbitrary user id (access-request approval path). */
+    fun provisionForUser(userId: String, tenantId: String): Triple<Document, Document, Document> {
+        val session =
+            ResolvedSession(
+                userId = userId,
+                tenantId = tenantId,
+                roles = emptyList(),
+                email = null,
+                username = null,
+            )
+        return provision(session)
     }
 }

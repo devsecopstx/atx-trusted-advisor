@@ -3,15 +3,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
+import { withDefaultInvestmentStrategy } from "@/modules/core-admin/portfolio-preference-labels";
 import {
     getUserAdminSettings,
     upsertUserAdminSettings
 } from "@/modules/core-admin/repository";
 import { getCoreUserById } from "@/modules/identity/repository";
 import { getPersonaById } from "@/modules/xchat/repository";
-import { ATXFINANCE_COLLECTION_ID } from "@/modules/xchat/types";
+import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
 
 const updateSettingsSchema = z.object({
   assignedPersonaId: z.string().trim().optional(),
@@ -23,6 +25,7 @@ const updateSettingsSchema = z.object({
   }),
   portfolio: z.object({
     riskProfile: z.enum(["conservative", "balanced", "growth"]),
+    investmentStrategy: z.enum(["growth", "income", "balanced", "aggressive"]),
     baseCurrency: z.enum(["USD", "EUR", "GBP"]),
     rebalanceFrequencyDays: z.number().int().positive()
   }),
@@ -49,7 +52,12 @@ type LinkedCollection = {
   source: "atxfinance_default" | "user_bootstrap" | "assigned_persona";
 };
 
-export async function GET(_: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -74,7 +82,7 @@ export async function GET(_: Request, context: RouteContext) {
   });
 
   return NextResponse.json({
-    data: settings,
+    data: withDefaultInvestmentStrategy(settings),
     metadata: {
       linkedCollections
     }
@@ -82,6 +90,11 @@ export async function GET(_: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -182,13 +195,15 @@ async function resolveUserLinkedCollections(input: {
   tenantId?: string;
   assignedPersonaId?: string;
 }): Promise<LinkedCollection[]> {
-  const linked: LinkedCollection[] = [
-    {
-      collectionId: ATXFINANCE_COLLECTION_ID,
+  const teamDefaultId = await resolveTeamKbCollectionId();
+  const linked: LinkedCollection[] = [];
+  if (teamDefaultId) {
+    linked.push({
+      collectionId: teamDefaultId,
       collectionName: "aTxFinance Default",
       source: "atxfinance_default"
-    }
-  ];
+    });
+  }
 
   const bootstrapCollection = await getUserBootstrapCollectionByUserId({
     userId: input.userId,

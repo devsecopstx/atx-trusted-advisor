@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requireAdminSession } from "@/lib/api-auth";
 import { pollRagFileReadiness } from "@/modules/xchat/rag-file-readiness";
 
@@ -8,7 +9,10 @@ type RouteParams = {
   params: Promise<{ fileId: string }>;
 };
 
-export async function GET(_request: Request, context: RouteParams) {
+export async function GET(request: Request, context: RouteParams) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) return proxied;
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

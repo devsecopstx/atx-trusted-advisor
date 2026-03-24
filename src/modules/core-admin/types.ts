@@ -73,7 +73,7 @@ export type ScheduledTask = {
   _id?: ObjectId;
   tenantId?: ObjectId;
   name: string;
-  category: "sync-broker" | "rebalance" | "compliance" | "notifications";
+  category: "sync-broker" | "rebalance" | "compliance" | "notifications" | "user-history";
   scheduleCron: string;
   enabled: boolean;
   runTimeoutSeconds?: number;
@@ -102,8 +102,12 @@ export type BrokerBinding = {
   enabled: boolean;
 };
 
+export type InvestmentStrategy = "growth" | "income" | "balanced" | "aggressive";
+
 export type PortfolioSettings = {
   riskProfile: "conservative" | "balanced" | "growth";
+  /** Investor approach; legacy Mongo rows may omit — API normalizes to `balanced`. */
+  investmentStrategy?: InvestmentStrategy;
   baseCurrency: "USD" | "EUR" | "GBP";
   rebalanceFrequencyDays: number;
 };
@@ -158,7 +162,8 @@ export type AccountType = (typeof accountTypeValues)[number];
 export type Portfolio = {
   _id?: ObjectId;
   tenantId?: ObjectId;
-  userId: string;
+  /** Hex string in new writes; legacy Mongo documents may still store BSON ObjectId — normalize at API boundaries. */
+  userId: string | ObjectId;
   name: string;
   isDefault: boolean;
   /**
@@ -166,10 +171,19 @@ export type Portfolio = {
    */
   ext_broker_ref?: string;
   /**
+   * Primary broker / CSV format for this book (admin UI + holdings import defaults).
+   * Aligns with {@link AccountType} (`merrill` | `fidelity` | `etrade`).
+   */
+  broker_type?: AccountType;
+  /**
    * Deployment org bucket (e.g. `org-atx-finance`): all app_user “client” portfolios for this instance.
    * See `getTenantPortfolioOrgKey()` / `TENANT_PORTFOLIO_ORG_KEY`.
    */
   tenantPortfolioOrgKey?: string;
+  /** Book-level risk stance for desk context (optional). */
+  riskProfile?: "conservative" | "balanced" | "growth";
+  /** Free-text market / positioning outlook for this book (optional). */
+  outlook?: string;
   createdAt: Date;
   updatedAt: Date;
 };

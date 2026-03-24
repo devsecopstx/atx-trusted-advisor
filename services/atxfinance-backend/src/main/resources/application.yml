@@ -4,9 +4,14 @@ server:
 spring:
   application:
     name: atxfinance-backend
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 7MB
   data:
     mongodb:
-      uri: ${MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfintechdb}}}}
+      database: ${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfinancedb}}
+      uri: ${MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfinancedb}}}}
 
 management:
   endpoints:
@@ -35,8 +40,13 @@ app:
     positions-collection: portfolio_positions
     app-user-recommendations-collection: app_user_recommendations
     portfolio-recommendations-collection: portfolio_recommendations
-    rag-files-collection: xchat_rag_files
+    rag-files-collection: ${RAG_FILES_COLLECTION:xai_collections}
+    rag-chunks-collection: ${RAG_CHUNKS_COLLECTION:xchat_rag_chunks}
+    core-users-collection: ${CORE_USERS_COLLECTION:core_users}
     tenant-portfolio-org-key: ${TENANT_PORTFOLIO_ORG_KEY:org-atx-finance}
+    strategy-jobs-collection: ${STRATEGY_JOBS_COLLECTION:strategy_jobs}
+    strategy-max-jobs-hourly: ${STRATEGY_MAX_JOBS_HOURLY:12}
+    strategy-soft-warn-jobs-hourly: ${STRATEGY_SOFT_WARN_JOBS_HOURLY:8}
   pubsub:
     project-id: ${PUBSUB_PROJECT_ID:}
     topic: ${PUBSUB_TOPIC:atxfinance-backend-requests}

@@ -68,6 +68,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

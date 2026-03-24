@@ -14,7 +14,7 @@ class MongoUriEnvPostProcessorTest {
             "mongodb://user:pass@host:27017/db?authSource=admin".toByteArray()
         )
         val env = StandardEnvironment()
-        env.propertySources.addFirst(MapPropertySource("test", mapOf("MONGODB_URI_B64" to encoded)))
+        env.propertySources.addFirst(MapPropertySource("test", mapOf("MONGODB_URI" to encoded)))
 
         MongoUriEnvPostProcessor().postProcessEnvironment(env, SpringApplication())
 
@@ -32,10 +32,34 @@ class MongoUriEnvPostProcessorTest {
             "mongodb://user:pass@host:27017/db".toByteArray()
         )
         val env = StandardEnvironment()
-        env.propertySources.addFirst(MapPropertySource("test", mapOf("MONGODB_URI_B64" to urlSafeEncoded)))
+        env.propertySources.addFirst(MapPropertySource("test", mapOf("MONGODB_URI" to urlSafeEncoded)))
 
         MongoUriEnvPostProcessor().postProcessEnvironment(env, SpringApplication())
 
         assertEquals("mongodb://user:pass@host:27017/db", env.getProperty("spring.data.mongodb.uri"))
+    }
+
+    @Test
+    fun `uses plain mongodb URI without decoding`() {
+        val plain = "mongodb://user:pass@host:27017/db"
+        val env = StandardEnvironment()
+        env.propertySources.addFirst(MapPropertySource("test", mapOf("MONGODB_URI" to plain)))
+
+        MongoUriEnvPostProcessor().postProcessEnvironment(env, SpringApplication())
+
+        assertEquals(plain, env.getProperty("spring.data.mongodb.uri"))
+    }
+
+    @Test
+    fun `legacy MONGODB_URI_B64 property still resolves`() {
+        val encoded = java.util.Base64.getEncoder().encodeToString(
+            "mongodb://legacy:pass@host:27017/legacydb".toByteArray()
+        )
+        val env = StandardEnvironment()
+        env.propertySources.addFirst(MapPropertySource("test", mapOf("MONGODB_URI_B64" to encoded)))
+
+        MongoUriEnvPostProcessor().postProcessEnvironment(env, SpringApplication())
+
+        assertEquals("mongodb://legacy:pass@host:27017/legacydb", env.getProperty("spring.data.mongodb.uri"))
     }
 }

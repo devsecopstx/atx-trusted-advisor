@@ -10,11 +10,11 @@ const protectedPathPrefixes = [
   "/api/rag",
   "/api/xchat",
   "/api/recommendations",
+  "/api/strategy-jobs",
   "/portfolio",
   "/watchlist",
   "/xchat",
   "/xstrategybuilder",
-  "/recommendations",
   "/xfinance",
   "/xcoach"
 ];
@@ -51,11 +51,11 @@ export const config = {
     "/api/rag/:path*",
     "/api/xchat/:path*",
     "/api/recommendations/:path*",
+    "/api/strategy-jobs/:path*",
     "/portfolio/:path*",
     "/watchlist/:path*",
     "/xchat/:path*",
     "/xstrategybuilder/:path*",
-    "/recommendations/:path*",
     "/xfinance/:path*",
     "/xcoach/:path*"
   ]

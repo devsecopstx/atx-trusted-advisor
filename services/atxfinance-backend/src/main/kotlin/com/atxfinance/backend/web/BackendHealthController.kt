@@ -1,5 +1,6 @@
 package com.atxfinance.backend.web
 
+import com.atxfinance.backend.config.MongoUriResolver
 import com.mongodb.client.MongoClient
 import org.bson.Document
 import org.springframework.core.env.Environment
@@ -16,7 +17,7 @@ class BackendHealthController(
     private val mongoClient: MongoClient,
 ) {
 
-    /** Compatibility shim for load balancers / parity with core app health shape (see docs/ops/atxfinance-backend-http-api.md). */
+    /** Compatibility shim for load balancers / parity with core app health shape (see atx-docs/atx-sre-ops/atxfinance-backend-http-api.md). */
     @GetMapping("/api/health")
     fun apiHealthCompat(): ResponseEntity<Map<String, Any>> {
         val details = mutableMapOf<String, Any>()
@@ -36,7 +37,7 @@ class BackendHealthController(
         } else {
             mapOf(
                 "status" to "missing",
-                "keys" to listOf("MONGODB_URI", "SPRING_DATA_MONGODB_URI", "MONGODB_URI_B64")
+                "keys" to listOf("MONGODB_URI", "SPRING_DATA_MONGODB_URI", "MONGODB_URI_B64 (legacy alias)")
             )
         }
         val body = mapOf(
@@ -54,7 +55,7 @@ class BackendHealthController(
 
         // Resolve effective Mongo URI from Spring properties
         val effectiveUri = env.getProperty("spring.data.mongodb.uri")
-            ?: "mongodb://localhost:27017/${'$'}{SPRING_DATA_MONGODB_DATABASE:${'$'}{MONGODB_DB_NAME:atxfintechdb}}" // mirror default for transparency only
+            ?: "mongodb://localhost:27017/${'$'}{SPRING_DATA_MONGODB_DATABASE:${'$'}{MONGODB_DB_NAME:atxfinancedb}}" // mirror default for transparency only
 
         val source = determineMongoUriSource(effectiveUri)
         val masked = maskMongoUri(effectiveUri)
@@ -86,9 +87,9 @@ class BackendHealthController(
             "details" to mapOf(
                 "mongo" to mongoDetails,
                 "env" to mapOf(
+                    "MONGODB_URI_present" to !System.getenv("MONGODB_URI").isNullOrBlank(),
                     "MONGODB_URI_B64_present" to !System.getenv("MONGODB_URI_B64").isNullOrBlank(),
                     "SPRING_DATA_MONGODB_URI_present" to !System.getenv("SPRING_DATA_MONGODB_URI").isNullOrBlank(),
-                    "MONGODB_URI_present" to !System.getenv("MONGODB_URI").isNullOrBlank(),
                     "DEFAULT_TENANT_SLUG" to (System.getenv("DEFAULT_TENANT_SLUG") ?: ""),
                     "TENANT_PORTFOLIO_ORG_KEY" to (System.getenv("TENANT_PORTFOLIO_ORG_KEY") ?: "")
                 )
@@ -98,24 +99,24 @@ class BackendHealthController(
     }
 
     private fun determineMongoUriSource(effective: String): String {
-        // Check precedence and match to effective value when possible
-        val b64 = System.getenv("MONGODB_URI_B64")?.trim()?.takeIf { it.isNotEmpty() }
-        if (!b64.isNullOrEmpty()) {
+        System.getenv("MONGODB_URI")?.trim()?.takeIf { it.isNotEmpty() }?.let { raw ->
+            if (raw == effective) return "MONGODB_URI"
             try {
-                val decoded = try {
-                    String(java.util.Base64.getDecoder().decode(b64))
-                } catch (e: IllegalArgumentException) {
-                    String(java.util.Base64.getUrlDecoder().decode(b64))
-                }
-                if (decoded == effective) return "MONGODB_URI_B64"
+                if (MongoUriResolver.resolve(raw) == effective) return "MONGODB_URI"
             } catch (_: Exception) {
                 // ignore
             }
         }
-        val springEnv = System.getenv("SPRING_DATA_MONGODB_URI")?.trim()?.takeIf { it.isNotEmpty() }
-        if (springEnv != null && springEnv == effective) return "SPRING_DATA_MONGODB_URI"
-        val mongoEnv = System.getenv("MONGODB_URI")?.trim()?.takeIf { it.isNotEmpty() }
-        if (mongoEnv != null && mongoEnv == effective) return "MONGODB_URI"
+        System.getenv("MONGODB_URI_B64")?.trim()?.takeIf { it.isNotEmpty() }?.let { raw ->
+            try {
+                if (MongoUriResolver.resolve(raw) == effective) return "MONGODB_URI_B64"
+            } catch (_: Exception) {
+                // ignore
+            }
+        }
+        System.getenv("SPRING_DATA_MONGODB_URI")?.trim()?.takeIf { it.isNotEmpty() }?.let { v ->
+            if (v == effective) return "SPRING_DATA_MONGODB_URI"
+        }
         return "default"
     }
 

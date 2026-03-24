@@ -10,6 +10,10 @@ Core backend and UI for atxFinance **admin operations** and **signed-in app_user
 - notification defaults
 - app_user surfaces: xChat, xCoach, xStrategyBuilder, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`), recommendations (`/recommendations`) with shared header (profile, logout, feedback, optional DB chip)
 
+### Documentation tree
+
+Engineering and ops Markdown lives under **`atx-docs/`** (there is no top-level **`docs/`** folder). Start at [`atx-docs/README.md`](atx-docs/README.md): **atx-sre-ops** (BFF, Spring HTTP, secrets), **atx-xchat** (prompts, tools, multi-agent), **atx-options** (strategy template copy + skill id index), **PLAN.md** (backlog).
+
 ## Tech Stack
 
 The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + product APIs) and the **atxfinance-backend** worker (Kotlin/Spring). Local dev typically runs MongoDB + `atxfinance-backend` via Docker Compose, then the Next dev server on the host (see *Local Setup* below).
@@ -23,18 +27,33 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 
 - **HTTP APIs** — Route handlers in `src/app/api/*` (auth, personas, xChat, portfolios, admin, OpenAPI inventory, etc.).
 - **Language & validation** — TypeScript + **Zod** for request/env parsing.
-- **Data** — **MongoDB** (primary app database; default local name often `atxfintechdb` via Compose — cloud env names follow deployment config; historical docs may reference `atxfinancedb`).
+- **Data** — **MongoDB** (primary app database; canonical default name **`atxfinancedb`** — one logical DB per deployment; tenant isolation is document-level (`tenantId` / org keys). Stage/prod use separate connection strings.
+
+#### MongoDB database naming (ops)
+
+- The app **does not require** different database *names* per environment. Typical patterns:
+  - **Separate Atlas clusters** (or serverless instances) per stage/prod, each URI ending with the same path segment (e.g. `/atxfinancedb`), **or**
+  - **Different database names in the URI path** on one cluster (e.g. `…mongodb.net/atxfinance_stage` vs `…/atxfinance_prod`) — purely an **ops / governance** choice, not enforced by application code.
+- Set the target DB in **`MONGODB_URI`** (or local fallback + optional **`MONGODB_DB_NAME`** for the path segment when not embedded in the URI).
+
+#### Local Mongo: reuse or start (`npm run mongo:up`)
+
+- `scripts/dev/mongo-up.sh` loads **`.env`**, then if **`mongosh`** is available, pings **`127.0.0.1:27017`** with **`ADMIN_X_USERNAME`** / **`MONGO_ROOT_PASSWORD`** (defaults `admin` / `atxrocks!`) against `admin`.
+- If ping succeeds, Compose is **skipped** (reuse your already-running Mongo).
+- Otherwise it runs **`docker compose up -d mongodb`** and waits for the container healthcheck — use before **`npm run seed:admin`** or **`npm run local:bootstrap`** for a clean admin seed against Compose defaults.
+- Override the ping URI only if needed: **`MONGO_PING_URI`**.
 
 ### atxfinance-backend (scheduler / worker service)
 
 - **Runtime** — **Kotlin**, **Spring Boot**, **JDK 21**; build with **Gradle** (`services/atxfinance-backend`, `gradlew`).
 - **Role** — Fault-tolerant scheduler/worker surface (ShedLock + Mongo, Pub/Sub integration path, observability hooks); **not** a replacement for Next.js product APIs.
-- **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`docs/ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
+- **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
+- **Strategy jobs (Phase 1 orchestrator)** — Mongo **`strategy_jobs`** (override **`STRATEGY_JOBS_COLLECTION`**). Rolling hourly create cap **`STRATEGY_MAX_JOBS_HOURLY`** (default 12) and soft-warn threshold **`STRATEGY_SOFT_WARN_JOBS_HOURLY`** (default 8). Next BFF proxies **`/api/strategy-jobs`** to Spring when **`ATXFINANCE_BACKEND_ORIGIN`** is set; without BFF, those routes return **503**.
 - **Container** — Repo-root **`Dockerfile`** builds the JAR from `services/atxfinance-backend`; **`docker-compose.yml`** wires `atxfinance-backend` + `mongo:8`.
 
 ### Integrations (cross-cutting)
 
-- **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`docs/xchat/xai-api-standard.md`** for repo mapping and deep links.
+- **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`atx-docs/atx-xchat/xai-api-standard.md`** for repo mapping and deep links.
 
 ### Local dev run order (summary)
 
@@ -69,7 +88,7 @@ Session payload (`SessionUser` in `src/lib/auth.ts`):
 
 Use `.env` only (do not use `.env.local` for this app).
 
-- `MONGODB_URI_B64` (Base64-encoded MongoDB URI)
+- `MONGODB_URI` (plain `mongodb://` / `mongodb+srv://`, or base64-encoded; GCP Secret Manager can keep the same resource name `MONGODB_URI_B64` mapped to env `MONGODB_URI` in Cloud Run)
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY` (required for management/KB collection operations)
 - `XAI_MANAGEMENT_BASE_URL` (optional override; defaults to `https://management-api.x.ai/v1`)
@@ -77,12 +96,18 @@ Use `.env` only (do not use `.env.local` for this app).
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET` (recommended for session signing)
 - `ALLOW_ANY_X_USER_LOGIN` (optional feature flag; set `true` to allow any authenticated X user into `/xchat` with non-admin permissions, default disabled)
-- `ENABLE_XCHAT_DEBUG` (optional; set `true` to emit detailed xChat payload logs — RAG context, prompts, tools — for expert learning; default `false`; configure Cloud Logging retention e.g. 30 days at project or log-bucket level; taxonomy and privacy: **`docs/xchat/xchat-debug-logging.md`**)
+- `ENABLE_XCHAT_DEBUG` (optional; set `true` to emit detailed xChat payload logs — RAG context, prompts, tools — for expert learning; default `false`; configure Cloud Logging retention e.g. 30 days at project or log-bucket level; taxonomy and privacy: **`atx-docs/atx-xchat/xchat-debug-logging.md`**)
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
 - `ADMIN_SEED_EMAIL` (required for `npm run seed:admin` and OAuth seed-admin promotion; **no default** — set explicitly in `.env`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
-- `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications and **app_user feedback** from `POST /api/feedback`)
+- `SLACK_WEBHOOK_URL` (optional; Slack incoming webhook for access-request notifications and **app_user feedback** from `POST /api/user-feedback`)
 - `APP_USER_SHOW_DB_ENDPOINT` (optional; set `true` to show the Mongo host/db chip in the app_user header when `NODE_ENV=production` — e.g. beta staging builds)
+
+## xAI chat completions smoke (dev / SRE)
+
+With `XAI_API_KEY` in `.env`, verify the runtime key against the public chat API:
+
+- `npm run smoke:xai-chat` — calls `https://api.x.ai/v1/chat/completions` (non-streaming, default model `grok-4-1-fast`). Optional: `XAI_SMOKE_MODEL`, `XAI_CHAT_COMPLETIONS_URL`. Implementation: `scripts/ops/xai-chat-completions-smoke.sh`.
 
 ## Local Setup (Backend → Frontend)
 
@@ -92,26 +117,27 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - `npm install`
 2. Create your env file
    - `cp .env.example .env`
-   - Tip: Leave `MONGODB_URI_B64` unset for local development so the app uses the local Docker Mongo.
+   - Tip: Leave `MONGODB_URI` unset for local development so the app uses the local Docker Mongo (`atxfinancedb` path).
 3. (Optional) Source admin username from admin_seed.csv and set local Mongo password
    - `export ADMIN_X_USERNAME=$(awk -F, 'NR==2{print $2}' admin_seed.csv)`
    - `export MONGO_ROOT_PASSWORD=atxrocks!`  # change if desired
-   - `export MONGODB_DB_NAME=atxfintechdb`   # default already
+   - Omit `MONGODB_DB_NAME` unless you need a non-default DB path (code default is `atxfinancedb`).
 4. Start backend + MongoDB (Docker Compose, from repo root)
    - **Ordered one-shot (backend first, then Next):** `npm run dev:stack` — runs `docker compose up -d`, waits until `http://localhost:8080` health responds, then starts `npm run dev:frontend` in the foreground. Ctrl+C stops the Next process only; run `docker compose down` when you want to stop Mongo + the backend container.
    - **Host Kotlin backend + Next (no backend Docker image):** `npm run dev:host` — runs `bash scripts/dev/bootrun-atxfinance-backend.sh` (Gradle `bootRun`), waits for `:8080` health, then Next dev. Mongo must already be up (e.g. `docker compose up -d mongodb` or Atlas). Ctrl+C stops Next and SIGTERM to the JVM. VS Code / Cursor: task **Dev build (host: Gradle bootRun → Next, no backend Docker)**.
    - **Attached Compose logs (no Next):** `npm run dev:backend`
    - **BFF — portfolio + positions on Spring:** set `ATXFINANCE_BACKEND_ORIGIN=http://127.0.0.1:8080` in `.env`. Next proxies to Kotlin (forwards `Cookie`): `GET`/`PATCH` `/api/portfolios/:portfolioId`, `GET`/`POST` `/api/portfolios/default`, `GET` `/api/portfolios/current`, `GET`/`POST` `/api/portfolios/:id/accounts`, `PATCH` `.../accounts/:accountId`, `GET`/`PATCH` `.../watchlist`, `GET`/`POST` `/api/positions`, `DELETE` `/api/positions/:positionId`. Use the same `AUTH_SECRET` (or `X_OAUTH_CLIENT_SECRET`) and Mongo DB name on both processes.
+   - **Admin portfolios (`/api/admin/portfolios/**`)** stay on **Next only** (no BFF proxy): Spring does not expose those routes yet; proxying them returned **404** when the origin was set. Global-admin portfolio and account CRUD always use the Next repository + Mongo. UI: **`/admin/portfolios`** (tenant books), **`/admin/accounts`** (table lists **risk** + **outlook** per book from `GET /api/admin/portfolios`; pick a row → custodian accounts + edit book-level risk/outlook), **`/admin/broker-import`** (Merrill/Fidelity holdings CSV; optional `?portfolioId=`). Legacy paths **`/admin/portfolios/:id/accounts`** and **`…/broker-import`** redirect to those hubs.
    - Behavior:
      - Compose always starts `mongo:8` with:
-       - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfintechdb}`
-       - `MONGO_INITDB_ROOT_USERNAME=${ADMIN_X_USERNAME:-${ADMIN_X_USERNAMES:-admin}}`
+       - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfinancedb}`
+       - `MONGO_INITDB_ROOT_USERNAME=${ADMIN_X_USERNAME:-admin}`
        - `MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-atxrocks!}`
      - The Spring service receives `SPRING_DATA_MONGODB_URI` pointing at `mongodb:27017` with **auth** and `authSource=admin`, using the same username/password/db name defaults as above (see `docker-compose.yml`).
-     - If **`MONGODB_URI_B64`** is set in `.env`, `MongoUriEnvPostProcessor` injects the decoded URI as `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
+     - If **`MONGODB_URI`** is set in `.env`, `MongoUriEnvPostProcessor` resolves it (plain or base64) and injects `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
 5. Verify backend
    - Actuator: http://localhost:8080/actuator/health (standard Spring Boot JSON)
-   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`docs/ops/atxfinance-backend-http-api.md`**)
+   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`**)
    - Compatibility: http://localhost:8080/api/health
    - Swagger UI: http://localhost:8080/swagger-ui.html (may redirect to `/swagger-ui/index.html`); OpenAPI JSON: `/v3/api-docs`
 6. Start frontend (Next.js dev server)
@@ -119,7 +145,8 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - App URL: http://localhost:3000
 7. Seed core admin user + default tenant (first-time only)
    - Ensure `.env` has `ADMIN_SEED_EMAIL=you@example.com`
-   - **`MONGODB_URI_B64` can stay empty** when using local Docker Mongo — `seed:admin` and the Next.js app use the same localhost + auth fallback as `src/lib/env.ts` (`scripts/lib/resolve-mongo-uri.mjs`).
+   - **Sign in with X (no email on profile):** X userinfo often omits `email`. Set **`ADMIN_SEED_X_USER_ID`** to your X account’s numeric id (same string as `data.id` from `GET /2/users/me`), then run **`npm run seed:admin`** so `core_users.xAccount` is pre-linked. The X OAuth callback also reads `ADMIN_SEED_X_USER_ID` so first login works even before re-seeding. Optional: `ADMIN_SEED_X_USERNAME`, `ADMIN_SEED_X_DISPLAY_NAME` for seed output only (login refreshes profile).
+   - **`MONGODB_URI` can stay unset** when using local Docker Mongo — `seed:admin` and the Next.js app use the same localhost + auth fallback as `src/lib/env.ts` (`scripts/lib/resolve-mongo-uri.mjs`).
    - **`npm run local:bootstrap`** — starts **only** `mongodb` via Compose, waits until healthy, then runs **`seed:admin`** (convenience for a fresh machine).
    - Or after Mongo is up: **`npm run seed:admin`**
 8. Stop services and view logs
@@ -128,8 +155,8 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - View Mongo logs: `docker logs -f atxfinance-mongodb`
 9. Troubleshooting
    - If port 27017 is already in use, stop other Mongo instances or change the published port in `docker-compose.yml`.
-   - To force local Mongo (and ignore Atlas), ensure `MONGODB_URI_B64` is unset in your environment when starting the backend.
-   - To use Atlas in dev, set `MONGODB_URI_B64` (base64 of your Mongo URI) before `npm run dev:backend`.
+   - To force local Mongo (and ignore Atlas), ensure `MONGODB_URI` is unset in your environment when starting the backend.
+   - To use Atlas in dev, set `MONGODB_URI` (plain URI or base64) before `npm run dev:backend`.
 
 ### Clean local Mongo + seed (fallback URI)
 
@@ -140,9 +167,11 @@ Use this when you want a **local Compose Mongo** without Atlas and with the same
 | Start **only** Mongo, wait until healthy | `npm run mongo:up` (`scripts/dev/mongo-up.sh`) |
 | Stop Mongo container | `npm run mongo:down` |
 | Fresh volume + seed admin (**wipes** `atxfinance_mongo_data`) | `RESET_LOCAL_MONGO=1 npm run mongo:reset` |
+| **Each dev session:** wipe Mongo volume + seed, then host JVM backend + Next | `npm run dev:host:fresh` (sets `DEV_WIPE_LOCAL_MONGO=1` for `dev:host`) |
+| **Each dev session:** wipe volume + Docker backend + Next (seed **after** backend healthy) | `npm run dev:stack:fresh` |
 | One-shot: Mongo up + seed (keeps existing volume) | `npm run local:bootstrap` |
 
-**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI_B64` is empty** for Compose Mongo, or fix the decoded URI. If `.env` sets **`ADMIN_X_USERNAMES`** (X allowlist) but **not** `MONGO_ROOT_PASSWORD`, the app uses Mongo user **`admin`** + default password — do **not** mix an allowlist-only username into the DB URI. For a custom Mongo root user, set **`MONGO_ROOT_PASSWORD` and the same username** (`ADMIN_X_USERNAME` or first `ADMIN_X_USERNAMES`) to match `docker-compose.yml`. Restart Next after changing `.env` (Mongo client is cached).
+**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI`** is unset. If local Mongo runs **without auth** (legacy volume or no `MONGO_INITDB_*`), add **`MONGODB_NO_AUTH=true`** to `.env`. Otherwise use **`MONGO_ROOT_USERNAME`** (default `admin`) and **`MONGO_ROOT_PASSWORD`** (default `atxrocks!`) to match what `docker-compose.yml` initialized. Restart Next after changing `.env` (Mongo client is cached).
 
 `mongo:reset` requires **`RESET_LOCAL_MONGO=1`** to avoid accidental data loss. After a reset, run **`npm run dev:host`**, **`npm run dev:stack`**, or **`docker compose up`** as needed.
 
@@ -155,7 +184,7 @@ Use **separate shells** so Gradle/Spring logs and Next logs do not interleave.
 | **1 — Kotlin backend (host JVM, no backend Docker)** | `npm run dev:spring` (same as `bash scripts/dev/bootrun-atxfinance-backend.sh`) | http://localhost:8080 |
 | **2 — Next.js** | `npm run dev:frontend` | http://localhost:3000 |
 
-Requirements: **Mongo** reachable on `localhost:27017` with the same credentials as `.env` / Compose (see *Clean local Mongo + seed*). The boot script sources repo **`.env`** and sets `SPRING_DATA_MONGODB_URI` from `MONGODB_URI`, `MONGODB_URI_B64`, or defaults.
+Requirements: **Mongo** reachable on `localhost:27017` with the same credentials as `.env` / Compose (see *Clean local Mongo + seed*). The boot script sources repo **`.env`** and sets `SPRING_DATA_MONGODB_URI` from `MONGODB_URI` or defaults (legacy `MONGODB_URI_B64` is still resolved by Spring’s post-processor when `MONGODB_URI` is unset).
 
 VS Code / Cursor: run tasks **Start Backend (Gradle bootRun, no Docker)** in one terminal and **Start Frontend (Next Dev)** in another (each **Run Task** opens its own terminal when not using a compound task).
 
@@ -223,13 +252,13 @@ Use this setup when running in Cursor Cloud with MongoDB Atlas. Do not start loc
 ### Cloud Agent Rules
 
 - Do not run `docker compose up -d` for MongoDB in cloud agents.
-- Use Atlas connection only via `MONGODB_URI_B64`.
+- Use Atlas connection via `MONGODB_URI` (plain or base64).
 - Keep app/runtime secrets in GCP Secret Manager, not in repo.
 - Use `npm ci` before validation/build commands.
 
 ### Minimum Cloud Runtime Env Keys
 
-- `MONGODB_URI_B64`
+- `MONGODB_URI` (GSM secret may still be named `MONGODB_URI_B64`)
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY`
 - `X_OAUTH_CLIENT_ID`
@@ -266,8 +295,8 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 
 If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or prod):
 
-1. Confirm **`GET /api/health`** returns `200` with `status: ok` (rules out broken `MONGODB_URI_B64` for that revision).
-2. **Cloud Run → Logs** — filter for the request path and `Error` / `x/callback` / `getDefaultPortfolio`. **Legacy data:** if `userId` on `tenant_portfolio` / `portfolio_*` was stored as BSON `ObjectId` while the session uses a hex string, reads used to miss; repository queries now match both shapes and normalize `userId` to string on provision.
+1. Confirm **`GET /api/health`** returns `200` with `status: ok` (rules out broken `MONGODB_URI` for that revision).
+2. **Cloud Run → Logs** — filter for the request path and `Error` / `x/callback` / `getDefaultPortfolio`. **Legacy data:** if `userId` on `tenant_portfolio` / `portfolio_*` was stored as BSON `ObjectId` while the session uses a hex string, reads used to miss; repository queries now match both shapes and normalize `userId` to string on provision. **Admin `GET /api/admin/portfolios`** joins `core_users` via `normalizeMongoUserIdHex` so legacy ObjectId `userId` values do not throw at the API layer.
 3. **OAuth callback** — empty env values like `X_OAUTH_CALLBACK_URL=` (literal empty) used to fail `getEnv()` at runtime; optional URL vars now treat blank as unset. Ensure **`X_OAUTH_CALLBACK_URL`** in production matches the live host if set explicitly.
 4. **New app_user first login** — `provisionDefaultPortfolioForUser` runs in the callback; if it throws, sign-in still completes and the portfolio is provisioned on first Portfolio page or API access. Hard failures in membership/session still yield `bootstrap_failed`.
 5. Clear site cookies and retry sign-in if the session cookie was signed with a rotated **`AUTH_SECRET`** (invalid cookies yield logged-out behavior, not usually 500).
@@ -281,6 +310,7 @@ If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or p
 - xAI management key-create smoke (opt-in): `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true npm run smoke:xai-key-create`
 - Seed admin: `npm run seed:admin`
 - Backfill legacy xchat identity fields: `npm run migrate:xchat-identity`
+- BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`atx-docs/atx-sre-ops/api-consolidation-spring-backend.md`](./atx-docs/atx-sre-ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
 
 ## Cloud Agent Config Freeze (Backoffice Core)
 
@@ -311,7 +341,7 @@ These must exist in GCP Secret Manager for each project. The deploy workflow mou
 
 | Secret name | Purpose | Required |
 | --- | --- | --- |
-| `MONGODB_URI_B64` | Base64-encoded Atlas connection string | Yes |
+| `MONGODB_URI_B64` | Mongo connection string (typically base64 of the URI in GSM); Cloud Run maps it to env **`MONGODB_URI`** | Yes |
 | `XAI_API_KEY` | xAI API key for chat completions | Yes |
 | `XAI_MANAGEMENT_API_KEY` | xAI management key for collection ops | Yes |
 | `X_OAUTH_CLIENT_ID` | X OAuth 2.0 client ID (raw, not base64) | Yes |
@@ -351,7 +381,7 @@ Cloud Run mounts the eight secrets in the table above. Keep `.env.prod` gitignor
 5. **Callback URL**: Production uses `X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback` from the workflow. Do **not** point `PROD_BASE_URL` or any prod callback at `127.0.0.1`. Your X Developer Portal app must list the same HTTPS callback host.
 6. **Roll forward**: Deploy a new Cloud Run revision (workflow or manual) so the service picks up `*:latest` secret versions.
 
-Keys in `.env.prod` such as `GOOGLE_CLIENT_*`, `GITHUB_*`, `XAI_TEAM_ID`, or `ATXFINANCE_COLLECTION_ID` are **not** part of the default `--set-secrets` bundle unless you extend the workflow.
+Keys in `.env.prod` such as `GOOGLE_CLIENT_*`, `GITHUB_*`, or `XAI_TEAM_ID` are **not** part of the default `--set-secrets` bundle unless you extend the workflow.
 
 ### Production-only OAuth env checklist (GH + GCP)
 
@@ -475,7 +505,7 @@ Only **OIDC deploy identity** — do not add app runtime secrets here (they belo
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `<staging-provider-resource-name>` | `<prod-provider-resource-name>` |
 | `GCP_SERVICE_ACCOUNT_EMAIL` | `<staging-deploy-sa>@<staging-project>.iam.gserviceaccount.com` | `<prod-deploy-sa>@<prod-project>.iam.gserviceaccount.com` |
 
-`MONGODB_DB_NAME` is not a deploy variable — the app uses the fixed DB name `atxfinancedb` unless the Mongo URI path overrides it. `XAI_TEAM_ID` / `ATXFINANCE_COLLECTION_ID` in `.env.example` are dev hints only; they are not mounted by the deploy workflow.
+`MONGODB_DB_NAME` is not a deploy variable — the app uses the fixed DB name `atxfinancedb` unless the Mongo URI path overrides it. `XAI_TEAM_ID` in `.env.example` is a dev hint only; it is not mounted by the deploy workflow unless you add it to Secret Manager and the deploy mapping.
 
 Set after creating environments:
 
@@ -547,7 +577,7 @@ For availability and change control:
 
 Required (GCP Secret Manager; mounted by **Deploy Cloud Run** and **Deploy Cloud Run Production** workflows):
 
-- `MONGODB_URI_B64`
+- `MONGODB_URI` (GSM secret often still named `MONGODB_URI_B64`; deploy maps it to env `MONGODB_URI`)
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY`
 - `X_OAUTH_CLIENT_ID`
@@ -564,13 +594,12 @@ Required (GCP Secret Manager; mounted by **Deploy Cloud Run** and **Deploy Cloud
 - **Env (not in default deploy workflow):** `RECOMMENDATIONS_PUBSUB_TOPIC` (short topic id, e.g. `recommendations.v1`) and a project id: `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT` or `GCP_PROJECT`. If either is unset, publish is skipped (local dev / CI need no emulator).
 - **Event body (JSON):** `event` (`created` \| `updated`), `recommendationId`, `userId`, `tenantId`, `status`, `occurredAt` (ISO), `correlationId`, `scopeTags` (string array). **Attributes:** `event`, `userId`, `tenantId` for pull-filtering before loading full docs from Mongo.
 - **IAM:** grant the **core app** Cloud Run service account `roles/pubsub.publisher` on the topic. A **future worker/agent** service account gets `roles/pubsub.subscriber` on a dedicated subscription (filter in app by `userId` / `tenantId` / tags as needed).
+- **atxfinance-backend (BFF on):** `RecommendationEventPublisher` publishes the same shape after Mongo insert when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id are set (parity with Next when the proxy is off).
 
-### Recommendations and Pub/Sub (optional)
+### App user alerts and Pub/Sub (optional, future)
 
-- **Mongo:** collection `app_user_recommendations` (see `src/modules/recommendations/repository.ts`). App_user APIs: `GET`/`POST /api/recommendations`, `GET /api/recommendations/{id}` — scoped to session `userId` + `tenantId`.
-- **Env (not in default deploy workflow):** `RECOMMENDATIONS_PUBSUB_TOPIC` (short topic id, e.g. `recommendations.v1`) and a project id: `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT` or `GCP_PROJECT`. If either is unset, publish is skipped (local dev / CI need no emulator).
-- **Event body (JSON):** `event` (`created` \| `updated`), `recommendationId`, `userId`, `tenantId`, `status`, `occurredAt` (ISO), `correlationId`, `scopeTags` (string array). **Attributes:** `event`, `userId`, `tenantId` for pull-filtering before loading full docs from Mongo.
-- **IAM:** grant the **core app** Cloud Run service account `roles/pubsub.publisher` on the topic. A **future worker/agent** service account gets `roles/pubsub.subscriber` on a dedicated subscription (filter in app by `userId` / `tenantId` / tags as needed).
+- **Client helper:** `src/lib/pubsub/alerts-publish.ts` — `publishAppUserAlertEvent` when `ALERTS_PUBSUB_TOPIC` and a project id are set; no-op otherwise.
+- **Event body:** `event`, `alertId`, `userId`, `tenantId`, `kind`, `severity`, `occurredAt`, optional `payload`, `correlationId`. **Attributes:** `event`, `userId`, `tenantId`, `kind`, `severity`.
 
 ### OAuth Callback URLs (single X app)
 
@@ -659,7 +688,7 @@ gcloud run services update-traffic atxfinance-core-prod \
 
 ### App_user feedback
 
-- `POST /api/feedback` — session required; JSON `{ "message": string (3–4000 chars), "page"?: string }`. Always returns **201** `{ "ok": true }` on success. If `SLACK_WEBHOOK_URL` is set, posts a Slack message (same webhook as access requests); if unset, logs only (see `sendSlackNotification`).
+- `POST /api/user-feedback` — session required; JSON `{ "message": string (3–4000 chars), "page"?: string }`. Always returns **201** `{ "ok": true }` on success. If `SLACK_WEBHOOK_URL` is set, posts a Slack message (same webhook as access requests); if unset, logs only (see `sendSlackNotification`).
 
 ### Admin — access requests
 
@@ -874,7 +903,7 @@ After running `npm run seed:admin`, verify:
    - `xapi.tools`: `web_search`, `x_search`, `file_search` (Finance collection ids), and `atxfinance`
 5. **xFinance** (`nameNormalized: "xfinance"`): not created by seed — the first non-admin `POST /api/xchat/ask` creates it from `default-xpersonas.ts` if absent. **Publish** this persona for non-admin xChat (FinExpert); prefer an explicit seeded or hand-crafted row in Admin → Personas so environments stay clear.
 6. `tenant_portfolio` (singular; legacy: `portfolio_portfolios` or `tenant_portfolios`) contains one default portfolio for the seeded admin user with `tenantPortfolioOrgKey` defaulting to `org-atx-finance` (override via `TENANT_PORTFOLIO_ORG_KEY`).
-7. `portfolio_accounts` contains one default account (`type: "fidelity"`) linked to that default portfolio.
+7. `portfolio_accounts` contains one default account (`type: "fidelity"`, **`extAccountId`: `ext_account_xref`**) linked to that default portfolio — same ref as `provisionDefaultPortfolioForUser` and Spring `DefaultPortfolioProvisionService` (broker CSV / import alignment).
 8. `portfolio_watchlists` contains `DefaultWatchlist` linked to that default portfolio with `symbols: [{ symbol: "TSLA" }]`.
 
 **Existing databases:** run once per environment:
@@ -903,8 +932,8 @@ To make files visible inside a collection, perform both steps:
 #### Practical Bash example
 
 ```bash
-# 0) Set known Finance collection id (provided by team)
-export ATXFINANCE_COLLECTION_ID="collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
+# 0) Set KB collection id (use the same `XAI_TEAM_ID` value when it is a `collection_*` id)
+export XAI_TEAM_ID="collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"
 
 # 1) Upload file using standard key
 UPLOAD_RESPONSE="$(curl -sS -X POST https://api.x.ai/v1/files \
@@ -916,7 +945,7 @@ echo "${UPLOAD_RESPONSE}"
 FILE_ID="$(echo "${UPLOAD_RESPONSE}" | jq -r '.id')"
 
 # 3) Attach uploaded file to collection using management key
-curl -sS -X POST "https://management-api.x.ai/v1/collections/${ATXFINANCE_COLLECTION_ID}/documents/${FILE_ID}" \
+curl -sS -X POST "https://management-api.x.ai/v1/collections/${XAI_TEAM_ID}/documents/${FILE_ID}" \
   -H "Authorization: Bearer ${XAI_MANAGEMENT_API_KEY}"
 ```
 
@@ -950,7 +979,7 @@ with payload shape:
 
 - **Branding prompts and tags:** `branding/atxfinance-brand-prompts.md`, `branding/atxfinance-branding-tags.md`, `branding/atxfinance-color-palette.md`, `branding/atxfinance-typography.md`
 - **Design system:** `design-system/atxfinance-brand-kit.md`, `design-system/atxfinance-brand-kit.css`
-- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `docs/xchat/xdesign-review-admin-console-ux.md`
+- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `atx-docs/atx-xchat/xdesign-review-admin-console-ux.md`
 
 ## Admin Step-by-Step Validation (xChat readiness)
 

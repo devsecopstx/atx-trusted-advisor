@@ -28,11 +28,6 @@ const verifierMocks = vi.hoisted(() => ({
   verifyXaiCollectionNonBlocking: vi.fn()
 }));
 
-const bootstrapMocks = vi.hoisted(() => ({
-  resolveOrCreateUserBootstrapCollection: vi.fn(),
-  appendXchatTurnToUserCollection: vi.fn()
-}));
-
 const coreAdminRepositoryMocks = vi.hoisted(() => ({
   getUserAdminSettings: vi.fn()
 }));
@@ -58,7 +53,6 @@ vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/xchat/ask-usage-limits", () => usageLimitMocks);
 vi.mock("@/modules/xchat/repository", () => repositoryMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
-vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
@@ -127,17 +121,8 @@ describe("xchat ask route collection retrieval", () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue(buildPersona());
     repositoryMocks.getPersonaById.mockResolvedValue(buildPersona());
     repositoryMocks.retrieveRagChunks.mockResolvedValue([]);
-    repositoryMocks.saveXChatLog.mockResolvedValue(undefined);
+    repositoryMocks.saveXChatLog.mockResolvedValue(new ObjectId("507f1f77bcf86cd799439099"));
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
-    bootstrapMocks.resolveOrCreateUserBootstrapCollection.mockResolvedValue({
-      collectionId: "collection_user-personal",
-      collectionName: "Personal Docs"
-    });
-    bootstrapMocks.appendXchatTurnToUserCollection.mockResolvedValue({
-      fileId: "file_xchat_turn",
-      payloadHash: "abc123",
-      retentionExpiresAt: new Date("2026-04-22T00:00:00.000Z")
-    });
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     identityMocks.getCoreUserById.mockResolvedValue(null);
     coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValue(null);
@@ -184,9 +169,12 @@ describe("xchat ask route collection retrieval", () => {
         systemPrompt: expect.stringContaining("Collection context snippet"),
         toolChoice: "auto",
         maxTurns: 5,
-        tools: expect.arrayContaining([{ type: "web_search", name: "web_search" }]),
+        tools: expect.arrayContaining([
+          { type: "web_search", name: "web_search" },
+          { type: "x_search", name: "x_search" }
+        ]),
         userPrompt: expect.stringMatching(
-          /\[Persona \/ KB metadata — xChat and batch[\s\S]*Resolved xAI collection ids \(persona team KB \+ tool ids \+ optional user bootstrap\): collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
+          /\[Persona \/ KB metadata — xChat and batch[\s\S]*Resolved xAI collection ids \(persona xaiCollection \+ teamCollection \+ tool collection_ids\): collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
         )
       })
     );
@@ -201,17 +189,10 @@ describe("xchat ask route collection retrieval", () => {
         ]
       })
     );
-    expect(bootstrapMocks.appendXchatTurnToUserCollection).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "507f1f77bcf86cd799439011",
-        collectionId: "collection_user-personal",
-        prompt: "How do we run daily controls?"
-      })
-    );
     expect(auditMocks.createAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: "xchat_session",
-        action: "xchat_turn_synced"
+        action: "xchat_turn_pending_xai_sync"
       })
     );
   });
@@ -536,16 +517,13 @@ describe("xchat ask route collection retrieval", () => {
     expect(repositoryMocks.saveXChatLog).not.toHaveBeenCalled();
   });
 
-  it("writes sync-failed audit event when xAI turn collection append fails", async () => {
-    bootstrapMocks.appendXchatTurnToUserCollection.mockRejectedValueOnce(
-      new Error("xai collection offline")
-    );
+  it("records pending xAI sync audit after successful ask", async () => {
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: "sync failure audit path"
+          message: "pending sync audit path"
         })
       })
     );
@@ -553,7 +531,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(auditMocks.createAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: "xchat_session",
-        action: "xchat_turn_sync_failed"
+        action: "xchat_turn_pending_xai_sync"
       })
     );
   });

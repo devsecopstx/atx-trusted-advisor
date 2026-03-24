@@ -6,7 +6,7 @@ import { BFF_PROXY_ROUTES, toKotlinBffMappingNeedle } from "@/lib/bff-proxy-rout
 
 const REPO_ROOT = process.cwd();
 const BACKEND_KOTLIN_MAIN = resolve(REPO_ROOT, "services/atxfinance-backend/src/main/kotlin");
-const SPEC_PATH = resolve(REPO_ROOT, "docs/ops/atxfinance-backend-http-api.md");
+const SPEC_PATH = resolve(REPO_ROOT, "atx-docs/atx-sre-ops/atxfinance-backend-http-api.md");
 
 /** Routes that must stay declared in Kotlin controllers and documented in the HTTP spec. */
 const REQUIRED_GET_ROUTES = ["/api/health", "/api/backend/health"] as const;
@@ -44,10 +44,28 @@ describe("atxfinance-backend HTTP API parity (docs ↔ Kotlin)", () => {
     expect(spec).toContain("/api/portfolios/{portfolioId}/recommendations");
     expect(spec).toContain("/api/strategy-options");
     expect(spec).toContain("/api/strategy-options/expirations");
-    expect(spec).toContain("/api/feedback");
+    expect(spec).toContain("/api/strategy-jobs");
+    expect(spec).toContain("/api/strategy-jobs/{jobId}");
+    expect(spec).toContain("/api/strategy-jobs/{jobId}/turns");
+    expect(spec).toContain("/api/user-feedback");
     expect(spec).toContain("/api/admin/bootstrap-status");
     expect(spec).toContain("/api/admin/audit");
+    expect(spec).toContain("/api/admin/access-requests");
+    expect(spec).toContain("/api/admin/users");
+    expect(spec).toContain("/api/admin/users/approved");
+    expect(spec).toContain("/api/admin/users/{userId}");
+    expect(spec).toContain("/api/admin/users/{userId}/role");
+    expect(spec).toContain("/api/admin/users/{userId}/plan");
+    expect(spec).toContain("/api/admin/users/{userId}/email");
+    expect(spec).toContain("/api/admin/users/{userId}/settings");
+    expect(spec).toContain("/api/admin/tasks");
+    expect(spec).toContain("/api/admin/tasks/{taskId}/run");
+    expect(spec).toContain("/api/admin/task-runs");
+    expect(spec).toContain("/api/admin/scheduler/tick");
+    expect(spec).toContain("/api/admin/deploy-note-configs");
+    expect(spec).toContain("/api/admin/import/broker");
     expect(spec).toContain("/api/rag/files");
+    expect(spec).toContain("/api/rag/files/{fileId}/readiness");
     expect(spec).toContain("/actuator/health");
     expect(spec).toContain("/v3/api-docs");
   });

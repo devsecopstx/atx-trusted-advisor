@@ -5,41 +5,29 @@ import org.springframework.boot.env.EnvironmentPostProcessor
 import org.springframework.core.Ordered
 import org.springframework.core.env.ConfigurableEnvironment
 import org.springframework.core.env.MapPropertySource
-import java.util.Base64
 
 /**
- * Environment post-processor that, if the environment variable `MONGODB_URI_B64` is present,
- * decodes it from Base64 and injects it as `spring.data.mongodb.uri` with high precedence.
- *
- * This allows deployments to provide a single base64-encoded Mongo connection string
- * (e.g. for cloud providers) while keeping local/docker defaults intact.
+ * If `MONGODB_URI` (or legacy `MONGODB_URI_B64`) is set, resolves it to a real Mongo URI
+ * (plain `mongodb://` / `mongodb+srv://`, or base64-encoded) and injects `spring.data.mongodb.uri`
+ * with highest precedence.
  */
 class MongoUriEnvPostProcessor : EnvironmentPostProcessor, Ordered {
     override fun postProcessEnvironment(environment: ConfigurableEnvironment, application: SpringApplication) {
-        // Prefer Spring Environment property (testable and supports custom property sources),
-        // fall back to system environment if not present.
-        val fromSpring = environment.getProperty("MONGODB_URI_B64")?.trim()?.takeIf { it.isNotEmpty() }
-        val fromSystem = System.getenv("MONGODB_URI_B64")?.trim()?.takeIf { it.isNotEmpty() }
-        val b64 = fromSpring ?: fromSystem
-        if (!b64.isNullOrEmpty()) {
-            val decoded = try {
-                // Try standard Base64 first; if it fails, attempt URL-safe variant
-                String(Base64.getDecoder().decode(b64))
-            } catch (e: IllegalArgumentException) {
-                String(Base64.getUrlDecoder().decode(b64))
-            }
+        val fromSpringUri = environment.getProperty("MONGODB_URI")?.trim()?.takeIf { it.isNotEmpty() }
+        val fromSystemUri = System.getenv("MONGODB_URI")?.trim()?.takeIf { it.isNotEmpty() }
+        val legacyB64 =
+            environment.getProperty("MONGODB_URI_B64")?.trim()?.takeIf { it.isNotEmpty() }
+                ?: System.getenv("MONGODB_URI_B64")?.trim()?.takeIf { it.isNotEmpty() }
+        val raw = fromSpringUri ?: fromSystemUri ?: legacyB64 ?: return
+        val resolved = MongoUriResolver.resolve(raw)
 
-            val props = mapOf(
-                // Set the canonical Spring Boot property directly at the highest precedence we control
-                "spring.data.mongodb.uri" to decoded,
-                // Also provide env-style aliases many setups look for
-                "SPRING_DATA_MONGODB_URI" to decoded,
-                "MONGODB_URI" to decoded
-            )
-            val source = MapPropertySource("mongoUriB64Override", props)
-            // Add as the very first property source to win over others
-            environment.propertySources.addFirst(source)
-        }
+        val props = mapOf(
+            "spring.data.mongodb.uri" to resolved,
+            "SPRING_DATA_MONGODB_URI" to resolved,
+            "MONGODB_URI" to resolved
+        )
+        val source = MapPropertySource("mongoUriOverride", props)
+        environment.propertySources.addFirst(source)
     }
 
     // Ensure it runs quite early but after system environment; lower value = higher precedence for Ordered

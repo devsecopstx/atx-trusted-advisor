@@ -12,7 +12,9 @@ const authMocks = vi.hoisted(() => ({
   clearOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn(),
   createSession: vi.fn(),
-  setPendingXLinkCookie: vi.fn()
+  setPendingXLinkCookie: vi.fn(),
+  consumeOAuthReturnPathCookie: vi.fn(),
+  isSafeOAuthReturnPath: vi.fn()
 }));
 
 const coreAdminMocks = vi.hoisted(() => ({
@@ -46,13 +48,18 @@ const auditMocks = vi.hoisted(() => ({
 }));
 
 const bootstrapMocks = vi.hoisted(() => ({
-  enqueueAccessRequestBootstrap: vi.fn()
+  enqueueAccessRequestBootstrap: vi.fn(),
+  resolveOrCreateUserBootstrapCollection: vi.fn().mockResolvedValue({
+    collectionId: "collection_test_user_history",
+    collectionName: "test-user-history"
+  })
 }));
 
 const envMocks = vi.hoisted(() => ({
   getEnv: vi.fn(),
   getXOauthClientId: vi.fn(),
-  isAllowAnyXUserLoginEnabled: vi.fn()
+  isAllowAnyXUserLoginEnabled: vi.fn(),
+  getAtxfinanceBackendOrigin: vi.fn(() => undefined)
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -94,6 +101,10 @@ describe("access request approval login flow", () => {
     authMocks.getSessionUser.mockResolvedValue(null);
     authMocks.createSession.mockResolvedValue(undefined);
     authMocks.setPendingXLinkCookie.mockResolvedValue(undefined);
+    authMocks.consumeOAuthReturnPathCookie.mockResolvedValue(null);
+    authMocks.isSafeOAuthReturnPath.mockImplementation(
+      (path: string) => path.startsWith("/") && !path.startsWith("//") && !path.includes("..")
+    );
 
     coreAdminMocks.getAccessRequestById.mockImplementation(async () => ({
       _id: { toHexString: () => "507f1f77bcf86cd799439022" },

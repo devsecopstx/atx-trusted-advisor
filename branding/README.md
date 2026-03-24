@@ -14,5 +14,5 @@ This folder contains image assets plus the 2026 refresh docs used by prompt gene
 
 1. Start from `atxfinance-brand-prompts.md`.
 2. Apply relevant preset from `atxfinance-branding-tags.md`.
-3. Validate generated outputs with `.cursor/skills/atxfinance-brand`.
+3. Validate generated outputs with `.cursor/skills/atx-brand`.
 4. Record findings in `atxfinance-brand-validation.md` (or new batch-specific validation docs).

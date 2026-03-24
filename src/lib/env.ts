@@ -23,12 +23,11 @@ const optionalNonEmptyString = z.preprocess(
 const optionalEmail = z.preprocess(emptyToUndefined, z.string().email().optional());
 
 const envSchema = z.object({
-  MONGODB_URI_B64: z.string().min(1).optional(),
-  MONGODB_URI_B4: z.string().min(1).optional(),
+  /** Plain `mongodb://` / `mongodb+srv://`, or base64 of either (same as Spring `MongoUriResolver`). */
+  MONGODB_URI: z.preprocess(emptyToUndefined, z.string().optional()),
   XAI_API_KEY: z.string().min(1),
   XAI_MANAGEMENT_API_KEY: z.string().min(1),
   XAI_TEAM_ID: optionalNonEmptyString,
-  ATXFINANCE_COLLECTION_ID: optionalNonEmptyString,
   /** Logical org key stored on portfolio docs (`tenantPortfolioOrgKey`); default `org-atx-finance`. */
   TENANT_PORTFOLIO_ORG_KEY: optionalNonEmptyString,
   X_OAUTH_CLIENT_ID: z.string().min(1),
@@ -37,6 +36,10 @@ const envSchema = z.object({
   X_OAUTH_AUTHORIZE_URL: optionalUrl,
   X_OAUTH_TOKEN_URL: optionalUrl,
   X_OAUTH_USERINFO_URL: optionalUrl,
+  /** Google OAuth (Sign in with Google) — optional; enable `/api/auth/google/*` when both are set. */
+  GOOGLE_CLIENT_ID: optionalNonEmptyString,
+  GOOGLE_CLIENT_SECRET: optionalNonEmptyString,
+  GOOGLE_OAUTH_CALLBACK_URL: optionalUrl,
   XAI_BASE_URL: optionalUrl,
   XAI_MANAGEMENT_BASE_URL: optionalUrl,
   XAI_CHAT_MODEL: optionalNonEmptyString,
@@ -55,6 +58,11 @@ const envSchema = z.object({
     },
     z.string().email().optional()
   ),
+  /**
+   * When X userinfo omits `email`, OAuth still matches the seeded admin if this equals the X numeric user id.
+   * Set alongside `ADMIN_SEED_EMAIL`; `npm run seed:admin` can persist the same id on `core_users.xAccount`.
+   */
+  ADMIN_SEED_X_USER_ID: optionalNonEmptyString,
   ADMIN_X_USERNAMES: z.string().optional(),
   ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
   /** Optional overrides for `/xstrategybuilder` licensing line (see `LICENSING_PITCH_CONTACT_DEFAULTS`). */
@@ -96,51 +104,77 @@ export function getEnv(): Env {
   return envCache;
 }
 
-export function getMongoUriFromB64(): string {
-  const { MONGODB_URI_B64, MONGODB_URI_B4 } = getEnv();
-  const encoded = MONGODB_URI_B64 ?? MONGODB_URI_B4;
-  if (encoded) {
-    const decoded = Buffer.from(encoded, "base64").toString("utf8").trim();
-    if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
-      throw new Error("Invalid MONGODB_URI_B64: decoded value is not a MongoDB URI");
-    }
+/**
+ * Parses `MONGODB_URI` when it is either a real Mongo URI or base64-encoded (GCP / Cursor-friendly).
+ */
+export function parseMongoConnectionString(raw: string): string {
+  const t = raw.trim();
+  if (t.startsWith("mongodb://") || t.startsWith("mongodb+srv://")) {
+    return t;
+  }
+  let decoded: string;
+  try {
+    decoded = Buffer.from(t, "base64").toString("utf8").trim();
+  } catch {
+    throw new Error("MONGODB_URI is not a valid MongoDB URI or base64 thereof");
+  }
+  if (decoded.startsWith("mongodb://") || decoded.startsWith("mongodb+srv://")) {
     return decoded;
+  }
+  try {
+    decoded = Buffer.from(t, "base64url").toString("utf8").trim();
+  } catch {
+    throw new Error("MONGODB_URI is not a valid MongoDB URI or base64 thereof");
+  }
+  if (!decoded.startsWith("mongodb://") && !decoded.startsWith("mongodb+srv://")) {
+    throw new Error("Invalid MONGODB_URI: decoded value is not a MongoDB URI");
+  }
+  return decoded;
+}
+
+/** Resolved Mongo connection string (Atlas, local Docker, or compose fallback). */
+export function getMongoUri(): string {
+  const fromZod = getEnv().MONGODB_URI;
+  const legacyB64 = process.env.MONGODB_URI_B64?.trim();
+  const raw = (fromZod && fromZod.length > 0 ? fromZod : undefined) ?? (legacyB64 && legacyB64.length > 0 ? legacyB64 : undefined);
+  if (raw) {
+    return parseMongoConnectionString(raw);
   }
 
   // Fallback: local MongoDB on localhost:27017 with optional credentials from env
   // (Keep aligned with scripts/lib/resolve-mongo-uri.mjs for seed/migrations.)
   const dbName = (process.env.MONGODB_DB_NAME?.trim() || MONGODB_DB_NAME).trim();
   const host = process.env.MONGODB_HOST?.trim() || "localhost";
+  const noAuth = process.env.MONGODB_NO_AUTH === "true" || process.env.MONGODB_NO_AUTH === "1";
+  const username = process.env.MONGO_ROOT_USERNAME?.trim() || "admin";
+  const password = process.env.MONGO_ROOT_PASSWORD?.trim() || "atxrocks!";
 
-  const adminUserFromEnv =
-    process.env.ADMIN_X_USERNAME?.trim() ||
-    process.env.ADMIN_X_USERNAMES?.trim()?.split(",")[0]?.trim();
-  const explicitMongoPassword = process.env.MONGO_ROOT_PASSWORD?.trim();
-  let username = adminUserFromEnv;
-  let password = explicitMongoPassword;
-
-  // docker-compose.yml creates MONGO_INITDB_ROOT_USERNAME default `admin` (+ password). ADMIN_X_USERNAMES
-  // is for app allowlists — using it as Mongo user without MONGO_ROOT_PASSWORD caused wronguser:atxrocks!
-  // and Authentication failed. Only use env username for Mongo when both user + password are explicit.
-  const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);
-  if (localHosts.has(host)) {
-    const explicitMongoPair = Boolean(adminUserFromEnv && explicitMongoPassword);
-    if (!explicitMongoPair) {
-      username = "admin";
-      password = explicitMongoPassword || "atxrocks!";
-    }
-  }
-
-  const hasAuth = Boolean(username && password);
+  const hasAuth = !noAuth && Boolean(username && password);
   const authPart = hasAuth ? `${encodeURIComponent(username!)}:${encodeURIComponent(password!)}@` : "";
   const params = hasAuth ? "?authSource=admin" : "";
 
   return `mongodb://${authPart}${host}:27017/${dbName}${params}`;
 }
 
+/** @deprecated Use {@link getMongoUri} — name kept for call sites. */
+export const getMongoUriFromB64 = getMongoUri;
+
 export function getXOauthClientId(): string {
   const { X_OAUTH_CLIENT_ID } = getEnv();
   return X_OAUTH_CLIENT_ID.trim();
+}
+
+export function isGoogleOAuthConfigured(): boolean {
+  const e = getEnv();
+  return Boolean(e.GOOGLE_CLIENT_ID?.trim() && e.GOOGLE_CLIENT_SECRET?.trim());
+}
+
+export function getGoogleClientId(): string {
+  const id = getEnv().GOOGLE_CLIENT_ID?.trim();
+  if (!id) {
+    throw new Error("GOOGLE_CLIENT_ID is not configured");
+  }
+  return id;
 }
 
 /**
@@ -255,7 +289,7 @@ export function shouldShowAppUserDbLabel(): boolean {
 }
 
 export function getMongoConnectionLabel(): string {
-  const uri = getMongoUriFromB64();
+  const uri = getMongoUri();
   const withoutProtocol = uri.replace(/^mongodb(\+srv)?:\/\//, "");
   const withoutCredentials = withoutProtocol.includes("@")
     ? withoutProtocol.split("@").slice(1).join("@")
@@ -266,4 +300,15 @@ export function getMongoConnectionLabel(): string {
   return `${hosts}/${resolvedDbName}`;
 }
 
+/**
+ * Canonical application database name: **one MongoDB database per deployment** (staging vs production
+ * use separate clusters/URIs; tenant isolation within the app uses `tenantId` / org keys on documents).
+ * Override with `MONGODB_DB_NAME` only for local tooling if you must match a non-default DB path.
+ */
 export const MONGODB_DB_NAME = "atxfinancedb";
+
+/** Default xAI API base URL when XAI_BASE_URL env is unset. Aligned with tenant_defaults.yaml. */
+export const XAI_BASE_URL_DEFAULT = "https://api.x.ai/v1";
+
+/** Default xAI Management API base URL when XAI_MANAGEMENT_BASE_URL env is unset. Aligned with tenant_defaults.yaml. */
+export const XAI_MANAGEMENT_BASE_URL_DEFAULT = "https://management-api.x.ai/v1";

@@ -1,5 +1,3 @@
-<<<<<<< Current (Your changes)
-=======
 ---
 name: feature-branding
 model: inherit
@@ -32,4 +30,3 @@ Guardrails:
 - Avoid backend/domain logic changes unless required for UI correctness.
 - Preserve existing auth/session behavior.
 - Reuse existing components/tokens before introducing new primitives.
->>>>>>> Incoming (Background Agent changes)
