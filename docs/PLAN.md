@@ -4,6 +4,17 @@
 
 ---
 
+## SRE status (Mar 2025)
+
+| Area | Status | Notes |
+|------|--------|-------|
+| **BFF frontend→backend** | ✅ Verified | All product API routes call `proxyRequestToBackend` first; cookie forwarded; same-origin. `BFF_PROXY_ROUTES` ↔ Kotlin parity in smoke tests. |
+| **Auth / OAuth** | Next authoritative | OAuth callback (`/api/auth/x/callback`) on Next; Spring reads `xf_core_session`. Cutover to Spring callback deferred until API migration complete. See [auth-oauth-spring-dual-run.md](ops/auth-oauth-spring-dual-run.md). |
+| **Deploy** | Manual only | Staging + prod require `workflow_dispatch`; no auto-deploy on push. Configure required reviewers in Settings → Environments. |
+| **CI gate** | ✅ Pass | Lint, typecheck, build, tests green. |
+
+---
+
 ## Completed (refactor notes)
 
 
