@@ -34,5 +34,6 @@ export async function getMongoClient(): Promise<MongoClient> {
 
 export async function getDb(): Promise<Db> {
   const client = await getMongoClient();
-  return client.db(MONGODB_DB_NAME);
+  const dbName = process.env.MONGODB_DB_NAME?.trim() || MONGODB_DB_NAME;
+  return client.db(dbName);
 }

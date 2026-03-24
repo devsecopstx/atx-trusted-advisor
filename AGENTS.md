@@ -206,6 +206,18 @@ Three cloud agent configurations are supported:
 
 All three share the same update script and secret requirements above.
 
+### Running without MONGODB_URI
+
+When `MONGODB_URI` is not configured, the app falls back to `mongodb://admin:atxrocks!@localhost:27017/atxfinancedb`. Without a running Mongo instance, `GET /api/health` returns HTTP 500 (connection refused) but the dev server itself runs fine. Pages that do **not** require a DB session work: `/login`, `/app_user/xoptions`, `/app_user/xoptions/follow-up`, `/xcoach`, `/api/openapi`. Auth-gated pages (`/xchat`, `/admin/*`, `/portfolio`, `/watchlist`) and `npm run seed:admin` require a live MongoDB connection. All validation gates (`npm run ci:gate`) pass without MongoDB — tests use mocked dependencies.
+
+### MONGODB_URI secret encoding caveat
+
+The Cursor Cloud runtime may inject `MONGODB_URI` as `MONGODB_URI_B64=<base64>` (the literal prefix `MONGODB_URI_B64=` embedded in the value). `npm run env:cursor-cloud` writes this verbatim, which the app's `parseMongoConnectionString` cannot decode. If `seed:admin` fails with `Invalid MONGODB_URI: decoded value is not a MongoDB URI`, strip the prefix and decode manually:
+```bash
+B64=$(printenv MONGODB_URI | sed 's/^MONGODB_URI_B64=//') && DECODED=$(echo "$B64" | base64 -d)
+```
+Then write the decoded `mongodb+srv://...` URI into `.env` and `unset MONGODB_URI` before running seed or dev (since `--env-file=.env` does not override existing shell env vars).
+
 ### Gotchas
 
 - The env schema (`src/lib/env.ts`) requires `XAI_API_KEY`, `XAI_MANAGEMENT_API_KEY`, `X_OAUTH_CLIENT_ID`, and `X_OAUTH_CLIENT_SECRET` to be non-empty strings. The app will not start without them even if you only need non-AI endpoints.
@@ -215,6 +227,7 @@ All three share the same update script and secret requirements above.
 - Tests (`npm run test`) are all unit/integration tests with mocked dependencies — they do not require MongoDB or the dev server to be running.
 - The xAI management key-create smoke test is opt-in via `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true` and requires real API keys.
 - `*.code-workspace` files are gitignored — they are local IDE config and not used by cloud agents.
+- `npm run build` requires `NODE_ENV=production` (or unset). The Cloud Agent shell defaults to `NODE_ENV=development`, which causes Next.js to warn and SSG pages to fail. Use `NODE_ENV=production npm run build`.
 - See `DEVELOPMENT.md` for the full Cloud Agent Atlas Mode setup and OAuth host-consistency notes.
 - **X OAuth (prod):** PKCE cookies must ride the same `NextResponse` as the redirect to X (`applyOAuthFlowCookiesToRedirect` in `src/lib/auth.ts`). Cloud Run sets `X_OAUTH_CALLBACK_URL` from the `PROD_BASE_URL` GitHub variable — keep the X app callback identical. Rotate mounted runtime secrets with `bash scripts/ops/rotate-gcp-secrets-and-deploy.sh --target production --env-file .env.prod` (see `DEVELOPMENT.md` → *Sync production Secret Manager*).
 
