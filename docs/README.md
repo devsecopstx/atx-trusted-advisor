@@ -35,13 +35,15 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skil
 
 | Doc | Purpose |
 |-----|---------|
-| [api-consolidation-spring-backend.md](./ops/api-consolidation-spring-backend.md) | BFF migration, Spring parity, side-effect checklist |
-| [atxfinance-backend-http-api.md](./ops/atxfinance-backend-http-api.md) | Kotlin HTTP surface (BFF contract) |
-| [audit-lineage-and-controls.md](./ops/audit-lineage-and-controls.md) | Audit rows, BFF audit parity, gaps vs **xdesign-review-audit** |
-| [bff-admin-backlog.md](./ops/bff-admin-backlog.md) | Admin/BFF backlog notes |
-| [junie-guidelines-atxfinance-backend.md](./ops/junie-guidelines-atxfinance-backend.md) | Kotlin backend guidelines |
-| [secret-rotation.md](./ops/secret-rotation.md) | Secret rotation |
-| [x-oauth-atx-callbacks.md](./ops/x-oauth-atx-callbacks.md) | X OAuth callbacks |
+| [api-consolidation-spring-backend.md](./atx-sre-ops/api-consolidation-spring-backend.md) | BFF migration, Spring parity, side-effect checklist |
+| [atxfinance-backend-http-api.md](./atx-sre-ops/atxfinance-backend-http-api.md) | Kotlin HTTP surface (BFF contract) |
+| [audit-lineage-and-controls.md](./atx-sre-ops/audit-lineage-and-controls.md) | Audit rows, BFF audit parity, gaps vs **xdesign-review-audit** |
+| [auth-oauth-spring-dual-run.md](./atx-sre-ops/auth-oauth-spring-dual-run.md) | OAuth callback cutover, Next vs Spring gaps, dual-run checklist |
+| [bff-admin-backlog.md](./atx-sre-ops/bff-admin-backlog.md) | Admin/BFF backlog notes |
+| [bff-enable-staging-runbook.md](./atx-sre-ops/bff-enable-staging-runbook.md) | Enable BFF proxy on staging |
+| [junie-guidelines-atxfinance-backend.md](./atx-sre-ops/junie-guidelines-atxfinance-backend.md) | Kotlin backend guidelines |
+| [secret-rotation.md](./atx-sre-ops/secret-rotation.md) | Secret rotation |
+| [x-oauth-atx-callbacks.md](./atx-sre-ops/x-oauth-atx-callbacks.md) | X OAuth callbacks |
 
 ---
 
