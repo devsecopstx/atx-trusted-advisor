@@ -19,7 +19,7 @@ export default async function AdminOnboardingPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Onboarding</h1>
         <p className="hero-copy">
-          Broker <strong>holdings</strong> CSV import now lives on the dedicated{" "}
+          Broker <strong>holdings</strong> CSV import lives on the dedicated{" "}
           <Link className="login-xoptions-link" href="/admin/broker-import">
             Broker import
           </Link>{" "}

@@ -34,8 +34,72 @@ type PortfolioMeta = {
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  maximumFractionDigits: 0
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2
 });
+
+function parseUsdCashInput(raw: string): number | undefined {
+  const n = Number.parseFloat(raw.replaceAll(/[$,\s]/g, ""));
+  if (!Number.isFinite(n) || n < 0) {
+    return undefined;
+  }
+  return n;
+}
+
+function cashCellNumber(row: AccountRow, draftCash: number | undefined): number {
+  if (typeof draftCash === "number" && Number.isFinite(draftCash)) {
+    return draftCash;
+  }
+  const b = row.cashBalance;
+  return typeof b === "number" && Number.isFinite(b) ? b : 0;
+}
+
+function computeAccountPatchBody(
+  row: AccountRow,
+  rowDraft: Partial<AccountRow>,
+  cashRowActive: boolean,
+  cashInputText: string | undefined
+): Record<string, unknown> | null {
+  let cashOverride: number | undefined;
+  if (cashRowActive) {
+    const parsed = parseUsdCashInput(cashInputText ?? "");
+    if (parsed !== undefined) {
+      cashOverride = parsed;
+    }
+  }
+  const m: AccountRow = {
+    ...row,
+    ...rowDraft,
+    ...(cashOverride !== undefined ? { cashBalance: cashOverride } : {})
+  };
+  const body: Record<string, unknown> = {};
+  const nameNext = (m.name ?? "").trim();
+  const namePrev = (row.name ?? "").trim();
+  if (nameNext !== namePrev) {
+    if (!nameNext) {
+      return null;
+    }
+    body.name = nameNext;
+  }
+  if (m.type !== row.type && ACCOUNT_TYPES.includes(m.type as (typeof ACCOUNT_TYPES)[number])) {
+    body.type = m.type;
+  }
+  const extNext = (m.extAccountId ?? "").trim();
+  const extPrev = (row.extAccountId ?? "").trim();
+  if (extNext !== extPrev && extNext.length > 0) {
+    body.extAccountId = extNext;
+  }
+  const cashRow = typeof row.cashBalance === "number" && Number.isFinite(row.cashBalance) ? row.cashBalance : 0;
+  const cashMerged =
+    typeof m.cashBalance === "number" && Number.isFinite(m.cashBalance) ? m.cashBalance : cashRow;
+  if (cashMerged !== cashRow && cashMerged >= 0 && Number.isFinite(cashMerged)) {
+    body.cashBalance = cashMerged;
+  }
+  if (m.isDefault === true && row.isDefault !== true) {
+    body.isDefault = true;
+  }
+  return Object.keys(body).length > 0 ? body : null;
+}
 
 type AdminPortfolioAccountsConsoleProps = {
   portfolioId: string;
@@ -54,6 +118,9 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   const [newType, setNewType] = useState<(typeof ACCOUNT_TYPES)[number]>("fidelity");
   const [newExt, setNewExt] = useState("");
   const [newCash, setNewCash] = useState("");
+  /** Row id actively editing cash — value in `cashEditText` until blur. */
+  const [cashFocusId, setCashFocusId] = useState<string | null>(null);
+  const [cashEditText, setCashEditText] = useState<Record<string, string>>({});
   const [riskProfileDraft, setRiskProfileDraft] = useState<"" | RiskProfileOption>("");
   const [outlookDraft, setOutlookDraft] = useState("");
 
@@ -100,22 +167,12 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
 
   const mergeRow = (row: AccountRow): AccountRow => ({ ...row, ...draft(row._id) });
 
-  const buildAccountPatchBody = useCallback((row: AccountRow): Record<string, unknown> | null => {
-    const d = edits[row._id] ?? {};
-    const m = { ...row, ...d };
-    const body: Record<string, unknown> = {};
-    if (d.name !== undefined) body.name = m.name;
-    if (d.cashBalance !== undefined) body.cashBalance = m.cashBalance;
-    if (d.extAccountId !== undefined) body.extAccountId = m.extAccountId;
-    if (d.type !== undefined) body.type = m.type;
-    if (d.isDefault === true) body.isDefault = true;
-    return Object.keys(body).length > 0 ? body : null;
-  }, [edits]);
-
-  const hasDirty = useMemo(
-    () => accounts.some((row) => buildAccountPatchBody(row) !== null),
-    [accounts, buildAccountPatchBody]
-  );
+  const hasDirty = useMemo(() => {
+    const d = (id: string) => edits[id] ?? {};
+    return accounts.some(
+      (row) => computeAccountPatchBody(row, d(row._id), cashFocusId === row._id, cashEditText[row._id]) !== null
+    );
+  }, [accounts, edits, cashFocusId, cashEditText]);
 
   const hasPortfolioRiskOutlookDirty = useMemo(() => {
     if (!portfolio) {
@@ -153,10 +210,26 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   };
 
   const saveAccount = async (row: AccountRow) => {
+    const body = computeAccountPatchBody(row, draft(row._id), cashFocusId === row._id, cashEditText[row._id]);
+    if (cashFocusId === row._id) {
+      setCashFocusId(null);
+      setCashEditText((prev) => {
+        const next = { ...prev };
+        delete next[row._id];
+        return next;
+      });
+    }
+
     setStatus("Saving…");
     try {
-      const body = buildAccountPatchBody(row);
       if (!body) {
+        const m = mergeRow(row);
+        const nameNext = (m.name ?? "").trim();
+        const namePrev = (row.name ?? "").trim();
+        if (nameNext !== namePrev && !nameNext) {
+          setStatus("Name cannot be empty");
+          return;
+        }
         setStatus("No changes");
         return;
       }
@@ -184,17 +257,39 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   };
 
   const saveAllChanges = async () => {
-    const targets = accounts.filter((row) => buildAccountPatchBody(row) !== null);
+    let mergedEdits = { ...edits };
+    const mergedCashText = { ...cashEditText };
+    const fid = cashFocusId;
+    if (fid) {
+      const parsed = parseUsdCashInput(mergedCashText[fid] ?? "");
+      delete mergedCashText[fid];
+      if (parsed !== undefined) {
+        mergedEdits = { ...mergedEdits, [fid]: { ...mergedEdits[fid], cashBalance: parsed } };
+      }
+    }
+
+    const draftMerged = (id: string) => mergedEdits[id] ?? {};
+    const targets = accounts.filter(
+      (row) => computeAccountPatchBody(row, draftMerged(row._id), false, undefined) !== null
+    );
     if (targets.length === 0) {
       setStatus("No changes");
       return;
     }
+
+    setCashFocusId(null);
+    setCashEditText(mergedCashText);
+    setEdits(mergedEdits);
     setLoading(true);
     setStatus("Saving…");
     try {
+      let saved = 0;
       for (const row of targets) {
-        const body = buildAccountPatchBody(row);
-        if (!body) continue;
+        const body = computeAccountPatchBody(row, draftMerged(row._id), false, undefined);
+        if (!body) {
+          setStatus("Name cannot be empty");
+          return;
+        }
         await parseJson(
           await fetch(
             `/api/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(row._id)}`,
@@ -205,13 +300,11 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
             }
           )
         );
-        setEdits((prev) => {
-          const next = { ...prev };
-          delete next[row._id];
-          return next;
-        });
+        saved += 1;
+        delete mergedEdits[row._id];
       }
-      setStatus(`Saved ${targets.length} account(s)`);
+      setEdits({ ...mergedEdits });
+      setStatus(`Saved ${saved} account(s)`);
       void refresh();
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Save failed");
@@ -286,6 +379,14 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         >
           Broker holdings import
         </Link>
+        {portfolio?.userId ? (
+          <Link
+            className="cta cta-secondary"
+            href={`/admin/manage_account?userId=${encodeURIComponent(portfolio.userId)}&portfolioId=${encodeURIComponent(portfolioId)}`}
+          >
+            Manage account
+          </Link>
+        ) : null}
         <button
           className="cta cta-primary"
           disabled={loading || !hasDirty}
@@ -324,8 +425,18 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
             Risk &amp; outlook
           </h3>
           <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-            Book-level context stored on the portfolio (optional). Used for desk / prompt alignment with user settings{" "}
-            <strong>risk profile</strong> semantics.
+            Book-level context on this portfolio (optional). Distinct from per-user settings on{" "}
+            <Link
+              className="login-xoptions-link"
+              href={
+                portfolio.userId
+                  ? `/admin/manage_account?userId=${encodeURIComponent(portfolio.userId)}&portfolioId=${encodeURIComponent(portfolioId)}`
+                  : "/admin/manage_account"
+              }
+            >
+              Manage account
+            </Link>
+            .
           </p>
           <div
             className="stack-gap"
@@ -442,23 +553,48 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                     </td>
                     <td>
                       <input
-                        className="crud-input"
-                        type="number"
-                        min={0}
-                        step={1}
+                        className="crud-input font-mono text-sm tabular-nums"
+                        type="text"
+                        inputMode="decimal"
+                        aria-label="Cash balance"
                         value={
-                          m.cashBalance !== undefined && m.cashBalance !== null
-                            ? String(m.cashBalance)
-                            : String(row.cashBalance)
+                          cashFocusId === row._id
+                            ? (cashEditText[row._id] ?? "")
+                            : money.format(cashCellNumber(row, draft(row._id).cashBalance))
                         }
+                        onFocus={() => {
+                          const n = cashCellNumber(row, draft(row._id).cashBalance);
+                          setCashFocusId(row._id);
+                          setCashEditText((prev) => ({
+                            ...prev,
+                            [row._id]: String(n)
+                          }));
+                        }}
                         onChange={(e) => {
-                          const n = Number.parseFloat(e.target.value);
+                          setCashEditText((prev) => ({
+                            ...prev,
+                            [row._id]: e.target.value
+                          }));
+                        }}
+                        onBlur={() => {
+                          const raw = cashEditText[row._id] ?? "";
+                          const parsed = parseUsdCashInput(raw);
+                          setCashFocusId((id) => (id === row._id ? null : id));
+                          setCashEditText((prev) => {
+                            const next = { ...prev };
+                            delete next[row._id];
+                            return next;
+                          });
+                          if (parsed === undefined) {
+                            return;
+                          }
+                          const current = cashCellNumber(row, draft(row._id).cashBalance);
+                          if (parsed === current) {
+                            return;
+                          }
                           setEdits((prev) => ({
                             ...prev,
-                            [row._id]: {
-                              ...prev[row._id],
-                              cashBalance: Number.isFinite(n) ? n : row.cashBalance
-                            }
+                            [row._id]: { ...prev[row._id], cashBalance: parsed }
                           }));
                         }}
                       />
@@ -535,7 +671,12 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
           </label>
           <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
             Cash (optional)
-            <input className="crud-input" value={newCash} onChange={(e) => setNewCash(e.target.value)} placeholder="25000" />
+            <input
+              className="crud-input"
+              value={newCash}
+              onChange={(e) => setNewCash(e.target.value)}
+              placeholder="$25,000"
+            />
           </label>
           <button type="button" className="cta cta-primary" onClick={() => void addAccount()}>
             Add account

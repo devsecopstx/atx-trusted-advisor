@@ -66,9 +66,9 @@ export function AdminAccountsPortfolioPicker() {
       </div>
 
       <article className="surface-card xf-widget section-card">
-        <h1 className="hero-title" style={{ fontSize: "1.35rem" }}>
-          Accounts
-        </h1>
+        <h2 className="hero-title" style={{ fontSize: "1.25rem" }}>
+          Choose a portfolio
+        </h2>
         <p className="status-text" style={{ marginBottom: "1rem" }}>
           Choose a portfolio, then edit accounts (create, update, delete). Use <strong>Save changes</strong> on the
           account screen to persist all edits, or save a single row with the row action. Broker holdings CSV import is on

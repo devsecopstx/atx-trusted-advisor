@@ -9,7 +9,7 @@ type PageProps = {
   params: Promise<{ portfolioId: string }>;
 };
 
-export default async function AdminAccountsForPortfolioPage({ params }: PageProps) {
+export default async function AdminAccountsPortfolioPage({ params }: PageProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");

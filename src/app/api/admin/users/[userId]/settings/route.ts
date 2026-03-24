@@ -6,6 +6,7 @@ import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
+import { withDefaultInvestmentStrategy } from "@/modules/core-admin/portfolio-preference-labels";
 import {
     getUserAdminSettings,
     upsertUserAdminSettings
@@ -24,6 +25,7 @@ const updateSettingsSchema = z.object({
   }),
   portfolio: z.object({
     riskProfile: z.enum(["conservative", "balanced", "growth"]),
+    investmentStrategy: z.enum(["growth", "income", "balanced", "aggressive"]),
     baseCurrency: z.enum(["USD", "EUR", "GBP"]),
     rebalanceFrequencyDays: z.number().int().positive()
   }),
@@ -80,7 +82,7 @@ export async function GET(request: Request, context: RouteContext) {
   });
 
   return NextResponse.json({
-    data: settings,
+    data: withDefaultInvestmentStrategy(settings),
     metadata: {
       linkedCollections
     }

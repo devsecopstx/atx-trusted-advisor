@@ -12,9 +12,9 @@ export function PortfolioConsole() {
           Broker holdings import
         </h3>
         <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-          CSV preview → account mapping → stock lots: open the{" "}
-          <strong>Broker import</strong> hub, or jump from <strong>Accounts</strong> with a portfolio pre-selected (same
-          API <code className="font-mono text-xs">/api/admin/import/broker</code>).
+          CSV preview → account mapping → stock lots: open the <strong>Broker import</strong> hub, or jump from{" "}
+          <strong>Accounts</strong> with a portfolio pre-selected (same API{" "}
+          <code className="font-mono text-xs">/api/admin/import/broker</code>).
         </p>
         <Link className="cta cta-primary" href="/admin/broker-import">
           Open broker import hub

@@ -1397,9 +1397,10 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       },
       portfolio: {
         type: "object",
-        required: ["riskProfile", "baseCurrency", "rebalanceFrequencyDays"],
+        required: ["riskProfile", "investmentStrategy", "baseCurrency", "rebalanceFrequencyDays"],
         properties: {
           riskProfile: { type: "string", enum: ["conservative", "balanced", "growth"] },
+          investmentStrategy: { type: "string", enum: ["growth", "income", "balanced", "aggressive"] },
           baseCurrency: { type: "string", enum: ["USD", "EUR", "GBP"] },
           rebalanceFrequencyDays: { type: "integer", minimum: 1 }
         }

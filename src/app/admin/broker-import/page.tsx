@@ -10,7 +10,7 @@ type PageProps = {
   searchParams: Promise<{ portfolioId?: string }>;
 };
 
-export default async function AdminBrokerImportHubPage({ searchParams }: PageProps) {
+export default async function AdminBrokerImportPage({ searchParams }: PageProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login?next=/admin/broker-import");
@@ -35,6 +35,9 @@ export default async function AdminBrokerImportHubPage({ searchParams }: PagePro
           </Link>
           <Link className="cta cta-secondary" href="/admin/portfolios">
             Portfolios
+          </Link>
+          <Link className="cta cta-secondary" href="/admin/onboarding">
+            Onboarding
           </Link>
           {lockedId ? (
             <Link className="cta cta-secondary" href={`/admin/accounts/${encodeURIComponent(lockedId)}`}>

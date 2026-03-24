@@ -102,8 +102,12 @@ export type BrokerBinding = {
   enabled: boolean;
 };
 
+export type InvestmentStrategy = "growth" | "income" | "balanced" | "aggressive";
+
 export type PortfolioSettings = {
   riskProfile: "conservative" | "balanced" | "growth";
+  /** Investor approach; legacy Mongo rows may omit — API normalizes to `balanced`. */
+  investmentStrategy?: InvestmentStrategy;
   baseCurrency: "USD" | "EUR" | "GBP";
   rebalanceFrequencyDays: number;
 };

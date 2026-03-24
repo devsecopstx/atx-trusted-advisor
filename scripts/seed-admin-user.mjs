@@ -15,7 +15,7 @@ if (!ADMIN_SEED_RAW) {
 }
 const ADMIN_EMAIL = normalizeEmail(ADMIN_SEED_RAW);
 
-/** X API `users/me` numeric id (`data.id`), not @handle — optional pre-link for OAuth before first login. */
+/** X API `users/me` numeric id (`data.id`), not @handle — optional pre-link when X OAuth omits email. */
 const ADMIN_SEED_X_USER_ID = (process.env.ADMIN_SEED_X_USER_ID ?? "").trim();
 const ADMIN_SEED_X_USERNAME = (process.env.ADMIN_SEED_X_USERNAME ?? "").trim();
 const ADMIN_SEED_X_DISPLAY_NAME = (process.env.ADMIN_SEED_X_DISPLAY_NAME ?? "").trim();
@@ -26,9 +26,11 @@ function xPrelinkSetFields(now) {
   }
   const fields = {
     "xAccount.xUserId": ADMIN_SEED_X_USER_ID,
-    "xAccount.username": ADMIN_SEED_X_USERNAME || ADMIN_SEED_X_USER_ID,
     "xAccount.linkedAt": now
   };
+  if (ADMIN_SEED_X_USERNAME) {
+    fields["xAccount.username"] = ADMIN_SEED_X_USERNAME;
+  }
   if (ADMIN_SEED_X_DISPLAY_NAME) {
     fields["xAccount.displayName"] = ADMIN_SEED_X_DISPLAY_NAME;
   }
@@ -207,6 +209,7 @@ async function ensureSeedAdminUserHistoryCollection(db, { userIdHex, tenantIdHex
   );
   return { collectionId: picked.id, collectionName: picked.name };
 }
+
 const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core";
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
 const DB_NAME = resolveSeedDbName();
@@ -324,7 +327,12 @@ const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
 /** Matches `UserAdminSettings` defaults used in admin user-settings tests / UI. */
 const DEFAULT_SEED_ADMIN_USER_SETTINGS = {
   broker: { provider: "paper", accountRef: "paper-main", enabled: true },
-  portfolio: { riskProfile: "balanced", baseCurrency: "USD", rebalanceFrequencyDays: 14 },
+  portfolio: {
+    riskProfile: "balanced",
+    investmentStrategy: "balanced",
+    baseCurrency: "USD",
+    rebalanceFrequencyDays: 14
+  },
   account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
   notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
 };
@@ -400,19 +408,6 @@ async function seed() {
   try {
     await ensureIndexes(db);
 
-    const email = ADMIN_EMAIL;
-    if (ADMIN_SEED_X_USER_ID) {
-      const holder = await db.collection("core_users").findOne({
-        "xAccount.xUserId": ADMIN_SEED_X_USER_ID,
-        email: { $ne: email }
-      });
-      if (holder) {
-        throw new Error(
-          `[seed:admin] ADMIN_SEED_X_USER_ID ${ADMIN_SEED_X_USER_ID} is already linked to ${holder.email}; unlink that user or use a different X account.`
-        );
-      }
-    }
-
     const superAgentCollectionId = await resolveSuperAgentCollectionIdForSeed();
     const superAgentTools = buildSuperAgentXapiTools(superAgentCollectionId);
 
@@ -473,6 +468,7 @@ async function seed() {
       throw new Error("Failed to create or fetch default Super-Agent persona");
     }
 
+    const email = ADMIN_EMAIL;
     const xPre = xPrelinkSetFields(now);
     await db.collection("core_users").updateOne(
       { email },
@@ -493,6 +489,30 @@ async function seed() {
     const user = await db.collection("core_users").findOne({ email });
     if (!user?._id) {
       throw new Error("Failed to create or fetch seeded admin user");
+    }
+
+    if (ADMIN_SEED_X_USER_ID) {
+      const holder = await db.collection("core_users").findOne({
+        "xAccount.xUserId": ADMIN_SEED_X_USER_ID,
+        email: { $ne: email }
+      });
+      if (holder) {
+        throw new Error(
+          `[seed:admin] ADMIN_SEED_X_USER_ID ${ADMIN_SEED_X_USER_ID} is already linked to ${holder.email}; unlink that user or use a different X account.`
+        );
+      }
+      const xSet = {
+        "xAccount.xUserId": ADMIN_SEED_X_USER_ID,
+        "xAccount.username": ADMIN_SEED_X_USERNAME || user.xAccount?.username || ADMIN_SEED_X_USER_ID,
+        "xAccount.linkedAt": now,
+        updatedAt: now
+      };
+      if (ADMIN_SEED_X_DISPLAY_NAME) {
+        xSet["xAccount.displayName"] = ADMIN_SEED_X_DISPLAY_NAME;
+      } else if (user.xAccount?.displayName) {
+        xSet["xAccount.displayName"] = user.xAccount.displayName;
+      }
+      await db.collection("core_users").updateOne({ _id: user._id }, { $set: xSet });
     }
 
     await db.collection("core_tenant_memberships").updateOne(
