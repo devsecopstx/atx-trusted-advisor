@@ -10,7 +10,8 @@ YAML agents under **`.cursor/agents/*.yaml`** tune Cursor Cloud / Composer for s
 | [`atx-frontend.yaml`](atx-frontend.yaml) | **UI/UX + branding** — tokens, `src/app/**`, `design-system/**` | Visual work, a11y, responsive — avoid domain logic unless required |
 | [`atx-reviewer.yaml`](atx-reviewer.yaml) | **PR / quality gate** reviewer — lint, typecheck, test, `ci:gate` | Pre-merge review, risk surface on changed files only |
 | [`atx-sre-ops-admin.yaml`](atx-sre-ops-admin.yaml) | SRE / ops review persona | Infra, deploy, secrets hygiene, runbooks |
-| [`atx-feature-branding.yaml`](atx-feature-branding.yaml) | Full-stack branding + feature work | Broader scope when explicitly using this persona |
+| [`atx-feature-branding.yaml`](atx-feature-branding.yaml) | Full-stack feature + branding (Next, tokens, APIs when needed for UI) | Default for cross-cutting product + UI work |
+| [`atx-marketing.yaml`](atx-marketing.yaml) | GTM / X copy, threads, HNWI–RIA messaging | Marketing and waitlist copy only |
 
 ## Parallel worktrees (`.cursor/worktrees.json`)
 

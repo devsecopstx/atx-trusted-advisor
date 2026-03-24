@@ -15,6 +15,16 @@
 
 **Docs index:** [README.md](./README.md). Phase 1 multi-agent: [atx-xchat/atx-multi-agent.md](./atx-xchat/atx-multi-agent.md). BFF: [atx-sre-ops/api-consolidation-spring-backend.md](./atx-sre-ops/api-consolidation-spring-backend.md).
 
+### Admin seed — RAG collection sync (planned)
+
+| | |
+| --- | --- |
+| **Goal** | Ingest **`atx-rag-collection/atx-personas-trusted-family/**`, **`finance-reference-docs/**`, and **`atx-xchat-example-prompts/**`** into xAI **collections** and/or **upsert Mongo `xpersonas`** as part of **`npm run seed:admin`** or a dedicated script (e.g. `npm run seed:rag`). |
+| **Product decisions** | Map folders → team KB vs per-persona collections; idempotency key (file hash + path); opt-in env flag (`SEED_RAG_FROM_REPO` or similar); handling of `.yaml` vs `.md` in persona folder. |
+| **Tests** | Pure functions: glob, read, normalize, dedupe; mock xAI management API; optional `--dry-run`. |
+| **Docs** | `atx-rag-collection/README.md`, `DEVELOPMENT.md` (seed bullet), **`generate-docs`** § *RAG collection sources*. |
+| **Status** | **Not implemented** — no production behavior until explicit ticket + `ci:gate` with tests. |
+
 ---
 
 ## Phase 1 — xChat → xStrategyBuilder multi-agent (next chunks)

@@ -1,4 +1,6 @@
-example user prompts for trusted family
+<!-- App xChat example prompts / RAG sample text — not a Cursor agent. See ../README.md -->
+
+Example user prompts for trusted family
 
 Show my portfolio allocation
 What are my top movers today
