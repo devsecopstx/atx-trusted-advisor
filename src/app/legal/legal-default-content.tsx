@@ -5,6 +5,47 @@
 
 const EFFECTIVE_NOTE = "Effective as of March 22, 2026. This summary is provided for transparency; it is not legal advice.";
 
+const LEGAL_ENTITY = "aTx⚡Finance";
+const LEGAL_CONTACT_NOTE =
+  "Use the contact path in your onboarding, account, or access-request workflow for legal notices and operational requests.";
+const VULNERABILITY_TIPS =
+  "Include clear reproduction steps, impact level, affected route(s), and proof-of-concept details where possible. Do not include private keys or credentials in reports.";
+
+export function LegalImprintContent() {
+  return (
+    <div className="legal-prose">
+      <p className="legal-stub-lead">{EFFECTIVE_NOTE}</p>
+      <h2>Service provider</h2>
+      <p>
+        {LEGAL_ENTITY} operates the atxFinance platform and associated product surfaces, including xChat,
+        portfolio workflows, and related admin interfaces.
+      </p>
+      <h2>Scope of publication</h2>
+      <p>
+        This imprint applies to information published within the atxFinance web application and official
+        product domains used for access, onboarding, and support.
+      </p>
+      <h2>Contact and legal notices</h2>
+      <p>{LEGAL_CONTACT_NOTE}</p>
+      <h2>Regulatory and professional use</h2>
+      <p>
+        atxFinance is designed for approved professionals and authorized users. Availability and product
+        scope may differ by role, jurisdiction, and operator policy.
+      </p>
+      <h2>Content responsibility</h2>
+      <p>
+        We prepare platform information with reasonable care, but cannot guarantee all content is complete,
+        current, or suitable for every jurisdiction without local legal review.
+      </p>
+      <h2>Intellectual property notice</h2>
+      <p>
+        Names, marks, software components, and product materials within the Service are protected by
+        applicable intellectual property laws and contractual rights.
+      </p>
+    </div>
+  );
+}
+
 export function LegalPrivacyContent() {
   return (
     <div className="legal-prose">
@@ -184,6 +225,76 @@ export function LegalTermsContent() {
       <p>
         For questions about these Terms, use the contact path provided in your account or onboarding
         materials.
+      </p>
+    </div>
+  );
+}
+
+export function LegalSecurityContent() {
+  return (
+    <div className="legal-prose">
+      <p className="legal-stub-lead">{EFFECTIVE_NOTE}</p>
+      <h2>Security program</h2>
+      <p>
+        We maintain administrative, technical, and organizational controls appropriate for a hosted
+        financial workflow platform, including access controls, logging, and environment-level secret
+        management.
+      </p>
+      <h2>Access controls</h2>
+      <p>
+        Access to privileged surfaces is role-restricted. Administrative routes are limited to authorized
+        operators and protected by authentication and session controls.
+      </p>
+      <h2>Data handling and encryption</h2>
+      <p>
+        Data is protected in transit using standard transport encryption. Infrastructure and persistence
+        protections are applied according to provider capabilities and operational policy.
+      </p>
+      <h2>Monitoring and response</h2>
+      <p>
+        We monitor operational health and security-relevant failures. Where required, incidents are triaged,
+        contained, and remediated through documented runbooks and post-incident review.
+      </p>
+      <h2>Shared responsibility</h2>
+      <p>
+        Users are responsible for account hygiene, prompt-level data minimization, and safeguarding access
+        credentials. Do not submit highly sensitive data unless explicitly approved by your organization.
+      </p>
+      <h2>Questions</h2>
+      <p>
+        For security posture questions, use the support or operator contact path in your onboarding
+        workflow. For active vulnerabilities, use the dedicated reporting page linked below.
+      </p>
+    </div>
+  );
+}
+
+export function LegalVulnerabilityContent() {
+  return (
+    <div className="legal-prose">
+      <p className="legal-stub-lead">{EFFECTIVE_NOTE}</p>
+      <h2>Report a vulnerability</h2>
+      <p>
+        We welcome responsible security reports related to atxFinance. If you believe you found a
+        vulnerability, report it privately through approved support or security channels.
+      </p>
+      <h2>Responsible disclosure expectations</h2>
+      <ul>
+        <li>Avoid actions that degrade service availability or compromise user data.</li>
+        <li>Do not access data that is not yours or exceed authorized test boundaries.</li>
+        <li>Provide reasonable time for investigation and remediation before public disclosure.</li>
+      </ul>
+      <h2>What to include in a report</h2>
+      <p>{VULNERABILITY_TIPS}</p>
+      <h2>Safe harbor intent</h2>
+      <p>
+        We do not pursue legal action for good-faith, coordinated research performed within these
+        expectations and applicable law. This statement does not authorize unlawful testing.
+      </p>
+      <h2>Response process</h2>
+      <p>
+        Reports are triaged by severity. We aim to acknowledge receipt promptly, request details if needed,
+        and communicate remediation progress when appropriate.
       </p>
     </div>
   );
