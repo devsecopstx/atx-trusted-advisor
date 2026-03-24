@@ -1,4 +1,9 @@
-import type { OpenApiOperation, OpenApiResponse, OpenApiSchema } from "@/lib/openapi/types";
+import type {
+  OpenApiMediaType,
+  OpenApiOperation,
+  OpenApiResponse,
+  OpenApiSchema
+} from "@/lib/openapi/types";
 
 type RouteMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
@@ -17,6 +22,48 @@ function jsonResponse(description: string, schemaName: string): OpenApiResponse 
     content: {
       "application/json": {
         schema: refSchema(schemaName)
+      }
+    }
+  };
+}
+
+const SESSION_401_EXAMPLES: NonNullable<OpenApiMediaType["examples"]> = {
+  session_required: {
+    summary: "No valid session (session-scoped route)",
+    description:
+      "Typical when the caller is unauthenticated or `xf_core_session` is missing/expired. Exact `error` strings vary.",
+    value: { error: "Unauthorized" }
+  }
+};
+
+const ADMIN_403_EXAMPLES: NonNullable<OpenApiMediaType["examples"]> = {
+  admin_role_required: {
+    summary: "Authenticated but not allowed (admin route)",
+    description:
+      "Session accepted; caller lacks `global_admin` or the route-specific admin gate. Exact `error` strings vary.",
+    value: { error: "Forbidden" }
+  }
+};
+
+function json401Session(): OpenApiResponse {
+  return {
+    description: "Missing or invalid session cookie.",
+    content: {
+      "application/json": {
+        schema: refSchema("ErrorResponse"),
+        examples: SESSION_401_EXAMPLES
+      }
+    }
+  };
+}
+
+function json403Admin(description: string, examples: NonNullable<OpenApiMediaType["examples"]> = ADMIN_403_EXAMPLES): OpenApiResponse {
+  return {
+    description,
+    content: {
+      "application/json": {
+        schema: refSchema("ErrorResponse"),
+        examples
       }
     }
   };
@@ -63,7 +110,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     ],
     responses: {
       "200": jsonResponse("Persona list response.", "PersonaListResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
+      "401": json401Session(),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
@@ -81,8 +128,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "201": jsonResponse("Persona created.", "PersonaResponseEnvelope"),
       "400": jsonResponse("Invalid persona payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "409": jsonResponse("Persona name conflict.", "ConflictErrorResponse"),
       "413": jsonResponse("Persona payload too large.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
@@ -92,8 +139,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "Get persona details with audit trail",
     responses: {
       "200": jsonResponse("Persona details.", "PersonaWithAuditTrailResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -112,8 +159,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("Persona updated.", "PersonaResponseEnvelope"),
       "400": jsonResponse("Invalid persona payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "409": jsonResponse("Persona name conflict.", "ConflictErrorResponse"),
       "413": jsonResponse("Persona payload too large.", "ErrorResponse"),
@@ -124,8 +171,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "Delete persona",
     responses: {
       "200": jsonResponse("Persona deleted.", "PersonaDeleteResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -134,8 +181,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "List xAI collection inventory",
     responses: {
       "200": jsonResponse("Collection inventory.", "PersonaCollectionsListResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "502": jsonResponse("Upstream xAI collections inventory failed.", "UpstreamErrorResponse")
     }
   },
@@ -143,8 +190,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "Get xAI collection stats (RAG index)",
     responses: {
       "200": jsonResponse("Collection stats with document/chunk/file counts.", "PersonaCollectionStatsResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Collection not found.", "ErrorResponse"),
       "502": jsonResponse("Upstream xAI collection lookup failed.", "UpstreamErrorResponse")
     }
@@ -163,8 +210,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("Collection created.", "PersonaCollectionCreateResponseEnvelope"),
       "400": jsonResponse("Invalid collection payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "413": jsonResponse("Collection payload too large.", "ErrorResponse"),
       "502": jsonResponse("Upstream xAI collection create failed.", "UpstreamErrorResponse")
     }
@@ -173,8 +220,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "Publish persona",
     responses: {
       "200": jsonResponse("Persona published.", "PersonaLifecycleMutationResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "409": jsonResponse("Persona already published.", "ErrorResponse"),
       "500": jsonResponse("Persona publish failed.", "ErrorResponse")
@@ -184,8 +231,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "Archive persona",
     responses: {
       "200": jsonResponse("Persona archived.", "PersonaLifecycleMutationResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "409": jsonResponse("Persona already archived.", "ErrorResponse"),
       "500": jsonResponse("Persona archive failed.", "ErrorResponse")
@@ -205,8 +252,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("Persona rolled back.", "PersonaLifecycleMutationResponseEnvelope"),
       "400": jsonResponse("Invalid rollback payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Persona or version not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -215,8 +262,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "List persona version history",
     responses: {
       "200": jsonResponse("Persona versions.", "PersonaVersionsResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
@@ -224,8 +271,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "Create and link xAI collection for persona",
     responses: {
       "200": jsonResponse("Persona collection linked.", "PersonaCollectionCreateLinkResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -244,8 +291,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("Linking attempt summary.", "PersonaCollectionLinkFilesResponseEnvelope"),
       "400": jsonResponse("Invalid payload or persona collection id missing.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -255,8 +302,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("Verification trigger result.", "PersonaVerifyCollectionResponseEnvelope"),
       "400": jsonResponse("Persona collection id missing.", "ErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -279,8 +326,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
         headers: xchatLimiterHeaders(false)
       },
       "400": jsonResponse("Invalid ask payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Persona/model selection not allowed for current role.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Persona/model selection not allowed for current role."),
       "404": jsonResponse("Requested persona not found.", "ErrorResponse"),
       "413": jsonResponse("Payload too large.", "ErrorResponse"),
       "429": {
@@ -322,7 +369,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("Saved xChat history list.", "XChatHistoryListResponseEnvelope"),
       "400": jsonResponse("Invalid history query.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse")
+      "401": json401Session()
     }
   },
   "GET /api/xchat/history/stats": {
@@ -330,7 +377,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("Saved xChat history stats.", "XChatHistoryStatsResponseEnvelope"),
       "400": jsonResponse("Invalid session user id.", "ErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse")
+      "401": json401Session()
     }
   },
   "POST /api/xchat/batch": {
@@ -365,8 +412,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": { description: "Batch job submitted; poll via GET /api/xchat/batch/{batchId}." },
       "400": jsonResponse("Invalid batch payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Admin role required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Admin role required."),
       "404": jsonResponse("Persona not found.", "ErrorResponse"),
       "500": jsonResponse("Batch submit failed.", "ErrorResponse")
     }
@@ -386,7 +433,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "201": jsonResponse("Feedback accepted.", "AppUserFeedbackResponse"),
       "400": jsonResponse("Invalid JSON or validation failed.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse")
+      "401": json401Session()
     }
   },
   "GET /api/recommendations": {
@@ -395,8 +442,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "App_user only (`canUserLogin`). Returns rows scoped to session `userId` and `tenantId` from collection `app_user_recommendations`.",
     responses: {
       "200": jsonResponse("Recommendation list.", "RecommendationsListResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid but login-eligible platform role is required.", "ErrorResponse")
+      "401": json401Session(),
+      "403": json403Admin("Session is valid but login-eligible platform role is required.")
     }
   },
   "POST /api/recommendations": {
@@ -414,8 +461,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "201": jsonResponse("Recommendation created.", "RecommendationResponseEnvelope"),
       "400": jsonResponse("Invalid JSON or validation failed.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid but login-eligible platform role is required.", "ErrorResponse")
+      "401": json401Session(),
+      "403": json403Admin("Session is valid but login-eligible platform role is required.")
     }
   },
   "GET /api/recommendations/{recommendationId}": {
@@ -430,8 +477,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     ],
     responses: {
       "200": jsonResponse("Recommendation detail.", "RecommendationResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid but login-eligible platform role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid but login-eligible platform role is required."),
       "404": jsonResponse("Not found or not owned by the caller.", "ErrorResponse")
     }
   },
@@ -449,8 +496,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("User list response.", "AdminUsersListResponseEnvelope"),
       "400": jsonResponse("Invalid query payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
@@ -468,8 +515,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "201": jsonResponse("User created.", "AdminUserResponseEnvelope"),
       "400": jsonResponse("Invalid user payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "409": jsonResponse("Duplicate email.", "ConflictErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -479,8 +526,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("User details response.", "AdminUserWithAuditTrailResponseEnvelope"),
       "400": jsonResponse("Invalid user id.", "ErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("User not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -499,8 +546,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("User updated.", "AdminUserResponseEnvelope"),
       "400": jsonResponse("Invalid user id or payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("User not found.", "ErrorResponse"),
       "409": jsonResponse("Duplicate email.", "ConflictErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
@@ -511,8 +558,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("User deleted.", "AdminUserDeleteResponseEnvelope"),
       "400": jsonResponse("Invalid user id.", "ErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("User not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -531,8 +578,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("User email updated.", "AdminUserUpdateEmailResponseEnvelope"),
       "400": jsonResponse("Invalid user id or payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
@@ -550,8 +597,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("User role updated.", "AdminUserUpdateRoleResponseEnvelope"),
       "400": jsonResponse("Invalid user id or payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
@@ -569,8 +616,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("User plan updated.", "AdminUserUpdatePlanResponseEnvelope"),
       "400": jsonResponse("Invalid user id or payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
@@ -578,8 +625,8 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     summary: "Get user admin settings",
     responses: {
       "200": jsonResponse("User settings.", "UserAdminSettingsResponseEnvelope"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("User settings not found.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
@@ -598,8 +645,95 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     responses: {
       "200": jsonResponse("User settings updated.", "UserAdminSettingsResponseEnvelope"),
       "400": jsonResponse("Invalid settings payload.", "ValidationErrorResponse"),
-      "401": jsonResponse("Missing or invalid session cookie.", "ErrorResponse"),
-      "403": jsonResponse("Session is valid, but admin role is required.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
+  "GET /api/openapi": {
+    summary: "Download OpenAPI 3.1 current-state inventory",
+    responses: {
+      "200": {
+        description: "Full OpenAPI document as JSON (used for codegen and review).",
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              additionalProperties: true,
+              description: "OpenAPI 3.1 root (`openapi`, `info`, `paths`, `components`, …)."
+            },
+            examples: {
+              inventory_preview: {
+                summary: "Inventory root (truncated)",
+                description:
+                  "Production payloads are large. Protected operations embed `401` (session) and `403` (admin) with `examples` under `content.application/json`.",
+                value: {
+                  openapi: "3.1.0",
+                  info: {
+                    title: "atxFinance HTTP API — current-state inventory",
+                    version: "0.0.0"
+                  },
+                  paths: {
+                    "/api/health": {
+                      get: {
+                        operationId: "atx_health_get",
+                        responses: {
+                          "200": { description: "Successful response." }
+                        }
+                      }
+                    },
+                    "/api/personas": {
+                      get: {
+                        operationId: "atx_personas_list",
+                        responses: {
+                          "401": {
+                            description: "Missing or invalid session cookie.",
+                            content: {
+                              "application/json": {
+                                examples: {
+                                  session_required: { value: { error: "Unauthorized" } }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "/api/admin/bootstrap-status": {
+                      get: {
+                        operationId: "atx_admin_bootstrap_status_get",
+                        responses: {
+                          "401": {
+                            description: "Missing or invalid session cookie.",
+                            content: {
+                              "application/json": {
+                                examples: {
+                                  session_required: { value: { error: "Unauthorized" } }
+                                }
+                              }
+                            }
+                          },
+                          "403": {
+                            description: "Session is valid, but admin role is required.",
+                            content: {
+                              "application/json": {
+                                examples: {
+                                  admin_role_required: { value: { error: "Forbidden" } }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "400": jsonResponse("Malformed request (rare for GET).", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   }

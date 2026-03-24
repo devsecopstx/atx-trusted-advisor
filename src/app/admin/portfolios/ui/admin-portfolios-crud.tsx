@@ -30,6 +30,10 @@ const money = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0
 });
 
+function userSettingsHref(userId: string): string {
+  return `/admin/manage_account?userId=${encodeURIComponent(userId)}`;
+}
+
 export function AdminPortfoliosCrud() {
   const [rows, setRows] = useState<PortfolioRow[]>([]);
   const [status, setStatus] = useState("Ready — tap refresh");
@@ -119,7 +123,13 @@ export function AdminPortfoliosCrud() {
     const d = draft(row._id);
     const m = mergeRow(row);
     const body: Record<string, unknown> = {};
-    if (d.name !== undefined) body.name = m.name;
+    if (d.name !== undefined) {
+      const trimmed = (m.name ?? "").trim();
+      if (trimmed.length === 0) {
+        return null;
+      }
+      body.name = trimmed;
+    }
     if (d.ext_broker_ref !== undefined) {
       const v = (m.ext_broker_ref ?? "").trim();
       body.ext_broker_ref = v.length > 0 ? v : null;
@@ -153,6 +163,19 @@ export function AdminPortfoliosCrud() {
   const saveAllChanges = async () => {
     if (!hasDirty) {
       setStatus("No changes to save");
+      return;
+    }
+    const emptyNameRow = rows.find((r) => {
+      const d = draft(r._id);
+      if (d.name === undefined) {
+        return false;
+      }
+      return mergeRow(r).name.trim().length === 0;
+    });
+    if (emptyNameRow) {
+      setStatus(
+        `Portfolio name cannot be empty — restore text in the first column for portfolio _id ${emptyNameRow._id.slice(0, 8)}…`
+      );
       return;
     }
     setLoading(true);
@@ -249,20 +272,26 @@ export function AdminPortfoliosCrud() {
 
       <h3>All tenant portfolios</h3>
       <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-        Edit portfolio name, broker ref, and broker type (slugs from the{" "}
+        <strong>Portfolio name</strong> is the first column — type directly in the field, then press{" "}
+        <strong>Save changes</strong> (same flow after <code className="font-mono text-xs">seed:admin</code>).{" "}
+        <strong>User</strong> shows display name + id: both link to{" "}
+        <Link className="underline font-medium" href="/admin/manage_account">
+          user settings
+        </Link>{" "}
+        (not a dropdown — books are listed here; pick the user to open their admin profile). Also edit broker ref /
+        type (slugs from the{" "}
         <Link className="underline font-medium" href="/admin/brokers">
           broker catalog
         </Link>
-        — manage display names, descriptions, and icon URLs there). Choose one default per user (radio), then{" "}
-        <strong>Save changes</strong>. Tenant org key is read-only (instance bucket).
+        ). Choose one default per user (radio). Tenant org key is read-only.
       </p>
 
       <div className="crud-table-wrap">
         <table className="crud-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>User</th>
+              <th title="Editable portfolio / book name">Name</th>
+              <th title="Links open User settings for that core user">User</th>
               <th>Tenant org key</th>
               <th>Broker ref</th>
               <th>Broker type</th>
@@ -292,15 +321,22 @@ export function AdminPortfoliosCrud() {
                       aria-label="Portfolio name"
                     />
                   </td>
-                  <td style={{ maxWidth: 200 }}>
-                    <div className="font-semibold text-sm">{row.userDisplayName}</div>
-                    <div
-                      className="font-mono break-all opacity-70"
-                      style={{ fontSize: "0.65rem" }}
-                      title={row.userId}
+                  <td style={{ maxWidth: 220 }}>
+                    <Link
+                      className="login-xoptions-link font-semibold text-sm"
+                      href={userSettingsHref(row.userId)}
+                      title="Open user settings"
+                    >
+                      {row.userDisplayName || "User"}
+                    </Link>
+                    <Link
+                      className="font-mono break-all opacity-75 hover:opacity-100 underline-offset-2 hover:underline"
+                      href={userSettingsHref(row.userId)}
+                      style={{ fontSize: "0.65rem", display: "block", marginTop: "0.12rem" }}
+                      title="User id — same link as display name"
                     >
                       {row.userId}
-                    </div>
+                    </Link>
                     {row.userEmail ? (
                       <div className="status-text break-all" style={{ fontSize: "0.75rem", marginTop: "0.15rem" }}>
                         {row.userEmail}

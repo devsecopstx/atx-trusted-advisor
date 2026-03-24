@@ -33,7 +33,7 @@ export type OpenApiSchema = {
 
 export type OpenApiMediaType = {
   schema?: OpenApiSchema;
-  examples?: Record<string, { summary?: string; value: unknown }>;
+  examples?: Record<string, { summary?: string; description?: string; value: unknown }>;
 };
 
 export type OpenApiParameter = {

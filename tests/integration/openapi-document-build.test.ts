@@ -60,4 +60,44 @@ describe("buildCurrentStateOpenApi", () => {
     );
     expect(postPersonas?.responses?.["409"]).toBeDefined();
   });
+
+  it("uses atx_<resource>_<action> operationIds for representative routes", () => {
+    const doc = buildCurrentStateOpenApi();
+    expect(doc.paths["/api/health"]?.get?.operationId).toBe("atx_health_get");
+    expect(doc.paths["/api/openapi"]?.get?.operationId).toBe("atx_openapi_get");
+    expect(doc.paths["/api/personas"]?.get?.operationId).toBe("atx_personas_list");
+    expect(doc.paths["/api/portfolios/{portfolioId}"]?.get?.operationId).toBe("atx_portfolio_get");
+  });
+
+  it("includes 401 examples on session routes (overrides and defaults)", () => {
+    const doc = buildCurrentStateOpenApi();
+    const personas401 = doc.paths["/api/personas"]?.get?.responses?.["401"]?.content?.["application/json"]?.examples;
+    expect(personas401?.session_required).toBeDefined();
+    const rec401 =
+      doc.paths["/api/recommendations"]?.get?.responses?.["401"]?.content?.["application/json"]?.examples;
+    expect(rec401?.session_required).toBeDefined();
+  });
+
+  it("includes 403 examples on admin routes", () => {
+    const doc = buildCurrentStateOpenApi();
+    const ex =
+      doc.paths["/api/admin/bootstrap-status"]?.get?.responses?.["403"]?.content?.["application/json"]?.examples;
+    expect(ex?.admin_role_required).toBeDefined();
+  });
+
+  it("documents GET /api/openapi with an inventory preview example (incl. 401/403 doc hints)", () => {
+    const doc = buildCurrentStateOpenApi();
+    const ex = doc.paths["/api/openapi"]?.get?.responses?.["200"]?.content?.["application/json"]?.examples;
+    expect(ex?.inventory_preview).toBeDefined();
+    const preview = ex?.inventory_preview?.value as { paths?: Record<string, unknown> };
+    expect(preview?.paths?.["/api/personas"]).toBeDefined();
+    expect(preview?.paths?.["/api/admin/bootstrap-status"]).toBeDefined();
+  });
+
+  it("registers cluster success schemas in components", () => {
+    const doc = buildCurrentStateOpenApi();
+    expect(doc.components?.schemas?.AtxSessionJsonSuccess).toBeDefined();
+    expect(doc.components?.schemas?.AtxAdminJsonSuccess).toBeDefined();
+    expect(doc.components?.schemas?.AtxPublicJsonSuccess).toBeDefined();
+  });
 });

@@ -1,4 +1,5 @@
 import { APP_VERSION } from "@/lib/app-version";
+import { ATX_CLUSTER_OPENAPI_SCHEMAS } from "@/lib/openapi/cluster-schemas";
 import {
     CURRENT_STATE_COMPONENT_SCHEMAS,
     getCurrentStateOperationOverride
@@ -580,25 +581,48 @@ function inferSummary(method: RouteMethod, path: string): string {
 }
 
 /**
- * Produces stable operationIds for codegen: atx_<action>_<resource>.
- * Examples: atx_submit_user_feedback, atx_list_access_requests, atx_get_portfolio.
+ * Stable operationIds for codegen: `atx_<resource>_<action>` (resource path snake, then HTTP verb role).
+ * Examples: `atx_health_get`, `atx_admin_access_requests_list`, `atx_portfolio_get`, `atx_personas_create`.
  */
 function toOperationId(method: RouteMethod, path: string): string {
-  const key = `${method} ${path}`;
-  const override = OPERATION_ID_OVERRIDES[key];
-  if (override) {
-    return override;
-  }
   const hasPathParam = /{[^}]+}/.test(path);
-  const action = methodToAction(method, hasPathParam);
-  const resource = pathToResource(path, action === "list");
-  return `atx_${action}_${resource}`;
+  const action = methodToAction(method, path, hasPathParam);
+  const usePlural = shouldUsePluralResourceSegment(action, path);
+  const resource = pathToResource(path, usePlural);
+  return `atx_${resource}_${action}`;
 }
 
-function methodToAction(method: RouteMethod, hasPathParam: boolean): string {
+function shouldUsePluralResourceSegment(action: string, path: string): boolean {
+  if (action === "list") {
+    return true;
+  }
+  if (action !== "create") {
+    return false;
+  }
+  const stripped = path.replace("/api/", "").replace(/\{[^}]+}/g, "");
+  const last =
+    stripped
+      .split("/")
+      .filter(Boolean)
+      .pop()
+      ?.replace(/-/g, "_") ?? "";
+  if (!last) {
+    return false;
+  }
+  return toSingular(last) !== last;
+}
+
+function methodToAction(method: RouteMethod, path: string, hasPathParam: boolean): string {
   switch (method) {
     case "GET":
-      return hasPathParam ? "get" : "list";
+      if (hasPathParam) {
+        return "get";
+      }
+      {
+        const last = path.split("/").filter(Boolean).pop()?.replace(/-/g, "_") ?? "";
+        const sing = toSingular(last);
+        return sing !== last ? "list" : "get";
+      }
     case "POST":
       return "create";
     case "PUT":
@@ -668,20 +692,6 @@ function toPlural(singular: string): string {
   return singular + "s";
 }
 
-/** Explicit operationIds for routes where convention would produce wrong names. */
-const OPERATION_ID_OVERRIDES: Record<string, string> = {
-  "POST /api/user-feedback": "atx_submit_user_feedback",
-  "POST /api/access-requests": "atx_submit_access_request",
-  "GET /api/admin/access-requests": "atx_list_access_requests",
-  "POST /api/admin/access-requests": "atx_create_access_request",
-  "GET /api/admin/access-requests/{requestId}": "atx_get_access_request",
-  "PATCH /api/admin/access-requests/{requestId}": "atx_update_access_request",
-  "PUT /api/admin/access-requests/{requestId}": "atx_update_access_request",
-  "DELETE /api/admin/access-requests/{requestId}": "atx_delete_access_request",
-  "GET /api/portfolios/{portfolioId}": "atx_get_portfolio",
-  "PATCH /api/portfolios/{portfolioId}": "atx_update_portfolio"
-};
-
 function extractPathParameters(path: string): OpenApiParameter[] {
   const matches = path.matchAll(/{([^/{}]+)}/g);
   const params: OpenApiParameter[] = [];
@@ -699,13 +709,41 @@ function extractPathParameters(path: string): OpenApiParameter[] {
   return params;
 }
 
+const SESSION_401_EXAMPLES = {
+  session_required: {
+    summary: "No valid session (session-scoped route)",
+    description:
+      "Typical when the caller is unauthenticated or `xf_core_session` is missing/expired. Exact `error` strings vary by route.",
+    value: { error: "Unauthorized" }
+  }
+} as const;
+
+const ADMIN_403_EXAMPLES = {
+  admin_role_required: {
+    summary: "Authenticated but not allowed (admin route)",
+    description:
+      "Session cookie accepted; caller lacks `global_admin` or the route-specific admin gate. Exact `error` strings vary.",
+    value: { error: "Forbidden" }
+  }
+} as const;
+
+function successSchemaRefForAuth(auth: AuthScope): string {
+  if (auth === "public") {
+    return "#/components/schemas/AtxPublicJsonSuccess";
+  }
+  if (auth === "admin") {
+    return "#/components/schemas/AtxAdminJsonSuccess";
+  }
+  return "#/components/schemas/AtxSessionJsonSuccess";
+}
+
 function buildResponses(auth: AuthScope): Record<string, OpenApiResponse> {
   const responses: Record<string, OpenApiResponse> = {
     "200": {
       description: "Successful response.",
       content: {
         "application/json": {
-          schema: { $ref: "#/components/schemas/ApiSuccessPayload" }
+          schema: { $ref: successSchemaRefForAuth(auth) }
         }
       }
     },
@@ -732,7 +770,8 @@ function buildResponses(auth: AuthScope): Record<string, OpenApiResponse> {
       description: "Missing or invalid session cookie.",
       content: {
         "application/json": {
-          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          schema: { $ref: "#/components/schemas/ErrorResponse" },
+          examples: SESSION_401_EXAMPLES
         }
       }
     };
@@ -743,7 +782,8 @@ function buildResponses(auth: AuthScope): Record<string, OpenApiResponse> {
       description: "Session is valid, but admin role is required.",
       content: {
         "application/json": {
-          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          schema: { $ref: "#/components/schemas/ErrorResponse" },
+          examples: ADMIN_403_EXAMPLES
         }
       }
     };
@@ -839,11 +879,11 @@ export function buildCurrentStateOpenApi(): OpenApiDocument {
         "- `user-feedback` is separate from `xchat` (user feedback was previously mis-tagged).",
         "- Prefer tag `admin-access-requests` over a generic “admin-access” label for `/api/admin/access-requests`.",
         "- Canonical product name in titles: **atxFinance** (camelCase).",
-        "- For customer-facing public docs, consider a future `operationId` prefix such as `atx_` + resource + action for stable codegen.",
+        "- **operationId** convention: `atx_<resource>_<action>` (snake_case resource path from `/api`, then `get` | `list` | `create` | `update` | `delete` | …).",
         "",
-        "**Suggested next spec hardening**",
-        "- Replace `ApiSuccessPayload` placeholders with Zod-derived schemas per route cluster.",
-        "- Add `GET /api/openapi` response examples for 401/403 for session vs admin routes."
+        "**Success schemas (route clusters)**",
+        "- `AtxPublicJsonSuccess`, `AtxSessionJsonSuccess`, `AtxAdminJsonSuccess` replace the old `ApiSuccessPayload` placeholder; Zod mirrors live in `src/lib/openapi/cluster-schemas.ts`.",
+        "- Session vs admin **401** / **403** responses include `examples` for codegen and doc tools (see built spec under `GET /api/openapi`)."
       ].join("\n")
     },
     servers: [
@@ -873,8 +913,9 @@ export function buildCurrentStateOpenApi(): OpenApiDocument {
           type: "object",
           additionalProperties: true,
           description:
-            "Broad placeholder for successful JSON payloads in current-state docs. Replace with strict per-route schemas over time."
+            "Legacy alias for loosely documented successes; prefer `AtxPublicJsonSuccess` / `AtxSessionJsonSuccess` / `AtxAdminJsonSuccess`."
         },
+        ...ATX_CLUSTER_OPENAPI_SCHEMAS,
         GenericRequestBody: {
           type: "object",
           additionalProperties: true,

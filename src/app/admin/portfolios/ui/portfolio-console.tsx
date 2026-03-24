@@ -2,23 +2,20 @@
 
 import Link from "next/link";
 
-import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "@/app/admin/lib/broker-import-description";
+import { USER_PRODUCT_WHITELABEL_SUBLINE } from "@/app/ui/product-brand-constants";
 
 import { AdminPortfoliosCrud } from "./admin-portfolios-crud";
 
 export function PortfolioConsole() {
   return (
     <section className="panel stack-gap">
-      <article className="surface-card xf-widget section-card">
-        <h3 className="text-sm font-semibold" style={{ marginBottom: "0.35rem" }}>
-          Broker import
-        </h3>
-        <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-          {ADMIN_BROKER_IMPORT_DESCRIPTION}
-        </p>
-        <Link className="cta cta-primary" href="/admin/broker-import">
-          Open broker import hub
+      <article className="surface-card xf-widget section-card" style={{ padding: "0.85rem 1rem" }}>
+        <Link className="cta cta-primary" href="/admin/brokers">
+          Manage Brokers
         </Link>
+        <p className="xf-whitelabel-sub" style={{ margin: "0.4rem 0 0" }}>
+          {USER_PRODUCT_WHITELABEL_SUBLINE}
+        </p>
       </article>
       <AdminPortfoliosCrud />
     </section>
