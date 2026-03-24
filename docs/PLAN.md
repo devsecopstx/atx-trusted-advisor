@@ -1,6 +1,69 @@
 # Backlog & migration notes
 
-**Docs index:** [README.md](./README.md). Phase 1 multi-agent: [xchat/atx-multi-agent.md](./xchat/atx-multi-agent.md). BFF: [ops/api-consolidation-spring-backend.md](./ops/api-consolidation-spring-backend.md).
+**Docs index:** [README.md](./README.md). Phase 1 multi-agent: [atx-xchat/atx-multi-agent.md](./atx-xchat/atx-multi-agent.md). BFF: [atx-sre-ops/api-consolidation-spring-backend.md](./atx-sre-ops/api-consolidation-spring-backend.md).
+
+---
+
+## Phase 1 — xChat → xStrategyBuilder multi-agent (next chunks)
+
+**Canonical:** [atx-xchat/atx-multi-agent.md](./atx-xchat/atx-multi-agent.md) (locked decisions) · [atx-multi-agent-design-loop.mmd](./atx-xchat/atx-multi-agent-design-loop.mmd) (flow). **Routing:** [context-routing-multi-agent-policy.md](./atx-xchat/context-routing-multi-agent-policy.md) · **BFF cutover:** [api-consolidation-spring-backend.md](./atx-sre-ops/api-consolidation-spring-backend.md).
+
+Chunk work in this **order** so APIs exist before UI and observability: **Backend (orchestrator)** → **Backend (LLM + artifact)** → **SRE / platform** → **Frontend** → **Reviewer**. Subgraphs in the design-loop diagram map roughly: **orchestrator** → Chunk 1; **llm** + parse/handoff → Chunk 2; **ingress + scale + errors** → Chunk 3; **handoff UI** → Chunk 4; cross-cutting **Reviewer** → Chunk 5.
+
+### Chunk 1 — Backend: orchestrator (state machine)
+
+| Step | Deliverable | Design-loop anchor |
+|------|-------------|-------------------|
+| 1.1 | Mongo job model + indexes (`userId`, `emailAccountId`, `jobId` / `correlationId`, `step`, slots, status, idempotency fields) | Load job / session, Create job row |
+| 1.2 | Spring API: create job, post user turn, read status; **hourly cap** + soft warn per `atx-multi-agent.md` | Slots complete?, Next prompt step, Persist step |
+| 1.3 | Redis: hot keys + rate-limit counters scoped to isolation rules | Scale & safety (RL) |
+| 1.4 | JVM tests (repository + controller); no Next dependency | — |
+
+**Exit criteria:** Slot-filling loop works with mocked finalizer; idempotent retries safe on duplicate `Idempotency-Key` / hash.
+
+**Shipped (initial):** Kotlin **`StrategyJobService`** + **`StrategyJobsController`** (`POST /api/strategy-jobs`, `GET /api/strategy-jobs/{jobId}`, `POST .../turns`), Mongo **`strategy_jobs`**, Mongo-count **hourly rate limit** + **24h idempotency** on `Idempotency-Key`, Next **BFF proxy** + **503** when backend off, **`StrategyJobServiceTest`**. **1.3 Redis** still open (optional hot-path optimization; caps work without it).
+
+### Chunk 2 — Backend: LLM tier + artifact v1
+
+| Step | Deliverable | Design-loop anchor |
+|------|-------------|-------------------|
+| 2.1 | Context bundle: retrieval vs tools vs multi-agent per policy; clamp `agent_count` | Route by intent, RAG / TOOL / MA |
+| 2.2 | Async xAI call path by default; sync only behind product flag | POST ask / worker |
+| 2.3 | Server-side **artifact v1** validation (Markdown + fenced JSON); **structured error codes** on parse failure (no silent generic chat) | Structured parse OK?, Clarify or retry |
+| 2.4 | `bff-proxy-routes.ts` + `docs/atx-sre-ops/atxfinance-backend-http-api.md` + `tests/smoke/backend-http-api-parity.test.ts` | BFF-only traffic |
+
+**Exit criteria:** Happy path produces a validated handoff payload + stable `jobId` / `correlationId`; failure paths return documented codes.
+
+### Chunk 3 — SRE / platform
+
+| Step | Deliverable | Design-loop anchor |
+|------|-------------|-------------------|
+| 3.1 | Env + secrets matrix for new services (Redis, optional queue); document in `DEVELOPMENT.md` | Ingress / tenancy |
+| 3.2 | Observability: logs include `correlationId`, `jobId`, `personaId`, `effectiveModel`; **no raw PII** in operational logs | OBS |
+| 3.3 | If p95 > SLO: queue / Pub/Sub **off HTTP thread** + retry policy (align with `atx-multi-agent.md` §3) | Queue / Pub/Sub |
+| 3.4 | Per-tenant rate limits + plan caps enforced at edge of orchestrator; 401/403 fail-closed | RL, E401 |
+
+**Exit criteria:** Staging runbook steps + how to trace a single `correlationId` through logs.
+
+### Chunk 4 — Frontend
+
+| Step | Deliverable | Design-loop anchor |
+|------|-------------|-------------------|
+| 4.1 | **xStrategyBuilder** — UI only: poll (or push) job status; render artifact; deep link `jobId` / `correlationId` | xStrategyBuilder handoff |
+| 4.2 | **xChat** (optional): thin entry to start/resume a job — **no client-side orchestration state** | User message shell |
+| 4.3 | Error UX mapped to backend codes (timeout, retry-safe, degrade) | errors subgraph |
+
+**Exit criteria:** No strategy state duplicated in `localStorage`; loading/error/empty states reviewed (see `atxdesign-review` for Core MVP scope).
+
+### Chunk 5 — Reviewer / governance
+
+| Step | Deliverable | Notes |
+|------|-------------|-------|
+| 5.1 | OpenAPI / route parity | `generate-docs` + integration tests for new APIs |
+| 5.2 | `atxdesign-review-audit` | Gaps vs replay/lineage documented; add `correlationId` on inference store if compliance requires |
+| 5.3 | Product doc parity | `xchat-tools-guide.md`, `context-routing-multi-agent-policy.md`, this PLAN |
+
+**Open question (resolve before `user_history_agent`):** The § *Phase: xChat chat_history → XAI collection (`user_history_agent`)* backlog below still assumes per-user bootstrap xAI collections; [atx-multi-agent.md](./atx-xchat/atx-multi-agent.md) Phase 1 locks **TEAM_XAI + `XAI_TEAM_ID`** only — reconcile targets or defer that phase until policy allows per-user collection writes.
 
 ---
 
@@ -9,8 +72,8 @@
 | Area | Status | Notes |
 |------|--------|-------|
 | **BFF frontend→backend** | ✅ Verified | All product API routes call `proxyRequestToBackend` first; cookie forwarded; same-origin. `BFF_PROXY_ROUTES` ↔ Kotlin parity in smoke tests. |
-| **Auth / OAuth** | Next authoritative | OAuth callback (`/api/auth/x/callback`) on Next; Spring reads `xf_core_session`. Cutover to Spring callback deferred until API migration complete. See [auth-oauth-spring-dual-run.md](ops/auth-oauth-spring-dual-run.md). |
-| **Deploy** | Manual only | Staging + prod require `workflow_dispatch`; no auto-deploy on push. Configure required reviewers in Settings → Environments. |
+| **Auth / OAuth** | Next authoritative | OAuth callback (`/api/auth/x/callback`) on Next; Spring reads `xf_core_session`. Cutover to Spring callback deferred until API migration complete. See [auth-oauth-spring-dual-run.md](./atx-sre-ops/auth-oauth-spring-dual-run.md). |
+| **Deploy** | See workflow | Current gates: `AGENTS.md` + [`.github/workflows/deploy-cloud-run.yml`](../.github/workflows/deploy-cloud-run.yml) (staging vs manual prod). |
 | **CI gate** | ✅ Pass | Lint, typecheck, build, tests green. |
 
 ---

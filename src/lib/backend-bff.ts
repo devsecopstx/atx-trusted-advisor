@@ -74,6 +74,20 @@ export const nextBffApi = {
       methods: ["GET"]
     }
   },
+  strategyJobs: {
+    index: {
+      pathTemplate: "/api/strategy-jobs",
+      methods: ["POST"]
+    },
+    byId: {
+      pathTemplate: "/api/strategy-jobs/{jobId}",
+      methods: ["GET"]
+    },
+    turns: {
+      pathTemplate: "/api/strategy-jobs/{jobId}/turns",
+      methods: ["POST"]
+    }
+  },
   userFeedback: {
     post: {
       pathTemplate: "/api/user-feedback",
@@ -207,6 +221,14 @@ export async function proxyRequestToBackend(request: Request): Promise<Response 
   const accept = request.headers.get("accept");
   if (accept) {
     headers.set("accept", accept);
+  }
+  const idempotencyKey = request.headers.get("idempotency-key");
+  if (idempotencyKey) {
+    headers.set("idempotency-key", idempotencyKey);
+  }
+  const correlationId = request.headers.get("x-correlation-id");
+  if (correlationId) {
+    headers.set("x-correlation-id", correlationId);
   }
 
   const init: RequestInit & { duplex?: "half" } = {

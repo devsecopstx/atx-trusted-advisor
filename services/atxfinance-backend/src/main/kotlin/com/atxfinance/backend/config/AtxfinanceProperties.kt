@@ -29,4 +29,8 @@ data class AtxfinanceProperties(
     val tenantPortfolioOrgKey: String = "org-atx-finance",
     val maxWatchlistSymbols: Int = 75,
     val maxWatchlistSymbolsPerPatch: Int = 20,
+    /** Phase 1 multi-agent strategy job rows (orchestrator). */
+    val strategyJobsCollection: String = "strategy_jobs",
+    val strategyMaxJobsHourly: Int = 12,
+    val strategySoftWarnJobsHourly: Int = 8,
 )

@@ -1,6 +1,6 @@
 # Audit lineage, BFF, and control gaps (atxfinance)
 
-**Index:** [`docs/README.md`](../README.md) · **Audit skill:** [`.cursor/skills/xdesign-review-audit/SKILL.md`](../../.cursor/skills/xdesign-review-audit/SKILL.md)
+**Index:** [`docs/README.md`](../README.md) · **Audit skill:** [`.cursor/skills/atxdesign-review-audit/SKILL.md`](../../.cursor/skills/atxdesign-review-audit/SKILL.md)
 
 This document maps **repository reality** to the **xdesign-review-audit** skill: what is implemented today, what is tested, and what remains for regulatory-grade replay / non-repudiation.
 
@@ -63,4 +63,4 @@ Document this difference in runbooks when debugging “missing” rows across en
 - [`docs/README.md`](../README.md) — full docs index
 - [`api-consolidation-spring-backend.md`](./api-consolidation-spring-backend.md) — BFF migration and side-effect parity
 - [`atxfinance-backend-http-api.md`](./atxfinance-backend-http-api.md) — HTTP surface including admin audit
-- [`.cursor/skills/xdesign-review-audit/CHECKLIST.md`](../../.cursor/skills/xdesign-review-audit/CHECKLIST.md) — reviewer checklist
+- [`.cursor/skills/atxdesign-review-audit/CHECKLIST.md`](../../.cursor/skills/atxdesign-review-audit/CHECKLIST.md) — reviewer checklist

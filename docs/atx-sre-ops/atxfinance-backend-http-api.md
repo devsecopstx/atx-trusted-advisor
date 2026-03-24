@@ -62,6 +62,16 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 | GET | `/api/strategy-options/expirations` | Query `underlying` (required). **200** `{ underlying, expirationDates }` or **400** / **500** on Yahoo failure. |
 | GET | `/api/strategy-options` | Query `underlying`, `expiration`, optional `strike`. **200** option chain JSON (Yahoo when available, else synthetic model). **401** if unauthenticated. |
 
+## Strategy jobs (Phase 1 orchestrator, Mongo)
+
+Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `tenantId` + `emailAccountId`** (body `emailAccountId` optional; defaults to normalized session email or `"primary"`). Collection **`strategy_jobs`** (override `STRATEGY_JOBS_COLLECTION`). Rate limit: **`STRATEGY_MAX_JOBS_HOURLY`** (default **12**) creations per scope per rolling hour — **429** `rate_limited`. **`STRATEGY_SOFT_WARN_JOBS_HOURLY`** (default **8**) surfaces `meta.softWarn` on **201**. Optional header **`Idempotency-Key`**: replay within **24h** returns **200** `{ data, meta: { idempotentReplay: true } }`.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/strategy-jobs` | **201** `{ "data", "meta" }` — starts slot collection (`status`: `collecting`). **200** idempotent replay. **429** rate limited. |
+| GET | `/api/strategy-jobs/{jobId}` | **200** `{ "data" }` job state, `nextPrompt` / `nextChoices` for current slot, or **404**. |
+| POST | `/api/strategy-jobs/{jobId}/turns` | Body `{ "message": string }` (free-text slots) or `{ "choice": number }` (1-based for numbered slots). **200** `{ "data" }`; **400** `job_not_collecting` / `invalid_turn_payload`; **404** not found. When all slots filled, `status` becomes **`slots_complete`** (LLM finalizer = Chunk 2). |
+
 ## User feedback
 
 | Method | Path | Purpose |

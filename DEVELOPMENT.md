@@ -44,6 +44,7 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 - **Runtime** — **Kotlin**, **Spring Boot**, **JDK 21**; build with **Gradle** (`services/atxfinance-backend`, `gradlew`).
 - **Role** — Fault-tolerant scheduler/worker surface (ShedLock + Mongo, Pub/Sub integration path, observability hooks); **not** a replacement for Next.js product APIs.
 - **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`docs/atx-sre-ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
+- **Strategy jobs (Phase 1 orchestrator)** — Mongo **`strategy_jobs`** (override **`STRATEGY_JOBS_COLLECTION`**). Rolling hourly create cap **`STRATEGY_MAX_JOBS_HOURLY`** (default 12) and soft-warn threshold **`STRATEGY_SOFT_WARN_JOBS_HOURLY`** (default 8). Next BFF proxies **`/api/strategy-jobs`** to Spring when **`ATXFINANCE_BACKEND_ORIGIN`** is set; without BFF, those routes return **503**.
 - **Container** — Repo-root **`Dockerfile`** builds the JAR from `services/atxfinance-backend`; **`docker-compose.yml`** wires `atxfinance-backend` + `mongo:8`.
 
 ### Integrations (cross-cutting)

@@ -4,7 +4,7 @@ Coordination file for multi-agent work. **If you change an API or app_user contr
 
 ## Live status (edit as work progresses)
 
-- **Backend:** Auth/session migration to Spring per `docs/ops/api-consolidation-spring-backend.md` (callback + PKCE ownership; dual-run).
+- **Backend:** Auth/session migration to Spring per `docs/atx-sre-ops/api-consolidation-spring-backend.md` (callback + PKCE ownership; dual-run).
 - **Frontend:** Login / OAuth entry UX; follow `.cursor/rules/xfinance-branding.mdc` and `AGENTS.md`.
 - **Reviewer:** Scope + contracts vs `atx-frontend` / `atx-backend` agent YAML; branding via **xfinance-branding** (not `feature-branding.md`).
 
@@ -23,7 +23,7 @@ Browser auth is **X OAuth redirect**, not JSON email/password. Inventory matches
 | POST | `/api/auth/link-email` | Link email when X profile lacks it (body per route). |
 
 **Approved cutover contract** (Spring authority, cookies, PKCE/state in Redis, failure redirects):  
-`docs/ops/api-consolidation-spring-backend.md` → section **Auth callback contract (approved)**.
+`docs/atx-sre-ops/api-consolidation-spring-backend.md` → section **Auth callback contract (approved)**.
 
 There is **no** shipped `POST /api/v1/auth/login` in this repo; do not build the UI against that path unless backend adds it and updates this file.
 
@@ -49,5 +49,5 @@ There is **no** shipped `POST /api/v1/auth/login` in this repo; do not build the
 
 ## Related
 
-- `docs/ops/api-consolidation-spring-backend.md` — migration board + auth topology.
-- `docs/ops/atxfinance-backend-http-api.md` — Spring HTTP surface as it lands.
+- `docs/atx-sre-ops/api-consolidation-spring-backend.md` — migration board + auth topology.
+- `docs/atx-sre-ops/atxfinance-backend-http-api.md` — Spring HTTP surface as it lands.
