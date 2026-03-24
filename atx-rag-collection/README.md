@@ -23,7 +23,7 @@ Aligned with **`.cursor/agents/*.yaml`** for tooling parity. These files are **n
 | Key | Notes |
 | --- | --- |
 | Top comment | First line: `# atx-rag-collection/atx-personas-trusted-family/<stem>.yaml` |
-| `id` / `name` | Match filename stem (e.g. `atx-legal-advisor`) |
+| `id` / `name` | Match filename stem exactly (e.g. `atx-legal-advisor`, `atx-options-trader-advisor`) |
 | `description` | Block scalar; product-facing summary |
 | `icon` / `color` | Optional on agents; **required** here for admin/UI parity |
 | `INSTRUCTIONS` | Bullet list for operator / ingest hints |
