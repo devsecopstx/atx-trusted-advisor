@@ -1,6 +1,6 @@
 import {
-  accountOutlookValues,
-  type AccountOutlook
+    accountOutlookValues,
+    type AccountOutlook
 } from "@/modules/core-admin/types";
 
 /** Same triad as {@link Account.riskProfile} for admin desk UIs. */

@@ -12,9 +12,9 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import {
-  accountOutlookValues,
-  type Watchlist,
-  type WatchlistSymbol
+    accountOutlookValues,
+    type Watchlist,
+    type WatchlistSymbol
 } from "@/modules/core-admin/types";
 import {
     LOOKUP_ROUTE,

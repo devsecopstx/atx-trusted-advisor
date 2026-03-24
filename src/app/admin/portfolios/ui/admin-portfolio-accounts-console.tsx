@@ -8,10 +8,10 @@ import { parseJson } from "@/app/admin/ui/http";
 import { parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/types";
 
 import {
-  accountOutlookValues,
-  DESK_OUTLOOK_LABELS,
-  DESK_RISK_PROFILE_OPTIONS,
-  type DeskRiskProfileOption
+    accountOutlookValues,
+    DESK_OUTLOOK_LABELS,
+    DESK_RISK_PROFILE_OPTIONS,
+    type DeskRiskProfileOption
 } from "./desk-risk-outlook-options";
 import { PortfolioManageNav } from "./portfolio-manage-nav";
 
