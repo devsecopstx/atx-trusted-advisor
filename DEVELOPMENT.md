@@ -9,6 +9,7 @@ Core backend and UI for atxFinance **admin operations** and **signed-in app_user
 - user broker/portfolio/account defaults
 - notification defaults
 - app_user surfaces: xChat, xCoach, xStrategyBuilder, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`), recommendations (`/recommendations`) with shared header (profile, logout, feedback, optional DB chip)
+- signed-in/guest product naming: **`src/app/ui/product-brand-constants.ts`** (**atx Trusted Advisor** + **whitelabel** in xChat header and global footer); persona display name **xFinance** remains the default FinExpert slug — see **`atx-docs/atx-xchat/xfinance-branding-review.md`** §8
 
 ### Documentation tree
 
@@ -751,7 +752,8 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/portfolios/:portfolioId/accounts`
 - `PATCH /api/portfolios/:portfolioId/accounts/:accountId` (caller-owned account metadata: name, cash, external ref)
 - `GET /api/portfolios/:portfolioId/watchlist` (optional `?quotes=1` for Yahoo quote enrichment)
-- `PATCH /api/portfolios/:portfolioId/watchlist` — `addSymbols` / `removeSymbols` (max 20 per array), `dedupe: true`, or **`addEntries`** (max 20 per request): `{ symbol, lineType?, strategy?, quantity?, entryPrice? }` for CSV import and metadata merges. List size cap: **75** symbols per watchlist (`src/modules/watchlist/constants.ts`). UI: **`/watchlist`** — Import/Export CSV (`src/app/watchlist/ui/watchlist-console.tsx`); parser: `src/modules/watchlist/parse-watchlist-csv.ts` maps **Entry Price** / **Entry** first, then falls back to **Price** / Last / Close columns into `entryPrice` when re-importing exports. Sample sheet: `branding/atxfinance-watchlist.csv`. **TODO(options-scanner):** watchlist **Rationale** column in the UI is a placeholder until options-scanner fills it.
+- `PATCH /api/portfolios/:portfolioId/watchlist` — `addSymbols` / `removeSymbols` (max 20 per array), `dedupe: true`, optional `name`, or **`addEntries`** (max 20 per request): `{ symbol, lineType?, strategy?, quantity?, entryPrice? }` for CSV import and metadata merges. Optional desk fields (same enums as custodian accounts): **`riskProfile`** `conservative`|`balanced`|`growth`, **`outlook`** `growth`|`income`|`balanced`|`aggressive` — use `null` to clear. Admin mirror: **`PATCH /api/admin/portfolios/:id/watchlist`**. List size cap: **75** symbols per watchlist (`src/modules/watchlist/constants.ts`). UI: **`/watchlist`** — Import/Export CSV (`src/app/watchlist/ui/watchlist-console.tsx`); parser: `src/modules/watchlist/parse-watchlist-csv.ts` maps **Entry Price** / **Entry** first, then falls back to **Price** / Last / Close columns into `entryPrice` when re-importing exports. Sample sheet: `branding/atxfinance-watchlist.csv`. **TODO(options-scanner):** watchlist **Rationale** column in the UI is a placeholder until options-scanner fills it.
+- `PATCH /api/admin/portfolios/:portfolioId` (global admin) — book-level **`riskProfile`** and free-text **`outlook`** (distinct from per-account outlook slugs); UI: **Admin → Accounts** book card + **`PATCH`** on the portfolio resource.
 - `GET /api/positions?portfolioId=&accountId=` (list holdings for an owned account)
 - `POST /api/positions` (upsert stock lot for an owned account; same user session as portfolio owner)
 - `DELETE /api/positions/:positionId?portfolioId=&accountId=` (remove a lot from an owned account)
