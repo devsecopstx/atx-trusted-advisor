@@ -32,13 +32,15 @@ type AdminFunctionGroup = {
 const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
   {
     title: "Books & custody",
-    blurb: "Tenant portfolios, custodian accounts, broker catalog, and holdings CSV import.",
+    blurb:
+      "Private / Secure — per-user books in tenant_portfolio, custodian accounts, broker catalog, and holdings CSV import.",
     items: [
       {
         href: "/admin/portfolios",
         icon: "portfolio",
         title: "Portfolios",
-        description: "Create and edit tenant portfolios, broker metadata, and default book per user."
+        description:
+          "Private / Secure: per-user workspace portfolios in tenant_portfolio; default book uses tenantPortfolioOrgKey (org-atx-finance) under core_tenants. Edit names, tenant org ref, broker type, and default per user."
       },
       {
         href: "/admin/accounts",

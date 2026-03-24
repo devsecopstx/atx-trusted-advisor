@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  atxAdminJsonSuccessSchema,
-  atxErrorBodySchema,
-  atxPublicJsonSuccessSchema,
-  atxSessionJsonSuccessSchema
+    atxAdminJsonSuccessSchema,
+    atxErrorBodySchema,
+    atxPublicJsonSuccessSchema,
+    atxSessionJsonSuccessSchema
 } from "@/lib/openapi/cluster-schemas";
 
 describe("atx openapi cluster Zod schemas", () => {

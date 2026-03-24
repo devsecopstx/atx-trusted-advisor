@@ -21,8 +21,14 @@ export default async function AdminPortfoliosPage() {
         <p className="eyebrow">atx Trusted Advisor · admin</p>
         <h1 className="hero-title">Tenant portfolios</h1>
         <p className="hero-copy">
-          Books in <code className="font-mono text-xs">tenant_portfolio</code> — edit names in the table, then{" "}
-          <strong>Save changes</strong>.           Holdings CSV import:{" "}
+          <strong>Private / Secure</strong> — Per-user workspace portfolios live in{" "}
+          <code className="font-mono text-xs">tenant_portfolio</code>. Each app user&apos;s default portfolio is
+          tagged with <code className="font-mono text-xs">tenantPortfolioOrgKey</code> (default{" "}
+          <code className="font-mono text-xs">org-atx-finance</code>) under your{" "}
+          <code className="font-mono text-xs">core_tenants</code> scope — this instance&apos;s client data bucket.
+        </p>
+        <p className="hero-copy" style={{ marginTop: "0.65rem" }}>
+          Edit book names in the table, then <strong>Save changes</strong>. Holdings CSV:{" "}
           <Link className="underline font-medium" href="/admin/broker-import">
             Broker import
           </Link>

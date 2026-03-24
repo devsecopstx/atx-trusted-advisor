@@ -278,8 +278,9 @@ export function AdminPortfoliosCrud() {
         <Link className="underline font-medium" href="/admin/manage_account">
           user settings
         </Link>{" "}
-        (not a dropdown — books are listed here; pick the user to open their admin profile). Also edit broker ref /
-        type (slugs from the{" "}
+        (not a dropdown — books are listed here; pick the user to open their admin profile). Also edit{" "}
+        <strong>tenant org ref</strong> (stored as <code className="font-mono text-xs">ext_broker_ref</code>) and
+        broker type (slugs from the{" "}
         <Link className="underline font-medium" href="/admin/brokers">
           broker catalog
         </Link>
@@ -293,7 +294,7 @@ export function AdminPortfoliosCrud() {
               <th title="Editable portfolio / book name">Name</th>
               <th title="Links open User settings for that core user">User</th>
               <th>Tenant org key</th>
-              <th>Broker ref</th>
+              <th title="Cohort / integration grouping; persisted as ext_broker_ref">Tenant org ref</th>
               <th>Broker type</th>
               <th>Default</th>
               <th>Accounts</th>
@@ -368,7 +369,8 @@ export function AdminPortfoliosCrud() {
                           [row._id]: { ...prev[row._id], ext_broker_ref: e.target.value }
                         }))
                       }
-                      aria-label="Broker ref"
+                      aria-label="Tenant org ref"
+                      placeholder="e.g. extBrokerName"
                     />
                   </td>
                   <td>
