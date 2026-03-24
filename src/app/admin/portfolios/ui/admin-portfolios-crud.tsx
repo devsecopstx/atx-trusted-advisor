@@ -357,7 +357,7 @@ export function AdminPortfoliosCrud() {
                   <td>
                     <Link
                       className="login-xoptions-link"
-                      href={`/admin/portfolios/${row._id}/accounts`}
+                      href={`/admin/accounts/${row._id}`}
                       title="Manage accounts"
                     >
                       {row.accountCount}
@@ -367,7 +367,7 @@ export function AdminPortfoliosCrud() {
                   <td className="text-xs">{new Date(row.updatedAt).toLocaleString()}</td>
                   <td>
                     <div className="tool-row" style={{ gap: "0.35rem" }}>
-                      <Link className="cta cta-secondary" href={`/admin/portfolios/${row._id}/accounts`}>
+                      <Link className="cta cta-secondary" href={`/admin/accounts/${row._id}`}>
                         Manage accounts
                       </Link>
                       <button

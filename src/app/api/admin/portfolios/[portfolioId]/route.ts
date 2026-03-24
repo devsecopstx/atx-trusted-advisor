@@ -26,6 +26,8 @@ function serializePortfolio(p: Portfolio) {
     tenantPortfolioOrgKey: p.tenantPortfolioOrgKey,
     ext_broker_ref: p.ext_broker_ref,
     broker_type: p.broker_type ?? null,
+    riskProfile: p.riskProfile ?? null,
+    outlook: p.outlook ?? null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString()
   };
@@ -35,6 +37,8 @@ const patchPortfolioSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   ext_broker_ref: z.union([z.string(), z.null()]).optional(),
   broker_type: z.union([z.enum(["merrill", "fidelity", "etrade"]), z.null()]).optional(),
+  riskProfile: z.union([z.enum(["conservative", "balanced", "growth"]), z.null()]).optional(),
+  outlook: z.union([z.string().max(4000), z.null()]).optional(),
   isDefault: z.literal(true).optional()
 });
 
@@ -107,6 +111,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     p.name !== undefined ||
     p.ext_broker_ref !== undefined ||
     p.broker_type !== undefined ||
+    p.riskProfile !== undefined ||
+    p.outlook !== undefined ||
     p.isDefault === true;
   if (!hasPayload) {
     return NextResponse.json({ error: "At least one field is required" }, { status: 400 });
@@ -117,6 +123,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     name: p.name,
     ext_broker_ref: p.ext_broker_ref,
     broker_type: p.broker_type,
+    riskProfile: p.riskProfile,
+    outlook: p.outlook,
     isDefault: p.isDefault
   });
   if (!updated?._id) {

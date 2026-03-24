@@ -5,16 +5,16 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import {
-  respondWithXaiToolLoop,
-  searchDocumentsInCollections,
-  type ToolCallLog
+    respondWithXaiToolLoop,
+    searchDocumentsInCollections,
+    type ToolCallLog
 } from "@/lib/xai";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import {
-  logXchatAskDebug,
-  logXchatAskFullPayload,
-  logXchatAskPreRequestDebug,
-  logXchatAskProviderErrorDebug
+    logXchatAskDebug,
+    logXchatAskFullPayload,
+    logXchatAskPreRequestDebug,
+    logXchatAskProviderErrorDebug
 } from "@/lib/xchat-debug";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
@@ -25,24 +25,24 @@ import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limit
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import {
-  resolveXchatLinkedCollectionIds,
-  withLinkedCollectionTools
+    resolveXchatLinkedCollectionIds,
+    withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
-  getPersonaById,
-  resolveDefaultXchatPersonaForSession,
-  retrieveRagChunks,
-  saveXChatLog
+    getPersonaById,
+    resolveDefaultXchatPersonaForSession,
+    retrieveRagChunks,
+    saveXChatLog
 } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import {
-  ensureSuperAgentDefaultTools,
-  mergeXchatHostedToolBaseline,
-  normalizePersonaXapiConfig,
-  type PersonaXapiConfig
+    ensureSuperAgentDefaultTools,
+    mergeXchatHostedToolBaseline,
+    normalizePersonaXapiConfig,
+    type PersonaXapiConfig
 } from "@/modules/xchat/types";
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
@@ -518,7 +518,7 @@ export async function POST(request: Request) {
     });
   }
 
-  await saveXChatLog({
+  const chatLogId = await saveXChatLog({
     requestId,
     correlationId,
     userId,
@@ -567,6 +567,7 @@ export async function POST(request: Request) {
         contextSource,
         collectionSearchStatus,
         collectionSearchNonReadyFileCount,
+        logId: chatLogId.toHexString(),
         toolCalls: toolCallLogs.length > 0
           ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
           : undefined

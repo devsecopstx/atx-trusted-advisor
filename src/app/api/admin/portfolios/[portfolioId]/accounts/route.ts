@@ -75,7 +75,9 @@ export async function GET(request: Request, context: RouteContext) {
         _id: portfolio._id.toHexString(),
         name: portfolio.name,
         userId: portfolio.userId,
-        tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey
+        tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey,
+        riskProfile: portfolio.riskProfile ?? null,
+        outlook: portfolio.outlook ?? null
       },
       accountCount,
       totalCashBalance,

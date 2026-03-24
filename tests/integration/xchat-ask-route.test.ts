@@ -121,7 +121,7 @@ describe("xchat ask route collection retrieval", () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue(buildPersona());
     repositoryMocks.getPersonaById.mockResolvedValue(buildPersona());
     repositoryMocks.retrieveRagChunks.mockResolvedValue([]);
-    repositoryMocks.saveXChatLog.mockResolvedValue(undefined);
+    repositoryMocks.saveXChatLog.mockResolvedValue(new ObjectId("507f1f77bcf86cd799439099"));
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     identityMocks.getCoreUserById.mockResolvedValue(null);

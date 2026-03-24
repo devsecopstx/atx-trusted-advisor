@@ -37,9 +37,17 @@ const envMocks = vi.hoisted(() => ({
   getAtxfinanceBackendOrigin: vi.fn(() => undefined)
 }));
 
+const bootstrapMocks = vi.hoisted(() => ({
+  resolveOrCreateUserBootstrapCollection: vi.fn().mockResolvedValue({
+    collectionId: "collection_test_user_history",
+    collectionName: "test-user-history"
+  })
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
+vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/lib/env", () => envMocks);
 
 import { GET as oauthCallback } from "@/app/api/auth/x/callback/route";

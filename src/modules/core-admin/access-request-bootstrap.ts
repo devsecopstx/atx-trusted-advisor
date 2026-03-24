@@ -380,9 +380,13 @@ async function ensureUserCollection(input: {
   }
 
   const inventory = await listXaiCollections();
-  const found = inventory.find(
-    (item) => item.name?.trim().toLowerCase() === collectionName.toLowerCase()
-  );
+  const legacyName = legacyUserXchatBootstrapCollectionName(input.userId);
+  const want = collectionName.trim().toLowerCase();
+  const legacyWant = legacyName.trim().toLowerCase();
+  const found = inventory.find((item) => {
+    const n = item.name?.trim().toLowerCase();
+    return n === want || n === legacyWant;
+  });
   if (found) {
     return {
       id: found.id,
@@ -578,8 +582,18 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function buildUserCollectionNameByUserId(userId: string): string {
+/** xAI collection display name for per-user chat history (`user_history` in xChat collections API). */
+export function buildUserXchatHistoryCollectionName(userId: string): string {
+  return `atx-chat-${userId.trim().toLowerCase()}-history`;
+}
+
+/** Legacy name from earlier deploys; still matched when listing xAI collections to avoid duplicates. */
+export function legacyUserXchatBootstrapCollectionName(userId: string): string {
   return `atx-finance-user-${userId.trim().toLowerCase()}-xchat`;
+}
+
+function buildUserCollectionNameByUserId(userId: string): string {
+  return buildUserXchatHistoryCollectionName(userId);
 }
 
 function resolveBootstrapProfileKey(input: { userId: string; email?: string }): string {

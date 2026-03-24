@@ -403,18 +403,34 @@ export async function retrieveRagChunks(
 
 export async function saveXChatLog(
   payload: Omit<XChatSessionLog, "_id" | "createdAt">
-): Promise<void> {
+): Promise<ObjectId> {
   await ensureXchatLogIndexes();
   const db = await getDb();
   const createdAt = new Date();
   const retentionExpiresAt =
     payload.retentionExpiresAt ??
     new Date(createdAt.getTime() + XCHAT_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-  await db.collection<XChatSessionLog>(collections.chatLogs).insertOne({
+  const result = await db.collection<XChatSessionLog>(collections.chatLogs).insertOne({
     ...payload,
     createdAt,
     retentionExpiresAt
   });
+  return result.insertedId;
+}
+
+export async function getXchatSessionLogByIdForUser(input: {
+  logId: ObjectId;
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+}): Promise<XChatSessionLog | null> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const base: Record<string, unknown> = {
+    _id: input.logId,
+    userId: input.userId
+  };
+  const query = withTenantScopeForLogs(base, input.tenantId);
+  return db.collection<XChatSessionLog>(collections.chatLogs).findOne(query);
 }
 
 const pendingXaiSyncFilter: Record<string, unknown> = {

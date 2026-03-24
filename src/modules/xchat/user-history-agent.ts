@@ -32,6 +32,61 @@ function logTenantHex(log: XChatSessionLog): string | undefined {
 }
 
 /**
+ * Upload one Mongo `xchat_logs` row to the user’s xAI history collection (`user_history` source).
+ * Idempotent when `syncedToXaiAt` is already set (returns ok).
+ */
+export async function syncXchatSessionLogToUserCollection(
+  log: XChatSessionLog
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const logId = log._id;
+  const userIdHex = logUserIdHex(log);
+  if (!logId || !userIdHex) {
+    return { ok: false, error: "skip: missing _id or userId" };
+  }
+  if (log.syncedToXaiAt) {
+    return { ok: true };
+  }
+  const message = log.message?.trim() ?? "";
+  const response = log.response?.trim() ?? "";
+  if (!message && !response) {
+    await markXchatLogXaiSyncFailed(logId, "empty message and response");
+    return { ok: false, error: "empty message and response" };
+  }
+
+  try {
+    const ctx = await resolveOrCreateUserBootstrapCollection({
+      userId: userIdHex,
+      tenantId: logTenantHex(log),
+      email: log.userEmail
+    });
+    if (!ctx?.collectionId) {
+      throw new Error("no user xAI collection (bootstrap)");
+    }
+    const built = buildXchatTurnMarkdownPayload({
+      userId: userIdHex,
+      tenantId: logTenantHex(log),
+      personaName: log.personaName,
+      model: log.model,
+      scope: log.scope,
+      prompt: log.message,
+      response: log.response,
+      createdAt: log.createdAt
+    });
+    const { fileId } = await uploadBuiltXchatTurnToXaiCollection(ctx.collectionId, built);
+    await markXchatLogXaiSynced(logId, {
+      xaiTurnFileId: fileId,
+      xaiTurnPayloadHash: built.payloadHash,
+      xaiTurnRetentionExpiresAt: built.retentionExpiresAt
+    });
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await markXchatLogXaiSyncFailed(logId, msg);
+    return { ok: false, error: msg };
+  }
+}
+
+/**
  * Scheduled `user_history_agent`: sync Mongo xchat_logs rows to each user’s xAI collection (user_history).
  */
 export async function runUserHistoryAgent(
@@ -57,54 +112,17 @@ export async function runUserHistoryAgent(
   const errors: string[] = [];
 
   for (const log of pending) {
-    const logId = log._id;
-    const userIdHex = logUserIdHex(log);
-    if (!logId || !userIdHex) {
-      failed += 1;
-      errors.push("skip: missing _id or userId");
-      continue;
-    }
-    const message = log.message?.trim() ?? "";
-    const response = log.response?.trim() ?? "";
-    if (!message && !response) {
-      failed += 1;
-      if (logId) {
-        await markXchatLogXaiSyncFailed(logId, "empty message and response");
-      }
-      continue;
-    }
-
-    try {
-      const ctx = await resolveOrCreateUserBootstrapCollection({
-        userId: userIdHex,
-        tenantId: logTenantHex(log),
-        email: log.userEmail
-      });
-      if (!ctx?.collectionId) {
-        throw new Error("no user xAI collection (bootstrap)");
-      }
-      const built = buildXchatTurnMarkdownPayload({
-        userId: userIdHex,
-        tenantId: logTenantHex(log),
-        personaName: log.personaName,
-        model: log.model,
-        scope: log.scope,
-        prompt: log.message,
-        response: log.response,
-        createdAt: log.createdAt
-      });
-      const { fileId } = await uploadBuiltXchatTurnToXaiCollection(ctx.collectionId, built);
-      await markXchatLogXaiSynced(logId, {
-        xaiTurnFileId: fileId,
-        xaiTurnPayloadHash: built.payloadHash,
-        xaiTurnRetentionExpiresAt: built.retentionExpiresAt
-      });
+    const r = await syncXchatSessionLogToUserCollection(log);
+    if (r.ok) {
       synced += 1;
-    } catch (e) {
+    } else {
       failed += 1;
-      const msg = e instanceof Error ? e.message : String(e);
-      errors.push(`${logId.toHexString()}: ${msg}`);
-      await markXchatLogXaiSyncFailed(logId, msg);
+      const logId = log._id;
+      if (logId) {
+        errors.push(`${logId.toHexString()}: ${r.error}`);
+      } else {
+        errors.push(r.error);
+      }
     }
   }
 

@@ -48,7 +48,11 @@ const auditMocks = vi.hoisted(() => ({
 }));
 
 const bootstrapMocks = vi.hoisted(() => ({
-  enqueueAccessRequestBootstrap: vi.fn()
+  enqueueAccessRequestBootstrap: vi.fn(),
+  resolveOrCreateUserBootstrapCollection: vi.fn().mockResolvedValue({
+    collectionId: "collection_test_user_history",
+    collectionName: "test-user-history"
+  })
 }));
 
 const envMocks = vi.hoisted(() => ({

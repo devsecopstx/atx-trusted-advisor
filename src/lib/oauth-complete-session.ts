@@ -6,6 +6,7 @@ import {
     isSafeOAuthReturnPath
 } from "@/lib/auth";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
+import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { provisionDefaultPortfolioForUser } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
@@ -95,6 +96,22 @@ export async function finalizeOAuthSessionAndRedirect(options: {
       console.warn("[auth/oauth] default portfolio provision non-fatal; will retry on first /portfolio or API", {
         userId: authContext.userId.toHexString(),
         message: provisionError instanceof Error ? provisionError.message : String(provisionError)
+      });
+    }
+
+    try {
+      await resolveOrCreateUserBootstrapCollection({
+        userId: authContext.userId.toHexString(),
+        tenantId: authContext.tenantId.toHexString(),
+        email: user.email
+      });
+    } catch (historyCollectionError) {
+      console.warn("[auth/oauth] per-user xChat history xAI collection non-fatal; will retry on /api/xchat/collections", {
+        userId: authContext.userId.toHexString(),
+        message:
+          historyCollectionError instanceof Error
+            ? historyCollectionError.message
+            : String(historyCollectionError)
       });
     }
 

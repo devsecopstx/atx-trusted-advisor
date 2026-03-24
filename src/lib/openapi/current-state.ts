@@ -410,6 +410,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xchat"
   },
   {
+    path: "/api/xchat/history/sync-turn",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "xchat"
+  },
+  {
     path: "/api/xchat/batch",
     operations: [
       { method: "GET", auth: "admin" },

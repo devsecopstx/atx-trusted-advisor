@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 const ACCOUNT_TYPES = ["merrill", "fidelity", "etrade"] as const;
+
+const RISK_PROFILE_OPTIONS = ["conservative", "balanced", "growth"] as const;
+type RiskProfileOption = (typeof RISK_PROFILE_OPTIONS)[number];
 
 type AccountRow = {
   _id: string;
@@ -24,6 +27,8 @@ type PortfolioMeta = {
   name: string;
   userId: string;
   tenantPortfolioOrgKey?: string;
+  riskProfile?: RiskProfileOption | null;
+  outlook?: string | null;
 };
 
 const money = new Intl.NumberFormat("en-US", {
@@ -49,6 +54,8 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   const [newType, setNewType] = useState<(typeof ACCOUNT_TYPES)[number]>("fidelity");
   const [newExt, setNewExt] = useState("");
   const [newCash, setNewCash] = useState("");
+  const [riskProfileDraft, setRiskProfileDraft] = useState<"" | RiskProfileOption>("");
+  const [outlookDraft, setOutlookDraft] = useState("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -62,16 +69,24 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
           accounts: AccountRow[];
         };
       }>(await fetch(`/api/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`, { cache: "no-store" }));
-      setPortfolio(payload.data.portfolio);
+      const po = payload.data.portfolio;
+      setPortfolio(po);
       setAccountCount(payload.data.accountCount);
       setTotalCashBalance(payload.data.totalCashBalance);
       setAccounts(payload.data.accounts);
       setEdits({});
+      const rp = po.riskProfile;
+      setRiskProfileDraft(
+        rp && (RISK_PROFILE_OPTIONS as readonly string[]).includes(rp) ? (rp as RiskProfileOption) : ""
+      );
+      setOutlookDraft(typeof po.outlook === "string" ? po.outlook : "");
       setStatus(`Loaded ${payload.data.accounts.length} account(s)`);
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Failed to load");
       setPortfolio(null);
       setAccounts([]);
+      setRiskProfileDraft("");
+      setOutlookDraft("");
     } finally {
       setLoading(false);
     }
@@ -85,17 +100,63 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
 
   const mergeRow = (row: AccountRow): AccountRow => ({ ...row, ...draft(row._id) });
 
+  const buildAccountPatchBody = useCallback((row: AccountRow): Record<string, unknown> | null => {
+    const d = edits[row._id] ?? {};
+    const m = { ...row, ...d };
+    const body: Record<string, unknown> = {};
+    if (d.name !== undefined) body.name = m.name;
+    if (d.cashBalance !== undefined) body.cashBalance = m.cashBalance;
+    if (d.extAccountId !== undefined) body.extAccountId = m.extAccountId;
+    if (d.type !== undefined) body.type = m.type;
+    if (d.isDefault === true) body.isDefault = true;
+    return Object.keys(body).length > 0 ? body : null;
+  }, [edits]);
+
+  const hasDirty = useMemo(
+    () => accounts.some((row) => buildAccountPatchBody(row) !== null),
+    [accounts, buildAccountPatchBody]
+  );
+
+  const hasPortfolioRiskOutlookDirty = useMemo(() => {
+    if (!portfolio) {
+      return false;
+    }
+    const savedRisk = portfolio.riskProfile ?? "";
+    const savedOut = (portfolio.outlook ?? "").trim();
+    return (riskProfileDraft || "") !== savedRisk || outlookDraft.trim() !== savedOut;
+  }, [portfolio, riskProfileDraft, outlookDraft]);
+
+  const savePortfolioRiskOutlook = async () => {
+    if (!portfolio) {
+      return;
+    }
+    setLoading(true);
+    setStatus("Saving risk & outlook…");
+    try {
+      await parseJson(
+        await fetch(`/api/admin/portfolios/${encodeURIComponent(portfolioId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            riskProfile: riskProfileDraft === "" ? null : riskProfileDraft,
+            outlook: outlookDraft.trim() === "" ? null : outlookDraft.trim()
+          })
+        })
+      );
+      setStatus("Saved risk & outlook");
+      void refresh();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const saveAccount = async (row: AccountRow) => {
-    const d = draft(row._id);
     setStatus("Saving…");
     try {
-      const body: Record<string, unknown> = {};
-      if (d.name !== undefined) body.name = d.name;
-      if (d.cashBalance !== undefined) body.cashBalance = d.cashBalance;
-      if (d.extAccountId !== undefined) body.extAccountId = d.extAccountId;
-      if (d.type !== undefined) body.type = d.type;
-      if (d.isDefault === true) body.isDefault = true;
-      if (Object.keys(body).length === 0) {
+      const body = buildAccountPatchBody(row);
+      if (!body) {
         setStatus("No changes");
         return;
       }
@@ -119,6 +180,43 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
       void refresh();
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Save failed");
+    }
+  };
+
+  const saveAllChanges = async () => {
+    const targets = accounts.filter((row) => buildAccountPatchBody(row) !== null);
+    if (targets.length === 0) {
+      setStatus("No changes");
+      return;
+    }
+    setLoading(true);
+    setStatus("Saving…");
+    try {
+      for (const row of targets) {
+        const body = buildAccountPatchBody(row);
+        if (!body) continue;
+        await parseJson(
+          await fetch(
+            `/api/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(row._id)}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            }
+          )
+        );
+        setEdits((prev) => {
+          const next = { ...prev };
+          delete next[row._id];
+          return next;
+        });
+      }
+      setStatus(`Saved ${targets.length} account(s)`);
+      void refresh();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -175,13 +273,27 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
 
   return (
     <section className="panel stack-gap">
-      <div className="tool-row">
-        <Link className="cta cta-secondary" href="/admin/portfolios">
-          ← Portfolios
+      <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
+        <Link className="cta cta-secondary" href="/admin/accounts">
+          ← Accounts
         </Link>
-        <Link className="cta cta-primary" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/broker-import`}>
+        <Link className="cta cta-secondary" href="/admin/portfolios">
+          Portfolios
+        </Link>
+        <Link
+          className="cta cta-primary"
+          href={`/admin/broker-import?portfolioId=${encodeURIComponent(portfolioId)}`}
+        >
           Broker holdings import
         </Link>
+        <button
+          className="cta cta-primary"
+          disabled={loading || !hasDirty}
+          onClick={() => void saveAllChanges()}
+          type="button"
+        >
+          Save changes
+        </button>
         <button className="cta cta-secondary" disabled={loading} onClick={() => void refresh()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh
         </button>
@@ -206,8 +318,68 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         </article>
       ) : null}
 
+      {portfolio ? (
+        <article className="surface-card xf-widget section-card">
+          <h3 className="text-sm font-semibold" style={{ marginBottom: "0.35rem" }}>
+            Risk &amp; outlook
+          </h3>
+          <p className="status-text" style={{ marginBottom: "0.75rem" }}>
+            Book-level context stored on the portfolio (optional). Used for desk / prompt alignment with user settings{" "}
+            <strong>risk profile</strong> semantics.
+          </p>
+          <div
+            className="stack-gap"
+            style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxWidth: "42rem" }}
+          >
+            <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+              Risk profile
+              <select
+                className="crud-input"
+                value={riskProfileDraft}
+                onChange={(e) =>
+                  setRiskProfileDraft(
+                    e.target.value === "" ? "" : (e.target.value as RiskProfileOption)
+                  )
+                }
+              >
+                <option value="">— Not set</option>
+                {RISK_PROFILE_OPTIONS.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+              Outlook
+              <textarea
+                className="crud-input"
+                rows={5}
+                value={outlookDraft}
+                onChange={(e) => setOutlookDraft(e.target.value)}
+                placeholder="Market view, positioning notes, horizon…"
+                style={{ minHeight: "6rem", resize: "vertical" }}
+              />
+            </label>
+            <div>
+              <button
+                type="button"
+                className="cta cta-primary"
+                disabled={loading || !hasPortfolioRiskOutlookDirty}
+                onClick={() => void savePortfolioRiskOutlook()}
+              >
+                Save risk &amp; outlook
+              </button>
+            </div>
+          </div>
+        </article>
+      ) : null}
+
       <article className="surface-card xf-widget section-card">
         <h3>Accounts</h3>
+        <p className="status-text" style={{ marginBottom: "0.75rem" }}>
+          Edit rows below, then <strong>Save changes</strong> or save a single row with the pencil control.
+        </p>
         <div className="crud-table-wrap">
           <table className="crud-table">
             <thead>

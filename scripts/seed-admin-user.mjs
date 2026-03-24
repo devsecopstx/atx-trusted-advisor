@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
 import { resolveMongoUri, resolveSeedDbName } from "./lib/resolve-mongo-uri.mjs";
 
@@ -14,30 +14,199 @@ if (!ADMIN_SEED_RAW) {
   process.exit(1);
 }
 const ADMIN_EMAIL = normalizeEmail(ADMIN_SEED_RAW);
-<<<<<<< Current (Your changes)
 
 /** X API `users/me` numeric id (`data.id`), not @handle — optional pre-link for OAuth before first login. */
-const X_USER_ID_RAW = (process.env.ADMIN_SEED_X_USER_ID ?? "").trim();
-const X_USERNAME_RAW = (process.env.ADMIN_SEED_X_USERNAME ?? "").trim();
-
-function xPrelinkSetFields(now) {
-  if (!X_USER_ID_RAW) {
-    return {};
-  }
-  const fields = {
-    "xAccount.xUserId": X_USER_ID_RAW,
-    "xAccount.linkedAt": now
-  };
-  if (X_USERNAME_RAW) {
-    fields["xAccount.username"] = X_USERNAME_RAW;
-  }
-  return fields;
-}
-=======
 const ADMIN_SEED_X_USER_ID = (process.env.ADMIN_SEED_X_USER_ID ?? "").trim();
 const ADMIN_SEED_X_USERNAME = (process.env.ADMIN_SEED_X_USERNAME ?? "").trim();
 const ADMIN_SEED_X_DISPLAY_NAME = (process.env.ADMIN_SEED_X_DISPLAY_NAME ?? "").trim();
->>>>>>> Incoming (Background Agent changes)
+
+function xPrelinkSetFields(now) {
+  if (!ADMIN_SEED_X_USER_ID) {
+    return {};
+  }
+  const fields = {
+    "xAccount.xUserId": ADMIN_SEED_X_USER_ID,
+    "xAccount.username": ADMIN_SEED_X_USERNAME || ADMIN_SEED_X_USER_ID,
+    "xAccount.linkedAt": now
+  };
+  if (ADMIN_SEED_X_DISPLAY_NAME) {
+    fields["xAccount.displayName"] = ADMIN_SEED_X_DISPLAY_NAME;
+  }
+  return fields;
+}
+
+const USER_BOOTSTRAP_COLLECTION = "admin_user_bootstrap_profiles";
+const BOOTSTRAP_PROFILE_RETENTION_DAYS = 30;
+
+function buildUserXchatHistoryCollectionName(userIdHex) {
+  return `atx-chat-${String(userIdHex).trim().toLowerCase()}-history`;
+}
+
+function legacyUserXchatBootstrapCollectionName(userIdHex) {
+  return `atx-finance-user-${String(userIdHex).trim().toLowerCase()}-xchat`;
+}
+
+async function readJsonBody(res) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {};
+  }
+}
+
+async function managementListCollections() {
+  const mgmtKey = (process.env.XAI_MANAGEMENT_API_KEY || "").trim();
+  const base = (process.env.XAI_MANAGEMENT_BASE_URL || "https://management-api.x.ai/v1").replace(/\/$/, "");
+  const res = await fetch(`${base}/collections`, {
+    headers: { Authorization: `Bearer ${mgmtKey}` }
+  });
+  const payload = await readJsonBody(res);
+  if (!res.ok) {
+    throw new Error(`xAI collections list failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
+  const candidates = [payload.data, payload.results, payload.collections, payload.items].find(Array.isArray);
+  return Array.isArray(candidates) ? candidates : [];
+}
+
+async function managementCreateCollection(displayName) {
+  const mgmtKey = (process.env.XAI_MANAGEMENT_API_KEY || "").trim();
+  const base = (process.env.XAI_MANAGEMENT_BASE_URL || "https://management-api.x.ai/v1").replace(/\/$/, "");
+  const res = await fetch(`${base}/collections`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${mgmtKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ collection_name: String(displayName).trim() })
+  });
+  const payload = await readJsonBody(res);
+  if (!res.ok) {
+    throw new Error(`xAI collection create failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
+  const id =
+    (typeof payload.id === "string" && payload.id) ||
+    (typeof payload.collection_id === "string" && payload.collection_id) ||
+    "";
+  if (!id) {
+    throw new Error("xAI collection create returned no collection id");
+  }
+  const name =
+    (typeof payload.name === "string" && payload.name) ||
+    (typeof payload.collection_name === "string" && payload.collection_name) ||
+    displayName;
+  return { id, name };
+}
+
+/**
+ * Ensures xAI collection `atx-chat-<userId>-history` exists and syncs core_users + admin_user_bootstrap_profiles
+ * (same targets as runtime `resolveOrCreateUserBootstrapCollection`).
+ */
+async function ensureSeedAdminUserHistoryCollection(db, { userIdHex, tenantIdHex, emailNormalized }) {
+  const mgmtKey = (process.env.XAI_MANAGEMENT_API_KEY || "").trim();
+  if (!mgmtKey) {
+    console.warn(
+      "[seed:admin] XAI_MANAGEMENT_API_KEY unset; skipping per-user xChat history xAI collection (atx-chat-<userId>-history)."
+    );
+    return null;
+  }
+
+  const uid = new ObjectId(userIdHex);
+  const existingUser = await db
+    .collection("core_users")
+    .findOne({ _id: uid }, { projection: { xaiCollectionId: 1, xaiCollectionName: 1 } });
+  const existingId = existingUser?.xaiCollectionId?.trim();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + BOOTSTRAP_PROFILE_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+  if (existingId) {
+    await db.collection(USER_BOOTSTRAP_COLLECTION).updateOne(
+      { emailNormalized },
+      {
+        $setOnInsert: { createdAt: now },
+        $set: {
+          userId: userIdHex,
+          tenantId: tenantIdHex,
+          xaiCollectionId: existingId,
+          xaiCollectionName:
+            existingUser.xaiCollectionName?.trim() || buildUserXchatHistoryCollectionName(userIdHex),
+          syncStatus: "synced",
+          syncError: undefined,
+          updatedAt: now,
+          expiresAt
+        }
+      },
+      { upsert: true }
+    );
+    return {
+      collectionId: existingId,
+      collectionName: existingUser.xaiCollectionName?.trim() || buildUserXchatHistoryCollectionName(userIdHex)
+    };
+  }
+
+  const canonical = buildUserXchatHistoryCollectionName(userIdHex);
+  const legacy = legacyUserXchatBootstrapCollectionName(userIdHex);
+  let inventory = [];
+  try {
+    inventory = await managementListCollections();
+  } catch (e) {
+    console.warn("[seed:admin] xAI collections list failed:", e instanceof Error ? e.message : e);
+    return null;
+  }
+
+  let picked = null;
+  for (const c of inventory) {
+    if (!c || typeof c !== "object") {
+      continue;
+    }
+    const id = String(c.id ?? c.collection_id ?? "").trim();
+    const nm = String(c.name ?? c.collection_name ?? "")
+      .trim()
+      .toLowerCase();
+    if (!id) {
+      continue;
+    }
+    if (nm === canonical.toLowerCase() || nm === legacy.toLowerCase()) {
+      picked = {
+        id,
+        name: (typeof c.name === "string" && c.name) || (typeof c.collection_name === "string" && c.collection_name) || canonical
+      };
+      break;
+    }
+  }
+
+  if (!picked) {
+    try {
+      picked = await managementCreateCollection(canonical);
+    } catch (e) {
+      console.warn("[seed:admin] xAI collection create failed:", e instanceof Error ? e.message : e);
+      return null;
+    }
+  }
+
+  await db.collection("core_users").updateOne(
+    { _id: uid },
+    { $set: { xaiCollectionId: picked.id, xaiCollectionName: picked.name, updatedAt: now } }
+  );
+  await db.collection(USER_BOOTSTRAP_COLLECTION).updateOne(
+    { emailNormalized },
+    {
+      $setOnInsert: { createdAt: now },
+      $set: {
+        userId: userIdHex,
+        tenantId: tenantIdHex,
+        xaiCollectionId: picked.id,
+        xaiCollectionName: picked.name,
+        syncStatus: "synced",
+        syncError: undefined,
+        updatedAt: now,
+        expiresAt
+      }
+    },
+    { upsert: true }
+  );
+  return { collectionId: picked.id, collectionName: picked.name };
+}
 const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core";
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
 const DB_NAME = resolveSeedDbName();
@@ -231,9 +400,7 @@ async function seed() {
   try {
     await ensureIndexes(db);
 
-    const superAgentCollectionId = await resolveSuperAgentCollectionIdForSeed();
-    const superAgentTools = buildSuperAgentXapiTools(superAgentCollectionId);
-
+    const email = ADMIN_EMAIL;
     if (ADMIN_SEED_X_USER_ID) {
       const holder = await db.collection("core_users").findOne({
         "xAccount.xUserId": ADMIN_SEED_X_USER_ID,
@@ -244,19 +411,10 @@ async function seed() {
           `[seed:admin] ADMIN_SEED_X_USER_ID ${ADMIN_SEED_X_USER_ID} is already linked to ${holder.email}; unlink that user or use a different X account.`
         );
       }
-      const xSet = {
-        "xAccount.xUserId": ADMIN_SEED_X_USER_ID,
-        "xAccount.username": ADMIN_SEED_X_USERNAME || user.xAccount?.username || ADMIN_SEED_X_USER_ID,
-        "xAccount.linkedAt": now,
-        updatedAt: now
-      };
-      if (ADMIN_SEED_X_DISPLAY_NAME) {
-        xSet["xAccount.displayName"] = ADMIN_SEED_X_DISPLAY_NAME;
-      } else if (user.xAccount?.displayName) {
-        xSet["xAccount.displayName"] = user.xAccount.displayName;
-      }
-      await db.collection("core_users").updateOne({ _id: user._id }, { $set: xSet });
     }
+
+    const superAgentCollectionId = await resolveSuperAgentCollectionIdForSeed();
+    const superAgentTools = buildSuperAgentXapiTools(superAgentCollectionId);
 
     await db.collection("core_tenants").updateOne(
       { slug: DEFAULT_TENANT_SLUG },
@@ -315,7 +473,6 @@ async function seed() {
       throw new Error("Failed to create or fetch default Super-Agent persona");
     }
 
-    const email = ADMIN_EMAIL;
     const xPre = xPrelinkSetFields(now);
     await db.collection("core_users").updateOne(
       { email },
@@ -459,12 +616,20 @@ async function seed() {
       }
     }
 
+    const historyCtx = await ensureSeedAdminUserHistoryCollection(db, {
+      userIdHex: String(user._id),
+      tenantIdHex: String(tenant._id),
+      emailNormalized: email
+    });
+
     console.log(
       JSON.stringify(
         {
           ok: true,
           adminEmail: email,
           xUserIdLinked: ADMIN_SEED_X_USER_ID || undefined,
+          xchatHistoryCollectionId: historyCtx?.collectionId,
+          xchatHistoryCollectionName: historyCtx?.collectionName,
           userId: String(user._id),
           tenantId: String(tenant._id),
           tenantSlug: tenant.slug,

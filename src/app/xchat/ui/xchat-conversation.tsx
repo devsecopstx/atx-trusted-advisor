@@ -11,6 +11,8 @@ type Message = {
   content: string;
   persona?: string;
   timestamp: number;
+  /** Mongo `xchat_logs` id after a successful `/api/xchat/ask` (used to sync rolled-off turns to xAI user history). */
+  serverLogId?: string;
 };
 
 type HistoryItem = {
@@ -52,17 +54,70 @@ type XchatConversationProps = {
 
 const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Saved chat history panel: last N prompts from `/api/xchat/history` (newest first). */
-const CHAT_HISTORY_PROMPT_LIMIT = 10;
+/** Main thread + lazy history panel: show the same number of recent prompts by default. */
+const XCHAT_UI_PROMPT_LIMIT = 10;
 
-/** In-memory transcript: cap turns so the thread stays bounded during long sessions. */
-const MAX_TRANSCRIPT_MESSAGES = CHAT_HISTORY_PROMPT_LIMIT * 2;
-
-function trimTranscript(msgs: Message[]): Message[] {
-  if (msgs.length <= MAX_TRANSCRIPT_MESSAGES) {
-    return msgs;
+function trimTranscriptToRecentPrompts(
+  msgs: Message[],
+  maxUserPrompts: number
+): { next: Message[]; evictedLogIds: string[] } {
+  if (msgs.length === 0) {
+    return { next: msgs, evictedLogIds: [] };
   }
-  return msgs.slice(-MAX_TRANSCRIPT_MESSAGES);
+  let userCount = 0;
+  let startIdx = 0;
+  for (let i = msgs.length - 1; i >= 0; i -= 1) {
+    if (msgs[i].role === "user") {
+      userCount += 1;
+      if (userCount === maxUserPrompts) {
+        startIdx = i;
+        break;
+      }
+    }
+  }
+  if (userCount < maxUserPrompts) {
+    return { next: msgs, evictedLogIds: [] };
+  }
+  const evicted = msgs.slice(0, startIdx);
+  const evictedLogIds = evicted
+    .filter((m) => m.role === "ai" && Boolean(m.serverLogId))
+    .map((m) => m.serverLogId as string);
+  return { next: msgs.slice(startIdx), evictedLogIds };
+}
+
+function requestSyncEvictedTurnsToUserCollection(logIds: string[]) {
+  const unique = [...new Set(logIds.filter(Boolean))];
+  for (const logId of unique) {
+    void fetch("/api/xchat/history/sync-turn", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ logId })
+    }).catch(() => {});
+  }
+}
+
+function historyItemsToTranscriptMessages(items: HistoryItem[]): Message[] {
+  const chronological = [...items].reverse();
+  const out: Message[] = [];
+  for (const it of chronological) {
+    const ts = new Date(it.createdAt).getTime();
+    const t = Number.isFinite(ts) ? ts : Date.now();
+    out.push({
+      id: `hydrate-user-${it.id}`,
+      role: "user",
+      content: it.message,
+      timestamp: t
+    });
+    out.push({
+      id: `hydrate-ai-${it.id}`,
+      role: "ai",
+      content: it.response,
+      persona: undefined,
+      timestamp: t,
+      serverLogId: it.id
+    });
+  }
+  return out;
 }
 
 type VisibleCollection = {
@@ -104,6 +159,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
   const [collectionsScopeDegraded, setCollectionsScopeDegraded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const threadHydrateStartedRef = useRef(false);
 
   const promptExamples = [
     "Show my portfolio allocation",
@@ -118,6 +174,37 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (threadHydrateStartedRef.current) {
+      return;
+    }
+    threadHydrateStartedRef.current = true;
+    let active = true;
+    async function hydrateThreadFromHistory() {
+      try {
+        const res = await fetch(`/api/xchat/history?limit=${XCHAT_UI_PROMPT_LIMIT}`);
+        const payload = (await res.json().catch(() => ({}))) as {
+          data?: { items?: HistoryItem[] };
+        };
+        if (!res.ok || !active) {
+          return;
+        }
+        const items = payload.data?.items ?? [];
+        if (items.length === 0) {
+          return;
+        }
+        const thread = historyItemsToTranscriptMessages(items);
+        setMessages((prev) => (prev.length > 0 ? prev : thread));
+      } catch {
+        // non-fatal: empty thread until first send
+      }
+    }
+    void hydrateThreadFromHistory();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -179,7 +266,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       setHistoryError(null);
       try {
         const [historyRes, statsRes] = await Promise.all([
-          fetch(`/api/xchat/history?limit=${CHAT_HISTORY_PROMPT_LIMIT}`),
+          fetch(`/api/xchat/history?limit=${XCHAT_UI_PROMPT_LIMIT}`),
           fetch("/api/xchat/history/stats")
         ]);
         const historyPayload = (await historyRes.json().catch(() => ({}))) as {
@@ -208,7 +295,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
             const createdAtMs = new Date(item.createdAt).getTime();
             return Number.isFinite(createdAtMs) && nowMs - createdAtMs <= THIRTY_DAY_WINDOW_MS;
           })
-          .slice(0, CHAT_HISTORY_PROMPT_LIMIT);
+          .slice(0, XCHAT_UI_PROMPT_LIMIT);
         setSavedHistory(filteredRecentHistory);
         setHistoryStats(statsPayload.data ?? null);
         setHistoryLoaded(true);
@@ -242,7 +329,12 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       timestamp: Date.now()
     };
 
-    setMessages((prev) => trimTranscript([...prev, userMsg]));
+    setMessages((prev) => {
+      const added = [...prev, userMsg];
+      const { next, evictedLogIds } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
+      requestSyncEvictedTurnsToUserCollection(evictedLogIds);
+      return next;
+    });
     setInput("");
     setLoading(true);
 
@@ -260,23 +352,27 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
         data?: {
           response: string;
           personaName?: string;
+          logId?: string;
           toolCalls?: AskToolCallSummary[];
         };
         error?: string;
       };
 
       if (!response.ok || !payload.data) {
-        setMessages((prev) =>
-          trimTranscript([
+        setMessages((prev) => {
+          const added = [
             ...prev,
             {
               id: `error-${Date.now()}`,
-              role: "error",
+              role: "error" as const,
               content: payload.error ?? `Request failed (${response.status})`,
               timestamp: Date.now()
             }
-          ])
-        );
+          ];
+          const { next, evictedLogIds } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
+          requestSyncEvictedTurnsToUserCollection(evictedLogIds);
+          return next;
+        });
         return;
       }
 
@@ -284,30 +380,38 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       setActivePersonaName(resolvedName);
       setLastTurnToolSummary(formatLastTurnToolSummary(payload.data?.toolCalls));
 
-      setMessages((prev) =>
-        trimTranscript([
+      const logId = typeof payload.data?.logId === "string" ? payload.data.logId : undefined;
+      setMessages((prev) => {
+        const added = [
           ...prev,
           {
             id: `ai-${Date.now()}`,
-            role: "ai",
+            role: "ai" as const,
             content: payload.data?.response ?? "",
             persona: resolvedName,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            serverLogId: logId
           }
-        ])
-      );
+        ];
+        const { next, evictedLogIds } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
+        requestSyncEvictedTurnsToUserCollection(evictedLogIds);
+        return next;
+      });
     } catch {
-      setMessages((prev) =>
-        trimTranscript([
+      setMessages((prev) => {
+        const added = [
           ...prev,
           {
             id: `error-${Date.now()}`,
-            role: "error",
+            role: "error" as const,
             content: "Network error. Check your connection.",
             timestamp: Date.now()
           }
-        ])
-      );
+        ];
+        const { next, evictedLogIds } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
+        requestSyncEvictedTurnsToUserCollection(evictedLogIds);
+        return next;
+      });
     } finally {
       setLoading(false);
     }
@@ -345,6 +449,12 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
         ) : null}
         {collectionsStatus ? <span className="status-text status-error">{collectionsStatus}</span> : null}
       </div>
+
+      <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
+        Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side;
+        when a completed turn rolls off the thread, it is queued to your personal xChat history collection for
+        retrieval. Open <strong>Chat history</strong> below for the saved list.
+      </p>
 
       <div className="xchat-messages">
         {messages.length === 0 ? (
@@ -444,7 +554,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           {historyExpanded ? (
             <div className="xchat-panel-body">
               <p className="status-text xchat-panel-hint">
-                Last {CHAT_HISTORY_PROMPT_LIMIT} prompts in the last 30 days (lazy-loaded on first expand).
+                Last {XCHAT_UI_PROMPT_LIMIT} prompts in the last 30 days (lazy-loaded on first expand).
               </p>
               <div className="xchat-history-stats">
                 <span className="chip">Prompts: {historyStats?.totalPrompts ?? 0}</span>

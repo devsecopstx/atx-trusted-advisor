@@ -7,8 +7,8 @@ type PageProps = {
   params: Promise<{ portfolioId: string }>;
 };
 
-/** @deprecated Use `/admin/accounts/[portfolioId]`. */
-export default async function AdminPortfolioAccountsRedirect({ params }: PageProps) {
+/** @deprecated Use `/admin/broker-import?portfolioId=…`. */
+export default async function AdminAccountsBrokerImportRedirect({ params }: PageProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");
@@ -17,5 +17,5 @@ export default async function AdminPortfolioAccountsRedirect({ params }: PagePro
     redirect("/admin?error=forbidden");
   }
   const { portfolioId } = await params;
-  redirect(`/admin/accounts/${encodeURIComponent(portfolioId)}`);
+  redirect(`/admin/broker-import?portfolioId=${encodeURIComponent(portfolioId)}`);
 }
