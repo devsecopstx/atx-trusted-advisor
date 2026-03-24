@@ -39,7 +39,7 @@ meaningful assertions.
 ### xChat / batch surfaces
 
 - **Ask route** (`POST /api/xchat/ask`): integration tests for auth, rate limits,
-  RAG/tool paths; keep aligned with `docs/atx-xchat/*.md`.
+  RAG/tool paths; keep aligned with `atx-docs/atx-xchat/*.md`.
 - **Batch** (`POST /api/xchat/batch`, polling, `batch-service`): mock
   `submitBatchJob` / xAI batch client where routes are tested; add **unit**
   tests for pure helpers (e.g. `src/modules/xchat/batch-prompt-context.ts`).
@@ -53,4 +53,4 @@ meaningful assertions.
 
 - Tests added/updated
 - Coverage rationale
-- Residual testing gaps (optional: track non-blocking items in **`docs/PLAN.md`**)
+- Residual testing gaps (optional: track non-blocking items in **`atx-docs/PLAN.md`**)

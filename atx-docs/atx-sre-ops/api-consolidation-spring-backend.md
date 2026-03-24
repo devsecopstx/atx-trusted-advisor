@@ -1,7 +1,7 @@
 # API consolidation: Next.js → atxfinance-backend (Spring)
 
 **Status:** in progress (extended BFF slices shipped).  
-**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **portfolios + positions**, **recommendations** (app + portfolio; optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set), **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests** (list/create/review/delete), **user-feedback**, **admin bootstrap-status**, **admin audit (GET)**, and **RAG files (GET + POST)** — inventory in **`xai_collections`** — see `docs/atx-sre-ops/atxfinance-backend-http-api.md`. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
+**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **portfolios + positions**, **recommendations** (app + portfolio; optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set), **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests** (list/create/review/delete), **user-feedback**, **admin bootstrap-status**, **admin audit (GET)**, and **RAG files (GET + POST)** — inventory in **`xai_collections`** — see `./atxfinance-backend-http-api.md`. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
 
 ## Migration status board
 
@@ -49,7 +49,7 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 
 ## Admin surfaces (split)
 
-**Proxied today:** `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` (read-only); **`/api/admin/access-requests`** (CRUD + review) — see `docs/atx-sre-ops/atxfinance-backend-http-api.md`.
+**Proxied today:** `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` (read-only); **`/api/admin/access-requests`** (CRUD + review) — see `./atxfinance-backend-http-api.md`.
 
 **Proxied with Spring parity:** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), tasks / scheduler. Enable via **`ATXFINANCE_BACKEND_ORIGIN`** (PR 3 tasks; PR 4 deploy-note + import — same origin).
 
@@ -85,7 +85,7 @@ These are **vertical migration tracks**: same Mongo collections and contracts as
 
 **Cutover checklist (when PR 4 code is ready)**
 
-1. Ship Kotlin controllers + `nextBffApi` + `BFF_PROXY_ROUTES` entries + `docs/atx-sre-ops/atxfinance-backend-http-api.md` — `tests/smoke/backend-http-api-parity.test.ts` must pass.
+1. Ship Kotlin controllers + `nextBffApi` + `BFF_PROXY_ROUTES` entries + `./atxfinance-backend-http-api.md` — `tests/smoke/backend-http-api-parity.test.ts` must pass.
 2. Staging: set **`ATXFINANCE_BACKEND_ORIGIN`**, exercise deploy-note CRUD and **one** import with a known-good CSV.
 3. Prod: enable after soak; **rollback** = unset origin (Next handlers remain).
 
@@ -176,6 +176,6 @@ When `proxyRequestToBackend` returns a Spring `Response`, the Next handler’s s
 
 - [`auth-oauth-spring-dual-run.md`](./auth-oauth-spring-dual-run.md) — Next vs Spring auth gaps, `/login?error=` matrix, dual-run checklist
 - `.cursor/plans/next-bff-migration-surfaces_f70b86b0.plan.md` — Cursor checklist for **resuming** BFF work (backlog todos + per-slice steps); this doc remains the **canonical** status board.
-- `docs/atx-sre-ops/atxfinance-backend-http-api.md` — current Spring surface
-- `docs/atx-sre-ops/audit-lineage-and-controls.md` — audit rows, BFF side-effect parity, retrieval semantics, test inventory vs xdesign-review-audit
+- `./atxfinance-backend-http-api.md` — current Spring surface
+- [`./audit-lineage-and-controls.md`](./audit-lineage-and-controls.md) — audit rows, BFF side-effect parity, retrieval semantics, test inventory vs xdesign-review-audit
 - `AGENTS.md` — today’s validation assumes Next API; update when a slice moves

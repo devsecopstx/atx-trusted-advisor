@@ -1,6 +1,6 @@
 # xChat Pre-Release Check: Docs & Security
 
-Final pass before release — gaps in documentation and security focus. Align with `xfinance-chat-expert.mdc` and `docs/atx-xchat/*.md`.
+Final pass before release — gaps in documentation and security focus. Align with `xfinance-chat-expert.mdc` and this folder (`atx-docs/atx-xchat/*.md` from repo root).
 
 ---
 
@@ -8,10 +8,10 @@ Final pass before release — gaps in documentation and security focus. Align wi
 
 | Gap | Location | Recommendation |
 |-----|----------|----------------|
-| **No single xChat “contract” doc** | `docs/atx-xchat/` | Add `docs/atx-xchat/README.md` (or extend existing) with: public routes (`POST /api/xchat/ask`, batch), persona resolution (Super-Agent vs xFinance from session role), and pointer to OpenAPI + persona governance. |
+| **No single xChat “contract” doc** | `atx-docs/atx-xchat/` | Add `atx-docs/atx-xchat/README.md` (or extend [atx-docs README](../README.md)) with: public routes (`POST /api/xchat/ask`, batch), persona resolution (Super-Agent vs xFinance from session role), and pointer to OpenAPI + persona governance. |
 | **Plan limits partially wired in API** | `src/modules/xchat/plan-limits.ts` vs `ask/route.ts` | **`multiAgentParallelMaxAgents`** is enforced for non–`global_admin` (see `clampMultiAgentParallelismForPlan` + [`context-routing-multi-agent-policy.md`](./context-routing-multi-agent-policy.md)). **`maxPromptsPerDay` / budget** are still not enforced on ask (only fixed rate limit 20/60s). |
-| **Tool stub vs runtime** | `docs/atx-xchat/atxfinance-tool-stub.md`, `xfeature-tools-plan.md` | Stub and plan are accurate (deferred runtime). No change; ensure new contributors see stub before adding tool execution. |
-| **Feedback retention (PLAN.md)** | `docs/PLAN.md` | “User-facing privacy / retention” is Design TBD for **Feedback** only. Extend to **xChat**: short note that `xchat_logs` stores message, response, user identifiers, and collection refs; retention and export policy TBD unless already defined elsewhere. |
+| **Tool stub vs runtime** | [`atxfinance-tool-stub.md`](./atxfinance-tool-stub.md), [`xfeature-tools-plan.md`](./xfeature-tools-plan.md) | Stub and plan are accurate (deferred runtime). No change; ensure new contributors see stub before adding tool execution. |
+| **Feedback retention (PLAN.md)** | [`../PLAN.md`](../PLAN.md) | “User-facing privacy / retention” is Design TBD for **Feedback** only. Extend to **xChat**: short note that `xchat_logs` stores message, response, user identifiers, and collection refs; retention and export policy TBD unless already defined elsewhere. |
 
 ---
 
@@ -22,7 +22,7 @@ Final pass before release — gaps in documentation and security focus. Align wi
 | **Auth** | `requireSessionUser()` on ask/batch; persona from session role. | Document: unauthenticated requests get 401; `personaId` in body is ignored (chosen server-side). Already in OpenAPI summary. |
 | **Rate limiting** | Ask: 20 req/60s per user; batch create/poll: rate limited. | Document in docs: key = `xchat-ask:{userId}`; 429 with `retryAfterSeconds`. OpenAPI has 429. |
 | **Payload size** | Ask: `MAX_ASK_PAYLOAD_BYTES = 24 * 1024`; 413 if exceeded. | Optional: mention in API doc or OpenAPI description. |
-| **PII to model** | User message and RAG context (Mongo + xAI collection snippets) sent to xAI; `saveXChatLog` stores message, response, `userEmail`, `requestedBy`, chunk refs. | **Gap:** No doc stating what must **not** be sent to the model (e.g. no SSN, account numbers in prompts) or that user content is sent to xAI. Add 1–2 sentences to `docs/atx-xchat/` or `DEVELOPMENT.md`: “User message and retrieved context are sent to xAI; do not include sensitive PII in prompts; chat is stored in `xchat_logs` for support/audit.” |
+| **PII to model** | User message and RAG context (Mongo + xAI collection snippets) sent to xAI; `saveXChatLog` stores message, response, `userEmail`, `requestedBy`, chunk refs. | **Gap:** No doc stating what must **not** be sent to the model (e.g. no SSN, account numbers in prompts) or that user content is sent to xAI. Add 1–2 sentences to `atx-docs/atx-xchat/` or root `DEVELOPMENT.md`: “User message and retrieved context are sent to xAI; do not include sensitive PII in prompts; chat is stored in `xchat_logs` for support/audit.” |
 | **Audit / logging** | Personas, access requests, users: `createAuditEvent` + admin audit explorer. xChat: `saveXChatLog` only (no `AuditEntityType` for chat). | **Acceptable** if product treats chat logs as operational logs, not compliance audit. If compliance requires “every chat request” in audit trail, consider adding `xchat` entity type or documenting that chat is logged only in `xchat_logs` and not in `admin_audit_events`. |
 | **Disclaimers** | Default persona system prompt includes “educational”; no “not financial advice” in UI or API. | **Gap:** If release is user-facing, add short disclaimer in UI (e.g. xChat page or first message) and/or in API response metadata: “For education only; not financial advice.” Deferred in AGENTS.md is acceptable if explicitly scoped. |
 | **Secrets in workflow** | **Single source of truth:** runtime keys live in **GCP Secret Manager** only; GitHub Environments store **OIDC** (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`) plus non-secret **variables**. “Validate staging deploy configuration” checks vars + OIDC only. After GCP auth, **`gcloud secrets describe`** preflights required secret **names** in the target project (including `XAI_API_KEY`, `ADMIN_SEED_EMAIL`, etc.); runtime keys are **not** read from GitHub Environment secrets. | No app secrets in GitHub; values never echoed in logs; Cloud Run mounts `*:latest` from GSM; pre-deploy fails fast if a GCP secret is missing. |
@@ -45,7 +45,7 @@ No OpenAPI gap for xChat routes.
 
 - [ ] **Docs:** Add or update one xChat overview (routes, persona resolution, plan limits not enforced in ask).
 - [ ] **Docs:** One sentence on PII/model: user message + context sent to xAI; avoid sensitive PII; chat stored in `xchat_logs`.
-- [ ] **Docs:** Optional: xChat retention / export policy or “TBD” in PLAN.md.
+- [ ] **Docs:** Optional: xChat retention / export policy or “TBD” in [`../PLAN.md`](../PLAN.md).
 - [ ] **Security:** Optional: UI or API disclaimer “education only; not financial advice” if release is user-facing.
 - [ ] **Security:** Confirm no secrets in client or logs (already validated).
 - [ ] **Compliance:** Decide if xChat must appear in admin audit trail; if yes, extend audit entity types and document.

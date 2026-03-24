@@ -1,6 +1,6 @@
 # Cursor skills index (atxFinance)
 
-Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (and sometimes `CHECKLIST.md`). Repo docs: **[`docs/README.md`](../../docs/README.md)**.
+Agent skills under **`.cursor/skills/`**. Each folder contains **`SKILL.md`** (and sometimes `CHECKLIST.md`). Repo docs: **[`atx-docs/README.md`](../../atx-docs/README.md)**.
 
 ---
 

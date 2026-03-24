@@ -451,7 +451,7 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "strategy-options":
     "Option expirations and chain (Yahoo + synthetic fallback) for xStrategyBuilder; aligned with xfinance-strategy GET /api/options.",
   "strategy-jobs":
-    "Phase 1 multi-agent strategy orchestrator (Mongo + Spring): slot collection and job status. See docs/atx-xchat/atx-multi-agent.md.",
+    "Phase 1 multi-agent strategy orchestrator (Mongo + Spring): slot collection and job status. See atx-docs/atx-xchat/atx-multi-agent.md.",
   rag: "Mongo-backed scoped RAG file list/upload; xAI collection inventory is GET /api/personas/collections.",
   xchat: "xChat sync and async ask/batch workflows."
 };

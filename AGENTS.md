@@ -62,10 +62,10 @@ After merging and deploying to production (or staging first):
 - OpenAPI inventory: `GET /api/openapi`
 - Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
-- **Spring OAuth cutover (dual-run):** `docs/atx-sre-ops/auth-oauth-spring-dual-run.md` — gaps vs approved contract, `/login?error=` matrix, operator checklist
+- **Spring OAuth cutover (dual-run):** `atx-docs/atx-sre-ops/auth-oauth-spring-dual-run.md` — gaps vs approved contract, `/login?error=` matrix, operator checklist
 - Personas API: `GET /api/personas`
 - xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (global_admin), **xFinance** (app roles); **RAG / file_search collection scope** is **only** what is declared on the resolved persona (`xaiCollection` + tool `collection_ids`), not env defaults or implicit user/team merges. **Effective xAI model** comes from the **resolved persona’s `model`** (fallback server default if unset); optional `personaId` / admin-assigned persona selects persona — **no** request-body `model` override. **`xapi.tools`** are used as stored (include `atxfinance` / `yahoo_finance` on the persona when needed).
-- **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`docs/atx-xchat/xai-api-standard.md`**
+- **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`atx-docs/atx-xchat/xai-api-standard.md`**
 - xAI chat API key smoke (dev/SRE): `npm run smoke:xai-chat` with `XAI_API_KEY` in `.env` — see `DEVELOPMENT.md` § *xAI chat completions smoke*
 - Market price source-of-truth (current): Yahoo Finance via `yahoo-finance2` (`src/modules/xchat/market-data.ts`); quote-related prompts/tools should route through `market_quote` / `yahoo_finance` rather than narrative web-only lookups
 - Watchlist (app_user): `/watchlist` — CSV **Import/Export**; `PATCH /api/portfolios/:id/watchlist` accepts `addEntries` (`lineType`, `strategy`, `quantity`, `entryPrice`) for merged rows. Reference CSV: `branding/atxfinance-watchlist.csv`
@@ -99,7 +99,7 @@ echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run Pro
 
 - Keep secrets only in `.env`; never commit real tokens.
 - Prefer updating existing docs over creating duplicates.
-- Non-blocking backlog / design TBD: `docs/PLAN.md`.
+- Non-blocking backlog / design TBD: `atx-docs/PLAN.md`.
 - For persona/xchat/admin-audit changes, run at least build + typecheck before PR.
 - **Roles:** platform roles vs `tenantRole` — see `DEVELOPMENT.md` → *Platform roles vs tenant membership (session)*. Use `isGlobalAdmin()` / `canUserLogin()` from `@/modules/identity/authorization` (and `requireGlobalAdminSession` for admin APIs); avoid ad-hoc `roles.includes("global_admin")`.
 
@@ -119,16 +119,16 @@ from injected secrets.
 - TODO: remove imported global Cursor skills from the repo once local skill parity is confirmed.
 - Ops/review skills: `atx-sre-docs-ops`, `atx-skill-xchat-validation-checklist`, `atx-runbook-navigator`, `atx-design-ops`, `atxdesign-review`.
 - Backend (multi-node agents) skills: `atx-backend-architecture`, `atx-backend-deploy-stage`, `atx-backend-deploy-prod`, `atx-backend-runbook`, `atx-backend-ci`.
-- Junie guidelines for backend operations: `docs/atx-sre-ops/junie-guidelines-atxfinance-backend.md`.
-- xDesign review outputs: `docs/atx-xchat/xdesign-review-admin-console-ux.md` (and other `docs/atx-xchat/*.md`).
+- Junie guidelines for backend operations: `atx-docs/atx-sre-ops/junie-guidelines-atxfinance-backend.md`.
+- xDesign review outputs: `atx-docs/atx-xchat/xdesign-review-admin-console-ux.md` (and other `atx-docs/atx-xchat/*.md`).
 - Options strategies: **10** `atx-skill-*` playbooks (options structures); index: `.cursor/skills/README.md` § *Options strategies*.
 - All skills are non-destructive — they must not deploy, rotate keys, or mutate production/staging secrets.
-- Runtime xChat custom-tool execution is intentionally deferred; see `docs/atx-xchat/atxfinance-tool-stub.md`.
+- Runtime xChat custom-tool execution is intentionally deferred; see `atx-docs/atx-xchat/atxfinance-tool-stub.md`.
 
 ### Project Cursor rules (optional)
 
 - File-backed rules live in **`.cursor/rules/*.mdc`** (tracked; see `.gitignore` exceptions alongside `.cursor/skills/`).
-- Example: **`xfinance-chat-expert.mdc`** — xChat/mobile/performance expert workflow; attaches via `globs` under `**/xchat/**`, `src/modules/xchat/**`, `docs/atx-xchat/**`, etc.
+- Example: **`xfinance-chat-expert.mdc`** — xChat/mobile/performance expert workflow; attaches via `globs` under `**/xchat/**`, `src/modules/xchat/**`, `atx-docs/atx-xchat/**`, etc.
 - When editing rules, follow **`generate-docs`** (Cursor rules section) and **`test-commit-push`** checklist (frontmatter + no patch noise).
 
 ### Local skill maintenance policy

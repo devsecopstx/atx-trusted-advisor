@@ -42,7 +42,7 @@ Thin HTTP handlers; async default; idempotent retries; hourly caps limit cost.
 | **xChat `/ask`** | Responses API + tool loop; plan limits; streaming later. |
 | **xStrategyBuilder** | Renders artifacts / review — **no** orchestration state. |
 
-**HTTP (Chunk 1):** Spring **`/api/strategy-jobs`** (BFF from Next when `ATXFINANCE_BACKEND_ORIGIN` set) — slot collection to `slots_complete`; see **`docs/atx-sre-ops/atxfinance-backend-http-api.md`**.
+**HTTP (Chunk 1):** Spring **`/api/strategy-jobs`** (BFF from Next when `ATXFINANCE_BACKEND_ORIGIN` set) — slot collection to `slots_complete`; see **[`../atx-sre-ops/atxfinance-backend-http-api.md`](../atx-sre-ops/atxfinance-backend-http-api.md)**.
 
 **Routing:** retrieval + tools before **multi-agent** (`grok-4.20-multi-agent`); clamp `agent_count` by plan.
 
@@ -60,4 +60,4 @@ Async jobs meet SLOs; **idempotency** via `Idempotency-Key` or deterministic has
 
 - **2026-03-23** — Consolidated docs + locked boundaries (server orchestrator, v1 artifact format, async SLOs, isolation, caps, BFF-only).
 - **2026-03-24** — Phase 1 xAI: TEAM_XAI + `XAI_TEAM_ID` only; legacy default/bootstrap collection work out of Phase 1 scope.
-- **2026-03-25** — Role-chunked execution plan (Backend → SRE → Frontend → Reviewer) lives in [`docs/PLAN.md`](../PLAN.md) § *Phase 1 — xChat → xStrategyBuilder multi-agent*; maps to [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).
+- **2026-03-25** — Role-chunked execution plan (Backend → SRE → Frontend → Reviewer) lives in [`../PLAN.md`](../PLAN.md) § *Phase 1 — xChat → xStrategyBuilder multi-agent*; maps to [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).

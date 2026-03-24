@@ -1,6 +1,6 @@
 # Documentation index (atxFinance)
 
-Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skills, see [`.cursor/skills/README.md`](../.cursor/skills/README.md).
+Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** **`atx-docs/`** at repo root (there is no top-level `docs/` folder — update links from older `docs/atx-*` paths accordingly). For Cursor agent skills, see [`.cursor/skills/README.md`](../.cursor/skills/README.md).
 
 ---
 
@@ -10,6 +10,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skil
 - [Frontend plan](#frontend-plan)
 - [Operations — atx-sre-ops](#operations--atx-sre-ops)
 - [xChat and product — atx-xchat](#xchat-and-product--atx-xchat)
+- [Options — atx-options](#options--atx-options)
 - [Diagrams & assets](#diagrams--assets)
 - [Audit & governance](#audit--governance)
 
@@ -65,6 +66,18 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. For Cursor agent skil
 | [xdesign-review-legacy-prompts-inventory.md](./atx-xchat/xdesign-review-legacy-prompts-inventory.md) | Legacy prompts inventory |
 | [xfeature-tools-plan.md](./atx-xchat/xfeature-tools-plan.md) | Feature tools plan |
 | [xfinance-branding-review.md](./atx-xchat/xfinance-branding-review.md) | Branding review |
+
+---
+
+## Options — atx-options
+
+| Doc | Purpose |
+|-----|---------|
+| **[atx-options/README.md](./atx-options/README.md)** | **Start here:** header, TOC, strategy ↔ narrative doc ↔ **Cursor `atx-skill-*`** links |
+| [atx-readme-coreskills.md](./atx-options/atx-strategy-templates/atx-readme-coreskills.md) | Compact table: `xfinance-strategy-*` id ↔ paths ↔ skill |
+| [atx-options-readme.md](./atx-options/atx-strategy-templates/atx-options-readme.md) | Redirect stub → directory README |
+
+**Folder convention:** `atx-options/atx-strategy-templates/atx-<slug>/atx-<slug>.md` (frontmatter `xfinance-strategy-*`). Full playbooks: `.cursor/skills/atx-skill-*/SKILL.md`.
 
 ---
 

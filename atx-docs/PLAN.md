@@ -8,7 +8,7 @@
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| 1 | **Spring BFF parity** for `GET/POST /api/admin/portfolios`, `PATCH/DELETE /api/admin/portfolios/{id}`, nested accounts routes | **Current:** these routes are **Next-only** (no `proxyRequestToBackend`) so admin works when `ATXFINANCE_BACKEND_ORIGIN` is set. **Future:** add Kotlin handlers + proxy again if you want all admin traffic on Spring. Update `docs/atx-sre-ops/atxfinance-backend-http-api.md` and smoke parity when implemented. |
+| 1 | **Spring BFF parity** for `GET/POST /api/admin/portfolios`, `PATCH/DELETE /api/admin/portfolios/{id}`, nested accounts routes | **Current:** these routes are **Next-only** (no `proxyRequestToBackend`) so admin works when `ATXFINANCE_BACKEND_ORIGIN` is set. **Future:** add Kotlin handlers + proxy again if you want all admin traffic on Spring. Update `./atx-sre-ops/atxfinance-backend-http-api.md` and smoke parity when implemented. |
 | 2 | **Accounts subpage** (`/admin/portfolios/[portfolioId]/accounts`) | Match **Save changes** batch pattern + resolve **friendly user / account** labels (parity with main admin portfolios table). |
 | 3 | **Default portfolio validation** | Guardrail when a user has **multiple** portfolios: ensure **exactly one** `isDefault: true` (clear UX + server-side check; align with Mongo partial unique index). |
 | 4 | **Audit trail** | Log admin portfolio create/update/delete (and optional CSV export) via existing `admin_audit_events` / audit pipeline — traceability for tenant moves. |
@@ -43,7 +43,7 @@ Chunk work in this **order** so APIs exist before UI and observability: **Backen
 | 2.1 | Context bundle: retrieval vs tools vs multi-agent per policy; clamp `agent_count` | Route by intent, RAG / TOOL / MA |
 | 2.2 | Async xAI call path by default; sync only behind product flag | POST ask / worker |
 | 2.3 | Server-side **artifact v1** validation (Markdown + fenced JSON); **structured error codes** on parse failure (no silent generic chat) | Structured parse OK?, Clarify or retry |
-| 2.4 | `bff-proxy-routes.ts` + `docs/atx-sre-ops/atxfinance-backend-http-api.md` + `tests/smoke/backend-http-api-parity.test.ts` | BFF-only traffic |
+| 2.4 | `bff-proxy-routes.ts` + `./atx-sre-ops/atxfinance-backend-http-api.md` + `tests/smoke/backend-http-api-parity.test.ts` | BFF-only traffic |
 
 **Exit criteria:** Happy path produces a validated handoff payload + stable `jobId` / `correlationId`; failure paths return documented codes.
 
@@ -129,7 +129,7 @@ Chunk work in this **order** so APIs exist before UI and observability: **Backen
 - [x] No **`ATXFINANCE_COLLECTION_ID`** in app code (use **`XAI_TEAM_ID`** only).
 - [ ] Linked-collection resolution uses **team + persona** only — no user-bootstrap branch.
 - [ ] **`XAI_TEAM_ID`** where team xAI runs; integration tests green.
-- [ ] `docs/atx-xchat/context-routing-multi-agent-policy.md` + `xchat-tools-guide.md` match shipped behavior.
+- [ ] `./atx-xchat/context-routing-multi-agent-policy.md` + `xchat-tools-guide.md` match shipped behavior.
 
 ### Risk
 
@@ -201,7 +201,7 @@ Users with docs only in legacy bootstrap collections may need migration or re-in
 | Gap | Status | Uplift |
 | --- | ------ | ------ |
 | Full inference lineage (model, params, tool calls) | Not stored | Add `model`, `personaId`, `correlationId` to `xchat_logs` schema if regulatory replay required. |
-| Tamper-evident logs | Not implemented | `xaiTurnPayloadHash` stored on sync; no hash chain. See `docs/atx-sre-ops/audit-lineage-and-controls.md`. |
+| Tamper-evident logs | Not implemented | `xaiTurnPayloadHash` stored on sync; no hash chain. See `./atx-sre-ops/audit-lineage-and-controls.md`. |
 | Task run audit | Partial | `user_history_agent` logs output; no `admin_audit_events` row per run. Optional: emit `task_run_completed` audit row. |
 | Retention | Implemented | `xaiTurnRetentionExpiresAt` + `retentionExpiresAt` TTL on `xchat_logs`; policy in ops. |
 
@@ -211,6 +211,6 @@ Users with docs only in legacy bootstrap collections may need migration or re-in
 
 ## Deferred
 
-- xChat streaming on Spring + BFF (`docs/atx-sre-ops/api-consolidation-spring-backend.md`).
+- xChat streaming on Spring + BFF (`./atx-sre-ops/api-consolidation-spring-backend.md`).
 - Strict JSON Schema for strategy artifacts (v2 — `atx-multi-agent.md`).
 

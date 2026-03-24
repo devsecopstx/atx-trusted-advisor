@@ -8,7 +8,7 @@ description: Standalone gcloud recipe to recreate atx apex GCP (staging.atx / at
 Recreate **xfinance** GCP staging and production from scratch with hostname apex **`atx`** (replacing older `core`-style hosts). Manual `gcloud` only; wire GitHub variables later if you use Actions deploy.
 
 **Canonical copy:** `.cursor/skills/gcp-env-atx-recreate/SKILL.md` (tracked).  
-**Related:** [DEVELOPMENT.md](../../../DEVELOPMENT.md) (OAuth URLs, rollout checklist), [atx-sre-gcp-foundation](../atx-sre-gcp-foundation/SKILL.md), [docs/atx-sre-ops/junie-guidelines-atxfinance-backend.md](../../../docs/atx-sre-ops/junie-guidelines-atxfinance-backend.md) for backend worker (separate Cloud Run service).
+**Related:** [DEVELOPMENT.md](../../../DEVELOPMENT.md) (OAuth URLs, rollout checklist), [atx-sre-gcp-foundation](../atx-sre-gcp-foundation/SKILL.md), [atx-docs/atx-sre-ops/junie-guidelines-atxfinance-backend.md](../../../atx-docs/atx-sre-ops/junie-guidelines-atxfinance-backend.md) for backend worker (separate Cloud Run service).
 
 ## Path and repo conventions
 

@@ -1,6 +1,6 @@
 # Audit lineage, BFF, and control gaps (atxfinance)
 
-**Index:** [`docs/README.md`](../README.md) · **Audit skill:** [`.cursor/skills/atxdesign-review-audit/SKILL.md`](../../.cursor/skills/atxdesign-review-audit/SKILL.md)
+**Index:** [atx-docs README](../README.md) · **Audit skill:** [`.cursor/skills/atxdesign-review-audit/SKILL.md`](../../.cursor/skills/atxdesign-review-audit/SKILL.md)
 
 This document maps **repository reality** to the **xdesign-review-audit** skill: what is implemented today, what is tested, and what remains for regulatory-grade replay / non-repudiation.
 
@@ -26,7 +26,7 @@ Rows are **append-only** application inserts (not tamper-evident by themselves):
 
 ## BFF (`ATXFINANCE_BACKEND_ORIGIN`)
 
-When `proxyRequestToBackend` in `src/lib/backend-bff.ts` returns a `Response`, the **Next.js route body does not run**. Side effects that only exist in Next (e.g. Pub/Sub publish on recommendations) are skipped — see `docs/atx-sre-ops/api-consolidation-spring-backend.md` § operational parity.
+When `proxyRequestToBackend` in `src/lib/backend-bff.ts` returns a `Response`, the **Next.js route body does not run**. Side effects that only exist in Next (e.g. Pub/Sub publish on recommendations) are skipped — see [`./api-consolidation-spring-backend.md`](./api-consolidation-spring-backend.md) § operational parity.
 
 **Audit implication:** Mutations that move to Spring **must** write audit rows on the JVM for parity. The consolidation doc lists JVM status per effect; treat that table as the compliance checklist before enabling BFF in prod.
 
@@ -60,7 +60,7 @@ Document this difference in runbooks when debugging “missing” rows across en
 
 ## Related
 
-- [`docs/README.md`](../README.md) — full docs index
+- [atx-docs README](../README.md) — full docs index
 - [`api-consolidation-spring-backend.md`](./api-consolidation-spring-backend.md) — BFF migration and side-effect parity
 - [`atxfinance-backend-http-api.md`](./atxfinance-backend-http-api.md) — HTTP surface including admin audit
 - [`.cursor/skills/atxdesign-review-audit/CHECKLIST.md`](../../.cursor/skills/atxdesign-review-audit/CHECKLIST.md) — reviewer checklist

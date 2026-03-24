@@ -1,9 +1,9 @@
 ---
 name: next-bff-migration-surfaces
-overview: Next.js BFF → Spring (atxfinance-backend) in vertical slices. Canonical status and backlog live in docs/atx-sre-ops/api-consolidation-spring-backend.md; this plan is the Cursor checklist to resume work.
+overview: Next.js BFF → Spring (atxfinance-backend) in vertical slices. Canonical status and backlog live in atx-docs/atx-sre-ops/api-consolidation-spring-backend.md; this plan is the Cursor checklist to resume work.
 todos:
   - id: resume-next-session
-    content: "On return: read docs/atx-sre-ops/api-consolidation-spring-backend.md status board; run npm run ci:gate + services/atxfinance-backend ./gradlew test; then pick a backlog row below."
+    content: "On return: read atx-docs/atx-sre-ops/api-consolidation-spring-backend.md status board; run npm run ci:gate + services/atxfinance-backend ./gradlew test; then pick a backlog row below."
     status: pending
   - id: backlog-admin-remaining
     content: "PR 3 migration = tasks/scheduler BFF cutover (code shipped; operators follow api-consolidation § PR 3). PR 4 migration = deploy-note-configs + import/broker Kotlin + BFF. Users already on Spring + BFF."
@@ -15,7 +15,7 @@ todos:
     content: "In progress: move /api/auth/* session + OAuth callback to Spring (single-host cookie + backend PKCE/state, dual-run cutover)."
     status: pending
   - id: backlog-user-history-agent
-    content: "Phase: xChat chat_history Mongo collection + user_history_agent scheduled task to sync turns to xAI user collection. See docs/PLAN.md § user_history_agent."
+    content: "Phase: xChat chat_history Mongo collection + user_history_agent scheduled task to sync turns to xAI user collection. See atx-docs/PLAN.md § user_history_agent."
     status: pending
   - id: done-rag-post
     content: "Done: GET/POST /api/rag/files on Spring + BFF (xai_collections)."
@@ -31,7 +31,7 @@ isProject: false
 
 # Next BFF Migration Plan
 
-**Source of truth for shipped vs deferred:** [api-consolidation-spring-backend.md](../../docs/atx-sre-ops/api-consolidation-spring-backend.md) (migration status board, Plan:xChat, operational parity).
+**Source of truth for shipped vs deferred:** [api-consolidation-spring-backend.md](../../atx-docs/atx-sre-ops/api-consolidation-spring-backend.md) (migration status board, Plan:xChat, operational parity).
 
 **When you return to BFF work:** start from that doc’s **Still Next-primary** / **Deferred** rows, then run the per-slice checklist below.
 
@@ -43,8 +43,8 @@ Move product/business API ownership from Next route handlers to Spring controlle
 
 - `[src/lib/backend-bff.ts](../../src/lib/backend-bff.ts)` — proxy + `nextBffApi` route registry (if present)
 - `[src/lib/bff-proxy-routes.ts](../../src/lib/bff-proxy-routes.ts)` — parity list for smoke tests
-- `[docs/atx-sre-ops/api-consolidation-spring-backend.md](../../docs/atx-sre-ops/api-consolidation-spring-backend.md)`
-- `[docs/atx-sre-ops/atxfinance-backend-http-api.md](../../docs/atx-sre-ops/atxfinance-backend-http-api.md)`
+- `[atx-docs/atx-sre-ops/api-consolidation-spring-backend.md](../../atx-docs/atx-sre-ops/api-consolidation-spring-backend.md)`
+- `[atx-docs/atx-sre-ops/atxfinance-backend-http-api.md](../../atx-docs/atx-sre-ops/atxfinance-backend-http-api.md)`
 - `[tests/smoke/backend-http-api-parity.test.ts](../../tests/smoke/backend-http-api-parity.test.ts)`
 
 ## Shipped slices (summary)
@@ -62,12 +62,12 @@ Portfolios/positions/watchlist, recommendations (app + per-portfolio) + Pub/Sub 
 1. ~~Admin access-requests / RAG POST / recommendations Pub/Sub~~ — shipped; keep parity tests green.
 2. **xChat** — streaming proxy; align with consolidation **Plan: xChat**.
 3. **Auth** — session + `/api/auth/x/callback` cutover per approved contract.
-4. **user_history_agent** — Mongo chat_history collection + scheduled task to sync turns → xAI user collection (`docs/PLAN.md`).
+4. **user_history_agent** — Mongo chat_history collection + scheduled task to sync turns → xAI user collection (`atx-docs/PLAN.md`).
 
 ## Per-slice implementation checklist
 
 - Add Spring controllers/services under `[services/atxfinance-backend/src/main/kotlin](../../services/atxfinance-backend/src/main/kotlin)`.
-- Update `[docs/atx-sre-ops/atxfinance-backend-http-api.md](../../docs/atx-sre-ops/atxfinance-backend-http-api.md)`.
+- Update `[atx-docs/atx-sre-ops/atxfinance-backend-http-api.md](../../atx-docs/atx-sre-ops/atxfinance-backend-http-api.md)`.
 - Extend `[tests/smoke/backend-http-api-parity.test.ts](../../tests/smoke/backend-http-api-parity.test.ts)` / `[src/lib/bff-proxy-routes.ts](../../src/lib/bff-proxy-routes.ts)` as appropriate.
 - Proxy-first in `[src/app/api](../../src/app/api)`.
 - Integration tests in `[tests/integration](../../tests/integration)` when adding coverage.

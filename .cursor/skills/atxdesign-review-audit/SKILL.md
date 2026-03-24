@@ -70,11 +70,11 @@ Each material inference must store immutable records for:
 
 ## Checklist
 
-Detailed checklist moved to `CHECKLIST.md` (includes repo pointers to `docs/atx-sre-ops/audit-lineage-and-controls.md`).
+Detailed checklist moved to `CHECKLIST.md` (includes repo pointers to `atx-docs/atx-sre-ops/audit-lineage-and-controls.md`).
 
 ## Documentation index
 
-- **[`docs/README.md`](../../../docs/README.md)** — table of contents for all `docs/` (ops, xChat, diagrams).
+- **[`atx-docs/README.md`](../../../atx-docs/README.md)** — table of contents for engineering docs (ops, xChat, options, diagrams).
 - **[`.cursor/skills/README.md`](../README.md)** — table of contents for Cursor skills.
 
 ## Output

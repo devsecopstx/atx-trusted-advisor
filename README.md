@@ -40,5 +40,5 @@ Platform roles vs session: see [DEVELOPMENT.md — Platform roles vs tenant memb
 - Full setup/runbook: `DEVELOPMENT.md`
 - Operator runbook: `AGENTS.md`
 - Contribution workflow: `CONTRIBUTING.md`
-- Backlog / open gaps (TODO, design TBD): `docs/PLAN.md`
+- Backlog / open gaps (TODO, design TBD): [`atx-docs/PLAN.md`](atx-docs/PLAN.md) · [documentation index](atx-docs/README.md)
 - **API inventory & Swagger:** `GET /api/openapi` (public JSON spec); admin Swagger UI at `/admin/api-docs` (signed-in admin). Validation steps: [DEVELOPMENT.md — API docs validation](DEVELOPMENT.md#api-docs-validation).

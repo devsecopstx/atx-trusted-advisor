@@ -57,7 +57,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 | ----------------- | ----------------------------------------------------- | -------------------------------------------------- |
 | Hero refresh      | Subline, $2/hr tooltip, CTA links if drift            | This doc + PR                                      |
 | Green tokens      | Single table “where which green” if confusion returns | Brand kit or `DEVELOPMENT.md`                      |
-| Waitlist page     | Not in core app yet — copy lives in rule until routed | `xfinance-branding.mdc` + `docs/PLAN.md` if needed |
+| Waitlist page     | Not in core app yet — copy lives in rule until routed | `xfinance-branding.mdc` + [`../PLAN.md`](../PLAN.md) if needed |
 | Credential upload | Rule = roadmap only; don’t ship fake FINRA/SEC UI     | `xfinance-branding.mdc`                            |
 
 

@@ -18,18 +18,13 @@ export default async function AdminBrokerImportPage({ searchParams }: PageProps)
   if (!isGlobalAdmin(session.roles)) {
     redirect("/admin?error=forbidden");
   }
-
   const { portfolioId: portfolioIdRaw } = await searchParams;
   const portfolioId = portfolioIdRaw?.trim() ?? "";
-  const lockedId = portfolioId.length > 0 ? portfolioId : undefined;
 
   return (
     <div className="core-shell">
       <section className="panel stack-gap">
         <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
-          <Link className="cta cta-secondary" href="/admin">
-            ← Admin hub
-          </Link>
           <Link className="cta cta-secondary" href="/admin/accounts">
             Accounts
           </Link>
@@ -39,37 +34,19 @@ export default async function AdminBrokerImportPage({ searchParams }: PageProps)
           <Link className="cta cta-secondary" href="/admin/onboarding">
             Onboarding
           </Link>
-          {lockedId ? (
-            <Link className="cta cta-secondary" href={`/admin/accounts/${encodeURIComponent(lockedId)}`}>
-              ← This portfolio&apos;s accounts
-            </Link>
-          ) : null}
         </div>
-
-        <section className="hero-card xf-noise-overlay">
+        <article className="surface-card xf-widget section-card">
           <p className="eyebrow">atxfinance core admin</p>
-          <h1 className="hero-title">Broker holdings import</h1>
-          <p className="hero-copy">
-            Map Merrill or Fidelity <strong>holdings</strong> CSV exports to core accounts. Uses{" "}
-            <code className="font-mono text-xs">POST /api/admin/import/broker</code>. Create accounts under{" "}
-            <Link className="login-xoptions-link" href="/admin/accounts">
-              Accounts
-            </Link>{" "}
-            first.
-            {lockedId ? (
-              <>
-                {" "}
-                Portfolio is fixed from the URL; open{" "}
-                <Link className="login-xoptions-link" href="/admin/broker-import">
-                  /admin/broker-import
-                </Link>{" "}
-                without <code className="font-mono text-xs">portfolioId</code> to pick any book.
-              </>
-            ) : null}
+          <h1 className="hero-title" style={{ fontSize: "1.35rem" }}>
+            Broker holdings import
+          </h1>
+          <p className="status-text">
+            Merrill / Fidelity holdings CSV → map to core accounts (
+            <code className="font-mono text-xs">POST /api/admin/import/broker</code>
+            ). Optional <code className="font-mono text-xs">?portfolioId=</code> locks the book.
           </p>
-        </section>
-
-        <BrokerHoldingsImportPanel lockedPortfolioId={lockedId} />
+        </article>
+        <BrokerHoldingsImportPanel lockedPortfolioId={portfolioId || undefined} />
       </section>
     </div>
   );

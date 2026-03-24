@@ -26,7 +26,7 @@ Keep operational docs accurate for atxFinance without changing runtime behavior 
 
 1. Validate current behavior from code and scripts before editing docs.
 2. Update existing docs first; avoid duplicate documents unless there is a clear separation of purpose.
-3. New files under **`docs/`** → add a row to **[`docs/README.md`](../../../docs/README.md)** (table of contents). New skills → add to **[`.cursor/skills/README.md`](../README.md)**.
+3. New files under **`atx-docs/`** → add a row to **[`atx-docs/README.md`](../../../atx-docs/README.md)** (table of contents). New skills → add to **[`.cursor/skills/README.md`](../README.md)**.
 4. Keep examples secret-safe (never hardcode real tokens, client secrets, or credentials).
 5. Add only operationally useful instructions that can be executed reproducibly.
 

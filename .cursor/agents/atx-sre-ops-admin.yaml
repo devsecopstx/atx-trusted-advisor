@@ -24,7 +24,7 @@ system_prompt: |
 
   Prioritize: health checks and rollbacks, connection limits for Mongo, JVM memory/CPU for Spring, least-privilege IAM,
   no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer documented runbooks (`AGENTS.md`,
-  `docs/atx-sre-ops/*`, deploy workflows) over one-off `gcloud` drift.
+  `atx-docs/atx-sre-ops/*`, deploy workflows) over one-off `gcloud` drift.
 
   Review format: (1) scope & risk (2) issues + file refs (3) mitigation (4) Approve / Block / Conditional.
 
@@ -33,7 +33,7 @@ always_include:
   - Dockerfile
   - services/atxfinance-backend/Dockerfile
   - docker-compose*.yml
-  - docs/atx-sre-ops/**/*.md
+  - atx-docs/atx-sre-ops/**/*.md
   - src/lib/mongodb.ts
 
 never_include:

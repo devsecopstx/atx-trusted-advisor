@@ -4,9 +4,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-import { AdminAccountsPortfolioPicker } from "./ui/admin-accounts-portfolio-picker";
-
-export default async function AdminAccountsPage() {
+export default async function AdminAccountsHubPage() {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login?next=/admin/accounts");
@@ -21,15 +19,9 @@ export default async function AdminAccountsPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Accounts</h1>
         <p className="hero-copy">
-          Pick a portfolio below, or start from{" "}
-          <Link className="login-xoptions-link" href="/admin/portfolios">
-            Portfolios
-          </Link>
-          . Each book supports custodian CRUD, cash, defaults, and book-level risk &amp; outlook. Use{" "}
-          <Link className="login-xoptions-link" href="/admin/broker-import">
-            Broker import
-          </Link>{" "}
-          for Merrill / Fidelity holdings CSV.
+          Pick a portfolio from <Link href="/admin/portfolios">Portfolios</Link>, then open{" "}
+          <strong>Manage accounts</strong> for custodian CRUD, cash, defaults, and book-level risk &amp; outlook. Use{" "}
+          <Link href="/admin/broker-import">Broker import</Link> for Merrill / Fidelity holdings CSV.
         </p>
         <div className="tool-row" style={{ marginTop: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
           <Link className="cta cta-primary" href="/admin/portfolios">
@@ -43,8 +35,6 @@ export default async function AdminAccountsPage() {
           </Link>
         </div>
       </section>
-
-      <AdminAccountsPortfolioPicker />
     </div>
   );
 }

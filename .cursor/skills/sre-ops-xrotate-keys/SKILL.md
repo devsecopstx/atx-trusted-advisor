@@ -56,7 +56,7 @@ gcloud run services update atxfinance-core-prod \
 pre-commit run gitleaks --all-files
 
 # 5) Push rotation docs-only updates
-git add .env.example CHANGELOG.secret-rotations.md docs/secret-rotation.md
+git add .env.example CHANGELOG.secret-rotations.md atx-docs/atx-sre-ops/secret-rotation.md
 git commit -m "chore(security): rotate credentials metadata (no secrets committed)"
 git push
 

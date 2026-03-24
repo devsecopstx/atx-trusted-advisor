@@ -7,7 +7,7 @@
 - [ ] Identify exactly which credentials are rotating and why.
 - [ ] Confirm active production URL/domain and all OAuth callback URLs.
 - [ ] Confirm current App Runner service and GitHub repo/branch used for deploys.
-- [ ] Open `docs/secret-rotation.md` in the atxFinance repo as the runbook baseline.
+- [ ] Open `atx-docs/atx-sre-ops/secret-rotation.md` in the atxFinance repo as the runbook baseline.
 
 ### 2) Create new credentials
 
@@ -42,7 +42,7 @@
 
 ### 7) Repo/docs hygiene
 
-- [ ] Update `docs/secret-rotation.md` if process or env ownership changed.
+- [ ] Update `atx-docs/atx-sre-ops/secret-rotation.md` if process or env ownership changed.
 - [ ] Update `.env.example` comments/placeholders only (no real values).
 - [ ] Append an entry to `CHANGELOG.secret-rotations.md` (no secrets).
 - [ ] Run gitleaks before commit (`pre-commit run gitleaks --all-files`).
