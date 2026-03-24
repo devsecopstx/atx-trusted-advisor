@@ -161,6 +161,8 @@ Use this when you want a **local Compose Mongo** without Atlas and with the same
 | Start **only** Mongo, wait until healthy | `npm run mongo:up` (`scripts/dev/mongo-up.sh`) |
 | Stop Mongo container | `npm run mongo:down` |
 | Fresh volume + seed admin (**wipes** `atxfinance_mongo_data`) | `RESET_LOCAL_MONGO=1 npm run mongo:reset` |
+| **Each dev session:** wipe Mongo volume + seed, then host JVM backend + Next | `npm run dev:host:fresh` (sets `DEV_WIPE_LOCAL_MONGO=1` for `dev:host`) |
+| **Each dev session:** wipe volume + Docker backend + Next (seed **after** backend healthy) | `npm run dev:stack:fresh` |
 | One-shot: Mongo up + seed (keeps existing volume) | `npm run local:bootstrap` |
 
 **`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI`** is unset. If local Mongo runs **without auth** (legacy volume or no `MONGO_INITDB_*`), add **`MONGODB_NO_AUTH=true`** to `.env`. Otherwise use **`MONGO_ROOT_USERNAME`** (default `admin`) and **`MONGO_ROOT_PASSWORD`** (default `atxrocks!`) to match what `docker-compose.yml` initialized. Restart Next after changing `.env` (Mongo client is cached).

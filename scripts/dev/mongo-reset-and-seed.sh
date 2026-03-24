@@ -10,8 +10,7 @@ if [ "${RESET_LOCAL_MONGO:-}" != "1" ]; then
   exit 1
 fi
 
-printf '%s\n' "[mongo:reset] docker compose down -v (removes atxfinance_mongo_data) …"
-docker compose --env-file .env down -v
+bash "${ROOT}/scripts/dev/wipe-local-compose-volumes.sh"
 
 bash "${ROOT}/scripts/dev/mongo-up.sh"
 

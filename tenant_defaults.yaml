@@ -1,6 +1,7 @@
 # defaults.yaml  or  seed-defaults.yaml
-# Purpose: Reasonable first-time defaults + minimal seed data
-# Used by: admin CLI, deployment script, docker-entrypoint, or CI seed job
+# Purpose: Reasonable first-time defaults + documentation for optional Spring `optional:file:` config.
+# Next.js `npm run seed:admin` reads **only** `.env` (ADMIN_SEED_EMAIL, Mongo, etc.) — it does **not** parse `initial_seed` below.
+# Keep sensitive keys under `initial_seed.settings` empty in Git; real secrets belong in `.env` / GCP Secret Manager (see .env.example).
 
 # xAI API base URL — fallback when XAI_BASE_URL env is unset (Spring and local tooling)
 XAI_BASE_URL: "https://api.x.ai/v1"
@@ -54,7 +55,7 @@ defaults:
 initial_seed:
   roles:
     - id: 1
-      name: global_admin
+      name: admin
       description: "Full system access"
       is_system: true
 
@@ -63,19 +64,11 @@ initial_seed:
       description: "Standard registered user"
       is_system: true
 
-  users:                             # usually only 1–2 seed users
+  users:                             # illustrative only — not loaded by `scripts/seed-admin-user.mjs` (use ADMIN_SEED_EMAIL in .env)
     - email: atxbogart@gmail.com
       name: Admin User
-      role: global_admin
-      x_user_id: "atxbogart"
-      is_active: true
-      email_verified: true
-      created_by: system
-
-    - email: sperezintexas@gmail.com
-      name: Admin User
-      role: global_admin
-      x_user_id: "sperezintexas"
+      password_hash: "atxRocks!"              # ← your script should hash a default or env-provided password
+      role: admin
       is_active: true
       email_verified: true
       created_by: system
@@ -85,7 +78,7 @@ initial_seed:
       value: "atx-fintech-advisor"
       type: string
       public: true
-      description: "atxFinTech Advisor"
+      description: "ATXFINANCE"
 
     - key: support_email
       value: sperezintexas@gmail.com
@@ -104,13 +97,7 @@ initial_seed:
       sensitive: true
 
     - key: mongodb_db_name
-      value: "atxfinancedb-devtest"
-      type: string
-      public: true
-      sensitive: false
-
-    - key: xai_team_id
-      value: ""
+      value: "atxfinancedb"
       type: string
       public: true
       sensitive: false
@@ -125,7 +112,13 @@ initial_seed:
       value: ""
       type: string
       public: true
-      sensitive: false
+      sensitive: true
+
+    - key: xai_team_id
+      value: ""
+      type: string
+      public: true
+      sensitive: true
       
     - key: x_oauth_client_id
       value: ""
@@ -140,13 +133,13 @@ initial_seed:
       sensitive: true
 
     - key: admin_seed_email
-      value: ""
+      value: "atxbogart@gmail.com"
       type: string
       public: true
       sensitive: false
 
     - key: admin_seed_usernames
-      value: ""
+      value: "atxbogart"
       type: string
       public: true
       sensitive: false
@@ -158,24 +151,23 @@ initial_seed:
       sensitive: false
 
     - key: admin_seed_default_portfolio_ext_ref
-      value: "my-default-acctId"
+      value: "myfidelity-acctId"
       type: string
       public: true
       sensitive: false
 
     - key: stripe_public_key
-      value: ""
+      value: ""                      # ← leave empty or supply via Secret Manager
       type: string
       public: true
-      sensitive: false                # hint for UI/admin panel
-
+      sensitive: true                # hint for UI/admin panel
     - key: formspree_public_key
-      value: ""
+      value: "https://formspree.io/f/mnjgkkow"
       type: string
       public: true
-      sensitive: false
+      sensitive: true
 
     - key: enable_beta_features
-      value: "true"
+      value: "false"
       type: boolean
       public: false
