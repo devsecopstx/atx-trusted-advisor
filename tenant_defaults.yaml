@@ -140,7 +140,7 @@ initial_seed:
       sensitive: true
 
     - key: admin_seed_email
-      value: "sperezintexas@gmail.com"
+      value: ""
       type: string
       public: true
       sensitive: false
@@ -158,7 +158,7 @@ initial_seed:
       sensitive: false
 
     - key: admin_seed_default_portfolio_ext_ref
-      value: "myfidelity-acctId"
+      value: "my-default-acctId"
       type: string
       public: true
       sensitive: false
