@@ -1083,6 +1083,8 @@ export type MutatePortfolioWatchlistInput = {
   userId: string;
   portfolioId: string;
   tenantId?: string;
+  /** When set, updates the watchlist display name (trimmed, non-empty). */
+  name?: string;
   addSymbols?: string[];
   /** Merge metadata on existing symbols or append new rows (CSV import). */
   addEntries?: WatchlistSymbolImportEntry[];
@@ -1096,26 +1098,42 @@ function mergeImportEntryIntoSymbol(
 ): WatchlistSymbol {
   const next: WatchlistSymbol = { ...base };
   if (entry.lineType !== undefined) {
-    const v = entry.lineType.trim();
-    if (v.length === 0) {
+    if (entry.lineType === null) {
       delete next.lineType;
     } else {
-      next.lineType = v.slice(0, 128);
+      const v = entry.lineType.trim();
+      if (v.length === 0) {
+        delete next.lineType;
+      } else {
+        next.lineType = v.slice(0, 128);
+      }
     }
   }
   if (entry.strategy !== undefined) {
-    const v = entry.strategy.trim();
-    if (v.length === 0) {
+    if (entry.strategy === null) {
       delete next.strategy;
     } else {
-      next.strategy = v.slice(0, 512);
+      const v = entry.strategy.trim();
+      if (v.length === 0) {
+        delete next.strategy;
+      } else {
+        next.strategy = v.slice(0, 512);
+      }
     }
   }
   if (entry.quantity !== undefined) {
-    next.quantity = Number.isFinite(entry.quantity) ? entry.quantity : undefined;
+    if (entry.quantity === null) {
+      delete next.quantity;
+    } else {
+      next.quantity = Number.isFinite(entry.quantity) ? entry.quantity : undefined;
+    }
   }
   if (entry.entryPrice !== undefined) {
-    next.entryPrice = Number.isFinite(entry.entryPrice) ? entry.entryPrice : undefined;
+    if (entry.entryPrice === null) {
+      delete next.entryPrice;
+    } else {
+      next.entryPrice = Number.isFinite(entry.entryPrice) ? entry.entryPrice : undefined;
+    }
   }
   return next;
 }
@@ -1127,7 +1145,11 @@ export async function mutatePortfolioWatchlistSymbols(
   if (!ObjectId.isValid(input.portfolioId)) {
     return null;
   }
+  const trimmedName =
+    input.name === undefined ? undefined : input.name.trim().slice(0, 128);
+  const hasNameUpdate = trimmedName !== undefined && trimmedName.length > 0;
   const hasMutation =
+    hasNameUpdate ||
     Boolean(input.addSymbols?.length) ||
     Boolean(input.addEntries?.length) ||
     Boolean(input.removeSymbols?.length) ||
@@ -1214,14 +1236,91 @@ export async function mutatePortfolioWatchlistSymbols(
     symbols = [{ symbol: DEFAULT_WATCHLIST_SYMBOL, addedAt: now }];
   }
 
+  const setDoc: Record<string, unknown> = { symbols, updatedAt: now };
+  if (hasNameUpdate && trimmedName !== undefined) {
+    setDoc.name = trimmedName;
+  }
+
   await db.collection<Watchlist>(collections.watchlists).updateOne(filter, {
-    $set: { symbols, updatedAt: now }
+    $set: setDoc
   });
 
   return getPortfolioWatchlist({
     userId: input.userId,
     portfolioId: input.portfolioId,
     tenantId: input.tenantId
+  });
+}
+
+/**
+ * Ensures `portfolio_watchlists` has a row for this portfolio (global-admin back office).
+ * Creates a default list with {@link DEFAULT_WATCHLIST_SYMBOL} when missing.
+ */
+export async function adminEnsureWatchlistForPortfolio(portfolioId: string): Promise<Watchlist | null> {
+  const portfolio = await adminGetPortfolioById(portfolioId);
+  if (!portfolio?._id) {
+    return null;
+  }
+  const userId = portfolioUserIdString(portfolio);
+  if (!userId) {
+    return null;
+  }
+  const tenantId = portfolioTenantIdString(portfolio);
+  const existing = await getPortfolioWatchlist({ userId, portfolioId, tenantId });
+  if (existing) {
+    return existing;
+  }
+
+  await ensurePortfolioIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const tenantObjectId = toTenantObjectId(tenantId);
+  const portfolioOid = portfolio._id;
+  const watchlistInsertFilter = strictWriteTenantFilter(
+    {
+      userId,
+      portfolioId: portfolioOid
+    },
+    tenantId
+  );
+  const watchlistSetFields = {
+    name: DEFAULT_WATCHLIST_NAME,
+    symbols: [{ symbol: DEFAULT_WATCHLIST_SYMBOL, addedAt: now }],
+    isDefault: true,
+    updatedAt: now,
+    ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
+  };
+  await db.collection<Watchlist>(collections.watchlists).updateOne(
+    watchlistInsertFilter,
+    {
+      $setOnInsert: {
+        userId,
+        portfolioId: portfolioOid,
+        createdAt: now
+      },
+      $set: watchlistSetFields
+    },
+    { upsert: true }
+  );
+  return getPortfolioWatchlist({ userId, portfolioId, tenantId });
+}
+
+/** Global-admin watchlist PATCH: resolves portfolio owner + tenant from `portfolioId`. */
+export async function adminMutatePortfolioWatchlist(
+  input: Omit<MutatePortfolioWatchlistInput, "userId" | "tenantId">
+): Promise<Watchlist | null> {
+  const portfolio = await adminGetPortfolioById(input.portfolioId);
+  if (!portfolio?._id) {
+    return null;
+  }
+  const userId = portfolioUserIdString(portfolio);
+  if (!userId) {
+    return null;
+  }
+  return mutatePortfolioWatchlistSymbols({
+    ...input,
+    userId,
+    tenantId: portfolioTenantIdString(portfolio)
   });
 }
 

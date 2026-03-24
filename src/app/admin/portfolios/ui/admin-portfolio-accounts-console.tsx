@@ -379,6 +379,12 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         >
           Broker holdings import
         </Link>
+        <Link
+          className="cta cta-secondary"
+          href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/watchlist`}
+        >
+          Manage watchlist
+        </Link>
         {portfolio?.userId ? (
           <Link
             className="cta cta-secondary"

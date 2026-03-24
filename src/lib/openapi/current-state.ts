@@ -174,6 +174,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-portfolios"
   },
   {
+    path: "/api/admin/portfolios/{portfolioId}/watchlist",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
     path: "/api/admin/tasks/{taskId}/run",
     operations: [{ method: "POST", auth: "admin" }],
     tag: "admin-tasks"

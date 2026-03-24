@@ -1,0 +1,101 @@
+import { ObjectId } from "mongodb";
+import { NextResponse } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const authMocks = vi.hoisted(() => ({
+  requireAdminSession: vi.fn()
+}));
+
+const repoMocks = vi.hoisted(() => ({
+  adminGetPortfolioById: vi.fn(),
+  adminEnsureWatchlistForPortfolio: vi.fn(),
+  adminMutatePortfolioWatchlist: vi.fn()
+}));
+
+vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/modules/core-admin/repository", () => repoMocks);
+
+import { GET as getAdminWatchlist, PATCH as patchAdminWatchlist } from "@/app/api/admin/portfolios/[portfolioId]/watchlist/route";
+
+const portfolioId = "507f1f77bcf86cd799439033";
+
+function mockWatchlist() {
+  const now = new Date("2026-01-15T12:00:00.000Z");
+  return {
+    _id: new ObjectId("507f1f77bcf86cd799439055"),
+    tenantId: new ObjectId("507f1f77bcf86cd799439022"),
+    userId: "507f1f77bcf86cd799439011",
+    portfolioId: new ObjectId(portfolioId),
+    name: "DefaultWatchlist",
+    symbols: [{ symbol: "TSLA", addedAt: now }],
+    isDefault: true,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+describe("/api/admin/portfolios/[portfolioId]/watchlist", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMocks.requireAdminSession.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      roles: ["global_admin"],
+      email: "admin@test.local",
+      tenantRole: "tenant_admin",
+      xUserId: "x1",
+      username: "adminuser"
+    });
+    repoMocks.adminGetPortfolioById.mockResolvedValue({
+      _id: new ObjectId(portfolioId),
+      userId: "507f1f77bcf86cd799439011",
+      name: "Book",
+      isDefault: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    repoMocks.adminEnsureWatchlistForPortfolio.mockResolvedValue(mockWatchlist());
+    repoMocks.adminMutatePortfolioWatchlist.mockResolvedValue(mockWatchlist());
+  });
+
+  it("GET returns 404 when portfolio missing", async () => {
+    repoMocks.adminGetPortfolioById.mockResolvedValueOnce(null);
+    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`);
+    const res = await getAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("GET returns watchlist data", async () => {
+    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`);
+    const res = await getAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { data: { name: string; symbols: { symbol: string }[] } };
+    expect(json.data.name).toBe("DefaultWatchlist");
+    expect(json.data.symbols).toHaveLength(1);
+    expect(json.data.symbols[0]?.symbol).toBe("TSLA");
+    expect(repoMocks.adminEnsureWatchlistForPortfolio).toHaveBeenCalledWith(portfolioId);
+  });
+
+  it("PATCH delegates to adminMutatePortfolioWatchlist", async () => {
+    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addSymbols: ["AAPL"] })
+    });
+    const res = await patchAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
+    expect(res.status).toBe(200);
+    expect(repoMocks.adminMutatePortfolioWatchlist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        portfolioId,
+        addSymbols: ["AAPL"]
+      })
+    );
+  });
+
+  it("rejects unauthenticated admin", async () => {
+    authMocks.requireAdminSession.mockResolvedValueOnce(NextResponse.json({ error: "nope" }, { status: 401 }));
+    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`);
+    const res = await getAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
+    expect(res.status).toBe(401);
+  });
+});

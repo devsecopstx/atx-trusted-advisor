@@ -219,6 +219,57 @@
   font-size: 0.8rem;
 }
 
+.xf-watchlist-table-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 11rem;
+  box-sizing: border-box;
+  padding: 0.35rem 0.45rem;
+  margin-bottom: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--xf-text-100);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--xf-radius-sm);
+}
+
+.xf-watchlist-table-input:last-child {
+  margin-bottom: 0;
+}
+
+.xf-watchlist-table-input:focus {
+  outline: none;
+  border-color: rgba(57, 255, 20, 0.45);
+}
+
+.xf-watchlist-name-input {
+  width: 100%;
+  max-width: 22rem;
+  box-sizing: border-box;
+  margin: 0 0 0.35rem;
+  padding: 0.45rem 0.55rem;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--xf-radius-sm);
+}
+
+.xf-watchlist-name-input:focus {
+  outline: none;
+  border-color: rgba(57, 255, 20, 0.45);
+}
+
+.xf-watchlist-edit-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .xf-watchlist-empty {
   padding: 2rem 1.25rem;
   text-align: center;

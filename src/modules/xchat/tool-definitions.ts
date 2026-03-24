@@ -26,7 +26,7 @@ export const ATXFINANCE_TOOL_DEFINITION = {
             "market_quote"
           ],
           description:
-            "portfolio_summary: portfolio + accounts with cashBalance and position counts. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_snapshot: current symbols. watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. market_quote: Yahoo quote for symbol."
+            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt) on the default portfolio; use watchlist_snapshot for watchlist-only. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. market_quote: Yahoo quote for symbol."
         },
         symbol: {
           type: "string",

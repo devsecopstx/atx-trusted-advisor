@@ -114,8 +114,10 @@ class PortfolioSubresourcesController(
         val removeSymbols = stringList(body["removeSymbols"])?.take(props.maxWatchlistSymbolsPerPatch)
         val addEntries = mapList(body["addEntries"])?.take(props.maxWatchlistSymbolsPerPatch)
         val dedupe = body["dedupe"] as? Boolean
+        val name = (body["name"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
         val hasMutation =
-            !addSymbols.isNullOrEmpty() ||
+            name != null ||
+                !addSymbols.isNullOrEmpty() ||
                 !addEntries.isNullOrEmpty() ||
                 !removeSymbols.isNullOrEmpty() ||
                 dedupe == true
@@ -123,7 +125,7 @@ class PortfolioSubresourcesController(
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid payload"))
         }
         val quotes = request.getParameter("quotes") == "1"
-        val payload = nested.patchWatchlist(session, portfolioId, quotes, addSymbols, addEntries, removeSymbols, dedupe)
+        val payload = nested.patchWatchlist(session, portfolioId, quotes, addSymbols, addEntries, removeSymbols, dedupe, name)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Watchlist not found"))
         return ResponseEntity.ok(payload)
     }

@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import type { SessionUser } from "@/lib/auth";
-import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
-import { caughtErrorMessage } from "@/lib/caught-error";
+import { requireAdminSession } from "@/lib/api-auth";
 import {
-    getPortfolioByIdForSessionUser,
-    getPortfolioWatchlist,
-    mutatePortfolioWatchlistSymbols,
-    provisionDefaultPortfolioForUser
+    adminEnsureWatchlistForPortfolio,
+    adminGetPortfolioById,
+    adminMutatePortfolioWatchlist
 } from "@/modules/core-admin/repository";
 import type { Watchlist, WatchlistSymbol } from "@/modules/core-admin/types";
 import {
@@ -19,9 +15,7 @@ import {
 } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 type RouteContext = {
-  params: Promise<{
-    portfolioId: string;
-  }>;
+  params: Promise<{ portfolioId: string }>;
 };
 
 const watchlistAddEntrySchema = z.object({
@@ -61,59 +55,11 @@ function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
   };
 }
 
-function toIsoSymbolRows(watchlist: Watchlist) {
-  return (watchlist.symbols ?? []).map(watchlistSymbolToJsonRow);
-}
-
-/**
- * When the user owns the portfolio but the watchlist doc was never created (or failed to seed),
- * run the same idempotent provision used by Portfolio / Sync so TSLA default-root is present.
- */
-async function getPortfolioWatchlistOrProvision(
-  session: SessionUser,
-  portfolioId: string
-): Promise<Watchlist | null> {
-  const existing = await getPortfolioWatchlist({
-    userId: session.userId,
-    portfolioId,
-    tenantId: session.tenantId
-  });
-  if (existing) {
-    return existing;
-  }
-  const portfolio = await getPortfolioByIdForSessionUser({
-    userId: session.userId,
-    tenantId: session.tenantId,
-    portfolioId
-  });
-  if (!portfolio?._id) {
-    return null;
-  }
-  try {
-    await provisionDefaultPortfolioForUser({
-      userId: session.userId,
-      tenantId: session.tenantId,
-      watchlistSymbols: ["TSLA"]
-    });
-  } catch (error) {
-    const detail = caughtErrorMessage(error);
-    console.error(
-      `[api/watchlist] provision default watchlist failed userId=${session.userId} portfolioId=${portfolioId} detail=${detail}`
-    );
-    return null;
-  }
-  return getPortfolioWatchlist({
-    userId: session.userId,
-    portfolioId,
-    tenantId: session.tenantId
-  });
-}
-
 async function buildJsonPayload(
   watchlist: Watchlist,
   quotes: boolean
 ): Promise<Record<string, unknown>> {
-  const symbols = toIsoSymbolRows(watchlist);
+  const symbols = (watchlist.symbols ?? []).map(watchlistSymbolToJsonRow);
   const symbolsDetailed = symbols;
 
   let symbolsWithQuotes:
@@ -152,19 +98,19 @@ async function buildJsonPayload(
 }
 
 export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
-  const session = await requireSessionUser();
+  const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
   }
 
   const { portfolioId } = await context.params;
+  const portfolio = await adminGetPortfolioById(portfolioId);
+  if (!portfolio?._id) {
+    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  }
+
   const quotes = new URL(request.url).searchParams.get("quotes") === "1";
-  const watchlist = await getPortfolioWatchlistOrProvision(session, portfolioId);
+  const watchlist = await adminEnsureWatchlistForPortfolio(portfolioId);
   if (!watchlist) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
@@ -174,17 +120,17 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
-  const session = await requireSessionUser();
+  const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
   }
 
   const { portfolioId } = await context.params;
+  const portfolio = await adminGetPortfolioById(portfolioId);
+  if (!portfolio?._id) {
+    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  }
+
   let json: unknown;
   try {
     json = await request.json();
@@ -200,15 +146,10 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  const ensured = await getPortfolioWatchlistOrProvision(session, portfolioId);
-  if (!ensured) {
-    return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
-  }
+  await adminEnsureWatchlistForPortfolio(portfolioId);
 
-  const updated = await mutatePortfolioWatchlistSymbols({
-    userId: session.userId,
+  const updated = await adminMutatePortfolioWatchlist({
     portfolioId,
-    tenantId: session.tenantId,
     name: parsed.data.name,
     addSymbols: parsed.data.addSymbols,
     addEntries: parsed.data.addEntries,

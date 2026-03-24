@@ -115,7 +115,21 @@ describe("atxfinance tool executor", () => {
     expect(data.accounts[0].type).toBe("fidelity");
     expect(data.accounts[0].cashBalance).toBe(25_000);
     expect(data.accounts[0].positionCount).toBe(1);
+    expect(data.watchlist).toMatchObject({
+      name: "DefaultWatchlist",
+      symbolCount: 1,
+      symbols: [{ symbol: "TSLA", addedAt: expect.any(String) }]
+    });
     expect(result.error).toBeUndefined();
+  });
+
+  it("portfolio_summary includes watchlist error when no watchlist document", async () => {
+    repositoryMocks.getPortfolioWatchlist.mockResolvedValueOnce(null);
+    const executor = createXfinanceToolExecutor(ctx);
+    const result = await executor("atxfinance", { operation: "portfolio_summary" });
+    const data = JSON.parse(result.result);
+    expect(data.watchlist).toEqual({ error: "no_watchlist" });
+    expect(data.accountCount).toBe(1);
   });
 
   it("portfolio_summary coalesces missing cashBalance to 25_000", async () => {
@@ -132,6 +146,10 @@ describe("atxfinance tool executor", () => {
     const result = await executor("atxfinance", { operation: "portfolio_summary" });
     const data = JSON.parse(result.result);
     expect(data.accounts[0].cashBalance).toBe(25_000);
+    expect(data.watchlist).toMatchObject({
+      name: "DefaultWatchlist",
+      symbolCount: 1
+    });
   });
 
   it("watchlist_snapshot returns symbols with addedAt", async () => {

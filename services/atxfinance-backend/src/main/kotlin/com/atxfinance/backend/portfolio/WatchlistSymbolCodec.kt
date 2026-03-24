@@ -86,7 +86,8 @@ object WatchlistSymbolCodec {
 
     fun mergeImportEntry(base: Document, entry: Map<String, Any?>): Document {
         val next = Document(base)
-        entry["lineType"]?.let { lt ->
+        if (entry.containsKey("lineType")) {
+            val lt = entry["lineType"]
             val v = (lt as? String)?.trim() ?: ""
             if (v.isEmpty()) {
                 next.remove("lineType")
@@ -94,7 +95,8 @@ object WatchlistSymbolCodec {
                 next["lineType"] = v.take(128)
             }
         }
-        entry["strategy"]?.let { st ->
+        if (entry.containsKey("strategy")) {
+            val st = entry["strategy"]
             val v = (st as? String)?.trim() ?: ""
             if (v.isEmpty()) {
                 next.remove("strategy")
@@ -102,11 +104,13 @@ object WatchlistSymbolCodec {
                 next["strategy"] = v.take(512)
             }
         }
-        entry["quantity"]?.let {
-            parseFiniteNumber(it)?.let { n -> next["quantity"] = n } ?: next.remove("quantity")
+        if (entry.containsKey("quantity")) {
+            val q = entry["quantity"]
+            parseFiniteNumber(q)?.let { n -> next["quantity"] = n } ?: next.remove("quantity")
         }
-        entry["entryPrice"]?.let {
-            parseFiniteNumber(it)?.let { n -> next["entryPrice"] = n } ?: next.remove("entryPrice")
+        if (entry.containsKey("entryPrice")) {
+            val p = entry["entryPrice"]
+            parseFiniteNumber(p)?.let { n -> next["entryPrice"] = n } ?: next.remove("entryPrice")
         }
         return next
     }

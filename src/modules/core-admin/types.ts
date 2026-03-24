@@ -215,10 +215,10 @@ export type WatchlistSymbol = {
 /** Payload for PATCH `addEntries` (merge into existing row or append). */
 export type WatchlistSymbolImportEntry = {
   symbol: string;
-  lineType?: string;
-  strategy?: string;
-  quantity?: number;
-  entryPrice?: number;
+  lineType?: string | null;
+  strategy?: string | null;
+  quantity?: number | null;
+  entryPrice?: number | null;
 };
 
 export type Watchlist = {

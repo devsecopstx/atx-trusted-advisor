@@ -248,6 +248,7 @@ export function AdminPortfoliosCrud() {
               <th>Broker type</th>
               <th>Default</th>
               <th>Accounts</th>
+              <th>Watchlist</th>
               <th>Total cash</th>
               <th>Updated</th>
               <th />
@@ -363,12 +364,27 @@ export function AdminPortfoliosCrud() {
                       {row.accountCount}
                     </Link>
                   </td>
+                  <td>
+                    <Link
+                      className="login-xoptions-link"
+                      href={`/admin/portfolios/${encodeURIComponent(row._id)}/watchlist`}
+                      title="Manage watchlist"
+                    >
+                      Open
+                    </Link>
+                  </td>
                   <td>{money.format(row.totalCashBalance)}</td>
                   <td className="text-xs">{new Date(row.updatedAt).toLocaleString()}</td>
                   <td>
-                    <div className="tool-row" style={{ gap: "0.35rem" }}>
+                    <div className="tool-row" style={{ gap: "0.35rem", flexWrap: "wrap" }}>
                       <Link className="cta cta-secondary" href={`/admin/accounts/${row._id}`}>
                         Manage accounts
+                      </Link>
+                      <Link
+                        className="cta cta-secondary"
+                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/watchlist`}
+                      >
+                        Manage watchlist
                       </Link>
                       <button
                         type="button"

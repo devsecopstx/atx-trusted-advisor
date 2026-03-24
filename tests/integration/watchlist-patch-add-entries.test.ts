@@ -138,6 +138,35 @@ describe("PATCH /api/portfolios/:portfolioId/watchlist addEntries", () => {
     expect(mutateMocks.mutatePortfolioWatchlistSymbols).not.toHaveBeenCalled();
   });
 
+  it("forwards name-only PATCH to mutatePortfolioWatchlistSymbols", async () => {
+    const addedAt = new Date("2026-01-15T00:00:00.000Z");
+    mutateMocks.mutatePortfolioWatchlistSymbols.mockResolvedValue({
+      _id: new ObjectId(),
+      tenantId: new ObjectId(),
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId: new ObjectId(),
+      name: "My list",
+      isDefault: true,
+      createdAt: addedAt,
+      updatedAt: addedAt,
+      symbols: [{ symbol: "TSLA", addedAt }]
+    });
+
+    const res = await patchWatchlist(
+      new Request("http://test/api/portfolios/p1/watchlist", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "My list" })
+      }),
+      { params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" }) }
+    );
+
+    expect(res.status).toBe(200);
+    expect(mutateMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "My list" })
+    );
+  });
+
   it("returns 401-shaped response when session is unauthenticated", async () => {
     sessionMocks.requireSessionUser.mockResolvedValueOnce(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 })

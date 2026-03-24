@@ -42,6 +42,27 @@ function watchlistSymbolToJson(s: WatchlistSymbol) {
   };
 }
 
+type WatchlistSummaryPayload =
+  | { error: "no_watchlist" }
+  | { name: string; symbolCount: number; symbols: ReturnType<typeof watchlistSymbolToJson>[] };
+
+async function loadWatchlistSummary(ctx: ExecutorContext, portfolioId: string): Promise<WatchlistSummaryPayload> {
+  const watchlist = await getPortfolioWatchlist({
+    userId: ctx.userId,
+    portfolioId,
+    tenantId: ctx.tenantId
+  });
+  if (!watchlist) {
+    return { error: "no_watchlist" };
+  }
+  const symbols = watchlist.symbols ?? [];
+  return {
+    name: watchlist.name,
+    symbolCount: symbols.length,
+    symbols: symbols.map(watchlistSymbolToJson)
+  };
+}
+
 function parseTickerListFromArgs(args: Record<string, unknown>, max: number): string[] {
   if (Array.isArray(args.symbols)) {
     const out: string[] = [];
@@ -135,6 +156,7 @@ const operations: Record<string, OperationHandler> = {
           })
         : [];
     const counts = positionCountsByAccountId(positions);
+    const watchlist = await loadWatchlistSummary(ctx, portfolioId);
 
     return {
       name: portfolio.name,
@@ -149,7 +171,8 @@ const operations: Record<string, OperationHandler> = {
         isDefault: a.isDefault,
         cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
         positionCount: a._id ? (counts.get(a._id.toHexString()) ?? 0) : 0
-      }))
+      })),
+      watchlist
     };
   },
 
@@ -159,21 +182,7 @@ const operations: Record<string, OperationHandler> = {
       return { error: "no_default_portfolio" };
     }
 
-    const watchlist = await getPortfolioWatchlist({
-      userId: ctx.userId,
-      portfolioId: portfolio._id.toHexString(),
-      tenantId: ctx.tenantId
-    });
-    if (!watchlist) {
-      return { error: "no_watchlist" };
-    }
-
-    const symbols = watchlist.symbols ?? [];
-    return {
-      name: watchlist.name,
-      symbolCount: symbols.length,
-      symbols: symbols.map(watchlistSymbolToJson)
-    };
+    return loadWatchlistSummary(ctx, portfolio._id.toHexString());
   },
 
   watchlist_add_symbols: async (args, ctx) => {

@@ -163,11 +163,12 @@ class PortfolioNestedResourceService(
         addEntries: List<Map<String, Any?>>?,
         removeSymbols: List<String>?,
         dedupe: Boolean?,
+        name: String?,
     ): Map<String, Any?>? {
         if (getWatchlistOrProvision(session, portfolioId) == null) {
             return null
         }
-        val updated = mutateWatchlistDocument(session, portfolioId, addSymbols, addEntries, removeSymbols, dedupe)
+        val updated = mutateWatchlistDocument(session, portfolioId, addSymbols, addEntries, removeSymbols, dedupe, name)
             ?: return null
         return buildWatchlistJson(updated, quotes)
     }
@@ -221,6 +222,7 @@ class PortfolioNestedResourceService(
         addEntries: List<Map<String, Any?>>?,
         removeSymbols: List<String>?,
         dedupe: Boolean?,
+        newName: String?,
     ): Document? {
         if (!ObjectId.isValid(portfolioId)) {
             return null
@@ -298,9 +300,13 @@ class PortfolioNestedResourceService(
             symbols.add(Document(mapOf("symbol" to defaultWatchlistSymbol, "addedAt" to now)))
         }
 
+        val update = Update().set("symbols", symbols).set("updatedAt", now)
+        newName?.trim()?.takeIf { it.isNotEmpty() }?.let {
+            update.set("name", it.take(128))
+        }
         mongoTemplate.updateFirst(
             Query.query(Criteria.where("_id").`is`(doc.getObjectId("_id"))),
-            Update().set("symbols", symbols).set("updatedAt", now),
+            update,
             props.watchlistsCollection,
         )
         val reloaded = mongoTemplate.findById(doc.getObjectId("_id"), Document::class.java, props.watchlistsCollection)
