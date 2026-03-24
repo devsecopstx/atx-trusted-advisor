@@ -66,6 +66,8 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 
 Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `tenantId` + `emailAccountId`** (body `emailAccountId` optional; defaults to normalized session email or `"primary"`). Collection **`strategy_jobs`** (override `STRATEGY_JOBS_COLLECTION`). Rate limit: **`STRATEGY_MAX_JOBS_HOURLY`** (default **12**) creations per scope per rolling hour — **429** `rate_limited`. **`STRATEGY_SOFT_WARN_JOBS_HOURLY`** (default **8**) surfaces `meta.softWarn` on **201**. Optional header **`Idempotency-Key`**: replay within **24h** returns **200** `{ data, meta: { idempotentReplay: true } }`.
 
+**Indexes (ops):** compound `{ userId: 1, tenantId: 1, emailAccountId: 1, createdAt: -1 }` for rate-limit counts; optional partial unique on `{ userId, tenantId, emailAccountId, idempotencyKey }` where `idempotencyKey` exists (not created by the app yet — add via Atlas/ops when volume warrants).
+
 | Method | Path | Purpose |
 |--------|------|---------|
 | POST | `/api/strategy-jobs` | **201** `{ "data", "meta" }` — starts slot collection (`status`: `collecting`). **200** idempotent replay. **429** rate limited. |
