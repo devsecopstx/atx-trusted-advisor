@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import {
     clearOAuthFlowCookies,
     consumeOAuthReturnPathCookie,
-    createSession,
     getSessionUser,
     isSafeOAuthReturnPath,
     readOAuthFlowCookies,
@@ -16,24 +15,18 @@ import {
     isAllowAnyXUserLoginEnabled
 } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
+import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { buildXIdentityPlaceholderEmail, isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
-import {
-    createAccessRequest,
-    getPendingAccessRequestByUserAndRole,
-    provisionDefaultPortfolioForUser
-} from "@/modules/core-admin/repository";
+import { createAccessRequest, getPendingAccessRequestByUserAndRole } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
     ensureCoreUserByEmail,
-    ensureDefaultTenant,
     ensureSeededGlobalAdmin,
     getCoreUserByEmail,
     getCoreUserByXIdentity,
     linkXAccountToUser,
-    resolveAuthContext,
-    unlinkXAccountFromUser,
-    upsertTenantMembership
+    unlinkXAccountFromUser
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
 
@@ -285,87 +278,12 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
   }
 
-  const userObjectId = user._id;
-
-  const allowlist = (env.ADMIN_X_USERNAMES ?? "")
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
-  const usernameIsAllowlisted = allowlist.includes(userInfoJson.data.username.toLowerCase());
-  const adminAllowlistDenied = allowlist.length > 0 && isGlobalAdmin(user.roles) && !usernameIsAllowlisted;
-  if (
-    adminAllowlistDenied &&
-    !allowAnyXUserLogin
-  ) {
-    return NextResponse.redirect(new URL("/login?error=not_authorized_admin", origin));
-  }
-
-  const tenant = await ensureDefaultTenant();
-  if (!tenant._id) {
-    return NextResponse.redirect(new URL("/login?error=tenant_bootstrap_failed", origin));
-  }
-
-  try {
-    await upsertTenantMembership({
-      userId: userObjectId,
-      tenantId: tenant._id,
-      role: "tenant_admin",
-      isDefaultTenant: true
-    });
-    const authContext = await resolveAuthContext({ user });
-    const sessionRoles = hasLoginRole
-      ? authContext.roles
-      : authContext.roles.length > 0
-        ? authContext.roles
-        : ["viewer"];
-    const effectiveSessionRoles = adminAllowlistDenied
-      ? sessionRoles.filter((role) => role !== "global_admin" && role !== "admin")
-      : sessionRoles;
-    const finalSessionRoles =
-      effectiveSessionRoles.length > 0 ? effectiveSessionRoles : ["viewer"];
-
-    if (adminAllowlistDenied) {
-      console.warn("[auth/x/callback] admin allowlist denied, falling back to app_user session", {
-        userId: userObjectId.toHexString(),
-        username: userInfoJson.data.username
-      });
-    }
-
-    try {
-      await provisionDefaultPortfolioForUser({
-        userId: authContext.userId.toHexString(),
-        tenantId: authContext.tenantId.toHexString()
-      });
-    } catch (provisionError) {
-      console.warn("[auth/x/callback] default portfolio provision non-fatal; will retry on first /portfolio or API", {
-        userId: authContext.userId.toHexString(),
-        message: provisionError instanceof Error ? provisionError.message : String(provisionError)
-      });
-    }
-
-    await createSession({
-      userId: authContext.userId.toHexString(),
-      email: authContext.email,
-      roles: finalSessionRoles,
-      tenantId: authContext.tenantId.toHexString(),
-      tenantRole: authContext.tenantRole,
-      xUserId: authContext.xUserId ?? xIdentity.xUserId,
-      username: authContext.username ?? xIdentity.username,
-      displayName: authContext.displayName ?? xIdentity.displayName,
-      avatarUrl: authContext.avatarUrl ?? xIdentity.avatarUrl
-    });
-
-    const returnPath = await consumeOAuthReturnPathCookie();
-    const fallback = isGlobalAdmin(finalSessionRoles) ? "/admin" : "/xchat";
-    const target = returnPath && isSafeOAuthReturnPath(returnPath) ? returnPath : fallback;
-    return NextResponse.redirect(new URL(target, origin));
-  } catch (error) {
-    console.error("[auth/x/callback] session bootstrap failed", {
-      userId: userObjectId.toHexString(),
-      message: error instanceof Error ? error.message : String(error)
-    });
-    return NextResponse.redirect(new URL("/login?error=bootstrap_failed", origin));
-  }
+  return finalizeOAuthSessionAndRedirect({
+    origin,
+    user,
+    identity: xIdentity,
+    usernameForAdminAllowlist: userInfoJson.data.username
+  });
 }
 
 async function fetchXUserProfile(

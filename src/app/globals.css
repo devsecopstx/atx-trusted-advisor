@@ -45,9 +45,26 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--xf-text-100);
 }
 
-.xf-logo-text--sm { font-size: 1.15rem; }
-.xf-logo-text--md { font-size: 1.55rem; }
-.xf-logo-text--lg { font-size: clamp(1.8rem, 5vw, 2.6rem); }
+.xf-logo-text--sm { font-size: 1.05rem; }
+.xf-logo-text--md { font-size: 1.42rem; }
+.xf-logo-text--lg { font-size: clamp(1.45rem, 4.2vw, 2.15rem); }
+
+.xf-logo-title-phrase {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.22em 0.35em;
+  max-width: 100%;
+}
+
+.xf-logo-title-trusted {
+  color: var(--xf-text-100);
+}
+
+.xf-logo-title-advisor {
+  color: color-mix(in srgb, var(--xf-gain-green) 78%, var(--xf-text-100));
+  font-weight: 800;
+}
 
 .xf-logo-x-letter {
   color: var(--xf-text-100);
@@ -55,11 +72,24 @@ h1, h2, h3, h4, h5, h6 {
 
 .xf-logo-powered {
   margin: 0;
-  color: var(--xf-text-300);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-transform: none;
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.xf-powered-by-muted {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.xf-powered-by-brand {
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
 }
 
 /* ── Admin top bar ─────────────────────────── */
@@ -377,11 +407,18 @@ h1, h2, h3, h4, h5, h6 {
 
 .login-powered-by {
   margin: 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--xf-gain-green) 90%, var(--xf-text-100));
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.login-powered-by-brand {
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
 }
 
 .login-gains-tagline {

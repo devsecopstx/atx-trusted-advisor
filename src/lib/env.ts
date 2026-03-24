@@ -36,6 +36,10 @@ const envSchema = z.object({
   X_OAUTH_AUTHORIZE_URL: optionalUrl,
   X_OAUTH_TOKEN_URL: optionalUrl,
   X_OAUTH_USERINFO_URL: optionalUrl,
+  /** Google OAuth (Sign in with Google) — optional; enable `/api/auth/google/*` when both are set. */
+  GOOGLE_CLIENT_ID: optionalNonEmptyString,
+  GOOGLE_CLIENT_SECRET: optionalNonEmptyString,
+  GOOGLE_OAUTH_CALLBACK_URL: optionalUrl,
   XAI_BASE_URL: optionalUrl,
   XAI_MANAGEMENT_BASE_URL: optionalUrl,
   XAI_CHAT_MODEL: optionalNonEmptyString,
@@ -153,6 +157,19 @@ export const getMongoUriFromB64 = getMongoUri;
 export function getXOauthClientId(): string {
   const { X_OAUTH_CLIENT_ID } = getEnv();
   return X_OAUTH_CLIENT_ID.trim();
+}
+
+export function isGoogleOAuthConfigured(): boolean {
+  const e = getEnv();
+  return Boolean(e.GOOGLE_CLIENT_ID?.trim() && e.GOOGLE_CLIENT_SECRET?.trim());
+}
+
+export function getGoogleClientId(): string {
+  const id = getEnv().GOOGLE_CLIENT_ID?.trim();
+  if (!id) {
+    throw new Error("GOOGLE_CLIENT_ID is not configured");
+  }
+  return id;
 }
 
 /**

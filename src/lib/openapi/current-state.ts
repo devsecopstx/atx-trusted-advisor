@@ -38,6 +38,12 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "auth"
   },
   {
+    path: "/api/auth/google/callback",
+    operations: [{ method: "GET", auth: "public" }],
+    tag: "auth"
+  },
+  { path: "/api/auth/google/login", operations: [{ method: "GET", auth: "public" }], tag: "auth" },
+  {
     path: "/api/auth/link-email",
     operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
     tag: "auth"
