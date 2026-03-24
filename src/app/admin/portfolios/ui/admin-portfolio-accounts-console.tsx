@@ -86,15 +86,36 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   const mergeRow = (row: AccountRow): AccountRow => ({ ...row, ...draft(row._id) });
 
   const saveAccount = async (row: AccountRow) => {
-    const d = draft(row._id);
+    const m = mergeRow(row);
     setStatus("Saving…");
     try {
       const body: Record<string, unknown> = {};
-      if (d.name !== undefined) body.name = d.name;
-      if (d.cashBalance !== undefined) body.cashBalance = d.cashBalance;
-      if (d.extAccountId !== undefined) body.extAccountId = d.extAccountId;
-      if (d.type !== undefined) body.type = d.type;
-      if (d.isDefault === true) body.isDefault = true;
+      const nameNext = (m.name ?? "").trim();
+      const namePrev = (row.name ?? "").trim();
+      if (nameNext !== namePrev) {
+        if (!nameNext) {
+          setStatus("Name cannot be empty");
+          return;
+        }
+        body.name = nameNext;
+      }
+      if (m.type !== row.type && ACCOUNT_TYPES.includes(m.type as (typeof ACCOUNT_TYPES)[number])) {
+        body.type = m.type;
+      }
+      const extNext = (m.extAccountId ?? "").trim();
+      const extPrev = (row.extAccountId ?? "").trim();
+      if (extNext !== extPrev && extNext.length > 0) {
+        body.extAccountId = extNext;
+      }
+      const cashRow = typeof row.cashBalance === "number" && Number.isFinite(row.cashBalance) ? row.cashBalance : 0;
+      const cashMerged =
+        typeof m.cashBalance === "number" && Number.isFinite(m.cashBalance) ? m.cashBalance : cashRow;
+      if (cashMerged !== cashRow && cashMerged >= 0 && Number.isFinite(cashMerged)) {
+        body.cashBalance = cashMerged;
+      }
+      if (m.isDefault === true && row.isDefault !== true) {
+        body.isDefault = true;
+      }
       if (Object.keys(body).length === 0) {
         setStatus("No changes");
         return;

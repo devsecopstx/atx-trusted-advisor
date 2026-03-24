@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     adminDeleteAccountForPortfolio,
     adminUpdatePortfolioAccount,
@@ -38,18 +37,33 @@ const patchSchema = z
   .object({
     name: z.string().trim().min(1).max(200).optional(),
     cashBalance: z.number().finite().nonnegative().optional(),
-    extAccountId: z.string().trim().min(1).max(200).optional(),
+    extAccountId: z.preprocess(
+      (val) => {
+        if (val === undefined || val === null) {
+          return undefined;
+        }
+        if (typeof val !== "string") {
+          return val;
+        }
+        const t = val.trim();
+        return t === "" ? undefined : t;
+      },
+      z.string().min(1).max(200).optional()
+    ),
     type: z.enum(accountTypeValues).optional(),
     isDefault: z.boolean().optional()
   })
-  .refine((b) => Object.keys(b).length > 0, { message: "At least one field is required" });
+  .refine(
+    (b) =>
+      b.cashBalance !== undefined ||
+      b.type !== undefined ||
+      b.isDefault === true ||
+      (typeof b.name === "string" && b.name.trim().length > 0) ||
+      (typeof b.extAccountId === "string" && b.extAccountId.length > 0),
+    { message: "At least one field is required" }
+  );
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -89,11 +103,6 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

@@ -8,7 +8,7 @@
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| 1 | **Spring BFF parity** for `GET/POST /api/admin/portfolios`, `PATCH/DELETE /api/admin/portfolios/{id}`, nested accounts routes | Required when `ATXFINANCE_BACKEND_ORIGIN` is set; extend Kotlin controllers, `bff-proxy-routes.ts`, `docs/atx-sre-ops/atxfinance-backend-http-api.md`, and `tests/smoke/backend-http-api-parity.test.ts` expectations. |
+| 1 | **Spring BFF parity** for `GET/POST /api/admin/portfolios`, `PATCH/DELETE /api/admin/portfolios/{id}`, nested accounts routes | **Current:** these routes are **Next-only** (no `proxyRequestToBackend`) so admin works when `ATXFINANCE_BACKEND_ORIGIN` is set. **Future:** add Kotlin handlers + proxy again if you want all admin traffic on Spring. Update `docs/atx-sre-ops/atxfinance-backend-http-api.md` and smoke parity when implemented. |
 | 2 | **Accounts subpage** (`/admin/portfolios/[portfolioId]/accounts`) | Match **Save changes** batch pattern + resolve **friendly user / account** labels (parity with main admin portfolios table). |
 | 3 | **Default portfolio validation** | Guardrail when a user has **multiple** portfolios: ensure **exactly one** `isDefault: true` (clear UX + server-side check; align with Mongo partial unique index). |
 | 4 | **Audit trail** | Log admin portfolio create/update/delete (and optional CSV export) via existing `admin_audit_events` / audit pipeline — traceability for tenant moves. |
@@ -84,7 +84,7 @@ Chunk work in this **order** so APIs exist before UI and observability: **Backen
 
 | Area | Status | Notes |
 |------|--------|-------|
-| **BFF frontend→backend** | ✅ Verified | All product API routes call `proxyRequestToBackend` first; cookie forwarded; same-origin. `BFF_PROXY_ROUTES` ↔ Kotlin parity in smoke tests. |
+| **BFF frontend→backend** | ✅ Verified | Product portfolio/positions (and other listed) routes call `proxyRequestToBackend` first when origin is set; cookie forwarded; same-origin. **`/api/admin/portfolios/**` is intentionally Next-only** until Spring implements it. `BFF_PROXY_ROUTES` ↔ Kotlin parity in smoke tests for proxied paths. |
 | **Auth / OAuth** | Next authoritative | OAuth callback (`/api/auth/x/callback`) on Next; Spring reads `xf_core_session`. Cutover to Spring callback deferred until API migration complete. See [auth-oauth-spring-dual-run.md](./atx-sre-ops/auth-oauth-spring-dual-run.md). |
 | **Deploy** | See workflow | Current gates: `AGENTS.md` + [`.github/workflows/deploy-cloud-run.yml`](../.github/workflows/deploy-cloud-run.yml) (staging vs manual prod). |
 | **CI gate** | ✅ Pass | Lint, typecheck, build, tests green. |
