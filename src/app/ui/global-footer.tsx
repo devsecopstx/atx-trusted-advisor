@@ -5,8 +5,9 @@ import { APP_VERSION_LABEL } from "@/lib/app-version";
 
 const LEGAL_LINKS: { href: string; label: string }[] = [
   { href: "/legal/imprint", label: "Imprint" },
-  { href: "/legal/security", label: "Security" },
+  { href: "/legal/terms", label: "Terms" },
   { href: "/legal/privacy", label: "Privacy" },
+  { href: "/legal/security", label: "Security" },
   { href: "/legal/vulnerability", label: "Report a vulnerability" }
 ];
 
@@ -47,12 +48,11 @@ export function GlobalFooter({ subline }: GlobalFooterProps) {
           <span className="app-footer-version">{APP_VERSION_LABEL}</span>
         </div>
       </div>
-      <div className="app-footer-subline-stack">
-        {subline ? <div className="app-footer-subline">{subline}</div> : null}
-        <p className="app-footer-watermark" aria-hidden>
-          don&apos;t sue me, bro
-        </p>
-      </div>
+      {subline ? (
+        <div className="app-footer-subline-stack">
+          <div className="app-footer-subline">{subline}</div>
+        </div>
+      ) : null}
     </footer>
   );
 }

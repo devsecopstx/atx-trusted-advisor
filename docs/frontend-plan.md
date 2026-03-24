@@ -59,4 +59,4 @@ High-level roadmap for Next.js App Router UI, marketing surfaces, and monetizati
 ## Related docs
 
 - [PLAN.md](./PLAN.md) — backlog / migrations
-- [Operations & BFF](./README.md#operations-docsops)
+- [Operations & BFF](./README.md#operations--atx-sre-ops)

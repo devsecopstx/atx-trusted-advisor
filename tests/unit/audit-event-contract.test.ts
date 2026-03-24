@@ -4,7 +4,7 @@ import type { AuditActor, AuditEntityType, AuditEvent } from "@/modules/audit/ty
 
 /**
  * Contract guard: Kotlin `AuditEventService` and Next `createAuditEvent` should stay
- * aligned on core fields for `admin_audit_events` (see docs/ops/audit-lineage-and-controls.md).
+ * aligned on core fields for `admin_audit_events` (see docs/atx-sre-ops/audit-lineage-and-controls.md).
  */
 describe("AuditEvent contract", () => {
   it("documents required fields for a minimal valid event", () => {

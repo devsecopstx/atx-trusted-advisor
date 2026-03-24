@@ -1,6 +1,7 @@
 # defaults.yaml  or  seed-defaults.yaml
-# Purpose: Reasonable first-time defaults + minimal seed data
-# Used by: admin CLI, deployment script, docker-entrypoint, or CI seed job
+# Purpose: Reasonable first-time defaults + documentation for optional Spring `optional:file:` config.
+# Next.js `npm run seed:admin` reads **only** `.env` (ADMIN_SEED_EMAIL, Mongo, etc.) — it does **not** parse `initial_seed` below.
+# Keep sensitive keys under `initial_seed.settings` empty in Git; real secrets belong in `.env` / GCP Secret Manager (see .env.example).
 
 # xAI API base URL — fallback when XAI_BASE_URL env is unset (Spring and local tooling)
 XAI_BASE_URL: "https://api.x.ai/v1"
@@ -63,10 +64,10 @@ initial_seed:
       description: "Standard registered user"
       is_system: true
 
-  users:                             # usually only 1–2 seed users
+  users:                             # illustrative only — not loaded by `scripts/seed-admin-user.mjs` (use ADMIN_SEED_EMAIL in .env)
     - email: atxbogart@gmail.com
       name: Admin User
-      password_hash: "atxRocks!"              # ← your script should hash a default or env-provided password
+      password_hash: ""              # ← your script should hash a default or env-provided password
       role: admin
       is_active: true
       email_verified: true
@@ -132,13 +133,13 @@ initial_seed:
       sensitive: true
 
     - key: admin_seed_email
-      value: "sperezintexas@gmail.com"
+      value: "atxbogart@gmail.com"
       type: string
       public: true
       sensitive: false
 
     - key: admin_seed_usernames
-      value: "atxbogart@gmail.com,sperezintexas@gmail.com"
+      value: "atxbogart"
       type: string
       public: true
       sensitive: false

@@ -6,8 +6,7 @@ export type AppUserProductNavCurrent =
   | "xchat"
   | "xstrategybuilder"
   | "portfolio"
-  | "watchlist"
-  | "recommendations";
+  | "watchlist";
 
 type AppUserProductNavProps = {
   current: AppUserProductNavCurrent;
@@ -18,8 +17,7 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string }[] = [
   { id: "xchat", label: "xChat", href: "/xchat" },
   { id: "xstrategybuilder", label: "xStrategyBuilder", href: "/xstrategybuilder" },
   { id: "portfolio", label: "Portfolio", href: "/portfolio" },
-  { id: "watchlist", label: "Watchlist", href: "/watchlist" },
-  { id: "recommendations", label: "Recommendations", href: "/recommendations" }
+  { id: "watchlist", label: "Watchlist", href: "/watchlist" }
 ];
 
 /**

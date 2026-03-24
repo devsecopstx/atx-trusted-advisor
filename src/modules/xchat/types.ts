@@ -118,11 +118,7 @@ export type PersonaConfig = {
    * Use when the persona should search two distinct xAI collections (e.g. curated + team).
    */
   teamCollection?: PersonaCollectionRef;
-  /**
-   * When true, merge the signed-in user's bootstrap xAI collection into RAG + file_search scope
-   * (`POST /api/xchat/ask` and batch). The id is resolved per session; not stored on the persona doc.
-   */
-  includeUserBootstrapCollection?: boolean;
+  /** Last admin verification of persona-bound xAI collection (optional). */
   xaiCollectionVerification?: PersonaCollectionVerification;
   model: string;
   temperature: number;
@@ -192,6 +188,7 @@ export type XChatMessage = {
   content: string;
 };
 
+/** One prompt/response turn in Mongo `xchat_logs` (TTL via retentionExpiresAt). user_history_agent syncs unsynced rows to the user xAI collection. */
 export type XChatSessionLog = {
   _id?: ObjectId;
   requestId: string;
@@ -201,6 +198,10 @@ export type XChatSessionLog = {
   userEmail?: string;
   requestedBy?: string;
   personaId?: ObjectId;
+  /** Denormalized for scheduled markdown sync (persona name at ask time). */
+  personaName?: string;
+  /** xChat scope / KB scope at ask time. */
+  scope?: string;
   message: string;
   response: string;
   contextChunkIds: ObjectId[];
@@ -224,6 +225,9 @@ export type XChatSessionLog = {
   xaiTurnFileId?: string;
   xaiTurnPayloadHash?: string;
   xaiTurnRetentionExpiresAt?: Date;
+  /** Set when markdown turn was uploaded and linked to the user xAI collection (user_history source). */
+  syncedToXaiAt?: Date;
+  xaiTurnSyncError?: string;
   retentionExpiresAt?: Date;
   createdAt: Date;
 };

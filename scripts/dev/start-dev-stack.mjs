@@ -3,7 +3,7 @@
  * Start local stack in order: docker compose (mongo + Kotlin backend) detached,
  * wait until backend health is up, then run Next dev in the foreground.
  *
- * Usage: npm run dev:stack
+ * Usage: npm run dev:stack  (or `npm run dev:stack:fresh` — down -v, up, wait backend, seed:admin, then Next)
  * Stop Next with Ctrl+C; containers keep running — `docker compose down` when done.
  */
 import { execFileSync, spawn } from "node:child_process";
@@ -48,15 +48,34 @@ async function waitForBackend(maxAttempts = 90, intervalMs = 1000) {
   process.exit(1);
 }
 
+function shouldWipeLocalMongo() {
+  const v = String(process.env.DEV_WIPE_LOCAL_MONGO ?? "").toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
 function main() {
+  if (shouldWipeLocalMongo()) {
+    console.log("[dev:stack] DEV_WIPE_LOCAL_MONGO: docker compose down -v (destructive) …");
+    execFileSync("docker", ["compose", "--env-file", ".env", "down", "-v"], {
+      cwd: root,
+      stdio: "inherit",
+    });
+  }
+
   console.log("[dev:stack] docker compose up -d (mongo + atxfinance-backend) …");
   execFileSync("docker", ["compose", "--env-file", ".env", "up", "-d"], {
     cwd: root,
     stdio: "inherit",
   });
 
+  const runSeedAfterWipe = shouldWipeLocalMongo();
+
   waitForBackend()
     .then(() => {
+      if (runSeedAfterWipe) {
+        console.log("[dev:stack] npm run seed:admin …");
+        execFileSync("npm", ["run", "seed:admin"], { cwd: root, stdio: "inherit", env: process.env });
+      }
       console.log("[dev:stack] starting Next dev …");
       const child = spawn("npm", ["run", "dev:frontend"], {
         cwd: root,

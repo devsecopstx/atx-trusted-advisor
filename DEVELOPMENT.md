@@ -43,12 +43,13 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 
 - **Runtime** — **Kotlin**, **Spring Boot**, **JDK 21**; build with **Gradle** (`services/atxfinance-backend`, `gradlew`).
 - **Role** — Fault-tolerant scheduler/worker surface (ShedLock + Mongo, Pub/Sub integration path, observability hooks); **not** a replacement for Next.js product APIs.
-- **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`docs/ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
+- **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`docs/atx-sre-ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
+- **Strategy jobs (Phase 1 orchestrator)** — Mongo **`strategy_jobs`** (override **`STRATEGY_JOBS_COLLECTION`**). Rolling hourly create cap **`STRATEGY_MAX_JOBS_HOURLY`** (default 12) and soft-warn threshold **`STRATEGY_SOFT_WARN_JOBS_HOURLY`** (default 8). Next BFF proxies **`/api/strategy-jobs`** to Spring when **`ATXFINANCE_BACKEND_ORIGIN`** is set; without BFF, those routes return **503**.
 - **Container** — Repo-root **`Dockerfile`** builds the JAR from `services/atxfinance-backend`; **`docker-compose.yml`** wires `atxfinance-backend` + `mongo:8`.
 
 ### Integrations (cross-cutting)
 
-- **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`docs/xchat/xai-api-standard.md`** for repo mapping and deep links.
+- **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`docs/atx-xchat/xai-api-standard.md`** for repo mapping and deep links.
 
 ### Local dev run order (summary)
 
@@ -91,7 +92,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET` (recommended for session signing)
 - `ALLOW_ANY_X_USER_LOGIN` (optional feature flag; set `true` to allow any authenticated X user into `/xchat` with non-admin permissions, default disabled)
-- `ENABLE_XCHAT_DEBUG` (optional; set `true` to emit detailed xChat payload logs — RAG context, prompts, tools — for expert learning; default `false`; configure Cloud Logging retention e.g. 30 days at project or log-bucket level; taxonomy and privacy: **`docs/xchat/xchat-debug-logging.md`**)
+- `ENABLE_XCHAT_DEBUG` (optional; set `true` to emit detailed xChat payload logs — RAG context, prompts, tools — for expert learning; default `false`; configure Cloud Logging retention e.g. 30 days at project or log-bucket level; taxonomy and privacy: **`docs/atx-xchat/xchat-debug-logging.md`**)
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
 - `ADMIN_SEED_EMAIL` (required for `npm run seed:admin` and OAuth seed-admin promotion; **no default** — set explicitly in `.env`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
@@ -122,6 +123,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - **Host Kotlin backend + Next (no backend Docker image):** `npm run dev:host` — runs `bash scripts/dev/bootrun-atxfinance-backend.sh` (Gradle `bootRun`), waits for `:8080` health, then Next dev. Mongo must already be up (e.g. `docker compose up -d mongodb` or Atlas). Ctrl+C stops Next and SIGTERM to the JVM. VS Code / Cursor: task **Dev build (host: Gradle bootRun → Next, no backend Docker)**.
    - **Attached Compose logs (no Next):** `npm run dev:backend`
    - **BFF — portfolio + positions on Spring:** set `ATXFINANCE_BACKEND_ORIGIN=http://127.0.0.1:8080` in `.env`. Next proxies to Kotlin (forwards `Cookie`): `GET`/`PATCH` `/api/portfolios/:portfolioId`, `GET`/`POST` `/api/portfolios/default`, `GET` `/api/portfolios/current`, `GET`/`POST` `/api/portfolios/:id/accounts`, `PATCH` `.../accounts/:accountId`, `GET`/`PATCH` `.../watchlist`, `GET`/`POST` `/api/positions`, `DELETE` `/api/positions/:positionId`. Use the same `AUTH_SECRET` (or `X_OAUTH_CLIENT_SECRET`) and Mongo DB name on both processes.
+   - **Admin portfolios (`/api/admin/portfolios/**`)** stay on **Next only** (no BFF proxy): Spring does not expose those routes yet; proxying them returned **404** when the origin was set. Global-admin portfolio and account CRUD always use the Next repository + Mongo.
    - Behavior:
      - Compose always starts `mongo:8` with:
        - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfinancedb}`
@@ -131,7 +133,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
      - If **`MONGODB_URI`** is set in `.env`, `MongoUriEnvPostProcessor` resolves it (plain or base64) and injects `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
 5. Verify backend
    - Actuator: http://localhost:8080/actuator/health (standard Spring Boot JSON)
-   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`docs/ops/atxfinance-backend-http-api.md`**)
+   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`docs/atx-sre-ops/atxfinance-backend-http-api.md`**)
    - Compatibility: http://localhost:8080/api/health
    - Swagger UI: http://localhost:8080/swagger-ui.html (may redirect to `/swagger-ui/index.html`); OpenAPI JSON: `/v3/api-docs`
 6. Start frontend (Next.js dev server)
@@ -139,6 +141,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - App URL: http://localhost:3000
 7. Seed core admin user + default tenant (first-time only)
    - Ensure `.env` has `ADMIN_SEED_EMAIL=you@example.com`
+   - **Sign in with X (no email on profile):** X userinfo often omits `email`. Set **`ADMIN_SEED_X_USER_ID`** to your X account’s numeric id (same string as `data.id` from `GET /2/users/me`), then run **`npm run seed:admin`** so `core_users.xAccount` is pre-linked. The X OAuth callback also reads `ADMIN_SEED_X_USER_ID` so first login works even before re-seeding. Optional: `ADMIN_SEED_X_USERNAME`, `ADMIN_SEED_X_DISPLAY_NAME` for seed output only (login refreshes profile).
    - **`MONGODB_URI` can stay unset** when using local Docker Mongo — `seed:admin` and the Next.js app use the same localhost + auth fallback as `src/lib/env.ts` (`scripts/lib/resolve-mongo-uri.mjs`).
    - **`npm run local:bootstrap`** — starts **only** `mongodb` via Compose, waits until healthy, then runs **`seed:admin`** (convenience for a fresh machine).
    - Or after Mongo is up: **`npm run seed:admin`**
@@ -160,6 +163,8 @@ Use this when you want a **local Compose Mongo** without Atlas and with the same
 | Start **only** Mongo, wait until healthy | `npm run mongo:up` (`scripts/dev/mongo-up.sh`) |
 | Stop Mongo container | `npm run mongo:down` |
 | Fresh volume + seed admin (**wipes** `atxfinance_mongo_data`) | `RESET_LOCAL_MONGO=1 npm run mongo:reset` |
+| **Each dev session:** wipe Mongo volume + seed, then host JVM backend + Next | `npm run dev:host:fresh` (sets `DEV_WIPE_LOCAL_MONGO=1` for `dev:host`) |
+| **Each dev session:** wipe volume + Docker backend + Next (seed **after** backend healthy) | `npm run dev:stack:fresh` |
 | One-shot: Mongo up + seed (keeps existing volume) | `npm run local:bootstrap` |
 
 **`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI`** is unset. If local Mongo runs **without auth** (legacy volume or no `MONGO_INITDB_*`), add **`MONGODB_NO_AUTH=true`** to `.env`. Otherwise use **`MONGO_ROOT_USERNAME`** (default `admin`) and **`MONGO_ROOT_PASSWORD`** (default `atxrocks!`) to match what `docker-compose.yml` initialized. Restart Next after changing `.env` (Mongo client is cached).
@@ -269,7 +274,7 @@ If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or p
 - xAI management key-create smoke (opt-in): `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true npm run smoke:xai-key-create`
 - Seed admin: `npm run seed:admin`
 - Backfill legacy xchat identity fields: `npm run migrate:xchat-identity`
-- BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`docs/ops/api-consolidation-spring-backend.md`](./docs/ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
+- BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`docs/atx-sre-ops/api-consolidation-spring-backend.md`](./docs/atx-sre-ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
 
 ## Cloud Agent Config Freeze (Backoffice Core)
 
@@ -938,7 +943,7 @@ with payload shape:
 
 - **Branding prompts and tags:** `branding/atxfinance-brand-prompts.md`, `branding/atxfinance-branding-tags.md`, `branding/atxfinance-color-palette.md`, `branding/atxfinance-typography.md`
 - **Design system:** `design-system/atxfinance-brand-kit.md`, `design-system/atxfinance-brand-kit.css`
-- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `docs/xchat/xdesign-review-admin-console-ux.md`
+- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `docs/atx-xchat/xdesign-review-admin-console-ux.md`
 
 ## Admin Step-by-Step Validation (xChat readiness)
 

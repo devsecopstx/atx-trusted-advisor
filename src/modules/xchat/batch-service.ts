@@ -14,9 +14,7 @@ import {
 } from "@/lib/xai-batch";
 import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatBatchDebug } from "@/lib/xchat-debug";
-import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
-import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
 import {
     resolveXchatLinkedCollectionIds,
     withLinkedCollectionTools
@@ -28,6 +26,7 @@ import {
     type PersonaConfig
 } from "@/modules/xchat/types";
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
+import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
 
 const BATCH_JOBS_COLLECTION = "xchat_batch_jobs";
 const BATCH_ITEMS_COLLECTION = "xchat_batch_items";
@@ -109,18 +108,8 @@ export async function submitBatchJob(
     normalizePersonaXapiConfig(input.persona.xapi),
     input.persona.name
   );
-  let userBootstrapCollectionId: string | undefined;
-  if (input.persona.includeUserBootstrapCollection === true) {
-    userBootstrapCollectionId = (
-      await resolveOrCreateUserBootstrapCollection({
-        userId: input.userId,
-        tenantId: input.tenantId
-      })
-    )?.collectionId;
-  }
   const linkedCollectionIds = resolveXchatLinkedCollectionIds({
-    persona: input.persona,
-    userBootstrapCollectionId
+    persona: input.persona
   });
   const xapiConfigMerged = mergeXchatHostedToolBaseline(
     withLinkedCollectionTools(xapiConfig, linkedCollectionIds)
@@ -200,9 +189,7 @@ export async function submitBatchJob(
 
     const batchMeta = appendXchatKbMetadata({
       tools: xapiConfigMerged.tools,
-      linkedCollectionIds,
-      userBootstrapCollectionId: userBootstrapCollectionId ?? null,
-      includeUserBootstrapCollection: input.persona.includeUserBootstrapCollection === true
+      linkedCollectionIds
     });
     const userPrompt = `${userPromptBase}\n\n${batchMeta}`;
 

@@ -265,8 +265,6 @@ export type MultiSourceOrchestratorInput = {
   scope?: string;
   topK?: number;
   maxParallelYahoo?: number;
-  /** Resolved user bootstrap xAI collection id when persona has `includeUserBootstrapCollection`. */
-  userBootstrapCollectionId?: string | null;
 };
 
 function personaAllowsAtxfinance(xapi: PersonaXapiConfig): boolean {
@@ -334,8 +332,7 @@ export async function gatherMultiSourceWorkspaceContext(
   const persona = input.persona ?? null;
   const xapi = normalizePersonaXapiConfig(persona?.xapi);
   const linkedCollectionIds = resolveXchatLinkedCollectionIds({
-    persona: persona ?? undefined,
-    userBootstrapCollectionId: input.userBootstrapCollectionId ?? undefined
+    persona: persona ?? undefined
   });
   const scope = (input.scope ?? persona?.defaultScope ?? "global").trim() || "global";
   const tenantOid = ObjectId.isValid(input.tenantId) ? new ObjectId(input.tenantId) : null;
@@ -352,7 +349,8 @@ export async function gatherMultiSourceWorkspaceContext(
   } else {
     const readiness = await getScopeReadinessSummary({
       scope,
-      tenantId: tenantOid ?? undefined
+      tenantId: tenantOid ?? undefined,
+      linkedCollectionIds
     });
     if (readiness.blocked) {
       collectionSearchSkippedReason = "blocked_non_ready_files";

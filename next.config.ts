@@ -12,6 +12,20 @@ const nextConfig: NextConfig = {
         hostname: "pbs.twimg.com"
       }
     ]
+  },
+  async redirects() {
+    return [
+      {
+        source: "/recommendations",
+        destination: "/admin/recommendations",
+        permanent: false
+      },
+      {
+        source: "/recommendations/:path*",
+        destination: "/admin/recommendations",
+        permanent: false
+      }
+    ];
   }
 };
 

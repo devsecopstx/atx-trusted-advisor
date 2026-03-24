@@ -12,7 +12,9 @@ const authMocks = vi.hoisted(() => ({
   clearOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn(),
   createSession: vi.fn(),
-  setPendingXLinkCookie: vi.fn()
+  setPendingXLinkCookie: vi.fn(),
+  consumeOAuthReturnPathCookie: vi.fn(),
+  isSafeOAuthReturnPath: vi.fn()
 }));
 
 const coreAdminMocks = vi.hoisted(() => ({
@@ -95,6 +97,10 @@ describe("access request approval login flow", () => {
     authMocks.getSessionUser.mockResolvedValue(null);
     authMocks.createSession.mockResolvedValue(undefined);
     authMocks.setPendingXLinkCookie.mockResolvedValue(undefined);
+    authMocks.consumeOAuthReturnPathCookie.mockResolvedValue(null);
+    authMocks.isSafeOAuthReturnPath.mockImplementation(
+      (path: string) => path.startsWith("/") && !path.startsWith("//") && !path.includes("..")
+    );
 
     coreAdminMocks.getAccessRequestById.mockImplementation(async () => ({
       _id: { toHexString: () => "507f1f77bcf86cd799439022" },

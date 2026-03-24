@@ -4,13 +4,13 @@ import { z } from "zod";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
-  createScheduledTask,
-  listScheduledTasks
+    createScheduledTask,
+    listScheduledTasks
 } from "@/modules/core-admin/repository";
 
 const createTaskSchema = z.object({
   name: z.string().min(1),
-  category: z.enum(["sync-broker", "rebalance", "compliance", "notifications"]),
+  category: z.enum(["sync-broker", "rebalance", "compliance", "notifications", "user-history"]),
   scheduleCron: z.string().min(5),
   enabled: z.boolean(),
   lastRunAt: z.coerce.date().optional(),

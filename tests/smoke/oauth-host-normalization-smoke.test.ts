@@ -5,6 +5,11 @@ const authMocks = vi.hoisted(() => ({
   createCodeVerifier: vi.fn(() => "verifier"),
   createOAuthState: vi.fn(() => "state"),
   applyOAuthFlowCookiesToRedirect: vi.fn(),
+  applyOAuthReturnPathCookie: vi.fn(),
+  isSafeOAuthReturnPath: vi.fn(
+    (path: string) => path.startsWith("/") && !path.startsWith("//") && !path.includes("..")
+  ),
+  consumeOAuthReturnPathCookie: vi.fn(),
   readOAuthFlowCookies: vi.fn(),
   clearOAuthFlowCookies: vi.fn(),
   getSessionUser: vi.fn(),
@@ -14,7 +19,8 @@ const authMocks = vi.hoisted(() => ({
 
 const envMocks = vi.hoisted(() => ({
   getEnv: vi.fn(),
-  getXOauthClientId: vi.fn()
+  getXOauthClientId: vi.fn(),
+  getAtxfinanceBackendOrigin: vi.fn(() => undefined)
 }));
 
 const identityMocks = vi.hoisted(() => ({

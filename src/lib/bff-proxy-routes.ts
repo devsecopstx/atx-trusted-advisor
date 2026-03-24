@@ -1,13 +1,13 @@
 /**
  * Routes the Next.js App Router may forward to Spring when `ATXFINANCE_BACKEND_ORIGIN` is set
  * (`proxyRequestToBackend` in `backend-bff.ts`). Keep in sync with Kotlin `@*Mapping` and
- * `docs/ops/atxfinance-backend-http-api.md`.
+ * `docs/atx-sre-ops/atxfinance-backend-http-api.md`.
  *
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
  * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Tasks are PR 3 (on Spring when
- * ATXFINANCE_BACKEND_ORIGIN is set) — see docs/ops/api-consolidation-spring-backend.md.
+ * ATXFINANCE_BACKEND_ORIGIN is set) — see docs/atx-sre-ops/api-consolidation-spring-backend.md.
  *
- * Deferred vertical slice: xChat streaming routes — see `docs/ops/api-consolidation-spring-backend.md`.
+ * Deferred vertical slice: xChat streaming routes — see `docs/atx-sre-ops/api-consolidation-spring-backend.md`.
  */
 export type BffProxyHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -38,6 +38,9 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "POST", path: "/api/portfolios/{portfolioId}/recommendations" },
   { method: "GET", path: "/api/strategy-options" },
   { method: "GET", path: "/api/strategy-options/expirations" },
+  { method: "POST", path: "/api/strategy-jobs" },
+  { method: "GET", path: "/api/strategy-jobs/{jobId}" },
+  { method: "POST", path: "/api/strategy-jobs/{jobId}/turns" },
   { method: "POST", path: "/api/user-feedback" },
   { method: "GET", path: "/api/admin/bootstrap-status" },
   { method: "GET", path: "/api/admin/audit" },
@@ -77,7 +80,8 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "GET", path: "/api/personas/{personaId}" },
   { method: "PUT", path: "/api/personas/{personaId}" },
   { method: "DELETE", path: "/api/personas/{personaId}" },
-  { method: "POST", path: "/api/access-requests" }
+  { method: "POST", path: "/api/access-requests" },
+  { method: "GET", path: "/api/auth/x/callback" }
 ] as const;
 
 function kotlinMappingAnnotation(method: BffProxyHttpMethod): string {

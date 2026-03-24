@@ -70,7 +70,7 @@ Each material inference must store immutable records for:
 
 ## Checklist
 
-Detailed checklist moved to `CHECKLIST.md` (includes repo pointers to `docs/ops/audit-lineage-and-controls.md`).
+Detailed checklist moved to `CHECKLIST.md` (includes repo pointers to `docs/atx-sre-ops/audit-lineage-and-controls.md`).
 
 ## Documentation index
 

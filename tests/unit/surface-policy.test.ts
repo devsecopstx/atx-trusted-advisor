@@ -11,7 +11,7 @@ describe("surface-policy", () => {
     expect(isAppUserProductPath("/xchat")).toBe(true);
     expect(isAppUserProductPath("/xchat/thread")).toBe(true);
     expect(isAppUserProductPath("/portfolio/accounts/abc")).toBe(true);
-    expect(isAppUserProductPath("/recommendations")).toBe(true);
+    expect(isAppUserProductPath("/recommendations")).toBe(false);
     expect(isAppUserProductPath("/admin")).toBe(false);
     expect(isAppUserProductPath("/login")).toBe(false);
   });
@@ -19,6 +19,7 @@ describe("surface-policy", () => {
   it("detects admin console paths", () => {
     expect(isAdminConsolePath("/admin")).toBe(true);
     expect(isAdminConsolePath("/admin/personas")).toBe(true);
+    expect(isAdminConsolePath("/admin/recommendations")).toBe(true);
     expect(isAdminConsolePath("/xchat")).toBe(false);
   });
 

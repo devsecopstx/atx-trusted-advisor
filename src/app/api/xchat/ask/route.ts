@@ -5,22 +5,18 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import {
-    respondWithXaiToolLoop,
-    searchDocumentsInCollections,
-    type ToolCallLog
+  respondWithXaiToolLoop,
+  searchDocumentsInCollections,
+  type ToolCallLog
 } from "@/lib/xai";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import {
-    logXchatAskDebug,
-    logXchatAskFullPayload,
-    logXchatAskPreRequestDebug,
-    logXchatAskProviderErrorDebug
+  logXchatAskDebug,
+  logXchatAskFullPayload,
+  logXchatAskPreRequestDebug,
+  logXchatAskProviderErrorDebug
 } from "@/lib/xchat-debug";
 import { createAuditEvent } from "@/modules/audit/repository";
-import {
-    appendXchatTurnToUserCollection,
-    resolveOrCreateUserBootstrapCollection
-} from "@/modules/core-admin/access-request-bootstrap";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
@@ -29,24 +25,24 @@ import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limit
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import {
-    resolveXchatLinkedCollectionIds,
-    withLinkedCollectionTools
+  resolveXchatLinkedCollectionIds,
+  withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
-    getPersonaById,
-    resolveDefaultXchatPersonaForSession,
-    retrieveRagChunks,
-    saveXChatLog
+  getPersonaById,
+  resolveDefaultXchatPersonaForSession,
+  retrieveRagChunks,
+  saveXChatLog
 } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import {
-    ensureSuperAgentDefaultTools,
-    mergeXchatHostedToolBaseline,
-    normalizePersonaXapiConfig,
-    type PersonaXapiConfig
+  ensureSuperAgentDefaultTools,
+  mergeXchatHostedToolBaseline,
+  normalizePersonaXapiConfig,
+  type PersonaXapiConfig
 } from "@/modules/xchat/types";
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
@@ -270,15 +266,9 @@ export async function POST(request: Request) {
   const userId = ObjectId.isValid(session.userId)
     ? new ObjectId(session.userId)
     : undefined;
-  const userCollection = await resolveOrCreateUserBootstrapCollection({
-    userId: session.userId,
-    tenantId: session.tenantId,
-    email: session.email
-  });
-  /** RAG / file_search wiring: persona `xaiCollection` + `teamCollection` + tool `collection_ids` + optional user bootstrap. */
+  /** RAG / file_search wiring: persona `xaiCollection` + `teamCollection` + tool `collection_ids` only (TEAM/persona KB). */
   const linkedCollectionIds = resolveXchatLinkedCollectionIds({
-    persona,
-    userBootstrapCollectionId: userCollection?.collectionId
+    persona
   });
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
@@ -303,7 +293,8 @@ export async function POST(request: Request) {
     if (linkedCollectionIds.length > 0) {
       const readinessSummary = await getScopeReadinessSummary({
         scope,
-        tenantId: tenantId ?? undefined
+        tenantId: tenantId ?? undefined,
+        linkedCollectionIds
       });
       collectionSearchNonReadyFileCount = readinessSummary.nonReadyFiles.length;
       if (readinessSummary.blocked) {
@@ -403,9 +394,7 @@ export async function POST(request: Request) {
     : message;
   const personaKbAugmentation = appendXchatKbMetadata({
     tools: xapiConfig.tools,
-    linkedCollectionIds,
-    userBootstrapCollectionId: userCollection?.collectionId ?? null,
-    includeUserBootstrapCollection: persona?.includeUserBootstrapCollection === true
+    linkedCollectionIds
   });
   const userPrompt = `${userPromptBase}\n\n${personaKbAugmentation}`;
   let xaiResponse: { outputText: string; model: string };
@@ -501,39 +490,11 @@ export async function POST(request: Request) {
     responseText: xaiResponse.outputText
   });
 
-  let xaiTurnFileId: string | undefined;
-  let xaiTurnPayloadHash: string | undefined;
-  let xaiTurnRetentionExpiresAt: Date | undefined;
-  let turnSyncAuditAction: "xchat_turn_synced" | "xchat_turn_sync_failed" = "xchat_turn_synced";
-  let turnSyncAuditError: string | undefined;
-  try {
-    const syncedTurn = await appendXchatTurnToUserCollection({
-      userId: session.userId,
-      tenantId: session.tenantId,
-      email: session.email,
-      collectionId: userCollection?.collectionId,
-      personaName: persona.name,
-      model: xaiResponse.model,
-      scope,
-      prompt: message,
-      response: xaiResponse.outputText
-    });
-    xaiTurnFileId = syncedTurn.fileId;
-    xaiTurnPayloadHash = syncedTurn.payloadHash;
-    xaiTurnRetentionExpiresAt = syncedTurn.retentionExpiresAt;
-  } catch (error) {
-    turnSyncAuditAction = "xchat_turn_sync_failed";
-    turnSyncAuditError = error instanceof Error ? error.message : String(error);
-    console.warn("[xchat/ask] failed to sync prompt/response to user xAI collection", {
-      userId: session.userId,
-      error: turnSyncAuditError
-    });
-  }
   try {
     await createAuditEvent({
       entityType: "xchat_session",
       entityId: requestId,
-      action: turnSyncAuditAction,
+      action: "xchat_turn_pending_xai_sync",
       actor: {
         userId: session.userId,
         email: session.email,
@@ -546,16 +507,11 @@ export async function POST(request: Request) {
         personaId: persona?._id?.toHexString(),
         model: xaiResponse.model,
         scope,
-        xaiTurnFileIdMasked: maskIdentifier(xaiTurnFileId),
-        xaiTurnPayloadHash: xaiTurnPayloadHash
-          ? `${xaiTurnPayloadHash.slice(0, 12)}...${xaiTurnPayloadHash.slice(-6)}`
-          : undefined,
-        xaiTurnRetentionExpiresAt: xaiTurnRetentionExpiresAt?.toISOString(),
-        error: turnSyncAuditError
+        note: "Turn stored in xchat_logs; user_history_agent scheduled task syncs to xAI user collection."
       }
     });
   } catch (auditError) {
-    console.error("[xchat/ask] failed to write xchat turn sync audit event", {
+    console.error("[xchat/ask] failed to write xchat turn audit event", {
       requestId,
       correlationId,
       error: auditError instanceof Error ? auditError.message : String(auditError)
@@ -570,6 +526,8 @@ export async function POST(request: Request) {
     userEmail: session.email,
     requestedBy: session.username,
     personaId: persona?._id,
+    personaName: persona.name,
+    scope,
     message,
     response: xaiResponse.outputText,
     contextChunkIds,
@@ -588,9 +546,6 @@ export async function POST(request: Request) {
           error: tc.error
         }))
       : undefined,
-    xaiTurnFileId,
-    xaiTurnPayloadHash,
-    xaiTurnRetentionExpiresAt
   });
 
   fireAndForgetRecordXchatToolUsage({

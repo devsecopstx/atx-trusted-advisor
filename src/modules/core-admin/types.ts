@@ -73,7 +73,7 @@ export type ScheduledTask = {
   _id?: ObjectId;
   tenantId?: ObjectId;
   name: string;
-  category: "sync-broker" | "rebalance" | "compliance" | "notifications";
+  category: "sync-broker" | "rebalance" | "compliance" | "notifications" | "user-history";
   scheduleCron: string;
   enabled: boolean;
   runTimeoutSeconds?: number;
@@ -165,6 +165,11 @@ export type Portfolio = {
    * Cohort / broker grouping key (e.g. linked integration). Defaults to `extBrokerName` until set.
    */
   ext_broker_ref?: string;
+  /**
+   * Primary broker / CSV format for this book (admin UI + holdings import defaults).
+   * Aligns with {@link AccountType} (`merrill` | `fidelity` | `etrade`).
+   */
+  broker_type?: AccountType;
   /**
    * Deployment org bucket (e.g. `org-atx-finance`): all app_user “client” portfolios for this instance.
    * See `getTenantPortfolioOrgKey()` / `TENANT_PORTFOLIO_ORG_KEY`.

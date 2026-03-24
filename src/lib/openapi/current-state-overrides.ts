@@ -266,7 +266,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback), and tools/collection scope follow the resolved persona document only (no implicit merges). If persona model is unset, server defaults to `grok-4.20-multi-agent-0309`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `appendXchatKbMetadata`, and `resolveXchatLinkedCollectionIds` (persona `xaiCollection` + `teamCollection` + tool ids + optional user bootstrap when `includeUserBootstrapCollection`).",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback), and tools/collection scope follow the resolved persona document only (no implicit merges). If persona model is unset, server defaults to `grok-4.20-multi-agent-0309`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `appendXchatKbMetadata`, and `resolveXchatLinkedCollectionIds` (persona `xaiCollection` + `teamCollection` + tool `collection_ids` only; no per-user bootstrap merge for RAG).",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -336,7 +336,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "POST /api/xchat/batch": {
     summary: "Submit xChat batch job",
     description:
-      "Uses persona from DB for system prompt, override prompt, and tool list (no hardcoded prompt/tools). See docs/xchat/xchat-tools-guide.md (Batch section).",
+      "Uses persona from DB for system prompt, override prompt, and tool list (no hardcoded prompt/tools). See docs/atx-xchat/xchat-tools-guide.md (Batch section).",
     requestBody: {
       required: true,
       description: "Persona id and list of message items.",
@@ -877,7 +877,6 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           collectionName: { type: "string", nullable: true }
         }
       },
-      includeUserBootstrapCollection: { type: "boolean" },
       model: { type: "string" },
       temperature: { type: "number" },
       enableRag: { type: "boolean" },
@@ -989,8 +988,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           collectionId: { type: "string" },
           collectionName: { type: "string" }
         }
-      },
-      includeUserBootstrapCollection: { type: "boolean" }
+      }
     }
   },
   PersonaUpdateRequest: {
@@ -1017,8 +1015,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           collectionId: { type: "string" },
           collectionName: { type: "string" }
         }
-      },
-      includeUserBootstrapCollection: { type: "boolean" }
+      }
     },
     additionalProperties: false
   },

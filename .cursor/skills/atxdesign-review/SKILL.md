@@ -18,7 +18,7 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 
 ## Core MVP Scope (Revisit)
 
-- **xChat** — Finance-enabled Grok session; persona/RAG/tool behavior governed by published personas and `POST /api/xchat/ask`. See `docs/xchat/*.md` for contracts. **Prompt assembly:** `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` in `src/modules/xchat/xchat-prompt-build.ts` and `batch-prompt-context.ts`. **Diagrams + flow:** `docs/xchat/xchat-tools-guide.md` — update when order or routing changes (xDesign doc parity).
+- **xChat** — Finance-enabled Grok session; persona/RAG/tool behavior governed by published personas and `POST /api/xchat/ask`. See `docs/atx-xchat/*.md` for contracts. **Prompt assembly:** `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` in `src/modules/xchat/xchat-prompt-build.ts` and `batch-prompt-context.ts`. **Diagrams + flow:** `docs/atx-xchat/xchat-tools-guide.md` — update when order or routing changes (xDesign doc parity).
 - **xCoach** — Currently a **stub**. Planned: licensing exam (timed test). Further scope (TODO).
 
 ## When to Use
@@ -32,7 +32,7 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 
 - **1.1.2** — Options index: **`atx-strategy-*` skill folders removed** from the repo as duplicative; only **`atx-skill-*`** remains — README + AGENTS updated.
 - **1.1.1** — README options index: single table for `atx-skill-*` vs `atx-strategy-*` (no duplicate sections); AGENTS.md line aligned.
-- **1.1.0** — xChat prompt assembly is centralized (`buildXchatSystemPrompt`, `buildSessionToolInstructions`, `appendXchatKbMetadata`); doc parity pointer remains `docs/xchat/xchat-tools-guide.md`.
+- **1.1.0** — xChat prompt assembly is centralized (`buildXchatSystemPrompt`, `buildSessionToolInstructions`, `appendXchatKbMetadata`); doc parity pointer remains `docs/atx-xchat/xchat-tools-guide.md`.
 
 ## Versioning (SemVer — single source of truth)
 
@@ -124,7 +124,7 @@ Ship checklist (align with **`test-commit-push`** / **`AGENTS.md`**):
 ## Deferred / TODO (Out of Scope for This Revisit)
 
 - **xPersona**: detailed config and how it gates xChat scope — later TODO.
-- **Search/RAG tools**: advanced tuning — see `docs/xchat/`.
+- **Search/RAG tools**: advanced tuning — see `docs/atx-xchat/`.
 - **xCoach**: full licensing-exam (timed test) design and implementation — stub only for now.
 
 

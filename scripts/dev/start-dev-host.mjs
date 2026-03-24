@@ -3,16 +3,29 @@
  * Host-native dev: Spring Boot via Gradle bootRun (no backend container), then Next dev.
  * MongoDB must already be reachable (e.g. `docker compose up -d mongodb`, local mongod, or Atlas).
  *
- * Usage: npm run dev:host
+ * Usage: npm run dev:host  (or npm run dev:host:fresh to wipe Compose Mongo volume + seed:admin first)
  * Ctrl+C stops Next and sends SIGTERM to the Gradle/JVM backend process.
  */
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const bootScript = join(root, "scripts/dev/bootrun-atxfinance-backend.sh");
+const wipeVolumesScript = join(root, "scripts/dev/wipe-local-compose-volumes.sh");
+const mongoUpScript = join(root, "scripts/dev/mongo-up.sh");
+
+function shouldWipeLocalMongo() {
+  const v = String(process.env.DEV_WIPE_LOCAL_MONGO ?? "").toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+function wipeMongoVolumeUpAndSeed() {
+  execFileSync("bash", [wipeVolumesScript], { cwd: root, stdio: "inherit", env: process.env });
+  execFileSync("bash", [mongoUpScript], { cwd: root, stdio: "inherit", env: process.env });
+  execFileSync("npm", ["run", "seed:admin"], { cwd: root, stdio: "inherit", env: process.env });
+}
 
 const healthUrls = [
   "http://127.0.0.1:8080/actuator/health",
@@ -57,6 +70,13 @@ function main() {
   console.log(
     "[dev:host] MongoDB must be reachable — e.g. docker compose up -d mongodb (no backend container needed)"
   );
+
+  if (shouldWipeLocalMongo()) {
+    console.log(
+      "[dev:host] DEV_WIPE_LOCAL_MONGO: wiping compose volumes → mongo:up → seed:admin (destructive) …"
+    );
+    wipeMongoVolumeUpAndSeed();
+  }
 
   const backend = spawn("bash", [bootScript], {
     cwd: root,

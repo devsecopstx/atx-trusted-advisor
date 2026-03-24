@@ -15,6 +15,7 @@ const optionalKeys = [
   "ALLOW_ANY_X_USER_LOGIN",
   "SLACK_WEBHOOK_URL",
   "ADMIN_X_USERNAMES",
+  "ADMIN_SEED_X_USER_ID",
   "X_OAUTH_CALLBACK_URL"
 ];
 

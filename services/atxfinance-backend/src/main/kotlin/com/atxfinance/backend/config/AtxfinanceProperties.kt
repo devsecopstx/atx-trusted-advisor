@@ -23,9 +23,14 @@ data class AtxfinanceProperties(
     val portfolioRecommendationsCollection: String = "portfolio_recommendations",
     val ragFilesCollection: String = "xai_collections",
     val ragChunksCollection: String = "xchat_rag_chunks",
+    val xchatLogsCollection: String = "xchat_logs",
     val defaultExtBrokerRef: String = "extBrokerName",
     val defaultAccountCashBalance: Double = 25_000.0,
     val tenantPortfolioOrgKey: String = "org-atx-finance",
     val maxWatchlistSymbols: Int = 75,
     val maxWatchlistSymbolsPerPatch: Int = 20,
+    /** Phase 1 multi-agent strategy job rows (orchestrator). */
+    val strategyJobsCollection: String = "strategy_jobs",
+    val strategyMaxJobsHourly: Int = 12,
+    val strategySoftWarnJobsHourly: Int = 8,
 )

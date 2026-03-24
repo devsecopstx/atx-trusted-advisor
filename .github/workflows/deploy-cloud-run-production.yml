@@ -1,6 +1,6 @@
 # Production Cloud Run deploy — workflow_dispatch ONLY (no push / no schedule).
-# Staging stays in deploy-cloud-run.yml (push to main + dispatch).
-# Optional extra gate: GitHub → Settings → Environments → production → Required reviewers.
+# Staging: deploy-cloud-run.yml (workflow_dispatch only, same as prod).
+# Manual approval: Settings → Environments → production → Required reviewers.
 name: Deploy Cloud Run Production
 
 on:

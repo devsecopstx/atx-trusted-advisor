@@ -38,6 +38,12 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "auth"
   },
   {
+    path: "/api/auth/google/callback",
+    operations: [{ method: "GET", auth: "public" }],
+    tag: "auth"
+  },
+  { path: "/api/auth/google/login", operations: [{ method: "GET", auth: "public" }], tag: "auth" },
+  {
     path: "/api/auth/link-email",
     operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
     tag: "auth"
@@ -133,6 +139,39 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     path: "/api/admin/import/broker",
     operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
     tag: "admin-system"
+  },
+  {
+    path: "/api/admin/portfolios",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}/accounts",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-portfolios"
+  },
+  {
+    path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}",
+    operations: [
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-portfolios"
   },
   {
     path: "/api/admin/tasks/{taskId}/run",
@@ -323,6 +362,21 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "strategy-options"
   },
   {
+    path: "/api/strategy-jobs",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "strategy-jobs"
+  },
+  {
+    path: "/api/strategy-jobs/{jobId}",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "strategy-jobs"
+  },
+  {
+    path: "/api/strategy-jobs/{jobId}/turns",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "strategy-jobs"
+  },
+  {
     path: "/api/rag/files",
     operations: [
       { method: "GET", auth: "admin" },
@@ -391,6 +445,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   positions: "Position capture and persistence APIs.",
   "strategy-options":
     "Option expirations and chain (Yahoo + synthetic fallback) for xStrategyBuilder; aligned with xfinance-strategy GET /api/options.",
+  "strategy-jobs":
+    "Phase 1 multi-agent strategy orchestrator (Mongo + Spring): slot collection and job status. See docs/atx-xchat/atx-multi-agent.md.",
   rag: "Mongo-backed scoped RAG file list/upload; xAI collection inventory is GET /api/personas/collections.",
   xchat: "xChat sync and async ask/batch workflows."
 };

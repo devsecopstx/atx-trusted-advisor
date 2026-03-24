@@ -94,10 +94,6 @@ export async function PUT(request: Request, context: RouteContext) {
       parsed.data.teamCollection !== undefined
         ? parsed.data.teamCollection
         : existingPersona.teamCollection,
-    includeUserBootstrapCollection:
-      parsed.data.includeUserBootstrapCollection !== undefined
-        ? parsed.data.includeUserBootstrapCollection
-        : existingPersona.includeUserBootstrapCollection,
     xapi: normalizePersonaXapiConfig(parsed.data.xapi ?? existingPersona.xapi)
   };
   if (
@@ -107,7 +103,7 @@ export async function PUT(request: Request, context: RouteContext) {
     return NextResponse.json(
       {
         error:
-          "Invalid persona payload: collection search requires xaiCollection, teamCollection, collection ids on tools, or includeUserBootstrapCollection"
+          "Invalid persona payload: collection search requires xaiCollection, teamCollection, or collection ids on tools"
       },
       { status: 400 }
     );
@@ -207,7 +203,6 @@ function serializePersona(persona: PersonaConfig) {
       collectionId: persona.teamCollection?.collectionId ?? "",
       collectionName: persona.teamCollection?.collectionName
     },
-    includeUserBootstrapCollection: persona.includeUserBootstrapCollection === true,
     model: persona.model,
     temperature: persona.temperature,
     enableRag: persona.enableRag,
