@@ -22,6 +22,7 @@
 | ----------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Client-safe team collection helpers | `team-xai-collection-sync.ts` (new), `team-xai-collection.ts`   | Client components (`xchat-conversation`, `types`) import from `-sync` (env read only). Server routes use `team-xai-collection` for `resolveTeamKbCollectionId`. Prevents Mongo in client bundle. |
 | Tool definitions extraction         | `tool-definitions.ts` (new), `tool-executor.ts`, `xai-tools.ts` | `ATXFINANCE_TOOL_DEFINITION`, `YAHOO_FINANCE_TOOL_DEFINITION` live in `tool-definitions`; executor and `xai-tools` import. Keeps definitions usable without pulling Mongo.                       |
+| PR5 RAG readiness (xChat gate) | `rag-file-readiness.ts` (`getScopeReadinessSummary`), `ask/route.ts`, `multi-source-context-orchestrator.ts`, `tests/unit/rag-team-kb-readiness-summary.test.ts` | Team KB gate uses **read-only** xAI management `GET /collections/{id}` via `resolveTeamKbCollectionId`; no Mongo `listRagFiles` for scope. Runs only when linked persona collections include team KB. Admin file inventory + polls remain `/admin/rag-files` + `pollRagFileReadiness`. |
 
 
 ---
