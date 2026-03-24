@@ -115,14 +115,39 @@ export async function getCoreUserById(userId: ObjectId): Promise<CoreUser | null
   return db.collection<CoreUser>(collections.users).findOne({ _id: userId });
 }
 
-/** Resolve many core users by hex id (skips invalid ids). */
-export async function getCoreUsersByIds(userIds: string[]): Promise<Map<string, CoreUser>> {
+/**
+ * Normalize a Mongo-backed user id to a 24-char hex string for maps and `core_users` lookups.
+ * Handles hex strings and BSON ObjectId (legacy `tenant_portfolio` / portfolio rows sometimes store ObjectId).
+ */
+export function normalizeMongoUserIdHex(raw: unknown): string | null {
+  if (raw == null) {
+    return null;
+  }
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    return t.length > 0 ? t : null;
+  }
+  if (raw instanceof ObjectId) {
+    return raw.toHexString();
+  }
+  if (typeof raw === "object") {
+    const maybe = raw as { toHexString?: () => string };
+    if (typeof maybe.toHexString === "function") {
+      const hex = maybe.toHexString();
+      return typeof hex === "string" && hex.length > 0 ? hex : null;
+    }
+  }
+  return null;
+}
+
+/** Resolve many core users by hex id (skips invalid ids). Accepts strings or BSON ObjectId from legacy docs. */
+export async function getCoreUsersByIds(userIds: ReadonlyArray<unknown>): Promise<Map<string, CoreUser>> {
   await ensureIdentityIndexes();
   const db = await getDb();
   const oids: ObjectId[] = [];
   const seen = new Set<string>();
   for (const raw of userIds) {
-    const t = raw.trim();
+    const t = normalizeMongoUserIdHex(raw);
     if (!t || seen.has(t)) continue;
     seen.add(t);
     if (ObjectId.isValid(t)) {

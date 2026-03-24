@@ -23,6 +23,7 @@ import {
     type WatchlistSymbolImportEntry,
     accountTypeValues
 } from "@/modules/core-admin/types";
+import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
 import { MAX_WATCHLIST_SYMBOLS } from "@/modules/watchlist/constants";
 
@@ -154,6 +155,10 @@ function userIdQuery(userId: string): { userId: string | { $in: (string | Object
     return { userId: { $in: [userId, new ObjectId(userId)] } };
   }
   return { userId };
+}
+
+function portfolioUserIdString(portfolio: Pick<Portfolio, "userId">): string {
+  return normalizeMongoUserIdHex(portfolio.userId) ?? "";
 }
 
 function withTenantScope(
@@ -1781,7 +1786,7 @@ export async function adminListPortfoliosWithStats(input: {
         return { ...p, accountCount: 0, totalCashBalance: 0 };
       }
       const accounts = await listPortfolioAccounts({
-        userId: p.userId,
+        userId: portfolioUserIdString(p),
         portfolioId: p._id.toHexString(),
         tenantId: portfolioTenantIdString(p)
       });
@@ -1917,7 +1922,7 @@ export async function adminDeletePortfolio(portfolioId: string): Promise<boolean
   }
   const db = await getDb();
   const pid = portfolio._id;
-  const uid = userIdQuery(portfolio.userId);
+  const uid = userIdQuery(portfolioUserIdString(portfolio));
   const baseFilter: Record<string, unknown> = { portfolioId: pid, ...uid };
   await db.collection<Position>(collections.positions).deleteMany(baseFilter);
   await db.collection<Recommendation>(collections.recommendations).deleteMany(baseFilter);
@@ -1933,7 +1938,7 @@ export async function adminListAccountsForPortfolio(portfolioId: string): Promis
     return [];
   }
   return listPortfolioAccounts({
-    userId: p.userId,
+    userId: portfolioUserIdString(p),
     portfolioId: p._id.toHexString(),
     tenantId: portfolioTenantIdString(p)
   });
@@ -1951,7 +1956,7 @@ export async function adminInsertAccountForPortfolio(input: {
     return null;
   }
   return insertPortfolioAccountForUser({
-    userId: portfolio.userId,
+    userId: portfolioUserIdString(portfolio),
     tenantId: portfolioTenantIdString(portfolio),
     portfolioId: portfolio._id.toHexString(),
     name: input.name,
@@ -1976,7 +1981,7 @@ export async function adminUpdatePortfolioAccount(input: {
   }
   const tenantId = portfolioTenantIdString(portfolio);
   const base = await updatePortfolioAccountForUser({
-    userId: portfolio.userId,
+    userId: portfolioUserIdString(portfolio),
     tenantId,
     portfolioId: input.portfolioId,
     accountId: input.accountId,
@@ -1993,7 +1998,7 @@ export async function adminUpdatePortfolioAccount(input: {
   const filter = strictWriteTenantFilter(
     {
       _id: aid,
-      ...userIdQuery(portfolio.userId),
+      ...userIdQuery(portfolioUserIdString(portfolio)),
       portfolioId: pid
     },
     tenantId
@@ -2008,7 +2013,7 @@ export async function adminUpdatePortfolioAccount(input: {
   }
   if (input.isDefault === true) {
     await db.collection<Account>(collections.accounts).updateMany(
-      strictWriteTenantFilter({ ...userIdQuery(portfolio.userId), portfolioId: pid }, tenantId),
+      strictWriteTenantFilter({ ...userIdQuery(portfolioUserIdString(portfolio)), portfolioId: pid }, tenantId),
       { $set: { isDefault: false, updatedAt: new Date() } }
     );
     $set.isDefault = true;
@@ -2030,7 +2035,7 @@ export async function adminDeleteAccountForPortfolio(input: {
   }
   const tenantId = portfolioTenantIdString(portfolio);
   const accounts = await listPortfolioAccounts({
-    userId: portfolio.userId,
+    userId: portfolioUserIdString(portfolio),
     portfolioId: portfolio._id.toHexString(),
     tenantId
   });
@@ -2046,7 +2051,7 @@ export async function adminDeleteAccountForPortfolio(input: {
   const aid = new ObjectId(input.accountId);
   const scope = withTenantScope(
     {
-      ...userIdQuery(portfolio.userId),
+      ...userIdQuery(portfolioUserIdString(portfolio)),
       portfolioId: pid,
       accountId: aid
     },
@@ -2057,7 +2062,7 @@ export async function adminDeleteAccountForPortfolio(input: {
     strictWriteTenantFilter(
       {
         _id: aid,
-        ...userIdQuery(portfolio.userId),
+        ...userIdQuery(portfolioUserIdString(portfolio)),
         portfolioId: pid
       },
       tenantId
@@ -2071,7 +2076,7 @@ export async function adminDeleteAccountForPortfolio(input: {
     if (next?._id) {
       await db.collection<Account>(collections.accounts).updateOne(
         strictWriteTenantFilter(
-          { _id: next._id, ...userIdQuery(portfolio.userId), portfolioId: pid },
+          { _id: next._id, ...userIdQuery(portfolioUserIdString(portfolio)), portfolioId: pid },
           tenantId
         ),
         { $set: { isDefault: true, updatedAt: new Date() } }

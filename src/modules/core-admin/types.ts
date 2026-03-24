@@ -162,7 +162,8 @@ export type AccountType = (typeof accountTypeValues)[number];
 export type Portfolio = {
   _id?: ObjectId;
   tenantId?: ObjectId;
-  userId: string;
+  /** Hex string in new writes; legacy Mongo documents may still store BSON ObjectId — normalize at API boundaries. */
+  userId: string | ObjectId;
   name: string;
   isDefault: boolean;
   /**

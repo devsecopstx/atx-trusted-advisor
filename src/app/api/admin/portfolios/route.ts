@@ -7,13 +7,18 @@ import {
     adminListPortfoliosWithStats
 } from "@/modules/core-admin/repository";
 import type { Portfolio } from "@/modules/core-admin/types";
-import { formatCoreUserDisplayName, getCoreUsersByIds } from "@/modules/identity/repository";
+import {
+  formatCoreUserDisplayName,
+  getCoreUsersByIds,
+  normalizeMongoUserIdHex
+} from "@/modules/identity/repository";
 
 function serializePortfolio(p: Portfolio) {
+  const userId = normalizeMongoUserIdHex(p.userId) ?? "";
   return {
     _id: p._id!.toHexString(),
     tenantId: p.tenantId?.toHexString(),
-    userId: p.userId,
+    userId,
     name: p.name,
     isDefault: p.isDefault,
     tenantPortfolioOrgKey: p.tenantPortfolioOrgKey,
@@ -39,10 +44,11 @@ export async function GET() {
   }
 
   const rows = await adminListPortfoliosWithStats({ limit: 200 });
-  const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))];
+  const userIds = [...new Set(rows.map((r) => normalizeMongoUserIdHex(r.userId)).filter((x): x is string => Boolean(x)))];
   const userMap = await getCoreUsersByIds(userIds);
   const data = rows.map((r) => {
-    const u = userMap.get(r.userId);
+    const uidHex = normalizeMongoUserIdHex(r.userId);
+    const u = uidHex ? userMap.get(uidHex) : undefined;
     return {
       ...serializePortfolio(r),
       accountCount: r.accountCount,
