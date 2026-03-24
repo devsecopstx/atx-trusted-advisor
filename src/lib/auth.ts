@@ -8,6 +8,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
 import { normalizeCoreRoles } from "@/modules/identity/authorization";
 const OAUTH_STATE_COOKIE_NAME = "xf_x_oauth_state";
 const OAUTH_VERIFIER_COOKIE_NAME = "xf_x_oauth_verifier";
+const OAUTH_RETURN_PATH_COOKIE_NAME = "xf_oauth_return";
 const PENDING_LINK_COOKIE_NAME = "xf_x_pending_link";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const OAUTH_FLOW_TTL_SECONDS = 60 * 10;
@@ -159,6 +160,49 @@ export function applyOAuthFlowCookiesToRedirect(
   };
   response.cookies.set(OAUTH_STATE_COOKIE_NAME, state, baseCookie);
   response.cookies.set(OAUTH_VERIFIER_COOKIE_NAME, verifier, baseCookie);
+}
+
+/** Rejects open redirects and path traversal; only same-origin relative paths. */
+export function isSafeOAuthReturnPath(path: string): boolean {
+  const p = path.trim();
+  if (!p.startsWith("/") || p.startsWith("//")) {
+    return false;
+  }
+  if (p.includes("..")) {
+    return false;
+  }
+  if (p.length > 512) {
+    return false;
+  }
+  if (/[\r\n\0]/.test(p)) {
+    return false;
+  }
+  return true;
+}
+
+export function applyOAuthReturnPathCookie(response: NextResponse, returnPath: string | null): void {
+  if (!returnPath || !isSafeOAuthReturnPath(returnPath)) {
+    return;
+  }
+  const baseCookie = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: OAUTH_FLOW_TTL_SECONDS
+  };
+  response.cookies.set(OAUTH_RETURN_PATH_COOKIE_NAME, returnPath, baseCookie);
+}
+
+export async function consumeOAuthReturnPathCookie(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(OAUTH_RETURN_PATH_COOKIE_NAME)?.value;
+  cookieStore.delete(OAUTH_RETURN_PATH_COOKIE_NAME);
+  if (!raw) {
+    return null;
+  }
+  const trimmed = raw.trim();
+  return isSafeOAuthReturnPath(trimmed) ? trimmed : null;
 }
 
 export async function setPendingXLinkCookie(value: PendingXLink): Promise<void> {

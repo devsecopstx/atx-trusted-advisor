@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 
 import {
     clearOAuthFlowCookies,
+    consumeOAuthReturnPathCookie,
     createSession,
     getSessionUser,
+    isSafeOAuthReturnPath,
     readOAuthFlowCookies,
     setPendingXLinkCookie
 } from "@/lib/auth";
@@ -130,9 +132,11 @@ export async function GET(request: Request) {
   if (!flowCookies.state || !flowCookies.verifier) {
     const existingSession = await getSessionUser();
     if (existingSession) {
-      return NextResponse.redirect(
-        new URL(isGlobalAdmin(existingSession.roles) ? "/admin" : "/xchat", origin)
-      );
+      const returnPath = await consumeOAuthReturnPathCookie();
+      const fallback = isGlobalAdmin(existingSession.roles) ? "/admin" : "/xchat";
+      const target =
+        returnPath && isSafeOAuthReturnPath(returnPath) ? returnPath : fallback;
+      return NextResponse.redirect(new URL(target, origin));
     }
     return NextResponse.redirect(
       new URL("/login?error=missing_oauth_cookie_context", origin)
@@ -351,9 +355,10 @@ export async function GET(request: Request) {
       avatarUrl: authContext.avatarUrl ?? xIdentity.avatarUrl
     });
 
-    return NextResponse.redirect(
-      new URL(isGlobalAdmin(finalSessionRoles) ? "/admin" : "/xchat", origin)
-    );
+    const returnPath = await consumeOAuthReturnPathCookie();
+    const fallback = isGlobalAdmin(finalSessionRoles) ? "/admin" : "/xchat";
+    const target = returnPath && isSafeOAuthReturnPath(returnPath) ? returnPath : fallback;
+    return NextResponse.redirect(new URL(target, origin));
   } catch (error) {
     console.error("[auth/x/callback] session bootstrap failed", {
       userId: userObjectId.toHexString(),

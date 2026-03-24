@@ -82,7 +82,7 @@ const ctaHoverTap = {
 };
 
 /** Where to send users after sign-in when using the default `/login?next=…` pitch link. */
-export const DEFAULT_PITCH_LOGIN_RETURN_PATH = "/app_user/xoptions";
+export const DEFAULT_PITCH_LOGIN_RETURN_PATH = "/xchat";
 
 export function buildPitchLoginHref(returnPath: string): string {
   const path = returnPath.startsWith("/") ? returnPath : `/${returnPath}`;
@@ -103,7 +103,7 @@ export type HeroProps = {
   title?: string;
   /**
    * Primary auth CTA. Defaults to `NEXT_PUBLIC_SIGNIN_URL`, else {@link buildPitchLoginHref} with
-   * {@link loginReturnPath} (typically `/login?next=/app_user/xoptions`).
+   * {@link loginReturnPath} (typically `/login?next=/xchat`).
    */
   signInHref?: string;
   /** `next` query value for `/login` when using the default login link. Default: {@link DEFAULT_PITCH_LOGIN_RETURN_PATH}. */

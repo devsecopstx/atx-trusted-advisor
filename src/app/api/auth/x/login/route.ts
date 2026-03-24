@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 
 import {
     applyOAuthFlowCookiesToRedirect,
+    applyOAuthReturnPathCookie,
     createCodeChallenge,
     createCodeVerifier,
-    createOAuthState
+    createOAuthState,
+    isSafeOAuthReturnPath
 } from "@/lib/auth";
 import { getEnv, getXOauthClientId } from "@/lib/env";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
@@ -60,6 +62,11 @@ export async function GET(request: Request) {
     `&code_challenge_method=S256`;
 
   const response = NextResponse.redirect(url);
+  const nextParam = requestUrl.searchParams.get("next");
+  applyOAuthReturnPathCookie(
+    response,
+    nextParam && isSafeOAuthReturnPath(nextParam) ? nextParam : null
+  );
   applyOAuthFlowCookiesToRedirect(response, state, codeVerifier);
   return response;
 }

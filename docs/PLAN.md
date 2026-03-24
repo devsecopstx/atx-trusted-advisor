@@ -1,5 +1,9 @@
 # Backlog & migration notes
 
+
+- **TODO:** Restore `LoginProductPanel` on `/login` or fold plan tiers into registration / access-request flow (deferred).
+- **TODO:** Google OAuth — add `/api/auth/google/login` + callback + env; enable the login page Google button when shipped.
+
 **Docs index:** [README.md](./README.md). Phase 1 multi-agent: [atx-xchat/atx-multi-agent.md](./atx-xchat/atx-multi-agent.md). BFF: [atx-sre-ops/api-consolidation-spring-backend.md](./atx-sre-ops/api-consolidation-spring-backend.md).
 
 ---
