@@ -480,6 +480,20 @@
   color: var(--xf-gain-green);
 }
 
+/* Long example: one line in the grid with … ; full text on click into composer (API gets full string). */
+.xchat-example-chip--ellipsis {
+  border-radius: 10px;
+  display: block;
+  max-width: min(100%, 20rem);
+  min-width: 0;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  line-height: 1.35;
+}
+
 .xchat-history-stats {
   display: flex;
   flex-wrap: wrap;
@@ -741,7 +755,7 @@
 
 .xchat-composer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.35rem;
   width: 100%;
   max-width: 100%;
@@ -761,6 +775,15 @@
   font: inherit;
   font-size: 0.92rem;
   padding: 0.45rem 0.35rem;
+}
+
+.xchat-composer__textarea {
+  resize: none;
+  overflow-y: auto;
+  min-height: 2.5rem;
+  max-height: 320px;
+  line-height: 1.45;
+  box-sizing: border-box;
 }
 
 .xchat-composer__field:focus {

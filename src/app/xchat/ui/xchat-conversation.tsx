@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
@@ -92,6 +92,9 @@ type XchatConversationProps = {
   /** Published default persona name for this session’s role (Super-Agent vs xFinance). */
   defaultPublishedPersonaName: string;
 };
+
+/** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
+type XchatPromptExample = string | { prompt: string };
 
 const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -200,21 +203,40 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
   const [collectionsScopeDegraded, setCollectionsScopeDegraded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
 
-  const promptExamples = [
+  const resizeComposer = useCallback(() => {
+    const el = composerRef.current;
+    if (!el) {
+      return;
+    }
+    el.style.height = "auto";
+    const maxPx = 320;
+    el.style.height = `${Math.min(el.scrollHeight, maxPx)}px`;
+  }, []);
+
+  const promptExamples: XchatPromptExample[] = [
     "Show my portfolio allocation",
     "What are my top movers today",
     "Covered call ideas for my holdings",
     "Compare SPY vs QQQ trend today",
     "Stress test portfolio for volatility spike",
     "xStrategy",
-    "How's the weather today in Austin, TX"
-  ] as const;
+    "How's the weather today in Austin, TX",
+    {
+      prompt:
+        "I want to refresh my wheel around TSLA and SpaceX or related suppliers, what are the top ten companies or related , that have a high IV that may be good candidates to build a wheel with around TSLA?"
+    }
+  ];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    resizeComposer();
+  }, [input, resizeComposer]);
 
   useEffect(() => {
     if (threadHydrateStartedRef.current) {
@@ -543,13 +565,23 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           >
             <XchatComposerAttachIcon />
           </button>
-          <input
+          <textarea
+            ref={composerRef}
             aria-busy={loading}
-            className="xchat-composer__field"
+            className="xchat-composer__field xchat-composer__textarea"
             maxLength={4000}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+              if (e.key !== "Enter" || e.shiftKey || loading) {
+                return;
+              }
+              e.preventDefault();
+              e.currentTarget.form?.requestSubmit();
+            }}
             placeholder={loading ? "Thinking..." : "What's on your mind?"}
             readOnly={loading}
+            rows={1}
+            title="Enter to send · Shift+Enter for a new line"
             value={input}
           />
           <button
@@ -606,19 +638,40 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           {exampleExpanded ? (
             <div className="xchat-panel-body">
               <p className="status-text xchat-panel-hint">
-                Finance-focused examples for quick starts. Click one to copy into the input.
+                Finance-focused examples for quick starts. Click to load into the composer (long prompts show … in the
+                list, then expand in the input — full text is sent to the API).
               </p>
               <div className="xchat-example-grid">
-                {promptExamples.map((prompt) => (
-                  <button
-                    className="xchat-example-chip"
-                    key={prompt}
-                    onClick={() => setInput(prompt)}
-                    type="button"
-                  >
-                    {prompt}
-                  </button>
-                ))}
+                {promptExamples.map((ex, i) => {
+                  const isEllipsisChip = typeof ex !== "string";
+                  const full = typeof ex === "string" ? ex : ex.prompt;
+                  return (
+                    <button
+                      aria-label={`Use example: ${full}`}
+                      className={
+                        isEllipsisChip
+                          ? "xchat-example-chip xchat-example-chip--ellipsis"
+                          : "xchat-example-chip"
+                      }
+                      key={`ex-${i}`}
+                      title={isEllipsisChip ? full : undefined}
+                      type="button"
+                      onClick={() => {
+                        setInput(full);
+                        queueMicrotask(() => {
+                          const el = composerRef.current;
+                          if (el) {
+                            el.focus();
+                            el.style.height = "auto";
+                            el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+                          }
+                        });
+                      }}
+                    >
+                      {full}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : null}
