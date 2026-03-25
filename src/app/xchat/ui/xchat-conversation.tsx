@@ -97,6 +97,22 @@ function XchatComposerHintMicIcon() {
   );
 }
 
+function XchatThreadExpandChevronIcon() {
+  return (
+    <svg aria-hidden fill="currentColor" height={22} viewBox="0 0 24 24" width={22}>
+      <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6-1.41-1.41z" />
+    </svg>
+  );
+}
+
+function XchatThreadCollapseChevronIcon() {
+  return (
+    <svg aria-hidden fill="currentColor" height={18} viewBox="0 0 24 24" width={18}>
+      <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14l-6-6z" />
+    </svg>
+  );
+}
+
 type XchatConversationProps = {
   /** Resolved default persona name for this session’s role (e.g. Super-Agent vs atx-trusted-advisor). */
   defaultPublishedPersonaName: string;
@@ -207,10 +223,26 @@ export function XchatConversation({
   const [assignedPersonaIdLock, setAssignedPersonaIdLock] = useState<string | null>(null);
   /** After the first successful send (or hydrate), persona id is fixed for this thread unless admin-assigned. */
   const [threadLockedPersonaId, setThreadLockedPersonaId] = useState<string | null>(null);
+  /** After send, hide the transcript for a minimal view; user expands to read the thread. */
+  const [threadUiCollapsed, setThreadUiCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
   const userPickedPersonaRef = useRef(false);
+
+  const threadUiSummary = useMemo(() => {
+    const userMsgs = messages.filter((m) => m.role === "user");
+    const n = userMsgs.length;
+    const lastUser = userMsgs[userMsgs.length - 1]?.content?.trim() ?? "";
+    const preview = lastUser.length > 64 ? `${lastUser.slice(0, 64)}…` : lastUser;
+    return { userTurnCount: n, preview };
+  }, [messages]);
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      setThreadUiCollapsed(false);
+    }
+  }, [messages.length]);
 
   const personaSelectRows = useMemo(() => {
     if (!assignedPersonaIdLock) {
@@ -476,6 +508,10 @@ export function XchatConversation({
     const prompt = input.trim();
     if (!prompt || loading) return;
 
+    setThreadUiCollapsed(true);
+    setExampleExpanded(false);
+    setHistoryExpanded(false);
+
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       role: "user",
@@ -615,47 +651,88 @@ export function XchatConversation({
         {collectionsStatus ? <span className="status-text status-error">{collectionsStatus}</span> : null}
       </div>
 
-      <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
-        Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side in
-        Mongo; prior turns are injected into the next ask for continuity. Open <strong>Chat history</strong> below
-        for the saved list. Persona choice locks after your first successful reply in this thread (unless your
-        admin assigned one).
-      </p>
+      {!(threadUiCollapsed && messages.length > 0) ? (
+        <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
+          Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side in
+          Mongo; prior turns are injected into the next ask for continuity. Open <strong>Chat history</strong> below
+          for the saved list. Persona choice locks after your first successful reply in this thread (unless your
+          admin assigned one).
+        </p>
+      ) : null}
 
-      <div className="xchat-messages">
-        {messages.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "3rem 0" }}>
-            <p className="status-text">
-              Start a conversation with <strong>{activePersonaName}</strong> (or choose another persona below).
-            </p>
-          </div>
-        ) : null}
-
-        {messages.map((msg) => (
-          <div className={`xchat-msg xchat-msg-${msg.role}`} key={msg.id}>
-            {msg.role === "ai" && msg.persona ? (
-              <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>
-                {msg.persona}
-              </small>
+      {threadUiCollapsed && messages.length > 0 ? (
+        <button
+          aria-expanded={false}
+          className="xchat-thread-collapsed-bar"
+          type="button"
+          onClick={() => {
+            setThreadUiCollapsed(false);
+            queueMicrotask(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }));
+          }}
+        >
+          <span aria-hidden className="xchat-thread-collapsed-bar__icon">
+            <XchatThreadExpandChevronIcon />
+          </span>
+          <span className="xchat-thread-collapsed-bar__meta">
+            <span className="xchat-thread-collapsed-bar__title">
+              {loading
+                ? "Assistant is replying…"
+                : `Conversation · ${threadUiSummary.userTurnCount} prompt${threadUiSummary.userTurnCount === 1 ? "" : "s"}`}
+            </span>
+            {threadUiSummary.preview ? (
+              <span className="xchat-thread-collapsed-bar__preview">{threadUiSummary.preview}</span>
             ) : null}
-            {msg.role === "ai" ? (
-              <XchatMarkdownBody content={msg.content} />
-            ) : (
-              <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
-            )}
-          </div>
-        ))}
+          </span>
+          <span className="xchat-thread-collapsed-bar__action">Expand</span>
+        </button>
+      ) : (
+        <div className="xchat-messages">
+          {messages.length > 0 ? (
+            <button
+              aria-expanded
+              className="xchat-thread-minimize"
+              type="button"
+              onClick={() => setThreadUiCollapsed(true)}
+            >
+              <XchatThreadCollapseChevronIcon />
+              <span>Minimize thread</span>
+            </button>
+          ) : null}
 
-        {loading ? (
-          <div className="xchat-typing">
-            <span className="xchat-typing-dot" />
-            <span className="xchat-typing-dot" />
-            <span className="xchat-typing-dot" />
-          </div>
-        ) : null}
+          {messages.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "3rem 0" }}>
+              <p className="status-text">
+                Start a conversation with <strong>{activePersonaName}</strong> (or choose another persona below).
+              </p>
+            </div>
+          ) : null}
 
-        <div ref={messagesEndRef} />
-      </div>
+          {messages.map((msg) => (
+            <div className={`xchat-msg xchat-msg-${msg.role}`} key={msg.id}>
+              {msg.role === "ai" && msg.persona ? (
+                <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>
+                  {msg.persona}
+                </small>
+              ) : null}
+              {msg.role === "ai" ? (
+                <XchatMarkdownBody content={msg.content} />
+              ) : (
+                <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
+              )}
+            </div>
+          ))}
+
+          {loading ? (
+            <div className="xchat-typing">
+              <span className="xchat-typing-dot" />
+              <span className="xchat-typing-dot" />
+              <span className="xchat-typing-dot" />
+            </div>
+          ) : null}
+
+          <div ref={messagesEndRef} />
+        </div>
+      )}
 
       <div className="xchat-composer-wrap">
         <form className="xchat-composer" onSubmit={handleSend}>
