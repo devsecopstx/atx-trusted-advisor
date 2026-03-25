@@ -126,7 +126,11 @@ class PositionsController(
                 PositionValidationException.Code.ACCOUNT_NOT_FOUND,
                 PositionValidationException.Code.ACCOUNT_PORTFOLIO_MISMATCH,
                 -> HttpStatus.NOT_FOUND
-                else -> HttpStatus.BAD_REQUEST
+                PositionValidationException.Code.INVALID_IDS,
+                PositionValidationException.Code.ACCOUNT_MISSING_EXT_ACCOUNT_ID,
+                PositionValidationException.Code.POSITION_FIELDS_INCOMPLETE,
+                PositionValidationException.Code.INVALID_OPTION_EXPIRATION,
+                -> HttpStatus.BAD_REQUEST
             }
         return ResponseEntity.status(status).body(
             mapOf(

@@ -48,6 +48,11 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/admin/portfolios/{portfolioId}", methods: ["GET", "PATCH", "DELETE"] },
   { pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts", methods: ["GET", "POST"] },
   { pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}", methods: ["PATCH", "DELETE"] },
+  { pathTemplate: "/api/admin/portfolios/{portfolioId}/watchlist", methods: ["GET", "PATCH"] },
+  {
+    pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions",
+    methods: ["GET", "POST"]
+  },
   { pathTemplate: "/api/rag/files", methods: ["GET", "POST"] },
   { pathTemplate: "/api/rag/files/{fileId}/readiness", methods: ["GET"] },
   { pathTemplate: "/api/access-requests", methods: ["POST"] },

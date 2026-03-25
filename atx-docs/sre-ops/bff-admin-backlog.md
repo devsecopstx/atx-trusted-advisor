@@ -27,13 +27,14 @@ Canonical proxied routes live in `src/lib/bff-proxy-routes.ts` (see `tests/smoke
 
 | Area | Notes |
 |------|--------|
-| **Portfolio list / CRUD** | `GET/POST /api/admin/portfolios`, `GET/PATCH/DELETE /api/admin/portfolios/{portfolioId}` — `AdminPortfoliosController` + `AdminPortfoliosService` (Mongo parity with Next `admin/portfolios` routes). Nested **accounts** already on `AdminPortfolioAccountsController`. |
+| **Portfolio list / CRUD** | `GET/POST /api/admin/portfolios`, `GET/PATCH/DELETE /api/admin/portfolios/{portfolioId}` — `AdminPortfoliosController` + `AdminPortfoliosService` (Mongo parity with Next `admin/portfolios` routes). Nested **accounts** on `AdminPortfolioAccountsController`. |
+| **Watchlist + account positions** | `GET/PATCH …/portfolios/{portfolioId}/watchlist` (`AdminPortfolioWatchlistController`); `GET/POST …/accounts/{accountId}/positions` (`AdminPortfolioPositionsController`). |
 
 ## Still Next-primary / future
 
 | Area | Notes |
 |------|--------|
-| **Admin portfolio nested** | Watchlist, tasks, alerts, recommendations, delivery-channels, account-level positions — Next until Kotlin. |
+| **Admin portfolio nested** | Tasks, alerts, recommendations, delivery-channels — Next until Kotlin. |
 | Alerts (future) | TBD; pair with `ALERTS_PUBSUB_TOPIC` + `publishAppUserAlertEvent` |
 
 ## Recommendations Pub/Sub

@@ -186,6 +186,14 @@ export const nextBffApi = {
     portfolioAccountById: {
       pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}",
       methods: ["PATCH", "DELETE"]
+    },
+    portfolioWatchlist: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/watchlist",
+      methods: ["GET", "PATCH"]
+    },
+    portfolioAccountPositions: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions",
+      methods: ["GET", "POST"]
     }
   },
   rag: {

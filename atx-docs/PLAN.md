@@ -2,7 +2,7 @@
 
 Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details** that are still open live under **§ Stripe & billing**; shipped UI chrome is noted only by reference.
 
-**Docs index:** [README.md](./README.md) · Phase 1 multi-agent: [atx-xchat/atx-multi-agent.md](./atx-xchat/atx-multi-agent.md) · BFF: [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md) · Spring HTTP contract: [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md) · **NL / strategy preflight:** [atx-xchat/xchat-nl-collect-inputs.md](./atx-xchat/xchat-nl-collect-inputs.md)
+**Docs index:** [README.md](./README.md) · Phase 1 multi-agent: [atx-xchat/atx-multi-agent.md](./atx-xchat/atx-multi-agent.md) · BFF: [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md) · Spring HTTP contract: [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md) · **NL / strategy preflight:** [atx-xchat/n-workflows/nl-prompts.md.md](./atx-xchat/n-workflows/nl-prompts.md.md)
 
 ---
 
@@ -11,11 +11,13 @@ Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details*
 
 | Priority | Item                                     | Notes                                                                                                                                                                                                                                                                                                                                                                                     |
 | -------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1        | **Spring BFF parity (admin portfolios)** | **Done (shell):** `GET/POST /api/admin/portfolios`, `GET/PATCH/DELETE /api/admin/portfolios/{portfolioId}` — Kotlin (`AdminPortfoliosController`) + BFF + Next proxy + `bff-proxy-routes` + HTTP spec. **Remaining (nested):** admin watchlist / tasks / alerts / recommendations / delivery-channels / account positions — Next-only until Kotlin. |
+| 1        | **Spring BFF parity (admin portfolios)** | **Done:** shell + **accounts** + **admin watchlist** (`…/watchlist` GET/PATCH) + **admin account positions** (`…/accounts/{accountId}/positions` GET/POST) on Kotlin + BFF + Next proxy. **Remaining nested:** tasks, alerts, recommendations, delivery-channels. |
 | 2        | **Accounts subpage UX**                  | **Done** — Toolbar order (Refresh → Save changes), owner block matches main **User** column (`userDisplayName` / id / email + links), `GET …/accounts` includes owner labels; BFF-only loads owner via `GET /api/admin/users/:id`. Per-row pencil save removed (batch **Save changes** only). Human-readable custodian type labels.                                                       |
 | 3        | **Default portfolio invariant**          | **Hotfix shipped:** `ensureDefaultPortfolioInvariantForUser` + `getDefaultPortfolio` (read-time repair: dedupe multiple defaults → oldest flagged; if none flagged, promote oldest). xChat workspace snapshot + tools use this path; admin can still move default via `adminUpdatePortfolio` / backoffice. **Remaining:** optional UX guard on portfolio admin UI.                                                                                         |
 | 4        | **Admin portfolio audit**                | Log create/update/delete (optional CSV) via `admin_audit_events` / audit pipeline.                                                                                                                                                                                                                                                                                                        |
-| 5        | **NL + strategy job tool (xChat)**       | Wire **nl**-gathered slots to `/api/strategy-jobs` (BFF) from xChat when product-ready; document tool schema + persona copy. Until then, personas use **nl** only (see `xchat-nl-collect-inputs.md`).                                                                                                                                                                                     |
+| 5        | **NL + strategy job tool (xChat)**       | Wire **nl**-gathered slots to `/api/strategy-jobs` (BFF) from xChat when product-ready; document tool schema + persona copy. Until then, personas use **nl** only (see `n-workflows/nl-prompts.md.md`).                                                                                               @atx-docs/xchat/nl-workflows/nl-prompts.md        
+
+                                                                               |
 | 6        | **Admin seed — RAG sync**                | Optional `SEED_RAG_FROM_REPO` (or similar): ingest `atx-rag-collection/xpersonas/`, `finance-reference-docs/`, `example-prompts/`, `options-strategy/` into team collections and/or Mongo `xpersonas`; tests + `generate-docs`.                                                                                                                                                           |
 
 
@@ -85,7 +87,7 @@ OpenAPI parity, `atxdesign-review-audit` gaps, product doc parity (`xchat-tools-
 |-----------|--------|
 | App-user portfolios, positions, watchlist, recommendations, strategy-jobs/options, user-feedback | **Shipped** (Kotlin + BFF + parity smoke) |
 | Admin access-requests, users, tasks, scheduler, deploy-notes, import/broker, audit, bootstrap-status | **Shipped** |
-| Admin **portfolio shell** (`/api/admin/portfolios`, `…/{portfolioId}`) + **accounts** subtree | **Shipped** (`AdminPortfoliosController`, `AdminPortfolioAccountsController`) |
+| Admin **portfolio shell** + **accounts** + **watchlist** + **account positions** | **Shipped** (`AdminPortfolios*`, `AdminPortfolioAccounts*`, `AdminPortfolioWatchlist*`, `AdminPortfolioPositions*`) |
 | Registry ↔ Next handler wiring | **Enforced** by `bff-proxy-registry-next-handlers.test.ts` |
 | xChat `/api/xchat/*` | **Deferred** (Next authoritative) |
 
@@ -93,13 +95,13 @@ OpenAPI parity, `atxdesign-review-audit` gaps, product doc parity (`xchat-tools-
 
 **Source of truth:** [`bff-proxy-routes.ts`](../src/lib/bff-proxy-routes.ts) — every `{ method, path }` there should have a Next handler that calls `proxyRequestToBackend(request)` first (return if non-null), then local fallback. CI enforces file presence + minimum `await proxyRequestToBackend(` count per route file via **`tests/unit/bff-proxy-registry-next-handlers.test.ts`**. **`ATXFINANCE_BACKEND_ORIGIN` unset** ⇒ proxy is a no-op and Next always serves locally.
 
-**Proxied when origin is set (registry + implementation aligned):** app-user portfolios (`/api/portfolios/...` including default, current, by id, accounts, watchlist), `/api/positions`, `/api/recommendations` (+ by id, portfolio-scoped), `/api/strategy-options` (+ expirations), `/api/strategy-jobs` (+ by id, turns), `/api/user-feedback`, `/api/personas` (+ by id), `POST /api/access-requests`, admin access-requests/users/tasks/scheduler/deploy-notes/import/broker/bootstrap-status/audit, **admin portfolio shell** (`GET/POST /api/admin/portfolios`, `GET/PATCH/DELETE …/{portfolioId}`) + **accounts** (`…/accounts`, `…/accounts/{accountId}`), `/api/rag/files` (+ readiness). **`GET /api/auth/x/callback`** is listed in `bff-proxy-routes.ts` but Next only forwards when **`AUTH_CALLBACK_USE_SPRING=true`** in addition to `ATXFINANCE_BACKEND_ORIGIN` (see callback route); default remains Next OAuth completion.
+**Proxied when origin is set (registry + implementation aligned):** app-user portfolios (`/api/portfolios/...` including default, current, by id, accounts, watchlist), `/api/positions`, `/api/recommendations` (+ by id, portfolio-scoped), `/api/strategy-options` (+ expirations), `/api/strategy-jobs` (+ by id, turns), `/api/user-feedback`, `/api/personas` (+ by id), `POST /api/access-requests`, admin access-requests/users/tasks/scheduler/deploy-notes/import/broker/bootstrap-status/audit, **admin portfolio** routes including `…/watchlist` and `…/accounts/{accountId}/positions`, `/api/rag/files` (+ readiness). **`GET /api/auth/x/callback`** is listed in `bff-proxy-routes.ts` but Next only forwards when **`AUTH_CALLBACK_USE_SPRING=true`** in addition to `ATXFINANCE_BACKEND_ORIGIN` (see callback route); default remains Next OAuth completion.
 
 **Intentionally Next-only (not in BFF registry — expected):**
 
 - **xChat / streaming:** `/api/xchat/*` (ask, batch, history, collections, etc.) — deferred per [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md).
 - **Persona governance extensions:** publish, archive, rollback, versions, sync-from-xai, collection create/link-files, verify-collection, `GET /api/personas/collections` — richer than core CRUD; remain Next until product moves them to Spring.
-- **Admin portfolio nested:** watchlist, tasks, alerts, recommendations, delivery-channels, holdings under accounts (`…/positions`) — Next + Mongo until Kotlin controllers exist.
+- **Admin portfolio nested:** tasks, alerts, recommendations, delivery-channels — Next + Mongo until Kotlin controllers exist.
 - **Auth surface (mostly):** `/api/auth/x/login`, `/api/auth/me`, `/api/auth/logout`, `/api/auth/link-email`, Google OAuth login — Next; optional `auth/google/callback` proxy exists for dual-run but path is not in `BFF_PROXY_ROUTES`.
 - **Ops / docs:** `/api/health`, `/api/openapi`, `/admin/api-docs` — Next.
 - **Other admin:** `/api/admin/brokers`, `/api/admin/xchat/settings` — Next.

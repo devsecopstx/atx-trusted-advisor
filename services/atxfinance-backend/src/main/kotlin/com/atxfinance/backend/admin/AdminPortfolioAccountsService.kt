@@ -60,6 +60,21 @@ class AdminPortfolioAccountsService(
         return mongoTemplate.findById(ObjectId(portfolioId), Document::class.java, props.portfoliosCollection)
     }
 
+    /** Portfolio document plus account row when [accountId] belongs to that portfolio (global-admin paths). */
+    fun findAccountInPortfolio(portfolioId: String, accountId: String): Pair<Document, Document>? {
+        if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId)) {
+            return null
+        }
+        val portfolio = findPortfolioById(portfolioId) ?: return null
+        val pid = portfolio.getObjectId("_id") ?: return null
+        val ownerId = portfolioUserIdString(portfolio) ?: return null
+        val tenantHex = portfolioTenantIdHex(portfolio)
+        val aid = ObjectId(accountId)
+        val accounts = listAccountsForOwnerPortfolio(pid, ownerId, tenantHex)
+        val account = accounts.firstOrNull { it.getObjectId("_id") == aid } ?: return null
+        return portfolio to account
+    }
+
     fun buildConsoleJson(portfolioId: String): Map<String, Any?>? {
         val portfolio = findPortfolioById(portfolioId) ?: return null
         val pid = portfolio.getObjectId("_id") ?: return null

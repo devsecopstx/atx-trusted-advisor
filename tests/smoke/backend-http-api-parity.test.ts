@@ -68,6 +68,8 @@ describe("atxfinance-backend HTTP API parity (docs ↔ Kotlin)", () => {
     expect(spec).toContain("/api/admin/portfolios/{portfolioId}");
     expect(spec).toContain("/api/admin/portfolios/{portfolioId}/accounts");
     expect(spec).toContain("/api/admin/portfolios/{portfolioId}/accounts/{accountId}");
+    expect(spec).toContain("/api/admin/portfolios/{portfolioId}/watchlist");
+    expect(spec).toContain("/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions");
     expect(spec).toContain("/api/rag/files");
     expect(spec).toContain("/api/rag/files/{fileId}/readiness");
     expect(spec).toContain("/actuator/health");

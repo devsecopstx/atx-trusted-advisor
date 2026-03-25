@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     adminEnsurePortfolioWatchlist,
     adminGetPortfolioById,
@@ -87,7 +88,12 @@ function serializeWatchlistPayload(watchlist: Watchlist) {
   };
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -116,6 +122,11 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
