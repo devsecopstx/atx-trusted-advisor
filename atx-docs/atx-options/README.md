@@ -1,9 +1,11 @@
-# Options strategy docs (moved)
+# atx-docs — options narratives (stub)
 
-**Canonical location:** [`atx-rag-collection/atx-options-strategy/`](../../atx-rag-collection/atx-options-strategy/README.md)
+**Canonical location:** [`atx-rag-collection/options-strategy/`](../../atx-rag-collection/options-strategy/README.md)
 
-Strategy narratives and the combined index **`atx-options-coreskills.md`** live under **`atx-rag-collection/atx-options-strategy/`** so **`npm run seed:admin`** xAI strategy ingest walks the same tree as RAG sources (see **`scripts/lib/seed-xai-rag-ingest.mjs`**).
+Strategy narratives and the combined index **`options-coreskills.md`** live under **`atx-rag-collection/options-strategy/`** so **`npm run seed:admin`** xAI ingest walks the same tree as RAG sources (trusted-advisor tenant segments — **`scripts/lib/seed-xai-rag-ingest.mjs`**).
 
-**Quick index:** [`atx-options-coreskills.md`](../../atx-rag-collection/atx-options-strategy/atx-options-coreskills.md) · legacy [`atx-readme-coreskills.md`](../../atx-rag-collection/atx-options-strategy/atx-readme-coreskills.md) (redirect)
+**Quick index:** [`options-coreskills.md`](../../atx-rag-collection/options-strategy/options-coreskills/options-coreskills.md)
 
-Full playbook depth remains in **`.cursor/skills/atx-skill-*/SKILL.md`**.
+**Layout:** Each strategy file is **`options-strategy/<slug>/<slug>.md`** (folder name = file stem) for stable RAG path tags — see **[`atx-rag-collection/README.md`](../../atx-rag-collection/README.md)**.
+
+**Legacy bookmarks:** `atx-options-strategy/`, `atx-options-coreskills.md`, and `atx-readme-coreskills.md` names are retired; use the paths above.

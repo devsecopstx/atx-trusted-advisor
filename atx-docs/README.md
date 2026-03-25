@@ -10,7 +10,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 - [Frontend plan](#frontend-plan)
 - [Operations — atx-sre-ops](#operations--atx-sre-ops)
 - [xChat and product — atx-xchat](#xchat-and-product--atx-xchat)
-- [Options — atx-options](#options--atx-options)
+- [Options (RAG + seed)](#options-rag-seed)
 - [Diagrams & assets](#diagrams--assets)
 - [Audit & governance](#audit--governance)
 
@@ -69,20 +69,22 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 ---
 
-## Options — strategy narratives (RAG + seed)
+## Options (RAG + seed)
 
-**Canonical tree:** **[`atx-rag-collection/atx-options-strategy/`](../atx-rag-collection/atx-options-strategy/README.md)** — Markdown narratives ingested with **`npm run seed:admin`** (same repo area as persona RAG). **`atx-docs/atx-options/README.md`](./atx-options/README.md)** is a short redirect stub for old bookmarks.
+**Canonical tree:** **[`atx-rag-collection/options-strategy/`](../atx-rag-collection/options-strategy/README.md)** — Markdown narratives ingested with **`npm run seed:admin`** into the xAI trusted-advisor **`…-options-strategy`** segment (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). **`atx-docs/atx-options/README.md`](./atx-options/README.md)** is a short stub pointing here.
 
-**Reviewer / agent quick index:** **[`atx-options-coreskills.md`](../atx-rag-collection/atx-options-strategy/atx-options-coreskills.md)** — **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to **`.cursor/skills/atx-skill-*/SKILL.md`**. ([`atx-readme-coreskills.md`](../atx-rag-collection/atx-options-strategy/atx-readme-coreskills.md) redirects here.)
+**Reviewer / agent quick index:** **[`options-coreskills.md`](../atx-rag-collection/options-strategy/options-coreskills/options-coreskills.md)** — **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to **`.cursor/skills/atx-skill-*/SKILL.md`**.
 
 | Doc | Purpose |
 |-----|---------|
-| **[atx-options-coreskills.md](../atx-rag-collection/atx-options-strategy/atx-options-coreskills.md)** | **★ Canonical index:** strategy ↔ narrative ↔ **risk** ↔ **outlook** ↔ id ↔ Cursor skill |
-| **[atx-readme-coreskills.md](../atx-rag-collection/atx-options-strategy/atx-readme-coreskills.md)** | Legacy filename → see coreskills |
-| **[atx-options-strategy README](../atx-rag-collection/atx-options-strategy/README.md)** | Short entry + links |
+| **[options-coreskills.md](../atx-rag-collection/options-strategy/options-coreskills/options-coreskills.md)** | **★ Canonical index:** strategy ↔ narrative ↔ **risk** ↔ **outlook** ↔ id ↔ Cursor skill |
+| **[options-strategy README](../atx-rag-collection/options-strategy/README.md)** | Segment entry + layout rule |
 | [atx-options stub](./atx-options/README.md) | Redirect → RAG tree |
+| **[atx-rag-collection README](../atx-rag-collection/README.md)** | Full segment TOC + RAG folder convention |
 
-**Folder convention:** `atx-rag-collection/atx-options-strategy/atx-<slug>/atx-<slug>.md` (frontmatter `xfinance-strategy-*`). Full playbooks: `.cursor/skills/atx-skill-*/SKILL.md`.
+**Folder convention (RAG tags):** `atx-rag-collection/options-strategy/<slug>/<slug>.md` — **folder name must equal the markdown stem** (same rule for PDFs/persona YAML under other segments). Frontmatter `xfinance-strategy-*`. Full playbooks: `.cursor/skills/atx-skill-*/SKILL.md`.
+
+**Legacy paths:** Older docs referred to **`atx-options-strategy/`** and **`atx-options-coreskills.md`**; the repo canonical names are **`options-strategy/`** and **`options-coreskills/options-coreskills.md`**.
 
 ---
 

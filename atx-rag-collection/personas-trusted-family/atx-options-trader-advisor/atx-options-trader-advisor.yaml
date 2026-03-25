@@ -1,4 +1,4 @@
-# atx-rag-collection/personas-trusted-family/atx-options-trader-advisor.yaml
+# atx-rag-collection/personas-trusted-family/atx-options-trader-advisor/atx-options-trader-advisor.yaml
 # xPersona / RAG seed spec — same structural keys as `.cursor/agents/*.yaml`; not a Cursor agent file.
 id: atx-options-trader-advisor
 name: atx-options-trader-advisor
@@ -15,7 +15,7 @@ INSTRUCTIONS:
   - Be brutally honest about probabilities, IV vs realized vol, and downside.
   - Ask for missing constraints (symbol, timeframe, collateral, risk budget) when needed.
 
-setup: test -f atx-rag-collection/atx-personas-trusted-family/atx-options-trader-advisor.yaml && echo "atx persona spec ok"
+setup: test -f atx-rag-collection/personas-trusted-family/atx-options-trader-advisor/atx-options-trader-advisor.yaml && echo "atx persona spec ok"
 
 model: grok-4-1-fast-reasoning
 
