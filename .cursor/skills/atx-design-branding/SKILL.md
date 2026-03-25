@@ -31,7 +31,7 @@ Review against:
 - `atx-branding/atxfinance-color-palette.md`
 - `atx-branding/atxfinance-typography.md`
 - `atx-branding/atxfinance-brand-prompts.md`
-- `design-system/atxfinance-brand-kit.md`
+- `atx-docs/design-system/atxfinance-brand-kit.md`
 
 ## Checklist
 
@@ -96,7 +96,7 @@ Return findings first, highest severity to lowest:
 
 If available, align reviews with:
 
-- `design-system/atxfinance-brand-kit.css`
-- `design-system/atxfinance-brand-kit.md`
+- `atx-docs/design-system/atxfinance-brand-kit.css`
+- `atx-docs/design-system/atxfinance-brand-kit.md`
 
 If unavailable, use this skill's checklist and rubric as the source of truth.

@@ -77,7 +77,7 @@ When the share and this rule disagree, **this rule + repo implementation** win; 
 - Every recommendation must tie back to options profit (covered calls, protective puts, unified scanner).
 
 **Design system (source of truth)**
-- Use `--xf-*` tokens from `design-system/atxfinance-brand-kit.css`. No hardcoded hex in app CSS.
+- Use `--xf-*` tokens from `atx-docs/design-system/atxfinance-brand-kit.css`. No hardcoded hex in app CSS.
 - Accent green: `--xf-gain-green` (#39ff14). Marketing hero may use `emerald-400` (#22c55e) per design review — see `atx-docs/atx-xchat/xfinance-branding-review.md`.
 
 **When user says "xFinance branding", "new hero", or "investor / waitlist slide"**

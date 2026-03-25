@@ -68,7 +68,7 @@ After merging and deploying to production (or staging first):
 - **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`atx-docs/atx-xchat/xai-api-standard.md`**
 - xAI chat API key smoke (dev/SRE): `npm run smoke:xai-chat` with `XAI_API_KEY` in `.env` — see `DEVELOPMENT.md` § *xAI chat completions smoke*
 - Market price source-of-truth (current): Yahoo Finance via `yahoo-finance2` (`src/modules/xchat/market-data.ts`); quote-related prompts/tools should route through `market_quote` / `yahoo_finance` rather than narrative web-only lookups
-- Watchlist (app_user): `/watchlist` — CSV **Import/Export**; `PATCH /api/portfolios/:id/watchlist` accepts `addEntries` (`lineType`, `strategy`, `quantity`, `entryPrice`) for merged rows, plus optional **`riskProfile`** / **`outlook`** desk fields (`null` clears). Reference CSV: `atx-branding/atxfinance-watchlist.csv`
+- Watchlist (app_user): `/watchlist` — CSV **Import/Export**; `PATCH /api/portfolios/:id/watchlist` accepts `addEntries` (`lineType`, `strategy`, `quantity`, `entryPrice`) for merged rows, plus optional **`riskProfile`** / **`outlook`** desk fields (`null` clears). Reference CSV: `atx-docs/atx-branding/atxfinance-watchlist.csv`
 - App_user feedback: `POST /api/user-feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
 - **App_user 500 while admin works:** see [DEVELOPMENT.md — App_user HTTP 500](DEVELOPMENT.md#app_user-http-500); check Cloud Run logs for `[auth/x/callback]` and Mongo/provisioning errors
 
@@ -204,7 +204,7 @@ See `package.json` scripts — same as documented in README:
 Three cloud agent configurations are supported:
 
 1. **PR Reviewer** — runs `npm run ci:gate` (lint + typecheck + test), reviews diff for type-safety and code-style compliance.
-2. **Feature Branding** — works on UI/design-system changes under `src/app/`, `design-system/`, and brand-related assets.
+2. **Feature Branding** — works on UI/design-system changes under `src/app/`, `atx-docs/design-system/`, and brand-related assets.
 3. **Feature Core MVP** — works on API routes (`src/app/api/`), domain logic (`src/lib/`), and data layer changes.
 
 All three share the same update script and secret requirements above.
@@ -271,4 +271,4 @@ Then write the decoded `mongodb+srv://...` URI into `.env` and `unset MONGODB_UR
 
 - Personas vs Collections separation — `/admin/personas` shows persona configs only (prompts, tools, collectionId links). Read-only xAI collection inventory is under **RAG collections** (`/admin/rag-files`); create/link flows stay in Personas or xAI console.
 - All admin sub-pages delegate auth + session panel to the shared admin layout (`src/app/admin/layout.tsx`). Do not add duplicate `AdminSessionPanel` imports.
-- No hardcoded hex in app CSS — use `--xf-*` tokens from `design-system/atxfinance-brand-kit.css`.
+- No hardcoded hex in app CSS — use `--xf-*` tokens from `atx-docs/design-system/atxfinance-brand-kit.css`.

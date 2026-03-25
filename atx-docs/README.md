@@ -92,7 +92,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 | [atx-multi-agent-design-loop.mmd](./atx-xchat/atx-multi-agent-design-loop.mmd) | Multi-agent flow (Mermaid) |
 | [super-agent-model157.mmd](./atx-xchat/super-agent-model157.mmd) | Super-agent diagram (Mermaid) |
 | [atx-branding/](./atx-branding/) | Brand prompts, palette, marketing copy (reference assets) |
-| [atx-design-system/](./atx-design-system/) | Brand kit CSS/MD/HTML reference (**app import:** root **`design-system/`** mirrors CSS for Next `layout.tsx`) |
+| [design-system/](./design-system/) | Brand kit CSS/MD/HTML + `design-future-consideration.md` — imported by Next from `src/app/layout.tsx` |
 
 ---
 

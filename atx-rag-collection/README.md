@@ -4,15 +4,17 @@
 
 ## Purpose
 
-- **`atx-personas-trusted-family/`** — Persona-oriented markdown (and any app-specific YAML) intended for **xAI collection upload** and/or **Mongo `xpersonas` seed/update** during **`npm run seed:admin`** or a follow-on script. *Ingest is **not** wired in `scripts/seed-admin-user.mjs` yet — see **`atx-docs/PLAN.md`** § *Admin seed — RAG collection sync*.*
+- **`atx-personas-trusted-family/`** — Persona-oriented markdown/YAML included in the **team KB** file walk when **`npm run seed:admin`** runs xAI ingest (see **`scripts/lib/seed-xai-rag-ingest.mjs`**; opt out with **`SKIP_SEED_XAI_RAG_INGEST`**). *Automated Mongo `xchat_personas` upsert from these YAML specs is separate — **`atx-docs/PLAN.md`** § *Admin seed — RAG collection sync*.*
 - **`finance-reference-docs/`** — Reference PDFs (disclosures, licensing supplements) for the same pipeline.
 - **`atx-xchat-example-prompts/`** — Example user prompts / scenario copy for docs, chips, or KB samples.
+- **`atx-options-strategy/`** — Options strategy narratives (`atx-<slug>/…`) + **`atx-readme-coreskills.md`**; **`npm run seed:admin`** uploads this tree to xAI strategy collections (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). Index in **`atx-docs/README.md`** § Options.
 
 ## Layout (current)
 
 | Path | Convention |
 | --- | --- |
 | `atx-personas-trusted-family/` | Prefer **`kebab-case.md`** (or `atx-*.md`) for RAG **body text**. Persona **seed specs** use **`atx-*.yaml`** with the same key shape as **`.cursor/agents/*.yaml`** (see **Persona YAML schema** below). |
+| `atx-options-strategy/` | Strategy Markdown + frontmatter (`xfinance-strategy-*`); ingested with seed; doc hub + stub under **`atx-docs/`**. |
 | `finance-reference-docs/` | PDFs; prefer **no spaces** in filenames. |
 | `atx-xchat-example-prompts/` | Markdown examples for UX / training. |
 
@@ -43,7 +45,7 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 
 ## Tests & automation
 
-- **`seed:admin` today** does **not** walk this tree. When ingest ships, add tests for discovery, hashing, idempotency, and optional `--dry-run`; update **`DEVELOPMENT.md`** and run **`npm run ci:gate`**. A layout smoke test lives in **`tests/unit/atx-rag-collection-layout.test.ts`**.
+- **`seed:admin`** walks **`atx-rag-collection/`** (persona RAG + **`atx-options-strategy/`**) when xAI keys are set; see **`scripts/lib/seed-xai-rag-ingest.mjs`**. Layout smoke test: **`tests/unit/atx-rag-collection-layout.test.ts`**.
 
 ## Docs parity
 

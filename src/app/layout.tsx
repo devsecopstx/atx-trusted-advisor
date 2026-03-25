@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
-import "../../design-system/atxfinance-brand-kit.css";
+import "../../atx-docs/design-system/atxfinance-brand-kit.css";
 import "./globals.css";
 
 const inter = Inter({

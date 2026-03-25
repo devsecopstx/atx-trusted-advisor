@@ -19,4 +19,4 @@ Cursor **automation ids** use the `xfinance-strategy-*` prefix. **Narrative** fi
 | `atxfinance-strategy-calendar-spread` | [atx-calendar-spread/atx-calendar-spread.md](./atx-calendar-spread/atx-calendar-spread.md) | Moderate (volatility differential) | Neutral–directional (term structure / theta vs. long leg) | [atx-skill-calendar-spread](../../../.cursor/skills/atx-skill-calendar-spread/SKILL.md) |
 | `xfinance-strategy-leap-call-cc-overlay` | [atx-leap-call-cc-overlay/atx-leap-call-cc-overlay.md](./atx-leap-call-cc-overlay/atx-leap-call-cc-overlay.md) | Aggressive (leverage, decay) | Bullish aggressive (LEAP + overlay income) | [atx-skill-leap-call-cc-overlay](../../../.cursor/skills/atx-skill-leap-call-cc-overlay/SKILL.md) |
 
-**Also:** [atx-skill-options-principles](../../../.cursor/skills/atx-skill-options-principles/SKILL.md) · [atx-docs index](../../README.md).
+**Also:** [atx-skill-options-principles](../../../.cursor/skills/atx-skill-options-principles/SKILL.md) · [atx-docs index](../../../atx-docs/README.md).

@@ -7,7 +7,7 @@ YAML agents under **`.cursor/agents/*.yaml`** tune Cursor Cloud / Composer for s
 | File | Role | Use when |
 |------|------|----------|
 | [`atx-backend.yaml`](atx-backend.yaml) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
-| [`atx-frontend.yaml`](atx-frontend.yaml) | **UI/UX + branding** — tokens, `src/app/**`, `design-system/**` | Visual work, a11y, responsive — avoid domain logic unless required |
+| [`atx-frontend.yaml`](atx-frontend.yaml) | **UI/UX + branding** — tokens, `src/app/**`, `atx-docs/design-system/**` | Visual work, a11y, responsive — avoid domain logic unless required |
 | [`atx-reviewer.yaml`](atx-reviewer.yaml) | **PR / quality gate** reviewer — lint, typecheck, test, `ci:gate` | Pre-merge review, risk surface on changed files only |
 | [`atx-sre-ops-admin.yaml`](atx-sre-ops-admin.yaml) | SRE / ops review persona | Infra, deploy, secrets hygiene, runbooks |
 | [`atx-feature-branding.yaml`](atx-feature-branding.yaml) | Full-stack feature + branding (Next, tokens, APIs when needed for UI) | Default for cross-cutting product + UI work |

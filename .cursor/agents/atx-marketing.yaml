@@ -23,7 +23,7 @@ system_prompt: |
   Brutally honest on weak drafts; ask clarifying questions when vague.
 
 always_include:
-  - atx-branding/**
+  - atx-docs/atx-branding/**
   - .cursor/rules/xfinance-branding.mdc
 
 never_include:

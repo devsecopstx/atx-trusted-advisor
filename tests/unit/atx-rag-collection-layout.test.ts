@@ -36,6 +36,10 @@ describe("atx-rag-collection layout", () => {
     expect(existsSync(personasDir)).toBe(true);
     expect(existsSync(join(base, "finance-reference-docs"))).toBe(true);
     expect(existsSync(join(base, "atx-xchat-example-prompts"))).toBe(true);
+    const strategyDir = join(base, "atx-options-strategy");
+    expect(existsSync(strategyDir)).toBe(true);
+    expect(existsSync(join(strategyDir, "README.md"))).toBe(true);
+    expect(existsSync(join(strategyDir, "atx-readme-coreskills.md"))).toBe(true);
   });
 
   it("persona seed YAML files match project-standard key set", () => {

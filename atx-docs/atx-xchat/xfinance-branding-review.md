@@ -44,7 +44,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 ## 3. Design system vs rule green
 
 - **Rule / marketing:** Accent green `**#22c55e`** (neon gains) in prose.
-- **Design system:** `--xf-gain-green: #39ff14` (`design-system/atxfinance-brand-kit.css`).
+- **Design system:** `--xf-gain-green: #39ff14` (`atx-docs/design-system/atxfinance-brand-kit.css`).
 
 **Resolution:** App surfaces and charts use `**--xf-*`**; marketing hero may use `emerald-400` / `#22c55e` per rule. Document any new surface in the same PR if both greens appear side-by-side.
 

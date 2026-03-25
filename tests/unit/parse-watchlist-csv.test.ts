@@ -104,9 +104,9 @@ describe("parseWatchlistCsv", () => {
     });
   });
 
-  it("parses atx-branding/atxfinance-watchlist.csv (Symbol, Underlying, Type, Strategy, Quantity, Entry Price)", () => {
+  it("parses atx-docs/atx-branding/atxfinance-watchlist.csv (Symbol, Underlying, Type, Strategy, Quantity, Entry Price)", () => {
     const csv = readFileSync(
-      path.join(process.cwd(), "atx-branding", "atxfinance-watchlist.csv"),
+      path.join(process.cwd(), "atx-docs", "atx-branding", "atxfinance-watchlist.csv"),
       "utf8"
     );
     const { entries, invalidRowCount } = parseWatchlistCsv(csv);

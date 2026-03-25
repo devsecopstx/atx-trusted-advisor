@@ -22,7 +22,7 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 ### Frontend (core app UI)
 
 - **Next.js** (App Router) — React UI under `src/app/*` (admin console, app_user surfaces: `/xchat`, `/portfolio`, `/watchlist`, etc.).
-- **Styling** — Tailwind + `--xf-*` design tokens (`design-system/atxfinance-brand-kit.css`); see branding rules in `.cursor/rules/xfinance-branding.mdc`.
+- **Styling** — Tailwind + `--xf-*` design tokens (`atx-docs/design-system/atxfinance-brand-kit.css`); see branding rules in `.cursor/rules/xfinance-branding.mdc`.
 
 ### Core application API (Next.js server)
 
@@ -229,7 +229,7 @@ Markdown files define **narrow roles** — no secrets; operational steps stay in
 |------|--------|
 | **`atx-backend.md`** | Kotlin **atxfinance-backend**, BFF migration, Spring HTTP parity, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
 | **`atx-reviewer.md`** | Pre-merge **review** — `npm run lint`, `typecheck`, `test`, `ci:gate`; scope to changed files |
-| **`atx-ux-agent.md`** | **UI/UX + branding** — `src/app/**`, `design-system/**`, tokens/a11y; avoid unrelated API/domain edits |
+| **`atx-ux-agent.md`** | **UI/UX + branding** — `src/app/**`, `atx-docs/design-system/**`, tokens/a11y; avoid unrelated API/domain edits |
 
 Full detail and commit-message convention (**`chore: aTx⚡ …`**) — **`.cursor/agents/README.md`**.
 
@@ -758,7 +758,7 @@ gcloud run services update-traffic atxfinance-core-prod \
 - `GET /api/portfolios/:portfolioId/accounts`
 - `PATCH /api/portfolios/:portfolioId/accounts/:accountId` (caller-owned account metadata: name, cash, external ref)
 - `GET /api/portfolios/:portfolioId/watchlist` (optional `?quotes=1` for Yahoo quote enrichment)
-- `PATCH /api/portfolios/:portfolioId/watchlist` — `addSymbols` / `removeSymbols` (max 20 per array), `dedupe: true`, optional `name`, or **`addEntries`** (max 20 per request): `{ symbol, lineType?, strategy?, quantity?, entryPrice? }` for CSV import and metadata merges. Optional desk fields (same enums as custodian accounts): **`riskProfile`** `conservative`|`balanced`|`growth`, **`outlook`** `growth`|`income`|`balanced`|`aggressive` — use `null` to clear. Admin mirror: **`PATCH /api/admin/portfolios/:id/watchlist`**. List size cap: **75** symbols per watchlist (`src/modules/watchlist/constants.ts`). UI: **`/watchlist`** — Import/Export CSV (`src/app/watchlist/ui/watchlist-console.tsx`); parser: `src/modules/watchlist/parse-watchlist-csv.ts` maps **Entry Price** / **Entry** first, then falls back to **Price** / Last / Close columns into `entryPrice` when re-importing exports. Sample sheet: `atx-branding/atxfinance-watchlist.csv`. **TODO(options-scanner):** watchlist **Rationale** column in the UI is a placeholder until options-scanner fills it.
+- `PATCH /api/portfolios/:portfolioId/watchlist` — `addSymbols` / `removeSymbols` (max 20 per array), `dedupe: true`, optional `name`, or **`addEntries`** (max 20 per request): `{ symbol, lineType?, strategy?, quantity?, entryPrice? }` for CSV import and metadata merges. Optional desk fields (same enums as custodian accounts): **`riskProfile`** `conservative`|`balanced`|`growth`, **`outlook`** `growth`|`income`|`balanced`|`aggressive` — use `null` to clear. Admin mirror: **`PATCH /api/admin/portfolios/:id/watchlist`**. List size cap: **75** symbols per watchlist (`src/modules/watchlist/constants.ts`). UI: **`/watchlist`** — Import/Export CSV (`src/app/watchlist/ui/watchlist-console.tsx`); parser: `src/modules/watchlist/parse-watchlist-csv.ts` maps **Entry Price** / **Entry** first, then falls back to **Price** / Last / Close columns into `entryPrice` when re-importing exports. Sample sheet: `atx-docs/atx-branding/atxfinance-watchlist.csv`. **TODO(options-scanner):** watchlist **Rationale** column in the UI is a placeholder until options-scanner fills it.
 - `PATCH /api/admin/portfolios/:portfolioId` (global admin) — book-level **`riskProfile`** and free-text **`outlook`** (distinct from per-account outlook slugs); UI: **Admin → Accounts** book card + **`PATCH`** on the portfolio resource.
 - `GET /api/positions?portfolioId=&accountId=` (list holdings for an owned account)
 - `POST /api/positions` (upsert stock lot for an owned account; same user session as portfolio owner)
@@ -987,9 +987,9 @@ with payload shape:
 
 ## Design and Branding
 
-- **Branding prompts and tags:** `atx-branding/atxfinance-brand-prompts.md`, `atx-branding/atxfinance-branding-tags.md`, `atx-branding/atxfinance-color-palette.md`, `atx-branding/atxfinance-typography.md`
-- **Design system:** `design-system/atxfinance-brand-kit.md`, `design-system/atxfinance-brand-kit.css`
-- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `atx-docs/atx-xchat/xdesign-review-admin-console-ux.md`
+- **Branding prompts and tags:** `atx-docs/atx-branding/atxfinance-brand-prompts.md`, `atx-docs/atx-branding/atxfinance-branding-tags.md`, `atx-docs/atx-branding/atxfinance-color-palette.md`, `atx-docs/atx-branding/atxfinance-typography.md`
+- **Design system:** `atx-docs/design-system/atxfinance-brand-kit.md`, `atx-docs/design-system/atxfinance-brand-kit.css`
+- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `atx-docs/design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `atx-docs/atx-xchat/xdesign-review-admin-console-ux.md`
 
 ## Admin Step-by-Step Validation (xChat readiness)
 

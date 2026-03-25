@@ -18,7 +18,7 @@ Always align output with:
 - `atx-branding/atxfinance-branding-tags.md`
 - `atx-branding/atxfinance-color-palette.md`
 - `atx-branding/atxfinance-typography.md`
-- `design-system/atxfinance-brand-kit.md`
+- `atx-docs/design-system/atxfinance-brand-kit.md`
 
 ## Required Identity Lock
 

@@ -95,8 +95,8 @@ Use this direction for operator/admin surfaces where fast scanning matters more 
 
 ## Ready-to-Use Files
 
-- Stylesheet tokens/components: `design-system/atxfinance-brand-kit.css`
-- Editable hero scene template: `design-system/atxfinance-hero-template.html`
+- Stylesheet tokens/components: `atx-docs/design-system/atxfinance-brand-kit.css` (imported from `src/app/layout.tsx`)
+- Editable hero scene template: `atx-docs/design-system/atxfinance-hero-template.html`
 
 ## Prompt Template for Image Generation
 

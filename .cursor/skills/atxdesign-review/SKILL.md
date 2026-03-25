@@ -65,7 +65,7 @@ If any reviewer is skipped, final review is incomplete.
 ## Branding Acceptance Checks
 
 - **xFinance** is **dark mode only** — legibility, contrast, and focus states; no light-theme requirement (see **`.cursor/rules/xfinance-branding.mdc`**). Wordmark lockup **aTx⚡Finance** (bolt between aTx and Finance) must match implementation in `src/app/ui/atxfinance-logo.tsx` when logo changes.
-- Brand palette and typography remain coherent with **`design-system/atxfinance-brand-kit.css`** (`--xf-*` tokens; no stray hex in app CSS).
+- Brand palette and typography remain coherent with **`atx-docs/design-system/atxfinance-brand-kit.css`** (`--xf-*` tokens; no stray hex in app CSS).
 - UI changes do not break core task flows or accessibility basics.
 - New visuals do not hide errors, states, or operator controls.
 
