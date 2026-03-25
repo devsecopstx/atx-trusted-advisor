@@ -1,7 +1,7 @@
 /**
  * Published default xChat personas (operators keep both in `published` status):
  * - Super-Agent → global_admin (seeded; see `scripts/seed-admin-user.mjs`), with at least one collection
- * - xFinance → all other signed-in roles (FinExpert; created here or on first ask if missing), with at least one collection
+ * - atx-trusted-advisor → all other signed-in roles, with at least one collection
  * Collection ids/names may change over time; operators update them in Admin → Personas or via `XAI_TEAM_ID` (collection id or team UUID).
  */
 import { isGlobalAdmin } from "@/modules/identity/authorization";
@@ -12,11 +12,11 @@ import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-
 
 export const XPERSONA_SUPER_AGENT_NAME = "Super-Agent";
 
-export const XPERSONA_XFINANCE_NAME = "xFinance";
+export const XPERSONA_TRUSTED_ADVISOR_NAME = "atx-trusted-advisor";
 
 // Session tool copy for ask/batch lives in `buildSessionToolInstructions` (`xchat-prompt-build.ts`).
 // TODO(operators/prompt): Do not list atxfinance operations in overridePrompt — tool guidance is injected via `buildSessionToolInstructions`; not synced to the user xAI collection.
-export const XFINANCE_SYSTEM_PROMPT = `**Trusted Family Advisor Persona**
+export const TRUSTED_ADVISOR_SYSTEM_PROMPT = `**Trusted Family Advisor Persona**
 
 You are a licensed fiduciary financial advisor and options strategist with 20+ years advising high-net-worth families. Speak plainly, conservatively, and protectively—like to a trusted family member—while always factoring in tax efficiency, legal compliance, and regulatory suitability.
 
@@ -26,14 +26,14 @@ When the user asks about their personal portfolio, watchlist, or positions in th
 
 For topics outside finance, investing, and related planning, politely decline and offer to help with financial questions instead.`;
 
-export type DefaultXfinancePersonaInsert = Omit<
+export type DefaultTrustedAdvisorPersonaInsert = Omit<
   PersonaConfig,
   "_id" | "createdAt" | "updatedAt" | "nameNormalized"
 >;
 
-/** Default RAG collection for xFinance (and optionally Super-Agent); may change over time. */
-export const DEFAULT_XFINANCE_COLLECTION_NAME = "Finance";
-export function buildDefaultXfinancePersonaPayload(): DefaultXfinancePersonaInsert {
+/** Default RAG collection name for non-admin fallback persona; may change over time. */
+export const DEFAULT_TRUSTED_ADVISOR_COLLECTION_NAME = "atx-trusted-advisor";
+export function buildDefaultTrustedAdvisorPersonaPayload(): DefaultTrustedAdvisorPersonaInsert {
   const cid = getTeamXaiKbCollectionIdSync();
   const tools: PersonaXapiToolDefinition[] = [
     { type: "web_search" },
@@ -43,8 +43,8 @@ export function buildDefaultXfinancePersonaPayload(): DefaultXfinancePersonaInse
     { type: "atxfinance" }
   ];
   return {
-    name: XPERSONA_XFINANCE_NAME,
-    systemPrompt: XFINANCE_SYSTEM_PROMPT,
+    name: XPERSONA_TRUSTED_ADVISOR_NAME,
+    systemPrompt: TRUSTED_ADVISOR_SYSTEM_PROMPT,
     overridePrompt: "",
     model: XAI_PERSONA_CHAT_MODEL_FALLBACK_ID,
     temperature: 0.2,
@@ -55,7 +55,7 @@ export function buildDefaultXfinancePersonaPayload(): DefaultXfinancePersonaInse
     publishedAt: new Date(),
     xaiCollection: {
       collectionId: cid,
-      collectionName: DEFAULT_XFINANCE_COLLECTION_NAME
+      collectionName: DEFAULT_TRUSTED_ADVISOR_COLLECTION_NAME
     },
     xapi: {
       ...DEFAULT_PERSONA_XAPI_CONFIG,

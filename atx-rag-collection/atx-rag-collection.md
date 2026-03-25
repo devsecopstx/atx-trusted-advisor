@@ -124,7 +124,8 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 ### Mongo sync (`seed:xpersonas`)
 
 - **Command:** `npm run seed:xpersonas` (`scripts/sync-xpersonas-from-yaml.ts`, `node --env-file=.env --import tsx`).
-- **Ordering:** Run **after** xAI has the **`…-xpersonas`** collection (usually **`npm run seed:admin`** with RAG ingest, or manual create with the same display name).
+- **`seed:admin`:** Runs the same sync automatically after Mongo writes (unless **`SKIP_SEED_XPERSONAS`**), so **`/admin/personas`** lists YAML-backed personas without a second command.
+- **Ordering:** xAI should already have the **`…-xpersonas`** collection (normal when **`seed:admin`** RAG ingest ran first in the same invocation). Standalone **`npm run seed:xpersonas`** after a manual collection create is still supported.
 - **`SEED_XPERSONAS_MODE`:** **`merge`** (default) fills missing `xaiCollection.collectionId` and appends `xapi.tools` by `type` without overwriting prompts or existing tool payloads. **`replace`** overwrites prompts, scalars, and `xapi`; keeps `status` / `version` / `publishedAt`; sets `xaiCollection` only when a collection id resolves.
 - **Flags:** **`SKIP_SEED_XPERSONAS`**, production **`replace`** + **`SEED_XPERSONAS_STRICT=1`** — see **`DEVELOPMENT.md`** (RAG / seed notes).
 

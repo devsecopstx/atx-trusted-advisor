@@ -1057,6 +1057,153 @@ export async function getXaiCollectionById(collectionId: string): Promise<XaiCol
   };
 }
 
+export type XaiCollectionDocumentRef = {
+  fileId: string;
+  name?: string;
+  /** From xAI `file_metadata.content_type` when present. */
+  contentType?: string;
+};
+
+export type XaiCollectionDocumentsListPage = {
+  entries: XaiCollectionDocumentRef[];
+  nextPaginationToken?: string;
+};
+
+/**
+ * Parse one page of `GET /v1/collections/{id}/documents`.
+ * xAI nests ids under `file_metadata` (not top-level `file_id`).
+ */
+export function parseXaiCollectionDocumentsListPayload(
+  payload: Record<string, unknown>
+): XaiCollectionDocumentsListPage {
+  const rows = Array.isArray(payload.documents)
+    ? payload.documents
+    : Array.isArray(payload.data)
+      ? payload.data
+      : Array.isArray(payload.results)
+        ? payload.results
+        : Array.isArray(payload.items)
+          ? payload.items
+          : [];
+
+  const entries: XaiCollectionDocumentRef[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object") {
+      continue;
+    }
+    const outer = row as Record<string, unknown>;
+    const metaRaw = outer.file_metadata;
+    const meta =
+      metaRaw && typeof metaRaw === "object" && !Array.isArray(metaRaw)
+        ? (metaRaw as Record<string, unknown>)
+        : outer;
+
+    const fileId =
+      asString(meta.file_id) ??
+      asString(meta.fileId) ??
+      asString(outer.file_id) ??
+      asString(outer.fileId) ??
+      asString(outer.id) ??
+      asString(outer.document_id);
+    if (!fileId) {
+      continue;
+    }
+    const name =
+      asString(meta.name) ??
+      asString(meta.filename) ??
+      asString(meta.file_name) ??
+      asString(outer.name) ??
+      asString(outer.title);
+    const contentType = asString(meta.content_type) ?? asString(meta.contentType);
+    entries.push({
+      fileId,
+      ...(name ? { name } : {}),
+      ...(contentType ? { contentType } : {})
+    });
+  }
+
+  const tok = asString(payload.pagination_token)?.trim();
+  return {
+    entries,
+    ...(tok ? { nextPaginationToken: tok } : {})
+  };
+}
+
+const MAX_DOCUMENT_LIST_PAGES = 50;
+
+/**
+ * List documents linked to an xAI collection (management API).
+ * Follows `pagination_token` until exhausted (max {@link MAX_DOCUMENT_LIST_PAGES} pages).
+ * @see https://docs.x.ai/docs/collections-api/collection
+ */
+export async function listXaiCollectionDocuments(
+  collectionId: string,
+  options?: { teamId?: string }
+): Promise<XaiCollectionDocumentRef[]> {
+  const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  const cid = collectionId.trim();
+  if (!cid) {
+    throw new Error("collection id is required");
+  }
+
+  const tid = options?.teamId?.trim();
+  const out: XaiCollectionDocumentRef[] = [];
+  let paginationToken: string | undefined;
+
+  for (let page = 0; page < MAX_DOCUMENT_LIST_PAGES; page++) {
+    const params = new URLSearchParams();
+    params.set("limit", "100");
+    if (tid) {
+      params.set("team_id", tid);
+    }
+    if (paginationToken) {
+      params.set("pagination_token", paginationToken);
+    }
+
+    const url = `${managementBaseUrl}/collections/${encodeURIComponent(cid)}/documents?${params.toString()}`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${managementApiKey}`
+      }
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!response.ok) {
+      throw new Error(`xAI collection documents list failed: ${JSON.stringify(payload.error ?? payload)}`);
+    }
+
+    const { entries, nextPaginationToken } = parseXaiCollectionDocumentsListPayload(payload);
+    out.push(...entries);
+    paginationToken = nextPaginationToken;
+    if (!paginationToken) {
+      break;
+    }
+  }
+
+  return out;
+}
+
+/** Download uploaded file bytes as UTF-8 text (persona YAML / frontmatter markdown). */
+export async function fetchXaiFileTextContent(fileId: string): Promise<string> {
+  const { apiKey, baseUrl } = getXaiConfig();
+  const fid = fileId.trim();
+  if (!fid) {
+    throw new Error("file id is required");
+  }
+  const response = await fetch(`${baseUrl}/files/${encodeURIComponent(fid)}/content`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${apiKey}`
+    }
+  });
+  if (!response.ok) {
+    const payload = (await parseXaiResponseJson(response)) as Record<string, unknown>;
+    throw new Error(`xAI file content fetch failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
+  return response.text();
+}
+
 export async function listXaiCollections(options?: {
   /** When set, requests `GET .../collections?team_id=...` (falls back to unfiltered list + client-side filter by `teamId`). */
   teamId?: string;

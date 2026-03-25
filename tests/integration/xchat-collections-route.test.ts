@@ -51,11 +51,11 @@ describe("xchat collections route", () => {
       assignedPersonaId: "507f1f77bcf86cd799439055"
     });
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue({
-      name: "xFinance"
+      name: "atx-trusted-advisor"
     });
     repositoryMocks.getPersonaById.mockResolvedValue({
       status: "published",
-      name: "xFinance",
+      name: "atx-trusted-advisor",
       xaiCollection: {
         collectionId: "collection_assigned_persona",
         collectionName: "Assigned Persona Collection"
@@ -71,7 +71,7 @@ describe("xchat collections route", () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.metadata?.activePersonaName).toBe("xFinance");
+    expect(payload.metadata?.activePersonaName).toBe("atx-trusted-advisor");
     expect(payload.data).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -106,7 +106,7 @@ describe("xchat collections route", () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.metadata?.activePersonaName).toBe("xFinance");
+    expect(payload.metadata?.activePersonaName).toBe("atx-trusted-advisor");
   });
 
   it("returns auth response when unauthenticated", async () => {

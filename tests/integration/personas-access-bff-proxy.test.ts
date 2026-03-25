@@ -3,9 +3,38 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const bffMocks = vi.hoisted(() => ({
   proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
+const authMocks = vi.hoisted(() => ({
+  requireSessionUser: vi.fn(),
+  requireAdminSession: vi.fn()
+}));
+const repositoryMocks = vi.hoisted(() => ({
+  listPersonas: vi.fn(),
+  listPersonasByStatus: vi.fn(),
+  createPersona: vi.fn()
+}));
+const auditMocks = vi.hoisted(() => ({
+  listLatestAuditEventsForEntities: vi.fn(),
+  createAuditEvent: vi.fn()
+}));
 
 vi.mock("@/lib/backend-bff", () => ({
   proxyRequestToBackend: bffMocks.proxyRequestToBackend
+}));
+vi.mock("@/lib/auth", () => ({
+  requireSessionUser: authMocks.requireSessionUser
+}));
+vi.mock("@/lib/api-auth", () => ({
+  requireAdminSession: authMocks.requireAdminSession
+}));
+vi.mock("@/modules/xchat/repository", () => ({
+  listPersonas: repositoryMocks.listPersonas,
+  listPersonasByStatus: repositoryMocks.listPersonasByStatus,
+  createPersona: repositoryMocks.createPersona,
+  PersonaNameConflictError: class PersonaNameConflictError extends Error {}
+}));
+vi.mock("@/modules/audit/repository", () => ({
+  listLatestAuditEventsForEntities: auditMocks.listLatestAuditEventsForEntities,
+  createAuditEvent: auditMocks.createAuditEvent
 }));
 
 import { POST as postAccessRequest } from "@/app/api/access-requests/route";
@@ -15,6 +44,39 @@ describe("personas + access-requests BFF proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    authMocks.requireSessionUser.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      roles: ["global_admin"]
+    });
+    authMocks.requireAdminSession.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "admin@atxfinance.ai",
+      username: "admin",
+      roles: ["global_admin"]
+    });
+    repositoryMocks.listPersonas.mockResolvedValue([]);
+    repositoryMocks.listPersonasByStatus.mockResolvedValue([]);
+    repositoryMocks.createPersona.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      name: "Persona P",
+      systemPrompt: "1234567890",
+      overridePrompt: "",
+      xaiCollection: { collectionId: "", collectionName: "" },
+      model: "grok-4-1-fast-reasoning",
+      temperature: 0.2,
+      enableRag: true,
+      defaultScope: "global",
+      xapi: { mode: "responses", toolChoice: "auto", maxTurns: 5, tools: [] },
+      status: "draft",
+      version: 1,
+      publishedAt: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z")
+    });
+    auditMocks.listLatestAuditEventsForEntities.mockResolvedValue({});
+    auditMocks.createAuditEvent.mockResolvedValue(undefined);
   });
 
   it("POST /api/access-requests returns backend response when proxy resolves non-null", async () => {
@@ -35,35 +97,33 @@ describe("personas + access-requests BFF proxy", () => {
     expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
   });
 
-  it("GET /api/personas returns backend response when proxy resolves non-null", async () => {
-    const proxied = new Response(JSON.stringify({ data: [] }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
-
+  it("GET /api/personas bypasses BFF proxy and serves local handler", async () => {
     const req = new Request("http://test/api/personas");
     const response = await getPersonas(req);
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(repositoryMocks.listPersonas).toHaveBeenCalled();
   });
 
-  it("POST /api/personas returns backend response when proxy resolves non-null", async () => {
-    const proxied = new Response(JSON.stringify({ data: { _id: "abc", name: "P" } }), {
-      status: 201,
-      headers: { "Content-Type": "application/json" }
-    });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
-
+  it("POST /api/personas bypasses BFF proxy and persists via local handler", async () => {
     const req = new Request("http://test/api/personas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "x", systemPrompt: "1234567890" })
+      body: JSON.stringify({
+        name: "Persona P",
+        systemPrompt: "1234567890",
+        model: "grok-4-1-fast-reasoning",
+        temperature: 0.2,
+        enableRag: true,
+        defaultScope: "global",
+        xapi: { mode: "responses", toolChoice: "auto", maxTurns: 5, tools: [] }
+      })
     });
     const response = await postPersona(req);
 
     expect(response.status).toBe(201);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(repositoryMocks.createPersona).toHaveBeenCalled();
   });
 });

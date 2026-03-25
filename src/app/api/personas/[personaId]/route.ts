@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import {
     hasFileSearchTool,
@@ -22,12 +21,7 @@ type RouteContext = {
   params: Promise<{ personaId: string }>;
 };
 
-export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
+export async function GET(_request: Request, context: RouteContext) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -51,11 +45,6 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -143,12 +132,7 @@ export async function PUT(request: Request, context: RouteContext) {
   return NextResponse.json({ data: serializePersona(updated) });
 }
 
-export async function DELETE(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
+export async function DELETE(_request: Request, context: RouteContext) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -212,6 +196,13 @@ function serializePersona(persona: PersonaConfig) {
     version: persona.version ?? 0,
     publishedAt: persona.publishedAt?.toISOString() ?? null,
     isSystem: persona.isSystem ?? false,
+    lastXaiPersonaSync: persona.lastXaiPersonaSync
+      ? {
+          at: persona.lastXaiPersonaSync.at.toISOString(),
+          byUserId: persona.lastXaiPersonaSync.byUserId,
+          collectionDisplayName: persona.lastXaiPersonaSync.collectionDisplayName
+        }
+      : null,
     xaiCollectionVerification: persona.xaiCollectionVerification
       ? {
           ...persona.xaiCollectionVerification,

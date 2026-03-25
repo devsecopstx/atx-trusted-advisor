@@ -135,6 +135,29 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
+  "POST /api/personas/sync-from-xai": {
+    summary: "Sync persona specs from xAI collection into Mongo",
+    description:
+      "Lists documents in the trusted-advisor xpersonas xAI collection (default display name `atx-trusted-advisor-<dev|stage|prod>-xpersonas`), downloads each file, parses YAML or frontmatter markdown, and upserts `xchat_personas`. Stamps `lastXaiPersonaSync` with the acting admin user id.",
+    requestBody: {
+      required: false,
+      content: {
+        "application/json": {
+          schema: refSchema("PersonaSyncFromXaiRequest")
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Sync summary (counts + per-file errors).", "PersonaSyncFromXaiResponseEnvelope"),
+      "400": jsonResponse("Invalid JSON payload.", "ValidationErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "404": jsonResponse("Named xAI collection not found.", "ErrorResponse"),
+      "502": jsonResponse("xAI management or file download failed.", "UpstreamErrorResponse"),
+      "503": jsonResponse("Management API key missing.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
   "GET /api/personas/{personaId}": {
     summary: "Get persona details with audit trail",
     responses: {
@@ -905,7 +928,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       personaName: {
         type: "string",
         description:
-          "Resolved persona display name. Published defaults: Super-Agent (global_admin), xFinance (other roles)."
+          "Resolved persona display name. Published defaults: Super-Agent (global_admin), atx-trusted-advisor (other roles)."
       },
       modelSelectionSource: {
         type: "string",
@@ -1024,6 +1047,16 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       version: { type: "integer", minimum: 0 },
       publishedAt: { type: "string", format: "date-time", nullable: true },
       isSystem: { type: "boolean", description: "True when upserted from repo YAML (seed:xpersonas)." },
+      lastXaiPersonaSync: {
+        type: "object",
+        nullable: true,
+        description: "Last successful sync-from-xAI for this persona row.",
+        properties: {
+          at: { type: "string", format: "date-time" },
+          byUserId: { type: "string" },
+          collectionDisplayName: { type: "string" }
+        }
+      },
       createdAt: { type: "string", format: "date-time" },
       updatedAt: { type: "string", format: "date-time" }
     }
@@ -1100,6 +1133,64 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["ok"],
     properties: {
       ok: { type: "boolean", enum: [true] }
+    }
+  },
+  PersonaSyncFromXaiRequest: {
+    type: "object",
+    properties: {
+      collectionDisplayName: {
+        type: "string",
+        description:
+          "xAI collection display name to read from. When omitted, server uses NODE_ENV / ATX_DEPLOY_TARGET or XPERSONAS_XAI_COLLECTION_DISPLAY_NAME."
+      },
+      mode: {
+        type: "string",
+        enum: ["merge", "replace"],
+        description: "merge (default) fills missing linkage/tools; replace overwrites prompts and xapi like seed:xpersonas."
+      }
+    },
+    additionalProperties: false
+  },
+  PersonaSyncFromXaiResultData: {
+    type: "object",
+    required: [
+      "collectionId",
+      "collectionDisplayName",
+      "listed",
+      "examined",
+      "imported",
+      "updated",
+      "skipped",
+      "syntheticFallbacks",
+      "errors"
+    ],
+    properties: {
+      collectionId: { type: "string" },
+      collectionDisplayName: { type: "string" },
+      listed: { type: "integer", minimum: 0 },
+      examined: { type: "integer", minimum: 0 },
+      imported: { type: "integer", minimum: 0 },
+      updated: { type: "integer", minimum: 0 },
+      skipped: { type: "integer", minimum: 0 },
+      syntheticFallbacks: { type: "integer", minimum: 0 },
+      errors: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["source", "message"],
+          properties: {
+            source: { type: "string" },
+            message: { type: "string" }
+          }
+        }
+      }
+    }
+  },
+  PersonaSyncFromXaiResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: refSchema("PersonaSyncFromXaiResultData")
     }
   },
   PersonaCreateRequest: {

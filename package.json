@@ -27,6 +27,7 @@
     "typecheck": "tsc --noEmit",
     "seed:admin": "node --env-file=.env scripts/seed-admin-user.mjs",
     "seed:xpersonas": "node --env-file=.env --import tsx scripts/sync-xpersonas-from-yaml.ts",
+    "sync:xpersonas:http": "node --env-file=.env --import tsx scripts/sync-xpersonas-from-yaml.ts --api",
     "verify:xai-hello": "node --env-file=.env scripts/verify-xai-hello.mjs",
     "mongo:up": "bash scripts/dev/mongo-up.sh",
     "mongo:down": "docker compose --env-file .env stop mongodb",

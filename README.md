@@ -6,7 +6,7 @@ User-facing product: **atx Trusted Advisor** (whitelabel-ready chrome: Trusted A
 
 ## Stress-free trading — top 5 product pillars
 
-1. **Conversational desk (xChat)** — Default **FinExpert** persona (directory name **xFinance**), **Super-Agent** for global admins; optional RAG collections and tools so answers stay grounded instead of guesswork.
+1. **Conversational desk (xChat)** — Default **atx-trusted-advisor** persona for app roles, **Super-Agent** for global admins; optional RAG collections and tools so answers stay grounded instead of guesswork.
 2. **Portfolio + watchlist in one workspace** — Default book, linked accounts, watchlist with CSV import/export and aligned **risk / outlook** context (book, accounts, and watchlist) so execution views match how you think about risk.
 3. **xStrategyBuilder & option chains** — Strategy options UI, expirations, and structured chain data to reduce tab-hopping and manual reconstruction of setups.
 4. **Access you control** — Approval-based onboarding, platform roles (**viewer** / **operator** / **advisor**), and admin governance for personas, portfolios, and ops—no anonymous wild-west trading surface.

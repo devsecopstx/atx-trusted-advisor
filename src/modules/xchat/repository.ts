@@ -3,9 +3,9 @@ import { MongoServerError, ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
-    buildDefaultXfinancePersonaPayload,
+    buildDefaultTrustedAdvisorPersonaPayload,
     XPERSONA_SUPER_AGENT_NAME,
-    XPERSONA_XFINANCE_NAME
+    XPERSONA_TRUSTED_ADVISOR_NAME
 } from "@/modules/xchat/default-xpersonas";
 import type {
     PersonaCollectionVerification,
@@ -190,14 +190,14 @@ export async function getPersonaByNormalizedName(
   return db.collection<PersonaConfig>(collections.personas).findOne({ nameNormalized: key });
 }
 
-export async function ensureDefaultXfinancePersonaExists(): Promise<PersonaConfig> {
-  const key = normalizePersonaNameKey(XPERSONA_XFINANCE_NAME);
+export async function ensureDefaultTrustedAdvisorPersonaExists(): Promise<PersonaConfig> {
+  const key = normalizePersonaNameKey(XPERSONA_TRUSTED_ADVISOR_NAME);
   const existing = await getPersonaByNormalizedName(key);
   if (existing) {
     return existing;
   }
   try {
-    return await createPersona(buildDefaultXfinancePersonaPayload());
+    return await createPersona(buildDefaultTrustedAdvisorPersonaPayload());
   } catch (error) {
     if (isDuplicateKeyError(error)) {
       const again = await getPersonaByNormalizedName(key);
@@ -211,7 +211,7 @@ export async function ensureDefaultXfinancePersonaExists(): Promise<PersonaConfi
 
 /**
  * Default persona when the client does not select one: **Super-Agent** for `global_admin` when seeded;
- * **xFinance** (created if missing) for app_user and other non-admin roles.
+ * **atx-trusted-advisor** (created if missing) for app_user and other non-admin roles.
  */
 export async function resolveDefaultXchatPersonaForSession(
   roles: string[]
@@ -224,7 +224,7 @@ export async function resolveDefaultXchatPersonaForSession(
       return superAgent;
     }
   }
-  return ensureDefaultXfinancePersonaExists();
+  return ensureDefaultTrustedAdvisorPersonaExists();
 }
 
 export async function updatePersona(

@@ -329,6 +329,18 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "personas"
   },
   {
+    path: "/api/personas/sync-from-xai",
+    operations: [
+      {
+        method: "POST",
+        auth: "admin",
+        hasRequestBody: true,
+        summary: "Import persona YAML/MD from xAI xpersonas collection into Mongo (global admin)"
+      }
+    ],
+    tag: "personas"
+  },
+  {
     path: "/api/personas/collections",
     operations: [
       { method: "GET", auth: "admin" },

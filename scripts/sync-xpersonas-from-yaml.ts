@@ -1,20 +1,36 @@
 /**
- * Upsert `xchat_personas` from all `.yaml` files under `atx-rag-collection/xpersonas/` (recursive).
- * Resolves xAI collection id by display name (management API list).
+ * Upsert xChat personas from repo disk specs (recursive):
+ * - `.yaml` / `.yml`: full xPersona YAML (system_prompt, model, …)
+ * - `.md`: YAML frontmatter + markdown body → system prompt (e.g. `atx-rag-collection/options-strategy/**`)
+ *
+ * Default root: `atx-rag-collection/xpersonas`. Override with argv or `--root <path>` (repo-relative or absolute).
+ *
+ * Modes:
+ * - **Mongo** (default): direct `xchat_personas` upsert (same as historical `seed:xpersonas`).
+ * - **HTTP** (`--api`): `GET/POST/PUT /api/personas` with admin session cookie — mirrors admin CRUD.
+ *
+ * Env:
+ * - `SKIP_SEED_XPERSONAS`, `SEED_XPERSONAS_MODE`, `SEED_XPERSONAS_STRICT` — Mongo path
+ * - `XAI_CHAT_MODEL` — default model when YAML/MD omits `model`
+ * - `--api`: `SYNC_PERSONAS_BASE_URL` (default `http://127.0.0.1:3000`), `XF_CORE_SESSION` or `SYNC_PERSONAS_SESSION` (signed `xf_core_session` value)
  */
-import { readdir, readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { stat } from "node:fs/promises";
+import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { MongoClient } from "mongodb";
-import { parse as parseYaml } from "yaml";
 
 import {
     buildPersonaInsertSetBody,
     computePersonaSeedUpdatePatch
 } from "@/modules/xchat/persona-seed-merge";
+import {
+    buildYamlDerived,
+    injectDefaultModel,
+    resolveDefaultPersonaModelFromEnv,
+    validateParsedPersonaDoc
+} from "@/modules/xchat/persona-yaml-derived";
 
-import { buildSuperAgentXapiTools } from "./lib/persona-xapi-tools.mjs";
 import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
 import {
     collectionIdFromEntry,
@@ -22,11 +38,55 @@ import {
     managementListCollectionsRaw
 } from "./lib/seed-xai-rag-ingest.mjs";
 import { loadSeedTenantContext } from "./lib/tenant-defaults-seed.mjs";
+import { collectPersonaSpecFiles, loadPersonaDocFromFile } from "./lib/xpersonas-disk";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
 
 const XAI_KB_COLLECTION_RE = /^collection_[A-Za-z0-9_-]+$/;
+
+type CliOpts = {
+  rootInput: string;
+  useApi: boolean;
+};
+
+function parseCliArgs(argv: string[]): CliOpts {
+  let rootInput = "atx-rag-collection/xpersonas";
+  let useApi = false;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--api") {
+      useApi = true;
+      continue;
+    }
+    if (a === "--root" && argv[i + 1]) {
+      rootInput = argv[++i];
+      continue;
+    }
+    if (a.startsWith("-")) {
+      console.warn(`[seed:xpersonas] unknown flag ${a} — ignoring`);
+      continue;
+    }
+    rootInput = a;
+  }
+  return { rootInput, useApi };
+}
+
+function resolveRootAbs(rootInput: string): string {
+  const trimmed = rootInput.trim();
+  if (!trimmed) {
+    return join(REPO_ROOT, "atx-rag-collection", "xpersonas");
+  }
+  return isAbsolute(trimmed) ? trimmed : join(REPO_ROOT, trimmed);
+}
+
+function defaultXaiCollectionNameForRoot(absRoot: string, deploySlug: string): string {
+  const base = absRoot.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? "";
+  if (base === "options-strategy") {
+    return `atx-trusted-advisor-${deploySlug}-options-strategy`;
+  }
+  return `atx-trusted-advisor-${deploySlug}-xpersonas`;
+}
 
 function teamUuidForXaiIngest(teamIdMerged: string): string {
   const raw = (teamIdMerged || "").trim();
@@ -51,54 +111,17 @@ function resolveMode(): "merge" | "replace" {
   return "merge";
 }
 
-function coerceBool(v: unknown, defaultVal = true): boolean {
-  if (v === undefined || v === null) {
-    return defaultVal;
+function resolveSessionCookieHeader(): string {
+  const c = process.env.XF_CORE_SESSION?.trim() || process.env.SYNC_PERSONAS_SESSION?.trim();
+  if (!c) {
+    throw new Error(
+      "For --api, set XF_CORE_SESSION (or SYNC_PERSONAS_SESSION) to your signed session cookie payload (see AGENTS.md)."
+    );
   }
-  if (typeof v === "boolean") {
-    return v;
+  if (c.toLowerCase().includes("xf_core_session=")) {
+    return c;
   }
-  const s = String(v).trim().toLowerCase();
-  if (s === "false" || s === "0" || s === "no") {
-    return false;
-  }
-  if (s === "true" || s === "1" || s === "yes") {
-    return true;
-  }
-  return defaultVal;
-}
-
-function coerceNumber(v: unknown, fallback: number): number {
-  if (typeof v === "number" && Number.isFinite(v)) {
-    return v;
-  }
-  if (typeof v === "string" && v.trim() !== "") {
-    const n = Number(v.replace(",", ".").trim());
-    if (Number.isFinite(n)) {
-      return n;
-    }
-  }
-  return fallback;
-}
-
-async function collectXpersonaYamlFiles(rootDir: string): Promise<string[]> {
-  const out: string[] = [];
-  async function walk(absDir: string): Promise<void> {
-    const entries = await readdir(absDir, { withFileTypes: true });
-    for (const ent of entries) {
-      if (ent.name.startsWith(".")) {
-        continue;
-      }
-      const abs = join(absDir, ent.name);
-      if (ent.isDirectory()) {
-        await walk(abs);
-      } else if (ent.isFile() && ent.name.toLowerCase().endsWith(".yaml")) {
-        out.push(abs);
-      }
-    }
-  }
-  await walk(rootDir);
-  return out.sort();
+  return `xf_core_session=${c}`;
 }
 
 function findCollectionByDisplayName(list: unknown[], displayName: string): { id: string; name: string } {
@@ -118,89 +141,120 @@ function findCollectionByDisplayName(list: unknown[], displayName: string): { id
   return { id: "", name: "" };
 }
 
-function buildXapiFromYaml(raw: Record<string, unknown>, collectionId: string) {
-  const defaultTools = buildSuperAgentXapiTools(collectionId ? [collectionId] : []);
-  const x = raw.xapi;
-  if (x && typeof x === "object" && x !== null && !Array.isArray(x)) {
-    const o = x as Record<string, unknown>;
-    const mode = typeof o.mode === "string" ? o.mode : "responses";
-    const toolChoice = typeof o.toolChoice === "string" ? o.toolChoice : "auto";
-    const maxTurns = coerceNumber(o.maxTurns, 5);
-    const tools = Array.isArray(o.tools) && o.tools.length > 0 ? o.tools : defaultTools;
-    return {
-      mode: mode === "chat_completions" ? ("chat_completions" as const) : ("responses" as const),
-      toolChoice:
-        toolChoice === "required" || toolChoice === "none"
-          ? (toolChoice as "required" | "none")
-          : ("auto" as const),
-      maxTurns: Math.min(10, Math.max(1, Math.floor(maxTurns))),
-      tools
+function toApiCreateBody(derived: ReturnType<typeof buildYamlDerived>): Record<string, unknown> {
+  const xc = derived.xaiCollection;
+  const body: Record<string, unknown> = {
+    name: derived.name,
+    systemPrompt: derived.systemPrompt,
+    model: derived.model,
+    temperature: derived.temperature,
+    enableRag: derived.enableRag,
+    defaultScope: derived.defaultScope,
+    xapi: derived.xapi
+  };
+  if (derived.overridePrompt) {
+    body.overridePrompt = derived.overridePrompt;
+  }
+  if (xc.collectionId) {
+    body.xaiCollection = {
+      collectionId: xc.collectionId,
+      ...(xc.collectionName ? { collectionName: xc.collectionName } : {})
     };
   }
-  return {
-    mode: "responses" as const,
-    toolChoice: "auto" as const,
-    maxTurns: 5,
-    tools: defaultTools
-  };
+  return body;
 }
 
-function buildYamlDerived(
-  doc: Record<string, unknown>,
-  col: { collectionId: string; collectionDisplayName: string }
-) {
-  const name = String(doc.name ?? "").trim();
-  const systemPrompt = String(doc.system_prompt ?? "").trim();
-  const overridePrompt = typeof doc.override_prompt === "string" ? doc.override_prompt.trim() : "";
-  const model = String(doc.model ?? "").trim();
-  const enableRag = coerceBool(doc.enable_rag, true);
-  const defaultScope = String(doc.default_scope ?? "global").trim() || "global";
-  const temperature = coerceNumber(doc.temperature, 0.2);
-  const t = Math.min(1, Math.max(0, temperature));
-
-  const xaiCollection: { collectionId?: string; collectionName?: string } = {};
-  if (col.collectionId) {
-    xaiCollection.collectionId = col.collectionId;
-    xaiCollection.collectionName = col.collectionDisplayName || undefined;
-  }
-
-  return {
-    name,
-    systemPrompt,
-    overridePrompt,
-    model,
-    enableRag,
-    defaultScope,
-    temperature: t,
-    xaiCollection,
-    xapi: buildXapiFromYaml(doc, col.collectionId)
-  };
+function stripUndefined<T extends Record<string, unknown>>(o: T): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
 }
 
-function validateParsedPersonaYaml(parsed: unknown, fileLabel: string): string | null {
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return `${fileLabel}: invalid YAML root`;
+async function loadPersonaIndex(
+  baseUrl: string,
+  cookie: string
+): Promise<Map<string, { _id: string; raw: Record<string, unknown> }>> {
+  const res = await fetch(`${baseUrl}/api/personas`, {
+    headers: { Cookie: cookie }
+  });
+  const j = (await res.json().catch(() => ({}))) as { data?: Array<Record<string, unknown>> };
+  if (!res.ok) {
+    throw new Error(`GET /api/personas failed: HTTP ${res.status} ${JSON.stringify(j)}`);
   }
-  const o = parsed as Record<string, unknown>;
-  const name = String(o.name ?? "").trim();
-  if (name.length < 2 || name.length > 80) {
-    return `${fileLabel}: name must be 2–80 chars`;
+  const list = Array.isArray(j.data) ? j.data : [];
+  const map = new Map<string, { _id: string; raw: Record<string, unknown> }>();
+  for (const row of list) {
+    const name = String(row.name ?? "").trim().toLowerCase();
+    const id = String(row._id ?? "").trim();
+    if (name && id) {
+      map.set(name, { _id: id, raw: row });
+    }
   }
-  const sp = String(o.system_prompt ?? "").trim();
-  if (sp.length < 10) {
-    return `${fileLabel}: system_prompt must be at least 10 characters`;
+  return map;
+}
+
+async function syncOneViaApi(
+  baseUrl: string,
+  cookie: string,
+  index: Map<string, { _id: string; raw: Record<string, unknown> }>,
+  derived: ReturnType<typeof buildYamlDerived>,
+  mode: "merge" | "replace",
+  rel: string
+): Promise<void> {
+  const key = derived.name.trim().toLowerCase();
+  const headers = {
+    "Content-Type": "application/json",
+    Cookie: cookie
+  };
+  const hit = index.get(key);
+
+  if (!hit) {
+    const res = await fetch(`${baseUrl}/api/personas`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(toApiCreateBody(derived))
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.warn(`[seed:xpersonas:api] POST ${key} failed HTTP ${res.status}:`, j);
+      return;
+    }
+    const data = (j as { data?: Record<string, unknown> }).data;
+    const id = data?._id != null ? String(data._id) : "";
+    if (id) {
+      index.set(key, { _id: id, raw: data ?? {} });
+    }
+    console.log(`[seed:xpersonas:api] created ${key} ← ${rel}`);
+    return;
   }
-  const model = String(o.model ?? "").trim();
-  if (!model) {
-    return `${fileLabel}: model is required`;
+
+  const patch = computePersonaSeedUpdatePatch(hit.raw, derived as Record<string, unknown>, mode);
+  delete patch.isSystem;
+  const body = stripUndefined(patch as Record<string, unknown>);
+  if (Object.keys(body).length === 0) {
+    console.log(`[seed:xpersonas:api] merge noop ${key} ← ${rel}`);
+    return;
   }
-  if (model.length > 120) {
-    return `${fileLabel}: model too long`;
+
+  const res = await fetch(`${baseUrl}/api/personas/${hit._id}`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(body)
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    console.warn(`[seed:xpersonas:api] PUT ${key} failed HTTP ${res.status}:`, j);
+    return;
   }
-  return null;
+  const data = (j as { data?: Record<string, unknown> }).data;
+  if (data && data._id) {
+    index.set(key, { _id: String(data._id), raw: data });
+  }
+  console.log(`[seed:xpersonas:api] updated (${mode}) ${key} ← ${rel}`);
 }
 
 async function main(): Promise<void> {
+  const { rootInput, useApi } = parseCliArgs(process.argv.slice(2));
+  const rootAbs = resolveRootAbs(rootInput);
+
   if (shouldSkip()) {
     console.log("[seed:xpersonas] SKIP_SEED_XPERSONAS set — skipping");
     return;
@@ -217,17 +271,24 @@ async function main(): Promise<void> {
     }
   }
 
+  try {
+    await stat(rootAbs);
+  } catch {
+    console.error(`[seed:xpersonas] root not found: ${rootAbs}`);
+    process.exit(1);
+  }
+
   const seedTenant = loadSeedTenantContext(REPO_ROOT);
   const deploySlug = seedTenant.trustedAdvisorDeploySlug;
-  const defaultXaiCollectionName = `atx-trusted-advisor-${deploySlug}-xpersonas`;
+  const defaultXaiCollectionName = defaultXaiCollectionNameForRoot(rootAbs, deploySlug);
 
-  const xpersonasDir = join(REPO_ROOT, "atx-rag-collection", "xpersonas");
-  const yamlFiles = await collectXpersonaYamlFiles(xpersonasDir);
-  if (yamlFiles.length === 0) {
-    console.warn(`[seed:xpersonas] no YAML under ${xpersonasDir}`);
+  const specFiles = await collectPersonaSpecFiles(rootAbs);
+  if (specFiles.length === 0) {
+    console.warn(`[seed:xpersonas] no .yaml/.yml/.md specs under ${rootAbs}`);
     return;
   }
 
+  const defaultModel = resolveDefaultPersonaModelFromEnv();
   const m = seedTenant.merged;
   const mgmtKey = (m.xaiMgmtKey || "").trim();
   const mgmtBase = (m.xaiMgmtBaseUrl || "https://management-api.x.ai/v1").replace(/\/$/, "");
@@ -250,6 +311,48 @@ async function main(): Promise<void> {
     console.warn("[seed:xpersonas] XAI_MANAGEMENT_API_KEY unset — cannot resolve collection ids by name");
   }
 
+  const logPrefix = useApi ? "[seed:xpersonas:api]" : "[seed:xpersonas]";
+  console.log(
+    `${logPrefix} root=${rootAbs.replace(REPO_ROOT + "/", "")} defaultCollection=${defaultXaiCollectionName} mode=${mode}`
+  );
+
+  if (useApi) {
+    const baseUrl = String(process.env.SYNC_PERSONAS_BASE_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
+    const cookie = resolveSessionCookieHeader();
+    const index = await loadPersonaIndex(baseUrl, cookie);
+
+    for (const abs of specFiles) {
+      const loaded = await loadPersonaDocFromFile(abs, REPO_ROOT);
+      if ("error" in loaded) {
+        console.warn(`[seed:xpersonas] ${loaded.error}`);
+        continue;
+      }
+      const doc = injectDefaultModel(loaded.doc, defaultModel);
+      const err = validateParsedPersonaDoc(doc, loaded.rel, defaultModel);
+      if (err) {
+        console.warn(`[seed:xpersonas] ${err}`);
+        continue;
+      }
+
+      const displayNameOverride =
+        typeof doc.xai_collection_name === "string" ? doc.xai_collection_name.trim() : "";
+      const targetDisplayName = displayNameOverride || defaultXaiCollectionName;
+      const found = findCollectionByDisplayName(collectionList, targetDisplayName);
+      if (mgmtKey && !found.id) {
+        console.warn(
+          `[seed:xpersonas] no xAI collection named "${targetDisplayName}" — ${loaded.rel} will sync without collectionId`
+        );
+      }
+      const colRef = {
+        collectionId: found.id,
+        collectionDisplayName: found.name || targetDisplayName
+      };
+      const derived = buildYamlDerived(doc, colRef);
+      await syncOneViaApi(baseUrl, cookie, index, derived, mode, loaded.rel);
+    }
+    return;
+  }
+
   const mongoUri = resolveMongoUri();
   const dbName = resolveAdminSeedDbName();
   const client = new MongoClient(mongoUri);
@@ -258,28 +361,18 @@ async function main(): Promise<void> {
   const now = new Date();
 
   try {
-    for (const abs of yamlFiles) {
-      const rel = abs.replace(REPO_ROOT + "/", "");
-      let text: string;
-      try {
-        text = await readFile(abs, "utf8");
-      } catch (e) {
-        console.warn(`[seed:xpersonas] skip read ${rel}:`, e instanceof Error ? e.message : e);
+    for (const abs of specFiles) {
+      const loaded = await loadPersonaDocFromFile(abs, REPO_ROOT);
+      if ("error" in loaded) {
+        console.warn(`[seed:xpersonas] ${loaded.error}`);
         continue;
       }
-      let parsed: unknown;
-      try {
-        parsed = parseYaml(text);
-      } catch (e) {
-        console.warn(`[seed:xpersonas] skip parse ${rel}:`, e instanceof Error ? e.message : e);
-        continue;
-      }
-      const err = validateParsedPersonaYaml(parsed, rel);
+      const doc = injectDefaultModel(loaded.doc, defaultModel);
+      const err = validateParsedPersonaDoc(doc, loaded.rel, defaultModel);
       if (err) {
         console.warn(`[seed:xpersonas] ${err}`);
         continue;
       }
-      const doc = parsed as Record<string, unknown>;
       const name = String(doc.name).trim();
       const nameNormalized = name.toLowerCase();
 
@@ -289,7 +382,7 @@ async function main(): Promise<void> {
       const found = findCollectionByDisplayName(collectionList, targetDisplayName);
       if (mgmtKey && !found.id) {
         console.warn(
-          `[seed:xpersonas] no xAI collection named "${targetDisplayName}" — ${rel} will sync without collectionId`
+          `[seed:xpersonas] no xAI collection named "${targetDisplayName}" — ${loaded.rel} will sync without collectionId`
         );
       }
 
@@ -312,13 +405,13 @@ async function main(): Promise<void> {
               status: "draft"
             },
             $set: {
-              ...buildPersonaInsertSetBody(derived),
+              ...buildPersonaInsertSetBody(derived as Record<string, unknown>),
               updatedAt: now
             }
           },
           { upsert: true }
         );
-        console.log(`[seed:xpersonas] upserted (new) ${nameNormalized} ← ${rel}`);
+        console.log(`[seed:xpersonas] upserted (new) ${nameNormalized} ← ${loaded.rel}`);
       } else {
         const patch = computePersonaSeedUpdatePatch(
           existing as Record<string, unknown>,
@@ -326,7 +419,7 @@ async function main(): Promise<void> {
           mode
         );
         await personasCol.updateOne({ nameNormalized }, { $set: { ...patch, updatedAt: now } });
-        console.log(`[seed:xpersonas] updated (${mode}) ${nameNormalized} ← ${rel}`);
+        console.log(`[seed:xpersonas] updated (${mode}) ${nameNormalized} ← ${loaded.rel}`);
       }
     }
   } finally {

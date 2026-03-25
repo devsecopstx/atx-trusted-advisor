@@ -4,6 +4,8 @@ import { getSessionUser } from "@/lib/auth";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
+import { defaultTrustedAdvisorXpersonasCollectionDisplayName } from "@/modules/xchat/trusted-advisor-xpersonas-collection";
+
 import { PersonasOnboardingHome } from "./ui/personas-onboarding-home";
 
 export default async function AdminPersonasPage() {
@@ -33,7 +35,9 @@ export default async function AdminPersonasPage() {
         </p>
       </section>
 
-      <PersonasOnboardingHome />
+      <PersonasOnboardingHome
+        defaultXpersonasCollectionDisplayName={defaultTrustedAdvisorXpersonasCollectionDisplayName()}
+      />
     </div>
   );
 }

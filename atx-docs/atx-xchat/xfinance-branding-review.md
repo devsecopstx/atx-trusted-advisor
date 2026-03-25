@@ -95,5 +95,5 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 - **Footer:** `**GlobalFooter**` — © line **atx Trusted Advisor** + **whitelabel** in `**app-footer-whitelabel**` / `**app-footer-brand-stack**`.
 - **Marketing / plans / portfolio / xStrategyBuilder:** User-facing copy uses **atx Trusted Advisor** where the old product string **xFinance** appeared.
 - **Legal stubs:** `**legal-default-content.tsx**` uses `PRODUCT_PUBLIC_NAME = "atx Trusted Advisor"` for the web app; entity line may still read **aTx⚡Finance** where appropriate.
-- **Backend persona name:** Default published persona display name **xFinance** (FinExpert slug) is unchanged — only marketing/chrome copy moved to **atx Trusted Advisor**.
+- **Backend persona name:** Default published app-role persona is **atx-trusted-advisor** (admin default remains **Super-Agent**).
 

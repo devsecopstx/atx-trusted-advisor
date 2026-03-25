@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { MongoClient } from "mongodb";
 
-import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
 import { buildSuperAgentXapiTools, dedupeTrimmedIds } from "./lib/persona-xapi-tools.mjs";
+import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
 import { runSeedXaiRagIngest } from "./lib/seed-xai-rag-ingest.mjs";
 import { loadSeedTenantContext, pickFirstNonEmpty } from "./lib/tenant-defaults-seed.mjs";
 
@@ -26,6 +26,28 @@ function runPostSeedXaiHelloVerify() {
     stdio: "inherit"
   });
   if (r.status !== 0) {
+    process.exit(r.status ?? 1);
+  }
+}
+
+/** Upsert YAML/MD xPersona specs from `atx-rag-collection/xpersonas` into `xchat_personas` (separate from xAI collection ingest). */
+function runPostSeedXpersonasFromDisk() {
+  const s = String(process.env.SKIP_SEED_XPERSONAS ?? "").toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") {
+    console.log("[seed:admin] SKIP_SEED_XPERSONAS set — skipping disk → Mongo xPersona upsert");
+    return;
+  }
+  const script = join(SEED_SCRIPT_DIR, "sync-xpersonas-from-yaml.ts");
+  console.log("[seed:admin] syncing xPersonas from atx-rag-collection/xpersonas → Mongo (npm run seed:xpersonas)…");
+  const r = spawnSync(process.execPath, ["--import", "tsx", script], {
+    cwd: REPO_ROOT,
+    env: process.env,
+    stdio: "inherit"
+  });
+  if (r.status !== 0 && r.status != null) {
+    console.error(
+      "[seed:admin] seed:xpersonas failed — fix specs under atx-rag-collection/xpersonas or set SKIP_SEED_XPERSONAS=1"
+    );
     process.exit(r.status ?? 1);
   }
 }
@@ -538,7 +560,7 @@ async function seed() {
       mongo: {
         database: DB_NAME,
         accessRequestInserted,
-        note: "Upserted core_tenants, xchat_personas (Super-Agent), core_users, core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; see accessRequestInserted for admin_access_requests."
+        note: "Upserted core_tenants, xchat_personas (Super-Agent), core_users, core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; then invokes seed:xpersonas from atx-rag-collection/xpersonas unless SKIP_SEED_XPERSONAS. See accessRequestInserted for admin_access_requests."
       }
     };
 
@@ -548,6 +570,9 @@ async function seed() {
         "======== seed:admin summary ==============================================",
         `Mongo database:              ${DB_NAME}`,
         "Mongo writes:                tenant, Super-Agent persona, admin user, membership, default portfolio/account/watchlist, admin_user_settings (upsert)",
+        String(process.env.SKIP_SEED_XPERSONAS ?? "").match(/^(1|true|yes)$/i)
+          ? "xPersonas from disk:       skipped (SKIP_SEED_XPERSONAS)"
+          : "xPersonas from disk:       seed:xpersonas (atx-rag-collection/xpersonas → xchat_personas) after this summary",
         `                             admin_access_requests: ${accessRequestInserted ? "inserted approved paper row" : "already present — skipped"}`,
         `ATX_INSTANCE_COLLECTION_ROOT (effective): ${seedTenant.atxInstanceCollectionRoot || "(none)"}`,
         `  .env override:             ${envAtxRootOverride || "(unset — computed from ATX_DEPLOY_TARGET / site_name / tenant_defaults)"}`,
@@ -577,6 +602,7 @@ async function seed() {
   } finally {
     await client.close();
   }
+  runPostSeedXpersonasFromDisk();
   runPostSeedXaiHelloVerify();
 }
 

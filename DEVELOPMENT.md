@@ -9,7 +9,7 @@ Core backend and UI for atxFinance **admin operations** and **signed-in app_user
 - user broker/portfolio/account defaults
 - notification defaults
 - app_user surfaces: xChat, xCoach, xStrategyBuilder, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`), recommendations (`/recommendations`) with shared header (profile, logout, feedback, optional DB chip)
-- signed-in/guest product naming: **`src/app/ui/product-brand-constants.ts`** (**atx Trusted Advisor** + **whitelabel** in xChat header and global footer); persona display name **xFinance** remains the default FinExpert slug — see **`atx-docs/atx-xchat/xfinance-branding-review.md`** §8
+- signed-in/guest product naming: **`src/app/ui/product-brand-constants.ts`** (**atx Trusted Advisor** + **whitelabel** in xChat header and global footer); default app-role backend persona is **atx-trusted-advisor**
 
 ### Documentation tree
 
@@ -295,7 +295,7 @@ If they do not match exactly, state/verifier cookies can be missing on callback.
 - For Atlas-only setups, if login/link-email email matches `ADMIN_SEED_EMAIL` (must be set in env), auth flow auto-applies seeded global-admin role and tenant membership. Local Mongo is not required.
 - **Self-service access:** After sign-in, users request product roles via **`POST /api/access-requests`** with JSON `{ "reason": "…", "requestedRole"?: "viewer" | "operator" | "advisor" }` (defaults to `viewer`). This is the unified path when Next serves the route; with BFF enabled, the same URL may proxy to Spring. **`global_admin` is not allowed** on that endpoint (elevated roles use admin APIs or seed only).
 - **`npm run seed:admin`** creates or updates the `ADMIN_SEED_EMAIL` user with **`global_admin`** and, if missing, one **approved** `admin_access_requests` row (`requestedRole: global_admin`) as an audit paper trail. Duplicate **open** requests for the same user + role are blocked by a partial unique Mongo index on **`(userId, requestedRole)`** where **`status` ∈ `new` | `triaged` | `pending`** (`uniq_admin_access_requests_user_requestedRole_actionable`), ensured on first access-request write and by the seed script.
-- **RAG source tree (`atx-rag-collection/`):** Markdown/PDFs/YAML uploaded to xAI **trusted-advisor tenant** collections when **`npm run seed:admin`** runs with **`XAI_API_KEY`**, **`XAI_MANAGEMENT_API_KEY`**, and team id; **`SKIP_SEED_XAI_RAG_INGEST=1`** skips upload. Ingest creates **`atx-trusted-advisor-<dev|stage|prod>`** plus segment buckets (**`…-finance-reference-docs`**, **`…-xpersonas`**, **`…-example-prompts`**, **`…-options-strategy`**, etc.) — **`scripts/lib/seed-xai-rag-ingest.mjs`**, **`atx-rag-collection/README.md`**. **Layout:** each ingestible file lives at **`folderName/fileName`** where **folder name equals the file stem** (e.g. `wheel/wheel.md`) so RAG path tags stay stable. **Mongo persona rows from YAML:** run **`npm run seed:xpersonas`** after collections exist (typically after **`seed:admin`** RAG ingest, or whenever **`atx-trusted-advisor-<dev|stage|prod>-xpersonas`** is present in xAI). **`SKIP_SEED_XPERSONAS=1`** no-ops the script (e.g. CI without Mongo). **`SEED_XPERSONAS_MODE`** defaults to **`merge`**; **`replace`** overwrites prompts / `xapi` / scalars and refreshes `xaiCollection` when a collection id resolves — in **`NODE_ENV=production`**, **`replace`** logs a loud warning and **`SEED_XPERSONAS_STRICT=1`** exits non-zero. See **`atx-rag-collection/atx-rag-collection.md`** (Persona YAML + sync).
+- **RAG source tree (`atx-rag-collection/`):** Markdown/PDFs/YAML uploaded to xAI **trusted-advisor tenant** collections when **`npm run seed:admin`** runs with **`XAI_API_KEY`**, **`XAI_MANAGEMENT_API_KEY`**, and team id; **`SKIP_SEED_XAI_RAG_INGEST=1`** skips upload. Ingest creates **`atx-trusted-advisor-<dev|stage|prod>`** plus segment buckets (**`…-finance-reference-docs`**, **`…-xpersonas`**, **`…-example-prompts`**, **`…-options-strategy`**, etc.) — **`scripts/lib/seed-xai-rag-ingest.mjs`**, **`atx-rag-collection/README.md`**. **Layout:** each ingestible file lives at **`folderName/fileName`** where **folder name equals the file stem** (e.g. `wheel/wheel.md`) so RAG path tags stay stable. **Mongo `xchat_personas` from disk (Admin → Personas):** after Mongo writes, **`seed:admin`** automatically runs the same logic as **`npm run seed:xpersonas`** (default root **`atx-rag-collection/xpersonas`** — one upsert per **`.yaml` / `.yml` / frontmatter `.md`** spec) so xAI collections and app persona rows stay aligned. **`SKIP_SEED_XPERSONAS=1`** skips that step (e.g. CI). Re-run personas only: **`npm run seed:xpersonas`**. **`SEED_XPERSONAS_MODE`** defaults to **`merge`**; **`replace`** overwrites prompts / `xapi` / scalars and refreshes `xaiCollection` when a collection id resolves — in **`NODE_ENV=production`**, **`replace`** logs a loud warning and **`SEED_XPERSONAS_STRICT=1`** exits non-zero. See **`atx-rag-collection/atx-rag-collection.md`** (Persona YAML + sync).
 - `bootstrap_failed`: tenant membership, `resolveAuthContext`, or **session cookie creation** threw after X OAuth succeeded. (**Default portfolio provisioning** is best-effort: failures log `[auth/x/callback] default portfolio provision non-fatal` and no longer block the session — portfolio is created lazily on `/portfolio` or `GET /api/portfolios/default`.) Check **Cloud Run logs** for `[auth/x/callback] session bootstrap failed` (Mongo index errors, duplicate keys, or DB connectivity). User is redirected to `/login` with this code instead of a raw **500** when the catch path is deployed.
 
 ### App_user HTTP 500
@@ -315,8 +315,9 @@ If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or p
 - Build: `npm run build`
 - Smoke tests: `npm run smoke:verify`
 - xAI management key-create smoke (opt-in): `RUN_XAI_MANAGEMENT_KEY_CREATE_SMOKE=true npm run smoke:xai-key-create`
-- Seed admin: `npm run seed:admin`
-- Seed xPersonas from repo YAML → Mongo: `npm run seed:xpersonas` (after RAG ingest / xAI **`…-xpersonas`** collection exists; optional **`SKIP_SEED_XPERSONAS`**, **`SEED_XPERSONAS_MODE`**, **`SEED_XPERSONAS_STRICT`**)
+- Seed admin: `npm run seed:admin` (includes **`seed:xpersonas`** from **`atx-rag-collection/xpersonas`** unless **`SKIP_SEED_XPERSONAS`**)
+- Seed xPersonas from disk → Mongo only: `npm run seed:xpersonas` (default root **`atx-rag-collection/xpersonas`** — `.yaml` / `.yml` / frontmatter **`.md`**). Override folder: `npm run seed:xpersonas -- --root atx-rag-collection/options-strategy` (or pass a repo-relative path as the only positional arg). When the root folder name is **`options-strategy`**, the default xAI collection display name resolves to **`atx-trusted-advisor-<dev|stage|prod>-options-strategy`** (else **`…-xpersonas`**). Per-file override: YAML/frontmatter **`xai_collection_name`**. Optional **`SKIP_SEED_XPERSONAS`**, **`SEED_XPERSONAS_MODE`**, **`SEED_XPERSONAS_STRICT`**. Omit **`model`** in files to inherit **`XAI_CHAT_MODEL`** or **`grok-4-1-fast-reasoning`**.
+- Sync xPersonas via admin HTTP CRUD (dev server must be up): `XF_CORE_SESSION=<signed cookie payload> npm run sync:xpersonas:http -- --root atx-rag-collection/options-strategy` (optional **`SYNC_PERSONAS_BASE_URL`**, default **`http://127.0.0.1:3000`**; alias env **`SYNC_PERSONAS_SESSION`**). Same file rules and collection naming as Mongo path.
 - Backfill legacy xchat identity fields: `npm run migrate:xchat-identity`
 - BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`atx-docs/atx-sre-ops/api-consolidation-spring-backend.md`](./atx-docs/atx-sre-ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
 
@@ -809,24 +810,24 @@ gcloud run services update-traffic atxfinance-core-prod \
 | Persona | Audience | `nameNormalized` | Purpose |
 |---|---|---|---|
 | **Super-Agent** | `global_admin` | `super-agent` | Full admin tool surface (web/X/collections/atxfinance) |
-| **xFinance** | All other signed-in roles | `xfinance` | FinExpert — finance & licensing-exam focus (`default-xpersonas.ts`) |
+| **atx-trusted-advisor** | All other signed-in roles | `atx-trusted-advisor` | Trusted advisor baseline persona (`default-xpersonas.ts`) |
 
-Seed creates **Super-Agent**; **xFinance** can be created manually or on first non-admin ask if absent. In staging/production, **publish both** so governance, directory (`GET /api/personas` for non-admins), and ops docs stay aligned.
+Seed creates **Super-Agent**; run **`npm run seed:xpersonas`** to upsert **atx-trusted-advisor** (and other YAML personas). In staging/production, **publish both defaults** so governance, directory (`GET /api/personas` for non-admins), and ops docs stay aligned.
 
 **Persona resolution (`POST /api/xchat/ask`):** The active persona is chosen from the **signed-in user’s roles**, not from the client. The optional body field `personaId` is **deprecated and ignored** (kept for backward-compatible clients).
 
 | Session roles | Persona used | `nameNormalized` key |
 |---|---|---|
 | Includes `global_admin` | **Super-Agent** | `super-agent` |
-| Otherwise | **xFinance** (FinExpert) | `xfinance` |
+| Otherwise | **atx-trusted-advisor** | `atx-trusted-advisor` |
 
 - If **Super-Agent** is missing for an admin session, the route returns **503** with guidance to run `npm run seed:admin` or create the persona in Admin → Personas.
-- If **xFinance** is missing for a non-admin session, it is **created on first ask** from defaults in `src/modules/xchat/default-xpersonas.ts` (`ensureDefaultXfinancePersonaExists` in `src/modules/xchat/repository.ts`).
+- If **atx-trusted-advisor** is missing for a non-admin session, it is created from defaults on first ask (`ensureDefaultTrustedAdvisorPersonaExists` in `src/modules/xchat/repository.ts`). Prefer running `npm run seed:xpersonas` so YAML-backed system prompts/tooling stay canonical.
 - Success responses include `data.personaName` (human-readable persona name).
 
 Personas may store batch-style `collections_search` tools; outbound xAI requests map those to `file_search` + `vector_store_ids` (`src/lib/xai-tools.ts`).
 
-**Product scope:** Non-admin xChat is framed for **finance / licensing-exam** Q&A via the **xFinance** persona `systemPrompt`. There is still no separate server-side topic classifier; admin **Super-Agent** remains broader. Further tightening is persona-governance and product work (see `.cursor/skills/xdesign-review/SKILL.md` deferrals).
+**Product scope:** Non-admin xChat is framed for finance / advisory Q&A via the **atx-trusted-advisor** persona `systemPrompt`. There is still no separate server-side topic classifier; admin **Super-Agent** remains broader. Further tightening is persona-governance and product work (see `.cursor/skills/xdesign-review/SKILL.md` deferrals).
 
 <a id="api-docs-validation"></a>
 

@@ -97,7 +97,7 @@ describe("persona tool validation", () => {
     expect(restored.tools.map((t) => t.type).sort()).toEqual(
       [...getSuperAgentDefaultTools().map((t) => t.type)].sort()
     );
-    expect(ensureSuperAgentDefaultTools(yahooOnly, "xFinance")).toEqual(yahooOnly);
+    expect(ensureSuperAgentDefaultTools(yahooOnly, "atx-trusted-advisor")).toEqual(yahooOnly);
   });
 
   it("mergeXchatHostedToolBaseline prepends web_search and x_search and dedupes", () => {

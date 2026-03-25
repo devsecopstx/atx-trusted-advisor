@@ -169,7 +169,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Default xChat persona is unavailable. For admins, seed Super-Agent (`npm run seed:admin`). For app users, ensure the xFinance persona exists (Admin → Personas) or rely on first-ask auto-create."
+          "Default xChat persona is unavailable. For admins, seed Super-Agent (`npm run seed:admin`). For app users, ensure the atx-trusted-advisor persona exists (Admin → Personas) or run `npm run seed:xpersonas`."
       },
       { status: 503 }
     );

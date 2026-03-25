@@ -33,19 +33,62 @@ type PersonaListItem = {
 
 type StatusFilter = "all" | PersonaStatus;
 
+type SyncFromXaiResult = {
+  collectionId: string;
+  collectionDisplayName: string;
+  listed: number;
+  examined: number;
+  imported: number;
+  updated: number;
+  skipped: number;
+  syntheticFallbacks: number;
+  errors: Array<{ source: string; message: string }>;
+};
+
+type PersonasOnboardingHomeProps = {
+  defaultXpersonasCollectionDisplayName: string;
+};
+
 const STATUS_BADGE_CLASS: Record<PersonaStatus, string> = {
   draft: "status-warn",
   published: "status-live",
   archived: "status-ready"
 };
 
-export function PersonasOnboardingHome() {
+export function PersonasOnboardingHome({ defaultXpersonasCollectionDisplayName }: PersonasOnboardingHomeProps) {
   const reduceMotion = useReducedMotion();
   const [personas, setPersonas] = useState<PersonaListItem[]>([]);
   const [status, setStatus] = useState("Ready");
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  async function handleSyncFromXai() {
+    setActionLoading("sync-xai");
+    setStatus("Syncing personas from xAI collection…");
+    try {
+      const payload = await parseJson<{ data: SyncFromXaiResult }>(
+        await fetch("/api/personas/sync-from-xai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "merge" })
+        })
+      );
+      const d = payload.data;
+      const errHint =
+        d.errors.length > 0 ? ` · ${d.errors.length} file(s) skipped (see server logs / response)` : "";
+      const syn =
+        d.syntheticFallbacks > 0 ? ` · ${d.syntheticFallbacks} plain-text fallback` : "";
+      setStatus(
+        `xAI → DB: ${d.listed} listed, ${d.examined} examined → ${d.imported} new, ${d.updated} updated, ${d.skipped} skipped (${d.collectionDisplayName})${syn}${errHint}`
+      );
+      await refresh();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Sync from xAI failed");
+    } finally {
+      setActionLoading(null);
+    }
+  }
 
   const gridVariants = useMemo(
     () => ({
@@ -168,6 +211,15 @@ export function PersonasOnboardingHome() {
         <Link className="cta cta-primary" href="/admin/personas/new">
           Create Persona
         </Link>
+        <button
+          className="cta cta-secondary"
+          disabled={loading || actionLoading === "sync-xai"}
+          onClick={() => void handleSyncFromXai()}
+          title={`Reads YAML / frontmatter markdown from xAI collection “${defaultXpersonasCollectionDisplayName}” (override with XPERSONAS_XAI_COLLECTION_DISPLAY_NAME or API body collectionDisplayName).`}
+          type="button"
+        >
+          Sync from xAI → DB
+        </button>
         <p className="status-text">{status}</p>
       </div>
 

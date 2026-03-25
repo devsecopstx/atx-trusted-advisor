@@ -130,6 +130,12 @@ export type PersonaConfig = {
   publishedAt?: Date;
   /** Repo-seeded persona row (e.g. `npm run seed:xpersonas`); admin CRUD still allowed. */
   isSystem?: boolean;
+  /** Last successful admin “sync from xAI collection” for this persona row. */
+  lastXaiPersonaSync?: {
+    at: Date;
+    byUserId: string;
+    collectionDisplayName: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 };

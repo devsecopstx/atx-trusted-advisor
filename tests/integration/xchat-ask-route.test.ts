@@ -723,8 +723,8 @@ describe("xchat ask route collection retrieval", () => {
     repositoryMocks.getPersonaById.mockResolvedValueOnce(
       buildPersona({
         _id: new ObjectId("507f1f77bcf86cd799439088"),
-        name: "xFinance",
-        nameNormalized: "xfinance"
+        name: "atx-trusted-advisor",
+        nameNormalized: "atx-trusted-advisor"
       })
     );
 
@@ -818,7 +818,7 @@ describe("xchat ask route collection retrieval", () => {
     });
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
-        name: "xFinance",
+        name: "atx-trusted-advisor",
         model: "grok-from-persona-doc"
       })
     );

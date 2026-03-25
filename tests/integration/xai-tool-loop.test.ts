@@ -370,7 +370,7 @@ describe("respondWithXaiToolLoop", () => {
   });
 
   it("runs atxfinance for every XML function_call when KB-style emits multiple blocks in one turn", async () => {
-    const xml = `xFinance
+    const xml = `atx-trusted-advisor
 <function_call name="atxfinance">
 <argument name="operation">portfolio_summary</argument>
 </function_call>
