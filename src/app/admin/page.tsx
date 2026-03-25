@@ -73,7 +73,7 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         description: "Access requests: review pending items, approve or reject, and submit new role requests."
       },
       {
-        href: "/admin/user-settings",
+        href: "/admin/manage-users",
         icon: "user",
         title: "Manage users",
         description: "Browse approved users, adjust roles and plans, and edit per-user broker, portfolio, and notification defaults."

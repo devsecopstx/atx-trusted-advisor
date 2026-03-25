@@ -65,6 +65,11 @@ const envSchema = z.object({
   ADMIN_SEED_X_USER_ID: optionalNonEmptyString,
   ADMIN_X_USERNAMES: z.string().optional(),
   ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
+  /**
+   * Same prefix seed uses for `{root}-rag` and `{root}-xoption--*`. When set, per-user xChat history
+   * collections are named `{root}-chat-{userId}` so they group with instance RAG in xAI.
+   */
+  ATX_INSTANCE_COLLECTION_ROOT: optionalNonEmptyString,
   /** Optional overrides for `/xstrategybuilder` licensing line (see `LICENSING_PITCH_CONTACT_DEFAULTS`). */
   XSTRATEGYBUILDER_LICENSING_EMAIL: optionalEmail,
   XSTRATEGYBUILDER_LICENSING_X_URL: optionalUrl,

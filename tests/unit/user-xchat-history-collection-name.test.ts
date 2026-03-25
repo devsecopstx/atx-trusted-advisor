@@ -1,12 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  buildUserXchatHistoryCollectionName,
-  legacyUserXchatBootstrapCollectionName
+    buildUserXchatHistoryCollectionName,
+    legacyUserXchatBootstrapCollectionName
 } from "@/modules/core-admin/access-request-bootstrap";
 
 describe("user xChat history xAI collection names", () => {
-  it("uses atx-chat-<userId>-history for new collections", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("uses atx-chat-<userId>-history for new collections when instance root unset", () => {
+    vi.stubEnv("ATX_INSTANCE_COLLECTION_ROOT", "");
     expect(buildUserXchatHistoryCollectionName("507f1f77bcf86cd799439011")).toBe(
       "atx-chat-507f1f77bcf86cd799439011-history"
     );

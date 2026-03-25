@@ -186,7 +186,7 @@ export function AdminRiskOutlookPreferences({
       {loading ? null : !fullPayload ? (
         <p className="status-text mt-4 text-sm text-amber-400">
           Settings not found for this user. Create them from{" "}
-          <Link className="underline" href="/admin/user-settings">
+          <Link className="underline" href="/admin/manage-users">
             Admin → Users
           </Link>{" "}
           first.

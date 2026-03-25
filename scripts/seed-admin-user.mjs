@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url";
 import { MongoClient } from "mongodb";
 
 import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
-import { runSeedXaiRagIngest } from "./lib/seed-xai-rag-ingest.mjs";
+import { findOrCreateManagementCollection, runSeedXaiRagIngest } from "./lib/seed-xai-rag-ingest.mjs";
+import { loadSeedTenantContext, pickFirstNonEmpty } from "./lib/tenant-defaults-seed.mjs";
 
 const SEED_SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SEED_SCRIPT_DIR, "..");
+const seedTenant = loadSeedTenantContext(REPO_ROOT);
 
 function runPostSeedXaiHelloVerify() {
   const s = String(process.env.SKIP_XAI_POST_SEED_VERIFY ?? "").toLowerCase();
@@ -31,10 +33,10 @@ function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
 }
 
-const ADMIN_SEED_RAW = (process.env.ADMIN_SEED_EMAIL ?? "").trim();
+const ADMIN_SEED_RAW = pickFirstNonEmpty(process.env.ADMIN_SEED_EMAIL, seedTenant.merged.adminSeedEmail);
 if (!ADMIN_SEED_RAW) {
   console.error(
-    "ADMIN_SEED_EMAIL is required in .env for seed:admin (no default — set your bootstrap admin email)."
+    "ADMIN_SEED_EMAIL is required for seed:admin — set in .env or initial_seed.settings.admin_seed_email in tenant_defaults.yaml."
   );
   process.exit(1);
 }
@@ -88,34 +90,14 @@ const XAI_KB_COLLECTION_RE = /^collection_[A-Za-z0-9_-]+$/;
 const DEFAULT_COLLECTION_NAME = "Finance";
 
 /**
- * Aligns with runtime `resolveTeamKbCollectionId`: literal `collection_*`, else list collections
- * for `XAI_TEAM_ID` as team UUID via management API (requires `XAI_MANAGEMENT_API_KEY` in .env).
- * `tenant_defaults.yaml` is never read here — only process.env from `--env-file=.env`.
+ * When `ragKbDisplayName` is set (from `atx-<tier>-<site>-rag`), find or create that collection on the team.
+ * Otherwise legacy: first `collection_*` on the team (old behavior).
+ * Literal `XAI_TEAM_ID=collection_*` uses that id as-is.
  */
-async function resolveSuperAgentCollectionIdForSeed() {
-  const raw = (process.env.XAI_TEAM_ID || "").trim();
-  if (!raw) {
-    return "";
-  }
-  if (XAI_KB_COLLECTION_RE.test(raw)) {
-    return raw;
-  }
-
-  const mgmtKey = (process.env.XAI_MANAGEMENT_API_KEY || "").trim();
-  const base = (process.env.XAI_MANAGEMENT_BASE_URL || "https://management-api.x.ai/v1").replace(
-    /\/$/,
-    ""
-  );
-  if (!mgmtKey) {
-    console.warn(
-      "[seed:admin] XAI_TEAM_ID is not a collection_* id. This script only loads .env (not tenant_defaults.yaml). " +
-        "Set XAI_MANAGEMENT_API_KEY to resolve a team UUID to a KB collection, or set XAI_TEAM_ID to a literal collection_* id."
-    );
-    return "";
-  }
-
+async function resolveLegacyFirstTeamKbCollectionId(teamUuid, mgmtKey, mgmtBase) {
+  const base = mgmtBase.replace(/\/$/, "");
   try {
-    let url = `${base}/collections?team_id=${encodeURIComponent(raw)}`;
+    let url = `${base}/collections?team_id=${encodeURIComponent(teamUuid)}`;
     let res = await fetch(url, { headers: { Authorization: `Bearer ${mgmtKey}` } });
     if (!res.ok) {
       url = `${base}/collections`;
@@ -142,7 +124,7 @@ async function resolveSuperAgentCollectionIdForSeed() {
       }
       const id = String(c.id ?? c.collection_id ?? "").trim();
       if (id && XAI_KB_COLLECTION_RE.test(id)) {
-        console.log(`[seed:admin] Resolved Super-Agent KB collection id for team: ${id}`);
+        console.log(`[seed:admin] Resolved Super-Agent KB collection id for team (legacy first match): ${id}`);
         return id;
       }
     }
@@ -154,6 +136,39 @@ async function resolveSuperAgentCollectionIdForSeed() {
     console.warn("[seed:admin] collections resolve error:", e instanceof Error ? e.message : e);
     return "";
   }
+}
+
+async function resolveTeamKbCollectionIdForSeed({ teamRaw, mgmtKey, mgmtBase, ragKbDisplayName }) {
+  const raw = (teamRaw || "").trim();
+  if (!raw) {
+    return "";
+  }
+  if (XAI_KB_COLLECTION_RE.test(raw)) {
+    console.log("[seed:admin] Using literal XAI_TEAM_ID as KB collection id");
+    return raw;
+  }
+  if (!mgmtKey) {
+    console.warn(
+      "[seed:admin] XAI_MANAGEMENT_API_KEY unset — cannot resolve or create team KB collection (set in .env or tenant_defaults initial_seed.settings)."
+    );
+    return "";
+  }
+  if (ragKbDisplayName) {
+    try {
+      const { id } = await findOrCreateManagementCollection({
+        displayName: ragKbDisplayName,
+        teamId: raw,
+        mgmtKey,
+        mgmtBase
+      });
+      console.log(`[seed:admin] Team KB RAG collection: ${ragKbDisplayName} → ${id}`);
+      return id;
+    } catch (e) {
+      console.warn("[seed:admin] find/create KB collection failed:", e instanceof Error ? e.message : e);
+      return "";
+    }
+  }
+  return resolveLegacyFirstTeamKbCollectionId(raw, mgmtKey, mgmtBase);
 }
 
 function shouldSkipSeedXaiRagIngest() {
@@ -175,11 +190,9 @@ function dedupeTrimmedIds(ids) {
   return out;
 }
 
-/**
- * Team UUID for management create/list (strategy-template collections). Not used when `XAI_TEAM_ID` is a literal `collection_*` id.
- */
-function teamUuidForXaiIngest() {
-  const raw = (process.env.XAI_TEAM_ID || "").trim();
+/** Team UUID for strategy-template collections; empty when `XAI_TEAM_ID` is a literal `collection_*` id. */
+function teamUuidForXaiIngest(teamIdMerged) {
+  const raw = (teamIdMerged || "").trim();
   if (!raw || XAI_KB_COLLECTION_RE.test(raw)) {
     return "";
   }
@@ -212,7 +225,7 @@ const TENANT_PORTFOLIO_COLLECTION = "tenant_portfolio";
 const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
   (process.env.TENANT_PORTFOLIO_ORG_KEY || "").trim() || "org-atx-finance";
 
-/** Matches `UserAdminSettings` defaults used in admin user-settings tests / UI. */
+/** Matches `UserAdminSettings` defaults used in admin manage-users tests / UI. */
 const DEFAULT_SEED_ADMIN_USER_SETTINGS = {
   broker: { provider: "paper", accountRef: "paper-main", enabled: true },
   portfolio: {
@@ -310,26 +323,33 @@ async function seed() {
   try {
     await ensureIndexes(db);
 
-    const teamKbCollectionId = await resolveSuperAgentCollectionIdForSeed();
+    if (seedTenant.yamlLoaded) {
+      console.log(
+        "[seed:admin] tenant_defaults.yaml present — unset seed keys were filled from repo defaults (.env overrides yaml)."
+      );
+    }
+    const m = seedTenant.merged;
+    const teamKbCollectionId = await resolveTeamKbCollectionIdForSeed({
+      teamRaw: m.xaiTeamId,
+      mgmtKey: m.xaiMgmtKey,
+      mgmtBase: m.xaiMgmtBaseUrl,
+      ragKbDisplayName: seedTenant.ragKbDisplayName
+    });
 
     let strategyCollectionIds = [];
     let ragIngest = { ragUploaded: 0, warnings: [] };
     if (!shouldSkipSeedXaiRagIngest()) {
-      const xaiApiKey = (process.env.XAI_API_KEY || "").trim();
-      const mgmtKey = (process.env.XAI_MANAGEMENT_API_KEY || "").trim();
-      const mgmtBase = (process.env.XAI_MANAGEMENT_BASE_URL || "https://management-api.x.ai/v1").replace(
-        /\/$/,
-        ""
-      );
-      const xaiBaseUrl = (process.env.XAI_BASE_URL || "https://api.x.ai/v1").replace(/\/$/, "");
+      const mgmtBase = m.xaiMgmtBaseUrl.replace(/\/$/, "");
+      const xaiBaseUrl = m.xaiBaseUrl.replace(/\/$/, "");
       ragIngest = await runSeedXaiRagIngest({
         repoRoot: REPO_ROOT,
-        teamId: teamUuidForXaiIngest(),
+        teamId: teamUuidForXaiIngest(m.xaiTeamId),
         teamKbCollectionId,
-        xaiApiKey,
+        xaiApiKey: m.xaiApiKey,
         xaiBaseUrl,
-        mgmtKey,
-        mgmtBase
+        mgmtKey: m.xaiMgmtKey,
+        mgmtBase,
+        instanceRootPrefix: seedTenant.atxInstanceCollectionRoot
       });
       strategyCollectionIds = ragIngest.strategyCollectionIds ?? [];
       for (const w of ragIngest.warnings ?? []) {
@@ -603,6 +623,10 @@ async function seed() {
           ragIngestRagFilesUploaded: ragIngest.ragUploaded,
           ragIngestStrategyCollectionCount: strategyCollectionIds.length,
           collectionsSearchCollectionIds: collectionsSearchIds,
+          atxInstanceCollectionRoot: seedTenant.atxInstanceCollectionRoot,
+          teamRagCollectionDisplayName: seedTenant.ragKbDisplayName || undefined,
+          atxInstanceEnvHint:
+            "Set ATX_INSTANCE_COLLECTION_ROOT to atxInstanceCollectionRoot in deployment .env so runtime user xChat history uses the same namespace ({root}-chat-<userId>).",
           userId: String(user._id),
           tenantId: String(tenant._id),
           tenantSlug: tenant.slug,

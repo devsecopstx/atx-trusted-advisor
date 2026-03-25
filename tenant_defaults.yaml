@@ -1,6 +1,7 @@
 # defaults.yaml  or  seed-defaults.yaml
 # Purpose: Reasonable first-time defaults + documentation for optional Spring `optional:file:` config.
-# Next.js `npm run seed:admin` reads **only** `.env` (ADMIN_SEED_EMAIL, Mongo, etc.) — it does **not** parse `initial_seed` below.
+# Next.js `npm run seed:admin` loads this file when present: **`.env` wins** for any key that is set there; yaml fills gaps
+# (e.g. `initial_seed.settings.admin_seed_email`, `xai_team_id`, `app.environment` + `site_name` for instance collection root).
 # Keep sensitive keys under `initial_seed.settings` empty in Git; real secrets belong in `.env` / GCP Secret Manager (see .env.example).
 
 # xAI API base URL — fallback when XAI_BASE_URL env is unset (Spring and local tooling)
@@ -10,8 +11,10 @@ XAI_MANAGEMENT_BASE_URL: "https://management-api.x.ai/v1"
 
 app:
   name: "atx-fintech-backend"
-  environment: development         # can be overridden by ENV
+  environment: stage         # can be overridden by ENV
   version: "1.0.0"
+  # Instance xAI namespace (seed): `atx-<tier>-<site_slug>` from ATX_DEPLOY_TARGET / app.environment / settings.atx_deploy_target
+  # plus ATX_INSTANCE_SITE_SLUG / settings.site_name. RAG: `{root}-rag`; strategies: `{root}-xoption--*`. Set ATX_INSTANCE_COLLECTION_ROOT in .env to override.
 
 urls:
   frontend: "http://localhost:3000"

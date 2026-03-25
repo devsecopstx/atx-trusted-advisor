@@ -5,7 +5,7 @@ import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { UserSettingsConsole } from "./ui/user-settings-console";
 
-export default async function AdminUserSettingsPage() {
+export default async function AdminManageUsersPage() {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login");

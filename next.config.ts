@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/admin/user-settings",
+        destination: "/admin/manage-users",
+        permanent: true
+      },
+      {
         source: "/recommendations",
         destination: "/admin/recommendations",
         permanent: false

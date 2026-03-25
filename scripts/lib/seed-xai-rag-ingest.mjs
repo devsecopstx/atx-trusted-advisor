@@ -214,12 +214,15 @@ async function walkIngestFiles(rootDir, { maxBytes }) {
  *   maxFileBytes?: number;
  *   skipAtxRag?: boolean;
  *   skipStrategyTemplates?: boolean;
+ *   /** When set, strategy collections are `${instanceRootPrefix}-xoption--<slug>` (and `--core`). */
+ *   instanceRootPrefix?: string;
  * }} opts
  */
 export async function runSeedXaiRagIngest(opts) {
   const maxBytes = opts.maxFileBytes ?? 24 * 1024 * 1024;
   const teamId = (opts.teamId || "").trim();
   const kbId = (opts.teamKbCollectionId || "").trim();
+  const strategyPrefix = (opts.instanceRootPrefix || "").trim();
   const warnings = [];
 
   /** @type {string[]} */
@@ -318,7 +321,7 @@ export async function runSeedXaiRagIngest(opts) {
       }
 
       if (rootFiles.length > 0) {
-        const displayName = "atx-xoption-templates--core";
+        const displayName = strategyPrefix ? `${strategyPrefix}-xoption--core` : "atx-xoption-templates--core";
         try {
           const { id } = await findOrCreateManagementCollection({
             displayName,

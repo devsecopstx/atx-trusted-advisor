@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { createHash } from "node:crypto";
 
+import { resolveUserHistoryXaiCollectionDisplayName } from "@/lib/atx-instance-collection-root";
 import { getDb } from "@/lib/mongodb";
 import { sendSlackNotification } from "@/lib/slack";
 import {
@@ -383,9 +384,15 @@ async function ensureUserCollection(input: {
   const legacyName = legacyUserXchatBootstrapCollectionName(input.userId);
   const want = collectionName.trim().toLowerCase();
   const legacyWant = legacyName.trim().toLowerCase();
+  const uid = input.userId.trim().toLowerCase();
+  const legacyAtxChat = `atx-chat-${uid}-history`;
+  const namesToMatch = new Set([want, legacyWant]);
+  if (process.env.ATX_INSTANCE_COLLECTION_ROOT?.trim() && legacyAtxChat !== want) {
+    namesToMatch.add(legacyAtxChat);
+  }
   const found = inventory.find((item) => {
     const n = item.name?.trim().toLowerCase();
-    return n === want || n === legacyWant;
+    return n != null && namesToMatch.has(n);
   });
   if (found) {
     return {
@@ -584,7 +591,7 @@ function normalizeEmail(email: string): string {
 
 /** xAI collection display name for per-user chat history (`user_history` in xChat collections API). */
 export function buildUserXchatHistoryCollectionName(userId: string): string {
-  return `atx-chat-${userId.trim().toLowerCase()}-history`;
+  return resolveUserHistoryXaiCollectionDisplayName(userId);
 }
 
 /** Legacy name from earlier deploys; still matched when listing xAI collections to avoid duplicates. */
