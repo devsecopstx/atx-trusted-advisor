@@ -31,4 +31,8 @@ declare module "*tenant-defaults-seed.mjs" {
       xaiTeamId: string;
     };
   };
+  export function resolveTrustedAdvisorDeploySlug(
+    settings: Record<string, string>,
+    doc: unknown
+  ): string;
 }
