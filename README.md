@@ -1,6 +1,6 @@
 # atx Trusted Advisor — Core App
 
-**Release:** v2.4.19
+**Release:** v2.4.20
 
 User-facing product: **atx Trusted Advisor** (whitelabel-ready chrome: Trusted Advisor lockup + subtle **whitelabel** subline in header/footer). This repository is the **atxFinance** Next.js core: admin console and signed-in **app_user** surfaces, **Powered by xAI / Grok** for institutional-grade options and portfolio workflows.
 
