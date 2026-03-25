@@ -33,7 +33,7 @@ Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, 
 
 ## RAG path layout
 
-**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`).
+**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`).
 
 **xpersonas exception:** Subfolders are **short buckets** (e.g. `trusted/`, `legal/`). Each bucket holds **one** persona **`*.yaml`** (filename may differ from folder name; first-line comment + `setup:` must match the real path) **or** a **stem/stem.md** narrative (`exam-coach/exam-coach.md`, `super-agent/super-agent.md`, `finance-xoptions/finance-xoptions.md`).
 
@@ -74,7 +74,7 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 
 | Path |
 | --- |
-| `example-prompts/example-prompts.md` |
+| `example-prompts/example-prompts/example-prompts.md` |
 
 ### options-strategy
 

@@ -69,7 +69,7 @@ After merging and deploying to production (or staging first):
 - **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`atx-docs/atx-xchat/xai-api-standard.md`**
 - xAI chat API key smoke (dev/SRE): `npm run smoke:xai-chat` with `XAI_API_KEY` in `.env` — see `DEVELOPMENT.md` § *xAI chat completions smoke*
 - Market price source-of-truth (current): Yahoo Finance via `yahoo-finance2` (`src/modules/xchat/market-data.ts`); quote-related prompts/tools should route through `market_quote` / `yahoo_finance` rather than narrative web-only lookups
-- Watchlist (app_user): `/watchlist` — CSV **Import/Export**; `PATCH /api/portfolios/:id/watchlist` accepts `addEntries` (`lineType`, `strategy`, `quantity`, `entryPrice`) for merged rows, plus optional **`riskProfile`** / **`outlook`** desk fields (`null` clears). Reference CSV: `atx-docs/atx-branding/atxfinance-watchlist.csv`
+- Watchlist (app_user): `/watchlist` — CSV **Import/Export**; `PATCH /api/portfolios/:id/watchlist` accepts `addEntries` (`lineType`, `strategy`, `quantity`, `entryPrice`) for merged rows, plus optional **`riskProfile`** / **`outlook`** desk fields (`null` clears). Reference CSV: `atx-docs/branding/atxfinance-watchlist.csv`
 - App_user feedback: `POST /api/user-feedback` (session cookie) — optional Slack via `SLACK_WEBHOOK_URL`; UI entry: xChat / xCoach / portfolio / watchlist header **Feedback**
 - **App_user 500 while admin works:** see [DEVELOPMENT.md — App_user HTTP 500](DEVELOPMENT.md#app_user-http-500); check Cloud Run logs for `[auth/x/callback]` and Mongo/provisioning errors
 
