@@ -28,7 +28,7 @@
 - [ ] When branding, investor, or GTM copy changes: update
   **`atx-docs/atx-xchat/xfinance-branding-review.md`** if the expert review doc should
   reflect it (see **`generate-docs`**).
-- [ ] **Branding assets** live under **`atx-branding/`** (not `branding/`). If you add/move files there, keep **`DEVELOPMENT.md`**, **`AGENTS.md`**, **`tailwind.config.ts`**, and **`tests/unit/parse-watchlist-csv.test.ts`** paths in sync (see **`generate-docs`** → *Branding assets folder gaps*).
+- [ ] **Branding assets** live under **`atx-docs/atx-branding/`** (not repo-root `atx-branding/` or `branding/`). If you add/move files there, keep **`DEVELOPMENT.md`**, **`AGENTS.md`**, **`tailwind.config.ts`**, and **`tests/unit/parse-watchlist-csv.test.ts`** paths in sync (see **`generate-docs`** → *Branding assets folder gaps*).
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.
 - [ ] **Cursor agent commits** use **`chore: aTx⚡ …`** (see **`test-commit-push`** step 11).

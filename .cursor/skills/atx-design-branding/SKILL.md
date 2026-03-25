@@ -27,10 +27,10 @@ Run a strict design QA pass so atxFinance assets stay premium, legible, and cons
 
 Review against:
 
-- `atx-branding/atxfinance-branding-tags.md`
-- `atx-branding/atxfinance-color-palette.md`
-- `atx-branding/atxfinance-typography.md`
-- `atx-branding/atxfinance-brand-prompts.md`
+- `atx-docs/atx-branding/atxfinance-branding-tags.md`
+- `atx-docs/atx-branding/atxfinance-color-palette.md`
+- `atx-docs/atx-branding/atxfinance-typography.md`
+- `atx-docs/atx-branding/atxfinance-brand-prompts.md`
 - `atx-docs/design-system/atxfinance-brand-kit.md`
 
 ## Checklist

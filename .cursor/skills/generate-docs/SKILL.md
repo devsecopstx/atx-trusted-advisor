@@ -178,30 +178,30 @@ When **positioning, GTM, waitlist, investor deck copy**, or
 
 ### RAG collection sources (`atx-rag-collection/`)
 
-**Scope:** In-repo **source artifacts** for **app RAG / xPersona KB** and future **`npm run seed:admin`** (or companion script) ingestion — **not** Cursor Cloud agent definitions (those stay in **`.cursor/agents/*.yaml`** only).
+**Scope:** In-repo **source artifacts** for **app RAG / xPersona KB** and **`npm run seed:admin`** xAI upload when keys resolve — **not** Cursor Cloud agent definitions (those stay in **`.cursor/agents/*.yaml`** only).
 
 When adding or reorganizing content under **`atx-rag-collection/`**:
 
-- Prefer **`kebab-case.md`** under **`atx-personas-trusted-family/`** (or a single agreed subfolder); PDFs under **`finance-reference-docs/`**; examples under **`atx-xchat-example-prompts/`**. Keep names **lowercase** with hyphens.
+- Prefer **`kebab-case.md`** under **`atx-personas-trusted-family/`** (or a single agreed subfolder); PDFs under **`finance-reference-docs/`**; examples under **`atx-xchat-example-prompts/`**; options strategy narratives under **`atx-options-strategy/`** (see that folder’s **`README.md`**). Keep names **lowercase** with hyphens.
 - Prefer PDF filenames **without spaces**; use a consistent prefix pattern (vendor or topic) for automation.
 - Keep **`atx-rag-collection/README.md`** accurate when layout, seed contract, or ingest behavior changes.
 - Shared prompts should avoid **personal / PII** unless explicitly scoped as non-production samples.
 - When **wiring seed → xAI / Mongo**, update **`DEVELOPMENT.md`** (seed / RAG section), **`atx-docs/PLAN.md`**, and add **tests** for path resolution / idempotency (see **`test-commit-push`** step 6).
 
-### Branding assets folder gaps (`atx-branding/`)
+### Branding assets folder gaps (`atx-docs/atx-branding/`)
 
-When files under **`atx-branding/`** are added, replaced, or deleted:
+When files under **`atx-docs/atx-branding/`** are added, replaced, or deleted:
 
-- Update **`atx-branding/README.md`** if the asset set, naming convention, or
+- Update **`atx-docs/atx-branding/README.md`** if the asset set, naming convention, or
   "how to use" workflow changed.
-- Record a quick QA pass in **`atx-branding/atxfinance-brand-validation.md`**
+- Record a quick QA pass in **`atx-docs/atx-branding/atxfinance-brand-validation.md`**
   (or link equivalent review output) for non-trivial creative refreshes.
 - If deletions are intentional, note rationale in PR summary and ensure
   no docs/rules still reference removed filenames.
 - Keep generated assets and source prompts consistent:
   if prompt taxonomy changes, sync
-  `atx-branding/atxfinance-brand-prompts.md` and
-  `atx-branding/atxfinance-branding-tags.md`.
+  `atx-docs/atx-branding/atxfinance-brand-prompts.md` and
+  `atx-docs/atx-branding/atxfinance-branding-tags.md`.
 
 ## PR review handoff
 
