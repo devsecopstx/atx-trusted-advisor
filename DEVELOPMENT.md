@@ -341,6 +341,29 @@ If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or p
 - Seed admin: `npm run seed:admin` (includes **`seed:xpersonas`** from **`atx-rag-collection/xpersonas`** unless **`SKIP_SEED_XPERSONAS`**)
 - Seed xPersonas from disk → Mongo only: `npm run seed:xpersonas` (default root **`atx-rag-collection/xpersonas`** — `.yaml` / `.yml` / frontmatter **`.md`**). Override folder: `npm run seed:xpersonas -- --root atx-rag-collection/options-strategy` (or pass a repo-relative path as the only positional arg). When the root folder name is **`options-strategy`**, the default xAI collection display name resolves to **`atx-trusted-advisor-<dev|stage|prod>-options-strategy`** (else **`…-xpersonas`**). Per-file override: YAML/frontmatter **`xai_collection_name`**. Optional **`SKIP_SEED_XPERSONAS`**, **`SEED_XPERSONAS_MODE`**, **`SEED_XPERSONAS_STRICT`**. Omit **`model`** in files to inherit **`XAI_CHAT_MODEL`** or **`grok-4-1-fast-reasoning`**.
 - Sync xPersonas via admin HTTP CRUD (dev server must be up): `XF_CORE_SESSION=<signed cookie payload> npm run sync:xpersonas:http -- --root atx-rag-collection/options-strategy` (optional **`SYNC_PERSONAS_BASE_URL`**, default **`http://127.0.0.1:3000`**; alias env **`SYNC_PERSONAS_SESSION`**). Same file rules and collection naming as Mongo path.
+
+### Seed admin against remote staging (from your laptop)
+
+`npm run seed:admin` always targets whatever **`MONGODB_URI`** resolves to (`scripts/lib/resolve-mongo-uri.mjs`, same rules as the app). There is **no separate “staging seed” flag** — point the URI at the **staging** cluster/database and run the same script.
+
+**Operator steps (typical):**
+
+1. **Auth:** `gcloud auth login` with a principal that can **access** Secret Manager on the **staging** GCP project (`secretAccessor` on the secret versions you need).
+2. **Staging URI:** Read the same material Cloud Run uses — usually secret **`MONGODB_URI_B64`** (name is historical; value may be **plain** `mongodb+srv://…` or **base64** of that string — match how the secret was written). Example:
+   ```bash
+   export MONGODB_URI="$(gcloud secrets versions access latest --secret=MONGODB_URI_B64 --project="<staging-project-id>" | tr -d '\n')"
+   ```
+   If the stored value is base64-wrapped, decode once so **`MONGODB_URI`** is a real `mongodb://` / `mongodb+srv://` string (see `parseMongoConnectionString` in `src/lib/env.ts`).
+3. **Database name:** Staging Cloud Run sets **`ATX_DEPLOY_TARGET=stage`** → default logical DB **`atxfinance-stage`** when not overridden. Ensure the URI path (or **`MONGODB_DB_NAME`**) matches what the **deployed** service uses so you do not seed the wrong database. **xAI RAG ingest:** set **`ATX_DEPLOY_TARGET=stage`** (or **`staging`**) in the same env file so team collections are named **`atx-trusted-advisor-stage`** (not **`…-dev`**). Explicit deploy tier wins over local **`NODE_ENV=development`** in `scripts/lib/tenant-defaults-seed.mjs`.
+4. **`ADMIN_SEED_EMAIL`:** Set to the same admin email you use for staging (often aligned with secret **`ADMIN_SEED_EMAIL`** in GSM). Required for the script; idempotent upsert for that user.
+5. **xAI / RAG:** With **`XAI_API_KEY`** + **`XAI_MANAGEMENT_API_KEY`** set locally, seed can **upload** `atx-rag-collection/` to team collections. Use **`SKIP_SEED_XAI_RAG_INGEST=1`** if you only want Mongo/bootstrap work. **`SKIP_XAI_POST_SEED_VERIFY=1`** skips the post-seed hello script.
+6. **Network:** Atlas (or self-hosted) must allow your **current IP** (or use **Cloud Shell** / a VPC-attached runner so the URI works from that environment).
+7. **Run:** Put the above in a **local-only** env file (e.g. `.env.stage` or `.env.staging.local`, gitignored) and either run **`npm run seed:admin:stage`** (uses **`--env-file=.env.stage`**) or the generic `node --env-file=<path> scripts/seed-admin-user.mjs`. Default **`npm run seed:admin`** loads **`.env`** only.
+
+**Security:** Treat a staging/prod **`MONGODB_URI`** like production credentials — never commit; rotate if leaked. Prefer **break-glass** local runs for rare fixes, or a **workflow_dispatch** CI job that runs seed with OIDC + GSM (no URI on laptops) if the team needs repeatability.
+
+**Admin hub button?** **Not recommended** for full **`seed:admin`** from the browser: it would require **global_admin**-only gated server action, strong audit, and you would still be executing **high-privilege** bootstrap (tenants, users, personas, optional xAI ingest) against live data — easy to misuse. Prefer **operator runbook** (this section) or a **narrow** future tool (e.g. “sync disk xPersonas to Mongo only” with explicit scope) if product needs self-serve ops. **`GET /api/admin/bootstrap-status`** already surfaces bootstrap gaps without running seed remotely.
+
 - Backfill legacy xchat identity fields: `npm run migrate:xchat-identity`
 - BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`atx-docs/sre-ops/api-consolidation-spring-backend.md`](./atx-docs/sre-ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
 

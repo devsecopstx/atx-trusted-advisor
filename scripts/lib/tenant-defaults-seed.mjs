@@ -81,25 +81,39 @@ export function resolveRawInstanceDeployTier(settings, doc) {
 
 /**
  * xAI strategy collection env segment (one hyphen before it: `{root}-xoption-<slug>`).
- * - **`NODE_ENV`** `development` or `test` → **`dev`** (local `npm run seed:admin`).
- * - Otherwise → **`app.environment`** from `tenant_defaults.yaml`, normalized; default **`stage`** when unset / no file.
- * (Instance collection **root** `atx-<tier>-<site>` still uses `ATX_DEPLOY_TARGET` / yaml via {@link resolveRawInstanceDeployTier}.)
+ * **Precedence:**
+ * 1. **`ATX_DEPLOY_TARGET`**, **`ATX_INSTANCE_ENV`**, **`DEPLOY_TARGET`** (process env), then **`atx_deploy_target`** from merged seed settings, then **`app.environment`** from `tenant_defaults.yaml` — first non-empty wins, passed through {@link normalizeInstanceDeployTier}.
+ * 2. Else **`NODE_ENV`** `development` or `test` → **`dev`** (local `npm run seed:admin` when no explicit deploy tier).
+ * 3. Else default **`stage`**.
  *
- * @param {Record<string, string>} _settings reserved for future merge with yaml settings
+ * This allows **`ATX_DEPLOY_TARGET=stage`** in `.env.stage` while **`NODE_ENV`** is unset/`development` so **`atx-trusted-advisor-stage`** RAG ingest matches Cloud Run staging.
+ *
+ * @param {Record<string, string>} _settings merged `initial_seed.settings` keys (e.g. `atx_deploy_target`)
  * @param {import("yaml").ParsedNode | null} doc
  */
 export function resolveStrategyCollectionEnvSlug(_settings, doc) {
+  const fromApp =
+    doc && typeof doc === "object" && doc !== null && "app" in doc
+      ? String(/** @type {{ app?: { environment?: string } }} */ (doc).app?.environment ?? "").trim()
+      : "";
+  const explicitTier = pickFirstNonEmpty(
+    process.env.ATX_DEPLOY_TARGET,
+    process.env.ATX_INSTANCE_ENV,
+    process.env.DEPLOY_TARGET,
+    _settings?.atx_deploy_target,
+    fromApp
+  );
+  if (explicitTier) {
+    return normalizeInstanceDeployTier(explicitTier);
+  }
+
   const nodeEnv = String(process.env.NODE_ENV ?? "")
     .trim()
     .toLowerCase();
   if (nodeEnv === "development" || nodeEnv === "test") {
     return "dev";
   }
-  const fromApp =
-    doc && typeof doc === "object" && doc !== null && "app" in doc
-      ? String(/** @type {{ app?: { environment?: string } }} */ (doc).app?.environment ?? "").trim()
-      : "";
-  return normalizeInstanceDeployTier(pickFirstNonEmpty(fromApp, "stage"));
+  return normalizeInstanceDeployTier("stage");
 }
 
 /**
