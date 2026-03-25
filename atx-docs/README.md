@@ -73,12 +73,13 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 **Canonical tree:** **[`atx-rag-collection/atx-options-strategy/`](../atx-rag-collection/atx-options-strategy/README.md)** — Markdown narratives ingested with **`npm run seed:admin`** (same repo area as persona RAG). **`atx-docs/atx-options/README.md`](./atx-options/README.md)** is a short redirect stub for old bookmarks.
 
-**Reviewer / agent quick index:** **[`atx-readme-coreskills.md`](../atx-rag-collection/atx-options-strategy/atx-readme-coreskills.md)** — **`xfinance-strategy-*` id**, path, **risk** & **outlook**, links to **`.cursor/skills/atx-skill-*/SKILL.md`**.
+**Reviewer / agent quick index:** **[`atx-options-coreskills.md`](../atx-rag-collection/atx-options-strategy/atx-options-coreskills.md)** — **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to **`.cursor/skills/atx-skill-*/SKILL.md`**. ([`atx-readme-coreskills.md`](../atx-rag-collection/atx-options-strategy/atx-readme-coreskills.md) redirects here.)
 
 | Doc | Purpose |
 |-----|---------|
-| **[atx-readme-coreskills.md](../atx-rag-collection/atx-options-strategy/atx-readme-coreskills.md)** | **★ Quick lookup:** automation id ↔ narrative ↔ skill ↔ risk / outlook |
-| **[atx-options-strategy README](../atx-rag-collection/atx-options-strategy/README.md)** | Hub: TOC, strategy ↔ skill map |
+| **[atx-options-coreskills.md](../atx-rag-collection/atx-options-strategy/atx-options-coreskills.md)** | **★ Canonical index:** strategy ↔ narrative ↔ **risk** ↔ **outlook** ↔ id ↔ Cursor skill |
+| **[atx-readme-coreskills.md](../atx-rag-collection/atx-options-strategy/atx-readme-coreskills.md)** | Legacy filename → see coreskills |
+| **[atx-options-strategy README](../atx-rag-collection/atx-options-strategy/README.md)** | Short entry + links |
 | [atx-options stub](./atx-options/README.md) | Redirect → RAG tree |
 
 **Folder convention:** `atx-rag-collection/atx-options-strategy/atx-<slug>/atx-<slug>.md` (frontmatter `xfinance-strategy-*`). Full playbooks: `.cursor/skills/atx-skill-*/SKILL.md`.

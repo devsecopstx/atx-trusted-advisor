@@ -39,6 +39,7 @@ describe("atx-rag-collection layout", () => {
     const strategyDir = join(base, "atx-options-strategy");
     expect(existsSync(strategyDir)).toBe(true);
     expect(existsSync(join(strategyDir, "README.md"))).toBe(true);
+    expect(existsSync(join(strategyDir, "atx-options-coreskills.md"))).toBe(true);
     expect(existsSync(join(strategyDir, "atx-readme-coreskills.md"))).toBe(true);
   });
 

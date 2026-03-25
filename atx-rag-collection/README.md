@@ -7,7 +7,7 @@
 - **`atx-personas-trusted-family/`** — Persona-oriented markdown/YAML included in the **team KB** file walk when **`npm run seed:admin`** runs xAI ingest (see **`scripts/lib/seed-xai-rag-ingest.mjs`**; opt out with **`SKIP_SEED_XAI_RAG_INGEST`**). *Automated Mongo `xchat_personas` upsert from these YAML specs is separate — **`atx-docs/PLAN.md`** § *Admin seed — RAG collection sync*.*
 - **`finance-reference-docs/`** — Reference PDFs (disclosures, licensing supplements) for the same pipeline.
 - **`atx-xchat-example-prompts/`** — Example user prompts / scenario copy for docs, chips, or KB samples.
-- **`atx-options-strategy/`** — Options strategy narratives (`atx-<slug>/…`) + **`atx-readme-coreskills.md`**; **`npm run seed:admin`** uploads this tree to xAI strategy collections (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). Index in **`atx-docs/README.md`** § Options.
+- **`atx-options-strategy/`** — Options strategy narratives (`atx-<slug>/…`) + hub **`atx-options-coreskills.md`** (risk / outlook / ids); **`atx-readme-coreskills.md`** redirects there. **`npm run seed:admin`** uploads this tree to xAI strategy collections (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). Index in **`atx-docs/README.md`** § Options.
 
 ## Layout (current)
 
