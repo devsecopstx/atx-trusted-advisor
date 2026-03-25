@@ -97,16 +97,37 @@ describe("personas + access-requests BFF proxy", () => {
     expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
   });
 
-  it("GET /api/personas bypasses BFF proxy and serves local handler", async () => {
+  it("GET /api/personas returns backend response when proxy resolves non-null", async () => {
+    const proxied = new Response(JSON.stringify({ data: [{ name: "remote" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+
     const req = new Request("http://test/api/personas");
     const response = await getPersonas(req);
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(repositoryMocks.listPersonas).not.toHaveBeenCalled();
+  });
+
+  it("GET /api/personas falls back to local handler when proxy returns null", async () => {
+    const req = new Request("http://test/api/personas");
+    const response = await getPersonas(req);
+
+    expect(response.status).toBe(200);
+    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
     expect(repositoryMocks.listPersonas).toHaveBeenCalled();
   });
 
-  it("POST /api/personas bypasses BFF proxy and persists via local handler", async () => {
+  it("POST /api/personas returns backend response when proxy resolves non-null", async () => {
+    const proxied = new Response(JSON.stringify({ data: { name: "created-remote" } }), {
+      status: 201,
+      headers: { "Content-Type": "application/json" }
+    });
+    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+
     const req = new Request("http://test/api/personas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -123,7 +144,28 @@ describe("personas + access-requests BFF proxy", () => {
     const response = await postPersona(req);
 
     expect(response.status).toBe(201);
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(repositoryMocks.createPersona).not.toHaveBeenCalled();
+  });
+
+  it("POST /api/personas falls back to local handler when proxy returns null", async () => {
+    const req = new Request("http://test/api/personas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Persona P",
+        systemPrompt: "1234567890",
+        model: "grok-4-1-fast-reasoning",
+        temperature: 0.2,
+        enableRag: true,
+        defaultScope: "global",
+        xapi: { mode: "responses", toolChoice: "auto", maxTurns: 5, tools: [] }
+      })
+    });
+    const response = await postPersona(req);
+
+    expect(response.status).toBe(201);
+    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
     expect(repositoryMocks.createPersona).toHaveBeenCalled();
   });
 });

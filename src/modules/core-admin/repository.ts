@@ -1000,25 +1000,145 @@ export async function deleteDeployNoteConfigById(
   return result.deletedCount === 1;
 }
 
-export async function getDefaultPortfolio(
+/**
+ * Session-scoped portfolios for a user (includes legacy rows with null / missing tenantId when a tenant is in session).
+ * Matches the read side of {@link getDefaultPortfolio} so xChat and tools resolve the same book an admin can retarget.
+ */
+function userPortfoliosInSessionScopeFilter(
+  userId: string,
+  tenantId?: string
+): Record<string, unknown> {
+  const tenantObjectId = toTenantObjectId(tenantId);
+  const base = userIdQuery(userId);
+  if (!tenantObjectId) {
+    return base;
+  }
+  return {
+    ...base,
+    $or: [
+      { tenantId: tenantObjectId },
+      { tenantId: { $type: "null" } },
+      { tenantId: { $exists: false } }
+    ]
+  };
+}
+
+function defaultPortfolioMarkerFilter(
+  userId: string,
+  tenantId?: string
+): Record<string, unknown> {
+  return {
+    ...userPortfoliosInSessionScopeFilter(userId, tenantId),
+    isDefault: true
+  };
+}
+
+function comparePortfolioAge(a: Portfolio, b: Portfolio): number {
+  const ta =
+    a.createdAt instanceof Date && !Number.isNaN(a.createdAt.getTime())
+      ? a.createdAt.getTime()
+      : 0;
+  const tb =
+    b.createdAt instanceof Date && !Number.isNaN(b.createdAt.getTime())
+      ? b.createdAt.getTime()
+      : 0;
+  if (ta !== tb) {
+    return ta - tb;
+  }
+  const ha = a._id?.toHexString() ?? "";
+  const hb = b._id?.toHexString() ?? "";
+  return ha.localeCompare(hb);
+}
+
+/**
+ * Enforces exactly one default portfolio per user in the session scope (tenant + legacy null tenant rows).
+ * - Multiple `isDefault: true`: keep the oldest by `createdAt` / `_id`, clear the rest (aligns with partial unique index intent).
+ * - None default but portfolios exist: promote the oldest portfolio; admin can still move default via `adminUpdatePortfolio`.
+ */
+export async function ensureDefaultPortfolioInvariantForUser(
   userId: string,
   options?: TenantScopedOptions
 ): Promise<Portfolio | null> {
   await ensurePortfolioIndexes();
   const db = await getDb();
-  const tenantObjectId = toTenantObjectId(options?.tenantId);
-  const baseFilter: Record<string, unknown> = { ...userIdQuery(userId), isDefault: true };
-  const filter = tenantObjectId
-    ? {
-        ...baseFilter,
-        $or: [
-          { tenantId: tenantObjectId },
-          { tenantId: { $type: "null" } },
-          { tenantId: { $exists: false } }
-        ]
-      }
-    : baseFilter;
-  return db.collection<Portfolio>(collections.portfolios).findOne(filter);
+  const coll = db.collection<Portfolio>(collections.portfolios);
+  const markerFilter = defaultPortfolioMarkerFilter(userId, options?.tenantId);
+  const scopeFilter = userPortfoliosInSessionScopeFilter(userId, options?.tenantId);
+
+  const defaultCount = await coll.countDocuments(markerFilter);
+  if (defaultCount === 1) {
+    return coll.findOne(markerFilter);
+  }
+
+  const now = new Date();
+
+  if (defaultCount > 1) {
+    const marked = await coll
+      .find(markerFilter)
+      .sort({ createdAt: 1, _id: 1 })
+      .toArray();
+    marked.sort(comparePortfolioAge);
+    const keeper = marked[0];
+    if (!keeper?._id) {
+      return null;
+    }
+    const otherIds = marked.slice(1).map((p) => p._id).filter(Boolean) as ObjectId[];
+    if (otherIds.length > 0) {
+      await coll.updateMany(
+        { _id: { $in: otherIds } },
+        { $set: { isDefault: false, updatedAt: now } }
+      );
+    }
+    await coll.updateOne(
+      { _id: keeper._id },
+      { $set: { isDefault: true, updatedAt: now } }
+    );
+    console.warn("[portfolio/invariant] repaired_multiple_default_flags", {
+      userIdPrefix: `${userId.slice(0, 8)}…`,
+      tenantScoped: Boolean(options?.tenantId),
+      clearedCount: otherIds.length
+    });
+    return coll.findOne({ _id: keeper._id });
+  }
+
+  const total = await coll.countDocuments(scopeFilter);
+  if (total === 0) {
+    return null;
+  }
+
+  const all = await coll
+    .find(scopeFilter)
+    .sort({ createdAt: 1, _id: 1 })
+    .toArray();
+  all.sort(comparePortfolioAge);
+  const keeper = all[0];
+  if (!keeper?._id) {
+    return null;
+  }
+  const otherIds = all.slice(1).map((p) => p._id).filter(Boolean) as ObjectId[];
+  if (otherIds.length > 0) {
+    await coll.updateMany(
+      { _id: { $in: otherIds } },
+      { $set: { isDefault: false, updatedAt: now } }
+    );
+  }
+  await coll.updateOne(
+    { _id: keeper._id },
+    { $set: { isDefault: true, updatedAt: now } }
+  );
+  console.warn("[portfolio/invariant] promoted_oldest_portfolio_to_default", {
+    userIdPrefix: `${userId.slice(0, 8)}…`,
+    tenantScoped: Boolean(options?.tenantId),
+    peerCount: otherIds.length
+  });
+  return coll.findOne({ _id: keeper._id });
+}
+
+export async function getDefaultPortfolio(
+  userId: string,
+  options?: TenantScopedOptions
+): Promise<Portfolio | null> {
+  return ensureDefaultPortfolioInvariantForUser(userId, options);
 }
 
 /** Portfolio must belong to the session user (tenant-scoped). */

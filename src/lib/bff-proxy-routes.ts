@@ -4,9 +4,9 @@
  * `atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`.
  *
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
- * Admin **portfolio accounts** (`/api/admin/portfolios/{portfolioId}/accounts` + `…/accounts/{accountId}`) proxy to Spring when origin set; portfolio root + other nested admin portfolio routes remain Next until Kotlin ships.
- * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Tasks are PR 3 (on Spring when
- * ATXFINANCE_BACKEND_ORIGIN is set) — see atx-docs/atx-sre-ops/api-consolidation-spring-backend.md.
+ * App-user portfolio CRUD/watchlist/positions/recommendations/strategy-jobs + `/api/personas` CRUD proxy when origin set.
+ * Admin **portfolio accounts** (`/api/admin/portfolios/{portfolioId}/accounts` + `…/accounts/{accountId}`) proxy; **admin portfolio root** (`GET/POST /api/admin/portfolios`, `GET/PATCH/DELETE …/{id}`) and other admin nested portfolio routes (watchlist, tasks, alerts, recommendations, delivery-channels, nested positions) remain Next-only until Kotlin ships.
+ * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Scheduler/tasks on Spring when origin set — see atx-docs/atx-sre-ops/api-consolidation-spring-backend.md.
  *
  * Deferred vertical slice: xChat streaming routes — see `atx-docs/atx-sre-ops/api-consolidation-spring-backend.md`.
  */

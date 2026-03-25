@@ -7,6 +7,7 @@ vi.mock("@/lib/mongodb", () => ({
 
 import { getDb } from "@/lib/mongodb";
 import {
+    ensureDefaultPortfolioInvariantForUser,
     getDefaultPortfolio,
     provisionDefaultPortfolioForUser,
     upsertPositionForAccount
@@ -79,9 +80,46 @@ function buildFakeDb() {
 
     return {
       createIndex: async () => `${name}_idx`,
+      countDocuments: async (filter: Record<string, unknown>) =>
+        store.filter((doc) => docMatchesFilter(doc, filter)).length,
       findOne: async (filter: Record<string, unknown>) => {
         const found = store.find((doc) => docMatchesFilter(doc, filter));
         return (found as T | undefined) ?? null;
+      },
+      find: (filter: Record<string, unknown>) => {
+        let sortKeys: Array<{ key: string; dir: 1 | -1 }> = [];
+        return {
+          sort(spec: Record<string, 1 | -1>) {
+            sortKeys = Object.entries(spec).map(([key, dir]) => ({ key, dir }));
+            return this;
+          },
+          async toArray(): Promise<T[]> {
+            let rows = store.filter((doc) => docMatchesFilter(doc, filter)) as T[];
+            if (sortKeys.length > 0) {
+              rows = [...rows].sort((a, b) => {
+                const ar = a as DocumentRecord;
+                const br = b as DocumentRecord;
+                for (const { key, dir } of sortKeys) {
+                  const va = ar[key];
+                  const vb = br[key];
+                  let cmp = 0;
+                  if (va instanceof Date && vb instanceof Date) {
+                    cmp = va.getTime() - vb.getTime();
+                  } else if (va instanceof ObjectId && vb instanceof ObjectId) {
+                    cmp = va.toHexString().localeCompare(vb.toHexString());
+                  } else {
+                    cmp = String(va).localeCompare(String(vb));
+                  }
+                  if (cmp !== 0) {
+                    return dir === 1 ? cmp : -cmp;
+                  }
+                }
+                return 0;
+              });
+            }
+            return rows;
+          }
+        };
       },
       updateOne: async (
         filter: Record<string, unknown>,
@@ -199,6 +237,92 @@ describe("portfolio provisioning repository", () => {
     const found = await getDefaultPortfolio(userId, { tenantId });
     expect(found).not.toBeNull();
     expect(found?.userId).toBe(userId);
+  });
+
+  it("ensureDefaultPortfolioInvariantForUser clears duplicate isDefault and keeps oldest", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+    const userId = "507f1f77bcf86cd799439011";
+    const tenantId = "507f1f77bcf86cd799439022";
+    const tenantOid = new ObjectId(tenantId);
+    const older = new ObjectId();
+    const newer = new ObjectId();
+    const t0 = new Date("2020-01-01T00:00:00.000Z");
+    const t1 = new Date("2021-01-01T00:00:00.000Z");
+    fakeDb.seed("tenant_portfolio", {
+      _id: older,
+      userId,
+      isDefault: true,
+      tenantId: tenantOid,
+      name: "First",
+      createdAt: t0,
+      updatedAt: t0
+    });
+    fakeDb.seed("tenant_portfolio", {
+      _id: newer,
+      userId,
+      isDefault: true,
+      tenantId: tenantOid,
+      name: "Second",
+      createdAt: t1,
+      updatedAt: t1
+    });
+
+    const found = await ensureDefaultPortfolioInvariantForUser(userId, { tenantId });
+    expect(found?._id?.toHexString()).toBe(older.toHexString());
+    const after = await fakeDb.db
+      .collection("tenant_portfolio")
+      .find({ userId })
+      .sort({ createdAt: 1 })
+      .toArray();
+    expect(after.find((d) => d._id?.toHexString() === older.toHexString())?.isDefault).toBe(
+      true
+    );
+    expect(after.find((d) => d._id?.toHexString() === newer.toHexString())?.isDefault).toBe(
+      false
+    );
+  });
+
+  it("ensureDefaultPortfolioInvariantForUser promotes oldest when none marked default", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+    const userId = "507f1f77bcf86cd799439011";
+    const tenantId = "507f1f77bcf86cd799439022";
+    const tenantOid = new ObjectId(tenantId);
+    const older = new ObjectId();
+    const newer = new ObjectId();
+    const t0 = new Date("2020-01-01T00:00:00.000Z");
+    const t1 = new Date("2021-01-01T00:00:00.000Z");
+    fakeDb.seed("tenant_portfolio", {
+      _id: older,
+      userId,
+      isDefault: false,
+      tenantId: tenantOid,
+      name: "First",
+      createdAt: t0,
+      updatedAt: t0
+    });
+    fakeDb.seed("tenant_portfolio", {
+      _id: newer,
+      userId,
+      isDefault: false,
+      tenantId: tenantOid,
+      name: "Second",
+      createdAt: t1,
+      updatedAt: t1
+    });
+
+    const found = await ensureDefaultPortfolioInvariantForUser(userId, { tenantId });
+    expect(found?._id?.toHexString()).toBe(older.toHexString());
+    expect(found?.isDefault).toBe(true);
+    const after = await fakeDb.db
+      .collection("tenant_portfolio")
+      .find({ userId })
+      .sort({ createdAt: 1 })
+      .toArray();
+    expect(after.find((d) => d._id?.toHexString() === newer.toHexString())?.isDefault).toBe(
+      false
+    );
   });
 
   it("provisions defaults idempotently and keeps one watchlist per portfolio", async () => {
