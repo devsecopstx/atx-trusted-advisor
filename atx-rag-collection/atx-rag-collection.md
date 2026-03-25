@@ -5,11 +5,15 @@
 ## Table of contents
 
 - [Purpose by segment](#purpose-by-segment)
-- [RAG layout standard (folder = file stem)](#rag-layout-standard-folder--file-stem)
-- [Segment TOC (paths)](#segment-toc-paths)
+- [RAG path layout](#rag-path-layout)
+- [Segment file listing](#segment-file-listing)
+  - [xpersonas](#xpersonas)
+  - [finance-reference-docs](#finance-reference-docs)
+  - [example-prompts](#example-prompts)
+  - [options-strategy](#options-strategy)
 - [Persona YAML schema](#persona-yaml-schema)
 - [Hygiene](#hygiene)
-- [Tests & automation](#tests--automation)
+- [Tests and automation](#tests-and-automation)
 - [Docs parity](#docs-parity)
 
 ---
@@ -18,41 +22,44 @@
 
 | Segment | xAI collection suffix (after `atx-trusted-advisor-<dev|stage|prod>-`) | Role |
 | --- | --- | --- |
-| **`personas-trusted-family/`** | `personas-trusted-family` | xPersona seed specs (`*.yaml`) + optional body markdown. Ingested with **`npm run seed:admin`** when xAI keys resolve — **`scripts/lib/seed-xai-rag-ingest.mjs`**; **`SKIP_SEED_XAI_RAG_INGEST`** opts out. Mongo `xchat_personas` upsert from YAML is tracked in **`atx-docs/PLAN.md`**. |
+| **`xpersonas/`** | `xpersonas` | xPersona seed **`*.yaml`** (per subfolder) plus RAG markdown (**`exam-coach`**, **`super-agent`**, **`finance-xoptions`**, etc.). Ingested with **`npm run seed:admin`** — **`scripts/lib/seed-xai-rag-ingest.mjs`**; **`SKIP_SEED_XAI_RAG_INGEST`** opts out. |
 | **`finance-reference-docs/`** | *(same folder name)* | Reference PDFs (disclosures, licensing). |
-| **`xchat-example-prompts/`** | `xchat-example-prompts` | Example user prompts / scenario copy for UX and KB samples. |
+| **`example-prompts/`** | `example-prompts` | Example user prompts / scenario copy for UX and KB samples. |
 | **`options-strategy/`** | `options-strategy` | Strategy Markdown (`xfinance-strategy-*` frontmatter) + hub index — see **[`options-strategy/README.md`](./options-strategy/README.md)**. |
 
-Legacy folder names **`atx-personas-trusted-family`**, **`atx-xchat-example-prompts`**, **`atx-options-strategy`** are still accepted as **ingest path fallbacks** only (see seed script).
+Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, **`atx-personas-trusted-family`**, **`atx-xchat-example-prompts`**, **`atx-options-strategy`** are still **ingest path fallbacks** (see seed script).
 
 ---
 
-## RAG layout standard (folder = file stem)
+## RAG path layout
 
-**Rule:** Every file that should carry a **stable RAG path tag** must live at:
+**Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`).
 
-`…/<segment>/<stem>/<stem>.<ext>`
+**xpersonas exception:** Subfolders are **short buckets** (e.g. `trusted/`, `legal/`). Each bucket holds **one** persona **`*.yaml`** (filename may differ from folder name; first-line comment + `setup:` must match the real path) **or** a **stem/stem.md** narrative (`exam-coach/exam-coach.md`, `super-agent/super-agent.md`, `finance-xoptions/finance-xoptions.md`).
 
-— i.e. **directory name equals filename stem** (e.g. `wheel/wheel.md`, `atx-example-prompts/atx-example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`). Segment-level **`README.md`** files are for humans; ingest skips lowercase `readme.md` by name.
+Segment-level **`README.md`** files are for humans; ingest skips lowercase `readme.md` by name.
 
-**Why:** Upload logical names derive from relative paths; matching folder and file stem avoids ambiguous tags and keeps indexes aligned with tooling.
+**Why:** Upload logical names derive from relative paths; stable paths improve RAG tags and indexing.
 
 ---
 
-## Segment TOC (paths)
+## Segment file listing
 
-### `personas-trusted-family/`
+### xpersonas
 
-| Path |
-| --- |
-| `atx-legal-advisor/atx-legal-advisor.yaml` |
-| `atx-marriage-planner-advisor/atx-marriage-planner-advisor.yaml` |
-| `atx-medical-advisor/atx-medical-advisor.yaml` |
-| `atx-options-trader-advisor/atx-options-trader-advisor.yaml` |
-| `atx-tax-expert-advisor/atx-tax-expert-advisor.yaml` |
-| `atx-trusted-advisor/atx-trusted-advisor.yaml` |
+| Path | Notes |
+| --- | --- |
+| `trusted/atx-trusted-advisor.yaml` | Persona spec |
+| `legal/legal-advisor.yaml` | Persona spec |
+| `marriage-planner/marriage-planner-advisor.yaml` | Persona spec |
+| `medical/medical-advisor.yaml` | Persona spec |
+| `options-trader/options-trader-advisor.yaml` | Persona spec |
+| `tax-expert/atx-tax-expert-advisor.yaml` | Persona spec |
+| `exam-coach/exam-coach.md` | RAG body |
+| `super-agent/super-agent.md` | RAG body |
+| `finance-xoptions/finance-xoptions.md` | RAG body |
 
-### `finance-reference-docs/`
+### finance-reference-docs
 
 | Path |
 | --- |
@@ -63,13 +70,13 @@ Legacy folder names **`atx-personas-trusted-family`**, **`atx-xchat-example-prom
 | `Series 65-LEM-12E/Series 65-LEM-12E.pdf` |
 | `Series7-LEM-3E-REV5-secured/Series7-LEM-3E-REV5-secured.pdf` |
 
-### `xchat-example-prompts/`
+### example-prompts
 
 | Path |
 | --- |
-| `atx-example-prompts/atx-example-prompts.md` |
+| `example-prompts/example-prompts.md` |
 
-### `options-strategy/`
+### options-strategy
 
 | Path |
 | --- |
@@ -94,12 +101,12 @@ Aligned with **`.cursor/agents/*.yaml`** for tooling parity. These files are **n
 
 | Key | Notes |
 | --- | --- |
-| Top comment | First line: `# atx-rag-collection/personas-trusted-family/<stem>/<stem>.yaml` |
-| `id` / `name` | Match filename stem exactly (e.g. `atx-legal-advisor`, `atx-options-trader-advisor`) |
+| Top comment | First line: `# atx-rag-collection/xpersonas/<bucket>/<file>.yaml` (exact repo path) |
+| `id` / `name` | Stable persona slug for Mongo / product (may differ from folder name) |
 | `description` | Block scalar; product-facing summary |
 | `icon` / `color` | Optional on agents; **required** here for admin/UI parity |
 | `INSTRUCTIONS` | Bullet list for operator / ingest hints |
-| `setup` | Shell one-liner; `test -f atx-rag-collection/personas-trusted-family/<stem>/<stem>.yaml` |
+| `setup` | Shell one-liner; `test -f` the **actual** yaml path under `xpersonas/` |
 | `model` | Default chat model id (e.g. `grok-4-1-fast-reasoning`); app may override via env |
 | `system_prompt` | Block scalar; runtime persona body |
 | `always_include` | Repo paths under `atx-rag-collection/` (or other in-repo globs), not `.cursor/` |
@@ -118,7 +125,7 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 
 ---
 
-## Tests & automation
+## Tests and automation
 
 - **`seed:admin`** walks **`atx-rag-collection/`** when xAI keys are set; see **`scripts/lib/seed-xai-rag-ingest.mjs`**. Layout tests: **`tests/unit/atx-rag-collection-layout.test.ts`**.
 

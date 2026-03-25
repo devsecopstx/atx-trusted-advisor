@@ -14,9 +14,10 @@ app:
   environment: stage         # can be overridden by ENV
   version: "1.0.0"
   # Instance xAI namespace (seed): `atx-<tier>-<site_slug>` from ATX_DEPLOY_TARGET / app.environment / settings.atx_deploy_target
-  # plus ATX_INSTANCE_SITE_SLUG / settings.site_name. One tenant root drives: RAG `{root}-rag`, strategy root files `{root}-xoption-<env>`
-  # (NODE_ENV development|test → dev; else this `environment`, default stage), strategy subfolders `atx-xoption-templates-<folder>`,
-  # xChat history `{root}-chat-<userId>` (when ATX_INSTANCE_COLLECTION_ROOT matches this prefix). Set ATX_INSTANCE_COLLECTION_ROOT in .env to override.
+  # plus ATX_INSTANCE_SITE_SLUG / settings.site_name. Drives display names: team KB `{root}-rag`, strategy root files `{root}-xoption-<env>`
+  # (NODE_ENV development|test → dev; else this `environment`, default stage), xChat history `{root}-chat-<userId>`.
+  # Repo RAG upload uses `atx-trusted-advisor-<dev|stage|prod>` + segments (`xpersonas`, `example-prompts`, `options-strategy`, …) — see `atx-rag-collection/README.md`.
+  # Set ATX_INSTANCE_COLLECTION_ROOT in .env to override the derived prefix.
   # Use the prefix only — not xAI `collection_*` ids (personas still store those for API calls) and not the `*-rag` display name.
 
 urls:

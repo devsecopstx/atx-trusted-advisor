@@ -182,7 +182,7 @@ When **positioning, GTM, waitlist, investor deck copy**, or
 
 When adding or reorganizing content under **`atx-rag-collection/`**:
 
-- **RAG path rule:** each ingestible file at **`atx-rag-collection/<segment>/<stem>/<stem>.<ext>`** (folder name = file stem) — see **`atx-rag-collection/README.md`**. Segments: **`personas-trusted-family/`** (YAML specs), **`finance-reference-docs/`** (PDFs), **`xchat-example-prompts/`**, **`options-strategy/`** (see that folder’s **`README.md`**). Legacy folder names **`atx-*`** are ingest fallbacks only.
+- **RAG path rule:** prefer **`atx-rag-collection/<segment>/<stem>/<stem>.<ext>`** (folder name = file stem) — see **`atx-rag-collection/README.md`**. Segments: **`xpersonas/`** (YAML + markdown), **`finance-reference-docs/`** (PDFs), **`example-prompts/`**, **`options-strategy/`**. Legacy folder names **`personas-trusted-family`**, **`xchat-example-prompts`**, **`atx-*`** are ingest path fallbacks only.
 - Prefer PDF filenames **without spaces**; use a consistent prefix pattern (vendor or topic) for automation.
 - Keep **`atx-rag-collection/README.md`** accurate when layout, seed contract, or ingest behavior changes.
 - Shared prompts should avoid **personal / PII** unless explicitly scoped as non-production samples.

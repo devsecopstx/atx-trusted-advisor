@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -18,32 +18,33 @@ const PERSONA_YAML_REQUIRED_KEYS = [
   "commands:",
 ] as const;
 
-function assertPersonaYamlShape(filePath: string): void {
-  const stem = basename(dirname(filePath));
-  const raw = readFileSync(filePath, "utf8");
-  const first = raw.split("\n")[0] ?? "";
-  expect(first).toBe(`# atx-rag-collection/personas-trusted-family/${stem}/${stem}.yaml`);
-  for (const key of PERSONA_YAML_REQUIRED_KEYS) {
-    expect(raw.includes(`\n${key}`) || raw.startsWith(`${key}\n`) || raw.startsWith(key)).toBe(true);
-  }
-}
-
-function listPersonaSeedYamlFiles(personasDir: string): string[] {
+function walkYamlFiles(absDir: string): string[] {
   const out: string[] = [];
-  for (const ent of readdirSync(personasDir, { withFileTypes: true })) {
-    if (!ent.isDirectory()) {
-      continue;
-    }
-    const stem = ent.name;
-    const yamlPath = join(personasDir, stem, `${stem}.yaml`);
-    if (existsSync(yamlPath)) {
-      out.push(yamlPath);
+  if (!existsSync(absDir)) {
+    return out;
+  }
+  for (const ent of readdirSync(absDir, { withFileTypes: true })) {
+    const p = join(absDir, ent.name);
+    if (ent.isDirectory()) {
+      out.push(...walkYamlFiles(p));
+    } else if (ent.isFile() && ent.name.endsWith(".yaml")) {
+      out.push(p);
     }
   }
   return out.sort();
 }
 
-/** RAG convention: one ingestible file per folder, folder name === file stem (lowercase readme skipped at ingest). */
+function assertPersonaYamlShape(filePath: string, xpersonasRoot: string): void {
+  const rel = relative(xpersonasRoot, filePath).replace(/\\/g, "/");
+  const raw = readFileSync(filePath, "utf8");
+  const first = raw.split("\n")[0] ?? "";
+  expect(first).toBe(`# atx-rag-collection/xpersonas/${rel}`);
+  for (const key of PERSONA_YAML_REQUIRED_KEYS) {
+    expect(raw.includes(`\n${key}`) || raw.startsWith(`${key}\n`) || raw.startsWith(key)).toBe(true);
+  }
+}
+
+/** RAG convention: folder name === file stem (lowercase readme skipped at ingest). */
 function assertKebabFolderContainsSameStemFile(absDir: string, ext: string): void {
   const stem = basename(absDir);
   const expected = join(absDir, `${stem}${ext}`);
@@ -58,26 +59,46 @@ function assertKebabFolderContainsSameStemFile(absDir: string, ext: string): voi
 
 describe("atx-rag-collection layout", () => {
   const base = join(process.cwd(), "atx-rag-collection");
-  const personasDir = join(base, "personas-trusted-family");
+  const xpersonasDir = join(base, "xpersonas");
 
   it("documents RAG source tree paths referenced in README", () => {
     expect(existsSync(join(base, "README.md"))).toBe(true);
-    expect(existsSync(personasDir)).toBe(true);
+    expect(existsSync(xpersonasDir)).toBe(true);
     expect(existsSync(join(base, "finance-reference-docs"))).toBe(true);
-    expect(existsSync(join(base, "xchat-example-prompts"))).toBe(true);
+    expect(existsSync(join(base, "example-prompts"))).toBe(true);
     const strategyDir = join(base, "options-strategy");
     expect(existsSync(strategyDir)).toBe(true);
     expect(existsSync(join(strategyDir, "options-coreskills", "options-coreskills.md"))).toBe(true);
-    expect(existsSync(join(base, "xchat-example-prompts", "atx-example-prompts", "atx-example-prompts.md"))).toBe(
-      true
-    );
+    expect(existsSync(join(base, "example-prompts", "example-prompts", "example-prompts.md"))).toBe(true);
   });
 
-  it("persona seed YAML files match project-standard key set", () => {
-    const yamlFiles = listPersonaSeedYamlFiles(personasDir);
+  it("xpersonas YAML seed specs match project-standard key set and path comment", () => {
+    const yamlFiles = walkYamlFiles(xpersonasDir);
     expect(yamlFiles.length).toBeGreaterThan(0);
     for (const file of yamlFiles) {
-      assertPersonaYamlShape(file);
+      assertPersonaYamlShape(file, xpersonasDir);
+    }
+  });
+
+  it("xpersonas leaf folders with markdown use stem/stem.md", () => {
+    for (const name of ["exam-coach", "super-agent", "finance-xoptions"]) {
+      assertKebabFolderContainsSameStemFile(join(xpersonasDir, name), ".md");
+    }
+  });
+
+  it("xpersonas YAML buckets contain exactly one .yaml per immediate subfolder", () => {
+    for (const ent of readdirSync(xpersonasDir, { withFileTypes: true })) {
+      if (!ent.isDirectory()) {
+        continue;
+      }
+      const sub = join(xpersonasDir, ent.name);
+      const yamls = readdirSync(sub).filter((f) => f.endsWith(".yaml"));
+      const mds = readdirSync(sub).filter((f) => f.endsWith(".md") && f.toLowerCase() !== "readme.md");
+      if (mds.length > 0) {
+        expect(yamls.length, `${sub}: markdown folders should not mix yaml`).toBe(0);
+        continue;
+      }
+      expect(yamls.length, `${sub}: expected exactly one persona yaml`).toBe(1);
     }
   });
 
@@ -107,18 +128,13 @@ describe("atx-rag-collection layout", () => {
     }
   });
 
-  it("xchat-example-prompts uses stem/stem.md", () => {
-    assertKebabFolderContainsSameStemFile(join(base, "xchat-example-prompts", "atx-example-prompts"), ".md");
+  it("example-prompts uses stem/stem.md", () => {
+    assertKebabFolderContainsSameStemFile(join(base, "example-prompts", "example-prompts"), ".md");
   });
 
   it("segment roots do not leave loose ingestible files next to segment folders", () => {
     const exts = new Set([".md", ".pdf", ".yaml", ".yml"]);
-    for (const seg of [
-      "personas-trusted-family",
-      "finance-reference-docs",
-      "xchat-example-prompts",
-      "options-strategy",
-    ]) {
+    for (const seg of ["xpersonas", "finance-reference-docs", "example-prompts", "options-strategy"]) {
       const segDir = join(base, seg);
       for (const name of readdirSync(segDir)) {
         const p = join(segDir, name);

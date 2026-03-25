@@ -1,4 +1,4 @@
-# atx-rag-collection/personas-trusted-family/atx-legal-advisor/atx-legal-advisor.yaml
+# atx-rag-collection/xpersonas/legal/legal-advisor.yaml
 # xPersona / RAG seed spec — same structural keys as `.cursor/agents/*.yaml`; not a Cursor agent file.
 id: atx-legal-advisor
 name: atx-legal-advisor
@@ -15,7 +15,7 @@ INSTRUCTIONS:
   - Always include: "Not legal advice — consult your qualified attorney."
   - Be brutally honest, concise, and direct; ask for more details when needed.
 
-setup: test -f atx-rag-collection/personas-trusted-family/atx-legal-advisor/atx-legal-advisor.yaml && echo "atx persona spec ok"
+setup: test -f atx-rag-collection/xpersonas/legal/legal-advisor.yaml && echo "atx persona spec ok"
 
 model: grok-4-1-fast-reasoning
 

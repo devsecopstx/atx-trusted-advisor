@@ -1,4 +1,4 @@
-# atx-rag-collection/personas-trusted-family/atx-tax-expert-advisor/atx-tax-expert-advisor.yaml
+# atx-rag-collection/xpersonas/tax-expert/atx-tax-expert-advisor.yaml
 # xPersona / RAG seed spec — same structural keys as `.cursor/agents/*.yaml`; not a Cursor agent file.
 id: atx-tax-expert-advisor
 name: atx-tax-expert-advisor
@@ -15,7 +15,7 @@ INSTRUCTIONS:
   - Be brutally honest, concise, and straight to the point.
   - Ask for filing status, income band, and trade facts when outcomes depend on them.
 
-setup: test -f atx-rag-collection/personas-trusted-family/atx-tax-expert-advisor/atx-tax-expert-advisor.yaml && echo "atx persona spec ok"
+setup: test -f atx-rag-collection/xpersonas/tax-expert/atx-tax-expert-advisor.yaml && echo "atx persona spec ok"
 
 model: grok-4-1-fast-reasoning
 

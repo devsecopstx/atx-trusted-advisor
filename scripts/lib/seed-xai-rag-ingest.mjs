@@ -7,8 +7,8 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
-  pickFirstNonEmpty,
-  resolveTrustedAdvisorDeploySlug
+    pickFirstNonEmpty,
+    resolveTrustedAdvisorDeploySlug
 } from "./tenant-defaults-seed.mjs";
 
 /** Stable upload filename: no path separators in the stored name (xAI / OS safe). */
@@ -247,7 +247,7 @@ function dedupeIds(ids) {
 
 /**
  * Creates instance-scoped xAI collections `atx-trusted-advisor-<dev|stage|prod>` plus segment buckets and uploads
- * `atx-rag-collection/{finance-reference-docs,personas-trusted-family,xchat-example-prompts,options-strategy}`.
+ * `atx-rag-collection/{finance-reference-docs,xpersonas,example-prompts,options-strategy}` (legacy folder names still resolved as fallbacks).
  *
  * @param {{
  *   repoRoot: string;
@@ -306,12 +306,12 @@ export async function runSeedXaiRagIngest(opts) {
     },
     { suffix: "finance-reference-docs", repoCandidates: ["finance-reference-docs"] },
     {
-      suffix: "personas-trusted-family",
-      repoCandidates: ["personas-trusted-family", "atx-personas-trusted-family"]
+      suffix: "xpersonas",
+      repoCandidates: ["xpersonas", "personas-trusted-family", "atx-personas-trusted-family"]
     },
     {
-      suffix: "xchat-example-prompts",
-      repoCandidates: ["xchat-example-prompts", "atx-xchat-example-prompts"]
+      suffix: "example-prompts",
+      repoCandidates: ["example-prompts", "xchat-example-prompts", "atx-xchat-example-prompts"]
     },
     { suffix: "options-strategy", repoCandidates: ["options-strategy", "atx-options-strategy"] }
   ];
