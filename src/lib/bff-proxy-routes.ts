@@ -4,6 +4,7 @@
  * `atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`.
  *
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
+ * Admin **portfolio accounts** (`/api/admin/portfolios/{portfolioId}/accounts` + `…/accounts/{accountId}`) proxy to Spring when origin set; portfolio root + other nested admin portfolio routes remain Next until Kotlin ships.
  * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Tasks are PR 3 (on Spring when
  * ATXFINANCE_BACKEND_ORIGIN is set) — see atx-docs/atx-sre-ops/api-consolidation-spring-backend.md.
  *
@@ -74,6 +75,10 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "PUT", path: "/api/admin/deploy-note-configs/{configId}" },
   { method: "DELETE", path: "/api/admin/deploy-note-configs/{configId}" },
   { method: "POST", path: "/api/admin/import/broker" },
+  { method: "GET", path: "/api/admin/portfolios/{portfolioId}/accounts" },
+  { method: "POST", path: "/api/admin/portfolios/{portfolioId}/accounts" },
+  { method: "PATCH", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}" },
+  { method: "DELETE", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}" },
   { method: "GET", path: "/api/rag/files" },
   { method: "POST", path: "/api/rag/files" },
   { method: "GET", path: "/api/rag/files/{fileId}/readiness" },

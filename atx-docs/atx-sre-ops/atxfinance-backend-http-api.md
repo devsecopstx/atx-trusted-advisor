@@ -105,6 +105,12 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `
 | GET \| POST | `/api/admin/deploy-note-configs` | **Global admin only.** List (query `limit` 1–200, `environment` staging\|production) or create deploy-note config. **200** `{ "data": [...] }`, **201** on create. |
 | GET \| PUT \| DELETE | `/api/admin/deploy-note-configs/{configId}` | **Global admin only.** Get, update (partial), or delete config. **404** when not found. |
 | POST | `/api/admin/import/broker` | **Global admin only.** Merrill/Fidelity holdings CSV import. Body: `portfolioId`, `broker` (merrill\|fidelity), `exportType` (holdings), `csv`, `mappings` (broker account ref → core account id), optional `fidelityHoldingsDefaultAccountRef`, optional `dryRun`. **200** `{ "results": [...] }` or `{ "dryRun": true, "accounts": [...] }`. |
+| GET | `/api/admin/portfolios/{portfolioId}/accounts` | **Global admin only.** **200** `{ "data": { portfolio, accountCount, totalCashBalance, accounts } }` (same envelope as Next `admin/portfolios/[portfolioId]/accounts`); **404** invalid id or portfolio missing. |
+| POST | `/api/admin/portfolios/{portfolioId}/accounts` | **Global admin only.** Body `name` (required), optional `type` (merrill\|fidelity\|etrade), `extAccountId`, `cashBalance`. **201** `{ "data": account }`. **400** invalid JSON / validation. |
+| PATCH | `/api/admin/portfolios/{portfolioId}/accounts/{accountId}` | **Global admin only.** At least one of `name`, `cashBalance`, `extAccountId`, `type`, `isDefault` (true clears other defaults), `riskProfile`, `outlook`. **200** `{ "data": account }`. **404** not found. |
+| DELETE | `/api/admin/portfolios/{portfolioId}/accounts/{accountId}` | **Global admin only.** **200** `{ "ok": true }`. **400** last account or not found. |
+
+**Portfolio root** (`GET`/`POST /api/admin/portfolios`, `PATCH`/`DELETE /api/admin/portfolios/{id}`) and nested admin resources (watchlist, positions, tasks, alerts, recommendations, delivery-channels) remain **Next-only** until Kotlin controllers ship — BFF list in `src/lib/bff-proxy-routes.ts` tracks Spring-backed paths only.
 
 **Audit semantics:** `actor` filter behavior can differ between Next (regex on email/username) and Kotlin (exact userId/email/username match) — see `./audit-lineage-and-controls.md`.
 

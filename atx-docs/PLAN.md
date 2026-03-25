@@ -1,6 +1,6 @@
 # Backlog & migration notes
 
-Living backlog for core app, xChat, admin, and BFF. **Frontend marketing details** that are still open live under **§ Stripe & billing**; shipped UI chrome is noted only by reference.
+Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details** that are still open live under **§ Stripe & billing**; shipped UI chrome is noted only by reference.
 
 **Docs index:** [README.md](./README.md) · Phase 1 multi-agent: [atx-xchat/atx-multi-agent.md](./atx-xchat/atx-multi-agent.md) · BFF: [atx-sre-ops/api-consolidation-spring-backend.md](./atx-sre-ops/api-consolidation-spring-backend.md) · **NL / strategy preflight:** [atx-xchat/xchat-nl-collect-inputs.md](./atx-xchat/xchat-nl-collect-inputs.md)
 
@@ -8,14 +8,16 @@ Living backlog for core app, xChat, admin, and BFF. **Frontend marketing details
 
 ## Today / near-term (pick from here)
 
-| Priority | Item | Notes |
-| -------- | ---- | ----- |
-| 1 | **Spring BFF parity (admin portfolios)** | `GET/POST /api/admin/portfolios`, `PATCH/DELETE /api/admin/portfolios/{id}`, nested admin accounts routes: **Next-only** today (no `proxyRequestToBackend`). Add Kotlin + proxy when you want admin traffic on Spring. Update `atx-sre-ops/atxfinance-backend-http-api.md` + smoke parity. |
-| 2 | **Accounts subpage UX** | `/admin/portfolios/[portfolioId]/accounts` — align **Save changes** batch pattern + friendly user/account labels with main portfolios table. |
-| 3 | **Default portfolio invariant** | If a user has multiple portfolios, enforce **exactly one** `isDefault: true` (UX + server guard; align with Mongo partial unique index). |
-| 4 | **Admin portfolio audit** | Log create/update/delete (optional CSV) via `admin_audit_events` / audit pipeline. |
-| 5 | **NL + strategy job tool (xChat)** | Wire **nl**-gathered slots to `/api/strategy-jobs` (BFF) from xChat when product-ready; document tool schema + persona copy. Until then, personas use **nl** only (see `xchat-nl-collect-inputs.md`). |
-| 6 | **Admin seed — RAG sync** | Optional `SEED_RAG_FROM_REPO` (or similar): ingest `atx-rag-collection/xpersonas/`, `finance-reference-docs/`, `example-prompts/`, `options-strategy/` into team collections and/or Mongo `xpersonas`; tests + `generate-docs`. |
+
+| Priority | Item                                     | Notes                                                                                                                                                                                                                                                                                      |
+| -------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1        | **Spring BFF parity (admin portfolios)** | **Shipped (accounts):** `GET/POST …/portfolios/{id}/accounts`, `PATCH/DELETE …/accounts/{accountId}` — BFF + Kotlin (`AdminPortfolioAccountsController`). **Still Next-only:** portfolio root (`GET/POST /api/admin/portfolios`, `PATCH/DELETE …/{id}`), watchlist, positions, tasks, alerts, recommendations, delivery-channels — add Kotlin + `bff-proxy-routes` when ready. |
+| 2        | **Accounts subpage UX**                  | `/admin/portfolios/[portfolioId]/accounts` — align **Save changes** batch pattern + friendly user/account labels with main portfolios table.                                                                                                                                               |
+| 3        | **Default portfolio invariant**          | If a user has multiple portfolios, enforce **exactly one** `isDefault: true` (UX + server guard; align with Mongo partial unique index).                                                                                                                                                   |
+| 4        | **Admin portfolio audit**                | Log create/update/delete (optional CSV) via `admin_audit_events` / audit pipeline.                                                                                                                                                                                                         |
+| 5        | **NL + strategy job tool (xChat)**       | Wire **nl**-gathered slots to `/api/strategy-jobs` (BFF) from xChat when product-ready; document tool schema + persona copy. Until then, personas use **nl** only (see `xchat-nl-collect-inputs.md`).                                                                                      |
+| 6        | **Admin seed — RAG sync**                | Optional `SEED_RAG_FROM_REPO` (or similar): ingest `atx-rag-collection/xpersonas/`, `finance-reference-docs/`, `example-prompts/`, `options-strategy/` into team collections and/or Mongo `xpersonas`; tests + `generate-docs`.                                                            |
+
 
 **Deferred product TODOs**
 
@@ -32,17 +34,21 @@ Order: **Backend orchestrator** → **LLM + artifact** → **SRE** → **Fronten
 
 ### Chunk 1 — Orchestrator (partially shipped)
 
-| Step | Deliverable | Status |
-| ---- | ----------- | ------ |
-| 1.1–1.2 | Mongo `strategy_jobs`, Spring `StrategyJobService` + `StrategyJobsController`, hourly cap + idempotency, Next BFF proxy + 503 when backend off | **Shipped (initial)** |
-| 1.3 | Redis hot keys / RL counters | **Open** (optional; caps work without Redis) |
-| 1.4 | JVM tests | **Shipped** (`StrategyJobServiceTest` etc.) |
+
+| Step    | Deliverable                                                                                                                                    | Status                                       |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| 1.1–1.2 | Mongo `strategy_jobs`, Spring `StrategyJobService` + `StrategyJobsController`, hourly cap + idempotency, Next BFF proxy + 503 when backend off | **Shipped (initial)**                        |
+| 1.3     | Redis hot keys / RL counters                                                                                                                   | **Open** (optional; caps work without Redis) |
+| 1.4     | JVM tests                                                                                                                                      | **Shipped** (`StrategyJobServiceTest` etc.)  |
+
 
 ### Chunk 2 — LLM tier + artifact v1
 
-| Step | Deliverable |
-| ---- | ----------- |
+
+| Step    | Deliverable                                                                                                                   |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | 2.1–2.4 | Context bundle, async xAI path, artifact v1 validation + error codes, BFF route parity docs + `backend-http-api-parity` smoke |
+
 
 **Exit:** Validated handoff payload + stable `jobId` / `correlationId`; documented failure codes.
 
@@ -64,12 +70,14 @@ OpenAPI parity, `atxdesign-review-audit` gaps, product doc parity (`xchat-tools-
 
 ## SRE status
 
-| Area | Status | Notes |
-| ---- | ------ | ----- |
-| BFF frontend→backend | Verified | Proxied routes in `bff-proxy-routes.ts`; **`/api/admin/portfolios/**` intentionally Next-only** until Spring implements it. |
-| Auth / OAuth | Next authoritative | See [auth-oauth-spring-dual-run.md](./atx-sre-ops/auth-oauth-spring-dual-run.md). |
-| Deploy | GitHub Actions | `AGENTS.md` + `.github/workflows/deploy-cloud-run.yml` (staging) / production workflow. |
-| CI gate | Pass | `npm run ci:gate` — lint, typecheck, tests. |
+
+| Area                 | Status             | Notes                                                                                                                       |
+| -------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| BFF frontend→backend | Verified           | `bff-proxy-routes.ts`; admin **portfolio accounts** CRUD proxied when `ATXFINANCE_BACKEND_ORIGIN` set. Other `/api/admin/portfolios/**` (root + nested) still Next-only until Kotlin. |
+| Auth / OAuth         | Next authoritative | See [auth-oauth-spring-dual-run.md](./atx-sre-ops/auth-oauth-spring-dual-run.md).                                           |
+| Deploy               | GitHub Actions     | `AGENTS.md` + `.github/workflows/deploy-cloud-run.yml` (staging) / production workflow.                                     |
+| CI gate              | Pass               | `npm run ci:gate` — lint, typecheck, tests.                                                                                 |
+
 
 ---
 
@@ -99,7 +107,7 @@ Scope delivered: `getScopeReadinessSummary`, ask-route gate, multi-source orches
 
 ## Stripe & billing (from frontend plan)
 
-**Not implemented:** Stripe Checkout/Portal, `POST /api/webhooks/stripe`, Mongo subscription fields, plan gating hooks. See variables sketch in archived notes or add `STRIPE_*` to `DEVELOPMENT.md` when starting.
+**Not implemented:** Stripe Checkout/Portal, `POST /api/webhooks/stripe`, Mongo subscription fields, plan gating hooks. See variables sketch in archived notes or add `STRIPE_`* to `DEVELOPMENT.md` when starting.
 
 ---
 
@@ -107,3 +115,4 @@ Scope delivered: `getScopeReadinessSummary`, ask-route gate, multi-source orches
 
 - xChat streaming on Spring + BFF (`api-consolidation-spring-backend.md`).
 - Strict JSON Schema for strategy artifacts v2 (`atx-multi-agent.md`).
+

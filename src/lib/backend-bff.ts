@@ -170,6 +170,14 @@ export const nextBffApi = {
     importBroker: {
       pathTemplate: "/api/admin/import/broker",
       methods: ["POST"]
+    },
+    portfolioAccountsIndex: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts",
+      methods: ["GET", "POST"]
+    },
+    portfolioAccountById: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}",
+      methods: ["PATCH", "DELETE"]
     }
   },
   rag: {

@@ -1,13 +1,13 @@
 # API consolidation: Next.js → atxfinance-backend (Spring)
 
 **Status:** in progress (extended BFF slices shipped).  
-**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **portfolios + positions**, **recommendations** (app + portfolio; optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set), **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests** (list/create/review/delete), **user-feedback**, **admin bootstrap-status**, **admin audit (GET)**, and **RAG files (GET + POST)** — inventory in **`xai_collections`** — see `./atxfinance-backend-http-api.md`. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
+**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **portfolios + positions**, **recommendations** (app + portfolio; optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set), **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests** (list/create/review/delete), **admin portfolio accounts** (`/api/admin/portfolios/{portfolioId}/accounts` + account id mutations), **user-feedback**, **admin bootstrap-status**, **admin audit (GET)**, and **RAG files (GET + POST)** — inventory in **`xai_collections`** — see `./atxfinance-backend-http-api.md`. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
 
 ## Migration status board
 
 | Area | Spring | Notes |
 |------|--------|--------|
-| Portfolios, positions, watchlist | Yes | |
+| Portfolios, positions, watchlist | Yes | App-user paths; admin **portfolio root + nested watchlist** still Next-only. |
 | Recommendations (app + per-portfolio) | Yes | Pub/Sub: Next `publishRecommendationEvent` when BFF off; Kotlin `RecommendationEventPublisher` when BFF on (`RECOMMENDATIONS_PUBSUB_TOPIC`). |
 | Strategy-options | Yes | Yahoo + synthetic fallback on JVM. |
 | Personas | Yes | Audit writes in Kotlin (`PersonaService`). |
@@ -51,7 +51,7 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 
 **Proxied today:** `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` (read-only); **`/api/admin/access-requests`** (CRUD + review) — see `./atxfinance-backend-http-api.md`.
 
-**Proxied with Spring parity:** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), tasks / scheduler. Enable via **`ATXFINANCE_BACKEND_ORIGIN`** (PR 3 tasks; PR 4 deploy-note + import — same origin).
+**Proxied with Spring parity:** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), tasks / scheduler, **admin portfolio accounts** (list/create/patch/delete under a portfolio id). Enable via **`ATXFINANCE_BACKEND_ORIGIN`** (PR 3 tasks; PR 4 deploy-note + import — same origin).
 
 ## PR 3 & PR 4 — real migration slices (not “code-only” PRs)
 
