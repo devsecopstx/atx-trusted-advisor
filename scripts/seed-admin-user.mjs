@@ -337,7 +337,13 @@ async function seed() {
     });
 
     let strategyCollectionIds = [];
-    let ragIngest = { ragUploaded: 0, warnings: [] };
+    let ragIngest = {
+      ragUploaded: 0,
+      ragFileCandidates: 0,
+      strategyCollectionsDetail: [],
+      strategyFilesUploaded: 0,
+      warnings: []
+    };
     if (!shouldSkipSeedXaiRagIngest()) {
       const mgmtBase = m.xaiMgmtBaseUrl.replace(/\/$/, "");
       const xaiBaseUrl = m.xaiBaseUrl.replace(/\/$/, "");
@@ -361,6 +367,13 @@ async function seed() {
     } else {
       console.log("[seed:admin] SKIP_SEED_XAI_RAG_INGEST set — skipping atx-rag-collection / strategy-template upload");
     }
+
+    const xaiTeamIdUsed = (m.xaiTeamId || "").trim();
+    const teamUuidForStrategy = teamUuidForXaiIngest(m.xaiTeamId);
+    const envAtxRootOverride = (process.env.ATX_INSTANCE_COLLECTION_ROOT || "").trim();
+    const strategyCollectionsDetail = ragIngest.strategyCollectionsDetail ?? [];
+    const strategyFilesUploaded = ragIngest.strategyFilesUploaded ?? 0;
+    const ragFileCandidates = ragIngest.ragFileCandidates ?? 0;
 
     const collectionsSearchIds = dedupeTrimmedIds([teamKbCollectionId, ...strategyCollectionIds]);
     const superAgentTools = buildSuperAgentXapiTools(collectionsSearchIds);
@@ -451,6 +464,7 @@ async function seed() {
       userId: seedUserIdHex,
       requestedRole: "global_admin"
     });
+    let accessRequestInserted = false;
     if (!seedPaper) {
       await db.collection(adminAccessRequests).insertOne({
         tenantId: tenant._id,
@@ -465,6 +479,7 @@ async function seed() {
         reviewedBy: seedUserIdHex,
         reviewedAt: now
       });
+      accessRequestInserted = true;
     }
 
     if (ADMIN_SEED_X_USER_ID) {
@@ -612,35 +627,75 @@ async function seed() {
       }
     }
 
+    const payload = {
+      ok: true,
+      adminEmail: email,
+      xUserIdLinked: ADMIN_SEED_X_USER_ID || undefined,
+      xchatUserHistory:
+        "Deferred to first xChat session (GET /api/xchat/collections → resolveOrCreateUserBootstrapCollection)",
+      ragIngestRagFilesUploaded: ragIngest.ragUploaded,
+      ragIngestRagFileCandidates: ragFileCandidates,
+      ragIngestStrategyCollectionCount: strategyCollectionIds.length,
+      ragIngestStrategyFilesUploaded: strategyFilesUploaded,
+      ragIngestStrategyCollectionsDetail: strategyCollectionsDetail,
+      collectionsSearchCollectionIds: collectionsSearchIds,
+      atxInstanceCollectionRoot: seedTenant.atxInstanceCollectionRoot,
+      atxInstanceCollectionRootEnvOverride: envAtxRootOverride || undefined,
+      teamRagCollectionDisplayName: seedTenant.ragKbDisplayName || undefined,
+      xaiTeamIdUsed: xaiTeamIdUsed || undefined,
+      xaiTeamUuidForStrategyCollections: teamUuidForStrategy || undefined,
+      teamKbCollectionId: teamKbCollectionId || undefined,
+      atxInstanceEnvHint: seedTenant.atxInstanceCollectionRoot
+        ? `Set ATX_INSTANCE_COLLECTION_ROOT=${JSON.stringify(seedTenant.atxInstanceCollectionRoot)} only (tenant prefix). Do not use team KB id (${teamKbCollectionId || "n/a"}) or display name ${JSON.stringify(seedTenant.ragKbDisplayName || `${seedTenant.atxInstanceCollectionRoot}-rag`)}. Naming: RAG=\`${seedTenant.atxInstanceCollectionRoot}-rag\`, strategies=\`${seedTenant.atxInstanceCollectionRoot}-xoption--*\`, xChat history=\`${seedTenant.atxInstanceCollectionRoot}-chat-<mongoUserId>\`. xPersonas store collection_* ids in Mongo for xAI APIs — logical namespace is still this root.`
+        : "No atxInstanceCollectionRoot from tenant_defaults — set ATX_INSTANCE_COLLECTION_ROOT manually if you use instance-scoped xChat collections.",
+      userId: String(user._id),
+      tenantId: String(tenant._id),
+      tenantSlug: tenant.slug,
+      defaultPersonaId: String(persona._id),
+      defaultPersonaName: persona.name,
+      defaultPortfolioId: String(portfolio._id),
+      defaultAccountId: String(account._id),
+      defaultWatchlistId: String(watchlist._id),
+      xPrelinked: Object.keys(xPre).length > 0,
+      mongo: {
+        database: DB_NAME,
+        accessRequestInserted,
+        note: "Upserted core_tenants, xchat_personas (Super-Agent), core_users, core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; see accessRequestInserted for admin_access_requests."
+      }
+    };
+
     console.log(
-      JSON.stringify(
-        {
-          ok: true,
-          adminEmail: email,
-          xUserIdLinked: ADMIN_SEED_X_USER_ID || undefined,
-          xchatUserHistory:
-            "Deferred to first xChat session (GET /api/xchat/collections → resolveOrCreateUserBootstrapCollection)",
-          ragIngestRagFilesUploaded: ragIngest.ragUploaded,
-          ragIngestStrategyCollectionCount: strategyCollectionIds.length,
-          collectionsSearchCollectionIds: collectionsSearchIds,
-          atxInstanceCollectionRoot: seedTenant.atxInstanceCollectionRoot,
-          teamRagCollectionDisplayName: seedTenant.ragKbDisplayName || undefined,
-          atxInstanceEnvHint:
-            "Set ATX_INSTANCE_COLLECTION_ROOT to atxInstanceCollectionRoot in deployment .env so runtime user xChat history uses the same namespace ({root}-chat-<userId>).",
-          userId: String(user._id),
-          tenantId: String(tenant._id),
-          tenantSlug: tenant.slug,
-          defaultPersonaId: String(persona._id),
-          defaultPersonaName: persona.name,
-          defaultPortfolioId: String(portfolio._id),
-          defaultAccountId: String(account._id),
-          defaultWatchlistId: String(watchlist._id),
-          xPrelinked: Object.keys(xPre).length > 0
-        },
-        null,
-        2
-      )
+      [
+        "",
+        "======== seed:admin summary ==============================================",
+        `Mongo database:              ${DB_NAME}`,
+        "Mongo writes:                tenant, Super-Agent persona, admin user, membership, default portfolio/account/watchlist, admin_user_settings (upsert)",
+        `                             admin_access_requests: ${accessRequestInserted ? "inserted approved paper row" : "already present — skipped"}`,
+        `ATX_INSTANCE_COLLECTION_ROOT (effective): ${seedTenant.atxInstanceCollectionRoot || "(none)"}`,
+        `  .env override:             ${envAtxRootOverride || "(unset — computed from ATX_DEPLOY_TARGET / site_name / tenant_defaults)"}`,
+        `XAI_TEAM_ID (merged):        ${xaiTeamIdUsed || "(unset)"}`,
+        `Team UUID for strategies:   ${teamUuidForStrategy || "(n/a — literal collection_* id or no team)"}`,
+        `Team KB collection id:       ${teamKbCollectionId || "(none)"}`,
+        `Team RAG display name:     ${seedTenant.ragKbDisplayName || "(n/a)"}`,
+        shouldSkipSeedXaiRagIngest()
+          ? [
+              "xAI RAG ingest:            skipped (SKIP_SEED_XAI_RAG_INGEST)",
+              `collections_search ids:    ${collectionsSearchIds.length} (${collectionsSearchIds.join(", ") || "—"})`
+            ].join("\n")
+          : [
+              `xAI RAG files:              ${ragIngest.ragUploaded} uploaded / ${ragFileCandidates} candidates (team KB)`,
+              `xAI strategy collections:   ${strategyCollectionsDetail.length} named buckets, ${strategyFilesUploaded} files uploaded total`,
+              ...strategyCollectionsDetail.map(
+                (s) => `    • ${s.displayName} → ${s.collectionId} (${s.filesUploaded} docs)`
+              ),
+              `collections_search ids:    ${collectionsSearchIds.length} (${collectionsSearchIds.join(", ") || "—"})`
+            ].join("\n"),
+        "=========================================================================",
+        ""
+      ].join("\n")
     );
+
+    console.log(JSON.stringify(payload, null, 2));
   } finally {
     await client.close();
   }

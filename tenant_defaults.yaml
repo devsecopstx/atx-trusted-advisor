@@ -14,7 +14,9 @@ app:
   environment: stage         # can be overridden by ENV
   version: "1.0.0"
   # Instance xAI namespace (seed): `atx-<tier>-<site_slug>` from ATX_DEPLOY_TARGET / app.environment / settings.atx_deploy_target
-  # plus ATX_INSTANCE_SITE_SLUG / settings.site_name. RAG: `{root}-rag`; strategies: `{root}-xoption--*`. Set ATX_INSTANCE_COLLECTION_ROOT in .env to override.
+  # plus ATX_INSTANCE_SITE_SLUG / settings.site_name. One tenant root drives: RAG `{root}-rag`, strategies `{root}-xoption--*`,
+  # xChat history `{root}-chat-<userId>` (when ATX_INSTANCE_COLLECTION_ROOT matches this prefix). Set ATX_INSTANCE_COLLECTION_ROOT in .env to override.
+  # Use the prefix only — not xAI `collection_*` ids (personas still store those for API calls) and not the `*-rag` display name.
 
 urls:
   frontend: "http://localhost:3000"
@@ -78,10 +80,10 @@ initial_seed:
 
   settings:                          # key-value store style (very common)
     - key: site_name
-      value: "atx-fintech-advisor"
+      value: "atx-trusted-advisor"
       type: string
       public: true
-      description: "ATXFINANCE"
+      description: "ATX-Trusted-Advisor"
 
     - key: support_email
       value: sperezintexas@gmail.com

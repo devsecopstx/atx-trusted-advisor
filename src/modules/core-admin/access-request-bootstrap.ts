@@ -1,7 +1,10 @@
 import { ObjectId } from "mongodb";
 import { createHash } from "node:crypto";
 
-import { resolveUserHistoryXaiCollectionDisplayName } from "@/lib/atx-instance-collection-root";
+import {
+    resolveNormalizedAtxInstanceCollectionRoot,
+    resolveUserHistoryXaiCollectionDisplayName
+} from "@/lib/atx-instance-collection-root";
 import { getDb } from "@/lib/mongodb";
 import { sendSlackNotification } from "@/lib/slack";
 import {
@@ -387,7 +390,7 @@ async function ensureUserCollection(input: {
   const uid = input.userId.trim().toLowerCase();
   const legacyAtxChat = `atx-chat-${uid}-history`;
   const namesToMatch = new Set([want, legacyWant]);
-  if (process.env.ATX_INSTANCE_COLLECTION_ROOT?.trim() && legacyAtxChat !== want) {
+  if (resolveNormalizedAtxInstanceCollectionRoot() && legacyAtxChat !== want) {
     namesToMatch.add(legacyAtxChat);
   }
   const found = inventory.find((item) => {

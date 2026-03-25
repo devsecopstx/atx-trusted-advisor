@@ -69,17 +69,19 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 ---
 
-## Options — atx-options
+## Options — strategy narratives (RAG + seed)
 
-**Reviewer / agent quick index:** **[`atx-readme-coreskills.md`](./atx-options/atx-strategy-templates/atx-readme-coreskills.md)** — one table with **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook** columns, and links to **`.cursor/skills/atx-skill-*/SKILL.md`**. Use this for parity checks against persona tools and options education copy.
+**Canonical tree:** **[`atx-rag-collection/atx-options-strategy/`](../atx-rag-collection/atx-options-strategy/README.md)** — Markdown narratives ingested with **`npm run seed:admin`** (same repo area as persona RAG). **`atx-docs/atx-options/README.md`](./atx-options/README.md)** is a short redirect stub for old bookmarks.
+
+**Reviewer / agent quick index:** **[`atx-readme-coreskills.md`](../atx-rag-collection/atx-options-strategy/atx-readme-coreskills.md)** — **`xfinance-strategy-*` id**, path, **risk** & **outlook**, links to **`.cursor/skills/atx-skill-*/SKILL.md`**.
 
 | Doc | Purpose |
 |-----|---------|
-| **[atx-readme-coreskills.md](./atx-options/atx-strategy-templates/atx-readme-coreskills.md)** | **★ Quick lookup:** automation id ↔ doc ↔ **detail skill** ↔ risk / outlook |
-| **[atx-options/README.md](./atx-options/README.md)** | Hub: header, TOC, full strategy ↔ narrative ↔ **`atx-skill-*`** map |
-| [atx-options-readme.md](./atx-options/atx-strategy-templates/atx-options-readme.md) | Redirect stub → `atx-options/README.md` |
+| **[atx-readme-coreskills.md](../atx-rag-collection/atx-options-strategy/atx-readme-coreskills.md)** | **★ Quick lookup:** automation id ↔ narrative ↔ skill ↔ risk / outlook |
+| **[atx-options-strategy README](../atx-rag-collection/atx-options-strategy/README.md)** | Hub: TOC, strategy ↔ skill map |
+| [atx-options stub](./atx-options/README.md) | Redirect → RAG tree |
 
-**Folder convention:** `atx-options/atx-strategy-templates/atx-<slug>/atx-<slug>.md` (frontmatter `xfinance-strategy-*`). Full playbooks: `.cursor/skills/atx-skill-*/SKILL.md`.
+**Folder convention:** `atx-rag-collection/atx-options-strategy/atx-<slug>/atx-<slug>.md` (frontmatter `xfinance-strategy-*`). Full playbooks: `.cursor/skills/atx-skill-*/SKILL.md`.
 
 ---
 
@@ -89,6 +91,8 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 |------|---------|
 | [atx-multi-agent-design-loop.mmd](./atx-xchat/atx-multi-agent-design-loop.mmd) | Multi-agent flow (Mermaid) |
 | [super-agent-model157.mmd](./atx-xchat/super-agent-model157.mmd) | Super-agent diagram (Mermaid) |
+| [atx-branding/](./atx-branding/) | Brand prompts, palette, marketing copy (reference assets) |
+| [atx-design-system/](./atx-design-system/) | Brand kit CSS/MD/HTML reference (**app import:** root **`design-system/`** mirrors CSS for Next `layout.tsx`) |
 
 ---
 

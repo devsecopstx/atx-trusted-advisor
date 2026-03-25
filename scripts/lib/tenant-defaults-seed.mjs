@@ -60,10 +60,26 @@ function clampRoot(root) {
  * @param {Record<string, string>} settings from initial_seed.settings
  * @param {import("yaml").ParsedNode | null} doc
  */
+const XAI_KB_COLLECTION_ID_RE = /^collection_[a-z0-9_-]+$/i;
+
 export function buildAtxInstanceCollectionRootFromTenantDoc(settings, doc) {
-  const explicit = pickFirstNonEmpty(process.env.ATX_INSTANCE_COLLECTION_ROOT);
-  if (explicit) {
-    return clampRoot(explicit.toLowerCase().replace(/\s+/g, "-"));
+  const explicitRaw = pickFirstNonEmpty(process.env.ATX_INSTANCE_COLLECTION_ROOT);
+  if (explicitRaw) {
+    const lowered = explicitRaw.trim().toLowerCase();
+    if (XAI_KB_COLLECTION_ID_RE.test(lowered)) {
+      console.warn(
+        "[seed:admin] ATX_INSTANCE_COLLECTION_ROOT looks like an xAI collection id — ignoring it. Use the tenant prefix (same as JSON field atxInstanceCollectionRoot), e.g. atx-stage-my-site, not collection_*."
+      );
+    } else {
+      let normalized = lowered.replace(/\s+/g, "-");
+      if (normalized.endsWith("-rag")) {
+        console.warn(
+          "[seed:admin] ATX_INSTANCE_COLLECTION_ROOT should be the tenant prefix only; stripping trailing -rag (team KB display name is {root}-rag)."
+        );
+        normalized = normalized.slice(0, -4).replace(/-+$/, "");
+      }
+      return clampRoot(normalized);
+    }
   }
 
   const tier = pickFirstNonEmpty(

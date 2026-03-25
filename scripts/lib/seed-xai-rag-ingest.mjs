@@ -226,17 +226,28 @@ export async function runSeedXaiRagIngest(opts) {
 
   /** @type {string[]} */
   const strategyCollectionIds = [];
+  /** @type {{ collectionId: string; displayName: string; filesUploaded: number }[]} */
+  const strategyCollectionsDetail = [];
   let ragUploaded = 0;
+  let ragFileCandidates = 0;
 
   if (!opts.xaiApiKey?.trim() || !opts.mgmtKey?.trim()) {
     warnings.push("missing XAI_API_KEY or XAI_MANAGEMENT_API_KEY — skip RAG ingest");
-    return { ragUploaded: 0, strategyCollectionIds, warnings };
+    return {
+      ragUploaded: 0,
+      ragFileCandidates: 0,
+      strategyCollectionIds,
+      strategyCollectionsDetail,
+      strategyFilesUploaded: 0,
+      warnings
+    };
   }
 
   if (!opts.skipAtxRag && kbId) {
     const ragRoot = join(opts.repoRoot, "atx-rag-collection");
     try {
       const files = await walkIngestFiles(ragRoot, { maxBytes: maxBytes });
+      ragFileCandidates = files.length;
       for (const f of files) {
         const logical = normalizeLogicalUploadName("atx-rag", f.rel);
         const bytes = await readFile(f.abs);
@@ -265,7 +276,7 @@ export async function runSeedXaiRagIngest(opts) {
   }
 
   if (!opts.skipStrategyTemplates && teamId) {
-    const stratRoot = join(opts.repoRoot, "atx-docs/atx-options/atx-strategy-templates");
+    const stratRoot = join(opts.repoRoot, "atx-rag-collection/atx-options-strategy");
     /** @type {string[]} */
     const rootFiles = [];
     try {
@@ -285,6 +296,7 @@ export async function runSeedXaiRagIngest(opts) {
               mgmtBase: opts.mgmtBase
             });
             strategyCollectionIds.push(id);
+            let folderUploaded = 0;
             const subFiles = await walkIngestFiles(abs, { maxBytes: maxBytes });
             for (const f of subFiles) {
               const rel = `${ent.name}/${f.rel}`;
@@ -300,11 +312,17 @@ export async function runSeedXaiRagIngest(opts) {
                   logicalFilename: logical,
                   bytes
                 });
+                folderUploaded += 1;
                 console.log(`[seed:xai-ingest] ${displayName}: ${logical}`);
               } catch (e) {
                 warnings.push(`strategy ${rel}: ${e instanceof Error ? e.message : e}`);
               }
             }
+            strategyCollectionsDetail.push({
+              collectionId: id,
+              displayName,
+              filesUploaded: folderUploaded
+            });
           } catch (e) {
             warnings.push(`collection ${displayName}: ${e instanceof Error ? e.message : e}`);
           }
@@ -331,6 +349,7 @@ export async function runSeedXaiRagIngest(opts) {
           if (!strategyCollectionIds.includes(id)) {
             strategyCollectionIds.push(id);
           }
+          let coreUploaded = 0;
           for (const abs of rootFiles) {
             const st = await stat(abs);
             if (st.size > maxBytes) {
@@ -348,11 +367,17 @@ export async function runSeedXaiRagIngest(opts) {
                 logicalFilename: logical,
                 bytes
               });
+              coreUploaded += 1;
               console.log(`[seed:xai-ingest] ${displayName}: ${logical}`);
             } catch (e) {
               warnings.push(`strategy root ${basename(abs)}: ${e instanceof Error ? e.message : e}`);
             }
           }
+          strategyCollectionsDetail.push({
+            collectionId: id,
+            displayName,
+            filesUploaded: coreUploaded
+          });
         } catch (e) {
           warnings.push(`collection ${displayName}: ${e instanceof Error ? e.message : e}`);
         }
@@ -364,7 +389,16 @@ export async function runSeedXaiRagIngest(opts) {
     warnings.push("XAI_TEAM_ID unset — skip atx-xoption-templates collections (team-scoped create)");
   }
 
-  return { ragUploaded, strategyCollectionIds, warnings };
+  const strategyFilesUploaded = strategyCollectionsDetail.reduce((n, s) => n + s.filesUploaded, 0);
+
+  return {
+    ragUploaded,
+    ragFileCandidates,
+    strategyCollectionIds,
+    strategyCollectionsDetail,
+    strategyFilesUploaded,
+    warnings
+  };
 }
 
 function slugFolderName(name) {
