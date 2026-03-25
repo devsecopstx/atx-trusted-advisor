@@ -60,6 +60,19 @@ class AdminPortfolioAccountsService(
         return mongoTemplate.findById(ObjectId(portfolioId), Document::class.java, props.portfoliosCollection)
     }
 
+    /** Owner user id + optional tenant hex for portfolio-scoped admin writes (alerts, recommendations, …). */
+    data class PortfolioOwnerScope(
+        val portfolio: Document,
+        val ownerUserId: String,
+        val tenantIdHex: String?,
+    )
+
+    fun resolvePortfolioOwnerScope(portfolioId: String): PortfolioOwnerScope? {
+        val portfolio = findPortfolioById(portfolioId) ?: return null
+        val ownerUserId = portfolioUserIdString(portfolio) ?: return null
+        return PortfolioOwnerScope(portfolio, ownerUserId, portfolioTenantIdHex(portfolio))
+    }
+
     /** Portfolio document plus account row when [accountId] belongs to that portfolio (global-admin paths). */
     fun findAccountInPortfolio(portfolioId: String, accountId: String): Pair<Document, Document>? {
         if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId)) {

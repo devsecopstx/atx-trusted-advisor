@@ -277,14 +277,19 @@ class AdminScheduledTasksService(
         return status to output
     }
 
+    fun scheduledTaskToJson(doc: Document): Map<String, Any?> = serializeScheduledTask(doc)
+
     private fun serializeScheduledTask(doc: Document): Map<String, Any?> {
         val m = mutableMapOf<String, Any?>()
         doc.getObjectId("_id")?.let { m["_id"] = it.toHexString() }
         doc.getObjectId("tenantId")?.let { m["tenantId"] = it.toHexString() }
+        doc.getObjectId("portfolioId")?.let { m["portfolioId"] = it.toHexString() }
         m["name"] = doc.getString("name")
         m["category"] = doc.getString("category")
         m["scheduleCron"] = doc.getString("scheduleCron")
         m["enabled"] = doc.getBoolean("enabled")
+        (doc["runTimeoutSeconds"] as? Number)?.toInt()?.let { m["runTimeoutSeconds"] = it }
+        (doc["maxRetries"] as? Number)?.toInt()?.let { m["maxRetries"] = it }
         doc.getDate("lastRunAt")?.let { m["lastRunAt"] = it.toInstant().toString() }
         doc.getDate("nextRunAt")?.let { m["nextRunAt"] = it.toInstant().toString() }
         return m

@@ -14,11 +14,11 @@ vi.mock("@/lib/backend-bff", () => ({
 
 vi.mock("@/lib/api-auth", () => authMocks);
 
-import { GET as getAdminWatchlist, PATCH as patchAdminWatchlist } from "@/app/api/admin/portfolios/[portfolioId]/watchlist/route";
 import {
     GET as getAdminPositions,
     POST as postAdminPositions
 } from "@/app/api/admin/portfolios/[portfolioId]/accounts/[accountId]/positions/route";
+import { GET as getAdminWatchlist, PATCH as patchAdminWatchlist } from "@/app/api/admin/portfolios/[portfolioId]/watchlist/route";
 
 const portfolioId = "507f1f77bcf86cd799439033";
 const accountId = "507f1f77bcf86cd799439044";

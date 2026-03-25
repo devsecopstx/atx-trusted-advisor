@@ -21,6 +21,8 @@ data class AtxfinanceProperties(
     val deployNoteConfigsCollection: String = "admin_deploy_note_configs",
     val appUserRecommendationsCollection: String = "app_user_recommendations",
     val portfolioRecommendationsCollection: String = "portfolio_recommendations",
+    val portfolioAlertsCollection: String = "portfolio_alerts",
+    val portfolioDeliveryChannelsCollection: String = "portfolio_delivery_channels",
     val ragFilesCollection: String = "xai_collections",
     val ragChunksCollection: String = "xchat_rag_chunks",
     val xchatLogsCollection: String = "xchat_logs",
