@@ -355,7 +355,8 @@ async function seed() {
         xaiBaseUrl,
         mgmtKey: m.xaiMgmtKey,
         mgmtBase,
-        instanceRootPrefix: seedTenant.atxInstanceCollectionRoot
+        instanceRootPrefix: seedTenant.atxInstanceCollectionRoot,
+        strategyCollectionEnvSlug: seedTenant.strategyCollectionEnvSlug
       });
       strategyCollectionIds = ragIngest.strategyCollectionIds ?? [];
       for (const w of ragIngest.warnings ?? []) {
@@ -646,7 +647,7 @@ async function seed() {
       xaiTeamUuidForStrategyCollections: teamUuidForStrategy || undefined,
       teamKbCollectionId: teamKbCollectionId || undefined,
       atxInstanceEnvHint: seedTenant.atxInstanceCollectionRoot
-        ? `Set ATX_INSTANCE_COLLECTION_ROOT=${JSON.stringify(seedTenant.atxInstanceCollectionRoot)} only (tenant prefix). Do not use team KB id (${teamKbCollectionId || "n/a"}) or display name ${JSON.stringify(seedTenant.ragKbDisplayName || `${seedTenant.atxInstanceCollectionRoot}-rag`)}. Naming: RAG=\`${seedTenant.atxInstanceCollectionRoot}-rag\`, strategies=\`${seedTenant.atxInstanceCollectionRoot}-xoption--*\`, xChat history=\`${seedTenant.atxInstanceCollectionRoot}-chat-<mongoUserId>\`. xPersonas store collection_* ids in Mongo for xAI APIs — logical namespace is still this root.`
+        ? `Set ATX_INSTANCE_COLLECTION_ROOT=${JSON.stringify(seedTenant.atxInstanceCollectionRoot)} only (tenant prefix). Do not use team KB id (${teamKbCollectionId || "n/a"}) or display name ${JSON.stringify(seedTenant.ragKbDisplayName || `${seedTenant.atxInstanceCollectionRoot}-rag`)}. Naming: RAG=\`${seedTenant.atxInstanceCollectionRoot}-rag\`, strategy root files=\`${seedTenant.atxInstanceCollectionRoot}-xoption-${seedTenant.strategyCollectionEnvSlug}\` (NODE_ENV development|test → dev; else tenant_defaults app.environment, default stage), strategy subfolders=\`atx-xoption-templates-<folder>\`, xChat history=\`${seedTenant.atxInstanceCollectionRoot}-chat-<mongoUserId>\`. xPersonas store collection_* ids in Mongo for xAI APIs — logical namespace is still this root.`
         : "No atxInstanceCollectionRoot from tenant_defaults — set ATX_INSTANCE_COLLECTION_ROOT manually if you use instance-scoped xChat collections.",
       userId: String(user._id),
       tenantId: String(tenant._id),

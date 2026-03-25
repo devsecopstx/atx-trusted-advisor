@@ -17,7 +17,8 @@ if [ -n "${MONGO_PING_URI:-}" ]; then
 elif [ "${MONGODB_NO_AUTH:-}" = "1" ] || [ "${MONGODB_NO_AUTH:-}" = "true" ]; then
   PING_URI="mongodb://127.0.0.1:27017/admin"
 else
-  MG_USER="${MONGO_ROOT_USERNAME:-${ADMIN_X_USERNAME:-admin}}"
+  # Match docker-compose.yml default (admin). Do not use ADMIN_X_USERNAME — that is X OAuth / allowlist, not MongoDB.
+  MG_USER="${MONGO_ROOT_USERNAME:-admin}"
   MG_PASS="${MONGO_ROOT_PASSWORD:-}"
   if [ -z "$MG_PASS" ]; then
     PING_URI="mongodb://127.0.0.1:27017/admin"
@@ -27,7 +28,10 @@ else
 fi
 
 if command -v mongosh >/dev/null 2>&1; then
+  # mongosh failure must not abort under pipefail+set -e before we try docker compose.
+  set +e
   ok="$(mongosh "$PING_URI" --quiet --eval 'db.adminCommand("ping").ok' 2>/dev/null | tail -1 | tr -d '[:space:]')"
+  set -e
   if [ "$ok" = "1" ]; then
     printf '%s\n' "[mongo:up] using existing Mongo on 127.0.0.1:27017 (ping OK); skipping docker compose."
     exit 0

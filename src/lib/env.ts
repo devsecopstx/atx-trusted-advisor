@@ -66,7 +66,7 @@ const envSchema = z.object({
   ADMIN_X_USERNAMES: z.string().optional(),
   ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
   /**
-   * Same prefix seed uses for `{root}-rag` and `{root}-xoption--*`. When set, per-user xChat history
+   * Same prefix seed uses for `{root}-rag` and `{root}-xoption-<env>` / `atx-xoption-templates-<folder>`. When set, per-user xChat history
    * collections are named `{root}-chat-{userId}` so they group with instance RAG in xAI.
    */
   ATX_INSTANCE_COLLECTION_ROOT: optionalNonEmptyString,

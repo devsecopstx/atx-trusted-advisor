@@ -1,5 +1,5 @@
 /**
- * Instance-scoped xAI collection naming: RAG + strategy collections use `{root}-*` from seed;
+ * Instance-scoped xAI collection naming: RAG + strategy root bucket `{root}-xoption-<env>` from seed;
  * per-user xChat history uses `{root}-chat-{userId}` when a valid tenant prefix is set.
  *
  * **ATX_INSTANCE_COLLECTION_ROOT** must be the same **namespace prefix** as seed’s

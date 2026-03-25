@@ -8,10 +8,12 @@ High-level roadmap for Next.js App Router UI, marketing surfaces, and monetizati
 
 ## Pitch / marketing
 
-| Item | Status | Notes |
-|------|--------|--------|
-| Reusable pitch **`Hero`** (`src/app/ui/pitch-hero.tsx`) | Shipped | Emerald growth accents, gold/bolt radial overlay, Framer Motion (page fade, staggered bullets, CTA fade-up + hover) |
-| xoptions pitch route | Shipped | `app_user/xoptions` — `Hero` from `src/app/ui/pitch-hero.tsx` |
+
+| Item                                                    | Status  | Notes                                                                                                               |
+| ------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| Reusable pitch `**Hero`** (`src/app/ui/pitch-hero.tsx`) | Shipped | Emerald growth accents, gold/bolt radial overlay, Framer Motion (page fade, staggered bullets, CTA fade-up + hover) |
+| xoptions pitch route                                    | Shipped | `app_user/xoptions` — `Hero` from `src/app/ui/pitch-hero.tsx`                                                       |
+
 
 ---
 
@@ -33,12 +35,14 @@ High-level roadmap for Next.js App Router UI, marketing surfaces, and monetizati
 
 ### Environment variables (illustrative)
 
-| Variable | Purpose |
-|----------|---------|
-| `STRIPE_SECRET_KEY` | Server-only; API calls |
-| `STRIPE_WEBHOOK_SECRET` | Verify webhook signatures |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Client only if using Payment Element / Stripe.js |
+
+| Variable                                         | Purpose                                                            |
+| ------------------------------------------------ | ------------------------------------------------------------------ |
+| `STRIPE_SECRET_KEY`                              | Server-only; API calls                                             |
+| `STRIPE_WEBHOOK_SECRET`                          | Verify webhook signatures                                          |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`             | Client only if using Payment Element / Stripe.js                   |
 | `STRIPE_PRICE_*` or `NEXT_PUBLIC_STRIPE_PRICE_*` | Price IDs per plan (prefer server-side lookup for sensitive tiers) |
+
 
 ### Frontend work
 
@@ -61,4 +65,5 @@ High-level roadmap for Next.js App Router UI, marketing surfaces, and monetizati
 ## Related docs
 
 - [PLAN.md](./PLAN.md) — backlog / migrations
-- [Operations & BFF](./README.md#operations--atx-sre-ops)
+- [atx-docs README](./README.md) — **Operations — atx-sre-ops** (BFF / Spring runbooks table)
+

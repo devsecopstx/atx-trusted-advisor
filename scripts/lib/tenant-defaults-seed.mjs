@@ -62,6 +62,46 @@ function clampRoot(root) {
  */
 const XAI_KB_COLLECTION_ID_RE = /^collection_[a-z0-9_-]+$/i;
 
+/**
+ * Raw deploy tier string before normalization (same precedence as instance root when root is derived).
+ * @param {Record<string, string>} settings
+ * @param {import("yaml").ParsedNode | null} doc
+ */
+export function resolveRawInstanceDeployTier(settings, doc) {
+  return pickFirstNonEmpty(
+    process.env.ATX_DEPLOY_TARGET,
+    process.env.ATX_INSTANCE_ENV,
+    settings.atx_deploy_target,
+    doc && typeof doc === "object" && doc !== null && "app" in doc
+      ? String(/** @type {{ app?: { environment?: string } }} */ (doc).app?.environment ?? "")
+      : "",
+    "development"
+  );
+}
+
+/**
+ * xAI strategy collection env segment (one hyphen before it: `{root}-xoption-<slug>`).
+ * - **`NODE_ENV`** `development` or `test` → **`dev`** (local `npm run seed:admin`).
+ * - Otherwise → **`app.environment`** from `tenant_defaults.yaml`, normalized; default **`stage`** when unset / no file.
+ * (Instance collection **root** `atx-<tier>-<site>` still uses `ATX_DEPLOY_TARGET` / yaml via {@link resolveRawInstanceDeployTier}.)
+ *
+ * @param {Record<string, string>} _settings reserved for future merge with yaml settings
+ * @param {import("yaml").ParsedNode | null} doc
+ */
+export function resolveStrategyCollectionEnvSlug(_settings, doc) {
+  const nodeEnv = String(process.env.NODE_ENV ?? "")
+    .trim()
+    .toLowerCase();
+  if (nodeEnv === "development" || nodeEnv === "test") {
+    return "dev";
+  }
+  const fromApp =
+    doc && typeof doc === "object" && doc !== null && "app" in doc
+      ? String(/** @type {{ app?: { environment?: string } }} */ (doc).app?.environment ?? "").trim()
+      : "";
+  return normalizeInstanceDeployTier(pickFirstNonEmpty(fromApp, "stage"));
+}
+
 export function buildAtxInstanceCollectionRootFromTenantDoc(settings, doc) {
   const explicitRaw = pickFirstNonEmpty(process.env.ATX_INSTANCE_COLLECTION_ROOT);
   if (explicitRaw) {
@@ -82,15 +122,7 @@ export function buildAtxInstanceCollectionRootFromTenantDoc(settings, doc) {
     }
   }
 
-  const tier = pickFirstNonEmpty(
-    process.env.ATX_DEPLOY_TARGET,
-    process.env.ATX_INSTANCE_ENV,
-    settings.atx_deploy_target,
-    doc && typeof doc === "object" && doc !== null && "app" in doc
-      ? String(/** @type {{ app?: { environment?: string } }} */ (doc).app?.environment ?? "")
-      : "",
-    "development"
-  );
+  const tier = resolveRawInstanceDeployTier(settings, doc);
 
   const siteSlug = pickFirstNonEmpty(
     process.env.ATX_INSTANCE_SITE_SLUG,
@@ -158,11 +190,13 @@ export function loadSeedTenantContext(repoRoot) {
 
   const atxInstanceCollectionRoot = buildAtxInstanceCollectionRootFromTenantDoc(settings, doc);
   const ragKbDisplayName = atxInstanceCollectionRoot ? `${atxInstanceCollectionRoot}-rag` : "";
+  const strategyCollectionEnvSlug = resolveStrategyCollectionEnvSlug(settings, doc);
 
   return {
     yamlLoaded,
     merged,
     atxInstanceCollectionRoot,
-    ragKbDisplayName
+    ragKbDisplayName,
+    strategyCollectionEnvSlug
   };
 }

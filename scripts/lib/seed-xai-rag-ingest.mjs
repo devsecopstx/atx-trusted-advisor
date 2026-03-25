@@ -5,6 +5,12 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 
+import {
+    normalizeInstanceDeployTier,
+    pickFirstNonEmpty,
+    resolveStrategyCollectionEnvSlug
+} from "./tenant-defaults-seed.mjs";
+
 /** Stable upload filename: no path separators in the stored name (xAI / OS safe). */
 export function normalizeLogicalUploadName(rootLabel, relativePosixPath) {
   const raw = String(relativePosixPath).replace(/\\/g, "/").replace(/^\/+/, "");
@@ -214,7 +220,8 @@ async function walkIngestFiles(rootDir, { maxBytes }) {
  *   maxFileBytes?: number;
  *   skipAtxRag?: boolean;
  *   skipStrategyTemplates?: boolean;
- *   instanceRootPrefix?: string; when set, strategy collections are `${instanceRootPrefix}-xoption--<slug>` (and `--core`).
+ *   instanceRootPrefix?: string; when set, root strategy files use `${instanceRootPrefix}-xoption-<env>`; subfolders use `atx-xoption-templates-<folder>`.
+ *   strategyCollectionEnvSlug?: string; normalized env slug (`dev`|`stage`|…); default from {@link resolveStrategyCollectionEnvSlug} (NODE_ENV dev/test → dev, else yaml app.environment, default stage).
  * }} opts
  */
 export async function runSeedXaiRagIngest(opts) {
@@ -222,6 +229,9 @@ export async function runSeedXaiRagIngest(opts) {
   const teamId = (opts.teamId || "").trim();
   const kbId = (opts.teamKbCollectionId || "").trim();
   const strategyPrefix = (opts.instanceRootPrefix || "").trim();
+  const strategyEnvSlug = normalizeInstanceDeployTier(
+    pickFirstNonEmpty(opts.strategyCollectionEnvSlug, resolveStrategyCollectionEnvSlug({}, null))
+  );
   const warnings = [];
 
   /** @type {string[]} */
@@ -287,7 +297,7 @@ export async function runSeedXaiRagIngest(opts) {
         }
         const abs = join(stratRoot, ent.name);
         if (ent.isDirectory()) {
-          const displayName = `atx-xoption-templates--${slugFolderName(ent.name)}`;
+          const displayName = `atx-xoption-templates-${slugFolderName(ent.name)}`;
           try {
             const { id } = await findOrCreateManagementCollection({
               displayName,
@@ -338,7 +348,9 @@ export async function runSeedXaiRagIngest(opts) {
       }
 
       if (rootFiles.length > 0) {
-        const displayName = strategyPrefix ? `${strategyPrefix}-xoption--core` : "atx-xoption-templates--core";
+        const displayName = strategyPrefix
+          ? `${strategyPrefix}-xoption-${strategyEnvSlug}`
+          : `atx-xoption-templates-${strategyEnvSlug}`;
         try {
           const { id } = await findOrCreateManagementCollection({
             displayName,
