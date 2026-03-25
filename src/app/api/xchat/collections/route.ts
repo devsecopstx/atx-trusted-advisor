@@ -53,10 +53,12 @@ export async function GET() {
     tenantId: session.tenantId
   });
   const assignedPersonaId = userSettings?.assignedPersonaId?.trim();
+  let assignedPersonaIdForClient: string | null = null;
   if (assignedPersonaId) {
     const assignedPersona = await getPersonaById(assignedPersonaId);
     if (assignedPersona?.status === "published") {
       activePersonaName = assignedPersona.name;
+      assignedPersonaIdForClient = assignedPersonaId;
     }
     const assignedCollectionId = assignedPersona?.xaiCollection?.collectionId?.trim();
     if (assignedCollectionId) {
@@ -80,7 +82,9 @@ export async function GET() {
     data: Array.from(deduped.values()),
     metadata: {
       activePersonaName,
-      associatedCollectionCount: deduped.size
+      associatedCollectionCount: deduped.size,
+      /** When set, admin assigned a published persona — xChat ask ignores request `personaId` overrides. */
+      assignedPersonaId: assignedPersonaIdForClient
     }
   });
 }

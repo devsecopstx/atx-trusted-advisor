@@ -209,7 +209,7 @@ export type WatchlistConsoleProps = {
   isAdmin: boolean;
   /** API base including `/api/.../portfolios` (no trailing slash). Default `/api/portfolios`. */
   watchlistApiPrefix?: string;
-  /** `admin` — footer links to admin hubs; `app_user` — portfolio + optional admin console link. */
+  /** `admin` — footer links to Hub; `app_user` — portfolio + optional Hub link. */
   footerMode?: "app_user" | "admin";
 };
 
@@ -768,7 +768,7 @@ export function WatchlistConsole({
                 </Link>
                 {isAdmin ? (
                   <Link className="cta cta-primary" href="/admin/portfolios">
-                    Open in admin console
+                    Open in Hub
                   </Link>
                 ) : null}
               </>

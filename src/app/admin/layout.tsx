@@ -15,7 +15,7 @@ type AdminLayoutProps = {
 };
 
 export const metadata: Metadata = {
-  title: "admin_console"
+  title: "Hub"
 };
 
 /** Slim top bar: Hub + product xChat only. Batch, RAG, tools, API docs, and audit are on the hub (`/admin`). */

@@ -766,6 +766,55 @@
   background: rgba(22, 24, 28, 0.98);
 }
 
+.xchat-composer__persona-wrap {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  align-self: flex-end;
+  max-width: min(220px, 40vw);
+  min-width: 0;
+}
+
+.xchat-composer__persona-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--xf-text-400);
+  line-height: 1.1;
+}
+
+.xchat-composer__persona-select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.38rem 0.45rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--xf-text-100);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.xchat-composer__persona-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.xchat-composer__persona-select:focus {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 1px;
+}
+
+.xchat-composer__persona-err {
+  font-size: 0.65rem;
+  color: var(--xf-loss-red, #f87171);
+  line-height: 1.2;
+}
+
 .xchat-composer__field {
   flex: 1;
   min-width: 0;

@@ -349,7 +349,7 @@ export default async function PortfolioPage() {
             </Link>
             {admin ? (
               <Link className="cta cta-primary" href="/admin/portfolios">
-                Open in admin console
+                Open in Hub
               </Link>
             ) : null}
           </div>

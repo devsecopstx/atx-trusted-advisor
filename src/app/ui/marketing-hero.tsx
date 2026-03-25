@@ -71,7 +71,7 @@ function ProductCard(props: { icon: React.ReactNode; name: string; description: 
 
 type MarketingHeroProps = {
   signedIn?: boolean;
-  /** Only global admins see the admin console entry and full product shortcuts on `/`. */
+  /** Only global admins see the Hub entry and full product shortcuts on `/`. */
   isGlobalAdmin?: boolean;
 };
 
@@ -111,7 +111,7 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
                 xStrategyBuilder
               </Link>
               <Link className="cta cta-secondary" href="/admin">
-                Admin Console
+                Hub
               </Link>
             </div>
           ) : (

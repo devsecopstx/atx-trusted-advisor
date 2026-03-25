@@ -4,7 +4,8 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
 import { getSessionUser } from "@/lib/auth";
-import { canUserLogin } from "@/modules/identity/authorization";
+import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository";
 
 import { PlansLanding } from "./ui/plans-landing";
 import { XchatConversation } from "./ui/xchat-conversation";
@@ -27,6 +28,9 @@ export default async function XchatPage() {
   }
 
   const approved = canUserLogin(session.roles);
+  const defaultPersona = approved
+    ? await resolveDefaultXchatPersonaForSession(session.roles)
+    : null;
 
   return (
     <div className="xchat-shell">
@@ -42,7 +46,10 @@ export default async function XchatPage() {
 
       <div className="xchat-body">
         {approved ? (
-          <XchatConversation defaultPublishedPersonaName="xFinance" />
+          <XchatConversation
+            defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
+            includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
+          />
         ) : (
           <PlansLanding userEmail={session.email} username={session.username} />
         )}

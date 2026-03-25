@@ -67,11 +67,12 @@ describe("xchat collections route", () => {
     const response = await getCollections();
     const payload = (await response.json()) as {
       data: Array<{ collectionId: string; source: string }>;
-      metadata?: { activePersonaName?: string };
+      metadata?: { activePersonaName?: string; assignedPersonaId?: string | null };
     };
 
     expect(response.status).toBe(200);
     expect(payload.metadata?.activePersonaName).toBe("atx-trusted-advisor");
+    expect(payload.metadata?.assignedPersonaId).toBe("507f1f77bcf86cd799439055");
     expect(payload.data).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -102,11 +103,12 @@ describe("xchat collections route", () => {
 
     const response = await getCollections();
     const payload = (await response.json()) as {
-      metadata?: { activePersonaName?: string };
+      metadata?: { activePersonaName?: string; assignedPersonaId?: string | null };
     };
 
     expect(response.status).toBe(200);
     expect(payload.metadata?.activePersonaName).toBe("atx-trusted-advisor");
+    expect(payload.metadata?.assignedPersonaId).toBeNull();
   });
 
   it("returns auth response when unauthenticated", async () => {

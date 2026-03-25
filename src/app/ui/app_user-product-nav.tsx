@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-import { isGlobalAdmin } from "@/modules/identity/authorization";
-
 export type AppUserProductNavCurrent =
   | "xchat"
   | "xstrategybuilder"
@@ -10,7 +8,6 @@ export type AppUserProductNavCurrent =
 
 type AppUserProductNavProps = {
   current: AppUserProductNavCurrent;
-  roles: string[];
 };
 
 const NAV: { id: AppUserProductNavCurrent; label: string; href: string }[] = [
@@ -22,11 +19,9 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string }[] = [
 
 /**
  * Approved app_user accounts: xChat, xStrategyBuilder, Portfolio (`/portfolio`), Watchlist.
- * `global_admin` also gets Admin (console). Not shown for guests / unapproved sessions.
+ * **Hub** (`/admin`) is shown for every approved session; non-admins are redirected to `/xchat` if they lack `global_admin`.
  */
-export function AppUserProductNav({ current, roles }: AppUserProductNavProps) {
-  const admin = isGlobalAdmin(roles);
-
+export function AppUserProductNav({ current }: AppUserProductNavProps) {
   return (
     <nav className="xchat-header-nav" aria-label="Product">
       {NAV.map((item) => (
@@ -39,11 +34,9 @@ export function AppUserProductNav({ current, roles }: AppUserProductNavProps) {
           {item.label}
         </Link>
       ))}
-      {admin ? (
-        <Link className="xchat-header-link" href="/admin">
-          Admin Console
-        </Link>
-      ) : null}
+      <Link className="xchat-header-link" href="/admin">
+        Hub
+      </Link>
     </nav>
   );
 }

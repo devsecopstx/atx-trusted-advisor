@@ -1,8 +1,17 @@
 "use client";
 
-import { FormEvent, type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import {
+    FormEvent,
+    type KeyboardEvent,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from "react";
 
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
+import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
 
 type Message = {
@@ -89,8 +98,10 @@ function XchatComposerHintMicIcon() {
 }
 
 type XchatConversationProps = {
-  /** Published default persona name for this session’s role (Super-Agent vs xFinance). */
+  /** Resolved default persona name for this session’s role (e.g. Super-Agent vs atx-trusted-advisor). */
   defaultPublishedPersonaName: string;
+  /** When false, Super-Agent is hidden from the picker (app_user cannot use it without admin assignment). */
+  includeSuperAgentInPersonaPicker?: boolean;
 };
 
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
@@ -185,7 +196,10 @@ const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = (() => {
   ];
 })();
 
-export function XchatConversation({ defaultPublishedPersonaName }: XchatConversationProps) {
+export function XchatConversation({
+  defaultPublishedPersonaName,
+  includeSuperAgentInPersonaPicker = false
+}: XchatConversationProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
   const [historyStats, setHistoryStats] = useState<HistoryStats | null>(null);
@@ -202,9 +216,30 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   const [, setAssociatedCollectionCount] = useState(1);
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
   const [collectionsScopeDegraded, setCollectionsScopeDegraded] = useState(false);
+  const [personaPickerRows, setPersonaPickerRows] = useState<Array<{ _id: string; name: string }>>([]);
+  const [personaListError, setPersonaListError] = useState<string | null>(null);
+  const [selectedPersonaId, setSelectedPersonaId] = useState("");
+  const [assignedPersonaIdLock, setAssignedPersonaIdLock] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
+  const userPickedPersonaRef = useRef(false);
+
+  const personaSelectRows = useMemo(() => {
+    if (!assignedPersonaIdLock) {
+      return personaPickerRows;
+    }
+    if (personaPickerRows.some((p) => p._id === assignedPersonaIdLock)) {
+      return personaPickerRows;
+    }
+    return [
+      ...personaPickerRows,
+      {
+        _id: assignedPersonaIdLock,
+        name: activePersonaName.trim() || "Assigned persona"
+      }
+    ];
+  }, [assignedPersonaIdLock, personaPickerRows, activePersonaName]);
 
   const resizeComposer = useCallback(() => {
     const el = composerRef.current;
@@ -276,7 +311,11 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
         const response = await fetch("/api/xchat/collections");
         const payload = (await response.json().catch(() => ({}))) as {
           data?: VisibleCollection[];
-          metadata?: { activePersonaName?: string; associatedCollectionCount?: number };
+          metadata?: {
+            activePersonaName?: string;
+            associatedCollectionCount?: number;
+            assignedPersonaId?: string | null;
+          };
           error?: string;
         };
         if (!response.ok) {
@@ -286,6 +325,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
           setVisibleCollections(DEFAULT_VISIBLE_COLLECTIONS);
           setAssociatedCollectionCount(1);
           setActivePersonaName(defaultPublishedPersonaName);
+          setAssignedPersonaIdLock(null);
           setCollectionsScopeDegraded(true);
           setCollectionsStatus(null);
           return;
@@ -296,6 +336,8 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
         setCollectionsScopeDegraded(false);
         setVisibleCollections(payload.data ?? []);
         setActivePersonaName(payload.metadata?.activePersonaName ?? defaultPublishedPersonaName);
+        const lock = payload.metadata?.assignedPersonaId?.trim() ?? null;
+        setAssignedPersonaIdLock(lock && lock.length > 0 ? lock : null);
         setAssociatedCollectionCount(
           Number.isInteger(payload.metadata?.associatedCollectionCount)
             ? (payload.metadata?.associatedCollectionCount ?? 1)
@@ -309,6 +351,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
         setVisibleCollections(DEFAULT_VISIBLE_COLLECTIONS);
         setAssociatedCollectionCount(1);
         setActivePersonaName(defaultPublishedPersonaName);
+        setAssignedPersonaIdLock(null);
         setCollectionsScopeDegraded(true);
         setCollectionsStatus(null);
       }
@@ -318,6 +361,63 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
       active = false;
     };
   }, [defaultPublishedPersonaName]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadPersonas() {
+      setPersonaListError(null);
+      try {
+        const res = await fetch("/api/personas");
+        const payload = (await res.json().catch(() => ({}))) as {
+          data?: Array<{ _id?: string; name?: string }>;
+        };
+        if (!res.ok || !active) {
+          if (active && !res.ok) {
+            setPersonaListError("Could not load persona list");
+          }
+          return;
+        }
+        const rows = (Array.isArray(payload.data) ? payload.data : [])
+          .map((r) => ({
+            _id: String(r._id ?? "").trim(),
+            name: String(r.name ?? "").trim()
+          }))
+          .filter((r) => r._id && r.name);
+        const filtered = includeSuperAgentInPersonaPicker
+          ? rows
+          : rows.filter(
+              (r) => r.name.trim().toLowerCase() !== XPERSONA_SUPER_AGENT_NAME.trim().toLowerCase()
+            );
+        setPersonaPickerRows(filtered);
+      } catch {
+        if (active) {
+          setPersonaListError("Could not load persona list");
+        }
+      }
+    }
+    void loadPersonas();
+    return () => {
+      active = false;
+    };
+  }, [includeSuperAgentInPersonaPicker]);
+
+  useEffect(() => {
+    if (assignedPersonaIdLock) {
+      setSelectedPersonaId(assignedPersonaIdLock);
+      return;
+    }
+    if (userPickedPersonaRef.current) {
+      return;
+    }
+    const key = activePersonaName.trim().toLowerCase();
+    if (!key || personaPickerRows.length === 0) {
+      return;
+    }
+    const hit = personaPickerRows.find((p) => p.name.trim().toLowerCase() === key);
+    if (hit) {
+      setSelectedPersonaId(hit._id);
+    }
+  }, [activePersonaName, personaPickerRows, assignedPersonaIdLock]);
 
   useEffect(() => {
     if (!historyExpanded || historyLoaded) {
@@ -402,13 +502,18 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
     setLoading(true);
 
     try {
+      const askBody: { message: string; scope: string; personaId?: string } = {
+        message: prompt,
+        scope: "global"
+      };
+      if (!assignedPersonaIdLock && selectedPersonaId.trim()) {
+        askBody.personaId = selectedPersonaId.trim();
+      }
+
       const response = await fetch("/api/xchat/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: prompt,
-          scope: "global"
-        })
+        body: JSON.stringify(askBody)
       });
 
       const payload = (await response.json().catch(() => ({}))) as {
@@ -483,7 +588,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
   return (
     <div className="xchat-main">
       <div className="xchat-persona-bar">
-        <span className="status-badge status-ready">Published default</span>
+        <span className="status-badge status-ready">Active persona</span>
         <span
           className="status-text xchat-last-turn-tools"
           style={{ fontSize: "0.8rem" }}
@@ -523,7 +628,7 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
         {messages.length === 0 ? (
           <div style={{ textAlign: "center", padding: "3rem 0" }}>
             <p className="status-text">
-              Start a conversation with the published default <strong>{activePersonaName}</strong>.
+              Start a conversation with <strong>{activePersonaName}</strong> (or choose another persona below).
             </p>
           </div>
         ) : null}
@@ -556,6 +661,44 @@ export function XchatConversation({ defaultPublishedPersonaName }: XchatConversa
 
       <div className="xchat-composer-wrap">
         <form className="xchat-composer" onSubmit={handleSend}>
+          <div className="xchat-composer__persona-wrap">
+            <label className="xchat-composer__persona-label" htmlFor="xchat-persona-picker">
+              Persona
+            </label>
+            <select
+              className="xchat-composer__persona-select"
+              disabled={
+                Boolean(assignedPersonaIdLock) ||
+                personaSelectRows.length === 0 ||
+                Boolean(personaListError)
+              }
+              id="xchat-persona-picker"
+              onChange={(e) => {
+                userPickedPersonaRef.current = true;
+                setSelectedPersonaId(e.target.value);
+              }}
+              title={
+                assignedPersonaIdLock
+                  ? "Persona is assigned by your admin"
+                  : "Choose which published persona to use for this message"
+              }
+              value={assignedPersonaIdLock ?? selectedPersonaId}
+            >
+              {assignedPersonaIdLock ? null : (
+                <option value="">Default (role / account)</option>
+              )}
+              {personaSelectRows.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {personaListError ? (
+              <span className="xchat-composer__persona-err" role="status">
+                {personaListError}
+              </span>
+            ) : null}
+          </div>
           <button
             aria-label="Attach files — beta, not available yet"
             className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"

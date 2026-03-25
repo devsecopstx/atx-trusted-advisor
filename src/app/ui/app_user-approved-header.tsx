@@ -33,7 +33,7 @@ export function AppUserApprovedHeader({
         <XchatHeaderBrand />
       </Link>
       <div className="xchat-header-main">
-        <AppUserProductNav current={current} roles={session.roles} />
+        <AppUserProductNav current={current} />
         <AppUserHeaderSession
           email={session.email}
           feedbackPageLabel={feedbackPageLabel}
