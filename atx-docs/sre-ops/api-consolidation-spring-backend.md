@@ -175,7 +175,6 @@ When `proxyRequestToBackend` returns a Spring `Response`, the Next handler’s s
 ## Related
 
 - [`auth-oauth-spring-dual-run.md`](./auth-oauth-spring-dual-run.md) — Next vs Spring auth gaps, `/login?error=` matrix, dual-run checklist
-- `.cursor/plans/next-bff-migration-surfaces_f70b86b0.plan.md` — Cursor checklist for **resuming** BFF work (backlog todos + per-slice steps); this doc remains the **canonical** status board.
 - `./atxfinance-backend-http-api.md` — current Spring surface
 - [`./audit-lineage-and-controls.md`](./audit-lineage-and-controls.md) — audit rows, BFF side-effect parity, retrieval semantics, test inventory vs xdesign-review-audit
 - `AGENTS.md` — today’s validation assumes Next API; update when a slice moves
