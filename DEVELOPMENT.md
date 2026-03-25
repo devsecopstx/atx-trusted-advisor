@@ -149,7 +149,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
 7. Seed core admin user + default tenant (first-time only)
    - Ensure `.env` has `ADMIN_SEED_EMAIL=you@example.com`
    - **Sign in with X (no email on profile):** X userinfo often omits `email`. Set **`ADMIN_SEED_X_USER_ID`** to your X account’s numeric id (same string as `data.id` from `GET /2/users/me`), then run **`npm run seed:admin`** so `core_users.xAccount` is pre-linked. The X OAuth callback also reads `ADMIN_SEED_X_USER_ID` so first login works even before re-seeding. Optional: `ADMIN_SEED_X_USERNAME`, `ADMIN_SEED_X_DISPLAY_NAME` for seed output only (login refreshes profile).
-   - **`MONGODB_URI` can stay unset** when using local Docker Mongo — `seed:admin` and the Next.js app use the same localhost + auth fallback as `src/lib/env.ts` (`scripts/lib/resolve-mongo-uri.mjs`).
+   - **`MONGODB_URI` can stay unset** when using local Docker Mongo — `seed:admin` and the Next.js app use the same localhost fallback as `src/lib/env.ts` (`scripts/lib/resolve-mongo-uri.mjs`): no credentials unless **`MONGO_ROOT_PASSWORD`** is set.
    - **`npm run local:bootstrap`** — starts **only** `mongodb` via Compose, waits until healthy, then runs **`seed:admin`** (convenience for a fresh machine).
    - Or after Mongo is up: **`npm run seed:admin`**
 8. Stop services and view logs
@@ -174,7 +174,7 @@ Use this when you want a **local Compose Mongo** without Atlas and with the same
 | **Each dev session:** wipe volume + Docker backend + Next (seed **after** backend healthy) | `npm run dev:stack:fresh` |
 | One-shot: Mongo up + seed (keeps existing volume) | `npm run local:bootstrap` |
 
-**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI`** is unset. If local Mongo runs **without auth** (legacy volume or no `MONGO_INITDB_*`), add **`MONGODB_NO_AUTH=true`** to `.env`. Otherwise use **`MONGO_ROOT_USERNAME`** (default `admin`) and **`MONGO_ROOT_PASSWORD`** (default ``) to match what `docker-compose.yml` initialized. Restart Next after changing `.env` (Mongo client is cached).
+**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI`** is unset. If local Mongo runs **without auth** (legacy volume), add **`MONGODB_NO_AUTH=true`** to `.env` or leave **`MONGO_ROOT_PASSWORD`** empty. If Compose initialized a **non-empty** root password, set **`MONGO_ROOT_USERNAME`** / **`MONGO_ROOT_PASSWORD`** to match **`docker-compose.yml`**. Restart Next after changing `.env` (Mongo client is cached).
 
 `mongo:reset` requires **`RESET_LOCAL_MONGO=1`** to avoid accidental data loss. After a reset, run **`npm run dev:host`**, **`npm run dev:stack`**, or **`docker compose up`** as needed.
 
