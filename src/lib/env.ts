@@ -204,9 +204,14 @@ export function getXOauthClientId(): string {
   return X_OAUTH_CLIENT_ID.trim();
 }
 
+/**
+ * Whether Google OAuth routes should be wired. Reads `process.env` only — does not call {@link getEnv}
+ * so `next build` / static prerender (e.g. `/`, `/login`) succeeds in CI without xAI/OAuth secrets.
+ */
 export function isGoogleOAuthConfigured(): boolean {
-  const e = getEnv();
-  return Boolean(e.GOOGLE_CLIENT_ID?.trim() && e.GOOGLE_CLIENT_SECRET?.trim());
+  const id = process.env.GOOGLE_CLIENT_ID?.trim();
+  const secret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  return Boolean(id && secret);
 }
 
 export function getGoogleClientId(): string {

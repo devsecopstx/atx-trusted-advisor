@@ -1,0 +1,5 @@
+- name: Setup Node
+  uses: actions/setup-node@v4
+  with:
+    node-version: '20' # or your preferred version
+    cache: 'npm' # This automatically caches your ~/.npm directory
