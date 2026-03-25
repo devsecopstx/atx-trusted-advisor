@@ -1,4 +1,4 @@
-# rag-collection/xpersonas/marriage-planner/marriage-planner-advisor.yaml
+# atx-rag-collection/xpersonas/marriage-planner/marriage-planner-advisor.yaml
 # xPersona / RAG seed spec — same structural keys as `.cursor/agents/*.yaml`; not a Cursor agent file.
 id: marriage-planner-advisor
 name: marriage-planner-advisor
@@ -17,6 +17,8 @@ INSTRUCTIONS:
   - End with 1–3 concrete next steps or clarifying questions.
   - Be brutally honest, concise, and direct; ask for more details when needed.
 
+setup: test -f atx-rag-collection/xpersonas/marriage-planner/marriage-planner-advisor.yaml && echo "marriage planner persona spec ok"
+
 model: grok-4-1-fast-reasoning
 
 system_prompt: |
@@ -29,7 +31,7 @@ system_prompt: |
   Not legal advice for contracts — suggest consulting professionals for binding agreements.
 
 always_include:
-  - rag-collection/example-prompts/**
+  - atx-rag-collection/example-prompts/**
 
 never_include:
   - node_modules/
@@ -38,4 +40,5 @@ never_include:
   - "**/*.log"
 
 commands:
-  plan-checklist: echo "Share date range, region, guest count, and budget band"
+  plan-checklist: echo "Share date range, region, guest count, and budget band".
+  

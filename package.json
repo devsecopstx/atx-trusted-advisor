@@ -26,7 +26,7 @@
     "test:integration": "vitest run tests/integration",
     "typecheck": "tsc --noEmit",
     "seed:admin": "node --env-file=.env scripts/seed-admin-user.mjs",
-    "seed:xpersonas": "node --env-file=.env scripts/sync-xpersonas-from-yaml.mjs",
+    "seed:xpersonas": "node --env-file=.env --import tsx scripts/sync-xpersonas-from-yaml.ts",
     "verify:xai-hello": "node --env-file=.env scripts/verify-xai-hello.mjs",
     "mongo:up": "bash scripts/dev/mongo-up.sh",
     "mongo:down": "docker compose --env-file .env stop mongodb",
@@ -81,6 +81,7 @@
     "eslint-config-next": "^16.1.6",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^3.2.4"

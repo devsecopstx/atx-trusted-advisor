@@ -1,13 +1,14 @@
 /**
- * Pure merge/replace rules for `npm run seed:xpersonas` (Mongo patch shapes).
- * @see seed_xpersonas_xai_sync plan — SEED_XPERSONAS_MODE merge | replace
+ * Pure merge/replace rules for `npm run seed:xpersonas` (Mongo `$set` patch shapes).
+ * @see plan: seed:xpersonas xAI sync — SEED_XPERSONAS_MODE merge | replace
  */
 
-/**
- * @param {Array<{ type?: string } & Record<string, unknown>>} existingTools
- * @param {Array<{ type?: string } & Record<string, unknown>>} candidateTools
- */
-export function appendToolsByType(existingTools, candidateTools) {
+export type PersonaSeedTool = { type?: string } & Record<string, unknown>;
+
+export function appendToolsByType(
+  existingTools: PersonaSeedTool[] | undefined,
+  candidateTools: PersonaSeedTool[]
+): PersonaSeedTool[] {
   const have = new Set(
     (Array.isArray(existingTools) ? existingTools : [])
       .map((t) => String(t?.type ?? "").trim())
@@ -25,19 +26,18 @@ export function appendToolsByType(existingTools, candidateTools) {
   return out;
 }
 
-/**
- * @param {Record<string, unknown> | null | undefined} existing
- * @param {Record<string, unknown>} yamlDerived — full desired shape from YAML + defaults (xapi, xaiCollection, prompts, …)
- * @param {'merge' | 'replace'} mode
- * @returns {Record<string, unknown>} fields for Mongo `$set` (excluding updatedAt)
- */
-export function computePersonaSeedUpdatePatch(existing, yamlDerived, mode) {
+type YamlDerivedSeed = Record<string, unknown>;
+
+export function computePersonaSeedUpdatePatch(
+  existing: YamlDerivedSeed | null | undefined,
+  yamlDerived: YamlDerivedSeed,
+  mode: "merge" | "replace"
+): Record<string, unknown> {
   if (!existing) {
     throw new Error("computePersonaSeedUpdatePatch requires existing document");
   }
   if (mode === "replace") {
-    /** @type {Record<string, unknown>} */
-    const patch = {
+    const patch: Record<string, unknown> = {
       systemPrompt: yamlDerived.systemPrompt,
       overridePrompt: yamlDerived.overridePrompt,
       enableRag: yamlDerived.enableRag,
@@ -50,7 +50,7 @@ export function computePersonaSeedUpdatePatch(existing, yamlDerived, mode) {
     const yc = yamlDerived.xaiCollection;
     const ycId =
       yc && typeof yc === "object"
-        ? String(/** @type {{ collectionId?: string }} */ (yc).collectionId ?? "").trim()
+        ? String((yc as { collectionId?: string }).collectionId ?? "").trim()
         : "";
     if (ycId) {
       patch.xaiCollection = yamlDerived.xaiCollection;
@@ -58,28 +58,27 @@ export function computePersonaSeedUpdatePatch(existing, yamlDerived, mode) {
     return patch;
   }
 
-  /** @type {Record<string, unknown>} */
-  const patch = { isSystem: true };
+  const patch: Record<string, unknown> = { isSystem: true };
 
   const exCid = String(
     existing.xaiCollection && typeof existing.xaiCollection === "object"
-      ? /** @type {{ collectionId?: string }} */ (existing.xaiCollection).collectionId ?? ""
+      ? (existing.xaiCollection as { collectionId?: string }).collectionId ?? ""
       : ""
   ).trim();
   const yCid = String(
     yamlDerived.xaiCollection && typeof yamlDerived.xaiCollection === "object"
-      ? /** @type {{ collectionId?: string }} */ (yamlDerived.xaiCollection).collectionId ?? ""
+      ? (yamlDerived.xaiCollection as { collectionId?: string }).collectionId ?? ""
       : ""
   ).trim();
 
   if (!exCid && yCid) {
     const prev =
       existing.xaiCollection && typeof existing.xaiCollection === "object"
-        ? /** @type {Record<string, unknown>} */ ({ ...existing.xaiCollection })
+        ? { ...(existing.xaiCollection as Record<string, unknown>) }
         : {};
     const yName =
       yamlDerived.xaiCollection && typeof yamlDerived.xaiCollection === "object"
-        ? /** @type {{ collectionName?: string }} */ (yamlDerived.xaiCollection).collectionName
+        ? (yamlDerived.xaiCollection as { collectionName?: string }).collectionName
         : undefined;
     patch.xaiCollection = {
       ...prev,
@@ -90,17 +89,17 @@ export function computePersonaSeedUpdatePatch(existing, yamlDerived, mode) {
 
   const exXapi =
     existing.xapi && typeof existing.xapi === "object"
-      ? /** @type {{ tools?: unknown }} */ (existing.xapi)
+      ? (existing.xapi as { tools?: unknown })
       : { tools: [] };
   const exTools = Array.isArray(exXapi.tools) ? exXapi.tools : [];
   const yamlXapi =
     yamlDerived.xapi && typeof yamlDerived.xapi === "object"
-      ? /** @type {{ tools?: unknown }} */ (yamlDerived.xapi)
+      ? (yamlDerived.xapi as { tools?: unknown })
       : { tools: [] };
   const yamlTools = Array.isArray(yamlXapi.tools) ? yamlXapi.tools : [];
   const mergedTools = appendToolsByType(
-    /** @type {Array<{ type?: string } & Record<string, unknown>>} */ (exTools),
-    /** @type {Array<{ type?: string } & Record<string, unknown>>} */ (yamlTools)
+    exTools as PersonaSeedTool[],
+    yamlTools as PersonaSeedTool[]
   );
   if (mergedTools.length !== exTools.length) {
     patch.xapi = { ...exXapi, tools: mergedTools };
@@ -109,11 +108,7 @@ export function computePersonaSeedUpdatePatch(existing, yamlDerived, mode) {
   return patch;
 }
 
-/**
- * Full `$set` body for a new upserted persona (merge === replace on insert).
- * @param {Record<string, unknown>} yamlDerived
- */
-export function buildPersonaInsertSetBody(yamlDerived) {
+export function buildPersonaInsertSetBody(yamlDerived: YamlDerivedSeed): Record<string, unknown> {
   return {
     systemPrompt: yamlDerived.systemPrompt,
     overridePrompt: yamlDerived.overridePrompt,

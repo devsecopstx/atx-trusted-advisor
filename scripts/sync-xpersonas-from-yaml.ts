@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /**
- * Upsert `xchat_personas` from `atx-rag-collection/xpersonas/**/*.yaml`.
+ * Upsert `xchat_personas` from all `.yaml` files under `atx-rag-collection/xpersonas/` (recursive).
  * Resolves xAI collection id by display name (management API list).
  */
 import { readdir, readFile } from "node:fs/promises";
@@ -11,15 +10,16 @@ import { MongoClient } from "mongodb";
 import { parse as parseYaml } from "yaml";
 
 import {
-  buildPersonaInsertSetBody,
-  computePersonaSeedUpdatePatch
-} from "./lib/persona-seed-merge.mjs";
+    buildPersonaInsertSetBody,
+    computePersonaSeedUpdatePatch
+} from "@/modules/xchat/persona-seed-merge";
+
 import { buildSuperAgentXapiTools } from "./lib/persona-xapi-tools.mjs";
 import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
 import {
-  collectionIdFromEntry,
-  collectionNameFromEntry,
-  managementListCollectionsRaw
+    collectionIdFromEntry,
+    collectionNameFromEntry,
+    managementListCollectionsRaw
 } from "./lib/seed-xai-rag-ingest.mjs";
 import { loadSeedTenantContext } from "./lib/tenant-defaults-seed.mjs";
 
@@ -28,7 +28,7 @@ const REPO_ROOT = join(SCRIPT_DIR, "..");
 
 const XAI_KB_COLLECTION_RE = /^collection_[A-Za-z0-9_-]+$/;
 
-function teamUuidForXaiIngest(teamIdMerged) {
+function teamUuidForXaiIngest(teamIdMerged: string): string {
   const raw = (teamIdMerged || "").trim();
   if (!raw || XAI_KB_COLLECTION_RE.test(raw)) {
     return "";
@@ -36,12 +36,12 @@ function teamUuidForXaiIngest(teamIdMerged) {
   return raw;
 }
 
-function shouldSkip() {
+function shouldSkip(): boolean {
   const s = String(process.env.SKIP_SEED_XPERSONAS ?? "").toLowerCase();
   return s === "1" || s === "true" || s === "yes";
 }
 
-function resolveMode() {
+function resolveMode(): "merge" | "replace" {
   const m = String(process.env.SEED_XPERSONAS_MODE ?? "merge")
     .trim()
     .toLowerCase();
@@ -51,8 +51,7 @@ function resolveMode() {
   return "merge";
 }
 
-/** @param {unknown} v */
-function coerceBool(v, defaultVal = true) {
+function coerceBool(v: unknown, defaultVal = true): boolean {
   if (v === undefined || v === null) {
     return defaultVal;
   }
@@ -69,8 +68,7 @@ function coerceBool(v, defaultVal = true) {
   return defaultVal;
 }
 
-/** @param {unknown} v */
-function coerceNumber(v, fallback) {
+function coerceNumber(v: unknown, fallback: number): number {
   if (typeof v === "number" && Number.isFinite(v)) {
     return v;
   }
@@ -83,14 +81,9 @@ function coerceNumber(v, fallback) {
   return fallback;
 }
 
-/**
- * @param {string} rootDir
- * @returns {Promise<string[]>}
- */
-async function collectXpersonaYamlFiles(rootDir) {
-  /** @type {string[]} */
-  const out = [];
-  async function walk(absDir) {
+async function collectXpersonaYamlFiles(rootDir: string): Promise<string[]> {
+  const out: string[] = [];
+  async function walk(absDir: string): Promise<void> {
     const entries = await readdir(absDir, { withFileTypes: true });
     for (const ent of entries) {
       if (ent.name.startsWith(".")) {
@@ -108,11 +101,7 @@ async function collectXpersonaYamlFiles(rootDir) {
   return out.sort();
 }
 
-/**
- * @param {unknown[]} list
- * @param {string} displayName
- */
-function findCollectionByDisplayName(list, displayName) {
+function findCollectionByDisplayName(list: unknown[], displayName: string): { id: string; name: string } {
   const want = String(displayName).trim().toLowerCase();
   if (!want) {
     return { id: "", name: "" };
@@ -129,52 +118,47 @@ function findCollectionByDisplayName(list, displayName) {
   return { id: "", name: "" };
 }
 
-/**
- * @param {Record<string, unknown>} raw
- * @param {string} collectionId
- */
-function buildXapiFromYaml(raw, collectionId) {
+function buildXapiFromYaml(raw: Record<string, unknown>, collectionId: string) {
   const defaultTools = buildSuperAgentXapiTools(collectionId ? [collectionId] : []);
   const x = raw.xapi;
   if (x && typeof x === "object" && x !== null && !Array.isArray(x)) {
-    const o = /** @type {Record<string, unknown>} */ (x);
+    const o = x as Record<string, unknown>;
     const mode = typeof o.mode === "string" ? o.mode : "responses";
     const toolChoice = typeof o.toolChoice === "string" ? o.toolChoice : "auto";
     const maxTurns = coerceNumber(o.maxTurns, 5);
-    const tools =
-      Array.isArray(o.tools) && o.tools.length > 0 ? o.tools : defaultTools;
+    const tools = Array.isArray(o.tools) && o.tools.length > 0 ? o.tools : defaultTools;
     return {
-      mode: mode === "chat_completions" ? "chat_completions" : "responses",
-      toolChoice: toolChoice === "required" || toolChoice === "none" ? toolChoice : "auto",
+      mode: mode === "chat_completions" ? ("chat_completions" as const) : ("responses" as const),
+      toolChoice:
+        toolChoice === "required" || toolChoice === "none"
+          ? (toolChoice as "required" | "none")
+          : ("auto" as const),
       maxTurns: Math.min(10, Math.max(1, Math.floor(maxTurns))),
       tools
     };
   }
   return {
-    mode: "responses",
-    toolChoice: "auto",
+    mode: "responses" as const,
+    toolChoice: "auto" as const,
     maxTurns: 5,
     tools: defaultTools
   };
 }
 
-/**
- * @param {Record<string, unknown>} doc
- * @param {{ collectionId: string, collectionDisplayName: string }} col
- */
-function buildYamlDerived(doc, col) {
+function buildYamlDerived(
+  doc: Record<string, unknown>,
+  col: { collectionId: string; collectionDisplayName: string }
+) {
   const name = String(doc.name ?? "").trim();
   const systemPrompt = String(doc.system_prompt ?? "").trim();
-  const overridePrompt =
-    typeof doc.override_prompt === "string" ? doc.override_prompt.trim() : "";
+  const overridePrompt = typeof doc.override_prompt === "string" ? doc.override_prompt.trim() : "";
   const model = String(doc.model ?? "").trim();
   const enableRag = coerceBool(doc.enable_rag, true);
   const defaultScope = String(doc.default_scope ?? "global").trim() || "global";
   const temperature = coerceNumber(doc.temperature, 0.2);
   const t = Math.min(1, Math.max(0, temperature));
 
-  /** @type {{ collectionId?: string; collectionName?: string }} */
-  const xaiCollection = {};
+  const xaiCollection: { collectionId?: string; collectionName?: string } = {};
   if (col.collectionId) {
     xaiCollection.collectionId = col.collectionId;
     xaiCollection.collectionName = col.collectionDisplayName || undefined;
@@ -193,15 +177,11 @@ function buildYamlDerived(doc, col) {
   };
 }
 
-/**
- * @param {unknown} parsed
- * @returns {string | null}
- */
-function validateParsedPersonaYaml(parsed, fileLabel) {
+function validateParsedPersonaYaml(parsed: unknown, fileLabel: string): string | null {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return `${fileLabel}: invalid YAML root`;
   }
-  const o = /** @type {Record<string, unknown>} */ (parsed);
+  const o = parsed as Record<string, unknown>;
   const name = String(o.name ?? "").trim();
   if (name.length < 2 || name.length > 80) {
     return `${fileLabel}: name must be 2–80 chars`;
@@ -220,7 +200,7 @@ function validateParsedPersonaYaml(parsed, fileLabel) {
   return null;
 }
 
-async function main() {
+async function main(): Promise<void> {
   if (shouldSkip()) {
     console.log("[seed:xpersonas] SKIP_SEED_XPERSONAS set — skipping");
     return;
@@ -253,12 +233,13 @@ async function main() {
   const mgmtBase = (m.xaiMgmtBaseUrl || "https://management-api.x.ai/v1").replace(/\/$/, "");
   const teamForList = teamUuidForXaiIngest(m.xaiTeamId);
 
-  /** @type {unknown[]} */
-  let collectionList = [];
+  let collectionList: unknown[] = [];
   if (mgmtKey) {
     try {
       collectionList = await managementListCollectionsRaw(mgmtKey, mgmtBase, teamForList);
-      console.log(`[seed:xpersonas] listed ${collectionList.length} xAI collections (team scoped: ${Boolean(teamForList)})`);
+      console.log(
+        `[seed:xpersonas] listed ${collectionList.length} xAI collections (team scoped: ${Boolean(teamForList)})`
+      );
     } catch (e) {
       console.warn(
         "[seed:xpersonas] xAI collections list failed — continuing without collection ids:",
@@ -273,20 +254,20 @@ async function main() {
   const dbName = resolveAdminSeedDbName();
   const client = new MongoClient(mongoUri);
   await client.connect();
-  const col = client.db(dbName).collection("xchat_personas");
+  const personasCol = client.db(dbName).collection("xchat_personas");
   const now = new Date();
 
   try {
     for (const abs of yamlFiles) {
       const rel = abs.replace(REPO_ROOT + "/", "");
-      let text;
+      let text: string;
       try {
         text = await readFile(abs, "utf8");
       } catch (e) {
         console.warn(`[seed:xpersonas] skip read ${rel}:`, e instanceof Error ? e.message : e);
         continue;
       }
-      let parsed;
+      let parsed: unknown;
       try {
         parsed = parseYaml(text);
       } catch (e) {
@@ -298,7 +279,7 @@ async function main() {
         console.warn(`[seed:xpersonas] ${err}`);
         continue;
       }
-      const doc = /** @type {Record<string, unknown>} */ (parsed);
+      const doc = parsed as Record<string, unknown>;
       const name = String(doc.name).trim();
       const nameNormalized = name.toLowerCase();
 
@@ -318,10 +299,10 @@ async function main() {
       };
       const derived = buildYamlDerived(doc, colRef);
 
-      const existing = await col.findOne({ nameNormalized });
+      const existing = await personasCol.findOne({ nameNormalized });
 
       if (!existing) {
-        await col.updateOne(
+        await personasCol.updateOne(
           { nameNormalized },
           {
             $setOnInsert: {
@@ -340,11 +321,11 @@ async function main() {
         console.log(`[seed:xpersonas] upserted (new) ${nameNormalized} ← ${rel}`);
       } else {
         const patch = computePersonaSeedUpdatePatch(
-          /** @type {Record<string, unknown>} */ (existing),
-          derived,
+          existing as Record<string, unknown>,
+          derived as Record<string, unknown>,
           mode
         );
-        await col.updateOne({ nameNormalized }, { $set: { ...patch, updatedAt: now } });
+        await personasCol.updateOne({ nameNormalized }, { $set: { ...patch, updatedAt: now } });
         console.log(`[seed:xpersonas] updated (${mode}) ${nameNormalized} ← ${rel}`);
       }
     }
@@ -353,7 +334,7 @@ async function main() {
   }
 }
 
-main().catch((e) => {
+main().catch((e: unknown) => {
   console.error("[seed:xpersonas] fatal:", e instanceof Error ? e.message : e);
   process.exit(1);
 });

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  appendToolsByType,
-  buildPersonaInsertSetBody,
-  computePersonaSeedUpdatePatch
-} from "../../scripts/lib/persona-seed-merge.mjs";
+    appendToolsByType,
+    buildPersonaInsertSetBody,
+    computePersonaSeedUpdatePatch
+} from "@/modules/xchat/persona-seed-merge";
 
 describe("appendToolsByType", () => {
   it("appends only new tool types", () => {
@@ -57,7 +57,7 @@ describe("computePersonaSeedUpdatePatch merge", () => {
       collectionName: "atx-trusted-advisor-dev-xpersonas",
       collectionId: "collection_abc"
     });
-    expect(patch.xapi?.tools).toEqual([
+    expect((patch.xapi as { tools?: unknown[] })?.tools).toEqual([
       { type: "web_search" },
       { type: "collections_search", collection_ids: ["collection_abc"] },
       { type: "atxfinance" }
@@ -75,7 +75,7 @@ describe("computePersonaSeedUpdatePatch merge", () => {
       collectionId: "collection_z",
       collectionName: "Named"
     });
-    expect(patch.xapi?.tools).toEqual([{ type: "x_search" }]);
+    expect((patch.xapi as { tools?: unknown[] })?.tools).toEqual([{ type: "x_search" }]);
     expect(patch.isSystem).toBe(true);
   });
 
