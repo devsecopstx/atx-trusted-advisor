@@ -71,12 +71,12 @@ From strategy app:
 
 ## xf-legacy defaults captured (current repo assets)
 
-Current `atx-docs/atx-branding/` assets with `xf-legacy-` prefix:
+Current `atx-docs/branding/` assets with `xf-legacy-` prefix:
 
-- `atx-docs/atx-branding/xf-legacy-broker.jpg`
-- `atx-docs/atx-branding/xf-legacy-import-broker.jpg`
-- `atx-docs/atx-branding/xf-legacy-optionbuilder.jpg`
-- `atx-docs/atx-branding/xf-legacy-schedule-task.jpg`
+- `atx-docs/branding/xf-legacy-broker.jpg`
+- `atx-docs/branding/xf-legacy-import-broker.jpg`
+- `atx-docs/branding/xf-legacy-optionbuilder.jpg`
+- `atx-docs/branding/xf-legacy-schedule-task.jpg`
 
 *(Removed from tree: `xf-legacy-wheel-prompt.jpg` — drop any stale links; see `generate-docs` branding asset checklist on intentional deletes.)*
 
@@ -84,6 +84,6 @@ Current `atx-docs/atx-branding/` assets with `xf-legacy-` prefix:
 
 - If these prompts are moved into `xfinance` runtime, keep a single source (likely persona seed/config docs) and avoid divergence from strategy app wording.
 - If legacy assets are renamed or replaced, sync:
-  - `atx-docs/atx-branding/README.md`
-  - `atx-docs/atx-branding/atxfinance-brand-validation.md`
+  - `atx-docs/branding/README.md`
+  - `atx-docs/branding/atxfinance-brand-validation.md`
   - any docs/screenshots referencing old filenames.

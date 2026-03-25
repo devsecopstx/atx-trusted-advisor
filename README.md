@@ -14,7 +14,7 @@ User-facing product: **atx Trusted Advisor** (whitelabel-ready chrome: Trusted A
 
 Platform roles vs session: see [DEVELOPMENT.md — Platform roles vs tenant membership](DEVELOPMENT.md#platform-roles-vs-tenant-membership-session).
 
-Branding reference for UI copy and whitelabel: [`atx-docs/atx-xchat/xfinance-branding-review.md`](atx-docs/atx-xchat/xfinance-branding-review.md) (§8 user chrome). Marketing assets, prompt/tag sources, and the sample watchlist CSV live under **[`atx-docs/atx-branding/`](atx-docs/atx-branding/README.md)**.
+Branding reference for UI copy and whitelabel: [`atx-docs/xchat/xfinance-branding-review.md`](atx-docs/xchat/xfinance-branding-review.md) (§8 user chrome). Marketing assets, prompt/tag sources, and the sample watchlist CSV live under **[`atx-docs/branding/`](atx-docs/branding/README.md)**.
 
 ## Docs
 

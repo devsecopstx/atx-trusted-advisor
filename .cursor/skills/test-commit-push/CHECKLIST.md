@@ -21,26 +21,26 @@
 - [ ] Auth/xchat env provenance is consistent: runtime secrets in GCP Secret Manager, GH env secrets OIDC-only, deploy literals in GH vars.
 - [ ] Runtime secret preflight passes: `npm run ops:secrets:verify:staging` and `npm run ops:secrets:verify:prod`.
 - [ ] Secret values satisfy parser constraints (for example `ADMIN_SEED_EMAIL` is valid and has no trailing comma/space).
-- [ ] **Team xAI:** `XAI_TEAM_ID` is set per deployment/tenant where TEAM collection features run (**Phase 1** uses TEAM append/retrieval only — see `atx-docs/atx-xchat/atx-multi-agent.md`).
+- [ ] **Team xAI:** `XAI_TEAM_ID` is set per deployment/tenant where TEAM collection features run (**Phase 1** uses TEAM append/retrieval only — see `atx-docs/xchat/atx-multi-agent.md`).
 - [ ] `.cursor/rules/*.mdc` files have valid frontmatter, repo-aligned `globs`, and no merge/patch artifacts (e.g. leading `+` lines).
 - [ ] When logo or visual identity changes: update
   **`.cursor/rules/xfinance-branding.mdc`** to match (e.g. aTx⚡Finance).
 - [ ] When branding, investor, or GTM copy changes: update
-  **`atx-docs/atx-xchat/xfinance-branding-review.md`** if the expert review doc should
+  **`atx-docs/xchat/xfinance-branding-review.md`** if the expert review doc should
   reflect it (see **`generate-docs`**).
-- [ ] **Branding assets** live under **`atx-docs/atx-branding/`** (not repo-root `atx-branding/` or `branding/`). If you add/move files there, keep **`DEVELOPMENT.md`**, **`AGENTS.md`**, **`tailwind.config.ts`**, and **`tests/unit/parse-watchlist-csv.test.ts`** paths in sync (see **`generate-docs`** → *Branding assets folder gaps*).
+- [ ] **Branding assets** live under **`atx-docs/branding/`** (not repo-root `atx-branding/` or `branding/`). If you add/move files there, keep **`DEVELOPMENT.md`**, **`AGENTS.md`**, **`tailwind.config.ts`**, and **`tests/unit/parse-watchlist-csv.test.ts`** paths in sync (see **`generate-docs`** → *Branding assets folder gaps*).
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.
 - [ ] **Cursor agent commits** use **`chore: aTx⚡ …`** (see **`test-commit-push`** step 11).
 - [ ] **`.cursor/agents/*.yaml`:** when touched, keep `icon` / `color` (after `description`) aligned with Cursor UI expectations (see **`test-commit-push`** step 10b).
 - [ ] Docs/runbooks updated when behavior or operations changed.
 - [ ] **Mongo portfolio store:** canonical collection is **`tenant_portfolio`** (singular), constant `TENANT_PORTFOLIO_COLLECTION` in `src/modules/core-admin/collection-names.ts`. Legacy names `portfolio_portfolios` / `tenant_portfolios` → run **`npm run migrate:tenant-portfolio`** once per database before or right after deploy (see `DEVELOPMENT.md` → *Multi-tenant Seed Verification*).
-- [ ] xChat `POST /api/xchat/ask` changes: update OpenAPI inventory (`src/lib/openapi/current-state-overrides.ts`), `tests/integration/xchat-ask-route.test.ts`, and xChat docs as needed (`atx-docs/atx-xchat/xchat-tools-guide.md`, `atx-docs/atx-xchat/context-routing-multi-agent-policy.md`, `atx-docs/atx-xchat/atxfinance-tool-stub.md`, `AGENTS.md` quick ref). **Contract:** effective xAI model id comes from the **resolved persona’s `model`** (server default if empty); **no** request-body `model`; `modelSelectionSource` is `persona` | `default`. **Prompt assembly:** if `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` change, sync **`generate-docs`** § *xChat / tools & prompts*.
+- [ ] xChat `POST /api/xchat/ask` changes: update OpenAPI inventory (`src/lib/openapi/current-state-overrides.ts`), `tests/integration/xchat-ask-route.test.ts`, and xChat docs as needed (`atx-docs/xchat/xchat-tools-guide.md`, `atx-docs/xchat/context-routing-multi-agent-policy.md`, `atx-docs/xchat/atxfinance-tool-stub.md`, `AGENTS.md` quick ref). **Contract:** effective xAI model id comes from the **resolved persona’s `model`** (server default if empty); **no** request-body `model`; `modelSelectionSource` is `persona` | `default`. **Prompt assembly:** if `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` change, sync **`generate-docs`** § *xChat / tools & prompts*.
 - [ ] **`/api/strategy-options*`** (expirations + chain) or **`src/modules/strategy-options/**`** changes: update **`src/lib/openapi/current-state.ts`**, **`tests/integration/strategy-options*.test.ts`**, **`DEVELOPMENT.md`** (options chain section), and **`README.md`** / **DEVELOPMENT.md** route docs as needed — see **`generate-docs`** § *xStrategyBuilder / strategy-options*.
-- [ ] **Spring BFF (proxied routes):** Kotlin **`@*Mapping`** ↔ **`bff-proxy-routes.ts`**, **`nextBffApi`** / **`backend-bff-api-object.test.ts`**, **`atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`**, smoke parity test, **`proxyRequestToBackend`** on affected **`src/app/api/**/route.ts`**.
+- [ ] **Spring BFF (proxied routes):** Kotlin **`@*Mapping`** ↔ **`bff-proxy-routes.ts`**, **`nextBffApi`** / **`backend-bff-api-object.test.ts`**, **`atx-docs/sre-ops/atxfinance-backend-http-api.md`**, smoke parity test, **`proxyRequestToBackend`** on affected **`src/app/api/**/route.ts`**.
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.
-- [ ] Open gaps (if any) are captured in **`atx-docs/atx-sre-ops/api-consolidation-spring-backend.md`**, **`.cursor/plans/*.plan.md`**, or the relevant ops doc — or consciously not applicable to this change (see **`generate-docs`**).
+- [ ] Open gaps (if any) are captured in **`atx-docs/sre-ops/api-consolidation-spring-backend.md`**, **`.cursor/plans/*.plan.md`**, or the relevant ops doc — or consciously not applicable to this change (see **`generate-docs`**).
 
 ## Staging and production
 

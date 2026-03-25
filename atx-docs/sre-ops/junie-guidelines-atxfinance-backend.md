@@ -5,11 +5,11 @@ These guidelines tell Junie (and other project agents) exactly how to operate, e
 Audience: operators, maintainers, and CI agents working on the backend worker cluster that processes on‑demand aTx finance requests.
 
 Related skills (safe set):
-- atx-backend-architecture
-- atx-backend-deploy-stage
-- atx-backend-deploy-prod
-- atx-backend-runbook
-- atx-backend-ci
+- backend-architecture
+- backend-deploy-stage
+- backend-deploy-prod
+- backend-runbook
+- backend-ci
 
 Key defaults (confirm per environment):
 - Runtime: Cloud Run (fully managed)
@@ -28,11 +28,11 @@ Key defaults (confirm per environment):
 - Observability first. Prefer establishing symptoms (health, queue depth, error rate) before changes.
 
 2) Decision Tree (Which skill to use?)
-- Need to understand components or defaults? → Use atx-backend-architecture.
-- Promote code to staging or verify staging worker? → Use atx-backend-deploy-stage.
-- Promote a known‑good image to production with canary? → Use atx-backend-deploy-prod.
-- Investigate health, DLQ, latency, or incidents? → Use atx-backend-runbook.
-- Validate reliability properties (health, idempotency, DLQ, autoscaling) before/after a change? → Use atx-backend-ci.
+- Need to understand components or defaults? → Use backend-architecture.
+- Promote code to staging or verify staging worker? → Use backend-deploy-stage.
+- Promote a known‑good image to production with canary? → Use backend-deploy-prod.
+- Investigate health, DLQ, latency, or incidents? → Use backend-runbook.
+- Validate reliability properties (health, idempotency, DLQ, autoscaling) before/after a change? → Use backend-ci.
 
 3) Pre‑flight Checklist (all environments)
 - Repo clean and on the correct branch; PRs pass ci:gate.
@@ -42,7 +42,7 @@ Key defaults (confirm per environment):
 - Confirm region/project IDs and service names match environment conventions.
 
 4) Staging Promotion (summary)
-- Run atx-backend-deploy-stage skill.
+- Run backend-deploy-stage skill.
 - Build & push image tagged with commit SHA to Artifact Registry.
 - Deploy Cloud Run service atxfinance-backend-staging with cpu=1, concurrency=1, mem=1Gi, min=1, max=5; no unauthenticated.
 - Validate health: GET /api/health → { status: ok, mongo: ok, secrets: ok }.
@@ -51,7 +51,7 @@ Key defaults (confirm per environment):
 
 5) Production Promotion (summary)
 - Ensure staging revision/image digest is healthy and approved.
-- Run atx-backend-deploy-prod skill.
+- Run backend-deploy-prod skill.
 - Deploy new prod revision with no traffic; then canary 5–10% for 10–20 minutes.
 - Monitor health, error rate, DLQ growth, and p95 latency.
 - Promote to 100% if healthy; otherwise rollback immediately.
@@ -92,7 +92,7 @@ Triage steps:
 
 10) Prompts & Guardrails (copy‑paste)
 - Architecture review: "Summarize the atxfinance=backend architecture, list required env vars, and confirm idempotency and DLQ policies per env. Do not deploy."
-- Staging deploy: "Run the atx-backend-deploy-stage workflow for commit <SHA>. Require ci:gate pass and health validation. If health fails, stop and provide rollback commands."
+- Staging deploy: "Run the backend-deploy-stage workflow for commit <SHA>. Require ci:gate pass and health validation. If health fails, stop and provide rollback commands."
 - Prod canary: "Promote image digest <DIGEST> to atxfinance-backend with 10% canary for 15 minutes. Monitor errors and DLQ. Rollback on elevated 5xx or DLQ growth."
 - DLQ triage: "Inspect DLQ messages for the last hour, categorize root causes, and draft safe replay plan without auto‑republish."
 

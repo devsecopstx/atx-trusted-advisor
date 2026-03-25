@@ -2,7 +2,7 @@
 
 **Docs index:** [`../README.md`](../README.md). Diagram: [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).
 
-**Elsewhere (do not duplicate):** [`context-routing-multi-agent-policy.md`](./context-routing-multi-agent-policy.md) · [`../atx-sre-ops/api-consolidation-spring-backend.md`](../atx-sre-ops/api-consolidation-spring-backend.md) · `.cursor/skills/xdesign-review/SKILL.md` · `.cursor/plans/atx-backend-xchat-multi-agent-orchestrator.plan.md`
+**Elsewhere (do not duplicate):** [`context-routing-multi-agent-policy.md`](./context-routing-multi-agent-policy.md) · [`../sre-ops/api-consolidation-spring-backend.md`](../sre-ops/api-consolidation-spring-backend.md) · `.cursor/skills/xdesign-review/SKILL.md` · `.cursor/plans/backend-xchat-multi-agent-orchestrator.plan.md`
 
 ---
 
@@ -42,7 +42,7 @@ Thin HTTP handlers; async default; idempotent retries; hourly caps limit cost.
 | **xChat `/ask`** | Responses API + tool loop; plan limits; streaming later. |
 | **xStrategyBuilder** | Renders artifacts / review — **no** orchestration state. |
 
-**HTTP (Chunk 1):** Spring **`/api/strategy-jobs`** (BFF from Next when `ATXFINANCE_BACKEND_ORIGIN` set) — slot collection to `slots_complete`; see **[`../atx-sre-ops/atxfinance-backend-http-api.md`](../atx-sre-ops/atxfinance-backend-http-api.md)**.
+**HTTP (Chunk 1):** Spring **`/api/strategy-jobs`** (BFF from Next when `ATXFINANCE_BACKEND_ORIGIN` set) — slot collection to `slots_complete`; see **[`../sre-ops/atxfinance-backend-http-api.md`](../sre-ops/atxfinance-backend-http-api.md)**.
 
 **Routing:** retrieval + tools before **multi-agent** (`grok-4.20-multi-agent`); clamp `agent_count` by plan.
 

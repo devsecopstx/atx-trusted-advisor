@@ -18,7 +18,7 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 
 ## Core MVP Scope (Revisit)
 
-- **xChat** — Finance-enabled Grok session; persona/RAG/tool behavior governed by published personas and `POST /api/xchat/ask`. See `atx-docs/atx-xchat/*.md` for contracts. **Prompt assembly:** `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` in `src/modules/xchat/xchat-prompt-build.ts` and `batch-prompt-context.ts`. **Diagrams + flow:** `atx-docs/atx-xchat/xchat-tools-guide.md` — update when order or routing changes (xDesign doc parity).
+- **xChat** — Finance-enabled Grok session; persona/RAG/tool behavior governed by published personas and `POST /api/xchat/ask`. See `atx-docs/xchat/*.md` for contracts. **Prompt assembly:** `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` in `src/modules/xchat/xchat-prompt-build.ts` and `batch-prompt-context.ts`. **Diagrams + flow:** `atx-docs/xchat/xchat-tools-guide.md` — update when order or routing changes (xDesign doc parity).
 - **xCoach** — Currently a **stub**. Planned: licensing exam (timed test). Further scope (TODO).
 
 ## When to Use
@@ -30,16 +30,16 @@ Use the same skill for **pre-production lock**: merge to `main`, tag, and deploy
 
 ## Skill changelog
 
-- **1.1.2** — Options index: **`atx-strategy-*` skill folders removed** from the repo as duplicative; only **`atx-skill-*`** remains — README + AGENTS updated.
-- **1.1.1** — README options index: single table for `atx-skill-*` vs `atx-strategy-*` (no duplicate sections); AGENTS.md line aligned.
-- **1.1.0** — xChat prompt assembly is centralized (`buildXchatSystemPrompt`, `buildSessionToolInstructions`, `appendXchatKbMetadata`); doc parity pointer remains `atx-docs/atx-xchat/xchat-tools-guide.md`.
+- **1.1.2** — Options index: **`atx-strategy-*` skill folders removed** from the repo as duplicative; only **`skill-*`** remains — README + AGENTS updated.
+- **1.1.1** — README options index: single table for `skill-*` vs `atx-strategy-*` (no duplicate sections); AGENTS.md line aligned.
+- **1.1.0** — xChat prompt assembly is centralized (`buildXchatSystemPrompt`, `buildSessionToolInstructions`, `appendXchatKbMetadata`); doc parity pointer remains `atx-docs/xchat/xchat-tools-guide.md`.
 
 ## Versioning (SemVer — single source of truth)
 
 - **Canonical app version** lives only in **`package.json`** (`version` field). Runtime UIs read **`src/lib/app-version.ts`** (`APP_VERSION_LABEL`). Do **not** hardcode version strings in skills or UI.
 - **This skill’s `version` field** (frontmatter) tracks review-gate doc/process changes only; bump PATCH for doc-only, MINOR when the mandatory checklist or scope changes.
 - Follow **SemVer 2.0.0**: **MAJOR.MINOR.PATCH** — bump MAJOR for breaking API/contract changes, MINOR for backward-compatible features, PATCH for fixes.
-- Do **not** downgrade version numbers (e.g. never 1.0.6 → 1.0.0). “v1” product line = **1.x** on `main`; tag releases from signed tags per deploy runbooks (`.cursor/skills/atx-deploy-production/SKILL.md`).
+- Do **not** downgrade version numbers (e.g. never 1.0.6 → 1.0.0). “v1” product line = **1.x** on `main`; tag releases from signed tags per deploy runbooks (`.cursor/skills/deploy-production/SKILL.md`).
 
 ## Mandatory Reviewer Sequence
 
@@ -124,14 +124,14 @@ Ship checklist (align with **`test-commit-push`** / **`AGENTS.md`**):
 ## Deferred / TODO (Out of Scope for This Revisit)
 
 - **xPersona**: detailed config and how it gates xChat scope — later TODO.
-- **Search/RAG tools**: advanced tuning — see `atx-docs/atx-xchat/`.
+- **Search/RAG tools**: advanced tuning — see `atx-docs/xchat/`.
 - **xCoach**: full licensing-exam (timed test) design and implementation — stub only for now.
 
 
 
 ## Skill index note (options)
 
-The repo maintains **only** `atx-skill-*` option playbooks (see `.cursor/skills/README.md` § *Options strategies*). TSLA/xFinance nuance belongs in the chat prompt, not a parallel skill folder.
+The repo maintains **only** `skill-*` option playbooks (see `.cursor/skills/README.md` § *Options strategies*). TSLA/xFinance nuance belongs in the chat prompt, not a parallel skill folder.
 
 ## Guardrails
 

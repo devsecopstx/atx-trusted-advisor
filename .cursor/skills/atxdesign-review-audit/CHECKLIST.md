@@ -2,7 +2,7 @@
 
 **Indexes:** [`atx-docs/README.md`](../../../atx-docs/README.md) · [`skills/README.md`](../README.md)
 
-Repo-specific ground truth: **`atx-docs/atx-sre-ops/audit-lineage-and-controls.md`** (BFF parity, Mongo schema, test inventory, known gaps).
+Repo-specific ground truth: **`atx-docs/sre-ops/audit-lineage-and-controls.md`** (BFF parity, Mongo schema, test inventory, known gaps).
 
 ## Validation Checklist
 

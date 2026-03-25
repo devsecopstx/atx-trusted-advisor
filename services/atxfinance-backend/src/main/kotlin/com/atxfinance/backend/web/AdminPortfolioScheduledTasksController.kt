@@ -1,11 +1,11 @@
 package com.atxfinance.backend.web
 
+import com.atxfinance.backend.admin.AdminPortfolioAccountsService
 import com.atxfinance.backend.admin.AdminPortfolioScheduledTasksService
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.session.SessionCookieParser
 import com.atxfinance.backend.session.isGlobalAdmin
 import jakarta.servlet.http.HttpServletRequest
-import org.bson.types.ObjectId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController
 class AdminPortfolioScheduledTasksController(
     private val props: AtxfinanceProperties,
     private val sessionCookieParser: SessionCookieParser,
+    private val adminPortfolioAccountsService: AdminPortfolioAccountsService,
     private val adminPortfolioScheduledTasksService: AdminPortfolioScheduledTasksService,
 ) {
 
@@ -47,6 +48,9 @@ class AdminPortfolioScheduledTasksController(
         }
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
+        }
+        if (adminPortfolioAccountsService.findPortfolioById(portfolioId) == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Portfolio not found"))
         }
         val doc = adminPortfolioScheduledTasksService.create(session, portfolioId, body)
         if (doc == null || doc.getObjectId("_id") == null) {

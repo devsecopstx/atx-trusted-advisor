@@ -194,6 +194,38 @@ export const nextBffApi = {
     portfolioAccountPositions: {
       pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions",
       methods: ["GET", "POST"]
+    },
+    portfolioRecommendationsIndex: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/recommendations",
+      methods: ["GET", "POST"]
+    },
+    portfolioRecommendationById: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/recommendations/{recommendationId}",
+      methods: ["PATCH", "DELETE"]
+    },
+    portfolioAlertsIndex: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/alerts",
+      methods: ["GET", "POST"]
+    },
+    portfolioAlertById: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/alerts/{alertId}",
+      methods: ["PATCH", "DELETE"]
+    },
+    portfolioDeliveryChannelsIndex: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/delivery-channels",
+      methods: ["GET", "POST"]
+    },
+    portfolioDeliveryChannelById: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/delivery-channels/{channelId}",
+      methods: ["PATCH", "DELETE"]
+    },
+    portfolioTasksIndex: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/tasks",
+      methods: ["GET", "POST"]
+    },
+    portfolioTaskById: {
+      pathTemplate: "/api/admin/portfolios/{portfolioId}/tasks/{taskId}",
+      methods: ["PATCH", "DELETE"]
     }
   },
   rag: {

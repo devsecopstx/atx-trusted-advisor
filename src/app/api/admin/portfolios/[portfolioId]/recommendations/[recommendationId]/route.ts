@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
-  adminDeleteRecommendationForPortfolio,
-  adminGetPortfolioById,
-  adminUpdateRecommendationForPortfolio
+    adminDeleteRecommendationForPortfolio,
+    adminGetPortfolioById,
+    adminUpdateRecommendationForPortfolio
 } from "@/modules/core-admin/repository";
 import type { Recommendation } from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
@@ -52,6 +53,11 @@ const patchSchema = z
   );
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -102,7 +108,12 @@ export async function PATCH(request: Request, context: RouteContext) {
   return NextResponse.json({ data: serializeRecommendation(updated) });
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

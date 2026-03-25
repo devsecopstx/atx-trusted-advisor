@@ -78,7 +78,7 @@ When the share and this rule disagree, **this rule + repo implementation** win; 
 
 **Design system (source of truth)**
 - Use `--xf-*` tokens from `atx-docs/design-system/atxfinance-brand-kit.css`. No hardcoded hex in app CSS.
-- Accent green: `--xf-gain-green` (#39ff14). Marketing hero may use `emerald-400` (#22c55e) per design review — see `atx-docs/atx-xchat/xfinance-branding-review.md`.
+- Accent green: `--xf-gain-green` (#39ff14). Marketing hero may use `emerald-400` (#22c55e) per design review — see `atx-docs/xchat/xfinance-branding-review.md`.
 
 **When user says "xFinance branding", "new hero", or "investor / waitlist slide"**
 - Output a Tailwind component using `--xf-*` tokens, tagline, subline, **$2/hr**, product hierarchy (xFinance, xChat, xCoach, xMoney), **aTx⚡Finance** lockup (bolt between aTx and Finance), and **differentiation** (execution + advisory + exam prep in one place). For waitlist/investor context, add a **secondary** line on early access / professionals / roadmap tiers without inventing metrics or testimonials.

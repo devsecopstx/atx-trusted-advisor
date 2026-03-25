@@ -29,6 +29,8 @@ class AdminPortfolioScheduledTasksService(
     private val categories =
         setOf("sync-broker", "rebalance", "compliance", "notifications", "user-history")
 
+    fun toJson(doc: Document): Map<String, Any?> = adminScheduledTasksService.scheduledTaskToJson(doc)
+
     fun list(session: ResolvedSession, portfolioId: String): List<Map<String, Any?>>? {
         if (!ObjectId.isValid(portfolioId)) {
             return null

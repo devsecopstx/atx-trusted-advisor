@@ -44,30 +44,30 @@ When **adding, renaming, or materially changing** persona files under **`.cursor
 - If **`.cursor/worktrees.json`** lists named worktrees / `setup` stamps, keep README prose aligned (parallel agents + optional `ROLE` stamps are local convenience only).
 - If **`AGENTS.md`** or **`DEVELOPMENT.md`** point at agent filenames, update those pointers in the **same** change set as the rename.
 
-**Naming convention:** Prefer stable, role-clear names (e.g. `atx-backend.md`, `atx-reviewer.md`, `atx-ux-agent.md`). Avoid duplicating the same role under two filenames without a README deprecation note.
+**Naming convention:** Prefer stable, role-clear agent YAML names (e.g. `backend.yaml`, `reviewer.yaml`, `frontend.yaml`). Avoid duplicating the same role under two filenames without a README deprecation note.
 
 When introducing new subsystems, prefer extending `DEVELOPMENT.md`
 and linking from `README.md` instead of creating scattered top-level docs.
 
-**xChat / branding:** Keep **`atx-docs/atx-xchat/xfinance-branding-review.md`**
+**xChat / branding:** Keep **`atx-docs/xchat/xfinance-branding-review.md`**
 in sync when **`xfinance-branding.mdc`** or logo/hero/pricing messaging
 changes materially.
 
 **xChat / observability:** When changing **`ENABLE_XCHAT_DEBUG`**,
 **`src/lib/xchat-debug.ts`**, or ask/batch logging prefixes, update
-**`atx-docs/atx-xchat/xchat-debug-logging.md`**
+**`atx-docs/xchat/xchat-debug-logging.md`**
 (`type` taxonomy, values, privacy).
 If `GET /api/xchat/history` or `GET /api/xchat/history/stats` logging changes,
 include `xchat_history_list` / `xchat_history_stats` in the taxonomy docs.
 
 **xChat / tools & prompts:** When changing `POST /api/xchat/ask` prompt assembly,
 `respondWithXaiToolLoop`, `personaXapiToolsToXaiRequestTools`, workspace snapshot,
-batch persona parity, or RAG/tool routing, update **`atx-docs/atx-xchat/xchat-tools-guide.md`**
+batch persona parity, or RAG/tool routing, update **`atx-docs/xchat/xchat-tools-guide.md`**
 (mermaid workflow + tables). **Source modules to keep in sync with prose:**
 
 - **`src/modules/xchat/xchat-prompt-build.ts`** — `buildXchatSystemPrompt`, `buildSessionToolInstructions` (session tool copy; formerly exported strings on `default-xpersonas.ts`).
 - **`src/modules/xchat/batch-prompt-context.ts`** — `appendXchatKbMetadata` (KB suffix on user turns for ask + batch; do not use the old name `buildBatchUserPromptAugmentation` in docs).
-- **`atx-docs/atx-xchat/atxfinance-tool-stub.md`** — cross-check when session blocks or KB metadata change (batch behavior lives under **Batch** in `xchat-tools-guide.md`).
+- **`atx-docs/xchat/atxfinance-tool-stub.md`** — cross-check when session blocks or KB metadata change (batch behavior lives under **Batch** in `xchat-tools-guide.md`).
 
 **Auth identity placeholders:** When changing X OAuth identity-email behavior
 (`src/lib/x-identity-email.ts`, `/api/auth/x/callback`, `/api/auth/link-email`):
@@ -92,8 +92,8 @@ When **`src/app/api/**`** or public HTTP contracts change:
 
 When **`ATXFINANCE_BACKEND_ORIGIN`** proxy behavior, Kotlin controllers, or BFF route lists change:
 
-- Keep **`atx-docs/atx-sre-ops/api-consolidation-spring-backend.md`** (status, deferred slices, operational parity) current.
-- Keep **`atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`** aligned with implemented Spring routes.
+- Keep **`atx-docs/sre-ops/api-consolidation-spring-backend.md`** (status, deferred slices, operational parity) current.
+- Keep **`atx-docs/sre-ops/atxfinance-backend-http-api.md`** aligned with implemented Spring routes.
 - Keep **`tests/smoke/backend-http-api-parity.test.ts`** (and any **`src/lib/bff-proxy-routes.ts`** or **`src/lib/backend-bff.ts`** registry, if present) consistent with the proxy surface.
 - For JVM changes, **`services/atxfinance-backend`** tests / HTTP API doc updates should land in the **same** slice as the Next proxy change when possible.
 
@@ -169,7 +169,7 @@ When **positioning, GTM, waitlist, investor deck copy**, or
   **aTx⚡Finance** lockup, **$2/hr** lock-in vs roadmap tiers,
   differentiation, weak-spot honesty, channels, and compliance narrative.
 - **Expert review doc:**
-  **`atx-docs/atx-xchat/xfinance-branding-review.md`** for logo/hero/design-system
+  **`atx-docs/xchat/xfinance-branding-review.md`** for logo/hero/design-system
   alignment with the rule. Link or summarize rule updates there when it is
   the stakeholder-facing explainer.
 - Do **not** duplicate conflicting pricing:
@@ -188,20 +188,20 @@ When adding or reorganizing content under **`atx-rag-collection/`**:
 - Shared prompts should avoid **personal / PII** unless explicitly scoped as non-production samples.
 - When **wiring seed → xAI / Mongo**, update **`DEVELOPMENT.md`** (seed / RAG section), **`atx-docs/PLAN.md`**, and add **tests** for path resolution / idempotency (see **`test-commit-push`** step 6).
 
-### Branding assets folder gaps (`atx-docs/atx-branding/`)
+### Branding assets folder gaps (`atx-docs/branding/`)
 
-When files under **`atx-docs/atx-branding/`** are added, replaced, or deleted:
+When files under **`atx-docs/branding/`** are added, replaced, or deleted:
 
-- Update **`atx-docs/atx-branding/README.md`** if the asset set, naming convention, or
+- Update **`atx-docs/branding/README.md`** if the asset set, naming convention, or
   "how to use" workflow changed.
-- Record a quick QA pass in **`atx-docs/atx-branding/atxfinance-brand-validation.md`**
+- Record a quick QA pass in **`atx-docs/branding/atxfinance-brand-validation.md`**
   (or link equivalent review output) for non-trivial creative refreshes.
 - If deletions are intentional, note rationale in PR summary and ensure
   no docs/rules still reference removed filenames.
 - Keep generated assets and source prompts consistent:
   if prompt taxonomy changes, sync
-  `atx-docs/atx-branding/atxfinance-brand-prompts.md` and
-  `atx-docs/atx-branding/atxfinance-branding-tags.md`.
+  `atx-docs/branding/atxfinance-brand-prompts.md` and
+  `atx-docs/branding/atxfinance-branding-tags.md`.
 
 ## PR review handoff
 
@@ -221,7 +221,7 @@ Post-deploy smoke steps live in
 - **Wrong globs:** paths must match **this** repo.
   Example xChat globs:
   `src/app/xchat/**`, `src/app/api/xchat/**`,
-  `src/modules/xchat/**`, `atx-docs/atx-xchat/**`.
+  `src/modules/xchat/**`, `atx-docs/xchat/**`.
   Do not use other monorepo layouts.
 - **Drift:** if a rule references APIs or folders that moved,
   update the rule in the same PR as the code move.
@@ -232,7 +232,7 @@ Post-deploy smoke steps live in
   add a **one-line pointer** in `DEVELOPMENT.md` or `AGENTS.md`
   under Cursor/agent setup *if* operators need discovery.
   Otherwise, the rule is self-describing via `description` + `globs`.
-- xChat-specific product/agent notes stay in **`atx-docs/atx-xchat/`**;
+- xChat-specific product/agent notes stay in **`atx-docs/xchat/`**;
   keep rules short and link out.
 
 ## Version Consistency Rules
@@ -253,8 +253,8 @@ Post-deploy smoke steps live in
   - `.cursor/skills/test-automation/SKILL.md` (when adding or scoping tests)
   - `.cursor/skills/atxdesign-review/SKILL.md`
     (combined MVP + branding + pre-prod lock)
-  - `.cursor/skills/atx-sre-docs-ops/SKILL.md` (docs ops)
-  - `.cursor/skills/atx-sre-ops-gcp-gke/SKILL.md` (GKE SRE)
+  - `.cursor/skills/sre-docs-ops/SKILL.md` (docs ops)
+  - `.cursor/skills/sre-ops-gcp-gke/SKILL.md` (GKE SRE)
   - `AGENTS.md`
 - Rule changes under `.cursor/rules/` ship with the same validation pass
   as skills (see test-commit-push checklist).
@@ -293,7 +293,7 @@ When `.github/workflows/deploy-cloud-run.yml` or `.github/workflows/deploy-cloud
 
 When updating prompt tips/chips or persona examples in xChat:
 
-1. Keep **`atx-docs/atx-xchat/atxfinance-xchat-prompts.md`** in sync with the actual
+1. Keep **`atx-docs/xchat/atxfinance-xchat-prompts.md`** in sync with the actual
    UI surface (`src/app/xchat/ui/xchat-conversation.tsx`).
 2. Do not document persona chips that are not currently rendered.
 3. If prompts are "planned" and not shipped, label them as backlog/TODO and
@@ -303,7 +303,7 @@ When updating prompt tips/chips or persona examples in xChat:
 
 - Docs updated/created
 - Coverage gaps still open:
-  prefer capturing non-blocking items in **`atx-docs/atx-sre-ops/api-consolidation-spring-backend.md`** (BFF / Spring migration backlog), **`atx-docs/PLAN.md`** (product / multi-agent / admin follow-ups), **`.cursor/plans/*.plan.md`**, or a short **TODO** in the relevant ops doc — not orphan comments.
+  prefer capturing non-blocking items in **`atx-docs/sre-ops/api-consolidation-spring-backend.md`** (BFF / Spring migration backlog), **`atx-docs/PLAN.md`** (product / multi-agent / admin follow-ups), **`.cursor/plans/*.plan.md`**, or a short **TODO** in the relevant ops doc — not orphan comments.
 - Recommended doc owners/follow-ups
 - Prefer **project-local** `.cursor/skills/` and this repo's rules/docs
   over duplicating global Cursor defaults.

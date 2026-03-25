@@ -28,7 +28,7 @@ import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 /**
- * End-to-end HTTP CRUD against the Spring surface documented in [atx-docs/atx-sre-ops/atxfinance-backend-http-api.md].
+ * End-to-end HTTP CRUD against the Spring surface documented in [atx-docs/sre-ops/atxfinance-backend-http-api.md].
  * Uses embedded MongoDB (no Docker). Covers health, portfolios, accounts, watchlist, positions.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

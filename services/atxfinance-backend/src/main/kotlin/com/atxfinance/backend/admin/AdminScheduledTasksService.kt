@@ -287,7 +287,7 @@ class AdminScheduledTasksService(
         m["name"] = doc.getString("name")
         m["category"] = doc.getString("category")
         m["scheduleCron"] = doc.getString("scheduleCron")
-        m["enabled"] = doc.getBoolean("enabled")
+        m["enabled"] = doc.getBoolean("enabled") ?: true
         (doc["runTimeoutSeconds"] as? Number)?.toInt()?.let { m["runTimeoutSeconds"] = it }
         (doc["maxRetries"] as? Number)?.toInt()?.let { m["maxRetries"] = it }
         doc.getDate("lastRunAt")?.let { m["lastRunAt"] = it.toInstant().toString() }

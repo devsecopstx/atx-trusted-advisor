@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdminSession } from "@/lib/api-auth";
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
+import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { adminGetPortfolioById, deleteScheduledTask, updateScheduledTask } from "@/modules/core-admin/repository";
 
 type RouteContext = {
@@ -28,6 +29,11 @@ const patchTaskSchema = z
   );
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -72,7 +78,12 @@ export async function PATCH(request: Request, context: RouteContext) {
   return NextResponse.json({ data: serializeScheduledTaskForJson(updated) });
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

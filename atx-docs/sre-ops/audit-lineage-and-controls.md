@@ -28,7 +28,7 @@ Rows are **append-only** application inserts (not tamper-evident by themselves):
 
 When `proxyRequestToBackend` in `src/lib/backend-bff.ts` returns a `Response`, the **Next.js route body does not run**. Side effects that only exist in Next (e.g. Pub/Sub publish on recommendations) are skipped — see [`./api-consolidation-spring-backend.md`](./api-consolidation-spring-backend.md) § operational parity.
 
-**Audit implication:** Mutations that move to Spring **must** write audit rows on the JVM for parity. The consolidation doc lists JVM status per effect; treat that table as the compliance checklist before enabling BFF in prod.
+**Audit implication:** Mutations that move to Spring **must** write audit rows on the JVM for parity **when Next already wrote them** (e.g. access-request approve). The consolidation doc lists JVM status per effect; treat that table as the compliance checklist before enabling BFF in prod. **Admin nested portfolio** CRUD (recommendations, alerts, delivery-channels, portfolio tasks) did **not** emit `admin_audit_events` on Next either; BFF-on does not introduce a new audit gap vs Next for those routes.
 
 ## Retrieval parity (`GET /api/admin/audit`)
 
@@ -44,6 +44,7 @@ Document this difference in runbooks when debugging “missing” rows across en
 | Next admin audit route (local path) | `tests/integration/admin-audit-route.test.ts` |
 | Self-service access request + audit (incl. BFF short-circuit skips Next audit) | `tests/integration/self-access-request-route.test.ts` |
 | BFF contract / Kotlin mapping smoke | `tests/smoke/backend-http-api-parity.test.ts` |
+| Admin portfolio nested REST proxy short-circuit | `tests/integration/admin-portfolio-nested-rest-bff-proxy.test.ts` |
 | `AuditEvent` type contract | `tests/unit/audit-event-contract.test.ts` |
 
 **Gap (explicit):** No automated test proves **byte-for-byte** parity between Next and Spring audit **writes** for every migrated route; rely on code review + JVM integration tests when adding controllers.

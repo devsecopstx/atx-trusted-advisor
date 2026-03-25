@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
-  adminCreateRecommendationForPortfolio,
-  adminGetPortfolioById,
-  adminListRecommendationsForPortfolio
+    adminCreateRecommendationForPortfolio,
+    adminGetPortfolioById,
+    adminListRecommendationsForPortfolio
 } from "@/modules/core-admin/repository";
 import type { Recommendation } from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
@@ -40,7 +41,12 @@ const postSchema = z.object({
   targetPrice: z.number().finite().positive().optional()
 });
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -57,6 +63,11 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function POST(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

@@ -53,6 +53,20 @@ const expectedRoutes: readonly ExpectedRoute[] = [
     pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions",
     methods: ["GET", "POST"]
   },
+  { pathTemplate: "/api/admin/portfolios/{portfolioId}/recommendations", methods: ["GET", "POST"] },
+  {
+    pathTemplate: "/api/admin/portfolios/{portfolioId}/recommendations/{recommendationId}",
+    methods: ["PATCH", "DELETE"]
+  },
+  { pathTemplate: "/api/admin/portfolios/{portfolioId}/alerts", methods: ["GET", "POST"] },
+  { pathTemplate: "/api/admin/portfolios/{portfolioId}/alerts/{alertId}", methods: ["PATCH", "DELETE"] },
+  { pathTemplate: "/api/admin/portfolios/{portfolioId}/delivery-channels", methods: ["GET", "POST"] },
+  {
+    pathTemplate: "/api/admin/portfolios/{portfolioId}/delivery-channels/{channelId}",
+    methods: ["PATCH", "DELETE"]
+  },
+  { pathTemplate: "/api/admin/portfolios/{portfolioId}/tasks", methods: ["GET", "POST"] },
+  { pathTemplate: "/api/admin/portfolios/{portfolioId}/tasks/{taskId}", methods: ["PATCH", "DELETE"] },
   { pathTemplate: "/api/rag/files", methods: ["GET", "POST"] },
   { pathTemplate: "/api/rag/files/{fileId}/readiness", methods: ["GET"] },
   { pathTemplate: "/api/access-requests", methods: ["POST"] },

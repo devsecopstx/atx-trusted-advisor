@@ -13,7 +13,7 @@ Core backend and UI for atxFinance **admin operations** and **signed-in app_user
 
 ### Documentation tree
 
-Engineering and ops Markdown lives under **`atx-docs/`** (there is no top-level **`docs/`** folder). Start at [`atx-docs/README.md`](atx-docs/README.md): **atx-sre-ops** (BFF, Spring HTTP, secrets), **atx-xchat** (prompts, tools, multi-agent), **atx-options** (stub — canonical strategy narratives under **[`atx-rag-collection/options-strategy/`](atx-rag-collection/options-strategy/README.md)**), **PLAN.md** (backlog).
+Engineering and ops Markdown lives under **`atx-docs/`** (there is no top-level **`docs/`** folder). Start at [`atx-docs/README.md`](atx-docs/README.md): **`sre-ops`** (BFF, Spring HTTP, secrets), **xchat** (prompts, tools, multi-agent), **branding** / **options** RAG, **PLAN.md** (backlog).
 
 ## Tech Stack
 
@@ -48,13 +48,13 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 
 - **Runtime** — **Kotlin**, **Spring Boot**, **JDK 21**; build with **Gradle** (`services/atxfinance-backend`, `gradlew`).
 - **Role** — Fault-tolerant scheduler/worker surface (ShedLock + Mongo, Pub/Sub integration path, observability hooks); **not** a replacement for Next.js product APIs.
-- **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
+- **HTTP** — Actuator and app health/compatibility routes on port **8080** when run via Compose; contract summary in **`atx-docs/sre-ops/atxfinance-backend-http-api.md`** and **`services/atxfinance-backend/README.md`**.
 - **Strategy jobs (Phase 1 orchestrator)** — Mongo **`strategy_jobs`** (override **`STRATEGY_JOBS_COLLECTION`**). Rolling hourly create cap **`STRATEGY_MAX_JOBS_HOURLY`** (default 12) and soft-warn threshold **`STRATEGY_SOFT_WARN_JOBS_HOURLY`** (default 8). Next BFF proxies **`/api/strategy-jobs`** to Spring when **`ATXFINANCE_BACKEND_ORIGIN`** is set; without BFF, those routes return **503**.
 - **Container** — Repo-root **`Dockerfile`** builds the JAR from `services/atxfinance-backend`; **`docker-compose.yml`** wires `atxfinance-backend` + `mongo:8`.
 
 ### Integrations (cross-cutting)
 
-- **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`atx-docs/atx-xchat/xai-api-standard.md`** for repo mapping and deep links.
+- **LLM / tools:** [xAI](https://docs.x.ai/overview) API is the **integration standard** for xChat (Responses, chat completions, batch, collections). See **`atx-docs/xchat/xai-api-standard.md`** for repo mapping and deep links.
 - **POST `/v1/responses` (xChat):** Outbound bodies use **`instructions`** for the system prompt (xAI API field name — not `system_prompt`). Tool-loop **continuation** turns send **`previous_response_id`** only and **omit** `instructions`, per API rules. Implementation: `respondWithXaiToolLoop` / `respondWithXai` in `src/lib/xai.ts`; batch JSONL items use the same shape in `src/modules/xchat/batch-service.ts`. **`502`** from `POST /api/xchat/ask` includes truncated upstream text in **`details`** for operators.
 
 ### Local dev run order (summary)
@@ -122,7 +122,7 @@ Use `.env` only (do not use `.env.local` for this app).
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET` (recommended for session signing)
 - `ALLOW_ANY_X_USER_LOGIN` (optional feature flag; set `true` to allow any authenticated X user into `/xchat` with non-admin permissions, default disabled)
-- `ENABLE_XCHAT_DEBUG` (optional; set `true` to emit detailed xChat payload logs — RAG context, prompts, tools — for expert learning; default `false`; configure Cloud Logging retention e.g. 30 days at project or log-bucket level; taxonomy and privacy: **`atx-docs/atx-xchat/xchat-debug-logging.md`**)
+- `ENABLE_XCHAT_DEBUG` (optional; set `true` to emit detailed xChat payload logs — RAG context, prompts, tools — for expert learning; default `false`; configure Cloud Logging retention e.g. 30 days at project or log-bucket level; taxonomy and privacy: **`atx-docs/xchat/xchat-debug-logging.md`**)
 - `X_OAUTH_CALLBACK_URL` (optional; defaults to current request origin + `/api/auth/x/callback`)
 - `ADMIN_SEED_EMAIL` (required for `npm run seed:admin` and OAuth seed-admin promotion; **no default** — set explicitly in `.env`)
 - `ADMIN_X_USERNAMES` (optional allowlist, comma-separated)
@@ -152,8 +152,8 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - **Ordered one-shot (backend first, then Next):** `npm run dev:stack` — runs `docker compose up -d`, waits until `http://localhost:8080` health responds, then starts `npm run dev:frontend` in the foreground. Ctrl+C stops the Next process only; run `docker compose down` when you want to stop Mongo + the backend container.
    - **Host Kotlin backend + Next (no backend Docker image):** `npm run dev:host` — runs `bash scripts/dev/bootrun-atxfinance-backend.sh` (Gradle `bootRun`), waits for `:8080` health, then Next dev. Mongo must already be up (e.g. `docker compose up -d mongodb` or Atlas). Ctrl+C stops Next and SIGTERM to the JVM. VS Code / Cursor: task **Dev build (host: Gradle bootRun → Next, no backend Docker)**.
    - **Attached Compose logs (no Next):** `npm run dev:backend`
-   - **BFF — portfolio + positions on Spring:** set `ATXFINANCE_BACKEND_ORIGIN=http://127.0.0.1:8080` in `.env`. Next proxies to Kotlin (forwards `Cookie`): `GET`/`PATCH` `/api/portfolios/:portfolioId`, `GET`/`POST` `/api/portfolios/default`, `GET` `/api/portfolios/current`, `GET`/`POST` `/api/portfolios/:id/accounts`, `PATCH` `.../accounts/:accountId`, `GET`/`PATCH` `.../watchlist`, `GET`/`POST` `/api/positions`, `DELETE` `/api/positions/:positionId`, plus **global-admin** `GET`/`POST` `/api/admin/portfolios/:id/accounts`, `PATCH`/`DELETE` `.../accounts/:accountId` (see `src/lib/bff-proxy-routes.ts`). Use the same `AUTH_SECRET` (or `X_OAUTH_CLIENT_SECRET`) and Mongo DB name on both processes.
-   - **Admin portfolios — split:** With BFF origin set, **custodian accounts** under a portfolio (`/api/admin/portfolios/:id/accounts` and `.../accounts/:accountId`) proxy to Spring (`AdminPortfolioAccountsController`). **Still Next-only** until Kotlin ships: portfolio root (`GET`/`POST /api/admin/portfolios`, `PATCH`/`DELETE …/:id`), watchlist, nested positions/tasks/alerts/recommendations/delivery-channels. UI: **`/admin/portfolios`** (tenant books; **Tenant org ref** → **`ext_broker_ref`**; default book ↔ **`tenantPortfolioOrgKey`** on **`core_tenants`**, default **`org-atx-finance`**; **Manage accounts** → **`/admin/portfolios/:id/accounts`**; **Manage watchlist** → **`GET`/`PATCH /api/admin/portfolios/:id/watchlist`**), **`/admin/broker-import`**. Legacy **`/admin/accounts`** → **`/admin/portfolios`**.
+   - **BFF — portfolio + positions on Spring:** set `ATXFINANCE_BACKEND_ORIGIN=http://127.0.0.1:8080` in `.env`. Next proxies to Kotlin (forwards `Cookie`) for every `{ method, path }` in `src/lib/bff-proxy-routes.ts` (canonical list). That includes app-user portfolios + positions + recommendations + strategy surfaces, and **global-admin** portfolio CRUD, accounts, **watchlist**, **account positions** (`GET`/`POST …/accounts/:accountId/positions` only — not `PATCH`/`DELETE` by position id), **recommendations / alerts / delivery-channels / portfolio-scoped tasks**, deploy-notes, import/broker, tasks/scheduler, etc. Use the same `AUTH_SECRET` (or `X_OAUTH_CLIENT_SECRET`) and Mongo DB name on both processes.
+   - **Admin portfolios — BFF vs Next fallback:** With origin set, the paths above hit Spring; **`PATCH`/`DELETE /api/admin/portfolios/:portfolioId/accounts/:accountId/positions/:positionId`** remains **Next-only** until it is added to `bff-proxy-routes.ts` with a Kotlin handler. UI: **`/admin/portfolios`** (tenant books; **Tenant org ref** → **`ext_broker_ref`**; default book ↔ **`tenantPortfolioOrgKey`** on **`core_tenants`**, default **`org-atx-finance`**; **Manage accounts** → **`/admin/portfolios/:id/accounts`**; **Manage watchlist** → **`GET`/`PATCH /api/admin/portfolios/:id/watchlist`**), **`/admin/broker-import`**. Legacy **`/admin/accounts`** → **`/admin/portfolios`**.
    - Behavior:
      - Compose always starts `mongo:8` with:
        - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfinance}`
@@ -163,7 +163,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
      - If **`MONGODB_URI`** is set in `.env`, `MongoUriEnvPostProcessor` resolves it (plain or base64) and injects `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
 5. Verify backend
    - Actuator: http://localhost:8080/actuator/health (standard Spring Boot JSON)
-   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`**)
+   - SRE diagnostics: http://localhost:8080/api/backend/health (masked Mongo URI, profile flags — see **`atx-docs/sre-ops/atxfinance-backend-http-api.md`**)
    - Compatibility: http://localhost:8080/api/health
    - Swagger UI: http://localhost:8080/swagger-ui.html (may redirect to `/swagger-ui/index.html`); OpenAPI JSON: `/v3/api-docs`
 6. Start frontend (Next.js dev server)
@@ -246,17 +246,17 @@ Use this when picking a **Cursor Cloud / Composer persona** or finding a **workf
 
 ### Agent personas (`.cursor/agents/`)
 
-Markdown files define **narrow roles** — no secrets; operational steps stay in this doc and **`AGENTS.md`**.
+YAML files define **narrow roles** — no secrets; operational steps stay in this doc and **`AGENTS.md`**.
 
 | File | Intent |
 |------|--------|
-| **`atx-backend.md`** | Kotlin **atxfinance-backend**, BFF migration, Spring HTTP parity, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
-| **`atx-reviewer.md`** | Pre-merge **review** — `npm run lint`, `typecheck`, `test`, `ci:gate`; scope to changed files |
-| **`atx-ux-agent.md`** | **UI/UX + branding** — `src/app/**`, `atx-docs/design-system/**`, tokens/a11y; avoid unrelated API/domain edits |
+| **`backend.yaml`** | Kotlin **atxfinance-backend**, BFF migration, Spring HTTP parity, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
+| **`reviewer.yaml`** | Pre-merge **review** — `npm run lint`, `typecheck`, `test`, `ci:gate`; scope to changed files |
+| **`frontend.yaml`** | **UI/UX + branding** — `src/app/**`, `atx-docs/design-system/**`, tokens/a11y; avoid unrelated API/domain edits |
 
 Full detail and commit-message convention (**`chore: aTx⚡ …`**) — **`.cursor/agents/README.md`**.
 
-Optional: **`.cursor/worktrees.json`** names git worktrees; each entry’s `setup` may stamp `ROLE=…` into **`.cursor/.atx-*`** marker files (local convenience only).
+Optional: **`.cursor/worktrees.json`** names git worktrees; each entry’s `setup` may stamp `ROLE=…` into **`.cursor/.frontend`**, **`.cursor/.backend`**, or **`.cursor/.reviewer`** (local convenience only).
 
 ### Skills (`.cursor/skills/*/SKILL.md`)
 
@@ -265,10 +265,10 @@ Reusable procedures (deploy, backend runbook, audit review, test gate). Examples
 | Topic | Skill |
 |-------|--------|
 | Ship validation | `test-commit-push`, `test-lint`, `ci-failure` |
-| Spring backend | `atxfinance-backend-start-local`, `atxfinance-backend-architecture`, `atxfinance-backend-runbook` |
-| GCP deploy | `atxfinance-deploy-staging`, `atxfinance-deploy-production`, `atxfinance-gcp-foundation` |
-| Design / risk | `xdesign-review`, `xdesign-review-audit`, `xdesign-review-adversarial` |
-| Docs | `generate-docs`, `atxfinance-docs-ops` |
+| Spring backend | `backend-start-local`, `backend-architecture`, `backend-runbook` |
+| GCP deploy | `deploy-staging`, `deploy-production`, `sre-gcp-foundation` |
+| Design / risk | `atxdesign-review`, `atxdesign-review-audit`, `atxdesign-review-adversarial` |
+| Docs | `generate-docs`, `sre-docs-ops` |
 
 **Rule:** Skill `.md` files must **not** embed literal app versions — version lives in **`package.json`** only (`src/lib/app-version.ts`).
 
@@ -342,7 +342,7 @@ If **`/admin` works** but **`/xchat` or `/portfolio` returns 500** (staging or p
 - Seed xPersonas from disk → Mongo only: `npm run seed:xpersonas` (default root **`atx-rag-collection/xpersonas`** — `.yaml` / `.yml` / frontmatter **`.md`**). Override folder: `npm run seed:xpersonas -- --root atx-rag-collection/options-strategy` (or pass a repo-relative path as the only positional arg). When the root folder name is **`options-strategy`**, the default xAI collection display name resolves to **`atx-trusted-advisor-<dev|stage|prod>-options-strategy`** (else **`…-xpersonas`**). Per-file override: YAML/frontmatter **`xai_collection_name`**. Optional **`SKIP_SEED_XPERSONAS`**, **`SEED_XPERSONAS_MODE`**, **`SEED_XPERSONAS_STRICT`**. Omit **`model`** in files to inherit **`XAI_CHAT_MODEL`** or **`grok-4-1-fast-reasoning`**.
 - Sync xPersonas via admin HTTP CRUD (dev server must be up): `XF_CORE_SESSION=<signed cookie payload> npm run sync:xpersonas:http -- --root atx-rag-collection/options-strategy` (optional **`SYNC_PERSONAS_BASE_URL`**, default **`http://127.0.0.1:3000`**; alias env **`SYNC_PERSONAS_SESSION`**). Same file rules and collection naming as Mongo path.
 - Backfill legacy xchat identity fields: `npm run migrate:xchat-identity`
-- BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`atx-docs/atx-sre-ops/api-consolidation-spring-backend.md`](./atx-docs/atx-sre-ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
+- BFF admin **migration slices** — **PR 3** (tasks + scheduler cutover) and **PR 4** (deploy-note-configs + broker import): operator checklists in [`atx-docs/sre-ops/api-consolidation-spring-backend.md`](./atx-docs/sre-ops/api-consolidation-spring-backend.md) (§ *PR 3 & PR 4 — real migration slices*).
 
 ## Cloud Agent Config Freeze (Backoffice Core)
 
@@ -1012,9 +1012,9 @@ with payload shape:
 
 ## Design and Branding
 
-- **Branding prompts and tags:** `atx-docs/atx-branding/atxfinance-brand-prompts.md`, `atx-docs/atx-branding/atxfinance-branding-tags.md`, `atx-docs/atx-branding/atxfinance-color-palette.md`, `atx-docs/atx-branding/atxfinance-typography.md`
+- **Branding prompts and tags:** `atx-docs/branding/atxfinance-brand-prompts.md`, `atx-docs/branding/atxfinance-branding-tags.md`, `atx-docs/branding/atxfinance-color-palette.md`, `atx-docs/branding/atxfinance-typography.md`
 - **Design system:** `atx-docs/design-system/atxfinance-brand-kit.md`, `atx-docs/design-system/atxfinance-brand-kit.css`
-- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `atx-docs/design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `atx-docs/atx-xchat/xdesign-review-admin-console-ux.md`
+- **Admin console UX:** Admin surfaces follow a clean, low-noise style (console.x.ai inspired). See `atx-docs/design-system/atxfinance-brand-kit.md` § Admin Console Direction. UX review findings: `atx-docs/xchat/xdesign-review-admin-console-ux.md`
 
 ## Admin Step-by-Step Validation (xChat readiness)
 

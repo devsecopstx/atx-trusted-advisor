@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdminSession } from "@/lib/api-auth";
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
+import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
-  adminGetPortfolioById,
-  createScheduledTask,
-  listScheduledTasks
+    adminGetPortfolioById,
+    createScheduledTask,
+    listScheduledTasks
 } from "@/modules/core-admin/repository";
 
 type RouteContext = {
@@ -22,7 +23,12 @@ const createTaskSchema = z.object({
   nextRunAt: z.coerce.date().optional()
 });
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -42,6 +48,11 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function POST(request: Request, context: RouteContext) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;

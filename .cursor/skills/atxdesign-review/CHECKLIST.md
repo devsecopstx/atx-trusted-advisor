@@ -70,10 +70,10 @@ Run this gate whenever PR scope includes persona orchestration, prompt config, t
 
 Run this gate whenever PR scope includes prompt migration, persona parity checks, or legacy branding references:
 
-- [ ] Example prompt inventory captured from legacy/source app and stored in `atx-docs/atx-xchat/xdesign-review-legacy-prompts-inventory.md`
+- [ ] Example prompt inventory captured from legacy/source app and stored in `atx-docs/xchat/xdesign-review-legacy-prompts-inventory.md`
 - [ ] Default legacy persona fallback behavior documented (default persona + no-persona backward compatibility)
-- [ ] `xf-legacy-*` assets in `atx-docs/atx-branding/` enumerated and validated against docs references
-- [ ] If prompts/assets changed, sync `atx-docs/atx-branding/README.md` and `atx-docs/atx-branding/atxfinance-brand-validation.md` as needed
+- [ ] `xf-legacy-*` assets in `atx-docs/branding/` enumerated and validated against docs references
+- [ ] If prompts/assets changed, sync `atx-docs/branding/README.md` and `atx-docs/branding/atxfinance-brand-validation.md` as needed
 
 ## Phase 1 PR Review Report Requirement
 

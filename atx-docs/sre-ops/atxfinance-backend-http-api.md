@@ -113,8 +113,16 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `
 | DELETE | `/api/admin/portfolios/{portfolioId}/accounts/{accountId}` | **Global admin only.** **200** `{ "ok": true }`. **400** last account or not found. |
 | GET \| PATCH | `/api/admin/portfolios/{portfolioId}/watchlist` | **Global admin only.** Parity with Next admin watchlist: **GET** **200** `{ "data": { …watchlist } }` (ensures row + default symbol); **404** portfolio missing. **PATCH** body: `addSymbols`, `addEntries`, `removeSymbols`, `dedupe`, `riskProfile`, `outlook` (same semantics as Next); **400** invalid payload; **404** portfolio/watchlist. |
 | GET \| POST | `/api/admin/portfolios/{portfolioId}/accounts/{accountId}/positions` | **Global admin only.** **GET** **200** `{ "data": { portfolioId, portfolioName, portfolioUserId, account, positions[] } }` (shaped like Next). **POST** stock / option / cash payloads (detailed + legacy) — **201** `{ "data": position }`; **400** validation; **404** portfolio/account. |
+| GET \| POST | `/api/admin/portfolios/{portfolioId}/recommendations` | **Global admin only.** **`portfolio_recommendations`** scoped to portfolio owner + tenant. **POST** body `symbol`, `action` (buy\|sell\|hold\|watch), optional `note`, `accountId`, `quantity`, `targetPrice`. |
+| PATCH \| DELETE | `/api/admin/portfolios/{portfolioId}/recommendations/{recommendationId}` | **Global admin only.** **PATCH** partial update (symbol, action, note, quantity, targetPrice, status). **DELETE** **200** `{ "ok": true }`. |
+| GET \| POST | `/api/admin/portfolios/{portfolioId}/alerts` | **Global admin only.** **`portfolio_alerts`**. **POST** `title`, `severity` (info\|warning\|critical), optional `body`, `status`, `symbol`. |
+| PATCH \| DELETE | `/api/admin/portfolios/{portfolioId}/alerts/{alertId}` | **Global admin only.** **PATCH** partial fields; **DELETE** `{ "ok": true }`. |
+| GET \| POST | `/api/admin/portfolios/{portfolioId}/delivery-channels` | **Global admin only.** **`portfolio_delivery_channels`**. **POST** `kind` (email\|slack_webhook\|sms\|push), `label`, `destination`, optional `enabled`. |
+| PATCH \| DELETE | `/api/admin/portfolios/{portfolioId}/delivery-channels/{channelId}` | **Global admin only.** **PATCH** partial; **DELETE** `{ "ok": true }`. |
+| GET \| POST | `/api/admin/portfolios/{portfolioId}/tasks` | **Global admin only.** **`admin_scheduled_tasks`** rows with `portfolioId` set; tenant scope = signed-in admin **`tenantId`** (same as Next portfolio task UI). **POST** `name`, `category`, `scheduleCron`, optional `enabled`, `lastRunAt`, `nextRunAt`. |
+| PATCH \| DELETE | `/api/admin/portfolios/{portfolioId}/tasks/{taskId}` | **Global admin only.** **PATCH** partial task fields; **DELETE** `{ "ok": true }`. Distinct from tenant-level `/api/admin/tasks` (no `portfolioId`). |
 
-**Nested admin portfolio resources** (watchlist, tasks, alerts, recommendations, delivery-channels, holdings under accounts) remain **Next-only** until Kotlin controllers ship — BFF list in `src/lib/bff-proxy-routes.ts` tracks Spring-backed paths only.
+**BFF registry:** proxied admin portfolio paths are listed in `src/lib/bff-proxy-routes.ts` (Next `proxyRequestToBackend` first, then local fallback).
 
 **Audit semantics:** `actor` filter behavior can differ between Next (regex on email/username) and Kotlin (exact userId/email/username match) — see `./audit-lineage-and-controls.md`.
 

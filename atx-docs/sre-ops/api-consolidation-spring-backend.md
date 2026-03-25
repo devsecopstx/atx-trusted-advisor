@@ -1,13 +1,13 @@
 # API consolidation: Next.js → atxfinance-backend (Spring)
 
 **Status:** in progress (extended BFF slices shipped).  
-**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **portfolios + positions**, **recommendations** (app + portfolio; optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set), **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests** (list/create/review/delete), **admin portfolio accounts** (`/api/admin/portfolios/{portfolioId}/accounts` + account id mutations), **user-feedback**, **admin bootstrap-status**, **admin audit (GET)**, and **RAG files (GET + POST)** — inventory in **`xai_collections`** — see `./atxfinance-backend-http-api.md`. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
+**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **app-user portfolios + positions + watchlist + recommendations**, **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests**, **admin portfolio shell** (`GET`/`POST` list, `GET`/`PATCH`/`DELETE` by id), **admin portfolio nested**: accounts, watchlist, **account positions** (`GET`/`POST` collection only), **portfolio recommendations / alerts / delivery-channels**, **portfolio-scoped scheduled tasks** (`admin_scheduled_tasks` with `portfolioId`; distinct from tenant `GET`/`POST /api/admin/tasks`), plus **deploy-note-configs**, **import/broker**, **tenant tasks/scheduler**, **user-feedback**, **admin bootstrap-status**, **admin audit (GET)**, **RAG files** + readiness — see `./atxfinance-backend-http-api.md`. App-user **recommendations** optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
 
 ## Migration status board
 
 | Area | Spring | Notes |
 |------|--------|--------|
-| Portfolios, positions, watchlist | Yes | App-user paths; admin **portfolio root + nested watchlist** still Next-only. |
+| Portfolios, positions, watchlist | Yes | App-user paths; **admin** portfolio root, watchlist, accounts, nested recommendations/alerts/delivery-channels/portfolio tasks, and **GET**/**POST** positions under an account — **Spring + BFF** when origin set. **Gap:** admin **`PATCH`/`DELETE …/positions/{positionId}`** not in `bff-proxy-routes.ts` yet. |
 | Recommendations (app + per-portfolio) | Yes | Pub/Sub: Next `publishRecommendationEvent` when BFF off; Kotlin `RecommendationEventPublisher` when BFF on (`RECOMMENDATIONS_PUBSUB_TOPIC`). |
 | Strategy-options | Yes | Yahoo + synthetic fallback on JVM. |
 | Personas | Yes | Audit writes in Kotlin (`PersonaService`). |
@@ -51,7 +51,7 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 
 **Proxied today:** `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` (read-only); **`/api/admin/access-requests`** (CRUD + review) — see `./atxfinance-backend-http-api.md`.
 
-**Proxied with Spring parity:** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), tasks / scheduler, **admin portfolio accounts** (list/create/patch/delete under a portfolio id). Enable via **`ATXFINANCE_BACKEND_ORIGIN`** (PR 3 tasks; PR 4 deploy-note + import — same origin).
+**Proxied with Spring parity:** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), tenant **tasks / scheduler**, **admin portfolio** tree (root CRUD, accounts, watchlist, positions collection GET/POST, recommendations, alerts, delivery-channels, portfolio-scoped tasks). Enable via **`ATXFINANCE_BACKEND_ORIGIN`** (PR 3 + PR 4 + subsequent admin-portfolio slices — same origin).
 
 ## PR 3 & PR 4 — real migration slices (not “code-only” PRs)
 
@@ -76,29 +76,29 @@ These are **vertical migration tracks**: same Mongo collections and contracts as
 
 ### PR 4 — Deploy-note-configs + broker import (migration)
 
-**Product scope:** `GET`/`POST /api/admin/deploy-note-configs`, `GET`/`PUT`/`DELETE /api/admin/deploy-note-configs/{configId}`, and **`POST /api/admin/import/broker`** (Merrill/Fidelity holdings CSV from **`portfolio-console.tsx`**). Still **Next-primary** until Kotlin + proxy + `BFF_PROXY_ROUTES` + parity tests land; do **not** add those paths to the proxy list until Spring owns them.
+**Product scope:** `GET`/`POST /api/admin/deploy-note-configs`, `GET`/`PUT`/`DELETE /api/admin/deploy-note-configs/{configId}`, and **`POST /api/admin/import/broker`** (Merrill/Fidelity holdings CSV from **`portfolio-console.tsx`**). **Shipped** on Kotlin + BFF + registry + `backend-http-api-parity` needles; cutover is operator-controlled via **`ATXFINANCE_BACKEND_ORIGIN`** (same as PR 3).
 
 **Data migration**
 
 - **Deploy-note-configs:** Mongo **`admin_deploy_note_configs`** — no collection rename; migration work is **API parity + BFF cutover**, not a bulk transform. If you add JVM writers, run dual-validation in staging (create/edit on Spring vs Next) before prod.
 - **Import/broker:** Stateless CSV → **`portfolio_positions`** (and related) — **operational** migration means staging dry-runs (`dryRun` where supported), broker→account mappings verified, then BFF enablement the same way as PR 3.
 
-**Cutover checklist (when PR 4 code is ready)**
+**Cutover checklist (PR 4 — use for staging/prod enablement)**
 
-1. Ship Kotlin controllers + `nextBffApi` + `BFF_PROXY_ROUTES` entries + `./atxfinance-backend-http-api.md` — `tests/smoke/backend-http-api-parity.test.ts` must pass.
+1. Confirm `tests/smoke/backend-http-api-parity.test.ts` + `npm run ci:gate` on the release revision.
 2. Staging: set **`ATXFINANCE_BACKEND_ORIGIN`**, exercise deploy-note CRUD and **one** import with a known-good CSV.
 3. Prod: enable after soak; **rollback** = unset origin (Next handlers remain).
 
 ## Risks and gaps (TODO)
 
-Track these before **PR 3** prod cutover and while **PR 4** is open.
+Track these before **PR 3** prod cutover and during BFF rollout; **PR 4** code path is shipped — remaining items are operational and parity hygiene.
 
 | ID | Area | Risk / gap | TODO |
 |----|------|------------|------|
 | R1 | PR 3 — JVM tasks | `AdminScheduledTasksService` blocks the HTTP thread during simulated work (`Thread.sleep`); high concurrency or long cron batches could exhaust worker threads vs Next’s async model. | Add timeouts / bounded pool or async execution; cap concurrent runs; load-test `POST /api/admin/scheduler/tick`. |
 | R2 | PR 3 — parity | Kotlin vs Next execution order: JVM runs due tasks **sequentially** in `scheduler/tick`; Next used `Promise.all` (**parallel**). Behavior differs under multi-task ticks. | Document or align ordering/parallelism; add integration test for tick with 2+ due tasks. |
 | R3 | PR 3 — tests | No `Testcontainers` / `@WebMvcTest` coverage for `AdminScheduledTasksController` in `services/atxfinance-backend` yet. | Add JVM integration or slice tests for list/create/run/tick with in-memory or test Mongo. |
-| R4 | PR 4 — missing | Deploy-note-configs + import/broker still **Next-only**; BFF proxy must not list those paths until Kotlin ships (see `src/lib/bff-proxy-routes.ts` header). | Implement PR 4 controllers + proxy + smoke needles + operational dry-run checklist. |
+| R4 | PR 4 | ~~Deploy-note-configs + import/broker Next-only~~ — **shipped** on Kotlin + BFF. | Keep staging soak + dry-run import discipline before prod; extend parity tests if response shapes drift. |
 | R5 | BFF generally | If `ATXFINANCE_BACKEND_ORIGIN` points at a **down** or **wrong** Spring URL, admin APIs 5xx with no Mongo fallback until origin is cleared. | Runbook: health-check Spring before enabling; feature-flag or staged rollout per env. |
 | R6 | Side effects | Task runs in Next did not publish audit/Slack events; JVM path matches today — confirm product expectations if audit is required later. | Optional: `admin_audit_events` on task success/fail if compliance needs it. |
 

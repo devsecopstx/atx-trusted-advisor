@@ -3,9 +3,12 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const AGENT_FILES = [
-  ".cursor/agents/atx-frontend.yaml",
-  ".cursor/agents/atx-backend.yaml",
-  ".cursor/agents/atx-reviewer.yaml"
+  ".cursor/agents/frontend.yaml",
+  ".cursor/agents/backend.yaml",
+  ".cursor/agents/reviewer.yaml",
+  ".cursor/agents/marketing.yaml",
+  ".cursor/agents/feature-branding.yaml",
+  ".cursor/agents/sre-ops-admin.yaml"
 ] as const;
 
 describe("cursor agent persona config sanity", () => {
