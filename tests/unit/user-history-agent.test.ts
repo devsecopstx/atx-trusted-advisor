@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const bootstrapMocks = vi.hoisted(() => ({
   buildXchatTurnMarkdownPayload: vi.fn(),
@@ -22,6 +22,11 @@ import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
 describe("runUserHistoryAgent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION = "true";
+  });
+
+  afterEach(() => {
+    delete process.env.XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION;
   });
 
   it("returns success with zero pending", async () => {
@@ -37,6 +42,22 @@ describe("runUserHistoryAgent", () => {
     const r = await runUserHistoryAgent(task);
     expect(r.status).toBe("success");
     expect(r.output).toContain("no pending");
+  });
+
+  it("skips entirely when per-user xAI sync env is disabled", async () => {
+    delete process.env.XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION;
+    const task = {
+      _id: new ObjectId(),
+      tenantId: new ObjectId(),
+      name: "user_history_agent",
+      category: "user-history" as const,
+      scheduleCron: "0 * * * *",
+      enabled: true
+    };
+    const r = await runUserHistoryAgent(task);
+    expect(r.status).toBe("success");
+    expect(r.output).toContain("skipped");
+    expect(repoMocks.listXchatLogsPendingXaiSync).not.toHaveBeenCalled();
   });
 
   it("syncs one log and marks synced", async () => {

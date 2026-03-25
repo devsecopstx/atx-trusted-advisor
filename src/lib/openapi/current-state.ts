@@ -321,6 +321,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-users"
   },
   {
+    path: "/api/admin/xchat/settings",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-xchat"
+  },
+  {
     path: "/api/personas",
     operations: [
       { method: "GET", auth: "session", summary: "List personas visible to current user" },
@@ -554,6 +562,7 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "admin-system": "Admin system-level diagnostics and scheduled task controls.",
   "admin-tasks": "Admin task catalog and task-run controls.",
   "admin-users": "Admin management of user records, roles, plans, and settings.",
+  "admin-xchat": "Platform xChat defaults (e.g. default published persona for app users).",
   personas: "Persona and collection lifecycle APIs.",
   portfolios: "Default portfolio, account, and watchlist read APIs for signed-in users.",
   positions: "Position capture and persistence APIs.",

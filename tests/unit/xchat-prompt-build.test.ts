@@ -24,22 +24,25 @@ describe("buildSessionToolInstructions", () => {
 });
 
 describe("buildXchatSystemPrompt", () => {
-  it("locks order: persona, RAG, snapshot, session", () => {
+  it("locks order: persona, RAG, recent history, snapshot, session", () => {
     const out = buildXchatSystemPrompt({
       personaSystem: "P",
       fallbackPersonaSystem: "F",
       ragContext: "rag",
+      recentHistoryBlock: "HIST",
       workspaceSnapshot: "SNAP",
       sessionToolInstructions: "SESS"
     });
     const iP = out.indexOf("P");
     const iRag = out.indexOf("Use the following RAG");
+    const iHist = out.indexOf("HIST");
     const iSnap = out.indexOf("SNAP");
     const iSess = out.indexOf("SESS");
     const iBeta = out.indexOf("Client UI (beta)");
     expect(iP).toBe(0);
     expect(iRag).toBeGreaterThan(iP);
-    expect(iSnap).toBeGreaterThan(iRag);
+    expect(iHist).toBeGreaterThan(iRag);
+    expect(iSnap).toBeGreaterThan(iHist);
     expect(iSess).toBeGreaterThan(iSnap);
     expect(iBeta).toBeGreaterThan(iSess);
   });
@@ -50,6 +53,7 @@ describe("buildXchatSystemPrompt", () => {
         personaSystem: "   ",
         fallbackPersonaSystem: "FALL",
         ragContext: "",
+        recentHistoryBlock: null,
         workspaceSnapshot: null,
         sessionToolInstructions: ""
       }).startsWith("FALL")
@@ -61,6 +65,7 @@ describe("buildXchatSystemPrompt", () => {
       personaSystem: "Hi",
       fallbackPersonaSystem: "F",
       ragContext: "",
+      recentHistoryBlock: undefined,
       workspaceSnapshot: null,
       sessionToolInstructions: ""
     });

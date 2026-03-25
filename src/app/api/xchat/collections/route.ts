@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
+import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { getPersonaById, resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository";
 import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
@@ -30,23 +31,25 @@ export async function GET() {
     });
   }
 
-  try {
-    const userCollection = await resolveOrCreateUserBootstrapCollection({
-      userId: session.userId,
-      tenantId: session.tenantId
-    });
-    if (userCollection?.collectionId?.trim()) {
-      visible.push({
-        collectionId: userCollection.collectionId.trim(),
-        collectionName: userCollection.collectionName,
-        source: "user_history"
+  if (isXchatUserHistoryXaiCollectionEnabled()) {
+    try {
+      const userCollection = await resolveOrCreateUserBootstrapCollection({
+        userId: session.userId,
+        tenantId: session.tenantId
+      });
+      if (userCollection?.collectionId?.trim()) {
+        visible.push({
+          collectionId: userCollection.collectionId.trim(),
+          collectionName: userCollection.collectionName,
+          source: "user_history"
+        });
+      }
+    } catch (error) {
+      console.warn("[xchat/collections] failed to resolve/create user collection", {
+        userId: session.userId,
+        error: error instanceof Error ? error.message : String(error)
       });
     }
-  } catch (error) {
-    console.warn("[xchat/collections] failed to resolve/create user collection", {
-      userId: session.userId,
-      error: error instanceof Error ? error.message : String(error)
-    });
   }
 
   const userSettings = await getUserAdminSettings(session.userId, {
@@ -60,11 +63,11 @@ export async function GET() {
       activePersonaName = assignedPersona.name;
       assignedPersonaIdForClient = assignedPersonaId;
     }
-    const assignedCollectionId = assignedPersona?.xaiCollection?.collectionId?.trim();
+    const assignedCollectionId = assignedPersona?.teamCollection?.collectionId?.trim();
     if (assignedCollectionId) {
       visible.push({
         collectionId: assignedCollectionId,
-        collectionName: assignedPersona?.xaiCollection?.collectionName,
+        collectionName: assignedPersona?.teamCollection?.collectionName,
         source: "assigned_persona"
       });
     }

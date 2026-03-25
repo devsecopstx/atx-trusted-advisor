@@ -2,6 +2,7 @@ import { MongoServerError, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { getXchatPlatformSettings } from "@/modules/xchat/xchat-platform-settings";
 import {
     buildDefaultTrustedAdvisorPersonaPayload,
     XPERSONA_SUPER_AGENT_NAME,
@@ -211,7 +212,8 @@ export async function ensureDefaultTrustedAdvisorPersonaExists(): Promise<Person
 
 /**
  * Default persona when the client does not select one: **Super-Agent** for `global_admin` when seeded;
- * **atx-trusted-advisor** (created if missing) for app_user and other non-admin roles.
+ * for app roles: optional **platform default** (`xchat_platform_settings.defaultAppUserPersonaId`, published only),
+ * else **atx-trusted-advisor** (created if missing).
  */
 export async function resolveDefaultXchatPersonaForSession(
   roles: string[]
@@ -222,6 +224,16 @@ export async function resolveDefaultXchatPersonaForSession(
     );
     if (superAgent) {
       return superAgent;
+    }
+  }
+  if (!isGlobalAdmin(roles)) {
+    const platform = await getXchatPlatformSettings();
+    const pid = platform?.defaultAppUserPersonaId?.trim();
+    if (pid && ObjectId.isValid(pid)) {
+      const publishedDefault = await getPersonaById(pid);
+      if (publishedDefault?.status === "published") {
+        return publishedDefault;
+      }
     }
   }
   return ensureDefaultTrustedAdvisorPersonaExists();

@@ -106,7 +106,7 @@ export function logXchatAskDebug(payload: {
   systemPrompt: string;
   userPrompt: string;
   ragContextLength: number;
-  contextSource: "none" | "mongo_scope" | "xai_collection";
+  contextSource: "none" | "xai_collection";
   contextCount: number;
   tools: string[];
   model?: string;

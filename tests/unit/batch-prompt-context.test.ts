@@ -27,4 +27,16 @@ describe("appendXchatKbMetadata", () => {
       "Resolved xAI collection ids: (none — configure xPersona xaiCollection, teamCollection, or collection ids on file_search / collections_search tools)"
     );
   });
+
+  it("allows overriding the resolved-collections line", () => {
+    const text = appendXchatKbMetadata({
+      tools: [{ type: "web_search" }],
+      linkedCollectionIds: ["col_a"],
+      resolvedCollectionsLine: "Custom TEAM line: col_a"
+    });
+    expect(text).toContain("Custom TEAM line: col_a");
+    expect(text).not.toContain(
+      "Resolved xAI collection ids (persona xaiCollection + teamCollection + tool collection_ids)"
+    );
+  });
 });

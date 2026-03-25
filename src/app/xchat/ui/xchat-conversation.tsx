@@ -115,9 +115,9 @@ const XCHAT_UI_PROMPT_LIMIT = 10;
 function trimTranscriptToRecentPrompts(
   msgs: Message[],
   maxUserPrompts: number
-): { next: Message[]; evictedLogIds: string[] } {
+): { next: Message[] } {
   if (msgs.length === 0) {
-    return { next: msgs, evictedLogIds: [] };
+    return { next: msgs };
   }
   let userCount = 0;
   let startIdx = 0;
@@ -131,24 +131,9 @@ function trimTranscriptToRecentPrompts(
     }
   }
   if (userCount < maxUserPrompts) {
-    return { next: msgs, evictedLogIds: [] };
+    return { next: msgs };
   }
-  const evicted = msgs.slice(0, startIdx);
-  const evictedLogIds = evicted
-    .filter((m) => m.role === "ai" && Boolean(m.serverLogId))
-    .map((m) => m.serverLogId as string);
-  return { next: msgs.slice(startIdx), evictedLogIds };
-}
-
-function requestSyncEvictedTurnsToUserCollection(logIds: string[]) {
-  const unique = [...new Set(logIds.filter(Boolean))];
-  for (const logId of unique) {
-    void fetch("/api/xchat/history/sync-turn", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ logId })
-    }).catch(() => {});
-  }
+  return { next: msgs.slice(startIdx) };
 }
 
 function historyItemsToTranscriptMessages(items: HistoryItem[]): Message[] {
@@ -220,6 +205,8 @@ export function XchatConversation({
   const [personaListError, setPersonaListError] = useState<string | null>(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
   const [assignedPersonaIdLock, setAssignedPersonaIdLock] = useState<string | null>(null);
+  /** After the first successful send (or hydrate), persona id is fixed for this thread unless admin-assigned. */
+  const [threadLockedPersonaId, setThreadLockedPersonaId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
@@ -291,6 +278,10 @@ export function XchatConversation({
         const items = payload.data?.items ?? [];
         if (items.length === 0) {
           return;
+        }
+        const latestPersonaId = items[0]?.personaId?.trim();
+        if (latestPersonaId) {
+          setThreadLockedPersonaId(latestPersonaId);
         }
         const thread = historyItemsToTranscriptMessages(items);
         setMessages((prev) => (prev.length > 0 ? prev : thread));
@@ -494,8 +485,7 @@ export function XchatConversation({
 
     setMessages((prev) => {
       const added = [...prev, userMsg];
-      const { next, evictedLogIds } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
-      requestSyncEvictedTurnsToUserCollection(evictedLogIds);
+      const { next } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
       return next;
     });
     setInput("");
@@ -506,8 +496,12 @@ export function XchatConversation({
         message: prompt,
         scope: "global"
       };
-      if (!assignedPersonaIdLock && selectedPersonaId.trim()) {
-        askBody.personaId = selectedPersonaId.trim();
+      const effectivePersonaPick =
+        assignedPersonaIdLock?.trim() ||
+        threadLockedPersonaId?.trim() ||
+        selectedPersonaId.trim();
+      if (!assignedPersonaIdLock && effectivePersonaPick) {
+        askBody.personaId = effectivePersonaPick;
       }
 
       const response = await fetch("/api/xchat/ask", {
@@ -537,8 +531,7 @@ export function XchatConversation({
               timestamp: Date.now()
             }
           ];
-          const { next, evictedLogIds } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
-          requestSyncEvictedTurnsToUserCollection(evictedLogIds);
+          const { next } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
           return next;
         });
         return;
@@ -547,6 +540,12 @@ export function XchatConversation({
       const resolvedName = payload.data?.personaName ?? activePersonaName;
       setActivePersonaName(resolvedName);
       setLastTurnToolSummary(formatLastTurnToolSummary(payload.data?.toolCalls));
+      if (!assignedPersonaIdLock) {
+        const lockId = effectivePersonaPick.trim();
+        if (lockId) {
+          setThreadLockedPersonaId(lockId);
+        }
+      }
 
       const logId = typeof payload.data?.logId === "string" ? payload.data.logId : undefined;
       setMessages((prev) => {
@@ -561,8 +560,7 @@ export function XchatConversation({
             serverLogId: logId
           }
         ];
-        const { next, evictedLogIds } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
-        requestSyncEvictedTurnsToUserCollection(evictedLogIds);
+        const { next } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
         return next;
       });
     } catch {
@@ -576,8 +574,7 @@ export function XchatConversation({
             timestamp: Date.now()
           }
         ];
-        const { next, evictedLogIds } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
-        requestSyncEvictedTurnsToUserCollection(evictedLogIds);
+        const { next } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
         return next;
       });
     } finally {
@@ -619,9 +616,10 @@ export function XchatConversation({
       </div>
 
       <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
-        Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side;
-        when a completed turn rolls off the thread, it is queued to your personal xChat history collection for
-        retrieval. Open <strong>Chat history</strong> below for the saved list.
+        Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side in
+        Mongo; prior turns are injected into the next ask for continuity. Open <strong>Chat history</strong> below
+        for the saved list. Persona choice locks after your first successful reply in this thread (unless your
+        admin assigned one).
       </p>
 
       <div className="xchat-messages">
@@ -669,6 +667,7 @@ export function XchatConversation({
               className="xchat-composer__persona-select"
               disabled={
                 Boolean(assignedPersonaIdLock) ||
+                Boolean(threadLockedPersonaId) ||
                 personaSelectRows.length === 0 ||
                 Boolean(personaListError)
               }
@@ -680,11 +679,13 @@ export function XchatConversation({
               title={
                 assignedPersonaIdLock
                   ? "Persona is assigned by your admin"
-                  : "Choose which published persona to use for this message"
+                  : threadLockedPersonaId
+                    ? "Persona is locked for this thread after your first reply"
+                    : "Choose which published persona to use for this thread"
               }
-              value={assignedPersonaIdLock ?? selectedPersonaId}
+              value={assignedPersonaIdLock ?? threadLockedPersonaId ?? selectedPersonaId}
             >
-              {assignedPersonaIdLock ? null : (
+              {assignedPersonaIdLock || threadLockedPersonaId ? null : (
                 <option value="">Default (role / account)</option>
               )}
               {personaSelectRows.map((p) => (

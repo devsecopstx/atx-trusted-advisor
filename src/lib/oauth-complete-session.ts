@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
+import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
 import { provisionDefaultPortfolioForUser } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
@@ -99,20 +100,25 @@ export async function finalizeOAuthSessionAndRedirect(options: {
       });
     }
 
-    try {
-      await resolveOrCreateUserBootstrapCollection({
-        userId: authContext.userId.toHexString(),
-        tenantId: authContext.tenantId.toHexString(),
-        email: user.email
-      });
-    } catch (historyCollectionError) {
-      console.warn("[auth/oauth] per-user xChat history xAI collection non-fatal; will retry on /api/xchat/collections", {
-        userId: authContext.userId.toHexString(),
-        message:
-          historyCollectionError instanceof Error
-            ? historyCollectionError.message
-            : String(historyCollectionError)
-      });
+    if (isXchatUserHistoryXaiCollectionEnabled()) {
+      try {
+        await resolveOrCreateUserBootstrapCollection({
+          userId: authContext.userId.toHexString(),
+          tenantId: authContext.tenantId.toHexString(),
+          email: user.email
+        });
+      } catch (historyCollectionError) {
+        console.warn(
+          "[auth/oauth] per-user xChat history xAI collection non-fatal; will retry on /api/xchat/collections",
+          {
+            userId: authContext.userId.toHexString(),
+            message:
+              historyCollectionError instanceof Error
+                ? historyCollectionError.message
+                : String(historyCollectionError)
+          }
+        );
+      }
     }
 
     await createSession({

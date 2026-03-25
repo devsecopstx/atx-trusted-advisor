@@ -336,7 +336,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback), and tools/collection scope follow the resolved persona document only (no implicit merges). If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (and a capped positions preview) into the system prompt. The user turn is augmented with the same KB-style metadata as batch — see `buildWorkspaceServerSnapshotBlock`, `appendXchatKbMetadata`, and `resolveXchatLinkedCollectionIds` (persona `xaiCollection` + `teamCollection` + tool `collection_ids` only; no per-user bootstrap merge for RAG).",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback). Hosted RAG pre-search uses **TEAM KB collections only** (`persona.teamCollection` + deploy team default from `resolveTeamKbCollectionId`); persona `xaiCollection` is not merged into ask RAG. Prior turns are loaded from Mongo `xchat_logs` (same user + tenant) into the system prompt. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same TEAM id list wired into tools.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -673,6 +673,34 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
+  "GET /api/admin/xchat/settings": {
+    summary: "Get platform xChat defaults (global admin)",
+    responses: {
+      "200": jsonResponse("Platform xChat settings.", "AdminXchatPlatformSettingsResponseEnvelope"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
+  "PATCH /api/admin/xchat/settings": {
+    summary: "Set default published xPersona for app users (or clear)",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("AdminXchatPlatformSettingsPatchRequest")
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Settings updated.", "AdminXchatPlatformSettingsResponseEnvelope"),
+      "400": jsonResponse("Invalid payload or persona not published.", "ValidationErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "404": jsonResponse("Persona not found.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
   "GET /api/openapi": {
     summary: "Download OpenAPI 3.1 current-state inventory",
     responses: {
@@ -937,7 +965,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           "`persona` when the effective xAI model id came from the resolved persona document; `default` when the persona has no model set (server fallback)."
       },
       contextCount: { type: "integer", minimum: 0 },
-      contextSource: { type: "string", enum: ["none", "mongo_scope", "xai_collection"] },
+      contextSource: { type: "string", enum: ["none", "xai_collection"] },
       toolCalls: { type: "array", items: refSchema("XChatToolCallSummary") }
     }
   },
@@ -1608,6 +1636,32 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         properties: {
           userId: { type: "string", nullable: true },
           subscriptionPlan: refSchema("AdminUserSubscriptionPlan")
+        }
+      }
+    }
+  },
+  AdminXchatPlatformSettingsPatchRequest: {
+    type: "object",
+    required: ["defaultAppUserPersonaId"],
+    properties: {
+      defaultAppUserPersonaId: {
+        oneOf: [{ type: "string", minLength: 1 }, { type: "null" }],
+        description: "Published persona ObjectId hex, or null to clear platform default for app users."
+      }
+    }
+  },
+  AdminXchatPlatformSettingsResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["defaultAppUserPersonaId"],
+        properties: {
+          defaultAppUserPersonaId: { type: "string", nullable: true },
+          personaName: { type: "string" },
+          updatedAt: { type: "string", format: "date-time", nullable: true },
+          updatedByUserId: { type: "string", nullable: true }
         }
       }
     }

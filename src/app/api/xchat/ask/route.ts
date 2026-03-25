@@ -26,17 +26,18 @@ import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limit
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import {
-    resolveXchatLinkedCollectionIds,
+    resolveXchatTeamOnlyLinkedCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     getPersonaById,
+    listXChatHistoryByUser,
     resolveDefaultXchatPersonaForSession,
-    retrieveRagChunks,
     saveXChatLog
 } from "@/modules/xchat/repository";
+import { buildRecentXchatHistoryPromptBlock } from "@/modules/xchat/xchat-recent-history-prompt";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import {
@@ -266,10 +267,8 @@ export async function POST(request: Request) {
   const userId = ObjectId.isValid(session.userId)
     ? new ObjectId(session.userId)
     : undefined;
-  /** RAG / file_search wiring: persona `xaiCollection` + `teamCollection` + tool `collection_ids` only (TEAM/persona KB). */
-  const linkedCollectionIds = resolveXchatLinkedCollectionIds({
-    persona
-  });
+  /** RAG / file_search for ask: TEAM KB only (`teamCollection` + deploy team default). */
+  const linkedCollectionIds = await resolveXchatTeamOnlyLinkedCollectionIds(persona);
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
@@ -277,8 +276,7 @@ export async function POST(request: Request) {
     withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds)
   );
 
-  let contextSource: "none" | "mongo_scope" | "xai_collection" = "none";
-  let ragChunks: Awaited<ReturnType<typeof retrieveRagChunks>> = [];
+  let contextSource: "none" | "xai_collection" = "none";
   let collectionContextReferences: Array<{
     documentId?: string;
     documentName?: string;
@@ -334,23 +332,6 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!ragContext) {
-      try {
-        ragChunks = await retrieveRagChunks(tenantId, scope, message, topK);
-        if (ragChunks.length > 0) {
-          contextSource = "mongo_scope";
-        }
-        contextCount = ragChunks.length;
-        ragContext = ragChunks
-          .map((chunk, index) => `[#${index + 1}] ${chunk.text}`)
-          .join("\n\n");
-      } catch (error) {
-        console.error(
-          `[xchat/ask] mongo scope retrieval failed for scope ${scope}:`,
-          error instanceof Error ? error.message : error
-        );
-      }
-    }
   }
 
   const hasXfinanceTool = xapiConfig.tools.some((t) => t.type === "atxfinance");
@@ -378,10 +359,37 @@ export async function POST(request: Request) {
     }
   }
 
+  let recentHistoryBlock: string | null = null;
+  if (userId) {
+    try {
+      const priorNewestFirst = await listXChatHistoryByUser({
+        userId,
+        tenantId,
+        limit: 20
+      });
+      const personaHex = persona?._id?.toHexString();
+      const priorForPersona = personaHex
+        ? priorNewestFirst.filter((row) => row.personaId === personaHex).slice(0, 12)
+        : priorNewestFirst.slice(0, 12);
+      recentHistoryBlock = buildRecentXchatHistoryPromptBlock(priorForPersona);
+    } catch (error) {
+      console.warn("[xchat/ask] recent history load failed (non-fatal)", {
+        userId: session.userId,
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  const teamKbMetaLine =
+    linkedCollectionIds.length > 0
+      ? `xChat TEAM KB xAI collection ids (persona.teamCollection + deploy default; single team model — no per-user history collection): ${linkedCollectionIds.join(", ")}`
+      : "xChat TEAM KB xAI collection ids: (none — set persona teamCollection and/or team KB / XAI_TEAM_ID so RAG can run)";
+
   const systemPrompt = buildXchatSystemPrompt({
     personaSystem: persona?.systemPrompt ?? "",
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,
+    recentHistoryBlock,
     workspaceSnapshot: workspaceServerSnapshot,
     sessionToolInstructions: buildSessionToolInstructions({
       hostedSearch: hasHostedSearchTool,
@@ -394,7 +402,8 @@ export async function POST(request: Request) {
     : message;
   const personaKbAugmentation = appendXchatKbMetadata({
     tools: xapiConfig.tools,
-    linkedCollectionIds
+    linkedCollectionIds,
+    resolvedCollectionsLine: teamKbMetaLine
   });
   const userPrompt = `${userPromptBase}\n\n${personaKbAugmentation}`;
   let xaiResponse: { outputText: string; model: string };
@@ -458,7 +467,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const contextChunkIds = ragChunks.flatMap((chunk) => (chunk._id ? [chunk._id] : []));
+  const contextChunkIds: ObjectId[] = [];
 
   logXchatAskDebug({
     userId: session.userId,
@@ -508,7 +517,7 @@ export async function POST(request: Request) {
         personaId: persona?._id?.toHexString(),
         model: xaiResponse.model,
         scope,
-        note: "Turn stored in xchat_logs; user_history_agent scheduled task syncs to xAI user collection."
+        note: "Turn stored in xchat_logs; optional xAI user-collection sync is off unless XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION=true."
       }
     });
   } catch (auditError) {

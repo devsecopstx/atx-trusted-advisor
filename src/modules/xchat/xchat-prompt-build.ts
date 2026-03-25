@@ -44,12 +44,14 @@ export type BuildXchatSystemPromptInput = {
   fallbackPersonaSystem: string;
   /** Snippet text only (no wrapper); empty → “No RAG context available.” */
   ragContext: string;
+  /** Prior turns from Mongo `xchat_logs` (same tenant); omitted when empty. */
+  recentHistoryBlock?: string | null;
   workspaceSnapshot: string | null | undefined;
   sessionToolInstructions: string;
 };
 
 /**
- * Locked order: **persona → RAG → snapshot → session tool instructions → beta client UI note** (double-newline separated).
+ * Locked order: **persona → RAG → recent history → snapshot → session tool instructions → beta client UI note** (double-newline separated).
  */
 export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): string {
   const base =
@@ -61,6 +63,13 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
       ? `Use the following RAG context if relevant:\n${input.ragContext.trim()}`
       : "No RAG context available.";
   const parts: string[] = [base, rag];
+  const hist =
+    typeof input.recentHistoryBlock === "string" && input.recentHistoryBlock.trim().length > 0
+      ? input.recentHistoryBlock.trim()
+      : "";
+  if (hist) {
+    parts.push(hist);
+  }
   const snap =
     typeof input.workspaceSnapshot === "string" && input.workspaceSnapshot.trim().length > 0
       ? input.workspaceSnapshot.trim()

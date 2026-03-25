@@ -117,6 +117,8 @@ export async function buildWorkspaceServerSnapshotBlock(
     watchlist: watchlist
       ? {
           name: watchlist.name,
+          riskProfile: watchlist.riskProfile ?? null,
+          outlook: watchlist.outlook ?? null,
           symbols: (watchlist.symbols ?? []).map((s) => ({
             symbol: s.symbol,
             addedAt:

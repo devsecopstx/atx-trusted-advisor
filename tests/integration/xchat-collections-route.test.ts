@@ -56,6 +56,10 @@ describe("xchat collections route", () => {
     repositoryMocks.getPersonaById.mockResolvedValue({
       status: "published",
       name: "atx-trusted-advisor",
+      teamCollection: {
+        collectionId: "collection_assigned_team",
+        collectionName: "Assigned Team KB"
+      },
       xaiCollection: {
         collectionId: "collection_assigned_persona",
         collectionName: "Assigned Persona Collection"
@@ -63,7 +67,7 @@ describe("xchat collections route", () => {
     });
   });
 
-  it("returns finance default + user history + assigned persona collection", async () => {
+  it("returns finance default + assigned team collection (no per-user history by default)", async () => {
     const response = await getCollections();
     const payload = (await response.json()) as {
       data: Array<{ collectionId: string; source: string }>;
@@ -80,15 +84,15 @@ describe("xchat collections route", () => {
           source: "atxfinance_default"
         }),
         expect.objectContaining({
-          collectionId: "collection_user_history",
-          source: "user_history"
-        }),
-        expect.objectContaining({
-          collectionId: "collection_assigned_persona",
+          collectionId: "collection_assigned_team",
           source: "assigned_persona"
         })
       ])
     );
+    expect(payload.data).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ source: "user_history" })])
+    );
+    expect(bootstrapMocks.resolveOrCreateUserBootstrapCollection).not.toHaveBeenCalled();
   });
 
   it("keeps default persona visible when assigned persona is not published", async () => {

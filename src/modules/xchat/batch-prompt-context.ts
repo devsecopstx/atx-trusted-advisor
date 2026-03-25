@@ -6,15 +6,22 @@ import type { PersonaXapiToolDefinition } from "@/modules/xchat/types";
 export function appendXchatKbMetadata(input: {
   tools: PersonaXapiToolDefinition[];
   linkedCollectionIds: string[];
+  /** When set, replaces the default resolved-collections line (e.g. xChat ask TEAM-only scope). */
+  resolvedCollectionsLine?: string;
 }): string {
   const toolLines = input.tools.map((tool) => describePersonaToolForKbPrompt(tool));
   const linked = input.linkedCollectionIds.filter((id) => id.trim().length > 0);
 
+  const resolvedLine =
+    typeof input.resolvedCollectionsLine === "string" && input.resolvedCollectionsLine.trim().length > 0
+      ? input.resolvedCollectionsLine.trim()
+      : linked.length > 0
+        ? `Resolved xAI collection ids (persona xaiCollection + teamCollection + tool collection_ids): ${linked.join(", ")}`
+        : "Resolved xAI collection ids: (none — configure xPersona xaiCollection, teamCollection, or collection ids on file_search / collections_search tools)";
+
   const lines = [
     "[Persona / KB metadata — xChat and batch; use when relevant; do not echo as the user]",
-    linked.length > 0
-      ? `Resolved xAI collection ids (persona xaiCollection + teamCollection + tool collection_ids): ${linked.join(", ")}`
-      : "Resolved xAI collection ids: (none — configure xPersona xaiCollection, teamCollection, or collection ids on file_search / collections_search tools)",
+    resolvedLine,
     "Persona xAPI tools (as configured in admin):",
     ...(toolLines.length > 0 ? toolLines : ["- (none)"])
   ];

@@ -1,3 +1,4 @@
+import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
 import {
     normalizePersonaXapiConfig,
     type PersonaXapiConfig,
@@ -71,6 +72,26 @@ export function resolveXchatLinkedCollectionIds(input: {
   persona: PersonaLinkedIdSource | null | undefined;
 }): string[] {
   return getPersonaLinkedCollectionIds(input.persona);
+}
+
+/**
+ * xChat ask RAG + file_search wiring: **team KB only** — `persona.teamCollection` plus deployed
+ * team default (`resolveTeamKbCollectionId`). Excludes persona `xaiCollection` and ad-hoc tool ids
+ * so retrieval stays in the single TEAM xAI collection model.
+ */
+export async function resolveXchatTeamOnlyLinkedCollectionIds(
+  persona: PersonaLinkedIdSource | null | undefined
+): Promise<string[]> {
+  const ids: string[] = [];
+  const team = persona?.teamCollection?.collectionId?.trim();
+  if (team) {
+    ids.push(team);
+  }
+  const envTeam = await resolveTeamKbCollectionId();
+  if (envTeam?.trim()) {
+    ids.push(envTeam.trim());
+  }
+  return Array.from(new Set(ids));
 }
 
 export function withLinkedCollectionTools(

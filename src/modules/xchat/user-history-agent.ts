@@ -12,6 +12,7 @@ import {
     markXchatLogXaiSyncFailed
 } from "@/modules/xchat/repository";
 import type { XChatSessionLog } from "@/modules/xchat/types";
+import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
 
 const DEFAULT_LIMIT = 50;
 
@@ -38,6 +39,9 @@ function logTenantHex(log: XChatSessionLog): string | undefined {
 export async function syncXchatSessionLogToUserCollection(
   log: XChatSessionLog
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isXchatUserHistoryXaiCollectionEnabled()) {
+    return { ok: true };
+  }
   const logId = log._id;
   const userIdHex = logUserIdHex(log);
   if (!logId || !userIdHex) {
@@ -93,6 +97,13 @@ export async function runUserHistoryAgent(
   task: ScheduledTask,
   input?: { limit?: number }
 ): Promise<{ status: "success" | "failed"; output: string }> {
+  if (!isXchatUserHistoryXaiCollectionEnabled()) {
+    return {
+      status: "success",
+      output:
+        "user_history_agent: skipped (set XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION=true to upload turns to per-user xAI collections)."
+    };
+  }
   const limit = input?.limit ?? DEFAULT_LIMIT;
   const tenantOid = task.tenantId ?? undefined;
   const pending = await listXchatLogsPendingXaiSync({

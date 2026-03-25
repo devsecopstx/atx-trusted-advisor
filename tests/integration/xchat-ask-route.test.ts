@@ -20,8 +20,12 @@ const xaiMocks = vi.hoisted(() => ({
 const repositoryMocks = vi.hoisted(() => ({
   getPersonaById: vi.fn(),
   resolveDefaultXchatPersonaForSession: vi.fn(),
-  retrieveRagChunks: vi.fn(),
+  listXChatHistoryByUser: vi.fn(),
   saveXChatLog: vi.fn()
+}));
+
+const teamKbMocks = vi.hoisted(() => ({
+  resolveTeamKbCollectionId: vi.fn()
 }));
 
 const verifierMocks = vi.hoisted(() => ({
@@ -52,6 +56,7 @@ vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/xchat/ask-usage-limits", () => usageLimitMocks);
 vi.mock("@/modules/xchat/repository", () => repositoryMocks);
+vi.mock("@/modules/xchat/team-xai-collection", () => teamKbMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
@@ -118,9 +123,10 @@ describe("xchat ask route collection retrieval", () => {
       turnsUsed: 1,
       raw: {}
     });
+    teamKbMocks.resolveTeamKbCollectionId.mockResolvedValue("collection_team_default");
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue(buildPersona());
     repositoryMocks.getPersonaById.mockResolvedValue(buildPersona());
-    repositoryMocks.retrieveRagChunks.mockResolvedValue([]);
+    repositoryMocks.listXChatHistoryByUser.mockResolvedValue([]);
     repositoryMocks.saveXChatLog.mockResolvedValue(new ObjectId("507f1f77bcf86cd799439099"));
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
@@ -156,14 +162,14 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.headers.get("x-xchat-limit-remaining-minute")).toBe("19");
     expect(payload.data.contextSource).toBe("xai_collection");
     expect(payload.data.contextCount).toBe(1);
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_ops-global");
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_team_default");
     expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledTimes(1);
     expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
       expect.objectContaining({
-        collectionIds: ["collection_ops-global"]
+        collectionIds: ["collection_team_default"]
       })
     );
-    expect(repositoryMocks.retrieveRagChunks).not.toHaveBeenCalled();
+    expect(repositoryMocks.listXChatHistoryByUser).toHaveBeenCalled();
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
         systemPrompt: expect.stringContaining("Collection context snippet"),
@@ -174,7 +180,7 @@ describe("xchat ask route collection retrieval", () => {
           { type: "x_search", name: "x_search" }
         ]),
         userPrompt: expect.stringMatching(
-          /\[Persona \/ KB metadata — xChat and batch[\s\S]*Resolved xAI collection ids \(persona xaiCollection \+ teamCollection \+ tool collection_ids\): collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
+          /\[Persona \/ KB metadata — xChat and batch[\s\S]*xChat TEAM KB xAI collection ids[\s\S]*collection_team_default[\s\S]*Persona xAPI tools[\s\S]*- web_search/
         )
       })
     );
@@ -197,18 +203,8 @@ describe("xchat ask route collection retrieval", () => {
     );
   });
 
-  it("falls back to mongo rag chunks when collection search returns empty", async () => {
-    repositoryMocks.retrieveRagChunks.mockResolvedValueOnce([
-      {
-        _id: new ObjectId("507f1f77bcf86cd799439099"),
-        fileId: new ObjectId("507f1f77bcf86cd799439066"),
-        scope: "global",
-        chunkIndex: 0,
-        text: "Mongo fallback chunk",
-        tokenEstimate: 42,
-        createdAt: new Date("2026-03-16T00:00:00.000Z")
-      }
-    ]);
+  it("uses no RAG context when TEAM collection search returns empty (no mongo fallback)", async () => {
+    xaiMocks.searchDocumentsInCollections.mockResolvedValueOnce([]);
 
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
@@ -224,9 +220,8 @@ describe("xchat ask route collection retrieval", () => {
 
     const payload = (await response.json()) as { data: { contextSource: string; contextCount: number } };
     expect(response.status).toBe(200);
-    expect(payload.data.contextSource).toBe("mongo_scope");
-    expect(payload.data.contextCount).toBe(1);
-    expect(repositoryMocks.retrieveRagChunks).toHaveBeenCalledTimes(1);
+    expect(payload.data.contextSource).toBe("none");
+    expect(payload.data.contextCount).toBe(0);
     const savedLogInput = repositoryMocks.saveXChatLog.mock.calls.at(-1)?.[0] as {
       xapiMode?: string;
       xapiToolChoice?: string;
@@ -238,25 +233,11 @@ describe("xchat ask route collection retrieval", () => {
     expect(savedLogInput?.xapiToolChoice).toBe("auto");
     expect(savedLogInput?.xapiMaxTurns).toBe(5);
     expect(savedLogInput?.xapiToolCount).toBe(2);
-    const normalizedChunkIds = (savedLogInput?.contextChunkIds ?? []).map((chunkId) =>
-      typeof chunkId === "string" ? chunkId : chunkId.toHexString()
-    );
-    expect(normalizedChunkIds).toEqual(["507f1f77bcf86cd799439099"]);
+    expect(savedLogInput?.contextChunkIds ?? []).toEqual([]);
   });
 
-  it("falls back to mongo rag chunks when collection search throws", async () => {
+  it("uses no RAG when TEAM collection search throws (no mongo fallback)", async () => {
     xaiMocks.searchDocumentsInCollections.mockRejectedValueOnce(new Error("collection unavailable"));
-    repositoryMocks.retrieveRagChunks.mockResolvedValueOnce([
-      {
-        _id: new ObjectId("507f1f77bcf86cd799439109"),
-        fileId: new ObjectId("507f1f77bcf86cd799439066"),
-        scope: "global",
-        chunkIndex: 0,
-        text: "Mongo chunk after collection error",
-        tokenEstimate: 42,
-        createdAt: new Date("2026-03-16T00:00:00.000Z")
-      }
-    ]);
 
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
@@ -272,38 +253,28 @@ describe("xchat ask route collection retrieval", () => {
 
     const payload = (await response.json()) as { data: { contextSource: string; contextCount: number } };
     expect(response.status).toBe(200);
-    expect(payload.data.contextSource).toBe("mongo_scope");
-    expect(payload.data.contextCount).toBe(1);
-    expect(repositoryMocks.retrieveRagChunks).toHaveBeenCalledTimes(1);
+    expect(payload.data.contextSource).toBe("none");
+    expect(payload.data.contextCount).toBe(0);
   });
 
-  it("uses mongo retrieval when linked collection search has no hits", async () => {
+  it("skips xAI collection search when no TEAM kb ids resolve", async () => {
+    teamKbMocks.resolveTeamKbCollectionId.mockResolvedValueOnce(undefined);
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
+        teamCollection: { collectionId: "", collectionName: "" },
         xaiCollection: {
-          collectionId: "",
-          collectionName: ""
+          collectionId: "collection_persona_only_ignored_for_ask",
+          collectionName: "Ignored for ask RAG"
         }
       })
     );
-    repositoryMocks.retrieveRagChunks.mockResolvedValueOnce([
-      {
-        _id: new ObjectId("507f1f77bcf86cd799439129"),
-        fileId: new ObjectId("507f1f77bcf86cd799439066"),
-        scope: "global",
-        chunkIndex: 0,
-        text: "Mongo chunk without collection",
-        tokenEstimate: 42,
-        createdAt: new Date("2026-03-16T00:00:00.000Z")
-      }
-    ]);
 
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: "No collection id path",
+          message: "No team kb path",
           topK: 4
         })
       })
@@ -311,8 +282,8 @@ describe("xchat ask route collection retrieval", () => {
 
     const payload = (await response.json()) as { data: { contextSource: string; contextCount: number } };
     expect(response.status).toBe(200);
-    expect(payload.data.contextSource).toBe("mongo_scope");
-    expect(payload.data.contextCount).toBe(1);
+    expect(payload.data.contextSource).toBe("none");
+    expect(payload.data.contextCount).toBe(0);
     expect(xaiMocks.searchDocumentsInCollections).not.toHaveBeenCalled();
     expect(verifierMocks.verifyXaiCollectionNonBlocking).not.toHaveBeenCalled();
   });
@@ -346,7 +317,7 @@ describe("xchat ask route collection retrieval", () => {
           {
             type: "file_search",
             name: "file_search",
-            vector_store_ids: expect.arrayContaining(["collection_ops-global", "collection_extra"])
+            vector_store_ids: expect.arrayContaining(["collection_team_default", "collection_extra"])
           }
         ])
       })
@@ -375,7 +346,6 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextSource).toBe("none");
     expect(payload.data.contextCount).toBe(0);
     expect(xaiMocks.searchDocumentsInCollections).not.toHaveBeenCalled();
-    expect(repositoryMocks.retrieveRagChunks).not.toHaveBeenCalled();
   });
 
   it("uses responses tool loop when persona mode is chat_completions but yahoo_finance requires local execution", async () => {
@@ -415,9 +385,8 @@ describe("xchat ask route collection retrieval", () => {
     );
   });
 
-  it("still responds when mongo retrieval throws after collection miss", async () => {
+  it("still responds when TEAM collection search misses", async () => {
     xaiMocks.searchDocumentsInCollections.mockResolvedValueOnce([]);
-    repositoryMocks.retrieveRagChunks.mockRejectedValueOnce(new Error("mongo unavailable"));
 
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
@@ -425,7 +394,7 @@ describe("xchat ask route collection retrieval", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           personaId: "507f1f77bcf86cd799439055",
-          message: "mongo failure handling",
+          message: "empty team rag",
           topK: 4
         })
       })
@@ -450,18 +419,6 @@ describe("xchat ask route collection retrieval", () => {
         }
       ]
     });
-    repositoryMocks.retrieveRagChunks.mockResolvedValueOnce([
-      {
-        _id: new ObjectId("507f1f77bcf86cd799439188"),
-        fileId: new ObjectId("507f1f77bcf86cd799439066"),
-        scope: "global",
-        chunkIndex: 0,
-        text: "Mongo fallback while embeddings pending",
-        tokenEstimate: 42,
-        createdAt: new Date("2026-03-16T00:00:00.000Z")
-      }
-    ]);
-
     const response = await postAsk(
       new Request("http://test/api/xchat/ask", {
         method: "POST",
@@ -482,7 +439,7 @@ describe("xchat ask route collection retrieval", () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data.contextSource).toBe("mongo_scope");
+    expect(payload.data.contextSource).toBe("none");
     expect(payload.data.collectionSearchStatus).toBe("blocked_non_ready_files");
     expect(payload.data.collectionSearchNonReadyFileCount).toBe(1);
     expect(xaiMocks.searchDocumentsInCollections).not.toHaveBeenCalled();
