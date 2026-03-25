@@ -21,7 +21,7 @@ const PERSONA_YAML_REQUIRED_KEYS = [
 function assertPersonaYamlShape(filePath: string, stem: string): void {
   const raw = readFileSync(filePath, "utf8");
   const first = raw.split("\n")[0] ?? "";
-  expect(first).toBe(`# atx-rag-collection/atx-personas-trusted-family/${stem}.yaml`);
+  expect(first).toBe(`# atx-rag-collection/personas-trusted-family/${stem}.yaml`);
   for (const key of PERSONA_YAML_REQUIRED_KEYS) {
     expect(raw.includes(`\n${key}`) || raw.startsWith(`${key}\n`) || raw.startsWith(key)).toBe(true);
   }
@@ -29,18 +29,16 @@ function assertPersonaYamlShape(filePath: string, stem: string): void {
 
 describe("atx-rag-collection layout", () => {
   const base = join(process.cwd(), "atx-rag-collection");
-  const personasDir = join(base, "atx-personas-trusted-family");
+  const personasDir = join(base, "personas-trusted-family");
 
   it("documents RAG source tree paths referenced in README", () => {
     expect(existsSync(join(base, "README.md"))).toBe(true);
     expect(existsSync(personasDir)).toBe(true);
     expect(existsSync(join(base, "finance-reference-docs"))).toBe(true);
-    expect(existsSync(join(base, "atx-xchat-example-prompts"))).toBe(true);
-    const strategyDir = join(base, "atx-options-strategy");
+    expect(existsSync(join(base, "xchat-example-prompts"))).toBe(true);
+    const strategyDir = join(base, "options-strategy");
     expect(existsSync(strategyDir)).toBe(true);
-    expect(existsSync(join(strategyDir, "README.md"))).toBe(true);
-    expect(existsSync(join(strategyDir, "atx-options-coreskills.md"))).toBe(true);
-    expect(existsSync(join(strategyDir, "atx-readme-coreskills.md"))).toBe(true);
+    expect(existsSync(join(strategyDir, "options-coreskills.md"))).toBe(true);
   });
 
   it("persona seed YAML files match project-standard key set", () => {

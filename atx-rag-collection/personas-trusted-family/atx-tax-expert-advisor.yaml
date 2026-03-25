@@ -1,4 +1,4 @@
-# atx-rag-collection/atx-personas-trusted-family/atx-tax-expert-advisor.yaml
+# atx-rag-collection/personas-trusted-family/atx-tax-expert-advisor.yaml
 # xPersona / RAG seed spec — same structural keys as `.cursor/agents/*.yaml`; not a Cursor agent file.
 id: atx-tax-expert-advisor
 name: atx-tax-expert-advisor

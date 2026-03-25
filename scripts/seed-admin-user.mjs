@@ -559,7 +559,7 @@ async function seed() {
       xaiTeamUuidForStrategyCollections: teamUuidForStrategy || undefined,
       teamKbCollectionId: teamKbCollectionId || undefined,
       atxInstanceEnvHint: seedTenant.atxInstanceCollectionRoot
-        ? `Trusted-advisor xAI tenant: \\`atx-trusted-advisor-${seedTenant.trustedAdvisorDeploySlug}\\` + segment collections (see seed JSON). Instance prefix ATX_INSTANCE_COLLECTION_ROOT=${JSON.stringify(seedTenant.atxInstanceCollectionRoot)} drives per-user xChat history display names \\`{root}-chat-<mongoUserId>\\` (separate from team KB). Persona primary collection id = tenant root.`
+        ? `Trusted-advisor xAI tenant: \`atx-trusted-advisor-${seedTenant.trustedAdvisorDeploySlug}\` + segment collections (see seed JSON). Instance prefix ATX_INSTANCE_COLLECTION_ROOT=${JSON.stringify(seedTenant.atxInstanceCollectionRoot)} drives per-user xChat history display names \`{root}-chat-<mongoUserId>\` (separate from team KB). Persona primary collection id = tenant root.`
         : "No atxInstanceCollectionRoot from tenant_defaults — set ATX_INSTANCE_COLLECTION_ROOT manually if you use instance-scoped xChat collections.",
       userId: String(user._id),
       tenantId: String(tenant._id),

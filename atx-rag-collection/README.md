@@ -4,27 +4,27 @@
 
 ## Purpose
 
-- **`atx-personas-trusted-family/`** — Persona-oriented markdown/YAML included in the **team KB** file walk when **`npm run seed:admin`** runs xAI ingest (see **`scripts/lib/seed-xai-rag-ingest.mjs`**; opt out with **`SKIP_SEED_XAI_RAG_INGEST`**). *Automated Mongo `xchat_personas` upsert from these YAML specs is separate — **`atx-docs/PLAN.md`** § *Admin seed — RAG collection sync*.*
+- **`personas-trusted-family/`** — Persona-oriented markdown/YAML ingested into **`atx-trusted-advisor-<dev|stage|prod>-personas-trusted-family`** when **`npm run seed:admin`** runs xAI ingest (see **`scripts/lib/seed-xai-rag-ingest.mjs`**; opt out with **`SKIP_SEED_XAI_RAG_INGEST`**). *Automated Mongo `xchat_personas` upsert from these YAML specs is separate — **`atx-docs/PLAN.md`** § *Admin seed — RAG collection sync*.*
 - **`finance-reference-docs/`** — Reference PDFs (disclosures, licensing supplements) for the same pipeline.
-- **`atx-xchat-example-prompts/`** — Example user prompts / scenario copy for docs, chips, or KB samples.
-- **`atx-options-strategy/`** — Options strategy narratives (`atx-<slug>/…`) + hub **`atx-options-coreskills.md`** (risk / outlook / ids); **`atx-readme-coreskills.md`** redirects there. **`npm run seed:admin`** uploads this tree to xAI strategy collections (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). Index in **`atx-docs/README.md`** § Options.
+- **`xchat-example-prompts/`** — Example user prompts / scenario copy for docs, chips, or KB samples.
+- **`options-strategy/`** — Options strategy narratives (`<slug>/…`) + hub **`options-coreskills.md`**. **`npm run seed:admin`** uploads this tree into the trusted-advisor tenant segment collection (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). Index in **`atx-docs/README.md`** § Options. Legacy folder names **`atx-personas-trusted-family`**, **`atx-xchat-example-prompts`**, **`atx-options-strategy`** are still accepted as fallbacks during ingest.
 
 ## Layout (current)
 
 | Path | Convention |
 | --- | --- |
-| `atx-personas-trusted-family/` | Prefer **`kebab-case.md`** (or `atx-*.md`) for RAG **body text**. Persona **seed specs** use **`atx-*.yaml`** with the same key shape as **`.cursor/agents/*.yaml`** (see **Persona YAML schema** below). |
-| `atx-options-strategy/` | Strategy Markdown + frontmatter (`xfinance-strategy-*`); ingested with seed; doc hub + stub under **`atx-docs/`**. |
+| `personas-trusted-family/` | Prefer **`kebab-case.md`** (or `atx-*.md`) for RAG **body text**. Persona **seed specs** use **`atx-*.yaml`** with the same key shape as **`.cursor/agents/*.yaml`** (see **Persona YAML schema** below). |
+| `options-strategy/` | Strategy Markdown + frontmatter (`xfinance-strategy-*`); ingested with seed; doc hub + stub under **`atx-docs/`**. |
 | `finance-reference-docs/` | PDFs; prefer **no spaces** in filenames. |
-| `atx-xchat-example-prompts/` | Markdown examples for UX / training. |
+| `xchat-example-prompts/` | Markdown examples for UX / training. |
 
-## Persona YAML schema (`atx-personas-trusted-family/*.yaml`)
+## Persona YAML schema (`personas-trusted-family/*.yaml`)
 
 Aligned with **`.cursor/agents/*.yaml`** for tooling parity. These files are **not** Cursor agents; they are **xPersona / RAG seed** specs.
 
 | Key | Notes |
 | --- | --- |
-| Top comment | First line: `# atx-rag-collection/atx-personas-trusted-family/<stem>.yaml` |
+| Top comment | First line: `# atx-rag-collection/personas-trusted-family/<stem>.yaml` |
 | `id` / `name` | Match filename stem exactly (e.g. `atx-legal-advisor`, `atx-options-trader-advisor`) |
 | `description` | Block scalar; product-facing summary |
 | `icon` / `color` | Optional on agents; **required** here for admin/UI parity |
@@ -45,7 +45,7 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 
 ## Tests & automation
 
-- **`seed:admin`** walks **`atx-rag-collection/`** (persona RAG + **`atx-options-strategy/`**) when xAI keys are set; see **`scripts/lib/seed-xai-rag-ingest.mjs`**. Layout smoke test: **`tests/unit/atx-rag-collection-layout.test.ts`**.
+- **`seed:admin`** walks **`atx-rag-collection/`** (persona RAG + **`options-strategy/`**, etc.) when xAI keys are set; see **`scripts/lib/seed-xai-rag-ingest.mjs`**. Layout smoke test: **`tests/unit/atx-rag-collection-layout.test.ts`**.
 
 ## Docs parity
 
