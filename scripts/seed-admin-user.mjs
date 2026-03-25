@@ -2,9 +2,10 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { MongoClient, ObjectId } from "mongodb";
+import { MongoClient } from "mongodb";
 
 import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+import { runSeedXaiRagIngest } from "./lib/seed-xai-rag-ingest.mjs";
 
 const SEED_SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SEED_SCRIPT_DIR, "..");
@@ -59,179 +60,6 @@ function xPrelinkSetFields(now) {
     fields["xAccount.displayName"] = ADMIN_SEED_X_DISPLAY_NAME;
   }
   return fields;
-}
-
-const USER_BOOTSTRAP_COLLECTION = "admin_user_bootstrap_profiles";
-const BOOTSTRAP_PROFILE_RETENTION_DAYS = 30;
-
-function buildUserXchatHistoryCollectionName(userIdHex) {
-  return `atx-chat-${String(userIdHex).trim().toLowerCase()}-history`;
-}
-
-function legacyUserXchatBootstrapCollectionName(userIdHex) {
-  return `atx-finance-user-${String(userIdHex).trim().toLowerCase()}-xchat`;
-}
-
-async function readJsonBody(res) {
-  const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    return {};
-  }
-}
-
-async function managementListCollections() {
-  const mgmtKey = (process.env.XAI_MANAGEMENT_API_KEY || "").trim();
-  const base = (process.env.XAI_MANAGEMENT_BASE_URL || "https://management-api.x.ai/v1").replace(/\/$/, "");
-  const res = await fetch(`${base}/collections`, {
-    headers: { Authorization: `Bearer ${mgmtKey}` }
-  });
-  const payload = await readJsonBody(res);
-  if (!res.ok) {
-    throw new Error(`xAI collections list failed: ${JSON.stringify(payload.error ?? payload)}`);
-  }
-  const candidates = [payload.data, payload.results, payload.collections, payload.items].find(Array.isArray);
-  return Array.isArray(candidates) ? candidates : [];
-}
-
-async function managementCreateCollection(displayName) {
-  const mgmtKey = (process.env.XAI_MANAGEMENT_API_KEY || "").trim();
-  const base = (process.env.XAI_MANAGEMENT_BASE_URL || "https://management-api.x.ai/v1").replace(/\/$/, "");
-  const res = await fetch(`${base}/collections`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${mgmtKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ collection_name: String(displayName).trim() })
-  });
-  const payload = await readJsonBody(res);
-  if (!res.ok) {
-    throw new Error(`xAI collection create failed: ${JSON.stringify(payload.error ?? payload)}`);
-  }
-  const id =
-    (typeof payload.id === "string" && payload.id) ||
-    (typeof payload.collection_id === "string" && payload.collection_id) ||
-    "";
-  if (!id) {
-    throw new Error("xAI collection create returned no collection id");
-  }
-  const name =
-    (typeof payload.name === "string" && payload.name) ||
-    (typeof payload.collection_name === "string" && payload.collection_name) ||
-    displayName;
-  return { id, name };
-}
-
-/**
- * Ensures xAI collection `atx-chat-<userId>-history` exists and syncs core_users + admin_user_bootstrap_profiles
- * (same targets as runtime `resolveOrCreateUserBootstrapCollection`).
- */
-async function ensureSeedAdminUserHistoryCollection(db, { userIdHex, tenantIdHex, emailNormalized }) {
-  const mgmtKey = (process.env.XAI_MANAGEMENT_API_KEY || "").trim();
-  if (!mgmtKey) {
-    console.warn(
-      "[seed:admin] XAI_MANAGEMENT_API_KEY unset; skipping per-user xChat history xAI collection (atx-chat-<userId>-history)."
-    );
-    return null;
-  }
-
-  const uid = new ObjectId(userIdHex);
-  const existingUser = await db
-    .collection("core_users")
-    .findOne({ _id: uid }, { projection: { xaiCollectionId: 1, xaiCollectionName: 1 } });
-  const existingId = existingUser?.xaiCollectionId?.trim();
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + BOOTSTRAP_PROFILE_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-
-  if (existingId) {
-    await db.collection(USER_BOOTSTRAP_COLLECTION).updateOne(
-      { emailNormalized },
-      {
-        $setOnInsert: { createdAt: now },
-        $set: {
-          userId: userIdHex,
-          tenantId: tenantIdHex,
-          xaiCollectionId: existingId,
-          xaiCollectionName:
-            existingUser.xaiCollectionName?.trim() || buildUserXchatHistoryCollectionName(userIdHex),
-          syncStatus: "synced",
-          syncError: undefined,
-          updatedAt: now,
-          expiresAt
-        }
-      },
-      { upsert: true }
-    );
-    return {
-      collectionId: existingId,
-      collectionName: existingUser.xaiCollectionName?.trim() || buildUserXchatHistoryCollectionName(userIdHex)
-    };
-  }
-
-  const canonical = buildUserXchatHistoryCollectionName(userIdHex);
-  const legacy = legacyUserXchatBootstrapCollectionName(userIdHex);
-  let inventory = [];
-  try {
-    inventory = await managementListCollections();
-  } catch (e) {
-    console.warn("[seed:admin] xAI collections list failed:", e instanceof Error ? e.message : e);
-    return null;
-  }
-
-  let picked = null;
-  for (const c of inventory) {
-    if (!c || typeof c !== "object") {
-      continue;
-    }
-    const id = String(c.id ?? c.collection_id ?? "").trim();
-    const nm = String(c.name ?? c.collection_name ?? "")
-      .trim()
-      .toLowerCase();
-    if (!id) {
-      continue;
-    }
-    if (nm === canonical.toLowerCase() || nm === legacy.toLowerCase()) {
-      picked = {
-        id,
-        name: (typeof c.name === "string" && c.name) || (typeof c.collection_name === "string" && c.collection_name) || canonical
-      };
-      break;
-    }
-  }
-
-  if (!picked) {
-    try {
-      picked = await managementCreateCollection(canonical);
-    } catch (e) {
-      console.warn("[seed:admin] xAI collection create failed:", e instanceof Error ? e.message : e);
-      return null;
-    }
-  }
-
-  await db.collection("core_users").updateOne(
-    { _id: uid },
-    { $set: { xaiCollectionId: picked.id, xaiCollectionName: picked.name, updatedAt: now } }
-  );
-  await db.collection(USER_BOOTSTRAP_COLLECTION).updateOne(
-    { emailNormalized },
-    {
-      $setOnInsert: { createdAt: now },
-      $set: {
-        userId: userIdHex,
-        tenantId: tenantIdHex,
-        xaiCollectionId: picked.id,
-        xaiCollectionName: picked.name,
-        syncStatus: "synced",
-        syncError: undefined,
-        updatedAt: now,
-        expiresAt
-      }
-    },
-    { upsert: true }
-  );
-  return { collectionId: picked.id, collectionName: picked.name };
 }
 
 const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core";
@@ -328,12 +156,46 @@ async function resolveSuperAgentCollectionIdForSeed() {
   }
 }
 
-function buildSuperAgentXapiTools(collectionId) {
-  if (collectionId) {
+function shouldSkipSeedXaiRagIngest() {
+  const s = String(process.env.SKIP_SEED_XAI_RAG_INGEST ?? "").toLowerCase();
+  return s === "1" || s === "true" || s === "yes";
+}
+
+/** @param {string[]} ids */
+function dedupeTrimmedIds(ids) {
+  const seen = new Set();
+  const out = [];
+  for (const id of ids) {
+    const t = String(id ?? "").trim();
+    if (t && !seen.has(t)) {
+      seen.add(t);
+      out.push(t);
+    }
+  }
+  return out;
+}
+
+/**
+ * Team UUID for management create/list (strategy-template collections). Not used when `XAI_TEAM_ID` is a literal `collection_*` id.
+ */
+function teamUuidForXaiIngest() {
+  const raw = (process.env.XAI_TEAM_ID || "").trim();
+  if (!raw || XAI_KB_COLLECTION_RE.test(raw)) {
+    return "";
+  }
+  return raw;
+}
+
+/** @param {string | string[] | undefined} collectionIds */
+function buildSuperAgentXapiTools(collectionIds) {
+  const list = Array.isArray(collectionIds)
+    ? dedupeTrimmedIds(collectionIds)
+    : dedupeTrimmedIds(collectionIds ? [collectionIds] : []);
+  if (list.length > 0) {
     return [
       { type: "web_search" },
       { type: "x_search" },
-      { type: "collections_search", collection_ids: [collectionId] },
+      { type: "collections_search", collection_ids: list },
       { type: "yahoo_finance" },
       { type: "atxfinance" }
     ];
@@ -448,8 +310,40 @@ async function seed() {
   try {
     await ensureIndexes(db);
 
-    const superAgentCollectionId = await resolveSuperAgentCollectionIdForSeed();
-    const superAgentTools = buildSuperAgentXapiTools(superAgentCollectionId);
+    const teamKbCollectionId = await resolveSuperAgentCollectionIdForSeed();
+
+    let strategyCollectionIds = [];
+    let ragIngest = { ragUploaded: 0, warnings: [] };
+    if (!shouldSkipSeedXaiRagIngest()) {
+      const xaiApiKey = (process.env.XAI_API_KEY || "").trim();
+      const mgmtKey = (process.env.XAI_MANAGEMENT_API_KEY || "").trim();
+      const mgmtBase = (process.env.XAI_MANAGEMENT_BASE_URL || "https://management-api.x.ai/v1").replace(
+        /\/$/,
+        ""
+      );
+      const xaiBaseUrl = (process.env.XAI_BASE_URL || "https://api.x.ai/v1").replace(/\/$/, "");
+      ragIngest = await runSeedXaiRagIngest({
+        repoRoot: REPO_ROOT,
+        teamId: teamUuidForXaiIngest(),
+        teamKbCollectionId,
+        xaiApiKey,
+        xaiBaseUrl,
+        mgmtKey,
+        mgmtBase
+      });
+      strategyCollectionIds = ragIngest.strategyCollectionIds ?? [];
+      for (const w of ragIngest.warnings ?? []) {
+        console.warn("[seed:admin] xai RAG ingest:", w);
+      }
+      console.log(
+        `[seed:admin] xAI RAG ingest done (files linked to team KB: ${ragIngest.ragUploaded}; strategy collections: ${strategyCollectionIds.length})`
+      );
+    } else {
+      console.log("[seed:admin] SKIP_SEED_XAI_RAG_INGEST set — skipping atx-rag-collection / strategy-template upload");
+    }
+
+    const collectionsSearchIds = dedupeTrimmedIds([teamKbCollectionId, ...strategyCollectionIds]);
+    const superAgentTools = buildSuperAgentXapiTools(collectionsSearchIds);
 
     await db.collection("core_tenants").updateOne(
       { slug: DEFAULT_TENANT_SLUG },
@@ -483,7 +377,7 @@ async function seed() {
           systemPrompt: DEFAULT_PERSONA_SYSTEM_PROMPT,
           overridePrompt: "",
           xaiCollection: {
-            ...(superAgentCollectionId ? { collectionId: superAgentCollectionId } : {}),
+            ...(teamKbCollectionId ? { collectionId: teamKbCollectionId } : {}),
             collectionName: DEFAULT_COLLECTION_NAME
           },
           model: "grok-4-1-fast-reasoning",
@@ -698,20 +592,17 @@ async function seed() {
       }
     }
 
-    const historyCtx = await ensureSeedAdminUserHistoryCollection(db, {
-      userIdHex: String(user._id),
-      tenantIdHex: String(tenant._id),
-      emailNormalized: email
-    });
-
     console.log(
       JSON.stringify(
         {
           ok: true,
           adminEmail: email,
           xUserIdLinked: ADMIN_SEED_X_USER_ID || undefined,
-          xchatHistoryCollectionId: historyCtx?.collectionId,
-          xchatHistoryCollectionName: historyCtx?.collectionName,
+          xchatUserHistory:
+            "Deferred to first xChat session (GET /api/xchat/collections → resolveOrCreateUserBootstrapCollection)",
+          ragIngestRagFilesUploaded: ragIngest.ragUploaded,
+          ragIngestStrategyCollectionCount: strategyCollectionIds.length,
+          collectionsSearchCollectionIds: collectionsSearchIds,
           userId: String(user._id),
           tenantId: String(tenant._id),
           tenantSlug: tenant.slug,
