@@ -36,18 +36,17 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
       "Private / Secure — per-user books in tenant_portfolio, custodian accounts, broker catalog, and holdings CSV import.",
     items: [
       {
+        href: "/admin/onboarding",
+        icon: "batch",
+        title: "Onboarding",
+        description: "Broker import workspace with optional portfolio lock via query string."
+      },
+      {
         href: "/admin/portfolios",
         icon: "portfolio",
         title: "Portfolios",
         description:
           "Private / Secure: per-user workspace portfolios in tenant_portfolio; default book uses tenantPortfolioOrgKey (org-atx-finance) under core_tenants. Edit names, tenant org ref, broker type, and default per user. Open each row’s Manage accounts for custodian CRUD, book-level desk risk & outlook (table columns), per-account risk & outlook, and watchlist on the sibling link."
-      },
-      {
-        href: "/admin/portfolios",
-        icon: "book",
-        title: "Book watchlists",
-        description:
-          "Per-portfolio symbol CRUD: Portfolios → open a book → Watchlist. Add/upsert uses Stock + balanced row defaults and growth/balanced desk when unset; edit line type, strategy, qty, and entry per row; remove and dedupe. Same behavior as xChat “add TICKER to my watchlist” via atxfinance."
       },
       {
         href: "/admin/brokers",
@@ -60,12 +59,6 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         icon: "batch",
         title: "Broker import",
         description: ADMIN_BROKER_IMPORT_DESCRIPTION
-      },
-      {
-        href: "/admin/onboarding",
-        icon: "batch",
-        title: "Onboarding",
-        description: "Broker import workspace with optional portfolio lock via query string."
       }
     ]
   },

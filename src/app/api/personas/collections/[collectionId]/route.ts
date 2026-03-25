@@ -28,8 +28,11 @@ export async function GET(_request: Request, { params }: RouteParams) {
           chunkCount: stats.chunkCount ?? null,
           fileCount: stats.fileCount ?? null,
           indexStatus: stats.indexStatus ?? null,
+          lastSyncedAt: stats.lastSyncedAt ?? stats.updatedAt ?? null,
           createdAt: stats.createdAt ?? null,
-          updatedAt: stats.updatedAt ?? null
+          updatedAt: stats.updatedAt ?? null,
+          usageStats:
+            stats.usageStats && Object.keys(stats.usageStats).length > 0 ? stats.usageStats : null
         }
       }
     });

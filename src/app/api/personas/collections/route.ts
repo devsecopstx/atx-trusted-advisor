@@ -10,8 +10,14 @@ type CollectionInventoryItem = {
   name?: string;
   stats: {
     documentCount: number | null;
+    chunkCount: number | null;
+    fileCount: number | null;
+    indexStatus: string | null;
+    /** xAI last sync / index time when provided; otherwise mirrors updatedAt from inventory. */
+    lastSyncedAt: string | null;
     createdAt: string | null;
     updatedAt: string | null;
+    usageStats: Record<string, unknown> | null;
   };
 };
 
@@ -44,8 +50,16 @@ export async function GET() {
         name: collection.name,
         stats: {
           documentCount: collection.documentCount ?? null,
+          chunkCount: collection.chunkCount ?? null,
+          fileCount: collection.fileCount ?? null,
+          indexStatus: collection.indexStatus ?? null,
+          lastSyncedAt: collection.lastSyncedAt ?? collection.updatedAt ?? null,
           createdAt: collection.createdAt ?? null,
-          updatedAt: collection.updatedAt ?? null
+          updatedAt: collection.updatedAt ?? null,
+          usageStats:
+            collection.usageStats && Object.keys(collection.usageStats).length > 0
+              ? collection.usageStats
+              : null
         }
       }))
       .sort((left, right) =>
@@ -121,8 +135,13 @@ export async function POST(request: Request) {
         name: created.name,
         stats: {
           documentCount: null,
+          chunkCount: null,
+          fileCount: null,
+          indexStatus: null,
+          lastSyncedAt: null,
           createdAt: null,
-          updatedAt: null
+          updatedAt: null,
+          usageStats: null
         }
       }
     });

@@ -1285,14 +1285,29 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       name: { type: "string", nullable: true },
       stats: {
         type: "object",
-        required: ["documentCount", "createdAt", "updatedAt"],
+        required: [
+          "documentCount",
+          "chunkCount",
+          "fileCount",
+          "indexStatus",
+          "lastSyncedAt",
+          "createdAt",
+          "updatedAt",
+          "usageStats"
+        ],
         properties: {
           documentCount: { type: "integer", nullable: true },
           chunkCount: { type: "integer", nullable: true },
           fileCount: { type: "integer", nullable: true },
           indexStatus: { type: "string", nullable: true },
+          lastSyncedAt: { type: "string", nullable: true },
           createdAt: { type: "string", nullable: true },
-          updatedAt: { type: "string", nullable: true }
+          updatedAt: { type: "string", nullable: true },
+          usageStats: {
+            type: "object",
+            nullable: true,
+            additionalProperties: true
+          }
         }
       }
     }

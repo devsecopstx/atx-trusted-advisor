@@ -22,8 +22,13 @@ export type XaiCollectionInventoryOption = {
   name?: string;
   stats: {
     documentCount: number | null;
+    chunkCount?: number | null;
+    fileCount?: number | null;
+    indexStatus?: string | null;
+    lastSyncedAt?: string | null;
     createdAt: string | null;
     updatedAt: string | null;
+    usageStats?: Record<string, unknown> | null;
   };
 };
 

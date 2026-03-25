@@ -37,8 +37,15 @@ export type XaiCollectionInventoryItem = {
   /** Present when the management API returns a team scope for the collection. */
   teamId?: string;
   documentCount?: number;
+  chunkCount?: number;
+  fileCount?: number;
+  indexStatus?: string;
+  /** When the vendor exposes a dedicated sync/index timestamp (else callers may fall back to updatedAt). */
+  lastSyncedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** Usage / metrics object from list or detail payloads when present. */
+  usageStats?: Record<string, unknown>;
 };
 
 export type XaiFileProcessingStatus = "pending" | "processing" | "complete" | "failed" | "skipped" | "unknown";
@@ -991,9 +998,30 @@ export type XaiCollectionStats = {
   chunkCount?: number;
   fileCount?: number;
   indexStatus?: string;
+  lastSyncedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  usageStats?: Record<string, unknown>;
 };
+
+/** Usage / metrics blobs sometimes returned on collection list or detail payloads. */
+function pickXaiCollectionUsageStatsPayload(entry: Record<string, unknown>): Record<string, unknown> | undefined {
+  const keys = [
+    "usage",
+    "usage_stats",
+    "stats",
+    "collection_stats",
+    "metrics",
+    "embedding_stats"
+  ] as const;
+  for (const key of keys) {
+    const value = entry[key];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return { ...(value as Record<string, unknown>) };
+    }
+  }
+  return undefined;
+}
 
 export async function getXaiCollectionById(collectionId: string): Promise<XaiCollectionStats> {
   const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
@@ -1044,6 +1072,12 @@ export async function getXaiCollectionById(collectionId: string): Promise<XaiCol
     asString(payload.status);
   const createdAt = asString(payload.created_at) ?? asString(payload.createdAt);
   const updatedAt = asString(payload.updated_at) ?? asString(payload.updatedAt);
+  const lastSyncedAt =
+    asString(payload.last_synced_at) ??
+    asString(payload.lastSyncedAt) ??
+    asString(payload.last_indexed_at) ??
+    asString(payload.sync_completed_at);
+  const usageStats = pickXaiCollectionUsageStatsPayload(payload);
 
   return {
     id,
@@ -1052,8 +1086,10 @@ export async function getXaiCollectionById(collectionId: string): Promise<XaiCol
     chunkCount,
     fileCount,
     indexStatus,
+    ...(lastSyncedAt ? { lastSyncedAt } : {}),
     createdAt,
-    updatedAt
+    updatedAt,
+    ...(usageStats && Object.keys(usageStats).length > 0 ? { usageStats } : {})
   };
 }
 
@@ -1263,15 +1299,39 @@ export async function listXaiCollections(options?: {
       asNumber(entry.documents_count) ??
       asNumber(entry.total_documents) ??
       asNumber(entry.size);
+    const chunkCount =
+      asNumber(entry.chunk_count) ??
+      asNumber(entry.chunks_count) ??
+      asNumber(entry.total_chunks) ??
+      asNumber(entry.vector_count);
+    const fileCount =
+      asNumber(entry.file_count) ??
+      asNumber(entry.files_count) ??
+      asNumber(entry.total_files);
+    const indexStatus =
+      asString(entry.index_status) ??
+      asString(entry.embedding_status) ??
+      asString(entry.status);
     const createdAt = asString(entry.created_at) ?? asString(entry.createdAt);
     const updatedAt = asString(entry.updated_at) ?? asString(entry.updatedAt);
+    const lastSyncedAt =
+      asString(entry.last_synced_at) ??
+      asString(entry.lastSyncedAt) ??
+      asString(entry.last_indexed_at) ??
+      asString(entry.sync_completed_at);
+    const usageStats = pickXaiCollectionUsageStatsPayload(entry);
     collections.push({
       id,
       name,
       teamId,
       documentCount,
+      chunkCount,
+      fileCount,
+      indexStatus,
+      lastSyncedAt,
       createdAt,
-      updatedAt
+      updatedAt,
+      ...(usageStats && Object.keys(usageStats).length > 0 ? { usageStats } : {})
     });
   }
 

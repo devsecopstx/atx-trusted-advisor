@@ -1,24 +1,75 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CopyIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
-const RAG_COLLECTIONS_CACHE_KEY = "xfinance:admin:rag-collections:v1";
+const RAG_COLLECTIONS_CACHE_KEY = "xfinance:admin:rag-collections:v2";
 const RAG_COLLECTIONS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type CollectionStats = {
+  documentCount: number | null;
+  chunkCount: number | null;
+  fileCount: number | null;
+  indexStatus: string | null;
+  lastSyncedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  usageStats: Record<string, unknown> | null;
+};
 
 type CollectionRow = {
   id: string;
   name?: string;
-  stats: {
-    documentCount: number | null;
-    createdAt: string | null;
-    updatedAt: string | null;
-  };
+  stats: CollectionStats;
 };
 
 type CachedPayload = { ts: number; data: CollectionRow[] };
+
+function defaultStats(): CollectionStats {
+  return {
+    documentCount: null,
+    chunkCount: null,
+    fileCount: null,
+    indexStatus: null,
+    lastSyncedAt: null,
+    createdAt: null,
+    updatedAt: null,
+    usageStats: null
+  };
+}
+
+function coerceCollectionRow(raw: unknown): CollectionRow | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const row = raw as Record<string, unknown>;
+  if (typeof row.id !== "string") {
+    return null;
+  }
+  const st = row.stats && typeof row.stats === "object" && !Array.isArray(row.stats) ? row.stats : {};
+  const s = st as Record<string, unknown>;
+  const usageRaw = s.usageStats;
+  const usageStats =
+    usageRaw && typeof usageRaw === "object" && !Array.isArray(usageRaw)
+      ? (usageRaw as Record<string, unknown>)
+      : null;
+  return {
+    id: row.id,
+    ...(typeof row.name === "string" ? { name: row.name } : {}),
+    stats: {
+      documentCount: typeof s.documentCount === "number" ? s.documentCount : null,
+      chunkCount: typeof s.chunkCount === "number" ? s.chunkCount : null,
+      fileCount: typeof s.fileCount === "number" ? s.fileCount : null,
+      indexStatus: typeof s.indexStatus === "string" ? s.indexStatus : null,
+      lastSyncedAt: typeof s.lastSyncedAt === "string" ? s.lastSyncedAt : null,
+      createdAt: typeof s.createdAt === "string" ? s.createdAt : null,
+      updatedAt: typeof s.updatedAt === "string" ? s.updatedAt : null,
+      usageStats: usageStats && Object.keys(usageStats).length > 0 ? usageStats : null
+    }
+  };
+}
 
 function readCollectionsCache(): CachedPayload | null {
   if (typeof window === "undefined") {
@@ -30,14 +81,14 @@ function readCollectionsCache(): CachedPayload | null {
       return null;
     }
     const parsed = JSON.parse(raw) as CachedPayload;
-    if (
-      typeof parsed.ts !== "number" ||
-      !Array.isArray(parsed.data) ||
-      parsed.data.some((r) => !r || typeof r.id !== "string")
-    ) {
+    if (typeof parsed.ts !== "number" || !Array.isArray(parsed.data)) {
       return null;
     }
-    return parsed;
+    const data = parsed.data.map(coerceCollectionRow).filter((r): r is CollectionRow => r !== null);
+    if (data.length !== parsed.data.length) {
+      return null;
+    }
+    return { ts: parsed.ts, data };
   } catch {
     return null;
   }
@@ -57,7 +108,10 @@ function writeCollectionsCache(data: CollectionRow[]): void {
 async function fetchCollectionsFromApi(): Promise<CollectionRow[]> {
   const res = await fetch("/api/personas/collections", { credentials: "include" });
   const payload = await parseJson<{ data: CollectionRow[] }>(res);
-  return payload.data;
+  return payload.data.map((row) => {
+    const c = coerceCollectionRow(row);
+    return c ?? { id: row.id, name: row.name, stats: defaultStats() };
+  });
 }
 
 function formatWhen(value: string | null): string {
@@ -69,6 +123,24 @@ function formatWhen(value: string | null): string {
     return value;
   }
   return new Date(ms).toLocaleString();
+}
+
+function formatUsageStats(stats: Record<string, unknown> | null): { short: string; full: string } {
+  if (!stats || Object.keys(stats).length === 0) {
+    return { short: "—", full: "" };
+  }
+  const entries = Object.entries(stats);
+  const full = JSON.stringify(stats, null, 2);
+  const short = entries
+    .slice(0, 6)
+    .map(([k, v]) => {
+      if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+        return `${k}: ${JSON.stringify(v)}`;
+      }
+      return `${k}: ${String(v)}`;
+    })
+    .join(" · ");
+  return { short: entries.length > 6 ? `${short} · …` : short, full };
 }
 
 async function writeTextToClipboard(text: string): Promise<void> {
@@ -98,6 +170,41 @@ export function RagFilesConsole() {
   const [initialFetchDone, setInitialFetchDone] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const totals = useMemo(() => {
+    let sumDocs = 0;
+    let docRows = 0;
+    let sumChunks = 0;
+    let chunkRows = 0;
+    let sumFiles = 0;
+    let fileRows = 0;
+    for (const row of collections) {
+      const d = row.stats.documentCount;
+      if (typeof d === "number") {
+        sumDocs += d;
+        docRows += 1;
+      }
+      const c = row.stats.chunkCount;
+      if (typeof c === "number") {
+        sumChunks += c;
+        chunkRows += 1;
+      }
+      const f = row.stats.fileCount;
+      if (typeof f === "number") {
+        sumFiles += f;
+        fileRows += 1;
+      }
+    }
+    return {
+      collections: collections.length,
+      sumDocs,
+      docRows,
+      sumChunks,
+      chunkRows,
+      sumFiles,
+      fileRows
+    };
+  }, [collections]);
 
   const copyCollectionId = useCallback(async (id: string) => {
     try {
@@ -187,6 +294,11 @@ export function RagFilesConsole() {
         <strong>Personas</strong> flows or the xAI console — not from this page.
       </p>
       <p className="status-text">
+        <strong>Last sync</strong> uses the vendor&apos;s last-sync field when present; otherwise it falls back to{" "}
+        <strong>updated</strong>. <strong>Usage / stats</strong> shows any <code>usage</code>,{" "}
+        <code>stats</code>, or related object returned on the collection row.
+      </p>
+      <p className="status-text">
         <a
           className="xchat-header-link"
           href="https://docs.x.ai/docs/guides/using-collections/api"
@@ -213,6 +325,31 @@ export function RagFilesConsole() {
         <p className="status-text">{status}</p>
       </div>
 
+      {collections.length > 0 ? (
+        <p className="status-text" style={{ maxWidth: "72ch" }}>
+          Totals: <strong>{totals.collections}</strong> collection(s)
+          {totals.docRows > 0 ? (
+            <>
+              {" "}
+              · <strong>{totals.sumDocs}</strong> document(s) across <strong>{totals.docRows}</strong> row(s) with
+              counts
+            </>
+          ) : null}
+          {totals.chunkRows > 0 ? (
+            <>
+              {" "}
+              · <strong>{totals.sumChunks}</strong> chunk(s) ({totals.chunkRows} row(s))
+            </>
+          ) : null}
+          {totals.fileRows > 0 ? (
+            <>
+              {" "}
+              · <strong>{totals.sumFiles}</strong> file(s) ({totals.fileRows} row(s))
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
       <article className="surface-card xf-widget section-card">
         <h3>xAI collections</h3>
         {!initialFetchDone && collections.length === 0 ? (
@@ -229,48 +366,72 @@ export function RagFilesConsole() {
                   <th scope="col" style={{ textAlign: "right" }}>
                     Documents
                   </th>
+                  <th scope="col" style={{ textAlign: "right" }}>
+                    Chunks
+                  </th>
+                  <th scope="col" style={{ textAlign: "right" }}>
+                    Files
+                  </th>
+                  <th scope="col">Index</th>
+                  <th scope="col">Last sync</th>
                   <th scope="col">Created</th>
                   <th scope="col">Updated</th>
+                  <th scope="col">Usage / stats</th>
                 </tr>
               </thead>
               <tbody>
-                {collections.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <strong>{row.name?.trim() || "—"}</strong>
-                    </td>
-                    <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: "0.45rem",
-                          flexWrap: "wrap"
-                        }}
-                      >
-                        <code style={{ fontSize: "0.78rem", wordBreak: "break-all", flex: "1 1 10rem" }}>
-                          {row.id}
-                        </code>
-                        <button
-                          className="tiny-button"
-                          type="button"
-                          aria-label={
-                            copiedId === row.id
-                              ? "Collection ID copied to clipboard"
-                              : `Copy collection ID ${row.id}`
-                          }
-                          onClick={() => void copyCollectionId(row.id)}
+                {collections.map((row) => {
+                  const usage = formatUsageStats(row.stats.usageStats);
+                  return (
+                    <tr key={row.id}>
+                      <td>
+                        <strong>{row.name?.trim() || "—"}</strong>
+                      </td>
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: "0.45rem",
+                            flexWrap: "wrap"
+                          }}
                         >
-                          <CopyIcon className="crud-icon" />
-                          {copiedId === row.id ? "Copied" : "Copy"}
-                        </button>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: "right" }}>{row.stats.documentCount ?? "—"}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{formatWhen(row.stats.createdAt)}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{formatWhen(row.stats.updatedAt)}</td>
-                  </tr>
-                ))}
+                          <code style={{ fontSize: "0.78rem", wordBreak: "break-all", flex: "1 1 10rem" }}>
+                            {row.id}
+                          </code>
+                          <button
+                            className="tiny-button"
+                            type="button"
+                            aria-label={
+                              copiedId === row.id
+                                ? "Collection ID copied to clipboard"
+                                : `Copy collection ID ${row.id}`
+                            }
+                            onClick={() => void copyCollectionId(row.id)}
+                          >
+                            <CopyIcon className="crud-icon" />
+                            {copiedId === row.id ? "Copied" : "Copy"}
+                          </button>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "right" }}>{row.stats.documentCount ?? "—"}</td>
+                      <td style={{ textAlign: "right" }}>{row.stats.chunkCount ?? "—"}</td>
+                      <td style={{ textAlign: "right" }}>{row.stats.fileCount ?? "—"}</td>
+                      <td style={{ maxWidth: "10rem", wordBreak: "break-word" }}>
+                        {row.stats.indexStatus ?? "—"}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>{formatWhen(row.stats.lastSyncedAt)}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>{formatWhen(row.stats.createdAt)}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>{formatWhen(row.stats.updatedAt)}</td>
+                      <td
+                        style={{ maxWidth: "18rem", fontSize: "0.78rem", wordBreak: "break-word" }}
+                        title={usage.full || undefined}
+                      >
+                        {usage.short}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

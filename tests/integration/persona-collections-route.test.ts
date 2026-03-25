@@ -19,8 +19,8 @@ vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 
 import {
-  GET as getPersonaCollectionsInventory,
-  POST as postPersonaCollection
+    GET as getPersonaCollectionsInventory,
+    POST as postPersonaCollection
 } from "@/app/api/personas/collections/route";
 
 describe("persona collections inventory route", () => {
@@ -34,8 +34,13 @@ describe("persona collections inventory route", () => {
         id: "collection_beta",
         name: "Beta KB",
         documentCount: 19,
+        chunkCount: 120,
+        fileCount: 19,
+        indexStatus: "indexed",
+        lastSyncedAt: "2026-03-13T15:00:00.000Z",
         createdAt: "2026-03-12T10:00:00.000Z",
-        updatedAt: "2026-03-14T10:00:00.000Z"
+        updatedAt: "2026-03-14T10:00:00.000Z",
+        usageStats: { query_count: 3 }
       },
       {
         id: "collection_alpha"
@@ -56,8 +61,13 @@ describe("persona collections inventory route", () => {
         name?: string;
         stats: {
           documentCount: number | null;
+          chunkCount: number | null;
+          fileCount: number | null;
+          indexStatus: string | null;
+          lastSyncedAt: string | null;
           createdAt: string | null;
           updatedAt: string | null;
+          usageStats: Record<string, unknown> | null;
         };
       }>;
     };
@@ -72,8 +82,13 @@ describe("persona collections inventory route", () => {
           name: undefined,
           stats: {
             documentCount: null,
+            chunkCount: null,
+            fileCount: null,
+            indexStatus: null,
+            lastSyncedAt: null,
             createdAt: null,
-            updatedAt: null
+            updatedAt: null,
+            usageStats: null
           }
         },
         {
@@ -81,8 +96,13 @@ describe("persona collections inventory route", () => {
           name: "Beta KB",
           stats: {
             documentCount: 19,
+            chunkCount: 120,
+            fileCount: 19,
+            indexStatus: "indexed",
+            lastSyncedAt: "2026-03-13T15:00:00.000Z",
             createdAt: "2026-03-12T10:00:00.000Z",
-            updatedAt: "2026-03-14T10:00:00.000Z"
+            updatedAt: "2026-03-14T10:00:00.000Z",
+            usageStats: { query_count: 3 }
           }
         }
       ])
@@ -169,7 +189,16 @@ describe("persona collections inventory route", () => {
       data: {
         id: string;
         name: string;
-        stats: { documentCount: null; createdAt: null; updatedAt: null };
+        stats: {
+          documentCount: null;
+          chunkCount: null;
+          fileCount: null;
+          indexStatus: null;
+          lastSyncedAt: null;
+          createdAt: null;
+          updatedAt: null;
+          usageStats: null;
+        };
       };
     };
 
@@ -192,8 +221,13 @@ describe("persona collections inventory route", () => {
       name: "Created KB",
       stats: {
         documentCount: null,
+        chunkCount: null,
+        fileCount: null,
+        indexStatus: null,
+        lastSyncedAt: null,
         createdAt: null,
-        updatedAt: null
+        updatedAt: null,
+        usageStats: null
       }
     });
   });
