@@ -44,6 +44,8 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/admin/deploy-note-configs", methods: ["GET", "POST"] },
   { pathTemplate: "/api/admin/deploy-note-configs/{configId}", methods: ["GET", "PUT", "DELETE"] },
   { pathTemplate: "/api/admin/import/broker", methods: ["POST"] },
+  { pathTemplate: "/api/admin/portfolios", methods: ["GET", "POST"] },
+  { pathTemplate: "/api/admin/portfolios/{portfolioId}", methods: ["GET", "PATCH", "DELETE"] },
   { pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts", methods: ["GET", "POST"] },
   { pathTemplate: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}", methods: ["PATCH", "DELETE"] },
   { pathTemplate: "/api/rag/files", methods: ["GET", "POST"] },

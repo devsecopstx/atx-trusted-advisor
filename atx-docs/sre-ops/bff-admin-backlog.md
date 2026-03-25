@@ -23,10 +23,17 @@ Canonical proxied routes live in `src/lib/bff-proxy-routes.ts` (see `tests/smoke
 | **Deploy-note-configs** | `GET/POST /api/admin/deploy-note-configs`, `GET/PUT/DELETE .../{configId}` — Mongo **`admin_deploy_note_configs`**. |
 | **Import / broker** | `POST /api/admin/import/broker` — Merrill/Fidelity holdings CSV; **`portfolio-console.tsx`**. |
 
+## Shipped on Kotlin + BFF — **admin portfolio shell**
+
+| Area | Notes |
+|------|--------|
+| **Portfolio list / CRUD** | `GET/POST /api/admin/portfolios`, `GET/PATCH/DELETE /api/admin/portfolios/{portfolioId}` — `AdminPortfoliosController` + `AdminPortfoliosService` (Mongo parity with Next `admin/portfolios` routes). Nested **accounts** already on `AdminPortfolioAccountsController`. |
+
 ## Still Next-primary / future
 
 | Area | Notes |
 |------|--------|
+| **Admin portfolio nested** | Watchlist, tasks, alerts, recommendations, delivery-channels, account-level positions — Next until Kotlin. |
 | Alerts (future) | TBD; pair with `ALERTS_PUBSUB_TOPIC` + `publishAppUserAlertEvent` |
 
 ## Recommendations Pub/Sub

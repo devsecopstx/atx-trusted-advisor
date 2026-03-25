@@ -1,14 +1,14 @@
 /**
  * Routes the Next.js App Router may forward to Spring when `ATXFINANCE_BACKEND_ORIGIN` is set
  * (`proxyRequestToBackend` in `backend-bff.ts`). Keep in sync with Kotlin `@*Mapping` and
- * `atx-docs/atx-sre-ops/atxfinance-backend-http-api.md`.
+ * `atx-docs/sre-ops/atxfinance-backend-http-api.md`.
  *
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
  * App-user portfolio CRUD/watchlist/positions/recommendations/strategy-jobs + `/api/personas` CRUD proxy when origin set.
- * Admin **portfolio accounts** (`/api/admin/portfolios/{portfolioId}/accounts` + `…/accounts/{accountId}`) proxy; **admin portfolio root** (`GET/POST /api/admin/portfolios`, `GET/PATCH/DELETE …/{id}`) and other admin nested portfolio routes (watchlist, tasks, alerts, recommendations, delivery-channels, nested positions) remain Next-only until Kotlin ships.
- * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Scheduler/tasks on Spring when origin set — see atx-docs/atx-sre-ops/api-consolidation-spring-backend.md.
+ * Admin **portfolio shell** (`GET/POST /api/admin/portfolios`, `GET/PATCH/DELETE …/{portfolioId}`) + **accounts** (`…/accounts`, `…/accounts/{accountId}`) proxy when origin set. **Still Next-only:** admin nested watchlist, tasks, alerts, recommendations, delivery-channels, account positions.
+ * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Scheduler/tasks on Spring when origin set — see atx-docs/sre-ops/api-consolidation-spring-backend.md.
  *
- * Deferred vertical slice: xChat streaming routes — see `atx-docs/atx-sre-ops/api-consolidation-spring-backend.md`.
+ * Deferred vertical slice: xChat streaming routes — see `atx-docs/sre-ops/api-consolidation-spring-backend.md`.
  */
 export type BffProxyHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -75,6 +75,11 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "PUT", path: "/api/admin/deploy-note-configs/{configId}" },
   { method: "DELETE", path: "/api/admin/deploy-note-configs/{configId}" },
   { method: "POST", path: "/api/admin/import/broker" },
+  { method: "GET", path: "/api/admin/portfolios" },
+  { method: "POST", path: "/api/admin/portfolios" },
+  { method: "GET", path: "/api/admin/portfolios/{portfolioId}" },
+  { method: "PATCH", path: "/api/admin/portfolios/{portfolioId}" },
+  { method: "DELETE", path: "/api/admin/portfolios/{portfolioId}" },
   { method: "GET", path: "/api/admin/portfolios/{portfolioId}/accounts" },
   { method: "POST", path: "/api/admin/portfolios/{portfolioId}/accounts" },
   { method: "PATCH", path: "/api/admin/portfolios/{portfolioId}/accounts/{accountId}" },
