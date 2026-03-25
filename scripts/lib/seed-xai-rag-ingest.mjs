@@ -1,14 +1,14 @@
 /**
  * Admin seed helpers: upload repo RAG trees to xAI (files API + management link).
- * Used by scripts/seed-admin-user.mjs when XAI_API_KEY + XAI_MANAGEMENT_API_KEY + team KB collection exist.
+ * Used by scripts/seed-admin-user.mjs when XAI_API_KEY + XAI_MANAGEMENT_API_KEY + team id exist.
  */
+import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 
 import {
-    normalizeInstanceDeployTier,
-    pickFirstNonEmpty,
-    resolveStrategyCollectionEnvSlug
+  pickFirstNonEmpty,
+  resolveTrustedAdvisorDeploySlug
 } from "./tenant-defaults-seed.mjs";
 
 /** Stable upload filename: no path separators in the stored name (xAI / OS safe). */
@@ -208,167 +208,188 @@ async function walkIngestFiles(rootDir, { maxBytes }) {
   return out;
 }
 
+/** @param {string} id */
+function maskCollectionId(id) {
+  const s = String(id);
+  if (s.length <= 28) {
+    return s;
+  }
+  return `${s.slice(0, 24)}…`;
+}
+
 /**
+ * @param {string} repoRoot
+ * @param {string[]} dirNames tried under atx-rag-collection/
+ */
+function resolveRagSegmentDir(repoRoot, dirNames) {
+  const base = join(repoRoot, "atx-rag-collection");
+  for (const name of dirNames) {
+    const p = join(base, name);
+    if (existsSync(p)) {
+      return p;
+    }
+  }
+  return "";
+}
+
+function dedupeIds(ids) {
+  const seen = new Set();
+  const out = [];
+  for (const id of ids) {
+    const t = String(id ?? "").trim();
+    if (t && !seen.has(t)) {
+      seen.add(t);
+      out.push(t);
+    }
+  }
+  return out;
+}
+
+/**
+ * Creates instance-scoped xAI collections `atx-trusted-advisor-<dev|stage|prod>` plus segment buckets and uploads
+ * `atx-rag-collection/{finance-reference-docs,personas-trusted-family,xchat-example-prompts,options-strategy}`.
+ *
  * @param {{
  *   repoRoot: string;
  *   teamId?: string;
- *   teamKbCollectionId?: string;
  *   xaiApiKey: string;
  *   xaiBaseUrl: string;
  *   mgmtKey: string;
  *   mgmtBase: string;
  *   maxFileBytes?: number;
- *   skipAtxRag?: boolean;
- *   skipStrategyTemplates?: boolean;
- *   instanceRootPrefix?: string; when set, root strategy files use `${instanceRootPrefix}-xoption-<env>`; subfolders use `atx-xoption-templates-<folder>`.
- *   strategyCollectionEnvSlug?: string; normalized env slug (`dev`|`stage`|…); default from {@link resolveStrategyCollectionEnvSlug} (NODE_ENV dev/test → dev, else yaml app.environment, default stage).
+ *   trustedAdvisorDeploySlug?: string;
  * }} opts
  */
 export async function runSeedXaiRagIngest(opts) {
   const maxBytes = opts.maxFileBytes ?? 24 * 1024 * 1024;
   const teamId = (opts.teamId || "").trim();
-  const kbId = (opts.teamKbCollectionId || "").trim();
-  const strategyPrefix = (opts.instanceRootPrefix || "").trim();
-  const strategyEnvSlug = normalizeInstanceDeployTier(
-    pickFirstNonEmpty(opts.strategyCollectionEnvSlug, resolveStrategyCollectionEnvSlug({}, null))
-  );
   const warnings = [];
 
-  /** @type {string[]} */
-  const strategyCollectionIds = [];
+  const empty = () => ({
+    ragUploaded: 0,
+    ragFileCandidates: 0,
+    strategyCollectionIds: [],
+    strategyCollectionsDetail: [],
+    strategyFilesUploaded: 0,
+    tenantTrustedAdvisorRootDisplayName: "",
+    tenantTrustedAdvisorRootCollectionId: "",
+    warnings
+  });
+
+  if (!opts.xaiApiKey?.trim() || !opts.mgmtKey?.trim()) {
+    warnings.push("missing XAI_API_KEY or XAI_MANAGEMENT_API_KEY — skip RAG ingest");
+    return empty();
+  }
+  if (!teamId) {
+    warnings.push("XAI_TEAM_ID unset — skip trusted-advisor tenant collections (team-scoped create)");
+    return empty();
+  }
+
+  const deploy = pickFirstNonEmpty(opts.trustedAdvisorDeploySlug, resolveTrustedAdvisorDeploySlug({}, null));
+  const tenantBase = `atx-trusted-advisor-${deploy}`;
+
   /** @type {{ collectionId: string; displayName: string; filesUploaded: number }[]} */
   const strategyCollectionsDetail = [];
   let ragUploaded = 0;
   let ragFileCandidates = 0;
+  /** @type {string[]} */
+  const segmentIds = [];
+  let tenantRootId = "";
 
-  if (!opts.xaiApiKey?.trim() || !opts.mgmtKey?.trim()) {
-    warnings.push("missing XAI_API_KEY or XAI_MANAGEMENT_API_KEY — skip RAG ingest");
-    return {
-      ragUploaded: 0,
-      ragFileCandidates: 0,
-      strategyCollectionIds,
-      strategyCollectionsDetail,
-      strategyFilesUploaded: 0,
-      warnings
-    };
-  }
+  const segments = [
+    {
+      suffix: "xchat-history",
+      repoCandidates: /** @type {string[]} */ ([]),
+      placeholder:
+        `# xChat history (${tenantBase})\n\n` +
+        `Reserved for per-user chat sync into xAI; populated by the app after sessions.\n`
+    },
+    { suffix: "finance-reference-docs", repoCandidates: ["finance-reference-docs"] },
+    {
+      suffix: "personas-trusted-family",
+      repoCandidates: ["personas-trusted-family", "atx-personas-trusted-family"]
+    },
+    {
+      suffix: "xchat-example-prompts",
+      repoCandidates: ["xchat-example-prompts", "atx-xchat-example-prompts"]
+    },
+    { suffix: "options-strategy", repoCandidates: ["options-strategy", "atx-options-strategy"] }
+  ];
 
-  if (!opts.skipAtxRag && kbId) {
-    const ragRoot = join(opts.repoRoot, "atx-rag-collection");
-    try {
-      const files = await walkIngestFiles(ragRoot, { maxBytes: maxBytes });
-      ragFileCandidates = files.length;
-      for (const f of files) {
-        const logical = normalizeLogicalUploadName("atx-rag", f.rel);
-        const bytes = await readFile(f.abs);
-        try {
-          await uploadBytesAndLinkToCollection({
-            xaiApiKey: opts.xaiApiKey,
-            xaiBaseUrl: opts.xaiBaseUrl,
-            mgmtKey: opts.mgmtKey,
-            mgmtBase: opts.mgmtBase,
-            collectionId: kbId,
-            logicalFilename: logical,
-            bytes
-          });
-          ragUploaded += 1;
-          console.log(`[seed:xai-ingest] atx-rag → KB: ${logical}`);
-        } catch (e) {
-          warnings.push(`atx-rag ${f.rel}: ${e instanceof Error ? e.message : e}`);
-          console.warn("[seed:xai-ingest]", f.rel, e);
-        }
-      }
-    } catch (e) {
-      warnings.push(`atx-rag-collection walk: ${e instanceof Error ? e.message : e}`);
-    }
-  } else if (!opts.skipAtxRag && !kbId) {
-    warnings.push("no team KB collection id — skip atx-rag-collection upload (set XAI_TEAM_ID + keys)");
-  }
+  try {
+    const root = await findOrCreateManagementCollection({
+      displayName: tenantBase,
+      teamId,
+      mgmtKey: opts.mgmtKey,
+      mgmtBase: opts.mgmtBase
+    });
+    tenantRootId = root.id;
+    console.log(
+      `[seed:xai-ingest] tenant collection verified: displayName=${root.name} id=${maskCollectionId(root.id)}`
+    );
 
-  if (!opts.skipStrategyTemplates && teamId) {
-    const stratRoot = join(opts.repoRoot, "atx-rag-collection/atx-options-strategy");
-    /** @type {string[]} */
-    const rootFiles = [];
-    try {
-      const entries = await readdir(stratRoot, { withFileTypes: true });
-      for (const ent of entries) {
-        if (ent.name.startsWith(".")) {
-          continue;
-        }
-        const abs = join(stratRoot, ent.name);
-        if (ent.isDirectory()) {
-          const displayName = `atx-xoption-templates-${slugFolderName(ent.name)}`;
-          try {
-            const { id } = await findOrCreateManagementCollection({
-              displayName,
-              teamId,
-              mgmtKey: opts.mgmtKey,
-              mgmtBase: opts.mgmtBase
-            });
-            strategyCollectionIds.push(id);
-            let folderUploaded = 0;
-            const subFiles = await walkIngestFiles(abs, { maxBytes: maxBytes });
-            for (const f of subFiles) {
-              const rel = `${ent.name}/${f.rel}`;
-              const logical = normalizeLogicalUploadName("atx-xoption", rel);
-              const bytes = await readFile(f.abs);
-              try {
-                await uploadBytesAndLinkToCollection({
-                  xaiApiKey: opts.xaiApiKey,
-                  xaiBaseUrl: opts.xaiBaseUrl,
-                  mgmtKey: opts.mgmtKey,
-                  mgmtBase: opts.mgmtBase,
-                  collectionId: id,
-                  logicalFilename: logical,
-                  bytes
-                });
-                folderUploaded += 1;
-                console.log(`[seed:xai-ingest] ${displayName}: ${logical}`);
-              } catch (e) {
-                warnings.push(`strategy ${rel}: ${e instanceof Error ? e.message : e}`);
-              }
-            }
-            strategyCollectionsDetail.push({
-              collectionId: id,
-              displayName,
-              filesUploaded: folderUploaded
-            });
-          } catch (e) {
-            warnings.push(`collection ${displayName}: ${e instanceof Error ? e.message : e}`);
-          }
-        } else if (ent.isFile()) {
-          const low = ent.name.toLowerCase();
-          if (!SKIP_FILE_NAMES.has(low)) {
-            const ext = low.slice(low.lastIndexOf("."));
-            if (INGEST_EXTENSIONS.has(ext)) {
-              rootFiles.push(abs);
-            }
-          }
-        }
-      }
+    const rootReadme = Buffer.from(
+      `# ${tenantBase}\n\n` +
+        `Instance-scoped xAI RAG for this app (deploy **${deploy}**).\n\n` +
+        `Segments: ${segments.map((s) => `\`${tenantBase}-${s.suffix}\``).join(", ")}.\n`,
+      "utf8"
+    );
+    await uploadBytesAndLinkToCollection({
+      xaiApiKey: opts.xaiApiKey,
+      xaiBaseUrl: opts.xaiBaseUrl,
+      mgmtKey: opts.mgmtKey,
+      mgmtBase: opts.mgmtBase,
+      collectionId: root.id,
+      logicalFilename: "atx_trusted_advisor__README.md",
+      bytes: rootReadme
+    });
+    ragUploaded += 1;
+    strategyCollectionsDetail.push({
+      collectionId: root.id,
+      displayName: root.name,
+      filesUploaded: 1
+    });
 
-      if (rootFiles.length > 0) {
-        const displayName = strategyPrefix
-          ? `${strategyPrefix}-xoption-${strategyEnvSlug}`
-          : `atx-xoption-templates-${strategyEnvSlug}`;
-        try {
-          const { id } = await findOrCreateManagementCollection({
-            displayName,
-            teamId,
-            mgmtKey: opts.mgmtKey,
-            mgmtBase: opts.mgmtBase
-          });
-          if (!strategyCollectionIds.includes(id)) {
-            strategyCollectionIds.push(id);
-          }
-          let coreUploaded = 0;
-          for (const abs of rootFiles) {
-            const st = await stat(abs);
-            if (st.size > maxBytes) {
-              continue;
-            }
-            const logical = normalizeLogicalUploadName("atx-xoption", basename(abs));
-            const bytes = await readFile(abs);
+    for (const seg of segments) {
+      const displayName = `${tenantBase}-${seg.suffix}`;
+      const { id } = await findOrCreateManagementCollection({
+        displayName,
+        teamId,
+        mgmtKey: opts.mgmtKey,
+        mgmtBase: opts.mgmtBase
+      });
+      segmentIds.push(id);
+      console.log(
+        `[seed:xai-ingest] tenant subcollection verified: displayName=${displayName} id=${maskCollectionId(id)}`
+      );
+
+      let uploaded = 0;
+      if ("placeholder" in seg && seg.placeholder) {
+        const bytes = Buffer.from(seg.placeholder, "utf8");
+        await uploadBytesAndLinkToCollection({
+          xaiApiKey: opts.xaiApiKey,
+          xaiBaseUrl: opts.xaiBaseUrl,
+          mgmtKey: opts.mgmtKey,
+          mgmtBase: opts.mgmtBase,
+          collectionId: id,
+          logicalFilename: "xchat_history__README.md",
+          bytes
+        });
+        uploaded = 1;
+        ragUploaded += 1;
+      } else {
+        const dir = resolveRagSegmentDir(opts.repoRoot, seg.repoCandidates);
+        if (!dir) {
+          warnings.push(
+            `segment ${seg.suffix}: repo dir not found under atx-rag-collection/ (tried ${seg.repoCandidates.join(", ") || "—"})`
+          );
+        } else {
+          const files = await walkIngestFiles(dir, { maxBytes });
+          ragFileCandidates += files.length;
+          const label = seg.suffix.replace(/-/g, "_");
+          for (const f of files) {
+            const logical = normalizeLogicalUploadName(label, f.rel);
+            const bytes = await readFile(f.abs);
             try {
               await uploadBytesAndLinkToCollection({
                 xaiApiKey: opts.xaiApiKey,
@@ -379,28 +400,33 @@ export async function runSeedXaiRagIngest(opts) {
                 logicalFilename: logical,
                 bytes
               });
-              coreUploaded += 1;
+              uploaded += 1;
+              ragUploaded += 1;
               console.log(`[seed:xai-ingest] ${displayName}: ${logical}`);
             } catch (e) {
-              warnings.push(`strategy root ${basename(abs)}: ${e instanceof Error ? e.message : e}`);
+              warnings.push(`${displayName} ${f.rel}: ${e instanceof Error ? e.message : e}`);
+              console.warn("[seed:xai-ingest]", displayName, f.rel, e);
             }
           }
-          strategyCollectionsDetail.push({
-            collectionId: id,
-            displayName,
-            filesUploaded: coreUploaded
-          });
-        } catch (e) {
-          warnings.push(`collection ${displayName}: ${e instanceof Error ? e.message : e}`);
         }
       }
-    } catch (e) {
-      warnings.push(`strategy templates walk: ${e instanceof Error ? e.message : e}`);
+
+      strategyCollectionsDetail.push({
+        collectionId: id,
+        displayName,
+        filesUploaded: uploaded
+      });
     }
-  } else if (!opts.skipStrategyTemplates && !teamId) {
-    warnings.push("XAI_TEAM_ID unset — skip atx-xoption-templates collections (team-scoped create)");
+  } catch (e) {
+    warnings.push(`trusted-advisor tenant ingest: ${e instanceof Error ? e.message : e}`);
+    console.warn("[seed:xai-ingest]", e);
+    return {
+      ...empty(),
+      warnings
+    };
   }
 
+  const strategyCollectionIds = dedupeIds([tenantRootId, ...segmentIds]);
   const strategyFilesUploaded = strategyCollectionsDetail.reduce((n, s) => n + s.filesUploaded, 0);
 
   return {
@@ -409,14 +435,8 @@ export async function runSeedXaiRagIngest(opts) {
     strategyCollectionIds,
     strategyCollectionsDetail,
     strategyFilesUploaded,
+    tenantTrustedAdvisorRootDisplayName: tenantBase,
+    tenantTrustedAdvisorRootCollectionId: tenantRootId,
     warnings
   };
-}
-
-function slugFolderName(name) {
-  return String(name)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
 }

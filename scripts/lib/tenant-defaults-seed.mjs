@@ -102,6 +102,24 @@ export function resolveStrategyCollectionEnvSlug(_settings, doc) {
   return normalizeInstanceDeployTier(pickFirstNonEmpty(fromApp, "stage"));
 }
 
+/**
+ * Deploy segment for `atx-trusted-advisor-<slug>` collections: **`dev` | `stage` | `prod`**.
+ * Defaults to **`dev`** when tier is unknown. Maps internal `deploy` tier to **`stage`**.
+ */
+export function resolveTrustedAdvisorDeploySlug(_settings, doc) {
+  const t = resolveStrategyCollectionEnvSlug(_settings, doc);
+  if (t === "prod") {
+    return "prod";
+  }
+  if (t === "stage" || t === "deploy") {
+    return "stage";
+  }
+  if (t === "dev") {
+    return "dev";
+  }
+  return "dev";
+}
+
 export function buildAtxInstanceCollectionRootFromTenantDoc(settings, doc) {
   const explicitRaw = pickFirstNonEmpty(process.env.ATX_INSTANCE_COLLECTION_ROOT);
   if (explicitRaw) {
@@ -191,12 +209,14 @@ export function loadSeedTenantContext(repoRoot) {
   const atxInstanceCollectionRoot = buildAtxInstanceCollectionRootFromTenantDoc(settings, doc);
   const ragKbDisplayName = atxInstanceCollectionRoot ? `${atxInstanceCollectionRoot}-rag` : "";
   const strategyCollectionEnvSlug = resolveStrategyCollectionEnvSlug(settings, doc);
+  const trustedAdvisorDeploySlug = resolveTrustedAdvisorDeploySlug(settings, doc);
 
   return {
     yamlLoaded,
     merged,
     atxInstanceCollectionRoot,
     ragKbDisplayName,
-    strategyCollectionEnvSlug
+    strategyCollectionEnvSlug,
+    trustedAdvisorDeploySlug
   };
 }
