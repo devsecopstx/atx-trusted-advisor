@@ -22,10 +22,10 @@ type RouteContext = {
 
 const watchlistAddEntrySchema = z.object({
   symbol: z.string().trim().min(1).max(32),
-  lineType: z.string().trim().max(128).optional(),
-  strategy: z.string().trim().max(512).optional(),
-  quantity: z.number().finite().optional(),
-  entryPrice: z.number().finite().optional()
+  lineType: z.union([z.string().trim().max(128), z.null()]).optional(),
+  strategy: z.union([z.string().trim().max(512), z.null()]).optional(),
+  quantity: z.union([z.number().finite(), z.null()]).optional(),
+  entryPrice: z.union([z.number().finite(), z.null()]).optional()
 });
 
 const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);

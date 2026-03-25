@@ -124,7 +124,8 @@ describe("POST /api/admin/import/broker", () => {
         portfolioId: "507f1f77bcf86cd799439033",
         accountId: "507f1f77bcf86cd799439099",
         symbol: "TSLA",
-        qty: 10
+        qty: 10,
+        type: "stock"
       })
     );
   });

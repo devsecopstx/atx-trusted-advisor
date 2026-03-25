@@ -120,6 +120,39 @@ describe("/api/admin/portfolios/[portfolioId]/watchlist", () => {
     );
   });
 
+  it("PATCH accepts addEntries with null line fields for row upsert", async () => {
+    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        addEntries: [
+          {
+            symbol: "TSLA",
+            lineType: "Option",
+            strategy: "covered-call",
+            quantity: 100,
+            entryPrice: 242.5
+          }
+        ]
+      })
+    });
+    const res = await patchAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
+    expect(res.status).toBe(200);
+    expect(repoMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
+      expect.objectContaining({
+        addEntries: [
+          {
+            symbol: "TSLA",
+            lineType: "Option",
+            strategy: "covered-call",
+            quantity: 100,
+            entryPrice: 242.5
+          }
+        ]
+      })
+    );
+  });
+
   it("PATCH delegates to mutatePortfolioWatchlistSymbols", async () => {
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`, {
       method: "PATCH",

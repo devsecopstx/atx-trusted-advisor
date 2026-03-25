@@ -5,6 +5,7 @@ const repositoryMocks = vi.hoisted(() => ({
   DEFAULT_ACCOUNT_CASH_BALANCE: 25_000,
   DEFAULT_EXT_BROKER_REF: "extBrokerName",
   getDefaultPortfolio: vi.fn(),
+  ensurePortfolioWatchlistForUser: vi.fn(),
   provisionDefaultPortfolioForUser: vi.fn(),
   listPortfolioAccounts: vi.fn(),
   listPortfolioPositionsByAccount: vi.fn(),
@@ -66,9 +67,21 @@ describe("atxfinance tool executor", () => {
       name: "DefaultWatchlist",
       symbols: [{ symbol: "TSLA", addedAt: new Date() }]
     });
+    repositoryMocks.ensurePortfolioWatchlistForUser.mockImplementation(async (input: { userId: string }) => {
+      return repositoryMocks.getPortfolioWatchlist({
+        userId: input.userId,
+        portfolioId: portfolioId.toHexString(),
+        tenantId: ctx.tenantId
+      });
+    });
     repositoryMocks.mutatePortfolioWatchlistSymbols.mockImplementation(
-      async ({ addSymbols, removeSymbols }) => {
-        let symbols = [{ symbol: "TSLA", addedAt: new Date() }];
+      async ({ addSymbols, addEntries, removeSymbols, riskProfile, outlook }) => {
+        let symbols: Array<{
+          symbol: string;
+          addedAt: Date;
+          lineType?: string;
+          strategy?: string;
+        }> = [{ symbol: "TSLA", addedAt: new Date() }];
         if (removeSymbols?.length) {
           const rm = new Set(removeSymbols.map((s: string) => s.toUpperCase()));
           symbols = symbols.filter((s: { symbol: string }) => !rm.has(s.symbol));
@@ -82,11 +95,38 @@ describe("atxfinance tool executor", () => {
             }
           }
         }
+        if (addEntries?.length) {
+          const now = new Date();
+          for (const e of addEntries as Array<{
+            symbol: string;
+            lineType?: string | null;
+            strategy?: string | null;
+          }>) {
+            const sym = e.symbol.toUpperCase();
+            const idx = symbols.findIndex((x) => x.symbol === sym);
+            if (idx >= 0) {
+              symbols[idx] = {
+                ...symbols[idx],
+                ...(e.lineType != null ? { lineType: e.lineType } : {}),
+                ...(e.strategy != null ? { strategy: e.strategy } : {})
+              };
+            } else {
+              symbols.push({
+                symbol: sym,
+                addedAt: now,
+                ...(e.lineType ? { lineType: e.lineType } : {}),
+                ...(e.strategy ? { strategy: e.strategy } : {})
+              });
+            }
+          }
+        }
         return {
           name: "DefaultWatchlist",
           symbols,
           portfolioId,
-          userId: ctx.userId
+          userId: ctx.userId,
+          riskProfile,
+          outlook
         } as never;
       }
     );
@@ -276,7 +316,7 @@ describe("atxfinance tool executor", () => {
     ]);
   });
 
-  it("watchlist_add_symbols calls mutatePortfolioWatchlistSymbols", async () => {
+  it("watchlist_add_symbols calls mutatePortfolioWatchlistSymbols with addEntries and desk defaults when unset", async () => {
     const executor = createXfinanceToolExecutor(ctx);
     const result = await executor("atxfinance", {
       operation: "watchlist_add_symbols",
@@ -285,12 +325,22 @@ describe("atxfinance tool executor", () => {
     const data = JSON.parse(result.result);
     expect(data.ok).toBe(true);
     expect(data.requested).toEqual(["NVDA"]);
+    expect(data.addedNew).toEqual(["NVDA"]);
+    expect(repositoryMocks.ensurePortfolioWatchlistForUser).toHaveBeenCalled();
     expect(repositoryMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: ctx.userId,
         portfolioId: portfolioId.toHexString(),
         tenantId: ctx.tenantId,
-        addSymbols: ["NVDA"]
+        addEntries: [
+          {
+            symbol: "NVDA",
+            lineType: "Stock",
+            strategy: "balanced"
+          }
+        ],
+        riskProfile: "growth",
+        outlook: "balanced"
       })
     );
   });

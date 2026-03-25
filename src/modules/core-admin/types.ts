@@ -320,15 +320,55 @@ export type PortfolioDeliveryChannel = {
   updatedAt: Date;
 };
 
+/** Instrument line kind for `portfolio_positions` (admin holdings + app positions). */
+export const positionTypeValues = ["stock", "option", "cash"] as const;
+export type PositionType = (typeof positionTypeValues)[number];
+
+export const positionOptionTypeValues = ["call", "put"] as const;
+export type PositionOptionType = (typeof positionOptionTypeValues)[number];
+
+export function normalizePositionType(raw: unknown): PositionType {
+  if (raw === "cash" || raw === "option") {
+    return raw;
+  }
+  return "stock";
+}
+
+/** Calendar expiration stored at UTC midnight (option positions). */
+export function positionExpirationUtcFromIsoDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+  const t = Date.parse(`${value}T00:00:00.000Z`);
+  return Number.isNaN(t) ? null : new Date(t);
+}
+
+export function formatPositionUsd(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+}
+
 export type Position = {
   _id?: ObjectId;
   tenantId?: ObjectId;
   userId: string;
   portfolioId: ObjectId;
   accountId: ObjectId;
+  /** Underlying ticker (stock/option) or cash bucket label (e.g. CASH, USD). */
   symbol: string;
   qty: number;
   avgCost: number;
+  /** cash | stock | option — omitted on legacy rows → treat as {@link normalizePositionType}. */
+  type?: PositionType;
+  /** Yahoo / OCC-style instrument reference; unique per account when set. */
+  yahooRef?: string | null;
+  optionType?: PositionOptionType | null;
+  strike?: number | null;
+  expiration?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

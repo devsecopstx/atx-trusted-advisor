@@ -20,7 +20,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 | Doc | Purpose |
 |-----|---------|
-| [PLAN.md](./PLAN.md) | Short-lived migration / backlog items (TEAM xAI cleanup, deferred work) |
+| [PLAN.md](./PLAN.md) | Canonical backlog: admin/BFF, multi-agent chunks, RAG seed, NL/xOptions, Stripe, deferred work |
 
 ---
 
@@ -28,7 +28,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 | Doc | Purpose |
 |-----|---------|
-| [frontend-plan.md](./frontend-plan.md) | Pitch/marketing roadmap, **Stripe** (Checkout, webhooks, Customer Portal, env), feature-gating notes |
+| [frontend-plan.md](./frontend-plan.md) | Pointer to **PLAN.md**; **Stripe** / billing still open; shipped UI noted by reference only |
 
 ---
 
@@ -62,6 +62,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 | [xchat-debug-logging.md](./atx-xchat/xchat-debug-logging.md) | Debug logging |
 | [xchat-future-tool-loop.md](./atx-xchat/xchat-future-tool-loop.md) | Future tool-loop notes |
 | [xchat-tools-guide.md](./atx-xchat/xchat-tools-guide.md) | Tools & prompts |
+| [xchat-nl-collect-inputs.md](./atx-xchat/xchat-nl-collect-inputs.md) | **NL** (natural-language) slot collection before options/strategy flows; xChat system copy |
 | [xdesign-review-admin-console-ux.md](./atx-xchat/xdesign-review-admin-console-ux.md) | Admin console UX review |
 | [xdesign-review-legacy-prompts-inventory.md](./atx-xchat/xdesign-review-legacy-prompts-inventory.md) | Legacy prompts inventory |
 | [xfeature-tools-plan.md](./atx-xchat/xfeature-tools-plan.md) | Feature tools plan |

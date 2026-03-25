@@ -13,7 +13,12 @@ import {
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import type { Account, Position } from "@/modules/core-admin/types";
+import {
+    formatPositionUsd,
+    normalizePositionType,
+    type Account,
+    type Position
+} from "@/modules/core-admin/types";
 
 import "../../../xchat/xchat.css";
 
@@ -29,14 +34,40 @@ function serializeAccount(account: Account) {
 }
 
 function serializePositions(rows: Position[]) {
-  return rows
-    .filter((p) => p._id)
-    .map((p) => ({
-      _id: p._id!.toHexString(),
+  return rows.filter((p) => p._id).map((p) => {
+    const t = normalizePositionType(p.type);
+    const id = p._id!.toHexString();
+    if (t === "stock") {
+      return {
+        _id: id,
+        type: "stock" as const,
+        symbol: p.symbol,
+        shares: p.qty,
+        purchasePrice: p.avgCost
+      };
+    }
+    if (t === "cash") {
+      return {
+        _id: id,
+        type: "cash" as const,
+        label: p.symbol,
+        amount: p.avgCost,
+        amountFormatted: formatPositionUsd(p.avgCost)
+      };
+    }
+    const exp = p.expiration;
+    return {
+      _id: id,
+      type: "option" as const,
       symbol: p.symbol,
-      qty: p.qty,
-      avgCost: p.avgCost
-    }));
+      yahooRef: p.yahooRef ?? "",
+      optionType: (p.optionType === "put" ? "put" : "call") as "call" | "put",
+      strike: p.strike ?? 0,
+      expiration: exp ? exp.toISOString().slice(0, 10) : "",
+      contracts: p.qty,
+      premiumPerContract: p.avgCost
+    };
+  });
 }
 
 export default async function PortfolioAccountPage({

@@ -1,5 +1,6 @@
 import { type Filter, MongoServerError, ObjectId } from "mongodb";
 
+import { caughtErrorMessage } from "@/lib/caught-error";
 import { getDb } from "@/lib/mongodb";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
@@ -18,6 +19,8 @@ import {
     type PortfolioAlert,
     type PortfolioDeliveryChannel,
     type Position,
+    type PositionOptionType,
+    type PositionType,
     type Recommendation,
     type ScheduledTask,
     type TaskRun,
@@ -25,6 +28,7 @@ import {
     type Watchlist,
     type WatchlistSymbol,
     type WatchlistSymbolImportEntry,
+    normalizePositionType,
     parseAccountOutlook
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
@@ -231,10 +235,25 @@ export type UpsertPositionInput = {
   symbol: string;
   qty: number;
   avgCost: number;
+  /** Defaults to **stock** when omitted. */
+  type?: PositionType;
+  yahooRef?: string;
+  optionType?: PositionOptionType;
+  strike?: number;
+  expiration?: Date;
 };
 
+/** Admin / BFF: same as {@link UpsertPositionInput} without session owner (resolved from portfolio). */
+export type AdminUpsertPositionInput = Omit<UpsertPositionInput, "userId" | "tenantId">;
+
 export class PositionValidationError extends Error {
-  readonly code: "INVALID_IDS" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_PORTFOLIO_MISMATCH" | "ACCOUNT_MISSING_EXT_ACCOUNT_ID";
+  readonly code:
+    | "INVALID_IDS"
+    | "ACCOUNT_NOT_FOUND"
+    | "ACCOUNT_PORTFOLIO_MISMATCH"
+    | "ACCOUNT_MISSING_EXT_ACCOUNT_ID"
+    | "POSITION_FIELDS_INCOMPLETE"
+    | "INVALID_OPTION_EXPIRATION";
 
   constructor(code: PositionValidationError["code"], message: string) {
     super(message);
@@ -284,6 +303,16 @@ async function createPortfolioIndexes(): Promise<void> {
       { tenantId: 1, portfolioId: 1, accountId: 1, symbol: 1 },
       {
         name: "idx_positions_tenant_portfolio_account_symbol"
+      }
+    ),
+    db.collection<Position>(collections.positions).createIndex(
+      { tenantId: 1, portfolioId: 1, accountId: 1, yahooRef: 1 },
+      {
+        unique: true,
+        partialFilterExpression: {
+          yahooRef: { $exists: true, $type: "string", $gt: "" }
+        },
+        name: "uniq_positions_account_yahoo_ref"
       }
     ),
     db.collection<Recommendation>(collections.recommendations).createIndex(
@@ -1741,6 +1770,43 @@ export async function getPortfolioWatchlist(input: {
   return { ...doc, symbols };
 }
 
+/**
+ * Idempotent: returns existing watchlist or runs the same provision path as PATCH `/api/portfolios/.../watchlist`
+ * so tool + API callers never see a missing doc after portfolio exists.
+ */
+export async function ensurePortfolioWatchlistForUser(input: {
+  userId: string;
+  portfolioId: string;
+  tenantId?: string;
+}): Promise<Watchlist | null> {
+  const existing = await getPortfolioWatchlist(input);
+  if (existing) {
+    return existing;
+  }
+  const portfolio = await getPortfolioByIdForSessionUser({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    portfolioId: input.portfolioId
+  });
+  if (!portfolio?._id) {
+    return null;
+  }
+  try {
+    await provisionDefaultPortfolioForUser({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      watchlistSymbols: ["TSLA"]
+    });
+  } catch (error) {
+    const detail = caughtErrorMessage(error);
+    console.error(
+      `[watchlist] ensurePortfolioWatchlistForUser provision failed userId=${input.userId} portfolioId=${input.portfolioId} detail=${detail}`
+    );
+    return null;
+  }
+  return getPortfolioWatchlist(input);
+}
+
 export type MutatePortfolioWatchlistInput = {
   userId: string;
   portfolioId: string;
@@ -2265,10 +2331,63 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
     throw new PositionValidationError("INVALID_IDS", "Invalid portfolioId or accountId");
   }
 
+  const positionType = normalizePositionType(input.type);
+  const rawSym = input.symbol.trim();
+  const normalizedUnderlying = rawSym.toUpperCase().slice(0, 32);
+  const cashLabel = (rawSym || "CASH").toUpperCase().slice(0, 32);
+
+  if (positionType === "stock") {
+    if (!normalizedUnderlying) {
+      throw new PositionValidationError("POSITION_FIELDS_INCOMPLETE", "Stock requires a symbol");
+    }
+    if (!Number.isFinite(input.qty) || input.qty <= 0) {
+      throw new PositionValidationError("POSITION_FIELDS_INCOMPLETE", "Stock requires a positive share count");
+    }
+    if (!Number.isFinite(input.avgCost) || input.avgCost < 0) {
+      throw new PositionValidationError("POSITION_FIELDS_INCOMPLETE", "Stock requires a non-negative purchase price");
+    }
+  } else if (positionType === "cash") {
+    if (!Number.isFinite(input.avgCost) || input.avgCost < 0) {
+      throw new PositionValidationError("POSITION_FIELDS_INCOMPLETE", "Cash requires a non-negative amount");
+    }
+  } else {
+    if (!normalizedUnderlying) {
+      throw new PositionValidationError("POSITION_FIELDS_INCOMPLETE", "Option requires an underlying symbol");
+    }
+    if (!Number.isFinite(input.qty) || input.qty <= 0) {
+      throw new PositionValidationError("POSITION_FIELDS_INCOMPLETE", "Option requires a positive contract count");
+    }
+    if (!Number.isFinite(input.avgCost) || input.avgCost < 0) {
+      throw new PositionValidationError(
+        "POSITION_FIELDS_INCOMPLETE",
+        "Option requires a non-negative premium per contract"
+      );
+    }
+    const yref = input.yahooRef?.trim();
+    if (!yref) {
+      if (input.optionType !== "call" && input.optionType !== "put") {
+        throw new PositionValidationError(
+          "POSITION_FIELDS_INCOMPLETE",
+          "Option requires yahooRef, or call/put + strike + expiration"
+        );
+      }
+      const strike = input.strike;
+      if (typeof strike !== "number" || !Number.isFinite(strike) || strike <= 0) {
+        throw new PositionValidationError(
+          "POSITION_FIELDS_INCOMPLETE",
+          "Option requires a positive strike when yahooRef is omitted"
+        );
+      }
+      const exp = input.expiration;
+      if (!(exp instanceof Date) || Number.isNaN(exp.getTime())) {
+        throw new PositionValidationError("INVALID_OPTION_EXPIRATION", "Option requires a valid expiration date");
+      }
+    }
+  }
+
   const db = await getDb();
   const portfolioId = new ObjectId(input.portfolioId);
   const accountId = new ObjectId(input.accountId);
-  const normalizedSymbol = input.symbol.trim().toUpperCase();
   const tenantScopedAccountFilter = withTenantScope(
     {
       _id: accountId,
@@ -2297,15 +2416,70 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
 
   const now = new Date();
   const tenantObjectId = toTenantObjectId(input.tenantId);
-  const filter = withTenantScope(
-    {
+  const effectiveQty = positionType === "cash" ? 1 : input.qty;
+  const yrefTrim = input.yahooRef?.trim();
+
+  let filterCore: Record<string, unknown>;
+  let displaySymbol: string;
+
+  if (positionType === "stock") {
+    filterCore = {
       ...userIdQuery(input.userId),
       portfolioId,
       accountId,
-      symbol: normalizedSymbol
-    },
-    input.tenantId
-  );
+      symbol: normalizedUnderlying,
+      $or: [{ type: "stock" }, { type: { $exists: false } }]
+    };
+    displaySymbol = normalizedUnderlying;
+  } else if (positionType === "cash") {
+    filterCore = {
+      ...userIdQuery(input.userId),
+      portfolioId,
+      accountId,
+      type: "cash",
+      symbol: cashLabel
+    };
+    displaySymbol = cashLabel;
+  } else if (yrefTrim) {
+    filterCore = {
+      ...userIdQuery(input.userId),
+      portfolioId,
+      accountId,
+      type: "option",
+      yahooRef: yrefTrim
+    };
+    displaySymbol = normalizedUnderlying;
+  } else {
+    filterCore = {
+      ...userIdQuery(input.userId),
+      portfolioId,
+      accountId,
+      type: "option",
+      symbol: normalizedUnderlying,
+      optionType: input.optionType,
+      strike: input.strike,
+      expiration: input.expiration
+    };
+    displaySymbol = normalizedUnderlying;
+  }
+
+  const filter = withTenantScope(filterCore, input.tenantId);
+
+  const setDoc = {
+    userId: input.userId,
+    portfolioId,
+    accountId,
+    symbol: displaySymbol,
+    qty: effectiveQty,
+    avgCost: input.avgCost,
+    type: positionType,
+    updatedAt: now,
+    yahooRef: positionType === "option" && yrefTrim ? yrefTrim : null,
+    optionType: positionType === "option" ? input.optionType ?? null : null,
+    strike: positionType === "option" ? input.strike ?? null : null,
+    expiration: positionType === "option" ? input.expiration ?? null : null
+  };
+
   await db.collection<Position>(collections.positions).updateOne(
     filter,
     {
@@ -2313,22 +2487,12 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
         tenantId: tenantObjectId,
         createdAt: now
       },
-      $set: {
-        userId: input.userId,
-        portfolioId,
-        accountId,
-        symbol: normalizedSymbol,
-        qty: input.qty,
-        avgCost: input.avgCost,
-        updatedAt: now
-      }
+      $set: setDoc
     },
     { upsert: true }
   );
 
-  const position = await db
-    .collection<Position>(collections.positions)
-    .findOne(filter);
+  const position = await db.collection<Position>(collections.positions).findOne(filter);
   if (!position?._id) {
     throw new Error("Failed to upsert position");
   }
@@ -2453,7 +2617,7 @@ export async function updatePortfolioForUser(input: {
 
 export type InsertPortfolioAccountInput = {
   userId: string;
-  tenantId?: string;
+  tenantId: string;
   portfolioId: string;
   name: string;
   type?: AccountType;
@@ -2480,7 +2644,10 @@ export async function insertPortfolioAccountForUser(
 
   const db = await getDb();
   const now = new Date();
-  const tenantObjectId = toTenantObjectId(input.tenantId);
+  const tenantObjectId = toTenantObjectId(input.tenantId.trim());
+  if (!tenantObjectId) {
+    return null;
+  }
   const name = input.name.trim().slice(0, 200);
   if (!name) {
     return null;
@@ -2765,9 +2932,13 @@ export async function adminInsertAccountForPortfolio(input: {
   if (!portfolio?._id) {
     return null;
   }
+  const tenantId = portfolioTenantIdString(portfolio);
+  if (!tenantId) {
+    return null;
+  }
   return insertPortfolioAccountForUser({
     userId: portfolioOwnerUserIdString(portfolio.userId),
-    tenantId: portfolioTenantIdString(portfolio),
+    tenantId,
     portfolioId: portfolio._id.toHexString(),
     name: input.name,
     type: input.type,
@@ -2900,4 +3071,83 @@ export async function adminDeleteAccountForPortfolio(input: {
     }
   }
   return true;
+}
+
+type AdminPortfolioAccountContext = {
+  portfolio: Portfolio;
+  ownerId: string;
+  tenantId: string | undefined;
+  account: Account;
+};
+
+async function resolveAdminPortfolioAccount(
+  portfolioId: string,
+  accountId: string
+): Promise<AdminPortfolioAccountContext | null> {
+  const portfolio = await adminGetPortfolioById(portfolioId);
+  if (!portfolio?._id || !ObjectId.isValid(accountId)) {
+    return null;
+  }
+  const ownerId = portfolioOwnerUserIdString(portfolio.userId);
+  const tenantId = portfolioTenantIdString(portfolio);
+  const accounts = await listPortfolioAccounts({
+    userId: ownerId,
+    portfolioId: portfolio._id.toHexString(),
+    tenantId
+  });
+  const account = accounts.find((a) => a._id?.toHexString() === accountId);
+  if (!account?._id) {
+    return null;
+  }
+  return { portfolio, ownerId, tenantId, account };
+}
+
+/** Admin: list positions (holdings) for a portfolio account after verifying the account belongs to the portfolio. */
+export async function adminListPositionsForPortfolioAccount(input: {
+  portfolioId: string;
+  accountId: string;
+}): Promise<{ portfolio: Portfolio; account: Account; positions: Position[] } | null> {
+  const ctx = await resolveAdminPortfolioAccount(input.portfolioId, input.accountId);
+  if (!ctx) {
+    return null;
+  }
+  const positions = await listPortfolioPositionsByAccount({
+    userId: ctx.ownerId,
+    portfolioId: input.portfolioId,
+    accountIds: [new ObjectId(input.accountId)],
+    tenantId: ctx.tenantId
+  });
+  return { portfolio: ctx.portfolio, account: ctx.account, positions };
+}
+
+/** Admin: upsert a position lot (same semantics as {@link upsertPositionForAccount}). */
+export async function adminUpsertPositionForPortfolioAccount(input: AdminUpsertPositionInput): Promise<Position> {
+  const ctx = await resolveAdminPortfolioAccount(input.portfolioId, input.accountId);
+  if (!ctx) {
+    throw new PositionValidationError("ACCOUNT_NOT_FOUND", "Account not found for portfolio");
+  }
+  return upsertPositionForAccount({
+    userId: ctx.ownerId,
+    tenantId: ctx.tenantId,
+    ...input
+  });
+}
+
+/** Admin: delete one position document for a portfolio account. */
+export async function adminDeletePositionForPortfolioAccount(input: {
+  portfolioId: string;
+  accountId: string;
+  positionId: string;
+}): Promise<boolean> {
+  const ctx = await resolveAdminPortfolioAccount(input.portfolioId, input.accountId);
+  if (!ctx) {
+    return false;
+  }
+  return deletePositionForAccount({
+    userId: ctx.ownerId,
+    tenantId: ctx.tenantId,
+    portfolioId: input.portfolioId,
+    accountId: input.accountId,
+    positionId: input.positionId
+  });
 }

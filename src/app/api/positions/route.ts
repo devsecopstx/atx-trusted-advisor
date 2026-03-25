@@ -9,6 +9,12 @@ import {
     PositionValidationError,
     upsertPositionForAccount
 } from "@/modules/core-admin/repository";
+import {
+    normalizePositionType,
+    positionTypeValues,
+    type PositionOptionType,
+    type PositionType
+} from "@/modules/core-admin/types";
 import { ObjectId } from "mongodb";
 
 function parseNumberLike(value: unknown): unknown {
@@ -50,14 +56,20 @@ const upsertPositionSchema = z.object({
   accountId: z.string().trim().min(1),
   symbol: z.string().trim().min(1),
   qty: z.number().positive(),
-  avgCost: z.number().nonnegative()
+  avgCost: z.number().nonnegative(),
+  type: z.enum(positionTypeValues).optional(),
+  yahooRef: z.string().trim().max(160).optional(),
+  optionType: z.enum(["call", "put"]).optional(),
+  strike: positiveNumberLike().optional(),
+  expiration: z.string().trim().min(1).optional()
 });
 
 const openApiPositionSchema = z.object({
   portfolioId: z.string().trim().min(1),
   accountId: z.string().trim().min(1),
-  type: z.enum(["stock", "option", "cash"]).optional(),
+  type: z.enum(positionTypeValues).optional(),
   ticker: z.string().trim().min(1),
+  yahooRef: z.string().trim().max(160).optional(),
   shares: positiveNumberLike().optional(),
   purchasePrice: nonNegativeNumberLike().optional(),
   contracts: positiveNumberLike().optional(),
@@ -70,6 +82,19 @@ const openApiPositionSchema = z.object({
 });
 type LegacyPositionInput = z.infer<typeof upsertPositionSchema>;
 type OpenApiPositionInput = z.infer<typeof openApiPositionSchema>;
+
+type NormalizedPositionUpsert = {
+  portfolioId: string;
+  accountId: string;
+  symbol: string;
+  qty: number;
+  avgCost: number;
+  type: PositionType;
+  yahooRef?: string;
+  optionType?: PositionOptionType;
+  strike?: number;
+  expiration?: Date;
+};
 
 export async function GET(request: Request) {
   const proxied = await proxyRequestToBackend(request);
@@ -168,9 +193,40 @@ export async function POST(request: Request) {
 
 function normalizePositionPayload(
   input: LegacyPositionInput | OpenApiPositionInput
-): { ok: true; data: LegacyPositionInput } | { ok: false; error: string } {
+): { ok: true; data: NormalizedPositionUpsert } | { ok: false; error: string } {
   if ("symbol" in input) {
-    return { ok: true, data: input };
+    const t = normalizePositionType(input.type);
+    const exp =
+      input.expiration && t === "option" ? parseIsoDateAtUtcMidnight(input.expiration) : undefined;
+    if (t === "option") {
+      const yref = input.yahooRef?.trim();
+      if (!yref) {
+        const strikeOk =
+          typeof input.strike === "number" && Number.isFinite(input.strike) && input.strike > 0;
+        if (!exp || input.optionType === undefined || !strikeOk) {
+          return {
+            ok: false,
+            error:
+              "Option positions require yahooRef, or expiration + call/put + positive strike on legacy payload"
+          };
+        }
+      }
+    }
+    return {
+      ok: true,
+      data: {
+        portfolioId: input.portfolioId,
+        accountId: input.accountId,
+        symbol: input.symbol,
+        qty: input.qty,
+        avgCost: input.avgCost,
+        type: t,
+        yahooRef: input.yahooRef?.trim(),
+        optionType: t === "option" ? input.optionType : undefined,
+        strike: t === "option" && typeof input.strike === "number" ? input.strike : undefined,
+        expiration: t === "option" ? (exp ?? undefined) : undefined
+      }
+    };
   }
 
   const symbol = input.ticker.trim().toUpperCase();
@@ -203,7 +259,12 @@ function normalizePositionPayload(
         accountId: input.accountId,
         symbol,
         qty: 1,
-        avgCost: cashAmount
+        avgCost: cashAmount,
+        type: "cash" as const,
+        yahooRef: undefined,
+        optionType: undefined,
+        strike: undefined,
+        expiration: undefined
       }
     };
   }
@@ -230,12 +291,30 @@ function normalizePositionPayload(
   if (avgCost === undefined) {
     return { ok: false, error: "purchasePrice or premium is required" };
   }
+  const yref = input.yahooRef?.trim();
+  const expDate =
+    type === "option" && expiration ? parseIsoDateAtUtcMidnight(expiration) : undefined;
+  const strikeVal =
+    type === "option" && typeof input.strike === "number" && Number.isFinite(input.strike)
+      ? input.strike
+      : undefined;
+
   if (type === "option") {
-    if (!expiration) {
-      return { ok: false, error: "option positions require expiration" };
-    }
-    if (!isFutureIsoDate(expiration)) {
-      return { ok: false, error: "option expiration must be a future date in YYYY-MM-DD format" };
+    if (yref) {
+      // yahooRef is the canonical key; expiration may be absent or any valid calendar date for display
+    } else {
+      if (!expiration) {
+        return { ok: false, error: "option positions require expiration when yahooRef is omitted" };
+      }
+      if (!isFutureIsoDate(expiration)) {
+        return { ok: false, error: "option expiration must be a future date in YYYY-MM-DD format" };
+      }
+      if (!expDate || input.optionType === undefined || !strikeVal || strikeVal <= 0) {
+        return {
+          ok: false,
+          error: "option positions require yahooRef or expiration + call/put + positive strike"
+        };
+      }
     }
   }
 
@@ -246,7 +325,12 @@ function normalizePositionPayload(
       accountId: input.accountId,
       symbol,
       qty,
-      avgCost
+      avgCost,
+      type: type === "option" ? ("option" as const) : ("stock" as const),
+      yahooRef: yref || undefined,
+      optionType: type === "option" ? input.optionType : undefined,
+      strike: type === "option" ? strikeVal : undefined,
+      expiration: type === "option" ? (expDate ?? undefined) : undefined
     }
   };
 }

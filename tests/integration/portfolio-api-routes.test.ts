@@ -39,7 +39,24 @@ vi.mock("@/modules/core-admin/repository", async () => {
   );
   return {
     ...actual,
-    ...repositoryMocks
+    ...repositoryMocks,
+    ensurePortfolioWatchlistForUser: async (input: {
+      userId: string;
+      portfolioId: string;
+      tenantId?: string;
+    }) => {
+      let w = await repositoryMocks.getPortfolioWatchlist(input);
+      if (w) {
+        return w;
+      }
+      await repositoryMocks.provisionDefaultPortfolioForUser({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        watchlistSymbols: ["TSLA"]
+      });
+      w = await repositoryMocks.getPortfolioWatchlist(input);
+      return w;
+    }
   };
 });
 
@@ -110,7 +127,8 @@ describe("portfolio API routes", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439055" },
       symbol: "AAPL",
       qty: 2,
-      avgCost: 190
+      avgCost: 190,
+      type: "stock"
     });
     repositoryMocks.deletePositionForAccount.mockResolvedValue(true);
     repositoryMocks.updatePortfolioAccountForUser.mockResolvedValue({
@@ -385,7 +403,8 @@ describe("portfolio API routes", () => {
         accountId: "507f1f77bcf86cd799439099",
         symbol: "TSLA",
         qty: 5,
-        avgCost: 199.25
+        avgCost: 199.25,
+        type: "stock"
       })
     );
   });
@@ -416,7 +435,8 @@ describe("portfolio API routes", () => {
         accountId: "507f1f77bcf86cd799439099",
         symbol: "TSLA",
         qty: 2,
-        avgCost: 12.4
+        avgCost: 12.4,
+        type: "option"
       })
     );
   });

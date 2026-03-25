@@ -86,6 +86,29 @@ Session payload (`SessionUser` in `src/lib/auth.ts`):
 
 **Feature flags** (e.g. `ALLOW_ANY_X_USER_LOGIN`) are **env-driven capabilities** — do not represent them as platform roles in Mongo.
 
+### Glossary: app users, access, portfolios, and “account”
+
+- **App user (docs term `app_user`):** The **signed-in product user** using xChat, portfolio, watchlist, etc. In Mongo, this is **not** a role string named `app_user` — capability is **`viewer` \| `operator` \| `advisor`** (platform roles on the Core user). See the session table above.
+- **Who creates “users” for the product:** **`global_admin`** manages **`admin_access_requests`**: triage → approve/reject → assign a **platform role**. That approval path (plus OAuth sign-in) is what makes someone an **app user** in the product sense.
+- **Portfolio:** Mongo collection for the user’s **book** (name, `isDefault`, broker metadata). Each app user should have a **default portfolio** (`isDefault: true`). **`provisionDefaultPortfolioForUser`** (`src/modules/core-admin/repository.ts`) runs from OAuth and on first portfolio touch. **If there is no default portfolio yet**, provision it (same helper or first `/portfolio` / portfolio API access) before assuming accounts or positions exist.
+- **Portfolio account (`portfolio_accounts`):** In docs and UI copy, **“account”** means this row unless we explicitly say **user account** / **sign-in**. It is a **custodian / brokerage account under a portfolio** — child of **`portfolios`**, not the auth identity. The **default portfolio account** is created during provision (`isDefault: true`, paper **`cashBalance`** default). **Balance** = `cashBalance` on the account document. **Holdings** (long stock, options as positions) live in **`portfolio_positions`**, linked by **`accountId`** (and `portfolioId`, `userId`) with `symbol`, `qty`, `avgCost`. A user may have **multiple** portfolio accounts under one portfolio (`insertPortfolioAccountForUser` adds **`isDefault: false`** rows).
+
+#### Required / optional fields for a **new** portfolio account (`insertPortfolioAccountForUser`)
+
+Implementation: `InsertPortfolioAccountInput` + `insertPortfolioAccountForUser` in `src/modules/core-admin/repository.ts`.
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `userId` | **yes** | Owner id (hex string). |
+| `portfolioId` | **yes** | Valid ObjectId; portfolio must exist and be owned by `userId` (session-scoped read). |
+| `name` | **yes** | Non-empty after trim; max **200** chars. Empty name → insert returns `null`. |
+| `tenantId` | **yes** | Valid **24-hex** `ObjectId` string; tenant scope on the document. Missing, empty, or invalid → insert returns `null`. |
+| `type` | no | `merrill` \| `fidelity` \| `etrade` (`AccountType`); defaults to **`fidelity`**. |
+| `extAccountId` | no | External/broker stable ref; if omitted, server generates `atx-<suffix>`. |
+| `cashBalance` | no | Non-negative finite number; otherwise defaults to **`DEFAULT_ACCOUNT_CASH_BALANCE`** (25_000 paper default in repository). |
+
+Mongo document always includes `portfolioId`, `userId`, `name`, `type`, `extAccountId`, `isDefault` (**`false`** for this API), `cashBalance`, `createdAt`, `updatedAt`, and **`tenantId`** (`ObjectId`).
+
 ## Required Environment Keys
 
 Use `.env` only (do not use `.env.local` for this app).

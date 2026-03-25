@@ -43,6 +43,13 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
           "Private / Secure: per-user workspace portfolios in tenant_portfolio; default book uses tenantPortfolioOrgKey (org-atx-finance) under core_tenants. Edit names, tenant org ref, broker type, and default per user. Open each row’s Manage accounts for custodian CRUD, book-level desk risk & outlook (table columns), per-account risk & outlook, and watchlist on the sibling link."
       },
       {
+        href: "/admin/portfolios",
+        icon: "book",
+        title: "Book watchlists",
+        description:
+          "Per-portfolio symbol CRUD: Portfolios → open a book → Watchlist. Add/upsert uses Stock + balanced row defaults and growth/balanced desk when unset; edit line type, strategy, qty, and entry per row; remove and dedupe. Same behavior as xChat “add TICKER to my watchlist” via atxfinance."
+      },
+      {
         href: "/admin/brokers",
         icon: "portfolio",
         title: "Brokers",

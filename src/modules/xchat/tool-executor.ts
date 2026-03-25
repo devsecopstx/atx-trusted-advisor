@@ -2,6 +2,7 @@ import type { ToolExecutor } from "@/lib/xai";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     DEFAULT_EXT_BROKER_REF,
+    ensurePortfolioWatchlistForUser,
     getDefaultPortfolio,
     getPortfolioWatchlist,
     listPortfolioAccounts,
@@ -11,7 +12,14 @@ import {
     mutatePortfolioWatchlistSymbols,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import type { WatchlistSymbol } from "@/modules/core-admin/types";
+import type { AccountOutlook, WatchlistSymbol } from "@/modules/core-admin/types";
+import { parseAccountOutlook } from "@/modules/core-admin/types";
+import {
+    WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
+    WATCHLIST_ENTRY_DEFAULT_STRATEGY,
+    WATCHLIST_UPSERT_DEFAULT_OUTLOOK,
+    WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE
+} from "@/modules/watchlist/default-upsert-fields";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import {
     deleteCachedToolResult,
@@ -197,20 +205,63 @@ const operations: Record<string, OperationHandler> = {
     if (!portfolio?._id) {
       return { error: "no_default_portfolio" };
     }
-    const updated = await mutatePortfolioWatchlistSymbols({
+    const portfolioId = portfolio._id.toHexString();
+    const wl = await ensurePortfolioWatchlistForUser({
       userId: ctx.userId,
-      portfolioId: portfolio._id.toHexString(),
-      tenantId: ctx.tenantId,
-      addSymbols: toAdd
+      portfolioId,
+      tenantId: ctx.tenantId
     });
+    if (!wl) {
+      return { error: "no_watchlist" };
+    }
+    const existingSyms = new Set((wl.symbols ?? []).map((s) => s.symbol));
+    const addEntries = toAdd.map((sym) =>
+      existingSyms.has(sym)
+        ? { symbol: sym }
+        : {
+            symbol: sym,
+            lineType: WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
+            strategy: WATCHLIST_ENTRY_DEFAULT_STRATEGY
+          }
+    );
+    const mutateInput: {
+      userId: string;
+      portfolioId: string;
+      tenantId?: string;
+      addEntries: typeof addEntries;
+      riskProfile?: "conservative" | "balanced" | "growth";
+      outlook?: AccountOutlook;
+    } = {
+      userId: ctx.userId,
+      portfolioId,
+      tenantId: ctx.tenantId,
+      addEntries
+    };
+    if (wl.riskProfile == null) {
+      mutateInput.riskProfile = WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE;
+    }
+    if (parseAccountOutlook(wl.outlook) == null) {
+      mutateInput.outlook = WATCHLIST_UPSERT_DEFAULT_OUTLOOK;
+    }
+    const updated = await mutatePortfolioWatchlistSymbols(mutateInput);
     deleteCachedToolResult(ctx.userId, "watchlist_snapshot");
     if (!updated) {
       return { error: "no_watchlist" };
     }
     const symbols = updated.symbols ?? [];
+    const addedNew = toAdd.filter((s) => !existingSyms.has(s));
+    const alreadyHad = toAdd.filter((s) => existingSyms.has(s));
     return {
       ok: true,
       requested: toAdd,
+      addedNew,
+      alreadyPresent: alreadyHad,
+      appliedDefaults: {
+        newRowLineType: WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
+        newRowStrategy: WATCHLIST_ENTRY_DEFAULT_STRATEGY,
+        deskRiskIfWasUnset: WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE,
+        deskOutlookIfWasUnset: WATCHLIST_UPSERT_DEFAULT_OUTLOOK
+      },
       watchlistName: updated.name,
       symbolCount: symbols.length,
       symbols: symbols.map(watchlistSymbolToJson)

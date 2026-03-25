@@ -30,6 +30,12 @@ vi.mock("@/modules/core-admin/repository", async () => {
   return {
     ...actual,
     getPortfolioWatchlist: watchlistReadMocks.getPortfolioWatchlist,
+    /** Route uses this instead of inlining provision; must stay mocked or real impl hits Mongo via getPortfolioWatchlist. */
+    ensurePortfolioWatchlistForUser: async (input: {
+      userId: string;
+      portfolioId: string;
+      tenantId?: string;
+    }) => watchlistReadMocks.getPortfolioWatchlist(input),
     mutatePortfolioWatchlistSymbols: mutateMocks.mutatePortfolioWatchlistSymbols
   };
 });

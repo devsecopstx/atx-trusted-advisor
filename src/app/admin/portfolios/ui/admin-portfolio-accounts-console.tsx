@@ -758,7 +758,14 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                       </td>
                       <td className="text-xs">{new Date(row.updatedAt).toLocaleString()}</td>
                       <td>
-                        <div className="tool-row" style={{ gap: "0.35rem" }}>
+                        <div className="tool-row" style={{ gap: "0.35rem", flexWrap: "wrap" }}>
+                          <Link
+                            className="cta cta-secondary"
+                            href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(row._id)}/holdings`}
+                            title="Holdings (positions)"
+                          >
+                            Holdings
+                          </Link>
                           <button
                             type="button"
                             className="cta cta-secondary"

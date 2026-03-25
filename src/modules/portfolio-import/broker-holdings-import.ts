@@ -199,7 +199,8 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
           accountId,
           symbol: lot.ticker,
           qty: lot.qty,
-          avgCost: lot.avgCost
+          avgCost: lot.avgCost,
+          type: "stock"
         });
         imported += 1;
       }

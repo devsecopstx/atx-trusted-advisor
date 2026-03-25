@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
-import { DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/types";
+import {
+    WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
+    WATCHLIST_ENTRY_DEFAULT_STRATEGY,
+    WATCHLIST_UPSERT_DEFAULT_OUTLOOK,
+    WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE
+} from "@/modules/watchlist/default-upsert-fields";
 
 import {
     accountOutlookValues,
@@ -39,6 +45,93 @@ function normalizeDeskRisk(raw: unknown): DeskRiskProfileOption | null {
   return (DESK_RISK_PROFILE_OPTIONS as readonly string[]).includes(raw)
     ? (raw as DeskRiskProfileOption)
     : null;
+}
+
+type RowToolsProps = {
+  row: SymbolRow;
+  patchWatchlist: (body: Record<string, unknown>, okMsg: string) => Promise<void>;
+  setStatus: Dispatch<SetStateAction<string>>;
+  loading: boolean;
+};
+
+function WatchlistSymbolRowTools({ row, patchWatchlist, setStatus, loading }: RowToolsProps) {
+  const [lineType, setLineType] = useState(row.lineType ?? "");
+  const [strategy, setStrategy] = useState(row.strategy ?? "");
+  const [quantity, setQuantity] = useState(row.quantity !== undefined ? String(row.quantity) : "");
+  const [entryPrice, setEntryPrice] = useState(row.entryPrice !== undefined ? String(row.entryPrice) : "");
+
+  const saveRow = async () => {
+    const q = quantity.trim() === "" ? null : Number.parseFloat(quantity);
+    const px = entryPrice.trim() === "" ? null : Number.parseFloat(entryPrice);
+    if (q !== null && (!Number.isFinite(q) || q < 0)) {
+      setStatus("Quantity must be empty or a non-negative number");
+      return;
+    }
+    if (px !== null && (!Number.isFinite(px) || px < 0)) {
+      setStatus("Entry price must be empty or a non-negative number");
+      return;
+    }
+    await patchWatchlist(
+      {
+        addEntries: [
+          {
+            symbol: row.symbol,
+            lineType: lineType.trim() || null,
+            strategy: strategy.trim() || null,
+            quantity: q,
+            entryPrice: px
+          }
+        ]
+      },
+      `Updated ${row.symbol}`
+    );
+  };
+
+  return (
+    <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.35rem", alignItems: "center" }}>
+      <input
+        className="crud-input font-mono text-xs"
+        style={{ width: "5.5rem" }}
+        value={lineType}
+        onChange={(e) => setLineType(e.target.value)}
+        placeholder="Type"
+        aria-label={`${row.symbol} line type`}
+      />
+      <input
+        className="crud-input text-xs"
+        style={{ minWidth: "6rem", maxWidth: "10rem" }}
+        value={strategy}
+        onChange={(e) => setStrategy(e.target.value)}
+        placeholder="Strategy"
+        aria-label={`${row.symbol} strategy`}
+      />
+      <input
+        className="crud-input font-mono text-xs tabular-nums"
+        style={{ width: "4.5rem" }}
+        value={quantity}
+        onChange={(e) => setQuantity(e.target.value)}
+        placeholder="Qty"
+        aria-label={`${row.symbol} quantity`}
+      />
+      <input
+        className="crud-input font-mono text-xs tabular-nums"
+        style={{ width: "5.5rem" }}
+        value={entryPrice}
+        onChange={(e) => setEntryPrice(e.target.value)}
+        placeholder="Entry"
+        aria-label={`${row.symbol} entry price`}
+      />
+      <button
+        type="button"
+        className="cta cta-secondary"
+        disabled={loading}
+        title="Save row"
+        onClick={() => void saveRow()}
+      >
+        <EditIcon className="crud-icon" />
+      </button>
+    </div>
+  );
 }
 
 export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: string }) {
@@ -116,7 +209,22 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
       return;
     }
     setNewSymbol("");
-    await patchWatchlist({ addSymbols: [s] }, `Added ${s}`);
+    const isNew = !symbols.some((r) => r.symbol === s);
+    const entry = isNew
+      ? {
+          symbol: s,
+          lineType: WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
+          strategy: WATCHLIST_ENTRY_DEFAULT_STRATEGY
+        }
+      : { symbol: s };
+    const body: Record<string, unknown> = { addEntries: [entry] };
+    if (normalizeDeskRisk(serverRisk) == null) {
+      body.riskProfile = WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE;
+    }
+    if (parseAccountOutlook(serverOutlook) == null) {
+      body.outlook = WATCHLIST_UPSERT_DEFAULT_OUTLOOK;
+    }
+    await patchWatchlist(body, isNew ? `Upserted ${s} (defaults: Stock / balanced row; desk growth/balanced if unset)` : `${s} unchanged`);
   };
 
   const removeSymbol = async (symbol: string) => {
@@ -166,8 +274,9 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
           Watchlist: {name || "—"}
         </h3>
         <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-          Add or remove symbols for this portfolio&apos;s watchlist (same data as user{" "}
-          <code className="font-mono text-xs">/api/portfolios/…/watchlist</code>).
+          Full CRUD: add upserts with defaults (row: Stock / balanced; desk: growth risk &amp; balanced outlook when
+          unset), edit line fields per row, remove. Same contract as{" "}
+          <code className="font-mono text-xs">PATCH /api/portfolios/…/watchlist</code>.
         </p>
 
         <div
@@ -231,7 +340,7 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
             style={{ maxWidth: "12rem" }}
           />
           <button type="button" className="cta cta-primary" disabled={loading} onClick={() => void addSymbol()}>
-            Add symbol
+            Add / upsert symbol
           </button>
         </div>
 
@@ -245,13 +354,14 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
                 <th>Qty</th>
                 <th>Entry</th>
                 <th>Added</th>
-                <th />
+                <th scope="col">Edit row</th>
+                <th scope="col">Remove</th>
               </tr>
             </thead>
             <tbody>
               {symbols.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="status-text">
+                  <td colSpan={8} className="status-text">
                     No symbols — add one above.
                   </td>
                 </tr>
@@ -264,6 +374,15 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
                     <td className="text-xs">{row.quantity ?? "—"}</td>
                     <td className="text-xs">{row.entryPrice ?? "—"}</td>
                     <td className="text-xs">{new Date(row.addedAt).toLocaleString()}</td>
+                    <td style={{ minWidth: "14rem" }}>
+                      <WatchlistSymbolRowTools
+                        key={`wl-${row.symbol}-${row.addedAt}-${row.lineType ?? ""}-${row.strategy ?? ""}-${row.quantity ?? "q"}-${row.entryPrice ?? "p"}`}
+                        row={row}
+                        patchWatchlist={patchWatchlist}
+                        setStatus={setStatus}
+                        loading={loading}
+                      />
+                    </td>
                     <td>
                       <button
                         type="button"

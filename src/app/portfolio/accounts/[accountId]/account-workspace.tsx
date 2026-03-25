@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
+import type { PositionType } from "@/modules/core-admin/types";
+
 export type SerializableAccount = {
   _id: string;
   name: string;
@@ -13,12 +15,38 @@ export type SerializableAccount = {
   isDefault: boolean;
 };
 
-export type SerializablePosition = {
+export type SerializableStockPosition = {
   _id: string;
+  type: "stock";
   symbol: string;
-  qty: number;
-  avgCost: number;
+  shares: number;
+  purchasePrice: number;
 };
+
+export type SerializableCashPosition = {
+  _id: string;
+  type: "cash";
+  label: string;
+  amount: number;
+  amountFormatted: string;
+};
+
+export type SerializableOptionPosition = {
+  _id: string;
+  type: "option";
+  symbol: string;
+  yahooRef: string;
+  optionType: "call" | "put";
+  strike: number;
+  expiration: string;
+  contracts: number;
+  premiumPerContract: number;
+};
+
+export type SerializablePosition =
+  | SerializableStockPosition
+  | SerializableCashPosition
+  | SerializableOptionPosition;
 
 type AccountWorkspaceProps = {
   portfolioId: string;
@@ -34,6 +62,16 @@ function formatBrokerType(type: string): string {
     .join(" ");
 }
 
+function positionSummary(p: SerializablePosition): string {
+  if (p.type === "stock") {
+    return `${p.symbol} · ${p.shares} sh @ ${p.purchasePrice.toLocaleString("en-US", { style: "currency", currency: "USD" })}`;
+  }
+  if (p.type === "cash") {
+    return `${p.label}: ${p.amountFormatted}`;
+  }
+  return `${p.symbol} ${p.optionType.toUpperCase()} ${p.strike} ${p.expiration} · ${p.yahooRef || "—"} · ${p.contracts}× @ ${p.premiumPerContract.toFixed(2)}/ct`;
+}
+
 export function AccountWorkspace({ portfolioId, account, initialPositions }: AccountWorkspaceProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -44,9 +82,22 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
   const [cashBalance, setCashBalance] = useState(String(account.cashBalance));
   const [extRef, setExtRef] = useState(account.extAccountId);
 
-  const [sym, setSym] = useState("");
-  const [shares, setShares] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState("");
+  const [holdingType, setHoldingType] = useState<PositionType>("stock");
+
+  const [stSym, setStSym] = useState("");
+  const [stShares, setStShares] = useState("");
+  const [stPx, setStPx] = useState("");
+
+  const [opSym, setOpSym] = useState("");
+  const [opYref, setOpYref] = useState("");
+  const [opCp, setOpCp] = useState<"call" | "put">("call");
+  const [opStrike, setOpStrike] = useState("");
+  const [opExp, setOpExp] = useState("");
+  const [opContracts, setOpContracts] = useState("");
+  const [opPrem, setOpPrem] = useState("");
+
+  const [caLabel, setCaLabel] = useState("");
+  const [caAmt, setCaAmt] = useState("");
 
   useEffect(() => {
     setPositions(initialPositions);
@@ -86,55 +137,125 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
     startTransition(() => router.refresh());
   }
 
-  async function addOrUpdateHolding(e: FormEvent) {
+  async function addHolding(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const ticker = sym.trim().toUpperCase();
-    const q = Number(shares);
-    const px = Number(purchasePrice);
-    if (!ticker) {
-      setError("Ticker is required.");
+
+    if (holdingType === "stock") {
+      const symbol = stSym.trim().toUpperCase();
+      const qty = Number.parseFloat(stShares);
+      const avgCost = Number.parseFloat(stPx);
+      if (!symbol || !Number.isFinite(qty) || qty <= 0) {
+        setError("Stock: symbol and positive shares required.");
+        return;
+      }
+      if (!Number.isFinite(avgCost) || avgCost < 0) {
+        setError("Stock: non-negative purchase price required.");
+        return;
+      }
+      const res = await fetch("/api/positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portfolioId,
+          accountId: account._id,
+          symbol,
+          qty,
+          avgCost,
+          type: "stock"
+        })
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(body.error ?? "Could not save stock position");
+        return;
+      }
+      setStSym("");
+      setStShares("");
+      setStPx("");
+      startTransition(() => router.refresh());
       return;
     }
-    if (!Number.isFinite(q) || q <= 0) {
-      setError("Shares must be a positive number.");
+
+    if (holdingType === "option") {
+      const symbol = opSym.trim().toUpperCase();
+      const yahooRef = opYref.trim();
+      const strike = Number.parseFloat(opStrike);
+      const qty = Number.parseFloat(opContracts);
+      const avgCost = Number.parseFloat(opPrem);
+      const expiration = opExp.trim();
+      if (!symbol || !yahooRef) {
+        setError("Option: underlying and yahoo_ref required.");
+        return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(expiration)) {
+        setError("Option: expiration must be YYYY-MM-DD.");
+        return;
+      }
+      if (!Number.isFinite(strike) || strike <= 0 || !Number.isFinite(qty) || qty <= 0) {
+        setError("Option: positive strike and contracts required.");
+        return;
+      }
+      if (!Number.isFinite(avgCost) || avgCost < 0) {
+        setError("Option: non-negative premium per contract required.");
+        return;
+      }
+      const res = await fetch("/api/positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portfolioId,
+          accountId: account._id,
+          type: "option",
+          ticker: symbol,
+          yahooRef,
+          optionType: opCp,
+          strike,
+          expiration,
+          contracts: qty,
+          premium: avgCost
+        })
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(body.error ?? "Could not save option position");
+        return;
+      }
+      setOpSym("");
+      setOpYref("");
+      setOpStrike("");
+      setOpExp("");
+      setOpContracts("");
+      setOpPrem("");
+      startTransition(() => router.refresh());
       return;
     }
-    if (!Number.isFinite(px) || px < 0) {
-      setError("Average cost must be a non-negative number.");
+
+    const amount = Number.parseFloat(caAmt.replaceAll(/[$,\s]/g, ""));
+    if (!Number.isFinite(amount) || amount < 0) {
+      setError("Cash: non-negative amount required.");
       return;
     }
+    const label = caLabel.trim().toUpperCase() || "CASH";
     const res = await fetch("/api/positions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         portfolioId,
         accountId: account._id,
-        symbol: ticker,
-        qty: q,
-        avgCost: px
+        type: "cash",
+        ticker: label,
+        amount,
+        shares: 1
       })
     });
-    const body = (await res.json().catch(() => ({}))) as { data?: SerializablePosition; error?: string };
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
-      setError(body.error ?? "Could not save position");
+      setError(body.error ?? "Could not save cash position");
       return;
     }
-    if (body.data?._id) {
-      setPositions((prev) => {
-        const next = prev.filter((p) => p.symbol !== body.data!.symbol);
-        next.push({
-          _id: body.data!._id,
-          symbol: body.data!.symbol,
-          qty: body.data!.qty,
-          avgCost: body.data!.avgCost
-        });
-        return next.sort((a, b) => a.symbol.localeCompare(b.symbol));
-      });
-    }
-    setSym("");
-    setShares("");
-    setPurchasePrice("");
+    setCaLabel("");
+    setCaAmt("");
     startTransition(() => router.refresh());
   }
 
@@ -157,10 +278,9 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
   return (
     <div className="stack-gap" style={{ marginTop: "1.25rem" }}>
       <p className="hero-copy" style={{ fontSize: "0.9rem", marginBottom: 0 }}>
-        Holdings use the same core fields as xStrategyBuilder review flows:{" "}
-        <strong>ticker</strong>, <strong>shares</strong>, and <strong>average cost</strong> (purchase
-        price). Option legs and multi-leg structures are not stored on this record yet—use
-        xStrategyBuilder for full strategy shapes until execution links land.
+        Holdings support <strong>stock</strong> (symbol, shares, purchase price), <strong>options</strong> (Yahoo ref,
+        call/put, strike, expiration, contracts, premium per contract), and <strong>cash</strong> (USD amount, optional
+        label).
       </p>
 
       {error ? (
@@ -233,29 +353,25 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
           Holdings
         </h2>
         {positions.length === 0 ? (
-          <p className="status-text">No positions yet. Add a stock lot below.</p>
+          <p className="status-text">No positions yet. Add one below.</p>
         ) : (
           <div className="crud-table-wrap">
             <table className="crud-table">
               <thead>
                 <tr>
-                  <th scope="col">Ticker</th>
-                  <th scope="col">Shares</th>
-                  <th scope="col">Avg cost</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Details</th>
                   <th scope="col" />
                 </tr>
               </thead>
               <tbody>
                 {positions.map((p) => (
                   <tr key={p._id}>
-                    <td>
-                      <code style={{ fontFamily: "ui-monospace, monospace", color: "var(--xf-text-300)" }}>
-                        {p.symbol}
-                      </code>
+                    <td className="text-xs" style={{ textTransform: "capitalize" }}>
+                      {p.type}
                     </td>
-                    <td style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.9rem" }}>{p.qty}</td>
-                    <td style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.9rem" }}>
-                      {p.avgCost.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                    <td className="text-sm" style={{ fontFamily: "ui-monospace, monospace", color: "var(--xf-text-300)" }}>
+                      {positionSummary(p)}
                     </td>
                     <td>
                       <button
@@ -283,50 +399,143 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
             color: "var(--xf-text-200)"
           }}
         >
-          Add or update lot (upserts by ticker)
+          Add or update (upsert)
         </h3>
-        <form
-          onSubmit={addOrUpdateHolding}
-          className="stack-gap"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(8rem, 1fr))",
-            gap: "0.75rem",
-            maxWidth: "36rem",
-            alignItems: "end"
-          }}
-        >
-          <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-            <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Ticker</span>
-            <input className="crud-input" value={sym} onChange={(e) => setSym(e.target.value)} placeholder="TSLA" />
-          </label>
-          <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-            <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Shares</span>
-            <input
+        <form onSubmit={addHolding} className="stack-gap">
+          <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column", maxWidth: "12rem" }}>
+            <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Instrument type</span>
+            <select
               className="crud-input"
-              type="number"
-              min={0}
-              step="any"
-              value={shares}
-              onChange={(e) => setShares(e.target.value)}
-              placeholder="10"
-            />
+              value={holdingType}
+              onChange={(e) => setHoldingType(e.target.value as PositionType)}
+              aria-label="Holding type"
+            >
+              <option value="stock">stock</option>
+              <option value="option">option</option>
+              <option value="cash">cash</option>
+            </select>
           </label>
-          <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-            <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Avg cost</span>
-            <input
-              className="crud-input"
-              type="number"
-              min={0}
-              step="0.01"
-              value={purchasePrice}
-              onChange={(e) => setPurchasePrice(e.target.value)}
-              placeholder="250.00"
-            />
-          </label>
-          <button type="submit" className="cta cta-primary" disabled={pending}>
-            Save lot
-          </button>
+
+          {holdingType === "stock" ? (
+            <div
+              className="stack-gap"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(8rem, 1fr))",
+                gap: "0.75rem",
+                maxWidth: "36rem",
+                alignItems: "end"
+              }}
+            >
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Symbol</span>
+                <input className="crud-input" value={stSym} onChange={(e) => setStSym(e.target.value)} placeholder="TSLA" />
+              </label>
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Shares</span>
+                <input
+                  className="crud-input"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={stShares}
+                  onChange={(e) => setStShares(e.target.value)}
+                />
+              </label>
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Purchase price</span>
+                <input
+                  className="crud-input"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={stPx}
+                  onChange={(e) => setStPx(e.target.value)}
+                />
+              </label>
+              <button type="submit" className="cta cta-primary" disabled={pending}>
+                Save
+              </button>
+            </div>
+          ) : null}
+
+          {holdingType === "option" ? (
+            <div
+              className="stack-gap"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(7.5rem, 1fr))",
+                gap: "0.75rem",
+                maxWidth: "48rem",
+                alignItems: "end"
+              }}
+            >
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Underlying</span>
+                <input className="crud-input" value={opSym} onChange={(e) => setOpSym(e.target.value)} />
+              </label>
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Yahoo ref</span>
+                <input className="crud-input font-mono text-xs" value={opYref} onChange={(e) => setOpYref(e.target.value)} />
+              </label>
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Call / put</span>
+                <select className="crud-input" value={opCp} onChange={(e) => setOpCp(e.target.value as "call" | "put")}>
+                  <option value="call">call</option>
+                  <option value="put">put</option>
+                </select>
+              </label>
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Strike</span>
+                <input className="crud-input" value={opStrike} onChange={(e) => setOpStrike(e.target.value)} />
+              </label>
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Expiration</span>
+                <input
+                  className="crud-input font-mono text-xs"
+                  placeholder="YYYY-MM-DD"
+                  value={opExp}
+                  onChange={(e) => setOpExp(e.target.value)}
+                />
+              </label>
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Contracts</span>
+                <input className="crud-input" value={opContracts} onChange={(e) => setOpContracts(e.target.value)} />
+              </label>
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Premium / contract</span>
+                <input className="crud-input" value={opPrem} onChange={(e) => setOpPrem(e.target.value)} />
+              </label>
+              <button type="submit" className="cta cta-primary" disabled={pending}>
+                Save
+              </button>
+            </div>
+          ) : null}
+
+          {holdingType === "cash" ? (
+            <div
+              className="stack-gap"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(8rem, 1fr))",
+                gap: "0.75rem",
+                maxWidth: "28rem",
+                alignItems: "end"
+              }}
+            >
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Label (optional)</span>
+                <input className="crud-input" value={caLabel} onChange={(e) => setCaLabel(e.target.value)} placeholder="CASH" />
+              </label>
+              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Amount (USD)</span>
+                <input className="crud-input" value={caAmt} onChange={(e) => setCaAmt(e.target.value)} />
+              </label>
+              <button type="submit" className="cta cta-primary" disabled={pending}>
+                Save
+              </button>
+            </div>
+          ) : null}
         </form>
       </section>
 

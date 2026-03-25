@@ -21,6 +21,12 @@ describe("buildSessionToolInstructions", () => {
     expect(s).toContain("web_search");
     expect(s).toContain("atxfinance tool");
   });
+
+  it("includes NL guidance for options/strategy preflight when atxfinance", () => {
+    const s = buildSessionToolInstructions({ hostedSearch: false, atxfinance: true });
+    expect(s).toContain("NL (natural language)");
+    expect(s).toContain("strategy jobs");
+  });
 });
 
 describe("buildXchatSystemPrompt", () => {

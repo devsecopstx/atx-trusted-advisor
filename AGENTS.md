@@ -33,7 +33,8 @@ Deploy: Cloud Run runtime secrets are **GCP Secret Manager only** (verified in w
 ## Surfaces: app_user vs admin_console
 
 - **admin_console:** `/admin/*` and `/api/admin/*` — `global_admin` only (`src/proxy.ts` sends unauthenticated users to login for protected paths; layout/API still enforce role).
-- **app_user:** Product routes under prefixes in `src/modules/surface-policy.ts` (`APP_USER_PRODUCT_PATH_PREFIXES`). Expressed as platform roles **`viewer`**, **`operator`**, **`advisor`** (not a string `app_user` in Mongo). `global_admin` may still use app_user routes (e.g. xChat from the admin topbar).
+- **app_user:** The **signed-in product user** (xChat, portfolio, watchlist, etc.). Routes live under prefixes in `src/modules/surface-policy.ts` (`APP_USER_PRODUCT_PATH_PREFIXES`). Capability is platform roles **`viewer`**, **`operator`**, **`advisor`** — **not** a literal Mongo role string `app_user`. Admins onboard users via **Access requests** (`admin_access_requests`): approve and assign a role. **`global_admin`** may still use app_user routes (e.g. xChat from the admin topbar).
+- **Docs term “account” (portfolio):** Means a **`portfolio_accounts`** row under the user’s **default portfolio** (custodian account with **`cashBalance`**); **holdings** are **`portfolio_positions`**. See **DEVELOPMENT.md** → *Glossary: app users, access, portfolios, and “account”* and *Required / optional fields for a new portfolio account*.
 
 ## Production validation (post-deploy)
 

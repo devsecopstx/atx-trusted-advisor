@@ -10,7 +10,7 @@ import {
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import { accountTypeValues } from "@/modules/core-admin/types";
+import { accountTypeValues, formatPositionUsd, normalizePositionType } from "@/modules/core-admin/types";
 
 type RouteContext = {
   params: Promise<{
@@ -92,14 +92,43 @@ export async function GET(request: Request, context: RouteContext) {
       balance: account.cashBalance ?? 25_000,
       riskLevel: "medium",
       strategy: "balanced",
-      positions: accountPositions.map((position) => ({
-        _id: position._id?.toHexString(),
-        type: "stock",
-        ticker: position.symbol,
-        shares: position.qty,
-        purchasePrice: position.avgCost,
-        currentPrice: position.avgCost
-      })),
+      positions: accountPositions.map((position) => {
+        const t = normalizePositionType(position.type);
+        if (t === "cash") {
+          return {
+            _id: position._id?.toHexString(),
+            type: t,
+            label: position.symbol,
+            amount: position.avgCost,
+            amountFormatted: formatPositionUsd(position.avgCost)
+          };
+        }
+        if (t === "option") {
+          const exp = position.expiration;
+          return {
+            _id: position._id?.toHexString(),
+            type: t,
+            ticker: position.symbol,
+            yahooRef: position.yahooRef ?? null,
+            optionType: position.optionType ?? null,
+            strike: position.strike ?? null,
+            expiration: exp ? exp.toISOString().slice(0, 10) : null,
+            contracts: position.qty,
+            premiumPerContract: position.avgCost,
+            shares: position.qty,
+            purchasePrice: position.avgCost,
+            currentPrice: position.avgCost
+          };
+        }
+        return {
+          _id: position._id?.toHexString(),
+          type: t,
+          ticker: position.symbol,
+          shares: position.qty,
+          purchasePrice: position.avgCost,
+          currentPrice: position.avgCost
+        };
+      }),
       recommendations: [],
       // Legacy fields kept for existing admin client compatibility.
       userId: account.userId,
