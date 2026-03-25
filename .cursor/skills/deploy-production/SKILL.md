@@ -39,7 +39,7 @@ Also confirm:
 
 1. Confirm **staging** is healthy for the commit you are promoting (push to `main` or manual staging deploy).
 2. In GitHub **Actions → Deploy Cloud Run Production → Run workflow**: set **`confirm_manual_prod=yes`**, optional **`deployment_notes`**.
-3. The workflow runs **`npm run ci:gate`**, **`npm run build`**, deploys **`CLOUD_RUN_SERVICE_PROD`**, then production health checks (see `.github/workflows/deploy-cloud-run-production.yml`). Ensure the GitHub **`production`** environment has **Required reviewers** if you want approval before deploy steps run.
+3. A **`verify-production`** job runs the shared **`.github/actions/node-verify`** composite (lint, typecheck, Next `.next/cache`, production build) plus **`npm run test`**; then **`deploy-production-manual`** checks out again and runs **`gcloud run deploy --source .`**, health checks, and optional Slack (see `.github/workflows/deploy-cloud-run-production.yml`). Ensure the GitHub **`production`** environment has **Required reviewers** if you want approval before deploy steps run.
 4. Report result and rollback command if checks fail.
 
 **Tags / immutable images:** this workflow uses **`gcloud run deploy --source .`** from the selected ref; align release bookkeeping with `package.json` version and merge commit SHA.

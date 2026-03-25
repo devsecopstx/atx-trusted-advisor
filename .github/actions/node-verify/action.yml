@@ -1,0 +1,46 @@
+# Shared frontend verify steps for CI and Cloud Run deploy workflows.
+# See .github/workflows/ci.yml and deploy-cloud-run*.yml
+name: Node verify
+description: Setup Node, npm ci, lint, typecheck, Next.js .next/cache, production build
+
+inputs:
+  node-version:
+    description: Node.js major version
+    required: false
+    default: "22"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Lint
+      shell: bash
+      run: npm run lint
+
+    - name: Typecheck
+      shell: bash
+      run: npm run typecheck
+
+    - name: Restore Next.js build cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ github.workspace }}/.next/cache
+        key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+        restore-keys: |
+          ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}
+
+    - name: Build
+      shell: bash
+      env:
+        NODE_ENV: production
+      run: npm run build

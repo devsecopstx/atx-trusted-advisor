@@ -524,6 +524,8 @@ echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run Pro
 
 **Deploy flow:** a push to **`main`** runs **staging** only (**Deploy Cloud Run** — no production jobs in that file). **Production** uses **Deploy Cloud Run Production** (`.github/workflows/deploy-cloud-run-production.yml`): **`workflow_dispatch` only**, **`confirm_manual_prod=yes`** (optional **`deployment_notes`** for Slack). **Staging redeploy:** **Deploy Cloud Run → Run workflow**. Optional: **Settings → Environments → `production` → Required reviewers** for approval before `gcloud run deploy`.
 
+**Frontend verify (shared):** [`.github/actions/node-verify/action.yml`](.github/actions/node-verify) centralizes Node 22 setup, `npm ci`, lint, typecheck, `actions/cache` on `.next/cache`, and `NODE_ENV=production` `npm run build`. [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs it then Vitest with JUnit. Staging/production deploy workflows run a **`verify`** job (same action + `npm run test`) before the deploy job checks out again for `gcloud run deploy --source .` (Cloud Build still produces the container image).
+
 ### Deploy Cloud Run: common failures
 
 - **`Cannot update environment variable [ALLOW_ANY_X_USER_LOGIN] to string literal because it has already been set with a different type`** — The live service still maps that name to Secret Manager. The workflow passes `--remove-secrets=ALLOW_ANY_X_USER_LOGIN` before setting literals so the next revision can switch to env literals.

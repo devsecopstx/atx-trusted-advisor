@@ -38,11 +38,9 @@ Also confirm:
 ## Workflow
 
 1. Validate branch is `main` and identify commit SHA.
-2. Run quality gate (`npm run ci:gate`) before deploy.
-3. Build and push container image to Artifact Registry.
-4. Deploy image to staging Cloud Run service.
-5. Run health checks against staging URL.
-6. Report status, deployed image tag, and rollback command.
+2. **Deploy Cloud Run** workflow runs a **`verify`** job first: **`.github/actions/node-verify`** (lint, typecheck, Next `.next/cache`, production `npm run build`) plus **`npm run test`**; the **`deploy-staging`** job then uses **`gcloud run deploy --source .`** (not a separate GAR push in this workflow).
+3. Run health checks against staging URL (workflow step).
+4. Report status and rollback command if checks fail.
 
 ## Mapping Contract
 

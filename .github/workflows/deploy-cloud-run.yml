@@ -18,8 +18,26 @@ env:
   GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
+  verify:
+    name: Verify (lint, typecheck, tests, Next build)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint, typecheck, Next cache, build
+        uses: ./.github/actions/node-verify
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Tests (Vitest)
+        run: npm run test
+
   deploy-staging:
     name: Deploy Staging
+    needs: verify
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-staging
@@ -62,21 +80,6 @@ jobs:
             exit 1
           fi
           echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=staging"
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run CI gate
-        run: npm run ci:gate
-
-      - name: Build app
-        run: npm run build
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
