@@ -22,7 +22,7 @@
 
 | Segment | xAI collection suffix (after `atx-trusted-advisor-<dev|stage|prod>-`) | Role |
 | --- | --- | --- |
-| **`xpersonas/`** | `xpersonas` | xPersona seed **`*.yaml`** (per subfolder) plus RAG markdown (**`exam-coach`**, **`super-agent`**, **`finance-xoptions`**, etc.). Ingested with **`npm run seed:admin`** — **`scripts/lib/seed-xai-rag-ingest.mjs`**; **`SKIP_SEED_XAI_RAG_INGEST`** opts out. |
+| **`xpersonas/`** | `xpersonas` | xPersona seed specs — **exactly one `*.yaml` per subfolder** (Grok / Mongo `seed:xpersonas`; no `.md` in this segment). Ingested with **`npm run seed:admin`** — **`scripts/lib/seed-xai-rag-ingest.mjs`**; **`SKIP_SEED_XAI_RAG_INGEST`** opts out. |
 | **`finance-reference-docs/`** | *(same folder name)* | Reference PDFs (disclosures, licensing). |
 | **`example-prompts/`** | `example-prompts` | Example user prompts / scenario copy for UX and KB samples. |
 | **`options-strategy/`** | `options-strategy` | Strategy Markdown (`xfinance-strategy-*` frontmatter) + hub index — see **[`options-strategy/README.md`](./options-strategy/README.md)**. |
@@ -35,7 +35,7 @@ Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, 
 
 **Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`).
 
-**xpersonas exception:** Subfolders are **short buckets** (e.g. `trusted/`, `legal/`). Each bucket holds **one** persona **`*.yaml`** (filename may differ from folder name; first-line comment + `setup:` must match the real path) **or** a **stem/stem.md** narrative (`exam-coach/exam-coach.md`, `super-agent/super-agent.md`, `finance-xoptions/finance-xoptions.md`).
+**xpersonas:** Subfolders are **short buckets** (e.g. `trusted/`, `legal/`, `super-agent/`). Each bucket holds **exactly one** persona **`stem/stem.yaml`** where **folder name equals file stem** (same convention as other RAG segments). This folder is **YAML-only** so Grok-facing persona specs stay consistent with `seed:xpersonas` and admin governance.
 
 Segment-level **`README.md`** files are for humans; ingest skips lowercase `readme.md` by name.
 
@@ -55,9 +55,9 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 | `medical/medical-advisor.yaml` | Persona spec |
 | `options-trader/options-trader-advisor.yaml` | Persona spec |
 | `tax-expert/atx-tax-expert-advisor.yaml` | Persona spec |
-| `exam-coach/exam-coach.md` | RAG body |
-| `super-agent/super-agent.md` | RAG body |
-| `finance-xoptions/finance-xoptions.md` | RAG body |
+| `exam-coach/exam-coach.yaml` | Persona spec |
+| `super-agent/super-agent.yaml` | Persona spec (global-admin **Super-Agent**) |
+| `finance-xoptions/finance-xoptions.yaml` | Persona spec |
 
 ### finance-reference-docs
 

@@ -22,6 +22,23 @@ const optionalNonEmptyString = z.preprocess(
 );
 const optionalEmail = z.preprocess(emptyToUndefined, z.string().email().optional());
 
+/**
+ * Operators sometimes set `NODE_ENV=stage` in `.env.stage`; Node / Zod only allow
+ * `development` | `test` | `production`. Cloud Run staging uses `NODE_ENV=production`
+ * + `ATX_DEPLOY_TARGET=stage` — map common mistakes so `seed:xpersonas` and `getEnv()` work.
+ */
+function preprocessNodeEnv(val: unknown): unknown {
+  const v = emptyToUndefined(val);
+  if (v === undefined) {
+    return undefined;
+  }
+  const s = String(v).trim().toLowerCase();
+  if (s === "stage" || s === "staging") {
+    return "production";
+  }
+  return v;
+}
+
 const envSchema = z.object({
   /** Plain `mongodb://` / `mongodb+srv://`, or base64 of either (same as Spring `MongoUriResolver`). */
   MONGODB_URI: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -75,10 +92,10 @@ const envSchema = z.object({
   XSTRATEGYBUILDER_LICENSING_X_URL: optionalUrl,
   XSTRATEGYBUILDER_LICENSING_X_LABEL: optionalNonEmptyString,
   XSTRATEGYBUILDER_COMPANY_EMAIL: optionalEmail,
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .optional()
-    .default("development")
+  NODE_ENV: z.preprocess(
+    preprocessNodeEnv,
+    z.enum(["development", "test", "production"]).optional().default("development")
+  )
 });
 
 export const REQUIRED_RUNTIME_ENV_VARS = [

@@ -80,13 +80,7 @@ describe("atx-rag-collection layout", () => {
     }
   });
 
-  it("xpersonas leaf folders with markdown use stem/stem.md", () => {
-    for (const name of ["exam-coach", "super-agent", "finance-xoptions"]) {
-      assertKebabFolderContainsSameStemFile(join(xpersonasDir, name), ".md");
-    }
-  });
-
-  it("xpersonas YAML buckets contain exactly one .yaml per immediate subfolder", () => {
+  it("xpersonas: exactly one .yaml per subfolder, no persona .md (YAML-only Grok specs)", () => {
     for (const ent of readdirSync(xpersonasDir, { withFileTypes: true })) {
       if (!ent.isDirectory()) {
         continue;
@@ -94,11 +88,14 @@ describe("atx-rag-collection layout", () => {
       const sub = join(xpersonasDir, ent.name);
       const yamls = readdirSync(sub).filter((f) => f.endsWith(".yaml"));
       const mds = readdirSync(sub).filter((f) => f.endsWith(".md") && f.toLowerCase() !== "readme.md");
-      if (mds.length > 0) {
-        expect(yamls.length, `${sub}: markdown folders should not mix yaml`).toBe(0);
-        continue;
-      }
+      expect(mds.length, `${sub}: xpersonas segment must not use .md persona files`).toBe(0);
       expect(yamls.length, `${sub}: expected exactly one persona yaml`).toBe(1);
+    }
+  });
+
+  it("xpersonas folders that match filename stem use stem/stem.yaml", () => {
+    for (const name of ["exam-coach", "super-agent", "finance-xoptions"]) {
+      assertKebabFolderContainsSameStemFile(join(xpersonasDir, name), ".yaml");
     }
   });
 
