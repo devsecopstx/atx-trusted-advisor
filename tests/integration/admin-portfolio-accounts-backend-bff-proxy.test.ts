@@ -15,11 +15,23 @@ const repoMocks = vi.hoisted(() => ({
   adminListAccountsForPortfolio: vi.fn()
 }));
 
+const getCoreUsersByIdsMock = vi.hoisted(() =>
+  vi.fn<typeof import("@/modules/identity/repository").getCoreUsersByIds>()
+);
+
 vi.mock("@/lib/backend-bff", () => ({
   proxyRequestToBackend: bffMocks.proxyRequestToBackend
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
+
+vi.mock("@/modules/identity/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/identity/repository")>();
+  return {
+    ...actual,
+    getCoreUsersByIds: getCoreUsersByIdsMock
+  };
+});
 
 vi.mock("@/modules/core-admin/repository", async () => {
   const actual = await vi.importActual<typeof import("@/modules/core-admin/repository")>(
@@ -43,6 +55,7 @@ const accountId = "507f1f77bcf86cd799439044";
 describe("admin portfolio accounts API BFF proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getCoreUsersByIdsMock.mockResolvedValue(new Map());
     bffMocks.proxyRequestToBackend.mockResolvedValue(null);
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",

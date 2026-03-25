@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/types";
 
@@ -16,6 +16,12 @@ import {
 import { PortfolioManageNav } from "./portfolio-manage-nav";
 
 const ACCOUNT_TYPES = ["merrill", "fidelity", "etrade"] as const;
+
+const ACCOUNT_TYPE_LABELS: Record<(typeof ACCOUNT_TYPES)[number], string> = {
+  merrill: "Merrill",
+  fidelity: "Fidelity",
+  etrade: "E*TRADE"
+};
 
 type AccountRow = {
   _id: string;
@@ -34,6 +40,9 @@ type PortfolioMeta = {
   _id: string;
   name: string;
   userId: string;
+  /** Present when `GET …/accounts` is served by Next; BFF may omit until Kotlin adds parity. */
+  userDisplayName?: string;
+  userEmail?: string | null;
   tenantPortfolioOrgKey?: string;
   riskProfile: DeskRiskProfileOption | null;
   /** Book-level free text (distinct from account outlook slugs). */
@@ -163,9 +172,11 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     try {
       const payload = await parseJson<{
         data: {
-          portfolio: Omit<PortfolioMeta, "riskProfile" | "outlook"> & {
+          portfolio: Omit<PortfolioMeta, "riskProfile" | "outlook" | "userDisplayName" | "userEmail"> & {
             riskProfile?: string | null;
             outlook?: string | null;
+            userDisplayName?: string;
+            userEmail?: string | null;
           };
           accountCount: number;
           totalCashBalance: number;
@@ -180,7 +191,9 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
       const po: PortfolioMeta = {
         ...raw,
         riskProfile: riskNorm,
-        outlook: raw.outlook ?? null
+        outlook: raw.outlook ?? null,
+        userDisplayName: typeof raw.userDisplayName === "string" ? raw.userDisplayName : undefined,
+        userEmail: "userEmail" in raw ? (raw.userEmail ?? null) : undefined
       };
       setPortfolio(po);
       setPortfolioRiskDraft(riskNorm ?? "");
@@ -212,6 +225,45 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!portfolio?.userId || portfolio.userDisplayName !== undefined) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/users/${encodeURIComponent(portfolio.userId)}`, {
+          cache: "no-store"
+        });
+        if (!res.ok || cancelled) {
+          return;
+        }
+        const payload = await parseJson<{
+          data: {
+            email?: string;
+            xAccount?: { username?: string; displayName?: string };
+          };
+        }>(res);
+        const d = payload.data;
+        const display =
+          d.xAccount?.displayName?.trim() ||
+          d.xAccount?.username?.trim() ||
+          d.email?.trim() ||
+          "User";
+        if (!cancelled) {
+          setPortfolio((p) =>
+            p ? { ...p, userDisplayName: display, userEmail: d.email ?? null } : p
+          );
+        }
+      } catch {
+        /* BFF or transient failure — owner id still visible */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [portfolio?.userId, portfolio?.userDisplayName]);
 
   const draft = (id: string): Partial<AccountRow> => edits[id] ?? {};
 
@@ -271,53 +323,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
       })
     );
     return true;
-  };
-
-  const saveAccount = async (row: AccountRow) => {
-    const body = computeAccountPatchBody(row, draft(row._id), cashFocusId === row._id, cashEditText[row._id]);
-    if (cashFocusId === row._id) {
-      setCashFocusId(null);
-      setCashEditText((prev) => {
-        const next = { ...prev };
-        delete next[row._id];
-        return next;
-      });
-    }
-
-    setStatus("Saving…");
-    try {
-      if (!body) {
-        const m = mergeRow(row);
-        const nameNext = (m.name ?? "").trim();
-        const namePrev = (row.name ?? "").trim();
-        if (nameNext !== namePrev && !nameNext) {
-          setStatus("Name cannot be empty");
-          return;
-        }
-        setStatus("No changes");
-        return;
-      }
-
-      await parseJson(
-        await fetch(
-          `/api/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(row._id)}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-          }
-        )
-      );
-      setEdits((prev) => {
-        const next = { ...prev };
-        delete next[row._id];
-        return next;
-      });
-      setStatus("Saved");
-      void refresh();
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Save failed");
-    }
   };
 
   const saveAllChanges = async () => {
@@ -442,6 +447,17 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   return (
     <section className="panel stack-gap">
       <PortfolioManageNav portfolioId={portfolioId} active="accounts">
+        <button className="cta cta-secondary" disabled={loading} onClick={() => void refresh()} type="button">
+          <RefreshIcon className="crud-icon" /> Refresh
+        </button>
+        <button
+          className="cta cta-primary"
+          disabled={loading || !hasAnythingDirty}
+          onClick={() => void saveAllChanges()}
+          type="button"
+        >
+          Save changes
+        </button>
         <Link
           className="cta cta-secondary"
           href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/broker-import`}
@@ -456,17 +472,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
             User settings
           </Link>
         ) : null}
-        <button
-          className="cta cta-primary"
-          disabled={loading || !hasAnythingDirty}
-          onClick={() => void saveAllChanges()}
-          type="button"
-        >
-          Save changes
-        </button>
-        <button className="cta cta-secondary" disabled={loading} onClick={() => void refresh()} type="button">
-          <RefreshIcon className="crud-icon" /> Refresh
-        </button>
         <p className="status-text">{status}</p>
       </PortfolioManageNav>
 
@@ -476,7 +481,37 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
             {portfolio.name}
           </h2>
           <p className="status-text font-mono text-xs">Portfolio ID: {portfolio._id}</p>
-          <p className="status-text font-mono text-xs">User: {portfolio.userId}</p>
+          <div style={{ marginTop: "0.5rem", maxWidth: 280 }}>
+            <p className="status-text text-xs font-semibold uppercase tracking-wide" style={{ marginBottom: "0.25rem" }}>
+              User
+            </p>
+            {portfolio.userId ? (
+              <>
+                <Link
+                  className="login-xoptions-link font-semibold text-sm"
+                  href={`/admin/manage_account?userId=${encodeURIComponent(portfolio.userId)}&portfolioId=${encodeURIComponent(portfolioId)}`}
+                  title="Open user settings"
+                >
+                  {portfolio.userDisplayName?.trim() || "User"}
+                </Link>
+                <Link
+                  className="font-mono break-all opacity-75 hover:opacity-100 underline-offset-2 hover:underline"
+                  href={`/admin/manage_account?userId=${encodeURIComponent(portfolio.userId)}&portfolioId=${encodeURIComponent(portfolioId)}`}
+                  style={{ fontSize: "0.65rem", display: "block", marginTop: "0.12rem" }}
+                  title="User id — same link as display name"
+                >
+                  {portfolio.userId}
+                </Link>
+                {portfolio.userEmail ? (
+                  <div className="status-text break-all" style={{ fontSize: "0.75rem", marginTop: "0.15rem" }}>
+                    {portfolio.userEmail}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <span className="status-text">—</span>
+            )}
+          </div>
           <div className="tool-row" style={{ marginTop: "0.75rem", gap: "1.5rem" }}>
             <p className="status-text">
               <strong>{accountCount}</strong> account(s)
@@ -491,10 +526,10 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
       <article className="surface-card xf-widget section-card">
         <h3>Accounts</h3>
         <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-          <strong>Book risk &amp; outlook</strong> columns apply to the whole portfolio (one set of controls, shown on the
-          first row). <strong>Acct risk / Acct outlook</strong> are per custodian account. Watchlist has its own desk fields
-          under <strong>Manage watchlist</strong>. Use <strong>Save changes</strong> for book + all dirty account rows, or
-          the pencil to save one account.
+          Edit inline like the main <strong>Portfolios</strong> table: change fields, then press <strong>Save changes</strong>{" "}
+          (book risk &amp; outlook + all dirty account rows in one batch). <strong>Book risk &amp; outlook</strong> apply to
+          the whole portfolio (controls on the first row). <strong>Acct risk / Acct outlook</strong> are per custodian
+          account. Watchlist desk fields live under <strong>Manage watchlist</strong>.
         </p>
         <div className="crud-table-wrap">
           <table className="crud-table">
@@ -590,7 +625,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                         >
                           {ACCOUNT_TYPES.map((t) => (
                             <option key={t} value={t}>
-                              {t}
+                              {ACCOUNT_TYPE_LABELS[t]}
                             </option>
                           ))}
                         </select>
@@ -769,14 +804,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                           <button
                             type="button"
                             className="cta cta-secondary"
-                            title="Save"
-                            onClick={() => void saveAccount(row)}
-                          >
-                            <EditIcon className="crud-icon" />
-                          </button>
-                          <button
-                            type="button"
-                            className="cta cta-secondary"
                             title="Delete"
                             onClick={() => void deleteAccount(row)}
                           >
@@ -810,7 +837,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
             <select className="crud-input" value={newType} onChange={(e) => setNewType(e.target.value as typeof newType)}>
               {ACCOUNT_TYPES.map((t) => (
                 <option key={t} value={t}>
-                  {t}
+                  {ACCOUNT_TYPE_LABELS[t]}
                 </option>
               ))}
             </select>

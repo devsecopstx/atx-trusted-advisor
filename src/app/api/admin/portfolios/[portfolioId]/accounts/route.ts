@@ -11,7 +11,11 @@ import {
 } from "@/modules/core-admin/repository";
 import type { Account } from "@/modules/core-admin/types";
 import { accountTypeValues, parseAccountOutlook } from "@/modules/core-admin/types";
-import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
+import {
+    formatCoreUserDisplayName,
+    getCoreUsersByIds,
+    normalizeMongoUserIdHex
+} from "@/modules/identity/repository";
 
 type RouteContext = {
   params: Promise<{ portfolioId: string }>;
@@ -72,15 +76,21 @@ export async function GET(request: Request, context: RouteContext) {
     return sum + b;
   }, 0);
 
+  const ownerHex = normalizeMongoUserIdHex(portfolio.userId);
+  const ownerMap = ownerHex ? await getCoreUsersByIds([ownerHex]) : new Map();
+  const owner = ownerHex ? ownerMap.get(ownerHex) : undefined;
+
   return NextResponse.json({
     data: {
       portfolio: {
         _id: portfolio._id.toHexString(),
         name: portfolio.name,
-        userId: normalizeMongoUserIdHex(portfolio.userId) ?? "",
+        userId: ownerHex ?? "",
         tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey,
         riskProfile: portfolio.riskProfile ?? null,
-        outlook: portfolio.outlook ?? null
+        outlook: portfolio.outlook ?? null,
+        userDisplayName: formatCoreUserDisplayName(owner),
+        userEmail: owner?.email ?? null
       },
       accountCount,
       totalCashBalance,
