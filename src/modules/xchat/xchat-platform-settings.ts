@@ -39,7 +39,6 @@ export async function upsertXchatPlatformSettings(input: {
   const db = await getDb();
   const now = new Date();
   const set: Partial<XchatPlatformSettingsDoc> = {
-    singletonKey: SINGLETON_KEY,
     updatedAt: now,
     updatedByUserId: input.actorUserId.trim() || undefined
   };
