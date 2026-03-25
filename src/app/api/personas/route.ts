@@ -167,6 +167,7 @@ function serializePersona(persona: PersonaConfig) {
     status: persona.status ?? "draft",
     version: persona.version ?? 0,
     publishedAt: persona.publishedAt?.toISOString() ?? null,
+    isSystem: persona.isSystem ?? false,
     xaiCollectionVerification: persona.xaiCollectionVerification
       ? {
           ...persona.xaiCollectionVerification,

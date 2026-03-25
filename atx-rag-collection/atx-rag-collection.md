@@ -109,11 +109,24 @@ Aligned with **`.cursor/agents/*.yaml`** for tooling parity. These files are **n
 | `setup` | Shell one-liner; `test -f` the **actual** yaml path under `xpersonas/` |
 | `model` | Default chat model id (e.g. `grok-4-1-fast-reasoning`); app may override via env |
 | `system_prompt` | Block scalar; runtime persona body |
+| `xai_collection_name` | Optional. xAI **display name** to match (case-insensitive) for `xchat_personas.xaiCollection.collectionId`. Default: **`atx-trusted-advisor-{dev|stage|prod}-xpersonas`** (same deploy slug as `resolveTrustedAdvisorDeploySlug` / RAG ingest). |
+| `override_prompt` | Optional; maps to Mongo `overridePrompt` (default empty). |
+| `enable_rag` | Optional boolean (default `true`) → `enableRag`. |
+| `default_scope` | Optional string (default `global`) → `defaultScope`. |
+| `xapi` | Optional; partial xAPI config. If omitted, **`npm run seed:xpersonas`** builds tools like Super-Agent (`collections_search` when a collection id resolves). |
+| `temperature` | Optional number in `[0, 1]` (default `0.2`). |
 | `always_include` | Repo paths under `atx-rag-collection/` (or other in-repo globs), not `.cursor/` |
 | `never_include` | Standard excludes: `node_modules/`, `.next/`, `dist/`, `"**/*.log"` |
 | `commands` | Short echo hints for UX / docs (optional extensions per persona) |
 
 Cursor agents may include **`worktree:`**; persona specs omit it.
+
+### Mongo sync (`seed:xpersonas`)
+
+- **Command:** `npm run seed:xpersonas` (`scripts/sync-xpersonas-from-yaml.mjs`, `--env-file=.env`).
+- **Ordering:** Run **after** xAI has the **`…-xpersonas`** collection (usually **`npm run seed:admin`** with RAG ingest, or manual create with the same display name).
+- **`SEED_XPERSONAS_MODE`:** **`merge`** (default) fills missing `xaiCollection.collectionId` and appends `xapi.tools` by `type` without overwriting prompts or existing tool payloads. **`replace`** overwrites prompts, scalars, and `xapi`; keeps `status` / `version` / `publishedAt`; sets `xaiCollection` only when a collection id resolves.
+- **Flags:** **`SKIP_SEED_XPERSONAS`**, production **`replace`** + **`SEED_XPERSONAS_STRICT=1`** — see **`DEVELOPMENT.md`** (RAG / seed notes).
 
 ---
 

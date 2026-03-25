@@ -41,7 +41,7 @@ async function readJsonBody(res) {
 }
 
 /** @param {string} mgmtBase */
-async function managementListCollectionsRaw(mgmtKey, mgmtBase, teamId) {
+export async function managementListCollectionsRaw(mgmtKey, mgmtBase, teamId) {
   const base = mgmtBase.replace(/\/$/, "");
   let url = `${base}/collections`;
   if (teamId) {
@@ -60,11 +60,11 @@ async function managementListCollectionsRaw(mgmtKey, mgmtBase, teamId) {
   return Array.isArray(candidates) ? candidates : [];
 }
 
-function collectionIdFromEntry(c) {
+export function collectionIdFromEntry(c) {
   return String(c?.id ?? c?.collection_id ?? "").trim();
 }
 
-function collectionNameFromEntry(c) {
+export function collectionNameFromEntry(c) {
   return String(c?.name ?? c?.collection_name ?? "").trim();
 }
 

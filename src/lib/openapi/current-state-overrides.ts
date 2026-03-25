@@ -1023,6 +1023,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       status: refSchema("PersonaStatus"),
       version: { type: "integer", minimum: 0 },
       publishedAt: { type: "string", format: "date-time", nullable: true },
+      isSystem: { type: "boolean", description: "True when upserted from repo YAML (seed:xpersonas)." },
       createdAt: { type: "string", format: "date-time" },
       updatedAt: { type: "string", format: "date-time" }
     }

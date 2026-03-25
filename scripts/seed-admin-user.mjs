@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { MongoClient } from "mongodb";
 
 import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+import { buildSuperAgentXapiTools, dedupeTrimmedIds } from "./lib/persona-xapi-tools.mjs";
 import { runSeedXaiRagIngest } from "./lib/seed-xai-rag-ingest.mjs";
 import { loadSeedTenantContext, pickFirstNonEmpty } from "./lib/tenant-defaults-seed.mjs";
 
@@ -94,20 +95,6 @@ function shouldSkipSeedXaiRagIngest() {
   return s === "1" || s === "true" || s === "yes";
 }
 
-/** @param {string[]} ids */
-function dedupeTrimmedIds(ids) {
-  const seen = new Set();
-  const out = [];
-  for (const id of ids) {
-    const t = String(id ?? "").trim();
-    if (t && !seen.has(t)) {
-      seen.add(t);
-      out.push(t);
-    }
-  }
-  return out;
-}
-
 /** Team UUID for strategy-template collections; empty when `XAI_TEAM_ID` is a literal `collection_*` id. */
 function teamUuidForXaiIngest(teamIdMerged) {
   const raw = (teamIdMerged || "").trim();
@@ -115,28 +102,6 @@ function teamUuidForXaiIngest(teamIdMerged) {
     return "";
   }
   return raw;
-}
-
-/** @param {string | string[] | undefined} collectionIds */
-function buildSuperAgentXapiTools(collectionIds) {
-  const list = Array.isArray(collectionIds)
-    ? dedupeTrimmedIds(collectionIds)
-    : dedupeTrimmedIds(collectionIds ? [collectionIds] : []);
-  if (list.length > 0) {
-    return [
-      { type: "web_search" },
-      { type: "x_search" },
-      { type: "collections_search", collection_ids: list },
-      { type: "yahoo_finance" },
-      { type: "atxfinance" }
-    ];
-  }
-  return [
-    { type: "web_search" },
-    { type: "x_search" },
-    { type: "yahoo_finance" },
-    { type: "atxfinance" }
-  ];
 }
 
 const TENANT_PORTFOLIO_COLLECTION = "tenant_portfolio";

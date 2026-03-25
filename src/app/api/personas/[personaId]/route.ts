@@ -208,6 +208,10 @@ function serializePersona(persona: PersonaConfig) {
     enableRag: persona.enableRag,
     defaultScope: persona.defaultScope,
     xapi: normalizePersonaXapiConfig(persona.xapi),
+    status: persona.status ?? "draft",
+    version: persona.version ?? 0,
+    publishedAt: persona.publishedAt?.toISOString() ?? null,
+    isSystem: persona.isSystem ?? false,
     xaiCollectionVerification: persona.xaiCollectionVerification
       ? {
           ...persona.xaiCollectionVerification,

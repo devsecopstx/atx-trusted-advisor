@@ -128,6 +128,8 @@ export type PersonaConfig = {
   status?: PersonaStatus;
   version?: number;
   publishedAt?: Date;
+  /** Repo-seeded persona row (e.g. `npm run seed:xpersonas`); admin CRUD still allowed. */
+  isSystem?: boolean;
   createdAt: Date;
   updatedAt: Date;
 };

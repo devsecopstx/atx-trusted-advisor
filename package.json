@@ -26,6 +26,7 @@
     "test:integration": "vitest run tests/integration",
     "typecheck": "tsc --noEmit",
     "seed:admin": "node --env-file=.env scripts/seed-admin-user.mjs",
+    "seed:xpersonas": "node --env-file=.env scripts/sync-xpersonas-from-yaml.mjs",
     "verify:xai-hello": "node --env-file=.env scripts/verify-xai-hello.mjs",
     "mongo:up": "bash scripts/dev/mongo-up.sh",
     "mongo:down": "docker compose --env-file .env stop mongodb",
