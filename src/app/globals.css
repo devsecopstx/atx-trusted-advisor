@@ -929,6 +929,11 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--xf-text-300);
 }
 
+/* Admin portfolio watchlist: single editor row (no duplicate read-only cols) — narrower min width */
+.crud-table.admin-portfolio-watchlist-table {
+  min-width: 720px;
+}
+
 .crud-table th,
 .crud-table td {
   text-align: left;

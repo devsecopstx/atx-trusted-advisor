@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/types";
 import {
@@ -38,6 +38,22 @@ type WatchlistPayload = {
   };
 };
 
+const PRESET_LINE_TYPES = ["Stock", "Option", "ETF", "Futures", "Cash"] as const;
+type LineTypeMode = "" | (typeof PRESET_LINE_TYPES)[number] | "custom";
+
+const PRESET_STRATEGIES = [
+  "balanced",
+  "growth",
+  "income",
+  "aggressive",
+  "wheel",
+  "CSP",
+  "CC",
+  "PMCC",
+  "LEAP"
+] as const;
+type StrategyMode = "" | (typeof PRESET_STRATEGIES)[number] | "custom";
+
 function normalizeDeskRisk(raw: unknown): DeskRiskProfileOption | null {
   if (typeof raw !== "string" || raw.length === 0) {
     return null;
@@ -47,18 +63,69 @@ function normalizeDeskRisk(raw: unknown): DeskRiskProfileOption | null {
     : null;
 }
 
-type RowToolsProps = {
+function lineTypeToMode(raw: string | undefined): { mode: LineTypeMode; custom: string } {
+  const t = (raw ?? "").trim();
+  if (!t) {
+    return { mode: "", custom: "" };
+  }
+  if ((PRESET_LINE_TYPES as readonly string[]).includes(t)) {
+    return { mode: t as LineTypeMode, custom: "" };
+  }
+  return { mode: "custom", custom: t };
+}
+
+function strategyToMode(raw: string | undefined): { mode: StrategyMode; custom: string } {
+  const t = (raw ?? "").trim();
+  if (!t) {
+    return { mode: "", custom: "" };
+  }
+  const lower = t.toLowerCase();
+  if ((PRESET_STRATEGIES as readonly string[]).includes(lower)) {
+    return { mode: lower as StrategyMode, custom: "" };
+  }
+  return { mode: "custom", custom: t };
+}
+
+type SymbolRowEditorProps = {
   row: SymbolRow;
   patchWatchlist: (body: Record<string, unknown>, okMsg: string) => Promise<void>;
-  setStatus: Dispatch<SetStateAction<string>>;
+  setStatus: (msg: string) => void;
   loading: boolean;
 };
 
-function WatchlistSymbolRowTools({ row, patchWatchlist, setStatus, loading }: RowToolsProps) {
-  const [lineType, setLineType] = useState(row.lineType ?? "");
-  const [strategy, setStrategy] = useState(row.strategy ?? "");
-  const [quantity, setQuantity] = useState(row.quantity !== undefined ? String(row.quantity) : "");
-  const [entryPrice, setEntryPrice] = useState(row.entryPrice !== undefined ? String(row.entryPrice) : "");
+function AdminWatchlistSymbolRow({ row, patchWatchlist, setStatus, loading }: SymbolRowEditorProps) {
+  const [lineMode, setLineMode] = useState<LineTypeMode>(() => lineTypeToMode(row.lineType).mode);
+  const [lineCustom, setLineCustom] = useState(() => lineTypeToMode(row.lineType).custom);
+
+  const [strategyMode, setStrategyMode] = useState<StrategyMode>(() => strategyToMode(row.strategy).mode);
+  const [strategyCustom, setStrategyCustom] = useState(() => strategyToMode(row.strategy).custom);
+
+  const [quantity, setQuantity] = useState(() => (row.quantity !== undefined ? String(row.quantity) : ""));
+  const [entryPrice, setEntryPrice] = useState(() =>
+    row.entryPrice !== undefined ? String(row.entryPrice) : ""
+  );
+
+  const resolveLineTypeForSave = (): string | null => {
+    if (lineMode === "") {
+      return null;
+    }
+    if (lineMode === "custom") {
+      const t = lineCustom.trim();
+      return t.length > 0 ? t : null;
+    }
+    return lineMode;
+  };
+
+  const resolveStrategyForSave = (): string | null => {
+    if (strategyMode === "") {
+      return null;
+    }
+    if (strategyMode === "custom") {
+      const t = strategyCustom.trim();
+      return t.length > 0 ? t : null;
+    }
+    return strategyMode;
+  };
 
   const saveRow = async () => {
     const q = quantity.trim() === "" ? null : Number.parseFloat(quantity);
@@ -76,8 +143,8 @@ function WatchlistSymbolRowTools({ row, patchWatchlist, setStatus, loading }: Ro
         addEntries: [
           {
             symbol: row.symbol,
-            lineType: lineType.trim() || null,
-            strategy: strategy.trim() || null,
+            lineType: resolveLineTypeForSave(),
+            strategy: resolveStrategyForSave(),
             quantity: q,
             entryPrice: px
           }
@@ -87,50 +154,134 @@ function WatchlistSymbolRowTools({ row, patchWatchlist, setStatus, loading }: Ro
     );
   };
 
+  let addedLabel = "—";
+  try {
+    const d = new Date(row.addedAt);
+    if (!Number.isNaN(d.getTime())) {
+      addedLabel = d.toLocaleString();
+    }
+  } catch {
+    /* keep — */
+  }
+
   return (
-    <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.35rem", alignItems: "center" }}>
-      <input
-        className="crud-input font-mono text-xs"
-        style={{ width: "5.5rem" }}
-        value={lineType}
-        onChange={(e) => setLineType(e.target.value)}
-        placeholder="Type"
-        aria-label={`${row.symbol} line type`}
-      />
-      <input
-        className="crud-input text-xs"
-        style={{ minWidth: "6rem", maxWidth: "10rem" }}
-        value={strategy}
-        onChange={(e) => setStrategy(e.target.value)}
-        placeholder="Strategy"
-        aria-label={`${row.symbol} strategy`}
-      />
-      <input
-        className="crud-input font-mono text-xs tabular-nums"
-        style={{ width: "4.5rem" }}
-        value={quantity}
-        onChange={(e) => setQuantity(e.target.value)}
-        placeholder="Qty"
-        aria-label={`${row.symbol} quantity`}
-      />
-      <input
-        className="crud-input font-mono text-xs tabular-nums"
-        style={{ width: "5.5rem" }}
-        value={entryPrice}
-        onChange={(e) => setEntryPrice(e.target.value)}
-        placeholder="Entry"
-        aria-label={`${row.symbol} entry price`}
-      />
-      <button
-        type="button"
-        className="cta cta-secondary"
-        disabled={loading}
-        title="Save row"
-        onClick={() => void saveRow()}
-      >
-        <EditIcon className="crud-icon" />
-      </button>
-    </div>
+    <tr>
+      <th scope="row" className="font-mono text-sm align-top">
+        {row.symbol}
+      </th>
+      <td className="align-top" style={{ minWidth: "7.5rem" }}>
+        <select
+          className="crud-input text-xs"
+          disabled={loading}
+          value={lineMode}
+          onChange={(e) => {
+            const v = e.target.value as LineTypeMode;
+            setLineMode(v);
+            if (v !== "custom") {
+              setLineCustom("");
+            }
+          }}
+          aria-label={`${row.symbol} line type`}
+        >
+          <option value="">—</option>
+          {PRESET_LINE_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+          <option value="custom">Custom…</option>
+        </select>
+        {lineMode === "custom" ? (
+          <input
+            className="crud-input font-mono text-xs"
+            style={{ marginTop: "0.35rem" }}
+            disabled={loading}
+            value={lineCustom}
+            onChange={(e) => setLineCustom(e.target.value)}
+            placeholder="e.g. Call spread"
+            aria-label={`${row.symbol} custom line type`}
+          />
+        ) : null}
+      </td>
+      <td className="align-top" style={{ minWidth: "8rem" }}>
+        <select
+          className="crud-input text-xs"
+          disabled={loading}
+          value={strategyMode}
+          onChange={(e) => {
+            const v = e.target.value as StrategyMode;
+            setStrategyMode(v);
+            if (v !== "custom") {
+              setStrategyCustom("");
+            }
+          }}
+          aria-label={`${row.symbol} strategy`}
+        >
+          <option value="">—</option>
+          {PRESET_STRATEGIES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+          <option value="custom">Custom…</option>
+        </select>
+        {strategyMode === "custom" ? (
+          <input
+            className="crud-input text-xs"
+            style={{ marginTop: "0.35rem" }}
+            disabled={loading}
+            value={strategyCustom}
+            onChange={(e) => setStrategyCustom(e.target.value)}
+            placeholder="Free-text strategy"
+            aria-label={`${row.symbol} custom strategy`}
+          />
+        ) : null}
+      </td>
+      <td className="align-top" style={{ width: "5rem" }}>
+        <input
+          className="crud-input font-mono text-xs tabular-nums"
+          disabled={loading}
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          placeholder="Qty"
+          inputMode="decimal"
+          aria-label={`${row.symbol} quantity`}
+        />
+      </td>
+      <td className="align-top" style={{ width: "6rem" }}>
+        <input
+          className="crud-input font-mono text-xs tabular-nums"
+          disabled={loading}
+          value={entryPrice}
+          onChange={(e) => setEntryPrice(e.target.value)}
+          placeholder="Entry"
+          inputMode="decimal"
+          aria-label={`${row.symbol} entry price`}
+        />
+      </td>
+      <td className="text-xs align-top">{addedLabel}</td>
+      <td className="align-top whitespace-nowrap">
+        <button
+          type="button"
+          className="cta cta-secondary text-xs"
+          disabled={loading}
+          onClick={() => void saveRow()}
+        >
+          Save row
+        </button>
+      </td>
+      <td className="align-top whitespace-nowrap">
+        <button
+          type="button"
+          className="cta cta-secondary text-xs"
+          disabled={loading}
+          onClick={() => void patchWatchlist({ removeSymbols: [row.symbol] }, `Removed ${row.symbol}`)}
+        >
+          <DeleteIcon className="crud-icon" />
+          Remove
+        </button>
+      </td>
+    </tr>
   );
 }
 
@@ -227,10 +378,6 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
     await patchWatchlist(body, isNew ? `Upserted ${s} (defaults: Stock / balanced row; desk growth/balanced if unset)` : `${s} unchanged`);
   };
 
-  const removeSymbol = async (symbol: string) => {
-    await patchWatchlist({ removeSymbols: [symbol] }, `Removed ${symbol}`);
-  };
-
   const dedupe = async () => {
     await patchWatchlist({ dedupe: true }, "Deduped symbols");
   };
@@ -266,7 +413,9 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
         >
           Save risk &amp; outlook
         </button>
-        <p className="status-text">{status}</p>
+        <p className="status-text" role="status" aria-live="polite">
+          {status}
+        </p>
       </PortfolioManageNav>
 
       <article className="surface-card xf-widget section-card">
@@ -274,9 +423,10 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
           Watchlist: {name || "—"}
         </h3>
         <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-          Full CRUD: add upserts with defaults (row: Stock / balanced; desk: growth risk &amp; balanced outlook when
-          unset), edit line fields per row, remove. Same contract as{" "}
-          <code className="font-mono text-xs">PATCH /api/portfolios/…/watchlist</code>.
+          <strong>Desk</strong>: choose <strong>Risk profile</strong> and <strong>Outlook</strong> below, then{" "}
+          <strong>Save risk &amp; outlook</strong>. <strong>Rows</strong>: each symbol uses the dropdowns/fields in that
+          row, then <strong>Save row</strong> or <strong>Remove</strong>. Scroll the table horizontally on narrow
+          viewports if needed.
         </p>
 
         <div
@@ -345,17 +495,17 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
         </div>
 
         <div className="crud-table-wrap">
-          <table className="crud-table">
+          <table className="crud-table admin-portfolio-watchlist-table">
             <thead>
               <tr>
-                <th>Symbol</th>
-                <th>Type</th>
-                <th>Strategy</th>
-                <th>Qty</th>
-                <th>Entry</th>
-                <th>Added</th>
-                <th scope="col">Edit row</th>
-                <th scope="col">Remove</th>
+                <th scope="col">Symbol</th>
+                <th scope="col">Line type</th>
+                <th scope="col">Strategy</th>
+                <th scope="col">Qty</th>
+                <th scope="col">Entry</th>
+                <th scope="col">Added</th>
+                <th scope="col">Save</th>
+                <th scope="col">Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -367,34 +517,20 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
                 </tr>
               ) : (
                 symbols.map((row) => (
-                  <tr key={row.symbol}>
-                    <td className="font-mono text-sm">{row.symbol}</td>
-                    <td className="text-xs">{row.lineType ?? "—"}</td>
-                    <td className="text-xs">{row.strategy ?? "—"}</td>
-                    <td className="text-xs">{row.quantity ?? "—"}</td>
-                    <td className="text-xs">{row.entryPrice ?? "—"}</td>
-                    <td className="text-xs">{new Date(row.addedAt).toLocaleString()}</td>
-                    <td style={{ minWidth: "14rem" }}>
-                      <WatchlistSymbolRowTools
-                        key={`wl-${row.symbol}-${row.addedAt}-${row.lineType ?? ""}-${row.strategy ?? ""}-${row.quantity ?? "q"}-${row.entryPrice ?? "p"}`}
-                        row={row}
-                        patchWatchlist={patchWatchlist}
-                        setStatus={setStatus}
-                        loading={loading}
-                      />
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="tiny-button"
-                        disabled={loading}
-                        title="Remove symbol"
-                        onClick={() => void removeSymbol(row.symbol)}
-                      >
-                        <DeleteIcon className="crud-icon" />
-                      </button>
-                    </td>
-                  </tr>
+                  <AdminWatchlistSymbolRow
+                    key={[
+                      row.symbol,
+                      row.lineType ?? "",
+                      row.strategy ?? "",
+                      row.quantity ?? "",
+                      row.entryPrice ?? "",
+                      row.addedAt
+                    ].join("|")}
+                    row={row}
+                    patchWatchlist={patchWatchlist}
+                    setStatus={setStatus}
+                    loading={loading}
+                  />
                 ))
               )}
             </tbody>
