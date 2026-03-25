@@ -187,7 +187,7 @@ export function getMongoUri(): string {
   const host = process.env.MONGODB_HOST?.trim() || "localhost";
   const noAuth = process.env.MONGODB_NO_AUTH === "true" || process.env.MONGODB_NO_AUTH === "1";
   const username = process.env.MONGO_ROOT_USERNAME?.trim() || "admin";
-  const password = process.env.MONGO_ROOT_PASSWORD?.trim() || "atxrocks!";
+  const password = (process.env.MONGO_ROOT_PASSWORD ?? "").trim();
 
   const hasAuth = !noAuth && Boolean(username && password);
   const authPart = hasAuth ? `${encodeURIComponent(username!)}:${encodeURIComponent(password!)}@` : "";

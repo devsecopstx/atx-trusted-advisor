@@ -211,7 +211,7 @@ All three share the same update script and secret requirements above.
 
 ### Running without MONGODB_URI
 
-When `MONGODB_URI` is not configured, the app falls back to `mongodb://admin:atxrocks!@localhost:27017/atxfinance`. Without a running Mongo instance, `GET /api/health` returns HTTP 500 (connection refused) but the dev server itself runs fine. Pages that do **not** require a DB session work: `/login`, `/app_user/xoptions`, `/app_user/xoptions/follow-up`, `/xcoach`, `/api/openapi`. Auth-gated pages (`/xchat`, `/admin/*`, `/portfolio`, `/watchlist`) and `npm run seed:admin` require a live MongoDB connection. All validation gates (`npm run ci:gate`) pass without MongoDB — tests use mocked dependencies.
+When `MONGODB_URI` is not configured, the app falls back to `mongodb://localhost:27017/atxfinance` (no credentials) unless **`MONGO_ROOT_PASSWORD`** is set, in which case it uses **`MONGO_ROOT_USERNAME`** (default `admin`) and that password with **`authSource=admin`**. Without a running Mongo instance, `GET /api/health` returns HTTP 500 (connection refused) but the dev server itself runs fine. Pages that do **not** require a DB session work: `/login`, `/app_user/xoptions`, `/app_user/xoptions/follow-up`, `/xcoach`, `/api/openapi`. Auth-gated pages (`/xchat`, `/admin/*`, `/portfolio`, `/watchlist`) and `npm run seed:admin` require a live MongoDB connection. All validation gates (`npm run ci:gate`) pass without MongoDB — tests use mocked dependencies.
 
 ### MONGODB_URI secret encoding caveat
 

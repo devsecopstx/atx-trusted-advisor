@@ -24,13 +24,10 @@ describe("getMongoUriFromB64 local fallback", () => {
     process.env.MONGODB_DB_NAME = "atxfinance";
   });
 
-  it("injects compose-aligned admin credentials for localhost when URI is unset", async () => {
+  it("uses no-auth localhost URI when URI is unset and MONGO_ROOT_PASSWORD is unset", async () => {
     const { getMongoUriFromB64 } = await import("@/lib/env");
     const uri = getMongoUriFromB64();
-    expect(uri).toMatch(/^mongodb:\/\/admin:/);
-    expect(uri).toContain(encodeURIComponent("atxrocks!"));
-    expect(uri).toContain("authSource=admin");
-    expect(uri).toContain("localhost:27017/atxfinance");
+    expect(uri).toBe("mongodb://localhost:27017/atxfinance");
   });
 
   it("ignores ADMIN_X_USERNAMES for Mongo; uses MONGO_ROOT_USERNAME (default admin)", async () => {
@@ -43,8 +40,7 @@ describe("getMongoUriFromB64 local fallback", () => {
     delete process.env.MONGODB_URI_B4;
     delete process.env.MONGO_ROOT_PASSWORD;
     const uri = getMongoUriFromB64();
-    expect(uri).toMatch(/^mongodb:\/\/admin:/);
-    expect(uri).toContain(encodeURIComponent("atxrocks!"));
+    expect(uri).toBe("mongodb://localhost:27017/atxfinance");
   });
 
   it("uses explicit MONGO_ROOT_USERNAME + MONGO_ROOT_PASSWORD on localhost", async () => {
@@ -73,7 +69,7 @@ describe("getMongoUriFromB64 local fallback", () => {
     expect(uri).toContain("localhost:27017/atxfinance-stage");
   });
 
-  it("injects default auth for non-local host when MONGO_ROOT_USERNAME/password unset", async () => {
+  it("uses no-auth URI for non-local host when MONGO_ROOT_PASSWORD unset", async () => {
     process.env.MONGODB_HOST = "mongo.internal.example";
     vi.resetModules();
     const { getMongoUriFromB64 } = await import("@/lib/env");
@@ -84,6 +80,6 @@ describe("getMongoUriFromB64 local fallback", () => {
     delete process.env.MONGO_ROOT_USERNAME;
     delete process.env.MONGO_ROOT_PASSWORD;
     const uri = getMongoUriFromB64();
-    expect(uri).toBe("mongodb://admin:atxrocks!@mongo.internal.example:27017/atxfinance?authSource=admin");
+    expect(uri).toBe("mongodb://mongo.internal.example:27017/atxfinance");
   });
 });

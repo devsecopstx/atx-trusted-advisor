@@ -39,7 +39,7 @@ The repo ships **two runnable tiers**: the **Next.js core app** (browser UI + pr
 
 #### Local Mongo: reuse or start (`npm run mongo:up`)
 
-- `scripts/dev/mongo-up.sh` loads **`.env`**, then if **`mongosh`** is available, pings **`127.0.0.1:27017`** with **`ADMIN_X_USERNAME`** / **`MONGO_ROOT_PASSWORD`** (defaults `admin` / `atxrocks!`) against `admin`.
+- `scripts/dev/mongo-up.sh` loads **`.env`**, then if **`mongosh`** is available, pings **`127.0.0.1:27017`**. If **`MONGO_ROOT_PASSWORD`** is set, uses **`MONGO_ROOT_USERNAME`** / **`MONGO_ROOT_PASSWORD`** (default user `admin`); if unset/empty, pings without auth (same as app **`getMongoUri`** when password empty). Legacy fallback: **`ADMIN_X_USERNAME`** only if **`MONGO_ROOT_USERNAME`** is unset. Force no-auth: **`MONGODB_NO_AUTH=true`**. Full override: **`MONGO_PING_URI`**.
 - If ping succeeds, Compose is **skipped** (reuse your already-running Mongo).
 - Otherwise it runs **`docker compose up -d mongodb`** and waits for the container healthcheck — use before **`npm run seed:admin`** or **`npm run local:bootstrap`** for a clean admin seed against Compose defaults.
 - Override the ping URI only if needed: **`MONGO_PING_URI`**.
@@ -123,7 +123,7 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - Tip: Leave `MONGODB_URI` unset for local development so the app uses the local Docker Mongo (`atxfinance` path).
 3. (Optional) Source admin username from admin_seed.csv and set local Mongo password
    - `export ADMIN_X_USERNAME=$(awk -F, 'NR==2{print $2}' admin_seed.csv)`
-   - `export MONGO_ROOT_PASSWORD=atxrocks!`  # change if desired
+   - `export MONGO_ROOT_PASSWORD=`  # change if desired
    - Omit `MONGODB_DB_NAME` unless you need a non-default DB path (code default is `atxfinance`).
 4. Start backend + MongoDB (Docker Compose, from repo root)
    - **Ordered one-shot (backend first, then Next):** `npm run dev:stack` — runs `docker compose up -d`, waits until `http://localhost:8080` health responds, then starts `npm run dev:frontend` in the foreground. Ctrl+C stops the Next process only; run `docker compose down` when you want to stop Mongo + the backend container.
@@ -134,9 +134,9 @@ Follow these steps to run the backend first, then the frontend. **Run-order chea
    - Behavior:
      - Compose always starts `mongo:8` with:
        - `MONGO_INITDB_DATABASE=${MONGODB_DB_NAME:-atxfinance}`
-       - `MONGO_INITDB_ROOT_USERNAME=${ADMIN_X_USERNAME:-admin}`
-       - `MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-atxrocks!}`
-     - The Spring service receives `SPRING_DATA_MONGODB_URI` pointing at `mongodb:27017` with **auth** and `authSource=admin`, using the same username/password/db name defaults as above (see `docker-compose.yml`).
+       - `MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-admin}`
+       - `MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-}` (empty allowed — no default password)
+     - The Spring service receives `SPRING_DATA_MONGODB_URI` pointing at `mongodb:27017` (credentials match **`MONGO_ROOT_*`**; **`authSource=admin`** when a password is set — see `docker-compose.yml`).
      - If **`MONGODB_URI`** is set in `.env`, `MongoUriEnvPostProcessor` resolves it (plain or base64) and injects `spring.data.mongodb.uri` at **highest precedence**, overriding the Compose-supplied `SPRING_DATA_MONGODB_URI` (Atlas / remote Mongo path).
 5. Verify backend
    - Actuator: http://localhost:8080/actuator/health (standard Spring Boot JSON)
@@ -174,7 +174,7 @@ Use this when you want a **local Compose Mongo** without Atlas and with the same
 | **Each dev session:** wipe volume + Docker backend + Next (seed **after** backend healthy) | `npm run dev:stack:fresh` |
 | One-shot: Mongo up + seed (keeps existing volume) | `npm run local:bootstrap` |
 
-**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI`** is unset. If local Mongo runs **without auth** (legacy volume or no `MONGO_INITDB_*`), add **`MONGODB_NO_AUTH=true`** to `.env`. Otherwise use **`MONGO_ROOT_USERNAME`** (default `admin`) and **`MONGO_ROOT_PASSWORD`** (default `atxrocks!`) to match what `docker-compose.yml` initialized. Restart Next after changing `.env` (Mongo client is cached).
+**`MongoServerError: Authentication failed` (local):** Ensure **`MONGODB_URI`** is unset. If local Mongo runs **without auth** (legacy volume or no `MONGO_INITDB_*`), add **`MONGODB_NO_AUTH=true`** to `.env`. Otherwise use **`MONGO_ROOT_USERNAME`** (default `admin`) and **`MONGO_ROOT_PASSWORD`** (default ``) to match what `docker-compose.yml` initialized. Restart Next after changing `.env` (Mongo client is cached).
 
 `mongo:reset` requires **`RESET_LOCAL_MONGO=1`** to avoid accidental data loss. After a reset, run **`npm run dev:host`**, **`npm run dev:stack`**, or **`docker compose up`** as needed.
 

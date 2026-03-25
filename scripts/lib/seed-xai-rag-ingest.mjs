@@ -3,7 +3,7 @@
  * Used by scripts/seed-admin-user.mjs when XAI_API_KEY + XAI_MANAGEMENT_API_KEY + team KB collection exist.
  */
 import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, join, relative } from "node:path";
+import { basename, join } from "node:path";
 
 /** Stable upload filename: no path separators in the stored name (xAI / OS safe). */
 export function normalizeLogicalUploadName(rootLabel, relativePosixPath) {
@@ -214,8 +214,7 @@ async function walkIngestFiles(rootDir, { maxBytes }) {
  *   maxFileBytes?: number;
  *   skipAtxRag?: boolean;
  *   skipStrategyTemplates?: boolean;
- *   /** When set, strategy collections are `${instanceRootPrefix}-xoption--<slug>` (and `--core`). */
- *   instanceRootPrefix?: string;
+ *   instanceRootPrefix?: string; when set, strategy collections are `${instanceRootPrefix}-xoption--<slug>` (and `--core`).
  * }} opts
  */
 export async function runSeedXaiRagIngest(opts) {
