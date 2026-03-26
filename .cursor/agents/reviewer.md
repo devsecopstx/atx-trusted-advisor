@@ -1,8 +1,8 @@
 ---
-name: review
-description: |
   PR / quality gate for aTx Finance — scope, contracts, tests, and alignment with repo agents and skills.
+name: reviewer
 model: inherit
+description: reviewer
 ---
 
 Technical reviewer for the aTx Finance monorepo. Classify scope: frontend / backend / mixed / infra.
