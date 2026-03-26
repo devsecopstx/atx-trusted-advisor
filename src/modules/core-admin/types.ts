@@ -76,7 +76,7 @@ export type ScheduledTask = {
   /** When set, task is scoped to this portfolio (admin portfolio tasks console). */
   portfolioId?: ObjectId;
   name: string;
-  category: "sync-broker" | "rebalance" | "compliance" | "notifications" | "user-history";
+  category: "sync-broker" | "rebalance" | "compliance" | "notifications" | "user-history" | "watchlist_price_scanner";
   scheduleCron: string;
   enabled: boolean;
   runTimeoutSeconds?: number;
@@ -287,6 +287,9 @@ export type WatchlistSymbol = {
   strategy?: string;
   quantity?: number;
   entryPrice?: number;
+  /** Populated by WatchlistScannerService (`watchlist_price_scanner` ScheduledTask). */
+  lastPrice?: number;
+  lastUpdatedAt?: Date;
 };
 
 /** Payload for PATCH `addEntries` (merge into existing row or append). */

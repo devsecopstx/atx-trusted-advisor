@@ -1,4 +1,5 @@
 import { LinkEmailForm } from "@/app/login/ui/link-email-form";
+import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 
 type XchatGuestPanelProps = {
   userEmail?: string;
@@ -6,6 +7,8 @@ type XchatGuestPanelProps = {
   authError?: string;
   authDetails?: string;
   pendingXHandle?: string;
+  /** When set (server: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`), show Sign in with Google beside X. */
+  googleLoginHref?: string | null;
 };
 
 const DEFAULT_SIGNIN_HREF = "/api/auth/x/login?next=%2Fxchat";
@@ -59,7 +62,8 @@ export function XchatGuestPanel({
   pendingApproval = false,
   authError,
   authDetails,
-  pendingXHandle
+  pendingXHandle,
+  googleLoginHref = null
 }: XchatGuestPanelProps) {
   const authMessage = authError ? (AUTH_ERROR_COPY[authError] ?? "Sign-in failed.") : null;
 
@@ -92,9 +96,31 @@ export function XchatGuestPanel({
         </p>
         {authMessage ? <p className="status-text status-error">{authMessage}</p> : null}
         {authDetails ? <p className="status-text status-error">details: {authDetails}</p> : null}
-        <a className="cta cta-primary xchat-guest-actions__cta" href={DEFAULT_SIGNIN_HREF}>
-          Sign up or Sign in
-        </a>
+        <div className="xchat-guest-actions__stack">
+          {googleLoginHref ? (
+            <>
+              <a
+                className="cta cta-oauth-google login-google-btn xchat-guest-actions__cta"
+                href={googleLoginHref}
+              >
+                <GoogleGIcon size={20} />
+                Sign in with Google
+              </a>
+              <a
+                className="cta cta-secondary login-oauth-x xchat-guest-actions__cta"
+                href={DEFAULT_SIGNIN_HREF}
+              >
+                <XLogoIcon size={20} />
+                Sign in with X
+              </a>
+            </>
+          ) : (
+            <a className="cta cta-primary xchat-guest-actions__cta" href={DEFAULT_SIGNIN_HREF}>
+              <XLogoIcon size={20} />
+              Sign up or Sign in
+            </a>
+          )}
+        </div>
         {authError === "email_link_required" ? <LinkEmailForm xHandle={pendingXHandle} /> : null}
       </section>
 

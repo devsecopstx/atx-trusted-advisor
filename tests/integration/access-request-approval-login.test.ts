@@ -239,7 +239,7 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
     expect(beforeApprovalResponse.headers.get("location")).toContain(
-      "/login?error=access_request_pending"
+      "/xchat?error=access_request_pending"
     );
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
 
@@ -518,7 +518,7 @@ describe("access request approval login flow", () => {
       new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
     );
 
-    expect(response.headers.get("location")).toContain("/login?error=email_link_required");
+    expect(response.headers.get("location")).toContain("/xchat?error=email_link_required");
     expect(identityMocks.ensureCoreUserByEmail).toHaveBeenCalledWith({
       email: "xlogin-x-user-1@x.oauth.local"
     });

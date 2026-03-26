@@ -129,13 +129,17 @@ function coerceWatchlistSymbolEntry(
       typeof o.strategy === "string" ? o.strategy.trim().slice(0, 512) : undefined;
     const quantity = parseOptionalFiniteNumber(o.quantity);
     const entryPrice = parseOptionalFiniteNumber(o.entryPrice);
+    const lastPrice = parseOptionalFiniteNumber(o.lastPrice);
+    const lastUpdatedAt = o.lastUpdatedAt instanceof Date ? o.lastUpdatedAt : undefined;
     return {
       symbol,
       addedAt,
       ...(lineType ? { lineType } : {}),
       ...(strategy ? { strategy } : {}),
       ...(quantity !== undefined ? { quantity } : {}),
-      ...(entryPrice !== undefined ? { entryPrice } : {})
+      ...(entryPrice !== undefined ? { entryPrice } : {}),
+      ...(lastPrice !== undefined ? { lastPrice } : {}),
+      ...(lastUpdatedAt ? { lastUpdatedAt } : {})
     };
   }
   return null;
@@ -2056,6 +2060,37 @@ export async function adminDeleteOptionsStrategy(id: string): Promise<boolean> {
   const db = await getDb();
   const res = await db.collection<OptionsStrategy>(collections.optionsStrategy).deleteOne({ _id: new ObjectId(id) });
   return (res.deletedCount ?? 0) > 0;
+}
+
+export async function getAllWatchlists(): Promise<Watchlist[]> {
+  const db = await getDb();
+  return db
+    .collection<Watchlist>(collections.watchlists)
+    .find({})
+    .toArray();
+}
+
+export async function updateWatchlistSymbolPrices(
+  watchlistId: ObjectId,
+  priceUpdates: Array<{ symbol: string; lastPrice: number; lastUpdatedAt: Date }>
+): Promise<void> {
+  if (priceUpdates.length === 0) return;
+
+  const db = await getDb();
+  const updates = priceUpdates.map((u) => ({
+    $set: {
+      "symbols.$[elem].lastPrice": u.lastPrice,
+      "symbols.$[elem].lastUpdatedAt": u.lastUpdatedAt,
+    },
+  }));
+
+  await db.collection<Watchlist>(collections.watchlists).updateOne(
+    { _id: watchlistId },
+    updates,
+    {
+      arrayFilters: priceUpdates.map((u, i) => ({ "elem.symbol": u.symbol })),
+    }
+  );
 }
 
 export async function getPortfolioWatchlist(input: {

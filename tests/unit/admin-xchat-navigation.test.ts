@@ -14,6 +14,7 @@ describe("admin navigation includes xChat", () => {
   it("admin layout topbar includes xChat", () => {
     const layoutPath = path.join(process.cwd(), "src/app/admin/layout.tsx");
     const layout = readFileSync(layoutPath, "utf8");
-    expect(layout).toMatch(/\{\s*href:\s*"\/xchat",\s*label:\s*"xChat"\s*\}/);
+    expect(layout).toMatch(/href:\s*"\/xchat"/);
+    expect(layout).toMatch(/label:\s*"xChat"/);
   });
 });

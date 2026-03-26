@@ -1092,8 +1092,16 @@
   color: var(--xf-text-300);
 }
 
-.xchat-guest-actions__cta {
+.xchat-guest-actions__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   margin-top: 0.35rem;
+  align-items: flex-start;
+}
+
+.xchat-guest-actions__cta {
+  margin-top: 0;
   width: fit-content;
   min-width: 11rem;
 }
