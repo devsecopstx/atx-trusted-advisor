@@ -17,18 +17,7 @@ export default function XstrategyBuilderLayout({ children }: XstrategyBuilderLay
   return (
     <div className="xchat-layout-root">
       {children}
-      <GlobalFooter
-        subline={
-          <>
-            xStrategyBuilder · option order flow (NL → chain → review) · Powered by xAI · aTx⚡Finance · B2B licensing
-            <span aria-hidden className="app-footer-sep">
-              {" "}
-              |{" "}
-            </span>
-            <strong>Not financial advice</strong> — hypothetical and backtested figures are illustrative only.
-          </>
-        }
-      />
+      <GlobalFooter />
     </div>
   );
 }

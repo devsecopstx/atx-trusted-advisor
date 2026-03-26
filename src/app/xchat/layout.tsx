@@ -17,19 +17,7 @@ export default function XchatLayout({ children }: XchatLayoutProps) {
   return (
     <div className="xchat-layout-root">
       {children}
-      <GlobalFooter
-        subline={
-          <>
-            Powered by xAI · aTx⚡Finance · Finance Advisory
-            <span aria-hidden className="app-footer-sep">
-              {" "}
-              |{" "}
-            </span>
-            <strong>Not financial advice</strong> — consult a licensed professional for personal
-            guidance.
-          </>
-        }
-      />
+      <GlobalFooter />
     </div>
   );
 }

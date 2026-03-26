@@ -18,18 +18,7 @@ export default function PortfolioLayout({ children }: PortfolioLayoutProps) {
   return (
     <div className="xchat-layout-root">
       {children}
-      <GlobalFooter
-        subline={
-          <>
-            aTx⚡Finance · Portfolio tracking (cost basis)
-            <span aria-hidden className="app-footer-sep">
-              {" "}
-              |{" "}
-            </span>
-            <strong>Not financial advice</strong> — illustrative book values only; not live market marks.
-          </>
-        }
-      />
+      <GlobalFooter />
     </div>
   );
 }

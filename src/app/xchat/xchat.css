@@ -426,10 +426,152 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  max-width: 800px;
+  max-width: 860px;
   width: 100%;
   margin: 0 auto;
   padding: 0 1rem;
+  min-width: 0;
+}
+
+.xchat-main-shell {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(76px, 300px) minmax(0, 1fr);
+  gap: 0.85rem;
+  padding: 0.65rem 0.85rem 0;
+}
+
+.xchat-left-rail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--xf-bg-800) 84%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.xchat-left-rail {
+  position: static;
+  align-self: stretch;
+  max-height: none;
+}
+
+.xchat-left-rail--collapsed {
+  width: fit-content;
+}
+
+.xchat-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.55rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.xchat-rail-toggle {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--xf-text-200);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.69rem;
+  font-weight: 600;
+  padding: 0.26rem 0.56rem;
+}
+
+.xchat-rail-toggle:hover {
+  border-color: rgba(57, 255, 20, 0.4);
+  color: var(--xf-gain-green);
+}
+
+.xchat-rail-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.55rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.xchat-rail-section {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.xchat-rail-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--xf-text-200);
+}
+
+.xchat-rail-link-list,
+.xchat-rail-history-list {
+  display: grid;
+  gap: 0.34rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.xchat-rail-history-item {
+  margin: 0;
+  padding: 0;
+}
+
+.xchat-rail-link {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--xf-text-100);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  text-align: left;
+  padding: 0.42rem 0.46rem;
+}
+
+.xchat-rail-link:hover {
+  border-color: rgba(57, 255, 20, 0.35);
+  color: var(--xf-gain-green);
+}
+
+.xchat-rail-link--history {
+  font-size: 0.72rem;
+}
+
+.xchat-rail-link__text {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.xchat-rail-avatar {
+  flex-shrink: 0;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--xf-gain-green) 35%, transparent),
+    color-mix(in srgb, var(--xf-lightning-yellow, #eab308) 45%, transparent)
+  );
 }
 
 .xchat-persona-bar {
@@ -902,12 +1044,12 @@
 }
 
 .xchat-composer__persona-wrap {
-  flex-shrink: 0;
+  flex-shrink: 1;
   display: flex;
   flex-direction: column;
   gap: 0.12rem;
-  align-self: flex-end;
-  max-width: min(220px, 40vw);
+  align-self: stretch;
+  max-width: 100%;
   min-width: 0;
 }
 
@@ -923,15 +1065,20 @@
 .xchat-composer__persona-select {
   width: 100%;
   min-width: 0;
+  max-width: 100%;
   padding: 0.38rem 0.45rem;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--xf-surface-700) 88%, var(--xf-bg-800));
   color: var(--xf-text-100);
   font: inherit;
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
+  color-scheme: dark;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .xchat-composer__persona-select:disabled {
@@ -942,6 +1089,11 @@
 .xchat-composer__persona-select:focus {
   outline: 1px solid var(--xf-gain-green);
   outline-offset: 1px;
+}
+
+.xchat-composer__persona-select option {
+  background: var(--xf-bg-800);
+  color: var(--xf-text-100);
 }
 
 .xchat-composer__persona-err {
@@ -1103,4 +1255,36 @@
   flex-shrink: 0;
   opacity: 0.45;
   color: var(--xf-text-400);
+}
+
+@media (max-width: 1200px) {
+  .xchat-main-shell {
+    grid-template-columns: minmax(66px, 260px) minmax(0, 1fr);
+    gap: 0.65rem;
+    padding-inline: 0.6rem;
+  }
+}
+
+@media (max-width: 980px) {
+  .xchat-main-shell {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+    padding-inline: 0.45rem;
+  }
+
+  .xchat-main {
+    order: 1;
+    max-width: 100%;
+    padding-inline: 0.35rem;
+  }
+
+  .xchat-left-rail {
+    position: static;
+    max-height: none;
+    width: 100%;
+  }
+
+  .xchat-left-rail {
+    order: 0;
+  }
 }

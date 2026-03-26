@@ -4,6 +4,7 @@ import { useForm, ValidationError } from "@formspree/react";
 import Link from "next/link";
 
 import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
+import { GlobalFooter } from "@/app/ui/global-footer";
 import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 
 export const DEFAULT_POST_LOGIN = "/xchat";
@@ -207,11 +208,8 @@ export function HomeLanding({
           <div className="mt-6">{hasFormspree ? <DemoContactForm endpoint={raw} /> : <FormspreeMissingNotice />}</div>
         </section>
 
-        <footer className="text-center text-xs text-gray-500">
-          Not financial advice. Options involve risk of loss. For qualified operators evaluating software-assisted
-          workflows.
-        </footer>
       </div>
+      <GlobalFooter />
     </main>
   );
 }

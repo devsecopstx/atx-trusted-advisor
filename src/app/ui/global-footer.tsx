@@ -14,12 +14,18 @@ const LEGAL_LINKS: { href: string; label: string }[] = [
 ];
 
 type GlobalFooterProps = {
-  /** xChat: second row for product disclaimer / provider credit. */
+  /** Optional override for the shared disclaimer row. */
   subline?: ReactNode;
 };
 
 export function GlobalFooter({ subline }: GlobalFooterProps) {
   const year = new Date().getFullYear();
+  const effectiveSubline = subline ?? (
+    <>
+      <span className="app-footer-disclaimer-strong">Not financial advice</span> — options involve risk of loss.
+      For approved users only.
+    </>
+  );
 
   return (
     <footer className="app-footer">
@@ -53,11 +59,12 @@ export function GlobalFooter({ subline }: GlobalFooterProps) {
           <span className="app-footer-version">{APP_VERSION_LABEL}</span>
         </div>
       </div>
-      {subline ? (
-        <div className="app-footer-subline-stack">
-          <div className="app-footer-subline">{subline}</div>
-        </div>
-      ) : null}
+      <div className="app-footer-subline-stack">
+        <div className="app-footer-subline">{effectiveSubline}</div>
+      </div>
+      <div className="app-footer-tagline" aria-label="Tagline">
+        don&apos;t sue me bro.
+      </div>
     </footer>
   );
 }

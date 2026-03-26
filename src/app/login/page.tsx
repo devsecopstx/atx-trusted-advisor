@@ -4,6 +4,7 @@ import { isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 
 import { AtxFinanceLogo } from "../ui/atxfinance-logo";
+import { GlobalFooter } from "../ui/global-footer";
 import { GoogleGIcon, XLogoIcon } from "../ui/oauth-provider-icons";
 import { LinkEmailForm } from "./ui/link-email-form";
 
@@ -56,8 +57,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     errorCode === "email_link_required" ? (await readPendingXLinkCookie())?.username : undefined;
 
   return (
-    <main className="core-shell login-shell login-shell--xoptions">
-      <div className="login-grid login-grid--single">
+    <div className="core-shell login-shell login-shell--xoptions">
+      <main className="login-grid login-grid--single">
         <section className="hero-card xf-noise-overlay login-hero">
           <p className="login-powered-by">
             <span className="xf-powered-by-muted">Powered by </span>
@@ -136,7 +137,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <LinkEmailForm xHandle={pendingXHandle} />
           ) : null}
         </section>
-      </div>
-    </main>
+      </main>
+      <GlobalFooter />
+    </div>
   );
 }

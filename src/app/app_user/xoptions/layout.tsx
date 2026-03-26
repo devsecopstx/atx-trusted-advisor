@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { GlobalFooter } from "@/app/ui/global-footer";
+
 export const metadata: Metadata = {
   title: "xoptions · Options income, delegated",
   description:
@@ -14,8 +16,9 @@ type LayoutProps = {
 /** Dark, full-bleed shell for the pitch deck (root layout already sets `dark` on &lt;html&gt;). */
 export default function XoptionsLayout({ children }: LayoutProps) {
   return (
-    <main className="min-h-dvh bg-black text-gray-100 antialiased">
-      {children}
-    </main>
+    <div className="min-h-dvh bg-black text-gray-100 antialiased">
+      <main>{children}</main>
+      <GlobalFooter />
+    </div>
   );
 }

@@ -113,6 +113,34 @@ function XchatThreadCollapseChevronIcon() {
   );
 }
 
+type RailAvatarProps = {
+  label: string;
+};
+
+function getAvatarInitials(input: string): string {
+  const words = input.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return `${words[0][0] ?? ""}${words[1][0] ?? ""}`.toUpperCase();
+  }
+  return (input.trim().slice(0, 2) || "U").toUpperCase();
+}
+
+function RailAvatar({ label }: RailAvatarProps) {
+  return (
+    <span aria-hidden className="xchat-rail-avatar">
+      {getAvatarInitials(label)}
+    </span>
+  );
+}
+
+function compactPersonaOptionLabel(name: string): string {
+  const normalized = name.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 32) {
+    return normalized;
+  }
+  return `${normalized.slice(0, 29)}...`;
+}
+
 type XchatConversationProps = {
   /** Resolved default persona name for this session’s role (e.g. Super-Agent vs atx-trusted-advisor). */
   defaultPublishedPersonaName: string;
@@ -204,11 +232,10 @@ export function XchatConversation({
   const [messages, setMessages] = useState<Message[]>([]);
   const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
   const [historyStats, setHistoryStats] = useState<HistoryStats | null>(null);
-  const [historyExpanded, setHistoryExpanded] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [exampleExpanded, setExampleExpanded] = useState(false);
+  const [leftRailCollapsed, setLeftRailCollapsed] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
@@ -220,9 +247,7 @@ export function XchatConversation({
   const [personaPickerRows, setPersonaPickerRows] = useState<Array<{ _id: string; name: string }>>([]);
   const [personaListError, setPersonaListError] = useState<string | null>(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
-  const [assignedPersonaIdLock, setAssignedPersonaIdLock] = useState<string | null>(null);
-  /** After the first successful send (or hydrate), persona id is fixed for this thread unless admin-assigned. */
-  const [threadLockedPersonaId, setThreadLockedPersonaId] = useState<string | null>(null);
+  const [suggestedPersonaId, setSuggestedPersonaId] = useState<string | null>(null);
   /** After send, hide the transcript for a minimal view; user expands to read the thread. */
   const [threadUiCollapsed, setThreadUiCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -244,21 +269,7 @@ export function XchatConversation({
     }
   }, [messages.length]);
 
-  const personaSelectRows = useMemo(() => {
-    if (!assignedPersonaIdLock) {
-      return personaPickerRows;
-    }
-    if (personaPickerRows.some((p) => p._id === assignedPersonaIdLock)) {
-      return personaPickerRows;
-    }
-    return [
-      ...personaPickerRows,
-      {
-        _id: assignedPersonaIdLock,
-        name: activePersonaName.trim() || "Assigned persona"
-      }
-    ];
-  }, [assignedPersonaIdLock, personaPickerRows, activePersonaName]);
+  const personaSelectRows = useMemo(() => personaPickerRows, [personaPickerRows]);
 
   const resizeComposer = useCallback(() => {
     const el = composerRef.current;
@@ -283,6 +294,8 @@ export function XchatConversation({
         "I want to refresh my wheel around TSLA and SpaceX or related suppliers, what are the top ten companies or related , that have a high IV that may be good candidates to build a wheel with around TSLA?"
     }
   ];
+
+  const normalizedExamples = promptExamples.map((item) => (typeof item === "string" ? item : item.prompt));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -310,10 +323,6 @@ export function XchatConversation({
         const items = payload.data?.items ?? [];
         if (items.length === 0) {
           return;
-        }
-        const latestPersonaId = items[0]?.personaId?.trim();
-        if (latestPersonaId) {
-          setThreadLockedPersonaId(latestPersonaId);
         }
         const thread = historyItemsToTranscriptMessages(items);
         setMessages((prev) => (prev.length > 0 ? prev : thread));
@@ -348,7 +357,7 @@ export function XchatConversation({
           setVisibleCollections(DEFAULT_VISIBLE_COLLECTIONS);
           setAssociatedCollectionCount(1);
           setActivePersonaName(defaultPublishedPersonaName);
-          setAssignedPersonaIdLock(null);
+          setSuggestedPersonaId(null);
           setCollectionsScopeDegraded(true);
           setCollectionsStatus(null);
           return;
@@ -359,8 +368,8 @@ export function XchatConversation({
         setCollectionsScopeDegraded(false);
         setVisibleCollections(payload.data ?? []);
         setActivePersonaName(payload.metadata?.activePersonaName ?? defaultPublishedPersonaName);
-        const lock = payload.metadata?.assignedPersonaId?.trim() ?? null;
-        setAssignedPersonaIdLock(lock && lock.length > 0 ? lock : null);
+        const suggested = payload.metadata?.assignedPersonaId?.trim() ?? null;
+        setSuggestedPersonaId(suggested && suggested.length > 0 ? suggested : null);
         setAssociatedCollectionCount(
           Number.isInteger(payload.metadata?.associatedCollectionCount)
             ? (payload.metadata?.associatedCollectionCount ?? 1)
@@ -374,7 +383,7 @@ export function XchatConversation({
         setVisibleCollections(DEFAULT_VISIBLE_COLLECTIONS);
         setAssociatedCollectionCount(1);
         setActivePersonaName(defaultPublishedPersonaName);
-        setAssignedPersonaIdLock(null);
+        setSuggestedPersonaId(null);
         setCollectionsScopeDegraded(true);
         setCollectionsStatus(null);
       }
@@ -425,8 +434,8 @@ export function XchatConversation({
   }, [includeSuperAgentInPersonaPicker]);
 
   useEffect(() => {
-    if (assignedPersonaIdLock) {
-      setSelectedPersonaId(assignedPersonaIdLock);
+    if (suggestedPersonaId && !userPickedPersonaRef.current) {
+      setSelectedPersonaId(suggestedPersonaId);
       return;
     }
     if (userPickedPersonaRef.current) {
@@ -440,10 +449,10 @@ export function XchatConversation({
     if (hit) {
       setSelectedPersonaId(hit._id);
     }
-  }, [activePersonaName, personaPickerRows, assignedPersonaIdLock]);
+  }, [activePersonaName, personaPickerRows, suggestedPersonaId]);
 
   useEffect(() => {
-    if (!historyExpanded || historyLoaded) {
+    if (historyLoaded) {
       return;
     }
     let active = true;
@@ -481,7 +490,7 @@ export function XchatConversation({
             const createdAtMs = new Date(item.createdAt).getTime();
             return Number.isFinite(createdAtMs) && nowMs - createdAtMs <= THIRTY_DAY_WINDOW_MS;
           })
-          .slice(0, XCHAT_UI_PROMPT_LIMIT);
+          .slice(0, XCHAT_UI_PROMPT_LIMIT * 3);
         setSavedHistory(filteredRecentHistory);
         setHistoryStats(statsPayload.data ?? null);
         setHistoryLoaded(true);
@@ -501,16 +510,15 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, [historyExpanded, historyLoaded]);
+  }, [historyLoaded]);
 
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const prompt = input.trim();
     if (!prompt || loading) return;
 
-    setThreadUiCollapsed(true);
-    setExampleExpanded(false);
-    setHistoryExpanded(false);
+    // Keep thread expanded while a response is in flight so users can read it immediately.
+    setThreadUiCollapsed(false);
 
     const userMsg: Message = {
       id: `user-${Date.now()}`,
@@ -532,11 +540,8 @@ export function XchatConversation({
         message: prompt,
         scope: "global"
       };
-      const effectivePersonaPick =
-        assignedPersonaIdLock?.trim() ||
-        threadLockedPersonaId?.trim() ||
-        selectedPersonaId.trim();
-      if (!assignedPersonaIdLock && effectivePersonaPick) {
+      const effectivePersonaPick = selectedPersonaId.trim();
+      if (effectivePersonaPick) {
         askBody.personaId = effectivePersonaPick;
       }
 
@@ -576,12 +581,6 @@ export function XchatConversation({
       const resolvedName = payload.data?.personaName ?? activePersonaName;
       setActivePersonaName(resolvedName);
       setLastTurnToolSummary(formatLastTurnToolSummary(payload.data?.toolCalls));
-      if (!assignedPersonaIdLock) {
-        const lockId = effectivePersonaPick.trim();
-        if (lockId) {
-          setThreadLockedPersonaId(lockId);
-        }
-      }
 
       const logId = typeof payload.data?.logId === "string" ? payload.data.logId : undefined;
       setMessages((prev) => {
@@ -619,8 +618,126 @@ export function XchatConversation({
   }
 
   return (
-    <div className="xchat-main">
-      <div className="xchat-persona-bar">
+    <div className="xchat-main-shell">
+      <aside className={`xchat-left-rail ${leftRailCollapsed ? "xchat-left-rail--collapsed" : ""}`}>
+        <div className="xchat-rail-head">
+          <button
+            aria-expanded={!leftRailCollapsed}
+            className="xchat-rail-toggle"
+            type="button"
+            onClick={() => setLeftRailCollapsed((prev) => !prev)}
+          >
+            {leftRailCollapsed ? "Open" : "Collapse"}
+          </button>
+          {!leftRailCollapsed ? <span className="status-badge status-ready">History & examples</span> : null}
+        </div>
+        {!leftRailCollapsed ? (
+          <div className="xchat-rail-body">
+            <section className="xchat-rail-section">
+              <h3 className="xchat-rail-title">Persona</h3>
+              <div className="xchat-composer__persona-wrap">
+                <label className="xchat-composer__persona-label" htmlFor="xchat-persona-picker">
+                  Persona picker
+                </label>
+                <select
+                  className="xchat-composer__persona-select"
+                  disabled={
+                    personaSelectRows.length === 0 ||
+                    Boolean(personaListError)
+                  }
+                  id="xchat-persona-picker"
+                  onChange={(e) => {
+                    userPickedPersonaRef.current = true;
+                    setSelectedPersonaId(e.target.value);
+                  }}
+                  title={
+                    "Choose which published persona to use for this prompt. You can change it anytime."
+                  }
+                  value={selectedPersonaId}
+                >
+                  <option value="">Default (role / account)</option>
+                  {personaSelectRows.map((p) => (
+                    <option key={p._id} title={p.name} value={p._id}>
+                      {compactPersonaOptionLabel(p.name)}
+                    </option>
+                  ))}
+                </select>
+                {personaListError ? (
+                  <span className="xchat-composer__persona-err" role="status">
+                    {personaListError}
+                  </span>
+                ) : null}
+              </div>
+              <p className="status-text" style={{ fontSize: "0.72rem" }}>
+                Pick persona per prompt. You can change it any time before sending.
+              </p>
+            </section>
+            <section className="xchat-rail-section">
+              <h3 className="xchat-rail-title">Examples</h3>
+              <div className="xchat-rail-link-list">
+                {normalizedExamples.map((prompt, i) => (
+                  <button
+                    className="xchat-rail-link"
+                    key={`rail-example-${i}`}
+                    title={prompt}
+                    type="button"
+                    onClick={() => {
+                      setInput(prompt);
+                      queueMicrotask(() => {
+                        const el = composerRef.current;
+                        if (el) {
+                          el.focus();
+                          el.style.height = "auto";
+                          el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+                        }
+                      });
+                    }}
+                  >
+                    <RailAvatar label={prompt} />
+                    <span className="xchat-rail-link__text">{prompt}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section className="xchat-rail-section">
+              <h3 className="xchat-rail-title">Recent chats</h3>
+              {historyLoading ? <p className="status-text">Loading history...</p> : null}
+              {historyError ? <p className="status-text status-error">{historyError}</p> : null}
+              {!historyLoading && !historyError && savedHistory.length === 0 ? (
+                <p className="status-text">No past chat history yet.</p>
+              ) : null}
+              {!historyLoading && !historyError && savedHistory.length > 0 ? (
+                <ul className="xchat-rail-history-list">
+                  {savedHistory.map((item) => (
+                    <li className="xchat-rail-history-item" key={item.id}>
+                      <button
+                        className="xchat-rail-link xchat-rail-link--history"
+                        type="button"
+                        title={item.message}
+                        onClick={() => {
+                          setInput(item.message);
+                          queueMicrotask(() => composerRef.current?.focus());
+                        }}
+                      >
+                        <RailAvatar label={item.message} />
+                        <span className="xchat-rail-link__text">{item.message}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {historyStats ? (
+                <p className="status-text" style={{ fontSize: "0.72rem" }}>
+                  {historyStats.totalPrompts} prompts · {historyStats.activeDays} active days
+                </p>
+              ) : null}
+            </section>
+          </div>
+        ) : null}
+      </aside>
+
+      <div className="xchat-main">
+        <div className="xchat-persona-bar">
         <span className="status-badge status-ready">Active persona</span>
         <span
           className="status-text xchat-last-turn-tools"
@@ -649,7 +766,7 @@ export function XchatConversation({
           </span>
         ) : null}
         {collectionsStatus ? <span className="status-text status-error">{collectionsStatus}</span> : null}
-      </div>
+        </div>
 
       {!(threadUiCollapsed && messages.length > 0) ? (
         <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
@@ -734,49 +851,8 @@ export function XchatConversation({
         </div>
       )}
 
-      <div className="xchat-composer-wrap">
-        <form className="xchat-composer" onSubmit={handleSend}>
-          <div className="xchat-composer__persona-wrap">
-            <label className="xchat-composer__persona-label" htmlFor="xchat-persona-picker">
-              Persona
-            </label>
-            <select
-              className="xchat-composer__persona-select"
-              disabled={
-                Boolean(assignedPersonaIdLock) ||
-                Boolean(threadLockedPersonaId) ||
-                personaSelectRows.length === 0 ||
-                Boolean(personaListError)
-              }
-              id="xchat-persona-picker"
-              onChange={(e) => {
-                userPickedPersonaRef.current = true;
-                setSelectedPersonaId(e.target.value);
-              }}
-              title={
-                assignedPersonaIdLock
-                  ? "Persona is assigned by your admin"
-                  : threadLockedPersonaId
-                    ? "Persona is locked for this thread after your first reply"
-                    : "Choose which published persona to use for this thread"
-              }
-              value={assignedPersonaIdLock ?? threadLockedPersonaId ?? selectedPersonaId}
-            >
-              {assignedPersonaIdLock || threadLockedPersonaId ? null : (
-                <option value="">Default (role / account)</option>
-              )}
-              {personaSelectRows.map((p) => (
-                <option key={p._id} value={p._id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            {personaListError ? (
-              <span className="xchat-composer__persona-err" role="status">
-                {personaListError}
-              </span>
-            ) : null}
-          </div>
+        <div className="xchat-composer-wrap">
+          <form className="xchat-composer" onSubmit={handleSend}>
           <button
             aria-label="Attach files — beta, not available yet"
             className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
@@ -835,113 +911,16 @@ export function XchatConversation({
           <button className="xchat-composer__send" disabled={loading || !input.trim()} type="submit">
             Send
           </button>
-        </form>
-        <p className="xchat-composer-hint" role="note">
-          <span className="xchat-composer-hint__pill">Beta</span>
-          <span className="xchat-composer-hint__text">
-            <XchatComposerHintMicIcon />
-            New · Hold Ctrl+D to dictate
-          </span>
-        </p>
+          </form>
+          <p className="xchat-composer-hint" role="note">
+            <span className="xchat-composer-hint__pill">Beta</span>
+            <span className="xchat-composer-hint__text">
+              <XchatComposerHintMicIcon />
+              New · Hold Ctrl+D to dictate
+            </span>
+          </p>
+        </div>
       </div>
-
-      <section className="xchat-below-input-panels">
-        <article className="xchat-collapsible-panel">
-          <button
-            aria-expanded={exampleExpanded}
-            className="xchat-panel-toggle"
-            onClick={() => setExampleExpanded((prev) => !prev)}
-            type="button"
-          >
-            <span className="status-badge status-ready">Example prompts</span>
-            <span className="status-text">{exampleExpanded ? "Collapse" : "Expand"}</span>
-          </button>
-          {exampleExpanded ? (
-            <div className="xchat-panel-body">
-              <p className="status-text xchat-panel-hint">
-                Finance-focused examples for quick starts. Click to load into the composer (long prompts show … in the
-                list, then expand in the input — full text is sent to the API).
-              </p>
-              <div className="xchat-example-grid">
-                {promptExamples.map((ex, i) => {
-                  const isEllipsisChip = typeof ex !== "string";
-                  const full = typeof ex === "string" ? ex : ex.prompt;
-                  return (
-                    <button
-                      aria-label={`Use example: ${full}`}
-                      className={
-                        isEllipsisChip
-                          ? "xchat-example-chip xchat-example-chip--ellipsis"
-                          : "xchat-example-chip"
-                      }
-                      key={`ex-${i}`}
-                      title={isEllipsisChip ? full : undefined}
-                      type="button"
-                      onClick={() => {
-                        setInput(full);
-                        queueMicrotask(() => {
-                          const el = composerRef.current;
-                          if (el) {
-                            el.focus();
-                            el.style.height = "auto";
-                            el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-                          }
-                        });
-                      }}
-                    >
-                      {full}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-        </article>
-
-        <article className="xchat-collapsible-panel">
-          <button
-            aria-expanded={historyExpanded}
-            className="xchat-panel-toggle"
-            onClick={() => setHistoryExpanded((prev) => !prev)}
-            type="button"
-          >
-            <span className="status-badge status-ready">Chat history</span>
-            <span className="status-text">{historyExpanded ? "Collapse" : "Expand"}</span>
-          </button>
-          {historyExpanded ? (
-            <div className="xchat-panel-body">
-              <p className="status-text xchat-panel-hint">
-                Last {XCHAT_UI_PROMPT_LIMIT} prompts in the last 30 days (lazy-loaded on first expand).
-              </p>
-              <div className="xchat-history-stats">
-                <span className="chip">Prompts: {historyStats?.totalPrompts ?? 0}</span>
-                <span className="chip">Active days: {historyStats?.activeDays ?? 0}</span>
-                <span className="chip">
-                  Collection files seen: {historyStats?.referencedFileCount ?? 0}
-                </span>
-              </div>
-              {historyLoading ? <p className="status-text">Loading history...</p> : null}
-              {historyError ? <p className="status-text status-error">{historyError}</p> : null}
-              {!historyLoading && !historyError && savedHistory.length === 0 ? (
-                <p className="status-text">No recent history yet in the last 30 days.</p>
-              ) : null}
-              {!historyLoading && !historyError && savedHistory.length > 0 ? (
-                <ul className="xchat-history-list">
-                  {savedHistory.map((item) => (
-                    <li className="xchat-history-item" key={item.id}>
-                      <div className="xchat-history-item-head">
-                        <strong>{new Date(item.createdAt).toLocaleString()}</strong>
-                        <span>{item.model}</span>
-                      </div>
-                      <p className="xchat-history-item-prompt">{item.message}</p>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-        </article>
-      </section>
     </div>
   );
 }
