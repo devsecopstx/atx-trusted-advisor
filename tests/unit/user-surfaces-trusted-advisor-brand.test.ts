@@ -18,13 +18,13 @@ describe("user surfaces: atx Trusted Advisor + whitelabel brand", () => {
     expect(USER_PRODUCT_DESCRIPTOR_LINE).toContain("xChat");
   });
 
-  it("xChat header brand shows Trusted Advisor and whitelabel, not xFinance wordmark", () => {
+  it("xChat header brand shows Trusted Advisory and inline tagline, not xFinance wordmark", () => {
     const p = path.join(process.cwd(), "src/app/ui/xchat-header-brand.tsx");
     const src = readFileSync(p, "utf8");
     expect(src).toContain("Trusted");
-    expect(src).toContain("Advisor");
-    expect(src).toContain("USER_PRODUCT_WHITELABEL_SUBLINE");
-    expect(src).toContain("xf-whitelabel-sub");
+    expect(src).toContain("Advisory");
+    expect(src).toContain("xf-header-tagline");
+    expect(src).toContain("xf-header-tagline-atoms");
     expect(src).not.toMatch(/>\s*xFinance\s*</);
   });
 

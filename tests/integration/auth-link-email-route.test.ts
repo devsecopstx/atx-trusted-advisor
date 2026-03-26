@@ -124,7 +124,7 @@ describe("auth link-email route", () => {
 
     const payload = (await response.json()) as { redirectTo: string };
     expect(response.status).toBe(200);
-    expect(payload.redirectTo).toBe("/login?error=access_request_pending");
+    expect(payload.redirectTo).toBe("/xchat?error=access_request_pending");
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledTimes(1);
     expect(authMocks.createSession).not.toHaveBeenCalled();
   });

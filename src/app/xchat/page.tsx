@@ -4,6 +4,7 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
+import { isGoogleOAuthConfigured } from "@/lib/env";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository";
 
@@ -22,6 +23,10 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       ? (await readPendingXLinkCookie())?.username
       : undefined;
 
+  const googleLoginHref = isGoogleOAuthConfigured()
+    ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
+    : null;
+
   const session = await getSessionUser();
   if (!session) {
     return (
@@ -35,6 +40,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
           <XchatGuestPanel
             authDetails={authDetails}
             authError={authError}
+            googleLoginHref={googleLoginHref}
             pendingXHandle={pendingXHandle}
           />
         </div>
@@ -69,6 +75,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
           <XchatGuestPanel
             authDetails={authDetails}
             authError={authError}
+            googleLoginHref={googleLoginHref}
             pendingApproval
             pendingXHandle={pendingXHandle}
             userEmail={session.email}
