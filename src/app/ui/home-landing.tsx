@@ -118,14 +118,23 @@ export function HomeLanding({
 
       <div className="relative z-10 mx-auto flex max-w-3xl flex-col gap-10 px-6 py-16 sm:py-24">
         <header className="flex flex-col items-center gap-5 text-center">
-          <p className="login-powered-by">
-            <span className="xf-powered-by-muted">Powered by </span>
-            <span className="login-powered-by-brand">xAI</span>
-          </p>
           <div className="flex justify-center">
             <AtxFinanceLogo size="lg" showSubtitle={false} />
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">Delegated options workspace</h1>
+          <h1 className="flex max-w-2xl flex-col items-center gap-3 text-balance">
+            <span className="flex flex-wrap items-baseline justify-center gap-x-1.5">
+              <span className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">aTx⚡</span>
+              <span className="text-base font-semibold tracking-tight text-gray-200 sm:text-lg md:text-xl">
+                Finance — Powered by xAI
+              </span>
+            </span>
+            <span
+              className="text-lg font-semibold tracking-tight sm:text-xl md:text-2xl"
+              style={{ color: "var(--xf-gain-green)" }}
+            >
+              No Atoms Moved. Just Gains Earned.
+            </span>
+          </h1>
           <p className="max-w-2xl text-lg text-gray-300 sm:text-xl">
             Explore as a guest, sign in with Google or X for an approved session, or reach us for a demo and onboarding.
           </p>
