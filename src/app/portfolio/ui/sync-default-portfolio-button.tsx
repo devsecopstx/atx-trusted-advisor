@@ -6,9 +6,17 @@ import { useState } from "react";
 type SyncDefaultPortfolioButtonProps = {
   /** Primary CTA on error surfaces; secondary when paired with other links */
   variant?: "primary" | "secondary";
+  /** Compact inline rendering for dense toolbars. */
+  compact?: boolean;
+  /** Optional className for the button. */
+  className?: string;
 };
 
-export function SyncDefaultPortfolioButton({ variant = "primary" }: SyncDefaultPortfolioButtonProps) {
+export function SyncDefaultPortfolioButton({
+  variant = "primary",
+  compact = false,
+  className
+}: SyncDefaultPortfolioButtonProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,10 +43,26 @@ export function SyncDefaultPortfolioButton({ variant = "primary" }: SyncDefaultP
   }
 
   const cls = variant === "primary" ? "cta cta-primary" : "cta cta-secondary";
+  const buttonClassName = `${cls}${className ? ` ${className}` : ""}`;
+
+  if (compact) {
+    return (
+      <>
+        <button className={buttonClassName} disabled={pending} onClick={() => void onSync()} type="button">
+          {pending ? "Syncing…" : "Sync"}
+        </button>
+        {error ? (
+          <p className="status-text status-error" style={{ margin: 0 }}>
+            {error}
+          </p>
+        ) : null}
+      </>
+    );
+  }
 
   return (
     <div className="stack-gap" style={{ marginTop: "0.75rem" }}>
-      <button className={cls} disabled={pending} onClick={() => void onSync()} type="button">
+      <button className={buttonClassName} disabled={pending} onClick={() => void onSync()} type="button">
         {pending ? "Syncing…" : "Sync"}
       </button>
       {error ? (

@@ -63,6 +63,20 @@
   padding: 0.25rem 0.45rem;
 }
 
+.xchat-header-session-btn--icon {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.xchat-header-session-btn--icon svg {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+}
+
 .xchat-header-session-profile {
   position: relative;
   display: flex;
@@ -223,6 +237,45 @@
 .xchat-header-link:hover {
   color: var(--xf-text-100);
   background: rgba(255, 255, 255, 0.06);
+}
+
+.xchat-header-icon-link {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--xf-text-300);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 100ms ease, border-color 100ms ease, background 100ms ease;
+}
+
+.xchat-header-icon-link:hover {
+  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--xf-gain-green) 28%, transparent);
+}
+
+.xchat-header-icon-link--active {
+  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 40%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+}
+
+.xchat-header-icon-link__glyph {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: inline-flex;
+}
+
+.xchat-header-icon-link__glyph svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .xchat-header-cta {
@@ -1017,6 +1070,63 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.xchat-guest-actions {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.9rem 0 1.2rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.xchat-guest-actions__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--xf-text-100);
+}
+
+.xchat-guest-actions__hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--xf-text-300);
+}
+
+.xchat-guest-signup-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.xchat-guest-signup-form__email {
+  flex: 1;
+  min-width: 12rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--xf-text-100);
+  padding: 0.52rem 0.66rem;
+  font: inherit;
+  font-size: 0.86rem;
+}
+
+.xchat-guest-signup-form__submit {
+  min-width: 7.5rem;
+  text-align: center;
+}
+
+.xchat-guest-actions__signin {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--xf-text-300);
+}
+
+.xchat-guest-actions__signin-link {
+  color: var(--xf-text-100);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* ── xChat composer (beta chrome: attach / Auto / dictation / voice — disabled) ── */

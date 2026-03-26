@@ -5,17 +5,17 @@ import { useTransition } from "react";
 
 type PortfolioRefreshButtonProps = {
   label?: string;
+  className?: string;
 };
 
-export function PortfolioRefreshButton({ label = "Refresh" }: PortfolioRefreshButtonProps) {
+export function PortfolioRefreshButton({ label = "Refresh", className }: PortfolioRefreshButtonProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   return (
     <button
       type="button"
-      className="cta cta-secondary"
-      style={{ fontSize: "0.8rem", padding: "0.35rem 0.65rem" }}
+      className={`cta cta-secondary${className ? ` ${className}` : ""}`}
       disabled={pending}
       onClick={() => {
         startTransition(() => {

@@ -78,7 +78,7 @@ export function PortfolioAccountManageBar({ accounts }: Props) {
         </select>
       </label>
       <button type="button" className="cta cta-primary" disabled={!effectiveId} onClick={goManage}>
-        Manage account
+        Edit account
       </button>
     </div>
   );

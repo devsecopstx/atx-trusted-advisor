@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { BackIcon, RunIcon } from "@/app/admin/ui/crud-icons";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { getLicensingPitchContact } from "@/lib/env";
@@ -112,7 +113,7 @@ export default async function XstrategyBuilderPage() {
   const initialWorkspace = await loadXsbInitialWorkspace(session);
 
   return (
-    <div className="xchat-shell">
+    <div className="xchat-shell xsb-iconized">
       <AppUserApprovedHeader current="xstrategybuilder" feedbackPageLabel="xStrategyBuilder" session={session} />
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
@@ -200,13 +201,21 @@ export default async function XstrategyBuilderPage() {
           </div>
 
           <div className="cta-row" style={{ marginTop: "1.25rem" }}>
-            <Link className="cta cta-primary" href="/xstrategybuilder/strategy-options">
+            <Link
+              aria-label="Open strategy options chain"
+              className="cta cta-primary"
+              href="/xstrategybuilder/strategy-options"
+              title="Open strategy options chain"
+            >
+              <RunIcon className="crud-icon" />
               Open strategy options chain
             </Link>
-            <Link className="cta cta-secondary" href="/xchat">
+            <Link aria-label="Open xChat" className="cta cta-secondary" href="/xchat" title="Open xChat">
+              <RunIcon className="crud-icon" />
               Open xChat
             </Link>
-            <Link className="cta cta-secondary" href="/">
+            <Link aria-label="Home" className="cta cta-secondary" href="/" title="Home">
+              <BackIcon className="crud-icon" />
               Home
             </Link>
           </div>

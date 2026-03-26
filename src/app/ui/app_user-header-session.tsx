@@ -140,11 +140,15 @@ export function AppUserHeaderSession({
           aria-controls={profilePopoverId}
           aria-expanded={profileOpen}
           aria-label="Profile and account"
-          className="tiny-button xchat-header-session-btn"
+          className="tiny-button xchat-header-session-btn xchat-header-session-btn--icon"
           onClick={() => setProfileOpen((v) => !v)}
+          title="Profile"
           type="button"
         >
-          Profile
+          <svg aria-hidden viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M4 16c0-2.6 2.7-4 6-4s6 1.4 6 4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+          </svg>
         </button>
         {profileOpen ? (
           <div className="admin-session-popover xchat-header-profile-popover" id={profilePopoverId} role="dialog">

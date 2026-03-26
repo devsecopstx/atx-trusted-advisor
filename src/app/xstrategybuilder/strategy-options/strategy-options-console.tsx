@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 
+import { BackIcon, RefreshIcon, RunIcon } from "@/app/admin/ui/crud-icons";
+
 type ExpirationsPayload = { underlying: string; expirationDates: string[]; error?: string };
 type Leg = {
   premium: number;
@@ -102,7 +104,7 @@ export function StrategyOptionsConsole({
   }, [underlying, expiration, strike]);
 
   return (
-    <div className="xchat-body" style={{ padding: "1rem", maxWidth: "960px" }}>
+    <div className="xchat-body xsb-iconized" style={{ padding: "1rem", maxWidth: "960px" }}>
       <p className="eyebrow">{eyebrow}</p>
       <h1 className="hero-title" style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>
         Strategy options chain
@@ -137,7 +139,10 @@ export function StrategyOptionsConsole({
             disabled={loadingExps}
             type="button"
             onClick={() => void loadExpirations()}
+            aria-label={loadingExps ? "Loading expirations" : "Load expirations"}
+            title={loadingExps ? "Loading expirations" : "Load expirations"}
           >
+            <RefreshIcon className="crud-icon" />
             {loadingExps ? "Loading…" : "Load expirations"}
           </button>
         </div>
@@ -165,7 +170,10 @@ export function StrategyOptionsConsole({
           style={{ marginTop: "1rem" }}
           type="button"
           onClick={() => void loadChain()}
+          aria-label={loadingChain ? "Loading option chain" : "Load option chain"}
+          title={loadingChain ? "Loading option chain" : "Load option chain"}
         >
+          <RunIcon className="crud-icon" />
           {loadingChain ? "Loading chain…" : "Load option chain"}
         </button>
       </div>
@@ -222,7 +230,8 @@ export function StrategyOptionsConsole({
       ) : null}
 
       <div className="cta-row" style={{ marginTop: "1.25rem" }}>
-        <Link className="cta cta-secondary" href={backHref}>
+        <Link aria-label={backLabel} className="cta cta-secondary" href={backHref} title={backLabel}>
+          <BackIcon className="crud-icon" />
           {backLabel}
         </Link>
       </div>

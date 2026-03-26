@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PortfolioAccountManageBar } from "@/app/portfolio/ui/portfolio-account-manage-bar";
 import { PortfolioAccountsExportButton, type PortfolioAccountCsvRow } from "@/app/portfolio/ui/portfolio-accounts-export-button";
 import { PortfolioHoldingsPanel } from "@/app/portfolio/ui/portfolio-holdings-panel";
 import { PortfolioManageTabs } from "@/app/portfolio/ui/portfolio-manage-tabs";
@@ -105,6 +106,14 @@ export function PortfolioOverview({
     };
   });
 
+  const accountManageOptions = accounts
+    .filter((account): account is Account & { _id: NonNullable<Account["_id"]> } => Boolean(account._id))
+    .map((account) => ({
+      id: account._id.toHexString(),
+      name: account.name,
+      isDefault: Boolean(account.isDefault)
+    }));
+
   const activityPanel = (
     <section className="portfolio-panel portfolio-activity-placeholder" aria-labelledby="portfolio-activity-heading">
       <h2 className="portfolio-panel__title" id="portfolio-activity-heading">
@@ -130,8 +139,8 @@ export function PortfolioOverview({
             </p>
           </div>
           <div className="portfolio-manage-head__actions">
-            <SyncDefaultPortfolioButton />
-            <PortfolioRefreshButton label="Refresh" />
+            <SyncDefaultPortfolioButton compact variant="secondary" className="portfolio-head-action-btn" />
+            <PortfolioRefreshButton label="Refresh" className="portfolio-head-action-btn" />
           </div>
         </div>
         <div className="portfolio-manage-head__metrics">
@@ -165,6 +174,7 @@ export function PortfolioOverview({
               </h2>
               <PortfolioAccountsExportButton rows={csvRows} filename="xfinance-accounts.csv" />
             </div>
+            <PortfolioAccountManageBar accounts={accountManageOptions} />
             <div className="portfolio-table-wrap">
               <table className="portfolio-manage-table" aria-labelledby="accounts-table-heading">
                 <thead>

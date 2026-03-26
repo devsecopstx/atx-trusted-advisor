@@ -7,7 +7,6 @@ import { getSessionUser } from "@/lib/auth";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository";
 
-import { PlansLanding } from "./ui/plans-landing";
 import { XchatConversation } from "./ui/xchat-conversation";
 import { XchatGuestPanel } from "./ui/xchat-guest-panel";
 export default async function XchatPage() {
@@ -51,7 +50,7 @@ export default async function XchatPage() {
             includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
           />
         ) : (
-          <PlansLanding userEmail={session.email} username={session.username} />
+          <XchatGuestPanel userEmail={session.email} pendingApproval />
         )}
       </div>
     </div>

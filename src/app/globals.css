@@ -160,6 +160,39 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.admin-topbar-icon-link {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--xf-text-300);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 100ms ease, border-color 100ms ease, background 100ms ease;
+}
+
+.admin-topbar-icon-link:hover {
+  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--xf-gain-green) 28%, transparent);
+}
+
+.admin-topbar-icon-link__glyph {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: inline-flex;
+}
+
+.admin-topbar-icon-link__glyph svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .admin-topbar-session {
   flex-shrink: 0;
   margin-left: auto;
@@ -178,6 +211,40 @@ h1, h2, h3, h4, h5, h6 {
 .admin-topbar-session .cta {
   padding: 0.35rem 0.6rem;
   font-size: 0.78rem;
+}
+
+.admin-layout .cta {
+  width: 2.1rem;
+  height: 2.1rem;
+  min-width: 2.1rem;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 0;
+  line-height: 0;
+  overflow: hidden;
+  gap: 0;
+  position: relative;
+}
+
+.admin-layout .cta .crud-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+}
+
+.admin-layout .cta:not(:has(.crud-icon))::before {
+  content: "↗";
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.admin-layout .cta.cta-secondary:not(:has(.crud-icon))::before {
+  content: "⟳";
+}
+
+.admin-layout .cta.cta-danger:not(:has(.crud-icon))::before {
+  content: "×";
 }
 
 .admin-layout-content {
