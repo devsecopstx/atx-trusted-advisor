@@ -4,6 +4,7 @@ import { isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 
 import { AtxFinanceLogo } from "../ui/atxfinance-logo";
+import { GoogleGIcon, XLogoIcon } from "../ui/oauth-provider-icons";
 import { LinkEmailForm } from "./ui/link-email-form";
 
 type LoginPageProps = {
@@ -62,7 +63,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <span className="xf-powered-by-muted">Powered by </span>
             <span className="login-powered-by-brand">xAI</span>
           </p>
-          <p className="login-gains-tagline">No Atoms Moved — Just Gains Earned.</p>
+          <div className="login-gains-block">
+            <p className="login-gains-muted">No atoms moved.</p>
+            <p className="login-gains-earned-row">
+              <span className="login-gains-just">Just </span>
+              <span className="login-gains-earned">gains earned</span>
+              <span className="login-gains-growth"> growth</span>
+            </p>
+          </div>
           <AtxFinanceLogo size="lg" showSubtitle={false} />
           <h1 className="hero-title">Register or sign in</h1>
           <p className="hero-copy">
@@ -102,11 +110,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
           <div className="cta-row login-oauth-row">
             {googleLoginHref ? (
-              <a className="cta cta-primary login-google-btn" href={googleLoginHref}>
+              <a className="cta cta-oauth-google login-google-btn" href={googleLoginHref}>
+                <GoogleGIcon size={20} />
                 Sign in with Google
               </a>
             ) : null}
-            <a className={`cta ${googleLoginHref ? "cta-secondary" : "cta-primary"}`} href={xLoginHref}>
+            <a
+              className={`cta login-oauth-x ${googleLoginHref ? "cta-secondary" : "cta-primary"}`}
+              href={xLoginHref}
+            >
+              <XLogoIcon size={20} />
               Sign in with X
             </a>
           </div>

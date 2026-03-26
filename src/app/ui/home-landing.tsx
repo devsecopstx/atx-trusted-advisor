@@ -4,6 +4,7 @@ import { useForm, ValidationError } from "@formspree/react";
 import Link from "next/link";
 
 import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
+import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 
 export const DEFAULT_POST_LOGIN = "/xchat";
 
@@ -122,19 +123,26 @@ export function HomeLanding({
             <AtxFinanceLogo size="lg" showSubtitle={false} />
           </div>
           <h1 className="flex max-w-2xl flex-col items-center gap-3 text-balance">
-            <span className="flex flex-wrap items-baseline justify-center gap-x-1.5">
-              <span className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">aTx⚡</span>
-              <span className="text-base font-semibold tracking-tight text-gray-200 sm:text-lg md:text-xl">
-                Finance — Powered by xAI
-              </span>
+            <span className="xf-logo-lightning text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
+              aTx⚡
             </span>
-            <span
-              className="text-lg font-semibold tracking-tight sm:text-xl md:text-2xl"
-              style={{ color: "var(--xf-gain-green)" }}
-            >
-              No Atoms Moved. Just Gains Earned.
+            <span className="text-base font-semibold tracking-tight text-gray-200 sm:text-lg md:text-xl">
+              Finance — Powered by xAI
             </span>
           </h1>
+          <div className="flex max-w-xl flex-col items-center gap-1 text-center">
+            <p className="text-base text-gray-400 sm:text-lg">No atoms moved.</p>
+            <p className="text-base sm:text-lg md:text-xl">
+              <span className="text-gray-200">Just </span>
+              <span className="font-bold" style={{ color: "var(--xf-gain-green)" }}>
+                gains earned
+              </span>
+              <span className="font-bold italic" style={{ color: "var(--xf-gain-green)" }}>
+                {" "}
+                growth
+              </span>
+            </p>
+          </div>
           <p className="max-w-2xl text-lg text-gray-300 sm:text-xl">
             Explore as a guest, sign in with Google or X for an approved session, or reach us for a demo and onboarding.
           </p>
@@ -170,19 +178,21 @@ export function HomeLanding({
           {googleLoginHref ? (
             <a
               href={googleLoginHref}
-              className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-center text-lg font-bold text-gray-900 shadow-lg shadow-black/20 transition hover:bg-gray-100"
+              className="inline-flex items-center justify-center gap-3 rounded-full bg-white px-8 py-4 text-center text-lg font-bold text-gray-900 shadow-lg shadow-black/20 transition hover:bg-gray-100"
             >
+              <GoogleGIcon size={22} />
               Sign in with Google
             </a>
           ) : null}
           <Link
             href={googleLoginHref ? xOAuthHref : loginHref}
-            className={`inline-flex items-center justify-center rounded-full px-8 py-4 text-center text-lg font-bold shadow-lg transition ${
+            className={`inline-flex items-center justify-center gap-3 rounded-full px-8 py-4 text-center text-lg font-bold shadow-lg transition ${
               googleLoginHref
                 ? "border-2 border-emerald-500/80 bg-transparent text-emerald-100 hover:border-emerald-400 hover:bg-emerald-500/10"
                 : "bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-400"
             }`}
           >
+            <XLogoIcon size={22} />
             Sign in with X
           </Link>
         </div>
