@@ -32,6 +32,23 @@ function runPostSeedXaiHelloVerify() {
   }
 }
 
+function runPostSeedXaiRagVerify() {
+  const s = String(process.env.SKIP_XAI_POST_SEED_RAG_VERIFY ?? "").toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") {
+    console.log("[seed:admin] SKIP_XAI_POST_SEED_RAG_VERIFY set — skipping xAI RAG collection verify");
+    return;
+  }
+  const script = join(SEED_SCRIPT_DIR, "verify-xai-seed-rag.mjs");
+  const r = spawnSync(process.execPath, [script], {
+    cwd: REPO_ROOT,
+    env: process.env,
+    stdio: "inherit"
+  });
+  if (r.status !== 0) {
+    process.exit(r.status ?? 1);
+  }
+}
+
 /** Env for post-seed TS sync children: same Mongo DB as this `seed:admin` run (`resolveAdminSeedDbName`). */
 function childEnvWithSeedParentMongoDb() {
   return {
@@ -734,6 +751,7 @@ async function seed() {
     }
   });
   console.log(`[seed:admin] wrote concise report to ${ADMIN_LOG_PATH}`);
+  runPostSeedXaiRagVerify();
   runPostSeedXaiHelloVerify();
 }
 

@@ -45,6 +45,7 @@ What it does:
 - upserts admin + tenant bootstrap
 - runs xPersona sync from `atx-rag-collection/xpersonas` unless `SKIP_SEED_XPERSONAS=1`
 - uploads RAG sources to xAI (when keys are present) unless `SKIP_SEED_XAI_RAG_INGEST=1`
+- runs strict xAI seeded RAG collection verification unless `SKIP_XAI_POST_SEED_RAG_VERIFY=1`
 - runs xAI hello verification unless `SKIP_XAI_POST_SEED_VERIFY=1`
 
 ## 4) Run persona and RAG sync explicitly (optional)
@@ -53,6 +54,7 @@ Use these when you need targeted re-sync without full bootstrap:
 
 - xPersonas only: `npm run seed:xpersonas`
 - options strategy preferences: `npm run seed:options-strategy-prefs`
+- seeded RAG collections verification only: `npm run verify:xai-seed-rag`
 
 RAG upload path used by `seed:admin`:
 
