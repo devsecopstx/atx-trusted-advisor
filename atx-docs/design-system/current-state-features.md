@@ -12,6 +12,25 @@ Scope: Kotlin/Spring Boot service that acts as a scheduler/worker and thin HTTP 
 - Observability: Micrometer (GMP scrape) + OpenTelemetry (OTLP) stubs
 - HTTP: REST controllers (health, portfolio, admin, strategy, RAG)
 
+## Frontend tech stack summary (core app)
+
+Companion frontend for this backend runs in the same monorepo as the Next.js core app.
+
+- Framework: Next.js App Router (`src/app/*`)
+- Language/runtime: TypeScript + React 19
+- Styling: Tailwind CSS + brand design tokens (`atx-docs/design-system/atxfinance-brand-kit.css`, `--xf-*`)
+- Validation and typing: Zod + strict TypeScript checks (`npm run typecheck`)
+- Docs/API UX: OpenAPI inventory endpoint (`GET /api/openapi`) + admin Swagger surface (`/admin/api-docs`)
+- Data/auth integration: session-cookie auth (`xf_core_session`), Mongo-backed APIs via Next route handlers under `src/app/api/*`, optional BFF proxying to Spring backend with `ATXFINANCE_BACKEND_ORIGIN`
+- Tooling gates: ESLint, Vitest, CI gate (`npm run ci:gate`)
+
+Frontend quick references:
+
+- App + API implementation: `src/app/`
+- Shared modules/services: `src/modules/`
+- Dev setup guide: `atx-docs/guides/local-development.md`
+- API inventory guide: `atx-docs/guides/api-endpoints.md`
+
 
 ## 1) Boot & Configuration
 
