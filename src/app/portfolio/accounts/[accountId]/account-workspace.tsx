@@ -295,16 +295,18 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
         </p>
       ) : null}
 
-      <section className="portfolio-panel">
-        <h2 className="portfolio-panel__title">Account details</h2>
-        <form onSubmit={saveAccount} className="stack-gap" style={{ gap: "1.1rem" }}>
+      <section className="portfolio-edit-account-card xf-noise-overlay" aria-labelledby="edit-account-card-title">
+        <h2 id="edit-account-card-title" className="portfolio-edit-account-card__title">
+          Edit account
+        </h2>
+        <form onSubmit={saveAccount} className="portfolio-edit-account-form">
           <div className="portfolio-edit-field">
             <label className="portfolio-edit-field__label" htmlFor="acct-display-name">
               Account name
             </label>
             <input
               id="acct-display-name"
-              className="crud-input"
+              className="crud-input portfolio-edit-account-card__input"
               value={acctName}
               onChange={(e) => setAcctName(e.target.value)}
               required
@@ -318,30 +320,36 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
             </label>
             <input
               id="acct-ext-ref"
-              className="crud-input"
+              className="crud-input portfolio-edit-account-card__input"
               value={extRef}
               onChange={(e) => setExtRef(e.target.value)}
               required
               autoComplete="off"
             />
-            <p className="portfolio-edit-field__hint">Match broker account ID for CSV imports and reconciliation.</p>
+            <p className="portfolio-edit-field__hint">Match your broker account ID for CSV imports.</p>
           </div>
 
           <div className="portfolio-edit-field">
-            <span className="portfolio-edit-field__label">Broker type</span>
-            <select className="crud-input portfolio-edit-disabled" disabled value={account.type} aria-readonly>
+            <span className="portfolio-edit-field__label" id="acct-broker-type-label">
+              Broker type
+            </span>
+            <select
+              className="crud-input portfolio-edit-account-card__input portfolio-edit-disabled"
+              disabled
+              value={account.type}
+              aria-labelledby="acct-broker-type-label"
+              aria-readonly
+            >
               <option value={account.type}>{formatBrokerType(account.type)}</option>
             </select>
-            <p className="portfolio-edit-field__hint">
-              Shown on My accounts. Changing catalog entries is an admin setup task.
-            </p>
+            <p className="portfolio-edit-field__hint">Set when the account was created. Contact support to change.</p>
           </div>
 
           <div className="portfolio-edit-field">
             <label className="portfolio-edit-field__label" htmlFor="acct-cash">
-              Initial balance (custodian cash)
+              Initial balance
             </label>
-            <div className="portfolio-edit-field__prefix">
+            <div className="portfolio-edit-field__prefix portfolio-edit-account-card__input">
               <span>$</span>
               <input
                 id="acct-cash"
@@ -351,15 +359,17 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                 value={cashBalance}
                 onChange={(e) => setCashBalance(e.target.value)}
                 required
+                aria-describedby="acct-cash-hint"
               />
             </div>
+            <p id="acct-cash-hint" className="portfolio-edit-field__hint">
+              Custodian cash for this account (book-level).
+            </p>
           </div>
 
-          <fieldset className="portfolio-edit-field" style={{ border: "none", padding: 0, margin: 0 }}>
-            <legend className="portfolio-edit-field__label" style={{ marginBottom: "0.4rem" }}>
-              Risk level
-            </legend>
-            <div className="portfolio-risk-row" role="group" aria-label="Risk level">
+          <fieldset className="portfolio-edit-fieldset">
+            <legend className="portfolio-edit-field__label">Risk level</legend>
+            <div className="portfolio-risk-row portfolio-risk-row--legacy" role="group" aria-label="Risk level">
               {RISK_LEVEL_OPTIONS.map((opt) => (
                 <button
                   key={opt.riskProfile}
@@ -381,21 +391,21 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                   {opt.label}
                 </button>
               ))}
+            </div>
+            <div className="portfolio-edit-clear">
               <button
                 type="button"
-                className={`portfolio-risk-btn${riskProfile === null ? " portfolio-risk-btn--active" : ""}`}
+                className={`portfolio-edit-clear__btn${riskProfile === null ? " portfolio-edit-clear__btn--active" : ""}`}
                 onClick={() => setRiskProfile(null)}
               >
-                Not set
+                Clear risk level
               </button>
             </div>
           </fieldset>
 
-          <fieldset className="portfolio-edit-field" style={{ border: "none", padding: 0, margin: 0 }}>
-            <legend className="portfolio-edit-field__label" style={{ marginBottom: "0.4rem" }}>
-              Investment strategy
-            </legend>
-            <div className="portfolio-strategy-grid" role="group" aria-label="Investment strategy">
+          <fieldset className="portfolio-edit-fieldset">
+            <legend className="portfolio-edit-field__label">Investment strategy</legend>
+            <div className="portfolio-strategy-grid portfolio-strategy-grid--legacy" role="group" aria-label="Investment strategy">
               {INVESTMENT_STRATEGY_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -407,36 +417,39 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                   <p className="portfolio-strategy-card__desc">{opt.description}</p>
                 </button>
               ))}
+            </div>
+            <div className="portfolio-edit-clear">
               <button
                 type="button"
-                className={`portfolio-strategy-card${outlook === null ? " portfolio-strategy-card--active" : ""}`}
+                className={`portfolio-edit-clear__btn${outlook === null ? " portfolio-edit-clear__btn--active" : ""}`}
                 onClick={() => setOutlook(null)}
               >
-                <p className="portfolio-strategy-card__title">Not set</p>
-                <p className="portfolio-strategy-card__desc">Clear strategy label for this account.</p>
+                Clear strategy
               </button>
             </div>
           </fieldset>
 
-          <p className="status-text" style={{ fontSize: "0.78rem", margin: 0 }}>
-            {account.isDefault ? "This is your default account for quick actions." : null}
-          </p>
+          {account.isDefault ? (
+            <p className="portfolio-edit-account-card__note">This is your default account for quick actions.</p>
+          ) : null}
 
-          <div className="portfolio-form-actions">
-            <Link className="cta cta-secondary" href="/portfolio">
+          <div className="portfolio-form-actions portfolio-form-actions--edit-account">
+            <Link className="cta cta-secondary portfolio-form-actions__cancel" href="/portfolio">
               Cancel
             </Link>
-            <button type="submit" className="cta cta-primary" disabled={pending}>
+            <button type="submit" className="cta cta-primary portfolio-form-actions__submit" disabled={pending}>
               {pending ? "Saving…" : "Update account"}
             </button>
           </div>
         </form>
       </section>
 
-      <section className="portfolio-panel">
-        <h2 className="portfolio-panel__title">Holdings</h2>
+      <section className="portfolio-edit-holdings-card xf-noise-overlay" aria-labelledby="edit-holdings-title">
+        <h2 id="edit-holdings-title" className="portfolio-edit-account-card__title portfolio-edit-account-card__title--section">
+          Holdings
+        </h2>
         {positions.length === 0 ? (
-          <p className="status-text">No positions yet. Add one below.</p>
+          <p className="portfolio-edit-holdings-card__empty">No positions yet — add stock, options, or cash below.</p>
         ) : (
           <div className="crud-table-wrap">
             <table className="crud-table">
@@ -474,12 +487,13 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
           </div>
         )}
 
-        <h3 className="portfolio-panel__subtitle">Add or update (upsert)</h3>
-        <form onSubmit={addHolding} className="stack-gap">
-          <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column", maxWidth: "12rem" }}>
-            <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Instrument type</span>
+        <div className="portfolio-edit-holdings-card__divider" aria-hidden />
+        <h3 className="portfolio-edit-holdings-card__subtitle">Add or update position</h3>
+        <form onSubmit={addHolding} className="stack-gap portfolio-edit-holdings-form">
+          <label className="portfolio-edit-holdings-field">
+            <span className="portfolio-edit-holdings-field__label">Instrument type</span>
             <select
-              className="crud-input"
+              className="crud-input portfolio-edit-account-card__input"
               value={holdingType}
               onChange={(e) => setHoldingType(e.target.value as PositionType)}
               aria-label="Holding type"

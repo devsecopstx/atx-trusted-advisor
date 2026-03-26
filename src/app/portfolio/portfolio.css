@@ -777,10 +777,149 @@
   margin-top: 0.5rem;
 }
 
-/* ── Edit account (legacy-shaped form) ─────────────────────────── */
+/* ── Edit account (legacy-shaped form, xChat surfaces) ─────────── */
 
 .portfolio-account-page--edit {
-  width: min(640px, 100%);
+  width: min(560px, 100%);
+}
+
+.portfolio-hero--account-edit .portfolio-hero__title {
+  font-size: clamp(1.25rem, 3.5vw, 1.65rem);
+}
+
+.portfolio-edit-account-card,
+.portfolio-edit-holdings-card {
+  position: relative;
+  border-radius: var(--xf-radius-lg);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--xf-surface-700) 92%, transparent),
+    color-mix(in srgb, var(--xf-bg-900) 96%, transparent)
+  );
+  box-shadow: var(--xf-shadow-soft);
+  padding: 1.15rem 1.2rem 1.25rem;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .portfolio-edit-account-card,
+  .portfolio-edit-holdings-card {
+    padding: 1.35rem 1.45rem 1.5rem;
+  }
+}
+
+.portfolio-edit-account-card__title {
+  margin: 0 0 1.1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+}
+
+.portfolio-edit-account-card__title--section {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.65rem;
+  font-size: 0.95rem;
+}
+
+.portfolio-edit-account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.portfolio-edit-account-card__input {
+  border-radius: var(--xf-radius-sm);
+}
+
+.portfolio-edit-account-card__note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--xf-text-300);
+  line-height: 1.45;
+}
+
+.portfolio-edit-fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.portfolio-edit-fieldset .portfolio-edit-field__label {
+  margin-bottom: 0;
+}
+
+.portfolio-edit-clear {
+  margin-top: 0.15rem;
+}
+
+.portfolio-edit-clear__btn {
+  padding: 0.35rem 0.5rem;
+  margin: 0;
+  border: none;
+  border-radius: var(--xf-radius-sm);
+  background: transparent;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--xf-text-300);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  transition: color 120ms ease;
+}
+
+.portfolio-edit-clear__btn:hover {
+  color: var(--xf-gain-green);
+}
+
+.portfolio-edit-clear__btn--active {
+  color: var(--xf-gain-green);
+  text-decoration: none;
+}
+
+.portfolio-edit-holdings-card__empty {
+  margin: 0 0 0.25rem;
+  font-size: 0.86rem;
+  color: var(--xf-text-300);
+  line-height: 1.45;
+}
+
+.portfolio-edit-holdings-card__divider {
+  height: 0;
+  margin: 1rem 0 0.85rem;
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.portfolio-edit-holdings-card__subtitle {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--xf-text-200);
+}
+
+.portfolio-edit-holdings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-width: 12rem;
+}
+
+.portfolio-edit-holdings-field__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xf-text-300);
+}
+
+.portfolio-edit-holdings-form {
+  gap: 0.85rem;
 }
 
 .portfolio-edit-field {
@@ -839,6 +978,18 @@
   gap: 0.5rem;
 }
 
+.portfolio-risk-row--legacy {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (max-width: 420px) {
+  .portfolio-risk-row--legacy {
+    grid-template-columns: 1fr;
+  }
+}
+
 .portfolio-risk-btn {
   flex: 1 1 5.5rem;
   display: flex;
@@ -846,14 +997,14 @@
   justify-content: center;
   gap: 0.4rem;
   padding: 0.55rem 0.65rem;
-  border-radius: var(--xf-radius-sm);
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  border-radius: var(--xf-radius-md);
+  border: 2px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
   background: color-mix(in srgb, var(--xf-bg-900) 35%, transparent);
   color: var(--xf-text-200);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 
 .portfolio-risk-btn:hover {
@@ -861,9 +1012,10 @@
 }
 
 .portfolio-risk-btn--active {
-  border-color: color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
-  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 65%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
   color: var(--xf-text-100);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 18%, transparent);
 }
 
 .portfolio-risk-btn__dot {
@@ -878,16 +1030,28 @@
   gap: 0.55rem;
 }
 
+.portfolio-strategy-grid--legacy {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+@media (max-width: 380px) {
+  .portfolio-strategy-grid--legacy {
+    grid-template-columns: 1fr;
+  }
+}
+
 .portfolio-strategy-card {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 0.65rem 0.75rem;
-  border-radius: var(--xf-radius-sm);
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  padding: 0.72rem 0.8rem;
+  min-height: 4.25rem;
+  border-radius: var(--xf-radius-md);
+  border: 2px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
   background: color-mix(in srgb, var(--xf-bg-900) 30%, transparent);
   cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
 
 .portfolio-strategy-card:hover {
@@ -895,8 +1059,9 @@
 }
 
 .portfolio-strategy-card--active {
-  border-color: color-mix(in srgb, var(--xf-gain-green) 50%, transparent);
-  background: color-mix(in srgb, var(--xf-gain-green) 8%, transparent);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 58%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 15%, transparent);
 }
 
 .portfolio-strategy-card__title {
@@ -922,6 +1087,36 @@
 
 .portfolio-form-actions .cta {
   min-width: 8rem;
+}
+
+.portfolio-form-actions--edit-account {
+  margin-top: 0.35rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+.portfolio-form-actions--edit-account .cta {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+  text-align: center;
+  padding: 0.65rem 1rem;
+  border-radius: var(--xf-radius-md);
+  font-weight: 700;
+}
+
+@media (min-width: 480px) {
+  .portfolio-form-actions--edit-account .portfolio-form-actions__cancel {
+    flex: 0 1 42%;
+    max-width: 11rem;
+  }
+
+  .portfolio-form-actions--edit-account .portfolio-form-actions__submit {
+    flex: 1 1 50%;
+  }
 }
 
 .portfolio-edit-disabled {

@@ -15,6 +15,8 @@ import {
     type ApprovedUserListItem,
     type BrokerCatalogEntry,
     type DeployNoteConfig,
+    type OptionsStrategyPreference,
+    type OptionsStrategyPreferenceSummary,
     type Portfolio,
     type PortfolioAlert,
     type PortfolioDeliveryChannel,
@@ -47,11 +49,13 @@ const collections = {
   recommendations: "portfolio_recommendations",
   portfolioAlerts: "portfolio_alerts",
   portfolioDeliveryChannels: "portfolio_delivery_channels",
-  brokerCatalog: "admin_broker_catalog"
+  brokerCatalog: "admin_broker_catalog",
+  optionsStrategyPreferences: "options_strategy_preferences"
 } as const;
 
 let ensurePortfolioIndexesPromise: Promise<void> | null = null;
 let ensureBrokerCatalogIndexesPromise: Promise<void> | null = null;
+let ensureOptionsStrategyPreferenceIndexesPromise: Promise<void> | null = null;
 let ensureAccessRequestIndexesPromise: Promise<void> | null = null;
 
 const ACCESS_REQUEST_ACTIONABLE_USER_ROLE_UNIQ =
@@ -66,6 +70,8 @@ export class AccessRequestDuplicatePendingError extends Error {
 }
 
 const BROKER_CATALOG_TYPE_RE = /^[a-z][a-z0-9_]{0,31}$/;
+
+const OPTIONS_STRATEGY_DESCRIPTION_MAX_LEN = 512_000;
 
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 /** Default broker bucket on new portfolios for future trader cohort grouping. */
@@ -1864,6 +1870,86 @@ export async function adminDeleteBrokerCatalogEntry(id: string): Promise<boolean
   const db = await getDb();
   const res = await db.collection<BrokerCatalogEntry>(collections.brokerCatalog).deleteOne({ _id: new ObjectId(id) });
   return (res.deletedCount ?? 0) > 0;
+}
+
+async function ensureOptionsStrategyPreferenceIndexes(): Promise<void> {
+  if (!ensureOptionsStrategyPreferenceIndexesPromise) {
+    ensureOptionsStrategyPreferenceIndexesPromise = (async () => {
+      const db = await getDb();
+      await db.collection<OptionsStrategyPreference>(collections.optionsStrategyPreferences).createIndex(
+        { slug: 1 },
+        { name: "uniq_options_strategy_preferences_slug", unique: true }
+      );
+    })();
+  }
+  await ensureOptionsStrategyPreferenceIndexesPromise;
+}
+
+export async function adminListOptionsStrategyPreferenceSummaries(): Promise<OptionsStrategyPreferenceSummary[]> {
+  await ensureOptionsStrategyPreferenceIndexes();
+  const db = await getDb();
+  const rows = await db
+    .collection<OptionsStrategyPreference>(collections.optionsStrategyPreferences)
+    .find(
+      {},
+      { projection: { slug: 1, name: 1, sourceRelPath: 1, createdAt: 1, updatedAt: 1 } }
+    )
+    .sort({ slug: 1 })
+    .toArray();
+  return rows as OptionsStrategyPreferenceSummary[];
+}
+
+export async function adminGetOptionsStrategyPreferenceById(id: string): Promise<OptionsStrategyPreference | null> {
+  await ensureOptionsStrategyPreferenceIndexes();
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+  const db = await getDb();
+  return db
+    .collection<OptionsStrategyPreference>(collections.optionsStrategyPreferences)
+    .findOne({ _id: new ObjectId(id) });
+}
+
+export async function adminUpdateOptionsStrategyPreference(input: {
+  id: string;
+  patch: Partial<Pick<OptionsStrategyPreference, "name" | "description">>;
+}): Promise<OptionsStrategyPreference | null> {
+  await ensureOptionsStrategyPreferenceIndexes();
+  if (!ObjectId.isValid(input.id)) {
+    return null;
+  }
+  const db = await getDb();
+  const now = new Date();
+  const $set: Record<string, unknown> = { updatedAt: now };
+  if (input.patch.name !== undefined) {
+    const n = input.patch.name.trim().slice(0, 128);
+    if (!n) {
+      return null;
+    }
+    $set.name = n;
+  }
+  if (input.patch.description !== undefined) {
+    const d = input.patch.description;
+    if (d.length > OPTIONS_STRATEGY_DESCRIPTION_MAX_LEN) {
+      return null;
+    }
+    $set.description = d;
+  }
+  if (Object.keys($set).length <= 1) {
+    return db
+      .collection<OptionsStrategyPreference>(collections.optionsStrategyPreferences)
+      .findOne({ _id: new ObjectId(input.id) });
+  }
+  const res = await db.collection<OptionsStrategyPreference>(collections.optionsStrategyPreferences).updateOne(
+    { _id: new ObjectId(input.id) },
+    { $set }
+  );
+  if ((res.matchedCount ?? 0) < 1) {
+    return null;
+  }
+  return db
+    .collection<OptionsStrategyPreference>(collections.optionsStrategyPreferences)
+    .findOne({ _id: new ObjectId(input.id) });
 }
 
 export async function getPortfolioWatchlist(input: {

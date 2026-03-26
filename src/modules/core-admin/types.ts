@@ -187,6 +187,29 @@ export type BrokerCatalogEntry = {
   updatedAt: Date;
 };
 
+/**
+ * Admin-editable copy of options strategy docs (seeded from `atx-rag-collection/options-strategy/*`).
+ * `slug` matches the subdirectory name and stays stable; `name` defaults to the markdown filename stem.
+ */
+export type OptionsStrategyPreference = {
+  _id?: ObjectId;
+  slug: string;
+  name: string;
+  /** Full markdown text (RAG-aligned strategy body). */
+  description: string;
+  /** Repo-relative path last written by seed sync (e.g. `wheel/wheel.md`). */
+  sourceRelPath?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type OptionsStrategyPreferenceSummary = Pick<
+  OptionsStrategyPreference,
+  "slug" | "name" | "sourceRelPath" | "createdAt" | "updatedAt"
+> & {
+  _id: ObjectId;
+};
+
 export type Portfolio = {
   _id?: ObjectId;
   tenantId?: ObjectId;

@@ -122,6 +122,13 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         description: "Create and edit xChat personas, models, collections, and default scope presets."
       },
       {
+        href: "/admin/options-strategy-preferences",
+        icon: "strategy",
+        title: "Options strategy prefs",
+        description:
+          "Per-strategy markdown documents seeded from atx-rag-collection/options-strategy; edit names and bodies after seed:admin."
+      },
+      {
         href: "/admin/rag-files",
         icon: "book",
         title: "RAG collections",

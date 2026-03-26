@@ -12,6 +12,10 @@ import { fileURLToPath } from "node:url";
  * distinct database until ops updates `MONGODB_URI` / `MONGODB_DB_NAME` in Secret Manager. Set
  * `ADMIN_SEED_DB_VERSION_SUFFIX=off` to keep the legacy single-DB name for local/support.
  *
+ * **Next.js `getDb()`** uses `resolveDefaultMongoDatabaseName()` in `src/lib/env.ts` (no version suffix). Standalone
+ * TS disk→Mongo sync scripts use that default; `seed:admin` post-steps set **`SEED_PARENT_MONGODB_DB_NAME`** to this
+ * admin DB so child processes match the main seed transaction — see `scripts/lib/sync-target-mongo-db.ts`.
+ *
  * When `MONGODB_DB_NAME` is unset, `ATX_DEPLOY_TARGET` or `DEPLOY_TARGET` may be `stage`, `deploy`, or `prod`
  * (case-insensitive) to default to `atxfinance-<target>` — aligned with `resolveDefaultMongoDatabaseName()` in `src/lib/env.ts`.
  */

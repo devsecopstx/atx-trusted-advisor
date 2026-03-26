@@ -138,7 +138,7 @@ export default async function PortfolioAccountPage({
 
       <div className="xchat-body portfolio-page-body">
         <div className="portfolio-account-page portfolio-account-page--edit">
-          <header className="portfolio-hero xf-noise-overlay">
+          <header className="portfolio-hero portfolio-hero--account-edit xf-noise-overlay">
             <p className="portfolio-hero__eyebrow">
               <Link className="portfolio-breadcrumb-link" href="/portfolio">
                 Portfolio
@@ -146,10 +146,10 @@ export default async function PortfolioAccountPage({
               <span aria-hidden> · </span>
               <span>Edit account</span>
             </p>
-            <h1 className="portfolio-hero__title">Edit account</h1>
+            <h1 className="portfolio-hero__title">{account.name}</h1>
             <p className="portfolio-hero__sub">
-              Update display name, reference, cash balance, risk stance, and investment strategy. Holdings below use
-              the same upsert rules as before.
+              Adjust labels, cash, and how you want this book characterized. Save with <strong>Update account</strong>;
+              add or remove positions in the holdings card below.
             </p>
           </header>
 

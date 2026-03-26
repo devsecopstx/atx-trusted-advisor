@@ -30,6 +30,14 @@ function runPostSeedXaiHelloVerify() {
   }
 }
 
+/** Env for post-seed TS sync children: same Mongo DB as this `seed:admin` run (`resolveAdminSeedDbName`). */
+function childEnvWithSeedParentMongoDb() {
+  return {
+    ...process.env,
+    SEED_PARENT_MONGODB_DB_NAME: resolveAdminSeedDbName()
+  };
+}
+
 /** Upsert YAML/MD xPersona specs from `atx-rag-collection/xpersonas` into `xchat_personas` (separate from xAI collection ingest). */
 function runPostSeedXpersonasFromDisk() {
   const s = String(process.env.SKIP_SEED_XPERSONAS ?? "").toLowerCase();
@@ -41,12 +49,38 @@ function runPostSeedXpersonasFromDisk() {
   console.log("[seed:admin] syncing xPersonas from atx-rag-collection/xpersonas → Mongo (npm run seed:xpersonas)…");
   const r = spawnSync(process.execPath, ["--import", "tsx", script], {
     cwd: REPO_ROOT,
-    env: process.env,
+    env: childEnvWithSeedParentMongoDb(),
     stdio: "inherit"
   });
   if (r.status !== 0 && r.status != null) {
     console.error(
       "[seed:admin] seed:xpersonas failed — fix specs under atx-rag-collection/xpersonas or set SKIP_SEED_XPERSONAS=1"
+    );
+    process.exit(r.status ?? 1);
+  }
+}
+
+/** Upsert options strategy preference docs from `atx-rag-collection/options-strategy` (one row per subfolder .md). */
+function runPostSeedOptionsStrategyPreferencesFromDisk() {
+  const s = String(process.env.SKIP_SEED_OPTIONS_STRATEGY_PREFS ?? "").toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") {
+    console.log(
+      "[seed:admin] SKIP_SEED_OPTIONS_STRATEGY_PREFS set — skipping disk → Mongo options_strategy_preferences upsert"
+    );
+    return;
+  }
+  const script = join(SEED_SCRIPT_DIR, "sync-options-strategy-preferences-from-disk.ts");
+  console.log(
+    "[seed:admin] syncing options strategy preferences from atx-rag-collection/options-strategy → Mongo…"
+  );
+  const r = spawnSync(process.execPath, ["--import", "tsx", script], {
+    cwd: REPO_ROOT,
+    env: childEnvWithSeedParentMongoDb(),
+    stdio: "inherit"
+  });
+  if (r.status !== 0 && r.status != null) {
+    console.error(
+      "[seed:admin] options-strategy-prefs sync failed — fix markdown under atx-rag-collection/options-strategy or set SKIP_SEED_OPTIONS_STRATEGY_PREFS=1"
     );
     process.exit(r.status ?? 1);
   }
@@ -208,6 +242,10 @@ async function ensureIndexes(db) {
         name: "uniq_admin_access_requests_user_requestedRole_actionable",
         partialFilterExpression: { status: { $in: ["new", "triaged", "pending"] } }
       }
+    ),
+    db.collection("options_strategy_preferences").createIndex(
+      { slug: 1 },
+      { unique: true, name: "uniq_options_strategy_preferences_slug" }
     )
   ]);
 }
@@ -560,7 +598,7 @@ async function seed() {
       mongo: {
         database: DB_NAME,
         accessRequestInserted,
-        note: "Upserted core_tenants, xchat_personas (Super-Agent), core_users, core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; then invokes seed:xpersonas from atx-rag-collection/xpersonas unless SKIP_SEED_XPERSONAS. See accessRequestInserted for admin_access_requests."
+        note: "Upserted core_tenants, xchat_personas (Super-Agent), core_users, core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS) and options_strategy_preferences from atx-rag-collection/options-strategy (unless SKIP_SEED_OPTIONS_STRATEGY_PREFS). See accessRequestInserted for admin_access_requests."
       }
     };
 
@@ -573,6 +611,9 @@ async function seed() {
         String(process.env.SKIP_SEED_XPERSONAS ?? "").match(/^(1|true|yes)$/i)
           ? "xPersonas from disk:       skipped (SKIP_SEED_XPERSONAS)"
           : "xPersonas from disk:       seed:xpersonas (atx-rag-collection/xpersonas → xchat_personas) after this summary",
+        String(process.env.SKIP_SEED_OPTIONS_STRATEGY_PREFS ?? "").match(/^(1|true|yes)$/i)
+          ? "Options strategy prefs:    skipped (SKIP_SEED_OPTIONS_STRATEGY_PREFS)"
+          : "Options strategy prefs:    atx-rag-collection/options-strategy → options_strategy_preferences",
         `                             admin_access_requests: ${accessRequestInserted ? "inserted approved paper row" : "already present — skipped"}`,
         `ATX_INSTANCE_COLLECTION_ROOT (effective): ${seedTenant.atxInstanceCollectionRoot || "(none)"}`,
         `  .env override:             ${envAtxRootOverride || "(unset — computed from ATX_DEPLOY_TARGET / site_name / tenant_defaults)"}`,
@@ -603,6 +644,7 @@ async function seed() {
     await client.close();
   }
   runPostSeedXpersonasFromDisk();
+  runPostSeedOptionsStrategyPreferencesFromDisk();
   runPostSeedXaiHelloVerify();
 }
 

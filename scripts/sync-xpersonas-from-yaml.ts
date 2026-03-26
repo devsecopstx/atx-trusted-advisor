@@ -31,12 +31,13 @@ import {
     validateParsedPersonaDoc
 } from "@/modules/xchat/persona-yaml-derived";
 
-import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+import { resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
 import {
     collectionIdFromEntry,
     collectionNameFromEntry,
     managementListCollectionsRaw
 } from "./lib/seed-xai-rag-ingest.mjs";
+import { formatSyncTargetMongoDatabaseLogSuffix, resolveSyncTargetMongoDatabaseName } from "./lib/sync-target-mongo-db";
 import { loadSeedTenantContext } from "./lib/tenant-defaults-seed.mjs";
 import { collectPersonaSpecFiles, loadPersonaDocFromFile } from "./lib/xpersonas-disk";
 
@@ -354,7 +355,8 @@ async function main(): Promise<void> {
   }
 
   const mongoUri = resolveMongoUri();
-  const dbName = resolveAdminSeedDbName();
+  const dbName = resolveSyncTargetMongoDatabaseName();
+  console.log(`[seed:xpersonas] Mongo database: ${dbName}${formatSyncTargetMongoDatabaseLogSuffix()}`);
   const client = new MongoClient(mongoUri);
   await client.connect();
   const personasCol = client.db(dbName).collection("xchat_personas");
