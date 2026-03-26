@@ -246,13 +246,15 @@ Use this when picking a **Cursor Cloud / Composer persona** or finding a **workf
 
 ### Agent personas (`.cursor/agents/`)
 
-YAML files define **narrow roles** — no secrets; operational steps stay in this doc and **`AGENTS.md`**.
+Extensionless files under **`.cursor/agents/`** define **narrow roles** — no secrets; operational steps stay in this doc and **`AGENTS.md`**.
 
 | File | Intent |
 |------|--------|
-| **`backend.yaml`** | Kotlin **atxfinance-backend**, BFF migration, Spring HTTP parity, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
-| **`reviewer.yaml`** | Pre-merge **review** — `npm run lint`, `typecheck`, `test`, `ci:gate`; scope to changed files |
-| **`frontend.yaml`** | **UI/UX + branding** — `src/app/**`, `atx-docs/design-system/**`, tokens/a11y; avoid unrelated API/domain edits |
+| **`backend`** | Kotlin **atxfinance-backend**, BFF migration, Spring HTTP parity, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
+| **`review`** | Pre-merge **review** — `npm run lint`, `typecheck`, `test`, `ci:gate`; scope to changed files |
+| **`frontend`** | **UI/UX** — `src/app/**`, tokens/a11y; avoid unrelated API/domain edits |
+| **`branding`** | Full-stack feature + branding — design system, OAuth CTAs, APIs only when needed for UI |
+| **`sre`**, **`marketing`** | Ops / GTM copy — see **`.cursor/agents/README.md`** |
 
 Full detail and commit-message convention (**`chore: aTx⚡ …`**) — **`.cursor/agents/README.md`**.
 

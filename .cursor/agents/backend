@@ -1,5 +1,7 @@
-# .cursor/agents/backend.yaml
+# .cursor/agents/backend
+id: backend
 name: backend
+worktree: /worktrees/branding
 description: |
   Backend work for aTx Finance — Next.js API routes & modules, MongoDB, Kotlin Spring
   (`services/atxfinance-backend`), Yahoo/strategy integrations, strong TypeScript.
@@ -12,12 +14,12 @@ INSTRUCTIONS:
   - Run `./gradlew test` in `services/atxfinance-backend` when Kotlin or BFF proxy routes change.
   - Keep `bff-proxy-routes` and Next routes aligned per `AGENTS.md`.
 
-setup: test -f .cursor/agents/backend.yaml && npm install
+setup: test -f .cursor/agents/backend && npm install
 
 env:
   NODE_OPTIONS: "--max-old-space-size=8192"
 
-model: grok-2-mini
+model: grok-4-20
 
 system_prompt: |
   You are a senior backend engineer on the aTx Finance monorepo (Next.js App Router,

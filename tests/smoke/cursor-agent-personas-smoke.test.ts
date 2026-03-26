@@ -3,12 +3,12 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const AGENT_FILES = [
-  ".cursor/agents/frontend.yaml",
-  ".cursor/agents/backend.yaml",
-  ".cursor/agents/reviewer.yaml",
-  ".cursor/agents/marketing.yaml",
-  ".cursor/agents/feature-branding.yaml",
-  ".cursor/agents/sre-ops-admin.yaml"
+  ".cursor/agents/frontend",
+  ".cursor/agents/backend",
+  ".cursor/agents/review",
+  ".cursor/agents/marketing",
+  ".cursor/agents/branding",
+  ".cursor/agents/sre"
 ] as const;
 
 describe("cursor agent persona config sanity", () => {
@@ -21,7 +21,7 @@ describe("cursor agent persona config sanity", () => {
     }
   });
 
-  it("does not overwrite persona yaml files during worktree setup", () => {
+  it("does not overwrite persona agent files during worktree setup", () => {
     const worktreesPath = resolve(process.cwd(), ".cursor/worktrees.json");
     const raw = readFileSync(worktreesPath, "utf8");
     const parsed = JSON.parse(raw) as { worktrees?: Array<{ setup?: string }> };

@@ -54,8 +54,8 @@
     {
       "name": "sre-ops-admin",
       "branch": "main",
-      "description": "SRE / ops — persona sre-ops-admin.yaml",
-      "setup": "test -f .cursor/agents/sre-ops-admin.yaml && npm install"
+      "description": "SRE / ops — persona `.cursor/agents/sre`",
+      "setup": "test -f .cursor/agents/sre && npm install"
     }
   ]
 }

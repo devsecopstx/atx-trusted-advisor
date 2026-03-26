@@ -1,6 +1,6 @@
-# .cursor/agents/sre-ops-admin.yaml
-id: sre-ops-admin
-name: sre-ops-admin
+# .cursor/agents/sre
+id: sre
+name: sre
 worktree: /main-repo
 
 description: |
@@ -15,7 +15,7 @@ INSTRUCTIONS:
   - Call out cost and IAM blast radius for Cloud Run, Pub/Sub, and GitHub Actions changes.
   - Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
-setup: test -f .cursor/agents/sre-ops-admin.yaml && npm install
+setup: test -f .cursor/agents/sre && npm install
 
 model: grok-2-mini
 

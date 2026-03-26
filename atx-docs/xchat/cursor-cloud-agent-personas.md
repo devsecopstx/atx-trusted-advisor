@@ -6,15 +6,18 @@ Define a stable, repo-local baseline for atxfinance multi-agent execution in Cur
 
 ## Persona Files
 
-- `.cursor/agents/reviewer.yaml`
-- `.cursor/agents/backend.yaml`
-- `.cursor/agents/frontend.yaml`
+See **`.cursor/agents/README.md`** for the full table. Core paths (extensionless files):
+
+- `.cursor/agents/review`
+- `.cursor/agents/backend`
+- `.cursor/agents/frontend`
+- `.cursor/agents/branding`, `.cursor/agents/sre`, `.cursor/agents/marketing`
 
 ## Operating Model
 
-1. **reviewer** validates quality gates and merge readiness.
+1. **review** validates quality gates and merge readiness.
 2. **backend** handles API/domain/runtime work.
-3. **frontend** handles UI and brand-system work.
+3. **frontend** handles UI; **branding** handles cross-cutting product + design tokens + OAuth CTAs when needed.
 
 ## Validation Baseline
 

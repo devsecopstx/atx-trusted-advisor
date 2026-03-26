@@ -1,17 +1,17 @@
 # Cursor agent personas (repo-local)
 
-YAML agents under **`.cursor/agents/*.yaml`** tune Cursor Cloud / Composer for scoped work. They are **not** secrets — keep deploy steps in `DEVELOPMENT.md` / `AGENTS.md` and skills under **`.cursor/skills/`**.
+Agent personas under **`.cursor/agents/`** (extensionless files: `frontend`, `backend`, `review`, …) tune Cursor Cloud / Composer for scoped work. They are **not** secrets — keep deploy steps in `DEVELOPMENT.md` / `AGENTS.md` and skills under **`.cursor/skills/`**.
 
 ## Current files
 
 | File | Role | Use when |
 |------|------|----------|
-| [`backend.yaml`](backend.yaml) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
-| [`frontend.yaml`](frontend.yaml) | **UI/UX + branding** — tokens, `src/app/**`, `atx-docs/design-system/**` | Visual work, a11y, responsive — avoid domain logic unless required |
-| [`reviewer.yaml`](reviewer.yaml) | **PR / quality gate** reviewer — lint, typecheck, test, `ci:gate` | Pre-merge review, risk surface on changed files only |
-| [`sre-ops-admin.yaml`](sre-ops-admin.yaml) | SRE / ops review persona | Infra, deploy, secrets hygiene, runbooks |
-| [`feature-branding.yaml`](feature-branding.yaml) | Full-stack feature + branding (Next, tokens, APIs when needed for UI) | Default for cross-cutting product + UI work |
-| [`marketing.yaml`](marketing.yaml) | GTM / X copy, threads, HNWI–RIA messaging | Marketing and waitlist copy only |
+| [`backend`](backend) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
+| [`frontend`](frontend) | **UI/UX** — App Router, Tailwind, branding rules, lean client JS | Visual work, a11y, responsive — avoid domain logic unless required |
+| [`review`](review) | **PR / quality gate** — lint, typecheck, test, `ci:gate`, `build:stack` | Pre-merge review, risk on changed files + contract checks |
+| [`sre`](sre) | SRE / ops persona | Infra, deploy, secrets hygiene, runbooks |
+| [`branding`](branding) | Full-stack feature + branding (Next, tokens, OAuth CTAs, APIs when needed for UI) | Cross-cutting product + UI work |
+| [`marketing`](marketing) | GTM / X copy, threads, HNWI–RIA messaging | Marketing and waitlist copy only |
 
 ## Parallel worktrees (`.cursor/worktrees.json`)
 
