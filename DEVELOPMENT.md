@@ -251,7 +251,7 @@ Markdown subagents under **`.cursor/agents/*.md`** (YAML frontmatter + body) def
 | File | Intent |
 |------|--------|
 | **`backend.md`** | Kotlin **atxfinance-backend**, BFF migration, Spring HTTP parity, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
-| **`review.md`** | Pre-merge **review** — `npm run lint`, `typecheck`, `test`, `ci:gate`; scope to changed files |
+| **`reviewer.md`** | Pre-merge **review** — `npm run lint`, `typecheck`, `test`, `ci:gate`; scope to changed files |
 | **`frontend.md`** | **UI/UX** — `src/app/**`, tokens/a11y; avoid unrelated API/domain edits |
 | **`branding.md`** | Full-stack feature + branding — design system, OAuth CTAs, APIs only when needed for UI |
 | **`sre.md`**, **`marketing.md`** | Ops / GTM copy — see **`.cursor/agents/README.md`** |

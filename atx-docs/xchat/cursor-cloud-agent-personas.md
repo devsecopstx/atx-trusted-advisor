@@ -8,7 +8,7 @@ Define a stable, repo-local baseline for atxfinance multi-agent execution in Cur
 
 See **`.cursor/agents/README.md`** for the full table. Subagents are **Markdown** with YAML frontmatter ([Cursor Subagents](https://cursor.com/docs/subagents)):
 
-- `.cursor/agents/review.md`
+- `.cursor/agents/reviewer.md`
 - `.cursor/agents/backend.md`
 - `.cursor/agents/frontend.md`
 - `.cursor/agents/branding.md`, `.cursor/agents/sre.md`, `.cursor/agents/marketing.md`

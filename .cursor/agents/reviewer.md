@@ -31,7 +31,7 @@ Output: (1) scope (2) Pass / Block / Conditional (3) issues with file:line (4) m
 From the **repository root** (directory that contains `package.json`):
 
 ```bash
-test -f .cursor/agents/review.md && npm install
+test -f .cursor/agents/reviewer.md && npm install
 ```
 
 - Use **`npm install`** for local / parallel worktrees — it updates the lockfile if `package.json` changed and avoids the hard failure **`npm ci`** throws when lock and manifest disagree.

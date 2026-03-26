@@ -10,7 +10,7 @@ Subagent files under **`.cursor/agents/*.md`** follow [Cursor Subagents](https:/
 |------|------|----------|
 | [`backend.md`](backend.md) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
 | [`frontend.md`](frontend.md) | **UI/UX** — App Router, Tailwind, branding rules, lean client JS | Visual work, a11y, responsive — avoid domain logic unless required |
-| [`review.md`](review.md) | **PR / quality gate** — lint, typecheck, test, `ci:gate`, `build:stack` | Pre-merge review, risk on changed files + contract checks |
+| [`reviewer.md`](reviewer.md) | **PR / quality gate** — lint, typecheck, test, `ci:gate`, `build:stack` | Pre-merge review, risk on changed files + contract checks |
 | [`sre.md`](sre.md) | SRE / ops persona | Infra, deploy, secrets hygiene, runbooks |
 | [`branding.md`](branding.md) | Full-stack feature + branding (Next, tokens, OAuth CTAs, APIs when needed for UI) | Cross-cutting product + UI work |
 | [`marketing.md`](marketing.md) | GTM / X copy, threads, HNWI–RIA messaging | Marketing and waitlist copy only |
