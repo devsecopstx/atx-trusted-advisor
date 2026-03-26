@@ -15,7 +15,7 @@ See **`.cursor/agents/README.md`** for the full table. Subagents are **Markdown*
 
 ## Operating Model
 
-1. **review** validates quality gates and merge readiness.
+1. **reviewer** validates quality gates and merge readiness.
 2. **backend** handles API/domain/runtime work.
 3. **frontend** handles UI; **branding** handles cross-cutting product + design tokens + OAuth CTAs when needed.
 
