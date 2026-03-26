@@ -1,0 +1,37 @@
+.osp-doc-details {
+  margin-top: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  border-radius: var(--xf-radius-md);
+  padding: 0.65rem 0.85rem;
+  background: color-mix(in srgb, var(--xf-bg-900) 40%, transparent);
+}
+
+.osp-doc-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--xf-text-200);
+  list-style-position: outside;
+}
+
+.osp-doc-textarea {
+  display: block;
+  width: 100%;
+  min-height: 16rem;
+  max-height: min(70vh, 40rem);
+  overflow: auto;
+  margin-top: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-surface-700) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  border-radius: var(--xf-radius-sm);
+  resize: vertical;
+}
+
+.osp-doc-textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  outline-offset: 1px;
+}

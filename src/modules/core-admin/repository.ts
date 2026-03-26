@@ -17,6 +17,8 @@ import {
     type DeployNoteConfig,
     type OptionsStrategyPreference,
     type OptionsStrategyPreferenceSummary,
+    type OptionsStrategy,
+    type OptionsStrategySummary,
     type Portfolio,
     type PortfolioAlert,
     type PortfolioDeliveryChannel,
@@ -50,12 +52,14 @@ const collections = {
   portfolioAlerts: "portfolio_alerts",
   portfolioDeliveryChannels: "portfolio_delivery_channels",
   brokerCatalog: "admin_broker_catalog",
-  optionsStrategyPreferences: "options_strategy_preferences"
+  optionsStrategyPreferences: "options_strategy_preferences",
+  optionsStrategy: "options_strategy"
 } as const;
 
 let ensurePortfolioIndexesPromise: Promise<void> | null = null;
 let ensureBrokerCatalogIndexesPromise: Promise<void> | null = null;
 let ensureOptionsStrategyPreferenceIndexesPromise: Promise<void> | null = null;
+let ensureOptionsStrategyIndexesPromise: Promise<void> | null = null;
 let ensureAccessRequestIndexesPromise: Promise<void> | null = null;
 
 const ACCESS_REQUEST_ACTIONABLE_USER_ROLE_UNIQ =
@@ -1950,6 +1954,108 @@ export async function adminUpdateOptionsStrategyPreference(input: {
   return db
     .collection<OptionsStrategyPreference>(collections.optionsStrategyPreferences)
     .findOne({ _id: new ObjectId(input.id) });
+}
+
+async function ensureOptionsStrategyIndexes(): Promise<void> {
+  if (!ensureOptionsStrategyIndexesPromise) {
+    ensureOptionsStrategyIndexesPromise = (async () => {
+      const db = await getDb();
+      await db.collection<OptionsStrategy>(collections.optionsStrategy).createIndex(
+        { slug: 1 },
+        { name: "uniq_options_strategy_slug", unique: true }
+      );
+    })();
+  }
+  await ensureOptionsStrategyIndexesPromise;
+}
+
+export async function adminListOptionsStrategySummaries(): Promise<OptionsStrategySummary[]> {
+  await ensureOptionsStrategyIndexes();
+  const db = await getDb();
+  const rows = await db
+    .collection<OptionsStrategy>(collections.optionsStrategy)
+    .find({}, { projection: { slug: 1, name: 1, sourceRelPath: 1, createdAt: 1, updatedAt: 1 } })
+    .sort({ slug: 1 })
+    .toArray();
+  return rows as OptionsStrategySummary[];
+}
+
+export async function adminGetOptionsStrategyById(id: string): Promise<OptionsStrategy | null> {
+  await ensureOptionsStrategyIndexes();
+  if (!ObjectId.isValid(id)) return null;
+  const db = await getDb();
+  return db.collection<OptionsStrategy>(collections.optionsStrategy).findOne({ _id: new ObjectId(id) });
+}
+
+export async function adminCreateOptionsStrategy(input: {
+  slug: string;
+  name: string;
+  description: string;
+  filters?: Record<string, unknown> | null;
+  sourceRelPath?: string;
+}): Promise<OptionsStrategy | null> {
+  await ensureOptionsStrategyIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const doc: OptionsStrategy = {
+    slug: input.slug.trim().toLowerCase(),
+    name: input.name.trim().slice(0, 128),
+    description: input.description.slice(0, OPTIONS_STRATEGY_DESCRIPTION_MAX_LEN),
+    filters: input.filters ?? null,
+    sourceRelPath: input.sourceRelPath,
+    createdAt: now,
+    updatedAt: now
+  };
+  if (!doc.slug || !doc.name) return null;
+  try {
+    const res = await db.collection<OptionsStrategy>(collections.optionsStrategy).insertOne(doc);
+    return { ...doc, _id: res.insertedId };
+  } catch {
+    return null;
+  }
+}
+
+export async function adminUpdateOptionsStrategy(input: {
+  id: string;
+  patch: Partial<Pick<OptionsStrategy, "name" | "description" | "filters" | "sourceRelPath">>;
+}): Promise<OptionsStrategy | null> {
+  await ensureOptionsStrategyIndexes();
+  if (!ObjectId.isValid(input.id)) return null;
+  const db = await getDb();
+  const now = new Date();
+  const $set: Record<string, unknown> = { updatedAt: now };
+  if (input.patch.name !== undefined) {
+    const n = String(input.patch.name).trim().slice(0, 128);
+    if (!n) return null;
+    $set.name = n;
+  }
+  if (input.patch.description !== undefined) {
+    const d = String(input.patch.description);
+    if (d.length > OPTIONS_STRATEGY_DESCRIPTION_MAX_LEN) return null;
+    $set.description = d;
+  }
+  if (input.patch.filters !== undefined) {
+    $set.filters = input.patch.filters ?? null;
+  }
+  if (input.patch.sourceRelPath !== undefined) {
+    $set.sourceRelPath = input.patch.sourceRelPath ?? undefined;
+  }
+  if (Object.keys($set).length <= 1) {
+    return db.collection<OptionsStrategy>(collections.optionsStrategy).findOne({ _id: new ObjectId(input.id) });
+  }
+  const res = await db
+    .collection<OptionsStrategy>(collections.optionsStrategy)
+    .updateOne({ _id: new ObjectId(input.id) }, { $set });
+  if ((res.matchedCount ?? 0) < 1) return null;
+  return db.collection<OptionsStrategy>(collections.optionsStrategy).findOne({ _id: new ObjectId(input.id) });
+}
+
+export async function adminDeleteOptionsStrategy(id: string): Promise<boolean> {
+  await ensureOptionsStrategyIndexes();
+  if (!ObjectId.isValid(id)) return false;
+  const db = await getDb();
+  const res = await db.collection<OptionsStrategy>(collections.optionsStrategy).deleteOne({ _id: new ObjectId(id) });
+  return (res.deletedCount ?? 0) > 0;
 }
 
 export async function getPortfolioWatchlist(input: {

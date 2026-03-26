@@ -210,6 +210,29 @@ export type OptionsStrategyPreferenceSummary = Pick<
   _id: ObjectId;
 };
 
+/**
+ * Canonical options strategy object.
+ * Seeded from `atx-rag-collection/options-strategy/*` like preferences, but includes free-form JSON filters.
+ */
+export type OptionsStrategy = {
+  _id?: ObjectId;
+  slug: string;
+  name: string;
+  /** Full markdown text (RAG-aligned strategy body). */
+  description: string;
+  /** Free-form JSON for admin-defined filters (UI provides text area). */
+  filters?: Record<string, unknown> | null;
+  /** Repo-relative path last written by seed sync (e.g. `wheel/wheel.md`). */
+  sourceRelPath?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type OptionsStrategySummary = Pick<
+  OptionsStrategy,
+  "slug" | "name" | "sourceRelPath" | "createdAt" | "updatedAt"
+> & { _id: ObjectId };
+
 export type Portfolio = {
   _id?: ObjectId;
   tenantId?: ObjectId;

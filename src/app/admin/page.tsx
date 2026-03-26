@@ -129,6 +129,13 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
           "Per-strategy markdown documents seeded from atx-rag-collection/options-strategy; edit names and bodies after seed:admin."
       },
       {
+        href: "/admin/options-strategy",
+        icon: "strategy",
+        title: "Options strategy",
+        description:
+          "Canonical strategies with free-form filters JSON; seeded from atx-rag-collection/options-strategy and fully editable."
+      },
+      {
         href: "/admin/rag-files",
         icon: "book",
         title: "RAG collections",

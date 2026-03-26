@@ -30,6 +30,7 @@
     "seed:admin:stage": "node --env-file=.env.stage scripts/seed-admin-user.mjs",
     "seed:xpersonas": "node --env-file=.env --import tsx scripts/sync-xpersonas-from-yaml.ts",
     "seed:options-strategy-prefs": "node --env-file=.env --import tsx scripts/sync-options-strategy-preferences-from-disk.ts",
+    "seed:options-strategy": "node --env-file=.env --import tsx scripts/sync-options-strategy-from-disk.ts",
     "sync:xpersonas:http": "node --env-file=.env --import tsx scripts/sync-xpersonas-from-yaml.ts --api",
     "verify:xai-hello": "node --env-file=.env scripts/verify-xai-hello.mjs",
     "mongo:up": "bash scripts/dev/mongo-up.sh",

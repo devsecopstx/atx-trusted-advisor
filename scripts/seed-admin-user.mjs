@@ -86,6 +86,30 @@ function runPostSeedOptionsStrategyPreferencesFromDisk() {
   }
 }
 
+/** Upsert canonical options strategies from `atx-rag-collection/options-strategy` (mirrors prefs, sets filters on insert). */
+function runPostSeedOptionsStrategyFromDisk() {
+  const s = String(process.env.SKIP_SEED_OPTIONS_STRATEGY ?? "").toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") {
+    console.log(
+      "[seed:admin] SKIP_SEED_OPTIONS_STRATEGY set — skipping disk → Mongo options_strategy upsert"
+    );
+    return;
+  }
+  const script = join(SEED_SCRIPT_DIR, "sync-options-strategy-from-disk.ts");
+  console.log("[seed:admin] syncing options strategy (canonical) from atx-rag-collection/options-strategy → Mongo…");
+  const r = spawnSync(process.execPath, ["--import", "tsx", script], {
+    cwd: REPO_ROOT,
+    env: childEnvWithSeedParentMongoDb(),
+    stdio: "inherit"
+  });
+  if (r.status !== 0 && r.status != null) {
+    console.error(
+      "[seed:admin] options-strategy sync failed — fix markdown under atx-rag-collection/options-strategy or set SKIP_SEED_OPTIONS_STRATEGY=1"
+    );
+    process.exit(r.status ?? 1);
+  }
+}
+
 function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
 }
@@ -645,6 +669,7 @@ async function seed() {
   }
   runPostSeedXpersonasFromDisk();
   runPostSeedOptionsStrategyPreferencesFromDisk();
+  runPostSeedOptionsStrategyFromDisk();
   runPostSeedXaiHelloVerify();
 }
 

@@ -179,6 +179,23 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/admin/options-strategy",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-system"
+  },
+  {
+    path: "/api/admin/options-strategy/{strategyId}",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-system"
+  },
+  {
     path: "/api/admin/portfolios",
     operations: [
       { method: "GET", auth: "admin" },
