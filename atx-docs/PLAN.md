@@ -10,7 +10,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details*
 
 | Priority | Item | Notes |
 | -------- | ---- | ----- |
-| 100 | **GoogleOAuth** | `/api/auth/google/login` + callback + env; enable on `/xchat` guest panel when shipped. |
+| 100 | **GoogleOAuth** | **done** | `/api/auth/google/login` + callback + env vars (`GOOGLE_CLIENT_*`); full routes + error handling; openapi; button in home-landing (conditional); guest panel enablement pending. |
 | 200 | **ScheduledTask(DB)** | Core ModelUnified table for platform + user jobsYes (poller)cron + payload + userId (null = platform).  |
 | 200 | **WatchlistScannerService** | ServiceUpdates prices + triggers alertsYes (watchlist_price_scanner)Watchlist items → updated prices + alerts |
 | 200 | **PriceAlertService** | ServiceEvaluates price crossesIntegrated in scannerTicker + newPrice → notifications.  |

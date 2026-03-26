@@ -1,0 +1,10 @@
+# .cursorrules
+When I am working on files in the /services/atxfinance-backend directory, always 
+load context and instructions from .cursor/agents/backend.md.
+When I ask about user branding, refer to .cursor/agents/branding.md.
+When I ask about user experience, refer to .cursor/agents/frontend.md.
+When I ask about marketing, refer to .cursor/agents/marketing.md.
+When I ask about reviewer, refer to .cursor/agents/reviewer.md.
+When I ask about deployment, refer to .cursor/agents/sre.md.
+
+
