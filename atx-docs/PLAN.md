@@ -6,7 +6,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details*
 
 ---
 
-## Today / near-term (pick from here)
+## Priorities (pick from here)
 
 | Priority | Item | Notes |
 | -------- | ---- | ----- |
@@ -17,9 +17,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details*
 | 200 | **NotificationService** |ServiceNotify / in-app / pushOn-demandAny alert / event  |
 | 200 | **YahooFinanceService** | HelperBatch price & options dataReused everywhereTickers → quotes + chains  |
 | 200 | **OptionsStrategyScannerService** | Core ServiceSingle smart scanner for structured options strategiesYes (daily_options_scanner)User context + preference "prompt" → ranked strategies  |
-| 200 | **StrategyEngine** | score/rank the top 10 classic strategies and returns structured recommendations.  |
-
-
+| 200 | **StrategyEngine** |  **StrategyEngine** score/rank the top 10 classic strategies and returns structured recommendations. ingestng real-time market data and client portfolio constraints to output ranked executable strategies. Prioritize **capital preservation**, **tax** efficiency, and consistent income over high-leverage speculation, to focus on risk-adjusted yields and portfolio overlays.  |
 | 201 | **Yahoo Finance Helper Service** | `watchlist_price_scanner` — batch fetch latest quotes for many tickers in one call (Yahoo loves this). |
 | 300 | **Core Scanner Service** | Log create/update/delete (optional CSV) via `admin_audit_events` / audit. |
 | 400 | **Job Handler** | Real-time price alerts feature. |
@@ -96,7 +94,7 @@ OpenAPI parity, `atxdesign-review-audit` gaps, product doc parity (`xchat-tools-
 ### BFF completion status (rolling)
 
 | Milestone | Status |
-|-----------|--------|
+| --------- | ------ |
 | App-user portfolios, positions, watchlist, recommendations, strategy-jobs/options, user-feedback | **Shipped** (Kotlin + BFF + parity smoke) |
 | Admin access-requests, users, tasks, scheduler, deploy-notes, import/broker, audit, bootstrap-status | **Shipped** |
 | Admin **portfolio shell** + **accounts** + **watchlist** + **account positions** + **recommendations / alerts / delivery-channels / portfolio tasks** | **Shipped** (nested controllers + BFF; portfolio tasks = `admin_scheduled_tasks` with `portfolioId`) |
