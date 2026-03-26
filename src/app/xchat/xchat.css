@@ -94,6 +94,51 @@
   min-width: min(320px, 92vw);
 }
 
+.xchat-profile-menu {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.xchat-profile-menu__item {
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  color: var(--xf-text-100);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 100ms ease, background 100ms ease, color 100ms ease;
+}
+
+.xchat-profile-menu__item:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 35%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 8%, transparent);
+}
+
+.xchat-profile-menu__item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.xchat-profile-menu__item--logout {
+  border-color: color-mix(in srgb, var(--xf-loss-red, #f87171) 25%, transparent);
+  color: var(--xf-loss-red, #f87171);
+}
+
+.xchat-profile-menu__item--logout:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--xf-loss-red, #f87171) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-loss-red, #f87171) 10%, transparent);
+}
+
 .xchat-header-code {
   font-size: 0.75em;
   word-break: break-all;

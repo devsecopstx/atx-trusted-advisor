@@ -121,17 +121,6 @@ export function AppUserHeaderSession({
 
   return (
     <div className="xchat-header-session">
-      <button
-        className="tiny-button xchat-header-session-btn"
-        onClick={() => {
-          setFeedbackStatus("");
-          setFeedbackOpen(true);
-        }}
-        type="button"
-      >
-        Feedback
-      </button>
-
       <div className="xchat-header-session-profile" ref={profileRef}>
         {avatarUrl ? (
           <Image
@@ -176,25 +165,35 @@ export function AppUserHeaderSession({
                 <strong>Mongo (beta):</strong> <code className="xchat-header-code">{mongoConnection}</code>
               </p>
             ) : null}
-            <button
-              className="admin-session-popover-done"
-              onClick={() => setProfileOpen(false)}
-              type="button"
-            >
-              Close
-            </button>
+            <div className="xchat-profile-menu" role="menu" aria-label="Account actions">
+              <button
+                className="xchat-profile-menu__item"
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  setProfileOpen(false);
+                  setFeedbackStatus("");
+                  setFeedbackOpen(true);
+                }}
+              >
+                Submit feedback
+              </button>
+              <button
+                className="xchat-profile-menu__item xchat-profile-menu__item--logout"
+                disabled={isLoggingOut}
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  setProfileOpen(false);
+                  void handleLogout();
+                }}
+              >
+                {isLoggingOut ? "Logging out…" : "Logout"}
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
-
-      <button
-        className="tiny-button xchat-header-session-btn"
-        disabled={isLoggingOut}
-        onClick={() => void handleLogout()}
-        type="button"
-      >
-        {isLoggingOut ? "…" : "Logout"}
-      </button>
 
       {logoutStatus ? <span className="xchat-header-session-err">{logoutStatus}</span> : null}
       {feedbackStatus && !feedbackOpen ? (
