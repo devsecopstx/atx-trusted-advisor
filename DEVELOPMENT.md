@@ -8,7 +8,7 @@ Core backend and UI for atxFinance **admin operations** and **signed-in app_user
 - task scheduling metadata
 - user broker/portfolio/account defaults
 - notification defaults
-- app_user surfaces: xChat, xCoach, xStrategyBuilder, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`), recommendations (`/recommendations`) with shared header (profile, logout, feedback, optional DB chip)
+- app_user surfaces: xChat, xStrategyBuilder, portfolio (`/portfolio`; legacy `/xfinance` redirects), watchlist (`/watchlist`), recommendations (`/recommendations`) with shared header (profile, logout, feedback, optional DB chip)
 - signed-in/guest product naming: **`src/app/ui/product-brand-constants.ts`** (**atx Trusted Advisor** + **whitelabel** in xChat header and global footer); default app-role backend persona is **atx-trusted-advisor**
 
 ### Documentation tree
@@ -81,7 +81,7 @@ Session payload (`SessionUser` in `src/lib/auth.ts`):
 - **Surfaces (policy module):** `src/modules/surface-policy.ts` lists **app_user product** path prefixes (`/xchat`, `/xstrategybuilder`, `/portfolio`, `/watchlist`, `/recommendations`) and helpers `isAppUserProductPath`, `isAdminConsolePath`. **`app_user`** in docs means platform roles `advisor` \| `operator` \| `viewer` — not a literal Mongo role string. **`admin_console`** means `/admin/*` for `global_admin` only.
 - **Edge proxy:** `src/proxy.ts` redirects unauthenticated browser requests on protected app_user and admin paths (including `/admin`, `/xchat`, `/portfolio`, `/watchlist`, `/xstrategybuilder`, `/recommendations`, and matching `/api/*`) to `/login?next=…` when the session cookie is missing; API calls without a cookie get `401`. RBAC (`global_admin`) remains enforced in `src/app/admin/layout.tsx`.
 - **Admin console** (`/admin/*`, `requireGlobalAdminSession` / `requireAdminSession`): **only** `global_admin` (after normalization). The admin layout redirects everyone else to `/xchat`.
-- **App_user surfaces** (approved login): `advisor`, `operator`, `viewer` — xChat, xCoach, xStrategyBuilder, Portfolio (`/portfolio`), Watchlist (`/watchlist`), Recommendations (`/recommendations`). Shared chrome: `AppUserApprovedHeader` (`src/app/ui/app_user-approved-header.tsx`) = product links (`AppUserProductNav`) + `AppUserHeaderSession` (profile popover, logout, feedback modal, optional Mongo host/db pill per `shouldShowAppUserDbLabel()` in `src/lib/env.ts`).
+- **App_user surfaces** (approved login): `advisor`, `operator`, `viewer` — xChat, xStrategyBuilder, Portfolio (`/portfolio`), Watchlist (`/watchlist`), Recommendations (`/recommendations`). Shared chrome: `AppUserApprovedHeader` (`src/app/ui/app_user-approved-header.tsx`) = product links (`AppUserProductNav`) + `AppUserHeaderSession` (profile popover, logout, feedback modal, optional Mongo host/db pill per `shouldShowAppUserDbLabel()` in `src/lib/env.ts`).
 - **Access requests** are **onboarding**, not a role: unapproved users have no login-allowed platform role (unless `ALLOW_ANY_X_USER_LOGIN`); after approval, admins assign a platform role (typically `viewer`).
 
 **Feature flags** (e.g. `ALLOW_ANY_X_USER_LOGIN`) are **env-driven capabilities** — do not represent them as platform roles in Mongo.
