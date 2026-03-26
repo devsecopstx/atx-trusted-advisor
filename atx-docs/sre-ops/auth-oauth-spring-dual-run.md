@@ -13,7 +13,7 @@
 | Callback | `GET /api/auth/x/callback` — `src/app/api/auth/x/callback/route.ts` |
 | Session cookie | `xf_core_session` — HMAC-signed payload, `sameSite: "lax"`, `secure` in production (`createSession` in `src/lib/auth.ts`) |
 | Post-login redirect | **Hard-coded** to `/admin` (global admin) or `/xchat` (others); does **not** yet honor `login?next=` on success (product gap vs pitch CTAs). |
-| Failure redirect | `/login?error=<code>` — see **Next error codes** below. |
+| Failure redirect | `/xchat?error=<code>` — see **Next error codes** below. |
 
 ## Spring today
 
@@ -33,7 +33,7 @@
 | Post-login `next` | Allowlisted paths; default `/dashboard` | Next ignores `next` on success; product uses `/admin` \| `/xchat`. Align allowlist with real routes (`/xchat`, `/portfolio`, `/admin`, …) before cutover. |
 | Failure `error` codes | `invalid_state`, `code_reused`, `missing_email`, `access_denied`, `generic` | Next emits **granular** codes (table below). Map or alias in Spring + login UI for dual-run. |
 
-## Next `/login?error=` codes (regression matrix for Spring parity)
+## Next `/xchat?error=` codes (regression matrix for Spring parity)
 
 Codes emitted by `src/app/api/auth/x/callback/route.ts` today (non-exhaustive for deep branches):
 

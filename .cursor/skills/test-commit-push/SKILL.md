@@ -45,7 +45,7 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 12. Confirm push readiness and branch status.
 13. After push: create or update PR targeting **`main`** (`gh pr create --base main` or `gh pr view` + `gh pr edit` as needed).
 14. **Staging first (when applicable):** Push branch, open/merge PR per policy, and verify staging before production (see `AGENTS.md` / deploy skills).
-15. **Deploy:** Merge to **`main`** → **staging only** (no prod auto-deploy). Redeploy staging: **Deploy Cloud Run** (no inputs). Prod: **`workflow_dispatch`** → **Deploy Cloud Run Production** + **`confirm_manual_prod=yes`** (optional **`deployment_notes`**). See `AGENTS.md` if jobs skip.
+15. **Deploy (manual workflow):** Use **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`) via **`workflow_dispatch`** with required inputs: `branch`, `target` (`staging` | `production`), and `confirm_manual_approval=yes` (optional `deployment_notes`). Environment required reviewers enforce manual approval gates; post-deploy Slack notification is sent when `SLACK_WEBHOOK_URL` is configured in Secret Manager. See `AGENTS.md` if jobs skip.
 
 ## Output
 

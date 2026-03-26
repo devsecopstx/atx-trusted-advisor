@@ -63,7 +63,7 @@ After merging and deploying to production (or staging first):
 - OpenAPI inventory: `GET /api/openapi`
 - Swagger UI (admin): `GET /admin/api-docs`
 - Auth callback path configured in X app: `/api/auth/x/callback`
-- **Spring OAuth cutover (dual-run):** `atx-docs/sre-ops/auth-oauth-spring-dual-run.md` — gaps vs approved contract, `/login?error=` matrix, operator checklist
+- **Spring OAuth cutover (dual-run):** `atx-docs/sre-ops/auth-oauth-spring-dual-run.md` — gaps vs approved contract, `/xchat?error=` matrix, operator checklist
 - Personas API: `GET /api/personas`
 - xChat ask API: `POST /api/xchat/ask` — **published defaults:** **Super-Agent** (global_admin), **atx-trusted-advisor** (app roles); **RAG / file_search collection scope** is **only** what is declared on the resolved persona (`xaiCollection` + tool `collection_ids`), not env defaults or implicit user/team merges. **Effective xAI model** comes from the **resolved persona’s `model`**, else **`XAI_CHAT_MODEL`** or **`grok-4-1-fast-reasoning`** (see `.env.example`); optional `personaId` / admin-assigned persona selects persona — **no** request-body `model` override. **`xapi.tools`** are used as stored (include `atxfinance` / `yahoo_finance` on the persona when needed).
 - **xAI API standard:** [xAI docs overview](https://docs.x.ai/overview) + repo map **`atx-docs/xchat/xai-api-standard.md`**
@@ -91,10 +91,10 @@ printf "stage_url=%s\n" "$(gh variable get STAGING_BASE_URL)" && \
 printf "prod_url=%s\n" "$(gh variable get PROD_BASE_URL)" && \
 echo "latest_ci:" && gh run list --workflow "CI" --limit 1 && \
 echo "latest_staging_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 1 && \
-echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run Production" --limit 1
+echo "latest_production_deploy:" && gh run list --workflow "Deploy Cloud Run" --limit 5
 ```
 
-**Deploy:** **push to `main`** runs **staging only** via **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`). **Production** is **Deploy Cloud Run Production** (`.github/workflows/deploy-cloud-run-production.yml`, **`workflow_dispatch` only**): set **`confirm_manual_prod=yes`** (optional **`deployment_notes`**). Optional **Required reviewers** on GitHub environment **`production`**. **Staging redeploy:** **Deploy Cloud Run → Run workflow** (no inputs).
+**Deploy:** use **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`) via **`workflow_dispatch`** with inputs: **`branch`**, **`target`** (`staging`/`production`), and **`confirm_manual_approval=yes`** (optional **`deployment_notes`**). Keep **Required reviewers** on both GitHub environments (`staging`, `production`) for manual approval gates. Slack deploy note posts when `SLACK_WEBHOOK_URL` is configured in Secret Manager.
 
 ## Guardrails
 
@@ -213,7 +213,7 @@ All three share the same update script and secret requirements above.
 
 ### Running without MONGODB_URI
 
-When `MONGODB_URI` is not configured, the app falls back to `mongodb://localhost:27017/atxfinance` (no credentials) unless **`MONGO_ROOT_PASSWORD`** is set, in which case it uses **`MONGO_ROOT_USERNAME`** (default `admin`) and that password with **`authSource=admin`**. Without a running Mongo instance, `GET /api/health` returns HTTP 500 (connection refused) but the dev server itself runs fine. Pages that do **not** require a DB session work: `/login`, `/app_user/xoptions`, `/app_user/xoptions/follow-up`, `/xcoach`, `/api/openapi`. Auth-gated pages (`/xchat`, `/admin/*`, `/portfolio`, `/watchlist`) and `npm run seed:admin` require a live MongoDB connection. All validation gates (`npm run ci:gate`) pass without MongoDB — tests use mocked dependencies.
+When `MONGODB_URI` is not configured, the app falls back to `mongodb://localhost:27017/atxfinance` (no credentials) unless **`MONGO_ROOT_PASSWORD`** is set, in which case it uses **`MONGO_ROOT_USERNAME`** (default `admin`) and that password with **`authSource=admin`**. Without a running Mongo instance, `GET /api/health` returns HTTP 500 (connection refused) but the dev server itself runs fine. Pages that do **not** require a DB session work: `/app_user/xoptions`, `/app_user/xoptions/follow-up`, `/xcoach`, `/api/openapi`. Auth-gated pages (`/xchat`, `/admin/*`, `/portfolio`, `/watchlist`) and `npm run seed:admin` require a live MongoDB connection. All validation gates (`npm run ci:gate`) pass without MongoDB — tests use mocked dependencies.
 
 ### MONGODB_URI secret encoding caveat
 

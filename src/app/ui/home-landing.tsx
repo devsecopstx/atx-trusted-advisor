@@ -160,7 +160,7 @@ export function HomeLanding({
               Explore xChat &amp; request access
             </Link>
             <Link
-              href="/login?next=%2Fxchat"
+              href="/api/auth/x/login?next=%2Fxchat"
               className="inline-flex items-center justify-center rounded-full border border-gray-600 px-8 py-4 text-center text-base font-semibold text-gray-200 transition hover:border-emerald-500/50 hover:text-white"
             >
               Continue to sign-in

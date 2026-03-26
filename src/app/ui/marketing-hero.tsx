@@ -117,7 +117,7 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
           ) : (
             <div className="mh-guest-signin" role="group" aria-label="Sign in">
               <div className="cta-row mh-cta-row">
-                <Link className="cta cta-primary" href="/login?next=%2Fxchat">
+                <Link className="cta cta-primary" href="/api/auth/x/login?next=%2Fxchat">
                   Sign in with X
                 </Link>
               </div>

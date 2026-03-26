@@ -10,7 +10,7 @@ import { StrategyOptionsConsole } from "./strategy-options-console";
 export default async function StrategyOptionsPage() {
   const session = await getSessionUser();
   if (!session) {
-    redirect("/login?next=/xstrategybuilder/strategy-options");
+    redirect("/xchat");
   }
 
   return (

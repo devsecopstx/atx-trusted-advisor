@@ -81,18 +81,17 @@ const ctaHoverTap = {
   tap: { scale: 0.98 },
 };
 
-/** Where to send users after sign-in when using the default `/login?next=…` pitch link. */
+/** Where to send users after sign-in when using the default direct X OAuth link. */
 export const DEFAULT_PITCH_LOGIN_RETURN_PATH = "/xchat";
 
 export function buildPitchLoginHref(returnPath: string): string {
   const path = returnPath.startsWith("/") ? returnPath : `/${returnPath}`;
-  return `/login?next=${encodeURIComponent(path)}`;
+  return `/api/auth/x/login?next=${encodeURIComponent(path)}`;
 }
 
 /**
- * Default primary CTA: Next.js `/login` with `next` so the login shell renders (X OAuth still uses
- * `/api/auth/x/login` from `src/app/login`). Override with `NEXT_PUBLIC_SIGNIN_URL` or `signInHref`
- * (e.g. `/api/auth/x/login` to skip the login page).
+ * Default primary CTA: direct X OAuth login with `next` return path.
+ * Override with `NEXT_PUBLIC_SIGNIN_URL` or `signInHref`.
  */
 export const DEFAULT_PITCH_LOGIN_HREF = buildPitchLoginHref(DEFAULT_PITCH_LOGIN_RETURN_PATH);
 
@@ -103,10 +102,10 @@ export type HeroProps = {
   title?: string;
   /**
    * Primary auth CTA. Defaults to `NEXT_PUBLIC_SIGNIN_URL`, else {@link buildPitchLoginHref} with
-   * {@link loginReturnPath} (typically `/login?next=/xchat`).
+   * {@link loginReturnPath} (typically `/api/auth/x/login?next=/xchat`).
    */
   signInHref?: string;
-  /** `next` query value for `/login` when using the default login link. Default: {@link DEFAULT_PITCH_LOGIN_RETURN_PATH}. */
+  /** `next` query value for direct X OAuth login. Default: {@link DEFAULT_PITCH_LOGIN_RETURN_PATH}. */
   loginReturnPath?: string;
 };
 
