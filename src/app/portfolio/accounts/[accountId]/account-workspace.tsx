@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
-import type { PositionType } from "@/modules/core-admin/types";
+import {
+    INVESTMENT_STRATEGY_OPTIONS,
+    RISK_LEVEL_OPTIONS
+} from "@/modules/core-admin/portfolio-preference-labels";
+import type { AccountOutlook, PositionType } from "@/modules/core-admin/types";
 
 export type SerializableAccount = {
   _id: string;
@@ -13,6 +17,8 @@ export type SerializableAccount = {
   extAccountId: string;
   cashBalance: number;
   isDefault: boolean;
+  riskProfile: "conservative" | "balanced" | "growth" | null;
+  outlook: AccountOutlook | null;
 };
 
 export type SerializableStockPosition = {
@@ -81,6 +87,8 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
   const [acctName, setAcctName] = useState(account.name);
   const [cashBalance, setCashBalance] = useState(String(account.cashBalance));
   const [extRef, setExtRef] = useState(account.extAccountId);
+  const [riskProfile, setRiskProfile] = useState<SerializableAccount["riskProfile"]>(account.riskProfile);
+  const [outlook, setOutlook] = useState<AccountOutlook | null>(account.outlook);
 
   const [holdingType, setHoldingType] = useState<PositionType>("stock");
 
@@ -107,7 +115,9 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
     setAcctName(account.name);
     setCashBalance(String(account.cashBalance));
     setExtRef(account.extAccountId);
-  }, [account.name, account.cashBalance, account.extAccountId]);
+    setRiskProfile(account.riskProfile);
+    setOutlook(account.outlook);
+  }, [account.name, account.cashBalance, account.extAccountId, account.riskProfile, account.outlook]);
 
   async function saveAccount(e: FormEvent) {
     e.preventDefault();
@@ -125,7 +135,9 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
         body: JSON.stringify({
           name: acctName.trim() || undefined,
           cashBalance: cash,
-          extAccountId: extRef.trim() || undefined
+          extAccountId: extRef.trim() || undefined,
+          riskProfile,
+          outlook
         })
       }
     );
@@ -276,82 +288,153 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
   }
 
   return (
-    <div className="stack-gap" style={{ marginTop: "1.25rem" }}>
-      <p className="hero-copy" style={{ fontSize: "0.9rem", marginBottom: 0 }}>
-        Holdings support <strong>stock</strong> (symbol, shares, purchase price), <strong>options</strong> (Yahoo ref,
-        call/put, strike, expiration, contracts, premium per contract), and <strong>cash</strong> (USD amount, optional
-        label).
-      </p>
-
+    <div className="portfolio-workspace">
       {error ? (
         <p className="status-text status-error" role="alert">
           {error}
         </p>
       ) : null}
 
-      <section>
-        <h2
-          style={{
-            fontSize: "1rem",
-            fontWeight: 600,
-            margin: "0 0 0.5rem",
-            color: "var(--xf-text-100)"
-          }}
-        >
-          Account details
-        </h2>
-        <form onSubmit={saveAccount} className="stack-gap" style={{ maxWidth: "28rem" }}>
-          <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-            <span style={{ color: "var(--xf-text-300)", fontSize: "0.85rem" }}>Display name</span>
+      <section className="portfolio-panel">
+        <h2 className="portfolio-panel__title">Account details</h2>
+        <form onSubmit={saveAccount} className="stack-gap" style={{ gap: "1.1rem" }}>
+          <div className="portfolio-edit-field">
+            <label className="portfolio-edit-field__label" htmlFor="acct-display-name">
+              Account name
+            </label>
             <input
+              id="acct-display-name"
               className="crud-input"
               value={acctName}
               onChange={(e) => setAcctName(e.target.value)}
               required
+              autoComplete="off"
             />
-          </label>
-          <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-            <span style={{ color: "var(--xf-text-300)", fontSize: "0.85rem" }}>Cash balance (USD)</span>
+          </div>
+
+          <div className="portfolio-edit-field">
+            <label className="portfolio-edit-field__label" htmlFor="acct-ext-ref">
+              Account ref
+            </label>
             <input
-              className="crud-input"
-              type="number"
-              min={0}
-              step="0.01"
-              value={cashBalance}
-              onChange={(e) => setCashBalance(e.target.value)}
-              required
-            />
-          </label>
-          <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-            <span style={{ color: "var(--xf-text-300)", fontSize: "0.85rem" }}>External reference</span>
-            <input
+              id="acct-ext-ref"
               className="crud-input"
               value={extRef}
               onChange={(e) => setExtRef(e.target.value)}
               required
+              autoComplete="off"
             />
-          </label>
-          <p className="status-text" style={{ fontSize: "0.8rem", margin: 0 }}>
-            Broker type: <strong>{formatBrokerType(account.type)}</strong>
-            {account.isDefault ? " · default account" : null}
+            <p className="portfolio-edit-field__hint">Match broker account ID for CSV imports and reconciliation.</p>
+          </div>
+
+          <div className="portfolio-edit-field">
+            <span className="portfolio-edit-field__label">Broker type</span>
+            <select className="crud-input portfolio-edit-disabled" disabled value={account.type} aria-readonly>
+              <option value={account.type}>{formatBrokerType(account.type)}</option>
+            </select>
+            <p className="portfolio-edit-field__hint">
+              Shown on My accounts. Changing catalog entries is an admin setup task.
+            </p>
+          </div>
+
+          <div className="portfolio-edit-field">
+            <label className="portfolio-edit-field__label" htmlFor="acct-cash">
+              Initial balance (custodian cash)
+            </label>
+            <div className="portfolio-edit-field__prefix">
+              <span>$</span>
+              <input
+                id="acct-cash"
+                type="number"
+                min={0}
+                step="0.01"
+                value={cashBalance}
+                onChange={(e) => setCashBalance(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <fieldset className="portfolio-edit-field" style={{ border: "none", padding: 0, margin: 0 }}>
+            <legend className="portfolio-edit-field__label" style={{ marginBottom: "0.4rem" }}>
+              Risk level
+            </legend>
+            <div className="portfolio-risk-row" role="group" aria-label="Risk level">
+              {RISK_LEVEL_OPTIONS.map((opt) => (
+                <button
+                  key={opt.riskProfile}
+                  type="button"
+                  className={`portfolio-risk-btn${riskProfile === opt.riskProfile ? " portfolio-risk-btn--active" : ""}`}
+                  onClick={() => setRiskProfile(opt.riskProfile)}
+                >
+                  <span
+                    className="portfolio-risk-btn__dot"
+                    style={{
+                      background:
+                        opt.tier === "low"
+                          ? "color-mix(in srgb, var(--xf-success-400) 90%, var(--xf-gain-green))"
+                          : opt.tier === "medium"
+                            ? "color-mix(in srgb, var(--xf-lightning-yellow) 85%, var(--xf-text-100))"
+                            : "color-mix(in srgb, var(--xf-danger-400) 85%, var(--xf-text-100))"
+                    }}
+                  />
+                  {opt.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`portfolio-risk-btn${riskProfile === null ? " portfolio-risk-btn--active" : ""}`}
+                onClick={() => setRiskProfile(null)}
+              >
+                Not set
+              </button>
+            </div>
+          </fieldset>
+
+          <fieldset className="portfolio-edit-field" style={{ border: "none", padding: 0, margin: 0 }}>
+            <legend className="portfolio-edit-field__label" style={{ marginBottom: "0.4rem" }}>
+              Investment strategy
+            </legend>
+            <div className="portfolio-strategy-grid" role="group" aria-label="Investment strategy">
+              {INVESTMENT_STRATEGY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`portfolio-strategy-card${outlook === opt.value ? " portfolio-strategy-card--active" : ""}`}
+                  onClick={() => setOutlook(opt.value)}
+                >
+                  <p className="portfolio-strategy-card__title">{opt.title}</p>
+                  <p className="portfolio-strategy-card__desc">{opt.description}</p>
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`portfolio-strategy-card${outlook === null ? " portfolio-strategy-card--active" : ""}`}
+                onClick={() => setOutlook(null)}
+              >
+                <p className="portfolio-strategy-card__title">Not set</p>
+                <p className="portfolio-strategy-card__desc">Clear strategy label for this account.</p>
+              </button>
+            </div>
+          </fieldset>
+
+          <p className="status-text" style={{ fontSize: "0.78rem", margin: 0 }}>
+            {account.isDefault ? "This is your default account for quick actions." : null}
           </p>
-          <button type="submit" className="cta cta-primary" disabled={pending}>
-            Save account
-          </button>
+
+          <div className="portfolio-form-actions">
+            <Link className="cta cta-secondary" href="/portfolio">
+              Cancel
+            </Link>
+            <button type="submit" className="cta cta-primary" disabled={pending}>
+              {pending ? "Saving…" : "Update account"}
+            </button>
+          </div>
         </form>
       </section>
 
-      <section style={{ marginTop: "1.5rem" }}>
-        <h2
-          style={{
-            fontSize: "1rem",
-            fontWeight: 600,
-            margin: "0 0 0.5rem",
-            color: "var(--xf-text-100)"
-          }}
-        >
-          Holdings
-        </h2>
+      <section className="portfolio-panel">
+        <h2 className="portfolio-panel__title">Holdings</h2>
         {positions.length === 0 ? (
           <p className="status-text">No positions yet. Add one below.</p>
         ) : (
@@ -391,16 +474,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
           </div>
         )}
 
-        <h3
-          style={{
-            fontSize: "0.9rem",
-            fontWeight: 600,
-            margin: "1rem 0 0.5rem",
-            color: "var(--xf-text-200)"
-          }}
-        >
-          Add or update (upsert)
-        </h3>
+        <h3 className="portfolio-panel__subtitle">Add or update (upsert)</h3>
         <form onSubmit={addHolding} className="stack-gap">
           <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column", maxWidth: "12rem" }}>
             <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Instrument type</span>
@@ -539,7 +613,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
         </form>
       </section>
 
-      <div className="cta-row" style={{ marginTop: "1.5rem" }}>
+      <div className="cta-row">
         <Link className="cta cta-secondary" href="/portfolio">
           ← Back to portfolio
         </Link>

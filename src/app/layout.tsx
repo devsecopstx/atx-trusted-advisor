@@ -12,7 +12,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "aTx Trusted Advisor",
-  description: "Delegated options workspace — mobile-first control plane powered by xAI"
+  description:
+    "aTx⚡Finance — Powered by xAI. No Atoms Moved. Just Gains Earned. Options workspace, xChat, and portfolio tools."
 };
 
 type RootLayoutProps = {

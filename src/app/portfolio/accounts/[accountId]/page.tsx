@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-workspace";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
-import { GlobalFooter } from "@/app/ui/global-footer";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import {
@@ -20,8 +19,6 @@ import {
     type Position
 } from "@/modules/core-admin/types";
 
-import "../../../xchat/xchat.css";
-
 function serializeAccount(account: Account) {
   return {
     _id: account._id!.toHexString(),
@@ -29,7 +26,9 @@ function serializeAccount(account: Account) {
     type: account.type,
     extAccountId: account.extAccountId,
     cashBalance: account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
-    isDefault: account.isDefault
+    isDefault: account.isDefault,
+    riskProfile: account.riskProfile ?? null,
+    outlook: account.outlook ?? null
   };
 }
 
@@ -137,28 +136,30 @@ export default async function PortfolioAccountPage({
     <div className="xchat-shell">
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
 
-      <div className="xchat-body" style={{ padding: "1rem" }}>
-        <section className="hero-card xf-noise-overlay" style={{ maxWidth: "720px", margin: "0 auto" }}>
-          <p className="eyebrow">
-            <Link href="/portfolio" style={{ color: "var(--xf-text-300)", textDecoration: "none" }}>
-              My accounts
-            </Link>{" "}
-            / Manage account
-          </p>
-          <h1 className="hero-title">{account.name}</h1>
-          <p className="hero-copy">
-            Edit cash and external reference, then add or adjust stock lots for this account. Saving a lot with
-            the same ticker updates the existing row (upsert).
-          </p>
+      <div className="xchat-body portfolio-page-body">
+        <div className="portfolio-account-page portfolio-account-page--edit">
+          <header className="portfolio-hero xf-noise-overlay">
+            <p className="portfolio-hero__eyebrow">
+              <Link className="portfolio-breadcrumb-link" href="/portfolio">
+                Portfolio
+              </Link>
+              <span aria-hidden> · </span>
+              <span>Edit account</span>
+            </p>
+            <h1 className="portfolio-hero__title">Edit account</h1>
+            <p className="portfolio-hero__sub">
+              Update display name, reference, cash balance, risk stance, and investment strategy. Holdings below use
+              the same upsert rules as before.
+            </p>
+          </header>
 
           <AccountWorkspace
             portfolioId={portfolioIdHex}
             account={serializeAccount(account)}
             initialPositions={serializePositions(positions)}
           />
-        </section>
+        </div>
       </div>
-      <GlobalFooter />
     </div>
   );
 }
