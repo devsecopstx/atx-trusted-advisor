@@ -1,24 +1,26 @@
 # Cursor agent personas (repo-local)
 
-Agent personas under **`.cursor/agents/`** (extensionless files: `frontend`, `backend`, `review`, …) tune Cursor Cloud / Composer for scoped work. They are **not** secrets — keep deploy steps in `DEVELOPMENT.md` / `AGENTS.md` and skills under **`.cursor/skills/`**.
+Subagent files under **`.cursor/agents/*.md`** follow [Cursor Subagents](https://cursor.com/docs/subagents): YAML **frontmatter** (`name`, `description`, `model`, optional `readonly` / `is_background`) and a **Markdown body** for the system prompt plus repo-specific sections (instructions, context globs, commands). They are **not** secrets — keep deploy steps in `DEVELOPMENT.md` / `AGENTS.md` and skills under **`.cursor/skills/`**.
+
+> Per Cursor’s documented schema, **`icon` and `color` are not supported** in frontmatter; the UI uses default subagent chrome.
 
 ## Current files
 
 | File | Role | Use when |
 |------|------|----------|
-| [`backend`](backend) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
-| [`frontend`](frontend) | **UI/UX** — App Router, Tailwind, branding rules, lean client JS | Visual work, a11y, responsive — avoid domain logic unless required |
-| [`review`](review) | **PR / quality gate** — lint, typecheck, test, `ci:gate`, `build:stack` | Pre-merge review, risk on changed files + contract checks |
-| [`sre`](sre) | SRE / ops persona | Infra, deploy, secrets hygiene, runbooks |
-| [`branding`](branding) | Full-stack feature + branding (Next, tokens, OAuth CTAs, APIs when needed for UI) | Cross-cutting product + UI work |
-| [`marketing`](marketing) | GTM / X copy, threads, HNWI–RIA messaging | Marketing and waitlist copy only |
+| [`backend.md`](backend.md) | Kotlin/Spring **atxfinance-backend**, BFF migration, portfolio/positions APIs, Yahoo/strategy-options | Backend slices, `services/atxfinance-backend/**`, `ATXFINANCE_BACKEND_ORIGIN` |
+| [`frontend.md`](frontend.md) | **UI/UX** — App Router, Tailwind, branding rules, lean client JS | Visual work, a11y, responsive — avoid domain logic unless required |
+| [`review.md`](review.md) | **PR / quality gate** — lint, typecheck, test, `ci:gate`, `build:stack` | Pre-merge review, risk on changed files + contract checks |
+| [`sre.md`](sre.md) | SRE / ops persona | Infra, deploy, secrets hygiene, runbooks |
+| [`branding.md`](branding.md) | Full-stack feature + branding (Next, tokens, OAuth CTAs, APIs when needed for UI) | Cross-cutting product + UI work |
+| [`marketing.md`](marketing.md) | GTM / X copy, threads, HNWI–RIA messaging | Marketing and waitlist copy only |
 
 ## Parallel worktrees (`.cursor/worktrees.json`)
 
 [`worktrees.json`](../worktrees.json) configures:
 
-1. **Setup scripts** — `setup-worktree`, `setup-worktree-unix`, `setup-worktree-windows` run when Cursor creates a parallel-agent worktree (`npm ci`, copy `.env` from the primary tree via `$ROOT_WORKTREE_PATH` / `%ROOT_WORKTREE_PATH%`). See [Cursor docs — Parallel Agents](https://cursor.com/docs/configuration/worktrees).
-2. **Named worktrees** — the `worktrees` array lists `frontend`, `backend`, and `reviewer` (plus `sre-ops-admin`) with `description`, optional `npm` command hints, and a `setup` that stamps `ROLE=…` into **`.cursor/.frontend`**, **`.cursor/.backend`**, **`.cursor/.reviewer`** (local convenience only; not the agent YAML bodies).
+1. **Setup scripts** — `setup-worktree`, `setup-worktree-unix`, `setup-worktree-windows` run when Cursor creates a parallel-agent worktree (`npm install`, copy `.env` from the primary tree via `$ROOT_WORKTREE_PATH` / `%ROOT_WORKTREE_PATH%`). See [Cursor docs — Parallel Agents](https://cursor.com/docs/configuration/worktrees).
+2. **Named worktrees** — the `worktrees` array lists `frontend`, `backend`, and `reviewer` (plus `sre-ops-admin`) with `description`, optional `npm` command hints, and a `setup` that stamps `ROLE=…` into **`.cursor/.frontend`**, **`.cursor/.backend`**, **`.cursor/.reviewer`** (local convenience only; not the subagent bodies).
 
 ## Conventions
 
@@ -31,7 +33,7 @@ Agent personas under **`.cursor/agents/`** (extensionless files: `frontend`, `ba
 Hundreds of workflows live in **`.cursor/skills/*/SKILL.md`**. High-traffic entry points:
 
 | Area | Skill folder |
-|------|----------------|
+|------|--------------|
 | Ship gate | `test-commit-push`, `test-lint`, `ci-failure` |
 | Spring backend | `backend-start-local`, `backend-architecture`, `backend-runbook` |
 | Deploy | `deploy-staging`, `deploy-production` |

@@ -1,12 +1,12 @@
 # Shared execution context (backend ↔ frontend)
 
-Coordination file for multi-agent work. **If you change an API or app_user contract, update this file** (see `.cursor/agents/*.yaml` personas).
+Coordination file for multi-agent work. **If you change an API or app_user contract, update this file** (see `.cursor/agents/*.md` subagents).
 
 ## Live status (edit as work progresses)
 
 - **Backend:** Auth/session migration to Spring per `atx-docs/sre-ops/api-consolidation-spring-backend.md` (callback + PKCE ownership; dual-run).
 - **Frontend:** Login / OAuth entry UX; follow `.cursor/rules/xfinance-branding.mdc` and `AGENTS.md`.
-- **Reviewer:** Scope + contracts vs `frontend` / `backend` agent personas; branding via **xfinance-branding** (not ad-hoc `feature-branding.md` unless that persona is explicitly selected).
+- **Reviewer:** Scope + contracts vs `frontend.md` / `backend.md` subagents; branding via **xfinance-branding** and **`branding.md`** when that persona is selected.
 
 ---
 

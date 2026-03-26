@@ -1,5 +1,5 @@
 # atx-rag-collection/xpersonas/legal/legal-advisor.yaml
-# xPersona / RAG seed spec — same structural keys as `.cursor/agents/*.yaml`; not a Cursor agent file.
+# xPersona / RAG seed spec (YAML) — not a Cursor subagent (.cursor/agents/*.md).
 id: atx-legal-advisor
 name: atx-legal-advisor
 description: |

@@ -44,7 +44,7 @@ When **adding, renaming, or materially changing** persona files under **`.cursor
 - If **`.cursor/worktrees.json`** lists named worktrees / `setup` stamps, keep README prose aligned (parallel agents + optional `ROLE` stamps are local convenience only).
 - If **`AGENTS.md`** or **`DEVELOPMENT.md`** point at agent filenames, update those pointers in the **same** change set as the rename.
 
-**Naming convention:** Prefer stable, role-clear agent YAML names (e.g. `backend.yaml`, `reviewer.yaml`, `frontend.yaml`). Avoid duplicating the same role under two filenames without a README deprecation note.
+**Naming convention:** Prefer stable, role-clear **Markdown subagent** names (e.g. `backend.md`, `review.md`, `frontend.md`) per [Cursor Subagents](https://cursor.com/docs/subagents). Avoid duplicating the same role under two filenames without a README deprecation note.
 
 When introducing new subsystems, prefer extending `DEVELOPMENT.md`
 and linking from `README.md` instead of creating scattered top-level docs.
@@ -178,7 +178,7 @@ When **positioning, GTM, waitlist, investor deck copy**, or
 
 ### RAG collection sources (`atx-rag-collection/`)
 
-**Scope:** In-repo **source artifacts** for **app RAG / xPersona KB** and **`npm run seed:admin`** xAI upload when keys resolve — **not** Cursor Cloud agent definitions (those stay in **`.cursor/agents/*.yaml`** only).
+**Scope:** In-repo **source artifacts** for **app RAG / xPersona KB** and **`npm run seed:admin`** xAI upload when keys resolve — **not** Cursor subagent definitions (those stay in **`.cursor/agents/*.md`** only).
 
 When adding or reorganizing content under **`atx-rag-collection/`**:
 

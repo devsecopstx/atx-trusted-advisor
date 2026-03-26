@@ -6,12 +6,12 @@ Define a stable, repo-local baseline for atxfinance multi-agent execution in Cur
 
 ## Persona Files
 
-See **`.cursor/agents/README.md`** for the full table. Core paths (extensionless files):
+See **`.cursor/agents/README.md`** for the full table. Subagents are **Markdown** with YAML frontmatter ([Cursor Subagents](https://cursor.com/docs/subagents)):
 
-- `.cursor/agents/review`
-- `.cursor/agents/backend`
-- `.cursor/agents/frontend`
-- `.cursor/agents/branding`, `.cursor/agents/sre`, `.cursor/agents/marketing`
+- `.cursor/agents/review.md`
+- `.cursor/agents/backend.md`
+- `.cursor/agents/frontend.md`
+- `.cursor/agents/branding.md`, `.cursor/agents/sre.md`, `.cursor/agents/marketing.md`
 
 ## Operating Model
 

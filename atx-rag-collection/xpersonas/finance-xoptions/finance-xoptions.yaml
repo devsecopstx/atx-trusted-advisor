@@ -1,5 +1,5 @@
 # atx-rag-collection/xpersonas/finance-xoptions/finance-xoptions.yaml
-# xPersona / RAG seed spec — same structural keys as `.cursor/agents/*.yaml`; not a Cursor agent file.
+# xPersona / RAG seed spec (YAML) — not a Cursor subagent (.cursor/agents/*.md).
 id: atx-finance-xoptions
 name: atx-finance-xoptions
 description: |

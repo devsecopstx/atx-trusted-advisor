@@ -1,6 +1,6 @@
 # atx-rag-collection
 
-**Repository source content** for **in-app RAG and xPersona / xChat knowledge** — not Cursor agent definitions (those live only under **`.cursor/agents/*.yaml`**).
+**Repository source content** for **in-app RAG and xPersona / xChat knowledge** — not Cursor subagents (those live under **`.cursor/agents/*.md`** per [Subagents](https://cursor.com/docs/subagents)).
 
 ## Table of contents
 
@@ -97,7 +97,7 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 
 ## Persona YAML schema
 
-Aligned with **`.cursor/agents/*.yaml`** for tooling parity. These files are **not** Cursor agents; they are **xPersona / RAG seed** specs.
+These **YAML** specs are **xPersona / RAG seeds** only. They are **not** Cursor subagents (`.cursor/agents/*.md`). Field names (`id`, `description`, `INSTRUCTIONS`, …) are a separate contract from Subagent frontmatter.
 
 | Key | Notes |
 | --- | --- |

@@ -1,5 +1,5 @@
 # atx-rag-collection/xpersonas/exam-coach/exam-coach.yaml
-# xPersona / RAG seed spec — same structural keys as `.cursor/agents/*.yaml`; not a Cursor agent file.
+# xPersona / RAG seed spec (YAML) — not a Cursor subagent (.cursor/agents/*.md).
 id: atx-exam-coach
 name: atx-exam-coach
 description: |
