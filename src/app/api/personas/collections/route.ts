@@ -35,6 +35,15 @@ type XaiManagementErrorCode =
   | "upstream_error";
 
 const COLLECTIONS_PAYLOAD_LIMIT_BYTES = 32 * 1024;
+const TRUSTED_ADVISOR_ROOT_RE = /^atx-trusted-advisor-(dev|stage|prod)$/i;
+const TRUSTED_ADVISOR_SEGMENTS = [
+  "example-prompts",
+  "finance-reference-docs",
+  "options-strategy",
+  "xchat-history",
+  "xpersonas"
+] as const;
+const TRUSTED_ADVISOR_XCHAT_PLACEHOLDER = "xchat-<user>-<date>";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -115,7 +124,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const created = await createXaiCollection(parsed.data.name);
+    const requestedName = parsed.data.name.trim();
+    const hierarchy = await createTrustedAdvisorHierarchyIfNeeded(requestedName);
+    const created = hierarchy?.root ?? (await createXaiCollection(requestedName));
     enqueueAuditEvent({
       entityType: "xpersona",
       entityId: created.id,
@@ -126,13 +137,27 @@ export async function POST(request: Request) {
         username: session.username
       },
       details: {
-        collectionName: created.name
+        collectionName: created.name,
+        ...(hierarchy
+          ? {
+              hierarchyCreated: true,
+              hierarchyChildCount: hierarchy.children.length
+            }
+          : {})
       }
     });
     return NextResponse.json({
       data: {
         id: created.id,
         name: created.name,
+        ...(hierarchy
+          ? {
+              hierarchy: {
+                children: hierarchy.children.map((child) => child.name),
+                xchatPlaceholder: hierarchy.xchatPlaceholder.name
+              }
+            }
+          : {}),
         stats: {
           documentCount: null,
           chunkCount: null,
@@ -153,6 +178,30 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ error: "Failed to create xAI collection", code }, { status: 502 });
   }
+}
+
+async function createTrustedAdvisorHierarchyIfNeeded(collectionName: string): Promise<{
+  root: { id: string; name: string };
+  children: Array<{ id: string; name: string }>;
+  xchatPlaceholder: { id: string; name: string };
+} | null> {
+  if (!TRUSTED_ADVISOR_ROOT_RE.test(collectionName)) {
+    return null;
+  }
+
+  const root = await createXaiCollection(collectionName);
+  const children: Array<{ id: string; name: string }> = [];
+
+  for (const segment of TRUSTED_ADVISOR_SEGMENTS) {
+    const created = await createXaiCollection(`${root.name}/${segment}`);
+    children.push(created);
+  }
+
+  const xchatPlaceholder = await createXaiCollection(
+    `${root.name}/xchat-history/${TRUSTED_ADVISOR_XCHAT_PLACEHOLDER}`
+  );
+
+  return { root, children, xchatPlaceholder };
 }
 
 function enqueueAuditEvent(input: Parameters<typeof createAuditEvent>[0]) {

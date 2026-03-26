@@ -232,6 +232,68 @@ describe("persona collections inventory route", () => {
     });
   });
 
+  it("creates trusted-advisor collection hierarchy when root is requested", async () => {
+    const createdNames: string[] = [];
+    let idSeq = 0;
+    xaiMocks.createXaiCollection.mockImplementation(async (name: string) => {
+      createdNames.push(name);
+      idSeq += 1;
+      return {
+        id: `collection_${idSeq}`,
+        name
+      };
+    });
+
+    const response = await postPersonaCollection(
+      new Request("http://test/api/personas/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "atx-trusted-advisor-dev" })
+      })
+    );
+    const payload = (await response.json()) as {
+      data: {
+        id: string;
+        name: string;
+        hierarchy?: {
+          children: string[];
+          xchatPlaceholder: string;
+        };
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(createdNames).toEqual([
+      "atx-trusted-advisor-dev",
+      "atx-trusted-advisor-dev/example-prompts",
+      "atx-trusted-advisor-dev/finance-reference-docs",
+      "atx-trusted-advisor-dev/options-strategy",
+      "atx-trusted-advisor-dev/xchat-history",
+      "atx-trusted-advisor-dev/xpersonas",
+      "atx-trusted-advisor-dev/xchat-history/xchat-<user>-<date>"
+    ]);
+    expect(payload.data.name).toBe("atx-trusted-advisor-dev");
+    expect(payload.data.hierarchy).toEqual({
+      children: [
+        "atx-trusted-advisor-dev/example-prompts",
+        "atx-trusted-advisor-dev/finance-reference-docs",
+        "atx-trusted-advisor-dev/options-strategy",
+        "atx-trusted-advisor-dev/xchat-history",
+        "atx-trusted-advisor-dev/xpersonas"
+      ],
+      xchatPlaceholder: "atx-trusted-advisor-dev/xchat-history/xchat-<user>-<date>"
+    });
+    expect(auditMocks.createAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: expect.objectContaining({
+          collectionName: "atx-trusted-advisor-dev",
+          hierarchyCreated: true,
+          hierarchyChildCount: 5
+        })
+      })
+    );
+  });
+
   it("rejects invalid create collection payload", async () => {
     const response = await postPersonaCollection(
       new Request("http://test/api/personas/collections", {
