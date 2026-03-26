@@ -51,6 +51,18 @@ type CliOpts = {
   useApi: boolean;
 };
 
+type SyncSummary = {
+  mode: "api" | "mongo";
+  root: string;
+  filesDiscovered: number;
+  docsValidated: number;
+  created: number;
+  updated: number;
+  noop: number;
+  skipped: number;
+  errors: number;
+};
+
 function parseCliArgs(argv: string[]): CliOpts {
   let rootInput = "atx-rag-collection/xpersonas";
   let useApi = false;
@@ -84,9 +96,9 @@ function resolveRootAbs(rootInput: string): string {
 function defaultXaiCollectionNameForRoot(absRoot: string, deploySlug: string): string {
   const base = absRoot.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? "";
   if (base === "options-strategy") {
-    return `atx-trusted-advisor-${deploySlug}-options-strategy`;
+    return `atx-trusted-advisor-${deploySlug}/options-strategy`;
   }
-  return `atx-trusted-advisor-${deploySlug}-xpersonas`;
+  return `atx-trusted-advisor-${deploySlug}/xpersonas`;
 }
 
 function teamUuidForXaiIngest(teamIdMerged: string): string {
@@ -199,7 +211,7 @@ async function syncOneViaApi(
   derived: ReturnType<typeof buildYamlDerived>,
   mode: "merge" | "replace",
   rel: string
-): Promise<void> {
+): Promise<"created" | "updated" | "noop" | "error"> {
   const key = derived.name.trim().toLowerCase();
   const headers = {
     "Content-Type": "application/json",
@@ -216,7 +228,7 @@ async function syncOneViaApi(
     const j = await res.json().catch(() => ({}));
     if (!res.ok) {
       console.warn(`[seed:xpersonas:api] POST ${key} failed HTTP ${res.status}:`, j);
-      return;
+      return "error";
     }
     const data = (j as { data?: Record<string, unknown> }).data;
     const id = data?._id != null ? String(data._id) : "";
@@ -224,7 +236,7 @@ async function syncOneViaApi(
       index.set(key, { _id: id, raw: data ?? {} });
     }
     console.log(`[seed:xpersonas:api] created ${key} ← ${rel}`);
-    return;
+    return "created";
   }
 
   const patch = computePersonaSeedUpdatePatch(hit.raw, derived as Record<string, unknown>, mode);
@@ -232,7 +244,7 @@ async function syncOneViaApi(
   const body = stripUndefined(patch as Record<string, unknown>);
   if (Object.keys(body).length === 0) {
     console.log(`[seed:xpersonas:api] merge noop ${key} ← ${rel}`);
-    return;
+    return "noop";
   }
 
   const res = await fetch(`${baseUrl}/api/personas/${hit._id}`, {
@@ -243,13 +255,14 @@ async function syncOneViaApi(
   const j = await res.json().catch(() => ({}));
   if (!res.ok) {
     console.warn(`[seed:xpersonas:api] PUT ${key} failed HTTP ${res.status}:`, j);
-    return;
+    return "error";
   }
   const data = (j as { data?: Record<string, unknown> }).data;
   if (data && data._id) {
     index.set(key, { _id: String(data._id), raw: data });
   }
   console.log(`[seed:xpersonas:api] updated (${mode}) ${key} ← ${rel}`);
+  return "updated";
 }
 
 async function main(): Promise<void> {
@@ -289,6 +302,18 @@ async function main(): Promise<void> {
     return;
   }
 
+  const summary: SyncSummary = {
+    mode: useApi ? "api" : "mongo",
+    root: rootAbs.replace(REPO_ROOT + "/", ""),
+    filesDiscovered: specFiles.length,
+    docsValidated: 0,
+    created: 0,
+    updated: 0,
+    noop: 0,
+    skipped: 0,
+    errors: 0
+  };
+
   const defaultModel = resolveDefaultPersonaModelFromEnv();
   const m = seedTenant.merged;
   const mgmtKey = (m.xaiMgmtKey || "").trim();
@@ -326,14 +351,17 @@ async function main(): Promise<void> {
       const loaded = await loadPersonaDocFromFile(abs, REPO_ROOT);
       if ("error" in loaded) {
         console.warn(`[seed:xpersonas] ${loaded.error}`);
+        summary.skipped += 1;
         continue;
       }
       const doc = injectDefaultModel(loaded.doc, defaultModel);
       const err = validateParsedPersonaDoc(doc, loaded.rel, defaultModel);
       if (err) {
         console.warn(`[seed:xpersonas] ${err}`);
+        summary.skipped += 1;
         continue;
       }
+      summary.docsValidated += 1;
 
       const displayNameOverride =
         typeof doc.xai_collection_name === "string" ? doc.xai_collection_name.trim() : "";
@@ -349,7 +377,20 @@ async function main(): Promise<void> {
         collectionDisplayName: found.name || targetDisplayName
       };
       const derived = buildYamlDerived(doc, colRef);
-      await syncOneViaApi(baseUrl, cookie, index, derived, mode, loaded.rel);
+      const status = await syncOneViaApi(baseUrl, cookie, index, derived, mode, loaded.rel);
+      if (status === "created") {
+        summary.created += 1;
+      } else if (status === "updated") {
+        summary.updated += 1;
+      } else if (status === "noop") {
+        summary.noop += 1;
+      } else {
+        summary.errors += 1;
+      }
+    }
+    console.log(`[seed:xpersonas] concise summary: ${JSON.stringify(summary)}`);
+    if (String(process.env.SEED_SYNC_SUMMARY_JSON ?? "").trim() === "1") {
+      console.log(`SEED_SUMMARY_JSON=${JSON.stringify(summary)}`);
     }
     return;
   }
@@ -367,14 +408,17 @@ async function main(): Promise<void> {
       const loaded = await loadPersonaDocFromFile(abs, REPO_ROOT);
       if ("error" in loaded) {
         console.warn(`[seed:xpersonas] ${loaded.error}`);
+        summary.skipped += 1;
         continue;
       }
       const doc = injectDefaultModel(loaded.doc, defaultModel);
       const err = validateParsedPersonaDoc(doc, loaded.rel, defaultModel);
       if (err) {
         console.warn(`[seed:xpersonas] ${err}`);
+        summary.skipped += 1;
         continue;
       }
+      summary.docsValidated += 1;
       const name = String(doc.name).trim();
       const nameNormalized = name.toLowerCase();
 
@@ -414,18 +458,29 @@ async function main(): Promise<void> {
           { upsert: true }
         );
         console.log(`[seed:xpersonas] upserted (new) ${nameNormalized} ← ${loaded.rel}`);
+        summary.created += 1;
       } else {
         const patch = computePersonaSeedUpdatePatch(
           existing as Record<string, unknown>,
           derived as Record<string, unknown>,
           mode
         );
-        await personasCol.updateOne({ nameNormalized }, { $set: { ...patch, updatedAt: now } });
-        console.log(`[seed:xpersonas] updated (${mode}) ${nameNormalized} ← ${loaded.rel}`);
+        if (Object.keys(patch).length === 0) {
+          console.log(`[seed:xpersonas] merge noop ${nameNormalized} ← ${loaded.rel}`);
+          summary.noop += 1;
+        } else {
+          await personasCol.updateOne({ nameNormalized }, { $set: { ...patch, updatedAt: now } });
+          console.log(`[seed:xpersonas] updated (${mode}) ${nameNormalized} ← ${loaded.rel}`);
+          summary.updated += 1;
+        }
       }
     }
   } finally {
     await client.close();
+  }
+  console.log(`[seed:xpersonas] concise summary: ${JSON.stringify(summary)}`);
+  if (String(process.env.SEED_SYNC_SUMMARY_JSON ?? "").trim() === "1") {
+    console.log(`SEED_SUMMARY_JSON=${JSON.stringify(summary)}`);
   }
 }
 

@@ -302,7 +302,8 @@ export async function runSeedXaiRagIngest(opts) {
       repoCandidates: /** @type {string[]} */ ([]),
       placeholder:
         `# xChat history (${tenantBase})\n\n` +
-        `Reserved for per-user chat sync into xAI; populated by the app after sessions.\n`
+        `Reserved for per-user chat sync into xAI; populated by the app after sessions.\n` +
+        `Suggested logical document path format: \`xchat-<user>-<date>\`.\n`
     },
     { suffix: "finance-reference-docs", repoCandidates: ["finance-reference-docs"] },
     {
@@ -331,7 +332,7 @@ export async function runSeedXaiRagIngest(opts) {
     const rootReadme = Buffer.from(
       `# ${tenantBase}\n\n` +
         `Instance-scoped xAI RAG for this app (deploy **${deploy}**).\n\n` +
-        `Segments: ${segments.map((s) => `\`${tenantBase}-${s.suffix}\``).join(", ")}.\n`,
+        `Segments: ${segments.map((s) => `\`${tenantBase}/${s.suffix}\``).join(", ")}.\n`,
       "utf8"
     );
     await uploadBytesAndLinkToCollection({
@@ -351,7 +352,7 @@ export async function runSeedXaiRagIngest(opts) {
     });
 
     for (const seg of segments) {
-      const displayName = `${tenantBase}-${seg.suffix}`;
+      const displayName = `${tenantBase}/${seg.suffix}`;
       const { id } = await findOrCreateManagementCollection({
         displayName,
         teamId,

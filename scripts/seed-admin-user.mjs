@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { appendFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +12,7 @@ import { loadSeedTenantContext, pickFirstNonEmpty } from "./lib/tenant-defaults-
 
 const SEED_SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SEED_SCRIPT_DIR, "..");
+const ADMIN_LOG_PATH = join(REPO_ROOT, "admin.log");
 const seedTenant = loadSeedTenantContext(REPO_ROOT);
 
 function runPostSeedXaiHelloVerify() {
@@ -34,8 +36,35 @@ function runPostSeedXaiHelloVerify() {
 function childEnvWithSeedParentMongoDb() {
   return {
     ...process.env,
-    SEED_PARENT_MONGODB_DB_NAME: resolveAdminSeedDbName()
+    SEED_PARENT_MONGODB_DB_NAME: resolveAdminSeedDbName(),
+    SEED_SYNC_SUMMARY_JSON: "1"
   };
+}
+
+function parseSeedSummaryMarker(output) {
+  const marker = "SEED_SUMMARY_JSON=";
+  const lines = String(output ?? "").split(/\r?\n/);
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i]?.trim();
+    if (!line || !line.startsWith(marker)) {
+      continue;
+    }
+    try {
+      return JSON.parse(line.slice(marker.length));
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function appendAdminSeedLog({ summaryLine, summaryJson }) {
+  const ts = new Date().toISOString();
+  const chunks = [`[${ts}] ${summaryLine}`];
+  if (summaryJson) {
+    chunks.push(JSON.stringify(summaryJson));
+  }
+  appendFileSync(ADMIN_LOG_PATH, `${chunks.join("\n")}\n`, "utf8");
 }
 
 /** Upsert YAML/MD xPersona specs from `atx-rag-collection/xpersonas` into `xchat_personas` (separate from xAI collection ingest). */
@@ -43,21 +72,28 @@ function runPostSeedXpersonasFromDisk() {
   const s = String(process.env.SKIP_SEED_XPERSONAS ?? "").toLowerCase();
   if (s === "1" || s === "true" || s === "yes") {
     console.log("[seed:admin] SKIP_SEED_XPERSONAS set — skipping disk → Mongo xPersona upsert");
-    return;
+    return { skipped: true };
   }
   const script = join(SEED_SCRIPT_DIR, "sync-xpersonas-from-yaml.ts");
   console.log("[seed:admin] syncing xPersonas from atx-rag-collection/xpersonas → Mongo (npm run seed:xpersonas)…");
   const r = spawnSync(process.execPath, ["--import", "tsx", script], {
     cwd: REPO_ROOT,
     env: childEnvWithSeedParentMongoDb(),
-    stdio: "inherit"
+    encoding: "utf8"
   });
+  if (r.stdout) {
+    process.stdout.write(r.stdout);
+  }
+  if (r.stderr) {
+    process.stderr.write(r.stderr);
+  }
   if (r.status !== 0 && r.status != null) {
     console.error(
       "[seed:admin] seed:xpersonas failed — fix specs under atx-rag-collection/xpersonas or set SKIP_SEED_XPERSONAS=1"
     );
     process.exit(r.status ?? 1);
   }
+  return parseSeedSummaryMarker(r.stdout);
 }
 
 /** Upsert options strategy preference docs from `atx-rag-collection/options-strategy` (one row per subfolder .md). */
@@ -67,7 +103,7 @@ function runPostSeedOptionsStrategyPreferencesFromDisk() {
     console.log(
       "[seed:admin] SKIP_SEED_OPTIONS_STRATEGY_PREFS set — skipping disk → Mongo options_strategy_preferences upsert"
     );
-    return;
+    return { skipped: true };
   }
   const script = join(SEED_SCRIPT_DIR, "sync-options-strategy-preferences-from-disk.ts");
   console.log(
@@ -76,14 +112,21 @@ function runPostSeedOptionsStrategyPreferencesFromDisk() {
   const r = spawnSync(process.execPath, ["--import", "tsx", script], {
     cwd: REPO_ROOT,
     env: childEnvWithSeedParentMongoDb(),
-    stdio: "inherit"
+    encoding: "utf8"
   });
+  if (r.stdout) {
+    process.stdout.write(r.stdout);
+  }
+  if (r.stderr) {
+    process.stderr.write(r.stderr);
+  }
   if (r.status !== 0 && r.status != null) {
     console.error(
       "[seed:admin] options-strategy-prefs sync failed — fix markdown under atx-rag-collection/options-strategy or set SKIP_SEED_OPTIONS_STRATEGY_PREFS=1"
     );
     process.exit(r.status ?? 1);
   }
+  return parseSeedSummaryMarker(r.stdout);
 }
 
 /** Upsert canonical options strategies from `atx-rag-collection/options-strategy` (mirrors prefs, sets filters on insert). */
@@ -279,13 +322,26 @@ async function seed() {
     `[seed:admin] Mongo database name: ${DB_NAME} — Next/Spring must use the same logical DB ` +
       `(set MONGODB_DB_NAME or the database path in MONGODB_URI in Secret Manager / .env). ` +
       `When MONGODB_DB_NAME is unset, ATX_DEPLOY_TARGET=stage|deploy|prod defaults the base to atxfinance-<target> (see src/lib/env.ts). ` +
-      `Legacy single-DB local dev: ADMIN_SEED_DB_VERSION_SUFFIX=off.`
+      `Optional versioned seed DB: ADMIN_SEED_DB_VERSION_SUFFIX=on.`
   );
   const mongoUri = resolveMongoUri();
   const client = new MongoClient(mongoUri);
   await client.connect();
   const db = client.db(DB_NAME);
   const now = new Date();
+  let ragIngest = {
+    ragUploaded: 0,
+    ragFileCandidates: 0,
+    strategyCollectionIds: [],
+    strategyCollectionsDetail: [],
+    strategyFilesUploaded: 0,
+    tenantTrustedAdvisorRootCollectionId: "",
+    warnings: []
+  };
+  let strategyCollectionIds = [];
+  let strategyCollectionsDetail = [];
+  let strategyFilesUploaded = 0;
+  let ragFileCandidates = 0;
 
   try {
     await ensureIndexes(db);
@@ -298,14 +354,6 @@ async function seed() {
     const m = seedTenant.merged;
     let teamKbCollectionId = "";
 
-    let strategyCollectionIds = [];
-    let ragIngest = {
-      ragUploaded: 0,
-      ragFileCandidates: 0,
-      strategyCollectionsDetail: [],
-      strategyFilesUploaded: 0,
-      warnings: []
-    };
     if (!shouldSkipSeedXaiRagIngest()) {
       const mgmtBase = m.xaiMgmtBaseUrl.replace(/\/$/, "");
       const xaiBaseUrl = m.xaiBaseUrl.replace(/\/$/, "");
@@ -333,9 +381,9 @@ async function seed() {
     const xaiTeamIdUsed = (m.xaiTeamId || "").trim();
     const teamUuidForStrategy = teamUuidForXaiIngest(m.xaiTeamId);
     const envAtxRootOverride = (process.env.ATX_INSTANCE_COLLECTION_ROOT || "").trim();
-    const strategyCollectionsDetail = ragIngest.strategyCollectionsDetail ?? [];
-    const strategyFilesUploaded = ragIngest.strategyFilesUploaded ?? 0;
-    const ragFileCandidates = ragIngest.ragFileCandidates ?? 0;
+    strategyCollectionsDetail = ragIngest.strategyCollectionsDetail ?? [];
+    strategyFilesUploaded = ragIngest.strategyFilesUploaded ?? 0;
+    ragFileCandidates = ragIngest.ragFileCandidates ?? 0;
 
     const collectionsSearchIds = dedupeTrimmedIds(strategyCollectionIds);
     const superAgentTools = buildSuperAgentXapiTools(collectionsSearchIds);
@@ -667,9 +715,25 @@ async function seed() {
   } finally {
     await client.close();
   }
-  runPostSeedXpersonasFromDisk();
-  runPostSeedOptionsStrategyPreferencesFromDisk();
+  const xpersonasSyncSummary = runPostSeedXpersonasFromDisk();
+  const strategySyncSummary = runPostSeedOptionsStrategyPreferencesFromDisk();
   runPostSeedOptionsStrategyFromDisk();
+  appendAdminSeedLog({
+    summaryLine:
+      `[seed:admin] db=${DB_NAME} ` +
+      `rag_uploaded=${ragIngest.ragUploaded}/${ragFileCandidates} ` +
+      `rag_collections=${strategyCollectionIds.length} ` +
+      `xpersonas_upserts=${(xpersonasSyncSummary?.created ?? 0) + (xpersonasSyncSummary?.updated ?? 0)} ` +
+      `xpersonas_noop=${xpersonasSyncSummary?.noop ?? 0} ` +
+      `options_strategy_upserts=${strategySyncSummary?.upserted ?? 0}`,
+    summaryJson: {
+      db: DB_NAME,
+      ragIngest,
+      xpersonasSyncSummary,
+      strategySyncSummary
+    }
+  });
+  console.log(`[seed:admin] wrote concise report to ${ADMIN_LOG_PATH}`);
   runPostSeedXaiHelloVerify();
 }
 

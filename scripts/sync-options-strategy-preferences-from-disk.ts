@@ -2,8 +2,8 @@
  * Upserts `options_strategy_preferences` from `atx-rag-collection/options-strategy/<slug>/<file>.md`.
  * Invoked by `npm run seed:options-strategy-prefs` and post-`seed:admin` unless SKIP_SEED_OPTIONS_STRATEGY_PREFS=1.
  */
-import { access, constants as fsConstants, readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { MongoClient } from "mongodb";
@@ -25,47 +25,69 @@ type StrategyDiskRow = {
   sourceRelPath: string;
 };
 
+type StrategySyncSummary = {
+  root: string;
+  filesDiscovered: number;
+  upserted: number;
+};
+
+async function collectMarkdownFilesRecursive(absDir: string): Promise<string[]> {
+  const out: string[] = [];
+  const entries = await readdir(absDir, { withFileTypes: true });
+  for (const ent of entries) {
+    if (ent.name.startsWith(".")) {
+      continue;
+    }
+    const abs = join(absDir, ent.name);
+    if (ent.isDirectory()) {
+      out.push(...(await collectMarkdownFilesRecursive(abs)));
+      continue;
+    }
+    if (!ent.isFile()) {
+      continue;
+    }
+    const low = ent.name.toLowerCase();
+    if (!low.endsWith(".md") || low === "readme.md") {
+      continue;
+    }
+    out.push(abs);
+  }
+  return out.sort();
+}
+
+function toKebabSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function slugFromRelativeMarkdownPath(relPath: string): string {
+  const noExt = relPath.replace(/\.md$/i, "");
+  const rawSegments = noExt.split("/").filter(Boolean).map((s) => toKebabSlug(s));
+  const segments = rawSegments.filter(Boolean);
+  if (segments.length >= 2 && segments.at(-1) === segments.at(-2)) {
+    segments.pop();
+  }
+  return toKebabSlug(segments.join("-"));
+}
+
 async function listStrategyRowsFromDisk(): Promise<StrategyDiskRow[]> {
-  const entries = await readdir(STRATEGY_ROOT, { withFileTypes: true });
+  const mdFiles = await collectMarkdownFilesRecursive(STRATEGY_ROOT);
   const rows: StrategyDiskRow[] = [];
 
-  for (const ent of entries) {
-    if (!ent.isDirectory() || ent.name.startsWith(".")) {
-      continue;
-    }
-    const slug = ent.name;
+  for (const mdAbs of mdFiles) {
+    const rel = relative(STRATEGY_ROOT, mdAbs).replaceAll("\\", "/");
+    const slug = slugFromRelativeMarkdownPath(rel);
     if (!SLUG_RE.test(slug)) {
-      console.warn(`[seed:options-strategy-prefs] skip invalid slug directory: ${slug}`);
+      console.warn(`[seed:options-strategy-prefs] skip invalid slug for path ${rel}: ${slug || "(empty)"}`);
       continue;
     }
-    const dir = join(STRATEGY_ROOT, slug);
-    const preferred = join(dir, `${slug}.md`);
-    let mdPath: string | null = null;
-    let rel: string;
-    try {
-      await access(preferred, fsConstants.R_OK);
-      mdPath = preferred;
-      rel = `${slug}/${slug}.md`;
-    } catch {
-      const files = (await readdir(dir)).filter((f) => f.toLowerCase().endsWith(".md"));
-      if (files.length === 0) {
-        console.warn(`[seed:options-strategy-prefs] skip ${slug}: no .md file`);
-        continue;
-      }
-      if (files.length > 1) {
-        console.warn(
-          `[seed:options-strategy-prefs] skip ${slug}: multiple .md files — add ${slug}.md or leave a single markdown file`
-        );
-        continue;
-      }
-      const only = files[0]!;
-      mdPath = join(dir, only);
-      rel = `${slug}/${only}`;
-    }
-
-    const raw = await readFile(mdPath!, "utf8");
-    const base = mdPath!.split(/[/\\]/).pop() ?? `${slug}.md`;
-    const name = base.replace(/\.md$/i, "") || slug;
+    const raw = await readFile(mdAbs, "utf8");
+    const fileStem = basename(mdAbs).replace(/\.md$/i, "");
+    const dirStem = basename(dirname(mdAbs));
+    const name = toKebabSlug(fileStem) === toKebabSlug(dirStem) ? dirStem : fileStem;
 
     rows.push({
       slug,
@@ -93,6 +115,11 @@ async function main(): Promise<void> {
   await client.connect();
   const col = client.db(dbName).collection(COLLECTION);
   const now = new Date();
+  const summary: StrategySyncSummary = {
+    root: "atx-rag-collection/options-strategy",
+    filesDiscovered: rows.length,
+    upserted: 0
+  };
 
   try {
     await col.createIndex({ slug: 1 }, { name: "uniq_options_strategy_preferences_slug", unique: true });
@@ -112,9 +139,14 @@ async function main(): Promise<void> {
         { upsert: true }
       );
       console.log(`[seed:options-strategy-prefs] upserted ${row.slug} ← ${row.sourceRelPath}`);
+      summary.upserted += 1;
     }
   } finally {
     await client.close();
+  }
+  console.log(`[seed:options-strategy-prefs] concise summary: ${JSON.stringify(summary)}`);
+  if (String(process.env.SEED_SYNC_SUMMARY_JSON ?? "").trim() === "1") {
+    console.log(`SEED_SUMMARY_JSON=${JSON.stringify(summary)}`);
   }
 }
 

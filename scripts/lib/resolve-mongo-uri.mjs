@@ -7,10 +7,9 @@ import { fileURLToPath } from "node:url";
  * Aligned with `getMongoUri()` in `src/lib/env.ts`: `MONGODB_URI` may be plain or base64;
  * legacy `MONGODB_URI_B64` is still read when `MONGODB_URI` is unset.
  *
- * Admin seed (`seed-admin-user.mjs`) uses {@link resolveAdminSeedDbName}: base name + `-` + app version
- * (from `ADMIN_SEED_APP_VERSION`, `npm_package_version`, or repo `package.json`) so each release targets a
- * distinct database until ops updates `MONGODB_URI` / `MONGODB_DB_NAME` in Secret Manager. Set
- * `ADMIN_SEED_DB_VERSION_SUFFIX=off` to keep the legacy single-DB name for local/support.
+ * Admin seed (`seed-admin-user.mjs`) uses {@link resolveAdminSeedDbName}: same DB as runtime by default.
+ * Optional version suffixing is opt-in via `ADMIN_SEED_DB_VERSION_SUFFIX=on|true|1|yes|versioned`,
+ * using `-<app-version-token>` from `ADMIN_SEED_APP_VERSION`, `npm_package_version`, or repo `package.json`.
  *
  * **Next.js `getDb()`** uses `resolveDefaultMongoDatabaseName()` in `src/lib/env.ts` (no version suffix). Standalone
  * TS disk→Mongo sync scripts use that default; `seed:admin` post-steps set **`SEED_PARENT_MONGODB_DB_NAME`** to this
@@ -104,13 +103,16 @@ function mongoSafeVersionToken(version) {
 }
 
 /**
- * Database name for `npm run seed:admin` only. Appends `-${versionToken}` to the logical base
- * (`resolveSeedDbName()` base) unless `ADMIN_SEED_DB_VERSION_SUFFIX` is `off`, `false`, `0`, `legacy`, or `no`.
+ * Database name for `npm run seed:admin` only. Uses runtime DB by default (`resolveSeedDbName()`).
+ * Appends `-${versionToken}` only when `ADMIN_SEED_DB_VERSION_SUFFIX` is
+ * `on`, `true`, `1`, `yes`, or `versioned`.
  */
 export function resolveAdminSeedDbName() {
   const base = resolveSeedDbName();
   const flag = process.env.ADMIN_SEED_DB_VERSION_SUFFIX?.trim().toLowerCase() ?? "";
-  if (flag === "off" || flag === "false" || flag === "0" || flag === "legacy" || flag === "no") {
+  const versioned =
+    flag === "on" || flag === "true" || flag === "1" || flag === "yes" || flag === "versioned";
+  if (!versioned) {
     return base;
   }
   const token = mongoSafeVersionToken(readPackageJsonVersion());

@@ -7,7 +7,7 @@ import { resolveDefaultMongoDatabaseName } from "@/lib/env";
  *   {@link resolveDefaultMongoDatabaseName} (`MONGODB_DB_NAME` / deploy target / `atxfinance`).
  * - **Child of `seed:admin`**: `seed-admin-user.mjs` sets `SEED_PARENT_MONGODB_DB_NAME` to
  *   `resolveAdminSeedDbName()` so writes land in the same DB as the main seed transaction
- *   (version suffix when `ADMIN_SEED_DB_VERSION_SUFFIX` is not `off`).
+ *   (optional version suffix only when `ADMIN_SEED_DB_VERSION_SUFFIX=on`).
  */
 export function resolveSyncTargetMongoDatabaseName(): string {
   const parent = process.env.SEED_PARENT_MONGODB_DB_NAME?.trim();
