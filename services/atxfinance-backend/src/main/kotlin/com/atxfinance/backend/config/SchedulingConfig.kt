@@ -6,7 +6,9 @@ import net.javacrumbs.shedlock.provider.mongo.MongoLockProvider
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.task.TaskExecutor
 import org.springframework.scheduling.annotation.EnableScheduling
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 
 @Configuration
 @EnableScheduling
@@ -16,6 +18,16 @@ class SchedulingConfig {
     fun lockProvider(mongoClient: MongoClient): LockProvider {
         // Use default database from Spring's Mongo properties; ShedLock creates a 'shedLock' collection by default
         return MongoLockProvider(mongoClient.getDatabase(getDefaultDbName(mongoClient)))
+    }
+
+    @Bean(name = ["schedulerTaskExecutor"])
+    fun schedulerTaskExecutor(): TaskExecutor {
+        val exec = ThreadPoolTaskExecutor()
+        exec.corePoolSize = 4
+        exec.maxPoolSize = 4
+        exec.setThreadNamePrefix("scheduler-")
+        exec.initialize()
+        return exec
     }
 
     private fun getDefaultDbName(mongoClient: MongoClient): String {

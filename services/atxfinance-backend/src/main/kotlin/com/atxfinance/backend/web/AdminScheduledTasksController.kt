@@ -107,7 +107,7 @@ class AdminScheduledTasksController(
         val task = adminScheduledTasksService.getTaskForTenant(taskId, session)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Task not found"))
         val username = session.username?.takeIf { it.isNotBlank() } ?: session.userId
-        val exec = adminScheduledTasksService.executeScheduledTask(task, username)
+        val exec = adminScheduledTasksService.enqueueScheduledTask(task, username)
         return ResponseEntity.ok(
             mapOf(
                 "data" to mapOf(
@@ -140,11 +140,8 @@ class AdminScheduledTasksController(
             is AdminGate.Err -> return g.response
             is AdminGate.Ok -> g.session
         }
-        val due = adminScheduledTasksService.listDueTasks(Date(), session)
-        val username = session.username?.takeIf { it.isNotBlank() } ?: session.userId
-        val trigger = "scheduler:$username"
-        val results = due.map { task ->
-            val exec = adminScheduledTasksService.executeScheduledTask(task, trigger)
+        val accepted = adminScheduledTasksService.enqueueDueTasks(Date(), session)
+        val results = accepted.map { exec ->
             mapOf(
                 "runId" to exec.runIdHex,
                 "status" to exec.status,

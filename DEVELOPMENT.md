@@ -1184,3 +1184,49 @@ This project includes smoke checks and SRE-focused tests to prevent config/secre
   - Edit `libs.versions.toml` and change the relevant entry under `[versions]`.
   - For Google Cloud client libraries, update the `gcp-bom` version — individual GCP deps then follow the BOM.
   - Re‑sync Gradle or run `./gradlew build` to apply.
+
+
+
+## Backend: running with .env (Gradle bootRun)
+
+Gradle does not read a repo-root `.env` automatically. Use one of the options below to ensure your Spring backend sees the expected environment variables when you run it locally.
+
+Recommended for this repo: use the provided helper script.
+
+- Script: `scripts/dev/bootrun-atxfinance-backend.sh`
+- What it does:
+  - Sources `.env` from the repo root
+  - Bridges `MONGODB_URI` ↔ `SPRING_DATA_MONGODB_URI`
+  - Derives `SPRING_DATA_MONGODB_DATABASE` from `MONGODB_DB_NAME` (or `ATX_DEPLOY_TARGET` → `atxfinance-<target>`)
+  - Adds `tenant_defaults.yaml` via `SPRING_CONFIG_ADDITIONAL_LOCATION` when present
+  - Frees `SERVER_PORT` before launching Gradle
+  - Runs `./gradlew bootRun` in `services/atxfinance-backend`
+
+How to run
+- CLI: `bash scripts/dev/bootrun-atxfinance-backend.sh`
+- IntelliJ IDEA: create a Shell Script run configuration pointing to that script (Working directory = repo root). Enable “Store as project file” to show it in Services.
+
+Alternate options
+1) IntelliJ Gradle run config + EnvFile plugin (IDE-only)
+- Create a Gradle run configuration for `services/atxfinance-backend` with task `bootRun`.
+- Install the EnvFile plugin, enable it in the run config, and add your repo-root `.env`.
+- Optional: add `SPRING_CONFIG_ADDITIONAL_LOCATION=optional:file:/absolute/path/to/tenant_defaults.yaml` if you use that file locally.
+
+2) Export env in your shell before Gradle (CLI)
+- macOS/Linux: `set -a; source .env; set +a; cd services/atxfinance-backend; ./gradlew bootRun`
+- Or export only the needed keys (e.g., `MONGODB_URI`, `SPRING_DATA_MONGODB_URI`, `MONGODB_DB_NAME`, `SERVER_PORT`).
+
+3) Pass system properties/args to Spring (CLI)
+- Example: `./gradlew bootRun --args='--spring.data.mongodb.uri="mongodb://localhost:27017/yourdb"'`
+- Or VM/system props: `./gradlew bootRun -Dspring.data.mongodb.uri=mongodb://localhost:27017/yourdb -Dspring.config.additional-location=optional:file:/abs/path/tenant_defaults.yaml`
+
+4) Optional Gradle wiring to auto-load `.env` for bootRun (CLI & IDE)
+- You can inject `.env` values into the `bootRun` environment by adding a small snippet in `services/atxfinance-backend/build.gradle.kts`. This keeps `./gradlew bootRun` working without the helper script. Example snippet available on request.
+
+5) Optional runtime library to auto-load `.env`
+- Add `implementation("me.paulschwarz:spring-dotenv:4.x")` to the backend module to have Spring load `.env` from the working directory on startup. Useful if you want app-level behavior without Gradle customization. Consider whether to enable this in production images.
+
+Verification tips
+- Watch startup logs for the effective Mongo URI and database.
+- Hit `GET http://localhost:${SERVER_PORT:-8080}/actuator/env` (if exposed) and search for `SPRING_DATA_MONGODB_URI`.
+- Change `SERVER_PORT` in `.env` (e.g., `8081`) and confirm the app binds to the new port.

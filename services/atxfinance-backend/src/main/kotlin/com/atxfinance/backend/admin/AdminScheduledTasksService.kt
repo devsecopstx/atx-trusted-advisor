@@ -11,6 +11,11 @@ import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Service
+import org.springframework.scheduling.support.CronExpression
+import net.javacrumbs.shedlock.core.LockConfiguration
+import java.time.ZoneId
+import java.time.Instant
+import java.time.Duration
 import java.util.Date
 import kotlin.random.Random
 
@@ -19,6 +24,9 @@ class AdminScheduledTasksService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
     private val userHistoryAgentService: UserHistoryAgentService,
+    private val lockProvider: net.javacrumbs.shedlock.core.LockProvider,
+    @org.springframework.beans.factory.annotation.Qualifier("schedulerTaskExecutor")
+    private val taskExecutor: org.springframework.core.task.TaskExecutor,
 ) {
 
     fun listTasks(session: ResolvedSession, limit: Int): List<Map<String, Any?>> {
@@ -49,12 +57,14 @@ class AdminScheduledTasksService(
             throw BadTaskPayloadException("Invalid category")
         }
         val scheduleCron = (body["scheduleCron"] as? String)?.trim().orEmpty()
-        if (scheduleCron.length < 5) {
+        if (!isValidCron(scheduleCron)) {
             throw BadTaskPayloadException("scheduleCron is invalid")
         }
         val enabled = body["enabled"] as? Boolean ?: true
         val now = Date()
-        val nextRunAt = parseOptionalDate(body["nextRunAt"]) ?: Date(now.time + FIVE_MIN_MS)
+        val explicitNext = parseOptionalDate(body["nextRunAt"])?.takeIf { enabled }
+        val nextRunAt = explicitNext ?: computeNextRunAt(scheduleCron, now)
+            ?: throw BadTaskPayloadException("scheduleCron could not compute next run")
         val doc = Document()
         doc["name"] = name
         doc["category"] = category
@@ -113,10 +123,16 @@ class AdminScheduledTasksService(
         }
         val scheduleCron = (body["scheduleCron"] as? String)?.trim()
         if (scheduleCron != null) {
-            if (scheduleCron.length < 5) {
+            if (!isValidCron(scheduleCron)) {
                 throw BadTaskPayloadException("scheduleCron is invalid")
             }
             update.set("scheduleCron", scheduleCron)
+            // If nextRunAt is not explicitly provided in the same patch, recompute from now
+            if (!body.containsKey("nextRunAt")) {
+                val computed = computeNextRunAt(scheduleCron, Date())
+                    ?: throw BadTaskPayloadException("scheduleCron could not compute next run")
+                update.set("nextRunAt", computed)
+            }
             modified = true
         }
         if (body.containsKey("enabled")) {
@@ -179,7 +195,9 @@ class AdminScheduledTasksService(
         val output: String,
     )
 
-    fun executeScheduledTask(task: Document, triggeredBy: String): ExecutionResult {
+    fun executeScheduledTask(task: Document, triggeredBy: String): ExecutionResult = enqueueScheduledTask(task, triggeredBy)
+
+    fun enqueueScheduledTask(task: Document, triggeredBy: String): ExecutionResult {
         val taskId = task.getObjectId("_id") ?: throw IllegalStateException("task missing _id")
         val tenantOid = task.getObjectId("tenantId")
         val taskName = task.getString("name") ?: "task"
@@ -199,49 +217,118 @@ class AdminScheduledTasksService(
         val runId = inserted.getObjectId("_id") ?: throw IllegalStateException("run missing _id")
         val startedAt = inserted.getDate("startedAt") ?: Date()
 
-        markTaskRunWindow(taskId, startedAt)
+        advanceScheduleAfterStart(task, startedAt)
 
-        val (execStatus, execOutput) = when (category) {
-            "user-history" -> userHistoryAgentService.run(tenantOid?.toHexString())
-            else -> simulateTaskExecution(taskName, category)
+        // Execute asynchronously
+        taskExecutor.execute {
+            try {
+                val (execStatus, execOutput) = when (category) {
+                    "user-history" -> userHistoryAgentService.run(tenantOid?.toHexString())
+                    else -> simulateTaskExecution(taskName, category)
+                }
+                val completedAt = Date()
+                val durationMs = maxOf(1L, completedAt.time - startedAt.time)
+                mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("_id").`is`(runId)),
+                    Update().apply {
+                        set("status", execStatus)
+                        set("output", execOutput)
+                        set("durationMs", durationMs)
+                        set("completedAt", completedAt)
+                    },
+                    props.taskRunsCollection,
+                )
+            } catch (e: Exception) {
+                val completedAt = Date()
+                mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("_id").`is`(runId)),
+                    Update().apply {
+                        set("status", "failed")
+                        set("output", ("Execution error: " + (e.message ?: e.javaClass.simpleName)).take(500))
+                        set("completedAt", completedAt)
+                    },
+                    props.taskRunsCollection,
+                )
+            }
         }
-        val completedAt = Date()
-        val durationMs = maxOf(1L, completedAt.time - startedAt.time)
-
-        mongoTemplate.updateFirst(
-            Query.query(Criteria.where("_id").`is`(runId)),
-            Update().apply {
-                set("status", execStatus)
-                set("output", execOutput)
-                set("durationMs", durationMs)
-                set("completedAt", completedAt)
-            },
-            props.taskRunsCollection,
-        )
 
         return ExecutionResult(
             runIdHex = runId.toHexString(),
-            status = execStatus,
-            output = execOutput,
+            status = "running",
+            output = "Task accepted and started",
         )
     }
 
     fun listDueTasks(now: Date, session: ResolvedSession): List<Document> {
         val base = Criteria.where("enabled").`is`(true).and("nextRunAt").lte(now)
         val q = Query.query(PortfolioMongoFilter.withTenantScopeCriteria(base, session.tenantId.takeIf { it.isNotBlank() }))
-            .with(Sort.by(Sort.Direction.ASC, "nextRunAt"))
+            .with(Sort.by(Sort.Direction.ASC, "nextRunAt").and(Sort.by(Sort.Direction.ASC, "_id")))
             .limit(30)
         return mongoTemplate.find(q, Document::class.java, props.scheduledTasksCollection)
     }
 
+    fun enqueueDueTasks(now: Date, session: ResolvedSession): List<ExecutionResult> {
+        val due = listDueTasks(now, session)
+        val accepted = mutableListOf<ExecutionResult>()
+        val username = session.username?.takeIf { it.isNotBlank() } ?: session.userId
+        for (task in due) {
+            val taskId = task.getObjectId("_id") ?: continue
+            val lockName = "admin_task_" + taskId.toHexString()
+            val cfg = LockConfiguration(Instant.now(), lockName, Duration.ofMinutes(5), Duration.ofSeconds(5))
+            val maybeLock = lockProvider.lock(cfg)
+            if (maybeLock.isPresent) {
+                val simpleLock = maybeLock.get()
+                try {
+                    val res = enqueueScheduledTask(task, "scheduler:$username")
+                    accepted.add(res)
+                } finally {
+                    simpleLock.unlock()
+                }
+            }
+        }
+        return accepted
+    }
+
     class BadTaskPayloadException(message: String) : RuntimeException(message)
 
-    private fun markTaskRunWindow(taskId: ObjectId, startedAt: Date) {
+    private fun normalizeCronForSpring(cron: String): String {
+        val parts = cron.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        return if (parts.size == 5) {
+            // Prepend seconds for Spring's CronExpression
+            "0 " + parts.joinToString(" ")
+        } else {
+            cron.trim()
+        }
+    }
+
+    private fun isValidCron(cron: String): Boolean = try {
+        CronExpression.parse(normalizeCronForSpring(cron))
+        true
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun computeNextRunAt(cron: String, from: Date): Date? {
+        return try {
+            val expr = CronExpression.parse(normalizeCronForSpring(cron))
+            val zdt = java.time.ZonedDateTime.ofInstant(from.toInstant(), ZoneId.of("UTC"))
+            val next = expr.next(zdt) ?: return null
+            Date.from(next.toInstant())
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun advanceScheduleAfterStart(task: Document, startedAt: Date) {
+        val taskId = task.getObjectId("_id") ?: return
+        val cron = task.getString("scheduleCron")
+        val next = if (!cron.isNullOrBlank()) computeNextRunAt(cron, startedAt) else null
+        val nextSafe = next ?: Date(startedAt.time + ONE_DAY_MS)
         mongoTemplate.updateFirst(
             Query.query(Criteria.where("_id").`is`(taskId)),
             Update().apply {
                 set("lastRunAt", startedAt)
-                set("nextRunAt", Date(startedAt.time + ONE_DAY_MS))
+                set("nextRunAt", nextSafe)
             },
             props.scheduledTasksCollection,
         )
