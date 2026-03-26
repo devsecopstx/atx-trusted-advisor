@@ -1,83 +1,71 @@
-# Local Development Guide
+# Local Development Guide (Tight)
 
-This is the local-dev entrypoint. For deep implementation details, use the linked source docs below.
+Short bootstrap for a new local instance.
 
-## Deep-dive docs
+## 1) Required local env only
 
-- `AGENTS.md` (operator flow + local bootstrap commands)
-- `atx-docs/sre-ops/atxfinance-backend-http-api.md` (backend HTTP contract + health endpoints)
-- `atx-docs/sre-ops/api-consolidation-spring-backend.md` (BFF migration and proxy-surface context)
+Create `.env` from `.env.example` and set only what local startup needs:
 
-## Required environment keys
-
-Use `.env` (not `.env.local`) for this app.
-
-Required:
-
-- `MONGODB_URI` (optional for local Docker Mongo fallback)
+- `ADMIN_SEED_EMAIL`
 - `XAI_API_KEY`
 - `XAI_MANAGEMENT_API_KEY`
 - `X_OAUTH_CLIENT_ID`
 - `X_OAUTH_CLIENT_SECRET`
 - `AUTH_SECRET`
-- `ADMIN_SEED_EMAIL`
 
-Common optional keys:
+Notes:
 
-- `MONGO_ROOT_USERNAME` (default `admin`)
-- `MONGO_ROOT_PASSWORD` (empty by default)
-- `MONGODB_DB_NAME` (default `atxfinance`)
-- `ATXFINANCE_BACKEND_ORIGIN` (enables BFF proxy routing)
-- `ALLOW_ANY_X_USER_LOGIN`
-- `ENABLE_XCHAT_DEBUG`
+- Leave `MONGODB_URI` unset for local Docker Mongo fallback.
+- Optional local auth settings for Mongo: `MONGO_ROOT_USERNAME`, `MONGO_ROOT_PASSWORD`, `MONGODB_DB_NAME`.
 
-## Local run order
+## 2) Start services (order)
 
-1. Start MongoDB.
-2. Start backend (`atxfinance-backend`).
-3. Start Next.js core app.
-
-## Quick start
+### Recommended one-command flow
 
 1. `npm install`
 2. `cp .env.example .env`
-3. `npm run dev:stack` (ordered startup: compose services first, then frontend)
-4. Health checks:
-   - `http://localhost:8080/actuator/health`
-   - `http://localhost:3000/api/health`
+3. `npm run dev:stack`
 
-## Common local commands
+This starts Mongo + backend first, then frontend.
 
-- `npm run dev:frontend` - Next.js only
-- `npm run dev:backend` - Compose backend + Mongo logs
-- `npm run dev:spring` - host JVM backend bootRun
-- `npm run dev:host` - host backend + Next chained
-- `npm run mongo:up` - start only Mongo and wait healthy
-- `npm run mongo:down` - stop Mongo
-- `RESET_LOCAL_MONGO=1 npm run mongo:reset` - destructive local Mongo volume reset + seed flow
-- `npm run local:bootstrap` - Mongo up + seed admin
-- `npm run seed:admin` - idempotent admin/bootstrap seed
+### Split-terminal flow
 
-## BFF routing notes
+1. `npm run mongo:up`
+2. `npm run dev:spring` (or `npm run dev:backend`)
+3. `npm run dev:frontend`
 
-When `ATXFINANCE_BACKEND_ORIGIN` is set, selected API routes are proxied to Spring (`src/lib/bff-proxy-routes.ts`).
+## 3) Run admin seed
 
-- Use the same auth/session config between Next and Spring.
-- Keep route parity tests and API docs updated for proxy-surface changes.
+For each new instance, run:
 
-## Validation gates
+- `npm run seed:admin`
 
-- `npm run lint`
-- `npm run typecheck`
-- `npm run test`
-- `npm run build`
-- `npm run ci:gate`
+What it does:
 
-## Troubleshooting
+- upserts admin + tenant bootstrap
+- runs xPersona sync from `atx-rag-collection/xpersonas` unless `SKIP_SEED_XPERSONAS=1`
+- uploads RAG sources to xAI (when keys are present) unless `SKIP_SEED_XAI_RAG_INGEST=1`
+- runs xAI hello verification unless `SKIP_XAI_POST_SEED_VERIFY=1`
 
-- **Mongo auth errors:** ensure `MONGODB_URI` is unset if using local no-auth Mongo.
-- **Wrong DB target:** align URI path with `MONGODB_DB_NAME`.
-- **Port conflicts:** verify `27017`, `8080`, and `3000` are available.
-- **OAuth callback mismatch:** keep browser host, callback env, and X app callback host consistent.
+## 4) Run persona and RAG sync explicitly (optional)
 
-For OAuth-specific troubleshooting flow, use `atx-docs/guides/auth-and-access.md`.
+Use these when you need targeted re-sync without full bootstrap:
+
+- xPersonas only: `npm run seed:xpersonas`
+- options strategy preferences: `npm run seed:options-strategy-prefs`
+
+RAG upload path used by `seed:admin`:
+
+- `atx-rag-collection/*` via `scripts/lib/seed-xai-rag-ingest.mjs`
+
+## 5) Smoke checks
+
+- Backend health: `http://localhost:8080/actuator/health`
+- App health: `http://localhost:3000/api/health`
+
+## Deep links
+
+- Bootstrap and operator runbook: [AGENTS.md](../../AGENTS.md)
+- Seed script behavior: [scripts/seed-admin-user.mjs](../../scripts/seed-admin-user.mjs)
+- RAG source tree rules: [atx-rag-collection/README.md](../../atx-rag-collection/README.md)
+- Auth/login troubleshooting: [auth-and-access.md](./auth-and-access.md)

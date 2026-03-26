@@ -22,6 +22,10 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Docs links check
+        if: success()
+        run: npm run docs:links
+
       - name: Tests (Vitest + JUnit for GitHub)
         id: vitest
         if: success()
