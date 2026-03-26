@@ -169,7 +169,23 @@ export function RagFilesConsole() {
   const [status, setStatus] = useState("Loading collections…");
   const [initialFetchDone, setInitialFetchDone] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [nameFilter, setNameFilter] = useState("");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const visibleCollections = useMemo(() => {
+    const query = nameFilter.trim().toLowerCase();
+    const filtered = query
+      ? collections.filter((row) => (row.name?.trim() || "").toLowerCase().includes(query))
+      : collections;
+    const sorted = [...filtered].sort((a, b) => {
+      const left = (a.name?.trim() || "").toLowerCase();
+      const right = (b.name?.trim() || "").toLowerCase();
+      const cmp = left.localeCompare(right, undefined, { sensitivity: "base" });
+      return sortDirection === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  }, [collections, nameFilter, sortDirection]);
 
   const totals = useMemo(() => {
     let sumDocs = 0;
@@ -178,7 +194,7 @@ export function RagFilesConsole() {
     let chunkRows = 0;
     let sumFiles = 0;
     let fileRows = 0;
-    for (const row of collections) {
+    for (const row of visibleCollections) {
       const d = row.stats.documentCount;
       if (typeof d === "number") {
         sumDocs += d;
@@ -196,7 +212,7 @@ export function RagFilesConsole() {
       }
     }
     return {
-      collections: collections.length,
+      collections: visibleCollections.length,
       sumDocs,
       docRows,
       sumChunks,
@@ -204,7 +220,7 @@ export function RagFilesConsole() {
       sumFiles,
       fileRows
     };
-  }, [collections]);
+  }, [visibleCollections]);
 
   const copyCollectionId = useCallback(async (id: string) => {
     try {
@@ -324,10 +340,40 @@ export function RagFilesConsole() {
         </button>
         <p className="status-text">{status}</p>
       </div>
+      <div className="tool-row">
+        <label className="status-text" htmlFor="rag-name-filter" style={{ display: "flex", gap: "0.45rem", alignItems: "center" }}>
+          <span>Filter by name</span>
+          <input
+            id="rag-name-filter"
+            type="text"
+            value={nameFilter}
+            onChange={(event) => setNameFilter(event.target.value)}
+            placeholder="Type collection name"
+            style={{ minWidth: "18rem" }}
+          />
+        </label>
+        <label className="status-text" htmlFor="rag-sort-direction" style={{ display: "flex", gap: "0.45rem", alignItems: "center" }}>
+          <span>Sort</span>
+          <select
+            id="rag-sort-direction"
+            value={sortDirection}
+            onChange={(event) => setSortDirection(event.target.value === "desc" ? "desc" : "asc")}
+          >
+            <option value="asc">Name A → Z</option>
+            <option value="desc">Name Z → A</option>
+          </select>
+        </label>
+      </div>
 
       {collections.length > 0 ? (
         <p className="status-text" style={{ maxWidth: "72ch" }}>
           Totals: <strong>{totals.collections}</strong> collection(s)
+          {nameFilter.trim() ? (
+            <>
+              {" "}
+              shown (of <strong>{collections.length}</strong> loaded)
+            </>
+          ) : null}
           {totals.docRows > 0 ? (
             <>
               {" "}
@@ -356,6 +402,10 @@ export function RagFilesConsole() {
           <p className="status-text">Loading collections…</p>
         ) : collections.length === 0 ? (
           <p className="status-text">No rows — verify management API credentials or create collections from Personas / xAI console.</p>
+        ) : visibleCollections.length === 0 ? (
+          <p className="status-text">
+            No rows match <code>{nameFilter.trim()}</code>. Clear the filter to view all collections.
+          </p>
         ) : (
           <div className="crud-table-wrap">
             <table className="crud-table">
@@ -380,7 +430,7 @@ export function RagFilesConsole() {
                 </tr>
               </thead>
               <tbody>
-                {collections.map((row) => {
+                {visibleCollections.map((row) => {
                   const usage = formatUsageStats(row.stats.usageStats);
                   return (
                     <tr key={row.id}>
