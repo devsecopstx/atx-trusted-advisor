@@ -129,20 +129,13 @@ export function HomeLanding({
             <span className="text-base font-semibold tracking-tight text-gray-200 sm:text-lg md:text-xl">
               Finance — Powered by xAI
             </span>
+            <span
+              className="text-lg font-semibold tracking-tight sm:text-xl md:text-2xl"
+              style={{ color: "var(--xf-gain-green)" }}
+            >
+              No Atoms Moved. Just Gains Earned.
+            </span>
           </h1>
-          <div className="flex max-w-xl flex-col items-center gap-1 text-center">
-            <p className="text-base text-gray-400 sm:text-lg">No atoms moved.</p>
-            <p className="text-base sm:text-lg md:text-xl">
-              <span className="text-gray-200">Just </span>
-              <span className="font-bold" style={{ color: "var(--xf-gain-green)" }}>
-                gains earned
-              </span>
-              <span className="font-bold italic" style={{ color: "var(--xf-gain-green)" }}>
-                {" "}
-                growth
-              </span>
-            </p>
-          </div>
           <p className="max-w-2xl text-lg text-gray-300 sm:text-xl">
             Explore as a guest, sign in with Google or X for an approved session, or reach us for a demo and onboarding.
           </p>
