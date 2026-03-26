@@ -7,6 +7,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 ## Table of contents
 
 - [Backlog](#backlog)
+- [Guides](#guides)
 - [Frontend plan](#frontend-plan)
 - [Operations — sre-ops](#operations--sre-ops)
 - [xChat and product — xchat](#xchat-and-product--xchat)
@@ -21,6 +22,19 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 | Doc | Purpose |
 |-----|---------|
 | [PLAN.md](./PLAN.md) | Canonical backlog: admin/BFF, multi-agent chunks, RAG seed, NL/xOptions, Stripe, deferred work |
+
+---
+
+## Guides
+
+| Doc | Purpose |
+|-----|---------|
+| [guides/README.md](./guides/README.md) | Split guide index extracted from `DEVELOPMENT.md` |
+| [guides/local-development.md](./guides/local-development.md) | Local setup, env keys, Mongo/backend/frontend run order, validation |
+| [guides/auth-and-access.md](./guides/auth-and-access.md) | Roles, access request lifecycle, OAuth/app_user troubleshooting |
+| [guides/api-endpoints.md](./guides/api-endpoints.md) | API route inventory by domain + OpenAPI validation checklist |
+| [guides/xchat-personas.md](./guides/xchat-personas.md) | xChat route behavior, persona governance, collection/seed notes |
+| [guides/deploy-and-ops.md](./guides/deploy-and-ops.md) | Deploy/rollback model, secrets source of truth, operator checks |
 
 ---
 
