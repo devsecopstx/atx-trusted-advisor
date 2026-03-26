@@ -1,10 +1,37 @@
-# Staging Cloud Run deploy — workflow_dispatch only (manual trigger + environment approval).
-# Configure required reviewers: Settings → Environments → staging → Required reviewers.
-# Production: deploy-cloud-run-production.yml (workflow_dispatch only).
+# Cloud Run deploy — manual trigger with selectable branch + target.
+# Manual approval is enforced via:
+#   1) input guard (confirm_manual_approval=yes), and
+#   2) environment protection rules (Settings -> Environments -> staging/production -> Required reviewers).
 name: Deploy Cloud Run
 
 on:
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Git branch or ref to deploy"
+        required: true
+        default: "main"
+        type: string
+      target:
+        description: "Deployment target"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      confirm_manual_approval:
+        description: "Must be yes to proceed (manual gate)"
+        required: true
+        default: "no"
+        type: choice
+        options:
+          - "no"
+          - "yes"
+      deployment_notes:
+        description: "Optional notes included in Slack deploy message"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -18,14 +45,27 @@ env:
   GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
+  guard-manual-confirm:
+    if: inputs.confirm_manual_approval != 'yes'
+    name: Block unconfirmed deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail — confirmation required
+        run: |
+          echo "::error::Select confirm_manual_approval=yes to run deploy."
+          exit 1
+
   verify:
+    if: inputs.confirm_manual_approval == 'yes'
     name: Verify (lint, typecheck, tests, Next build)
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Checkout
+      - name: Checkout selected ref
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: Lint, typecheck, Next cache, build
         uses: ./.github/actions/node-verify
@@ -35,37 +75,53 @@ jobs:
       - name: Tests (Vitest)
         run: npm run test
 
-  deploy-staging:
-    name: Deploy Staging
+  deploy:
+    if: inputs.confirm_manual_approval == 'yes'
+    name: Deploy (${{ inputs.target }})
     needs: verify
     runs-on: ubuntu-latest
     concurrency:
-      group: deploy-staging
-      cancel-in-progress: true
+      group: deploy-${{ inputs.target }}
+      cancel-in-progress: ${{ inputs.target == 'staging' }}
     environment:
-      name: staging
-      url: ${{ vars.STAGING_BASE_URL }}
-    # Manual approval: Settings → Environments → staging → Required reviewers
+      name: ${{ inputs.target }}
+      url: ${{ inputs.target == 'production' && vars.PROD_BASE_URL || vars.STAGING_BASE_URL }}
     steps:
-      - name: Checkout
+      - name: Checkout selected ref
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
-      - name: Validate staging deploy configuration
+      - name: Resolve target context
+        id: ctx
+        run: |
+          set -euo pipefail
+          TARGET="${{ inputs.target }}"
+          if [ "$TARGET" = "production" ]; then
+            echo "project_id=${{ vars.GCP_PROJECT_ID_PROD }}" >> "$GITHUB_OUTPUT"
+            echo "service_name=${{ vars.CLOUD_RUN_SERVICE_PROD }}" >> "$GITHUB_OUTPUT"
+            echo "base_url=${{ vars.PROD_BASE_URL }}" >> "$GITHUB_OUTPUT"
+            echo "deploy_target=deploy" >> "$GITHUB_OUTPUT"
+          else
+            echo "project_id=${{ vars.GCP_PROJECT_ID_STAGING }}" >> "$GITHUB_OUTPUT"
+            echo "service_name=${{ vars.CLOUD_RUN_SERVICE_STAGING }}" >> "$GITHUB_OUTPUT"
+            echo "base_url=${{ vars.STAGING_BASE_URL }}" >> "$GITHUB_OUTPUT"
+            echo "deploy_target=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate deploy configuration
         env:
-          GCP_PROJECT_ID_STAGING: ${{ vars.GCP_PROJECT_ID_STAGING }}
           CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
-          CLOUD_RUN_SERVICE_STAGING: ${{ vars.CLOUD_RUN_SERVICE_STAGING }}
-          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          PROJECT_ID: ${{ steps.ctx.outputs.project_id }}
+          SERVICE_NAME: ${{ steps.ctx.outputs.service_name }}
+          BASE_URL: ${{ steps.ctx.outputs.base_url }}
           EXPECTED_GITHUB_REPOSITORY: ${{ vars.EXPECTED_GITHUB_REPOSITORY }}
           EXPECTED_GITHUB_OWNER: ${{ vars.EXPECTED_GITHUB_OWNER }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-
         run: |
           set -euo pipefail
-          # Preflight (before build): repo vars + OIDC deploy identity only. App runtime secrets: GCP Secret Manager
-          # single source of truth — verified with gcloud after auth (see "Verify required Secret Manager secrets").
-          for key in GCP_PROJECT_ID_STAGING CLOUD_RUN_REGION CLOUD_RUN_SERVICE_STAGING STAGING_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
+          for key in CLOUD_RUN_REGION PROJECT_ID SERVICE_NAME BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
             if [ -z "${!key:-}" ]; then
               echo "::error::Missing required deploy config: ${key}"
               exit 1
@@ -79,7 +135,7 @@ jobs:
             echo "::error::Owner mismatch: expected ${EXPECTED_GITHUB_OWNER}, got ${GH_REPOSITORY_OWNER}"
             exit 1
           fi
-          echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=staging"
+          echo "Deploy context: repo=${GH_REPOSITORY} owner=${GH_REPOSITORY_OWNER} target=${{ inputs.target }} branch=${{ inputs.branch }}"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -90,21 +146,20 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ vars.GCP_PROJECT_ID_STAGING }}
+          project_id: ${{ steps.ctx.outputs.project_id }}
 
-      # gcloud run deploy cannot combine --remove-secrets with --set-secrets; strip legacy binding first.
       - name: Drop legacy ALLOW_ANY_X_USER_LOGIN secret binding (if present)
         run: |
-          gcloud run services update "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
+          gcloud run services update "${{ steps.ctx.outputs.service_name }}" \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --remove-secrets=ALLOW_ANY_X_USER_LOGIN \
             --quiet || echo "::notice::No ALLOW_ANY_X_USER_LOGIN secret binding to remove (ok)"
 
-      - name: Verify required Secret Manager secrets exist (staging)
+      - name: Verify required Secret Manager secrets exist
         run: |
           set -euo pipefail
-          PROJECT="${{ vars.GCP_PROJECT_ID_STAGING }}"
+          PROJECT="${{ steps.ctx.outputs.project_id }}"
           for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
             errfile="$(mktemp)"
             if gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null 2>"$errfile"; then
@@ -114,7 +169,7 @@ jobs:
             err="$(cat "$errfile")"
             rm -f "$errfile"
             if echo "$err" | grep -qE 'PERMISSION_DENIED|permission.*denied|403'; then
-              echo "::error::Secret Manager IAM denied for '${s}' in ${PROJECT} (need secretmanager.secrets.get). Grant the GitHub deploy SA (secret GCP_SERVICE_ACCOUNT_EMAIL) roles/secretmanager.viewer or roles/secretmanager.admin on this project — see DEVELOPMENT.md (GCP Secret Manager)."
+              echo "::error::Secret Manager IAM denied for '${s}' in ${PROJECT} (need secretmanager.secrets.get). Grant the GitHub deploy SA (secret GCP_SERVICE_ACCOUNT_EMAIL) roles/secretmanager.viewer or roles/secretmanager.admin on this project."
             else
               echo "::error::Missing or unreachable GCP secret '${s}' in project ${PROJECT}"
               echo "$err"
@@ -124,12 +179,12 @@ jobs:
 
       - name: Clear legacy ADMIN_SEED_EMAIL bindings (literal or old secret ref)
         run: |
-          SVC="${{ vars.CLOUD_RUN_SERVICE_STAGING }}"
+          SVC="${{ steps.ctx.outputs.service_name }}"
           R="${{ vars.CLOUD_RUN_REGION }}"
           gcloud run services update "$SVC" --region "$R" --platform managed --remove-secrets=ADMIN_SEED_EMAIL --quiet || true
           gcloud run services update "$SVC" --region "$R" --platform managed --remove-env-vars=ADMIN_SEED_EMAIL --quiet || true
 
-      - name: Deploy to Cloud Run (staging)
+      - name: Deploy to Cloud Run
         env:
           ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
           ENABLE_XCHAT_DEBUG: ${{ vars.ENABLE_XCHAT_DEBUG || 'false' }}
@@ -137,11 +192,11 @@ jobs:
           ATXFINANCE_BACKEND_ORIGIN: ${{ vars.ATXFINANCE_BACKEND_ORIGIN || '' }}
           AUTH_CALLBACK_USE_SPRING: ${{ vars.AUTH_CALLBACK_USE_SPRING || 'false' }}
         run: |
-          ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=stage,X_OAUTH_CALLBACK_URL=${{ vars.STAGING_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
+          ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=${{ steps.ctx.outputs.deploy_target }},X_OAUTH_CALLBACK_URL=${{ steps.ctx.outputs.base_url }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
           if [ -n "${ATXFINANCE_BACKEND_ORIGIN}" ]; then
             ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
           fi
-          gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
+          gcloud run deploy "${{ steps.ctx.outputs.service_name }}" \
             --source . \
             --clear-base-image \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
@@ -151,12 +206,41 @@ jobs:
             --set-secrets "MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest" \
             --quiet
 
-      - name: Health check staging
+      - name: Health check
         run: |
           bash scripts/ops/health-check-with-fallback.sh \
-            "staging" \
-            "${{ vars.STAGING_BASE_URL }}" \
-            "${{ vars.CLOUD_RUN_SERVICE_STAGING }}" \
+            "${{ inputs.target }}" \
+            "${{ steps.ctx.outputs.base_url }}" \
+            "${{ steps.ctx.outputs.service_name }}" \
             "${{ vars.CLOUD_RUN_REGION }}" \
             "18" \
             "15"
+
+      - name: Post deploy note to Slack
+        env:
+          DEPLOYMENT_NOTES: ${{ inputs.deployment_notes || '' }}
+        run: |
+          set -euo pipefail
+          PROJECT="${{ steps.ctx.outputs.project_id }}"
+          WEBHOOK_URL="$(gcloud secrets versions access latest --secret=SLACK_WEBHOOK_URL --project="${PROJECT}" 2>/dev/null || true)"
+          if [ -z "${WEBHOOK_URL}" ] || [ "${WEBHOOK_URL}" = "__EMPTY__" ]; then
+            echo "::notice::SLACK_WEBHOOK_URL is empty/disabled in ${PROJECT}; skipping Slack notification."
+            exit 0
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          DEPLOYMENT_NOTES_VALUE="${DEPLOYMENT_NOTES:-}"
+          export RUN_URL
+          export DEPLOYMENT_NOTES_VALUE
+          export TARGET="${{ inputs.target }}"
+          export BRANCH="${{ inputs.branch }}"
+          export SERVICE_NAME="${{ steps.ctx.outputs.service_name }}"
+          export BASE_URL="${{ steps.ctx.outputs.base_url }}"
+
+          PAYLOAD="$(python3 -c 'import json,os; run_url=os.getenv("RUN_URL",""); notes=(os.getenv("DEPLOYMENT_NOTES_VALUE") or "").strip(); actor=os.getenv("GITHUB_ACTOR","unknown"); sha=(os.getenv("GITHUB_SHA","") or "")[:7]; target=os.getenv("TARGET",""); branch=os.getenv("BRANCH",""); service=os.getenv("SERVICE_NAME",""); base_url=os.getenv("BASE_URL",""); lines=[f"✅ Cloud Run deploy succeeded ({target})", f"• Service: {service}", f"• Branch: {branch} @ {sha}", f"• Actor: {actor}", f"• URL: {base_url}", f"• Run: {run_url}"]; lines += [f"• Notes: {notes}"] if notes else []; print(json.dumps({"text":"\\n".join(lines)}))')"
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Content-Type: application/json" \
+            --data "${PAYLOAD}" \
+            "${WEBHOOK_URL}" >/dev/null

@@ -107,7 +107,7 @@ function PitchContactLine() {
 export default async function XstrategyBuilderPage() {
   const session = await getSessionUser();
   if (!session) {
-    redirect("/login?next=/xstrategybuilder");
+    redirect("/xchat");
   }
 
   const initialWorkspace = await loadXsbInitialWorkspace(session);
@@ -192,7 +192,7 @@ export default async function XstrategyBuilderPage() {
             <p className="xsb-pitch-cta-sub xsb-pitch-cta-sub--tight">
               <Link href="/">aTx⚡Finance</Link>
               {" · "}
-              <Link href="/login?next=/xstrategybuilder">Sign in with X</Link> (approved access)
+              <Link href="/api/auth/x/login?next=%2Fxstrategybuilder">Sign in with X</Link> (approved access)
             </p>
             <p className="xsb-pricing-hint">
               Retail / pay-per-use from <abbr title={PRICING_TOOLTIP}>$2/hr</abbr> — enterprise licensing quoted

@@ -13,7 +13,6 @@ const protectedPathPrefixes = [
   "/api/strategy-jobs",
   "/portfolio",
   "/watchlist",
-  "/xchat",
   "/xstrategybuilder",
   "/xfinance",
   "/xcoach"
@@ -38,9 +37,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const loginUrl = new URL("/login", request.url);
-  loginUrl.searchParams.set("next", pathname);
-  return NextResponse.redirect(loginUrl);
+  return NextResponse.redirect(new URL("/xchat", request.url));
 }
 
 export const config = {
@@ -54,7 +51,6 @@ export const config = {
     "/api/strategy-jobs/:path*",
     "/portfolio/:path*",
     "/watchlist/:path*",
-    "/xchat/:path*",
     "/xstrategybuilder/:path*",
     "/xfinance/:path*",
     "/xcoach/:path*"

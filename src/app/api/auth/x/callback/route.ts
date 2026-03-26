@@ -117,7 +117,7 @@ export async function GET(request: Request) {
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL("/login?error=missing_oauth_callback_params", origin)
+      new URL("/xchat?error=missing_oauth_callback_params", origin)
     );
   }
 
@@ -132,12 +132,12 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(target, origin));
     }
     return NextResponse.redirect(
-      new URL("/login?error=missing_oauth_cookie_context", origin)
+      new URL("/xchat?error=missing_oauth_cookie_context", origin)
     );
   }
   if (state !== flowCookies.state) {
     await clearOAuthFlowCookies();
-    return NextResponse.redirect(new URL("/login?error=invalid_oauth_state", origin));
+    return NextResponse.redirect(new URL("/xchat?error=invalid_oauth_state", origin));
   }
   await clearOAuthFlowCookies();
 
@@ -158,12 +158,12 @@ export async function GET(request: Request) {
   });
 
   if (!tokenResponse.ok) {
-    return NextResponse.redirect(new URL("/login?error=token_exchange_failed", origin));
+    return NextResponse.redirect(new URL("/xchat?error=token_exchange_failed", origin));
   }
 
   const tokenJson = (await tokenResponse.json()) as XTokenResponse;
   if (!tokenJson.access_token) {
-    return NextResponse.redirect(new URL("/login?error=missing_access_token", origin));
+    return NextResponse.redirect(new URL("/xchat?error=missing_access_token", origin));
   }
 
   const userInfoResult = await fetchXUserProfile(
@@ -171,7 +171,7 @@ export async function GET(request: Request) {
     env.X_OAUTH_USERINFO_URL
   );
   if (!userInfoResult.ok) {
-    const failureUrl = new URL("/login?error=userinfo_failed", origin);
+    const failureUrl = new URL("/xchat?error=userinfo_failed", origin);
     if (userInfoResult.details) {
       failureUrl.searchParams.set("details", userInfoResult.details);
     }
@@ -179,7 +179,7 @@ export async function GET(request: Request) {
   }
   const userInfoJson = userInfoResult.profile;
   if (!userInfoJson.data?.id || !userInfoJson.data?.username) {
-    return NextResponse.redirect(new URL("/login?error=invalid_user_profile", origin));
+    return NextResponse.redirect(new URL("/xchat?error=invalid_user_profile", origin));
   }
 
   const xIdentity = {
@@ -205,7 +205,7 @@ export async function GET(request: Request) {
   ) {
     const seeded = await ensureSeededGlobalAdmin(env.ADMIN_SEED_EMAIL);
     if (!seeded.user._id) {
-      return NextResponse.redirect(new URL("/login?error=bootstrap_failed", origin));
+      return NextResponse.redirect(new URL("/xchat?error=bootstrap_failed", origin));
     }
     user = seeded.user;
   }
@@ -234,7 +234,7 @@ export async function GET(request: Request) {
       });
       if (!user?._id) {
         await setPendingXLinkCookie(xIdentity);
-        return NextResponse.redirect(new URL("/login?error=email_link_required", origin));
+        return NextResponse.redirect(new URL("/xchat?error=email_link_required", origin));
       }
       user = await linkXAccountToUser({
         userId: user._id,
@@ -248,7 +248,7 @@ export async function GET(request: Request) {
         });
       }
       if (!user?._id) {
-        return NextResponse.redirect(new URL("/login?error=not_seeded_email", origin));
+        return NextResponse.redirect(new URL("/xchat?error=not_seeded_email", origin));
       }
       user = await linkXAccountToUser({
         userId: user._id,
@@ -271,7 +271,7 @@ export async function GET(request: Request) {
   ) {
     await ensurePendingViewerAccessRequestAfterOAuth(user);
     await setPendingXLinkCookie(xIdentity);
-    return NextResponse.redirect(new URL("/login?error=email_link_required", origin));
+    return NextResponse.redirect(new URL("/xchat?error=email_link_required", origin));
   }
 
   const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
@@ -285,11 +285,11 @@ export async function GET(request: Request) {
     }
 
     if (!shouldAllowFallbackLogin) {
-      return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
+      return NextResponse.redirect(new URL("/xchat?error=access_request_pending", origin));
     }
   }
   if (!user._id) {
-    return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
+    return NextResponse.redirect(new URL("/xchat?error=access_request_pending", origin));
   }
 
   return finalizeOAuthSessionAndRedirect({

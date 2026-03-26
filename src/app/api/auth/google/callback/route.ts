@@ -139,7 +139,7 @@ export async function GET(request: Request) {
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL("/login?error=missing_oauth_callback_params", origin)
+      new URL("/xchat?error=missing_oauth_callback_params", origin)
     );
   }
 
@@ -154,18 +154,18 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(target, origin));
     }
     return NextResponse.redirect(
-      new URL("/login?error=missing_oauth_cookie_context", origin)
+      new URL("/xchat?error=missing_oauth_cookie_context", origin)
     );
   }
   if (state !== flowCookies.state) {
     await clearOAuthFlowCookies();
-    return NextResponse.redirect(new URL("/login?error=invalid_oauth_state", origin));
+    return NextResponse.redirect(new URL("/xchat?error=invalid_oauth_state", origin));
   }
   await clearOAuthFlowCookies();
 
   const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
   if (!clientSecret) {
-    return NextResponse.redirect(new URL("/login?error=google_oauth_not_configured", origin));
+    return NextResponse.redirect(new URL("/xchat?error=google_oauth_not_configured", origin));
   }
 
   const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
@@ -184,27 +184,27 @@ export async function GET(request: Request) {
   });
 
   if (!tokenResponse.ok) {
-    return NextResponse.redirect(new URL("/login?error=token_exchange_failed", origin));
+    return NextResponse.redirect(new URL("/xchat?error=token_exchange_failed", origin));
   }
 
   const tokenJson = (await tokenResponse.json()) as GoogleTokenResponse;
   if (!tokenJson.access_token) {
-    return NextResponse.redirect(new URL("/login?error=missing_access_token", origin));
+    return NextResponse.redirect(new URL("/xchat?error=missing_access_token", origin));
   }
 
   const userInfoRes = await fetch(GOOGLE_USERINFO_URL, {
     headers: { Authorization: `Bearer ${tokenJson.access_token}` }
   });
   if (!userInfoRes.ok) {
-    return NextResponse.redirect(new URL("/login?error=userinfo_failed", origin));
+    return NextResponse.redirect(new URL("/xchat?error=userinfo_failed", origin));
   }
 
   const profile = (await userInfoRes.json()) as GoogleUserInfo;
   if (!profile.sub) {
-    return NextResponse.redirect(new URL("/login?error=invalid_user_profile", origin));
+    return NextResponse.redirect(new URL("/xchat?error=invalid_user_profile", origin));
   }
   if (!profile.email || !profile.email_verified) {
-    return NextResponse.redirect(new URL("/login?error=google_email_required", origin));
+    return NextResponse.redirect(new URL("/xchat?error=google_email_required", origin));
   }
 
   const emailNormalized = profile.email.trim().toLowerCase();
@@ -250,7 +250,7 @@ export async function GET(request: Request) {
       });
     }
     if (!user?._id) {
-      return NextResponse.redirect(new URL("/login?error=not_seeded_email", origin));
+      return NextResponse.redirect(new URL("/xchat?error=not_seeded_email", origin));
     }
     user = await linkXAccountToUser({
       userId: user._id,
@@ -264,7 +264,7 @@ export async function GET(request: Request) {
   }
 
   if (!user?._id) {
-    return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
+    return NextResponse.redirect(new URL("/xchat?error=access_request_pending", origin));
   }
 
   const allowAnyLogin = isAllowAnyXUserLoginEnabled();
@@ -273,7 +273,7 @@ export async function GET(request: Request) {
 
   if (!hasLoginRole && !shouldAllowFallbackLogin) {
     await ensurePendingViewerAccessRequestAfterGoogleOAuth(user);
-    return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
+    return NextResponse.redirect(new URL("/xchat?error=access_request_pending", origin));
   }
 
   return finalizeOAuthSessionAndRedirect({

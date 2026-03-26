@@ -42,7 +42,7 @@ export function AppUserHeaderSession({
       if (!response.ok) {
         throw new Error("Logout failed");
       }
-      window.location.href = "/";
+      window.location.href = "/xchat";
     } catch (error) {
       setLogoutStatus(error instanceof Error ? error.message : "Logout failed");
     } finally {

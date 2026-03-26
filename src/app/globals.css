@@ -30,6 +30,16 @@ h1, h2, h3, h4, h5, h6 {
   gap: 10px;
 }
 
+.xf-logo-lockup-inline--header-single {
+  gap: 0;
+}
+
+.xf-logo-row--header-single {
+  gap: 0.45rem;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+
 .xf-logo-mark {
   flex: 0 0 auto;
 }
@@ -100,6 +110,41 @@ h1, h2, h3, h4, h5, h6 {
   text-transform: lowercase;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.38);
+}
+
+.xf-header-tagline {
+  margin: 0;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  font-weight: 700;
+  text-align: left;
+}
+
+.xf-header-tagline--inline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.12rem;
+  white-space: nowrap;
+  margin-left: 0.35rem;
+  letter-spacing: 0.015em;
+  word-spacing: 0.04em;
+}
+
+.xf-header-tagline-rest {
+  color: var(--xf-text-100);
+  font-style: italic;
+  font-weight: 700;
+}
+
+.xf-header-tagline-atoms {
+  color: var(--xf-lightning-yellow);
+  font-weight: 800;
+}
+
+.xf-header-tagline-gains {
+  color: var(--xf-gain-green);
+  font-weight: 800;
 }
 
 /* ── Admin top bar ─────────────────────────── */

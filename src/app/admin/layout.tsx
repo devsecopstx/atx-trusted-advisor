@@ -6,8 +6,8 @@ import type { ReactNode } from "react";
 import { getSessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel } from "@/lib/env";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { AtxFinanceLogo } from "../ui/atxfinance-logo";
 import { GlobalFooter } from "../ui/global-footer";
+import { XchatHeaderBrand } from "../ui/xchat-header-brand";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 
 type AdminLayoutProps = {
@@ -43,7 +43,7 @@ const NAV_LINKS: { href: string; label: string; icon: ReactNode }[] = [
 export default async function AdminLayout({ children }: AdminLayoutProps) {
   const session = await getSessionUser();
   if (!session) {
-    redirect("/login");
+    redirect("/xchat");
   }
   if (!isGlobalAdmin(session.roles)) {
     redirect("/xchat");
@@ -55,7 +55,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
     <div className="admin-layout">
       <header className="admin-topbar">
         <Link className="admin-topbar-brand" href="/admin">
-          <AtxFinanceLogo size="sm" />
+          <XchatHeaderBrand />
         </Link>
         <nav className="admin-topbar-nav">
           {NAV_LINKS.map((link) => (

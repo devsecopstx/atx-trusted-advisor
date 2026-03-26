@@ -1092,41 +1092,10 @@
   color: var(--xf-text-300);
 }
 
-.xchat-guest-signup-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.xchat-guest-signup-form__email {
-  flex: 1;
-  min-width: 12rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--xf-text-100);
-  padding: 0.52rem 0.66rem;
-  font: inherit;
-  font-size: 0.86rem;
-}
-
-.xchat-guest-signup-form__submit {
-  min-width: 7.5rem;
-  text-align: center;
-}
-
-.xchat-guest-actions__signin {
-  margin: 0.25rem 0 0;
-  font-size: 0.8rem;
-  color: var(--xf-text-300);
-}
-
-.xchat-guest-actions__signin-link {
-  color: var(--xf-text-100);
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.xchat-guest-actions__cta {
+  margin-top: 0.35rem;
+  width: fit-content;
+  min-width: 11rem;
 }
 
 /* ── xChat composer (beta chrome: attach / Auto / dictation / voice — disabled) ── */

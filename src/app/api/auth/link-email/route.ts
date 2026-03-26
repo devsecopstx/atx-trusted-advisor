@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     if (!allowAnyXUserLogin) {
       return NextResponse.json({
         ok: true,
-        redirectTo: "/login?error=access_request_pending"
+        redirectTo: "/xchat?error=access_request_pending"
       });
     }
   }
