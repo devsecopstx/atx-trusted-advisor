@@ -429,3 +429,502 @@
   font-weight: 600;
   color: var(--xf-text-200);
 }
+
+/* ── Manage accounts (legacy-shaped) ───────────────────────────── */
+
+.portfolio-manage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.2rem;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 55%, transparent);
+}
+
+.portfolio-manage-tabs__btn {
+  flex: 1 1 auto;
+  min-width: 7rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: var(--xf-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--xf-text-300);
+  background: transparent;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.portfolio-manage-tabs__btn:hover {
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.portfolio-manage-tabs__btn--active {
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-surface-700) 90%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+}
+
+.portfolio-manage-tabs__panel {
+  min-width: 0;
+}
+
+.portfolio-manage-head {
+  position: relative;
+  border-radius: var(--xf-radius-lg);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--xf-surface-700) 88%, transparent),
+    color-mix(in srgb, var(--xf-bg-900) 94%, transparent)
+  );
+  box-shadow: var(--xf-shadow-soft);
+  padding: 1rem 1.15rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.portfolio-manage-head__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.portfolio-manage-head__title {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+}
+
+.portfolio-manage-head__sub {
+  margin: 0.45rem 0 0;
+  max-width: 52ch;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--xf-text-300);
+}
+
+.portfolio-manage-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.portfolio-manage-head__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.portfolio-manage-head__portfolio-name {
+  margin: 0.2rem 0 0;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.portfolio-manage-head__metric-val {
+  margin: 0.2rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--xf-gain-green);
+}
+
+.portfolio-manage-table-card__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.portfolio-manage-table-card__title {
+  margin: 0;
+}
+
+.portfolio-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--xf-radius-sm);
+}
+
+.portfolio-manage-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  color: var(--xf-text-300);
+}
+
+.portfolio-manage-table th,
+.portfolio-manage-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.55rem 0.45rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.portfolio-manage-table th {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--xf-text-200);
+}
+
+.portfolio-manage-table__account-cell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.portfolio-manage-table__account-name {
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.portfolio-manage-table__account-meta {
+  font-size: 0.72rem;
+  color: var(--xf-text-300);
+  margin-top: 0.15rem;
+}
+
+.portfolio-manage-table__mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+}
+
+.portfolio-manage-table__ref {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--xf-text-300);
+}
+
+.portfolio-manage-table__num {
+  font-variant-numeric: tabular-nums;
+}
+
+.portfolio-manage-table__emph {
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.portfolio-manage-table__muted {
+  color: var(--xf-text-300);
+  font-size: 0.78rem;
+}
+
+.portfolio-manage-table__detail {
+  max-width: 18rem;
+  line-height: 1.35;
+}
+
+.portfolio-risk-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 0.35rem;
+}
+
+.portfolio-risk-dot--low {
+  background: color-mix(in srgb, var(--xf-success-400) 90%, var(--xf-gain-green));
+}
+
+.portfolio-risk-dot--medium {
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 85%, var(--xf-text-100));
+}
+
+.portfolio-risk-dot--high {
+  background: color-mix(in srgb, var(--xf-danger-400) 85%, var(--xf-text-100));
+}
+
+.portfolio-risk-dot--unset {
+  background: color-mix(in srgb, var(--xf-text-300) 50%, transparent);
+}
+
+.portfolio-strategy-pill {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+}
+
+.portfolio-strategy-pill--none {
+  color: var(--xf-text-300);
+  border-style: dashed;
+}
+
+.portfolio-strategy-pill--growth {
+  color: var(--xf-text-100);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+}
+
+.portfolio-strategy-pill--income {
+  color: var(--xf-text-100);
+  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 40%, transparent);
+  background: color-mix(in srgb, var(--xf-lightning-yellow) 10%, transparent);
+}
+
+.portfolio-strategy-pill--balanced {
+  color: var(--xf-text-100);
+  border-color: color-mix(in srgb, var(--xf-text-300) 50%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.portfolio-strategy-pill--aggressive {
+  color: var(--xf-text-100);
+  border-color: color-mix(in srgb, var(--xf-danger-400) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-danger-400) 12%, transparent);
+}
+
+.portfolio-table-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xf-gain-green);
+  text-decoration: none;
+}
+
+.portfolio-table-link:hover {
+  text-decoration: underline;
+}
+
+.portfolio-table-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  color: var(--xf-text-200);
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.portfolio-table-icon-btn:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  color: var(--xf-gain-green);
+}
+
+.portfolio-export-csv {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  color: var(--xf-text-200);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.portfolio-export-csv:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 40%, transparent);
+  color: var(--xf-gain-green);
+}
+
+.portfolio-export-csv:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.portfolio-export-csv__icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.portfolio-holdings-panel__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--xf-text-300);
+  line-height: 1.4;
+}
+
+.portfolio-activity-placeholder__copy {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--xf-text-300);
+  line-height: 1.45;
+  max-width: 52ch;
+}
+
+.portfolio-manage-footer-cta {
+  margin-top: 0.5rem;
+}
+
+/* ── Edit account (legacy-shaped form) ─────────────────────────── */
+
+.portfolio-account-page--edit {
+  width: min(640px, 100%);
+}
+
+.portfolio-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.portfolio-edit-field__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--xf-text-200);
+}
+
+.portfolio-edit-field__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--xf-text-300);
+  line-height: 1.4;
+}
+
+.portfolio-edit-field__prefix {
+  display: flex;
+  align-items: center;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 40%, transparent);
+  overflow: hidden;
+}
+
+.portfolio-edit-field__prefix span {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--xf-text-300);
+  border-right: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+}
+
+.portfolio-edit-field__prefix input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--xf-text-100);
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  min-width: 0;
+}
+
+.portfolio-edit-field__prefix input:focus {
+  outline: none;
+}
+
+.portfolio-risk-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.portfolio-risk-btn {
+  flex: 1 1 5.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 35%, transparent);
+  color: var(--xf-text-200);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.portfolio-risk-btn:hover {
+  border-color: color-mix(in srgb, var(--xf-text-100) 28%, transparent);
+}
+
+.portfolio-risk-btn--active {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+  color: var(--xf-text-100);
+}
+
+.portfolio-risk-btn__dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+}
+
+.portfolio-strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.55rem;
+}
+
+.portfolio-strategy-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 30%, transparent);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.portfolio-strategy-card:hover {
+  border-color: color-mix(in srgb, var(--xf-text-100) 26%, transparent);
+}
+
+.portfolio-strategy-card--active {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 50%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 8%, transparent);
+}
+
+.portfolio-strategy-card__title {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.portfolio-strategy-card__desc {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--xf-text-300);
+}
+
+.portfolio-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.25rem;
+}
+
+.portfolio-form-actions .cta {
+  min-width: 8rem;
+}
+
+.portfolio-edit-disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}

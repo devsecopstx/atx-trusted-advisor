@@ -356,6 +356,29 @@ describe("portfolio API routes", () => {
     expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalled();
   });
 
+  it("patches desk fields riskProfile and outlook for an owned account", async () => {
+    const response = await patchPortfolioAccount(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ riskProfile: "balanced", outlook: "growth" })
+      }),
+      {
+        params: Promise.resolve({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        riskProfile: "balanced",
+        outlook: "growth"
+      })
+    );
+  });
+
   it("maps position validation errors to HTTP status codes", async () => {
     repositoryMocks.upsertPositionForAccount.mockRejectedValueOnce(
       new PositionValidationError(

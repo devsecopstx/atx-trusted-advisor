@@ -6,6 +6,7 @@ import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-port
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import { buildPortfolioHoldingRows } from "@/lib/portfolio-holding-rows";
 import { computePortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
@@ -110,6 +111,8 @@ export default async function PortfolioPage() {
     portfolioIdHex && accounts.length > 0
       ? computePortfolioOverviewMetrics(allPositions, accounts, DEFAULT_ACCOUNT_CASH_BALANCE)
       : null;
+  const holdingsRows =
+    portfolioIdHex && accounts.length > 0 ? buildPortfolioHoldingRows(accounts, allPositions) : [];
 
   return (
     <div className="xchat-shell">
@@ -189,6 +192,7 @@ export default async function PortfolioPage() {
           <PortfolioOverview
             admin={admin}
             accounts={accounts}
+            holdingsRows={holdingsRows}
             metrics={metrics}
             portfolioDisplayName={portfolioDisplayName}
             portfolioIdHex={portfolioIdHex}

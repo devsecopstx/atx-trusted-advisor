@@ -26,7 +26,9 @@ function serializeAccount(account: Account) {
     type: account.type,
     extAccountId: account.extAccountId,
     cashBalance: account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
-    isDefault: account.isDefault
+    isDefault: account.isDefault,
+    riskProfile: account.riskProfile ?? null,
+    outlook: account.outlook ?? null
   };
 }
 
@@ -135,19 +137,19 @@ export default async function PortfolioAccountPage({
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
 
       <div className="xchat-body portfolio-page-body">
-        <div className="portfolio-account-page">
+        <div className="portfolio-account-page portfolio-account-page--edit">
           <header className="portfolio-hero xf-noise-overlay">
             <p className="portfolio-hero__eyebrow">
               <Link className="portfolio-breadcrumb-link" href="/portfolio">
                 Portfolio
               </Link>
               <span aria-hidden> · </span>
-              <span>Manage account</span>
+              <span>Edit account</span>
             </p>
-            <h1 className="portfolio-hero__title">{account.name}</h1>
+            <h1 className="portfolio-hero__title">Edit account</h1>
             <p className="portfolio-hero__sub">
-              Custodian cash, external reference, and holdings. Saving a lot with the same identifier updates the
-              existing row (upsert).
+              Update display name, reference, cash balance, risk stance, and investment strategy. Holdings below use
+              the same upsert rules as before.
             </p>
           </header>
 

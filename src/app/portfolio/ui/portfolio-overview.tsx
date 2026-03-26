@@ -1,8 +1,12 @@
 import Link from "next/link";
 
+import { PortfolioAccountsExportButton, type PortfolioAccountCsvRow } from "@/app/portfolio/ui/portfolio-accounts-export-button";
+import { PortfolioHoldingsPanel } from "@/app/portfolio/ui/portfolio-holdings-panel";
+import { PortfolioManageTabs } from "@/app/portfolio/ui/portfolio-manage-tabs";
 import { PortfolioPositionQuickAdd } from "@/app/portfolio/ui/portfolio-position-quick-add";
 import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
+import type { PortfolioHoldingRow } from "@/lib/portfolio-holding-rows";
 import {
     formatUsd2,
     formatUsdWhole,
@@ -27,6 +31,7 @@ type PortfolioOverviewProps = {
   metrics: PortfolioOverviewMetrics;
   admin: boolean;
   quickAddAccounts: QuickAcct[];
+  holdingsRows: PortfolioHoldingRow[];
 };
 
 function formatBrokerType(type: string): string {
@@ -37,27 +42,25 @@ function formatBrokerType(type: string): string {
     .join(" ");
 }
 
-function deskCaption(account: Account): string | null {
-  const outlookTitle = account.outlook
-    ? INVESTMENT_STRATEGY_OPTIONS.find((o) => o.value === account.outlook)?.title
-    : undefined;
-  const riskLabel = account.riskProfile
-    ? RISK_LEVEL_OPTIONS.find((r) => r.riskProfile === account.riskProfile)?.label
-    : undefined;
-  if (outlookTitle && riskLabel) {
-    return `${outlookTitle} · ${riskLabel} risk`;
-  }
-  if (outlookTitle) {
-    return outlookTitle;
-  }
-  if (riskLabel) {
-    return `${riskLabel} risk`;
-  }
-  return null;
-}
-
 function accountByHex(accounts: Account[], hex: string): Account | undefined {
   return accounts.find((a) => a._id?.toHexString() === hex);
+}
+
+function riskDotClass(account: Account | undefined): string {
+  const rp = account?.riskProfile;
+  if (rp === "conservative") return "portfolio-risk-dot portfolio-risk-dot--low";
+  if (rp === "balanced") return "portfolio-risk-dot portfolio-risk-dot--medium";
+  if (rp === "growth") return "portfolio-risk-dot portfolio-risk-dot--high";
+  return "portfolio-risk-dot portfolio-risk-dot--unset";
+}
+
+function strategyPillClass(outlook: Account["outlook"]): string {
+  const v = outlook ?? "";
+  if (v === "growth") return "portfolio-strategy-pill portfolio-strategy-pill--growth";
+  if (v === "income") return "portfolio-strategy-pill portfolio-strategy-pill--income";
+  if (v === "balanced") return "portfolio-strategy-pill portfolio-strategy-pill--balanced";
+  if (v === "aggressive") return "portfolio-strategy-pill portfolio-strategy-pill--aggressive";
+  return "portfolio-strategy-pill portfolio-strategy-pill--none";
 }
 
 export function PortfolioOverview({
@@ -66,7 +69,8 @@ export function PortfolioOverview({
   accounts,
   metrics,
   admin,
-  quickAddAccounts
+  quickAddAccounts,
+  holdingsRows
 }: PortfolioOverviewProps) {
   const defaultAccountHex =
     metrics.byAccount.find((r) => r.isDefault)?.accountIdHex ?? metrics.byAccount[0]?.accountIdHex ?? "";
@@ -76,43 +80,76 @@ export function PortfolioOverview({
   const pctCash = (metrics.classAllocation.cashUsd / classTotal) * 100;
   const pctOptions = (metrics.classAllocation.optionsUsd / classTotal) * 100;
 
-  return (
-    <div className="portfolio-overview">
-      <header className="portfolio-hero xf-noise-overlay">
-        <div className="portfolio-hero__top">
-          <div className="portfolio-hero__title-block">
+  const csvRows: PortfolioAccountCsvRow[] = metrics.byAccount.map((row) => {
+    const acct = accountByHex(accounts, row.accountIdHex);
+    const riskLabel =
+      acct?.riskProfile != null
+        ? (RISK_LEVEL_OPTIONS.find((r) => r.riskProfile === acct.riskProfile)?.label ?? "")
+        : "";
+    const strategyTitle =
+      acct?.outlook != null
+        ? (INVESTMENT_STRATEGY_OPTIONS.find((o) => o.value === acct.outlook)?.title ?? "")
+        : "";
+    const costBasis = row.valueExcludingOptions + row.optionBookValue;
+    return {
+      account: row.name,
+      broker: formatBrokerType(row.brokerType),
+      accountRef: row.extAccountId || "—",
+      positions: row.positionRowCount,
+      costBasisUsd: costBasis,
+      marketValue: "— (live quotes not shown)",
+      dayChange: "—",
+      pl: "—",
+      risk: riskLabel || "—",
+      strategy: strategyTitle || "—"
+    };
+  });
+
+  const activityPanel = (
+    <section className="portfolio-panel portfolio-activity-placeholder" aria-labelledby="portfolio-activity-heading">
+      <h2 className="portfolio-panel__title" id="portfolio-activity-heading">
+        My activity
+      </h2>
+      <p className="portfolio-activity-placeholder__copy">
+        Trades, syncs, and alerts will show here when activity tracking ships. For now, use{" "}
+        <strong>Refresh</strong> on the portfolios tab to reload book values.
+      </p>
+    </section>
+  );
+
+  const portfoliosPanel = (
+    <>
+      <header className="portfolio-manage-head xf-noise-overlay">
+        <div className="portfolio-manage-head__row">
+          <div>
             <p className="portfolio-hero__eyebrow">Portfolio</p>
-            <h1 className="portfolio-hero__title">Portfolio overview</h1>
-            <p className="portfolio-hero__sub">
-              {portfolioDisplayName} — linked accounts and holdings book (cost basis). Live marks are not shown
-              here.
+            <h1 className="portfolio-manage-head__title">My accounts</h1>
+            <p className="portfolio-manage-head__sub">
+              Manage linked custodian accounts and strategies. Values are <strong>cost basis</strong> unless noted;
+              live market marks are not shown yet.
             </p>
           </div>
-          <div className="portfolio-hero__toolbar">
+          <div className="portfolio-manage-head__actions">
+            <SyncDefaultPortfolioButton />
             <PortfolioRefreshButton label="Refresh" />
-            <SyncDefaultPortfolioButton variant="secondary" />
-            {defaultAccountHex ? (
-              <Link className="cta cta-secondary" href={`/portfolio/accounts/${defaultAccountHex}`}>
-                Manage default
-              </Link>
-            ) : null}
           </div>
         </div>
-
-        <div className="portfolio-metric">
-          <p className="portfolio-metric__label">Book value (cost basis)</p>
-          <p className="portfolio-metric__value">{formatUsdWhole(metrics.headlineBookUsd)}</p>
-          <p className="portfolio-metric__note">
-            Stocks and custodian cash balances plus recorded cash lots. Options excluded from this headline total.
-          </p>
+        <div className="portfolio-manage-head__metrics">
+          <div>
+            <p className="portfolio-metric__label">Portfolio</p>
+            <p className="portfolio-manage-head__portfolio-name">{portfolioDisplayName}</p>
+          </div>
+          <div>
+            <p className="portfolio-metric__label">Book value (excl. options)</p>
+            <p className="portfolio-manage-head__metric-val">{formatUsdWhole(metrics.headlineBookUsd)}</p>
+          </div>
           {metrics.optionLegCount > 0 ? (
-            <p className="portfolio-metric__options-hint">
-              Options: {metrics.optionLegCount} leg{metrics.optionLegCount === 1 ? "" : "s"} · premium basis{" "}
-              {formatUsd2(metrics.optionBookValueUsd)} (100× multiplier per contract).
-            </p>
+            <div>
+              <p className="portfolio-metric__label">Options (premium basis)</p>
+              <p className="portfolio-manage-head__metric-val">{formatUsd2(metrics.optionBookValueUsd)}</p>
+            </div>
           ) : null}
         </div>
-
         <details className="portfolio-tech-details">
           <summary>Technical</summary>
           <pre>Portfolio ID: {portfolioIdHex}</pre>
@@ -121,65 +158,106 @@ export function PortfolioOverview({
 
       <div className="portfolio-overview__grid">
         <div className="portfolio-overview__main">
-          <section className="portfolio-panel" aria-labelledby="portfolio-accounts-heading">
-            <h2 className="portfolio-panel__title" id="portfolio-accounts-heading">
-              Accounts
-            </h2>
-            <div className="portfolio-account-list">
-              {metrics.byAccount.map((row) => {
-                const acct = accountByHex(accounts, row.accountIdHex);
-                const desk = acct ? deskCaption(acct) : null;
-                const optHint =
-                  row.optionLegCount > 0
-                    ? ` · ${row.optionLegCount} option leg${row.optionLegCount === 1 ? "" : "s"}`
-                    : "";
-                return (
-                  <Link
-                    key={row.accountIdHex}
-                    className="portfolio-account-card"
-                    href={`/portfolio/accounts/${row.accountIdHex}`}
-                  >
-                    <div className="portfolio-account-card__main">
-                      <span className="portfolio-account-card__name">
-                        {row.name}
-                        {row.isDefault ? (
-                          <span className="portfolio-account-card__badge">Default</span>
-                        ) : null}
-                      </span>
-                      {desk ? <div className="portfolio-account-card__desk">{desk}</div> : null}
-                      <div className="portfolio-account-card__broker">
-                        {formatBrokerType(row.brokerType)}
-                        {row.extAccountId ? ` · ${row.extAccountId}` : ""}
-                      </div>
-                    </div>
-                    <div className="portfolio-account-card__aside">
-                      <div className="portfolio-account-card__stats">
-                        <div className="portfolio-account-card__value">
-                          {formatUsdWhole(row.valueExcludingOptions)}
-                        </div>
-                        <div className="portfolio-account-card__meta">
-                          {row.positionRowCount} position{row.positionRowCount === 1 ? "" : "s"}
-                          {optHint}
-                        </div>
-                      </div>
-                      <span className="portfolio-account-card__chevron" aria-hidden>
-                        ›
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
+          <div className="portfolio-manage-table-card portfolio-panel">
+            <div className="portfolio-manage-table-card__bar">
+              <h2 className="portfolio-panel__title portfolio-manage-table-card__title" id="accounts-table-heading">
+                Accounts
+              </h2>
+              <PortfolioAccountsExportButton rows={csvRows} filename="xfinance-accounts.csv" />
             </div>
-          </section>
+            <div className="portfolio-table-wrap">
+              <table className="portfolio-manage-table" aria-labelledby="accounts-table-heading">
+                <thead>
+                  <tr>
+                    <th scope="col">Account</th>
+                    <th scope="col">Broker / ref</th>
+                    <th scope="col">Positions</th>
+                    <th scope="col">Cost basis</th>
+                    <th scope="col">Market value</th>
+                    <th scope="col">Day change</th>
+                    <th scope="col">P&amp;L</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.byAccount.map((row) => {
+                    const acct = accountByHex(accounts, row.accountIdHex);
+                    const riskLabel =
+                      acct?.riskProfile != null
+                        ? RISK_LEVEL_OPTIONS.find((r) => r.riskProfile === acct.riskProfile)?.label
+                        : null;
+                    const strategyTitle =
+                      acct?.outlook != null
+                        ? INVESTMENT_STRATEGY_OPTIONS.find((o) => o.value === acct.outlook)?.title
+                        : null;
+                    const costBasis = row.valueExcludingOptions + row.optionBookValue;
+                    const posLabel =
+                      row.positionRowCount +
+                      (row.optionLegCount > 0
+                        ? ` (${row.optionLegCount} opt. leg${row.optionLegCount === 1 ? "" : "s"})`
+                        : "");
+                    return (
+                      <tr key={row.accountIdHex}>
+                        <td>
+                          <div className="portfolio-manage-table__account-cell">
+                            <span className={riskDotClass(acct)} title={riskLabel ?? "Risk not set"} aria-hidden />
+                            <div>
+                              <div className="portfolio-manage-table__account-name">
+                                {row.name}
+                                {row.isDefault ? (
+                                  <span className="portfolio-account-card__badge">Default</span>
+                                ) : null}
+                              </div>
+                              {riskLabel ? (
+                                <div className="portfolio-manage-table__account-meta">{riskLabel} risk</div>
+                              ) : (
+                                <div className="portfolio-manage-table__account-meta">Risk not set</div>
+                              )}
+                              {strategyTitle ? (
+                                <span className={strategyPillClass(acct?.outlook ?? null)}>{strategyTitle}</span>
+                              ) : (
+                                <span className={strategyPillClass(null)}>Strategy not set</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="portfolio-manage-table__mono">
+                          {formatBrokerType(row.brokerType)}
+                          <div className="portfolio-manage-table__ref">{row.extAccountId || "—"}</div>
+                        </td>
+                        <td className="portfolio-manage-table__num">{posLabel}</td>
+                        <td className="portfolio-manage-table__num portfolio-manage-table__emph">
+                          {formatUsdWhole(costBasis)}
+                        </td>
+                        <td className="portfolio-manage-table__muted" title="Live quotes not wired in this view">
+                          —
+                        </td>
+                        <td className="portfolio-manage-table__muted">—</td>
+                        <td className="portfolio-manage-table__muted">—</td>
+                        <td>
+                          <Link
+                            className="portfolio-table-icon-btn"
+                            href={`/portfolio/accounts/${row.accountIdHex}`}
+                            aria-label={`Edit ${row.name}`}
+                            title="Edit account"
+                          >
+                            ✎
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           {metrics.topHoldings.length > 0 ? (
             <section className="portfolio-panel" aria-labelledby="portfolio-holdings-heading">
               <h2 className="portfolio-panel__title" id="portfolio-holdings-heading">
                 Top holdings
               </h2>
-              <p className="hero-copy" style={{ margin: "0 0 0.65rem", fontSize: "0.82rem" }}>
-                Stock lots only, ranked by book value.
-              </p>
+              <p className="portfolio-holdings-panel__hint">Stock lots only, ranked by book value.</p>
               <div className="portfolio-holdings-grid">
                 {metrics.topHoldings.map((h) => (
                   <article key={h.symbol} className="portfolio-holding-tile">
@@ -196,10 +274,15 @@ export function PortfolioOverview({
 
           <PortfolioPositionQuickAdd portfolioId={portfolioIdHex} accounts={quickAddAccounts} />
 
-          <div className="cta-row">
+          <div className="cta-row portfolio-manage-footer-cta">
             <Link className="cta cta-secondary" href="/">
               Home
             </Link>
+            {defaultAccountHex ? (
+              <Link className="cta cta-secondary" href={`/portfolio/accounts/${defaultAccountHex}`}>
+                Manage default account
+              </Link>
+            ) : null}
             {admin ? (
               <Link className="cta cta-primary" href="/admin/portfolios">
                 Open in Hub
@@ -283,6 +366,16 @@ export function PortfolioOverview({
           </section>
         </aside>
       </div>
+    </>
+  );
+
+  return (
+    <div className="portfolio-overview">
+      <PortfolioManageTabs
+        activityPanel={activityPanel}
+        holdingsPanel={<PortfolioHoldingsPanel rows={holdingsRows} />}
+        portfoliosPanel={portfoliosPanel}
+      />
     </div>
   );
 }
