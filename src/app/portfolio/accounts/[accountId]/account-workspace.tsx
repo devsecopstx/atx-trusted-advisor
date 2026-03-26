@@ -276,8 +276,8 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
   }
 
   return (
-    <div className="stack-gap" style={{ marginTop: "1.25rem" }}>
-      <p className="hero-copy" style={{ fontSize: "0.9rem", marginBottom: 0 }}>
+    <div className="portfolio-workspace">
+      <p className="hero-copy" style={{ fontSize: "0.9rem", margin: 0 }}>
         Holdings support <strong>stock</strong> (symbol, shares, purchase price), <strong>options</strong> (Yahoo ref,
         call/put, strike, expiration, contracts, premium per contract), and <strong>cash</strong> (USD amount, optional
         label).
@@ -289,17 +289,8 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
         </p>
       ) : null}
 
-      <section>
-        <h2
-          style={{
-            fontSize: "1rem",
-            fontWeight: 600,
-            margin: "0 0 0.5rem",
-            color: "var(--xf-text-100)"
-          }}
-        >
-          Account details
-        </h2>
+      <section className="portfolio-panel">
+        <h2 className="portfolio-panel__title">Account details</h2>
         <form onSubmit={saveAccount} className="stack-gap" style={{ maxWidth: "28rem" }}>
           <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
             <span style={{ color: "var(--xf-text-300)", fontSize: "0.85rem" }}>Display name</span>
@@ -341,17 +332,8 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
         </form>
       </section>
 
-      <section style={{ marginTop: "1.5rem" }}>
-        <h2
-          style={{
-            fontSize: "1rem",
-            fontWeight: 600,
-            margin: "0 0 0.5rem",
-            color: "var(--xf-text-100)"
-          }}
-        >
-          Holdings
-        </h2>
+      <section className="portfolio-panel">
+        <h2 className="portfolio-panel__title">Holdings</h2>
         {positions.length === 0 ? (
           <p className="status-text">No positions yet. Add one below.</p>
         ) : (
@@ -391,16 +373,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
           </div>
         )}
 
-        <h3
-          style={{
-            fontSize: "0.9rem",
-            fontWeight: 600,
-            margin: "1rem 0 0.5rem",
-            color: "var(--xf-text-200)"
-          }}
-        >
-          Add or update (upsert)
-        </h3>
+        <h3 className="portfolio-panel__subtitle">Add or update (upsert)</h3>
         <form onSubmit={addHolding} className="stack-gap">
           <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column", maxWidth: "12rem" }}>
             <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Instrument type</span>
@@ -539,7 +512,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
         </form>
       </section>
 
-      <div className="cta-row" style={{ marginTop: "1.5rem" }}>
+      <div className="cta-row">
         <Link className="cta cta-secondary" href="/portfolio">
           ← Back to portfolio
         </Link>
