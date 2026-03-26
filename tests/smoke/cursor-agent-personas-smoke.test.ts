@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const AGENT_FILES = [
   ".cursor/agents/frontend.md",
   ".cursor/agents/backend.md",
-  ".cursor/agents/review.md",
+  ".cursor/agents/reviewer.md",
   ".cursor/agents/marketing.md",
   ".cursor/agents/branding.md",
   ".cursor/agents/sre.md"

@@ -44,7 +44,7 @@ When **adding, renaming, or materially changing** persona files under **`.cursor
 - If **`.cursor/worktrees.json`** lists named worktrees / `setup` stamps, keep README prose aligned (parallel agents + optional `ROLE` stamps are local convenience only).
 - If **`AGENTS.md`** or **`DEVELOPMENT.md`** point at agent filenames, update those pointers in the **same** change set as the rename.
 
-**Naming convention:** Prefer stable, role-clear **Markdown subagent** names (e.g. `backend.md`, `review.md`, `frontend.md`) per [Cursor Subagents](https://cursor.com/docs/subagents). Avoid duplicating the same role under two filenames without a README deprecation note.
+**Naming convention:** Prefer stable, role-clear **Markdown subagent** names (e.g. `backend.md`, `reviewer.md`, `frontend.md`) per [Cursor Subagents](https://cursor.com/docs/subagents). Avoid duplicating the same role under two filenames without a README deprecation note.
 
 When introducing new subsystems, prefer extending `DEVELOPMENT.md`
 and linking from `README.md` instead of creating scattered top-level docs.
