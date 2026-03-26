@@ -46,7 +46,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details*
 | 600 | **Redis cache (next)** | **Backend (Spring):** `services/atxfinance-backend` + managed Redis (GCP Memorystore or equivalent VPC); one cluster for Kotlin workers and HTTP tier; aligns with Phase 1 → Chunk 1 step 1.3 (Redis hot keys / RL counters) and future scheduler/job fairness. **Next.js:** server-side Redis in Route Handlers only for paths that must stay Next-local; default is cache behind Spring (BFF → Kotlin → Redis). **Deliverables:** connection config + health, TTL policy doc, first use case (e.g. strategy-job caps, market-quote cache, or session-adjacent read cache), tests + `DEVELOPMENT.md` env matrix. |
 | 601 | **Admin portfolio audit** | Log create/update/delete (optional CSV) via `admin_audit_events` / audit pipeline. |
 | 700 | **NL + strategy job tool (xChat)** | Wire **nl**-gathered slots to `/api/strategy-jobs` (BFF) from xChat when product-ready; document tool schema + persona copy. Until then, personas use **nl** only. **Backlog themes:** [§ NL and strategy preflight](#nl-and-strategy-preflight-backlog-themes) · **deep spec:** [nl-prompts.md](./xchat/nl-workflows/nl-prompts.md). |
->>>>>>> origin/feat/watchlist-scanner-200
+>>>>>>> 0f30545 (chore: aTx⚡ Google OAuth on xchat guest panel (PLAN 100))
 
 ### NL and strategy preflight (backlog themes)
 
