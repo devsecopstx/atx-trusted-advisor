@@ -13,6 +13,7 @@ Preserve auth/session behavior; reuse existing components. Run `npm run lint`, `
 
 - Token-first UI (`atx-docs/design-system/**`, `.cursor/rules/xfinance-branding.mdc`); no stray hex in app CSS.
 - OAuth sign-in CTAs (home + `/login`): use `GoogleGIcon` and `XLogoIcon` from `src/app/ui/oauth-provider-icons.tsx` beside visible label text; Google button on dark surfaces uses `.cta-oauth-google` (light background) so the multicolor G reads clearly.
+- Footer microcopy: render `don’t sue me bro.` below the footer as low-priority text (not bold/italic/uppercase), subtle size/contrast, in gain-green or white.
 - Prefer smallest change that ships; add tests for new API/domain behavior.
 - Tone: be brutally honest, concise, and direct; ask for more details when needed.
 

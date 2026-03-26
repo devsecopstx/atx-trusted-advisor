@@ -38,7 +38,8 @@ This starts Mongo + backend first, then frontend.
 
 For each new instance, run:
 
-- `npm run seed:admin`
+- `npm run seed:admin` (default full bootstrap; same as `npm run seed:admin:full`)
+- `npm run seed:admin:db` (DB-only onboarding: skips xAI ingest + xAI verify network checks)
 
 What it does:
 
@@ -47,6 +48,12 @@ What it does:
 - uploads RAG sources to xAI (when keys are present) unless `SKIP_SEED_XAI_RAG_INGEST=1`
 - runs strict xAI seeded RAG collection verification unless `SKIP_XAI_POST_SEED_RAG_VERIFY=1`
 - runs xAI hello verification unless `SKIP_XAI_POST_SEED_VERIFY=1`
+
+`seed:admin:db` keeps Mongo onboarding behavior (admin user, approved access request, default account/watchlist, xPersona load, Super-Agent assignment) and forces:
+
+- `SKIP_SEED_XAI_RAG_INGEST=1`
+- `SKIP_XAI_POST_SEED_RAG_VERIFY=1`
+- `SKIP_XAI_POST_SEED_VERIFY=1`
 
 ## 4) Run persona and RAG sync explicitly (optional)
 
