@@ -285,7 +285,7 @@ When `.github/workflows/deploy-cloud-run.yml` or `.github/workflows/deploy-cloud
 6. Document secret **value-quality** checks, not just existence checks:
    include examples of invalid values (e.g., trailing comma in
    `ADMIN_SEED_EMAIL`) and the expected health symptom (`Invalid environment configuration`).
-7. Document deploy gating: **push to `main`** runs **staging only** (**Deploy Cloud Run**); **production** via **Deploy Cloud Run Production** (`workflow_dispatch` only, **`confirm_manual_prod=yes`**, optional notes; no `push` trigger).
+7. Document deploy gating: both staging and production use **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`, **`workflow_dispatch`** only) with inputs **`branch`**, **`target`** (`staging` | `production`), **`confirm_manual_approval=yes`**, and optional **`deployment_notes`**. A legacy **Deploy Cloud Run Production** (`.github/workflows/deploy-cloud-run-production.yml`) exists for rollback/fallback; prefer the unified workflow for new deploys.
 8. Keep staging/prod job gating rules documented when workflow conditions change
    (for example, when prod is removed from the push path or manual prod inputs change).
 

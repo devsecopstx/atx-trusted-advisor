@@ -21,7 +21,7 @@ Provide a repeatable local dev-test workflow that always reloads `.env` changes 
 
 1. Stop stale service processes first.
 2. Restart backend and frontend using task commands that reload `.env`.
-3. Verify core routes quickly (`/api/health`, `/login`, auth redirect).
+3. Verify core routes quickly (`/api/health`, `/xchat`, auth redirect).
 4. Report concrete pass/fail with next debugging step.
 
 ## Canonical Commands (atxfinance repo)
@@ -44,7 +44,7 @@ Default task must behave like a restart, not a no-op start.
 ## Quick Verification Checklist
 
 - [ ] `GET /api/health` returns `status: ok`
-- [ ] `GET /login` is reachable (`200`)
+- [ ] `GET /xchat` is reachable (`200`)
 - [ ] `GET /api/auth/x/login` returns `307` redirect with expected `client_id` and callback
 - [ ] No stale lock error: `.next/dev/lock`
 

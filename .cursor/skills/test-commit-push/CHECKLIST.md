@@ -44,8 +44,8 @@
 
 ## Staging and production
 
-- [ ] Push branch and merge PR per team policy; **`main`** deploys **staging** only (see `AGENTS.md` / `.github/workflows/deploy-cloud-run.yml`; production is `.github/workflows/deploy-cloud-run-production.yml`).
-- [ ] **Production** is **manual**: **Deploy Cloud Run Production** (`workflow_dispatch` only) with **`confirm_manual_prod=yes`**. Verify staging before running prod; optional **Required reviewers** on GitHub environment **`production`**.
+- [ ] Push branch and merge PR per team policy; deploy via **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`, `workflow_dispatch` only) with inputs `branch`, `target` (`staging` | `production`), `confirm_manual_approval=yes`, and optional `deployment_notes`.
+- [ ] Verify **staging** before deploying to **production**. Environment **Required reviewers** enforce manual approval gates; post-deploy Slack notification fires when `SLACK_WEBHOOK_URL` is configured. Legacy **Deploy Cloud Run Production** (`deploy-cloud-run-production.yml`) exists for rollback/fallback.
 
 ## Push Readiness
 

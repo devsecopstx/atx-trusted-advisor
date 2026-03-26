@@ -8,37 +8,41 @@ Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details*
 
 ## Today / near-term (pick from here)
 
+| Priority | Item | Notes |
+| -------- | ---- | ----- |
+| 100 | **GoogleOAuth** | `/api/auth/google/login` + callback + env; enable on `/xchat` guest panel when shipped. |
+| 200 | **ScheduledTask(DB)** | Core ModelUnified table for platform + user jobsYes (poller)cron + payload + userId (null = platform).  |
+| 200 | **WatchlistScannerService** | ServiceUpdates prices + triggers alertsYes (watchlist_price_scanner)Watchlist items → updated prices + alerts |
+| 200 | **PriceAlertService** | ServiceEvaluates price crossesIntegrated in scannerTicker + newPrice → notifications.  |
+| 200 | **NotificationService** |ServiceNotify / in-app / pushOn-demandAny alert / event  |
+| 200 | **YahooFinanceService** | HelperBatch price & options dataReused everywhereTickers → quotes + chains  |
+| 200 | **OptionsStrategyScannerService** | Core ServiceSingle smart scanner for structured options strategiesYes (daily_options_scanner)User context + preference "prompt" → ranked strategies  |
+| 200 | **StrategyEngine** | score/rank the top 10 classic strategies and returns structured recommendations.  |
 
-| Priority | Item                                     | Notes                                                                                                                                                                                                                                                                                                                                                                                     |
-| -------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1        | **Kotlin Spring — production scheduler (`/admin/tasks`)** | **Completed (2026-03-25):** JVM **`AdminScheduledTasksService`** with async enqueue + bounded executor, cron-validated schedules with computed **`nextRunAt`** (UTC), ShedLock to avoid duplicate picks, and HTTP: **`GET/POST /api/admin/tasks`**, **`PATCH …/tasks/{taskId}`**, **`POST …/tasks/{taskId}/run`** (non-blocking), **`GET /api/admin/task-runs`**, **`POST /api/admin/scheduler/tick`** (enqueues due). Mongo **`admin_scheduled_tasks`** / **`admin_task_runs`**. BFF supported when **`ATXFINANCE_BACKEND_ORIGIN`** is set — see [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md) and PR 3 in [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md). Admin UI: **`/admin/tasks`**. |
-| 2        | **Redis cache (next)**                   | **Goal:** Add **Redis** for hot keys, short-TTL caches, and (optionally) **rate / concurrency** counters shared across Cloud Run instances. **Best place first — backend (Spring):** **`services/atxfinance-backend`** + managed Redis (**GCP Memorystore** or equivalent VPC); one cluster for Kotlin workers and HTTP tier; aligns with **Phase 1 → Chunk 1** orchestrator table **step 1.3** (Redis hot keys / RL counters) and future scheduler/job fairness. **Next.js “frontend”:** avoid browser Redis; use **server-side** Redis in Route Handlers **only** for paths that must stay Next-local — default is **cache behind Spring** (BFF → Kotlin → Redis) so invalidation and tenancy stay consistent. **Deliverables:** connection config + health, TTL policy doc, first use case (e.g. strategy-job caps, market-quote cache, or session-adjacent read cache — pick one vertical slice), tests + **`DEVELOPMENT.md`** env matrix. |
-| 3        | **Spring BFF parity (admin portfolios)** | **Done:** shell + **accounts** + **watchlist** + **account positions** + **nested** `…/recommendations`, `…/alerts`, `…/delivery-channels`, `…/tasks` (portfolio-scoped cron rows; distinct from tenant `GET/POST /api/admin/tasks`) — Kotlin controllers + `bff-proxy-routes` + `proxyRequestToBackend` + docs + tests. **Still Next-only:** admin position **by id** (`PATCH/DELETE …/positions/{positionId}`) if not yet in registry; **brokers**, **xchat/settings**. |
-| 4        | **Accounts subpage UX**                  | **Done** — Toolbar order (Refresh → Save changes), owner block matches main **User** column (`userDisplayName` / id / email + links), `GET …/accounts` includes owner labels; BFF-only loads owner via `GET /api/admin/users/:id`. Per-row pencil save removed (batch **Save changes** only). Human-readable custodian type labels.                                                       |
-| 5        | **Default portfolio invariant**          | **Hotfix shipped:** `ensureDefaultPortfolioInvariantForUser` + `getDefaultPortfolio` (read-time repair: dedupe multiple defaults → oldest flagged; if none flagged, promote oldest). xChat workspace snapshot + tools use this path; admin can still move default via `adminUpdatePortfolio` / backoffice. **Remaining:** optional UX guard on portfolio admin UI.                                                                                         |
-| 6        | **Admin portfolio audit**                | Log create/update/delete (optional CSV) via `admin_audit_events` / audit pipeline.                                                                                                                                                                                                                                                                                                        |
-| 7        | **NL + strategy job tool (xChat)**       | Wire **nl**-gathered slots to `/api/strategy-jobs` (BFF) from xChat when product-ready; document tool schema + persona copy. Until then, personas use **nl** only. **Backlog themes:** [§ NL and strategy preflight](#nl-and-strategy-preflight-backlog-themes) · **deep spec:** [nl-prompts.md](./xchat/nl-workflows/nl-prompts.md). |
-| 8        | **Admin seed — RAG sync**                | **Done:** `npm run seed:admin` walks **`atx-rag-collection/`** → xAI team collections via **`scripts/lib/seed-xai-rag-ingest.mjs`** when **`XAI_API_KEY`** + **`XAI_MANAGEMENT_API_KEY`** (+ team id) are set; **`SKIP_SEED_XAI_RAG_INGEST=1`** skips upload. Segments include **`finance-reference-docs`**, **`xpersonas`** (persona **YAML** specs), **`example-prompts`**, **`options-strategy`**, etc. Disk specs under **`atx-rag-collection/xpersonas/`** (**`.yaml` / `.yml` only**) → Mongo **`xchat_personas`** via **`seed:xpersonas`** (same as `npm run seed:xpersonas`); **`SKIP_SEED_XPERSONAS=1`** skips. Layout/tests: **`tests/unit/atx-rag-collection-layout.test.ts`** · runbooks: **`DEVELOPMENT.md`** (RAG source tree), **`atx-rag-collection/README.md`**. |
-| 9        | **TODO: Validate admin seed (post-deploy)** | **Open:** After stage/prod cutovers, run a focused **validation pass** on **`npm run seed:admin`** / **`seed:admin:stage`** / **`node --env-file=.env.prod`** (break-glass prod) outcomes: **`ATX_DEPLOY_TARGET`** ↔ xAI **`atx-trusted-advisor-`** tier (**dev** / **stage** / **deploy**), **`MONGODB_URI`** / **`MONGODB_DB_NAME`** parity with Cloud Run + GSM, **`ADMIN_SEED_EMAIL`** / OAuth callback host, persona rows vs disk **`atx-rag-collection/xpersonas`**, published defaults for app_user. **Resolve collection drift** (wrong/missing team KB or persona-linked collections) and document any operator checklist in **`DEVELOPMENT.md`** § seed / remote. |
 
+| 2 | **Yahoo Finance Helper Service** | `watchlist_price_scanner` — batch fetch latest quotes for many tickers in one call (Yahoo loves this). |
+| 3 | **Core Scanner Service** | Log create/update/delete (optional CSV) via `admin_audit_events` / audit. |
+| 4 | **Job Handler** | Real-time price alerts feature. |
+| 5 | **Automated Trades w/verify** | **Goal:** Add look-no-hands integrated real-time price alerts feature. |
+| 6 | **Redis cache (next)** | **Backend (Spring):** `services/atxfinance-backend` + managed Redis (GCP Memorystore or equivalent VPC); one cluster for Kotlin workers and HTTP tier; aligns with Phase 1 → Chunk 1 step 1.3 (Redis hot keys / RL counters) and future scheduler/job fairness. **Next.js:** server-side Redis in Route Handlers only for paths that must stay Next-local; default is cache behind Spring (BFF → Kotlin → Redis). **Deliverables:** connection config + health, TTL policy doc, first use case (e.g. strategy-job caps, market-quote cache, or session-adjacent read cache), tests + `DEVELOPMENT.md` env matrix. |
+| 6.1 | **Admin portfolio audit** | Log create/update/delete (optional CSV) via `admin_audit_events` / audit pipeline. |
+| 7 | **NL + strategy job tool (xChat)** | Wire **nl**-gathered slots to `/api/strategy-jobs` (BFF) from xChat when product-ready; document tool schema + persona copy. Until then, personas use **nl** only. **Backlog themes:** [§ NL and strategy preflight](#nl-and-strategy-preflight-backlog-themes) · **deep spec:** [nl-prompts.md](./xchat/nl-workflows/nl-prompts.md). |
 
 ### NL and strategy preflight (backlog themes)
 
 **Deep spec** (examples, component sketches, copy patterns): [nl-prompts.md](./xchat/nl-workflows/nl-prompts.md)
 
-- **Assistant rendering:** Markdown in chat via ReactMarkdown + GFM + rehype; optional fenced-code highlighting; small pre-cleanup (e.g. double-bold, “Key: value” → headings, extra newlines); wrapper typography (e.g. card + prose) aligned with dark UI.
-- **Tools & personas:** Avoid implicit “model picks tools”; keep explicit tool lists + hosted baseline merge so web/search stay available when policy requires (see deep spec for `mergeXchatHostedToolBaseline` intent).
-- **Admin guardrails:** Warn or block saves for empty-tool personas with hosted search off; explain hallucination/API risk; optional “save anyway”; keep validation on persona forms.
+- **Assistant rendering:** Markdown in chat via ReactMarkdown + GFM + rehype; optional fenced-code highlighting; small pre-cleanup (e.g. double-bold, "Key: value" → headings, extra newlines); wrapper typography (e.g. card + prose) aligned with dark UI.
+- **Tools & personas:** Avoid implicit "model picks tools"; keep explicit tool lists + hosted baseline merge so web/search stay available when policy requires (see deep spec for `mergeXchatHostedToolBaseline` intent).
+- **Admin guardrails:** Warn or block saves for empty-tool personas with hosted search off; explain hallucination/API risk; optional "save anyway"; keep validation on persona forms.
 - **Prompt assembly:** One session/tool instruction surface and one short user-prompt augmenter for the **ask** path; fixed stack order: persona → RAG → snapshot → instructions; **batch** stays a separate execution path (no forced unification).
 - **NL preflight:** If required slots are missing, respond with **one** clarifying question (numbered choices when it helps); handle obvious NL intents where safe (e.g. watchlist add); persist answers per team/RAG policy; **only then** call Grok.
 - **Strategy / xStrategyBuilder:** Guided multi-step choices → structured prompt → ship toward `/api/xchat/ask` and/or `/api/strategy-jobs` when wired; wizard UX and prompt templates stay in the deep spec.
-- **Tool observability (optional):** Pattern in deep spec for recording tool success/failure and surfacing stats—map to this repo’s storage (Mongo/audit) rather than copying external stack verbatim.
+- **Tool observability (optional):** Pattern in deep spec for recording tool success/failure and surfacing stats—map to this repo's storage (Mongo/audit) rather than copying external stack verbatim.
 
+### Deferred product TODOs
 
-**Deferred product TODOs**
-
-- Restore `LoginProductPanel` on `/login` or fold plan tiers into registration / access-request flow.
-- Google OAuth — `/api/auth/google/login` + callback + env; enable login page button when shipped.
+- `/login` is deprecated (`permanentRedirect` → `/xchat`); fold plan tiers into `/xchat` guest panel or access-request flow.
 
 ---
 
@@ -50,21 +54,17 @@ Order: **Backend orchestrator** → **LLM + artifact** → **SRE** → **Fronten
 
 ### Chunk 1 — Orchestrator (partially shipped)
 
-
 | Step    | Deliverable                                                                                                                                    | Status                                       |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | 1.1–1.2 | Mongo `strategy_jobs`, Spring `StrategyJobService` + `StrategyJobsController`, hourly cap + idempotency, Next BFF proxy + 503 when backend off | **Shipped (initial)**                        |
 | 1.3     | Redis hot keys / RL counters                                                                                                                   | **Open** (optional; caps work without Redis) |
 | 1.4     | JVM tests                                                                                                                                      | **Shipped** (`StrategyJobServiceTest` etc.)  |
 
-
 ### Chunk 2 — LLM tier + artifact v1
-
 
 | Step    | Deliverable                                                                                                                   |
 | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | 2.1–2.4 | Context bundle, async xAI path, artifact v1 validation + error codes, BFF route parity docs + `backend-http-api-parity` smoke |
-
 
 **Exit:** Validated handoff payload + stable `jobId` / `correlationId`; documented failure codes.
 
@@ -86,14 +86,12 @@ OpenAPI parity, `atxdesign-review-audit` gaps, product doc parity (`xchat-tools-
 
 ## SRE status
 
-
-| Area                 | Status             | Notes                                                                                                                                                                                                 |
-| -------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Area                 | Status             | Notes |
+| -------------------- | ------------------ | ----- |
 | BFF frontend→backend | Verified           | Canonical list: [`bff-proxy-routes.ts`](../src/lib/bff-proxy-routes.ts) + `proxyRequestToBackend` on matching Next `route.ts` handlers. **Registry ↔ Next:** `tests/unit/bff-proxy-registry-next-handlers.test.ts`. **Kotlin ↔ docs:** `tests/smoke/backend-http-api-parity.test.ts`. **JVM:** `./gradlew test` in `services/atxfinance-backend` when backend changes. |
-| Auth / OAuth         | Next authoritative | See [auth-oauth-spring-dual-run.md](./sre-ops/auth-oauth-spring-dual-run.md). `/api/auth/x/callback` may proxy to Spring when origin set; most auth routes stay Next-only.                        |
-| Deploy               | GitHub Actions     | `AGENTS.md` + `.github/workflows/deploy-cloud-run.yml` (staging) / production workflow. `ATXFINANCE_BACKEND_ORIGIN` wired from GitHub vars on Cloud Run — see workflow.                                  |
-| CI gate              | Pass               | `npm run ci:gate` — lint, typecheck, tests.                                                                                                                                                           |
-
+| Auth / OAuth         | Next authoritative | See [auth-oauth-spring-dual-run.md](./sre-ops/auth-oauth-spring-dual-run.md). `/api/auth/x/callback` may proxy to Spring when origin set; most auth routes stay Next-only. |
+| Deploy               | GitHub Actions     | `AGENTS.md` + `.github/workflows/deploy-cloud-run.yml` (unified `workflow_dispatch` with `target` staging/production). `ATXFINANCE_BACKEND_ORIGIN` wired from GitHub vars on Cloud Run — see workflow. |
+| CI gate              | Pass               | `npm run ci:gate` — lint, typecheck, tests. |
 
 ### BFF completion status (rolling)
 
@@ -121,7 +119,6 @@ OpenAPI parity, `atxdesign-review-audit` gaps, product doc parity (`xchat-tools-
 - **Other admin:** `/api/admin/brokers`, `/api/admin/xchat/settings` — Next.
 
 **Operator checklist:** Staging/prod with Spring enabled must set **`ATXFINANCE_BACKEND_ORIGIN`** to the Cloud Run (or internal) base URL for the Kotlin service so BFF routes hit Spring; unset ⇒ full Next fallback (split-brain risk for data mutated on both tiers — prefer single writer per domain).
-
 
 ---
 
@@ -159,4 +156,3 @@ Scope delivered: `getScopeReadinessSummary`, ask-route gate, multi-source orches
 
 - xChat streaming on Spring + BFF (`api-consolidation-spring-backend.md`).
 - Strict JSON Schema for strategy artifacts v2 (`atx-multi-agent.md`).
-

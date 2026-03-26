@@ -103,7 +103,7 @@ Validate locally:
 
 ```bash
 npm run dev
-# Visit http://localhost:3000/login and click "Sign in with X"
+# Visit http://localhost:3000/xchat and click "Sign up or Sign in"
 ```
 
 ### 4. Update GCP Secret Manager
@@ -132,8 +132,8 @@ Cursor Cloud → **Secrets** → set `X_OAUTH_CLIENT_ID` and `X_OAUTH_CLIENT_SEC
 
 ### 6. Verify
 
-- Staging: sign in with X at `https://staging.atx.fintech-advisor.ai/login`
-- Production: sign in with X at `https://atx.fintech-advisor.ai/login`
+- Staging: sign in with X at `https://staging.atx.fintech-advisor.ai/xchat`
+- Production: sign in with X at `https://atx.fintech-advisor.ai/xchat`
 
 ### 7. Revoke old credentials (after 24–48h stable)
 
