@@ -3,7 +3,8 @@
 import { useForm, ValidationError } from "@formspree/react";
 import Link from "next/link";
 
-import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
+import { AtxFinanceLogo, AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
+import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 
 export const DEFAULT_POST_LOGIN = "/xchat";
 
@@ -122,17 +123,28 @@ export function HomeLanding({
             <AtxFinanceLogo size="lg" showSubtitle={false} />
           </div>
           <h1 className="flex max-w-2xl flex-col items-center gap-3 text-balance">
-            <span className="flex flex-wrap items-baseline justify-center gap-x-1.5">
-              <span className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">aTx⚡</span>
-              <span className="text-base font-semibold tracking-tight text-gray-200 sm:text-lg md:text-xl">
-                Finance — Powered by xAI
+            <span className="flex items-center justify-center gap-0.5 sm:gap-1">
+              <span className="inline-flex items-center gap-0.5 sm:hidden">
+                <AtxFinanceMark size={40} />
+                <LightningBolt size={26} />
+              </span>
+              <span className="hidden items-center gap-0.5 sm:inline-flex">
+                <AtxFinanceMark size={48} />
+                <LightningBolt size={30} />
               </span>
             </span>
-            <span
-              className="text-lg font-semibold tracking-tight sm:text-xl md:text-2xl"
-              style={{ color: "var(--xf-gain-green)" }}
-            >
-              No Atoms Moved. Just Gains Earned.
+            <span className="text-base font-semibold tracking-tight text-gray-300 sm:text-lg">
+              Finance — Powered by xAI
+            </span>
+            <span className="text-lg font-medium tracking-tight text-gray-200 sm:text-xl md:text-2xl">
+              No atoms moved.
+            </span>
+            <span className="text-lg font-medium tracking-tight text-gray-200 sm:text-xl md:text-2xl">
+              Just{" "}
+              <span className="font-bold" style={{ color: "var(--xf-gain-green)" }}>
+                Gains
+              </span>
+              , <span className="font-bold italic text-gray-100">growth</span> earned.
             </span>
           </h1>
           <p className="max-w-2xl text-lg text-gray-300 sm:text-xl">
@@ -170,19 +182,21 @@ export function HomeLanding({
           {googleLoginHref ? (
             <a
               href={googleLoginHref}
-              className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-center text-lg font-bold text-gray-900 shadow-lg shadow-black/20 transition hover:bg-gray-100"
+              className="inline-flex items-center justify-center gap-3 rounded-full bg-white px-8 py-4 text-center text-lg font-bold text-gray-900 shadow-lg shadow-black/20 transition hover:bg-gray-100"
             >
+              <GoogleGIcon size={22} className="shrink-0" />
               Sign in with Google
             </a>
           ) : null}
           <Link
             href={googleLoginHref ? xOAuthHref : loginHref}
-            className={`inline-flex items-center justify-center rounded-full px-8 py-4 text-center text-lg font-bold shadow-lg transition ${
+            className={`inline-flex items-center justify-center gap-3 rounded-full px-8 py-4 text-center text-lg font-bold shadow-lg transition ${
               googleLoginHref
                 ? "border-2 border-emerald-500/80 bg-transparent text-emerald-100 hover:border-emerald-400 hover:bg-emerald-500/10"
                 : "bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-400"
             }`}
           >
+            <XLogoIcon size={22} className="shrink-0 text-white" />
             Sign in with X
           </Link>
         </div>

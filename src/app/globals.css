@@ -487,8 +487,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .login-google-btn {
-  cursor: not-allowed;
-  opacity: 0.55;
   font: inherit;
 }
 

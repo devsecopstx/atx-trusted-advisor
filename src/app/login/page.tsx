@@ -4,6 +4,7 @@ import { isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 
 import { AtxFinanceLogo } from "../ui/atxfinance-logo";
+import { GoogleGIcon, XLogoIcon } from "../ui/oauth-provider-icons";
 import { LinkEmailForm } from "./ui/link-email-form";
 
 type LoginPageProps = {
@@ -103,10 +104,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <div className="cta-row login-oauth-row">
             {googleLoginHref ? (
               <a className="cta cta-primary login-google-btn" href={googleLoginHref}>
+                <GoogleGIcon size={20} className="shrink-0" />
                 Sign in with Google
               </a>
             ) : null}
             <a className={`cta ${googleLoginHref ? "cta-secondary" : "cta-primary"}`} href={xLoginHref}>
+              <XLogoIcon size={20} className="shrink-0" />
               Sign in with X
             </a>
           </div>
