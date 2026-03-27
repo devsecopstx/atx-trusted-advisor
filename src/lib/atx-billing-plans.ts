@@ -38,6 +38,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     bullets: [
       "Complex portfolios: international, real estate, listed equities & options, and multi-account context",
       "Generous posture with fair per-hour caps on xChat and xStrategyBuilder (scenario builder)",
+      "Interactive Brokers automated trades and verification (roadmap)",
       "Power-user tier — meaningful Feedback on real scenarios helps us prioritize caps, tools, and roadmap"
     ]
   },
