@@ -364,6 +364,7 @@ export function XchatConversation({
   const promptExamples: XchatPromptExample[] = [
     "Show my portfolio allocation",
     "What are my top movers today",
+    "Add NVDA to my watchlist",
     "Covered call ideas for my holdings",
     "Compare SPY vs QQQ trend today",
     "Stress test portfolio for volatility spike",

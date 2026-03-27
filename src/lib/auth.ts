@@ -2,6 +2,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { cache } from "react";
 
 import { getEnv } from "@/lib/env";
 import { SESSION_COOKIE_NAME } from "@/lib/session-cookie-name";
@@ -11,8 +12,15 @@ const OAUTH_VERIFIER_COOKIE_NAME = "xf_x_oauth_verifier";
 const OAUTH_RETURN_PATH_COOKIE_NAME = "xf_oauth_return";
 const PENDING_LINK_COOKIE_NAME = "xf_x_pending_link";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
+/** If remaining signed-session lifetime falls below this, re-issue the cookie on read (sliding window for active users). */
+export const SESSION_REFRESH_WHEN_REMAINING_MS = 30 * 60 * 1000;
 /** PKCE state/verifier, return path, pending X link — keep long enough for slow OAuth completes (mobile/switch-tab). */
 const OAUTH_FLOW_TTL_SECONDS = 60 * 30;
+
+export function shouldRefreshSessionExpiry(expMs: number, nowMs: number = Date.now()): boolean {
+  const remaining = expMs - nowMs;
+  return remaining > 0 && remaining < SESSION_REFRESH_WHEN_REMAINING_MS;
+}
 
 /**
  * Signed session payload. Naming:
@@ -113,7 +121,7 @@ export async function clearSession(): Promise<void> {
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+async function getSessionUserUncached(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!sessionCookie) {
@@ -123,6 +131,20 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const payload = parseSessionCookie(sessionCookie);
   if (!payload) {
     return null;
+  }
+
+  if (shouldRefreshSessionExpiry(payload.exp)) {
+    await createSession({
+      userId: payload.userId,
+      email: payload.email,
+      roles: normalizeCoreRoles(payload.roles),
+      tenantId: payload.tenantId,
+      tenantRole: payload.tenantRole,
+      xUserId: payload.xUserId,
+      username: payload.username,
+      displayName: payload.displayName,
+      avatarUrl: payload.avatarUrl
+    });
   }
 
   return {
@@ -137,6 +159,9 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     avatarUrl: payload.avatarUrl
   };
 }
+
+/** Deduped per request; extends session cookie when expiry is within {@link SESSION_REFRESH_WHEN_REMAINING_MS}. */
+export const getSessionUser = cache(getSessionUserUncached);
 
 export async function requireSessionUser(): Promise<SessionUser | NextResponse> {
   const session = await getSessionUser();

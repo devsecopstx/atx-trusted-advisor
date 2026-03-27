@@ -25,6 +25,7 @@ Use this page as the canonical prompt bank for QA and support runbooks.
 
 - Show my watchlist performance
 - Add TSLA to my watchlist
+- Add NVDA to my watchlist
 - Compare SPY vs QQQ trend today
 - What changed in my watchlist today
 
