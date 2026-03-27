@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { consumePendingXLinkCookie, createSession } from "@/lib/auth";
+import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
@@ -18,6 +19,7 @@ import {
     getCoreUserByEmail,
     getCoreUserByXIdentity,
     linkXAccountToUser,
+    recordUserSuccessfulLogin,
     resolveAuthContext,
     unlinkXAccountFromUser,
     updateCoreUserEmail,
@@ -148,6 +150,21 @@ export async function POST(request: Request) {
     userId: authContext.userId.toHexString(),
     tenantId: authContext.tenantId.toHexString()
   });
+
+  const loginMeta = extractClientLoginMeta(request);
+  try {
+    await recordUserSuccessfulLogin({
+      userId: authContext.userId,
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent
+    });
+  } catch (e) {
+    console.warn("[auth/link-email] recordUserSuccessfulLogin non-fatal", {
+      userId: authContext.userId.toHexString(),
+      message: e instanceof Error ? e.message : String(e)
+    });
+  }
 
   await createSession({
     userId: authContext.userId.toHexString(),

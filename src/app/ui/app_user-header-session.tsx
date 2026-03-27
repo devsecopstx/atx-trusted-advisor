@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
 import { SendIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
+import { XfThemePreferenceMenu } from "@/app/ui/public-theme-picker";
 
 type AppUserHeaderSessionProps = {
   mongoConnection: string;
@@ -125,36 +126,38 @@ export function AppUserHeaderSession({
     <div className="xchat-header-session">
       <div className="xchat-header-session-row">
         <div className="xchat-header-session-profile" ref={profileRef}>
-          {avatarUrl ? (
-            <Image
-              alt={`${displayName ?? username} avatar`}
-              className="xchat-header-session-avatar"
-              height={28}
-              src={avatarUrl}
-              unoptimized
-              width={28}
-            />
-          ) : (
-            <span className="xchat-header-session-avatar xchat-header-session-avatar-fallback">
-              {(displayName ?? username).slice(0, 1).toUpperCase()}
-            </span>
-          )}
           <button
             aria-controls={profilePopoverId}
             aria-expanded={profileOpen}
-            aria-label="Profile and account"
-            className="tiny-button xchat-header-session-btn xchat-header-session-btn--icon"
-            onClick={() => setProfileOpen((v) => !v)}
-            title="Profile"
+            aria-label="Account, appearance, and actions"
+            className="xchat-header-session-menu-trigger"
             type="button"
+            onClick={() => setProfileOpen((v) => !v)}
           >
-            <svg aria-hidden viewBox="0 0 20 20" fill="none">
-              <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M4 16c0-2.6 2.7-4 6-4s6 1.4 6 4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
-            </svg>
+            {avatarUrl ? (
+              <Image
+                alt=""
+                aria-hidden
+                className="xchat-header-session-avatar"
+                height={28}
+                src={avatarUrl}
+                unoptimized
+                width={28}
+              />
+            ) : (
+              <span className="xchat-header-session-avatar xchat-header-session-avatar-fallback">
+                {(displayName ?? username).slice(0, 1).toUpperCase()}
+              </span>
+            )}
           </button>
           {profileOpen ? (
-            <div className="admin-session-popover xchat-header-profile-popover" id={profilePopoverId} role="dialog">
+            <div
+              className="admin-session-popover xchat-header-profile-popover"
+              id={profilePopoverId}
+              role="dialog"
+              aria-label="Account menu"
+            >
+              <p className="admin-session-popover__eyebrow">Signed in</p>
               <p>
                 <strong>Name:</strong> {displayName ?? username}
               </p>
@@ -172,6 +175,14 @@ export function AppUserHeaderSession({
                   <strong>Mongo (beta):</strong> <code className="xchat-header-code">{mongoConnection}</code>
                 </p>
               ) : null}
+
+              <div className="admin-session-popover__section">
+                <p className="admin-session-popover__section-title" id={`${profilePopoverId}-appearance`}>
+                  Appearance
+                </p>
+                <XfThemePreferenceMenu aria-labelledby={`${profilePopoverId}-appearance`} />
+              </div>
+
               <div className="xchat-profile-menu" role="menu" aria-label="Account actions">
                 <button
                   className="xchat-profile-menu__item"

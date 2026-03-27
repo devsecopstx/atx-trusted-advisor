@@ -89,6 +89,10 @@ class CoreUserService(
             "username" to x?.getString("username"),
             "displayName" to x?.getString("displayName"),
             "avatarUrl" to x?.getString("avatarUrl"),
+            "lastLoginAt" to (doc.getDate("lastLoginAt")?.toInstant()?.toString()),
+            "lastLoginIp" to doc.getString("lastLoginIp"),
+            "lastLoginCountry" to doc.getString("lastLoginCountry"),
+            "lastLoginUserAgent" to doc.getString("lastLoginUserAgent"),
         )
     }
 

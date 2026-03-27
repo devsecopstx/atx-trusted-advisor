@@ -414,6 +414,31 @@ export async function deleteCoreUserById(userId: ObjectId): Promise<boolean> {
   return result.deletedCount === 1;
 }
 
+export async function recordUserSuccessfulLogin(input: {
+  userId: ObjectId;
+  clientIp?: string;
+  country?: string;
+  userAgent?: string;
+}): Promise<void> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const $set: Record<string, unknown> = {
+    lastLoginAt: now,
+    updatedAt: now
+  };
+  if (input.clientIp) {
+    $set.lastLoginIp = input.clientIp.slice(0, 64);
+  }
+  if (input.country) {
+    $set.lastLoginCountry = input.country.slice(0, 8);
+  }
+  if (input.userAgent) {
+    $set.lastLoginUserAgent = input.userAgent.slice(0, 256);
+  }
+  await db.collection<CoreUser>(collections.users).updateOne({ _id: input.userId }, { $set });
+}
+
 export async function linkXAccountToUser(input: {
   userId: ObjectId;
   xUserId: string;

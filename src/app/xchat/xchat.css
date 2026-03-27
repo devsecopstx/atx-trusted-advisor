@@ -28,8 +28,11 @@
   text-decoration: none;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  text-align: left;
   min-width: 0;
-  flex-shrink: 1;
+  flex: 0 1 auto;
+  margin-right: auto;
 }
 
 .xchat-header-brand-wordmark {
@@ -57,7 +60,7 @@
 }
 
 .xchat-header-trailing--guest {
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .xchat-header-divider {
@@ -117,6 +120,73 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.xchat-header-session-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow 0.12s ease;
+}
+
+.xchat-header-session-menu-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--xf-gain-green);
+}
+
+.xchat-guest-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.xchat-guest-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  color: var(--xf-text-100);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.xchat-guest-menu-trigger:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  color: var(--xf-gain-green);
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+}
+
+.xchat-guest-menu-trigger:focus-visible {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 2px;
+}
+
+.xchat-guest-menu-trigger__svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: block;
+}
+
+.xchat-guest-menu-popover {
+  right: 0;
+  left: auto;
+  min-width: min(300px, 92vw);
 }
 
 .xchat-header-session-avatar {

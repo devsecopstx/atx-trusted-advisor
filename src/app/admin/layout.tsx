@@ -7,7 +7,6 @@ import { getSessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel } from "@/lib/env";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { GlobalFooter } from "../ui/global-footer";
-import { PublicThemePicker } from "../ui/public-theme-picker";
 import { XchatHeaderBrand } from "../ui/xchat-header-brand";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 
@@ -64,33 +63,33 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
         <Link className="admin-topbar-brand" href="/admin">
           <XchatHeaderBrand />
         </Link>
-        <nav className="admin-topbar-nav">
-          {NAV_LINKS.map((link) => (
-            <Link
-              aria-label={link.label}
-              className="admin-topbar-icon-link"
-              href={link.href}
-              key={link.href}
-              title={link.label}
-            >
-              <span aria-hidden className="admin-topbar-icon-link__glyph">
-                {link.icon}
-              </span>
-            </Link>
-          ))}
-        </nav>
-        <div className="admin-topbar-trailing">
-          <span aria-hidden className="admin-topbar-divider" />
-          <PublicThemePicker variant="admin" />
-          <div className="admin-topbar-session">
-            <AdminSessionPanel
-            avatarUrl={session.avatarUrl}
-            displayName={session.displayName}
-            email={session.email}
-            mongoConnection={mongoConnection}
-            xUserId={session.xUserId}
-            username={session.username}
-          />
+        <div className="admin-topbar-actions">
+          <nav className="admin-topbar-nav" aria-label="Admin quick links">
+            {NAV_LINKS.map((link) => (
+              <Link
+                aria-label={link.label}
+                className="admin-topbar-icon-link"
+                data-hovertip={link.label}
+                href={link.href}
+                key={link.href}
+              >
+                <span aria-hidden className="admin-topbar-icon-link__glyph">
+                  {link.icon}
+                </span>
+              </Link>
+            ))}
+          </nav>
+          <div className="admin-topbar-trailing">
+            <div className="admin-topbar-session">
+              <AdminSessionPanel
+                avatarUrl={session.avatarUrl}
+                displayName={session.displayName}
+                email={session.email}
+                mongoConnection={mongoConnection}
+                xUserId={session.xUserId}
+                username={session.username}
+              />
+            </div>
           </div>
         </div>
       </header>

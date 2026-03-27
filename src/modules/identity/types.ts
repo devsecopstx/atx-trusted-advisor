@@ -21,6 +21,11 @@ export type CoreUser = {
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt?: Date;
+  /** Observed on last successful OAuth / link-email completion (admin visibility). */
+  lastLoginIp?: string;
+  /** e.g. CF-IPCountry when present. */
+  lastLoginCountry?: string;
+  lastLoginUserAgent?: string;
 };
 
 export type Tenant = {

@@ -12,10 +12,10 @@ import {
     type XfUiThemePreference
 } from "@/lib/xf-ui-theme";
 
-const OPTIONS: { value: XfUiThemePreference; label: string; hint: string }[] = [
-  { value: "light", label: "Light", hint: "Softer dark surfaces (still dark mode)" },
+export const THEME_OPTIONS: { value: XfUiThemePreference; label: string; hint: string }[] = [
+  { value: "light", label: "Light", hint: "Softer charcoal surfaces" },
   { value: "dark", label: "Dark", hint: "Deep black-forward contrast" },
-  { value: "system", label: "System", hint: "Match device light/dark for soft vs deep dark" }
+  { value: "system", label: "System", hint: "Match device for soft vs deep" }
 ];
 
 function MoonIcon({ className }: { className?: string }) {
@@ -40,15 +40,8 @@ function CheckIcon({ className }: { className?: string }) {
   );
 }
 
-type PublicThemePickerProps = {
-  /** `xchat` = product header chrome; `admin` = admin topbar sizing */
-  variant?: "xchat" | "admin";
-};
-
-export function PublicThemePicker({ variant = "xchat" }: PublicThemePickerProps) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
+/** Shared preference sync + persistence for shell theme (soft vs deep). */
+export function useXfShellTheme() {
   const pref = useSyncExternalStore(
     subscribeXfUiThemePreference,
     getXfUiThemePreferenceSnapshot,
@@ -72,6 +65,87 @@ export function PublicThemePicker({ variant = "xchat" }: PublicThemePickerProps)
     return () => mq.removeEventListener("change", onScheme);
   }, [pref]);
 
+  const setPreference = useCallback((next: XfUiThemePreference) => {
+    try {
+      window.localStorage.setItem(XF_UI_THEME_STORAGE_KEY, next);
+    } catch {
+      /* ignore quota */
+    }
+    applyXfUiToDocument(next);
+    dispatchXfUiThemeChange();
+  }, []);
+
+  return { pref, setPreference };
+}
+
+type XfThemePreferenceMenuProps = {
+  /** Called after user picks a theme (e.g. close parent popover). */
+  onCommitted?: () => void;
+  className?: string;
+  "aria-labelledby"?: string;
+  "aria-label"?: string;
+};
+
+/**
+ * Inline appearance control for account/profile menus (no separate moon icon).
+ */
+export function XfThemePreferenceMenu({
+  onCommitted,
+  className,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-label": ariaLabel
+}: XfThemePreferenceMenuProps) {
+  const { pref, setPreference } = useXfShellTheme();
+
+  const pick = useCallback(
+    (next: XfUiThemePreference) => {
+      setPreference(next);
+      onCommitted?.();
+    },
+    [onCommitted, setPreference]
+  );
+
+  return (
+    <div
+      aria-label={ariaLabel ?? (ariaLabelledBy ? undefined : "Appearance")}
+      aria-labelledby={ariaLabelledBy}
+      className={className ?? "xf-theme-inline-menu"}
+      role="radiogroup"
+    >
+      {THEME_OPTIONS.map((opt) => {
+        const selected = pref === opt.value;
+        return (
+          <button
+            key={opt.value}
+            aria-checked={selected}
+            className={`xf-theme-inline-menu__item${selected ? " xf-theme-inline-menu__item--active" : ""}`}
+            role="radio"
+            type="button"
+            onClick={() => pick(opt.value)}
+          >
+            <span className="xf-theme-inline-menu__text">
+              <span className="xf-theme-inline-menu__label">{opt.label}</span>
+              <span className="xf-theme-inline-menu__hint">{opt.hint}</span>
+            </span>
+            {selected ? <CheckIcon className="xf-theme-inline-menu__check" /> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+type PublicThemePickerProps = {
+  /** `xchat` = product header chrome; `admin` = admin topbar sizing */
+  variant?: "xchat" | "admin";
+};
+
+/** Standalone moon trigger + dropdown (use sparingly; prefer {@link XfThemePreferenceMenu} in profile menus). */
+export function PublicThemePicker({ variant = "xchat" }: PublicThemePickerProps) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const { pref, setPreference } = useXfShellTheme();
+
   useEffect(() => {
     if (!open) {
       return;
@@ -94,16 +168,10 @@ export function PublicThemePicker({ variant = "xchat" }: PublicThemePickerProps)
     };
   }, [open]);
 
-  const choose = useCallback((next: XfUiThemePreference) => {
-    try {
-      window.localStorage.setItem(XF_UI_THEME_STORAGE_KEY, next);
-    } catch {
-      /* ignore quota */
-    }
-    applyXfUiToDocument(next);
-    dispatchXfUiThemeChange();
-    setOpen(false);
-  }, []);
+  const menuClass =
+    variant === "admin"
+      ? "xf-theme-picker-menu xf-theme-picker-menu--admin"
+      : "xf-theme-picker-menu";
 
   const btnClass =
     variant === "admin"
@@ -117,27 +185,36 @@ export function PublicThemePicker({ variant = "xchat" }: PublicThemePickerProps)
         aria-haspopup="menu"
         aria-label="Theme: appearance (dark surfaces)"
         className={btnClass}
-        title="Theme: Light (soft dark), Dark, or System"
+        data-hovertip={variant === "admin" ? "Theme: Light, Dark, or System" : undefined}
         type="button"
         onClick={() => setOpen((o) => !o)}
+        title={variant === "xchat" ? "Theme: Light (soft dark), Dark, or System" : undefined}
       >
         <MoonIcon />
       </button>
       {open ? (
-        <div className="xf-theme-picker-menu" role="menu" aria-label="Theme">
-          {OPTIONS.map((opt) => {
+        <div className={menuClass} role="menu" aria-label="Theme">
+          {THEME_OPTIONS.map((opt) => {
             const selected = pref === opt.value;
             return (
               <button
                 key={opt.value}
+                aria-checked={selected}
                 className={`xf-theme-picker-item${selected ? " xf-theme-picker-item--active" : ""}`}
                 role="menuitemradio"
-                aria-checked={selected}
-                title={opt.hint}
                 type="button"
-                onClick={() => choose(opt.value)}
+                onClick={() => {
+                  setPreference(opt.value);
+                  setOpen(false);
+                }}
+                title={variant === "xchat" ? opt.hint : undefined}
               >
-                <span className="xf-theme-picker-item__label">{opt.label}</span>
+                <span className="xf-theme-picker-item__text-stack">
+                  <span className="xf-theme-picker-item__label">{opt.label}</span>
+                  {variant === "admin" ? (
+                    <span className="xf-theme-picker-item__hint">{opt.hint}</span>
+                  ) : null}
+                </span>
                 {selected ? <CheckIcon className="xf-theme-picker-item__check" /> : null}
               </button>
             );

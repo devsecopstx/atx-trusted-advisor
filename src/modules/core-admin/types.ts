@@ -54,6 +54,10 @@ export type AccessRequestUserSummary = {
   username?: string;
   displayName?: string;
   avatarUrl?: string;
+  lastLoginAt?: Date;
+  lastLoginIp?: string;
+  lastLoginCountry?: string;
+  lastLoginUserAgent?: string;
 };
 
 export type AccessRequestListItem = AccessRequest & {

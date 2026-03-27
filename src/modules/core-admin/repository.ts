@@ -425,7 +425,11 @@ export async function listAccessRequests(options?: {
       "xAccount.xUserId": 1,
       "xAccount.username": 1,
       "xAccount.displayName": 1,
-      "xAccount.avatarUrl": 1
+      "xAccount.avatarUrl": 1,
+      lastLoginAt: 1,
+      lastLoginIp: 1,
+      lastLoginCountry: 1,
+      lastLoginUserAgent: 1
     })
     .toArray();
 
@@ -443,7 +447,11 @@ export async function listAccessRequests(options?: {
           xUserId: user.xAccount?.xUserId,
           username: user.xAccount?.username,
           displayName: user.xAccount?.displayName,
-          avatarUrl: user.xAccount?.avatarUrl
+          avatarUrl: user.xAccount?.avatarUrl,
+          lastLoginAt: user.lastLoginAt,
+          lastLoginIp: user.lastLoginIp,
+          lastLoginCountry: user.lastLoginCountry,
+          lastLoginUserAgent: user.lastLoginUserAgent
         }
       ])
   );

@@ -38,7 +38,8 @@ const identityMocks = vi.hoisted(() => ({
   upsertTenantMembership: vi.fn(),
   resolveAuthContext: vi.fn(),
   ensureCoreUserByEmail: vi.fn(),
-  ensureSeededGlobalAdmin: vi.fn()
+  ensureSeededGlobalAdmin: vi.fn(),
+  recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined)
 }));
 
 const auditMocks = vi.hoisted(() => ({

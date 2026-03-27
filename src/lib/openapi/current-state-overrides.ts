@@ -1504,7 +1504,10 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       xAccount: { type: "object", additionalProperties: true },
       createdAt: { type: "string", format: "date-time" },
       updatedAt: { type: "string", format: "date-time" },
-      lastLoginAt: { type: "string", format: "date-time", nullable: true }
+      lastLoginAt: { type: "string", format: "date-time", nullable: true },
+      lastLoginIp: { type: "string", nullable: true },
+      lastLoginCountry: { type: "string", nullable: true },
+      lastLoginUserAgent: { type: "string", nullable: true }
     }
   },
   CoreUserWithLatestAudit: {

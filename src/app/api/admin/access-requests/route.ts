@@ -13,7 +13,7 @@ import {
     getPendingAccessRequestByUserAndRole,
     listAccessRequests
 } from "@/modules/core-admin/repository";
-import type { AccessRequestListItem } from "@/modules/core-admin/types";
+import type { AccessRequestListItem, AccessRequestUserSummary } from "@/modules/core-admin/types";
 import { accessRequestStatusValues } from "@/modules/core-admin/types";
 import { ensureCoreUserByEmail } from "@/modules/identity/repository";
 
@@ -90,6 +90,8 @@ export async function GET(request: Request) {
   return NextResponse.json({
     data: serialized.map((item) => ({
       ...item,
+      user: serializeAccessUserSummary(item.user),
+      reviewedByUser: serializeAccessUserSummary(item.reviewedByUser),
       latestAuditEvent: item._id ? serializeAuditEvent(latestAuditByRequestId[item._id]) : null
     }))
   });
@@ -208,6 +210,22 @@ function serializeAccessRequest(request: AccessRequestListItem) {
     tenantId: request.tenantId?.toHexString(),
     requestedAt: request.requestedAt.toISOString(),
     reviewedAt: request.reviewedAt?.toISOString()
+  };
+}
+
+function serializeAccessUserSummary(user: AccessRequestUserSummary | undefined) {
+  if (!user) {
+    return undefined;
+  }
+  const lastLoginAt =
+    user.lastLoginAt instanceof Date
+      ? user.lastLoginAt.toISOString()
+      : typeof user.lastLoginAt === "string"
+        ? user.lastLoginAt
+        : undefined;
+  return {
+    ...user,
+    lastLoginAt
   };
 }
 

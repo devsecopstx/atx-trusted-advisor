@@ -31,6 +31,10 @@ type AccessRequest = {
     username?: string;
     displayName?: string;
     avatarUrl?: string;
+    lastLoginAt?: string;
+    lastLoginIp?: string;
+    lastLoginCountry?: string;
+    lastLoginUserAgent?: string;
   };
   reviewedByUser?: {
     userId: string;
@@ -61,6 +65,28 @@ const STATUS_COLOR: Record<AccessRequestStatus, string> = {
   rejected: "status-error",
   expired: "status-ready"
 };
+
+function formatDateTime(iso: string | undefined): string {
+  if (!iso) {
+    return "—";
+  }
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+}
+
+function formatLoginLocation(user: AccessRequest["user"]): string {
+  if (!user) {
+    return "—";
+  }
+  const parts: string[] = [];
+  if (user.lastLoginCountry) {
+    parts.push(user.lastLoginCountry);
+  }
+  if (user.lastLoginIp) {
+    parts.push(user.lastLoginIp);
+  }
+  return parts.length > 0 ? parts.join(" · ") : "—";
+}
 
 function daysUntilExpiry(requestedAt: string): number {
   const requested = new Date(requestedAt);
@@ -286,6 +312,7 @@ export function AccessRequestsConsole() {
             <thead>
               <tr>
                 <th>User</th>
+                <th>Access / sign-in</th>
                 <th>Role / Plan</th>
                 <th>Status</th>
                 <th>SLA</th>
@@ -319,6 +346,29 @@ export function AccessRequestsConsole() {
                           <span>{item.user?.displayName ?? ""}</span>
                         </div>
                       </div>
+                    </td>
+                    <td>
+                      <small className="font-mono text-xs leading-relaxed">
+                        <div>
+                          <span className="value-neutral">Request </span>
+                          {formatDateTime(item.requestedAt)}
+                        </div>
+                        <div>
+                          <span className="value-neutral">Last sign-in </span>
+                          {formatDateTime(item.user?.lastLoginAt)}
+                        </div>
+                        <div>
+                          <span className="value-neutral">Location </span>
+                          {formatLoginLocation(item.user)}
+                        </div>
+                        {item.latestAuditEvent ? (
+                          <div>
+                            <span className="value-neutral">Request log </span>
+                            {item.latestAuditEvent.action} ·{" "}
+                            {formatDateTime(item.latestAuditEvent.createdAt)}
+                          </div>
+                        ) : null}
+                      </small>
                     </td>
                     <td>
                       <span className="status-badge">{item.requestedRole}</span>

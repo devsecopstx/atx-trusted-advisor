@@ -30,7 +30,8 @@ const identityMocks = vi.hoisted(() => ({
   resolveAuthContext: vi.fn(),
   updateCoreUserEmail: vi.fn(),
   upsertTenantMembership: vi.fn(),
-  ensureSeededGlobalAdmin: vi.fn()
+  ensureSeededGlobalAdmin: vi.fn(),
+  recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined)
 }));
 
 vi.mock("@/lib/auth", () => authMocks);

@@ -15,6 +15,7 @@ import {
     isAllowAnyXUserLoginEnabled,
     isGoogleOAuthConfigured
 } from "@/lib/env";
+import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
@@ -280,6 +281,7 @@ export async function GET(request: Request) {
     origin,
     user,
     identity,
-    usernameForAdminAllowlist: username
+    usernameForAdminAllowlist: username,
+    loginMeta: extractClientLoginMeta(request)
   });
 }

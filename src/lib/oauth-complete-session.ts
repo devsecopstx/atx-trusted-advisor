@@ -5,6 +5,7 @@ import {
     createSession,
     isSafeOAuthReturnPath
 } from "@/lib/auth";
+import type { ClientLoginMeta } from "@/lib/client-request-meta";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
@@ -12,6 +13,7 @@ import { provisionDefaultPortfolioForUser } from "@/modules/core-admin/repositor
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import {
     ensureDefaultTenant,
+    recordUserSuccessfulLogin,
     resolveAuthContext,
     upsertTenantMembership
 } from "@/modules/identity/repository";
@@ -34,8 +36,10 @@ export async function finalizeOAuthSessionAndRedirect(options: {
   identity: OAuthLinkedIdentity;
   /** Used only for `ADMIN_X_USERNAMES` allowlist (compare lowercased). */
   usernameForAdminAllowlist: string;
+  /** Optional client IP / country / UA for admin access-request visibility. */
+  loginMeta?: ClientLoginMeta;
 }): Promise<NextResponse> {
-  const { origin, user, identity, usernameForAdminAllowlist } = options;
+  const { origin, user, identity, usernameForAdminAllowlist, loginMeta } = options;
   if (!user._id) {
     return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
   }
@@ -119,6 +123,20 @@ export async function finalizeOAuthSessionAndRedirect(options: {
           }
         );
       }
+    }
+
+    try {
+      await recordUserSuccessfulLogin({
+        userId: userObjectId,
+        clientIp: loginMeta?.clientIp,
+        country: loginMeta?.country,
+        userAgent: loginMeta?.userAgent
+      });
+    } catch (loginMetaError) {
+      console.warn("[auth/oauth] recordUserSuccessfulLogin non-fatal", {
+        userId: userObjectId.toHexString(),
+        message: loginMetaError instanceof Error ? loginMetaError.message : String(loginMetaError)
+      });
     }
 
     await createSession({

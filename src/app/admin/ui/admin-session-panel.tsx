@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { XfThemePreferenceMenu } from "@/app/ui/public-theme-picker";
+
 type AdminSessionPanelProps = {
   username: string;
   email: string;
@@ -22,7 +24,7 @@ export function AdminSessionPanel({
 }: AdminSessionPanelProps) {
   const [status, setStatus] = useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const popoverId = useId();
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
@@ -47,7 +49,7 @@ export function AdminSessionPanel({
   }
 
   useEffect(() => {
-    if (!isProfileOpen) {
+    if (!isMenuOpen) {
       return;
     }
 
@@ -57,13 +59,13 @@ export function AdminSessionPanel({
       }
       const target = event.target;
       if (target instanceof Node && !popoverRef.current.contains(target)) {
-        setIsProfileOpen(false);
+        setIsMenuOpen(false);
       }
     }
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setIsProfileOpen(false);
+        setIsMenuOpen(false);
       }
     }
 
@@ -74,40 +76,44 @@ export function AdminSessionPanel({
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [isProfileOpen]);
+  }, [isMenuOpen]);
 
   return (
     <div className="badge-wrap admin-session-panel">
       <div className="admin-session-identity" ref={popoverRef}>
-        {avatarUrl ? (
-          <Image
-            alt={`${displayName ?? username} profile`}
-            className="admin-session-avatar"
-            height={40}
-            src={avatarUrl}
-            unoptimized
-            width={40}
-          />
-        ) : (
-          <span className="admin-session-avatar admin-session-avatar-fallback">
-            {(displayName ?? username).slice(0, 1).toUpperCase()}
-          </span>
-        )}
-        <span className="status-badge status-ready">@{username}</span>
         <button
           aria-controls={popoverId}
-          aria-expanded={isProfileOpen}
-          aria-label="Profile details"
-          className="tiny-button"
-          onClick={() => setIsProfileOpen((current) => !current)}
+          aria-expanded={isMenuOpen}
+          aria-label="Account, appearance, and sign out"
+          className="admin-session-menu-trigger"
+          data-hovertip="Account & appearance"
           type="button"
+          onClick={() => setIsMenuOpen((current) => !current)}
         >
-          i
+          {avatarUrl ? (
+            <Image
+              alt=""
+              aria-hidden
+              className="admin-session-avatar"
+              height={38}
+              src={avatarUrl}
+              unoptimized
+              width={38}
+            />
+          ) : (
+            <span className="admin-session-avatar admin-session-avatar-fallback">
+              {(displayName ?? username).slice(0, 1).toUpperCase()}
+            </span>
+          )}
         </button>
-        {isProfileOpen ? (
-          <div className="admin-session-popover" id={popoverId} role="dialog">
+        {isMenuOpen ? (
+          <div className="admin-session-popover" id={popoverId} role="dialog" aria-label="Account menu">
+            <p className="admin-session-popover__eyebrow">Signed in</p>
             <p>
               <strong>Name:</strong> {displayName ?? username}
+            </p>
+            <p>
+              <strong>Username:</strong> @{username}
             </p>
             <p>
               <strong>Email:</strong> {email}
@@ -120,13 +126,26 @@ export function AdminSessionPanel({
                 <strong>Mongo:</strong> {mongoConnection}
               </p>
             ) : null}
+
+            <div className="admin-session-popover__section">
+              <p className="admin-session-popover__section-title" id={`${popoverId}-appearance`}>
+                Appearance
+              </p>
+              <XfThemePreferenceMenu aria-labelledby={`${popoverId}-appearance`} />
+            </div>
+
             <button
-              className="admin-session-popover-done"
-              onClick={() => setIsProfileOpen(false)}
+              className="admin-session-popover-logout"
+              disabled={isLoggingOut}
               type="button"
+              onClick={() => {
+                setIsMenuOpen(false);
+                void handleLogout();
+              }}
             >
-              Done
+              {isLoggingOut ? "Signing out…" : "Sign out"}
             </button>
+            {status ? <p className="status-text status-error admin-session-popover__status">{status}</p> : null}
           </div>
         ) : null}
       </div>
@@ -135,15 +154,7 @@ export function AdminSessionPanel({
         {" | "}
         {email}
       </p>
-      <button
-        className="cta cta-secondary"
-        disabled={isLoggingOut}
-        onClick={() => void handleLogout()}
-        type="button"
-      >
-        {isLoggingOut ? "Logging out..." : "Logout"}
-      </button>
-      {status ? <p className="status-text status-error">{status}</p> : null}
+      {status && !isMenuOpen ? <p className="status-text status-error">{status}</p> : null}
     </div>
   );
 }
