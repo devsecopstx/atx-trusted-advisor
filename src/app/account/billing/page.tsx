@@ -87,8 +87,8 @@ export default async function AccountBillingPage({
               {checkoutReady && !publishableConfigured ? (
                 <div className="billing-banner billing-banner--muted">
                   <strong>Note:</strong> Add{" "}
-                  <code className="font-mono text-xs">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> (GitHub{" "}
-                  <strong>Variable</strong>, not Secret) for future in-app Elements; server checkout still works.
+                  <code className="font-mono text-xs">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> (GCP Secret Manager, synced
+                  from your env file) for future in-app Elements; server checkout still works.
                 </div>
               ) : null}
 

@@ -55,7 +55,9 @@
     "ops:secrets:verify:prod": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\"",
     "ops:secrets:sync-redis": "bash scripts/ops/sync-redis-url-secret.sh",
     "ops:secrets:sync-redis:staging": "bash scripts/ops/sync-redis-url-secret.sh .env.stage",
-    "ops:secrets:sync-redis:prod": "bash scripts/ops/sync-redis-url-secret.sh .env.prod"
+    "ops:secrets:sync-redis:prod": "bash scripts/ops/sync-redis-url-secret.sh .env.prod",
+    "ops:secrets:sync-stripe-publishable:staging": "bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.stage",
+    "ops:secrets:sync-stripe-publishable:prod": "bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.prod"
   },
   "keywords": [],
   "author": "",

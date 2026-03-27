@@ -58,6 +58,9 @@ REQUIRED_SECRETS=(
   "AUTH_SECRET"
   "SLACK_WEBHOOK_URL"
   "ADMIN_SEED_EMAIL"
+  "REDIS_URL"
+  "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+  "STRIPE_PUBLIC_KEY"
 )
 
 echo "[verify-secrets] project=$PROJECT expect_non_empty=$EXPECT_NON_EMPTY require_non_empty_slack_webhook=$REQUIRE_NON_EMPTY_SLACK_WEBHOOK"

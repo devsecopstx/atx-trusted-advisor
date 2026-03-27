@@ -2,8 +2,10 @@
 # Push REDIS_URL to GCP Secret Manager and Stripe publishable vars to GitHub Environments,
 # using .env.stage for staging and .env.prod for production (separate projects / keys per file).
 #
-# GCP:  bash scripts/ops/sync-redis-url-secret.sh (creates/updates REDIS_URL secret per project in each file)
-# GH:   gh variable set … -e staging | -e production
+# GCP:  bash scripts/ops/sync-redis-url-secret.sh (REDIS_URL per env file)
+# GCP:  bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh (.env.stage / .env.prod) for
+#       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY + STRIPE_PUBLIC_KEY in Secret Manager (required by deploy)
+# GH:   gh variable set … -e staging | -e production (publishable keys — optional extra for tooling)
 #
 # Requires: gcloud auth, gh auth, GOOGLE_PROJECT_ID|GOOGLE_CLOUD_PROJECT|GCP_PROJECT_ID in each env file.
 # Does not print secret values.

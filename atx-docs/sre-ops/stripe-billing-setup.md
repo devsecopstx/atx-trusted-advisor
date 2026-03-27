@@ -16,18 +16,20 @@ Create matching **Products** and **Prices** in Stripe (recurring subscription) a
 
 | Item | Where | Why |
 |------|--------|-----|
-| **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** | GitHub **Environment variables** (`staging` / `production`) | Publishable key (`pk_live_…` / `pk_test_…`) is **not** a secret; it is exposed to the browser. Do **not** store it in GitHub **Secrets** unless you accept unnecessary masking. |
-| **`STRIPE_PRICE_*`** | Same **Variables** (recommended) | Price ids are identifiers, not credentials. |
+| **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** | **GCP Secret Manager** (required for Cloud Run) — sync from `.env.stage` / `.env.prod` via `scripts/ops/sync-stripe-publishable-secrets-from-env.sh` or `npm run ops:secrets:sync-stripe-publishable:*` | Same `pk_…` value as before; stored in SM for a single runtime source of truth with other deploy secrets (see `.cursor/rules/sre-gcp-deployment.md`). |
+| **`STRIPE_PUBLIC_KEY`** | **GCP Secret Manager** (required) — same sync script; may duplicate the `pk_…` value | Alias read by `getStripePublishableKey()` in `src/lib/stripe-config.ts`. |
+| **`STRIPE_PRICE_*`** | GitHub **Environment variables** (`staging` / `production`) | Price ids are identifiers, not credentials. |
 | **`STRIPE_SECRET_KEY`** | **GCP Secret Manager** + optional bind (see deploy workflow) | Restricted key or standard secret key — **never** commit or put in Variables. |
 | **`STRIPE_WEBHOOK_SECRET`** | Secret Manager (when webhooks ship) | Signing secret for `POST /api/webhooks/stripe` (not implemented in the first slice). |
 
-**Alias:** the app also reads `STRIPE_PUBLIC_KEY` as a fallback for the publishable key (local `.env` convenience). Prefer **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** in Cloud Run so the name matches Next.js conventions.
+**Optional:** you may still set **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** / **`STRIPE_PUBLIC_KEY`** as GitHub **Variables** for local tooling; **Cloud Run deploy does not** read them for runtime — Secret Manager bindings supply those env vars.
 
 ## GCP Secret Manager
 
-1. Create secret **`STRIPE_SECRET_KEY`** (per project: staging + production) with the Stripe secret key value.
-2. Deploy workflows (`deploy-cloud-run.yml`, `deploy-cloud-run-production.yml`) **optionally** attach `STRIPE_SECRET_KEY` to Cloud Run when the secret exists (same pattern as `REDIS_URL`).
-3. Grant the runtime service account access to read the secret (deploy SA usually already has bindings if other secrets work).
+1. Create secrets **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** and **`STRIPE_PUBLIC_KEY`** in each project (staging + production) using values from `.env.stage` / `.env.prod` (use the sync script above).
+2. Create secret **`STRIPE_SECRET_KEY`** (per project) with the Stripe secret key value.
+3. Deploy workflows **require** `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_PUBLIC_KEY` to exist before deploy; they **optionally** attach `STRIPE_SECRET_KEY` when present.
+4. Grant the runtime service account access to read the secret (deploy SA usually already has bindings if other secrets work).
 
 ## Stripe Dashboard checklist
 

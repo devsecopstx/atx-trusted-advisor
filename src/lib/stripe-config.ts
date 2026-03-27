@@ -1,8 +1,9 @@
 import type { AtxBillingPlanId } from "@/lib/atx-billing-plans";
 
 /**
- * Publishable key is safe to expose to the browser. Prefer `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
- * in Cloud Run / GitHub **Variables** (not Secret Manager). `STRIPE_PUBLIC_KEY` is read as an alias.
+ * Publishable key is safe to expose to the browser. On Cloud Run, mount **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`**
+ * and **`STRIPE_PUBLIC_KEY`** from GCP Secret Manager (sync from `.env.stage` / `.env.prod` via
+ * `scripts/ops/sync-stripe-publishable-secrets-from-env.sh`). `STRIPE_PUBLIC_KEY` is an alias for the same `pk_…` value.
  */
 export function getStripePublishableKey(): string | undefined {
   const a = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();

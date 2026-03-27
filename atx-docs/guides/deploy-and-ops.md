@@ -27,6 +27,14 @@ npm run ops:secrets:sync-redis:prod
 # or: bash scripts/ops/sync-redis-url-secret.sh path/to.env
 ```
 
+To push **Stripe publishable** keys into the same project’s Secret Manager (from `.env.stage` / `.env.prod`):
+
+```bash
+npm run ops:secrets:sync-stripe-publishable:staging
+npm run ops:secrets:sync-stripe-publishable:prod
+# or: bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.prod
+```
+
 Required runtime secrets (per environment):
 
 - `MONGODB_URI_B64` (mapped to env `MONGODB_URI`)
@@ -37,10 +45,9 @@ Required runtime secrets (per environment):
 - `AUTH_SECRET`
 - `SLACK_WEBHOOK_URL`
 - `ADMIN_SEED_EMAIL`
-
-Optional (Next.js Redis — see `atx-docs/sre-ops/redis-cache-next.md`):
-
-- `REDIS_URL` — create in Secret Manager as **`REDIS_URL`**; deploy workflows bind it when present. Omit until ready; app runs without Redis.
+- `REDIS_URL` — Next.js Redis; see `atx-docs/sre-ops/redis-cache-next.md`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe `pk_…` (mounted at runtime)
+- `STRIPE_PUBLIC_KEY` — alias for the same publishable key (often duplicate value)
 
 GitHub environment secrets should remain OIDC-only:
 

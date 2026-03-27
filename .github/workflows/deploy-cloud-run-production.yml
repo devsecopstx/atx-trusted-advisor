@@ -125,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           PROJECT="${{ vars.GCP_PROJECT_ID_PROD }}"
-          for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL; do
+          for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL REDIS_URL NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY STRIPE_PUBLIC_KEY; do
             errfile="$(mktemp)"
             if gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null 2>"$errfile"; then
               rm -f "$errfile"
@@ -154,21 +154,13 @@ jobs:
           ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
           ENABLE_XCHAT_DEBUG: ${{ vars.ENABLE_XCHAT_DEBUG || 'false' }}
           XAI_CHAT_MODEL: ${{ vars.XAI_CHAT_MODEL || 'grok-4-1-fast-reasoning' }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '' }}
-          STRIPE_PUBLIC_KEY: ${{ vars.STRIPE_PUBLIC_KEY || '' }}
           STRIPE_PRICE_BASIC_MONTHLY: ${{ vars.STRIPE_PRICE_BASIC_MONTHLY || '' }}
           STRIPE_PRICE_PREMIUM_MONTHLY: ${{ vars.STRIPE_PRICE_PREMIUM_MONTHLY || '' }}
           STRIPE_PRICE_PREMIUM_PLUS_YEARLY: ${{ vars.STRIPE_PRICE_PREMIUM_PLUS_YEARLY || '' }}
         run: |
           set -euo pipefail
           PROJECT="${{ vars.GCP_PROJECT_ID_PROD }}"
-          SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest"
-          if gcloud secrets describe REDIS_URL --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
-            SECRETS="${SECRETS},REDIS_URL=REDIS_URL:latest"
-            echo "::notice::Optional secret REDIS_URL found — binding to Cloud Run (production)"
-          else
-            echo "::notice::Optional secret REDIS_URL not in ${PROJECT} — production deploy continues without Redis"
-          fi
+          SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest,REDIS_URL=REDIS_URL:latest,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:latest,STRIPE_PUBLIC_KEY=STRIPE_PUBLIC_KEY:latest"
           if gcloud secrets describe STRIPE_SECRET_KEY --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
             SECRETS="${SECRETS},STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest"
             echo "::notice::Optional secret STRIPE_SECRET_KEY found — binding to Cloud Run (production, Stripe)"
@@ -176,16 +168,6 @@ jobs:
             echo "::notice::Optional secret STRIPE_SECRET_KEY not in ${PROJECT} — billing checkout returns 503 until configured"
           fi
           ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=deploy,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL}"
-          if [ -n "${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}" ]; then
-            ENV_VARS="${ENV_VARS},NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}"
-          else
-            echo "::notice::GitHub Variable NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY unset — optional for client Stripe.js"
-          fi
-          if [ -n "${STRIPE_PUBLIC_KEY:-}" ]; then
-            ENV_VARS="${ENV_VARS},STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}"
-          else
-            echo "::notice::GitHub Variable STRIPE_PUBLIC_KEY unset — optional alias for server-side reads"
-          fi
           for pair in "STRIPE_PRICE_BASIC_MONTHLY:${STRIPE_PRICE_BASIC_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_MONTHLY:${STRIPE_PRICE_PREMIUM_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}"; do
             k="${pair%%:*}"
             v="${pair#*:}"
