@@ -2,6 +2,10 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
+import {
+    getDefaultPortfolio,
+    listPortfolioAccounts
+} from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository";
 
@@ -56,6 +60,28 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     ? await resolveDefaultXchatPersonaForSession(session.roles)
     : null;
 
+  let defaultBookLabels: { portfolioName: string; accountName: string } | null = null;
+  if (approved) {
+    const portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
+    if (portfolio?._id) {
+      const accounts = await listPortfolioAccounts({
+        userId: session.userId,
+        portfolioId: portfolio._id.toHexString(),
+        tenantId: session.tenantId
+      });
+      const defaultAccount = accounts.find((a) => a.isDefault) ?? accounts[0];
+      const portfolioName =
+        portfolio.name && portfolio.name.trim().length > 0 ? portfolio.name.trim() : "Default portfolio";
+      const accountName =
+        defaultAccount?.name && defaultAccount.name.trim().length > 0
+          ? defaultAccount.name.trim()
+          : accounts.length === 0
+            ? "No linked account"
+            : "Account";
+      defaultBookLabels = { portfolioName, accountName };
+    }
+  }
+
   return (
     <div className="xchat-shell">
       {approved ? (
@@ -67,6 +93,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       <div className="xchat-body">
         {approved ? (
           <XchatConversation
+            defaultBookLabels={defaultBookLabels}
             defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
             includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
             isGlobalAdmin={isGlobalAdmin(session.roles)}

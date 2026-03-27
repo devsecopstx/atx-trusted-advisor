@@ -8,6 +8,7 @@ Coordination file for multi-agent work. **If you change an API or app_user contr
 - **Frontend:** Login / OAuth entry UX; follow `.cursor/rules/xfinance-branding.mdc` and `AGENTS.md`.
 - **Reviewer:** Scope + contracts vs `frontend.md` / `backend.md` subagents; branding via **xfinance-branding** and **`branding.md`** when that persona is selected.
 - **Admin portfolios:** `GET`/`PATCH /api/admin/portfolios` and `…/{portfolioId}` include resolved **`scoringFactors`** (id, weight, label, description, normalization). PATCH accepts **`scoringFactors`**: array of `{ id, weight }` (weights sum ≈ 1) or **`null`** to unset (defaults on read). Next + Spring `AdminPortfoliosService` parity; domain helpers in `src/modules/core-admin/scoring-factors.ts`.
+- **Billing (app_user):** `/account/billing` + `POST /api/billing/checkout-session` (session cookie). Publishable key: **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** (GitHub **Variables** on `staging` / `production`, not Secrets). Secret key: **`STRIPE_SECRET_KEY`** in GCP Secret Manager (optional bind on deploy). Price ids: **`STRIPE_PRICE_*`** env vars. Runbook: `atx-docs/sre-ops/stripe-billing-setup.md`.
 
 ---
 

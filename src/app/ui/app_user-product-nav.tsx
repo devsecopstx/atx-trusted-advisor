@@ -5,7 +5,8 @@ export type AppUserProductNavCurrent =
   | "xchat"
   | "xstrategybuilder"
   | "portfolio"
-  | "watchlist";
+  | "watchlist"
+  | "account";
 
 type AppUserProductNavProps = {
   current: AppUserProductNavCurrent;
@@ -100,11 +101,30 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
         </svg>
       </IconWrap>
     )
+  },
+  {
+    id: "account",
+    label: "Account & billing",
+    href: "/account/billing",
+    icon: (
+      <IconWrap>
+        <svg viewBox="0 0 20 20" fill="none">
+          <path
+            d="M4 5.5h12v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 014 14.5v-9z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="1.4"
+          />
+          <path d="M4 7.5h12" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M7 12h4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
+        </svg>
+      </IconWrap>
+    )
   }
 ];
 
 /**
- * Approved app_user accounts: xChat, xStrategyBuilder, Portfolio (`/portfolio`), Watchlist.
+ * Approved app_user accounts: xChat, xStrategyBuilder, Portfolio (`/portfolio`), Watchlist, Account & billing (`/account/billing`).
  * **Hub** (`/admin`) is shown for every approved session; non-admins are redirected to `/xchat` if they lack `global_admin`.
  */
 export function AppUserProductNav({ current }: AppUserProductNavProps) {

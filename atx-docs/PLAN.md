@@ -135,7 +135,9 @@ Major app-user and admin domains are proxied when `ATXFINANCE_BACKEND_ORIGIN` is
 
 ## Stripe & billing (from frontend plan)
 
-**Not implemented:** Stripe Checkout/Portal, `POST /api/webhooks/stripe`, Mongo subscription fields, plan gating hooks. See variables sketch in archived notes or add `STRIPE`_* to `DEVELOPMENT.md` when starting.
+**Shipped (slice 1):** Account → **Billing** (`/account/billing`), ATX plans (Basic $21/mo with limits; Premium $250/mo complex portfolios + per-hour caps on xChat/xStrategyBuilder; Premium+ $3k/yr dedicated instance / no training use), `POST /api/billing/checkout-session` (Stripe Checkout subscription). Env + ops: `atx-docs/sre-ops/stripe-billing-setup.md`.
+
+**Remaining:** Customer portal deep link, `POST /api/webhooks/stripe`, Mongo subscription / plan fields, `getPlanLimits()` gating from paid tier.
 
 ---
 

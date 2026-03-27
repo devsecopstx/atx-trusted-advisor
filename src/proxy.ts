@@ -13,6 +13,7 @@ const protectedPathPrefixes = [
   "/api/strategy-jobs",
   "/portfolio",
   "/watchlist",
+  "/account",
   "/xstrategybuilder",
   "/xfinance",
   "/xcoach"
@@ -51,6 +52,7 @@ export const config = {
     "/api/strategy-jobs/:path*",
     "/portfolio/:path*",
     "/watchlist/:path*",
+    "/account/:path*",
     "/xstrategybuilder/:path*",
     "/xfinance/:path*",
     "/xcoach/:path*"

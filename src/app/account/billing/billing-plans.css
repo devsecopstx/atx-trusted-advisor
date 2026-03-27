@@ -1,0 +1,160 @@
+/* Account → Billing — ATX price cards (tokens only) */
+
+.billing-page {
+  padding: 0 0 2rem;
+}
+
+.billing-hero {
+  margin-bottom: 1.5rem;
+}
+
+.billing-hero__eyebrow {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--xf-gain-green, #39ff14);
+  margin: 0 0 0.35rem;
+}
+
+.billing-hero__title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100, #f1f5f9);
+  margin: 0 0 0.5rem;
+}
+
+.billing-hero__copy {
+  font-size: 0.9rem;
+  color: var(--xf-text-muted, #94a3b8);
+  max-width: 42rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.billing-banner {
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+}
+
+.billing-banner--ok {
+  background: rgba(57, 255, 20, 0.08);
+  border: 1px solid rgba(57, 255, 20, 0.25);
+  color: var(--xf-text-100, #f1f5f9);
+}
+
+.billing-banner--muted {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: var(--xf-text-muted, #94a3b8);
+}
+
+.billing-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .billing-grid {
+    grid-template-columns: repeat(3, 1fr);
+    align-items: stretch;
+  }
+}
+
+.billing-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.15rem 1.1rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--xf-surface-700, #17191d);
+  min-height: 100%;
+}
+
+.billing-card--highlight {
+  border-color: rgba(57, 255, 20, 0.35);
+  box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.12);
+}
+
+.billing-card__tag {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--xf-gain-green, #39ff14);
+}
+
+.billing-card__name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--xf-text-100, #f1f5f9);
+  margin: 0 0 0.2rem;
+}
+
+.billing-card__tagline {
+  font-size: 0.8rem;
+  color: var(--xf-text-muted, #94a3b8);
+  margin: 0 0 0.85rem;
+  line-height: 1.35;
+}
+
+.billing-card__price {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--xf-gain-green, #39ff14);
+  margin: 0 0 0.15rem;
+}
+
+.billing-card__period {
+  font-size: 0.8rem;
+  color: var(--xf-text-muted, #94a3b8);
+  margin: 0 0 1rem;
+}
+
+.billing-card__list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  flex: 1;
+}
+
+.billing-card__list li {
+  position: relative;
+  padding-left: 1rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.82rem;
+  color: var(--xf-text-100, #e2e8f0);
+  line-height: 1.4;
+}
+
+.billing-card__list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.45rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--xf-gain-green, #39ff14);
+  opacity: 0.85;
+}
+
+.billing-card__cta {
+  margin-top: auto;
+}
+
+.billing-footnote {
+  margin-top: 1.5rem;
+  font-size: 0.75rem;
+  color: var(--xf-text-muted, #94a3b8);
+  max-width: 48rem;
+  line-height: 1.45;
+}

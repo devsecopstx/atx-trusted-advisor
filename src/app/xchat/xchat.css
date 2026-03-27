@@ -720,6 +720,54 @@
   min-width: 0;
 }
 
+.xchat-rail-section--book {
+  align-content: start;
+}
+
+.xchat-rail-book-card {
+  display: grid;
+  gap: 0.38rem;
+  padding: 0.42rem 0.46rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  min-width: 0;
+}
+
+.xchat-rail-book-row {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.xchat-rail-book-k {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xchat-rail-book-v {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xf-text-100);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.xchat-rail-book-v--link {
+  text-decoration: none;
+  color: var(--xf-text-100);
+}
+
+.xchat-rail-book-v--link:hover {
+  color: var(--xf-gain-green);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .xchat-rail-section--persona {
   align-content: start;
 }

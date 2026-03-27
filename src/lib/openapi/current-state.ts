@@ -65,6 +65,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "user-feedback"
   },
   {
+    path: "/api/billing/checkout-session",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "billing"
+  },
+  {
     path: "/api/recommendations",
     operations: [
       { method: "GET", auth: "session" },
@@ -597,6 +602,7 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   health: "Health and runtime diagnostics endpoints.",
   auth: "Authentication and session management flows.",
   "access-requests": "User-submitted access and onboarding requests.",
+  billing: "Stripe Checkout session creation for ATX subscription plans (app_user session).",
   recommendations:
     "App_user-scoped recommendations; optional Pub/Sub events for downstream agent workers (see DEVELOPMENT.md).",
   "admin-access-requests": "Global admin APIs for listing, creating, reviewing, and deleting access requests.",

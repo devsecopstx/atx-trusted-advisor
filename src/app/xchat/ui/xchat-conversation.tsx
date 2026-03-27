@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
     FormEvent,
     type KeyboardEvent,
@@ -182,6 +183,8 @@ function compactPersonaOptionLabel(name: string): string {
 type XchatConversationProps = {
   /** Resolved default persona name for this session’s role (e.g. Super-Agent vs atx-trusted-advisor). */
   defaultPublishedPersonaName: string;
+  /** Default portfolio + default (or first) custodian account — above persona picker in the left rail. */
+  defaultBookLabels?: { portfolioName: string; accountName: string } | null;
   /** When false, Super-Agent is hidden from the picker (app_user cannot use it without admin assignment). */
   includeSuperAgentInPersonaPicker?: boolean;
   /** Greeting label (display name, handle, or email local-part). */
@@ -269,6 +272,7 @@ const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = (() => {
 
 export function XchatConversation({
   defaultPublishedPersonaName,
+  defaultBookLabels = null,
   includeSuperAgentInPersonaPicker = false,
   welcomeName,
   isGlobalAdmin: isGlobalAdminSession = false
@@ -684,6 +688,30 @@ export function XchatConversation({
         </div>
         {!leftRailCollapsed ? (
           <div className="xchat-rail-body">
+            {defaultBookLabels ? (
+              <section
+                aria-label="Default portfolio and account"
+                className="xchat-rail-section xchat-rail-section--book"
+              >
+                <h3 className="xchat-rail-title xchat-rail-title--caps">Default book</h3>
+                <div className="xchat-rail-book-card">
+                  <div className="xchat-rail-book-row">
+                    <span className="xchat-rail-book-k">Portfolio</span>
+                    <Link
+                      className="xchat-rail-book-v xchat-rail-book-v--link"
+                      href="/portfolio"
+                      title="Open portfolio"
+                    >
+                      {defaultBookLabels.portfolioName}
+                    </Link>
+                  </div>
+                  <div className="xchat-rail-book-row">
+                    <span className="xchat-rail-book-k">Account</span>
+                    <span className="xchat-rail-book-v">{defaultBookLabels.accountName}</span>
+                  </div>
+                </div>
+              </section>
+            ) : null}
             <section className="xchat-rail-section xchat-rail-section--persona">
               <h3 className="xchat-rail-title xchat-rail-title--caps">Persona</h3>
               <div className="xchat-composer__persona-wrap xchat-rail-persona-wrap">

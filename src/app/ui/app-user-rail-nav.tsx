@@ -177,12 +177,9 @@ export function AppUserAccountRailSection({ isGlobalAdmin }: AppUserRailNavProps
         title="Account"
       >
         <nav className="app-user-rail-sublinks" aria-label="Account links">
-          <span className="app-user-rail-sublink app-user-rail-sublink--placeholder" title="Coming soon">
-            Billing &amp; Payment
-          </span>
-          <span className="app-user-rail-sublink app-user-rail-sublink--placeholder" title="Coming soon">
-            Plans &amp; Upgrades
-          </span>
+          <RailNavLink href="/account/billing" title="ATX plans and Stripe checkout">
+            Plans &amp; billing
+          </RailNavLink>
           <AccountLegalLink />
           {isGlobalAdmin ? (
             <AccountSublink href="/admin/manage_account">Settings</AccountSublink>
