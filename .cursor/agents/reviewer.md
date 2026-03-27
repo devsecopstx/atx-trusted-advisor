@@ -113,12 +113,12 @@ If **`npm install` still fails**, check **Node version** matches the range in `p
 
 Before approving **production** deploy:
 
+0. **Version:** Root `package.json`, root `package-lock.json` `packages[""].version`, and `APP_VERSION` from `src/lib/app-version.ts` match the intended release (e.g. tag **v2.5.0**).
 1. **`npm run ci:gate`** green on the release ref (lint, typecheck, **`docs:links`** over all **`atx-docs/**/*.md`**, OpenAPI parity tests, unit + integration tests).
 2. **`NODE_ENV=production npm run build`** succeeds (Next.js compile + static generation).
 3. **`services/atxfinance-backend/**` changed on the release:** **`./gradlew test`** (from `services/atxfinance-backend`) green — do not approve prod with only Next-side green.
-4. **`package.json` / `package-lock.json`** version aligned (runtime label via `src/lib/app-version.ts`).
-5. **Docs parity:** Follow **`.cursor/skills/generate-docs/SKILL.md`** for touched domains (API, BFF, xChat prompts, strategy-options, **OptionsStrategyEngine** spec under `atx-docs/design-system/xStrategyBuilder/`, `PLAN.md`, agents). No silent orphan docs or broken relative links in changed files.
-6. **Test gaps (conscious):** If the change ships **spec-only** (e.g. PLAN 245 / `strategy-engine.md` before Kotlin lands), state that in the PR — no fake coverage; when engine code merges, require Vitest/Gradle + contract tests per **§ Core feature plan: OptionsStrategyEngine**.
-7. No undisclosed schema/auth/API contract changes; OpenAPI parity tests still pass as part of `npm run test`.
-8. **Ship checklist:** **`.cursor/skills/test-commit-push/CHECKLIST.md`** reviewed for secrets, BFF registry, Mongo `tenant_portfolio`, staging-before-prod.
-9. **Deploy:** use GitHub Actions **Deploy Cloud Run** with environment **`production`**, required manual approval, and repo runbook (see `.cursor/skills/deploy-production/SKILL.md` / `AGENTS.md`). Agents do not trigger production deploys from chat.
+4. **Docs parity:** Follow **`.cursor/skills/generate-docs/SKILL.md`** for touched domains (API, BFF, xChat prompts, strategy-options, **OptionsStrategyEngine** spec under `atx-docs/design-system/xStrategyBuilder/`, `PLAN.md`, agents). No silent orphan docs or broken relative links in changed files.
+5. **Test gaps (conscious):** If the change ships **spec-only** (e.g. PLAN 245 / `strategy-engine.md` before Kotlin lands), state that in the PR — no fake coverage; when engine code merges, require Vitest/Gradle + contract tests per **§ Core feature plan: OptionsStrategyEngine**.
+6. No undisclosed schema/auth/API contract changes; OpenAPI parity tests still pass as part of `npm run test`.
+7. **Ship checklist:** **`.cursor/skills/test-commit-push/CHECKLIST.md`** reviewed for secrets, BFF registry, Mongo `tenant_portfolio`, staging-before-prod.
+8. **Deploy:** use GitHub Actions **Deploy Cloud Run** with environment **`production`**, required manual approval, and repo runbook (see `.cursor/skills/deploy-production/SKILL.md` / `AGENTS.md`). Agents do not trigger production deploys from chat.

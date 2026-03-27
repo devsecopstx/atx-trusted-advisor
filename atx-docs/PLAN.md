@@ -4,7 +4,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details*
 
 **Docs index:** [README.md](./README.md) · Phase 1 multi-agent: [xchat/atx-multi-agent.md](./xchat/atx-multi-agent.md) · BFF: [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md) · Spring HTTP contract: [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md) · **NL / strategy preflight:** [xchat/nl-workflows/nl-prompts.md](./xchat/nl-workflows/nl-prompts.md) · **OptionsStrategyEngine (245):** [design-system/xStrategyBuilder/strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md)
 
-**Release note (bookkeeping):** `4.2.0` — branding/UI polish (shared icon-edit controls, global dark native `<select>` styling, xChat header tagline typography aligned with wordmark); version + lockfile bump. Production: GitHub **Deploy Cloud Run** → `production` with required approvals.
+**Release note (bookkeeping):** `2.5.0` — app `package.json` / lockfile version; reviewer pre-production gate adds explicit version alignment check. Prior: `4.2.0` — branding/UI polish (icon-edit controls, native `<select>`, xChat header tagline). Production: GitHub **Deploy Cloud Run** → `production` with required approvals.
 
 ---
 
