@@ -4,56 +4,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
-import { BackIcon, DeleteIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
+import { BackIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
+import { AccountHoldingsLiveTable } from "@/app/portfolio/ui/account-holdings-live-table";
+import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
 import {
     INVESTMENT_STRATEGY_OPTIONS,
     RISK_LEVEL_OPTIONS
 } from "@/modules/core-admin/portfolio-preference-labels";
 import type { AccountOutlook, PositionType } from "@/modules/core-admin/types";
 
-export type SerializableAccount = {
-  _id: string;
-  name: string;
-  type: string;
-  extAccountId: string;
-  cashBalance: number;
-  isDefault: boolean;
-  riskProfile: "conservative" | "balanced" | "growth" | null;
-  outlook: AccountOutlook | null;
-};
+import type { SerializableAccount, SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 
-export type SerializableStockPosition = {
-  _id: string;
-  type: "stock";
-  symbol: string;
-  shares: number;
-  purchasePrice: number;
-};
-
-export type SerializableCashPosition = {
-  _id: string;
-  type: "cash";
-  label: string;
-  amount: number;
-  amountFormatted: string;
-};
-
-export type SerializableOptionPosition = {
-  _id: string;
-  type: "option";
-  symbol: string;
-  yahooRef: string;
-  optionType: "call" | "put";
-  strike: number;
-  expiration: string;
-  contracts: number;
-  premiumPerContract: number;
-};
-
-export type SerializablePosition =
-  | SerializableStockPosition
-  | SerializableCashPosition
-  | SerializableOptionPosition;
+export type { SerializableAccount, SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 
 type AccountWorkspaceProps = {
   portfolioId: string;
@@ -67,16 +29,6 @@ function formatBrokerType(type: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(" ");
-}
-
-function positionSummary(p: SerializablePosition): string {
-  if (p.type === "stock") {
-    return `${p.symbol} · ${p.shares} sh @ ${p.purchasePrice.toLocaleString("en-US", { style: "currency", currency: "USD" })}`;
-  }
-  if (p.type === "cash") {
-    return `${p.label}: ${p.amountFormatted}`;
-  }
-  return `${p.symbol} ${p.optionType.toUpperCase()} ${p.strike} ${p.expiration} · ${p.yahooRef || "—"} · ${p.contracts}× @ ${p.premiumPerContract.toFixed(2)}/ct`;
 }
 
 export function AccountWorkspace({ portfolioId, account, initialPositions }: AccountWorkspaceProps) {
@@ -456,41 +408,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
         {positions.length === 0 ? (
           <p className="portfolio-edit-holdings-card__empty">No positions yet — add stock, options, or cash below.</p>
         ) : (
-          <div className="crud-table-wrap">
-            <table className="crud-table">
-              <thead>
-                <tr>
-                  <th scope="col">Type</th>
-                  <th scope="col">Details</th>
-                  <th scope="col" />
-                </tr>
-              </thead>
-              <tbody>
-                {positions.map((p) => (
-                  <tr key={p._id}>
-                    <td className="text-xs" style={{ textTransform: "capitalize" }}>
-                      {p.type}
-                    </td>
-                    <td className="text-sm" style={{ fontFamily: "ui-monospace, monospace", color: "var(--xf-text-300)" }}>
-                      {positionSummary(p)}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="cta cta-secondary"
-                        style={{ fontSize: "0.8rem", padding: "0.35rem 0.65rem" }}
-                        disabled={pending}
-                        onClick={() => removePosition(p._id)}
-                      >
-                        <DeleteIcon className="crud-icon" />
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AccountHoldingsLiveTable pending={pending} positions={positions} onRemove={removePosition} />
         )}
 
         <div className="portfolio-edit-holdings-card__divider" aria-hidden />
@@ -525,6 +443,19 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                 <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Symbol</span>
                 <input className="crud-input" value={stSym} onChange={(e) => setStSym(e.target.value)} placeholder="TSLA" />
               </label>
+              <div
+                className="stack-gap"
+                style={{
+                  gridColumn: "1 / -1",
+                  maxWidth: "28rem"
+                }}
+              >
+                <StockSymbolLiveField
+                  purchasePrice={stPx}
+                  symbolInput={stSym}
+                  onSuggestPurchasePrice={setStPx}
+                />
+              </div>
               <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
                 <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Shares</span>
                 <input

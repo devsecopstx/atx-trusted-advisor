@@ -5,7 +5,7 @@ import { HomeIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioOverview } from "@/app/portfolio/ui/portfolio-overview";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
-import { AppUserShellCollapsibleRail } from "@/app/ui/app-user-shell-collapsible-rail";
+import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
@@ -122,9 +122,7 @@ export default async function PortfolioPage() {
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
 
       <div className="xchat-body portfolio-page-body">
-        <AppUserShellCollapsibleRail>
-          <AppUserAccountPublicRailForSession session={session} />
-          <div>
+        <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
         {portfolioLoadError ? (
           <div className="portfolio-overview">
             <section className="portfolio-hero xf-noise-overlay">
@@ -206,8 +204,7 @@ export default async function PortfolioPage() {
             quickAddAccounts={quickAddAccounts}
           />
         ) : null}
-          </div>
-        </AppUserShellCollapsibleRail>
+        </AppUserCollapsibleRailLayout>
       </div>
     </div>
   );

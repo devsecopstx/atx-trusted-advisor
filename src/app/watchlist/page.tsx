@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { FolderPortfolioIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
-import { AppUserShellCollapsibleRail } from "@/app/ui/app-user-shell-collapsible-rail";
+import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { getSessionUser } from "@/lib/auth";
@@ -84,9 +84,10 @@ export default async function WatchlistPage() {
       <AppUserApprovedHeader current="watchlist" feedbackPageLabel="Watchlist" session={session} />
 
       <div className="xchat-body" style={{ padding: 0 }}>
-        <AppUserShellCollapsibleRail shellPadded>
-          <AppUserAccountPublicRailForSession session={session} />
-          <div>
+        <AppUserCollapsibleRailLayout
+          mainClassName="app-user-shell-with-rail--padded"
+          rail={<AppUserAccountPublicRailForSession session={session} />}
+        >
         {workspaceError || !portfolioId ? (
           <div className="hero-card xf-noise-overlay" style={{ maxWidth: "640px", margin: "1rem auto", padding: "1rem" }}>
             <p className="eyebrow">Watchlist</p>
@@ -117,8 +118,7 @@ export default async function WatchlistPage() {
         ) : (
           <WatchlistConsole isAdmin={admin} portfolioId={portfolioId} />
         )}
-          </div>
-        </AppUserShellCollapsibleRail>
+        </AppUserCollapsibleRailLayout>
       </div>
       <GlobalFooter />
     </div>

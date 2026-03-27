@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type FormEvent } from "react";
 
 import { AddIcon } from "@/app/admin/ui/crud-icons";
+import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
 
 type AccountOption = {
   id: string;
@@ -273,6 +274,15 @@ export function PortfolioPositionQuickAdd({ portfolioId, accounts }: PortfolioPo
             required
           />
         </label>
+        {type === "stock" ? (
+          <div className="stack-gap" style={{ gridColumn: "1 / -1", maxWidth: "28rem" }}>
+            <StockSymbolLiveField
+              purchasePrice={purchasePrice}
+              symbolInput={ticker}
+              onSuggestPurchasePrice={setPurchasePrice}
+            />
+          </div>
+        ) : null}
         <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
           <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>
             {type === "cash" ? "Amount" : type === "option" ? "Shares (optional)" : "Shares"}

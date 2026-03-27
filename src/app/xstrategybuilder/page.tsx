@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { BackIcon, RunIcon } from "@/app/admin/ui/crud-icons";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
+import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { getLicensingPitchContact } from "@/lib/env";
@@ -118,9 +119,7 @@ export default async function XstrategyBuilderPage() {
       <AppUserApprovedHeader current="xstrategybuilder" feedbackPageLabel="xStrategyBuilder" session={session} />
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
-        <div className="app-user-shell-with-rail">
-          <AppUserAccountPublicRailForSession session={session} />
-          <div className="app-user-shell-main">
+        <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
         <section className="hero-card xf-noise-overlay xc-hero xsb-pitch">
           <p className="eyebrow">xStrategyBuilder · option order builder</p>
 
@@ -224,8 +223,7 @@ export default async function XstrategyBuilderPage() {
             </Link>
           </div>
         </section>
-          </div>
-        </div>
+        </AppUserCollapsibleRailLayout>
       </div>
     </div>
   );

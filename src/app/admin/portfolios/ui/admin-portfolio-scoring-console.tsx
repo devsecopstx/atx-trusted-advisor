@@ -13,6 +13,7 @@ import {
     type ScoringFactorId
 } from "@/modules/core-admin/scoring-factors";
 
+import { AdminScoringFactorVisual } from "./admin-scoring-factor-visuals";
 import { PortfolioManageNav } from "./portfolio-manage-nav";
 
 type ScoringRowApi = {
@@ -228,7 +229,15 @@ export function AdminPortfolioScoringConsole({ portfolioId }: { portfolioId: str
                     aria-label={`Include ${row.label}`}
                   />
                 </td>
-                <td className="font-medium">{row.label}</td>
+                <td>
+                  <div className="admin-scoring-factor-cell">
+                    <AdminScoringFactorVisual id={row.id} />
+                    <div>
+                      <div className="admin-scoring-factor-cell__name">{row.label}</div>
+                      <div className="admin-scoring-factor-cell__id">{row.id}</div>
+                    </div>
+                  </div>
+                </td>
                 <td style={{ width: 100 }}>
                   <input
                     className="crud-input text-right"

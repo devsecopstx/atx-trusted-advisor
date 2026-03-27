@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-workspace";
+import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
+import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
@@ -137,6 +139,7 @@ export default async function PortfolioAccountPage({
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
 
       <div className="xchat-body portfolio-page-body">
+        <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
         <div className="portfolio-account-page portfolio-account-page--edit">
           <header className="portfolio-hero portfolio-hero--account-edit xf-noise-overlay">
             <p className="portfolio-hero__eyebrow">
@@ -159,6 +162,7 @@ export default async function PortfolioAccountPage({
             initialPositions={serializePositions(positions)}
           />
         </div>
+        </AppUserCollapsibleRailLayout>
       </div>
     </div>
   );
