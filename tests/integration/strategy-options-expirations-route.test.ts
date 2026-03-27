@@ -15,10 +15,10 @@ vi.mock("@/lib/auth", async (importOriginal) => {
   };
 });
 
-vi.mock("yahoo-finance2", () => ({
-  default: vi.fn().mockImplementation(() => ({
+vi.mock("@/modules/yahoo/yahoo-finance-service", () => ({
+  getYahooFinance2: () => ({
     options: mockOptions
-  }))
+  })
 }));
 
 import { GET as getExpirations } from "@/app/api/strategy-options/expirations/route";

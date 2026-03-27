@@ -1,13 +1,13 @@
+import { getAllWatchlists, updateWatchlistSymbolPrices } from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import {
-  adminCreatePortfolioAlert,
-  getAllWatchlists,
-  updateWatchlistSymbolPrices,
-} from "@/modules/core-admin/repository";
+    evaluateSignificantPriceMoves,
+    persistPriceMoveAlerts,
+} from "./price-alert-service";
 import { getYahooBatchQuotes } from "./yahoo-batch-quotes";
 
 /**
- * WatchlistScannerService — Priority 200
+ * WatchlistScannerService — PLAN priority 210
  * Runs as a ScheduledTask (category: "watchlist_price_scanner").
  * Batch-updates prices from Yahoo Finance and triggers basic alerts.
  */
@@ -59,23 +59,8 @@ export async function runWatchlistPriceScanner(
         await updateWatchlistSymbolPrices(wl._id, updates);
         updatedCount += updates.length;
 
-        // Basic alert for significant price change (>5%)
-        for (const u of updates) {
-          const oldSymbol = symbols.find((s) => s.symbol === u.symbol);
-          if (oldSymbol?.lastPrice && u.lastPrice) {
-            const changePct = Math.abs((u.lastPrice - oldSymbol.lastPrice) / oldSymbol.lastPrice) * 100;
-            if (changePct > 5) {
-              await adminCreatePortfolioAlert({
-                portfolioId: wl.portfolioId.toHexString(),
-                title: `${u.symbol} price alert`,
-                body: `Price moved ${changePct.toFixed(1)}% to $${u.lastPrice}`,
-                severity: "info",
-                symbol: u.symbol,
-              });
-              alertCount++;
-            }
-          }
-        }
+        const moves = evaluateSignificantPriceMoves(symbols, updates);
+        alertCount += await persistPriceMoveAlerts(wl.portfolioId.toHexString(), moves);
       }
     }
 

@@ -1,5 +1,7 @@
 Option Scanner — Concise Requirements
 
+**Shipped slice (PLAN 270 v1):** Mongo catalog inventory for `daily_options_scanner` — see `src/modules/strategy-options/options-strategy-scanner.ts` (counts strategies + preference docs, logs slugs). Full rule/Yahoo flow below remains roadmap.
+
 Overview
 The Option Scanner is a rule-based + Grok-enhanced job that scans all options positions (calls & puts) from the default portfolio account and watchlist symbols.
 It evaluates every open option holding and potential opportunities on watchlist symbols using option-strategy-prefs, then generates actionable recommendations (primarily HOLD or BUY_TO_CLOSE) with confidence and rationale.

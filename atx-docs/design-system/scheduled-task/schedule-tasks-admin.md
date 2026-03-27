@@ -29,9 +29,11 @@
 - **Delete:** **`DELETE /api/admin/tasks/{id}`**.
 - Copy in UI: tenant-level jobs omit **`portfolioId`**; portfolio-scoped tasks are edited under each portfolio’s Tasks page.
 
-**Categories** (must match API Zod enums — see **`src/app/api/admin/tasks/route.ts`**):
+**Categories** (must match **`src/lib/scheduled-task-category-schema.ts`** and Kotlin allowlists):
 
-`sync-broker` · `rebalance` · `compliance` · `notifications` · `user-history`
+`sync-broker` · `rebalance` · `compliance` · `notifications` · `user-history` · `watchlist_price_scanner` · `daily_options_scanner`
+
+**Next.js executors** (`src/modules/core-admin/task-runner.ts`): `user-history`, `watchlist_price_scanner`, `daily_options_scanner`. Other categories use the simulated short sleep + success string (and on Kotlin BFF, `watchlist_price_scanner` / `daily_options_scanner` log a noop message unless execution is routed to Next).
 
 ---
 

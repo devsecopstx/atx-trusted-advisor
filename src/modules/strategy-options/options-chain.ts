@@ -3,7 +3,7 @@
  * `apps/frontend/src/app/api/options/route.ts` (keep behavior aligned on upstream changes).
  */
 import { NextResponse } from "next/server";
-import YahooFinance from "yahoo-finance2";
+import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 import {
     parseStrike,
@@ -11,7 +11,7 @@ import {
     validateNormalizedExpiration
 } from "@/modules/strategy-options/query-validation";
 
-const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
+const yahooFinance = getYahooFinance2();
 
 // Type definitions for options data
 type OptionContractData = {

@@ -76,7 +76,14 @@ export type ScheduledTask = {
   /** When set, task is scoped to this portfolio (admin portfolio tasks console). */
   portfolioId?: ObjectId;
   name: string;
-  category: "sync-broker" | "rebalance" | "compliance" | "notifications" | "user-history" | "watchlist_price_scanner";
+  category:
+    | "sync-broker"
+    | "rebalance"
+    | "compliance"
+    | "notifications"
+    | "user-history"
+    | "watchlist_price_scanner"
+    | "daily_options_scanner";
   scheduleCron: string;
   enabled: boolean;
   runTimeoutSeconds?: number;

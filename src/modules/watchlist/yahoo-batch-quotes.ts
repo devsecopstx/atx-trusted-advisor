@@ -1,4 +1,4 @@
-import yahooFinance from "yahoo-finance2";
+import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 import type { MarketQuoteSnapshot } from "@/modules/xchat/market-data";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -10,7 +10,7 @@ export async function getYahooBatchQuotes(symbols: string[]): Promise<MarketQuot
 
   try {
     const uniqueSymbols = [...new Set(symbols.map((s) => s.trim().toUpperCase()))];
-    const quotes: unknown = await yahooFinance.quote(uniqueSymbols);
+    const quotes: unknown = await getYahooFinance2().quote(uniqueSymbols);
 
     const results: MarketQuoteSnapshot[] = [];
 

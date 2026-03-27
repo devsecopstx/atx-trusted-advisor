@@ -27,7 +27,15 @@ class AdminPortfolioScheduledTasksService(
     private val adminScheduledTasksService: AdminScheduledTasksService,
 ) {
     private val categories =
-        setOf("sync-broker", "rebalance", "compliance", "notifications", "user-history")
+        setOf(
+            "sync-broker",
+            "rebalance",
+            "compliance",
+            "notifications",
+            "user-history",
+            "watchlist_price_scanner",
+            "daily_options_scanner",
+        )
 
     fun toJson(doc: Document): Map<String, Any?> = adminScheduledTasksService.scheduledTaskToJson(doc)
 

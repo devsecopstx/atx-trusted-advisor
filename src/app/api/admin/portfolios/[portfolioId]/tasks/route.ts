@@ -4,6 +4,7 @@ import { z } from "zod";
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
 import {
     adminGetPortfolioById,
     createScheduledTask,
@@ -16,7 +17,7 @@ type RouteContext = {
 
 const createTaskSchema = z.object({
   name: z.string().min(1).max(200),
-  category: z.enum(["sync-broker", "rebalance", "compliance", "notifications", "user-history"]),
+  category: scheduledTaskCategorySchema,
   scheduleCron: z.string().min(5).max(128),
   enabled: z.boolean().optional(),
   lastRunAt: z.coerce.date().optional(),

@@ -23,10 +23,13 @@ Allowed categories ("type") today:
 - `compliance` — Compliance scans/policy checks
 - `notifications` — Digest or ad-hoc notification producers
 - `user-history` — Data/insights generation for user activity history (delegates to `UserHistoryAgentService`)
+- `watchlist_price_scanner` — Watchlist Yahoo batch quotes + price alerts (**Next.js** task-runner; Kotlin worker returns noop success when BFF runs the tick)
+- `daily_options_scanner` — Options strategy catalog inventory (**Next.js** task-runner; Kotlin noop when BFF runs the tick)
 
 Notes:
 - Portfolio-scoped tasks use the same categories but include a `portfolioId` field.
 - Unknown categories are rejected at validation time.
+- **Next.js** canonical category list: `src/lib/scheduled-task-category-schema.ts` (keep in sync with this doc and Kotlin `ALLOWED_CATEGORIES`).
 
 
 ## 2) Task Definition Schema (`admin_scheduled_tasks`)
@@ -36,7 +39,7 @@ Common fields (tenant-level and portfolio-scoped):
 - `tenantId` (ObjectId, optional) — Tenant scope; added when session has a tenant id
 - `portfolioId` (ObjectId, optional) — Present for portfolio-scoped tasks only
 - `name` (string, required, 1..200) — Human label
-- `category` (string, required) — One of: `sync-broker`, `rebalance`, `compliance`, `notifications`, `user-history`
+- `category` (string, required) — One of: `sync-broker`, `rebalance`, `compliance`, `notifications`, `user-history`, `watchlist_price_scanner`, `daily_options_scanner`
 - `scheduleCron` (string, required) — Cron expression
     - Accepts standard 5-field (`min hour dom mon dow`) or 6-field with seconds. Internally normalized to Spring format (seconds prepended when 5-field provided).
     - Validation uses `org.springframework.scheduling.support.CronExpression`.

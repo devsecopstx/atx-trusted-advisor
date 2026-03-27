@@ -7,6 +7,7 @@ import {
 } from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
+import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-strategy-scanner";
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
 
 export async function executeScheduledTask(
@@ -58,6 +59,9 @@ async function runScheduledCategory(
   }
   if (task.category === "watchlist_price_scanner") {
     return runWatchlistPriceScanner(task);
+  }
+  if (task.category === "daily_options_scanner") {
+    return runOptionsStrategyScanner(task);
   }
 
   const waitMs = 120 + Math.floor(Math.random() * 220);

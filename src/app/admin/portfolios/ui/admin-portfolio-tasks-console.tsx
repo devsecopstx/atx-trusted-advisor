@@ -4,25 +4,21 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { AddIcon, DeleteIcon, RefreshIcon, RunIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { SCHEDULED_TASK_CATEGORIES } from "@/lib/scheduled-task-category-schema";
+import type { ScheduledTask as ScheduledTaskDoc } from "@/modules/core-admin/types";
 
 import { PortfolioManageNav } from "./portfolio-manage-nav";
 
 type ScheduledTaskRow = {
   _id?: string;
   name: string;
-  category: "sync-broker" | "rebalance" | "compliance" | "notifications" | "user-history";
+  category: ScheduledTaskDoc["category"];
   scheduleCron: string;
   enabled: boolean;
   nextRunAt?: string;
 };
 
-const CATEGORIES = [
-  "sync-broker",
-  "rebalance",
-  "compliance",
-  "notifications",
-  "user-history"
-] as const;
+const CATEGORIES = [...SCHEDULED_TASK_CATEGORIES];
 
 export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: string }) {
   const [tasks, setTasks] = useState<ScheduledTaskRow[]>([]);

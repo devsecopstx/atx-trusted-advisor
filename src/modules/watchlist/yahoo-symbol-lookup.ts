@@ -1,4 +1,4 @@
-import yahooFinance from "yahoo-finance2";
+import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 const TICKER_LOGOS_CDN = "https://cdn.tickerlogos.com";
 const LOOKUP_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -68,8 +68,9 @@ function setCached(symbol: string, data: SymbolLookupResult): void {
 }
 
 async function fetchSymbolLookup(symbol: string): Promise<SymbolLookupResult> {
-  const quote = (await yahooFinance.quote(symbol)) as Record<string, unknown>;
-  const summary = (await yahooFinance.quoteSummary(symbol, {
+  const yf = getYahooFinance2();
+  const quote = (await yf.quote(symbol)) as Record<string, unknown>;
+  const summary = (await yf.quoteSummary(symbol, {
     modules: ["summaryProfile"]
   })) as Record<string, unknown>;
   const summaryProfile = (summary["summaryProfile"] as Record<string, unknown> | undefined) ?? undefined;

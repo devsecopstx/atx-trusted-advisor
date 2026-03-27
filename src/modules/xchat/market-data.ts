@@ -1,4 +1,4 @@
-import yahooFinance from "yahoo-finance2";
+import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 export const MARKET_DATA_DISCLAIMER =
   "Market data is sourced from Yahoo Finance and may be delayed, incomplete, or inaccurate. " +
@@ -40,7 +40,7 @@ export async function getYahooMarketQuote(input: {
   symbol?: string;
 }): Promise<MarketQuoteSnapshot> {
   const symbol = normalizeSymbol(input.symbol);
-  const quote = (await yahooFinance.quote(symbol)) as Record<string, unknown>;
+  const quote = (await getYahooFinance2().quote(symbol)) as Record<string, unknown>;
   const regularMarketTime = quote.regularMarketTime;
   const toNumber = (value: unknown): number | undefined =>
     typeof value === "number" ? value : undefined;

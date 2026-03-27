@@ -2,11 +2,9 @@
  * Expiration list — ported from xfinance-strategy `apps/frontend/src/app/api/options/expirations/route.ts`.
  */
 import { NextResponse } from "next/server";
-import YahooFinance from "yahoo-finance2";
+import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 import { parseUnderlying } from "@/modules/strategy-options/query-validation";
-
-const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 /** GET query: `underlying` (required). */
 export async function getStrategyOptionExpirations(requestUrl: string): Promise<NextResponse> {
@@ -18,7 +16,7 @@ export async function getStrategyOptionExpirations(requestUrl: string): Promise<
     }
     const underlying = underlyingResult.value;
 
-    const result = await yahooFinance.options(underlying);
+    const result = await getYahooFinance2().options(underlying);
     const dates = (result as { expirationDates?: (Date | string)[] }).expirationDates ?? [];
     const expirationDates = dates.map((d) => {
       const x = d instanceof Date ? d : new Date(d);

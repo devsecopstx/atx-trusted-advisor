@@ -356,6 +356,16 @@ class AdminScheduledTasksService(
                 status = "success"
                 output = "Notification digest dispatched for task \"$taskName\"."
             }
+            "watchlist_price_scanner" -> {
+                status = "success"
+                output =
+                    "watchlist_price_scanner: Kotlin worker noop — Yahoo batch + alerts execute on Next.js task-runner."
+            }
+            "daily_options_scanner" -> {
+                status = "success"
+                output =
+                    "daily_options_scanner: Kotlin worker noop — options catalog check runs on Next.js task-runner."
+            }
             else -> {
                 status = "failed"
                 output = "Unsupported task category for \"$taskName\"."
@@ -411,7 +421,15 @@ class AdminScheduledTasksService(
 
     companion object {
         private val ALLOWED_CATEGORIES =
-            setOf("sync-broker", "rebalance", "compliance", "notifications", "user-history")
+            setOf(
+                "sync-broker",
+                "rebalance",
+                "compliance",
+                "notifications",
+                "user-history",
+                "watchlist_price_scanner",
+                "daily_options_scanner",
+            )
         private const val FIVE_MIN_MS = 5L * 60L * 1000L
         private const val ONE_DAY_MS = 24L * 60L * 60L * 1000L
     }
