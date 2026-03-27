@@ -440,52 +440,59 @@ export function AdminPortfoliosCrud() {
                       <Link
                         className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/accounts`}
+                        title="Manage accounts for this portfolio"
                       >
                         Accounts
                       </Link>
                       <Link
                         className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/watchlist`}
+                        title="Manage watchlist"
                       >
                         Watchlist
                       </Link>
                       <Link
                         className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/tasks`}
+                        title="View tasks"
                       >
                         Tasks
                       </Link>
                       <Link
                         className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/alerts`}
+                        title="Manage alerts"
                       >
                         Alerts
                       </Link>
                       <Link
                         className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/scoring`}
+                        title="Edit scoring factors"
                       >
                         Scoring
                       </Link>
                       <Link
                         className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/recommendations`}
+                        title="View recommendations"
                       >
                         Recs
                       </Link>
                       <Link
                         className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/delivery-channels`}
+                        title="Manage delivery channels"
                       >
                         Delivery
                       </Link>
                       <button
                         type="button"
-                        className="cta cta-secondary"
-                        title="Delete portfolio"
+                        className="cta cta-secondary text-xs"
+                        title="Delete portfolio and all linked data"
                         onClick={() => void deleteRow(row)}
                       >
-                        <DeleteIcon className="crud-icon" />
+                        <DeleteIcon className="crud-icon" /> Delete
                       </button>
                     </div>
                   </td>
