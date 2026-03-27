@@ -4,7 +4,9 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
+import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
 import {
+    countPortfolioAccountsForUser,
     insertPortfolioAccountForUser,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
@@ -186,6 +188,21 @@ export async function POST(request: Request, context: RouteContext) {
     cashBalance: parsed.data.cashBalance
   });
   if (!created?._id) {
+    const limits = await getResolvedWorkspaceLimitsForTenantId(session.tenantId);
+    const n = await countPortfolioAccountsForUser({
+      userId: session.userId,
+      portfolioId,
+      tenantId: session.tenantId
+    });
+    if (n >= limits.portfolioAccountLimit) {
+      return NextResponse.json(
+        {
+          error: `Account limit reached for this portfolio (max ${limits.portfolioAccountLimit}). Ask an admin to raise the tenant workspace limit.`,
+          code: "workspace_portfolio_account_limit_exceeded"
+        },
+        { status: 403 }
+      );
+    }
     return NextResponse.json({ error: "Could not create account" }, { status: 400 });
   }
 

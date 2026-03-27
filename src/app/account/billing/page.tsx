@@ -2,12 +2,13 @@ import { redirect } from "next/navigation";
 
 import { AtxBillingCheckoutButton } from "@/app/account/ui/atx-billing-checkout";
 import { BillingFeedbackLink } from "@/app/account/ui/billing-feedback-link";
-import { AppUserAccountPublicRail } from "@/app/ui/app-user-rail-nav";
+import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { ATX_BILLING_PLANS } from "@/lib/atx-billing-plans";
 import { getSessionUser } from "@/lib/auth";
 import { getStripePublishableKey, isStripeBillingFullyConfigured } from "@/lib/stripe-config";
-import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
+import { canUserLogin } from "@/modules/identity/authorization";
 
 import "./billing-plans.css";
 
@@ -31,7 +32,7 @@ export default async function AccountBillingPage({
 
   const checkoutReady = isStripeBillingFullyConfigured();
   const publishableConfigured = Boolean(getStripePublishableKey());
-  const admin = isGlobalAdmin(session.roles);
+  const workspaceLimits = await getResolvedWorkspaceLimitsForTenantId(session.tenantId);
 
   return (
     <div className="xchat-shell">
@@ -39,7 +40,7 @@ export default async function AccountBillingPage({
 
       <div className="xchat-body portfolio-page-body">
         <div className="app-user-shell-with-rail">
-          <AppUserAccountPublicRail isGlobalAdmin={admin} />
+          <AppUserAccountPublicRailForSession session={session} />
           <div className="app-user-shell-main app-user-shell-with-rail--padded">
             <div className="billing-page">
               <header className="billing-hero xf-noise-overlay surface-card xf-widget section-card">
@@ -89,6 +90,37 @@ export default async function AccountBillingPage({
                   <strong>Variable</strong>, not Secret) for future in-app Elements; server checkout still works.
                 </div>
               ) : null}
+
+              <section
+                className="billing-workspace-limits xf-widget section-card xf-noise-overlay"
+                aria-labelledby="billing-workspace-limits-heading"
+              >
+                <h2 id="billing-workspace-limits-heading" className="billing-card__name" style={{ marginBottom: "0.5rem" }}>
+                  Workspace limits
+                </h2>
+                <p className="billing-hero__copy" style={{ marginBottom: "1rem", fontSize: "0.9rem" }}>
+                  Your tenant workspace caps below apply on top of plan rules where noted. A workspace admin can adjust
+                  them under Admin → Workspace limits.
+                </p>
+                <dl className="billing-workspace-limits__grid">
+                  <div className="billing-workspace-limits__row">
+                    <dt>xoptions deck views / day</dt>
+                    <dd>{workspaceLimits.userXoptionsLimit}</dd>
+                  </div>
+                  <div className="billing-workspace-limits__row">
+                    <dt>xChat prompts / day (with plan)</dt>
+                    <dd>min(plan, {workspaceLimits.userChatLimit})</dd>
+                  </div>
+                  <div className="billing-workspace-limits__row">
+                    <dt>Portfolios per user</dt>
+                    <dd>{workspaceLimits.tenantPortfolioLimit}</dd>
+                  </div>
+                  <div className="billing-workspace-limits__row">
+                    <dt>Accounts per portfolio</dt>
+                    <dd>{workspaceLimits.portfolioAccountLimit}</dd>
+                  </div>
+                </dl>
+              </section>
 
               <div className="billing-grid">
                 {ATX_BILLING_PLANS.map((plan) => (

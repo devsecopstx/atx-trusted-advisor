@@ -3,10 +3,12 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
 import {
     adminGetPortfolioById,
     adminInsertAccountForPortfolio,
     adminListAccountsForPortfolio,
+    countPortfolioAccountsForUser,
     DEFAULT_ACCOUNT_CASH_BALANCE
 } from "@/modules/core-admin/repository";
 import type { Account } from "@/modules/core-admin/types";
@@ -127,6 +129,13 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  const portfolioRow = await adminGetPortfolioById(portfolioId);
+  if (!portfolioRow?._id) {
+    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  }
+  const ownerId = normalizeMongoUserIdHex(portfolioRow.userId) ?? "";
+  const tenantHex = portfolioRow.tenantId?.toHexString() ?? "";
+
   const created = await adminInsertAccountForPortfolio({
     portfolioId,
     name: parsed.data.name,
@@ -135,6 +144,21 @@ export async function POST(request: Request, context: RouteContext) {
     cashBalance: parsed.data.cashBalance
   });
   if (!created?._id) {
+    const limits = await getResolvedWorkspaceLimitsForTenantId(tenantHex);
+    const n = await countPortfolioAccountsForUser({
+      userId: ownerId,
+      portfolioId,
+      tenantId: tenantHex || undefined
+    });
+    if (n >= limits.portfolioAccountLimit) {
+      return NextResponse.json(
+        {
+          error: `Account limit reached for this portfolio (max ${limits.portfolioAccountLimit}). Raise workspace limits under Admin → Tenant workspace.`,
+          code: "workspace_portfolio_account_limit_exceeded"
+        },
+        { status: 403 }
+      );
+    }
     return NextResponse.json({ error: "Could not create account" }, { status: 400 });
   }
 

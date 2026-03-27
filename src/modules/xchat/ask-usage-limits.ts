@@ -26,6 +26,8 @@ type UsageLimitInput = {
   plan?: SubscriptionPlan;
   perMinuteLimit: number;
   enforceDailyLimit: boolean;
+  /** When set, overrides plan daily cap (use min(plan, tenant) at the call site). */
+  dailyPromptLimit?: number;
 };
 
 export type UsageLimitResult = {
@@ -69,7 +71,10 @@ export async function enforceDistributedAskUsageLimit(
     };
   }
 
-  const dailyLimit = getPlanLimits(input.plan).maxPromptsPerDay;
+  const dailyLimit =
+    input.dailyPromptLimit !== undefined
+      ? Math.max(1, Math.floor(input.dailyPromptLimit))
+      : getPlanLimits(input.plan).maxPromptsPerDay;
   const dayBucket = await incrementUsageBucket({
     kind: "day",
     userId: input.userId,

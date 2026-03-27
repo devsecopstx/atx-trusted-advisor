@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FolderPortfolioIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
-import { AppUserAccountPublicRail } from "@/app/ui/app-user-rail-nav";
+import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { getSessionUser } from "@/lib/auth";
@@ -84,7 +84,7 @@ export default async function WatchlistPage() {
 
       <div className="xchat-body" style={{ padding: 0 }}>
         <div className="app-user-shell-with-rail app-user-shell-with-rail--padded">
-          <AppUserAccountPublicRail isGlobalAdmin={admin} />
+          <AppUserAccountPublicRailForSession session={session} />
           <div className="app-user-shell-main">
         {workspaceError || !portfolioId ? (
           <div className="hero-card xf-noise-overlay" style={{ maxWidth: "640px", margin: "1rem auto", padding: "1rem" }}>

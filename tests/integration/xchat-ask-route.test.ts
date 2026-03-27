@@ -44,8 +44,17 @@ const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
 
+const defaultWorkspaceLimits = {
+  userXoptionsLimit: 10,
+  userChatLimit: 10,
+  tenantPortfolioLimit: 1,
+  portfolioAccountLimit: 1
+};
+
 const identityMocks = vi.hoisted(() => ({
-  getCoreUserById: vi.fn()
+  getCoreUserById: vi.fn(),
+  getTenantByHexId: vi.fn(),
+  resolvedWorkspaceLimitsForTenant: vi.fn()
 }));
 
 const workspaceSnapshotMocks = vi.hoisted(() => ({
@@ -131,6 +140,8 @@ describe("xchat ask route collection retrieval", () => {
     xaiMocks.searchDocumentsInCollections.mockResolvedValue([]);
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     identityMocks.getCoreUserById.mockResolvedValue(null);
+    identityMocks.getTenantByHexId.mockResolvedValue(null);
+    identityMocks.resolvedWorkspaceLimitsForTenant.mockReturnValue(defaultWorkspaceLimits);
     coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValue(null);
     verifierMocks.verifyXaiCollectionNonBlocking.mockImplementation(() => {});
     ragReadinessMocks.getScopeReadinessSummary.mockResolvedValue({

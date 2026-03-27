@@ -1,6 +1,10 @@
 import { ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
+import {
+    mergeTenantWorkspaceLimits,
+    type TenantWorkspaceLimits
+} from "@/modules/identity/tenant-workspace-limits";
 import type {
     AuthContext,
     CoreUser,
@@ -603,6 +607,43 @@ export async function resolveAuthContext(input: {
     displayName: input.user.xAccount?.displayName,
     avatarUrl: input.user.xAccount?.avatarUrl
   };
+}
+
+export async function getTenantByHexId(tenantIdHex: string): Promise<Tenant | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  return db.collection<Tenant>(collections.tenants).findOne({ _id: new ObjectId(tenantIdHex) });
+}
+
+export async function updateTenantWorkspaceLimits(
+  tenantIdHex: string,
+  patch: Partial<TenantWorkspaceLimits>
+): Promise<Tenant | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const now = new Date();
+  const $set: Record<string, unknown> = { updatedAt: now };
+  for (const [k, v] of Object.entries(patch) as [keyof TenantWorkspaceLimits, number][]) {
+    if (typeof v === "number" && Number.isInteger(v) && v >= 1) {
+      $set[`workspaceLimits.${k}`] = v;
+    }
+  }
+  if (Object.keys($set).length <= 1) {
+    return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+  }
+  await db.collection<Tenant>(collections.tenants).updateOne({ _id: id }, { $set });
+  return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+}
+
+export function resolvedWorkspaceLimitsForTenant(tenant: Tenant | null): TenantWorkspaceLimits {
+  return mergeTenantWorkspaceLimits(tenant?.workspaceLimits ?? null);
 }
 
 function normalizeEmail(email: string): string {

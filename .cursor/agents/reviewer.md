@@ -17,6 +17,11 @@ Read: `.cursor/agents/README.md`, `.cursor/agents/frontend.md`, `.cursor/agents/
 
 Block on: scope creep, missing tests, type/lint failures, API or Mongo contract regressions, undocumented risky changes.
 
+**Tenant workspace limits:** If a PR touches quotas (`workspaceLimits`, xChat daily min-with-plan, portfolio/account caps,
+xoptions deck usage, or `/api/admin/tenants/.../workspace-limits`), verify OpenAPI `CURRENT_STATE_ROUTES` parity,
+`atx-docs/sre-ops/tenant-workspace-limits.md` is accurate, and tests cover merge/parse or critical API paths where
+feasible.
+
 Output: (1) scope (2) Pass / Block / Conditional (3) issues with file:line (4) merge recommendation.
 
 ## Instructions

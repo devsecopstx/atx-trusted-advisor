@@ -188,3 +188,46 @@
   max-width: 48rem;
   line-height: 1.45;
 }
+
+.billing-workspace-limits {
+  margin-bottom: 1.5rem;
+  padding: 1.1rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--xf-surface-700, #17191d);
+}
+
+.billing-workspace-limits__grid {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.billing-workspace-limits__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.85rem;
+}
+
+.billing-workspace-limits__row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.billing-workspace-limits__row dt {
+  margin: 0;
+  color: var(--xf-text-muted, #94a3b8);
+  font-weight: 500;
+}
+
+.billing-workspace-limits__row dd {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  color: var(--xf-gain-green, #39ff14);
+  text-align: right;
+}

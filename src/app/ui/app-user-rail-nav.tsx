@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState, type ReactNode, type SVGProps } from "react";
 
+import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+
 function RailSectionChevron({ open }: { open: boolean }) {
   return (
     <svg
@@ -140,6 +142,15 @@ export type AppUserRailNavProps = {
   isGlobalAdmin: boolean;
 };
 
+export type AppUserPublicRailContext = {
+  userDisplayName: string;
+  book: AppUserDefaultBook | null;
+};
+
+export type AppUserAccountPublicRailProps = AppUserRailNavProps & {
+  railContext: AppUserPublicRailContext;
+};
+
 export function AppUserResourcesRailSection({ isGlobalAdmin }: AppUserRailNavProps) {
   return (
     <section className="app-user-rail-section" aria-label="Resources">
@@ -197,9 +208,48 @@ export function AppUserAccountRailSection({ isGlobalAdmin }: AppUserRailNavProps
   );
 }
 
-export function AppUserAccountPublicRail({ isGlobalAdmin }: AppUserRailNavProps) {
+export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUserAccountPublicRailProps) {
   return (
     <aside className="app-user-public-rail xf-widget" aria-label="Account navigation">
+      <section className="app-user-rail-section app-user-rail-section--workspace" aria-label="Your workspace">
+        <p className="app-user-rail-workspace-name">{railContext.userDisplayName}</p>
+        {railContext.book ? (
+          <div className="app-user-rail-workspace-card">
+            <div className="app-user-rail-workspace-row">
+              <span className="app-user-rail-workspace-k">Portfolio</span>
+              <Link
+                className="app-user-rail-workspace-v app-user-rail-workspace-v--link"
+                href="/portfolio"
+                title="Open portfolio"
+              >
+                {railContext.book.portfolioName}
+              </Link>
+            </div>
+            <div className="app-user-rail-workspace-row">
+              <span className="app-user-rail-workspace-k">Account</span>
+              {railContext.book.accountId ? (
+                <Link
+                  className="app-user-rail-workspace-v app-user-rail-workspace-v--link"
+                  href={`/portfolio/accounts/${railContext.book.accountId}`}
+                  title="Open account workspace"
+                >
+                  {railContext.book.accountName}
+                </Link>
+              ) : (
+                <span className="app-user-rail-workspace-v">{railContext.book.accountName}</span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="app-user-rail-workspace-hint">
+            Default portfolio isn&apos;t available yet.{" "}
+            <Link className="app-user-rail-workspace-hint-link" href="/portfolio">
+              Open Portfolio
+            </Link>{" "}
+            to sync or repair your book.
+          </p>
+        )}
+      </section>
       <AppUserAccountRailSection isGlobalAdmin={isGlobalAdmin} />
     </aside>
   );

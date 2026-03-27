@@ -2,6 +2,7 @@ import { type Filter, MongoServerError, ObjectId } from "mongodb";
 
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { getDb } from "@/lib/mongodb";
+import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
@@ -1236,6 +1237,38 @@ export async function listPortfolioAccounts(input: {
     )
     .sort({ isDefault: -1, createdAt: 1 })
     .toArray();
+}
+
+export async function countPortfolioAccountsForUser(input: {
+  userId: string;
+  portfolioId: string;
+  tenantId?: string;
+}): Promise<number> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId)) {
+    return 0;
+  }
+  const db = await getDb();
+  return db.collection<Account>(collections.accounts).countDocuments(
+    withTenantScope(
+      {
+        ...userIdQuery(input.userId),
+        portfolioId: new ObjectId(input.portfolioId)
+      },
+      input.tenantId
+    )
+  );
+}
+
+export async function countPortfoliosForUserInTenant(input: {
+  userId: string;
+  tenantId?: string;
+}): Promise<number> {
+  await ensurePortfolioIndexes();
+  const db = await getDb();
+  return db.collection<Portfolio>(collections.portfolios).countDocuments(
+    withTenantScope({ ...userIdQuery(input.userId.trim()) }, input.tenantId)
+  );
 }
 
 export async function listPortfolioPositionsByAccount(input: {
@@ -2998,6 +3031,16 @@ export async function insertPortfolioAccountForUser(
     return null;
   }
 
+  const limits = await getResolvedWorkspaceLimitsForTenantId(input.tenantId.trim());
+  const accountCount = await countPortfolioAccountsForUser({
+    userId: input.userId,
+    portfolioId: input.portfolioId,
+    tenantId: input.tenantId
+  });
+  if (accountCount >= limits.portfolioAccountLimit) {
+    return null;
+  }
+
   const db = await getDb();
   const now = new Date();
   const tenantObjectId = toTenantObjectId(input.tenantId.trim());
@@ -3233,6 +3276,17 @@ export async function adminCreatePortfolio(input: {
   const now = new Date();
   const tenantObjectId = toTenantObjectId(input.tenantId);
   const isDefault = Boolean(input.isDefault);
+
+  if (tenantObjectId && input.tenantId?.trim()) {
+    const limits = await getResolvedWorkspaceLimitsForTenantId(input.tenantId.trim());
+    const existingPortfolios = await countPortfoliosForUserInTenant({
+      userId: input.userId.trim(),
+      tenantId: input.tenantId.trim()
+    });
+    if (existingPortfolios >= limits.tenantPortfolioLimit) {
+      return null;
+    }
+  }
 
   if (isDefault) {
     await db.collection<Portfolio>(collections.portfolios).updateMany(

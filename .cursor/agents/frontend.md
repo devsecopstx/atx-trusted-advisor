@@ -32,6 +32,7 @@ test -f .cursor/agents/frontend.md && npm install
 ## Suggested context
 
 - `src/app/**/*.tsx`
+- `src/app/account/billing/` — shows resolved tenant workspace limits (xoptions / xChat / portfolios / accounts)
 - `.cursor/rules/xfinance-branding.mdc`
 - `.cursor/plans/shared-context.md`
 

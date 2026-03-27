@@ -12,6 +12,9 @@ Prioritize: health checks and rollbacks, connection limits for Mongo, JVM memory
 no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer documented runbooks (`AGENTS.md`,
 `atx-docs/sre-ops/*`, deploy workflows) over one-off `gcloud` drift.
 
+**Tenant workspace limits:** `atx-docs/sre-ops/tenant-workspace-limits.md` — `core_tenants.workspaceLimits`, collection
+`app_feature_daily_usage`, admin route `/api/admin/tenants/{tenantId}/workspace-limits`, billing surfacing.
+
 Review format: (1) scope & risk (2) issues + file refs (3) mitigation (4) Approve / Block / Conditional.
 
 **OptionsStrategyEngine (PLAN 245):** SRE phase (runtime, observability, secrets/quotas) — `.cursor/agents/reviewer.md` § *Core feature plan: OptionsStrategyEngine*; spec — `atx-docs/design-system/xStrategyBuilder/strategy-engine.md`.

@@ -324,6 +324,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tasks"
   },
   {
+    path: "/api/admin/tenants/{tenantId}/workspace-limits",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-tenants"
+  },
+  {
     path: "/api/admin/users",
     operations: [
       { method: "GET", auth: "admin" },

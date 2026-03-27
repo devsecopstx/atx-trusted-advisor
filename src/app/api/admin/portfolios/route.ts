@@ -4,9 +4,11 @@ import { z } from "zod";
 import { adminBrokerSlugSchema, requireKnownBrokerCatalogSlug } from "@/lib/admin/broker-catalog-guard";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
 import {
     adminCreatePortfolio,
-    adminListPortfoliosWithStats
+    adminListPortfoliosWithStats,
+    countPortfoliosForUserInTenant
 } from "@/modules/core-admin/repository";
 import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
 import type { Portfolio } from "@/modules/core-admin/types";
@@ -113,6 +115,20 @@ export async function POST(request: Request) {
     broker_type: parsed.data.broker_type
   });
   if (!created?._id) {
+    const limits = await getResolvedWorkspaceLimitsForTenantId(tenantId);
+    const n = await countPortfoliosForUserInTenant({
+      userId: parsed.data.userId,
+      tenantId
+    });
+    if (n >= limits.tenantPortfolioLimit) {
+      return NextResponse.json(
+        {
+          error: `Tenant portfolio limit reached (max ${limits.tenantPortfolioLimit} per user). Raise workspace limits under Admin → Tenant workspace.`,
+          code: "workspace_tenant_portfolio_limit_exceeded"
+        },
+        { status: 403 }
+      );
+    }
     return NextResponse.json({ error: "Could not create portfolio (duplicate name or invalid user?)" }, { status: 400 });
   }
 

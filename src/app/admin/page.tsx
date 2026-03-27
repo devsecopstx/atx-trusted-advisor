@@ -59,6 +59,13 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         icon: "batch",
         title: "Broker import",
         description: ADMIN_BROKER_IMPORT_DESCRIPTION
+      },
+      {
+        href: "/admin/tenant-workspace",
+        icon: "book",
+        title: "Workspace limits",
+        description:
+          "Per-tenant quotas: xoptions deck views/day, xChat prompts/day (min with plan), max portfolios per user, max accounts per portfolio."
       }
     ]
   },

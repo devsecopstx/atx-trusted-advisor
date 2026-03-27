@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
 import {
     respondWithXaiToolLoop,
     searchDocumentsInCollections,
@@ -29,7 +30,11 @@ import {
     resolveXchatTeamOnlyLinkedCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
-import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
+import {
+  clampMultiAgentParallelismForPlan,
+  clampTopK,
+  getPlanLimits
+} from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     getPersonaById,
@@ -121,13 +126,20 @@ export async function POST(request: Request) {
   }
   const requestedTopK = parsed.data.topK ?? 4;
   const topK = isAdminSession ? requestedTopK : clampTopK(requestedTopK, subscriptionPlan);
+  let dailyPromptCap: number | undefined;
+  if (!isAdminSession) {
+    const workspaceLimits = await getResolvedWorkspaceLimitsForTenantId(session.tenantId);
+    const planDaily = getPlanLimits(subscriptionPlan).maxPromptsPerDay;
+    dailyPromptCap = Math.min(planDaily, workspaceLimits.userChatLimit);
+  }
   try {
     const usageCheck = await enforceDistributedAskUsageLimit({
       userId: session.userId,
       tenantId: session.tenantId,
       plan: subscriptionPlan,
       perMinuteLimit: ASK_RATE_MAX,
-      enforceDailyLimit: !isAdminSession
+      enforceDailyLimit: !isAdminSession,
+      dailyPromptLimit: dailyPromptCap
     });
     if (!usageCheck.allowed) {
       const limiterHeaders = buildLimiterHeaders({

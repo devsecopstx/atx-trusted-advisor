@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { HomeIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioOverview } from "@/app/portfolio/ui/portfolio-overview";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
-import { AppUserAccountPublicRail } from "@/app/ui/app-user-rail-nav";
+import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
@@ -122,7 +122,7 @@ export default async function PortfolioPage() {
 
       <div className="xchat-body portfolio-page-body">
         <div className="app-user-shell-with-rail">
-          <AppUserAccountPublicRail isGlobalAdmin={admin} />
+          <AppUserAccountPublicRailForSession session={session} />
           <div className="app-user-shell-main">
         {portfolioLoadError ? (
           <div className="portfolio-overview">

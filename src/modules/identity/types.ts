@@ -1,5 +1,7 @@
 import { ObjectId } from "mongodb";
 
+import type { TenantWorkspaceLimits } from "@/modules/identity/tenant-workspace-limits";
+
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
 export type SubscriptionPlan = "free" | "pro" | "enterprise";
 
@@ -35,6 +37,8 @@ export type Tenant = {
   isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
+  /** Optional per-tenant quotas; omitted keys use product defaults (see `mergeTenantWorkspaceLimits`). */
+  workspaceLimits?: Partial<TenantWorkspaceLimits> | null;
 };
 
 export type TenantRole = "tenant_admin" | "member";
