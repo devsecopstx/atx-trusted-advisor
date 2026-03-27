@@ -1,5 +1,7 @@
 import { ObjectId } from "mongodb";
 
+import type { PortfolioScoringFactor } from "./scoring-factors";
+
 export const accessRequestStatusValues = [
   "new",
   "triaged",
@@ -268,6 +270,11 @@ export type Portfolio = {
   riskProfile?: "conservative" | "balanced" | "growth";
   /** Free-text market / positioning outlook for this book (optional). */
   outlook?: string;
+  /**
+   * Optional weighted scoring factors for strategy / chain ranking (defaults applied when absent).
+   * Weights must sum to 1; defaults in `scoring-factors.ts`.
+   */
+  scoringFactors?: PortfolioScoringFactor[];
   createdAt: Date;
   updatedAt: Date;
 };

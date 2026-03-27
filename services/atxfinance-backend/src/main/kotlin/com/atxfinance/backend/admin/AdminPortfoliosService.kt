@@ -175,6 +175,31 @@ class AdminPortfoliosService(
             }
             changed = true
         }
+        if (body.containsKey("scoringFactors")) {
+            when (val v = body["scoringFactors"]) {
+                null -> {
+                    upd.unset("scoringFactors")
+                    changed = true
+                }
+                is List<*> -> {
+                    val parsed =
+                        AdminPortfolioScoringSupport.parseAndValidateList(v)
+                            ?: return Result.Err(
+                                400,
+                                "Invalid request payload",
+                                mapOf("message" to "invalid scoringFactors"),
+                            )
+                    upd.set("scoringFactors", AdminPortfolioScoringSupport.toBsonDocuments(parsed))
+                    changed = true
+                }
+                else ->
+                    return Result.Err(
+                        400,
+                        "Invalid request payload",
+                        mapOf("message" to "invalid scoringFactors"),
+                    )
+            }
+        }
         val setDefault = body["isDefault"] == true
         val hasPayload =
             changed || setDefault
@@ -274,6 +299,7 @@ class AdminPortfoliosService(
             "broker_type" to p["broker_type"],
             "riskProfile" to p["riskProfile"],
             "outlook" to p["outlook"],
+            "scoringFactors" to AdminPortfolioScoringSupport.scoringFactorsForApi(p["scoringFactors"]),
             "createdAt" to iso(p["createdAt"]),
             "updatedAt" to iso(p["updatedAt"]),
         )

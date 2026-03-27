@@ -39,11 +39,33 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
     icon: (
       <IconWrap>
         <svg viewBox="0 0 20 20" fill="none">
-          <path d="M3 15h14M5 12l3-3 3 2 4-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-          <circle cx="5" cy="12" r="1" fill="currentColor" />
-          <circle cx="8" cy="9" r="1" fill="currentColor" />
-          <circle cx="11" cy="11" r="1" fill="currentColor" />
-          <circle cx="15" cy="6" r="1" fill="currentColor" />
+          <circle cx="10" cy="10" r="1.75" fill="currentColor" />
+          <ellipse
+            cx="10"
+            cy="10"
+            rx="7.25"
+            ry="2.4"
+            stroke="currentColor"
+            strokeWidth="1.35"
+          />
+          <ellipse
+            cx="10"
+            cy="10"
+            rx="7.25"
+            ry="2.4"
+            stroke="currentColor"
+            strokeWidth="1.35"
+            transform="rotate(60 10 10)"
+          />
+          <ellipse
+            cx="10"
+            cy="10"
+            rx="7.25"
+            ry="2.4"
+            stroke="currentColor"
+            strokeWidth="1.35"
+            transform="rotate(-60 10 10)"
+          />
         </svg>
       </IconWrap>
     )
@@ -55,8 +77,14 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
     icon: (
       <IconWrap>
         <svg viewBox="0 0 20 20" fill="none">
-          <rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M7 8h6M7 11h3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+          <path d="M3 15.5h14" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+          <path
+            d="M4.5 12.5l3.5-4 3 2.5L15.5 5.5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.5"
+          />
         </svg>
       </IconWrap>
     )

@@ -1,0 +1,209 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useId, useState, type ReactNode, type SVGProps } from "react";
+
+function RailSectionChevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      className={`app-user-rail-chevron${open ? "" : " app-user-rail-chevron--collapsed"}`}
+      fill="none"
+      height={18}
+      viewBox="0 0 24 24"
+      width={18}
+    >
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
+function PersonIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+    </svg>
+  );
+}
+
+function BookIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M4 5a2 2 0 012-2h12v16H6a2 2 0 00-2 2V5zm0 0v14a2 2 0 012-2h12"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+    </svg>
+  );
+}
+
+type RailDisclosureProps = {
+  title: string;
+  icon: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
+};
+
+function RailDisclosure({ title, icon, defaultOpen = true, children }: RailDisclosureProps) {
+  const [open, setOpen] = useState(defaultOpen);
+  const panelId = useId();
+  const btnId = useId();
+
+  return (
+    <div className="app-user-rail-disclosure">
+      <button
+        aria-controls={panelId}
+        aria-expanded={open}
+        className="app-user-rail-disclosure__trigger"
+        id={btnId}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="app-user-rail-disclosure__trigger-main">
+          <span className="app-user-rail-disclosure__icon" aria-hidden>
+            {icon}
+          </span>
+          <span className="app-user-rail-disclosure__title">{title}</span>
+        </span>
+        <RailSectionChevron open={open} />
+      </button>
+      {open ? (
+        <div className="app-user-rail-disclosure__panel" id={panelId} role="region" aria-labelledby={btnId}>
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function sublinkActive(pathname: string, href: string): boolean {
+  if (!href.startsWith("/")) {
+    return false;
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function RailNavLink({ href, children, title }: { href: string; children: ReactNode; title?: string }) {
+  const pathname = usePathname() ?? "";
+  const active = sublinkActive(pathname, href);
+  return (
+    <Link
+      className={`app-user-rail-sublink${active ? " app-user-rail-sublink--active" : ""}`}
+      href={href}
+      title={title}
+    >
+      {children}
+    </Link>
+  );
+}
+
+type AccountSublinkProps = {
+  href: string;
+  children: ReactNode;
+  title?: string;
+};
+
+function AccountSublink({ href, children, title }: AccountSublinkProps) {
+  return <RailNavLink href={href} title={title}>{children}</RailNavLink>;
+}
+
+function AccountLegalLink() {
+  const pathname = usePathname() ?? "";
+  const active = pathname.startsWith("/legal");
+  return (
+    <Link
+      className={`app-user-rail-sublink${active ? " app-user-rail-sublink--active" : ""}`}
+      href="/legal/terms"
+    >
+      Legal Agreements
+    </Link>
+  );
+}
+
+export type AppUserRailNavProps = {
+  isGlobalAdmin: boolean;
+};
+
+export function AppUserResourcesRailSection({ isGlobalAdmin }: AppUserRailNavProps) {
+  return (
+    <section className="app-user-rail-section" aria-label="Resources">
+      <RailDisclosure
+        defaultOpen
+        icon={<BookIcon className="app-user-rail-disclosure__glyph" />}
+        title="Resources"
+      >
+        <nav className="app-user-rail-sublinks" aria-label="Resource links">
+          {isGlobalAdmin ? (
+            <RailNavLink href="/admin/api-docs">Reference Docs</RailNavLink>
+          ) : (
+            <span
+              className="app-user-rail-sublink app-user-rail-sublink--muted"
+              title="Open API reference from Hub when you have admin access"
+            >
+              Reference Docs
+            </span>
+          )}
+          <span className="app-user-rail-sublink app-user-rail-sublink--placeholder" title="Coming soon">
+            More soon
+          </span>
+        </nav>
+      </RailDisclosure>
+    </section>
+  );
+}
+
+export function AppUserAccountRailSection({ isGlobalAdmin }: AppUserRailNavProps) {
+  return (
+    <section className="app-user-rail-section" aria-label="Account">
+      <RailDisclosure
+        defaultOpen
+        icon={<PersonIcon className="app-user-rail-disclosure__glyph" />}
+        title="Account"
+      >
+        <nav className="app-user-rail-sublinks" aria-label="Account links">
+          <span className="app-user-rail-sublink app-user-rail-sublink--placeholder" title="Coming soon">
+            Billing &amp; Payment
+          </span>
+          <span className="app-user-rail-sublink app-user-rail-sublink--placeholder" title="Coming soon">
+            Plans &amp; Upgrades
+          </span>
+          <AccountLegalLink />
+          {isGlobalAdmin ? (
+            <AccountSublink href="/admin/manage_account">Settings</AccountSublink>
+          ) : (
+            <span
+              className="app-user-rail-sublink app-user-rail-sublink--muted"
+              title="Workspace settings are available from Hub (admin)"
+            >
+              Settings
+            </span>
+          )}
+        </nav>
+      </RailDisclosure>
+    </section>
+  );
+}
+
+export function AppUserAccountPublicRail({ isGlobalAdmin }: AppUserRailNavProps) {
+  return (
+    <aside className="app-user-public-rail xf-widget" aria-label="Account navigation">
+      <AppUserAccountRailSection isGlobalAdmin={isGlobalAdmin} />
+    </aside>
+  );
+}

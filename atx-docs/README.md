@@ -9,11 +9,11 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 - [Backlog](#backlog)
 - [Guides](#guides)
 - [Frontend plan](#frontend-plan)
-- [Operations — sre-ops](#operations--sre-ops)
-- [xChat and product — xchat](#xchat-and-product--xchat)
+- [Operations — sre-ops](#operations-sre-ops)
+- [xChat and product — xchat](#xchat-and-product-xchat)
 - [Options (RAG + seed)](#options-rag-seed)
-- [Diagrams & assets](#diagrams--assets)
-- [Audit & governance](#audit--governance)
+- [Diagrams & assets](#diagrams-assets)
+- [Audit & governance](#audit-governance)
 
 ---
 
@@ -42,7 +42,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 | Doc | Purpose |
 |-----|---------|
-| [frontend-plan.md](./frontend-plan.md) | Pointer to **PLAN.md**; **Stripe** / billing still open; shipped UI noted by reference only |
+| [PLAN.md § Stripe & billing](./PLAN.md#stripe-billing-from-frontend-plan) | **Stripe** / billing still open; shipped UI noted by reference only (no separate `frontend-plan.md`) |
 
 ---
 

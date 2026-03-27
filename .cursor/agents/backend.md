@@ -17,6 +17,8 @@ run `./gradlew test` in `services/atxfinance-backend` when Kotlin changes; no sc
 
 If API contracts change, note `.cursor/plans/shared-context.md` when the team uses it.
 
+**OptionsStrategyEngine (PLAN 245):** cross-team implementation phases and DoD — `.cursor/agents/reviewer.md` § *Core feature plan: OptionsStrategyEngine*; spec + diagram — `atx-docs/design-system/xStrategyBuilder/strategy-engine.md`.
+
 Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
 ## Instructions

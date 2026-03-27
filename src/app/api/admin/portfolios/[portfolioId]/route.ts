@@ -11,6 +11,7 @@ import {
     adminUpdatePortfolio,
     DEFAULT_ACCOUNT_CASH_BALANCE
 } from "@/modules/core-admin/repository";
+import { patchPortfolioScoringFactorsSchema, scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
 import type { Portfolio } from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 
@@ -30,6 +31,7 @@ function serializePortfolio(p: Portfolio) {
     broker_type: p.broker_type ?? null,
     riskProfile: p.riskProfile ?? null,
     outlook: p.outlook ?? null,
+    ...scoringFactorsPayloadForAdminApi(p.scoringFactors),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString()
   };
@@ -41,6 +43,7 @@ const patchPortfolioSchema = z.object({
   broker_type: z.union([adminBrokerSlugSchema, z.null()]).optional(),
   riskProfile: z.union([z.enum(["conservative", "balanced", "growth"]), z.null()]).optional(),
   outlook: z.union([z.string().max(4000), z.null()]).optional(),
+  scoringFactors: patchPortfolioScoringFactorsSchema.optional(),
   isDefault: z.literal(true).optional()
 });
 
@@ -122,6 +125,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     p.broker_type !== undefined ||
     p.riskProfile !== undefined ||
     p.outlook !== undefined ||
+    p.scoringFactors !== undefined ||
     p.isDefault === true;
   if (!hasPayload) {
     return NextResponse.json({ error: "At least one field is required" }, { status: 400 });
@@ -134,6 +138,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     broker_type: p.broker_type,
     riskProfile: p.riskProfile,
     outlook: p.outlook,
+    scoringFactors: p.scoringFactors,
     isDefault: p.isDefault
   });
   if (!updated?._id) {

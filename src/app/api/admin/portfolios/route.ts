@@ -8,6 +8,7 @@ import {
     adminCreatePortfolio,
     adminListPortfoliosWithStats
 } from "@/modules/core-admin/repository";
+import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
 import type { Portfolio } from "@/modules/core-admin/types";
 import {
     formatCoreUserDisplayName,
@@ -28,6 +29,7 @@ function serializePortfolio(p: Portfolio) {
     broker_type: p.broker_type ?? null,
     riskProfile: p.riskProfile ?? null,
     outlook: p.outlook ?? null,
+    ...scoringFactorsPayloadForAdminApi(p.scoringFactors),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString()
   };

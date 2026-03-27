@@ -7,6 +7,7 @@ Coordination file for multi-agent work. **If you change an API or app_user contr
 - **Backend:** Auth/session migration to Spring per `atx-docs/sre-ops/api-consolidation-spring-backend.md` (callback + PKCE ownership; dual-run).
 - **Frontend:** Login / OAuth entry UX; follow `.cursor/rules/xfinance-branding.mdc` and `AGENTS.md`.
 - **Reviewer:** Scope + contracts vs `frontend.md` / `backend.md` subagents; branding via **xfinance-branding** and **`branding.md`** when that persona is selected.
+- **Admin portfolios:** `GET`/`PATCH /api/admin/portfolios` and `…/{portfolioId}` include resolved **`scoringFactors`** (id, weight, label, description, normalization). PATCH accepts **`scoringFactors`**: array of `{ id, weight }` (weights sum ≈ 1) or **`null`** to unset (defaults on read). Next + Spring `AdminPortfoliosService` parity; domain helpers in `src/modules/core-admin/scoring-factors.ts`.
 
 ---
 

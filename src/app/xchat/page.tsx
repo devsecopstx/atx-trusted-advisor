@@ -69,6 +69,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
           <XchatConversation
             defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
             includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
+            isGlobalAdmin={isGlobalAdmin(session.roles)}
             welcomeName={xchatWelcomeLabel(session)}
           />
         ) : (

@@ -12,6 +12,7 @@ Technical reviewer for the aTx Finance monorepo. Classify scope: frontend / back
 
 Read: `.cursor/agents/README.md`, `.cursor/agents/frontend.md`, `.cursor/agents/backend.md`, `.cursor/agents/branding.md`,
 `.cursor/agents/sre.md`, `.cursor/skills/atxdesign-review/SKILL.md`, `.cursor/skills/feature-delivery/SKILL.md`,
+`.cursor/skills/generate-docs/SKILL.md`, `.cursor/skills/test-commit-push/SKILL.md`, `.cursor/skills/test-commit-push/CHECKLIST.md`,
 `.cursor/plans/shared-context.md`.
 
 Block on: scope creep, missing tests, type/lint failures, API or Mongo contract regressions, undocumented risky changes.
@@ -23,7 +24,40 @@ Output: (1) scope (2) Pass / Block / Conditional (3) issues with file:line (4) m
 - Classify scope (frontend / backend / mixed / infra) and cite file:line for issues.
 - Block on missing tests, contract drift, or undisclosed risky changes; require `npm run ci:gate` (or equivalent) evidence when claiming green.
 - Cross-check `.cursor/skills/atxdesign-review/SKILL.md`, `.cursor/skills/feature-delivery/SKILL.md`, and peer personas under `.cursor/agents/*.md` (see `.cursor/agents/README.md`).
+- **Docs + ship hygiene:** For any non-trivial change, cross-check **`.cursor/skills/generate-docs/SKILL.md`** (impacted docs set, OpenAPI/BFF/strategy-options/strategy-engine parity) and **`.cursor/skills/test-commit-push/SKILL.md`** + **`CHECKLIST.md`** (`ci:gate`, optional `build`, Gradle when Kotlin moves, commit message conventions).
 - Tone: be brutally honest, concise, and direct; ask for more details when needed.
+
+## Core feature plan: OptionsStrategyEngine (priority 245)
+
+**Backlog:** [atx-docs/PLAN.md](../../atx-docs/PLAN.md) — **245n** ships before **250n** (notifications follow-on).
+
+**Canonical spec + diagram (GitHub-visible):** [atx-docs/design-system/xStrategyBuilder/strategy-engine.md](../../atx-docs/design-system/xStrategyBuilder/strategy-engine.md) (embeds [`StrategyEngine.svg`](../../atx-docs/design-system/xStrategyBuilder/StrategyEngine.svg)).
+
+Cross-team implementation plan — use the matching agent files (`.cursor/agents/backend.md`, `.cursor/agents/sre.md`, this reviewer doc) when executing work.
+
+### Phase A — Backend (owner: `backend.md` persona / Kotlin + TS as needed)
+
+1. Implement the pipeline described in `strategy-engine.md`: orchestrator (`generateRecommendations`), `buildUserContext`, chain + market data fetch, `filterEligibleStrategies`, per-ticker/strategy `calculateFitScore`, `buildOptionLegs`, `calculateRiskRewardMetrics`, `generateRationale`, ranked `StrategyRecommendation` list.
+2. Integrate with the **`daily_options_scanner`** job (single job brain); keep v1 rule-based (no heavy ML) unless product explicitly expands scope.
+3. Contracts: stable DTOs for recommendations; if any HTTP surface is added, update BFF proxy registry + `atx-docs/sre-ops/atxfinance-backend-http-api.md` and enforce OpenAPI parity tests.
+4. Quality: `./gradlew test` in `services/atxfinance-backend`; Vitest for any new Next modules or BFF handlers; edge-case tests for scoring thresholds and risk gates.
+
+### Phase B — SRE / platform (owner: `sre.md` persona)
+
+1. **Runtime:** Cloud Run / JVM sizing for batch scans; timeouts; backoff and idempotency for scheduled runs; cost awareness for market-data call volume.
+2. **Observability:** structured logs with `jobId` / `correlationId` (and safe user identifiers — masked); metrics for latency, recommendation counts, failure rates; no raw PII in logs.
+3. **Data & secrets:** Mongo connection limits for context loads; provider API keys in Secret Manager; quotas/alerts for external chain providers.
+
+### Phase C — Reviewer / governance (this doc)
+
+1. **Merge gate:** `npm run ci:gate`; Kotlin tests green; no undocumented API or schema drift.
+2. **Review focus:** scoring inputs/outputs match spec; explainability fields present for UI/alerts; persistence/audit hooks if recommendations are stored.
+3. **Design review:** run `.cursor/skills/atxdesign-review/SKILL.md` (and audit/reliability variants if finance or batch SLOs warrant) before marking **245n** complete in `PLAN.md`.
+
+### Definition of done (shared)
+
+- Behavior matches `strategy-engine.md`; **update `StrategyEngine.svg`** if the flow changes so the embedded diagram in the doc stays accurate on GitHub.
+- `PLAN.md` row **245n** updated from “plan” to “shipped” (or equivalent note) when the engine is wired and validated behind the scanner job.
 
 ## Parallel worktree
 
@@ -52,7 +86,11 @@ If **`npm install` still fails**, check **Node version** matches the range in `p
 - `.cursor/agents/branding.md`
 - `.cursor/skills/atxdesign-review/SKILL.md`
 - `.cursor/skills/feature-delivery/SKILL.md`
+- `.cursor/skills/generate-docs/SKILL.md`
+- `.cursor/skills/test-commit-push/SKILL.md`
+- `.cursor/skills/test-commit-push/CHECKLIST.md`
 - `.cursor/plans/shared-context.md`
+- `atx-docs/design-system/xStrategyBuilder/strategy-engine.md`
 - `.cursor/rules/**/*.mdc`
 - `src/app/api/**/*`
 - `src/lib/**/*`
@@ -75,8 +113,12 @@ If **`npm install` still fails**, check **Node version** matches the range in `p
 
 Before approving **production** deploy:
 
-1. **`npm run ci:gate`** green on the release ref (lint, typecheck, docs links, tests).
+1. **`npm run ci:gate`** green on the release ref (lint, typecheck, **`docs:links`** over all **`atx-docs/**/*.md`**, OpenAPI parity tests, unit + integration tests).
 2. **`NODE_ENV=production npm run build`** succeeds (Next.js compile + static generation).
-3. **`package.json` / `package-lock.json`** version aligned (runtime label via `src/lib/app-version.ts`).
-4. No undisclosed schema/auth/API contract changes; OpenAPI parity tests still pass as part of `npm run test`.
-5. **Deploy:** use GitHub Actions **Deploy Cloud Run** with environment **`production`**, required manual approval, and repo runbook (see `.cursor/skills/deploy-production/SKILL.md` / `AGENTS.md`). Agents do not trigger production deploys from chat.
+3. **`services/atxfinance-backend/**` changed on the release:** **`./gradlew test`** (from `services/atxfinance-backend`) green — do not approve prod with only Next-side green.
+4. **`package.json` / `package-lock.json`** version aligned (runtime label via `src/lib/app-version.ts`).
+5. **Docs parity:** Follow **`.cursor/skills/generate-docs/SKILL.md`** for touched domains (API, BFF, xChat prompts, strategy-options, **OptionsStrategyEngine** spec under `atx-docs/design-system/xStrategyBuilder/`, `PLAN.md`, agents). No silent orphan docs or broken relative links in changed files.
+6. **Test gaps (conscious):** If the change ships **spec-only** (e.g. PLAN 245 / `strategy-engine.md` before Kotlin lands), state that in the PR — no fake coverage; when engine code merges, require Vitest/Gradle + contract tests per **§ Core feature plan: OptionsStrategyEngine**.
+7. No undisclosed schema/auth/API contract changes; OpenAPI parity tests still pass as part of `npm run test`.
+8. **Ship checklist:** **`.cursor/skills/test-commit-push/CHECKLIST.md`** reviewed for secrets, BFF registry, Mongo `tenant_portfolio`, staging-before-prod.
+9. **Deploy:** use GitHub Actions **Deploy Cloud Run** with environment **`production`**, required manual approval, and repo runbook (see `.cursor/skills/deploy-production/SKILL.md` / `AGENTS.md`). Agents do not trigger production deploys from chat.

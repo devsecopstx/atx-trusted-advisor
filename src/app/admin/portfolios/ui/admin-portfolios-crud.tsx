@@ -463,6 +463,12 @@ export function AdminPortfoliosCrud() {
                       </Link>
                       <Link
                         className="cta cta-secondary text-xs"
+                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/scoring`}
+                      >
+                        Scoring
+                      </Link>
+                      <Link
+                        className="cta cta-secondary text-xs"
                         href={`/admin/portfolios/${encodeURIComponent(row._id)}/recommendations`}
                       >
                         Recs

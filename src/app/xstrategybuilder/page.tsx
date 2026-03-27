@@ -3,9 +3,12 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { BackIcon, RunIcon } from "@/app/admin/ui/crud-icons";
+import { AppUserAccountPublicRail } from "@/app/ui/app-user-rail-nav";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { getLicensingPitchContact } from "@/lib/env";
+
+import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { loadXsbInitialWorkspace } from "./load-initial-workspace";
 import { XstrategybuilderPublicPreview } from "./ui/xstrategybuilder-public-preview";
@@ -111,12 +114,16 @@ export default async function XstrategyBuilderPage() {
   }
 
   const initialWorkspace = await loadXsbInitialWorkspace(session);
+  const admin = isGlobalAdmin(session.roles);
 
   return (
     <div className="xchat-shell xsb-iconized">
       <AppUserApprovedHeader current="xstrategybuilder" feedbackPageLabel="xStrategyBuilder" session={session} />
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
+        <div className="app-user-shell-with-rail">
+          <AppUserAccountPublicRail isGlobalAdmin={admin} />
+          <div className="app-user-shell-main">
         <section className="hero-card xf-noise-overlay xc-hero xsb-pitch">
           <p className="eyebrow">xStrategyBuilder · option order builder</p>
 
@@ -220,6 +227,8 @@ export default async function XstrategyBuilderPage() {
             </Link>
           </div>
         </section>
+          </div>
+        </div>
       </div>
     </div>
   );

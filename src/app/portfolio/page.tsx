@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { HomeIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioOverview } from "@/app/portfolio/ui/portfolio-overview";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
+import { AppUserAccountPublicRail } from "@/app/ui/app-user-rail-nav";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
@@ -120,6 +121,9 @@ export default async function PortfolioPage() {
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
 
       <div className="xchat-body portfolio-page-body">
+        <div className="app-user-shell-with-rail">
+          <AppUserAccountPublicRail isGlobalAdmin={admin} />
+          <div className="app-user-shell-main">
         {portfolioLoadError ? (
           <div className="portfolio-overview">
             <section className="portfolio-hero xf-noise-overlay">
@@ -201,6 +205,8 @@ export default async function PortfolioPage() {
             quickAddAccounts={quickAddAccounts}
           />
         ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );

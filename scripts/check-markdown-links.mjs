@@ -2,14 +2,41 @@ import fs from "node:fs";
 import path from "node:path";
 
 const repoRoot = process.cwd();
-const defaultFiles = ["atx-docs/guides/README.md"];
-const filesToCheck = process.argv.slice(2).length > 0 ? process.argv.slice(2) : defaultFiles;
+
+/** Recursively collect all `.md` files under `atx-docs/` (sorted) for default CI coverage. */
+function collectAtxDocsMarkdownFiles() {
+  const base = path.join(repoRoot, "atx-docs");
+  const out = [];
+  function walk(dir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        walk(full);
+      } else if (e.isFile() && e.name.endsWith(".md")) {
+        out.push(path.relative(repoRoot, full).split(path.sep).join("/"));
+      }
+    }
+  }
+  walk(base);
+  out.sort();
+  return out;
+}
+
+const argvFiles = process.argv.slice(2).filter((a) => !a.startsWith("-"));
+const filesToCheck = argvFiles.length > 0 ? argvFiles : collectAtxDocsMarkdownFiles();
 
 /**
  * Lightweight markdown link checker for local repo docs.
  * Scope:
  * - Validates local markdown links like ./foo.md, ../bar.md#anchor, #anchor
  * - Skips external URLs (http/https/mailto/tel)
+ * - Default: every `atx-docs` tree markdown file (override: pass explicit paths)
  */
 
 const markdownLinkRegex = /\[[^\]]+\]\(([^)]+)\)/g;
@@ -136,6 +163,11 @@ function checkFile(relFilePath) {
   }
 }
 
+if (filesToCheck.length === 0) {
+  console.error("[docs-links] no markdown files to check (is atx-docs/ present?)");
+  process.exit(1);
+}
+
 for (const file of filesToCheck) {
   checkFile(file);
 }
@@ -148,4 +180,5 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-console.log(`[docs-links] OK (${filesToCheck.length} file${filesToCheck.length === 1 ? "" : "s"})`);
+const scopeHint = argvFiles.length > 0 ? "explicit paths" : "atx-docs tree";
+console.log(`[docs-links] OK (${filesToCheck.length} file${filesToCheck.length === 1 ? "" : "s"}, ${scopeHint})`);

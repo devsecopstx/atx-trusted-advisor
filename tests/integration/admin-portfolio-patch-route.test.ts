@@ -54,6 +54,7 @@ describe("PATCH /api/admin/portfolios/[portfolioId]", () => {
         portfolioId: string;
         riskProfile?: "conservative" | "balanced" | "growth" | null;
         outlook?: string | null;
+        scoringFactors?: Array<{ id: string; weight: number }> | null;
       }) => {
         if (input.portfolioId !== portfolioId) {
           return null;
@@ -62,7 +63,8 @@ describe("PATCH /api/admin/portfolios/[portfolioId]", () => {
         return {
           ...base,
           ...(input.riskProfile !== undefined ? { riskProfile: input.riskProfile ?? undefined } : {}),
-          ...(input.outlook !== undefined ? { outlook: input.outlook } : {})
+          ...(input.outlook !== undefined ? { outlook: input.outlook } : {}),
+          ...(input.scoringFactors !== undefined ? { scoringFactors: input.scoringFactors ?? undefined } : {})
         };
       }
     );
@@ -86,6 +88,28 @@ describe("PATCH /api/admin/portfolios/[portfolioId]", () => {
         portfolioId,
         riskProfile: "growth",
         outlook: "Cautious near-term"
+      })
+    );
+  });
+
+  it("updates scoringFactors when provided", async () => {
+    const factors = [
+      { id: "iv_rank", weight: 0.5 },
+      { id: "volume", weight: 0.5 }
+    ];
+    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scoringFactors: factors })
+    });
+    const res = await patchAdminPortfolio(req, { params: Promise.resolve({ portfolioId }) });
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { data: { scoringFactors: Array<{ id: string; weight: number }> } };
+    expect(json.data.scoringFactors.some((r) => r.id === "iv_rank")).toBe(true);
+    expect(repoMocks.adminUpdatePortfolio).toHaveBeenCalledWith(
+      expect.objectContaining({
+        portfolioId,
+        scoringFactors: factors
       })
     );
   });

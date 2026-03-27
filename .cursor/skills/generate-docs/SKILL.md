@@ -87,6 +87,7 @@ When **`src/app/api/**`** or public HTTP contracts change:
 - CI guards OpenAPI via `tests/integration/openapi-*.test.ts`.
   Run **`npm run ci:gate`** (and **`npm run build`** if release-sensitive)
   before merge.
+- **`npm run docs:links`** runs **`scripts/check-markdown-links.mjs`**, which by default validates **all** `atx-docs/**/*.md` relative links and heading anchors (not a single file). After editing `atx-docs/**`, run it locally; use `node scripts/check-markdown-links.mjs <files…>` to narrow scope while iterating.
 
 ### Next.js → Spring (atxfinance-backend) BFF migration
 
@@ -106,6 +107,12 @@ When **`ATXFINANCE_BACKEND_ORIGIN`** proxy behavior, Kotlin controllers, or BFF 
 - Update **`src/lib/openapi/current-state.ts`** (and tag description if the surface meaning changes).
 - Keep **`tests/integration/strategy-options*.test.ts`** aligned with query params and response shape.
 - Treat **xfinance-strategy** `GET /api/options` / expirations as **behavioral reference**; this app’s paths and auth are session-scoped — verify parity notes in docs if contracts diverge.
+
+**OptionsStrategyEngine / PLAN 245 (design-system spec):** When changing **`atx-docs/design-system/xStrategyBuilder/strategy-engine.md`**, **`StrategyEngine.svg`**, **`strategy-engine-fit-score-formula.png`**, or **PLAN.md** rows **245n / 280**:
+
+- Keep **`.cursor/agents/reviewer.md`** § *Core feature plan: OptionsStrategyEngine* aligned if phases, DoD, or backlog ordering change.
+- Keep **`atx-docs/PLAN.md`** docs index line pointing at `strategy-engine.md` when the canonical path or priority narrative changes.
+- When **Kotlin / scheduler** implementation lands: update **`atx-docs/sre-ops/atxfinance-backend-http-api.md`** and BFF registry if HTTP surfaces appear; add **tests** (Gradle + Vitest as applicable) — doc-only edits do not require engine tests, but call out the gap in PR/reviewer notes until code exists.
 
 ### Cross-repo API examples (xfinance-strategy)
 
@@ -248,6 +255,7 @@ Post-deploy smoke steps live in
 
 - Keep docs-ops guidance aligned with:
   - `.cursor/agents/README.md` (persona table + worktrees notes when agents change)
+  - `.cursor/agents/reviewer.md` (pre-production gate, OptionsStrategyEngine plan when 245/280 or strategy-engine assets change)
   - `.cursor/skills/test-commit-push/SKILL.md`
   - `.cursor/skills/test-commit-push/CHECKLIST.md`
   - `.cursor/skills/test-automation/SKILL.md` (when adding or scoping tests)

@@ -28,7 +28,9 @@ export default async function AdminPortfoliosPage() {
           <code className="font-mono text-xs">core_tenants</code> scope — this instance&apos;s client data bucket.
         </p>
         <p className="hero-copy" style={{ marginTop: "0.65rem" }}>
-          Edit book names in the table, then <strong>Save changes</strong>. Holdings CSV:{" "}
+          Edit book names in the table, then <strong>Save changes</strong>. Per-book{" "}
+          <strong>strategy scoring</strong> weights (IV rank, OI, volume, liquidity, portfolio fit, alignment) live
+          under each row&apos;s <strong>Scoring</strong> link. Holdings CSV:{" "}
           <Link className="underline font-medium" href="/admin/broker-import">
             Broker import
           </Link>

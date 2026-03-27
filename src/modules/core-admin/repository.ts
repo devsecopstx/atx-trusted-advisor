@@ -3,6 +3,7 @@ import { type Filter, MongoServerError, ObjectId } from "mongodb";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { getDb } from "@/lib/mongodb";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
+import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 import {
     ACTIONABLE_ACCESS_REQUEST_STATUSES,
@@ -15,9 +16,9 @@ import {
     type ApprovedUserListItem,
     type BrokerCatalogEntry,
     type DeployNoteConfig,
+    type OptionsStrategy,
     type OptionsStrategyPreference,
     type OptionsStrategyPreferenceSummary,
-    type OptionsStrategy,
     type OptionsStrategySummary,
     type Portfolio,
     type PortfolioAlert,
@@ -3137,6 +3138,8 @@ export async function adminUpdatePortfolio(input: {
   broker_type?: string | null;
   riskProfile?: Portfolio["riskProfile"] | null;
   outlook?: string | null;
+  /** Validated rows, or null to unset (read path uses catalog defaults). */
+  scoringFactors?: PortfolioScoringFactor[] | null;
   /** When true, clears `isDefault` on other portfolios for the same user (and tenant scope). */
   isDefault?: boolean;
 }): Promise<Portfolio | null> {
@@ -3175,11 +3178,23 @@ export async function adminUpdatePortfolio(input: {
       fieldSet.outlook = o.length > 0 ? o.slice(0, 4000) : null;
     }
   }
-  if (Object.keys(fieldSet).length > 0) {
-    await db.collection<Portfolio>(collections.portfolios).updateOne(
-      { _id: existing._id },
-      { $set: { ...fieldSet, updatedAt: now } }
-    );
+  let unsetScoringFactors = false;
+  if (input.scoringFactors !== undefined) {
+    if (input.scoringFactors === null) {
+      unsetScoringFactors = true;
+    } else {
+      fieldSet.scoringFactors = input.scoringFactors;
+    }
+  }
+
+  const hasSetFields = Object.keys(fieldSet).length > 0;
+  if (hasSetFields || unsetScoringFactors) {
+    const $set: Record<string, unknown> = { ...fieldSet, updatedAt: now };
+    const op: Record<string, unknown> = { $set };
+    if (unsetScoringFactors) {
+      op.$unset = { scoringFactors: "" };
+    }
+    await db.collection<Portfolio>(collections.portfolios).updateOne({ _id: existing._id }, op);
   }
   if (input.isDefault === true) {
     const tenantId = portfolioTenantIdString(existing);

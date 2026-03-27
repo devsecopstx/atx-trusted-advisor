@@ -14,6 +14,8 @@ no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer doc
 
 Review format: (1) scope & risk (2) issues + file refs (3) mitigation (4) Approve / Block / Conditional.
 
+**OptionsStrategyEngine (PLAN 245):** SRE phase (runtime, observability, secrets/quotas) — `.cursor/agents/reviewer.md` § *Core feature plan: OptionsStrategyEngine*; spec — `atx-docs/design-system/xStrategyBuilder/strategy-engine.md`.
+
 ## Instructions
 
 - Prefer documented runbooks and workflows over ad-hoc `gcloud`; keep secrets in Secret Manager only.

@@ -11,6 +11,7 @@
 - [ ] `npm run lint` passes.
 - [ ] `npm run typecheck` passes.
 - [ ] `npm run test` passes.
+- [ ] `npm run docs:links` passes — scans the full **`atx-docs/`** markdown tree (not a single file); fixes broken `./` / `../` links and in-file `#anchors` before merge.
 - [ ] `npm run build` passes when release-sensitive code changed.
 - [ ] `npm run ci:gate && npm run build` passes for release/deploy-impacting changes.
 - [ ] **`services/atxfinance-backend/**` changed:** `./gradlew test` passes (from `services/atxfinance-backend`), or `./gradlew compileKotlin` at minimum when only trivial edits.
@@ -38,6 +39,7 @@
 - [ ] **Mongo portfolio store:** canonical collection is **`tenant_portfolio`** (singular), constant `TENANT_PORTFOLIO_COLLECTION` in `src/modules/core-admin/collection-names.ts`. Legacy names `portfolio_portfolios` / `tenant_portfolios` → run **`npm run migrate:tenant-portfolio`** once per database before or right after deploy (see `DEVELOPMENT.md` → *Multi-tenant Seed Verification*).
 - [ ] xChat `POST /api/xchat/ask` changes: update OpenAPI inventory (`src/lib/openapi/current-state-overrides.ts`), `tests/integration/xchat-ask-route.test.ts`, and xChat docs as needed (`atx-docs/xchat/xchat-tools-guide.md`, `atx-docs/xchat/context-routing-multi-agent-policy.md`, `atx-docs/xchat/atxfinance-tool-stub.md`, `AGENTS.md` quick ref). **Contract:** effective xAI model id comes from the **resolved persona’s `model`** (server default if empty); **no** request-body `model`; `modelSelectionSource` is `persona` | `default`. **Prompt assembly:** if `buildXchatSystemPrompt` / `buildSessionToolInstructions` / `appendXchatKbMetadata` change, sync **`generate-docs`** § *xChat / tools & prompts*.
 - [ ] **`/api/strategy-options*`** (expirations + chain) or **`src/modules/strategy-options/**`** changes: update **`src/lib/openapi/current-state.ts`**, **`tests/integration/strategy-options*.test.ts`**, **`DEVELOPMENT.md`** (options chain section), and **`README.md`** / **DEVELOPMENT.md** route docs as needed — see **`generate-docs`** § *xStrategyBuilder / strategy-options*.
+- [ ] **`atx-docs/design-system/xStrategyBuilder/`** (`strategy-engine.md`, `StrategyEngine.svg`, `strategy-engine-fit-score-formula.png`) or **PLAN.md** 245/280 / **`.cursor/agents/reviewer.md`** OptionsStrategyEngine section: keep cross-links and reviewer plan in sync; **`npm run ci:gate`** for doc link tests. **No Kotlin yet:** spec-only PRs may omit engine tests — note the gap for reviewer; when **`daily_options_scanner` / engine** code ships, add **Gradle + contract tests** per reviewer § OptionsStrategyEngine.
 - [ ] **Spring BFF (proxied routes):** Kotlin **`@*Mapping`** ↔ **`bff-proxy-routes.ts`**, **`nextBffApi`** / **`backend-bff-api-object.test.ts`**, **`atx-docs/sre-ops/atxfinance-backend-http-api.md`**, smoke parity test, **`proxyRequestToBackend`** on affected **`src/app/api/**/route.ts`**.
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.

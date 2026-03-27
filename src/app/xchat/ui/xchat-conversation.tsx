@@ -11,6 +11,10 @@ import {
 } from "react";
 
 import { SendIcon } from "@/app/admin/ui/crud-icons";
+import {
+    AppUserAccountRailSection,
+    AppUserResourcesRailSection
+} from "@/app/ui/app-user-rail-nav";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
@@ -165,12 +169,14 @@ function RailAvatar({ label }: RailAvatarProps) {
   );
 }
 
+/** Narrow left-rail select: keep closed state readable without clipping. */
 function compactPersonaOptionLabel(name: string): string {
   const normalized = name.replace(/\s+/g, " ").trim();
-  if (normalized.length <= 32) {
+  const max = 22;
+  if (normalized.length <= max) {
     return normalized;
   }
-  return `${normalized.slice(0, 29)}...`;
+  return `${normalized.slice(0, max - 1)}…`;
 }
 
 type XchatConversationProps = {
@@ -180,6 +186,8 @@ type XchatConversationProps = {
   includeSuperAgentInPersonaPicker?: boolean;
   /** Greeting label (display name, handle, or email local-part). */
   welcomeName: string;
+  /** Drives Reference Docs + Settings links in the left rail. */
+  isGlobalAdmin?: boolean;
 };
 
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
@@ -262,7 +270,8 @@ const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = (() => {
 export function XchatConversation({
   defaultPublishedPersonaName,
   includeSuperAgentInPersonaPicker = false,
-  welcomeName
+  welcomeName,
+  isGlobalAdmin: isGlobalAdminSession = false
 }: XchatConversationProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
@@ -675,14 +684,14 @@ export function XchatConversation({
         </div>
         {!leftRailCollapsed ? (
           <div className="xchat-rail-body">
-            <section className="xchat-rail-section">
+            <section className="xchat-rail-section xchat-rail-section--persona">
               <h3 className="xchat-rail-title xchat-rail-title--caps">Persona</h3>
-              <div className="xchat-composer__persona-wrap">
+              <div className="xchat-composer__persona-wrap xchat-rail-persona-wrap">
                 <label className="xchat-composer__persona-label" htmlFor="xchat-persona-picker">
                   Persona picker
                 </label>
                 <select
-                  className="xchat-composer__persona-select"
+                  className="xchat-composer__persona-select xchat-rail-persona-select"
                   disabled={
                     personaSelectRows.length === 0 ||
                     Boolean(personaListError)
@@ -710,8 +719,8 @@ export function XchatConversation({
                   </span>
                 ) : null}
               </div>
-              <p className="status-text" style={{ fontSize: "0.72rem" }}>
-                Pick persona per prompt. You can change it any time before sending.
+              <p className="status-text xchat-rail-persona-hint">
+                Change persona anytime before you send.
               </p>
             </section>
             <section className="xchat-rail-section">
@@ -774,6 +783,8 @@ export function XchatConversation({
                 </p>
               ) : null}
             </section>
+            <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdminSession} />
+            <AppUserAccountRailSection isGlobalAdmin={isGlobalAdminSession} />
           </div>
         ) : null}
       </aside>
