@@ -56,6 +56,18 @@
   min-width: 0;
 }
 
+.xchat-header-trailing--guest {
+  margin-left: auto;
+}
+
+.xchat-header-divider {
+  width: 1px;
+  height: 1.35rem;
+  margin: 0 0.05rem;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
 .xchat-header-nav {
   display: flex;
   align-items: center;

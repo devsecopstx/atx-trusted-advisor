@@ -2,6 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Shell theme (dark-only brand): Light = softer dark, Dark = deep, System = OS ── */
+html[data-xf-ui="soft"] {
+  --xf-bg-900: color-mix(in srgb, var(--xf-text-100) 5.5%, var(--xf-bg-900));
+  --xf-bg-800: color-mix(in srgb, var(--xf-text-100) 7%, var(--xf-bg-800));
+  --xf-surface-700: color-mix(in srgb, var(--xf-text-100) 6%, var(--xf-surface-700));
+  --xf-surface-600: color-mix(in srgb, var(--xf-text-100) 5%, var(--xf-surface-600));
+}
+
+.xf-theme-picker-root {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.xf-theme-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--xf-text-100);
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.xf-theme-picker-trigger--xchat {
+  width: 2.28rem;
+  height: 2.28rem;
+}
+
+.xf-theme-picker-trigger--admin {
+  width: 2.28rem;
+  height: 2.28rem;
+}
+
+.xf-theme-picker-trigger:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  color: var(--xf-gain-green);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+}
+
+.xf-theme-picker-trigger:focus-visible {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 2px;
+}
+
+.xf-theme-picker-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 200;
+  min-width: 9.5rem;
+  padding: 0.35rem;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: var(--xf-surface-700);
+  box-shadow: var(--xf-shadow-soft);
+}
+
+.xf-theme-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.48rem 0.55rem;
+  border: none;
+  border-radius: var(--xf-radius-sm);
+  background: transparent;
+  color: var(--xf-text-100);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.xf-theme-picker-item:hover {
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.xf-theme-picker-item--active {
+  color: var(--xf-text-300);
+}
+
+.xf-theme-picker-item--active .xf-theme-picker-item__label {
+  color: var(--xf-text-300);
+}
+
+.xf-theme-picker-item__check {
+  flex-shrink: 0;
+  color: var(--xf-text-400);
+}
+
+.admin-topbar-trailing {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.admin-topbar-divider {
+  width: 1px;
+  height: 1.35rem;
+  margin: 0 0.1rem;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
 /* ── Font & letter-spacing ─────────────────── */
 
 html {
@@ -236,7 +353,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .admin-topbar-session {
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .admin-topbar-session .admin-session-panel {

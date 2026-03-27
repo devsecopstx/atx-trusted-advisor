@@ -7,6 +7,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel } from "@/lib/env";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { GlobalFooter } from "../ui/global-footer";
+import { PublicThemePicker } from "../ui/public-theme-picker";
 import { XchatHeaderBrand } from "../ui/xchat-header-brand";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 
@@ -78,8 +79,11 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             </Link>
           ))}
         </nav>
-        <div className="admin-topbar-session">
-          <AdminSessionPanel
+        <div className="admin-topbar-trailing">
+          <span aria-hidden className="admin-topbar-divider" />
+          <PublicThemePicker variant="admin" />
+          <div className="admin-topbar-session">
+            <AdminSessionPanel
             avatarUrl={session.avatarUrl}
             displayName={session.displayName}
             email={session.email}
@@ -87,6 +91,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             xUserId={session.xUserId}
             username={session.username}
           />
+          </div>
         </div>
       </header>
       <main className="admin-layout-content">{children}</main>

@@ -1,8 +1,5 @@
-import Link from "next/link";
-
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
-import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
-import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
+import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
@@ -41,11 +38,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
   if (!session) {
     return (
       <div className="xchat-shell">
-        <header className="xchat-header">
-          <Link aria-label={USER_PRODUCT_HOME_ARIA_LABEL} className="xchat-header-brand" href="/xchat">
-            <XchatHeaderBrand />
-          </Link>
-        </header>
+        <XchatGuestHeader />
         <div className="xchat-body">
           <XchatGuestPanel
             authDetails={authDetails}
@@ -68,11 +61,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       {approved ? (
         <AppUserApprovedHeader current="xchat" feedbackPageLabel="xChat" session={session} />
       ) : (
-        <header className="xchat-header">
-          <Link aria-label={USER_PRODUCT_HOME_ARIA_LABEL} className="xchat-header-brand" href="/xchat">
-            <XchatHeaderBrand />
-          </Link>
-        </header>
+        <XchatGuestHeader />
       )}
 
       <div className="xchat-body">

@@ -244,7 +244,7 @@ Then write the decoded `mongodb+srv://...` URI into `.env` and `unset MONGODB_UR
 
 - Phase 1: Token hygiene — badge variants, marketing-hero hex→tokens, chart bar tokens, admin hub hero alignment.
 - Phase 2: Chart tokens (`--xf-chart-*`), xStrategyBuilder coming-soon card, `value-gain`/`value-loss` CSS utilities.
-- Phase 3: User-facing `/xchat` — plans landing, Slack access-request notifications, chat conversation UI.
+- Phase 3: User-facing `/xchat` — plans landing, Slack access-request notifications, chat conversation UI; shell theme picker (soft/deep dark + System) on product + Hub + xChat guest headers (`src/lib/xf-ui-theme.ts`).
 - Phase 4: Persona governance — draft/published/archived status, version snapshots, publish/archive/rollback, immutable audit.
 - Phase 5: Access workflow UI — status step indicator (new→triaged→pending→approved), SLA countdown, policy violation display, full state machine filter.
 - Phase 6: Docs sync — persona governance routes, plan limits table, access request state machine, tool cache documented.

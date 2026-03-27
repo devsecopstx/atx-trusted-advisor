@@ -9,6 +9,7 @@ import {
 import { AppUserHeaderSession } from "./app_user-header-session";
 import { AppUserProductNav, type AppUserProductNavCurrent } from "./app_user-product-nav";
 import { USER_PRODUCT_HOME_ARIA_LABEL } from "./product-brand-constants";
+import { PublicThemePicker } from "./public-theme-picker";
 import { XchatHeaderBrand } from "./xchat-header-brand";
 
 type AppUserApprovedHeaderProps = {
@@ -35,6 +36,8 @@ export function AppUserApprovedHeader({
       <div className="xchat-header-main">
         <div className="xchat-header-trailing">
           <AppUserProductNav current={current} />
+          <span aria-hidden className="xchat-header-divider" />
+          <PublicThemePicker variant="xchat" />
           <AppUserHeaderSession
             email={session.email}
             feedbackPageLabel={feedbackPageLabel}

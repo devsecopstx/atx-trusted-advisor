@@ -73,6 +73,14 @@ RAG upload path used by `seed:admin`:
 - Backend health: `http://localhost:8080/actuator/health`
 - App health: `http://localhost:3000/api/health`
 
+## 6) Shell theme preference (QA)
+
+The product header, Hub top bar, and xChat guest header include a **moon** control with **Light** / **Dark** / **System**. xFinance stays **dark-only**: Light = softer charcoal surfaces, Dark = default deep black, System = maps `prefers-color-scheme` to soft vs deep.
+
+- **Persistence:** `localStorage` key `xf-ui-theme` (`light` \| `dark` \| `system`).
+- **DOM:** `html[data-xf-ui]` is `soft` or `deep`; boot script in `src/app/layout.tsx` runs before paint.
+- **Code:** `src/lib/xf-ui-theme.ts`, `src/app/ui/public-theme-picker.tsx`, `.cursor/agents/branding.md`.
+
 ## Deep links
 
 - Bootstrap and operator runbook: [AGENTS.md](../../AGENTS.md)
