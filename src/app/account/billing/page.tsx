@@ -5,10 +5,10 @@ import { BillingFeedbackLink } from "@/app/account/ui/billing-feedback-link";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { ATX_BILLING_PLAN_LIMIT_ROWS } from "@/lib/atx-billing-plan-limits";
 import { ATX_BILLING_PLANS } from "@/lib/atx-billing-plans";
 import { getSessionUser } from "@/lib/auth";
 import { getStripePublishableKey, isStripeBillingFullyConfigured } from "@/lib/stripe-config";
-import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
 import { canUserLogin } from "@/modules/identity/authorization";
 
 import "./billing-plans.css";
@@ -33,7 +33,6 @@ export default async function AccountBillingPage({
 
   const checkoutReady = isStripeBillingFullyConfigured();
   const publishableConfigured = Boolean(getStripePublishableKey());
-  const workspaceLimits = await getResolvedWorkspaceLimitsForTenantId(session.tenantId);
 
   return (
     <div className="xchat-shell">
@@ -93,37 +92,6 @@ export default async function AccountBillingPage({
                 </div>
               ) : null}
 
-              <section
-                className="billing-workspace-limits xf-widget section-card xf-noise-overlay"
-                aria-labelledby="billing-workspace-limits-heading"
-              >
-                <h2 id="billing-workspace-limits-heading" className="billing-card__name" style={{ marginBottom: "0.5rem" }}>
-                  Workspace limits
-                </h2>
-                <p className="billing-hero__copy" style={{ marginBottom: "1rem", fontSize: "0.9rem" }}>
-                  Your tenant workspace caps below apply on top of plan rules where noted. A workspace admin can adjust
-                  them under Admin → Workspace limits.
-                </p>
-                <dl className="billing-workspace-limits__grid">
-                  <div className="billing-workspace-limits__row">
-                    <dt>xoptions deck views / day</dt>
-                    <dd>{workspaceLimits.userXoptionsLimit}</dd>
-                  </div>
-                  <div className="billing-workspace-limits__row">
-                    <dt>xChat prompts / day (with plan)</dt>
-                    <dd>min(plan, {workspaceLimits.userChatLimit})</dd>
-                  </div>
-                  <div className="billing-workspace-limits__row">
-                    <dt>Portfolios per user</dt>
-                    <dd>{workspaceLimits.tenantPortfolioLimit}</dd>
-                  </div>
-                  <div className="billing-workspace-limits__row">
-                    <dt>Accounts per portfolio</dt>
-                    <dd>{workspaceLimits.portfolioAccountLimit}</dd>
-                  </div>
-                </dl>
-              </section>
-
               <div className="billing-grid">
                 {ATX_BILLING_PLANS.map((plan) => (
                   <article
@@ -144,6 +112,39 @@ export default async function AccountBillingPage({
                   </article>
                 ))}
               </div>
+
+              <details className="billing-limits-disclosure xf-widget section-card xf-noise-overlay">
+                <summary className="billing-limits-disclosure__summary">Plan workspace limits</summary>
+                <div className="billing-limits-disclosure__body">
+                  <p className="billing-limits-disclosure__intro">
+                    Published caps by tier (see{" "}
+                    <code className="font-mono text-xs">atx-docs/resouces/atx-limits.txt.tsv</code>). Your workspace
+                    admin may set tighter caps under Admin → Workspace limits.
+                  </p>
+                  <div className="billing-limits-table-wrap">
+                    <table className="billing-limits-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Limit</th>
+                          <th scope="col">Basic</th>
+                          <th scope="col">Premium</th>
+                          <th scope="col">Premium+</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ATX_BILLING_PLAN_LIMIT_ROWS.map((row) => (
+                          <tr key={row.metric}>
+                            <th scope="row">{row.metric}</th>
+                            <td>{row.basic}</td>
+                            <td>{row.premium}</td>
+                            <td>{row.premiumPlus}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </details>
 
               <p className="billing-footnote">
                 Not financial advice. Trial access is time-limited; subscribe to keep full access at the plan you choose.
