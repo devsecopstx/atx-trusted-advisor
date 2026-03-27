@@ -45,10 +45,8 @@ export default async function AccountBillingPage({
                 <p className="billing-hero__eyebrow">ATX price plans</p>
                 <h1 className="billing-hero__title">Account &amp; billing</h1>
                 <p className="billing-hero__copy">
-                  Choose a plan for <strong className="text-[var(--xf-gain-green)]">atx Trusted Advisor</strong> — from
-                  HNWI Basic with limits, through Premium (complex books + fair per-hour caps on xChat and
-                  xStrategyBuilder), to Premium+ with a dedicated enterprise-grade instance and no training-data use.
-                  Checkout runs on Stripe; webhooks will sync entitlements when wired.
+                  Choose a plan for <strong className="text-[var(--xf-gain-green)]">atx Trusted Advisor</strong>. Checkout
+                  runs on Stripe; subscription status and webhooks can tighten plan limits in a follow-up.
                 </p>
               </header>
 
@@ -63,14 +61,21 @@ export default async function AccountBillingPage({
                 </div>
               ) : null}
 
+              <div className="billing-banner billing-banner--muted" role="note">
+                <strong>How we work together:</strong> you agree to use xFinance <strong>lawfully</strong> and in line
+                with applicable rules and our terms. We ask that you send <strong>thoughtful, meaningful</strong> product
+                input through <strong>Feedback</strong> in the header when something misses the mark — concrete suggestions
+                help us improve the product for everyone.
+              </div>
+
               {!checkoutReady ? (
-                <div className="billing-banner billing-banner--muted">
-                  <strong>Operator setup:</strong> configure <code className="font-mono text-xs">STRIPE_SECRET_KEY</code>{" "}
-                  (GCP Secret Manager) and the three <code className="font-mono text-xs">STRIPE_PRICE_*</code> price IDs
-                  (env / variables). See <code className="font-mono text-xs">atx-docs/sre-ops/stripe-billing-setup.md</code>{" "}
-                  in the repo. Buttons stay disabled until then.
+                <div className="billing-banner billing-banner--muted" role="status">
+                  Checkout isn&apos;t available in this environment yet — the plans below show list pricing; use{" "}
+                  <strong>Feedback</strong> if you need help with access or billing.
                 </div>
-              ) : !publishableConfigured ? (
+              ) : null}
+
+              {checkoutReady && !publishableConfigured ? (
                 <div className="billing-banner billing-banner--muted">
                   <strong>Note:</strong> Add{" "}
                   <code className="font-mono text-xs">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> (GitHub{" "}
@@ -100,8 +105,9 @@ export default async function AccountBillingPage({
               </div>
 
               <p className="billing-footnote">
-                Not financial advice. Card processing and receipts are handled by Stripe. For access or invoice issues,
-                use <strong>Feedback</strong> in the header or contact your workspace admin.
+                Not financial advice. Trial access is time-limited; subscribe to keep full access at the plan you choose.
+                Card processing and receipts are handled by Stripe. For access or invoice issues, use{" "}
+                <strong>Feedback</strong> in the header or contact your workspace admin.
               </p>
             </div>
           </div>

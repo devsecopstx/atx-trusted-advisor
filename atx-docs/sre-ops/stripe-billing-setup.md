@@ -6,11 +6,11 @@ End-to-end notes for **Account → Billing** (`/account/billing`), `POST /api/bi
 
 | Plan       | Positioning (summary) | Amount   | Billing   | Env price id                         |
 |-----------|------------------------|----------|-----------|--------------------------------------|
-| Basic     | HNWI-focused; plan limits | $21      | Monthly   | `STRIPE_PRICE_BASIC_MONTHLY`         |
-| Premium   | Complex portfolios; unlimited with fair per-hour caps on xChat + xStrategyBuilder | $250 | Monthly | `STRIPE_PRICE_PREMIUM_MONTHLY` |
-| Premium+  | White-glove; dedicated enterprise-grade instance; private (no training use) | $3,000   | Yearly    | `STRIPE_PRICE_PREMIUM_PLUS_YEARLY`   |
+| Basic     | HNWI-focused; workspace users, portfolios, accounts, strategy_factors; plan limits | $10      | Monthly   | `STRIPE_PRICE_BASIC_MONTHLY`         |
+| Premium   | Complex portfolios; unlimited with fair per-hour caps on xChat + xStrategyBuilder | $99 | Monthly | `STRIPE_PRICE_PREMIUM_MONTHLY` |
+| Premium+  | White-glove; dedicated enterprise-grade instance; private (no training use) | $300   | Yearly    | `STRIPE_PRICE_PREMIUM_PLUS_YEARLY`   |
 
-Create matching **Products** and **Prices** in Stripe (recurring subscription) and copy each Price id (`price_…`) into env.
+Create matching **Products** and **Prices** in Stripe (recurring subscription) and copy each Price id (`price_…`) into env. **Amount changes require new Price objects in Stripe** — update `STRIPE_PRICE_*` to the new `price_…` ids (existing ids keep their original amounts).
 
 ## GitHub: Variables vs Secrets
 
@@ -34,9 +34,9 @@ Create matching **Products** and **Prices** in Stripe (recurring subscription) a
 1. **Account mode:** Use **Test** until you are ready for live charges; use test keys and test price ids in non-prod.
 2. **Products:** Create three products aligned with Basic / Premium / Premium+ (names can match UI).
 3. **Prices:** For each product, add a **recurring** price:
-   - Basic: **$21 / month**
-   - Premium: **$250 / month**
-   - Premium+: **$3,000 / year**
+   - Basic: **$10 / month**
+   - Premium: **$99 / month**
+   - Premium+: **$300 / year**
 4. **Checkout:** Hosted Checkout is created by the API (`mode: subscription`). No extra Dashboard toggle required beyond valid prices.
 5. **Customer portal (optional):** Enable the Billing customer portal when you want self-serve cancel/update payment method.
 6. **Webhooks (next):** Add endpoint `https://<your-host>/api/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.*`, and verify with `STRIPE_WEBHOOK_SECRET`. Persist subscription tier on `core_users` (or equivalent) to drive plan limits.

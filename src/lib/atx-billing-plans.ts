@@ -19,38 +19,38 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
   {
     id: "basic",
     name: "Basic",
-    tagline: "HNWI-focused workspace",
-    priceLabel: "$21",
+    tagline: "HNWI-focused entry — workspace users, portfolios, accounts, strategy factors",
+    priceLabel: "$10",
     periodNote: "per month",
     bullets: [
-      "Built for high-net-worth individual workflows",
-      "Full product access with plan limits",
-      "Upgrade when you need higher throughput or white-glove posture"
+      "Built for high-net-worth individual workflows and daily options context",
+      "Manage workspace users, portfolios, accounts, and strategy_factors (within your role and plan limits)",
+      "Full product access with plan limits; limited-time full-access trial may apply before you subscribe"
     ]
   },
   {
     id: "premium_monthly",
     name: "Premium",
-    tagline: "Complex portfolios — generous limits, fair per-hour caps",
-    priceLabel: "$250",
+    tagline: "Complex books — xChat + xStrategyBuilder with fair per-hour caps",
+    priceLabel: "$99",
     periodNote: "per month",
     highlight: true,
     bullets: [
-      "Complex portfolios, alts, crypto, international, real estate context",
-      "Unlimited posture with fair per-hour caps on xChat and xStrategyBuilder (scenario builder)",
-      "Best for power users who live in chat + scans"
+      "Complex portfolios: alts, crypto, international, real estate, and multi-account context",
+      "Generous posture with fair per-hour caps on xChat and xStrategyBuilder (scenario builder)",
+      "Power-user tier — meaningful Feedback on real scenarios helps us prioritize caps, tools, and roadmap"
     ]
   },
   {
     id: "premium_plus_yearly",
     name: "Premium+",
-    tagline: "Dedicated instance — private by design",
-    priceLabel: "$3,000",
+    tagline: "Dedicated instance — private, white-glove posture",
+    priceLabel: "$300",
     periodNote: "per year",
     bullets: [
-      "White-glove for ultra-complex and family-office books",
-      "Dedicated enterprise-grade instance",
-      "Private deployment — your data is not used for provider training"
+      "White-glove for ultra-complex and family-office books; direct line for structured product input",
+      "Dedicated enterprise-grade instance sized for your workflow",
+      "Private deployment — your data is not used for provider training; compliance-minded engagement expected"
     ]
   }
 ] as const;
