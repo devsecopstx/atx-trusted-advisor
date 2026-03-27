@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useId, useState, type ReactNode, type SVGProps } from "react";
 
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 function RailSectionChevron({ open }: { open: boolean }) {
   return (
@@ -104,15 +105,17 @@ function sublinkActive(pathname: string, href: string): boolean {
 function RailNavLink({ href, children, title }: { href: string; children: ReactNode; title?: string }) {
   const pathname = usePathname() ?? "";
   const active = sublinkActive(pathname, href);
-  return (
-    <Link
-      className={`app-user-rail-sublink${active ? " app-user-rail-sublink--active" : ""}`}
-      href={href}
-      title={title}
-    >
+  const cls = `app-user-rail-sublink${active ? " app-user-rail-sublink--active" : ""}`;
+  const link = (
+    <Link className={cls} href={href}>
       {children}
     </Link>
   );
+  const t = title?.trim();
+  if (t) {
+    return <XfHoverHint hint={t}>{link}</XfHoverHint>;
+  }
+  return link;
 }
 
 type AccountSublinkProps = {
@@ -140,6 +143,8 @@ function AccountLegalLink() {
 
 export type AppUserRailNavProps = {
   isGlobalAdmin: boolean;
+  /** When false, disclosure starts collapsed (e.g. xChat first land). Default true elsewhere. */
+  railDisclosureDefaultOpen?: boolean;
 };
 
 export type AppUserPublicRailContext = {
@@ -151,11 +156,14 @@ export type AppUserAccountPublicRailProps = AppUserRailNavProps & {
   railContext: AppUserPublicRailContext;
 };
 
-export function AppUserResourcesRailSection({ isGlobalAdmin }: AppUserRailNavProps) {
+export function AppUserResourcesRailSection({
+  isGlobalAdmin,
+  railDisclosureDefaultOpen = true
+}: AppUserRailNavProps) {
   return (
     <section className="app-user-rail-section" aria-label="Resources">
       <RailDisclosure
-        defaultOpen
+        defaultOpen={railDisclosureDefaultOpen}
         icon={<BookIcon className="app-user-rail-disclosure__glyph" />}
         title="Resources"
       >
@@ -163,27 +171,31 @@ export function AppUserResourcesRailSection({ isGlobalAdmin }: AppUserRailNavPro
           {isGlobalAdmin ? (
             <RailNavLink href="/admin/api-docs">Reference Docs</RailNavLink>
           ) : (
-            <span
-              className="app-user-rail-sublink app-user-rail-sublink--muted"
-              title="Open API reference from Hub when you have admin access"
-            >
-              Reference Docs
-            </span>
+            <XfHoverHint hint="Open API reference from Hub when you have admin access">
+              <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
+                Reference Docs
+              </span>
+            </XfHoverHint>
           )}
-          <span className="app-user-rail-sublink app-user-rail-sublink--placeholder" title="Coming soon">
-            More soon
-          </span>
+          <XfHoverHint hint="Coming soon">
+            <span className="app-user-rail-sublink app-user-rail-sublink--placeholder" role="note" tabIndex={0}>
+              More soon
+            </span>
+          </XfHoverHint>
         </nav>
       </RailDisclosure>
     </section>
   );
 }
 
-export function AppUserAccountRailSection({ isGlobalAdmin }: AppUserRailNavProps) {
+export function AppUserAccountRailSection({
+  isGlobalAdmin,
+  railDisclosureDefaultOpen = true
+}: AppUserRailNavProps) {
   return (
     <section className="app-user-rail-section" aria-label="Account">
       <RailDisclosure
-        defaultOpen
+        defaultOpen={railDisclosureDefaultOpen}
         icon={<PersonIcon className="app-user-rail-disclosure__glyph" />}
         title="Account"
       >
@@ -195,12 +207,11 @@ export function AppUserAccountRailSection({ isGlobalAdmin }: AppUserRailNavProps
           {isGlobalAdmin ? (
             <AccountSublink href="/admin/manage_account">Settings</AccountSublink>
           ) : (
-            <span
-              className="app-user-rail-sublink app-user-rail-sublink--muted"
-              title="Workspace settings are available from Hub (admin)"
-            >
-              Settings
-            </span>
+            <XfHoverHint hint="Workspace settings are available from Hub (admin)">
+              <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
+                Settings
+              </span>
+            </XfHoverHint>
           )}
         </nav>
       </RailDisclosure>

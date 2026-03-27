@@ -151,6 +151,37 @@ html[data-xf-ui="soft"] {
   font-size: 0.9rem;
 }
 
+/* Theme-safe hover hints (portal) — readable on xf-ui deep + soft; replaces invisible native `title` in product chrome */
+.xf-hover-hint {
+  display: inline-flex;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.xf-hover-hint__target {
+  max-width: 100%;
+}
+
+.xf-hover-hint__bubble {
+  position: fixed;
+  z-index: 10050;
+  max-width: min(22rem, 92vw);
+  padding: 0.42rem 0.55rem;
+  border-radius: var(--xf-radius-sm);
+  background: var(--xf-surface-600);
+  color: var(--xf-text-100);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  box-shadow: var(--xf-shadow-soft);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
 .admin-topbar-trailing {
   display: flex;
   align-items: center;
