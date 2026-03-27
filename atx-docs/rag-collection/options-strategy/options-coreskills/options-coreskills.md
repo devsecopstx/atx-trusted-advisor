@@ -11,7 +11,7 @@ Short-form strategy narratives (Markdown + frontmatter) plus links to **executab
 ## Table of contents
 
 - [How this tree is organized](#how-this-tree-is-organized)
-- [Strategy map (narrative ↔ risk ↔ outlook ↔ skill)](#strategy-map-narrative--risk--outlook--skill)
+- [Strategy map (narrative ↔ risk ↔ outlook ↔ skill)](#strategy-map-narrative-risk-outlook-skill)
 - [Related indexes](#related-indexes)
 
 ---

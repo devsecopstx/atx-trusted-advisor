@@ -84,7 +84,7 @@ export function OptionsStrategyNewForm() {
         <p className="status-text">{status}</p>
         <form className="stack-form" onSubmit={(ev) => void onSubmit(ev)}>
           <label className="status-text" htmlFor="osn-slug">
-            Slug (directory name under atx-rag-collection/options-strategy)
+            Slug (directory name under atx-docs/rag-collection/options-strategy)
           </label>
           <input
             id="osn-slug"

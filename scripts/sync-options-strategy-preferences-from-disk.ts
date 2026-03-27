@@ -2,7 +2,7 @@
  * Upserts `options_strategy_preferences` from `atx-docs/rag-collection/options-strategy/<slug>/<file>.md` (falls back to legacy `atx-rag-collection/options-strategy`).
  * Invoked by `npm run seed:options-strategy-prefs` and post-`seed:admin` unless SKIP_SEED_OPTIONS_STRATEGY_PREFS=1.
  */
-import { readdir, readFile } from "node:fs/promises";
+import { access, constants as fsConstants, readdir, readFile } from "node:fs/promises";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,7 +15,14 @@ const SCRIPT_DIR = fileURLToPath(new URL(".", import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
 const PREFERRED_STRATEGY_ROOT = join(REPO_ROOT, "atx-docs/rag-collection/options-strategy");
 const LEGACY_STRATEGY_ROOT = join(REPO_ROOT, "atx-rag-collection/options-strategy");
-const STRATEGY_ROOT = PREFERRED_STRATEGY_ROOT;
+const STRATEGY_ROOT = await (async () => {
+  try {
+    await access(PREFERRED_STRATEGY_ROOT, fsConstants.R_OK);
+    return PREFERRED_STRATEGY_ROOT;
+  } catch {
+    return LEGACY_STRATEGY_ROOT;
+  }
+})();
 const COLLECTION = "options_strategy_preferences";
 
 const SLUG_RE = /^[a-z][a-z0-9-]{0,62}$/;

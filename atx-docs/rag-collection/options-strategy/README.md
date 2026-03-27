@@ -4,4 +4,4 @@ Markdown narratives for options playbooks live in **folder-per-strategy** layout
 
 **Canonical index:** [`options-coreskills/options-coreskills.md`](./options-coreskills/options-coreskills.md) — strategy ↔ skill ↔ risk/outlook.
 
-**Doc hub:** [`atx-docs/README.md`](../atx-docs/README.md) § *Options (RAG + seed)*.
+**Doc hub:** [`atx-docs/README.md`](../../README.md) § *Options (RAG + seed)*.
