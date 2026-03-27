@@ -20,7 +20,7 @@ export default async function AdminPortfoliosPage() {
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
-        <p className="eyebrow">atx Trusted Advisor · admin</p>
+        <p className="eyebrow">aTx Trusted Advisory · admin</p>
         <h1 className="hero-title" style={{ display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap" }}>
           <span className="admin-page-hero-mark" aria-hidden>
             <TenantPortfoliosIcon width={34} height={34} />

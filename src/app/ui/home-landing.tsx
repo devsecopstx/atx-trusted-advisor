@@ -33,7 +33,7 @@ function DemoContactForm({ endpoint }: DemoContactFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 text-left">
-      <input type="hidden" name="_subject" value="aTx Trusted Advisor — demo / onboarding request" />
+      <input type="hidden" name="_subject" value="aTx Trusted Advisory — demo / onboarding request" />
       <div>
         <label htmlFor="home-contact-email" className="mb-1 block text-xs font-medium text-gray-400">
           Work email

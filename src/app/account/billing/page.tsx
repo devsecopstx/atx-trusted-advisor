@@ -48,7 +48,7 @@ export default async function AccountBillingPage({
                 <p className="billing-hero__eyebrow">ATX price plans</p>
                 <h1 className="billing-hero__title">Account &amp; billing</h1>
                 <p className="billing-hero__copy">
-                  Choose a plan for <strong className="text-[var(--xf-gain-green)]">atx Trusted Advisor</strong>. Checkout
+                  Choose a plan for <strong className="text-[var(--xf-gain-green)]">aTx Trusted Advisory</strong>. Checkout
                   runs on Stripe; subscription status and webhooks can tighten plan limits in a follow-up.
                 </p>
                 <p className="billing-hero__feedback">
@@ -70,7 +70,7 @@ export default async function AccountBillingPage({
               ) : null}
 
               <div className="billing-banner billing-banner--muted" role="note">
-                <strong>How we work together:</strong> you agree to use xFinance <strong>lawfully</strong> and in line
+                <strong>How we work together:</strong> you agree to use aTx Trusted Advisory <strong>lawfully</strong> and in line
                 with applicable rules and our terms. We ask that you send <strong>thoughtful, meaningful</strong> product
                 input when something misses the mark —{" "}
                 <BillingFeedbackLink>Submit feedback</BillingFeedbackLink>

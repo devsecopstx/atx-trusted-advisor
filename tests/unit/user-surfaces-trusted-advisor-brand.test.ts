@@ -9,12 +9,12 @@ import {
     USER_PRODUCT_WHITELABEL_SUBLINE
 } from "@/app/ui/product-brand-constants";
 
-describe("user surfaces: atx Trusted Advisor + whitelabel brand", () => {
+describe("user surfaces: aTx Trusted Advisory + whitelabel brand", () => {
   it("exports stable product strings for chrome and marketing", () => {
     expect(USER_PRODUCT_WHITELABEL_SUBLINE).toBe("whitelabel");
-    expect(USER_PRODUCT_HOME_ARIA_LABEL).toContain("atx Trusted Advisor");
+    expect(USER_PRODUCT_HOME_ARIA_LABEL).toContain("aTx Trusted Advisory");
     expect(USER_PRODUCT_HOME_ARIA_LABEL).toContain("whitelabel");
-    expect(USER_PRODUCT_DESCRIPTOR_LINE).toContain("atx Trusted Advisor");
+    expect(USER_PRODUCT_DESCRIPTOR_LINE).toContain("aTx Trusted Advisory");
     expect(USER_PRODUCT_DESCRIPTOR_LINE).toContain("xChat");
   });
 
@@ -32,7 +32,7 @@ describe("user surfaces: atx Trusted Advisor + whitelabel brand", () => {
     const p = path.join(process.cwd(), "src/app/ui/marketing-hero.tsx");
     const src = readFileSync(p, "utf8");
     expect(src).toContain("USER_PRODUCT_DESCRIPTOR_LINE");
-    expect(src).toContain('name="atx Trusted Advisor"');
+    expect(src).toContain('name="aTx Trusted Advisory"');
     expect(src).not.toContain('name="xFinance"');
   });
 
@@ -41,10 +41,11 @@ describe("user surfaces: atx Trusted Advisor + whitelabel brand", () => {
       path.join(process.cwd(), "src/app/xchat/ui/xchat-guest-panel.tsx"),
       "utf8"
     );
-    expect(guest).toContain("atx Trusted Advisor");
+    expect(guest).toContain("aTx Trusted Advisory");
     expect(guest).not.toMatch(/Welcome to atxFinance/);
 
     const plans = readFileSync(path.join(process.cwd(), "src/app/xchat/ui/plans-landing.tsx"), "utf8");
-    expect(plans).toContain("atx Trusted Advisor access yet");
+    expect(plans).toContain("aTx Trusted Advisory access yet");
+    expect(plans).not.toMatch(/slug xFinance/);
   });
 });

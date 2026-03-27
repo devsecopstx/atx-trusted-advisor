@@ -46,7 +46,7 @@ export function GlobalFooter({ subline }: GlobalFooterProps) {
         </nav>
         <div className="app-footer-meta" aria-label="Copyright">
           <span className="app-footer-brand-stack">
-            <span className="app-footer-copy">© {year} atx Trusted Advisor</span>
+            <span className="app-footer-copy">© {year} aTx Trusted Advisory</span>
             <span className="app-footer-whitelabel">{USER_PRODUCT_WHITELABEL_SUBLINE}</span>
           </span>
           <span aria-hidden className="app-footer-sep">

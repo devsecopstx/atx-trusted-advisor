@@ -45,7 +45,7 @@ export function buildUserFeedbackNotification(params: {
   const who = params.username ? `@${params.username}` : params.email;
   const page = params.page?.trim() ? ` • ${params.page.trim()}` : "";
   return {
-    text: `💬 atxFinance app feedback${page} — ${who} (${params.userId})`,
+    text: `💬 aTx Trusted Advisory app feedback${page} — ${who} (${params.userId})`,
     blocks: [
       {
         type: "header",
@@ -74,7 +74,7 @@ export function buildAccessRequestNotification(params: {
 }): SlackNotification {
   const who = params.username ? `@${params.username} (${params.email})` : params.email;
   return {
-    text: `🔔 New atxFinance access request from ${who}`,
+    text: `🔔 New aTx Trusted Advisory access request from ${who}`,
     blocks: [
       {
         type: "header",

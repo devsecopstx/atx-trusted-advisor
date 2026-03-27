@@ -7,7 +7,7 @@ const EFFECTIVE_NOTE = "Effective as of March 22, 2026. This summary is provided
 
 const LEGAL_ENTITY = "aTx⚡Finance";
 /** User-facing product name in in-app legal stubs (matches chrome / marketing). */
-const PRODUCT_PUBLIC_NAME = "atx Trusted Advisor";
+const PRODUCT_PUBLIC_NAME = "aTx Trusted Advisory";
 const LEGAL_CONTACT_NOTE =
   "Use the contact path in your onboarding, account, or access-request workflow for legal notices and operational requests.";
 const VULNERABILITY_TIPS =

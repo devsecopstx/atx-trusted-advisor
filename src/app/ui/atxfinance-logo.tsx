@@ -28,7 +28,7 @@ export function AtxFinanceMark({ size, className }: AtxFinanceMarkProps) {
   );
 }
 
-/** Lightning bolt in lightning-yellow — sits between gain-green aTx and the Trusted Advisor wordmark. */
+/** Lightning bolt in lightning-yellow — sits between gain-green aTx and the Trusted Advisory wordmark. */
 export function LightningBolt({ size }: { size: number }) {
   return (
     <svg
@@ -68,7 +68,7 @@ export function AtxFinanceLogo({
         <LightningBolt size={boltSize} />
         <span className={`${titleClass} xf-logo-title-phrase`}>
           <span className="xf-logo-title-trusted">Trusted</span>{" "}
-          <span className="xf-logo-title-advisor">Advisor</span>
+          <span className="xf-logo-title-advisor">Advisory</span>
         </span>
       </div>
       {showSubtitle ? (

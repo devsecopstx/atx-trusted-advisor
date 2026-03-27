@@ -17,7 +17,7 @@ import "./xstrategybuilder.css";
 
 export const dynamic = "force-dynamic";
 
-const PRICING_TOOLTIP = "Cheapest atx Trusted Advisor workspace on earth — pay only for what you use.";
+const PRICING_TOOLTIP = "Cheapest aTx Trusted Advisory workspace on earth — pay only for what you use.";
 
 type MetricBadge = {
   label: string;

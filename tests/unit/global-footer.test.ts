@@ -11,7 +11,7 @@ describe("GlobalFooter", () => {
     expect(source).toContain("APP_VERSION_LABEL");
     expect(source).toContain("/legal/privacy");
     expect(source).toContain("/legal/terms");
-    expect(source).toContain("atx Trusted Advisor");
+    expect(source).toContain("aTx Trusted Advisory");
     expect(source).toContain("USER_PRODUCT_WHITELABEL_SUBLINE");
   });
 

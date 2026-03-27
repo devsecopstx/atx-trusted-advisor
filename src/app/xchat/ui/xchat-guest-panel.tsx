@@ -85,7 +85,7 @@ export function XchatGuestPanel({
           <span style={{ whiteSpace: "pre-wrap" }}>
             {pendingApproval
               ? `Your account${userEmail ? ` (${userEmail})` : ""} is signed in but not approved yet. Request access and we will review it.`
-              : "Welcome to atx Trusted Advisor xChat. This is an invite-only app. Sign up to request access."}
+              : "Welcome to aTx Trusted Advisory xChat. This is an invite-only app. Sign up to request access."}
           </span>
         </div>
       </div>
