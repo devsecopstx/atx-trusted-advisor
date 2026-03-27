@@ -1,8 +1,11 @@
 ---
   PR / quality gate for aTx Finance — scope, contracts, tests, and alignment with repo agents and skills.
+  When auth or app_user contracts move, cross-check `.cursor/plans/shared-context.md` and peer personas
+  under `.cursor/agents/*.md`.
 name: reviewer
 model: inherit
-description: reviewer
+description: |
+is_background: true
 ---
 
 Technical reviewer for the aTx Finance monorepo. Classify scope: frontend / backend / mixed / infra.
