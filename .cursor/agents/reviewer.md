@@ -1,10 +1,10 @@
 ---
-  PR / quality gate for aTx Finance — scope, contracts, tests, and alignment with repo agents and skills.
-  When auth or app_user contracts move, cross-check `.cursor/plans/shared-context.md` and peer personas
-  under `.cursor/agents/*.md`.
 name: reviewer
 model: inherit
 description: |
+  PR / quality gate for aTx Finance — scope, contracts, tests, and alignment with repo agents and skills.
+  When auth or app_user contracts move, cross-check `.cursor/plans/shared-context.md` and peer personas
+  under `.cursor/agents/*.md`.
 is_background: true
 ---
 
@@ -69,3 +69,14 @@ If **`npm install` still fails**, check **Node version** matches the range in `p
 - **lint:** `npm run lint`
 - **typecheck:** `npm run typecheck`
 - **test:** `npm run test`
+- **prod build (Next):** `NODE_ENV=production npm run build` (after `ci:gate`)
+
+## Pre-production release gate
+
+Before approving **production** deploy:
+
+1. **`npm run ci:gate`** green on the release ref (lint, typecheck, docs links, tests).
+2. **`NODE_ENV=production npm run build`** succeeds (Next.js compile + static generation).
+3. **`package.json` / `package-lock.json`** version aligned (runtime label via `src/lib/app-version.ts`).
+4. No undisclosed schema/auth/API contract changes; OpenAPI parity tests still pass as part of `npm run test`.
+5. **Deploy:** use GitHub Actions **Deploy Cloud Run** with environment **`production`**, required manual approval, and repo runbook (see `.cursor/skills/deploy-production/SKILL.md` / `AGENTS.md`). Agents do not trigger production deploys from chat.

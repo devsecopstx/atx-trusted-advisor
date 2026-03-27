@@ -16,6 +16,8 @@ Preserve auth/session behavior; reuse existing components. Run `npm run lint`, `
 - Footer watermark: render `Not financial advice` in bold white, and render `don’t sue me bro.` below it in bold gain-green.
 - xChat thread UX: keep the current thread expanded while waiting for the assistant response; do not auto-collapse before the user can see the reply.
 - Prefer smallest change that ships; add tests for new API/domain behavior.
+- **Icon-only edit affordances:** use `IconEditButton` / `IconEditLink` from `src/app/ui/icon-edit-control.tsx` with a clear `label` (drives both `title` tooltip and `aria-label`). Pick `variant`: `neutral` (default square control), `primary-cta`, `secondary-cta`, `tiny` (admin row actions), or `watchlist-toolbar`. Do not show a visible “Edit” word next to the pencil unless the surface is a full text CTA (e.g. “Manage default account”).
+- **Native `<select>` (option pickers):** global styles live in `src/app/globals.css` — `var(--xf-bg-900)` field + `var(--xf-text-100)` text, `color-scheme: dark`, matching xAI-style dropdowns. Exception: `.xsb-builder-preview--friendly` keeps light selects in `xstrategybuilder.css`. Do not reintroduce low-contrast gray-on-gray selects without an explicit product exception.
 - Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
 ## Parallel worktree

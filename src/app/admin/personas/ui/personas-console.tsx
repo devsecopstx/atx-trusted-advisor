@@ -20,6 +20,7 @@ import {
     UploadIcon
 } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { countPersonaLinkedCollections } from "@/modules/xchat/persona-linked-collections";
 
 type Persona = {
@@ -868,14 +869,12 @@ export function PersonasConsole({
                   >
                     <RefreshIcon className="crud-icon" /> Recheck now
                   </button>
-                  <button
-                    className="tiny-button"
-                    onClick={() => startEditing(persona)}
-                    type="button"
+                  <IconEditButton
                     disabled={!persona._id}
-                  >
-                    <EditIcon className="crud-icon" /> Edit
-                  </button>
+                    label="Edit persona"
+                    variant="tiny"
+                    onClick={() => startEditing(persona)}
+                  />
                   <button
                     className="tiny-button"
                     onClick={() => (persona._id ? void removePersona(persona._id) : undefined)}

@@ -4,8 +4,9 @@ import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { IconEditLink } from "@/app/ui/icon-edit-control";
 import { countPersonaLinkedCollections } from "@/modules/xchat/persona-linked-collections";
 
 type PersonaStatus = "draft" | "published" | "archived";
@@ -376,12 +377,11 @@ export function PersonasOnboardingHome({ defaultXpersonasCollectionDisplayName }
               <div className="tool-row">
                 {persona._id ? (
                   <>
-                    <Link
-                      className="tiny-button"
+                    <IconEditLink
                       href={`/admin/personas/${persona._id}/edit`}
-                    >
-                      <EditIcon className="crud-icon" /> Edit
-                    </Link>
+                      label="Edit persona"
+                      variant="tiny"
+                    />
                     {persona.status !== "published" ? (
                       <button
                         className="tiny-button"

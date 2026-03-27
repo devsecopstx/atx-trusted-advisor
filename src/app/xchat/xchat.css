@@ -750,11 +750,7 @@
 
 .xchat-persona-bar select {
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: var(--xf-surface-700);
-  color: var(--xf-text-100);
   padding: 0.45rem 0.6rem;
-  font: inherit;
   font-size: 0.85rem;
 }
 
@@ -1268,14 +1264,8 @@
   max-width: 100%;
   padding: 0.38rem 0.45rem;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: color-mix(in srgb, var(--xf-surface-700) 88%, var(--xf-bg-800));
-  color: var(--xf-text-100);
-  font: inherit;
   font-size: 0.78rem;
   font-weight: 600;
-  cursor: pointer;
-  color-scheme: dark;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1286,14 +1276,9 @@
   cursor: not-allowed;
 }
 
-.xchat-composer__persona-select:focus {
+.xchat-composer__persona-select:focus-visible {
   outline: 1px solid var(--xf-gain-green);
   outline-offset: 1px;
-}
-
-.xchat-composer__persona-select option {
-  background: var(--xf-bg-800);
-  color: var(--xf-text-100);
 }
 
 .xchat-composer__persona-err {

@@ -8,6 +8,7 @@ import { PortfolioManageTabs } from "@/app/portfolio/ui/portfolio-manage-tabs";
 import { PortfolioPositionQuickAdd } from "@/app/portfolio/ui/portfolio-position-quick-add";
 import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
+import { IconEditLink } from "@/app/ui/icon-edit-control";
 import type { PortfolioHoldingRow } from "@/lib/portfolio-holding-rows";
 import {
     formatUsd2,
@@ -246,14 +247,10 @@ export function PortfolioOverview({
                         <td className="portfolio-manage-table__muted">—</td>
                         <td className="portfolio-manage-table__muted">—</td>
                         <td>
-                          <Link
-                            className="portfolio-table-icon-btn"
+                          <IconEditLink
                             href={`/portfolio/accounts/${row.accountIdHex}`}
-                            aria-label={`Edit ${row.name}`}
-                            title="Edit account"
-                          >
-                            <EditIcon className="crud-icon" />
-                          </Link>
+                            label={`Edit ${row.name}`}
+                          />
                         </td>
                       </tr>
                     );

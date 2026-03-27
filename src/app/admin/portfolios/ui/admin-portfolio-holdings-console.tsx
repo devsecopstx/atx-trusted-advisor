@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { positionOptionTypeValues, positionTypeValues, type PositionType } from "@/modules/core-admin/types";
 
 type StockPosition = {
@@ -240,9 +241,12 @@ function HoldingsRowEditor({ row, postJson, setStatus }: HoldingsRowEditorProps)
           onChange={(e) => setSt((s) => (s ? { ...s, purchasePrice: e.target.value } : s))}
           aria-label="Purchase price"
         />
-        <button type="button" className="cta cta-secondary" onClick={() => void save()}>
-          <EditIcon className="crud-icon" />
-        </button>
+        <IconEditButton
+          label="Save position"
+          type="button"
+          variant="secondary-cta"
+          onClick={() => void save()}
+        />
       </div>
     );
   }
@@ -300,9 +304,12 @@ function HoldingsRowEditor({ row, postJson, setStatus }: HoldingsRowEditorProps)
             onChange={(e) => setOp((s) => (s ? { ...s, premiumPerContract: e.target.value } : s))}
             placeholder="Premium/contract"
           />
-          <button type="button" className="cta cta-secondary" onClick={() => void save()}>
-            <EditIcon className="crud-icon" />
-          </button>
+          <IconEditButton
+            label="Save position"
+            type="button"
+            variant="secondary-cta"
+            onClick={() => void save()}
+          />
         </div>
       </div>
     );
@@ -322,9 +329,12 @@ function HoldingsRowEditor({ row, postJson, setStatus }: HoldingsRowEditorProps)
           onChange={(e) => setCa((s) => (s ? { ...s, amount: e.target.value } : s))}
           placeholder="Amount"
         />
-        <button type="button" className="cta cta-secondary" onClick={() => void save()}>
-          <EditIcon className="crud-icon" />
-        </button>
+        <IconEditButton
+          label="Save position"
+          type="button"
+          variant="secondary-cta"
+          onClick={() => void save()}
+        />
       </div>
     );
   }

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { EditIcon } from "@/app/admin/ui/crud-icons";
+import { IconEditButton } from "@/app/ui/icon-edit-control";
 
 export type PortfolioAccountManageOption = {
   id: string;
@@ -79,10 +79,12 @@ export function PortfolioAccountManageBar({ accounts }: Props) {
           ))}
         </select>
       </label>
-      <button type="button" className="cta cta-primary" disabled={!effectiveId} onClick={goManage}>
-        <EditIcon className="crud-icon" />
-        Edit account
-      </button>
+      <IconEditButton
+        disabled={!effectiveId}
+        label="Edit account"
+        variant="primary-cta"
+        onClick={goManage}
+      />
     </div>
   );
 }

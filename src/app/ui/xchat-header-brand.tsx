@@ -16,7 +16,7 @@ export function XchatHeaderBrand() {
           <span className="xf-logo-title-trusted">Trusted</span>{" "}
           <span className="xf-logo-title-advisor">Advisory</span>
         </span>
-        <span className="xf-header-tagline xf-header-tagline--inline">
+        <span className="xf-logo-text xf-logo-text--sm xf-header-tagline xf-header-tagline--inline">
           <span className="xf-header-tagline-rest">No </span>
           <span className="xf-header-tagline-atoms">Atoms</span>
           <span className="xf-header-tagline-rest"> moved, just </span>

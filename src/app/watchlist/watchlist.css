@@ -184,6 +184,22 @@
   border-color: var(--xf-gain-green);
 }
 
+button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar {
+  width: 2.45rem;
+  height: 2.45rem;
+  min-width: 2.45rem;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+}
+
+button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar .crud-icon,
+button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
+}
+
 .xf-watchlist-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;

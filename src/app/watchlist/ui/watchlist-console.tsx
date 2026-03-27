@@ -16,6 +16,7 @@ import {
     UploadIcon,
     XMarkIcon
 } from "@/app/admin/ui/crud-icons";
+import { IconEditButton } from "@/app/ui/icon-edit-control";
 import {
     MAX_WATCHLIST_SYMBOLS,
     MAX_WATCHLIST_SYMBOLS_PER_PATCH
@@ -543,7 +544,7 @@ export function WatchlistConsole({
               )}
               <p className="xf-watchlist-card-sub">
                 Quotes load from Yahoo Finance. Type, Strategy, Quantity, and Entry Price are stored with each
-                symbol (CSV import/export). Use Edit to change fields, then Save changes.
+                symbol (CSV import/export). Use edit mode to change fields, then Save changes.
               </p>
             </header>
 
@@ -559,15 +560,12 @@ export function WatchlistConsole({
             />
             <div className="xf-watchlist-toolbar">
               {!editMode ? (
-                <button
-                  className="xf-watchlist-toolbar-btn"
+                <IconEditButton
                   disabled={loading}
-                  type="button"
+                  label="Edit watchlist"
+                  variant="watchlist-toolbar"
                   onClick={enterEdit}
-                >
-                  <EditIcon className="crud-icon" />
-                  Edit
-                </button>
+                />
               ) : (
                 <>
                   <button

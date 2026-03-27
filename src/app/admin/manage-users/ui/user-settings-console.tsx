@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { IconEditButton } from "@/app/ui/icon-edit-control";
 
 type BrokerSettings = {
   provider: "alpaca" | "interactive-brokers" | "paper";
@@ -485,16 +486,14 @@ export function UserSettingsConsole() {
                       <button className="tiny-button" onClick={() => selectUser(user.userId)} type="button">
                         <EditIcon className="crud-icon" /> Select
                       </button>
-                      <button
-                        className="tiny-button"
+                      <IconEditButton
+                        label="Edit user"
+                        variant="tiny"
                         onClick={() => {
                           selectUser(user.userId);
                           setEditingUserId(user.userId);
                         }}
-                        type="button"
-                      >
-                        <EditIcon className="crud-icon" /> Edit
-                      </button>
+                      />
                       <button
                         className="tiny-button"
                         disabled={editingUserId !== user.userId || selectedUserId !== user.userId}

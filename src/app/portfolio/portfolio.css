@@ -720,27 +720,6 @@
   text-decoration: underline;
 }
 
-.portfolio-table-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--xf-radius-sm);
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
-  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
-  color: var(--xf-text-200);
-  text-decoration: none;
-  font-size: 1rem;
-  line-height: 1;
-  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
-}
-
-.portfolio-table-icon-btn:hover {
-  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
-  color: var(--xf-gain-green);
-}
-
 .portfolio-export-csv {
   display: inline-flex;
   align-items: center;

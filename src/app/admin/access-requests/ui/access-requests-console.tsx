@@ -3,8 +3,9 @@
 import Image from "next/image";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { formatUserFacingIdentityLabel } from "@/lib/x-identity-email";
 
 type AccessRequestStatus = "new" | "triaged" | "pending" | "approved" | "rejected" | "expired";
@@ -355,14 +356,18 @@ export function AccessRequestsConsole() {
                     <td><small>{item.reason}</small></td>
                     <td>
                       <div className="tool-row">
-                        <button className="tiny-button" onClick={() => void updateUserEmail(item.userId)} type="button">
-                          <EditIcon className="crud-icon" /> Email
-                        </button>
+                        <IconEditButton
+                          label="Edit user email"
+                          variant="tiny"
+                          onClick={() => void updateUserEmail(item.userId)}
+                        />
                         {isActionable(item.status) && item._id ? (
                           <>
-                            <button className="tiny-button" onClick={() => item._id && void updateRequestPlan(item._id)} type="button">
-                              <EditIcon className="crud-icon" /> Plan
-                            </button>
+                            <IconEditButton
+                              label="Edit request plan"
+                              variant="tiny"
+                              onClick={() => item._id && void updateRequestPlan(item._id)}
+                            />
                             <button className="tiny-button" onClick={() => item._id && void reviewRequest(item._id, "approved")} type="button">
                               Approve
                             </button>

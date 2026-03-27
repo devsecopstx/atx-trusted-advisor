@@ -325,6 +325,20 @@
   color: color-mix(in srgb, var(--xsb-f-accent-strong) 55%, var(--xsb-f-muted));
 }
 
+/* Light marketing preview: keep selects readable (global app selects are dark/xAI-style) */
+.xsb-builder-preview--friendly select {
+  color-scheme: light;
+  background-color: var(--xsb-f-bg);
+  color: var(--xsb-f-text);
+  border: 1px solid color-mix(in srgb, var(--xsb-f-accent-strong) 22%, var(--xsb-f-border));
+}
+
+.xsb-builder-preview--friendly select option,
+.xsb-builder-preview--friendly select optgroup {
+  background-color: var(--xsb-f-surface);
+  color: var(--xsb-f-text);
+}
+
 .xsb-friendly-workspace {
   margin-top: 1rem;
   padding-top: 0.85rem;
