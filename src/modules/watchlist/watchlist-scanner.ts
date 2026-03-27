@@ -1,8 +1,10 @@
 import { getAllWatchlists, updateWatchlistSymbolPrices } from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
+import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 import {
-    evaluateSignificantPriceMoves,
-    persistPriceMoveAlerts,
+  evaluateSignificantPriceMoves,
+  type PersistedPriceAlertRow,
+  persistPriceMoveAlerts,
 } from "./price-alert-service";
 import { getYahooBatchQuotes } from "./yahoo-batch-quotes";
 
@@ -19,7 +21,7 @@ type WatchlistPriceUpdate = {
 
 export async function runWatchlistPriceScanner(
   _task: ScheduledTask
-): Promise<{ status: "success" | "failed"; output: string }> {
+): Promise<ScheduledCategoryResult> {
   void _task;
   const start = Date.now();
 
@@ -30,11 +32,13 @@ export async function runWatchlistPriceScanner(
       return {
         status: "success",
         output: "watchlist_price_scanner: no watchlists found.",
+        auditDetails: { watchlistCount: 0, updatedSymbols: 0, alertsCreated: 0 }
       };
     }
 
     let updatedCount = 0;
     let alertCount = 0;
+    const auditAlertRows: PersistedPriceAlertRow[] = [];
 
     for (const wl of watchlists) {
       const symbols = wl.symbols || [];
@@ -60,7 +64,11 @@ export async function runWatchlistPriceScanner(
         updatedCount += updates.length;
 
         const moves = evaluateSignificantPriceMoves(symbols, updates);
-        alertCount += await persistPriceMoveAlerts(wl.portfolioId.toHexString(), moves);
+        const persist = await persistPriceMoveAlerts(wl.portfolioId.toHexString(), moves);
+        alertCount += persist.created;
+        if (persist.recorded.length > 0) {
+          auditAlertRows.push(...persist.recorded);
+        }
       }
     }
 
@@ -68,12 +76,19 @@ export async function runWatchlistPriceScanner(
     return {
       status: "success",
       output: `watchlist_price_scanner: updated ${updatedCount} symbols across ${watchlists.length} watchlists, created ${alertCount} alerts in ${duration}s.`,
+      auditDetails: {
+        watchlistCount: watchlists.length,
+        updatedSymbols: updatedCount,
+        alertsCreated: alertCount,
+        durationSeconds: Number(duration)
+      },
+      auditAlertRows: auditAlertRows.length > 0 ? auditAlertRows : undefined
     };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return {
       status: "failed",
-      output: `watchlist_price_scanner failed: ${msg}`,
+      output: `watchlist_price_scanner failed: ${msg}`
     };
   }
 }

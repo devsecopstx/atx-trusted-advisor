@@ -3,6 +3,7 @@ import {
   adminListOptionsStrategySummaries,
 } from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
+import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 
 /**
  * OptionsStrategyScannerService (PLAN 270) — scheduled `daily_options_scanner` hook.
@@ -11,7 +12,7 @@ import type { ScheduledTask } from "@/modules/core-admin/types";
  */
 export async function runOptionsStrategyScanner(
   _task: ScheduledTask
-): Promise<{ status: "success" | "failed"; output: string }> {
+): Promise<ScheduledCategoryResult> {
   void _task;
   try {
     const strategies = await adminListOptionsStrategySummaries();
@@ -26,12 +27,17 @@ export async function runOptionsStrategyScanner(
     return {
       status: "success",
       output: `daily_options_scanner: catalog check — ${strategies.length} strategies, ${prefs.length} preference docs — slugs: ${slugPreview}`,
+      auditDetails: {
+        strategyCount: strategies.length,
+        preferenceCount: prefs.length,
+        slugCount: slugs.length
+      }
     };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return {
       status: "failed",
-      output: `daily_options_scanner failed: ${msg}`,
+      output: `daily_options_scanner failed: ${msg}`
     };
   }
 }

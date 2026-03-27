@@ -28,7 +28,11 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
-  const execution = await executeScheduledTask(task, session.username);
+  const execution = await executeScheduledTask(task, session.username, {
+    userId: session.userId,
+    email: session.email,
+    username: session.username
+  });
   return NextResponse.json({
     data: {
       runId: execution.runId,

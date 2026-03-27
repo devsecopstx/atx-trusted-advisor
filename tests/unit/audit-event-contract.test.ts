@@ -32,7 +32,8 @@ describe("AuditEvent contract", () => {
       "access_request",
       "core_user",
       "deploy_note_config",
-      "xchat_session"
+      "xchat_session",
+      "core_scanner"
     ] as const;
     const satisfiesAuditEntity = (x: string): x is AuditEntityType =>
       (fromRoute as readonly string[]).includes(x);

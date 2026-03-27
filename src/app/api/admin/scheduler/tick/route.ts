@@ -20,7 +20,13 @@ export async function POST(request: Request) {
     tenantId: session.tenantId
   });
   const results = await Promise.all(
-    dueTasks.map(async (task) => executeScheduledTask(task, `scheduler:${session.username}`))
+    dueTasks.map(async (task) =>
+      executeScheduledTask(task, `scheduler:${session.username}`, {
+        userId: session.userId,
+        email: session.email,
+        username: session.username
+      })
+    )
   );
 
   return NextResponse.json({

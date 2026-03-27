@@ -40,11 +40,19 @@ export function evaluateSignificantPriceMoves(
   return out;
 }
 
+export type PersistedPriceAlertRow = {
+  portfolioId: string;
+  symbol: string;
+  changePct: number;
+  newPrice: number;
+};
+
 export async function persistPriceMoveAlerts(
   portfolioIdHex: string,
   evaluations: ReadonlyArray<PriceMoveEvaluation>
-): Promise<number> {
+): Promise<{ created: number; recorded: PersistedPriceAlertRow[] }> {
   let created = 0;
+  const recorded: PersistedPriceAlertRow[] = [];
   const notify: Array<{ title: string; body: string; symbol: string }> = [];
   for (const e of evaluations) {
     const title = `${e.symbol} price alert`;
@@ -58,6 +66,12 @@ export async function persistPriceMoveAlerts(
     });
     if (row) {
       created += 1;
+      recorded.push({
+        portfolioId: portfolioIdHex,
+        symbol: e.symbol,
+        changePct: e.changePct,
+        newPrice: e.newPrice,
+      });
       notify.push({ title, body, symbol: e.symbol });
     }
   }
@@ -72,5 +86,5 @@ export async function persistPriceMoveAlerts(
       });
     }
   }
-  return created;
+  return { created, recorded };
 }

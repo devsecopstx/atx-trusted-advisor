@@ -8,7 +8,14 @@ import type { AuditEvent } from "@/modules/audit/types";
 
 const auditQuerySchema = z.object({
   entityType: z
-    .enum(["xpersona", "access_request", "core_user", "deploy_note_config", "xchat_session"])
+    .enum([
+      "xpersona",
+      "access_request",
+      "core_user",
+      "deploy_note_config",
+      "xchat_session",
+      "core_scanner"
+    ])
     .optional(),
   entityId: z.string().trim().min(1).optional(),
   action: z.string().trim().min(1).optional(),

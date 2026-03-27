@@ -26,6 +26,7 @@ describe("admin RBAC and scheduler semantics", () => {
   beforeEach(() => {
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
+      email: "admin@example.com",
       username: "admin-user",
       tenantId: "507f1f77bcf86cd799439022",
       roles: ["global_admin"]
@@ -108,7 +109,12 @@ describe("admin RBAC and scheduler semantics", () => {
     expect(runnerMocks.executeScheduledTask).toHaveBeenCalledTimes(2);
     expect(runnerMocks.executeScheduledTask).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Daily Broker Sync" }),
-      "scheduler:admin-user"
+      "scheduler:admin-user",
+      {
+        userId: "507f1f77bcf86cd799439011",
+        email: "admin@example.com",
+        username: "admin-user"
+      }
     );
   });
 });

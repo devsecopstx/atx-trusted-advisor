@@ -35,6 +35,11 @@ describe("runOptionsStrategyScanner", () => {
     expect(r.output).toContain("2 strategies");
     expect(r.output).toContain("1 preference");
     expect(r.output).toMatch(/pmcc|wheel/);
+    expect(r.auditDetails).toEqual({
+      strategyCount: 2,
+      preferenceCount: 1,
+      slugCount: 2
+    });
   });
 
   it("returns failed on repository error", async () => {

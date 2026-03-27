@@ -5,7 +5,8 @@ export type AuditEntityType =
   | "access_request"
   | "core_user"
   | "deploy_note_config"
-  | "xchat_session";
+  | "xchat_session"
+  | "core_scanner";
 
 export type AuditActor = {
   userId: string;

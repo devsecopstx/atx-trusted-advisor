@@ -26,6 +26,7 @@ class AdminAuditController(
         "core_user",
         "deploy_note_config",
         "xchat_session",
+        "core_scanner",
     )
 
     @GetMapping("/api/admin/audit")

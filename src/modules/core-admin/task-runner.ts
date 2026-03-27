@@ -1,18 +1,24 @@
 import { ObjectId } from "mongodb";
 
+import type { AuditActor } from "@/modules/audit/types";
 import {
     createTaskRun,
     finalizeTaskRun,
     markTaskRunWindow
 } from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
-import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
+import {
+    logCoreScannerRunAudit,
+    type ScheduledCategoryResult
+} from "@/modules/scanner/core-scanner-service";
 import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-strategy-scanner";
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
+import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
 
 export async function executeScheduledTask(
   task: ScheduledTask,
-  triggeredBy: string
+  triggeredBy: string,
+  auditActor?: AuditActor
 ): Promise<{ runId: ObjectId; status: "success" | "failed"; output: string }> {
   if (!task._id) {
     throw new Error("Cannot execute task without _id");
@@ -44,6 +50,14 @@ export async function executeScheduledTask(
     completedAt
   });
 
+  await logCoreScannerRunAudit({
+    task,
+    triggeredBy,
+    actor: auditActor,
+    result: execution,
+    taskRunIdHex: run._id.toHexString()
+  });
+
   return {
     runId: run._id,
     status: execution.status,
@@ -51,9 +65,7 @@ export async function executeScheduledTask(
   };
 }
 
-async function runScheduledCategory(
-  task: ScheduledTask
-): Promise<{ status: "success" | "failed"; output: string }> {
+async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCategoryResult> {
   if (task.category === "user-history") {
     return runUserHistoryAgent(task);
   }

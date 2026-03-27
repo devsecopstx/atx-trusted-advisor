@@ -7,7 +7,13 @@ import { parseJson } from "@/app/admin/ui/http";
 
 type AuditEvent = {
   _id?: string;
-  entityType: "xpersona" | "access_request" | "core_user";
+  entityType:
+    | "xpersona"
+    | "access_request"
+    | "core_user"
+    | "deploy_note_config"
+    | "xchat_session"
+    | "core_scanner";
   entityId: string;
   action: string;
   actor: {
@@ -114,6 +120,9 @@ export function AuditConsole() {
             <option value="xpersona">xpersona</option>
             <option value="access_request">access_request</option>
             <option value="core_user">core_user</option>
+            <option value="deploy_note_config">deploy_note_config</option>
+            <option value="xchat_session">xchat_session</option>
+            <option value="core_scanner">core_scanner</option>
           </select>
           <input
             onChange={(event) => updateFilter("entityId", event.target.value)}
