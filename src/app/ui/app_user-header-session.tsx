@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
 import { SendIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
 import { XfThemePreferenceMenu } from "@/app/ui/public-theme-picker";
+import { USER_FEEDBACK_OPEN_EVENT } from "@/lib/user-feedback-open-event";
 
 type AppUserHeaderSessionProps = {
   mongoConnection: string;
@@ -121,6 +122,16 @@ export function AppUserHeaderSession({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [feedbackOpen]);
+
+  useEffect(() => {
+    function onOpenFeedback() {
+      setProfileOpen(false);
+      setFeedbackStatus("");
+      setFeedbackOpen(true);
+    }
+    window.addEventListener(USER_FEEDBACK_OPEN_EVENT, onOpenFeedback);
+    return () => window.removeEventListener(USER_FEEDBACK_OPEN_EVENT, onOpenFeedback);
+  }, []);
 
   return (
     <div className="xchat-header-session">

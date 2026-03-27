@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AtxBillingCheckoutButton } from "@/app/account/ui/atx-billing-checkout";
+import { BillingFeedbackLink } from "@/app/account/ui/billing-feedback-link";
 import { AppUserAccountPublicRail } from "@/app/ui/app-user-rail-nav";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { ATX_BILLING_PLANS } from "@/lib/atx-billing-plans";
@@ -48,6 +49,11 @@ export default async function AccountBillingPage({
                   Choose a plan for <strong className="text-[var(--xf-gain-green)]">atx Trusted Advisor</strong>. Checkout
                   runs on Stripe; subscription status and webhooks can tighten plan limits in a follow-up.
                 </p>
+                <p className="billing-hero__feedback">
+                  Questions on plans, access, or invoices?{" "}
+                  <BillingFeedbackLink>Submit feedback</BillingFeedbackLink>
+                  <span className="billing-hero__feedback-suffix"> — same form as under your avatar menu.</span>
+                </p>
               </header>
 
               {checkout === "success" ? (
@@ -64,14 +70,15 @@ export default async function AccountBillingPage({
               <div className="billing-banner billing-banner--muted" role="note">
                 <strong>How we work together:</strong> you agree to use xFinance <strong>lawfully</strong> and in line
                 with applicable rules and our terms. We ask that you send <strong>thoughtful, meaningful</strong> product
-                input through <strong>Feedback</strong> in the header when something misses the mark — concrete suggestions
-                help us improve the product for everyone.
+                input when something misses the mark —{" "}
+                <BillingFeedbackLink>Submit feedback</BillingFeedbackLink>
+                <span> — concrete suggestions help us improve the product for everyone.</span>
               </div>
 
               {!checkoutReady ? (
                 <div className="billing-banner billing-banner--muted" role="status">
-                  Checkout isn&apos;t available in this environment yet — the plans below show list pricing; use{" "}
-                  <strong>Feedback</strong> if you need help with access or billing.
+                  Checkout isn&apos;t available in this environment yet — the plans below show list pricing;{" "}
+                  <BillingFeedbackLink>Submit feedback</BillingFeedbackLink> if you need help with access or billing.
                 </div>
               ) : null}
 
@@ -106,8 +113,8 @@ export default async function AccountBillingPage({
 
               <p className="billing-footnote">
                 Not financial advice. Trial access is time-limited; subscribe to keep full access at the plan you choose.
-                Card processing and receipts are handled by Stripe. For access or invoice issues, use{" "}
-                <strong>Feedback</strong> in the header or contact your workspace admin.
+                Card processing and receipts are handled by Stripe. For access or invoice issues,{" "}
+                <BillingFeedbackLink>Submit feedback</BillingFeedbackLink> or contact your workspace admin.
               </p>
             </div>
           </div>

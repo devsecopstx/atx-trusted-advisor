@@ -33,6 +33,36 @@
   line-height: 1.5;
 }
 
+.billing-hero__feedback {
+  font-size: 0.85rem;
+  color: var(--xf-text-muted, #94a3b8);
+  max-width: 42rem;
+  margin: 0.65rem 0 0;
+  line-height: 1.5;
+}
+
+.billing-hero__feedback-suffix {
+  color: var(--xf-text-muted, #94a3b8);
+}
+
+.billing-feedback-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--xf-gain-green);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.billing-feedback-link:hover {
+  color: var(--xf-lightning-yellow);
+}
+
 .billing-banner {
   border-radius: 0.5rem;
   padding: 0.65rem 0.85rem;
