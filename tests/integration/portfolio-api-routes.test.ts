@@ -69,6 +69,7 @@ import { GET as getDefaultPortfolio, POST as postDefaultPortfolio } from "@/app/
 import { DELETE as deletePosition } from "@/app/api/positions/[positionId]/route";
 import { GET as getPositions, POST as postPosition } from "@/app/api/positions/route";
 import { PositionValidationError } from "@/modules/core-admin/repository";
+import { SCORING_FACTOR_IDS } from "@/modules/core-admin/scoring-factors";
 
 describe("portfolio API routes", () => {
   beforeEach(() => {
@@ -215,8 +216,12 @@ describe("portfolio API routes", () => {
       params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" })
     });
     expect(response.status).toBe(200);
-    const payload = (await response.json()) as { data: { name: string } };
+    const payload = (await response.json()) as {
+      data: { name: string; scoringFactors: Array<{ id: string; weight: number; label: string }> };
+    };
     expect(payload.data.name).toBe("Default Portfolio");
+    expect(payload.data.scoringFactors).toHaveLength(SCORING_FACTOR_IDS.length);
+    expect(payload.data.scoringFactors.some((r) => r.id === "iv_rank")).toBe(true);
     expect(repositoryMocks.getPortfolioByIdForSessionUser).toHaveBeenCalledWith({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",

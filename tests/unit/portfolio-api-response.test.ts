@@ -16,6 +16,7 @@ vi.mock("@/modules/core-admin/repository", async () => {
 
 import type { SessionUser } from "@/lib/auth";
 import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
+import { SCORING_FACTOR_IDS } from "@/modules/core-admin/scoring-factors";
 
 describe("buildPortfolioSummaryPayload", () => {
   it("does not throw when createdAt/updatedAt are missing (legacy / provision read shape)", async () => {
@@ -41,5 +42,8 @@ describe("buildPortfolioSummaryPayload", () => {
     expect(data._id).toBe("507f1f77bcf86cd799439033");
     expect(data.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(data.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(data.scoringFactors).toHaveLength(SCORING_FACTOR_IDS.length);
+    expect(data.scoringFactors[0]?.id).toBe("iv_rank");
+    expect(data.scoringFactors.every((r) => typeof r.weight === "number")).toBe(true);
   });
 });

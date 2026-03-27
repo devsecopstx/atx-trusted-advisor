@@ -18,6 +18,7 @@ import {
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
+import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
 import type { Account, Position } from "@/modules/core-admin/types";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
@@ -117,6 +118,11 @@ export default async function PortfolioPage() {
   const holdingsRows =
     portfolioIdHex && accounts.length > 0 ? buildPortfolioHoldingRows(accounts, allPositions) : [];
 
+  const scoringFactors =
+    portfolio && !portfolioLoadError
+      ? scoringFactorsPayloadForAdminApi(portfolio.scoringFactors).scoringFactors
+      : [];
+
   return (
     <div className="xchat-shell">
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
@@ -202,6 +208,7 @@ export default async function PortfolioPage() {
             portfolioDisplayName={portfolioDisplayName}
             portfolioIdHex={portfolioIdHex}
             quickAddAccounts={quickAddAccounts}
+            scoringFactors={scoringFactors}
           />
         ) : null}
         </AppUserCollapsibleRailLayout>

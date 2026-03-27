@@ -1,8 +1,12 @@
 import type { SessionUser } from "@/lib/auth";
 import {
-  DEFAULT_EXT_BROKER_REF,
-  listPortfolioAccounts
+    DEFAULT_EXT_BROKER_REF,
+    listPortfolioAccounts
 } from "@/modules/core-admin/repository";
+import {
+    scoringFactorsPayloadForAdminApi,
+    type PortfolioScoringFactorApi
+} from "@/modules/core-admin/scoring-factors";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 import type { Portfolio } from "@/modules/core-admin/types";
 
@@ -52,6 +56,8 @@ export async function buildPortfolioSummaryPayload(
   tenantPortfolioOrgKey: string;
   createdAt: string;
   updatedAt: string;
+  /** Effective book-level ranking weights (resolved defaults + catalog copy). Read-only for app users. */
+  scoringFactors: PortfolioScoringFactorApi[];
 }> {
   if (!portfolio._id) {
     throw new Error("Portfolio missing id");
@@ -65,6 +71,8 @@ export async function buildPortfolioSummaryPayload(
 
   const userId =
     typeof portfolio.userId === "string" && portfolio.userId.length > 0 ? portfolio.userId : session.userId;
+
+  const { scoringFactors } = scoringFactorsPayloadForAdminApi(portfolio.scoringFactors);
 
   return {
     _id: portfolioId,
@@ -88,6 +96,7 @@ export async function buildPortfolioSummaryPayload(
     ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
     tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey ?? getTenantPortfolioOrgKey(),
     createdAt: toIsoTimestamp(portfolio.createdAt),
-    updatedAt: toIsoTimestamp(portfolio.updatedAt)
+    updatedAt: toIsoTimestamp(portfolio.updatedAt),
+    scoringFactors
   };
 }

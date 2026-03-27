@@ -20,6 +20,7 @@ import {
 } from "@/app/ui/app-user-rail-nav";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
+import { XchatPortfolioScoringFactorsPopover } from "@/app/xchat/ui/xchat-portfolio-scoring-popover";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
 
@@ -216,6 +217,8 @@ type XchatConversationProps = {
   defaultPublishedPersonaName: string;
   /** Default portfolio + default (or first) custodian account — above persona picker in the left rail. */
   defaultBookLabels?: { portfolioName: string; accountName: string } | null;
+  /** Default portfolio Mongo id — loads read-only scoring factors popover in the rail. */
+  defaultPortfolioId?: string | null;
   /** When false, Super-Agent is hidden from the picker (app_user cannot use it without admin assignment). */
   includeSuperAgentInPersonaPicker?: boolean;
   /** Greeting label (display name, handle, or email local-part). */
@@ -304,6 +307,7 @@ const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = (() => {
 export function XchatConversation({
   defaultPublishedPersonaName,
   defaultBookLabels = null,
+  defaultPortfolioId = null,
   includeSuperAgentInPersonaPicker = false,
   welcomeName,
   isGlobalAdmin: isGlobalAdminSession = false
@@ -741,6 +745,9 @@ export function XchatConversation({
                     <span className="xchat-rail-book-k">Account</span>
                     <span className="xchat-rail-book-v">{defaultBookLabels.accountName}</span>
                   </div>
+                  {defaultPortfolioId ? (
+                    <XchatPortfolioScoringFactorsPopover portfolioId={defaultPortfolioId} />
+                  ) : null}
                 </div>
               </section>
             ) : null}

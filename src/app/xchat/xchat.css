@@ -768,6 +768,48 @@
   text-underline-offset: 2px;
 }
 
+.xchat-scoring-popover-wrap {
+  position: relative;
+  margin-top: 0.35rem;
+  min-width: 0;
+}
+
+.xchat-scoring-popover-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.22rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+  color: var(--xf-text-200);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.xchat-scoring-popover-trigger:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, var(--xf-text-100));
+  color: var(--xf-text-100);
+}
+
+.xchat-scoring-popover {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  max-height: min(55dvh, 16rem);
+  overflow: auto;
+  padding: 0.5rem 0.55rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: var(--xf-bg-800);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--xf-bg-900) 65%, transparent);
+}
+
 .xchat-rail-section--persona {
   align-content: start;
 }

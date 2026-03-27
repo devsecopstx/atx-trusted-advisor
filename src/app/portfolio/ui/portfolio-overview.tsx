@@ -9,6 +9,7 @@ import { PortfolioPositionQuickAdd } from "@/app/portfolio/ui/portfolio-position
 import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { IconEditLink } from "@/app/ui/icon-edit-control";
+import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
 import type { PortfolioHoldingRow } from "@/lib/portfolio-holding-rows";
 import {
     formatUsd2,
@@ -19,6 +20,7 @@ import {
     INVESTMENT_STRATEGY_OPTIONS,
     RISK_LEVEL_OPTIONS
 } from "@/modules/core-admin/portfolio-preference-labels";
+import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 import type { Account } from "@/modules/core-admin/types";
 
 type QuickAcct = {
@@ -35,6 +37,7 @@ type PortfolioOverviewProps = {
   admin: boolean;
   quickAddAccounts: QuickAcct[];
   holdingsRows: PortfolioHoldingRow[];
+  scoringFactors: PortfolioScoringFactorApi[];
 };
 
 function formatBrokerType(type: string): string {
@@ -73,7 +76,8 @@ export function PortfolioOverview({
   metrics,
   admin,
   quickAddAccounts,
-  holdingsRows
+  holdingsRows,
+  scoringFactors
 }: PortfolioOverviewProps) {
   const defaultAccountHex =
     metrics.byAccount.find((r) => r.isDefault)?.accountIdHex ?? metrics.byAccount[0]?.accountIdHex ?? "";
@@ -164,6 +168,7 @@ export function PortfolioOverview({
         <details className="portfolio-tech-details">
           <summary>Technical</summary>
           <pre>Portfolio ID: {portfolioIdHex}</pre>
+          <PortfolioScoringFactorsReadonlyTable factors={scoringFactors} variant="full" />
         </details>
       </header>
 
