@@ -45,7 +45,7 @@ For each new instance, run:
 What it does:
 
 - upserts admin + tenant bootstrap
-- runs xPersona sync from `atx-rag-collection/xpersonas` unless `SKIP_SEED_XPERSONAS=1`
+- runs xPersona sync from `atx-docs/rag-collection/xpersonas` (legacy `atx-rag-collection/xpersonas` still supported) unless `SKIP_SEED_XPERSONAS=1`
 - uploads RAG sources to xAI (when keys are present) unless `SKIP_SEED_XAI_RAG_INGEST=1`
 - runs strict xAI seeded RAG collection verification unless `SKIP_XAI_POST_SEED_RAG_VERIFY=1`
 - runs xAI hello verification unless `SKIP_XAI_POST_SEED_VERIFY=1`
@@ -66,7 +66,7 @@ Use these when you need targeted re-sync without full bootstrap:
 
 RAG upload path used by `seed:admin`:
 
-- `atx-rag-collection/*` via `scripts/lib/seed-xai-rag-ingest.mjs`
+- `atx-docs/rag-collection/*` (legacy `atx-rag-collection/*` still resolved) via `scripts/lib/seed-xai-rag-ingest.mjs`
 
 ## 5) Smoke checks
 
@@ -85,5 +85,5 @@ The product header, Hub top bar, and xChat guest header include a **moon** contr
 
 - Bootstrap and operator runbook: [AGENTS.md](../../AGENTS.md)
 - Seed script behavior: [scripts/seed-admin-user.mjs](../../scripts/seed-admin-user.mjs)
-- RAG source tree rules: [atx-rag-collection/README.md](../../atx-rag-collection/README.md)
+- RAG source tree rules: [atx-docs/rag-collection/README.md](../rag-collection/README.md)
 - Auth/login troubleshooting: [auth-and-access.md](./auth-and-access.md)

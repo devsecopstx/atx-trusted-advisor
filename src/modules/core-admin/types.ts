@@ -201,7 +201,7 @@ export type BrokerCatalogEntry = {
 };
 
 /**
- * Admin-editable copy of options strategy docs (seeded from `atx-rag-collection/options-strategy/*`).
+ * Admin-editable copy of options strategy docs (seeded from `atx-docs/rag-collection/options-strategy/*`; legacy `atx-rag-collection/…` still supported).
  * `slug` matches the subdirectory name and stays stable; `name` defaults to the markdown filename stem.
  */
 export type OptionsStrategyPreference = {
@@ -225,7 +225,7 @@ export type OptionsStrategyPreferenceSummary = Pick<
 
 /**
  * Canonical options strategy object.
- * Seeded from `atx-rag-collection/options-strategy/*` like preferences, but includes free-form JSON filters.
+ * Seeded from `atx-docs/rag-collection/options-strategy/*` like preferences (legacy path supported), but includes free-form JSON filters.
  */
 export type OptionsStrategy = {
   _id?: ObjectId;

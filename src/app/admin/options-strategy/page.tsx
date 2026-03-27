@@ -21,7 +21,7 @@ export default async function AdminOptionsStrategyPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Options strategy (canonical)</h1>
         <p className="hero-copy">
-          Seeded from <code className="font-mono text-xs">atx-rag-collection/options-strategy</code> when you run
+          Seeded from <code className="font-mono text-xs">atx-docs/rag-collection/options-strategy</code> when you run
           <code className="font-mono text-xs"> npm run seed:admin</code> (or
           <code className="font-mono text-xs"> npm run seed:options-strategy</code>). The <strong>name</strong> defaults to the
           markdown filename; the <strong>description</strong> is the full file body. You can also edit free-form

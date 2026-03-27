@@ -21,7 +21,7 @@ export default async function AdminOptionsStrategyPreferencesPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Options strategy preferences</h1>
         <p className="hero-copy">
-          Defaults are loaded from <code className="font-mono text-xs">atx-rag-collection/options-strategy</code> when you
+          Defaults are loaded from <code className="font-mono text-xs">atx-docs/rag-collection/options-strategy</code> when you
           run <code className="font-mono text-xs">npm run seed:admin</code> (or{" "}
           <code className="font-mono text-xs">npm run seed:options-strategy-prefs</code>
           ). Each row is one strategy folder; the <strong>name</strong> comes from the markdown filename; the{" "}

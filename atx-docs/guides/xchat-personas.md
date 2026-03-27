@@ -8,7 +8,7 @@ This is the xChat/persona entrypoint. It summarizes operational behavior and lin
 - `atx-docs/xchat/xchat-debug-logging.md` (debug log taxonomy and safety)
 - `atx-docs/xchat/xai-api-standard.md` (xAI API shape and mapping)
 - `atx-docs/xchat/atxfinance-tool-stub.md` (current atxfinance tool contract)
-- `atx-rag-collection/README.md` (RAG source tree and ingest conventions)
+- `atx-docs/rag-collection/README.md` (RAG source tree and ingest conventions; logical path tags still use `atx-rag-collection/…` in file headers)
 
 ## xChat API surface
 
