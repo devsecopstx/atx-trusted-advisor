@@ -19,6 +19,14 @@ This is the deploy/ops entrypoint for staging and production workflows.
 
 Single source of truth for runtime app secrets is GCP Secret Manager.
 
+To push **`REDIS_URL`** from a local file (e.g. `.env.stage` / `.env.prod` with `REDIS_URL` + `GOOGLE_PROJECT_ID` or `GCP_PROJECT_ID`):
+
+```bash
+npm run ops:secrets:sync-redis:staging
+npm run ops:secrets:sync-redis:prod
+# or: bash scripts/ops/sync-redis-url-secret.sh path/to.env
+```
+
 Required runtime secrets (per environment):
 
 - `MONGODB_URI_B64` (mapped to env `MONGODB_URI`)
