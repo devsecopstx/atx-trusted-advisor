@@ -52,7 +52,10 @@
     "ops:rotate:oauth": "bash scripts/ops/rotate-oauth-secrets.sh",
     "ops:secrets:verify": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID:?set GCP_PROJECT_ID}\"",
     "ops:secrets:verify:staging": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_STAGING:-fintech-advisor-staging}\"",
-    "ops:secrets:verify:prod": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\""
+    "ops:secrets:verify:prod": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\"",
+    "ops:secrets:sync-redis": "bash scripts/ops/sync-redis-url-secret.sh",
+    "ops:secrets:sync-redis:staging": "bash scripts/ops/sync-redis-url-secret.sh .env.stage",
+    "ops:secrets:sync-redis:prod": "bash scripts/ops/sync-redis-url-secret.sh .env.prod"
   },
   "keywords": [],
   "author": "",
