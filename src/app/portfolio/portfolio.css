@@ -1112,3 +1112,92 @@
   opacity: 0.72;
   cursor: not-allowed;
 }
+
+/* Live / watchlist quote hint when adding stock positions */
+.portfolio-stock-quote-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.55rem;
+  max-width: 22rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+}
+
+.portfolio-stock-quote-hint--muted,
+.portfolio-stock-quote-hint--warn {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.portfolio-stock-quote-hint--muted {
+  color: var(--xf-text-400);
+}
+
+.portfolio-stock-quote-hint--warn {
+  color: color-mix(in srgb, var(--xf-danger-400) 85%, var(--xf-text-100));
+}
+
+.portfolio-stock-quote-hint__logo {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.portfolio-stock-quote-hint__logo--placeholder {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--xf-gain-green);
+}
+
+.portfolio-stock-quote-hint__logo-img {
+  display: block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.portfolio-stock-quote-hint__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.portfolio-stock-quote-hint__name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xf-text-100);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portfolio-stock-quote-hint__price {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--xf-gain-green);
+}
+
+.portfolio-stock-quote-hint__price--na {
+  color: var(--xf-text-400);
+  font-weight: 600;
+}
+
+.portfolio-stock-quote-hint__src {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--xf-text-400);
+}

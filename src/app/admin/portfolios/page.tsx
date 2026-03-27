@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
+import { TenantPortfoliosIcon } from "@/app/admin/ui/tenant-portfolios-icon";
+
 import { PortfolioConsole } from "./ui/portfolio-console";
 
 export default async function AdminPortfoliosPage() {
@@ -19,7 +21,12 @@ export default async function AdminPortfoliosPage() {
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
         <p className="eyebrow">atx Trusted Advisor · admin</p>
-        <h1 className="hero-title">Tenant portfolios</h1>
+        <h1 className="hero-title" style={{ display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap" }}>
+          <span className="admin-page-hero-mark" aria-hidden>
+            <TenantPortfoliosIcon width={34} height={34} />
+          </span>
+          Tenant portfolios
+        </h1>
         <p className="hero-copy">
           <strong>Private / Secure</strong> — Per-user workspace portfolios live in{" "}
           <code className="font-mono text-xs">tenant_portfolio</code>. Each app user&apos;s default portfolio is

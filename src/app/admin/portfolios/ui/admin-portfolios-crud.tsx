@@ -30,6 +30,62 @@ const money = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0
 });
 
+type PortfolioChildAction = {
+  path: string;
+  label: string;
+  typeLabel: string;
+  title: string;
+};
+
+function portfolioChildActions(portfolioId: string): PortfolioChildAction[] {
+  const pid = encodeURIComponent(portfolioId);
+  const base = `/admin/portfolios/${pid}`;
+  return [
+    {
+      path: `${base}/accounts`,
+      label: "Accounts",
+      typeLabel: "Custodian accounts",
+      title: "Manage custodian accounts linked to this portfolio book"
+    },
+    {
+      path: `${base}/watchlist`,
+      label: "Watchlist",
+      typeLabel: "Symbol list",
+      title: "Edit portfolio watchlist symbols"
+    },
+    {
+      path: `${base}/tasks`,
+      label: "Tasks",
+      typeLabel: "Scheduled jobs",
+      title: "Portfolio-scoped scheduler tasks"
+    },
+    {
+      path: `${base}/alerts`,
+      label: "Alerts",
+      typeLabel: "Price & notifications",
+      title: "Manage alerts for this book"
+    },
+    {
+      path: `${base}/scoring`,
+      label: "Scoring",
+      typeLabel: "Strategy factor weights",
+      title: "Edit IV, liquidity, and desk scoring weights"
+    },
+    {
+      path: `${base}/recommendations`,
+      label: "Recs",
+      typeLabel: "Book recommendations",
+      title: "View and manage recommendations for this portfolio"
+    },
+    {
+      path: `${base}/delivery-channels`,
+      label: "Delivery",
+      typeLabel: "Channels & routing",
+      title: "Delivery channels for this portfolio"
+    }
+  ];
+}
+
 function userSettingsHref(userId: string): string {
   return `/admin/manage_account?userId=${encodeURIComponent(userId)}`;
 }
@@ -301,7 +357,7 @@ export function AdminPortfoliosCrud() {
               <th>Watchlist</th>
               <th>Total cash</th>
               <th>Updated</th>
-              <th />
+              <th scope="col">Child tools</th>
             </tr>
           </thead>
           <tbody>
@@ -419,80 +475,48 @@ export function AdminPortfoliosCrud() {
                     <Link
                       className="login-xoptions-link"
                       href={`/admin/portfolios/${encodeURIComponent(row._id)}/accounts`}
-                      title="Manage accounts"
+                      title="Manage custodian accounts"
                     >
                       {row.accountCount}
                     </Link>
+                    <span className="admin-portfolio-col-type">Custodian accounts</span>
                   </td>
                   <td>
                     <Link
                       className="login-xoptions-link"
                       href={`/admin/portfolios/${encodeURIComponent(row._id)}/watchlist`}
-                      title="Manage watchlist"
+                      title="Manage watchlist symbols"
                     >
                       Open
                     </Link>
+                    <span className="admin-portfolio-col-type">Symbol list</span>
                   </td>
                   <td>{money.format(row.totalCashBalance)}</td>
                   <td className="text-xs">{new Date(row.updatedAt).toLocaleString()}</td>
                   <td>
-                    <div className="tool-row" style={{ gap: "0.35rem", flexWrap: "wrap", maxWidth: 420 }}>
-                      <Link
-                        className="cta cta-secondary text-xs"
-                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/accounts`}
-                        title="Manage accounts for this portfolio"
-                      >
-                        Accounts
-                      </Link>
-                      <Link
-                        className="cta cta-secondary text-xs"
-                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/watchlist`}
-                        title="Manage watchlist"
-                      >
-                        Watchlist
-                      </Link>
-                      <Link
-                        className="cta cta-secondary text-xs"
-                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/tasks`}
-                        title="View tasks"
-                      >
-                        Tasks
-                      </Link>
-                      <Link
-                        className="cta cta-secondary text-xs"
-                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/alerts`}
-                        title="Manage alerts"
-                      >
-                        Alerts
-                      </Link>
-                      <Link
-                        className="cta cta-secondary text-xs"
-                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/scoring`}
-                        title="Edit scoring factors"
-                      >
-                        Scoring
-                      </Link>
-                      <Link
-                        className="cta cta-secondary text-xs"
-                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/recommendations`}
-                        title="View recommendations"
-                      >
-                        Recs
-                      </Link>
-                      <Link
-                        className="cta cta-secondary text-xs"
-                        href={`/admin/portfolios/${encodeURIComponent(row._id)}/delivery-channels`}
-                        title="Manage delivery channels"
-                      >
-                        Delivery
-                      </Link>
+                    <div className="admin-portfolio-child-actions" role="group" aria-label="Portfolio child tools">
+                      {portfolioChildActions(row._id).map((action) => (
+                        <Link
+                          key={action.path}
+                          className="admin-portfolio-child-link"
+                          href={action.path}
+                          title={action.title}
+                        >
+                          <span>{action.label}</span>
+                          <span className="admin-portfolio-child-link__type">{action.typeLabel}</span>
+                        </Link>
+                      ))}
                       <button
                         type="button"
-                        className="cta cta-secondary text-xs"
-                        title="Delete portfolio and all linked data"
+                        className="admin-portfolio-child-link admin-portfolio-child-link--danger"
+                        title="Delete this portfolio book and all linked accounts, positions, and watchlists"
                         onClick={() => void deleteRow(row)}
                       >
-                        <DeleteIcon className="crud-icon" /> Delete
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                          <DeleteIcon className="crud-icon" />
+                          Delete
+                        </span>
+                        <span className="admin-portfolio-child-link__type">Portfolio book (destructive)</span>
                       </button>
                     </div>
                   </td>

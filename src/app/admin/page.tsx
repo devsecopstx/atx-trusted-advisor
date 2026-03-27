@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { TenantPortfoliosIcon } from "@/app/admin/ui/tenant-portfolios-icon";
+
 import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "./lib/broker-import-description";
 
 type AdminFunctionIconName =
@@ -12,6 +14,7 @@ type AdminFunctionIconName =
   | "directory"
   | "audit"
   | "portfolio"
+  | "tenantPortfolios"
   | "strategy"
   | "batch";
 
@@ -43,7 +46,7 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
       },
       {
         href: "/admin/portfolios",
-        icon: "portfolio",
+        icon: "tenantPortfolios",
         title: "Portfolios",
         description:
           "Private / Secure: per-user workspace portfolios in tenant_portfolio; default book uses tenantPortfolioOrgKey (org-atx-finance) under core_tenants. Edit names, tenant org ref, broker type, and default per user. Open each row’s Manage accounts for custodian CRUD, book-level desk risk & outlook (table columns), per-account risk & outlook, and watchlist on the sibling link."
@@ -281,6 +284,8 @@ function AdminFunctionIcon({ name }: IconProps) {
           <path d="M16 6V4" />
         </svg>
       );
+    case "tenantPortfolios":
+      return <TenantPortfoliosIcon width="100%" height="100%" strokeWidth={1.8} aria-hidden />;
     case "audit":
       return (
         <svg {...commonProps}>

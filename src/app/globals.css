@@ -1274,6 +1274,78 @@ button.xf-icon-edit-btn:disabled {
   line-height: 1.35;
 }
 
+.admin-page-hero-mark {
+  flex-shrink: 0;
+  color: var(--xf-gain-green);
+  opacity: 0.95;
+}
+
+.admin-portfolio-col-type {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.65rem;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.admin-portfolio-child-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  max-width: 14rem;
+}
+
+.admin-portfolio-child-link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.08rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  text-decoration: none;
+  color: var(--xf-text-100);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.admin-portfolio-child-link:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-portfolio-child-link__type {
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--xf-text-400);
+}
+
+.admin-portfolio-child-link--danger {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.admin-portfolio-child-link--danger:hover {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+button.admin-portfolio-child-link {
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+}
+
 .surface-card {
   border-radius: var(--xf-radius-sm);
   padding: 0.85rem;

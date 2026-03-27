@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AtxBillingCheckoutButton } from "@/app/account/ui/atx-billing-checkout";
 import { BillingFeedbackLink } from "@/app/account/ui/billing-feedback-link";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
+import { AppUserShellCollapsibleRail } from "@/app/ui/app-user-shell-collapsible-rail";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { ATX_BILLING_PLANS } from "@/lib/atx-billing-plans";
 import { getSessionUser } from "@/lib/auth";
@@ -39,10 +40,9 @@ export default async function AccountBillingPage({
       <AppUserApprovedHeader current="account" feedbackPageLabel="Billing" session={session} />
 
       <div className="xchat-body portfolio-page-body">
-        <div className="app-user-shell-with-rail">
+        <AppUserShellCollapsibleRail mainPadded>
           <AppUserAccountPublicRailForSession session={session} />
-          <div className="app-user-shell-main app-user-shell-with-rail--padded">
-            <div className="billing-page">
+          <div className="billing-page">
               <header className="billing-hero xf-noise-overlay surface-card xf-widget section-card">
                 <p className="billing-hero__eyebrow">ATX price plans</p>
                 <h1 className="billing-hero__title">Account &amp; billing</h1>

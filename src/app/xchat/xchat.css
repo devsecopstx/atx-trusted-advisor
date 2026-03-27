@@ -1860,6 +1860,35 @@
   align-items: start;
 }
 
+.app-user-shell-with-rail--rail-collapsed {
+  grid-template-columns: minmax(2.75rem, auto) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.app-user-rail-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.app-user-rail-aside__toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.app-user-shell-with-rail--rail-collapsed .app-user-rail-aside__toolbar {
+  justify-content: center;
+}
+
+.app-user-rail-aside__body {
+  min-width: 0;
+}
+
+.app-user-rail-aside__toggle {
+  flex-shrink: 0;
+}
+
 .app-user-shell-main {
   min-width: 0;
 }
