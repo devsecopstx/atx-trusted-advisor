@@ -192,6 +192,15 @@ jobs:
           ATXFINANCE_BACKEND_ORIGIN: ${{ vars.ATXFINANCE_BACKEND_ORIGIN || '' }}
           AUTH_CALLBACK_USE_SPRING: ${{ vars.AUTH_CALLBACK_USE_SPRING || 'false' }}
         run: |
+          set -euo pipefail
+          PROJECT="${{ steps.ctx.outputs.project_id }}"
+          SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest"
+          if gcloud secrets describe REDIS_URL --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+            SECRETS="${SECRETS},REDIS_URL=REDIS_URL:latest"
+            echo "::notice::Optional secret REDIS_URL found — binding to Cloud Run (Next.js quote cache + health)"
+          else
+            echo "::notice::Optional secret REDIS_URL not in ${PROJECT} — deploy continues without Redis"
+          fi
           ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=${{ steps.ctx.outputs.deploy_target }},X_OAUTH_CALLBACK_URL=${{ steps.ctx.outputs.base_url }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
           if [ -n "${ATXFINANCE_BACKEND_ORIGIN}" ]; then
             ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
@@ -203,7 +212,7 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --set-env-vars "${ENV_VARS}" \
-            --set-secrets "MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest" \
+            --set-secrets "${SECRETS}" \
             --quiet
 
       - name: Health check

@@ -14,7 +14,7 @@ Use this folder as the first stop. Each guide is an entrypoint that links to dee
 
 ## Deep-dive source docs
 
-- Operations and migration details: `atx-docs/sre-ops/*`
+- Operations and migration details: `atx-docs/sre-ops/*` (optional Next.js Redis: [redis-cache-next.md](../sre-ops/redis-cache-next.md))
 - xChat behavior, tools, and observability: `atx-docs/xchat/*`
 - Operator quick commands and production checks: [AGENTS.md](../../AGENTS.md)
 - Backlog and deferred items: `atx-docs/PLAN.md`

@@ -155,6 +155,15 @@ jobs:
           ENABLE_XCHAT_DEBUG: ${{ vars.ENABLE_XCHAT_DEBUG || 'false' }}
           XAI_CHAT_MODEL: ${{ vars.XAI_CHAT_MODEL || 'grok-4-1-fast-reasoning' }}
         run: |
+          set -euo pipefail
+          PROJECT="${{ vars.GCP_PROJECT_ID_PROD }}"
+          SECRETS="MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest"
+          if gcloud secrets describe REDIS_URL --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+            SECRETS="${SECRETS},REDIS_URL=REDIS_URL:latest"
+            echo "::notice::Optional secret REDIS_URL found — binding to Cloud Run (production)"
+          else
+            echo "::notice::Optional secret REDIS_URL not in ${PROJECT} — production deploy continues without Redis"
+          fi
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
             --source . \
             --clear-base-image \
@@ -162,7 +171,7 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --set-env-vars "NODE_ENV=production,ATX_DEPLOY_TARGET=deploy,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL}" \
-            --set-secrets "MONGODB_URI=MONGODB_URI_B64:latest,XAI_API_KEY=XAI_API_KEY:latest,XAI_MANAGEMENT_API_KEY=XAI_MANAGEMENT_API_KEY:latest,X_OAUTH_CLIENT_ID=X_OAUTH_CLIENT_ID:latest,X_OAUTH_CLIENT_SECRET=X_OAUTH_CLIENT_SECRET:latest,AUTH_SECRET=AUTH_SECRET:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,ADMIN_SEED_EMAIL=ADMIN_SEED_EMAIL:latest" \
+            --set-secrets "${SECRETS}" \
             --quiet
 
       - name: Health check production

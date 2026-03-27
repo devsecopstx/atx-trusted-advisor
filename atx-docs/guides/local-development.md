@@ -16,6 +16,7 @@ Create `.env` from `.env.example` and set only what local startup needs:
 Notes:
 
 - Leave `MONGODB_URI` unset for local Docker Mongo fallback.
+- Optional: `REDIS_URL` (`redis://` / `rediss://`) for Yahoo batch quote caching and `GET /api/health` redis checks — see `atx-docs/sre-ops/redis-cache-next.md`.
 - Optional local auth settings for Mongo: `MONGO_ROOT_USERNAME`, `MONGO_ROOT_PASSWORD`, `MONGODB_DB_NAME`.
 
 ## 2) Start services (order)

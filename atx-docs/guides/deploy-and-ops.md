@@ -30,6 +30,10 @@ Required runtime secrets (per environment):
 - `SLACK_WEBHOOK_URL`
 - `ADMIN_SEED_EMAIL`
 
+Optional (Next.js Redis — see `atx-docs/sre-ops/redis-cache-next.md`):
+
+- `REDIS_URL` — create in Secret Manager as **`REDIS_URL`**; deploy workflows bind it when present. Omit until ready; app runs without Redis.
+
 GitHub environment secrets should remain OIDC-only:
 
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`
