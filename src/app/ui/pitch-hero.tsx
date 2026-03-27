@@ -283,10 +283,9 @@ export default function Hero({
               variants={subheadVariants}
               className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed"
             >
-              For <strong className="text-gray-200 font-semibold">HNWI</strong> and{" "}
-              <strong className="text-gray-200 font-semibold">trusted-family</strong>: structured options income with
-              less operational drag. AI prepares vetted wheel, covered-call, and LEAP-style ideas — you review
-              recommendations, and order trades in your broker, and delegate the rest.
+              aTx is built for options-focused investors and professionals who want execution-style portfolio tooling,
+              xAI-powered advisory chat, and exam prep in one controlled workspace — not a pile of disconnected
+              dashboards or generic chatbots.
             </motion.p>
 
             <motion.div

@@ -92,7 +92,11 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
             Just <span className="mh-tagline-glow">Gains</span> Earned.
           </h1>
 
-          <p className="mh-sub">Institutional-grade options tooling powered by xAI/Grok for HNWI, trusted-family offices, and institutional allocators.</p>
+          <p className="mh-sub">
+            aTx is built for options-focused investors and professionals who want execution-style portfolio tooling,
+            xAI-powered advisory chat, and exam prep in one controlled workspace — not a pile of disconnected
+            dashboards or generic chatbots.
+          </p>
 
           <div className="mh-badges">
             <span className="mh-badge mh-badge-grok">Powered by Grok</span>
