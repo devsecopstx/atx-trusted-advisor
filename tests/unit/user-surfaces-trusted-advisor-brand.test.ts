@@ -3,17 +3,12 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import {
-    USER_PRODUCT_DESCRIPTOR_LINE,
-    USER_PRODUCT_HOME_ARIA_LABEL,
-    USER_PRODUCT_WHITELABEL_SUBLINE
-} from "@/app/ui/product-brand-constants";
+import { USER_PRODUCT_DESCRIPTOR_LINE, USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 
-describe("user surfaces: aTx Trusted Advisory + whitelabel brand", () => {
+describe("user surfaces: aTx Trusted Advisory brand", () => {
   it("exports stable product strings for chrome and marketing", () => {
-    expect(USER_PRODUCT_WHITELABEL_SUBLINE).toBe("whitelabel");
     expect(USER_PRODUCT_HOME_ARIA_LABEL).toContain("aTx Trusted Advisory");
-    expect(USER_PRODUCT_HOME_ARIA_LABEL).toContain("whitelabel");
+    expect(USER_PRODUCT_HOME_ARIA_LABEL).not.toMatch(/whitelabel/i);
     expect(USER_PRODUCT_DESCRIPTOR_LINE).toContain("aTx Trusted Advisory");
     expect(USER_PRODUCT_DESCRIPTOR_LINE).toContain("xChat");
   });

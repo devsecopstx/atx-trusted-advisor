@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
     FormEvent,
     type KeyboardEvent,
+    type SVGProps,
     useCallback,
     useEffect,
     useMemo,
@@ -14,7 +15,8 @@ import {
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import {
     AppUserAccountRailSection,
-    AppUserResourcesRailSection
+    AppUserResourcesRailSection,
+    RailDisclosure
 } from "@/app/ui/app-user-rail-nav";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
@@ -146,6 +148,34 @@ function XchatRailCollapseIcon() {
     <svg aria-hidden className="xchat-rail-toggle__glyph" fill="none" viewBox="0 0 24 24">
       <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
       <path d="M21 6l-6 6 6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function ExamplesRailGlyph(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+    </svg>
+  );
+}
+
+function RecentChatsRailGlyph(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M8 9h8M8 13h5M5 19V6a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H10l-5 3v-3H6a2 2 0 01-2-2z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
     </svg>
   );
 }
@@ -751,65 +781,119 @@ export function XchatConversation({
                 Change persona anytime before you send.
               </p>
             </section>
-            <section className="xchat-rail-section">
-              <h3 className="xchat-rail-title xchat-rail-title--caps">Examples</h3>
-              <div className="xchat-rail-link-list">
-                {normalizedExamples.map((prompt, i) => (
-                  <button
-                    className="xchat-rail-link"
-                    key={`rail-example-${i}`}
-                    title={prompt}
-                    type="button"
-                    onClick={() => {
-                      setInput(prompt);
-                      queueMicrotask(() => {
-                        const el = composerRef.current;
-                        if (el) {
-                          el.focus();
-                          el.style.height = "auto";
-                          el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-                        }
-                      });
-                    }}
-                  >
-                    <RailAvatar label={prompt} />
-                    <span className="xchat-rail-link__text">{prompt}</span>
-                  </button>
-                ))}
+            <section
+              aria-label="Active persona and last turn tools"
+              className="xchat-rail-section xchat-rail-section--active-persona"
+            >
+              <h3 className="xchat-rail-title xchat-rail-title--caps">Active persona</h3>
+              <div className="xchat-rail-active-persona">
+                <p className="status-text xchat-rail-active-persona-name" style={{ margin: "0 0 0.25rem" }}>
+                  <strong>{activePersonaName}</strong>
+                </p>
+                <p
+                  className="status-text xchat-rail-last-turn-tools"
+                  style={{ fontSize: "0.72rem", lineHeight: 1.35, margin: 0 }}
+                  title={lastTurnToolSummary ?? "Tool names and durations from the last completed ask"}
+                >
+                  {lastTurnToolSummary ? (
+                    lastTurnToolSummary
+                  ) : (
+                    <span style={{ opacity: 0.8 }}>Send a message to see tool stats</span>
+                  )}
+                </p>
               </div>
             </section>
-            <section className="xchat-rail-section">
-              <h3 className="xchat-rail-title xchat-rail-title--caps">Recent chats</h3>
-              {historyLoading ? <p className="status-text">Loading history...</p> : null}
-              {historyError ? <p className="status-text status-error">{historyError}</p> : null}
-              {!historyLoading && !historyError && savedHistory.length === 0 ? (
-                <p className="status-text">No past chat history yet.</p>
-              ) : null}
-              {!historyLoading && !historyError && savedHistory.length > 0 ? (
-                <ul className="xchat-rail-history-list">
-                  {savedHistory.map((item) => (
-                    <li className="xchat-rail-history-item" key={item.id}>
-                      <button
-                        className="xchat-rail-link xchat-rail-link--history"
-                        type="button"
-                        title={item.message}
-                        onClick={() => {
-                          setInput(item.message);
-                          queueMicrotask(() => composerRef.current?.focus());
-                        }}
-                      >
-                        <RailAvatar label={item.message} />
-                        <span className="xchat-rail-link__text">{item.message}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {historyStats ? (
-                <p className="status-text" style={{ fontSize: "0.72rem" }}>
-                  {historyStats.totalPrompts} prompts · {historyStats.activeDays} active days
+            <section
+              aria-label="Knowledge collections and scope status"
+              className="xchat-rail-section xchat-rail-section--status"
+            >
+              <h3 className="xchat-rail-title xchat-rail-title--caps">Status</h3>
+              <p className="status-text" style={{ fontSize: "0.72rem", margin: "0 0 0.35rem", lineHeight: 1.35 }}>
+                Collection list loaded for ask:{" "}
+                {visibleCollections.length > 0
+                  ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
+                  : "—"}
+              </p>
+              {collectionsScopeDegraded ? (
+                <p className="status-text status-warn" style={{ fontSize: "0.72rem", margin: 0, lineHeight: 1.35 }}>
+                  Default Finance scope only — server collection list unavailable (404 or network).
                 </p>
               ) : null}
+              {collectionsStatus ? (
+                <p className="status-text status-error" style={{ fontSize: "0.72rem", margin: "0.35rem 0 0" }}>
+                  {collectionsStatus}
+                </p>
+              ) : null}
+            </section>
+            <section className="app-user-rail-section" aria-label="Examples">
+              <RailDisclosure
+                defaultOpen
+                icon={<ExamplesRailGlyph className="app-user-rail-disclosure__glyph" />}
+                title="Examples"
+              >
+                <div className="xchat-rail-link-list">
+                  {normalizedExamples.map((prompt, i) => (
+                    <button
+                      className="xchat-rail-link"
+                      key={`rail-example-${i}`}
+                      title={prompt}
+                      type="button"
+                      onClick={() => {
+                        setInput(prompt);
+                        queueMicrotask(() => {
+                          const el = composerRef.current;
+                          if (el) {
+                            el.focus();
+                            el.style.height = "auto";
+                            el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+                          }
+                        });
+                      }}
+                    >
+                      <RailAvatar label={prompt} />
+                      <span className="xchat-rail-link__text">{prompt}</span>
+                    </button>
+                  ))}
+                </div>
+              </RailDisclosure>
+            </section>
+            <section className="app-user-rail-section" aria-label="Recent chats">
+              <RailDisclosure
+                defaultOpen
+                icon={<RecentChatsRailGlyph className="app-user-rail-disclosure__glyph" />}
+                title="Recent chats"
+              >
+                {historyLoading ? <p className="status-text">Loading history...</p> : null}
+                {historyError ? <p className="status-text status-error">{historyError}</p> : null}
+                {!historyLoading && !historyError && savedHistory.length === 0 ? (
+                  <p className="status-text">No past chat history yet.</p>
+                ) : null}
+                {!historyLoading && !historyError && savedHistory.length > 0 ? (
+                  <ul className="xchat-rail-history-list">
+                    {savedHistory.map((item) => (
+                      <li className="xchat-rail-history-item" key={item.id}>
+                        <button
+                          className="xchat-rail-link xchat-rail-link--history"
+                          type="button"
+                          title={item.message}
+                          onClick={() => {
+                            setInput(item.message);
+                            queueMicrotask(() => composerRef.current?.focus());
+                          }}
+                        >
+                          <RailAvatar label={item.message} />
+                          <span className="xchat-rail-link__text">{item.message}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {historyStats ? (
+                  <p className="status-text" style={{ fontSize: "0.72rem" }}>
+                    {historyStats.totalPrompts} prompts · {historyStats.activeDays} active days
+                  </p>
+                ) : null}
+              </RailDisclosure>
             </section>
             <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdminSession} />
             <AppUserAccountRailSection isGlobalAdmin={isGlobalAdminSession} />
@@ -822,42 +906,12 @@ export function XchatConversation({
           <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
           <p className="xchat-welcome-sub">Overview of xChat — personas, history, and advisor tools.</p>
         </header>
-        <div className="xchat-persona-bar">
-        <span className="status-badge status-ready">Active persona</span>
-        <span
-          className="status-text xchat-last-turn-tools"
-          style={{ fontSize: "0.8rem" }}
-          title={lastTurnToolSummary ?? "Tool names and durations from the last completed ask"}
-        >
-          <strong>{activePersonaName}</strong>
-          {lastTurnToolSummary ? (
-            <>
-              {" "}
-              | {lastTurnToolSummary}
-            </>
-          ) : (
-            <span style={{ opacity: 0.75 }}> | Send a message to see tool stats</span>
-          )}
-        </span>
-        <span className="status-text" style={{ fontSize: "0.75rem" }}>
-          Collection list loaded for ask:{" "}
-          {visibleCollections.length > 0
-            ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
-            : "—"}
-        </span>
-        {collectionsScopeDegraded ? (
-          <span className="status-text status-warn" style={{ fontSize: "0.75rem" }}>
-            Default Finance scope only — server collection list unavailable (404 or network).
-          </span>
-        ) : null}
-        {collectionsStatus ? <span className="status-text status-error">{collectionsStatus}</span> : null}
-        </div>
 
       {!(threadUiCollapsed && messages.length > 0) ? (
         <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
           Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side in
-          Mongo; prior turns are injected into the next ask for continuity. Open <strong>Chat history</strong> below
-          for the saved list. Persona choice locks after your first successful reply in this thread (unless your
+          Mongo; prior turns are injected into the next ask for continuity. Open <strong>Recent chats</strong> in the
+          sidebar for the saved list. Persona choice locks after your first successful reply in this thread (unless your
           admin assigned one).
         </p>
       ) : null}
@@ -904,7 +958,8 @@ export function XchatConversation({
           {messages.length === 0 ? (
             <div style={{ textAlign: "center", padding: "3rem 0" }}>
               <p className="status-text">
-                Start a conversation with <strong>{activePersonaName}</strong> (or choose another persona below).
+                Start a conversation with <strong>{activePersonaName}</strong> (or choose another persona in the
+                sidebar).
               </p>
             </div>
           ) : null}

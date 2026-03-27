@@ -21,7 +21,7 @@
 |---------|--------|
 | Parse `xf_core_session` | `SessionCookieParser` + `SessionCookieParserTest` — same signing secret rules as Next (`AUTH_SECRET` or `X_OAUTH_CLIENT_SECRET`). |
 | Issue session from OAuth | **Not implemented** — no `/api/auth/x/callback` on JVM in this repo yet. |
-| Redis PKCE store | **Not wired** for OAuth (contract assumes 10-minute TTL keyed by `state`). |
+| Redis PKCE store | **Not wired** for OAuth (Spring contract assumes 10-minute TTL keyed by `state`). Next stores PKCE in HTTP-only cookies (**30 minutes**, `OAUTH_FLOW_TTL_SECONDS` in `src/lib/auth.ts`). |
 
 ## Approved target contract vs gaps
 
@@ -29,7 +29,7 @@
 |---------------|--------------------|-----------|
 | Session authority | Spring only | Next issues session; Spring consumes cookie only. |
 | Cookie `SameSite` | `Strict` | Next uses `lax` (OAuth cross-site return needs careful testing before tightening). |
-| PKCE storage | Redis, TTL 10m | Next uses ephemeral cookies. |
+| PKCE storage | Redis, TTL 10m (Spring target) | Next uses HTTP-only cookies, **30m** TTL (`OAUTH_FLOW_TTL_SECONDS`). |
 | Post-login `next` | Allowlisted paths; default `/dashboard` | Next ignores `next` on success; product uses `/admin` \| `/xchat`. Align allowlist with real routes (`/xchat`, `/portfolio`, `/admin`, …) before cutover. |
 | Failure `error` codes | `invalid_state`, `code_reused`, `missing_email`, `access_denied`, `generic` | Next emits **granular** codes (table below). Map or alias in Spring + login UI for dual-run. |
 

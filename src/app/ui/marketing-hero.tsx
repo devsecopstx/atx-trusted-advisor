@@ -138,7 +138,7 @@ export function MarketingHero({ signedIn = false, isGlobalAdmin = false }: Marke
             <ProductCard
               icon={<AtxFinanceIcon />}
               name="aTx Trusted Advisory"
-              description="Default portfolio, accounts, watchlists, and execution context for approved professionals (whitelabel deployment)."
+              description="Default portfolio, accounts, watchlists, and execution context for approved professionals."
             />
             <ProductCard
               icon={<XChatIcon />}

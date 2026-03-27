@@ -44,7 +44,7 @@ const METRIC_BADGES: MetricBadge[] = [
 
 const LICENSING_MODELS: { title: string; detail: string }[] = [
   {
-    title: "White-label desk",
+    title: "Branded desk",
     detail: "Firm-branded xStrategyBuilder: themes, roles, and advisor workflows under your mark."
   },
   {
@@ -159,7 +159,7 @@ export default async function XstrategyBuilderPage() {
             <h2>Value proposition</h2>
             <ul className="xsb-value-list">
               <li>
-                <strong>White-label or API</strong>
+                <strong>Branded experience or API</strong>
                 <span>Ship under your brand or wire our engines into OMS/EMS and research stacks.</span>
               </li>
               <li>

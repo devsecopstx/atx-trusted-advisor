@@ -73,7 +73,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 
 ## 6. Global footer & compliance chrome
 
-- `**GlobalFooter**` (`src/app/ui/global-footer.tsx`): legal nav (Imprint, Terms, Privacy, Security, Report a vulnerability), copyright **atx Trusted Advisor** + **whitelabel** subline, `**APP_VERSION_LABEL`** from `package.json` via `src/lib/app-version.ts`.
+- `**GlobalFooter**` (`src/app/ui/global-footer.tsx`): legal nav (Imprint, Terms, Privacy, Security, Report a vulnerability), copyright **atx Trusted Advisor**, `**APP_VERSION_LABEL`** from `package.json` via `src/lib/app-version.ts` (no separate product subline after the © name).
 - **Subline (product surfaces only):** Pass `subline` from layouts that need a disclaimer — e.g. `**xchat/layout.tsx`** and `**xstrategybuilder/layout.tsx**` use **Not financial advice** + provider credit. `**admin/layout.tsx`** uses `<GlobalFooter />` without a subline.
 - **Tone:** Footer and disclaimers stay **professional and compliance-oriented** — no ironic, meme, or jokey legal copy in production chrome (see `**xdesign-review`** visual + trust gate).
 
@@ -87,12 +87,13 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 
 ---
 
-## 8. User chrome (March 2026) — **atx Trusted Advisor** + **whitelabel**
+## 8. User chrome (March 2026) — **atx Trusted Advisor**
 
-- **Constants:** `**src/app/ui/product-brand-constants.ts**` — `USER_PRODUCT_HOME_ARIA_LABEL`, `USER_PRODUCT_WHITELABEL_SUBLINE` (`whitelabel`), `USER_PRODUCT_DESCRIPTOR_LINE` for marketing.
-- **xChat header:** `**XchatHeaderBrand**` — same **Trusted / Advisor** wordmark as the full logo, with a **whitelabel** subline (`**.xf-whitelabel-sub**`, tiny muted grey).
-- **App user header / guest xChat:** Home link uses `USER_PRODUCT_HOME_ARIA_LABEL` (includes “whitelabel” for screen readers).
-- **Footer:** `**GlobalFooter**` — © line **atx Trusted Advisor** + **whitelabel** in `**app-footer-whitelabel**` / `**app-footer-brand-stack**`.
+- **Constants:** `**src/app/ui/product-brand-constants.ts**` — `USER_PRODUCT_HOME_ARIA_LABEL`, `USER_PRODUCT_DESCRIPTOR_LINE` for marketing (no whitelabel subline constant on public chrome).
+- **xChat header:** `**XchatHeaderBrand**` — **Trusted / Advisory** wordmark plus inline gains tagline (see component).
+- **xChat left rail (signed-in):** **Persona** picker, then **Active persona** (name + last-turn tool summary), then **Status** (collection list / scope messages) — not duplicated in the main column.
+- **App user header / guest xChat:** Home link uses `USER_PRODUCT_HOME_ARIA_LABEL`.
+- **Footer:** `**GlobalFooter**` — © line **atx Trusted Advisor** in `**app-footer-brand-stack**`.
 - **Marketing / plans / portfolio / xStrategyBuilder:** User-facing copy uses **atx Trusted Advisor** where the old product string **xFinance** appeared.
 - **Legal stubs:** `**legal-default-content.tsx**` uses `PRODUCT_PUBLIC_NAME = "atx Trusted Advisor"` for the web app; entity line may still read **aTx⚡Finance** where appropriate.
 - **Backend persona name:** Default published app-role persona is **atx-trusted-advisor** (admin default remains **Super-Agent**).

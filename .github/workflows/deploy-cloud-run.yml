@@ -192,6 +192,7 @@ jobs:
           ATXFINANCE_BACKEND_ORIGIN: ${{ vars.ATXFINANCE_BACKEND_ORIGIN || '' }}
           AUTH_CALLBACK_USE_SPRING: ${{ vars.AUTH_CALLBACK_USE_SPRING || 'false' }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '' }}
+          STRIPE_PUBLIC_KEY: ${{ vars.STRIPE_PUBLIC_KEY || '' }}
           STRIPE_PRICE_BASIC_MONTHLY: ${{ vars.STRIPE_PRICE_BASIC_MONTHLY || '' }}
           STRIPE_PRICE_PREMIUM_MONTHLY: ${{ vars.STRIPE_PRICE_PREMIUM_MONTHLY || '' }}
           STRIPE_PRICE_PREMIUM_PLUS_YEARLY: ${{ vars.STRIPE_PRICE_PREMIUM_PLUS_YEARLY || '' }}
@@ -219,6 +220,11 @@ jobs:
             ENV_VARS="${ENV_VARS},NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}"
           else
             echo "::notice::GitHub Variable NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY unset — set it on staging/production for client-side Stripe (optional; Checkout still works with secret only)"
+          fi
+          if [ -n "${STRIPE_PUBLIC_KEY:-}" ]; then
+            ENV_VARS="${ENV_VARS},STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}"
+          else
+            echo "::notice::GitHub Variable STRIPE_PUBLIC_KEY unset — optional alias for server-side reads (see getStripePublishableKey)"
           fi
           for pair in "STRIPE_PRICE_BASIC_MONTHLY:${STRIPE_PRICE_BASIC_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_MONTHLY:${STRIPE_PRICE_PREMIUM_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}"; do
             k="${pair%%:*}"

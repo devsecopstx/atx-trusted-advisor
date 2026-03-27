@@ -12,6 +12,8 @@ Prioritize: health checks and rollbacks, connection limits for Mongo, JVM memory
 no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer documented runbooks (`AGENTS.md`,
 `atx-docs/sre-ops/*`, deploy workflows) over one-off `gcloud` drift.
 
+**Auth cookies (Next BFF):** Signed session cookie (`SESSION_COOKIE_NAME`, `src/lib/auth.ts`) remains **12h** `maxAge` / payload `exp`. **OAuth in-flight** cookies (PKCE state/verifier, return path, pending X link) use **`OAUTH_FLOW_TTL_SECONDS` (30 minutes)** so users can complete X/Google OAuth after tab switches or slow networks without restarting the flow. Keep callback host alignment per `atx-docs/sre-ops/x-oauth-atx-callbacks.md`.
+
 **Tenant workspace limits:** `atx-docs/sre-ops/tenant-workspace-limits.md` — `core_tenants.workspaceLimits`, collection
 `app_feature_daily_usage`, admin route `/api/admin/tenants/{tenantId}/workspace-limits`, billing surfacing.
 

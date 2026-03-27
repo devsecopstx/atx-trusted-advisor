@@ -12,7 +12,7 @@ describe("GlobalFooter", () => {
     expect(source).toContain("/legal/privacy");
     expect(source).toContain("/legal/terms");
     expect(source).toContain("aTx Trusted Advisory");
-    expect(source).toContain("USER_PRODUCT_WHITELABEL_SUBLINE");
+    expect(source).not.toMatch(/whitelabel/i);
   });
 
   it("does not ship casual or jokey compliance copy in chrome", () => {

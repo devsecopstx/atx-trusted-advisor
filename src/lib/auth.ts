@@ -11,7 +11,8 @@ const OAUTH_VERIFIER_COOKIE_NAME = "xf_x_oauth_verifier";
 const OAUTH_RETURN_PATH_COOKIE_NAME = "xf_oauth_return";
 const PENDING_LINK_COOKIE_NAME = "xf_x_pending_link";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
-const OAUTH_FLOW_TTL_SECONDS = 60 * 10;
+/** PKCE state/verifier, return path, pending X link — keep long enough for slow OAuth completes (mobile/switch-tab). */
+const OAUTH_FLOW_TTL_SECONDS = 60 * 30;
 
 /**
  * Signed session payload. Naming:

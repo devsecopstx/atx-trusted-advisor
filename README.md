@@ -1,6 +1,6 @@
 # atx Trusted Advisor — Core App
 
-User-facing product: **atx Trusted Advisor** (whitelabel-ready chrome: Trusted Advisor lockup + subtle **whitelabel** subline in header/footer). This repository is the **atxFinance** Next.js core: admin console and signed-in **app_user** surfaces, **Powered by xAI / Grok** for institutional-grade options and portfolio workflows.
+User-facing product: **atx Trusted Advisor** (Trusted Advisory lockup in header/footer). This repository is the **atxFinance** Next.js core: admin console and signed-in **app_user** surfaces, **Powered by xAI / Grok** for institutional-grade options and portfolio workflows.
 
 ## Stress-free trading — top 5 product pillars
 
@@ -12,7 +12,7 @@ User-facing product: **atx Trusted Advisor** (whitelabel-ready chrome: Trusted A
 
 Platform roles vs session: see `[atx-docs/guides/auth-and-access.md](atx-docs/guides/auth-and-access.md)`.
 
-Branding reference for UI copy and whitelabel: `[atx-docs/xchat/xfinance-branding-review.md](atx-docs/xchat/xfinance-branding-review.md)` (§8 user chrome). Marketing assets, prompt/tag sources, and the sample watchlist CSV live under `**[atx-docs/branding/](atx-docs/branding/README.md)`**.
+Branding reference for UI copy: `[atx-docs/xchat/xfinance-branding-review.md](atx-docs/xchat/xfinance-branding-review.md)` (§8 user chrome). Marketing assets, prompt/tag sources, and the sample watchlist CSV live under `**[atx-docs/branding/](atx-docs/branding/README.md)`**.
 
 ## Docs
 

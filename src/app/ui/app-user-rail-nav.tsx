@@ -62,7 +62,7 @@ type RailDisclosureProps = {
   children: ReactNode;
 };
 
-function RailDisclosure({ title, icon, defaultOpen = true, children }: RailDisclosureProps) {
+export function RailDisclosure({ title, icon, defaultOpen = true, children }: RailDisclosureProps) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
   const btnId = useId();
