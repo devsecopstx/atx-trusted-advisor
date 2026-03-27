@@ -43,11 +43,12 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     ]
   },
   {
+    /** Stripe env may still use `STRIPE_PRICE_PREMIUM_PLUS_YEARLY` until price ids are renamed. */
     id: "premium_plus_yearly",
     name: "Premium+",
     tagline: "Dedicated instance — private, white-glove posture",
     priceLabel: "$99",
-    periodNote: "per year",
+    periodNote: "per month",
     bullets: [
       "White-glove for ultra-complex and family-office books; direct line for structured product input",
       "Dedicated enterprise-grade instance sized for your workflow",

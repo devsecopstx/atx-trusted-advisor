@@ -313,7 +313,7 @@ export function XchatConversation({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [leftRailCollapsed, setLeftRailCollapsed] = useState(false);
+  const [leftRailCollapsed, setLeftRailCollapsed] = useState(true);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
@@ -327,7 +327,8 @@ export function XchatConversation({
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
   const [suggestedPersonaId, setSuggestedPersonaId] = useState<string | null>(null);
   /** After send, hide the transcript for a minimal view; user expands to read the thread. */
-  const [threadUiCollapsed, setThreadUiCollapsed] = useState(false);
+  /** Default collapsed when a thread exists; expanded while `loading` so replies stay visible (branding). */
+  const [threadUiCollapsed, setThreadUiCollapsed] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
@@ -907,7 +908,7 @@ export function XchatConversation({
           <p className="xchat-welcome-sub">Overview of xChat — personas, history, and advisor tools.</p>
         </header>
 
-      {!(threadUiCollapsed && messages.length > 0) ? (
+      {!(threadUiCollapsed && messages.length > 0 && !loading) ? (
         <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
           Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side in
           Mongo; prior turns are injected into the next ask for continuity. Open <strong>Recent chats</strong> in the
@@ -916,7 +917,7 @@ export function XchatConversation({
         </p>
       ) : null}
 
-      {threadUiCollapsed && messages.length > 0 ? (
+      {threadUiCollapsed && messages.length > 0 && !loading ? (
         <button
           aria-expanded={false}
           className="xchat-thread-collapsed-bar"

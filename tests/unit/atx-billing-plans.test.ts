@@ -11,7 +11,7 @@ describe("ATX billing list pricing", () => {
     expect(premium.priceLabel).toBe("$29");
     expect(premium.periodNote).toBe("per month");
     expect(plus.priceLabel).toBe("$99");
-    expect(plus.periodNote).toBe("per year");
+    expect(plus.periodNote).toBe("per month");
   });
 
   it("limits matrix first row is Price and aligns with plan labels", () => {
@@ -19,7 +19,7 @@ describe("ATX billing list pricing", () => {
     expect(priceRow?.metric).toBe("Price");
     expect(priceRow?.basic).toBe("$9/mo");
     expect(priceRow?.premium).toBe("$29/mo");
-    expect(priceRow?.premiumPlus).toBe("$99/yr");
+    expect(priceRow?.premiumPlus).toBe("$99/mo");
     expect(ATX_BILLING_PLAN_LIMIT_ROWS).toHaveLength(5);
   });
 });

@@ -30,6 +30,8 @@
   **`atx-docs/xchat/xfinance-branding-review.md`** if the expert review doc should
   reflect it (see **`generate-docs`**).
 - [ ] **Shell / header theme (`xf-ui-theme`, `PublicThemePicker`, `layout` boot script):** keep **`.cursor/agents/branding.md`** in sync; add or refresh the **§6 Shell theme** note in **`atx-docs/guides/local-development.md`**; unit-test pure helpers in **`src/lib/xf-ui-theme.ts`** (`tests/unit/xf-ui-theme.test.ts`). No OpenAPI change.
+- [ ] **Billing list prices + limits matrix:** `atx-docs/resouces/atx-limits.txt.tsv` ↔ `src/lib/atx-billing-plan-limits.ts` ↔ `src/lib/atx-billing-plans.ts` ↔ `tests/unit/atx-billing-plans.test.ts` (Price row and card `priceLabel` / `periodNote` stay aligned).
+- [ ] **xChat signed-in chrome (`xchat-conversation.tsx`):** left-rail default + thread collapse behavior matches **`.cursor/agents/branding.md`** (thread stays expanded while assistant `loading` if using default-collapsed thread).
 - [ ] **Branding assets** live under **`atx-docs/branding/`** (not repo-root `atx-branding/` or `branding/`). If you add/move files there, keep **`DEVELOPMENT.md`**, **`AGENTS.md`**, **`tailwind.config.ts`**, and **`tests/unit/parse-watchlist-csv.test.ts`** paths in sync (see **`generate-docs`** → *Branding assets folder gaps*).
 - [ ] Commit scope excludes secrets and unrelated file churn.
 - [ ] Message explains intent and risk surface, not just file list.

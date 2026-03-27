@@ -36,7 +36,7 @@ Create matching **Products** and **Prices** in Stripe (recurring subscription) a
 3. **Prices:** For each product, add a **recurring** price:
    - Basic: **$9 / month**
    - Premium: **$29 / month**
-   - Premium+: **$99 / year**
+   - Premium+: **$99 / month** (UI/list matrix: `atx-limits.txt.tsv`; env key may still be `STRIPE_PRICE_PREMIUM_PLUS_YEARLY` until renamed)
 4. **Checkout:** Hosted Checkout is created by the API (`mode: subscription`). No extra Dashboard toggle required beyond valid prices.
 5. **Customer portal (optional):** Enable the Billing customer portal when you want self-serve cancel/update payment method.
 6. **Webhooks (next):** Add endpoint `https://<your-host>/api/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.*`, and verify with `STRIPE_WEBHOOK_SECRET`. Persist subscription tier on `core_users` (or equivalent) to drive plan limits.
