@@ -1,5 +1,6 @@
 import { adminCreatePortfolioAlert } from "@/modules/core-admin/repository";
 import type { WatchlistSymbol } from "@/modules/core-admin/types";
+import { dispatchPortfolioDeskEventsToSlack } from "@/modules/notifications/portfolio-notification-service";
 
 /** Default minimum absolute % move vs prior `lastPrice` before creating a portfolio alert. */
 export const DEFAULT_MIN_ABS_MOVE_PERCENT = 5;
@@ -44,16 +45,31 @@ export async function persistPriceMoveAlerts(
   evaluations: ReadonlyArray<PriceMoveEvaluation>
 ): Promise<number> {
   let created = 0;
+  const notify: Array<{ title: string; body: string; symbol: string }> = [];
   for (const e of evaluations) {
+    const title = `${e.symbol} price alert`;
+    const body = `Price moved ${e.changePct.toFixed(1)}% to $${e.newPrice}`;
     const row = await adminCreatePortfolioAlert({
       portfolioId: portfolioIdHex,
-      title: `${e.symbol} price alert`,
-      body: `Price moved ${e.changePct.toFixed(1)}% to $${e.newPrice}`,
+      title,
+      body,
       severity: "info",
       symbol: e.symbol,
     });
     if (row) {
       created += 1;
+      notify.push({ title, body, symbol: e.symbol });
+    }
+  }
+  if (notify.length > 0) {
+    try {
+      await dispatchPortfolioDeskEventsToSlack(portfolioIdHex, notify);
+    } catch (error) {
+      console.warn("[notifications/slack] price alert dispatch failed", {
+        portfolioIdPrefix: portfolioIdHex.slice(0, 8),
+        count: notify.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
   return created;
