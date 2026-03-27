@@ -1,5 +1,5 @@
 /**
- * Upserts `options_strategy_preferences` from `atx-rag-collection/options-strategy/<slug>/<file>.md`.
+ * Upserts `options_strategy_preferences` from `atx-docs/rag-collection/options-strategy/<slug>/<file>.md` (falls back to legacy `atx-rag-collection/options-strategy`).
  * Invoked by `npm run seed:options-strategy-prefs` and post-`seed:admin` unless SKIP_SEED_OPTIONS_STRATEGY_PREFS=1.
  */
 import { readdir, readFile } from "node:fs/promises";
@@ -13,7 +13,9 @@ import { formatSyncTargetMongoDatabaseLogSuffix, resolveSyncTargetMongoDatabaseN
 
 const SCRIPT_DIR = fileURLToPath(new URL(".", import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
-const STRATEGY_ROOT = join(REPO_ROOT, "atx-rag-collection/options-strategy");
+const PREFERRED_STRATEGY_ROOT = join(REPO_ROOT, "atx-docs/rag-collection/options-strategy");
+const LEGACY_STRATEGY_ROOT = join(REPO_ROOT, "atx-rag-collection/options-strategy");
+const STRATEGY_ROOT = PREFERRED_STRATEGY_ROOT;
 const COLLECTION = "options_strategy_preferences";
 
 const SLUG_RE = /^[a-z][a-z0-9-]{0,62}$/;
@@ -116,7 +118,7 @@ async function main(): Promise<void> {
   const col = client.db(dbName).collection(COLLECTION);
   const now = new Date();
   const summary: StrategySyncSummary = {
-    root: "atx-rag-collection/options-strategy",
+    root: STRATEGY_ROOT.replace(REPO_ROOT + "/", ""),
     filesDiscovered: rows.length,
     upserted: 0
   };

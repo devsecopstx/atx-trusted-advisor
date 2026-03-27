@@ -1,9 +1,10 @@
 /**
  * Upsert xChat personas from repo disk specs (recursive):
  * - `.yaml` / `.yml`: full xPersona YAML (system_prompt, model, …)
- * - `.md`: YAML frontmatter + markdown body → system prompt (e.g. `atx-rag-collection/options-strategy/**`)
+ * - `.md`: YAML frontmatter + markdown body → system prompt (e.g. `atx-docs/rag-collection/options-strategy/**`)
  *
- * Default root: `atx-rag-collection/xpersonas`. Override with argv or `--root <path>` (repo-relative or absolute).
+ * Default root: `atx-docs/rag-collection/xpersonas` (falls back to legacy `atx-rag-collection/xpersonas`).
+ * Override with argv or `--root <path>` (repo-relative or absolute).
  *
  * Modes:
  * - **Mongo** (default): direct `xchat_personas` upsert (same as historical `seed:xpersonas`).
@@ -64,7 +65,7 @@ type SyncSummary = {
 };
 
 function parseCliArgs(argv: string[]): CliOpts {
-  let rootInput = "atx-rag-collection/xpersonas";
+  let rootInput = "atx-docs/rag-collection/xpersonas"; // new canonical (falls back to atx-rag-collection)
   let useApi = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -88,7 +89,8 @@ function parseCliArgs(argv: string[]): CliOpts {
 function resolveRootAbs(rootInput: string): string {
   const trimmed = rootInput.trim();
   if (!trimmed) {
-    return join(REPO_ROOT, "atx-rag-collection", "xpersonas");
+    // Prefer new canonical location under atx-docs/rag-collection
+    return join(REPO_ROOT, "atx-docs", "rag-collection", "xpersonas");
   }
   return isAbsolute(trimmed) ? trimmed : join(REPO_ROOT, trimmed);
 }

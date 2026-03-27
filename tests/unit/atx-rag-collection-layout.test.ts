@@ -58,7 +58,7 @@ function assertKebabFolderContainsSameStemFile(absDir: string, ext: string): voi
 }
 
 describe("atx-rag-collection layout", () => {
-  const base = join(process.cwd(), "atx-rag-collection");
+  const base = join(process.cwd(), "atx-docs", "rag-collection");
   const xpersonasDir = join(base, "xpersonas");
 
   it("documents RAG source tree paths referenced in README", () => {

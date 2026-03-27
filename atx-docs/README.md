@@ -86,18 +86,18 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 ## Options (RAG + seed)
 
-**Canonical tree:** **[`atx-rag-collection/options-strategy/`](../atx-rag-collection/options-strategy/README.md)** — Markdown narratives ingested with **`npm run seed:admin`** into the xAI trusted-advisor **`…-options-strategy`** segment (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). There is no separate `atx-docs/atx-options/` tree; use this RAG segment + **options-coreskills** below.
+**Canonical tree (physical):** **[`atx-docs/rag-collection/options-strategy/`](./rag-collection/options-strategy/README.md)** — Markdown narratives ingested with **`npm run seed:admin`** into the xAI trusted-advisor **`…-options-strategy`** segment (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). There is no separate `atx-docs/atx-options/` tree; use this RAG segment + **options-coreskills** below.
 
-**Reviewer / agent quick index:** **[`options-coreskills.md`](../atx-rag-collection/options-strategy/options-coreskills/options-coreskills.md)** — **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to **`.cursor/skills/skill-*/SKILL.md`**.
+**Reviewer / agent quick index:** **[`options-coreskills.md`](./rag-collection/options-strategy/options-coreskills/options-coreskills.md)** — **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to **`.cursor/skills/skill-*/SKILL.md`**.
 
 | Doc | Purpose |
 |-----|---------|
-| **[options-coreskills.md](../atx-rag-collection/options-strategy/options-coreskills/options-coreskills.md)** | **★ Canonical index:** strategy ↔ narrative ↔ **risk** ↔ **outlook** ↔ id ↔ Cursor skill |
-| **[options-strategy README](../atx-rag-collection/options-strategy/README.md)** | Segment entry + layout rule |
-| *(no `atx-options/` stub)* | Options docs live under **`atx-rag-collection/options-strategy/`** + **options-coreskills** |
-| **[atx-rag-collection README](../atx-rag-collection/README.md)** | Full segment TOC + RAG folder convention |
+| **[options-coreskills.md](./rag-collection/options-strategy/options-coreskills/options-coreskills.md)** | **★ Canonical index:** strategy ↔ narrative ↔ **risk** ↔ **outlook** ↔ id ↔ Cursor skill |
+| **[options-strategy README](./rag-collection/options-strategy/README.md)** | Segment entry + layout rule |
+| *(no `atx-options/` stub)* | Options docs live under **`atx-docs/rag-collection/options-strategy/`** + **options-coreskills** |
+| **[RAG collection README](./rag-collection/README.md)** | Full segment TOC + RAG folder convention |
 
-**Folder convention (RAG tags):** `atx-rag-collection/options-strategy/<slug>/<slug>.md` — **folder name must equal the markdown stem** (same rule for PDFs/persona YAML under other segments). Frontmatter `xfinance-strategy-*`. Full playbooks: `.cursor/skills/skill-*/SKILL.md`.
+**Folder convention (logical tag in files):** `atx-rag-collection/options-strategy/<slug>/<slug>.md` — the first-line tag stays the same for stable RAG paths; physical files live under `atx-docs/rag-collection`. Frontmatter `xfinance-strategy-*`. Full playbooks: `.cursor/skills/skill-*/SKILL.md`. 
 
 **Legacy paths:** Older docs referred to **`atx-options-strategy/`** and **`atx-options-coreskills.md`**; the repo canonical names are **`options-strategy/`** and **`options-coreskills/options-coreskills.md`**.
 

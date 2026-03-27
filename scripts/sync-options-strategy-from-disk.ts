@@ -13,7 +13,16 @@ import { formatSyncTargetMongoDatabaseLogSuffix, resolveSyncTargetMongoDatabaseN
 
 const SCRIPT_DIR = fileURLToPath(new URL(".", import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
-const STRATEGY_ROOT = join(REPO_ROOT, "atx-rag-collection/options-strategy");
+const PREFERRED_STRATEGY_ROOT = join(REPO_ROOT, "atx-docs/rag-collection/options-strategy");
+const LEGACY_STRATEGY_ROOT = join(REPO_ROOT, "atx-rag-collection/options-strategy");
+const STRATEGY_ROOT = await (async () => {
+  try {
+    await access(PREFERRED_STRATEGY_ROOT, fsConstants.R_OK);
+    return PREFERRED_STRATEGY_ROOT;
+  } catch {
+    return LEGACY_STRATEGY_ROOT;
+  }
+})();
 const COLLECTION = "options_strategy";
 
 const SLUG_RE = /^[a-z][a-z0-9-]{0,62}$/;

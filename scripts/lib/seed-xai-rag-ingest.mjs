@@ -219,14 +219,17 @@ function maskCollectionId(id) {
 
 /**
  * @param {string} repoRoot
- * @param {string[]} dirNames tried under atx-rag-collection/
+ * @param {string[]} dirNames tried under rag collection roots
+ * Tries new canonical: atx-docs/rag-collection, then legacy: atx-rag-collection
  */
 function resolveRagSegmentDir(repoRoot, dirNames) {
-  const base = join(repoRoot, "atx-rag-collection");
-  for (const name of dirNames) {
-    const p = join(base, name);
-    if (existsSync(p)) {
-      return p;
+  const bases = [join(repoRoot, "atx-docs", "rag-collection"), join(repoRoot, "atx-rag-collection")];
+  for (const base of bases) {
+    for (const name of dirNames) {
+      const p = join(base, name);
+      if (existsSync(p)) {
+        return p;
+      }
     }
   }
   return "";

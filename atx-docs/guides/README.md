@@ -32,5 +32,5 @@ Use this folder as the first stop. Each guide is an entrypoint that links to dee
 - [atx-docs/guides/local-development.md](./local-development.md) - tight local bootstrap flow
 - [AGENTS.md](../../AGENTS.md) - standard local flow and troubleshooting
 - [scripts/seed-admin-user.mjs](../../scripts/seed-admin-user.mjs) - seed behavior (`seed:admin`)
-- [atx-rag-collection/atx-rag-collection.md](../../atx-rag-collection/atx-rag-collection.md) - RAG source tree + ingest rules
+- [atx-docs/rag-collection/rag-collection.md](../rag-collection/rag-collection.md) - RAG source tree + ingest rules
 - [atx-docs/PLAN.md](../PLAN.md) - tracked seed/RAG follow-ups

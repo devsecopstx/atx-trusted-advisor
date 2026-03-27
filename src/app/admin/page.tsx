@@ -106,7 +106,7 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/admin/options-strategy-preferences",
         title: "Options strategy prefs",
         description:
-          "Per-strategy markdown documents seeded from atx-rag-collection/options-strategy; edit names and bodies after seed:admin."
+          "Per-strategy markdown documents seeded from atx-docs/rag-collection/options-strategy (legacy path supported); edit names and bodies after seed:admin."
       },
       {
         href: "/admin/options-strategy",
