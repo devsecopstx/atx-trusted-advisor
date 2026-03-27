@@ -1,23 +1,27 @@
 import yahooFinance from "yahoo-finance2";
 import type { MarketQuoteSnapshot } from "@/modules/xchat/market-data";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export async function getYahooBatchQuotes(symbols: string[]): Promise<MarketQuoteSnapshot[]> {
   if (symbols.length === 0) return [];
 
   try {
     const uniqueSymbols = [...new Set(symbols.map((s) => s.trim().toUpperCase()))];
-    const quotes = await yahooFinance.quote(uniqueSymbols);
+    const quotes: unknown = await yahooFinance.quote(uniqueSymbols);
 
     const results: MarketQuoteSnapshot[] = [];
 
     if (Array.isArray(quotes)) {
       for (const q of quotes) {
-        if (q && typeof q === "object" && "symbol" in q) {
-          results.push(normalizeQuote(q as any));
+        if (isRecord(q) && "symbol" in q) {
+          results.push(normalizeQuote(q));
         }
       }
-    } else if (quotes && typeof quotes === "object") {
-      results.push(normalizeQuote(quotes as any));
+    } else if (isRecord(quotes)) {
+      results.push(normalizeQuote(quotes));
     }
 
     return results;
@@ -32,7 +36,7 @@ export async function getYahooBatchQuotes(symbols: string[]): Promise<MarketQuot
   }
 }
 
-function normalizeQuote(raw: Record<string, any>): MarketQuoteSnapshot {
+function normalizeQuote(raw: Record<string, unknown>): MarketQuoteSnapshot {
   const price = typeof raw.regularMarketPrice === "number" ? raw.regularMarketPrice : undefined;
 
   return {

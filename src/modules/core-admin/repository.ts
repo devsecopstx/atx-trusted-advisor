@@ -2088,7 +2088,7 @@ export async function updateWatchlistSymbolPrices(
     { _id: watchlistId },
     updates,
     {
-      arrayFilters: priceUpdates.map((u, i) => ({ "elem.symbol": u.symbol })),
+      arrayFilters: priceUpdates.map((u) => ({ "elem.symbol": u.symbol })),
     }
   );
 }
