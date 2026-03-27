@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ComponentProps } from "react";
 
 import { EditIcon } from "@/app/admin/ui/crud-icons";
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 function merge(...parts: (string | undefined | false)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -62,15 +65,16 @@ export function IconEditButton({
   ...rest
 }: IconEditButtonProps) {
   return (
-    <button
-      aria-label={label}
-      className={merge(buttonVariantClass(variant), className)}
-      title={label}
-      type={type}
-      {...rest}
-    >
-      <EditIcon className="crud-icon" />
-    </button>
+    <XfHoverHint hint={label}>
+      <button
+        aria-label={label}
+        className={merge(buttonVariantClass(variant), className)}
+        type={type}
+        {...rest}
+      >
+        <EditIcon className="crud-icon" />
+      </button>
+    </XfHoverHint>
   );
 }
 
@@ -84,8 +88,10 @@ export type IconEditLinkProps = Omit<
 
 export function IconEditLink({ label, variant = "neutral", className, ...rest }: IconEditLinkProps) {
   return (
-    <Link aria-label={label} className={merge(linkVariantClass(variant), className)} title={label} {...rest}>
-      <EditIcon className="crud-icon" />
-    </Link>
+    <XfHoverHint hint={label}>
+      <Link aria-label={label} className={merge(linkVariantClass(variant), className)} {...rest}>
+        <EditIcon className="crud-icon" />
+      </Link>
+    </XfHoverHint>
   );
 }

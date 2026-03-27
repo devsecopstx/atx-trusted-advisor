@@ -162,6 +162,12 @@ html[data-xf-ui="soft"] {
   max-width: 100%;
 }
 
+/* Disabled controls do not emit pointer enter/leave; let the wrapper receive hover for hints */
+.xf-hover-hint button:disabled,
+.xf-hover-hint textarea:disabled {
+  pointer-events: none;
+}
+
 .xf-hover-hint__bubble {
   position: fixed;
   z-index: 10050;

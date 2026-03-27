@@ -1,6 +1,9 @@
+"use client";
+
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import { LinkEmailForm } from "@/app/login/ui/link-email-form";
 import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 type XchatGuestPanelProps = {
   userEmail?: string;
@@ -127,61 +130,68 @@ export function XchatGuestPanel({
 
       <form className="xchat-composer-wrap">
         <div className="xchat-composer">
-          <button
-            aria-label="Attach files — disabled for guest"
-            className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
-            disabled
-            title="Attach files (available after sign-in)"
-            type="button"
-          >
-            <XchatComposerAttachIcon />
-          </button>
-          <textarea
-            aria-label="xchat guest prompt"
-            className="xchat-composer__field xchat-composer__textarea"
-            disabled
-            placeholder="Composer preview — sign up or sign in to ask xChat"
-            readOnly
-            value=""
-            rows={1}
-          />
-          <button
-            aria-label="Model selector — disabled for guest"
-            className="xchat-composer__auto xchat-composer__icon-btn--beta"
-            disabled
-            title="Model selector (available after sign-in)"
-            type="button"
-          >
-            Auto <span className="xchat-composer__chev">▾</span>
-          </button>
-          <button
-            aria-label="Dictation — disabled for guest"
-            className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
-            disabled
-            title="Dictation (available after sign-in)"
-            type="button"
-          >
-            <XchatComposerMicIcon />
-          </button>
-          <button
-            aria-label="Voice mode — disabled for guest"
-            className="xchat-composer__voice xchat-composer__icon-btn--beta"
-            disabled
-            title="Voice mode (available after sign-in)"
-            type="button"
-          >
-            <XchatComposerWaveformIcon />
-          </button>
-          <button
-            aria-label="Send prompt (locked)"
-            className="xchat-composer__send"
-            disabled
-            title="Sign up or sign in to send prompts"
-            type="button"
-          >
-            <SendIcon className="crud-icon" />
-            Send
-          </button>
+          <XfHoverHint hint="Attach files (available after sign-in)">
+            <button
+              aria-label="Attach files — disabled for guest"
+              className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
+              disabled
+              type="button"
+            >
+              <XchatComposerAttachIcon />
+            </button>
+          </XfHoverHint>
+          <XfHoverHint hint="Composer preview — sign up or sign in to ask xChat">
+            <textarea
+              aria-label="xchat guest prompt"
+              className="xchat-composer__field xchat-composer__textarea"
+              disabled
+              placeholder="Composer preview — sign up or sign in to ask xChat"
+              readOnly
+              value=""
+              rows={1}
+            />
+          </XfHoverHint>
+          <XfHoverHint hint="Model selector (available after sign-in)">
+            <button
+              aria-label="Model selector — disabled for guest"
+              className="xchat-composer__auto xchat-composer__icon-btn--beta"
+              disabled
+              type="button"
+            >
+              Auto <span className="xchat-composer__chev">▾</span>
+            </button>
+          </XfHoverHint>
+          <XfHoverHint hint="Dictation (available after sign-in)">
+            <button
+              aria-label="Dictation — disabled for guest"
+              className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
+              disabled
+              type="button"
+            >
+              <XchatComposerMicIcon />
+            </button>
+          </XfHoverHint>
+          <XfHoverHint hint="Voice mode (available after sign-in)">
+            <button
+              aria-label="Voice mode — disabled for guest"
+              className="xchat-composer__voice xchat-composer__icon-btn--beta"
+              disabled
+              type="button"
+            >
+              <XchatComposerWaveformIcon />
+            </button>
+          </XfHoverHint>
+          <XfHoverHint hint="Sign up or sign in to send prompts">
+            <button
+              aria-label="Send prompt (locked)"
+              className="xchat-composer__send"
+              disabled
+              type="button"
+            >
+              <SendIcon className="crud-icon" />
+              Send
+            </button>
+          </XfHoverHint>
         </div>
         <p className="xchat-composer-hint">
           <span className="xchat-composer-hint__pill">Locked</span>

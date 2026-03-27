@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 export type AppUserProductNavCurrent =
   | "xchat"
@@ -131,18 +135,19 @@ export function AppUserProductNav({ current }: AppUserProductNavProps) {
   return (
     <nav className="xchat-header-nav" aria-label="Product">
       {NAV.map((item) => (
-        <Link
-          key={item.id}
-          aria-current={item.id === current ? "page" : undefined}
-          aria-label={item.label}
-          className={`xchat-header-icon-link${item.id === current ? " xchat-header-icon-link--active" : ""}`}
-          href={item.href}
-          title={item.label}
-        >
-          {item.icon}
-        </Link>
+        <XfHoverHint key={item.id} hint={item.label}>
+          <Link
+            aria-current={item.id === current ? "page" : undefined}
+            aria-label={item.label}
+            className={`xchat-header-icon-link${item.id === current ? " xchat-header-icon-link--active" : ""}`}
+            href={item.href}
+          >
+            {item.icon}
+          </Link>
+        </XfHoverHint>
       ))}
-      <Link aria-label="Hub" className="xchat-header-icon-link" href="/admin" title="Hub">
+      <XfHoverHint hint="Hub">
+        <Link aria-label="Hub" className="xchat-header-icon-link" href="/admin">
         <IconWrap>
           <svg viewBox="0 0 24 24" fill="none">
             <path
@@ -154,7 +159,8 @@ export function AppUserProductNav({ current }: AppUserProductNavProps) {
             />
           </svg>
         </IconWrap>
-      </Link>
+        </Link>
+      </XfHoverHint>
     </nav>
   );
 }

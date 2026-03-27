@@ -18,6 +18,7 @@ import {
     AppUserResourcesRailSection,
     RailDisclosure
 } from "@/app/ui/app-user-rail-nav";
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
@@ -706,16 +707,17 @@ export function XchatConversation({
               <span className="xchat-rail-head__team-name">xChat</span>
             </div>
           ) : null}
-          <button
-            aria-expanded={!leftRailCollapsed}
-            aria-label={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}
-            className="xchat-rail-toggle"
-            title={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}
-            type="button"
-            onClick={() => setLeftRailCollapsed((prev) => !prev)}
-          >
-            {leftRailCollapsed ? <XchatRailExpandIcon /> : <XchatRailCollapseIcon />}
-          </button>
+          <XfHoverHint hint={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}>
+            <button
+              aria-expanded={!leftRailCollapsed}
+              aria-label={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}
+              className="xchat-rail-toggle"
+              type="button"
+              onClick={() => setLeftRailCollapsed((prev) => !prev)}
+            >
+              {leftRailCollapsed ? <XchatRailExpandIcon /> : <XchatRailCollapseIcon />}
+            </button>
+          </XfHoverHint>
         </div>
         {!leftRailCollapsed ? (
           <div className="xchat-rail-body">
@@ -728,13 +730,11 @@ export function XchatConversation({
                 <div className="xchat-rail-book-card">
                   <div className="xchat-rail-book-row">
                     <span className="xchat-rail-book-k">Portfolio</span>
-                    <Link
-                      className="xchat-rail-book-v xchat-rail-book-v--link"
-                      href="/portfolio"
-                      title="Open portfolio"
-                    >
-                      {defaultBookLabels.portfolioName}
-                    </Link>
+                    <XfHoverHint hint="Open portfolio">
+                      <Link className="xchat-rail-book-v xchat-rail-book-v--link" href="/portfolio">
+                        {defaultBookLabels.portfolioName}
+                      </Link>
+                    </XfHoverHint>
                   </div>
                   <div className="xchat-rail-book-row">
                     <span className="xchat-rail-book-k">Account</span>
@@ -750,6 +750,7 @@ export function XchatConversation({
                   Persona picker
                 </label>
                 <select
+                  aria-describedby="xchat-persona-picker-hint"
                   className="xchat-composer__persona-select xchat-rail-persona-select"
                   disabled={
                     personaSelectRows.length === 0 ||
@@ -760,9 +761,6 @@ export function XchatConversation({
                     userPickedPersonaRef.current = true;
                     setSelectedPersonaId(e.target.value);
                   }}
-                  title={
-                    "Choose which published persona to use for this prompt. You can change it anytime."
-                  }
                   value={selectedPersonaId}
                 >
                   <option value="">Default (role / account)</option>
@@ -778,8 +776,8 @@ export function XchatConversation({
                   </span>
                 ) : null}
               </div>
-              <p className="status-text xchat-rail-persona-hint">
-                Change persona anytime before you send.
+              <p className="status-text xchat-rail-persona-hint" id="xchat-persona-picker-hint">
+                Choose which published persona to use for this prompt. You can change it anytime before you send.
               </p>
             </section>
             <section
@@ -791,17 +789,24 @@ export function XchatConversation({
                 <p className="status-text xchat-rail-active-persona-name" style={{ margin: "0 0 0.25rem" }}>
                   <strong>{activePersonaName}</strong>
                 </p>
-                <p
-                  className="status-text xchat-rail-last-turn-tools"
-                  style={{ fontSize: "0.72rem", lineHeight: 1.35, margin: 0 }}
-                  title={lastTurnToolSummary ?? "Tool names and durations from the last completed ask"}
+                <XfHoverHint
+                  hint={
+                    lastTurnToolSummary ?? "Tool names and durations from the last completed ask"
+                  }
                 >
-                  {lastTurnToolSummary ? (
-                    lastTurnToolSummary
-                  ) : (
-                    <span style={{ opacity: 0.8 }}>Send a message to see tool stats</span>
-                  )}
-                </p>
+                  <p
+                    className="status-text xchat-rail-last-turn-tools"
+                    role="note"
+                    style={{ fontSize: "0.72rem", lineHeight: 1.35, margin: 0 }}
+                    tabIndex={0}
+                  >
+                    {lastTurnToolSummary ? (
+                      lastTurnToolSummary
+                    ) : (
+                      <span style={{ opacity: 0.8 }}>Send a message to see tool stats</span>
+                    )}
+                  </p>
+                </XfHoverHint>
               </div>
             </section>
             <section
@@ -828,39 +833,39 @@ export function XchatConversation({
             </section>
             <section className="app-user-rail-section" aria-label="Examples">
               <RailDisclosure
-                defaultOpen
+                defaultOpen={false}
                 icon={<ExamplesRailGlyph className="app-user-rail-disclosure__glyph" />}
                 title="Examples"
               >
                 <div className="xchat-rail-link-list">
                   {normalizedExamples.map((prompt, i) => (
-                    <button
-                      className="xchat-rail-link"
-                      key={`rail-example-${i}`}
-                      title={prompt}
-                      type="button"
-                      onClick={() => {
-                        setInput(prompt);
-                        queueMicrotask(() => {
-                          const el = composerRef.current;
-                          if (el) {
-                            el.focus();
-                            el.style.height = "auto";
-                            el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-                          }
-                        });
-                      }}
-                    >
-                      <RailAvatar label={prompt} />
-                      <span className="xchat-rail-link__text">{prompt}</span>
-                    </button>
+                    <XfHoverHint key={`rail-example-${i}`} hint={prompt}>
+                      <button
+                        className="xchat-rail-link"
+                        type="button"
+                        onClick={() => {
+                          setInput(prompt);
+                          queueMicrotask(() => {
+                            const el = composerRef.current;
+                            if (el) {
+                              el.focus();
+                              el.style.height = "auto";
+                              el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+                            }
+                          });
+                        }}
+                      >
+                        <RailAvatar label={prompt} />
+                        <span className="xchat-rail-link__text">{prompt}</span>
+                      </button>
+                    </XfHoverHint>
                   ))}
                 </div>
               </RailDisclosure>
             </section>
             <section className="app-user-rail-section" aria-label="Recent chats">
               <RailDisclosure
-                defaultOpen
+                defaultOpen={false}
                 icon={<RecentChatsRailGlyph className="app-user-rail-disclosure__glyph" />}
                 title="Recent chats"
               >
@@ -873,18 +878,19 @@ export function XchatConversation({
                   <ul className="xchat-rail-history-list">
                     {savedHistory.map((item) => (
                       <li className="xchat-rail-history-item" key={item.id}>
-                        <button
-                          className="xchat-rail-link xchat-rail-link--history"
-                          type="button"
-                          title={item.message}
-                          onClick={() => {
-                            setInput(item.message);
-                            queueMicrotask(() => composerRef.current?.focus());
-                          }}
-                        >
-                          <RailAvatar label={item.message} />
-                          <span className="xchat-rail-link__text">{item.message}</span>
-                        </button>
+                        <XfHoverHint hint={item.message}>
+                          <button
+                            className="xchat-rail-link xchat-rail-link--history"
+                            type="button"
+                            onClick={() => {
+                              setInput(item.message);
+                              queueMicrotask(() => composerRef.current?.focus());
+                            }}
+                          >
+                            <RailAvatar label={item.message} />
+                            <span className="xchat-rail-link__text">{item.message}</span>
+                          </button>
+                        </XfHoverHint>
                       </li>
                     ))}
                   </ul>
@@ -896,8 +902,14 @@ export function XchatConversation({
                 ) : null}
               </RailDisclosure>
             </section>
-            <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdminSession} />
-            <AppUserAccountRailSection isGlobalAdmin={isGlobalAdminSession} />
+            <AppUserResourcesRailSection
+              isGlobalAdmin={isGlobalAdminSession}
+              railDisclosureDefaultOpen={false}
+            />
+            <AppUserAccountRailSection
+              isGlobalAdmin={isGlobalAdminSession}
+              railDisclosureDefaultOpen={false}
+            />
           </div>
         ) : null}
       </aside>
@@ -994,61 +1006,66 @@ export function XchatConversation({
 
         <div className="xchat-composer-wrap">
           <form className="xchat-composer" onSubmit={handleSend}>
-          <button
-            aria-label="Attach files — beta, not available yet"
-            className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
-            disabled
-            title="Attach files (beta — coming soon)"
-            type="button"
-          >
-            <XchatComposerAttachIcon />
-          </button>
-          <textarea
-            ref={composerRef}
-            aria-busy={loading}
-            className="xchat-composer__field xchat-composer__textarea"
-            maxLength={4000}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
-              if (e.key !== "Enter" || e.shiftKey || loading) {
-                return;
-              }
-              e.preventDefault();
-              e.currentTarget.form?.requestSubmit();
-            }}
-            placeholder={loading ? "Thinking..." : "What's on your mind?"}
-            readOnly={loading}
-            rows={1}
-            title="Enter to send · Shift+Enter for a new line"
-            value={input}
-          />
-          <button
-            aria-label="Model selector — beta, not available yet"
-            className="xchat-composer__auto xchat-composer__icon-btn--beta"
-            disabled
-            title="Model (beta — coming soon)"
-            type="button"
-          >
-            Auto <span className="xchat-composer__chev">▾</span>
-          </button>
-          <button
-            aria-label="Dictation — beta, not available yet"
-            className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
-            disabled
-            title="Dictation (beta — coming soon)"
-            type="button"
-          >
-            <XchatComposerMicIcon />
-          </button>
-          <button
-            aria-label="Voice mode — beta, not available yet"
-            className="xchat-composer__voice xchat-composer__icon-btn--beta"
-            disabled
-            title="Voice mode (beta — coming soon)"
-            type="button"
-          >
-            <XchatComposerWaveformIcon />
-          </button>
+          <XfHoverHint hint="Attach files (beta — coming soon)">
+            <button
+              aria-label="Attach files — beta, not available yet"
+              className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
+              disabled
+              type="button"
+            >
+              <XchatComposerAttachIcon />
+            </button>
+          </XfHoverHint>
+          <XfHoverHint hint="Enter to send · Shift+Enter for a new line">
+            <textarea
+              ref={composerRef}
+              aria-busy={loading}
+              className="xchat-composer__field xchat-composer__textarea"
+              maxLength={4000}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+                if (e.key !== "Enter" || e.shiftKey || loading) {
+                  return;
+                }
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }}
+              placeholder={loading ? "Thinking..." : "What's on your mind?"}
+              readOnly={loading}
+              rows={1}
+              value={input}
+            />
+          </XfHoverHint>
+          <XfHoverHint hint="Model (beta — coming soon)">
+            <button
+              aria-label="Model selector — beta, not available yet"
+              className="xchat-composer__auto xchat-composer__icon-btn--beta"
+              disabled
+              type="button"
+            >
+              Auto <span className="xchat-composer__chev">▾</span>
+            </button>
+          </XfHoverHint>
+          <XfHoverHint hint="Dictation (beta — coming soon)">
+            <button
+              aria-label="Dictation — beta, not available yet"
+              className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
+              disabled
+              type="button"
+            >
+              <XchatComposerMicIcon />
+            </button>
+          </XfHoverHint>
+          <XfHoverHint hint="Voice mode (beta — coming soon)">
+            <button
+              aria-label="Voice mode — beta, not available yet"
+              className="xchat-composer__voice xchat-composer__icon-btn--beta"
+              disabled
+              type="button"
+            >
+              <XchatComposerWaveformIcon />
+            </button>
+          </XfHoverHint>
           <button className="xchat-composer__send" disabled={loading || !input.trim()} type="submit">
             <SendIcon className="crud-icon" />
             Send

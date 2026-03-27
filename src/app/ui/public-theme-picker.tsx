@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import {
     DEFAULT_XF_UI_THEME_PREFERENCE,
     XF_UI_THEME_STORAGE_KEY,
@@ -178,27 +179,29 @@ export function PublicThemePicker({ variant = "xchat" }: PublicThemePickerProps)
       ? "xf-theme-picker-trigger xf-theme-picker-trigger--admin"
       : "xf-theme-picker-trigger xf-theme-picker-trigger--xchat";
 
+  const triggerHint =
+    variant === "admin" ? "Theme: Light, Dark, or System" : "Theme: Light (soft dark), Dark, or System";
+
   return (
     <div className="xf-theme-picker-root" ref={rootRef}>
-      <button
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label="Theme: appearance (dark surfaces)"
-        className={btnClass}
-        data-hovertip={variant === "admin" ? "Theme: Light, Dark, or System" : undefined}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        title={variant === "xchat" ? "Theme: Light (soft dark), Dark, or System" : undefined}
-      >
-        <MoonIcon />
-      </button>
+      <XfHoverHint hint={triggerHint}>
+        <button
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-label="Theme: appearance (dark surfaces)"
+          className={btnClass}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+        >
+          <MoonIcon />
+        </button>
+      </XfHoverHint>
       {open ? (
         <div className={menuClass} role="menu" aria-label="Theme">
           {THEME_OPTIONS.map((opt) => {
             const selected = pref === opt.value;
-            return (
+            const row = (
               <button
-                key={opt.value}
                 aria-checked={selected}
                 className={`xf-theme-picker-item${selected ? " xf-theme-picker-item--active" : ""}`}
                 role="menuitemradio"
@@ -207,7 +210,6 @@ export function PublicThemePicker({ variant = "xchat" }: PublicThemePickerProps)
                   setPreference(opt.value);
                   setOpen(false);
                 }}
-                title={variant === "xchat" ? opt.hint : undefined}
               >
                 <span className="xf-theme-picker-item__text-stack">
                   <span className="xf-theme-picker-item__label">{opt.label}</span>
@@ -217,6 +219,11 @@ export function PublicThemePicker({ variant = "xchat" }: PublicThemePickerProps)
                 </span>
                 {selected ? <CheckIcon className="xf-theme-picker-item__check" /> : null}
               </button>
+            );
+            return (
+              <Fragment key={opt.value}>
+                {variant === "xchat" ? <XfHoverHint hint={opt.hint}>{row}</XfHoverHint> : row}
+              </Fragment>
             );
           })}
         </div>

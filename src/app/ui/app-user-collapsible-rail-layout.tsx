@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { AppUserRailCollapseIcon, AppUserRailExpandIcon } from "@/app/ui/app-user-rail-toggle-icons";
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 const STORAGE_KEY = "xf-app-user-rail-collapsed";
 
@@ -58,16 +59,17 @@ export function AppUserCollapsibleRailLayout({ rail, children, mainClassName }: 
           {!collapsed ? (
             <span className="app-user-rail-stack__label">Workspace</span>
           ) : null}
-          <button
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="app-user-rail-toggle"
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            type="button"
-            onClick={toggle}
-          >
-            {collapsed ? <AppUserRailExpandIcon /> : <AppUserRailCollapseIcon />}
-          </button>
+          <XfHoverHint hint={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            <button
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="app-user-rail-toggle"
+              type="button"
+              onClick={toggle}
+            >
+              {collapsed ? <AppUserRailExpandIcon /> : <AppUserRailCollapseIcon />}
+            </button>
+          </XfHoverHint>
         </div>
         {!collapsed ? <div className="app-user-rail-stack__body">{rail}</div> : null}
       </div>
