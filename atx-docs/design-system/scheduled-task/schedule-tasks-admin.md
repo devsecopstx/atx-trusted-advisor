@@ -35,6 +35,8 @@
 
 **Next.js executors** (`src/modules/core-admin/task-runner.ts`): `user-history`, `watchlist_price_scanner`, `daily_options_scanner`. Other categories use the simulated short sleep + success string (and on Kotlin BFF, `watchlist_price_scanner` / `daily_options_scanner` log a noop message unless execution is routed to Next).
 
+**Desk Slack (PLAN 250):** When `watchlist_price_scanner` creates `portfolio_alerts`, the app calls **`dispatchPortfolioDeskEventsToSlack`** for that portfolio’s enabled **`portfolio_delivery_channels`** rows with `kind: slack_webhook` and HTTPS `hooks.slack.com` destinations (`src/modules/notifications/portfolio-notification-service.ts`).
+
 ---
 
 ## Data model (MongoDB)
