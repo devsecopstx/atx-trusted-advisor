@@ -34,7 +34,7 @@ This skill teaches Cursor's Agent/Composer to reliably fetch current price, hist
 ## Response Pattern (when user asks for data)
 1. Fetch live data via yfinance
 2. Show current TSLA price + relevant OTM/ITM strikes & premiums
-3. Suggest strategy alignment (e.g., -10% CSP strike, 5-10% OTM CC)
+3. Suggest outlook/risk-consistent strikes (e.g., -10% CSP strike, 5-10% OTM CC)
 4. Include breakeven, max profit/loss, cash required
 5. End with full OIC disclaimer
 

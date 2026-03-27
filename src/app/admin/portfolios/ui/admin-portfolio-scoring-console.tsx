@@ -179,7 +179,7 @@ export function AdminPortfolioScoringConsole({ portfolioId }: { portfolioId: str
       </PortfolioManageNav>
 
       <header>
-        <h2 className="text-xl font-semibold">Strategy scoring factors</h2>
+        <h2 className="text-xl font-semibold">Portfolio scoring factors</h2>
         <p className="status-text mt-1">
           Portfolio{" "}
           <Link className="underline font-medium" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`}>

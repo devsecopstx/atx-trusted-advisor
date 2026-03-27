@@ -68,7 +68,7 @@ function portfolioChildActions(portfolioId: string): PortfolioChildAction[] {
     {
       path: `${base}/scoring`,
       label: "Scoring",
-      typeLabel: "Strategy factor weights",
+      typeLabel: "Portfolio scoring weights",
       title: "Edit IV, liquidity, and desk scoring weights"
     },
     {

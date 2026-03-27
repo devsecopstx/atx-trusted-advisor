@@ -16,6 +16,11 @@ Run a strict design QA pass so atxFinance assets stay premium, legible, and cons
 - Work includes atxFinance visuals featuring xAI, Grok, xMoney, or mobile fintech UI mockups.
 - Need pass/fail criteria before shipping social or app-store marketing creatives.
 
+## Product terminology (copy)
+
+- **Account:** use **risk** and **outlook** — do not describe account-level fields as “strategy factors.”
+- **Portfolio book:** weighted ranking dimensions are **portfolio scoring factors** (not “strategy factors” at the account).
+
 ## Brand North Star
 
 - **Aesthetic:** modern, sleek, futuristic fintech.

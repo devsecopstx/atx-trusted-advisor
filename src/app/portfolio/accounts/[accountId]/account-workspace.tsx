@@ -358,8 +358,8 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
           </fieldset>
 
           <fieldset className="portfolio-edit-fieldset">
-            <legend className="portfolio-edit-field__label">Investment strategy</legend>
-            <div className="portfolio-strategy-grid portfolio-strategy-grid--legacy" role="group" aria-label="Investment strategy">
+            <legend className="portfolio-edit-field__label">Market outlook</legend>
+            <div className="portfolio-strategy-grid portfolio-strategy-grid--legacy" role="group" aria-label="Market outlook">
               {INVESTMENT_STRATEGY_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -379,7 +379,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                 onClick={() => setOutlook(null)}
               >
                 <XMarkIcon className="crud-icon" />
-                Clear strategy
+                Clear outlook
               </button>
             </div>
           </fieldset>

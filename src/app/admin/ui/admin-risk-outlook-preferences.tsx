@@ -5,10 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
 import {
-  DEFAULT_INVESTMENT_STRATEGY,
-  INVESTMENT_STRATEGY_OPTIONS,
-  RISK_LEVEL_OPTIONS,
-  type RiskProfileValue
+    DEFAULT_INVESTMENT_STRATEGY,
+    INVESTMENT_STRATEGY_OPTIONS,
+    RISK_LEVEL_OPTIONS,
+    type RiskProfileValue
 } from "@/modules/core-admin/portfolio-preference-labels";
 import type { InvestmentStrategy } from "@/modules/core-admin/types";
 
@@ -151,7 +151,7 @@ export function AdminRiskOutlookPreferences({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className={`font-semibold text-slate-100 ${compact ? "text-base" : "text-lg"}`}>
-            Risk &amp; investment strategy
+            Risk &amp; market outlook
           </h3>
           <p className="status-text mt-1 max-w-prose text-xs text-slate-400">
             Workspace preferences for this user&apos;s portfolio tooling (stored in{" "}
@@ -216,7 +216,7 @@ export function AdminRiskOutlookPreferences({
           </div>
 
           <div>
-            <h4 className="mb-3 text-sm font-medium text-slate-300">Investment strategy</h4>
+            <h4 className="mb-3 text-sm font-medium text-slate-300">Market outlook</h4>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {INVESTMENT_STRATEGY_OPTIONS.map((opt) => {
                 const on = investmentStrategy === opt.value;

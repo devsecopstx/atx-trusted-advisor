@@ -14,6 +14,8 @@ This flow is executed once per scheduled job (user-level or platform-wide). The 
 
 The OptionsStrategyEngine is the intelligent brain of the single daily_options_scanner job. It is a lightweight, rule-based scoring component (Kotlin @Component) that turns raw options-chain data + rich user context into personalized, ranked, structured strategy recommendations. No heavy ML in v1 — just fast, explainable, finance-grade logic that you can extend or swap with an LLM later.
 
+**Terminology (product copy):** At the **account**, user-facing inputs are **risk** and **outlook** only — not “strategy factors.” **Portfolio scoring factors** (the weighted dimensions below, e.g. IV rank, liquidity) apply at the **portfolio book** for ranking recommendations; keep that naming distinct from account-level fields.
+
 Function,Purpose,Key Inputs,Output
 "generateRecommendations(context, chains, prompt)",Main orchestrator — runs the entire recommendation pipeline,"UserOptionsContext, Map<ticker, OptionChain>, OptionsScanPrompt",List<StrategyRecommendation> (ranked)
 buildUserContext(userId),Loads & normalizes everything about the user,userId,"UserOptionsContext (portfolio, risk, outlook, watchlist, account type)"
@@ -30,7 +32,7 @@ Preference-driven — honors the scan “prompt” (IV rank ≥ X, high OI, min 
 Risk-aware & compliant — automatically drops strategies that exceed the user’s risk level or margin requirements.
 Explainable — every recommendation includes a clear rationale + risk/reward numbers.
 High performance — processes dozens of tickers in < 2 seconds (batch Yahoo/Polygon calls + simple math).
-Extensible — add new strategies or scoring factors (e.g., earnings date filter, sector exposure) with zero code changes to the scheduler.
+Extensible — add new option strategies or **portfolio** scoring-factor dimensions (e.g., earnings date filter, sector exposure) with zero code changes to the scheduler.
 Dual-mode — works for both user-level jobs (personalized) and platform-level jobs (global “hot opportunities” list).
 
 ## Fit score formula
@@ -48,7 +50,7 @@ Expanded **`calculateFitScore`** inside OptionsStrategyEngine: a **weighted line
 | Volume | 15% | Daily option volume, normalized |
 | Liquidity | 10% | Bid–ask spread % (tighter = higher sub-score) |
 | Portfolio fit | 15% | Delta / exposure match to holdings |
-| Strategy alignment | 10% | Outlook + risk tolerance vs strategy type |
+| Outlook & risk alignment | 10% | Book outlook + risk tolerance vs recommended structure |
 
 ### Formula (mathematical)
 

@@ -6,6 +6,10 @@ description: Concise atxFinance design and ops review for xStrategyBuilder, Watc
 
 # atxFinance Design Ops
 
+## Copy guardrail
+
+Account surfaces: **risk** + **outlook** only. Portfolio book ranking: **portfolio scoring factors** — do not call those account-level “strategy factors.”
+
 ## Goal
 
 Provide a fast, reliable review framework for core atxFinance tool surfaces:

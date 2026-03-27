@@ -19,12 +19,13 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
   {
     id: "basic",
     name: "Basic",
-    tagline: "HNWI-focused entry — workspace users, portfolios, accounts, strategy factors",
+    tagline:
+      "HNWI-focused entry — workspace users, portfolios, accounts (risk & outlook), portfolio scoring factors",
     priceLabel: "$10",
     periodNote: "per month",
     bullets: [
       "Built for high-net-worth individual workflows and daily options context",
-      "Manage workspace users, portfolios, accounts, and strategy_factors (within your role and plan limits)",
+      "Manage workspace users, portfolios, accounts (risk & outlook), and portfolio-level scoring factors (within your role and plan limits)",
       "Full product access with plan limits; limited-time full-access trial may apply before you subscribe"
     ]
   },

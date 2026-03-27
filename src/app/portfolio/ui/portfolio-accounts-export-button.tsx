@@ -12,7 +12,7 @@ export type PortfolioAccountCsvRow = {
   dayChange: string;
   pl: string;
   risk: string;
-  strategy: string;
+  outlook: string;
 };
 
 function escapeCsvCell(value: string | number): string {
@@ -43,7 +43,7 @@ export function PortfolioAccountsExportButton({
       "dayChange",
       "pl",
       "risk",
-      "strategy"
+      "outlook"
     ];
     const lines = [
       headers.join(","),

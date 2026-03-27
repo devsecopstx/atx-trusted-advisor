@@ -89,7 +89,7 @@ export function PortfolioOverview({
       acct?.riskProfile != null
         ? (RISK_LEVEL_OPTIONS.find((r) => r.riskProfile === acct.riskProfile)?.label ?? "")
         : "";
-    const strategyTitle =
+    const outlookTitle =
       acct?.outlook != null
         ? (INVESTMENT_STRATEGY_OPTIONS.find((o) => o.value === acct.outlook)?.title ?? "")
         : "";
@@ -104,7 +104,7 @@ export function PortfolioOverview({
       dayChange: "—",
       pl: "—",
       risk: riskLabel || "—",
-      strategy: strategyTitle || "—"
+      outlook: outlookTitle || "—"
     };
   });
 
@@ -136,7 +136,7 @@ export function PortfolioOverview({
             <p className="portfolio-hero__eyebrow">Portfolio</p>
             <h1 className="portfolio-manage-head__title">My accounts</h1>
             <p className="portfolio-manage-head__sub">
-              Manage linked custodian accounts and strategies. Values are <strong>cost basis</strong> unless noted;
+              Manage linked custodian accounts, risk, and outlook. Values are <strong>cost basis</strong> unless noted;
               live market marks are not shown yet.
             </p>
           </div>
@@ -198,7 +198,7 @@ export function PortfolioOverview({
                       acct?.riskProfile != null
                         ? RISK_LEVEL_OPTIONS.find((r) => r.riskProfile === acct.riskProfile)?.label
                         : null;
-                    const strategyTitle =
+                    const outlookTitle =
                       acct?.outlook != null
                         ? INVESTMENT_STRATEGY_OPTIONS.find((o) => o.value === acct.outlook)?.title
                         : null;
@@ -225,10 +225,10 @@ export function PortfolioOverview({
                               ) : (
                                 <div className="portfolio-manage-table__account-meta">Risk not set</div>
                               )}
-                              {strategyTitle ? (
-                                <span className={strategyPillClass(acct?.outlook ?? null)}>{strategyTitle}</span>
+                              {outlookTitle ? (
+                                <span className={strategyPillClass(acct?.outlook ?? null)}>{outlookTitle}</span>
                               ) : (
-                                <span className={strategyPillClass(null)}>Strategy not set</span>
+                                <span className={strategyPillClass(null)}>Outlook not set</span>
                               )}
                             </div>
                           </div>

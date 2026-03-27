@@ -271,7 +271,7 @@ export type Portfolio = {
   /** Free-text market / positioning outlook for this book (optional). */
   outlook?: string;
   /**
-   * Optional weighted scoring factors for strategy / chain ranking (defaults applied when absent).
+   * Optional portfolio scoring factor weights for chain / recommendation ranking (defaults when absent).
    * Weights must sum to 1; defaults in `scoring-factors.ts`.
    */
   scoringFactors?: PortfolioScoringFactor[];

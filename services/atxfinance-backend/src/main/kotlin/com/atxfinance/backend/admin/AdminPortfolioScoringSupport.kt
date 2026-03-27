@@ -3,7 +3,7 @@ package com.atxfinance.backend.admin
 import org.bson.Document
 
 /**
- * Portfolio strategy scoring factors — parity with Next.js `scoring-factors.ts`.
+ * Portfolio scoring factors — parity with Next.js `scoring-factors.ts`.
  * Composite: score = 100 * Σ (weight * S_i), each S_i in [0,1].
  */
 internal object AdminPortfolioScoringSupport {
@@ -53,8 +53,8 @@ internal object AdminPortfolioScoringSupport {
                 ),
             "strategy_alignment" to
                 Triple(
-                    "Strategy Alignment",
-                    "How well strategy matches user outlook + risk tolerance",
+                    "Outlook & risk alignment",
+                    "How well the setup matches the book’s outlook and risk tolerance",
                     "Outlook/risk match 0–1 (S_Align).",
                 ),
         )

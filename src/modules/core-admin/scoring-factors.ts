@@ -12,6 +12,16 @@ export const SCORING_FACTOR_IDS = [
 
 export type ScoringFactorId = (typeof SCORING_FACTOR_IDS)[number];
 
+/** Short admin-facing category line for scoring rows (text-only UI). */
+export const SCORING_FACTOR_ADMIN_KIND_LABELS: Record<ScoringFactorId, string> = {
+  iv_rank: "Volatility signal",
+  open_interest: "Open interest depth",
+  volume: "Trading activity",
+  liquidity: "Spread / execution",
+  portfolio_fit: "Book alignment",
+  strategy_alignment: "Outlook & risk fit"
+};
+
 export type PortfolioScoringFactor = {
   id: ScoringFactorId;
   /** Portion of composite score; must sum to 1 across selected factors (± tolerance). */
@@ -53,8 +63,8 @@ export const SCORING_FACTOR_CATALOG: Record<
     defaultWeight: 0.15
   },
   strategy_alignment: {
-    label: "Strategy Alignment",
-    description: "How well strategy matches user outlook + risk tolerance",
+    label: "Outlook & risk alignment",
+    description: "How well the setup matches the book’s outlook and risk tolerance",
     normalization: "Outlook/risk match 0–1 (S_Align).",
     defaultWeight: 0.1
   }

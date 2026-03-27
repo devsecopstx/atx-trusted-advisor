@@ -6,7 +6,7 @@ End-to-end notes for **Account → Billing** (`/account/billing`), `POST /api/bi
 
 | Plan       | Positioning (summary) | Amount   | Billing   | Env price id                         |
 |-----------|------------------------|----------|-----------|--------------------------------------|
-| Basic     | HNWI-focused; workspace users, portfolios, accounts, strategy_factors; plan limits | $10      | Monthly   | `STRIPE_PRICE_BASIC_MONTHLY`         |
+| Basic     | HNWI-focused; workspace users, portfolios, accounts (risk & outlook), portfolio scoring factors; plan limits | $10      | Monthly   | `STRIPE_PRICE_BASIC_MONTHLY`         |
 | Premium   | Complex portfolios; unlimited with fair per-hour caps on xChat + xStrategyBuilder | $99 | Monthly | `STRIPE_PRICE_PREMIUM_MONTHLY` |
 | Premium+  | White-glove; dedicated enterprise-grade instance; private (no training use) | $300   | Yearly    | `STRIPE_PRICE_PREMIUM_PLUS_YEARLY`   |
 
