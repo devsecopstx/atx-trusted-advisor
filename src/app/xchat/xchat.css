@@ -20,12 +20,16 @@
   padding: 0.6rem 1rem;
   background: var(--xf-bg-800);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .xchat-header-brand {
   text-decoration: none;
   display: flex;
   align-items: center;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .xchat-header-brand-wordmark {
@@ -38,7 +42,17 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.xchat-header-trailing {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
   min-width: 0;
 }
 
@@ -52,10 +66,19 @@
 
 .xchat-header-session {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.xchat-header-session-row {
+  display: flex;
   align-items: center;
   gap: 0.35rem;
-  flex-wrap: wrap;
-  flex-shrink: 0;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .xchat-header-session-btn {
@@ -161,11 +184,19 @@
 .xchat-header-session-err {
   font-size: 0.68rem;
   color: var(--xf-loss-red, #f87171);
+  white-space: nowrap;
+  max-width: min(160px, 28vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .xchat-header-session-ok {
   font-size: 0.68rem;
   color: var(--xf-gain-green);
+  white-space: nowrap;
+  max-width: min(200px, 36vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .xchat-feedback-backdrop {
@@ -240,8 +271,8 @@
 }
 
 .xchat-header-icon-link {
-  width: 2rem;
-  height: 2rem;
+  width: 2.28rem;
+  height: 2.28rem;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.03);
@@ -267,8 +298,8 @@
 }
 
 .xchat-header-icon-link__glyph {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.2rem;
+  height: 1.2rem;
   display: inline-flex;
 }
 
@@ -426,9 +457,10 @@
 }
 
 .plan-card-cta {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
   border-radius: var(--xf-radius-sm);
   padding: 0.65rem 1rem;
   font-weight: 700;
@@ -437,6 +469,11 @@
   border: none;
   cursor: pointer;
   transition: transform 120ms ease;
+}
+
+.plan-card-cta .crud-icon {
+  flex-shrink: 0;
+  color: inherit;
 }
 
 .plan-card-cta:hover {
@@ -495,13 +532,17 @@
   padding: 0.65rem 0.85rem 0;
 }
 
+.xchat-main-shell--rail-collapsed {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
 .xchat-left-rail {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--xf-bg-800) 84%, transparent);
+  background: var(--xf-bg-900);
   backdrop-filter: blur(8px);
 }
 
@@ -513,6 +554,12 @@
 
 .xchat-left-rail--collapsed {
   width: fit-content;
+  min-width: 2.75rem;
+}
+
+.xchat-left-rail--collapsed .xchat-rail-head {
+  justify-content: center;
+  border-bottom-color: transparent;
 }
 
 .xchat-rail-head {
@@ -520,24 +567,60 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.5rem 0.55rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.xchat-rail-head__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.xchat-rail-head__team-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xchat-rail-head__team-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
 }
 
 .xchat-rail-toggle {
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.04);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
   color: var(--xf-text-200);
   cursor: pointer;
-  font: inherit;
-  font-size: 0.69rem;
-  font-weight: 600;
-  padding: 0.26rem 0.56rem;
+  flex-shrink: 0;
+}
+
+.xchat-rail-toggle__glyph {
+  width: 1.15rem;
+  height: 1.15rem;
+  display: block;
+}
+
+.xchat-rail-toggle__glyph--gear {
+  width: 1.55rem;
+  height: 1.55rem;
 }
 
 .xchat-rail-toggle:hover {
-  border-color: rgba(57, 255, 20, 0.4);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
   color: var(--xf-gain-green);
 }
 
@@ -560,6 +643,14 @@
   font-weight: 700;
   letter-spacing: 0.03em;
   color: var(--xf-text-200);
+}
+
+.xchat-rail-title--caps {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
 }
 
 .xchat-rail-link-list,
@@ -625,6 +716,28 @@
     color-mix(in srgb, var(--xf-gain-green) 35%, transparent),
     color-mix(in srgb, var(--xf-lightning-yellow, #eab308) 45%, transparent)
   );
+}
+
+.xchat-welcome-header {
+  padding: 0.15rem 0 0.85rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.xchat-welcome-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--xf-text-100);
+}
+
+.xchat-welcome-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--xf-text-400);
 }
 
 .xchat-persona-bar {
@@ -1289,6 +1402,9 @@
 
 .xchat-composer__send {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   border-radius: 10px;
   border: none;
   background: var(--xf-gain-green);
@@ -1299,6 +1415,10 @@
   font-size: 0.8rem;
   cursor: pointer;
   transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.xchat-composer__send .crud-icon {
+  color: inherit;
 }
 
 .xchat-composer__send:hover:not(:disabled) {

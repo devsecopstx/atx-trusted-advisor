@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 
+import { RefreshIcon } from "@/app/admin/ui/crud-icons";
+
 import type { XsbInitialWorkspace, XsbWorkspaceAccount, XsbWorkspacePortfolio } from "../workspace-types";
 
 type LoadState =
@@ -155,6 +157,7 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
           <div className="xsb-friendly-error">
             <p>{loadState.message}</p>
             <button className="xsb-friendly-retry" onClick={() => void fetchDefault()} type="button">
+              <RefreshIcon className="crud-icon" />
               Retry
             </button>
           </div>

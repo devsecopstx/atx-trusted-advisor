@@ -121,17 +121,9 @@ export default async function XstrategyBuilderPage() {
           <p className="eyebrow">xStrategyBuilder · option order builder</p>
 
           <div className="xsb-hero-lockup">
-            <h1 className="hero-title">aTx⚡Finance — Powered by xAI</h1>
-            <p className="xsb-tagline">No Atoms Moved. Just Gains Earned.</p>
+            <h1 className="hero-title xsb-hero-title">aTx⚡Finance — Powered by xAI</h1>
+            <p className="xsb-tagline xsb-tagline--hero">No Atoms Moved. Just Gains Earned.</p>
           </div>
-
-          <p className="hero-copy">
-            Build defined-risk option orders with real-time chain context and P/L framing — natural-language prefill,
-            guided steps, then Grok-grounded rationale. Same flow family as the xfinance-strategy builder service
-            (outlooks, <code className="xsb-inline-code">STRATEGIES</code>, Yahoo chain rows, recommendation object).
-          </p>
-
-          <XstrategybuilderPublicPreview initialWorkspace={initialWorkspace} />
 
           <div className="xsb-badges" role="list">
             {METRIC_BADGES.map((b) => (
@@ -146,6 +138,14 @@ export default async function XstrategyBuilderPage() {
               </article>
             ))}
           </div>
+
+          <p className="xsb-hero-subcopy">
+            Build defined-risk option orders with real-time chain context and P/L framing — natural-language prefill,
+            guided steps, then Grok-grounded rationale. Same flow family as the xfinance-strategy builder service
+            (outlooks, <code className="xsb-inline-code">STRATEGIES</code>, Yahoo chain rows, recommendation object).
+          </p>
+
+          <XstrategybuilderPublicPreview initialWorkspace={initialWorkspace} />
 
           <p className="xsb-disclaimer">
             Hypothetical and backtested results have inherent limitations; past or simulated performance does not

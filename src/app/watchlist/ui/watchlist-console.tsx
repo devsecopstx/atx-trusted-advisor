@@ -4,6 +4,19 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import {
+    AddIcon,
+    BackIcon,
+    DedupeIcon,
+    DeleteIcon,
+    DownloadIcon,
+    EditIcon,
+    ExternalLinkIcon,
+    SaveIcon,
+    UnlinkIcon,
+    UploadIcon,
+    XMarkIcon
+} from "@/app/admin/ui/crud-icons";
+import {
     MAX_WATCHLIST_SYMBOLS,
     MAX_WATCHLIST_SYMBOLS_PER_PATCH
 } from "@/modules/watchlist/constants";
@@ -504,7 +517,8 @@ export function WatchlistConsole({
         <aside className="xf-watchlist-sidebar">
           <h2 className="xf-watchlist-sidebar-title">Watchlists</h2>
           <button className="xf-watchlist-new-btn" disabled type="button">
-            + New watchlist
+            <AddIcon className="crud-icon" />
+            New watchlist
           </button>
           <div className="xf-watchlist-nav-item">
             {sidebarTitle}
@@ -551,6 +565,7 @@ export function WatchlistConsole({
                   type="button"
                   onClick={enterEdit}
                 >
+                  <EditIcon className="crud-icon" />
                   Edit
                 </button>
               ) : (
@@ -561,6 +576,7 @@ export function WatchlistConsole({
                     type="button"
                     onClick={() => void saveEdits()}
                   >
+                    <SaveIcon className="crud-icon" />
                     Save changes
                   </button>
                   <button
@@ -569,11 +585,13 @@ export function WatchlistConsole({
                     type="button"
                     onClick={cancelEdit}
                   >
+                    <XMarkIcon className="crud-icon" />
                     Cancel
                   </button>
                 </>
               )}
               <button className="xf-watchlist-toolbar-btn" disabled type="button">
+                <UnlinkIcon className="crud-icon" />
                 Remove in holdings
               </button>
               <button
@@ -582,6 +600,7 @@ export function WatchlistConsole({
                 type="button"
                 onClick={onExport}
               >
+                <DownloadIcon className="crud-icon" />
                 Export CSV
               </button>
               <button
@@ -591,6 +610,7 @@ export function WatchlistConsole({
                 type="button"
                 onClick={onPickImportFile}
               >
+                <UploadIcon className="crud-icon" />
                 Import CSV
               </button>
               <button
@@ -599,9 +619,11 @@ export function WatchlistConsole({
                 type="button"
                 onClick={() => void onDedupe()}
               >
+                <DedupeIcon className="crud-icon" />
                 Remove duplicates
               </button>
               <button className="xf-watchlist-toolbar-btn xf-watchlist-toolbar-btn--danger" disabled type="button">
+                <DeleteIcon className="crud-icon" />
                 Delete
               </button>
               <button
@@ -610,7 +632,8 @@ export function WatchlistConsole({
                 type="button"
                 onClick={() => void onAdd()}
               >
-                + Add
+                <AddIcon className="crud-icon" />
+                Add
               </button>
             </div>
 
@@ -738,9 +761,7 @@ export function WatchlistConsole({
                             type="button"
                             onClick={() => void onRemoveSymbol(row.symbol)}
                           >
-                            <svg aria-hidden fill="currentColor" height="18" viewBox="0 0 24 24" width="18">
-                              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                            </svg>
+                            <DeleteIcon className="crud-icon" />
                           </button>
                         </td>
                       </tr>
@@ -755,19 +776,23 @@ export function WatchlistConsole({
             {footerMode === "admin" ? (
               <>
                 <Link className="cta cta-secondary" href="/admin/portfolios">
-                  ← Portfolios
+                  <BackIcon className="crud-icon" />
+                  Portfolios
                 </Link>
                 <Link className="cta cta-secondary" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`}>
+                  <EditIcon className="crud-icon" />
                   Manage accounts
                 </Link>
               </>
             ) : (
               <>
                 <Link className="cta cta-secondary" href="/portfolio">
+                  <BackIcon className="crud-icon" />
                   Back to portfolio
                 </Link>
                 {isAdmin ? (
                   <Link className="cta cta-primary" href="/admin/portfolios">
+                    <ExternalLinkIcon className="crud-icon" />
                     Open in Hub
                   </Link>
                 ) : null}

@@ -1,5 +1,6 @@
 "use client";
 
+import { XMarkIcon } from "@/app/admin/ui/crud-icons";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 function formatPrice(value: number | undefined, currency?: string): string {
@@ -109,9 +110,7 @@ export function WatchlistSymbolShape({
             type="button"
             onClick={onRemoveFromWatchlist}
           >
-            <svg aria-hidden fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-            </svg>
+            <XMarkIcon className="crud-icon" />
           </button>
         </div>
         <div className="xf-symbol-shape__price-row">

@@ -206,8 +206,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .admin-topbar-icon-link {
-  width: 2rem;
-  height: 2rem;
+  width: 2.28rem;
+  height: 2.28rem;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.03);
@@ -227,8 +227,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .admin-topbar-icon-link__glyph {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.2rem;
+  height: 1.2rem;
   display: inline-flex;
 }
 

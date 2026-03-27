@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type FormEvent } from "react";
 
+import { AddIcon } from "@/app/admin/ui/crud-icons";
+
 type AccountOption = {
   id: string;
   name: string;
@@ -352,6 +354,7 @@ export function PortfolioPositionQuickAdd({ portfolioId, accounts }: PortfolioPo
           />
         </label>
         <button type="submit" className="cta cta-primary" disabled={pending}>
+          <AddIcon className="crud-icon" />
           Add position
         </button>
       </form>

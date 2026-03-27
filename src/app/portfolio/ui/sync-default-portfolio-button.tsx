@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { SyncArrowsIcon } from "@/app/admin/ui/crud-icons";
+
 type SyncDefaultPortfolioButtonProps = {
   /** Primary CTA on error surfaces; secondary when paired with other links */
   variant?: "primary" | "secondary";
@@ -49,6 +51,7 @@ export function SyncDefaultPortfolioButton({
     return (
       <>
         <button className={buttonClassName} disabled={pending} onClick={() => void onSync()} type="button">
+          <SyncArrowsIcon className="crud-icon" />
           {pending ? "Syncing…" : "Sync"}
         </button>
         {error ? (
@@ -63,6 +66,7 @@ export function SyncDefaultPortfolioButton({
   return (
     <div className="stack-gap" style={{ marginTop: "0.75rem" }}>
       <button className={buttonClassName} disabled={pending} onClick={() => void onSync()} type="button">
+        <SyncArrowsIcon className="crud-icon" />
         {pending ? "Syncing…" : "Sync"}
       </button>
       {error ? (

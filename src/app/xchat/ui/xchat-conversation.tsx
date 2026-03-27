@@ -10,6 +10,7 @@ import {
     useState
 } from "react";
 
+import { SendIcon } from "@/app/admin/ui/crud-icons";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
@@ -113,6 +114,37 @@ function XchatThreadCollapseChevronIcon() {
   );
 }
 
+/** Large gear — expand rail (workspace / settings affordance). */
+function XchatRailExpandIcon() {
+  return (
+    <svg aria-hidden className="xchat-rail-toggle__glyph xchat-rail-toggle__glyph--gear" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M12 15a3 3 0 100-6 3 3 0 000 6z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+function XchatRailCollapseIcon() {
+  return (
+    <svg aria-hidden className="xchat-rail-toggle__glyph" fill="none" viewBox="0 0 24 24">
+      <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M21 6l-6 6 6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    </svg>
+  );
+}
+
 type RailAvatarProps = {
   label: string;
 };
@@ -146,6 +178,8 @@ type XchatConversationProps = {
   defaultPublishedPersonaName: string;
   /** When false, Super-Agent is hidden from the picker (app_user cannot use it without admin assignment). */
   includeSuperAgentInPersonaPicker?: boolean;
+  /** Greeting label (display name, handle, or email local-part). */
+  welcomeName: string;
 };
 
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
@@ -227,7 +261,8 @@ const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = (() => {
 
 export function XchatConversation({
   defaultPublishedPersonaName,
-  includeSuperAgentInPersonaPicker = false
+  includeSuperAgentInPersonaPicker = false,
+  welcomeName
 }: XchatConversationProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
@@ -618,23 +653,30 @@ export function XchatConversation({
   }
 
   return (
-    <div className="xchat-main-shell">
+    <div className={`xchat-main-shell${leftRailCollapsed ? " xchat-main-shell--rail-collapsed" : ""}`}>
       <aside className={`xchat-left-rail ${leftRailCollapsed ? "xchat-left-rail--collapsed" : ""}`}>
         <div className="xchat-rail-head">
+          {!leftRailCollapsed ? (
+            <div className="xchat-rail-head__brand">
+              <span className="xchat-rail-head__team-label">Workspace</span>
+              <span className="xchat-rail-head__team-name">xChat</span>
+            </div>
+          ) : null}
           <button
             aria-expanded={!leftRailCollapsed}
+            aria-label={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}
             className="xchat-rail-toggle"
+            title={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}
             type="button"
             onClick={() => setLeftRailCollapsed((prev) => !prev)}
           >
-            {leftRailCollapsed ? "Open" : "Collapse"}
+            {leftRailCollapsed ? <XchatRailExpandIcon /> : <XchatRailCollapseIcon />}
           </button>
-          {!leftRailCollapsed ? <span className="status-badge status-ready">History & examples</span> : null}
         </div>
         {!leftRailCollapsed ? (
           <div className="xchat-rail-body">
             <section className="xchat-rail-section">
-              <h3 className="xchat-rail-title">Persona</h3>
+              <h3 className="xchat-rail-title xchat-rail-title--caps">Persona</h3>
               <div className="xchat-composer__persona-wrap">
                 <label className="xchat-composer__persona-label" htmlFor="xchat-persona-picker">
                   Persona picker
@@ -673,7 +715,7 @@ export function XchatConversation({
               </p>
             </section>
             <section className="xchat-rail-section">
-              <h3 className="xchat-rail-title">Examples</h3>
+              <h3 className="xchat-rail-title xchat-rail-title--caps">Examples</h3>
               <div className="xchat-rail-link-list">
                 {normalizedExamples.map((prompt, i) => (
                   <button
@@ -700,7 +742,7 @@ export function XchatConversation({
               </div>
             </section>
             <section className="xchat-rail-section">
-              <h3 className="xchat-rail-title">Recent chats</h3>
+              <h3 className="xchat-rail-title xchat-rail-title--caps">Recent chats</h3>
               {historyLoading ? <p className="status-text">Loading history...</p> : null}
               {historyError ? <p className="status-text status-error">{historyError}</p> : null}
               {!historyLoading && !historyError && savedHistory.length === 0 ? (
@@ -737,6 +779,10 @@ export function XchatConversation({
       </aside>
 
       <div className="xchat-main">
+        <header className="xchat-welcome-header">
+          <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
+          <p className="xchat-welcome-sub">Overview of xChat — personas, history, and advisor tools.</p>
+        </header>
         <div className="xchat-persona-bar">
         <span className="status-badge status-ready">Active persona</span>
         <span
@@ -909,6 +955,7 @@ export function XchatConversation({
             <XchatComposerWaveformIcon />
           </button>
           <button className="xchat-composer__send" disabled={loading || !input.trim()} type="submit">
+            <SendIcon className="crud-icon" />
             Send
           </button>
           </form>

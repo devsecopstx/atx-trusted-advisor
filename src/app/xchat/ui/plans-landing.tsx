@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { SendIcon } from "@/app/admin/ui/crud-icons";
+
 type PlanFeature = {
   text: string;
 };
@@ -184,6 +186,7 @@ export function PlansLanding({ userEmail, username }: PlansLandingProps) {
               disabled={status === "submitting"}
               type="submit"
             >
+              <SendIcon className="crud-icon" />
               {status === "submitting" ? "Submitting..." : "Request Free Access"}
             </button>
             {errorMessage ? (

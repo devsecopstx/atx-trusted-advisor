@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 
+import { ActivityPulseIcon, FolderPortfolioIcon, ListRowsIcon } from "@/app/admin/ui/crud-icons";
+
 type TabId = "portfolios" | "holdings" | "activity";
 
 export function PortfolioManageTabs({
@@ -24,6 +26,7 @@ export function PortfolioManageTabs({
           className={`portfolio-manage-tabs__btn${tab === "portfolios" ? " portfolio-manage-tabs__btn--active" : ""}`}
           onClick={() => setTab("portfolios")}
         >
+          <FolderPortfolioIcon className="crud-icon" />
           My portfolios
         </button>
         <button
@@ -31,6 +34,7 @@ export function PortfolioManageTabs({
           className={`portfolio-manage-tabs__btn${tab === "holdings" ? " portfolio-manage-tabs__btn--active" : ""}`}
           onClick={() => setTab("holdings")}
         >
+          <ListRowsIcon className="crud-icon" />
           My holdings
         </button>
         <button
@@ -38,6 +42,7 @@ export function PortfolioManageTabs({
           className={`portfolio-manage-tabs__btn${tab === "activity" ? " portfolio-manage-tabs__btn--active" : ""}`}
           onClick={() => setTab("activity")}
         >
+          <ActivityPulseIcon className="crud-icon" />
           My activity
         </button>
       </nav>

@@ -1,3 +1,4 @@
+import { SendIcon } from "@/app/admin/ui/crud-icons";
 import { LinkEmailForm } from "@/app/login/ui/link-email-form";
 import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 
@@ -178,6 +179,7 @@ export function XchatGuestPanel({
             title="Sign up or sign in to send prompts"
             type="button"
           >
+            <SendIcon className="crud-icon" />
             Send
           </button>
         </div>

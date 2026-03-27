@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
+import { SendIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
+
 type AppUserHeaderSessionProps = {
   mongoConnection: string;
   email: string;
@@ -121,88 +123,90 @@ export function AppUserHeaderSession({
 
   return (
     <div className="xchat-header-session">
-      <div className="xchat-header-session-profile" ref={profileRef}>
-        {avatarUrl ? (
-          <Image
-            alt={`${displayName ?? username} avatar`}
-            className="xchat-header-session-avatar"
-            height={28}
-            src={avatarUrl}
-            unoptimized
-            width={28}
-          />
-        ) : (
-          <span className="xchat-header-session-avatar xchat-header-session-avatar-fallback">
-            {(displayName ?? username).slice(0, 1).toUpperCase()}
-          </span>
-        )}
-        <button
-          aria-controls={profilePopoverId}
-          aria-expanded={profileOpen}
-          aria-label="Profile and account"
-          className="tiny-button xchat-header-session-btn xchat-header-session-btn--icon"
-          onClick={() => setProfileOpen((v) => !v)}
-          title="Profile"
-          type="button"
-        >
-          <svg aria-hidden viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M4 16c0-2.6 2.7-4 6-4s6 1.4 6 4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
-          </svg>
-        </button>
-        {profileOpen ? (
-          <div className="admin-session-popover xchat-header-profile-popover" id={profilePopoverId} role="dialog">
-            <p>
-              <strong>Name:</strong> {displayName ?? username}
-            </p>
-            <p>
-              <strong>Username:</strong> @{username}
-            </p>
-            <p>
-              <strong>Email:</strong> {email}
-            </p>
-            <p>
-              <strong>X user id:</strong> {xUserId}
-            </p>
-            {mongoConnection ? (
+      <div className="xchat-header-session-row">
+        <div className="xchat-header-session-profile" ref={profileRef}>
+          {avatarUrl ? (
+            <Image
+              alt={`${displayName ?? username} avatar`}
+              className="xchat-header-session-avatar"
+              height={28}
+              src={avatarUrl}
+              unoptimized
+              width={28}
+            />
+          ) : (
+            <span className="xchat-header-session-avatar xchat-header-session-avatar-fallback">
+              {(displayName ?? username).slice(0, 1).toUpperCase()}
+            </span>
+          )}
+          <button
+            aria-controls={profilePopoverId}
+            aria-expanded={profileOpen}
+            aria-label="Profile and account"
+            className="tiny-button xchat-header-session-btn xchat-header-session-btn--icon"
+            onClick={() => setProfileOpen((v) => !v)}
+            title="Profile"
+            type="button"
+          >
+            <svg aria-hidden viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M4 16c0-2.6 2.7-4 6-4s6 1.4 6 4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+            </svg>
+          </button>
+          {profileOpen ? (
+            <div className="admin-session-popover xchat-header-profile-popover" id={profilePopoverId} role="dialog">
               <p>
-                <strong>Mongo (beta):</strong> <code className="xchat-header-code">{mongoConnection}</code>
+                <strong>Name:</strong> {displayName ?? username}
               </p>
-            ) : null}
-            <div className="xchat-profile-menu" role="menu" aria-label="Account actions">
-              <button
-                className="xchat-profile-menu__item"
-                role="menuitem"
-                type="button"
-                onClick={() => {
-                  setProfileOpen(false);
-                  setFeedbackStatus("");
-                  setFeedbackOpen(true);
-                }}
-              >
-                Submit feedback
-              </button>
-              <button
-                className="xchat-profile-menu__item xchat-profile-menu__item--logout"
-                disabled={isLoggingOut}
-                role="menuitem"
-                type="button"
-                onClick={() => {
-                  setProfileOpen(false);
-                  void handleLogout();
-                }}
-              >
-                {isLoggingOut ? "Logging out…" : "Logout"}
-              </button>
+              <p>
+                <strong>Username:</strong> @{username}
+              </p>
+              <p>
+                <strong>Email:</strong> {email}
+              </p>
+              <p>
+                <strong>X user id:</strong> {xUserId}
+              </p>
+              {mongoConnection ? (
+                <p>
+                  <strong>Mongo (beta):</strong> <code className="xchat-header-code">{mongoConnection}</code>
+                </p>
+              ) : null}
+              <div className="xchat-profile-menu" role="menu" aria-label="Account actions">
+                <button
+                  className="xchat-profile-menu__item"
+                  role="menuitem"
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    setFeedbackStatus("");
+                    setFeedbackOpen(true);
+                  }}
+                >
+                  Submit feedback
+                </button>
+                <button
+                  className="xchat-profile-menu__item xchat-profile-menu__item--logout"
+                  disabled={isLoggingOut}
+                  role="menuitem"
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    void handleLogout();
+                  }}
+                >
+                  {isLoggingOut ? "Logging out…" : "Logout"}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
+        </div>
+
+        {logoutStatus ? <span className="xchat-header-session-err">{logoutStatus}</span> : null}
+        {feedbackStatus && !feedbackOpen ? (
+          <span className="xchat-header-session-ok">{feedbackStatus}</span>
         ) : null}
       </div>
-
-      {logoutStatus ? <span className="xchat-header-session-err">{logoutStatus}</span> : null}
-      {feedbackStatus && !feedbackOpen ? (
-        <span className="xchat-header-session-ok">{feedbackStatus}</span>
-      ) : null}
 
       {feedbackOpen ? (
         <div
@@ -248,9 +252,11 @@ export function AppUserHeaderSession({
                   }}
                   type="button"
                 >
+                  <XMarkIcon className="crud-icon" />
                   Cancel
                 </button>
                 <button className="cta cta-primary" disabled={isSendingFeedback} type="submit">
+                  <SendIcon className="crud-icon" />
                   {isSendingFeedback ? "Sending…" : "Send"}
                 </button>
               </div>

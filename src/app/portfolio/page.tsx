@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { HomeIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioOverview } from "@/app/portfolio/ui/portfolio-overview";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
@@ -148,6 +149,7 @@ export default async function PortfolioPage() {
               </div>
               <div className="cta-row" style={{ marginTop: "1rem" }}>
                 <Link className="cta cta-secondary" href="/">
+                  <HomeIcon className="crud-icon" />
                   Home
                 </Link>
               </div>

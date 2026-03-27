@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FolderPortfolioIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { getSessionUser } from "@/lib/auth";
@@ -99,9 +100,11 @@ export default async function WatchlistPage() {
             <SyncDefaultPortfolioButton />
             <div className="cta-row" style={{ marginTop: "1rem" }}>
               <Link className="cta cta-secondary" href="/portfolio">
+                <FolderPortfolioIcon className="crud-icon" />
                 Open Portfolio
               </Link>
               <Link className="cta cta-secondary" href="/">
+                <HomeIcon className="crud-icon" />
                 Home
               </Link>
             </div>

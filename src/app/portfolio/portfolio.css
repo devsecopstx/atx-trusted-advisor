@@ -444,6 +444,10 @@
 }
 
 .portfolio-manage-tabs__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   flex: 1 1 auto;
   min-width: 7rem;
   padding: 0.5rem 0.75rem;
@@ -761,11 +765,6 @@
   cursor: not-allowed;
 }
 
-.portfolio-export-csv__icon {
-  font-size: 0.9rem;
-  line-height: 1;
-}
-
 .portfolio-holdings-panel__hint {
   margin: 0 0 0.75rem;
   font-size: 0.82rem;
@@ -868,6 +867,9 @@
 }
 
 .portfolio-edit-clear__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
   padding: 0.35rem 0.5rem;
   margin: 0;
   border: none;

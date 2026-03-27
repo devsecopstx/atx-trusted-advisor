@@ -10,6 +10,16 @@ import { resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository
 
 import { XchatConversation } from "./ui/xchat-conversation";
 import { XchatGuestPanel } from "./ui/xchat-guest-panel";
+
+function xchatWelcomeLabel(session: { displayName?: string; username: string; email: string }): string {
+  const d = session.displayName?.trim();
+  if (d) return d;
+  const u = session.username?.trim();
+  if (u) return u.startsWith("@") ? u.slice(1) : u;
+  const local = session.email.split("@")[0]?.trim();
+  return local && local.length > 0 ? local : "there";
+}
+
 type XchatPageProps = {
   searchParams: Promise<{ error?: string; details?: string }>;
 };
@@ -70,6 +80,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
           <XchatConversation
             defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
             includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
+            welcomeName={xchatWelcomeLabel(session)}
           />
         ) : (
           <XchatGuestPanel

@@ -48,6 +48,10 @@
 }
 
 .xf-watchlist-new-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   width: 100%;
   margin-bottom: 1rem;
   padding: 0.45rem 0.65rem;

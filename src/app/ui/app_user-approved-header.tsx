@@ -33,16 +33,18 @@ export function AppUserApprovedHeader({
         <XchatHeaderBrand />
       </Link>
       <div className="xchat-header-main">
-        <AppUserProductNav current={current} />
-        <AppUserHeaderSession
-          email={session.email}
-          feedbackPageLabel={feedbackPageLabel}
-          mongoConnection={mongoConnection}
-          displayName={session.displayName}
-          avatarUrl={session.avatarUrl}
-          username={session.username}
-          xUserId={session.xUserId}
-        />
+        <div className="xchat-header-trailing">
+          <AppUserProductNav current={current} />
+          <AppUserHeaderSession
+            email={session.email}
+            feedbackPageLabel={feedbackPageLabel}
+            mongoConnection={mongoConnection}
+            displayName={session.displayName}
+            avatarUrl={session.avatarUrl}
+            username={session.username}
+            xUserId={session.xUserId}
+          />
+        </div>
       </div>
     </header>
   );

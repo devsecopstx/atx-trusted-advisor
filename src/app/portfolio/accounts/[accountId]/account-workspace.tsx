@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
+import { BackIcon, DeleteIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
 import {
     INVESTMENT_STRATEGY_OPTIONS,
     RISK_LEVEL_OPTIONS
@@ -398,6 +399,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                 className={`portfolio-edit-clear__btn${riskProfile === null ? " portfolio-edit-clear__btn--active" : ""}`}
                 onClick={() => setRiskProfile(null)}
               >
+                <XMarkIcon className="crud-icon" />
                 Clear risk level
               </button>
             </div>
@@ -424,6 +426,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                 className={`portfolio-edit-clear__btn${outlook === null ? " portfolio-edit-clear__btn--active" : ""}`}
                 onClick={() => setOutlook(null)}
               >
+                <XMarkIcon className="crud-icon" />
                 Clear strategy
               </button>
             </div>
@@ -435,9 +438,11 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
 
           <div className="portfolio-form-actions portfolio-form-actions--edit-account">
             <Link className="cta cta-secondary portfolio-form-actions__cancel" href="/portfolio">
+              <XMarkIcon className="crud-icon" />
               Cancel
             </Link>
             <button type="submit" className="cta cta-primary portfolio-form-actions__submit" disabled={pending}>
+              <SaveIcon className="crud-icon" />
               {pending ? "Saving…" : "Update account"}
             </button>
           </div>
@@ -477,6 +482,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                         disabled={pending}
                         onClick={() => removePosition(p._id)}
                       >
+                        <DeleteIcon className="crud-icon" />
                         Remove
                       </button>
                     </td>
@@ -542,6 +548,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                 />
               </label>
               <button type="submit" className="cta cta-primary" disabled={pending}>
+                <SaveIcon className="crud-icon" />
                 Save
               </button>
             </div>
@@ -595,6 +602,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                 <input className="crud-input" value={opPrem} onChange={(e) => setOpPrem(e.target.value)} />
               </label>
               <button type="submit" className="cta cta-primary" disabled={pending}>
+                <SaveIcon className="crud-icon" />
                 Save
               </button>
             </div>
@@ -620,6 +628,7 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
                 <input className="crud-input" value={caAmt} onChange={(e) => setCaAmt(e.target.value)} />
               </label>
               <button type="submit" className="cta cta-primary" disabled={pending}>
+                <SaveIcon className="crud-icon" />
                 Save
               </button>
             </div>
@@ -629,7 +638,8 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
 
       <div className="cta-row">
         <Link className="cta cta-secondary" href="/portfolio">
-          ← Back to portfolio
+          <BackIcon className="crud-icon" />
+          Back to portfolio
         </Link>
       </div>
     </div>

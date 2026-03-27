@@ -1,5 +1,7 @@
 "use client";
 
+import { DownloadIcon } from "@/app/admin/ui/crud-icons";
+
 export type PortfolioAccountCsvRow = {
   account: string;
   broker: string;
@@ -58,9 +60,7 @@ export function PortfolioAccountsExportButton({
 
   return (
     <button type="button" className="portfolio-export-csv" onClick={download} disabled={rows.length === 0}>
-      <span aria-hidden className="portfolio-export-csv__icon">
-        ↓
-      </span>
+      <DownloadIcon className="crud-icon" />
       Export CSV
     </button>
   );

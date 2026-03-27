@@ -24,8 +24,14 @@ const NAV_LINKS: { href: string; label: string; icon: ReactNode }[] = [
     href: "/admin",
     label: "Hub",
     icon: (
-      <svg viewBox="0 0 20 20" fill="none">
-        <path d="M4 5h5v5H4V5Zm7 0h5v5h-5V5ZM4 12h5v3H4v-3Zm7 0h5v3h-5v-3Z" stroke="currentColor" strokeWidth="1.5" />
+      <svg viewBox="0 0 24 24" fill="none">
+        <path
+          d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.75"
+        />
       </svg>
     )
   },

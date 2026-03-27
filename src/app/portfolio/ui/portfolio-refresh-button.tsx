@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
+import { RefreshIcon } from "@/app/admin/ui/crud-icons";
+
 type PortfolioRefreshButtonProps = {
   label?: string;
   className?: string;
@@ -23,6 +25,7 @@ export function PortfolioRefreshButton({ label = "Refresh", className }: Portfol
         });
       }}
     >
+      <RefreshIcon className="crud-icon" />
       {pending ? "Refreshing…" : label}
     </button>
   );

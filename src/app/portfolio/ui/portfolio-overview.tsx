@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { EditIcon, ExternalLinkIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioAccountManageBar } from "@/app/portfolio/ui/portfolio-account-manage-bar";
 import { PortfolioAccountsExportButton, type PortfolioAccountCsvRow } from "@/app/portfolio/ui/portfolio-accounts-export-button";
 import { PortfolioHoldingsPanel } from "@/app/portfolio/ui/portfolio-holdings-panel";
@@ -251,7 +252,7 @@ export function PortfolioOverview({
                             aria-label={`Edit ${row.name}`}
                             title="Edit account"
                           >
-                            ✎
+                            <EditIcon className="crud-icon" />
                           </Link>
                         </td>
                       </tr>
@@ -286,15 +287,18 @@ export function PortfolioOverview({
 
           <div className="cta-row portfolio-manage-footer-cta">
             <Link className="cta cta-secondary" href="/">
+              <HomeIcon className="crud-icon" />
               Home
             </Link>
             {defaultAccountHex ? (
               <Link className="cta cta-secondary" href={`/portfolio/accounts/${defaultAccountHex}`}>
+                <EditIcon className="crud-icon" />
                 Manage default account
               </Link>
             ) : null}
             {admin ? (
               <Link className="cta cta-primary" href="/admin/portfolios">
+                <ExternalLinkIcon className="crud-icon" />
                 Open in Hub
               </Link>
             ) : null}
