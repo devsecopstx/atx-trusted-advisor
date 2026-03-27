@@ -30,7 +30,7 @@ Default to production-grade, secure, observable, and SRE-minded solutions unless
 
 ## 6. GCP Secret Manager — atxFinance runtime (staging / production)
 
-**Source of truth** for Cloud Run is **Secret Manager** in the GCP project that matches your env file’s project id (`GCP_PROJECT_ID`, `GOOGLE_PROJECT_ID`, or `GOOGLE_CLOUD_PROJECT` in `.env.stage` / `.env.prod`). Do not commit real values; sync from local env files only on secure operator machines.
+**Source of truth** for Cloud Run is **Secret Manager** in the GCP project that matches your env file’s project id. Prefer **`GOOGLE_PROJECT_ID`** in `.env.stage` / `.env.prod` (e.g. `GOOGLE_PROJECT_ID=fintech-advisor-staging` for staging); **`GOOGLE_CLOUD_PROJECT`** and **`GCP_PROJECT_ID`** are accepted aliases. Do not commit real values; sync from local env files only on secure operator machines.
 
 | GCP secret name (exact) | Keys in `.env.stage` / `.env.prod` | Purpose |
 |-------------------------|-------------------------------------|---------|

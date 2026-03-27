@@ -46,10 +46,11 @@ Create matching **Products** and **Prices** in Stripe (recurring subscription) a
 ## App env summary
 
 ```bash
-# Optional publishable (browser / future Elements)
+# Publishable keys — Secret Manager in stage/prod (sync from .env.stage / .env.prod)
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-# Alias supported locally:
-# STRIPE_PUBLIC_KEY=pk_test_...
+STRIPE_PUBLIC_KEY=pk_test_...   # alias; may match publishable key
+
+# Local dev: same vars in .env; Cloud Run: bound from SM (see deploy workflows)
 
 # Server-only (Secret Manager in stage/prod)
 STRIPE_SECRET_KEY=sk_test_...

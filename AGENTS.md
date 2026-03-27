@@ -84,6 +84,14 @@ npm run ops:secrets:verify:staging
 npm run ops:secrets:verify:prod
 ```
 
+Push **Redis** and **Stripe publishable** keys from `.env.stage` / `.env.prod` into the matching GCP project’s Secret Manager (see `.cursor/rules/sre-gcp-deployment.md`):
+
+```bash
+npm run ops:secrets:sync-redis:staging
+npm run ops:secrets:sync-stripe-publishable:staging
+# production: …:prod variants
+```
+
 Full snapshot including CI:
 
 ```bash

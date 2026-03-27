@@ -8,7 +8,10 @@ REQUIRE_NON_EMPTY_SLACK_WEBHOOK="false"
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/ops/verify-gcp-runtime-secrets.sh --project <gcp-project-id> [--expect-non-empty true|false] [--require-non-empty-slack-webhook true|false]
+  bash scripts/ops/verify-gcp-runtime-secrets.sh [--project <gcp-project-id>] [--expect-non-empty true|false] [--require-non-empty-slack-webhook true|false]
+
+  If --project is omitted, uses GOOGLE_PROJECT_ID, GOOGLE_CLOUD_PROJECT, or GCP_PROJECT_ID (e.g. after
+  'set -a && source .env.stage && set +a'). Staging default in docs: GOOGLE_PROJECT_ID=fintech-advisor-staging.
 
 Checks that required runtime secrets exist in GCP Secret Manager and (optionally)
 that their latest secret versions are non-empty.
@@ -43,8 +46,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$PROJECT" ]]; then
-  echo "Missing required arg: --project" >&2
+if [[ -z "${PROJECT//[[:space:]]/}" ]]; then
+  PROJECT="${GOOGLE_PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-${GCP_PROJECT_ID:-}}}"
+fi
+
+if [[ -z "${PROJECT//[[:space:]]/}" ]]; then
+  echo "Missing project: pass --project <id> or set GOOGLE_PROJECT_ID, GOOGLE_CLOUD_PROJECT, or GCP_PROJECT_ID" >&2
   usage
   exit 1
 fi
