@@ -8,8 +8,11 @@ import { createClient } from "redis";
 
 import {
   checkRedisHealth,
+  getRedisClient,
   getRedisConnectionUrl,
   getRedisQuoteCacheTtlSeconds,
+  isLikelyRedisTlsPlainMismatch,
+  logRedisStartupHealthCheck,
   resetRedisClientForTests
 } from "@/lib/redis-client";
 
@@ -23,6 +26,45 @@ describe("redis-client", () => {
 
   it("getRedisConnectionUrl returns undefined when unset", () => {
     expect(getRedisConnectionUrl()).toBeUndefined();
+  });
+
+  it("isLikelyRedisTlsPlainMismatch detects OpenSSL plain/TLS mismatch", () => {
+    expect(
+      isLikelyRedisTlsPlainMismatch(
+        "error:0A0000C6:SSL routines:tls_get_more_records:packet length too long"
+      )
+    ).toBe(true);
+    expect(isLikelyRedisTlsPlainMismatch("WRONGPASS invalid username-password pair")).toBe(false);
+  });
+
+  it("getRedisClient retries rediss:// with redis:// after TLS/plain mismatch", async () => {
+    process.env.REDIS_URL = "rediss://default:secret@example.com:14617";
+    const bad = {
+      connect: vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            "error:0A0000C6:SSL routines:tls_get_more_records:packet length too long:ssl/record/methods/tls_common.c:661"
+          )
+        ),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn()
+    };
+    const good = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      ping: vi.fn().mockResolvedValue("PONG"),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn()
+    };
+    vi.mocked(createClient).mockReturnValueOnce(bad as never).mockReturnValueOnce(good as never);
+
+    const c = await getRedisClient();
+    expect(c).toBe(good);
+    expect(createClient).toHaveBeenCalledTimes(2);
+    expect(createClient).toHaveBeenNthCalledWith(1, { url: process.env.REDIS_URL });
+    expect(createClient).toHaveBeenNthCalledWith(2, {
+      url: "redis://default:secret@example.com:14617"
+    });
   });
 
   it("getRedisConnectionUrl accepts redis:// and rediss://", () => {
@@ -45,6 +87,30 @@ describe("redis-client", () => {
   it("checkRedisHealth skips when URL missing", async () => {
     const h = await checkRedisHealth();
     expect(h.status).toBe("skipped");
+  });
+
+  it("logRedisStartupHealthCheck logs ok when ping succeeds", async () => {
+    process.env.REDIS_URL = "redis://127.0.0.1:6379";
+    vi.mocked(createClient).mockReturnValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      ping: vi.fn().mockResolvedValue("PONG"),
+      on: vi.fn(),
+      quit: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined)
+    } as never);
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    await logRedisStartupHealthCheck();
+    expect(info).toHaveBeenCalledWith(expect.stringMatching(/\[startup\/redis\] ok ping latencyMs=\d+/));
+    info.mockRestore();
+  });
+
+  it("logRedisStartupHealthCheck logs skipped when URL missing", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    await logRedisStartupHealthCheck();
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining("[startup/redis] skipped — REDIS_URL unset or invalid")
+    );
+    info.mockRestore();
   });
 
   it("checkRedisHealth pings when client connects", async () => {

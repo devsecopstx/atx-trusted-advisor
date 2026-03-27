@@ -8,6 +8,7 @@
 4. **First use case:** Short-TTL cache for **`getYahooBatchQuotes`** (sorted symbol set → SHA key, default **30s** TTL) to cut Yahoo load on repeated scanner ticks.
 5. **Observability:** `GET /api/health` includes a **`redis`** object: `skipped` | `ok` | `error`.
 6. **Tests:** Unit tests for client + cache behavior; integration test for health JSON shape.
+7. **Post-startup:** `src/instrumentation.ts` calls `logRedisStartupHealthCheck()` once per Node server process (dev / `next start`); logs `[startup/redis] ok …` or `skipped` / `unhealthy`.
 7. **Follow-ups (not in v1):** Spring Redis for rate limits / PKCE (`auth-oauth-spring-dual-run.md`), VPC Memorystore, cache size caps, metrics.
 
 ## Environment variables
@@ -16,6 +17,10 @@
 |----------|----------|-------------|
 | `REDIS_URL` | No | Full connection URL. Examples: `redis://default:PASSWORD@host:14617` or `rediss://default:PASSWORD@host:14617` (Redis Cloud often requires TLS). |
 | `REDIS_QUOTE_CACHE_TTL_SECONDS` | No | Yahoo batch cache TTL in seconds (clamped **5–3600**, default **30**). Safe as a Cloud Run **literal env** (non-secret). |
+
+## Troubleshooting: `packet length too long` / `tls_get_more_records`
+
+The Node client was using **`rediss://`** (TLS) but the host/port speaks **plain Redis** (same as `redis-cli -u redis://…`). Use **`redis://`** in `REDIS_URL`, or rely on the app’s automatic **rediss → redis retry** when it detects this OpenSSL error.
 
 ## Redis Cloud example (TLS)
 
