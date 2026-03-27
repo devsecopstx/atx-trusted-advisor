@@ -41,9 +41,9 @@ Short-form strategy narratives (Markdown + frontmatter) plus links to **executab
 | **Bull call debit spread** | [bull-call-debit-spread.md](../bull-call-debit-spread/bull-call-debit-spread.md) | Moderate (capped risk / reward) | Bullish (defined-risk leverage) | `xfinance-strategy-bull-call-debit-spread` | [`skill-bull-call-debit-spread`](../../../../.cursor/skills/skill-bull-call-debit-spread/SKILL.md) |
 | **Iron condor** | [iron-condor.md](../iron-condor/iron-condor.md) | Moderate (defined risk if range holds) | Neutral / range-bound premium | `xfinance-strategy-iron-condor` | [`skill-iron-condor`](../../../../.cursor/skills/skill-iron-condor/SKILL.md) |
 | **Calendar spread** | [calendar-spread.md](../calendar-spread/calendar-spread.md) | Moderate (volatility differential) | Neutral–directional (term structure / theta vs. long leg) | `xfinance-strategy-calendar-spread` | [`skill-calendar-spread`](../../../../.cursor/skills/skill-calendar-spread/SKILL.md) |
-| **LEAP + CC overlay** | [leap-call-cc-overlay.md](../leap-call-cc-overlay/leap-call-cc-overlay.md) | Aggressive (leverage, decay) | Bullish aggressive (LEAP + overlay income) | `xfinance-strategy-leap-call-cc-overlay` | [`skill-leap-call-cc-overlay`](../../../.cursor/skills/skill-leap-call-cc-overlay/SKILL.md) |
+| **LEAP + CC overlay** | [leap-call-cc-overlay.md](../leap-call-cc-overlay/leap-call-cc-overlay.md) | Aggressive (leverage, decay) | Bullish aggressive (LEAP + overlay income) | `xfinance-strategy-leap-call-cc-overlay` | [`skill-leap-call-cc-overlay`](../../../../.cursor/skills/skill-leap-call-cc-overlay/SKILL.md) |
 
-Shared principles (not a single strategy): [`skill-options-principles`](../../../.cursor/skills/skill-options-principles/SKILL.md).
+Shared principles (not a single strategy): [`skill-options-principles`](../../../../.cursor/skills/skill-options-principles/SKILL.md).
 
 ---
 
