@@ -47,8 +47,12 @@ export function getRedisConnectionUrl(): string | undefined {
   if (!raw.startsWith("redis://") && !raw.startsWith("rediss://")) {
     return undefined;
   }
-  if (URL.canParse(raw)) {
-    return raw;
+  const tlsOff = process.env.REDIS_TLS?.trim().toLowerCase();
+  const preferPlain =
+    tlsOff === "false" || tlsOff === "0" || tlsOff === "off" || tlsOff === "no";
+  const resolved = preferPlain && raw.startsWith("rediss://") ? redissToPlainRedisUrl(raw) : raw;
+  if (URL.canParse(resolved)) {
+    return resolved;
   }
   return undefined;
 }
@@ -85,11 +89,13 @@ export async function getRedisClient(): Promise<AtxRedisClient | null> {
   for (let i = 0; i < attempts.length; i++) {
     const attemptUrl = attempts[i]!;
     const c = createClient({ url: attemptUrl });
-    c.on("error", (err) => {
-      console.warn("[redis] client error", err instanceof Error ? err.message : String(err));
-    });
     try {
       await c.connect();
+      // Attach only after connect — a failed rediss:// attempt can emit async TLS errors on the
+      // socket; logging those from a discarded client caused terminal spam.
+      c.on("error", (err) => {
+        console.warn("[redis] client error", err instanceof Error ? err.message : String(err));
+      });
       client = c;
       if (i > 0) {
         console.info(
@@ -99,6 +105,9 @@ export async function getRedisClient(): Promise<AtxRedisClient | null> {
       return c;
     } catch (error) {
       lastError = error;
+      if (typeof c.removeAllListeners === "function") {
+        c.removeAllListeners();
+      }
       await destroyRedisAttempt(c);
       const msg = error instanceof Error ? error.message : String(error);
       const tryPlain =

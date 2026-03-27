@@ -16,7 +16,8 @@
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `REDIS_URL` | No | Full connection URL. Examples: `redis://default:PASSWORD@host:14617` or `rediss://default:PASSWORD@host:14617` (Redis Cloud often requires TLS). |
-| `REDIS_QUOTE_CACHE_TTL_SECONDS` | No | Yahoo batch cache TTL in seconds (clamped **5–3600**, default **30**). Safe as a Cloud Run **literal env** (non-secret). |
+| `REDIS_TLS` | No | Set to **`false`**, **`0`**, **`off`**, or **`no`** to treat a `rediss://` URL as **plain** `redis://` (fixes TLS parse errors when the port is not actually TLS). |
+| `REDIS_QUOTE_CACHE_TTL_SECONDS` | No | **Only** Yahoo batch quote cache TTL in seconds (clamped **5–3600**, default **30**). Does **not** affect connection or TLS. |
 
 ## Troubleshooting: `packet length too long` / `tls_get_more_records`
 

@@ -7,18 +7,19 @@ vi.mock("redis", () => ({
 import { createClient } from "redis";
 
 import {
-  checkRedisHealth,
-  getRedisClient,
-  getRedisConnectionUrl,
-  getRedisQuoteCacheTtlSeconds,
-  isLikelyRedisTlsPlainMismatch,
-  logRedisStartupHealthCheck,
-  resetRedisClientForTests
+    checkRedisHealth,
+    getRedisClient,
+    getRedisConnectionUrl,
+    getRedisQuoteCacheTtlSeconds,
+    isLikelyRedisTlsPlainMismatch,
+    logRedisStartupHealthCheck,
+    resetRedisClientForTests
 } from "@/lib/redis-client";
 
 describe("redis-client", () => {
   afterEach(async () => {
     delete process.env.REDIS_URL;
+    delete process.env.REDIS_TLS;
     delete process.env.REDIS_QUOTE_CACHE_TTL_SECONDS;
     await resetRedisClientForTests();
     vi.clearAllMocks();
@@ -72,6 +73,12 @@ describe("redis-client", () => {
     expect(getRedisConnectionUrl()).toBe("redis://127.0.0.1:6379");
     process.env.REDIS_URL = "rediss://default:secret@example.com:14617";
     expect(getRedisConnectionUrl()).toContain("rediss://");
+  });
+
+  it("getRedisConnectionUrl forces plain redis:// when REDIS_TLS=false", () => {
+    process.env.REDIS_URL = "rediss://default:secret@example.com:14617";
+    process.env.REDIS_TLS = "false";
+    expect(getRedisConnectionUrl()).toBe("redis://default:secret@example.com:14617");
   });
 
   it("getRedisQuoteCacheTtlSeconds clamps and defaults", () => {
