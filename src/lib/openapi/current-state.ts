@@ -70,6 +70,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "billing"
   },
   {
+    path: "/api/market/symbol-quotes",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "market"
+  },
+  {
     path: "/api/recommendations",
     operations: [
       { method: "GET", auth: "session" },

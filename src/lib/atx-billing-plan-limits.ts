@@ -1,5 +1,5 @@
 /**
- * Published plan caps for Account → Billing (marketing matrix).
+ * Published plan matrix for Account → Billing (list prices + caps).
  * Source of truth doc: `atx-docs/resouces/atx-limits.txt.tsv` — keep in sync when tiers change.
  */
 export type AtxBillingPlanLimitRow = {
@@ -10,6 +10,12 @@ export type AtxBillingPlanLimitRow = {
 };
 
 export const ATX_BILLING_PLAN_LIMIT_ROWS: readonly AtxBillingPlanLimitRow[] = [
+  {
+    metric: "Price",
+    basic: "$9/mo",
+    premium: "$29/mo",
+    premiumPlus: "$99/yr"
+  },
   {
     metric: "xoptions deck views / day",
     basic: "10",

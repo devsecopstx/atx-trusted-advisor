@@ -23,7 +23,7 @@ const PLAN_TIERS: PlanTier[] = [
   {
     id: "paid",
     name: "Paid",
-    price: "$10",
+    price: "$9",
     period: "/month",
     highlight: true,
     tag: "Popular",

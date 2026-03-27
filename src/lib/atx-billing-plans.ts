@@ -21,7 +21,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     name: "Basic",
     tagline:
       "HNWI-focused entry — workspace users, portfolios, accounts (risk & outlook), portfolio scoring factors",
-    priceLabel: "$10",
+    priceLabel: "$9",
     periodNote: "per month",
     bullets: [
       "Built for high-net-worth individual workflows and daily options context",
@@ -33,7 +33,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     id: "premium_monthly",
     name: "Premium",
     tagline: "Complex books — xChat + xStrategyBuilder with fair per-hour caps",
-    priceLabel: "$99",
+    priceLabel: "$29",
     periodNote: "per month",
     highlight: true,
     bullets: [
@@ -46,7 +46,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     id: "premium_plus_yearly",
     name: "Premium+",
     tagline: "Dedicated instance — private, white-glove posture",
-    priceLabel: "$300",
+    priceLabel: "$99",
     periodNote: "per year",
     bullets: [
       "White-glove for ultra-complex and family-office books; direct line for structured product input",
