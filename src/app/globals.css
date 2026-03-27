@@ -1863,6 +1863,10 @@ fieldset label.checkbox-label input[type="checkbox"] {
   font-size: 0.78rem;
 }
 
+.persona-card-meta small.persona-card-system-preview {
+  word-break: break-word;
+}
+
 .persona-card-hint {
   margin: 0.4rem 0 0;
   font-size: 0.75rem;

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { IconEditLink } from "@/app/ui/icon-edit-control";
+import { personaSystemPromptPreview } from "@/lib/persona-system-prompt-preview";
 import { countPersonaLinkedCollections } from "@/modules/xchat/persona-linked-collections";
 
 type PersonaStatus = "draft" | "published" | "archived";
@@ -14,6 +15,7 @@ type PersonaStatus = "draft" | "published" | "archived";
 type PersonaListItem = {
   _id?: string;
   name: string;
+  systemPrompt: string;
   model: string;
   defaultScope: string;
   enableRag: boolean;
@@ -358,6 +360,12 @@ export function PersonasOnboardingHome({ defaultXpersonasCollectionDisplayName }
               </div>
 
               <div className="persona-card-meta">
+                <small
+                  className="persona-card-system-preview"
+                  title={persona.systemPrompt ?? ""}
+                >
+                  System prompt: {personaSystemPromptPreview(persona.systemPrompt)}
+                </small>
                 <small>
                   xAPI: {persona.xapi.mode} | tool_choice: {persona.xapi.toolChoice} |
                   max_turns: {persona.xapi.maxTurns} | tools: {persona.xapi.tools.length}

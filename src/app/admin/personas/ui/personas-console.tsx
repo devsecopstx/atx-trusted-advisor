@@ -21,6 +21,7 @@ import {
 } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
+import { personaSystemPromptPreview } from "@/lib/persona-system-prompt-preview";
 import { countPersonaLinkedCollections } from "@/modules/xchat/persona-linked-collections";
 
 type Persona = {
@@ -739,7 +740,9 @@ export function PersonasConsole({
                   <strong>{persona.name}</strong> ({persona.model}) [{persona.defaultScope}]{" "}
                   {persona.enableRag ? "RAG:on" : "RAG:off"} t={persona.temperature}
                   <br />
-                  <small>System: {persona.systemPrompt}</small>
+                  <small title={persona.systemPrompt}>
+                    System prompt: {personaSystemPromptPreview(persona.systemPrompt)}
+                  </small>
                   {persona.overridePrompt ? (
                     <>
                       <br />
