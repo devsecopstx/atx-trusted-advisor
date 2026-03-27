@@ -14,7 +14,7 @@ atxFinance Brand Review Checklist
 - [ ] Phone mockup UI is believable (portfolio, charts, AI, payments)
 - [ ] Dark-mode contrast supports readability and hierarchy
 - [ ] Glow effects are subtle; no overbloom or clutter
-- [ ] Cryptocurrency + AI motifs are present but restrained
+- [ ] Fintech + AI motifs are present but restrained
 - [ ] Visual balance: focal point, spacing, and negative space are intentional
 - [ ] Final asset feels premium, trustworthy, and conversion-oriented
 ```

@@ -73,6 +73,11 @@ block:gibberishText block:misspelledBranding block:misleadingFinancialValues
 - <ratio and safe-zone guidance>
 ```
 
+## Footer & compliance tone (product chrome)
+
+- Footers and shared chrome use **professional** disclaimers only (e.g. *Not financial advice*, risk of loss, for approved users).
+- **Do not** suggest or ship ironic / meme legal lines (including any variant of “don’t sue me bro”) in footers, heroes, or store assets.
+
 ## Validation Before Returning
 
 - No gibberish text

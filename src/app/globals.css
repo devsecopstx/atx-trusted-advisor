@@ -645,22 +645,9 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--xf-text-100);
 }
 
-.app-footer-tagline {
-  margin-top: 0.32rem;
-  text-align: center;
-  font-size: 0.6rem;
-  line-height: 1.25;
-  letter-spacing: 0.02em;
-  font-weight: 700;
-  color: var(--xf-gain-green);
-  opacity: 0.95;
-  user-select: none;
-}
-
 @media (max-width: 768px) {
   .app-footer-subline-stack,
-  .app-footer-subline,
-  .app-footer-tagline {
+  .app-footer-subline {
     width: 100%;
     display: block;
     text-align: center;

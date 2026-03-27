@@ -16,12 +16,12 @@ describe("GlobalFooter", () => {
   });
 
   it("does not ship casual or jokey compliance copy in chrome", () => {
-    expect(source).not.toMatch(/don't sue|sue me, bro/i);
+    expect(source).not.toMatch(/sue me bro|don.?t sue|sue me, bro/i);
   });
 
-  it("renders subline stack only when subline is passed (no empty bordered block)", () => {
+  it("keeps subline stack and optional subline override contract", () => {
     expect(source).toContain("app-footer-subline-stack");
-    expect(source).toContain("subline ?");
+    expect(source).toContain("subline ??");
     expect(source).not.toContain("app-footer-watermark");
   });
 });

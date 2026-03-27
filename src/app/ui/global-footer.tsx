@@ -62,9 +62,6 @@ export function GlobalFooter({ subline }: GlobalFooterProps) {
       <div className="app-footer-subline-stack">
         <div className="app-footer-subline">{effectiveSubline}</div>
       </div>
-      <div className="app-footer-tagline" aria-label="Tagline">
-        don&apos;t sue me bro.
-      </div>
     </footer>
   );
 }

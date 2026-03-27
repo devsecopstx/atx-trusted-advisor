@@ -13,7 +13,7 @@ Preserve auth/session behavior; reuse existing components. Run `npm run lint`, `
 
 - Token-first UI (`atx-docs/design-system/**`, `.cursor/rules/xfinance-branding.mdc`); no stray hex in app CSS.
 - OAuth sign-in CTAs (`/xchat` guest panel): use `GoogleGIcon` and `XLogoIcon` from `src/app/ui/oauth-provider-icons.tsx` beside visible label text; Google button on dark surfaces uses `.cta-oauth-google` (light background) so the multicolor G reads clearly. (`/login` is deprecated and permanently redirects to `/xchat`.)
-- Footer watermark: render `Not financial advice` in bold white, and render `don’t sue me bro.` below it in bold gain-green.
+- **GlobalFooter** (`global-footer.tsx`): professional disclaimer only — default subline uses bold **`Not financial advice`** (`.app-footer-disclaimer-strong`); no jokey or meme legal copy in footers.
 - xChat thread UX: keep the current thread expanded while waiting for the assistant response; do not auto-collapse before the user can see the reply.
 - Prefer smallest change that ships; add tests for new API/domain behavior.
 - **Icon-only edit affordances:** use `IconEditButton` / `IconEditLink` from `src/app/ui/icon-edit-control.tsx` with a clear `label` (drives both `title` tooltip and `aria-label`). Pick `variant`: `neutral` (default square control), `primary-cta`, `secondary-cta`, `tiny` (admin row actions), or `watchlist-toolbar`. Do not show a visible “Edit” word next to the pencil unless the surface is a full text CTA (e.g. “Manage default account”).

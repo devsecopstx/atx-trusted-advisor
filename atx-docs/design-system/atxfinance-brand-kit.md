@@ -113,7 +113,7 @@ Composition: vertical 4:5 social-ready hero.
 - Left: floating glassmorphism cards with:
   - "Grok" AI assistant card/icon
   - xStrategyBuilder licensing card with risk/compliance symbols
-  - crypto/AI motifs (token glyphs, node-link graphics, abstract neural lines) in monochrome
+  - fintech / AI motifs (subtle glyphs, node-link graphics, abstract neural lines) in monochrome
 Visual quality: crisp, high-detail, premium product render, balanced layout, minimal clutter.
 Mood: high-tech finance brand, trustworthy and innovative.
 Constraints: no gibberish text, no misspellings, interface text must be legible and believable, and no saturated icon colors.

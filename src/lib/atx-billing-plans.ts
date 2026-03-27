@@ -36,7 +36,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     periodNote: "per month",
     highlight: true,
     bullets: [
-      "Complex portfolios: alts, crypto, international, real estate, and multi-account context",
+      "Complex portfolios: international, real estate, listed equities & options, and multi-account context",
       "Generous posture with fair per-hour caps on xChat and xStrategyBuilder (scenario builder)",
       "Power-user tier — meaningful Feedback on real scenarios helps us prioritize caps, tools, and roadmap"
     ]
