@@ -3,22 +3,7 @@ import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import "../../atx-docs/design-system/atxfinance-brand-kit.css";
 import "./globals.css";
-
-const XF_THEME_BOOT = `(function(){
-  function resolve(pref){
-    var light=false;
-    try{light=window.matchMedia("(prefers-color-scheme: light)").matches;}catch(e){}
-    if(pref==="system")return light?"soft":"deep";
-    if(pref==="light")return "soft";
-    return "deep";
-  }
-  try{
-    var raw=localStorage.getItem("xf-ui-theme")||"dark";
-    if(raw!=="light"&&raw!=="dark"&&raw!=="system")raw="dark";
-    document.documentElement.setAttribute("data-xf-ui",resolve(raw));
-    document.documentElement.setAttribute("data-xf-theme-pref",raw);
-  }catch(e){}
-})();`;
+import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -39,10 +24,8 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html className={`dark ${inter.variable}`} lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: XF_THEME_BOOT }} id="xf-ui-theme-boot" />
-      </head>
       <body>
+        <XfThemeBootClient />
         {children}
       </body>
     </html>
