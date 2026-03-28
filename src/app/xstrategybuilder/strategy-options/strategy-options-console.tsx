@@ -32,14 +32,16 @@ type StrategyOptionsConsoleProps = {
   eyebrow?: string;
   backHref?: string;
   backLabel?: string;
+  initialSymbol?: string;
 };
 
 export function StrategyOptionsConsole({
   eyebrow = "xStrategyBuilder · live options",
   backHref = "/xstrategybuilder",
-  backLabel = "Back to xStrategyBuilder"
+  backLabel = "Back to xStrategyBuilder",
+  initialSymbol = "TSLA"
 }: StrategyOptionsConsoleProps) {
-  const [underlying, setUnderlying] = useState("TSLA");
+  const [underlying, setUnderlying] = useState(initialSymbol);
   const [strike, setStrike] = useState("250");
   const [expirations, setExpirations] = useState<string[]>([]);
   const [expiration, setExpiration] = useState("");

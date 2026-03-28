@@ -48,3 +48,34 @@ Default to production-grade, secure, observable, and SRE-minded solutions unless
 **Deploy:** Cloud Run workflows bind `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_PUBLIC_KEY` from Secret Manager on every deploy (no GitHub Variables fallback for those three).
 
 Other Stripe config (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_*`) remains as documented in `atx-docs/sre-ops/stripe-billing-setup.md` (secret key in SM when checkout is enabled; price ids via GitHub Environment **variables** unless you add separate SM secrets later).
+
+## 7. Local deploy to Cloud Run (bypass GitHub Actions)
+
+Use when you want **`gcloud run deploy --source .`** from your laptop with the **same secret bindings and env shape** as `.github/workflows/deploy-cloud-run.yml`, driven by **`.env.stage`** or **`.env.prod`**.
+
+**Script:** `scripts/ops/deploy-cloud-run-from-env.sh`
+
+**Prereqs:** `gcloud` authenticated as a principal that can deploy Cloud Run and read Secret Manager in the target project; repo root as cwd; required keys present in the env file (see below).
+
+**Typical staging flow**
+
+1. Optional quality gate (same as CI verify job): `npm run ops:deploy:cloud-run:staging:ci` — runs `ci:gate` then deploy.  
+   Or skip full CI and only assert Secret Manager: `npm run ops:deploy:cloud-run:staging`.
+
+2. Manual equivalent:  
+   `bash scripts/ops/deploy-cloud-run-from-env.sh --staging`  
+   or `bash scripts/ops/deploy-cloud-run-from-env.sh .env.stage`  
+   Production: `--production` or pass `.env.prod` (target is inferred from the filename unless you override with `--staging`).
+
+**Required in `.env.stage` / `.env.prod` (for deploy, in addition to SM-backed secrets already in the project)**
+
+- `GOOGLE_PROJECT_ID` (or `GCP_PROJECT_ID` / `GOOGLE_CLOUD_PROJECT`)
+- `CLOUD_RUN_REGION` (e.g. `us-central1`)
+- `CLOUD_RUN_SERVICE_STAGING` or `CLOUD_RUN_SERVICE_PROD` (must match the Cloud Run service name)
+- `STAGING_BASE_URL` or `PROD_BASE_URL` — public origin **without** trailing slash; used to set `X_OAUTH_CALLBACK_URL`
+
+**Verify without Actions:** the script runs `verify-gcp-runtime-secrets.sh --project …` by default. To skip (not recommended): `--skip-secret-preflight`. To match the workflow’s lint/typecheck/test/build gate locally: `--with-ci-gate` or use the `*:ci` npm scripts.
+
+**After deploy:** runs `scripts/ops/health-check-with-fallback.sh` unless `--no-health`.
+
+**Safety:** This does **not** replace GitHub’s manual approval or branch policy for production; use for staging hotfixes or operator-controlled pushes only. Prefer **Deploy Cloud Run** workflow for normal releases.

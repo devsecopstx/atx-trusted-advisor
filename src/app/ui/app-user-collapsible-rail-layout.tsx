@@ -12,6 +12,8 @@ type AppUserCollapsibleRailLayoutProps = {
   children: ReactNode;
   /** Applied to the main column (e.g. `app-user-shell-with-rail--padded`). */
   mainClassName?: string;
+  /** Set false to keep the rail always expanded. */
+  allowCollapse?: boolean;
 };
 
 function readStoredCollapsed(): boolean {
@@ -25,19 +27,32 @@ function readStoredCollapsed(): boolean {
   }
 }
 
-export function AppUserCollapsibleRailLayout({ rail, children, mainClassName }: AppUserCollapsibleRailLayoutProps) {
+export function AppUserCollapsibleRailLayout({
+  rail,
+  children,
+  mainClassName,
+  allowCollapse = true
+}: AppUserCollapsibleRailLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const isCollapsed = allowCollapse && collapsed;
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
-      setCollapsed(readStoredCollapsed());
+      if (allowCollapse) {
+        setCollapsed(readStoredCollapsed());
+      } else {
+        setCollapsed(false);
+      }
       setHydrated(true);
     });
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [allowCollapse]);
 
   const toggle = useCallback(() => {
+    if (!allowCollapse) {
+      return;
+    }
     setCollapsed((prev) => {
       const next = !prev;
       try {
@@ -47,31 +62,33 @@ export function AppUserCollapsibleRailLayout({ rail, children, mainClassName }: 
       }
       return next;
     });
-  }, []);
+  }, [allowCollapse]);
 
   return (
     <div
-      className={`app-user-shell-with-rail${collapsed ? " app-user-shell-with-rail--rail-collapsed" : ""}`}
+      className={`app-user-shell-with-rail${isCollapsed ? " app-user-shell-with-rail--rail-collapsed" : ""}`}
       suppressHydrationWarning={!hydrated}
     >
-      <div className={`app-user-rail-stack${collapsed ? " app-user-rail-stack--collapsed" : ""}`}>
+      <div className={`app-user-rail-stack${isCollapsed ? " app-user-rail-stack--collapsed" : ""}`}>
         <div className="app-user-rail-stack__head">
-          {!collapsed ? (
+          {!isCollapsed ? (
             <span className="app-user-rail-stack__label">Workspace</span>
           ) : null}
-          <XfHoverHint hint={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
-            <button
-              aria-expanded={!collapsed}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              className="app-user-rail-toggle"
-              type="button"
-              onClick={toggle}
-            >
-              {collapsed ? <AppUserRailExpandIcon /> : <AppUserRailCollapseIcon />}
-            </button>
-          </XfHoverHint>
+          {allowCollapse ? (
+            <XfHoverHint hint={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+              <button
+                aria-expanded={!isCollapsed}
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                className="app-user-rail-toggle"
+                type="button"
+                onClick={toggle}
+              >
+                {isCollapsed ? <AppUserRailExpandIcon /> : <AppUserRailCollapseIcon />}
+              </button>
+            </XfHoverHint>
+          ) : null}
         </div>
-        {!collapsed ? <div className="app-user-rail-stack__body">{rail}</div> : null}
+        {!isCollapsed ? <div className="app-user-rail-stack__body">{rail}</div> : null}
       </div>
       <div className={mainClassName ? `app-user-shell-main ${mainClassName}` : "app-user-shell-main"}>{children}</div>
     </div>

@@ -8,7 +8,7 @@ import {
     type PortfolioScoringFactorApi
 } from "@/modules/core-admin/scoring-factors";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
-import type { Portfolio } from "@/modules/core-admin/types";
+import type { AccountOutlook, Portfolio } from "@/modules/core-admin/types";
 
 const DEFAULT_COALESCE_CASH = 25_000;
 
@@ -26,9 +26,26 @@ function toIsoTimestamp(value: unknown): string {
   return new Date().toISOString();
 }
 
+function riskLevelFromProfile(
+  rp: "conservative" | "balanced" | "growth" | null | undefined
+): "low" | "medium" | "high" {
+  if (rp === "conservative") return "low";
+  if (rp === "growth") return "high";
+  return "medium";
+}
+
+function strategyFromOutlook(
+  outlook: AccountOutlook | null | undefined
+): "growth" | "income" | "balanced" | "aggressive" {
+  if (outlook === "growth" || outlook === "income" || outlook === "balanced" || outlook === "aggressive") {
+    return outlook;
+  }
+  return "balanced";
+}
+
 /**
  * xfinance-strategy–aligned portfolio summary: `Portfolio` + `Account[]` with
- * `riskLevel` / `strategy` placeholders until desk profiles are persisted.
+ * desk `riskProfile` / `outlook` when persisted; `riskLevel` / `strategy` mirror them for API consumers.
  */
 export async function buildPortfolioSummaryPayload(
   session: SessionUser,
@@ -42,6 +59,8 @@ export async function buildPortfolioSummaryPayload(
     accountRef: string;
     brokerType: string;
     balance: number;
+    riskProfile: "conservative" | "balanced" | "growth" | null;
+    outlook: AccountOutlook | null;
     riskLevel: "low" | "medium" | "high";
     strategy: "growth" | "income" | "balanced" | "aggressive";
     positions: unknown[];
@@ -77,17 +96,23 @@ export async function buildPortfolioSummaryPayload(
   return {
     _id: portfolioId,
     name: portfolio.name?.length ? portfolio.name : "Default Portfolio",
-    accounts: accounts.map((account) => ({
-      _id: account._id?.toHexString(),
-      name: account.name ?? "Account",
-      accountRef: account.extAccountId ?? "",
-      brokerType: account.type ?? "fidelity",
-      balance: account.cashBalance ?? DEFAULT_COALESCE_CASH,
-      riskLevel: "medium",
-      strategy: "balanced",
-      positions: [],
-      recommendations: []
-    })),
+    accounts: accounts.map((account) => {
+      const riskProfile = account.riskProfile ?? null;
+      const outlook = account.outlook ?? null;
+      return {
+        _id: account._id?.toHexString(),
+        name: account.name ?? "Account",
+        accountRef: account.extAccountId ?? "",
+        brokerType: account.type ?? "fidelity",
+        balance: account.cashBalance ?? DEFAULT_COALESCE_CASH,
+        riskProfile,
+        outlook,
+        riskLevel: riskLevelFromProfile(riskProfile),
+        strategy: strategyFromOutlook(outlook),
+        positions: [],
+        recommendations: []
+      };
+    }),
     totalValue: 0,
     dailyChange: 0,
     dailyChangePercent: 0,

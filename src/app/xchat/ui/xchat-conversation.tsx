@@ -1014,70 +1014,74 @@ export function XchatConversation({
 
         <div className="xchat-composer-wrap">
           <form className="xchat-composer" onSubmit={handleSend}>
-          <XfHoverHint hint="Attach files (beta — coming soon)">
-            <button
-              aria-label="Attach files — beta, not available yet"
-              className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
-              disabled
-              type="button"
-            >
-              <XchatComposerAttachIcon />
-            </button>
-          </XfHoverHint>
-          <XfHoverHint hint="Enter to send · Shift+Enter for a new line">
-            <textarea
-              ref={composerRef}
-              aria-busy={loading}
-              className="xchat-composer__field xchat-composer__textarea"
-              maxLength={4000}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
-                if (e.key !== "Enter" || e.shiftKey || loading) {
-                  return;
-                }
-                e.preventDefault();
-                e.currentTarget.form?.requestSubmit();
-              }}
-              placeholder={loading ? "Thinking..." : "What's on your mind?"}
-              readOnly={loading}
-              rows={1}
-              value={input}
-            />
-          </XfHoverHint>
-          <XfHoverHint hint="Model (beta — coming soon)">
-            <button
-              aria-label="Model selector — beta, not available yet"
-              className="xchat-composer__auto xchat-composer__icon-btn--beta"
-              disabled
-              type="button"
-            >
-              Auto <span className="xchat-composer__chev">▾</span>
-            </button>
-          </XfHoverHint>
-          <XfHoverHint hint="Dictation (beta — coming soon)">
-            <button
-              aria-label="Dictation — beta, not available yet"
-              className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
-              disabled
-              type="button"
-            >
-              <XchatComposerMicIcon />
-            </button>
-          </XfHoverHint>
-          <XfHoverHint hint="Voice mode (beta — coming soon)">
-            <button
-              aria-label="Voice mode — beta, not available yet"
-              className="xchat-composer__voice xchat-composer__icon-btn--beta"
-              disabled
-              type="button"
-            >
-              <XchatComposerWaveformIcon />
-            </button>
-          </XfHoverHint>
-          <button className="xchat-composer__send" disabled={loading || !input.trim()} type="submit">
-            <SendIcon className="crud-icon" />
-            Send
-          </button>
+            <div className="xchat-composer__row xchat-composer__row--input">
+              <XfHoverHint hint="Attach files (beta — coming soon)">
+                <button
+                  aria-label="Attach files — beta, not available yet"
+                  className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
+                  disabled
+                  type="button"
+                >
+                  <XchatComposerAttachIcon />
+                </button>
+              </XfHoverHint>
+              <XfHoverHint hint="Enter to send · Shift+Enter for a new line">
+                <textarea
+                  ref={composerRef}
+                  aria-busy={loading}
+                  className="xchat-composer__field xchat-composer__textarea"
+                  maxLength={4000}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+                    if (e.key !== "Enter" || e.shiftKey || loading) {
+                      return;
+                    }
+                    e.preventDefault();
+                    e.currentTarget.form?.requestSubmit();
+                  }}
+                  placeholder={loading ? "Thinking..." : "What's on your mind?"}
+                  readOnly={loading}
+                  rows={1}
+                  value={input}
+                />
+              </XfHoverHint>
+            </div>
+            <div className="xchat-composer__row xchat-composer__row--actions">
+              <XfHoverHint hint="Model (beta — coming soon)">
+                <button
+                  aria-label="Model selector — beta, not available yet"
+                  className="xchat-composer__auto xchat-composer__icon-btn--beta"
+                  disabled
+                  type="button"
+                >
+                  Auto <span className="xchat-composer__chev">▾</span>
+                </button>
+              </XfHoverHint>
+              <XfHoverHint hint="Dictation (beta — coming soon)">
+                <button
+                  aria-label="Dictation — beta, not available yet"
+                  className="xchat-composer__icon-btn xchat-composer__icon-btn--beta"
+                  disabled
+                  type="button"
+                >
+                  <XchatComposerMicIcon />
+                </button>
+              </XfHoverHint>
+              <XfHoverHint hint="Voice mode (beta — coming soon)">
+                <button
+                  aria-label="Voice mode — beta, not available yet"
+                  className="xchat-composer__voice xchat-composer__icon-btn--beta"
+                  disabled
+                  type="button"
+                >
+                  <XchatComposerWaveformIcon />
+                </button>
+              </XfHoverHint>
+              <button className="xchat-composer__send" disabled={loading || !input.trim()} type="submit">
+                <SendIcon className="crud-icon" />
+                Send
+              </button>
+            </div>
           </form>
           <p className="xchat-composer-hint" role="note">
             <span className="xchat-composer-hint__pill">Beta</span>

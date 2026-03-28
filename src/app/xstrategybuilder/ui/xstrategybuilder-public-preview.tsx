@@ -1,115 +1,135 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
+import {
+    INVESTMENT_STRATEGY_OPTIONS,
+    RISK_LEVEL_OPTIONS
+} from "@/modules/core-admin/portfolio-preference-labels";
+import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 
 import type { XsbInitialWorkspace, XsbWorkspaceAccount, XsbWorkspacePortfolio } from "../workspace-types";
 
-type LoadState =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "ready"; portfolio: XsbWorkspacePortfolio };
+type SymbolOption = {
+  symbol: string;
+  note: string;
+};
 
-const WATCHLIST_CHIPS: { label: string }[] = [
-  { label: "RDW IV 100%" },
-  { label: "LUNR IV 100%" },
-  { label: "TSLA IV 100%" }
+type StrategyOption = {
+  id: string;
+  label: string;
+  summary: string;
+};
+
+const WATCHLIST_SYMBOLS: SymbolOption[] = [
+  { symbol: "TSLA", note: "High-liquidity growth" },
+  { symbol: "NVDA", note: "Momentum + options volume" },
+  { symbol: "AAPL", note: "Large-cap liquidity" },
+  { symbol: "MSFT", note: "Mega-cap stability" },
+  { symbol: "RDW", note: "Small-cap volatility" },
+  { symbol: "LUNR", note: "Event-driven IV" }
 ];
 
-function accountStableKey(account: XsbWorkspaceAccount): string {
-  const id = account._id?.trim();
-  if (id) {
-    return `id:${id}`;
+const STRATEGY_OPTIONS: StrategyOption[] = [
+  { id: "covered-calls", label: "Covered Calls", summary: "Income overlay on long stock positions." },
+  { id: "cash-secured-puts", label: "Cash-Secured Puts", summary: "Collect premium while targeting a discounted entry." },
+  { id: "bull-put-credit-spread", label: "Bull Put Credit Spread", summary: "Defined-risk bullish premium structure." },
+  { id: "bull-call-debit-spread", label: "Bull Call Debit Spread", summary: "Defined-cost directional upside spread." },
+  { id: "calendar-spread", label: "Calendar Spread", summary: "Time-structure play using same-strike expirations." },
+  { id: "diagonal-spread", label: "Diagonal Spread", summary: "Staggered strike + expiration theta overlay." },
+  { id: "poor-mans-covered-call", label: "Poor Man's Covered Call", summary: "LEAP call proxy with short call income." },
+  { id: "leap-call-cc-overlay", label: "LEAP Call + CC Overlay", summary: "Long-dated call with recurring short calls." },
+  { id: "iron-condor", label: "Iron Condor", summary: "Defined-risk neutral premium capture." },
+  { id: "wheel", label: "Wheel", summary: "CSP to covered-call cycle with assignment discipline." }
+];
+
+function riskLabel(account: XsbWorkspaceAccount): string {
+  if (account.riskProfile == null) {
+    return "Not set";
   }
-  return `ref:${account.accountRef}:${account.name}`;
+  return RISK_LEVEL_OPTIONS.find((r) => r.riskProfile === account.riskProfile)?.label ?? account.riskProfile;
 }
 
-function initialToLoadState(initial: XsbInitialWorkspace): LoadState {
-  if (initial.status === "ready") {
-    return { status: "ready", portfolio: initial.portfolio };
+function outlookLabel(account: XsbWorkspaceAccount): string {
+  if (account.outlook == null) {
+    return "Not set";
   }
-  return { status: "error", message: initial.message };
-}
-
-function parseDefaultPortfolioJson(raw: unknown): XsbWorkspacePortfolio | null {
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-  const o = raw as { data?: unknown };
-  const d = o.data;
-  if (!d || typeof d !== "object") {
-    return null;
-  }
-  const row = d as {
-    _id?: unknown;
-    name?: unknown;
-    accounts?: unknown;
-    isDefault?: unknown;
-  };
-  if (typeof row._id !== "string" || row._id.length === 0) {
-    return null;
-  }
-  const name = typeof row.name === "string" && row.name.length > 0 ? row.name : "Portfolio";
-  const accountsRaw = Array.isArray(row.accounts) ? row.accounts : [];
-  const accounts: XsbWorkspaceAccount[] = accountsRaw
-    .filter((a): a is Record<string, unknown> => Boolean(a) && typeof a === "object")
-    .map((a) => {
-      const _id = typeof a._id === "string" ? a._id : undefined;
-      const accName = typeof a.name === "string" && a.name.length > 0 ? a.name : "Account";
-      const accountRef = typeof a.accountRef === "string" ? a.accountRef : "";
-      const brokerType = typeof a.brokerType === "string" ? a.brokerType : "broker";
-      const balance = typeof a.balance === "number" && Number.isFinite(a.balance) ? a.balance : 0;
-      return { _id, name: accName, accountRef, brokerType, balance };
-    });
-  const isDefault = row.isDefault === true;
-  return { _id: row._id, name, accounts, isDefault };
+  return INVESTMENT_STRATEGY_OPTIONS.find((o) => o.value === account.outlook)?.title ?? account.outlook;
 }
 
 export type XstrategybuilderPublicPreviewProps = {
   initialWorkspace: XsbInitialWorkspace;
+  /** Shown when no workspace book is assigned — canonical engine default weights. */
+  fallbackScoringFactors: PortfolioScoringFactorApi[];
 };
 
-export function XstrategybuilderPublicPreview({ initialWorkspace }: XstrategybuilderPublicPreviewProps) {
-  const [loadState, setLoadState] = useState<LoadState>(() => initialToLoadState(initialWorkspace));
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+type XsbStep = 1 | 2 | 3 | 4 | 5;
+
+export function XstrategybuilderPublicPreview({
+  initialWorkspace,
+  fallbackScoringFactors
+}: XstrategybuilderPublicPreviewProps) {
+  const router = useRouter();
+
+  const portfolio: XsbWorkspacePortfolio | null =
+    initialWorkspace.status === "ready" ? initialWorkspace.portfolio : null;
+
+  const scoringFactors = portfolio?.scoringFactors?.length
+    ? portfolio.scoringFactors
+    : fallbackScoringFactors;
+
+  const accounts = useMemo(() => portfolio?.accounts ?? [], [portfolio]);
+  const accountOptions = useMemo(
+    () =>
+      accounts.map((acc) => ({
+        key: acc._id ?? `${acc.name}-${acc.accountRef}`,
+        value: `${acc.name}${acc.accountRef ? ` · ${acc.accountRef}` : ""}`,
+        account: acc
+      })),
+    [accounts]
+  );
   const [selectedAccountKey, setSelectedAccountKey] = useState<string | null>(null);
+  const selectedAccount = accountOptions.find((option) => option.key === selectedAccountKey)?.account ?? null;
+  const [activeStep, setActiveStep] = useState<XsbStep>(1);
+  const [expandedSteps, setExpandedSteps] = useState<Record<XsbStep, boolean>>({
+    1: true,
+    2: true,
+    3: false,
+    4: false,
+    5: false
+  });
 
-  const fetchDefault = useCallback(async () => {
-    setLoadState({ status: "loading" });
-    setSelectedPortfolioId(null);
-    setSelectedAccountKey(null);
-    try {
-      const res = await fetch("/api/portfolios/default", { credentials: "include" });
-      const j: unknown = await res.json().catch(() => null);
-      if (!res.ok) {
-        const err =
-          j && typeof j === "object" && "error" in j && typeof (j as { error: unknown }).error === "string"
-            ? (j as { error: string }).error
-            : "Could not load portfolio";
-        setLoadState({ status: "error", message: err });
-        return;
-      }
-      const portfolio = parseDefaultPortfolioJson(j);
-      if (!portfolio) {
-        setLoadState({ status: "error", message: "Unexpected portfolio response" });
-        return;
-      }
-      setLoadState({ status: "ready", portfolio });
-    } catch {
-      setLoadState({ status: "error", message: "Network error" });
+  const symbolUniverse = useMemo(() => WATCHLIST_SYMBOLS, []);
+  const [symbolQuery, setSymbolQuery] = useState<string>(symbolUniverse[0]?.symbol ?? "TSLA");
+  const [selectedSymbol, setSelectedSymbol] = useState<string>(symbolUniverse[0]?.symbol ?? "TSLA");
+  const filteredSymbols = useMemo(() => {
+    const query = symbolQuery.trim().toUpperCase();
+    if (!query) {
+      return symbolUniverse;
     }
-  }, []);
+    return symbolUniverse.filter((item) => item.symbol.includes(query) || item.note.toUpperCase().includes(query));
+  }, [symbolQuery, symbolUniverse]);
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
+  const selectedStrategy = useMemo(
+    () => STRATEGY_OPTIONS.find((option) => option.id === selectedStrategyId) ?? null,
+    [selectedStrategyId]
+  );
+  const canContinueFromStep1 = Boolean(selectedAccountKey);
+  const canContinueFromStep2 = canContinueFromStep1 && Boolean(selectedSymbol);
+  const canContinueFromStep3 = canContinueFromStep2 && Boolean(selectedStrategyId);
 
-  const portfolio = loadState.status === "ready" ? loadState.portfolio : null;
-  const accounts = portfolio?.accounts ?? [];
+  const toggleStep = (step: XsbStep) => {
+    setExpandedSteps((prev) => ({ ...prev, [step]: !prev[step] }));
+  };
 
-  const selectedPortfolio = useMemo(() => {
-    if (!portfolio || !selectedPortfolioId) {
-      return null;
-    }
-    return portfolio._id === selectedPortfolioId ? portfolio : null;
-  }, [portfolio, selectedPortfolioId]);
+  const goToStep = (step: XsbStep) => {
+    setActiveStep(step);
+    setExpandedSteps((prev) => ({ ...prev, [step]: true }));
+  };
 
   const money = useMemo(
     () =>
@@ -123,148 +143,372 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
 
   return (
     <div
-      aria-label="xStrategyBuilder — workspace and order preview"
+      aria-label="xStrategyBuilder — OptionsStrategyEngine guided steps (preview)"
       className="xsb-builder-preview xsb-builder-preview--friendly"
       role="region"
     >
-      <div className="xsb-builder-preview-head">
-        <h2 className="xsb-builder-title">xStrategyBuilder</h2>
-        <p className="xsb-builder-sub">
-          Build sophisticated option strategies with real-time data and P/L analysis — plain language first, then
-          precise legs.
-        </p>
-      </div>
-
-      <label className="xsb-builder-nl-label" htmlFor="xsb-nl-preview">
-        Describe your order
-      </label>
-      <input
-        readOnly
-        className="xsb-builder-nl-input"
-        id="xsb-nl-preview"
-        placeholder="Describe your order in plain language"
-        tabIndex={-1}
-        type="text"
-        value=""
-      />
-
-      <div className="xsb-friendly-workspace">
-        <p className="xsb-friendly-section-label">Portfolio</p>
-        {loadState.status === "loading" ? (
-          <p className="xsb-friendly-hint">Loading your workspace…</p>
-        ) : null}
-        {loadState.status === "error" ? (
-          <div className="xsb-friendly-error">
-            <p>{loadState.message}</p>
-            <button className="xsb-friendly-retry" onClick={() => void fetchDefault()} type="button">
-              <RefreshIcon className="crud-icon" />
-              Retry
-            </button>
-          </div>
-        ) : null}
-        {portfolio ? (
-          <div className="xsb-portfolio-picker" role="listbox" aria-label="Choose a portfolio">
-            <button
-              aria-selected={selectedPortfolioId === portfolio._id}
-              className={
-                selectedPortfolioId === portfolio._id
-                  ? "xsb-portfolio-option xsb-portfolio-option--active"
-                  : "xsb-portfolio-option"
-              }
-              onClick={() => {
-                setSelectedPortfolioId(portfolio._id);
-                setSelectedAccountKey(null);
-              }}
-              role="option"
-              type="button"
-            >
-              <span className="xsb-portfolio-option-name">{portfolio.name}</span>
-              <span className="xsb-portfolio-option-meta">
-                {portfolio.isDefault ? "Default workspace" : "Portfolio"}
+      <ol className="xsb-engine-steps">
+        <li className={`xsb-engine-step xsb-engine-step--panel${activeStep === 1 ? " xsb-engine-step--active" : ""}`}>
+          <button
+            type="button"
+            className="xsb-engine-step__head-btn"
+            onClick={() => toggleStep(1)}
+            aria-expanded={expandedSteps[1]}
+          >
+            <div className="xsb-engine-step__head">
+              <span className="xsb-engine-step__n" aria-hidden>
+                1
               </span>
-            </button>
-          </div>
-        ) : null}
-      </div>
+              <div>
+                <h3 className="xsb-engine-step__title">User context</h3>
+                <p className="xsb-engine-step__sub">
+                  OptionsStrategyEngine <code className="xsb-inline-code">buildUserContext</code> — portfolio book,
+                  account <strong>risk</strong> and <strong>outlook</strong> (terminology from the engine spec).
+                </p>
+              </div>
+            </div>
+            <span className={`xsb-engine-step__chevron${expandedSteps[1] ? "" : " xsb-engine-step__chevron--collapsed"}`} aria-hidden>
+              ▼
+            </span>
+          </button>
+          {expandedSteps[1] ? <div className="xsb-engine-step__body">
+            {initialWorkspace.status === "error" ? (
+              <div className="xsb-friendly-error xsb-friendly-error--block">
+                <p>{initialWorkspace.message}</p>
+                <button
+                  className="xsb-friendly-retry"
+                  onClick={() => router.refresh()}
+                  type="button"
+                >
+                  <RefreshIcon className="crud-icon" />
+                  Reload page
+                </button>
+              </div>
+            ) : portfolio ? (
+              <>
+                <p className="xsb-friendly-hint xsb-friendly-hint--tight">
+                  Workspace book <strong>{portfolio.name}</strong>
+                  {portfolio.isDefault ? " (default book)" : ""} — assigned by your workspace administrator; not
+                  auto-provisioned from this page.
+                </p>
+                {accounts.length === 0 ? (
+                  <p className="xsb-friendly-hint">
+                    No custodian accounts linked yet. Add accounts from{" "}
+                    <a className="xsb-friendly-link" href="/portfolio">
+                      Portfolio
+                    </a>
+                    .
+                  </p>
+                ) : (
+                  <ul className="xsb-context-account-list" role="list">
+                    {accounts.map((acc) => (
+                      <li key={acc._id ?? `${acc.name}-${acc.accountRef}`} className="xsb-context-account-row">
+                        <span className="xsb-context-account-name">{acc.name}</span>
+                        <span className="xsb-context-account-meta">
+                          {acc.brokerType}
+                          {acc.accountRef ? ` · ${acc.accountRef}` : ""}
+                        </span>
+                        <span className="xsb-context-account-desk">
+                          Risk: <strong>{riskLabel(acc)}</strong>
+                          {" · "}
+                          Outlook: <strong>{outlookLabel(acc)}</strong>
+                        </span>
+                        <span className="xsb-context-account-balance">{money.format(acc.balance)} cash</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {accountOptions.length > 0 ? (
+                  <div className="xsb-live-context">
+                    <p className="xsb-friendly-section-label">Live account context</p>
+                    <label className="xsb-live-context__picker" htmlFor="xsb-live-account-picker">
+                      Account
+                      <select
+                        id="xsb-live-account-picker"
+                        value={selectedAccountKey ?? ""}
+                        onChange={(event) => {
+                          const nextAccountKey = event.target.value || null;
+                          setSelectedAccountKey(nextAccountKey);
+                          if (nextAccountKey && activeStep === 1) {
+                            setActiveStep(2);
+                            setExpandedSteps((prev) => ({ ...prev, 2: true }));
+                          }
+                        }}
+                      >
+                        <option value="">Select account context</option>
+                        {accountOptions.map((option) => (
+                          <option key={option.key} value={option.key}>
+                            {option.value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {selectedAccount ? (
+                      <div className="xsb-live-context__stats">
+                        <div className="xsb-live-context__stat">
+                          <span>Risk profile</span>
+                          <strong>{riskLabel(selectedAccount)}</strong>
+                        </div>
+                        <div className="xsb-live-context__stat">
+                          <span>Outlook</span>
+                          <strong>{outlookLabel(selectedAccount)}</strong>
+                        </div>
+                        <div className="xsb-live-context__stat">
+                          <span>Cash balance</span>
+                          <strong>{money.format(selectedAccount.balance)}</strong>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="xsb-step-actions">
+                      <button
+                        type="button"
+                        className="xsb-engine-cta"
+                        disabled={!canContinueFromStep1}
+                        onClick={() => goToStep(2)}
+                      >
+                        Continue to Step 2
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div> : null}
+        </li>
 
-      {selectedPortfolio ? (
-        <div className="xsb-friendly-accounts">
-          <p className="xsb-friendly-section-label" id="xsb-account-heading">
-            Account
-          </p>
-          {accounts.length === 0 ? (
-            <p className="xsb-friendly-hint">
-              No accounts in this portfolio yet. Add one from{" "}
-              <a className="xsb-friendly-link" href="/portfolio">
-                Portfolio
-              </a>
-              .
-            </p>
-          ) : (
-            <ul aria-labelledby="xsb-account-heading" className="xsb-account-list" role="list">
-              {accounts.map((acc) => {
-                const key = accountStableKey(acc);
-                const active = selectedAccountKey === key;
-                return (
-                  <li key={key}>
+        <li className={`xsb-engine-step xsb-engine-step--panel${activeStep === 2 ? " xsb-engine-step--active" : ""}`}>
+          <button
+            type="button"
+            className="xsb-engine-step__head-btn"
+            onClick={() => toggleStep(2)}
+            aria-expanded={expandedSteps[2]}
+          >
+            <div className="xsb-engine-step__head">
+              <span className="xsb-engine-step__n" aria-hidden>
+                2
+              </span>
+              <div>
+                <h3 className="xsb-engine-step__title">Select a symbol</h3>
+                <p className="xsb-engine-step__sub">
+                  Pull option chains per ticker; pick expirations and strikes in the live console (Yahoo-aligned chain
+                  rows).
+                </p>
+              </div>
+            </div>
+            <span className={`xsb-engine-step__chevron${expandedSteps[2] ? "" : " xsb-engine-step__chevron--collapsed"}`} aria-hidden>
+              ▼
+            </span>
+          </button>
+          {expandedSteps[2] ? <div className="xsb-engine-step__body">
+            <div className="xsb-builder-panel xsb-builder-panel--friendly">
+              <label className="xsb-live-symbol-picker" htmlFor="xsb-live-symbol-query">
+                Symbol picker
+                <input
+                  id="xsb-live-symbol-query"
+                  className="xsb-builder-nl-input"
+                  placeholder="Search ticker (e.g. TSLA)"
+                  value={symbolQuery}
+                  onChange={(event) => {
+                    const value = event.target.value.toUpperCase();
+                    setSymbolQuery(value);
+                    if (value && symbolUniverse.some((item) => item.symbol === value)) {
+                      setSelectedSymbol(value);
+                    }
+                  }}
+                />
+              </label>
+              <div className="xsb-live-symbol-list" role="list">
+                {filteredSymbols.slice(0, 6).map((item) => {
+                  const isActive = item.symbol === selectedSymbol;
+                  return (
                     <button
-                      aria-pressed={active}
-                      className={active ? "xsb-account-row xsb-account-row--active" : "xsb-account-row"}
-                      onClick={() => setSelectedAccountKey(key)}
+                      key={item.symbol}
+                      className={`xsb-live-symbol-item${isActive ? " xsb-live-symbol-item--active" : ""}`}
                       type="button"
+                      role="listitem"
+                      onClick={() => {
+                        setSelectedSymbol(item.symbol);
+                        setSymbolQuery(item.symbol);
+                      }}
                     >
-                      <span className="xsb-account-row-name">{acc.name}</span>
-                      <span className="xsb-account-row-meta">
-                        {acc.brokerType}
-                        {acc.accountRef ? ` · ${acc.accountRef}` : ""}
-                      </span>
-                      <span className="xsb-account-row-balance">{money.format(acc.balance)} cash</span>
+                      <span className="xsb-live-symbol-item__symbol">{item.symbol}</span>
+                      <span className="xsb-live-symbol-item__note">{item.note}</span>
                     </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      ) : null}
+                  );
+                })}
+              </div>
+              <p className="xsb-friendly-hint xsb-friendly-hint--tight">
+                Selected symbol <strong>{selectedSymbol}</strong> will feed chains/expiration selection in the live
+                options console.
+              </p>
+            </div>
+            <p className="xsb-builder-watchlist-label">Top from watchlist (CSP / CC volatility)</p>
+            <div className="xsb-builder-chips" role="list">
+              {symbolUniverse.map((item) => (
+                <span key={item.symbol} className="xsb-builder-chip" role="listitem">
+                  {item.symbol}
+                </span>
+              ))}
+            </div>
+            <div className="xsb-step-actions">
+              <button
+                type="button"
+                className="xsb-engine-cta"
+                disabled={!canContinueFromStep2}
+                onClick={() => goToStep(3)}
+              >
+                Continue to Step 3
+              </button>
+            </div>
+          </div> : null}
+        </li>
 
-      {selectedPortfolio && selectedAccountKey ? (
-        <p className="xsb-friendly-selection-summary" role="status">
-          Order context: <strong>{selectedPortfolio.name}</strong>
-          {" · "}
-          <strong>{accounts.find((a) => accountStableKey(a) === selectedAccountKey)?.name ?? "Account"}</strong>
-        </p>
-      ) : null}
+        <li className={`xsb-engine-step xsb-engine-step--panel${activeStep === 3 ? " xsb-engine-step--active" : ""}`}>
+          <button
+            type="button"
+            className="xsb-engine-step__head-btn"
+            onClick={() => toggleStep(3)}
+            aria-expanded={expandedSteps[3]}
+          >
+            <div className="xsb-engine-step__head">
+              <span className="xsb-engine-step__n" aria-hidden>
+                3
+              </span>
+              <div>
+                <h3 className="xsb-engine-step__title">Choose strategy</h3>
+                <p className="xsb-engine-step__sub">
+                  <code className="xsb-inline-code">filterEligibleStrategies</code> — book risk tolerance and market
+                  outlook drop strategies that violate margin or stance before scoring runs.
+                </p>
+              </div>
+            </div>
+            <span className={`xsb-engine-step__chevron${expandedSteps[3] ? "" : " xsb-engine-step__chevron--collapsed"}`} aria-hidden>
+              ▼
+            </span>
+          </button>
+          {expandedSteps[3] ? (
+            <div className="xsb-engine-step__body">
+              <div className="xsb-live-strategy-list" role="list">
+                {STRATEGY_OPTIONS.map((option) => {
+                  const isActive = selectedStrategyId === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="listitem"
+                      className={`xsb-live-strategy-item${isActive ? " xsb-live-strategy-item--active" : ""}`}
+                      onClick={() => setSelectedStrategyId(option.id)}
+                    >
+                      <span className="xsb-live-strategy-item__label">{option.label}</span>
+                      <span className="xsb-live-strategy-item__summary">{option.summary}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="xsb-friendly-hint xsb-friendly-hint--tight">
+                {selectedStrategy
+                  ? (
+                    <>
+                      Selected strategy <strong>{selectedStrategy.label}</strong> for fit-scoring and leg generation.
+                    </>
+                    )
+                  : "Select one strategy to continue to portfolio fit scoring."}
+              </p>
+              <div className="xsb-step-actions">
+                <button type="button" className="xsb-engine-cta" disabled={!canContinueFromStep3} onClick={() => goToStep(4)}>
+                  Continue to Step 4
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </li>
 
-      <div className="xsb-builder-panel xsb-builder-panel--friendly">
-        <h3 className="xsb-builder-step-heading">Select a symbol</h3>
-        <div className="xsb-builder-search">
-          <span aria-hidden className="xsb-builder-search-icon">
-            ⌕
-          </span>
-          <span className="xsb-builder-search-placeholder">Search symbol (e.g. TSLA, AAPL)</span>
-        </div>
-        <div className="xsb-builder-actions">
-          <span className="xsb-builder-next">Next</span>
-        </div>
-      </div>
+        <li className={`xsb-engine-step xsb-engine-step--panel${activeStep === 4 ? " xsb-engine-step--active" : ""}`}>
+          <button
+            type="button"
+            className="xsb-engine-step__head-btn"
+            onClick={() => toggleStep(4)}
+            aria-expanded={expandedSteps[4]}
+          >
+            <div className="xsb-engine-step__head">
+              <span className="xsb-engine-step__n" aria-hidden>
+                4
+              </span>
+              <div>
+                <h3 className="xsb-engine-step__title">Fit score (portfolio factors)</h3>
+                <p className="xsb-engine-step__sub">
+                  <code className="xsb-inline-code">calculateFitScore</code> — weighted 0–100 from book-level{" "}
+                  <strong>portfolio scoring factors</strong> (distinct from account outlook/risk). Admins tune weights;
+                  defaults match the engine spec.
+                </p>
+              </div>
+            </div>
+            <span className={`xsb-engine-step__chevron${expandedSteps[4] ? "" : " xsb-engine-step__chevron--collapsed"}`} aria-hidden>
+              ▼
+            </span>
+          </button>
+          {expandedSteps[4] ? <div className="xsb-engine-step__body">
+            <PortfolioScoringFactorsReadonlyTable factors={scoringFactors} variant="full" />
+            <div className="xsb-step-actions">
+              <button type="button" className="xsb-engine-cta" disabled={!canContinueFromStep3} onClick={() => goToStep(5)}>
+                Continue to Step 5
+              </button>
+            </div>
+          </div> : null}
+        </li>
 
-      <p className="xsb-builder-watchlist-label">Top from watchlist (CSP / CC volatility)</p>
-      <div className="xsb-builder-chips" role="list">
-        {WATCHLIST_CHIPS.map((c) => (
-          <span key={c.label} className="xsb-builder-chip" role="listitem">
-            {c.label}
-          </span>
-        ))}
-      </div>
+        <li className={`xsb-engine-step xsb-engine-step--panel${activeStep === 5 ? " xsb-engine-step--active" : ""}`}>
+          <button
+            type="button"
+            className="xsb-engine-step__head-btn"
+            onClick={() => toggleStep(5)}
+            aria-expanded={expandedSteps[5]}
+          >
+            <div className="xsb-engine-step__head">
+              <span className="xsb-engine-step__n" aria-hidden>
+                5
+              </span>
+              <div>
+                <h3 className="xsb-engine-step__title">Legs, risk / reward, rationale</h3>
+                <p className="xsb-engine-step__sub">
+                  <code className="xsb-inline-code">buildOptionLegs</code> →{" "}
+                  <code className="xsb-inline-code">calculateRiskRewardMetrics</code> →{" "}
+                  <code className="xsb-inline-code">generateRationale</code> → rank. Structured recommendation object
+                  aligns with xfinance-strategy builder service contracts.
+                </p>
+              </div>
+            </div>
+            <span className={`xsb-engine-step__chevron${expandedSteps[5] ? "" : " xsb-engine-step__chevron--collapsed"}`} aria-hidden>
+              ▼
+            </span>
+          </button>
+          {expandedSteps[5] ? <div className="xsb-engine-step__body">
+            <p className="xsb-friendly-hint xsb-friendly-hint--tight">
+              Open the live chain console to work strikes, expirations, and execution context.
+            </p>
+            {selectedStrategy ? (
+              <p className="xsb-friendly-hint xsb-friendly-hint--tight">
+                Active strategy: <strong>{selectedStrategy.label}</strong>.
+              </p>
+            ) : null}
+            <div className="xsb-builder-actions xsb-builder-actions--start">
+              <Link
+                className="xsb-engine-cta"
+                href={`/xstrategybuilder/strategy-options?symbol=${encodeURIComponent(selectedSymbol)}${selectedStrategyId ? `&strategyId=${encodeURIComponent(selectedStrategyId)}` : ""}`}
+              >
+                Open strategy options chain
+              </Link>
+            </div>
+          </div> : null}
+        </li>
+      </ol>
 
       <p className="xsb-builder-contract-note">
         Session tool contract: <code className="xsb-inline-code">symbol</code>, optional{" "}
         <code className="xsb-inline-code">outlook</code>, <code className="xsb-inline-code">strategyId</code>,{" "}
         <code className="xsb-inline-code">contractType</code>, <code className="xsb-inline-code">expiration</code>,{" "}
-        <code className="xsb-inline-code">maxRows</code> → symbol snapshot, option chain rows (call/put per strike),
-        and a recommendation block (action, strikes, breakeven, rationale) — see xfinance-strategy{" "}
-        <code className="xsb-inline-code">xstrategy-builder-service</code>.
+        <code className="xsb-inline-code">maxRows</code> → chain rows and recommendation block — see{" "}
+        <code className="xsb-inline-code">atx-docs/design-system/xStrategyBuilder/strategy-engine.md</code>.
       </p>
 
       <p className="xsb-occ-foot">

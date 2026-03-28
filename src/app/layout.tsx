@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import type { ReactNode } from "react";
 import "../../atx-docs/design-system/atxfinance-brand-kit.css";
 import "./globals.css";
@@ -40,12 +39,10 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html className={`dark ${inter.variable}`} lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: XF_THEME_BOOT }} id="xf-ui-theme-boot" />
+      </head>
       <body>
-        <Script
-          dangerouslySetInnerHTML={{ __html: XF_THEME_BOOT }}
-          id="xf-ui-theme-boot"
-          strategy="beforeInteractive"
-        />
         {children}
       </body>
     </html>

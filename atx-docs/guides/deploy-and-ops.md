@@ -15,6 +15,8 @@ This is the deploy/ops entrypoint for staging and production workflows.
 - Production deploy is manual (`workflow_dispatch`) via Deploy Cloud Run Production.
 - Health checks are required after deploy and rollback paths.
 
+**Local bypass (no GitHub Actions):** from repo root, with `gcloud` auth and `.env.stage` / `.env.prod` containing project, region, service name, and public base URL — `bash scripts/ops/deploy-cloud-run-from-env.sh --staging` (or `npm run ops:deploy:cloud-run:staging`). See `.cursor/rules/sre-gcp-deployment.md` § *Local deploy to Cloud Run*.
+
 ## Runtime secret model
 
 Single source of truth for runtime app secrets is GCP Secret Manager.

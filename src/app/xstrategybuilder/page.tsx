@@ -8,6 +8,10 @@ import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { getLicensingPitchContact } from "@/lib/env";
+import {
+    DEFAULT_PORTFOLIO_SCORING_FACTORS,
+    enrichScoringFactorsForApi
+} from "@/modules/core-admin/scoring-factors";
 
 import { loadXsbInitialWorkspace } from "./load-initial-workspace";
 import { XstrategybuilderPublicPreview } from "./ui/xstrategybuilder-public-preview";
@@ -17,8 +21,6 @@ import "./xstrategybuilder.css";
 
 export const dynamic = "force-dynamic";
 
-const PRICING_TOOLTIP = "Cheapest aTx Trusted Advisory workspace on earth — pay only for what you use.";
-
 type MetricBadge = {
   label: string;
   detail: string;
@@ -26,7 +28,7 @@ type MetricBadge = {
 
 const METRIC_BADGES: MetricBadge[] = [
   {
-    label: "5–10% weekly range",
+    label: "1–2% WEEKLY RANGE",
     detail:
       "Illustrative options-flow band from backtests and simulation (2026-style vol & trend regimes) — not live P/L or a guarantee."
   },
@@ -106,6 +108,10 @@ function PitchContactLine() {
   );
 }
 
+const XSB_FALLBACK_SCORING = enrichScoringFactorsForApi(
+  DEFAULT_PORTFOLIO_SCORING_FACTORS.map((f) => ({ ...f }))
+);
+
 export default async function XstrategyBuilderPage() {
   const session = await getSessionUser();
   if (!session) {
@@ -123,32 +129,17 @@ export default async function XstrategyBuilderPage() {
         <section className="hero-card xf-noise-overlay xc-hero xsb-pitch">
           <p className="eyebrow">xStrategyBuilder · option order builder</p>
 
-          <div className="xsb-hero-lockup">
-            <h1 className="hero-title xsb-hero-title">aTx⚡Finance — Powered by xAI</h1>
-            <p className="xsb-tagline xsb-tagline--hero">No Atoms Moved. Just Gains Earned.</p>
-          </div>
-
-          <div className="xsb-badges" role="list">
-            {METRIC_BADGES.map((b) => (
-              <article key={b.label} className="xsb-metric-badge" role="listitem">
-                <div className="xsb-metric-badge-top">
-                  <span className="xsb-metric-arrow" aria-hidden>
-                    ↑
-                  </span>
-                  {b.label}
-                </div>
-                <p className="xsb-metric-detail">{b.detail}</p>
-              </article>
-            ))}
-          </div>
-
           <p className="xsb-hero-subcopy">
-            Build defined-risk option orders with real-time chain context and P/L framing — natural-language prefill,
-            guided steps, then Grok-grounded rationale. Same flow family as the xfinance-strategy builder service
-            (outlooks, <code className="xsb-inline-code">STRATEGIES</code>, Yahoo chain rows, recommendation object).
+            Build defined-risk option orders with real-time chain context and P/L framing — five guided steps aligned
+            with the OptionsStrategyEngine pipeline (user context → chains → strategy filter → portfolio fit score → legs
+            &amp; rationale). Same contract family as the xfinance-strategy builder service (
+            <code className="xsb-inline-code">STRATEGIES</code>, Yahoo chain rows, recommendation object).
           </p>
 
-          <XstrategybuilderPublicPreview initialWorkspace={initialWorkspace} />
+          <XstrategybuilderPublicPreview
+            fallbackScoringFactors={XSB_FALLBACK_SCORING}
+            initialWorkspace={initialWorkspace}
+          />
 
           <p className="xsb-disclaimer">
             Hypothetical and backtested results have inherent limitations; past or simulated performance does not
@@ -177,6 +168,21 @@ export default async function XstrategyBuilderPage() {
             </ul>
           </div>
 
+          <p className="xsb-badges-label">Billing metrics</p>
+          <div className="xsb-badges" role="list">
+            {METRIC_BADGES.map((b) => (
+              <article key={b.label} className="xsb-metric-badge" role="listitem">
+                <div className="xsb-metric-badge-top">
+                  <span className="xsb-metric-arrow" aria-hidden>
+                    ↑
+                  </span>
+                  {b.label}
+                </div>
+                <p className="xsb-metric-detail">{b.detail}</p>
+              </article>
+            ))}
+          </div>
+
           <div className="xc-exam-grid" role="list" style={{ marginTop: "1rem" }}>
             {LICENSING_MODELS.map((item) => (
               <article key={item.title} className="xc-exam-card" role="listitem" aria-label={item.title}>
@@ -196,10 +202,6 @@ export default async function XstrategyBuilderPage() {
               <Link href="/">aTx⚡Finance</Link>
               {" · "}
               <Link href="/api/auth/x/login?next=%2Fxstrategybuilder">Sign in with X</Link> (approved access)
-            </p>
-            <p className="xsb-pricing-hint">
-              Retail / pay-per-use from <abbr title={PRICING_TOOLTIP}>$2/hr</abbr> — enterprise licensing quoted
-              separately.
             </p>
           </div>
 
