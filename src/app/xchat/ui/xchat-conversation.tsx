@@ -234,6 +234,7 @@ const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Main thread + lazy history panel: show the same number of recent prompts by default. */
 const XCHAT_UI_PROMPT_LIMIT = 10;
+const XCHAT_UI_RESPONSE_LIMIT = 3;
 
 function trimTranscriptToRecentPrompts(
   msgs: Message[],
@@ -257,6 +258,30 @@ function trimTranscriptToRecentPrompts(
     return { next: msgs };
   }
   return { next: msgs.slice(startIdx) };
+}
+
+function trimTranscriptToRecentResponses(
+  msgs: Message[],
+  maxAssistantResponses: number
+): Message[] {
+  if (msgs.length === 0) {
+    return msgs;
+  }
+  let assistantCount = 0;
+  let startIdx = 0;
+  for (let i = msgs.length - 1; i >= 0; i -= 1) {
+    if (msgs[i].role === "ai" || msgs[i].role === "error") {
+      assistantCount += 1;
+      if (assistantCount === maxAssistantResponses) {
+        startIdx = i;
+        break;
+      }
+    }
+  }
+  if (assistantCount < maxAssistantResponses) {
+    return msgs;
+  }
+  return msgs.slice(startIdx);
 }
 
 function historyItemsToTranscriptMessages(items: HistoryItem[]): Message[] {
@@ -346,6 +371,10 @@ export function XchatConversation({
     const preview = lastUser.length > 64 ? `${lastUser.slice(0, 64)}…` : lastUser;
     return { userTurnCount: n, preview };
   }, [messages]);
+  const visibleThreadMessages = useMemo(
+    () => trimTranscriptToRecentResponses(messages, XCHAT_UI_RESPONSE_LIMIT),
+    [messages]
+  );
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -668,6 +697,7 @@ export function XchatConversation({
       setLastTurnToolSummary(formatLastTurnToolSummary(payload.data?.toolCalls));
 
       const logId = typeof payload.data?.logId === "string" ? payload.data.logId : undefined;
+      const historyItemId = logId || `local-${Date.now()}`;
       setMessages((prev) => {
         const added = [
           ...prev,
@@ -682,6 +712,20 @@ export function XchatConversation({
         ];
         const { next } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
         return next;
+      });
+      setSavedHistory((prev) => {
+        const nextItem: HistoryItem = {
+          id: historyItemId,
+          message: prompt,
+          response: payload.data?.response ?? "",
+          model: "xchat",
+          createdAt: new Date().toISOString(),
+          personaId: effectivePersonaPick || undefined,
+          contextReferenceCount: 0,
+          toolCallCount: payload.data?.toolCalls?.length ?? 0
+        };
+        const deduped = prev.filter((item) => item.id !== nextItem.id);
+        return [nextItem, ...deduped].slice(0, XCHAT_UI_PROMPT_LIMIT);
       });
     } catch {
       setMessages((prev) => {
@@ -985,7 +1029,7 @@ export function XchatConversation({
             </div>
           ) : null}
 
-          {messages.map((msg) => (
+          {visibleThreadMessages.map((msg) => (
             <div className={`xchat-msg xchat-msg-${msg.role}`} key={msg.id}>
               {msg.role === "ai" && msg.persona ? (
                 <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>

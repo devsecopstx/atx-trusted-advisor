@@ -23,6 +23,8 @@ const PLANS: PlanTier[] = [
     period: "/month",
     features: [
       { text: "5 xchat prompts per day" },
+      { text: "xStrategyBuilder weekly range: entry-level" },
+      { text: "Research articles / week: core context set" },
       { text: "Default xChat: published FinExpert persona" },
       { text: "Admins use published Super-Agent" },
       { text: "Web search + X search tools" },
@@ -37,6 +39,8 @@ const PLANS: PlanTier[] = [
     featured: true,
     features: [
       { text: "Unlimited xchat prompts" },
+      { text: "xStrategyBuilder weekly range: expanded" },
+      { text: "Research articles / week: broader context set" },
       { text: "All personas + custom personas" },
       { text: "File search + RAG collections" },
       { text: "Full portfolio + watchlist access" },
@@ -51,6 +55,8 @@ const PLANS: PlanTier[] = [
     period: "/month",
     features: [
       { text: "Everything in Pro" },
+      { text: "xStrategyBuilder weekly range: extended / unlimited posture" },
+      { text: "Research articles / week: extended context set" },
       { text: "Dedicated personas with custom tools" },
       { text: "Multi-user tenant with role management" },
       { text: "API access + batch processing" },

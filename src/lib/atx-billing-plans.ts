@@ -26,6 +26,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     bullets: [
       "Built for high-net-worth individual workflows and daily options context",
       "Manage workspace users, portfolios, accounts (risk & outlook), and portfolio-level scoring factors (within your role and plan limits)",
+      "xStrategyBuilder includes entry-level weekly range coverage plus core article context",
       "Full product access with plan limits; limited-time full-access trial may apply before you subscribe"
     ]
   },
@@ -39,6 +40,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     bullets: [
       "Complex portfolios: international, real estate, listed equities & options, and multi-account context",
       "Generous posture with fair per-hour caps on xChat and xStrategyBuilder (scenario builder)",
+      "Expanded weekly range coverage and broader article context for strategy preparation",
       "Power-user tier — meaningful Feedback on real scenarios helps us prioritize caps, tools, and roadmap"
     ]
   },
@@ -52,6 +54,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     bullets: [
       "White-glove for ultra-complex and family-office books; direct line for structured product input",
       "Dedicated enterprise-grade instance sized for your workflow",
+      "Top-tier weekly range coverage and extended article context",
       "Interactive Brokers automated trades and verification (roadmap)",
       "Private deployment — your data is not used for provider training; compliance-minded engagement expected"
     ]
