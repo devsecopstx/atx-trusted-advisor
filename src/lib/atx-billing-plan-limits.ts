@@ -17,7 +17,7 @@ export const ATX_BILLING_PLAN_LIMIT_ROWS: readonly AtxBillingPlanLimitRow[] = [
     premiumPlus: "$99/mo"
   },
   {
-    metric: "xoptions deck views / day",
+    metric: "xstrategybuilder / day",
     basic: "10",
     premium: "Unlimited capped per hr (TBD)",
     premiumPlus: "Unlimited"
