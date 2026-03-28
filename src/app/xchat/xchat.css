@@ -1492,6 +1492,16 @@ html[data-xf-ui="soft"] .xchat-main-shell {
   align-items: stretch;
 }
 
+.xchat-composer__row--input > .xf-hover-hint:nth-child(2) {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+}
+
+.xchat-composer__row--input > .xf-hover-hint:nth-child(2) > .xchat-composer__field {
+  width: 100%;
+}
+
 .xchat-composer__row--actions {
   width: 100%;
   flex-wrap: wrap;
