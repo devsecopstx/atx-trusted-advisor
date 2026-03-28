@@ -50,12 +50,10 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     : null;
 
   let defaultBookLabels: { portfolioName: string; accountName: string } | null = null;
-  let defaultPortfolioId: string | null = null;
   if (approved) {
     const book = await loadAppUserDefaultBook(session);
     if (book) {
       defaultBookLabels = { portfolioName: book.portfolioName, accountName: book.accountName };
-      defaultPortfolioId = book.portfolioId;
     }
   }
 
@@ -71,7 +69,6 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
         {approved ? (
           <XchatConversation
             defaultBookLabels={defaultBookLabels}
-            defaultPortfolioId={defaultPortfolioId}
             defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
             includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
             isGlobalAdmin={isGlobalAdmin(session.roles)}

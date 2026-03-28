@@ -1563,18 +1563,28 @@ button.xf-icon-edit-btn:disabled {
   flex: 0 0 auto;
 }
 
-/* Native <select> — xAI-style: near-black surface, light text + dark popover (see branding agent) */
+/* Shared picker contract (Resources-style): one visual language for dropdown choices across app_user/admin/portfolio/strategy */
 select {
   color-scheme: dark;
   box-sizing: border-box;
   max-width: 100%;
-  background-color: var(--xf-bg-900);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
   color: var(--xf-text-100);
   border-radius: var(--xf-radius-sm);
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
-  padding: 0.45rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  padding: 0.38rem 0.5rem;
   font: inherit;
   cursor: pointer;
+  transition:
+    border-color 100ms ease,
+    background 100ms ease,
+    color 100ms ease;
+}
+
+select:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 35%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 8%, transparent);
+  color: var(--xf-gain-green);
 }
 
 select:disabled {
@@ -1595,7 +1605,7 @@ select optgroup {
 
 html[data-xf-ui="soft"] select {
   color-scheme: light;
-  background-color: color-mix(in srgb, var(--xf-surface-600) 82%, #f8fafc);
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
   color: var(--xf-text-100);
   border-color: color-mix(in srgb, var(--xf-text-100) 22%, transparent);
 }

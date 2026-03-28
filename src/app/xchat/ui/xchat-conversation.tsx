@@ -20,7 +20,6 @@ import {
 } from "@/app/ui/app-user-rail-nav";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
-import { XchatPortfolioScoringFactorsPopover } from "@/app/xchat/ui/xchat-portfolio-scoring-popover";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
 
@@ -182,26 +181,6 @@ function RecentChatsRailGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-type RailAvatarProps = {
-  label: string;
-};
-
-function getAvatarInitials(input: string): string {
-  const words = input.trim().split(/\s+/).filter(Boolean);
-  if (words.length >= 2) {
-    return `${words[0][0] ?? ""}${words[1][0] ?? ""}`.toUpperCase();
-  }
-  return (input.trim().slice(0, 2) || "U").toUpperCase();
-}
-
-function RailAvatar({ label }: RailAvatarProps) {
-  return (
-    <span aria-hidden className="xchat-rail-avatar">
-      {getAvatarInitials(label)}
-    </span>
-  );
-}
-
 /** Narrow left-rail select: keep closed state readable without clipping. */
 function compactPersonaOptionLabel(name: string): string {
   const normalized = name.replace(/\s+/g, " ").trim();
@@ -217,8 +196,6 @@ type XchatConversationProps = {
   defaultPublishedPersonaName: string;
   /** Default portfolio + default (or first) custodian account — above persona picker in the left rail. */
   defaultBookLabels?: { portfolioName: string; accountName: string } | null;
-  /** Default portfolio Mongo id — loads read-only scoring factors popover in the rail. */
-  defaultPortfolioId?: string | null;
   /** When false, Super-Agent is hidden from the picker (app_user cannot use it without admin assignment). */
   includeSuperAgentInPersonaPicker?: boolean;
   /** Greeting label (display name, handle, or email local-part). */
@@ -332,7 +309,6 @@ const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = (() => {
 export function XchatConversation({
   defaultPublishedPersonaName,
   defaultBookLabels = null,
-  defaultPortfolioId = null,
   includeSuperAgentInPersonaPicker = false,
   welcomeName,
   isGlobalAdmin: isGlobalAdminSession = false
@@ -789,9 +765,6 @@ export function XchatConversation({
                     <span className="xchat-rail-book-k">Account</span>
                     <span className="xchat-rail-book-v">{defaultBookLabels.accountName}</span>
                   </div>
-                  {defaultPortfolioId ? (
-                    <XchatPortfolioScoringFactorsPopover portfolioId={defaultPortfolioId} />
-                  ) : null}
                 </div>
               </section>
             ) : null}
@@ -893,7 +866,7 @@ export function XchatConversation({
                   {normalizedExamples.map((prompt, i) => (
                     <XfHoverHint key={`rail-example-${i}`} hint={prompt}>
                       <button
-                        className="xchat-rail-link"
+                        className="app-user-rail-sublink xchat-rail-link"
                         type="button"
                         onClick={() => {
                           setInput(prompt);
@@ -907,7 +880,6 @@ export function XchatConversation({
                           });
                         }}
                       >
-                        <RailAvatar label={prompt} />
                         <span className="xchat-rail-link__text">{prompt}</span>
                       </button>
                     </XfHoverHint>
@@ -932,14 +904,13 @@ export function XchatConversation({
                       <li className="xchat-rail-history-item" key={item.id}>
                         <XfHoverHint hint={item.message}>
                           <button
-                            className="xchat-rail-link xchat-rail-link--history"
+                            className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
                             type="button"
                             onClick={() => {
                               setInput(item.message);
                               queueMicrotask(() => composerRef.current?.focus());
                             }}
                           >
-                            <RailAvatar label={item.message} />
                             <span className="xchat-rail-link__text">{item.message}</span>
                           </button>
                         </XfHoverHint>
