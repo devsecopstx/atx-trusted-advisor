@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  isCookieMutationRestrictedError,
-  SESSION_REFRESH_WHEN_REMAINING_MS,
-  shouldRefreshSessionExpiry
+    isCookieMutationRestrictedError,
+    SESSION_REFRESH_WHEN_REMAINING_MS,
+    shouldRefreshSessionExpiry
 } from "@/lib/auth";
 
 describe("shouldRefreshSessionExpiry", () => {
