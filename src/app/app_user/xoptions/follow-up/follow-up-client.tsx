@@ -81,7 +81,8 @@ export function FollowUpMeetingClient() {
       </ol>
 
       <footer className="mt-14 pt-8 border-t border-gray-800 text-center text-xs text-gray-500">
-        Static capture page — data stays in this browser tab until you copy or print. Not financial advice.
+        Static capture page — data stays in this browser tab until you copy or print.{" "}
+        <span className="xf-disclaimer-emphasis">Not financial advice.</span>
       </footer>
     </div>
   );

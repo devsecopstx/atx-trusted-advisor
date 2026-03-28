@@ -6,7 +6,7 @@ import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-pu
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { ATX_BILLING_PLAN_LIMIT_ROWS } from "@/lib/atx-billing-plan-limits";
-import { ATX_BILLING_PLANS } from "@/lib/atx-billing-plans";
+import { ATX_BILLING_PLANS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import { getSessionUser } from "@/lib/auth";
 import { getStripePublishableKey, isStripeBillingFullyConfigured } from "@/lib/stripe-config";
 import { canUserLogin } from "@/modules/identity/authorization";
@@ -14,6 +14,16 @@ import { canUserLogin } from "@/modules/identity/authorization";
 import "./billing-plans.css";
 
 export const dynamic = "force-dynamic";
+
+const PLAN_LIMIT_COLUMN_BY_ID = {
+  basic: "basic",
+  premium_monthly: "premium",
+  premium_plus_yearly: "premiumPlus"
+} as const;
+type PlanLimitItem = {
+  metric: string;
+  value: string;
+};
 
 export default async function AccountBillingPage({
   searchParams
@@ -33,6 +43,35 @@ export default async function AccountBillingPage({
 
   const checkoutReady = isStripeBillingFullyConfigured();
   const publishableConfigured = Boolean(getStripePublishableKey());
+  const checkoutBanner =
+    checkout === "success"
+      ? {
+          className: "billing-banner billing-banner--ok",
+          message:
+            "Checkout completed — thank you. It may take a minute for entitlements to sync once webhooks are wired."
+        }
+      : checkout === "canceled"
+        ? {
+            className: "billing-banner billing-banner--muted",
+            message: "Checkout canceled — no charge. Pick a plan below when you're ready."
+          }
+        : null;
+  const planLimitsByPlanId = ATX_BILLING_PLANS.reduce<Record<AtxBillingPlanId, PlanLimitItem[]>>(
+    (acc, plan) => {
+      const planLimitKey = PLAN_LIMIT_COLUMN_BY_ID[plan.id];
+      const limits = ATX_BILLING_PLAN_LIMIT_ROWS.filter((row) => row.metric !== "Price").map((row) => ({
+        metric: row.metric,
+        value: row[planLimitKey]
+      }));
+      acc[plan.id] = limits;
+      return acc;
+    },
+    {
+      basic: [],
+      premium_monthly: [],
+      premium_plus_yearly: []
+    }
+  );
 
   return (
     <div className="xchat-shell">
@@ -48,34 +87,16 @@ export default async function AccountBillingPage({
                 <p className="billing-hero__eyebrow">ATX price plans</p>
                 <h1 className="billing-hero__title">Account &amp; billing</h1>
                 <p className="billing-hero__copy">
-                  Choose a plan for <strong className="text-[var(--xf-gain-green)]">aTx Trusted Advisory</strong>. Checkout
-                  runs on Stripe; subscription status and webhooks can tighten plan limits in a follow-up.
-                </p>
-                <p className="billing-hero__feedback">
-                  Questions on plans, access, or invoices?{" "}
-                  <BillingFeedbackLink>Submit feedback</BillingFeedbackLink>
-                  <span className="billing-hero__feedback-suffix"> — same form as under your avatar menu.</span>
+                  Choose a plan for <strong className="text-[var(--xf-gain-green)]">aTx Trusted Advisory</strong>. Billing
+                  runs on Stripe.
                 </p>
               </header>
 
-              {checkout === "success" ? (
-                <div className="billing-banner billing-banner--ok" role="status">
-                  Checkout completed — thank you. It may take a minute for entitlements to sync once webhooks are wired.
+              {checkoutBanner ? (
+                <div className={checkoutBanner.className} role="status">
+                  {checkoutBanner.message}
                 </div>
               ) : null}
-              {checkout === "canceled" ? (
-                <div className="billing-banner billing-banner--muted" role="status">
-                  Checkout canceled — no charge. Pick a plan below when you&apos;re ready.
-                </div>
-              ) : null}
-
-              <div className="billing-banner billing-banner--muted" role="note">
-                <strong>How we work together:</strong> you agree to use aTx Trusted Advisory <strong>lawfully</strong> and in line
-                with applicable rules and our terms. We ask that you send <strong>thoughtful, meaningful</strong> product
-                input when something misses the mark —{" "}
-                <BillingFeedbackLink>Submit feedback</BillingFeedbackLink>
-                <span> — concrete suggestions help us improve the product for everyone.</span>
-              </div>
 
               {!checkoutReady ? (
                 <div className="billing-banner billing-banner--muted" role="status">
@@ -108,48 +129,29 @@ export default async function AccountBillingPage({
                         <li key={b}>{b}</li>
                       ))}
                     </ul>
+                    <div className="billing-card__limits">
+                      <p className="billing-card__limits-title">Workspace limits</p>
+                      <ul className="billing-card__limits-list">
+                        {planLimitsByPlanId[plan.id].map((limit) => (
+                          <li key={`${plan.id}-${limit.metric}`}>
+                            <span className="billing-card__limits-metric">{limit.metric}</span>
+                            <span className="billing-card__limits-value">{limit.value}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                     <AtxBillingCheckoutButton planId={plan.id} checkoutReady={checkoutReady} />
                   </article>
                 ))}
               </div>
 
-              <details className="billing-limits-disclosure xf-widget section-card xf-noise-overlay">
-                <summary className="billing-limits-disclosure__summary">Plan workspace limits</summary>
-                <div className="billing-limits-disclosure__body">
-                  <p className="billing-limits-disclosure__intro">
-                    Published caps by tier (see{" "}
-                    <code className="font-mono text-xs">atx-docs/resouces/atx-limits.txt.tsv</code>). Your workspace
-                    admin may set tighter caps under Admin → Workspace limits.
-                  </p>
-                  <div className="billing-limits-table-wrap">
-                    <table className="billing-limits-table">
-                      <thead>
-                        <tr>
-                          <th scope="col">Limit</th>
-                          <th scope="col">Basic</th>
-                          <th scope="col">Premium</th>
-                          <th scope="col">Premium+</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ATX_BILLING_PLAN_LIMIT_ROWS.map((row) => (
-                          <tr key={row.metric}>
-                            <th scope="row">{row.metric}</th>
-                            <td>{row.basic}</td>
-                            <td>{row.premium}</td>
-                            <td>{row.premiumPlus}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </details>
-
               <p className="billing-footnote">
-                Not financial advice. Trial access is time-limited; subscribe to keep full access at the plan you choose.
-                Card processing and receipts are handled by Stripe. For access or invoice issues,{" "}
-                <BillingFeedbackLink>Submit feedback</BillingFeedbackLink> or contact your workspace admin.
+                <span className="xf-disclaimer-emphasis">Not financial advice.</span> Trial access is time-limited;
+                subscribe to keep full access at the plan you choose. Card processing and receipts are handled by Stripe.
+                For access or invoice issues, contact your workspace admin. You agree to use aTx Trusted Advisory lawfully
+                and in line with applicable rules and our terms. Share thoughtful, meaningful product feedback when
+                something misses the mark.{" "}
+                <BillingFeedbackLink>Submit feedback</BillingFeedbackLink>.
               </p>
             </div>
         </AppUserCollapsibleRailLayout>

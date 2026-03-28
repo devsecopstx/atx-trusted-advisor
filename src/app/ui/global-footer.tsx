@@ -20,7 +20,7 @@ export function GlobalFooter({ subline }: GlobalFooterProps) {
   const year = new Date().getFullYear();
   const effectiveSubline = subline ?? (
     <>
-      <span className="app-footer-disclaimer-strong">Not financial advice</span> — options involve risk of loss.
+      <span className="xf-disclaimer-emphasis">Not financial advice.</span> Options involve risk of loss.
       For approved users only.
     </>
   );

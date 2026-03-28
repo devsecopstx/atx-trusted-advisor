@@ -682,6 +682,13 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--xf-text-100);
 }
 
+.xf-disclaimer-emphasis {
+  font-weight: 800;
+  color: var(--xf-text-100);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 @media (max-width: 768px) {
   .app-footer-subline-stack,
   .app-footer-subline {

@@ -33,18 +33,6 @@
   line-height: 1.5;
 }
 
-.billing-hero__feedback {
-  font-size: 0.85rem;
-  color: var(--xf-text-muted, #94a3b8);
-  max-width: 42rem;
-  margin: 0.65rem 0 0;
-  line-height: 1.5;
-}
-
-.billing-hero__feedback-suffix {
-  color: var(--xf-text-muted, #94a3b8);
-}
-
 .billing-feedback-link {
   display: inline;
   margin: 0;
@@ -182,104 +170,54 @@
   margin-top: auto;
 }
 
+.billing-card__limits {
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.billing-card__limits-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-muted, #94a3b8);
+}
+
+.billing-card__limits-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.billing-card__limits-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  font-size: 0.77rem;
+  line-height: 1.35;
+}
+
+.billing-card__limits-metric {
+  color: var(--xf-text-muted, #94a3b8);
+}
+
+.billing-card__limits-value {
+  color: var(--xf-text-100, #e2e8f0);
+  text-align: right;
+}
+
 .billing-footnote {
   margin-top: 1.5rem;
   font-size: 0.75rem;
   color: var(--xf-text-muted, #94a3b8);
-  max-width: 48rem;
-  line-height: 1.45;
-}
-
-.billing-limits-disclosure {
-  margin-bottom: 1.5rem;
-  padding: 0;
-  border-radius: 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: var(--xf-surface-700, #17191d);
-  overflow: hidden;
-}
-
-.billing-limits-disclosure__summary {
-  cursor: pointer;
-  list-style: none;
-  padding: 1rem 1.1rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--xf-text-100, #f1f5f9);
-  border-bottom: 1px solid transparent;
-}
-
-.billing-limits-disclosure__summary::-webkit-details-marker {
-  display: none;
-}
-
-.billing-limits-disclosure__summary::after {
-  content: "";
-  display: inline-block;
-  width: 0.45rem;
-  height: 0.45rem;
-  margin-left: 0.5rem;
-  border-right: 2px solid var(--xf-gain-green, #39ff14);
-  border-bottom: 2px solid var(--xf-gain-green, #39ff14);
-  transform: rotate(45deg);
-  vertical-align: 0.15em;
-  transition: transform 0.15s ease;
-}
-
-.billing-limits-disclosure[open] .billing-limits-disclosure__summary {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-}
-
-.billing-limits-disclosure[open] .billing-limits-disclosure__summary::after {
-  transform: rotate(-135deg);
-  vertical-align: 0.05em;
-}
-
-.billing-limits-disclosure__body {
-  padding: 0 1.1rem 1.1rem;
-}
-
-.billing-limits-disclosure__intro {
-  margin: 0 0 0.85rem;
-  font-size: 0.85rem;
-  color: var(--xf-text-muted, #94a3b8);
-  line-height: 1.45;
-}
-
-.billing-limits-table-wrap {
-  overflow-x: auto;
-  margin: 0 -0.25rem;
-}
-
-.billing-limits-table {
+  max-width: none;
   width: 100%;
-  min-width: 520px;
-  border-collapse: collapse;
-  font-size: 0.8rem;
-}
-
-.billing-limits-table th,
-.billing-limits-table td {
-  padding: 0.55rem 0.65rem;
-  text-align: left;
-  vertical-align: top;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.billing-limits-table thead th {
-  border-top: none;
-  color: var(--xf-text-muted, #94a3b8);
-  font-weight: 600;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.billing-limits-table tbody th[scope="row"] {
-  color: var(--xf-text-100, #e2e8f0);
-  font-weight: 500;
-}
-
-.billing-limits-table tbody td {
-  color: var(--xf-text-muted, #94a3b8);
+  line-height: 1.45;
 }

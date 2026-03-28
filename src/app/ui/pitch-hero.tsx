@@ -355,8 +355,8 @@ export default function Hero({
             </motion.div>
 
             <motion.p variants={bulletItemVariants} className="text-xs sm:text-sm text-gray-500 mt-6 max-w-2xl mx-auto">
-              Not financial advice. Not a solicitation. Options involve risk of loss. For qualified HNWI and trusted-family
-              evaluating software-assisted workflows only.
+              <span className="xf-disclaimer-emphasis">Not financial advice.</span> Not a solicitation. Options involve risk
+              of loss. For qualified HNWI and trusted-family evaluating software-assisted workflows only.
             </motion.p>
           </motion.div>
         </div>
