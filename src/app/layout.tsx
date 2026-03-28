@@ -1,9 +1,9 @@
+import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import "../../atx-docs/design-system/atxfinance-brand-kit.css";
 import "./globals.css";
-import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
 
 const inter = Inter({
   subsets: ["latin"],

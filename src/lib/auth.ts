@@ -23,6 +23,15 @@ export function shouldRefreshSessionExpiry(expMs: number, nowMs: number = Date.n
 }
 
 /**
+ * Next.js forbids cookie mutation from server-render-only contexts.
+ * In those contexts we should keep serving the current session instead of crashing.
+ */
+export function isCookieMutationRestrictedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("Cookies can only be modified in a Server Action or Route Handler");
+}
+
+/**
  * Signed session payload. Naming:
  * - **Platform roles** (`roles`): global_admin | advisor | operator | viewer — what the user can do app-wide.
  *   Only `global_admin` may use `/admin` (admin console). Advisor/operator/viewer are **app_user** roles (xChat, xStrategyBuilder, etc.).
@@ -134,17 +143,23 @@ async function getSessionUserUncached(): Promise<SessionUser | null> {
   }
 
   if (shouldRefreshSessionExpiry(payload.exp)) {
-    await createSession({
-      userId: payload.userId,
-      email: payload.email,
-      roles: normalizeCoreRoles(payload.roles),
-      tenantId: payload.tenantId,
-      tenantRole: payload.tenantRole,
-      xUserId: payload.xUserId,
-      username: payload.username,
-      displayName: payload.displayName,
-      avatarUrl: payload.avatarUrl
-    });
+    try {
+      await createSession({
+        userId: payload.userId,
+        email: payload.email,
+        roles: normalizeCoreRoles(payload.roles),
+        tenantId: payload.tenantId,
+        tenantRole: payload.tenantRole,
+        xUserId: payload.xUserId,
+        username: payload.username,
+        displayName: payload.displayName,
+        avatarUrl: payload.avatarUrl
+      });
+    } catch (error) {
+      if (!isCookieMutationRestrictedError(error)) {
+        throw error;
+      }
+    }
   }
 
   return {
