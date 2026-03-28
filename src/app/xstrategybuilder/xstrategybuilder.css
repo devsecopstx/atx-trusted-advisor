@@ -891,6 +891,77 @@ html[data-xf-ui="soft"] .xsb-builder-preview--friendly select {
   margin-top: 0.5rem;
 }
 
+.xsb-payoff-lab {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.65rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--xsb-f-border);
+  background: color-mix(in srgb, var(--xsb-f-surface) 92%, var(--xsb-f-bg));
+}
+
+.xsb-payoff-lab__head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.xsb-payoff-lab__spot {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.74rem;
+  color: var(--xsb-f-muted);
+}
+
+.xsb-payoff-lab__spot .xsb-builder-nl-input {
+  min-width: 9rem;
+}
+
+.xsb-payoff-lab__rows {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.xsb-payoff-lab__row {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) repeat(3, minmax(0, 1fr)) auto;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .xsb-payoff-lab__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.xsb-payoff-lab__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--xsb-f-border) 75%, transparent);
+  background: color-mix(in srgb, var(--xf-loss-red, #f87171) 20%, var(--xsb-f-bg));
+  color: var(--xsb-f-text);
+  padding: 0.35rem 0.55rem;
+  cursor: pointer;
+}
+
+.xsb-payoff-lab__delete:hover {
+  border-color: color-mix(in srgb, var(--xf-loss-red, #f87171) 55%, var(--xsb-f-border));
+  background: color-mix(in srgb, var(--xf-loss-red, #f87171) 35%, var(--xsb-f-bg));
+}
+
+.xsb-payoff-lab__actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
 .xsb-engine-cta {
   display: inline-flex;
   align-items: center;
@@ -908,6 +979,18 @@ html[data-xf-ui="soft"] .xsb-builder-preview--friendly select {
   );
   border: 1px solid color-mix(in srgb, var(--xsb-f-accent-strong) 40%, var(--xsb-f-border));
   box-shadow: 0 4px 14px color-mix(in srgb, var(--xsb-f-accent-strong) 22%, transparent);
+}
+
+.xsb-engine-cta--ghost {
+  color: var(--xsb-f-text);
+  background: color-mix(in srgb, var(--xsb-f-surface) 82%, var(--xsb-f-bg));
+  border-color: color-mix(in srgb, var(--xsb-f-border) 75%, transparent);
+  box-shadow: none;
+}
+
+.xsb-engine-cta--ghost:hover {
+  border-color: color-mix(in srgb, var(--xsb-f-accent-strong) 48%, var(--xsb-f-border));
+  background: color-mix(in srgb, var(--xsb-f-accent-soft) 65%, var(--xsb-f-surface));
 }
 
 .xsb-engine-cta:hover {

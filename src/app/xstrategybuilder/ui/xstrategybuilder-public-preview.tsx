@@ -6,6 +6,8 @@ import { useMemo, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
+import { OptionsPayoffChart } from "@/app/xstrategybuilder/ui/options-payoff-chart";
+import type { OptionsPayoffLeg } from "@/lib/options-payoff";
 import {
     INVESTMENT_STRATEGY_OPTIONS,
     RISK_LEVEL_OPTIONS
@@ -46,6 +48,80 @@ const STRATEGY_OPTIONS: StrategyOption[] = [
   { id: "iron-condor", label: "Iron Condor", summary: "Defined-risk neutral premium capture." },
   { id: "wheel", label: "Wheel", summary: "CSP to covered-call cycle with assignment discipline." }
 ];
+
+const SYMBOL_SPOT_HINTS: Record<string, number> = {
+  TSLA: 250,
+  NVDA: 120,
+  AAPL: 200,
+  MSFT: 420,
+  RDW: 9,
+  LUNR: 8
+};
+
+function createLeg(partial?: Partial<OptionsPayoffLeg>): OptionsPayoffLeg {
+  return {
+    id: globalThis.crypto?.randomUUID?.() ?? `leg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type: partial?.type ?? "call",
+    strike: partial?.strike ?? 100,
+    premium: partial?.premium ?? 2,
+    quantity: partial?.quantity ?? 1,
+    side: partial?.side ?? "long"
+  };
+}
+
+function buildTemplateLegs(strategyId: string | null, currentPrice: number): OptionsPayoffLeg[] {
+  const spot = Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : 100;
+  switch (strategyId) {
+    case "covered-calls":
+      return [createLeg({ type: "call", side: "short", strike: spot * 1.05, premium: 3.2 })];
+    case "cash-secured-puts":
+      return [createLeg({ type: "put", side: "short", strike: spot * 0.95, premium: 3 })];
+    case "bull-put-credit-spread":
+      return [
+        createLeg({ type: "put", side: "short", strike: spot * 0.97, premium: 4 }),
+        createLeg({ type: "put", side: "long", strike: spot * 0.92, premium: 2.2 })
+      ];
+    case "bull-call-debit-spread":
+      return [
+        createLeg({ type: "call", side: "long", strike: spot, premium: 4.5 }),
+        createLeg({ type: "call", side: "short", strike: spot * 1.06, premium: 1.9 })
+      ];
+    case "calendar-spread":
+    case "diagonal-spread":
+      return [
+        createLeg({ type: "call", side: "long", strike: spot * 0.98, premium: 6.5 }),
+        createLeg({ type: "call", side: "short", strike: spot * 1.03, premium: 2.5 })
+      ];
+    case "poor-mans-covered-call":
+    case "leap-call-cc-overlay":
+      return [
+        createLeg({ type: "call", side: "long", strike: spot * 0.85, premium: 14 }),
+        createLeg({ type: "call", side: "short", strike: spot * 1.06, premium: 2.8 })
+      ];
+    case "iron-condor":
+      return [
+        createLeg({ type: "put", side: "long", strike: spot * 0.88, premium: 1.1 }),
+        createLeg({ type: "put", side: "short", strike: spot * 0.93, premium: 2.4 }),
+        createLeg({ type: "call", side: "short", strike: spot * 1.07, premium: 2.3 }),
+        createLeg({ type: "call", side: "long", strike: spot * 1.12, premium: 1.1 })
+      ];
+    case "wheel":
+      return [createLeg({ type: "put", side: "short", strike: spot * 0.95, premium: 3 })];
+    default:
+      return [
+        createLeg({ type: "call", side: "long", strike: spot, premium: 3.8 }),
+        createLeg({ type: "call", side: "short", strike: spot * 1.06, premium: 1.8 })
+      ];
+  }
+}
+
+function normalizeMoneyInput(value: string, fallback: number): number {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Number(parsed.toFixed(2));
+}
 
 function riskLabel(account: XsbWorkspaceAccount): string {
   if (account.riskProfile == null) {
@@ -121,6 +197,10 @@ export function XstrategybuilderPublicPreview({
   const canContinueFromStep1 = Boolean(selectedAccountKey);
   const canContinueFromStep2 = canContinueFromStep1 && Boolean(selectedSymbol);
   const canContinueFromStep3 = canContinueFromStep2 && Boolean(selectedStrategyId);
+  const [currentPrice, setCurrentPrice] = useState<number>(SYMBOL_SPOT_HINTS.TSLA);
+  const [payoffLegs, setPayoffLegs] = useState<OptionsPayoffLeg[]>(() =>
+    buildTemplateLegs(null, SYMBOL_SPOT_HINTS.TSLA)
+  );
 
   const toggleStep = (step: XsbStep) => {
     setExpandedSteps((prev) => ({ ...prev, [step]: !prev[step] }));
@@ -313,6 +393,7 @@ export function XstrategybuilderPublicPreview({
                     setSymbolQuery(value);
                     if (value && symbolUniverse.some((item) => item.symbol === value)) {
                       setSelectedSymbol(value);
+                      setCurrentPrice(SYMBOL_SPOT_HINTS[value] ?? currentPrice);
                     }
                   }}
                 />
@@ -329,6 +410,7 @@ export function XstrategybuilderPublicPreview({
                       onClick={() => {
                         setSelectedSymbol(item.symbol);
                         setSymbolQuery(item.symbol);
+                        setCurrentPrice(SYMBOL_SPOT_HINTS[item.symbol] ?? currentPrice);
                       }}
                     >
                       <span className="xsb-live-symbol-item__symbol">{item.symbol}</span>
@@ -397,7 +479,10 @@ export function XstrategybuilderPublicPreview({
                       type="button"
                       role="listitem"
                       className={`xsb-live-strategy-item${isActive ? " xsb-live-strategy-item--active" : ""}`}
-                      onClick={() => setSelectedStrategyId(option.id)}
+                      onClick={() => {
+                        setSelectedStrategyId(option.id);
+                        setPayoffLegs(buildTemplateLegs(option.id, currentPrice));
+                      }}
                     >
                       <span className="xsb-live-strategy-item__label">{option.label}</span>
                       <span className="xsb-live-strategy-item__summary">{option.summary}</span>
@@ -491,6 +576,138 @@ export function XstrategybuilderPublicPreview({
                 Active strategy: <strong>{selectedStrategy.label}</strong>.
               </p>
             ) : null}
+            <div className="xsb-payoff-lab">
+              <div className="xsb-payoff-lab__head">
+                <p className="xsb-friendly-section-label">Live payoff simulation (expiration)</p>
+                <label className="xsb-payoff-lab__spot" htmlFor="xsb-payoff-spot">
+                  Spot
+                  <input
+                    id="xsb-payoff-spot"
+                    className="xsb-builder-nl-input"
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step={0.01}
+                    value={currentPrice}
+                    onChange={(event) => {
+                      setCurrentPrice(normalizeMoneyInput(event.target.value, currentPrice));
+                    }}
+                  />
+                </label>
+              </div>
+
+              <div className="xsb-payoff-lab__rows">
+                {payoffLegs.map((leg) => (
+                  <div className="xsb-payoff-lab__row" key={leg.id}>
+                    <select
+                      aria-label="Leg side"
+                      value={leg.side}
+                      onChange={(event) => {
+                        const side = event.target.value === "short" ? "short" : "long";
+                        setPayoffLegs((prev) =>
+                          prev.map((item) => (item.id === leg.id ? { ...item, side } : item))
+                        );
+                      }}
+                    >
+                      <option value="long">Long</option>
+                      <option value="short">Short</option>
+                    </select>
+                    <select
+                      aria-label="Leg type"
+                      value={leg.type}
+                      onChange={(event) => {
+                        const type = event.target.value === "put" ? "put" : "call";
+                        setPayoffLegs((prev) =>
+                          prev.map((item) => (item.id === leg.id ? { ...item, type } : item))
+                        );
+                      }}
+                    >
+                      <option value="call">Call</option>
+                      <option value="put">Put</option>
+                    </select>
+                    <input
+                      aria-label="Strike"
+                      className="xsb-builder-nl-input"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step={0.5}
+                      value={leg.strike}
+                      onChange={(event) => {
+                        const strike = normalizeMoneyInput(event.target.value, leg.strike);
+                        setPayoffLegs((prev) =>
+                          prev.map((item) => (item.id === leg.id ? { ...item, strike } : item))
+                        );
+                      }}
+                    />
+                    <input
+                      aria-label="Premium"
+                      className="xsb-builder-nl-input"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step={0.01}
+                      value={leg.premium}
+                      onChange={(event) => {
+                        const premium = normalizeMoneyInput(event.target.value, leg.premium);
+                        setPayoffLegs((prev) =>
+                          prev.map((item) => (item.id === leg.id ? { ...item, premium } : item))
+                        );
+                      }}
+                    />
+                    <input
+                      aria-label="Contracts"
+                      className="xsb-builder-nl-input"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      step={1}
+                      value={leg.quantity}
+                      onChange={(event) => {
+                        const quantity = Math.max(1, Math.trunc(Number.parseInt(event.target.value, 10) || 1));
+                        setPayoffLegs((prev) =>
+                          prev.map((item) => (item.id === leg.id ? { ...item, quantity } : item))
+                        );
+                      }}
+                    />
+                    <button
+                      className="xsb-payoff-lab__delete"
+                      type="button"
+                      onClick={() => {
+                        setPayoffLegs((prev) => prev.filter((item) => item.id !== leg.id));
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="xsb-payoff-lab__actions">
+                <button
+                  className="xsb-engine-cta xsb-engine-cta--ghost"
+                  type="button"
+                  onClick={() => {
+                    setPayoffLegs((prev) =>
+                      prev.concat(createLeg({ strike: currentPrice, premium: 2, quantity: 1, type: "call", side: "long" }))
+                    );
+                  }}
+                >
+                  Add leg
+                </button>
+                <button
+                  className="xsb-engine-cta xsb-engine-cta--ghost"
+                  type="button"
+                  onClick={() => {
+                    setPayoffLegs(buildTemplateLegs(selectedStrategyId, currentPrice));
+                  }}
+                >
+                  Reset strategy template
+                </button>
+              </div>
+
+              <OptionsPayoffChart darkMode currentPrice={currentPrice} legs={payoffLegs} />
+            </div>
             <div className="xsb-builder-actions xsb-builder-actions--start">
               <Link
                 className="xsb-engine-cta"
