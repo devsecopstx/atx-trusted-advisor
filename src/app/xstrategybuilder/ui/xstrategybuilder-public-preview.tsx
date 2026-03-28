@@ -2,17 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
-import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
+import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
 import { OptionsPayoffChart } from "@/app/xstrategybuilder/ui/options-payoff-chart";
 import type { OptionsPayoffLeg } from "@/lib/options-payoff";
 import {
     INVESTMENT_STRATEGY_OPTIONS,
     RISK_LEVEL_OPTIONS
 } from "@/modules/core-admin/portfolio-preference-labels";
-import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 
 import type { XsbInitialWorkspace, XsbWorkspaceAccount, XsbWorkspacePortfolio } from "../workspace-types";
 
@@ -57,6 +56,8 @@ const SYMBOL_SPOT_HINTS: Record<string, number> = {
   RDW: 9,
   LUNR: 8
 };
+
+type SpotMode = "live" | "manual";
 
 function createLeg(partial?: Partial<OptionsPayoffLeg>): OptionsPayoffLeg {
   return {
@@ -139,37 +140,17 @@ function outlookLabel(account: XsbWorkspaceAccount): string {
 
 export type XstrategybuilderPublicPreviewProps = {
   initialWorkspace: XsbInitialWorkspace;
-  /** Shown when no workspace book is assigned — canonical engine default weights. */
-  fallbackScoringFactors: PortfolioScoringFactorApi[];
 };
 
 type XsbStep = 1 | 2 | 3 | 4 | 5;
 
-export function XstrategybuilderPublicPreview({
-  initialWorkspace,
-  fallbackScoringFactors
-}: XstrategybuilderPublicPreviewProps) {
+export function XstrategybuilderPublicPreview({ initialWorkspace }: XstrategybuilderPublicPreviewProps) {
   const router = useRouter();
 
   const portfolio: XsbWorkspacePortfolio | null =
     initialWorkspace.status === "ready" ? initialWorkspace.portfolio : null;
 
-  const scoringFactors = portfolio?.scoringFactors?.length
-    ? portfolio.scoringFactors
-    : fallbackScoringFactors;
-
   const accounts = useMemo(() => portfolio?.accounts ?? [], [portfolio]);
-  const accountOptions = useMemo(
-    () =>
-      accounts.map((acc) => ({
-        key: acc._id ?? `${acc.name}-${acc.accountRef}`,
-        value: `${acc.name}${acc.accountRef ? ` · ${acc.accountRef}` : ""}`,
-        account: acc
-      })),
-    [accounts]
-  );
-  const [selectedAccountKey, setSelectedAccountKey] = useState<string | null>(null);
-  const selectedAccount = accountOptions.find((option) => option.key === selectedAccountKey)?.account ?? null;
   const [activeStep, setActiveStep] = useState<XsbStep>(1);
   const [expandedSteps, setExpandedSteps] = useState<Record<XsbStep, boolean>>({
     1: true,
@@ -194,12 +175,45 @@ export function XstrategybuilderPublicPreview({
     () => STRATEGY_OPTIONS.find((option) => option.id === selectedStrategyId) ?? null,
     [selectedStrategyId]
   );
-  const canContinueFromStep1 = Boolean(selectedAccountKey);
-  const canContinueFromStep2 = canContinueFromStep1 && Boolean(selectedSymbol);
+  const canContinueFromStep1 = true;
+  const canContinueFromStep2 = Boolean(selectedSymbol);
   const canContinueFromStep3 = canContinueFromStep2 && Boolean(selectedStrategyId);
   const [currentPrice, setCurrentPrice] = useState<number>(SYMBOL_SPOT_HINTS.TSLA);
+  const [spotMode, setSpotMode] = useState<SpotMode>("live");
   const [payoffLegs, setPayoffLegs] = useState<OptionsPayoffLeg[]>(() =>
     buildTemplateLegs(null, SYMBOL_SPOT_HINTS.TSLA)
+  );
+  const { quotes: liveQuotes, loading: quoteLoading } = useSymbolQuotes([selectedSymbol], { refreshMs: 30_000 });
+  const livePrice = liveQuotes[selectedSymbol]?.price;
+
+  useEffect(() => {
+    if (spotMode !== "live") {
+      return;
+    }
+    if (typeof livePrice !== "number" || !Number.isFinite(livePrice) || livePrice <= 0) {
+      return;
+    }
+    setCurrentPrice(Number(livePrice.toFixed(2)));
+  }, [livePrice, spotMode]);
+  const hasMissingUserContextSettings = useMemo(
+    () =>
+      initialWorkspace.status === "error" ||
+      !portfolio ||
+      portfolio.accounts.length === 0 ||
+      portfolio.accounts.some((account) => account.riskProfile == null || account.outlook == null),
+    [initialWorkspace.status, portfolio]
+  );
+
+  const priceTargets = useMemo(
+    () => [
+      { label: "-15%", value: currentPrice * 0.85 },
+      { label: "-10%", value: currentPrice * 0.9 },
+      { label: "-5%", value: currentPrice * 0.95 },
+      { label: "+5%", value: currentPrice * 1.05 },
+      { label: "+10%", value: currentPrice * 1.1 },
+      { label: "+15%", value: currentPrice * 1.15 }
+    ],
+    [currentPrice]
   );
 
   const toggleStep = (step: XsbStep) => {
@@ -208,7 +222,13 @@ export function XstrategybuilderPublicPreview({
 
   const goToStep = (step: XsbStep) => {
     setActiveStep(step);
-    setExpandedSteps((prev) => ({ ...prev, [step]: true }));
+    setExpandedSteps({
+      1: step === 1,
+      2: step === 2,
+      3: step === 3,
+      4: step === 4,
+      5: step === 5
+    });
   };
 
   const money = useMemo(
@@ -227,6 +247,25 @@ export function XstrategybuilderPublicPreview({
       className="xsb-builder-preview xsb-builder-preview--friendly"
       role="region"
     >
+      <section className="xsb-price-band" aria-label="Current price and target strike bands">
+        <div className="xsb-price-band__left">
+          <span className="xsb-price-band__k">Symbol</span>
+          <span className="xsb-price-band__v">{selectedSymbol}</span>
+          <span className="xsb-price-band__k">Current</span>
+          <span className="xsb-price-band__v">{money.format(currentPrice)}</span>
+          <span className="xsb-price-band__k">
+            {spotMode === "live" ? (quoteLoading ? "Live refresh..." : "Live (Yahoo)") : "Manual override"}
+          </span>
+        </div>
+        <div className="xsb-price-band__targets" role="list">
+          {priceTargets.map((target) => (
+            <span key={target.label} className="xsb-price-band__target" role="listitem">
+              {target.label} <strong>{money.format(target.value)}</strong>
+            </span>
+          ))}
+        </div>
+      </section>
+
       <ol className="xsb-engine-steps">
         <li className={`xsb-engine-step xsb-engine-step--panel${activeStep === 1 ? " xsb-engine-step--active" : ""}`}>
           <button
@@ -251,109 +290,66 @@ export function XstrategybuilderPublicPreview({
               ▼
             </span>
           </button>
-          {expandedSteps[1] ? <div className="xsb-engine-step__body">
-            {initialWorkspace.status === "error" ? (
-              <div className="xsb-friendly-error xsb-friendly-error--block">
-                <p>{initialWorkspace.message}</p>
-                <button
-                  className="xsb-friendly-retry"
-                  onClick={() => router.refresh()}
-                  type="button"
-                >
-                  <RefreshIcon className="crud-icon" />
-                  Reload page
-                </button>
-              </div>
-            ) : portfolio ? (
-              <>
-                <p className="xsb-friendly-hint xsb-friendly-hint--tight">
-                  Workspace book <strong>{portfolio.name}</strong>
-                  {portfolio.isDefault ? " (default book)" : ""} — assigned by your workspace administrator; not
-                  auto-provisioned from this page.
-                </p>
-                {accounts.length === 0 ? (
-                  <p className="xsb-friendly-hint">
-                    No custodian accounts linked yet. Add accounts from{" "}
-                    <a className="xsb-friendly-link" href="/portfolio">
-                      Portfolio
-                    </a>
-                    .
-                  </p>
-                ) : (
-                  <ul className="xsb-context-account-list" role="list">
-                    {accounts.map((acc) => (
-                      <li key={acc._id ?? `${acc.name}-${acc.accountRef}`} className="xsb-context-account-row">
-                        <span className="xsb-context-account-name">{acc.name}</span>
-                        <span className="xsb-context-account-meta">
-                          {acc.brokerType}
-                          {acc.accountRef ? ` · ${acc.accountRef}` : ""}
-                        </span>
-                        <span className="xsb-context-account-desk">
-                          Risk: <strong>{riskLabel(acc)}</strong>
-                          {" · "}
-                          Outlook: <strong>{outlookLabel(acc)}</strong>
-                        </span>
-                        <span className="xsb-context-account-balance">{money.format(acc.balance)} cash</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {accountOptions.length > 0 ? (
-                  <div className="xsb-live-context">
-                    <p className="xsb-friendly-section-label">Live account context</p>
-                    <label className="xsb-live-context__picker" htmlFor="xsb-live-account-picker">
-                      Account
-                      <select
-                        id="xsb-live-account-picker"
-                        value={selectedAccountKey ?? ""}
-                        onChange={(event) => {
-                          const nextAccountKey = event.target.value || null;
-                          setSelectedAccountKey(nextAccountKey);
-                          if (nextAccountKey && activeStep === 1) {
-                            setActiveStep(2);
-                            setExpandedSteps((prev) => ({ ...prev, 2: true }));
-                          }
-                        }}
-                      >
-                        <option value="">Select account context</option>
-                        {accountOptions.map((option) => (
-                          <option key={option.key} value={option.key}>
-                            {option.value}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {selectedAccount ? (
-                      <div className="xsb-live-context__stats">
-                        <div className="xsb-live-context__stat">
-                          <span>Risk profile</span>
-                          <strong>{riskLabel(selectedAccount)}</strong>
-                        </div>
-                        <div className="xsb-live-context__stat">
-                          <span>Outlook</span>
-                          <strong>{outlookLabel(selectedAccount)}</strong>
-                        </div>
-                        <div className="xsb-live-context__stat">
-                          <span>Cash balance</span>
-                          <strong>{money.format(selectedAccount.balance)}</strong>
-                        </div>
-                      </div>
-                    ) : null}
-                    <div className="xsb-step-actions">
-                      <button
-                        type="button"
-                        className="xsb-engine-cta"
-                        disabled={!canContinueFromStep1}
-                        onClick={() => goToStep(2)}
-                      >
-                        Continue to Step 2
+          {expandedSteps[1] ? (
+            <div className="xsb-engine-step__body">
+              {hasMissingUserContextSettings ? (
+                <>
+                  {initialWorkspace.status === "error" ? (
+                    <div className="xsb-friendly-error xsb-friendly-error--block">
+                      <p>{initialWorkspace.message}</p>
+                      <button className="xsb-friendly-retry" onClick={() => router.refresh()} type="button">
+                        <RefreshIcon className="crud-icon" />
+                        Reload page
                       </button>
                     </div>
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-          </div> : null}
+                  ) : portfolio ? (
+                    <>
+                      <p className="xsb-friendly-hint xsb-friendly-hint--tight">
+                        Missing account context detected for this default workspace book. Complete risk/outlook to
+                        unlock deterministic strategy scoring.
+                      </p>
+                      {accounts.length === 0 ? (
+                        <p className="xsb-friendly-hint">
+                          No custodian accounts linked yet. Add accounts from{" "}
+                          <a className="xsb-friendly-link" href="/portfolio">
+                            Portfolio
+                          </a>
+                          .
+                        </p>
+                      ) : (
+                        <ul className="xsb-context-account-list" role="list">
+                          {accounts.map((acc) => (
+                            <li key={acc._id ?? `${acc.name}-${acc.accountRef}`} className="xsb-context-account-row">
+                              <span className="xsb-context-account-name">{acc.name}</span>
+                              <span className="xsb-context-account-meta">
+                                {acc.brokerType}
+                                {acc.accountRef ? ` · ${acc.accountRef}` : ""}
+                              </span>
+                              <span className="xsb-context-account-desk">
+                                Risk: <strong>{riskLabel(acc)}</strong>
+                                {" · "}
+                                Outlook: <strong>{outlookLabel(acc)}</strong>
+                              </span>
+                              <span className="xsb-context-account-balance">{money.format(acc.balance)} cash</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <p className="xsb-friendly-hint xsb-friendly-hint--tight">
+                  Default workspace context is complete. User context stays hidden by design.
+                </p>
+              )}
+              <div className="xsb-step-actions">
+                <button type="button" className="xsb-engine-cta" onClick={() => goToStep(2)}>
+                  Continue to Step 2
+                </button>
+              </div>
+            </div>
+          ) : null}
         </li>
 
         <li className={`xsb-engine-step xsb-engine-step--panel${activeStep === 2 ? " xsb-engine-step--active" : ""}`}>
@@ -393,7 +389,9 @@ export function XstrategybuilderPublicPreview({
                     setSymbolQuery(value);
                     if (value && symbolUniverse.some((item) => item.symbol === value)) {
                       setSelectedSymbol(value);
+                      setSpotMode("live");
                       setCurrentPrice(SYMBOL_SPOT_HINTS[value] ?? currentPrice);
+                      setExpandedSteps((prev) => ({ ...prev, 1: false, 2: true }));
                     }
                   }}
                 />
@@ -409,8 +407,10 @@ export function XstrategybuilderPublicPreview({
                       role="listitem"
                       onClick={() => {
                         setSelectedSymbol(item.symbol);
+                        setSpotMode("live");
                         setSymbolQuery(item.symbol);
                         setCurrentPrice(SYMBOL_SPOT_HINTS[item.symbol] ?? currentPrice);
+                        setExpandedSteps((prev) => ({ ...prev, 1: false, 2: true }));
                       }}
                     >
                       <span className="xsb-live-symbol-item__symbol">{item.symbol}</span>
@@ -482,6 +482,7 @@ export function XstrategybuilderPublicPreview({
                       onClick={() => {
                         setSelectedStrategyId(option.id);
                         setPayoffLegs(buildTemplateLegs(option.id, currentPrice));
+                        setExpandedSteps((prev) => ({ ...prev, 1: false, 2: false, 3: true }));
                       }}
                     >
                       <span className="xsb-live-strategy-item__label">{option.label}</span>
@@ -532,14 +533,19 @@ export function XstrategybuilderPublicPreview({
               ▼
             </span>
           </button>
-          {expandedSteps[4] ? <div className="xsb-engine-step__body">
-            <PortfolioScoringFactorsReadonlyTable factors={scoringFactors} variant="full" />
-            <div className="xsb-step-actions">
-              <button type="button" className="xsb-engine-cta" disabled={!canContinueFromStep3} onClick={() => goToStep(5)}>
-                Continue to Step 5
-              </button>
+          {expandedSteps[4] ? (
+            <div className="xsb-engine-step__body">
+              <p className="xsb-friendly-hint xsb-friendly-hint--tight">
+                Scoring model runs in the background with safe fallback behavior and can be overridden by the user in
+                prompt context. No score internals are exposed in UI.
+              </p>
+              <div className="xsb-step-actions">
+                <button type="button" className="xsb-engine-cta" disabled={!canContinueFromStep3} onClick={() => goToStep(5)}>
+                  Continue to Step 5
+                </button>
+              </div>
             </div>
-          </div> : null}
+          ) : null}
         </li>
 
         <li className={`xsb-engine-step xsb-engine-step--panel${activeStep === 5 ? " xsb-engine-step--active" : ""}`}>
@@ -590,10 +596,24 @@ export function XstrategybuilderPublicPreview({
                     step={0.01}
                     value={currentPrice}
                     onChange={(event) => {
+                      setSpotMode("manual");
                       setCurrentPrice(normalizeMoneyInput(event.target.value, currentPrice));
                     }}
                   />
                 </label>
+                <button
+                  className="xsb-engine-cta xsb-engine-cta--ghost"
+                  disabled={typeof livePrice !== "number" || !Number.isFinite(livePrice) || livePrice <= 0}
+                  type="button"
+                  onClick={() => {
+                    if (typeof livePrice === "number" && Number.isFinite(livePrice) && livePrice > 0) {
+                      setSpotMode("live");
+                      setCurrentPrice(Number(livePrice.toFixed(2)));
+                    }
+                  }}
+                >
+                  Use live
+                </button>
               </div>
 
               <div className="xsb-payoff-lab__rows">

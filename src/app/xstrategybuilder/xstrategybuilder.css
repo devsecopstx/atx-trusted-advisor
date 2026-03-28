@@ -267,6 +267,60 @@
   color: var(--xsb-f-text);
 }
 
+.xsb-price-band {
+  margin-bottom: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--xsb-f-border);
+  background: color-mix(in srgb, var(--xsb-f-surface) 90%, var(--xsb-f-bg));
+  display: grid;
+  gap: 0.4rem;
+}
+
+.xsb-price-band__left {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.xsb-price-band__k {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--xsb-f-muted);
+}
+
+.xsb-price-band__v {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--xsb-f-text);
+  margin-right: 0.55rem;
+}
+
+.xsb-price-band__targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.xsb-price-band__target {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  font-size: 0.74rem;
+  color: var(--xsb-f-muted);
+  padding: 0.18rem 0.38rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xsb-f-border) 75%, transparent);
+  background: color-mix(in srgb, var(--xsb-f-bg) 45%, transparent);
+}
+
+.xsb-price-band__target strong {
+  color: var(--xsb-f-text);
+  font-weight: 800;
+}
+
 html[data-xf-ui="soft"] .xsb-builder-preview--friendly {
   --xsb-f-bg: color-mix(in srgb, #ffffff 82%, var(--xf-surface-700));
   --xsb-f-surface: color-mix(in srgb, #ffffff 88%, var(--xf-surface-700));

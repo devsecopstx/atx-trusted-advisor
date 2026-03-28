@@ -38,6 +38,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details*
 ### Deferred product TODOs
 
 - `/login` is deprecated (`permanentRedirect` → `/xchat`); fold plan tiers into `/xchat` guest panel or access-request flow.
+- Watchlist quote freshness: add background refresh cadence + visible last-updated timestamp + stale badge (`/watchlist` and related portfolio/watchlist tables) so Yahoo-backed prices are clearly live vs cached.
 
 ---
 

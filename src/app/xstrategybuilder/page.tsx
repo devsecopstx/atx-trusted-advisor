@@ -8,10 +8,6 @@ import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { getLicensingPitchContact } from "@/lib/env";
-import {
-    DEFAULT_PORTFOLIO_SCORING_FACTORS,
-    enrichScoringFactorsForApi
-} from "@/modules/core-admin/scoring-factors";
 
 import { loadXsbInitialWorkspace } from "./load-initial-workspace";
 import { XstrategybuilderPublicPreview } from "./ui/xstrategybuilder-public-preview";
@@ -108,10 +104,6 @@ function PitchContactLine() {
   );
 }
 
-const XSB_FALLBACK_SCORING = enrichScoringFactorsForApi(
-  DEFAULT_PORTFOLIO_SCORING_FACTORS.map((f) => ({ ...f }))
-);
-
 export default async function XstrategyBuilderPage() {
   const session = await getSessionUser();
   if (!session) {
@@ -136,10 +128,7 @@ export default async function XstrategyBuilderPage() {
             <code className="xsb-inline-code">STRATEGIES</code>, Yahoo chain rows, recommendation object).
           </p>
 
-          <XstrategybuilderPublicPreview
-            fallbackScoringFactors={XSB_FALLBACK_SCORING}
-            initialWorkspace={initialWorkspace}
-          />
+          <XstrategybuilderPublicPreview initialWorkspace={initialWorkspace} />
 
           <p className="xsb-disclaimer">
             Hypothetical and backtested results have inherent limitations; past or simulated performance does not
