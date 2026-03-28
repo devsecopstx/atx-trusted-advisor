@@ -18,6 +18,10 @@ on:
         description: "Optional notes included in the post-deploy Slack message."
         required: false
         type: string
+      image_ref:
+        description: "Optional immutable image reference (…@sha256:…) to promote without rebuilding"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -26,6 +30,7 @@ permissions:
 env:
   NODE_VERSION: "22"
   IMAGE_NAME: "atxfinance-core-app"
+  ARTIFACT_REGISTRY_REPOSITORY: "atxfinance-core-app"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   GH_REPOSITORY: ${{ github.repository }}
   GH_REPOSITORY_OWNER: ${{ github.repository_owner }}
@@ -80,6 +85,8 @@ jobs:
           CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
           CLOUD_RUN_SERVICE_PROD: ${{ vars.CLOUD_RUN_SERVICE_PROD }}
           PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+          GCP_ARTIFACT_PROJECT_ID: ${{ vars.GCP_ARTIFACT_PROJECT_ID || '' }}
+          ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY || env.ARTIFACT_REGISTRY_REPOSITORY }}
           EXPECTED_GITHUB_REPOSITORY: ${{ vars.EXPECTED_GITHUB_REPOSITORY }}
           EXPECTED_GITHUB_OWNER: ${{ vars.EXPECTED_GITHUB_OWNER }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -92,6 +99,16 @@ jobs:
               exit 1
             fi
           done
+          if [ -z "${GCP_ARTIFACT_PROJECT_ID:-}" ]; then
+            echo "ARTIFACT_PROJECT_ID=${GCP_PROJECT_ID_PROD}" >> "$GITHUB_ENV"
+          else
+            echo "ARTIFACT_PROJECT_ID=${GCP_ARTIFACT_PROJECT_ID}" >> "$GITHUB_ENV"
+          fi
+          if [ -z "${ARTIFACT_REGISTRY_REPOSITORY:-}" ]; then
+            echo "::error::Missing Artifact Registry repository name (vars.ARTIFACT_REGISTRY_REPOSITORY or env default)"
+            exit 1
+          fi
+          echo "ARTIFACT_REPOSITORY=${ARTIFACT_REGISTRY_REPOSITORY}" >> "$GITHUB_ENV"
           if [ -n "${EXPECTED_GITHUB_REPOSITORY:-}" ] && [ "${EXPECTED_GITHUB_REPOSITORY}" != "${GH_REPOSITORY}" ]; then
             echo "::error::Repo mismatch: expected ${EXPECTED_GITHUB_REPOSITORY}, got ${GH_REPOSITORY}"
             exit 1
@@ -112,6 +129,43 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ vars.GCP_PROJECT_ID_PROD }}
+
+      - name: Ensure Artifact Registry repository exists
+        if: ${{ inputs.image_ref == '' }}
+        run: |
+          set -euo pipefail
+          gcloud artifacts repositories describe "${ARTIFACT_REPOSITORY}" \
+            --project "${ARTIFACT_PROJECT_ID}" \
+            --location "${{ vars.CLOUD_RUN_REGION }}" >/dev/null 2>&1 || \
+          gcloud artifacts repositories create "${ARTIFACT_REPOSITORY}" \
+            --project "${ARTIFACT_PROJECT_ID}" \
+            --location "${{ vars.CLOUD_RUN_REGION }}" \
+            --repository-format docker \
+            --description "atxfinance Cloud Run images"
+
+      - name: Build image with Cloud Build and resolve immutable digest
+        id: image
+        env:
+          PROVIDED_IMAGE_REF: ${{ inputs.image_ref }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PROVIDED_IMAGE_REF}" ]; then
+            echo "image_ref=${PROVIDED_IMAGE_REF}" >> "$GITHUB_OUTPUT"
+            echo "::notice::Using provided image_ref for promotion: ${PROVIDED_IMAGE_REF}"
+            exit 0
+          fi
+
+          IMAGE_REPO="${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev/${ARTIFACT_PROJECT_ID}/${ARTIFACT_REPOSITORY}/${{ env.IMAGE_NAME }}"
+          IMAGE_TAG="${IMAGE_REPO}:${GITHUB_SHA}"
+          gcloud builds submit --project "${ARTIFACT_PROJECT_ID}" --tag "${IMAGE_TAG}" .
+          DIGEST="$(gcloud artifacts docker images describe "${IMAGE_TAG}" --project "${ARTIFACT_PROJECT_ID}" --location "${{ vars.CLOUD_RUN_REGION }}" --format='value(image_summary.digest)')"
+          if [ -z "${DIGEST}" ]; then
+            echo "::error::Failed to resolve image digest for ${IMAGE_TAG}"
+            exit 1
+          fi
+          IMAGE_REF="${IMAGE_REPO}@${DIGEST}"
+          echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Built deployable image: ${IMAGE_REF}"
 
       - name: Drop legacy ALLOW_ANY_X_USER_LOGIN secret binding (if present)
         run: |
@@ -173,9 +227,13 @@ jobs:
             v="${pair#*:}"
             if [ -n "$v" ]; then ENV_VARS="${ENV_VARS},${k}=${v}"; fi
           done
+          IMAGE_REF="${{ steps.image.outputs.image_ref }}"
+          if [ -z "${IMAGE_REF}" ]; then
+            echo "::error::Missing immutable image reference"
+            exit 1
+          fi
           gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE_PROD }}" \
-            --source . \
-            --clear-base-image \
+            --image "${IMAGE_REF}" \
             --region "${{ vars.CLOUD_RUN_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
