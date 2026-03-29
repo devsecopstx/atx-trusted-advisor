@@ -570,6 +570,29 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1;
 }
 
+/* Admin content links: force readable brand-green across themes */
+.admin-layout-content a:not(.cta):not(.admin-topbar-icon-link):not(.admin-topbar-brand):not(.app-footer-link) {
+  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
+  text-decoration-color: color-mix(in srgb, var(--xf-gain-green) 56%, transparent);
+  text-underline-offset: 2px;
+}
+
+.admin-layout-content a:not(.cta):not(.admin-topbar-icon-link):not(.admin-topbar-brand):not(.app-footer-link):visited {
+  color: color-mix(in srgb, var(--xf-gain-green) 78%, var(--xf-text-100));
+}
+
+.admin-layout-content a:not(.cta):not(.admin-topbar-icon-link):not(.admin-topbar-brand):not(.app-footer-link):hover {
+  color: var(--xf-gain-green);
+  text-decoration-color: var(--xf-gain-green);
+}
+
+html[data-xf-ui="soft"]
+  .admin-layout-content
+  a:not(.cta):not(.admin-topbar-icon-link):not(.admin-topbar-brand):not(.app-footer-link) {
+  color: color-mix(in srgb, var(--xf-gain-green) 70%, var(--xf-text-100));
+  text-decoration-color: color-mix(in srgb, var(--xf-gain-green) 50%, transparent);
+}
+
 /* ── Shared app footer (thin legal bar, n8n-style) ── */
 
 .app-footer {

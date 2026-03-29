@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState, type ReactNode, type SVGProps } from "react";
 
-import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 
 function RailSectionChevron({ open }: { open: boolean }) {
   return (
@@ -47,6 +47,20 @@ function BookIcon(props: SVGProps<SVGSVGElement>) {
     <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
       <path
         d="M4 5a2 2 0 012-2h12v16H6a2 2 0 00-2 2V5zm0 0v14a2 2 0 012-2h12"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+    </svg>
+  );
+}
+
+function ChatIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M4 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H9l-5 4V6z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -168,6 +182,11 @@ export function AppUserResourcesRailSection({
         title="Resources"
       >
         <nav className="app-user-rail-sublinks" aria-label="Resource links">
+          <RailNavLink href="/resources/getting-started">Getting Started</RailNavLink>
+          <RailNavLink href="/resources/building-wheel">Building Wheel</RailNavLink>
+          <RailNavLink href="/resources/building-wheel/wheel-vs-iron-condor">
+            Wheel vs Iron Condor
+          </RailNavLink>
           {isGlobalAdmin ? (
             <RailNavLink href="/admin/api-docs">Reference Docs</RailNavLink>
           ) : (
@@ -177,11 +196,33 @@ export function AppUserResourcesRailSection({
               </span>
             </XfHoverHint>
           )}
-          <XfHoverHint hint="Coming soon">
-            <span className="app-user-rail-sublink app-user-rail-sublink--placeholder" role="note" tabIndex={0}>
-              More soon
-            </span>
-          </XfHoverHint>
+        </nav>
+      </RailDisclosure>
+    </section>
+  );
+}
+
+export function AppUserXchatRailSection({ railDisclosureDefaultOpen = true }: { railDisclosureDefaultOpen?: boolean }) {
+  return (
+    <section className="app-user-rail-section" aria-label="xChat">
+      <RailDisclosure
+        defaultOpen={railDisclosureDefaultOpen}
+        icon={<ChatIcon className="app-user-rail-disclosure__glyph" />}
+        title="xChat"
+      >
+        <nav className="app-user-rail-sublinks" aria-label="xChat links">
+          <RailNavLink href="/xchat" title="Open xChat conversation workspace">
+            Open xChat
+          </RailNavLink>
+          <RailNavLink href="/xchat" title="Use xChat example prompts from the left rail">
+            Examples
+          </RailNavLink>
+          <RailNavLink href="/xchat" title="Use persona picker from xChat left rail">
+            Personas
+          </RailNavLink>
+          <RailNavLink href="/xchat" title="Review your recent prompt history in xChat">
+            Recent chats
+          </RailNavLink>
         </nav>
       </RailDisclosure>
     </section>
@@ -261,6 +302,8 @@ export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUser
           </p>
         )}
       </section>
+      <AppUserXchatRailSection />
+      <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
       <AppUserAccountRailSection isGlobalAdmin={isGlobalAdmin} />
     </aside>
   );
