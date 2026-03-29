@@ -336,7 +336,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback). Hosted RAG pre-search uses **TEAM KB collections only** (`persona.teamCollection` + deploy team default from `resolveTeamKbCollectionId`); persona `xaiCollection` is not merged into ask RAG. Prior turns are loaded from Mongo `xchat_logs` (same user + tenant) into the system prompt. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same TEAM id list wired into tools.",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback). Hosted RAG pre-search uses **TEAM KB collections only** (`persona.teamCollection` + deploy team default from `resolveTeamKbCollectionId`); persona `xaiCollection` is not merged into ask RAG. Continuity defaults to recent Mongo `xchat_logs` prompt injection and can be switched to xAI hosted state (`store_messages` + `previous_response_id`) via `XCHAT_USE_REMOTE_HISTORY=true`. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same TEAM id list wired into tools.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -1017,7 +1017,8 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           activeDays: { type: "integer", minimum: 0 },
           referencedFileCount: { type: "integer", minimum: 0 },
           lastPromptAt: { type: "string", format: "date-time", nullable: true },
-          collectionId: { type: "string", nullable: true }
+          collectionId: { type: "string", nullable: true },
+          historyMode: { type: "string", enum: ["mongo", "xai_remote"] }
         }
       }
     }

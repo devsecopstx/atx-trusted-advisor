@@ -2,7 +2,6 @@ import { MongoServerError, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getXchatPlatformSettings } from "@/modules/xchat/xchat-platform-settings";
 import {
     buildDefaultTrustedAdvisorPersonaPayload,
     XPERSONA_SUPER_AGENT_NAME,
@@ -19,6 +18,7 @@ import type {
     XChatHistoryStats,
     XChatSessionLog
 } from "@/modules/xchat/types";
+import { getXchatPlatformSettings } from "@/modules/xchat/xchat-platform-settings";
 
 const collections = {
   personas: "xchat_personas",
@@ -428,6 +428,31 @@ export async function saveXChatLog(
     retentionExpiresAt
   });
   return result.insertedId;
+}
+
+export async function getLatestXchatResponseIdByUser(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+  personaId?: ObjectId;
+}): Promise<string | null> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const query: Record<string, unknown> = {
+    userId: input.userId,
+    xaiResponseId: { $type: "string", $ne: "" }
+  };
+  if (input.personaId) {
+    query.personaId = input.personaId;
+  }
+  const scopedQuery = withTenantScopeForLogs(query, input.tenantId);
+  const row = await db
+    .collection<XChatSessionLog>(collections.chatLogs)
+    .find(scopedQuery, { projection: { xaiResponseId: 1 } })
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(1)
+    .next();
+  const responseId = row?.xaiResponseId?.trim();
+  return responseId && responseId.length > 0 ? responseId : null;
 }
 
 export async function getXchatSessionLogByIdForUser(input: {

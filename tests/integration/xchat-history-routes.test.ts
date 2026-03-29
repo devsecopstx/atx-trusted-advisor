@@ -68,10 +68,11 @@ describe("xchat history routes", () => {
 
     expect(response.status).toBe(200);
     const payload = (await response.json()) as {
-      data: { totalPrompts: number; collectionId: string | null };
+      data: { totalPrompts: number; collectionId: string | null; historyMode: string };
     };
     expect(payload.data.totalPrompts).toBe(19);
     expect(payload.data.collectionId).toContain("collection_b75e188e");
+    expect(payload.data.historyMode).toBe("mongo");
   });
 
   it("returns auth response when unauthenticated", async () => {

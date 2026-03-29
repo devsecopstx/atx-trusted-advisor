@@ -214,6 +214,8 @@ export type XChatSessionLog = {
   response: string;
   contextChunkIds: ObjectId[];
   model: string;
+  /** xAI `/responses` id returned for this turn; used to continue remote conversation state safely. */
+  xaiResponseId?: string;
   xapiMode?: PersonaXapiMode;
   xapiToolChoice?: PersonaXapiToolChoice;
   xapiMaxTurns?: number;

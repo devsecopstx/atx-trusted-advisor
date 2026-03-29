@@ -49,6 +49,7 @@ type HistoryStats = {
   activeDays: number;
   referencedFileCount: number;
   lastPromptAt?: string;
+  historyMode?: "mongo" | "xai_remote";
 };
 
 type AskToolCallSummary = {
@@ -946,9 +947,11 @@ export function XchatConversation({
       {!(threadUiCollapsed && messages.length > 0 && !loading) ? (
         <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
           Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side in
-          Mongo; prior turns are injected into the next ask for continuity. Open <strong>Recent chats</strong> in the
-          sidebar for the saved list. Persona choice locks after your first successful reply in this thread (unless your
-          admin assigned one).
+          {" "}
+          Mongo; continuity uses{" "}
+          <strong>{historyStats?.historyMode === "xai_remote" ? "xAI remote conversation state" : "recent saved turns"}</strong>.
+          Open <strong>Recent chats</strong> in the sidebar for the saved list. Persona choice locks after your first
+          successful reply in this thread (unless your admin assigned one).
         </p>
       ) : null}
 

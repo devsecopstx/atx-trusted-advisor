@@ -92,6 +92,33 @@ describe("respondWithXaiToolLoop", () => {
     expect(body1).not.toHaveProperty("system_prompt");
   });
 
+  it("starts from previous response id and enables store_messages when requested", async () => {
+    fetchMock.mockResolvedValueOnce(
+      xaiResponsesOk({
+        id: "resp_next_1",
+        model: "grok-4-1-fast",
+        output_text: "Remote continuation reply."
+      })
+    );
+
+    const { respondWithXaiToolLoop } = await import("@/lib/xai");
+    const result = await respondWithXaiToolLoop({
+      systemPrompt: "SYS",
+      userPrompt: "Continue",
+      tools: [{ type: "web_search" }],
+      executor: async () => ({ result: "{}" }),
+      previousResponseId: "resp_prev_1",
+      storeMessages: true
+    });
+
+    expect(result.responseId).toBe("resp_next_1");
+    const [, init0] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body0 = JSON.parse(String(init0.body)) as Record<string, unknown>;
+    expect(body0.previous_response_id).toBe("resp_prev_1");
+    expect(body0).not.toHaveProperty("instructions");
+    expect(body0.store_messages).toBe(true);
+  });
+
   it("runs atxfinance executor when model prints fenced JSON instead of function_call", async () => {
     fetchMock.mockResolvedValueOnce(
       xaiResponsesOk({

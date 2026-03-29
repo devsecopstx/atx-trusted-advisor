@@ -6,6 +6,7 @@ import {
     getXChatHistoryStatsByUser,
     resolveDefaultXchatPersonaForSession
 } from "@/modules/xchat/repository";
+import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
 
 export async function GET() {
   const session = await requireSessionUser();
@@ -26,12 +27,14 @@ export async function GET() {
     getXChatHistoryStatsByUser({ userId, tenantId }),
     resolveDefaultXchatPersonaForSession(session.roles)
   ]);
+  const historyMode = isXchatRemoteHistoryEnabled() ? "xai_remote" : "mongo";
 
   return NextResponse.json({
     data: {
       ...stats,
       lastPromptAt: stats.lastPromptAt?.toISOString(),
-      collectionId: persona?.xaiCollection?.collectionId ?? null
+      collectionId: persona?.xaiCollection?.collectionId ?? null,
+      historyMode
     }
   });
 }

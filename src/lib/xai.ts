@@ -386,6 +386,7 @@ export type ToolCallLog = {
 export type XaiToolLoopResult = {
   model: string;
   outputText: string;
+  responseId?: string;
   toolCalls: ToolCallLog[];
   turnsUsed: number;
   raw: unknown;
@@ -400,6 +401,8 @@ export async function respondWithXaiToolLoop(input: {
   maxTurns?: number;
   executor: ToolExecutor;
   parallelism?: XaiParallelismConfig;
+  previousResponseId?: string;
+  storeMessages?: boolean;
 }): Promise<XaiToolLoopResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
   const model = input.model ?? defaultModel;
@@ -413,7 +416,7 @@ export async function respondWithXaiToolLoop(input: {
   let turnsUsed = 0;
   let lastPayload: Record<string, unknown> = {};
   /** Required for follow-up `/responses` turns (tool outputs + hosted tools like web_search). */
-  let previousResponseId: string | undefined;
+  let previousResponseId: string | undefined = input.previousResponseId?.trim() || undefined;
 
   /** Pseudo tool markup recovery may need an extra host round-trip on the last configured turn; cap extensions. */
   const syntheticRecoveryCap = maxTurns + 6;
@@ -429,7 +432,10 @@ export async function respondWithXaiToolLoop(input: {
       tool_choice: input.toolChoice ?? "auto",
       max_turns: perRequestMaxTurns
     };
-    if (previousResponseId && turn > 0) {
+    if (input.storeMessages) {
+      requestBody.store_messages = true;
+    }
+    if (previousResponseId) {
       requestBody.previous_response_id = previousResponseId;
     } else {
       /** Per xAI docs, do not send `instructions` with `previous_response_id` (continuation turns). */
@@ -531,6 +537,7 @@ export async function respondWithXaiToolLoop(input: {
       return {
         model: asString(payload.model) ?? model,
         outputText,
+        responseId: previousResponseId,
         toolCalls,
         turnsUsed,
         raw: payload
@@ -592,6 +599,7 @@ export async function respondWithXaiToolLoop(input: {
   return {
     model: asString(lastPayload.model) ?? model,
     outputText,
+    responseId: previousResponseId,
     toolCalls,
     turnsUsed,
     raw: lastPayload

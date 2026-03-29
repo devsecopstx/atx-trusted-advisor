@@ -31,18 +31,18 @@ import {
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import {
-  clampMultiAgentParallelismForPlan,
-  clampTopK,
-  getPlanLimits
+    clampMultiAgentParallelismForPlan,
+    clampTopK,
+    getPlanLimits
 } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
+    getLatestXchatResponseIdByUser,
     getPersonaById,
     listXChatHistoryByUser,
     resolveDefaultXchatPersonaForSession,
     saveXChatLog
 } from "@/modules/xchat/repository";
-import { buildRecentXchatHistoryPromptBlock } from "@/modules/xchat/xchat-recent-history-prompt";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import {
@@ -53,7 +53,9 @@ import {
 } from "@/modules/xchat/types";
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
+import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
 import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
+import { buildRecentXchatHistoryPromptBlock } from "@/modules/xchat/xchat-recent-history-prompt";
 
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
@@ -371,8 +373,25 @@ export async function POST(request: Request) {
     }
   }
 
+  const useRemoteConversationHistory = isXchatRemoteHistoryEnabled();
   let recentHistoryBlock: string | null = null;
-  if (userId) {
+  let previousResponseId: string | undefined;
+  if (useRemoteConversationHistory && userId) {
+    try {
+      const latest = await getLatestXchatResponseIdByUser({
+        userId,
+        tenantId,
+        personaId: persona?._id
+      });
+      previousResponseId = latest ?? undefined;
+    } catch (error) {
+      console.warn("[xchat/ask] remote history lookup failed (non-fatal)", {
+        userId: session.userId,
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  if (!useRemoteConversationHistory && userId) {
     try {
       const priorNewestFirst = await listXChatHistoryByUser({
         userId,
@@ -451,10 +470,13 @@ export async function POST(request: Request) {
       toolChoice: xapiConfig.toolChoice,
       maxTurns: xapiConfig.maxTurns,
       executor,
-      parallelism: parallelAgentConfig
+      parallelism: parallelAgentConfig,
+      previousResponseId,
+      storeMessages: useRemoteConversationHistory
     });
     xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
     toolCallLogs = loopResult.toolCalls;
+    previousResponseId = loopResult.responseId;
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : "Unknown provider error";
     console.error("[xchat/ask] xAI provider call failed", {
@@ -529,7 +551,9 @@ export async function POST(request: Request) {
         personaId: persona?._id?.toHexString(),
         model: xaiResponse.model,
         scope,
-        note: "Turn stored in xchat_logs; optional xAI user-collection sync is off unless XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION=true."
+        note: useRemoteConversationHistory
+          ? "Turn stored in xchat_logs + xAI hosted conversation state (`store_messages`/`previous_response_id`)."
+          : "Turn stored in xchat_logs; optional xAI user-collection sync is off unless XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION=true."
       }
     });
   } catch (auditError) {
@@ -554,6 +578,7 @@ export async function POST(request: Request) {
     response: xaiResponse.outputText,
     contextChunkIds,
     model: xaiResponse.model,
+    xaiResponseId: previousResponseId,
     xapiMode: xapiConfig.mode,
     xapiToolChoice: xapiConfig.toolChoice,
     xapiMaxTurns: xapiConfig.maxTurns,

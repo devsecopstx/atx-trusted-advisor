@@ -67,3 +67,11 @@ export async function upsertXchatPlatformSettings(input: {
 export function isXchatUserHistoryXaiCollectionEnabled(): boolean {
   return process.env.XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION === "true";
 }
+
+/**
+ * When enabled, xChat ask uses xAI hosted conversation state (`store_messages` + `previous_response_id`)
+ * for turn-to-turn continuity instead of injecting prior Mongo turns into prompts.
+ */
+export function isXchatRemoteHistoryEnabled(): boolean {
+  return process.env.XCHAT_USE_REMOTE_HISTORY === "true";
+}
