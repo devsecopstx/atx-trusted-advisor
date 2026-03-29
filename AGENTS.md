@@ -40,7 +40,7 @@ Deploy: Cloud Run runtime secrets are **GCP Secret Manager only** (verified in w
 
 After merging and deploying to production (or staging first):
 
-1. **Health:** `GET https://<base>/api/health` → `200` with `status: ok`.
+1. **Health:** `GET https://<base>/api/health` → `200` with `status: ok` and `version` (semver from `package.json` at build; use to verify staging/prod vs UI footer).
 2. **Admin:** Sign in as `global_admin` → `/admin` loads; use **Hub → xChat** or the topbar **xChat** link to open `/xchat` without leaving the admin shell’s sibling routes. `GET /api/personas` → `200` with session cookie.
 3. **App_user:** Sign in with X as a user who has platform role **`viewer`**, **`operator`**, or **`advisor`** (Admin → Access approved + role assigned). **The string `app_user` is not a role** — use those roles. Then `/xchat` loads full chat (not plans only); `POST /api/xchat/ask` → `200` (not `401`).
 4. If still `401` / `access_request_pending` / guest xChat: confirm Mongo user has `roles` including one of `advisor`/`operator`/`viewer` (`canUserLogin` in `src/modules/identity/authorization.ts`). Optional dev: `ALLOW_ANY_X_USER_LOGIN=true` (not for prod unless intended).

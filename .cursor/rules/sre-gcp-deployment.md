@@ -81,3 +81,25 @@ Use when you want **`gcloud run deploy --source .`** from your laptop with the *
 **After deploy:** runs `scripts/ops/health-check-with-fallback.sh` unless `--no-health`.
 
 **Safety:** This does **not** replace GitHub’s manual approval or branch policy for production; use for staging hotfixes or operator-controlled pushes only. Prefer **Deploy Cloud Run** workflow for normal releases.
+
+## 8. Hotfix: custom domain still shows old `APP_VERSION` (e.g. v2.6.x) after deploy “success”
+
+**Not billing.** Stripe / price secrets do **not** control the footer or `package.json` build label. The UI shows **`v${APP_VERSION}`** from the **image that was built** (`next build`). If staging still shows an old semver, traffic is hitting an **old Cloud Run revision** or a **different service** than the one you deployed.
+
+**Confirm what is serving**
+
+- **`GET /api/health`** returns JSON including **`version`** (same semver as `package.json` at build time). Example:
+  - `curl -sS "https://<STAGING_BASE_URL>/api/health" | jq .version`
+- Compare to **direct Cloud Run URL** (bypasses HTTPS LB / custom host):
+  - `gcloud run services describe "$CLOUD_RUN_SERVICE_STAGING" --region "$CLOUD_RUN_REGION" --format='value(status.url)'`
+  - `curl -sS "$(gcloud run services describe "$CLOUD_RUN_SERVICE_STAGING" --region "$CLOUD_RUN_REGION" --format='value(status.url)')/api/health" | jq .version`
+
+If **custom domain** and **\*.run.app** show **different `version` values**, the load balancer / serverless NEG is mapped to a **different backend service** than `CLOUD_RUN_SERVICE_STAGING` in `.env.stage`. Fix the LB host rule / NEG attachment so `staging.atx…` points at the service you deploy.
+
+**Checklist**
+
+1. **`CLOUD_RUN_SERVICE_STAGING`** in `.env.stage` matches the Cloud Run service behind **`STAGING_BASE_URL`** (same name as in Console → Cloud Run for that hostname’s backend).
+2. **Cloud Run → Revisions:** latest revision has traffic; no accidental split to an old revision.
+3. **Redeploy** from a clean `git pull` on `main` with the intended `package.json` version, then re-check `/api/health` `version` and the page footer.
+
+**CI health step:** `scripts/ops/health-check-with-fallback.sh` only asserts `"status":"ok"` on `/api/health`; operators should use **`version`** when debugging “deploy succeeded but site unchanged.”

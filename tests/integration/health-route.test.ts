@@ -11,6 +11,7 @@ const redisMocks = vi.hoisted(() => ({
 vi.mock("@/lib/mongodb", () => mongoMocks);
 vi.mock("@/lib/redis-client", () => redisMocks);
 
+import { APP_VERSION } from "@/lib/app-version";
 import { GET as getHealth } from "@/app/api/health/route";
 
 describe("GET /api/health", () => {
@@ -28,10 +29,12 @@ describe("GET /api/health", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       status: string;
+      version: string;
       db: string;
       redis: { status: string };
     };
     expect(body.status).toBe("ok");
+    expect(body.version).toBe(APP_VERSION);
     expect(body.db).toBe("atxfinance-test");
     expect(body.redis.status).toBe("skipped");
   });

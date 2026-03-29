@@ -106,3 +106,5 @@ Add `--with-ci-gate` for `npm run ci:gate` only; use `--no-health` only if you i
 **After:** Confirm `GET ${PROD_BASE_URL}/api/health` → `200`. Fix GitHub billing separately so CI/Actions work again for team deploys.
 
 **Version vs staging:** Manual deploy runs `gcloud run deploy --source .` on **whatever is in your working tree** — there is no separate “deploy vX.Y.Z from the cloud” selector. The built app’s `APP_VERSION` (see `src/lib/app-version.ts`) comes from **`package.json` at build time** on that checkout. To align prod with staging, deploy from the **same git commit (or tag)** as the staging revision (e.g. `git fetch && git checkout <sha-or-tag>`), then run the deploy command — avoid shipping an unpushed local version bump unless you intend to release it.
+
+**Custom domain shows old footer but deploy “succeeded”:** Compare `curl -sS "$STAGING_BASE_URL/api/health" | jq .version` with the direct Cloud Run `*.run.app` URL for `CLOUD_RUN_SERVICE_STAGING`. If they differ, the HTTPS LB is pointing at the wrong backend — see **`.cursor/rules/sre-gcp-deployment.md` §8**.
