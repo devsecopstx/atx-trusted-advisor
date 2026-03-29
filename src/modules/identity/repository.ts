@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
+import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import {
     mergeTenantWorkspaceLimits,
     type TenantWorkspaceLimits
@@ -640,6 +641,57 @@ export async function updateTenantWorkspaceLimits(
   }
   await db.collection<Tenant>(collections.tenants).updateOne({ _id: id }, { $set });
   return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+}
+
+export async function updateTenantBrandingPreferencesOneTime(
+  tenantIdHex: string,
+  patch: Partial<TenantBrandingPreferences>
+): Promise<{ tenant: Tenant | null; conflictKeys: (keyof TenantBrandingPreferences)[] }> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return { tenant: null, conflictKeys: [] };
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const tenant = await db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+  if (!tenant?._id) {
+    return { tenant: null, conflictKeys: [] };
+  }
+
+  const existing = tenant.tenantPreferences ?? {};
+  const toSet: Partial<TenantBrandingPreferences> = {};
+  const conflictKeys: (keyof TenantBrandingPreferences)[] = [];
+  const keys: (keyof TenantBrandingPreferences)[] = ["xchat_brandname", "xstrategybuilder_brandname"];
+  for (const key of keys) {
+    const nextValue = patch[key];
+    if (!nextValue) {
+      continue;
+    }
+    const currentValue = existing[key]?.trim();
+    if (currentValue) {
+      if (currentValue !== nextValue) {
+        conflictKeys.push(key);
+      }
+      continue;
+    }
+    toSet[key] = nextValue;
+  }
+
+  if (conflictKeys.length > 0) {
+    return { tenant, conflictKeys };
+  }
+  if (Object.keys(toSet).length === 0) {
+    return { tenant, conflictKeys: [] };
+  }
+
+  const now = new Date();
+  const $set: Record<string, unknown> = { updatedAt: now };
+  for (const [k, v] of Object.entries(toSet) as [keyof TenantBrandingPreferences, string][]) {
+    $set[`tenantPreferences.${k}`] = v;
+  }
+  await db.collection<Tenant>(collections.tenants).updateOne({ _id: id }, { $set });
+  const updated = await db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+  return { tenant: updated, conflictKeys: [] };
 }
 
 export function resolvedWorkspaceLimitsForTenant(tenant: Tenant | null): TenantWorkspaceLimits {

@@ -3,19 +3,22 @@ import { z } from "zod";
 
 import { requireGlobalAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
-import { parseWorkspaceLimitsPayload } from "@/modules/identity/tenant-workspace-limits";
 import {
-  getTenantByHexId,
-  resolvedWorkspaceLimitsForTenant,
-  updateTenantWorkspaceLimits
+    getTenantByHexId,
+    resolvedWorkspaceLimitsForTenant,
+    updateTenantBrandingPreferencesOneTime,
+    updateTenantWorkspaceLimits
 } from "@/modules/identity/repository";
+import { parseTenantBrandingPreferencesPayload } from "@/modules/identity/tenant-branding-preferences";
+import { parseWorkspaceLimitsPayload } from "@/modules/identity/tenant-workspace-limits";
 
 type RouteContext = {
   params: Promise<{ tenantId: string }>;
 };
 
 const patchSchema = z.object({
-  workspaceLimits: z.record(z.string(), z.unknown()).optional()
+  workspaceLimits: z.record(z.string(), z.unknown()).optional(),
+  tenantPreferences: z.record(z.string(), z.unknown()).optional()
 });
 
 export async function GET(_request: Request, context: RouteContext) {
@@ -42,7 +45,9 @@ export async function GET(_request: Request, context: RouteContext) {
       slug: tenant.slug,
       name: tenant.name,
       workspaceLimits: effective,
-      workspaceLimitsRaw: tenant.workspaceLimits ?? null
+      workspaceLimitsRaw: tenant.workspaceLimits ?? null,
+      tenantPreferences: tenant.tenantPreferences ?? {},
+      tenantPreferencesRaw: tenant.tenantPreferences ?? {}
     }
   });
 }
@@ -83,8 +88,25 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (!wlParsed.ok) {
     return NextResponse.json({ error: wlParsed.error }, { status: 400 });
   }
+  const tpParsed = parseTenantBrandingPreferencesPayload(parsed.data.tenantPreferences ?? {});
+  if (!tpParsed.ok) {
+    return NextResponse.json({ error: tpParsed.error }, { status: 400 });
+  }
 
-  const updated = await updateTenantWorkspaceLimits(tenantId.trim(), wlParsed.value);
+  const limitsUpdated = await updateTenantWorkspaceLimits(tenantId.trim(), wlParsed.value);
+  if (!limitsUpdated?._id) {
+    return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
+  }
+  const brandingUpdate = await updateTenantBrandingPreferencesOneTime(tenantId.trim(), tpParsed.value);
+  if (brandingUpdate.conflictKeys.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Tenant preference locked: ${brandingUpdate.conflictKeys.join(", ")} can only be set once`
+      },
+      { status: 409 }
+    );
+  }
+  const updated = brandingUpdate.tenant ?? limitsUpdated;
   if (!updated?._id) {
     return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
   }
@@ -94,7 +116,9 @@ export async function PATCH(request: Request, context: RouteContext) {
     data: {
       tenantId: updated._id.toHexString(),
       workspaceLimits: effective,
-      workspaceLimitsRaw: updated.workspaceLimits ?? null
+      workspaceLimitsRaw: updated.workspaceLimits ?? null,
+      tenantPreferences: updated.tenantPreferences ?? {},
+      tenantPreferencesRaw: updated.tenantPreferences ?? {}
     }
   });
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { SaveIcon } from "@/app/admin/ui/crud-icons";
+import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import type { TenantWorkspaceLimits } from "@/modules/identity/tenant-workspace-limits";
 
 type Props = {
@@ -38,6 +39,11 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
   const [status, setStatus] = useState("");
   const [err, setErr] = useState("");
   const [values, setValues] = useState<TenantWorkspaceLimits | null>(null);
+  const [tenantPreferences, setTenantPreferences] = useState<TenantBrandingPreferences>({
+    xchat_brandname: "",
+    xstrategybuilder_brandname: ""
+  });
+  const [tenantPreferencesRaw, setTenantPreferencesRaw] = useState<Record<string, unknown>>({});
   const [slug, setSlug] = useState("");
 
   const load = useCallback(async () => {
@@ -48,7 +54,12 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         credentials: "include"
       });
       const payload = (await res.json().catch(() => ({}))) as {
-        data?: { workspaceLimits?: TenantWorkspaceLimits; slug?: string };
+        data?: {
+          workspaceLimits?: TenantWorkspaceLimits;
+          slug?: string;
+          tenantPreferences?: TenantBrandingPreferences;
+          tenantPreferencesRaw?: Record<string, unknown>;
+        };
         error?: string;
       };
       if (!res.ok) {
@@ -59,6 +70,11 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       }
       setValues(payload.data.workspaceLimits);
       setSlug(payload.data.slug ?? "");
+      setTenantPreferences({
+        xchat_brandname: payload.data.tenantPreferences?.xchat_brandname ?? "",
+        xstrategybuilder_brandname: payload.data.tenantPreferences?.xstrategybuilder_brandname ?? ""
+      });
+      setTenantPreferencesRaw(payload.data.tenantPreferencesRaw ?? payload.data.tenantPreferences ?? {});
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Load failed");
       setValues(null);
@@ -84,10 +100,17 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceLimits: values })
+        body: JSON.stringify({
+          workspaceLimits: values,
+          tenantPreferences
+        })
       });
       const payload = (await res.json().catch(() => ({}))) as {
-        data?: { workspaceLimits?: TenantWorkspaceLimits };
+        data?: {
+          workspaceLimits?: TenantWorkspaceLimits;
+          tenantPreferences?: TenantBrandingPreferences;
+          tenantPreferencesRaw?: Record<string, unknown>;
+        };
         error?: string;
       };
       if (!res.ok) {
@@ -95,6 +118,15 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       }
       if (payload.data?.workspaceLimits) {
         setValues(payload.data.workspaceLimits);
+      }
+      if (payload.data?.tenantPreferences) {
+        setTenantPreferences({
+          xchat_brandname: payload.data.tenantPreferences.xchat_brandname ?? "",
+          xstrategybuilder_brandname: payload.data.tenantPreferences.xstrategybuilder_brandname ?? ""
+        });
+      }
+      if (payload.data?.tenantPreferencesRaw) {
+        setTenantPreferencesRaw(payload.data.tenantPreferencesRaw);
       }
       setStatus("Saved.");
       window.setTimeout(() => setStatus(""), 4000);
@@ -138,6 +170,85 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
           </span>
         </label>
       ))}
+      <hr style={{ borderColor: "var(--xf-text-400)", opacity: 0.25, margin: "0 0 0.85rem" }} />
+      <p className="admin-session-popover__eyebrow">Tenant preferences (one-time set)</p>
+      <label style={{ display: "grid", gap: "0.25rem", marginBottom: "0.85rem" }}>
+        <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>xchat_brandname</span>
+        <input
+          className="crud-input text-sm"
+          placeholder="e.g. Alpha Desk Chat"
+          value={tenantPreferences.xchat_brandname ?? ""}
+          disabled={Boolean(tenantPreferences.xchat_brandname)}
+          onChange={(e) =>
+            setTenantPreferences((prev) => ({
+              ...prev,
+              xchat_brandname: e.target.value
+            }))
+          }
+        />
+        <span className="admin-muted" style={{ fontSize: "0.72rem" }}>
+          Admin-set once on <code className="font-mono text-xs">core_tenants.tenantPreferences.xchat_brandname</code>.
+        </span>
+      </label>
+      <label style={{ display: "grid", gap: "0.25rem", marginBottom: "0.85rem" }}>
+        <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>xstrategybuilder_brandname</span>
+        <input
+          className="crud-input text-sm"
+          placeholder="e.g. Alpha Strategy Lab"
+          value={tenantPreferences.xstrategybuilder_brandname ?? ""}
+          disabled={Boolean(tenantPreferences.xstrategybuilder_brandname)}
+          onChange={(e) =>
+            setTenantPreferences((prev) => ({
+              ...prev,
+              xstrategybuilder_brandname: e.target.value
+            }))
+          }
+        />
+        <span className="admin-muted" style={{ fontSize: "0.72rem" }}>
+          Admin-set once on{" "}
+          <code className="font-mono text-xs">core_tenants.tenantPreferences.xstrategybuilder_brandname</code>.
+        </span>
+      </label>
+      <div style={{ marginBottom: "0.85rem" }}>
+        <p className="admin-session-popover__eyebrow" style={{ marginBottom: "0.4rem" }}>
+          tenant_preferences (read-only)
+        </p>
+        <div className="crud-table-wrap">
+          <table className="crud-table">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Value (read-only)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(tenantPreferencesRaw).length === 0 ? (
+                <tr>
+                  <td colSpan={2} className="admin-muted">
+                    No tenant preferences stored.
+                  </td>
+                </tr>
+              ) : (
+                Object.entries(tenantPreferencesRaw).map(([key, value]) => (
+                  <tr key={key}>
+                    <td>
+                      <code className="font-mono text-xs">{key}</code>
+                    </td>
+                    <td>
+                      <code className="font-mono text-xs" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                        {typeof value === "string" ? value : JSON.stringify(value)}
+                      </code>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <p className="admin-muted" style={{ fontSize: "0.72rem", marginTop: "0.35rem" }}>
+          Unknown or legacy keys are intentionally read-only in this panel.
+        </p>
+      </div>
       {err ? (
         <p className="status-text status-error" style={{ marginBottom: "0.5rem" }}>
           {err}

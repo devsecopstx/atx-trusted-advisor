@@ -43,6 +43,11 @@
   font-size: 0.88rem;
 }
 
+.resources-doc-hero__copy--full {
+  max-width: none;
+  width: 100%;
+}
+
 .resources-doc-nav {
   display: flex;
   flex-wrap: wrap;
@@ -197,6 +202,60 @@
   background: color-mix(in srgb, var(--xf-surface-700) 86%, var(--xf-bg-900));
   padding: 0.8rem 0.9rem;
   line-height: 1.5;
+}
+
+.resources-about-grid {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .resources-about-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.resources-about-card {
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background:
+    radial-gradient(circle at 82% 10%, color-mix(in srgb, var(--xf-gain-green) 12%, transparent), transparent 45%),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--xf-surface-700) 86%, var(--xf-bg-900)),
+      color-mix(in srgb, var(--xf-bg-900) 90%, var(--xf-surface-700))
+    );
+  padding: 0.9rem 0.95rem 0.95rem;
+  min-height: 11rem;
+}
+
+.resources-about-card h3 {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+  color: var(--xf-text-100);
+}
+
+.resources-about-card p {
+  margin: 0.45rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--xf-text-300);
+}
+
+@media (min-width: 900px) {
+  .resources-about-card--discover,
+  .resources-about-card--analyze,
+  .resources-about-card--build {
+    grid-column: span 2;
+  }
+
+  .resources-about-card--execute,
+  .resources-about-card--manage-refine {
+    grid-column: span 3;
+  }
 }
 .resources-guide {
   width: 100%;

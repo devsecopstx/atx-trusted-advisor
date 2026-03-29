@@ -23,7 +23,8 @@ export default async function AdminTenantWorkspacePage() {
         <p className="admin-muted" style={{ maxWidth: 560 }}>
           Per-tenant quotas stored on <code className="font-mono text-xs">core_tenants.workspaceLimits</code>. Defaults:
           xoptions 10/day, xChat 10/day (min with plan), 1 portfolio per user, 1 account per portfolio. Enforcement is
-          server-side on xChat ask, portfolio/account APIs, and signed-in xoptions deck views.
+          server-side on xChat ask, portfolio/account APIs, and signed-in xoptions deck views. Tenant one-time branding
+          aliases are stored under <code className="font-mono text-xs">core_tenants.tenantPreferences</code>.
         </p>
       </header>
       <TenantWorkspaceLimitsPanel tenantId={session.tenantId} />

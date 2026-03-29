@@ -12,7 +12,8 @@ const bffMocks = vi.hoisted(() => ({
 
 const identityRepoMocks = vi.hoisted(() => ({
   getTenantByHexId: vi.fn(),
-  updateTenantWorkspaceLimits: vi.fn()
+  updateTenantWorkspaceLimits: vi.fn(),
+  updateTenantBrandingPreferencesOneTime: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => ({
@@ -29,7 +30,8 @@ vi.mock("@/modules/identity/repository", async (importOriginal) => {
   return {
     ...actual,
     getTenantByHexId: identityRepoMocks.getTenantByHexId,
-    updateTenantWorkspaceLimits: identityRepoMocks.updateTenantWorkspaceLimits
+    updateTenantWorkspaceLimits: identityRepoMocks.updateTenantWorkspaceLimits,
+    updateTenantBrandingPreferencesOneTime: identityRepoMocks.updateTenantBrandingPreferencesOneTime
   };
 });
 
@@ -37,7 +39,12 @@ import { GET, PATCH } from "@/app/api/admin/tenants/[tenantId]/workspace-limits/
 
 const TENANT_HEX = "507f1f77bcf86cd799439022";
 
-function baseTenant(overrides: { workspaceLimits?: Record<string, number> | null } = {}) {
+function baseTenant(
+  overrides: {
+    workspaceLimits?: Record<string, number> | null;
+    tenantPreferences?: { xchat_brandname?: string; xstrategybuilder_brandname?: string } | null;
+  } = {}
+) {
   const id = new ObjectId(TENANT_HEX);
   const now = new Date("2026-03-20T12:00:00.000Z");
   return {
@@ -47,7 +54,8 @@ function baseTenant(overrides: { workspaceLimits?: Record<string, number> | null
     isDefault: true,
     createdAt: now,
     updatedAt: now,
-    workspaceLimits: overrides.workspaceLimits === undefined ? { userChatLimit: 8 } : overrides.workspaceLimits
+    workspaceLimits: overrides.workspaceLimits === undefined ? { userChatLimit: 8 } : overrides.workspaceLimits,
+    tenantPreferences: overrides.tenantPreferences === undefined ? {} : overrides.tenantPreferences
   };
 }
 
@@ -63,6 +71,10 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
       roles: ["global_admin"],
       tenantRole: "tenant_admin",
       xUserId: "x1"
+    });
+    identityRepoMocks.updateTenantBrandingPreferencesOneTime.mockResolvedValue({
+      tenant: baseTenant(),
+      conflictKeys: []
     });
   });
 
@@ -98,6 +110,7 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
         slug: string;
         workspaceLimits: Record<string, number>;
         workspaceLimitsRaw: Record<string, number> | null;
+        tenantPreferences: { xchat_brandname?: string; xstrategybuilder_brandname?: string };
       };
     };
     expect(json.data.tenantId).toBe(TENANT_HEX);
@@ -105,12 +118,17 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     expect(json.data.workspaceLimits.userChatLimit).toBe(8);
     expect(json.data.workspaceLimits.userXoptionsLimit).toBe(10);
     expect(json.data.workspaceLimitsRaw?.userChatLimit).toBe(8);
+    expect(json.data.tenantPreferences).toEqual({});
   });
 
   it("PATCH updates limits and returns effective workspaceLimits", async () => {
     identityRepoMocks.getTenantByHexId.mockResolvedValue(baseTenant());
     const afterPatch = baseTenant({ workspaceLimits: { userChatLimit: 25, tenantPortfolioLimit: 2 } });
     identityRepoMocks.updateTenantWorkspaceLimits.mockResolvedValue(afterPatch);
+    identityRepoMocks.updateTenantBrandingPreferencesOneTime.mockResolvedValue({
+      tenant: afterPatch,
+      conflictKeys: []
+    });
 
     const req = new Request(`http://test/api/admin/tenants/${TENANT_HEX}/workspace-limits`, {
       method: "PATCH",
@@ -131,6 +149,64 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
       userChatLimit: 25,
       tenantPortfolioLimit: 2
     });
+    expect(identityRepoMocks.updateTenantBrandingPreferencesOneTime).toHaveBeenCalledWith(TENANT_HEX, {});
+  });
+
+  it("PATCH sets tenantPreferences brand aliases once", async () => {
+    const before = baseTenant({ tenantPreferences: {} });
+    const after = baseTenant({
+      tenantPreferences: {
+        xchat_brandname: "Alpha Desk Chat",
+        xstrategybuilder_brandname: "Alpha Strategy Lab"
+      }
+    });
+    identityRepoMocks.getTenantByHexId.mockResolvedValue(before);
+    identityRepoMocks.updateTenantWorkspaceLimits.mockResolvedValue(before);
+    identityRepoMocks.updateTenantBrandingPreferencesOneTime.mockResolvedValue({
+      tenant: after,
+      conflictKeys: []
+    });
+
+    const req = new Request(`http://test/api/admin/tenants/${TENANT_HEX}/workspace-limits`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tenantPreferences: {
+          xchat_brandname: "Alpha Desk Chat",
+          xstrategybuilder_brandname: "Alpha Strategy Lab"
+        }
+      })
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ tenantId: TENANT_HEX }) });
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      data: { tenantPreferences: { xchat_brandname?: string; xstrategybuilder_brandname?: string } };
+    };
+    expect(json.data.tenantPreferences.xchat_brandname).toBe("Alpha Desk Chat");
+    expect(json.data.tenantPreferences.xstrategybuilder_brandname).toBe("Alpha Strategy Lab");
+  });
+
+  it("PATCH returns 409 when one-time tenantPreferences are overwritten", async () => {
+    identityRepoMocks.getTenantByHexId.mockResolvedValue(
+      baseTenant({ tenantPreferences: { xchat_brandname: "Fixed Chat" } })
+    );
+    identityRepoMocks.updateTenantWorkspaceLimits.mockResolvedValue(
+      baseTenant({ tenantPreferences: { xchat_brandname: "Fixed Chat" } })
+    );
+    identityRepoMocks.updateTenantBrandingPreferencesOneTime.mockResolvedValue({
+      tenant: baseTenant({ tenantPreferences: { xchat_brandname: "Fixed Chat" } }),
+      conflictKeys: ["xchat_brandname"]
+    });
+
+    const req = new Request(`http://test/api/admin/tenants/${TENANT_HEX}/workspace-limits`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tenantPreferences: { xchat_brandname: "Try Rename" } })
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ tenantId: TENANT_HEX }) });
+    expect(res.status).toBe(409);
+    const json = (await res.json()) as { error: string };
+    expect(json.error).toContain("xchat_brandname");
   });
 
   it("PATCH returns 400 for invalid workspaceLimits values", async () => {

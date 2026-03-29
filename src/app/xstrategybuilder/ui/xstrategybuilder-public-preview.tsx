@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
@@ -175,7 +175,6 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
     () => STRATEGY_OPTIONS.find((option) => option.id === selectedStrategyId) ?? null,
     [selectedStrategyId]
   );
-  const canContinueFromStep1 = true;
   const canContinueFromStep2 = Boolean(selectedSymbol);
   const canContinueFromStep3 = canContinueFromStep2 && Boolean(selectedStrategyId);
   const [currentPrice, setCurrentPrice] = useState<number>(SYMBOL_SPOT_HINTS.TSLA);
@@ -185,16 +184,15 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
   );
   const { quotes: liveQuotes, loading: quoteLoading } = useSymbolQuotes([selectedSymbol], { refreshMs: 30_000 });
   const livePrice = liveQuotes[selectedSymbol]?.price;
-
-  useEffect(() => {
+  const effectiveCurrentPrice = useMemo(() => {
     if (spotMode !== "live") {
-      return;
+      return currentPrice;
     }
     if (typeof livePrice !== "number" || !Number.isFinite(livePrice) || livePrice <= 0) {
-      return;
+      return currentPrice;
     }
-    setCurrentPrice(Number(livePrice.toFixed(2)));
-  }, [livePrice, spotMode]);
+    return Number(livePrice.toFixed(2));
+  }, [spotMode, livePrice, currentPrice]);
   const hasMissingUserContextSettings = useMemo(
     () =>
       initialWorkspace.status === "error" ||
@@ -206,14 +204,14 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
 
   const priceTargets = useMemo(
     () => [
-      { label: "-15%", value: currentPrice * 0.85 },
-      { label: "-10%", value: currentPrice * 0.9 },
-      { label: "-5%", value: currentPrice * 0.95 },
-      { label: "+5%", value: currentPrice * 1.05 },
-      { label: "+10%", value: currentPrice * 1.1 },
-      { label: "+15%", value: currentPrice * 1.15 }
+      { label: "-15%", value: effectiveCurrentPrice * 0.85 },
+      { label: "-10%", value: effectiveCurrentPrice * 0.9 },
+      { label: "-5%", value: effectiveCurrentPrice * 0.95 },
+      { label: "+5%", value: effectiveCurrentPrice * 1.05 },
+      { label: "+10%", value: effectiveCurrentPrice * 1.1 },
+      { label: "+15%", value: effectiveCurrentPrice * 1.15 }
     ],
-    [currentPrice]
+    [effectiveCurrentPrice]
   );
 
   const toggleStep = (step: XsbStep) => {
@@ -252,7 +250,7 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
           <span className="xsb-price-band__k">Symbol</span>
           <span className="xsb-price-band__v">{selectedSymbol}</span>
           <span className="xsb-price-band__k">Current</span>
-          <span className="xsb-price-band__v">{money.format(currentPrice)}</span>
+          <span className="xsb-price-band__v">{money.format(effectiveCurrentPrice)}</span>
           <span className="xsb-price-band__k">
             {spotMode === "live" ? (quoteLoading ? "Live refresh..." : "Live (Yahoo)") : "Manual override"}
           </span>
@@ -390,7 +388,7 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
                     if (value && symbolUniverse.some((item) => item.symbol === value)) {
                       setSelectedSymbol(value);
                       setSpotMode("live");
-                      setCurrentPrice(SYMBOL_SPOT_HINTS[value] ?? currentPrice);
+                      setCurrentPrice(SYMBOL_SPOT_HINTS[value] ?? effectiveCurrentPrice);
                       setExpandedSteps((prev) => ({ ...prev, 1: false, 2: true }));
                     }
                   }}
@@ -409,7 +407,7 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
                         setSelectedSymbol(item.symbol);
                         setSpotMode("live");
                         setSymbolQuery(item.symbol);
-                        setCurrentPrice(SYMBOL_SPOT_HINTS[item.symbol] ?? currentPrice);
+                        setCurrentPrice(SYMBOL_SPOT_HINTS[item.symbol] ?? effectiveCurrentPrice);
                         setExpandedSteps((prev) => ({ ...prev, 1: false, 2: true }));
                       }}
                     >
@@ -481,7 +479,7 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
                       className={`xsb-live-strategy-item${isActive ? " xsb-live-strategy-item--active" : ""}`}
                       onClick={() => {
                         setSelectedStrategyId(option.id);
-                        setPayoffLegs(buildTemplateLegs(option.id, currentPrice));
+                        setPayoffLegs(buildTemplateLegs(option.id, effectiveCurrentPrice));
                         setExpandedSteps((prev) => ({ ...prev, 1: false, 2: false, 3: true }));
                       }}
                     >
@@ -594,10 +592,10 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
                     inputMode="decimal"
                     min={0}
                     step={0.01}
-                    value={currentPrice}
+                    value={effectiveCurrentPrice}
                     onChange={(event) => {
                       setSpotMode("manual");
-                      setCurrentPrice(normalizeMoneyInput(event.target.value, currentPrice));
+                      setCurrentPrice(normalizeMoneyInput(event.target.value, effectiveCurrentPrice));
                     }}
                   />
                 </label>
@@ -608,7 +606,6 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
                   onClick={() => {
                     if (typeof livePrice === "number" && Number.isFinite(livePrice) && livePrice > 0) {
                       setSpotMode("live");
-                      setCurrentPrice(Number(livePrice.toFixed(2)));
                     }
                   }}
                 >
@@ -709,7 +706,9 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
                   type="button"
                   onClick={() => {
                     setPayoffLegs((prev) =>
-                      prev.concat(createLeg({ strike: currentPrice, premium: 2, quantity: 1, type: "call", side: "long" }))
+                      prev.concat(
+                        createLeg({ strike: effectiveCurrentPrice, premium: 2, quantity: 1, type: "call", side: "long" })
+                      )
                     );
                   }}
                 >
@@ -719,14 +718,14 @@ export function XstrategybuilderPublicPreview({ initialWorkspace }: Xstrategybui
                   className="xsb-engine-cta xsb-engine-cta--ghost"
                   type="button"
                   onClick={() => {
-                    setPayoffLegs(buildTemplateLegs(selectedStrategyId, currentPrice));
+                    setPayoffLegs(buildTemplateLegs(selectedStrategyId, effectiveCurrentPrice));
                   }}
                 >
                   Reset strategy template
                 </button>
               </div>
 
-              <OptionsPayoffChart darkMode currentPrice={currentPrice} legs={payoffLegs} />
+              <OptionsPayoffChart darkMode currentPrice={effectiveCurrentPrice} legs={payoffLegs} />
             </div>
             <div className="xsb-builder-actions xsb-builder-actions--start">
               <Link

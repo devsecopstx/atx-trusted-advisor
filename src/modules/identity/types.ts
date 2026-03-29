@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 
+import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import type { TenantWorkspaceLimits } from "@/modules/identity/tenant-workspace-limits";
 
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
@@ -39,6 +40,8 @@ export type Tenant = {
   updatedAt: Date;
   /** Optional per-tenant quotas; omitted keys use product defaults (see `mergeTenantWorkspaceLimits`). */
   workspaceLimits?: Partial<TenantWorkspaceLimits> | null;
+  /** Optional per-tenant product brand aliases (admin-set once). */
+  tenantPreferences?: TenantBrandingPreferences | null;
 };
 
 export type TenantRole = "tenant_admin" | "member";

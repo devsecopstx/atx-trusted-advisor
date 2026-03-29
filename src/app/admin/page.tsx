@@ -131,6 +131,12 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
     blurb: "Observability, docs, and audit trails.",
     items: [
       {
+        href: "/admin/tenant-workspace",
+        title: "Tenant preferences",
+        description:
+          "View tenant_preferences fields. xchat_brandname and xstrategybuilder_brandname are set once; other keys are read-only."
+      },
+      {
         href: "/admin/audit",
         title: "Audit explorer",
         description: "Browse and filter change trails across users, access requests, and xPersonas."
@@ -156,17 +162,6 @@ const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         title: "xOptions API test",
         description:
           "TODO: Remove or merge into product when strategy-options is fully integrated. Exercise GET expirations and option-chain reads (BFF / backend parity)."
-      }
-    ]
-  },
-  {
-    title: "Roadmap",
-    items: [
-      {
-        href: "/admin",
-        title: "xStrategyBuilder",
-        description: "Build and backtest portfolio strategies with AI-assisted allocation.",
-        comingSoon: true
       }
     ]
   }
