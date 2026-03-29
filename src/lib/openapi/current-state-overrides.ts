@@ -219,6 +219,16 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "502": jsonResponse("Upstream xAI collection lookup failed.", "UpstreamErrorResponse")
     }
   },
+  "DELETE /api/personas/collections/{collectionId}": {
+    summary: "Delete xAI collection",
+    responses: {
+      "200": jsonResponse("Collection deleted.", "AtxSessionJsonSuccess"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "404": jsonResponse("Collection not found.", "ErrorResponse"),
+      "502": jsonResponse("Upstream xAI collection delete failed.", "UpstreamErrorResponse")
+    }
+  },
   "POST /api/personas/collections": {
     summary: "Create xAI collection",
     requestBody: {

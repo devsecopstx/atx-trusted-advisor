@@ -425,7 +425,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/personas/collections/{collectionId}",
-    operations: [{ method: "GET", auth: "admin" }],
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "DELETE", auth: "admin" }
+    ],
     tag: "personas"
   },
   {

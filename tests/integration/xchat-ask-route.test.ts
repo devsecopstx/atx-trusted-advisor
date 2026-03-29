@@ -189,8 +189,12 @@ describe("xchat ask route collection retrieval", () => {
         toolChoice: "auto",
         maxTurns: 5,
         tools: expect.arrayContaining([
-          { type: "web_search", name: "web_search" },
-          { type: "x_search", name: "x_search" }
+          expect.objectContaining({ type: "web_search", name: "web_search" }),
+          expect.objectContaining({
+            type: "file_search",
+            name: "file_search",
+            vector_store_ids: expect.arrayContaining(["collection_team_default"])
+          })
         ]),
         userPrompt: expect.stringMatching(
           /\[Persona \/ KB metadata — xChat and batch[\s\S]*xChat TEAM KB xAI collection ids[\s\S]*collection_team_default[\s\S]*Persona xAPI tools[\s\S]*- web_search/
@@ -480,7 +484,7 @@ describe("xchat ask route collection retrieval", () => {
         xapiMode: "chat_completions",
         xapiToolChoice: "auto",
         xapiMaxTurns: 5,
-        xapiToolCount: 3
+        xapiToolCount: 2
       })
     );
   });
@@ -676,7 +680,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439077");
   });
 
-  it("does not inject atxfinance for app_user when persona omits it", async () => {
+  it("does not inject atx_function for app_user when persona omits it", async () => {
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -715,11 +719,11 @@ describe("xchat ask route collection retrieval", () => {
     const toolLoopArg = xaiMocks.respondWithXaiToolLoop.mock.calls[0]?.[0] as {
       systemPrompt?: string;
     };
-    expect(toolLoopArg?.systemPrompt ?? "").not.toContain("You MUST use the atxfinance tool");
+    expect(toolLoopArg?.systemPrompt ?? "").not.toContain("You MUST use the atx_function tool");
     expect(toolLoopArg?.systemPrompt ?? "").toContain("Hosted search (web_search / x_search):");
   });
 
-  it("injects server workspace snapshot before model when atxfinance tool is active", async () => {
+  it("injects server workspace snapshot before model when atx_function tool is active", async () => {
     workspaceSnapshotMocks.buildWorkspaceServerSnapshotBlock.mockResolvedValueOnce(
       "Workspace snapshot (loaded server-side for this request; SNAPSHOT_TEST_MARKER"
     );
@@ -729,7 +733,7 @@ describe("xchat ask route collection retrieval", () => {
           mode: "responses",
           toolChoice: "auto",
           maxTurns: 5,
-          tools: [{ type: "atxfinance" }, { type: "web_search" }]
+          tools: [{ type: "atx_function" }, { type: "web_search" }]
         }
       })
     );
@@ -739,7 +743,7 @@ describe("xchat ask route collection retrieval", () => {
           mode: "responses",
           toolChoice: "auto",
           maxTurns: 5,
-          tools: [{ type: "atxfinance" }, { type: "web_search" }]
+          tools: [{ type: "atx_function" }, { type: "web_search" }]
         }
       })
     );

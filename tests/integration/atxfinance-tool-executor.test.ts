@@ -303,7 +303,7 @@ describe("atxfinance tool executor", () => {
 
   it("ATXFINANCE_TOOL_DEFINITION has correct function schema", () => {
     expect(ATXFINANCE_TOOL_DEFINITION.type).toBe("function");
-    expect(ATXFINANCE_TOOL_DEFINITION.function.name).toBe("atxfinance");
+    expect(ATXFINANCE_TOOL_DEFINITION.function.name).toBe("atx_function");
     expect(ATXFINANCE_TOOL_DEFINITION.function.parameters.properties.operation.enum).toEqual([
       "portfolio_summary",
       "positions_snapshot",
