@@ -198,13 +198,28 @@ export async function POST(request: Request) {
     role === "advisor" || role === "operator" || role === "viewer"
   );
   // If admin assigned a persona, it is authoritative for app_user sessions.
+  // If it was deleted, fail open to requested persona/default so xChat remains usable.
   const effectivePersonaId = assignedPersonaId || requestedPersonaId;
-  const isAssignedPersonaOverride = Boolean(
-    assignedPersonaId && effectivePersonaId && assignedPersonaId === effectivePersonaId
-  );
-  if (effectivePersonaId) {
-    const requestedPersona = await getPersonaById(effectivePersonaId);
+  const personaOverrideCandidates =
+    assignedPersonaId && requestedPersonaId && assignedPersonaId !== requestedPersonaId
+      ? [assignedPersonaId, requestedPersonaId]
+      : effectivePersonaId
+        ? [effectivePersonaId]
+        : [];
+  let resolvedPersonaIdOverride: string | undefined;
+  for (const candidatePersonaId of personaOverrideCandidates) {
+    const requestedPersona = await getPersonaById(candidatePersonaId);
     if (!requestedPersona) {
+      const isAssignedCandidate = Boolean(
+        assignedPersonaId && candidatePersonaId === assignedPersonaId
+      );
+      if (isAssignedCandidate) {
+        console.warn("[xchat/ask] assigned persona missing; falling back", {
+          userId: session.userId,
+          assignedPersonaId: candidatePersonaId
+        });
+        continue;
+      }
       return NextResponse.json(
         { error: "Persona not found", code: "persona_not_found" },
         { status: 404 }
@@ -215,7 +230,7 @@ export async function POST(request: Request) {
       hasAppRole,
       personaName: requestedPersona.name,
       personaStatus: requestedPersona.status,
-      isAssignedPersona: isAssignedPersonaOverride
+      isAssignedPersona: Boolean(assignedPersonaId && candidatePersonaId === assignedPersonaId)
     });
     if (!access.ok) {
       return NextResponse.json(
@@ -224,6 +239,8 @@ export async function POST(request: Request) {
       );
     }
     persona = requestedPersona;
+    resolvedPersonaIdOverride = candidatePersonaId;
+    break;
   }
 
   const personaModelRaw =
@@ -263,7 +280,7 @@ export async function POST(request: Request) {
     "xreq",
     session.userId,
     session.tenantId ?? "tenant:none",
-    effectivePersonaId ?? persona?._id?.toHexString() ?? persona?.name ?? "persona:none",
+    resolvedPersonaIdOverride ?? persona?._id?.toHexString() ?? persona?.name ?? "persona:none",
     message,
     effectiveModel,
     scope
@@ -403,7 +420,7 @@ export async function POST(request: Request) {
     workspaceSnapshot: workspaceServerSnapshot,
     sessionToolInstructions: buildSessionToolInstructions({
       hostedSearch: hasHostedSearchTool,
-      atxfinance: hasXfinanceTool
+      atxFunction: hasXfinanceTool
     })
   });
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";

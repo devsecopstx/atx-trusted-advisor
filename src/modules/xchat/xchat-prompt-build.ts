@@ -8,7 +8,7 @@ Invoke these only through the API’s native tool mechanism. Do not print pseudo
 
 const XCHAT_BETA_CLIENT_UI_INSTRUCTIONS = `Client UI (beta): The xChat composer shows attach (paperclip), an Auto model shortcut, dictation (microphone), and voice mode (waveform). These controls are not wired to the backend yet—only typed text and Send submit a turn. If the user asks about attachments, speech-to-text, hotkeys, or live voice, say they are in beta and coming soon; do not imply those features work today.`;
 
-const ATXFINANCE_TOOL_COPY = `Workspace tools (this signed-in user only):
+const ATX_FUNCTION_TOOL_COPY = `Workspace tools (this signed-in user only):
 When a "Workspace snapshot" JSON block appears in system context, it was loaded server-side for this turn—use it as authoritative for portfolio, accounts, watchlist, and the positions preview; call atx_function for a full positions refresh, live market_quote, task_status, or if you suspect the snapshot is stale.
 You MUST use the atx_function tool when the user asks about their own portfolio, accounts, cash balances, watchlist tickers, or stock/option positions (holdings). Call it before answering—do not ask them to paste holdings or balances if a tool can retrieve them.
 When the user asks to add or remove watchlist symbols (e.g. "add NVDA to my watchlist", "remove AAPL"), call watchlist_add_symbols or watchlist_remove_symbols with symbol or symbols—then confirm the updated list briefly. Adds upsert new rows with default line type Stock and strategy balanced, and set watchlist desk to growth risk and balanced outlook only when those fields were unset.
@@ -21,8 +21,8 @@ If the tool returns no_default_portfolio, no_watchlist, or empty positions, say 
 export type SessionToolFlags = {
   /** Effective persona tools include `web_search` and/or `x_search` (after `mergeXchatHostedToolBaseline` on ask, this is usually true). */
   hostedSearch: boolean;
-  /** Effective persona tools include `atxfinance`. */
-  atxfinance: boolean;
+  /** Effective persona tools include `atx_function`. */
+  atxFunction: boolean;
 };
 
 /**
@@ -34,8 +34,8 @@ export function buildSessionToolInstructions(flags: SessionToolFlags): string {
   if (flags.hostedSearch) {
     parts.push(HOSTED_SEARCH_TOOL_COPY);
   }
-  if (flags.atxfinance) {
-    parts.push(ATXFINANCE_TOOL_COPY);
+  if (flags.atxFunction) {
+    parts.push(ATX_FUNCTION_TOOL_COPY);
   }
   return parts.join("\n\n");
 }

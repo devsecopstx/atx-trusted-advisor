@@ -132,7 +132,7 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/admin/tenant-workspace",
         title: "Tenant preferences",
         description:
-          "View tenant_preferences fields. xchat_brandname and xstrategybuilder_brandname are set once; other keys are read-only."
+          "Workspace limits + tenant_preferences fields + platform default xChat persona for app users."
       },
       {
         href: "/admin/audit",

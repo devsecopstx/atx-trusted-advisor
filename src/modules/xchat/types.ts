@@ -8,10 +8,10 @@ import {
 } from "./tool-types";
 
 export { PERSONA_XAPI_TOOL_TYPES, type PersonaXapiToolDefinition, type PersonaXapiToolType };
-export const ATX_FUNCTION_TOOL_TYPES = ["atx_function", "atxfinance"] as const;
+export const ATX_FUNCTION_TOOL_TYPES = ["atx_function"] as const;
 
 export function isAtxFunctionToolType(type: string): boolean {
-  return type === "atx_function" || type === "atxfinance";
+  return type === "atx_function";
 }
 
 export function orderPersonaXapiTools(

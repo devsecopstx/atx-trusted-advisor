@@ -9,9 +9,7 @@ export const PERSONA_XAPI_TOOL_TYPES = [
   "file_search",
   "collections_search",
   "yahoo_finance",
-  "atx_function",
-  // Legacy alias kept for backward compatibility with existing persona rows.
-  "atxfinance"
+  "atx_function"
 ] as const;
 export type PersonaXapiToolType = (typeof PERSONA_XAPI_TOOL_TYPES)[number];
 

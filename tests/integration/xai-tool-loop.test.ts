@@ -42,7 +42,7 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "You are a test agent.",
       userPrompt: "What is the answer?",
-      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
       executor: async () => ({ result: "unused" })
     });
 
@@ -75,7 +75,7 @@ describe("respondWithXaiToolLoop", () => {
     await respondWithXaiToolLoop({
       systemPrompt: "SYS",
       userPrompt: "Go",
-      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
       maxTurns: 5,
       executor: async () => ({ result: "{}" })
     });
@@ -119,12 +119,12 @@ describe("respondWithXaiToolLoop", () => {
     expect(body0.store_messages).toBe(true);
   });
 
-  it("runs atxfinance executor when model prints fenced JSON instead of function_call", async () => {
+  it("runs atx_function executor when model prints fenced JSON instead of function_call", async () => {
     fetchMock.mockResolvedValueOnce(
       xaiResponsesOk({
         model: "grok-4-1-fast",
         output_text:
-          '```json\n{\n  "tool": "atxfinance",\n  "operation": "portfolio_summary"\n}\n```'
+          '```json\n{\n  "tool": "atx_function",\n  "operation": "portfolio_summary"\n}\n```'
       })
     );
 
@@ -139,10 +139,10 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "Test",
       userPrompt: "Show my portfolio allocation",
-      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
       maxTurns: 5,
       executor: async (name, args) => {
-        expect(["atx_function", "atxfinance"]).toContain(name);
+        expect(name).toBe("atx_function");
         expect(args).toEqual({ operation: "portfolio_summary" });
         return { result: JSON.stringify({ name: "Default", accountCount: 1 }) };
       }
@@ -150,12 +150,12 @@ describe("respondWithXaiToolLoop", () => {
 
     expect(result.outputText).toBe("Here is your portfolio overview.");
     expect(result.toolCalls).toHaveLength(1);
-    expect(["atx_function", "atxfinance"]).toContain(result.toolCalls[0].name);
+    expect(result.toolCalls[0].name).toBe("atx_function");
     expect(result.turnsUsed).toBe(2);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("runs atxfinance executor for bare operation JSON without tool key", async () => {
+  it("runs atx_function executor for bare operation JSON without tool key", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -176,10 +176,10 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "Test",
       userPrompt: "Portfolio",
-      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
       maxTurns: 5,
       executor: async (name, args) => {
-        expect(["atx_function", "atxfinance"]).toContain(name);
+        expect(name).toBe("atx_function");
         expect(args).toEqual({ operation: "portfolio_summary" });
         return { result: "{}" };
       }
@@ -396,12 +396,12 @@ describe("respondWithXaiToolLoop", () => {
     expect(secondBody.input).toContain("current weather in Austin TX today");
   });
 
-  it("runs atxfinance for every XML function_call when KB-style emits multiple blocks in one turn", async () => {
+  it("runs atx_function for every XML function_call when KB-style emits multiple blocks in one turn", async () => {
     const xml = `atx-trusted-advisor
-<function_call name="atxfinance">
+<function_call name="atx_function">
 <argument name="operation">portfolio_summary</argument>
 </function_call>
-<function_call name="atxfinance">
+<function_call name="atx_function">
 <argument name="operation">positions_snapshot</argument>
 </function_call>`;
     fetchMock.mockResolvedValueOnce({
@@ -427,10 +427,10 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "Test",
       userPrompt: "Show my portfolio allocation",
-      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
       maxTurns: 3,
       executor: async (name, args) => {
-        expect(["atx_function", "atxfinance"]).toContain(name);
+        expect(name).toBe("atx_function");
         const op = (args as { operation?: string }).operation;
         expect(op).toMatch(/portfolio_summary|positions_snapshot/);
         ops.push(op ?? "");
@@ -441,7 +441,7 @@ describe("respondWithXaiToolLoop", () => {
     expect(ops).toEqual(["portfolio_summary", "positions_snapshot"]);
     expect(result.outputText).toBe("Here is your allocation and open positions.");
     expect(
-      result.toolCalls.filter((c) => c.name === "atxfinance" || c.name === "atx_function")
+      result.toolCalls.filter((c) => c.name === "atx_function")
     ).toHaveLength(2);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const secondBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string) as {
@@ -453,7 +453,7 @@ describe("respondWithXaiToolLoop", () => {
 
   it("recovers XML pseudo tool calls when maxTurns is 1 (extends loop for one follow-up)", async () => {
     const xml =
-      '<function_call name="atxfinance">\n<argument name="operation">portfolio_summary</argument>\n</function_call>';
+      '<function_call name="atx_function">\n<argument name="operation">portfolio_summary</argument>\n</function_call>';
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -476,10 +476,10 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "Test",
       userPrompt: "Portfolio",
-      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
       maxTurns: 1,
       executor: async (name, args) => {
-        expect(["atx_function", "atxfinance"]).toContain(name);
+        expect(name).toBe("atx_function");
         expect(args).toEqual({ operation: "portfolio_summary" });
         return { result: "{}" };
       }
@@ -490,8 +490,8 @@ describe("respondWithXaiToolLoop", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("runs atxfinance executor when model prints JSON inside function_call (watchlist_add_symbols)", async () => {
-    const xml = `<function_call name="atxfinance">
+  it("runs atx_function executor when model prints JSON inside function_call (watchlist_add_symbols)", async () => {
+    const xml = `<function_call name="atx_function">
 {"operation":"watchlist_add_symbols","symbols":["NVDA"]}
 </function_call>`;
     fetchMock.mockResolvedValueOnce({
@@ -516,10 +516,10 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "Test",
       userPrompt: "Add NVDA",
-      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
       maxTurns: 5,
       executor: async (name, args) => {
-        expect(["atx_function", "atxfinance"]).toContain(name);
+        expect(name).toBe("atx_function");
         expect(args).toEqual({
           operation: "watchlist_add_symbols",
           symbols: ["NVDA"]
@@ -533,9 +533,9 @@ describe("respondWithXaiToolLoop", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("runs atxfinance executor for XML function_call with positions_snapshot", async () => {
+  it("runs atx_function executor for XML function_call with positions_snapshot", async () => {
     const xml =
-      '<function_call name="atxfinance">\n<argument name="operation">positions_snapshot</argument>\n</function_call>';
+      '<function_call name="atx_function">\n<argument name="operation">positions_snapshot</argument>\n</function_call>';
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -556,10 +556,10 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "Test",
       userPrompt: "Show my positions",
-      tools: [{ type: "function", function: { name: "atxfinance", parameters: {} } }],
+      tools: [{ type: "function", function: { name: "atx_function", parameters: {} } }],
       maxTurns: 5,
       executor: async (name, args) => {
-        expect(["atx_function", "atxfinance"]).toContain(name);
+        expect(name).toBe("atx_function");
         expect(args).toEqual({ operation: "positions_snapshot" });
         return { result: "{}" };
       }
@@ -720,7 +720,7 @@ describe("respondWithXaiToolLoop", () => {
           {
             type: "function_call",
             call_id: "call_001",
-            name: "atxfinance",
+            name: "atx_function",
             arguments: JSON.stringify({ operation: "watchlist_snapshot" })
           }
         ]
@@ -739,10 +739,10 @@ describe("respondWithXaiToolLoop", () => {
     const result = await respondWithXaiToolLoop({
       systemPrompt: "You are a test agent.",
       userPrompt: "Show my watchlist.",
-      tools: [{ type: "function", function: { name: "atxfinance" } }],
+      tools: [{ type: "function", function: { name: "atx_function" } }],
       maxTurns: 5,
       executor: async (name, args) => {
-        expect(["atx_function", "atxfinance"]).toContain(name);
+        expect(name).toBe("atx_function");
         expect(args).toEqual({ operation: "watchlist_snapshot" });
         return { result: JSON.stringify({ symbols: ["TSLA"] }) };
       }
@@ -750,7 +750,7 @@ describe("respondWithXaiToolLoop", () => {
 
     expect(result.outputText).toBe("Your watchlist has TSLA.");
     expect(result.toolCalls).toHaveLength(1);
-    expect(["atx_function", "atxfinance"]).toContain(result.toolCalls[0].name);
+    expect(result.toolCalls[0].name).toBe("atx_function");
     expect(result.toolCalls[0].durationMs).toBeGreaterThanOrEqual(0);
     expect(result.turnsUsed).toBe(2);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -766,7 +766,7 @@ describe("respondWithXaiToolLoop", () => {
             {
               type: "function_call",
               call_id: `call_${i}`,
-              name: "atxfinance",
+              name: "atx_function",
               arguments: "{}"
             }
           ]
@@ -797,7 +797,7 @@ describe("respondWithXaiToolLoop", () => {
           {
             type: "function_call",
             call_id: "call_err",
-            name: "atxfinance",
+            name: "atx_function",
             arguments: "{}"
           }
         ]

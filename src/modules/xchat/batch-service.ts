@@ -116,7 +116,7 @@ export async function submitBatchJob(
     withLinkedCollectionTools(xapiConfig, linkedCollectionIds)
   );
   const batchTools = personaXapiToolsToXaiRequestTools(xapiConfigMerged.tools);
-  const hasAtxfinancePersonaTool = xapiConfigMerged.tools.some((t) =>
+  const hasAtxFunctionPersonaTool = xapiConfigMerged.tools.some((t) =>
     isAtxFunctionToolType(t.type)
   );
   const hasHostedSearchPersonaTool = xapiConfigMerged.tools.some(
@@ -160,7 +160,7 @@ export async function submitBatchJob(
     itemContextMap.set(item.itemId, ragContext);
 
     let workspaceServerSnapshot: string | null = null;
-    if (hasAtxfinancePersonaTool) {
+    if (hasAtxFunctionPersonaTool) {
       try {
         workspaceServerSnapshot = await buildWorkspaceServerSnapshotBlock({
           userId: input.userId,
@@ -182,7 +182,7 @@ export async function submitBatchJob(
       workspaceSnapshot: workspaceServerSnapshot,
       sessionToolInstructions: buildSessionToolInstructions({
         hostedSearch: hasHostedSearchPersonaTool,
-        atxfinance: hasAtxfinancePersonaTool
+        atxFunction: hasAtxFunctionPersonaTool
       })
     });
 

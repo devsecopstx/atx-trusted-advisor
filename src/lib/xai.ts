@@ -633,7 +633,7 @@ type ParsedToolCall = {
 };
 
 const ATX_FUNCTION_PRIMARY_NAME = "atx_function";
-const ATX_FUNCTION_ALIASES = new Set([ATX_FUNCTION_PRIMARY_NAME, "atxfinance"]);
+const ATX_FUNCTION_ALIASES = new Set([ATX_FUNCTION_PRIMARY_NAME]);
 
 /**
  * xAI executes these on the server; the local executor must not treat them as
@@ -895,7 +895,7 @@ function trySyntheticWebSearchJsonPayload(
 function parseAllAtxfinanceXmlFunctionCalls(assistantText: string): Record<string, unknown>[] {
   const results: Record<string, unknown>[] = [];
   const blockRe =
-    /<function_call\b[^>]*\bname\s*=\s*["'](?:atx_function|atxfinance)["'][^>]*>([\s\S]*?)<\/\s*function_call\s*>/gi;
+    /<function_call\b[^>]*\bname\s*=\s*["']atx_function["'][^>]*>([\s\S]*?)<\/\s*function_call\s*>/gi;
   let m: RegExpExecArray | null;
   while ((m = blockRe.exec(assistantText)) !== null) {
     const inner = (m[1] ?? "").trim();
@@ -954,7 +954,7 @@ function listSyntheticAtxfinanceToolArgs(
       if (!opQuoted?.[1] || !ATXFINANCE_SYNTHETIC_OPERATIONS.has(opQuoted[1])) {
         return [];
       }
-      if (!/\batx_function\b/i.test(assistantText) && !/\batxfinance\b/i.test(assistantText)) {
+      if (!/\batx_function\b/i.test(assistantText)) {
         return [];
       }
       return [{ operation: opQuoted[1] }];

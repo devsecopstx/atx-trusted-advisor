@@ -44,6 +44,8 @@ type CollectionRow = {
   stats: { documentCount: number | null; createdAt: string | null; updatedAt: string | null };
 };
 
+type CollectionToolShape = { type: string; [key: string]: unknown };
+
 const EMPTY_FORM: PersonaPayload = {
   name: "",
   systemPrompt: DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT,
@@ -69,6 +71,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
   const [restrictCollectionScope, setRestrictCollectionScope] = useState(false);
   const [collectionFilter, setCollectionFilter] = useState("");
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
   /** When true, save merges `web_search` + `x_search` into the tools array if missing. */
   const [includeHostedSearchInTools, setIncludeHostedSearchInTools] = useState(false);
   const [showEmptyToolsGuard, setShowEmptyToolsGuard] = useState(false);
@@ -114,6 +117,14 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           };
         }>(await fetch(`/api/personas/${personaId}`));
         const loadedTools = payload.data.xapi.tools ?? [];
+        const toolCollectionIds = extractCollectionIdsFromTools(loadedTools);
+        const fallbackCollectionId = payload.data.xaiCollection.collectionId?.trim() ?? "";
+        const selectedIds =
+          toolCollectionIds.length > 0
+            ? toolCollectionIds
+            : fallbackCollectionId
+              ? [fallbackCollectionId]
+              : [];
         setForm({
           name: payload.data.name,
           systemPrompt: payload.data.systemPrompt,
@@ -129,7 +140,8 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           xapiMaxTurns: String(payload.data.xapi.maxTurns),
           xapiToolsJson: JSON.stringify(loadedTools, null, 2)
         });
-        setRestrictCollectionScope(Boolean((payload.data.xaiCollection.collectionId ?? "").trim()));
+        setSelectedCollectionIds(selectedIds);
+        setRestrictCollectionScope(selectedIds.length > 0);
         setIncludeHostedSearchInTools(personaToolsIncludeHostedSearch(loadedTools));
         setShowEmptyToolsGuard(false);
         setStatus("Loaded");
@@ -154,7 +166,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
         setStatus("max_turns must be an integer between 1 and 10");
         return;
       }
-      if (restrictCollectionScope && !form.xaiCollectionId.trim()) {
+      if (restrictCollectionScope && selectedCollectionIds.length === 0) {
         setStatus("Select a collection or disable restrict access.");
         return;
       }
@@ -215,7 +227,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
         setStatus(error instanceof Error ? error.message : "Failed to save persona");
       }
     },
-    [form, includeHostedSearchInTools, mode, personaId, restrictCollectionScope, router]
+    [form, includeHostedSearchInTools, mode, personaId, restrictCollectionScope, router, selectedCollectionIds]
   );
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -233,6 +245,27 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       return name.includes(query) || id.includes(query);
     });
   }, [collectionFilter, collections]);
+
+  function applySelectedCollectionIds(nextIdsInput: string[]) {
+    const nextIds = Array.from(new Set(nextIdsInput.map((id) => id.trim()).filter(Boolean)));
+    const syncResult = synchronizeCollectionIdsInToolsJson(form.xapiToolsJson, nextIds);
+    if (!syncResult.ok) {
+      setStatus(syncResult.message);
+      return;
+    }
+    const firstCollectionId = nextIds[0] ?? "";
+    const firstCollectionName =
+      firstCollectionId.length > 0
+        ? collections.find((row) => row.id === firstCollectionId)?.name ?? ""
+        : "";
+    setSelectedCollectionIds(nextIds);
+    setForm((current) => ({
+      ...current,
+      xaiCollectionId: firstCollectionId,
+      xaiCollectionName: firstCollectionId ? firstCollectionName : "",
+      xapiToolsJson: syncResult.value
+    }));
+  }
 
   async function onDelete() {
     if (!personaId || mode !== "edit") return;
@@ -289,11 +322,12 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
                 const checked = event.target.checked;
                 setRestrictCollectionScope(checked);
                 if (!checked) {
-                  setForm((current) => ({
-                    ...current,
-                    xaiCollectionId: "",
-                    xaiCollectionName: ""
-                  }));
+                  applySelectedCollectionIds([]);
+                } else {
+                  const existingIds = extractCollectionIdsFromToolsJson(form.xapiToolsJson);
+                  if (existingIds.length > 0) {
+                    setSelectedCollectionIds(existingIds);
+                  }
                 }
               }}
               type="checkbox"
@@ -320,7 +354,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
                 {visibleCollections.length > 0 ? (
                   visibleCollections.map((row) => {
                     const displayName = row.name?.trim() || "Unnamed collection";
-                    const selected = form.xaiCollectionId === row.id;
+                    const selected = selectedCollectionIds.includes(row.id);
                     return (
                       <label
                         key={row.id}
@@ -334,15 +368,13 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
                       >
                         <input
                           checked={selected}
-                          name="persona-collection-id"
-                          onChange={() =>
-                            setForm((current) => ({
-                              ...current,
-                              xaiCollectionId: row.id,
-                              xaiCollectionName: row.name ?? current.xaiCollectionName
-                            }))
-                          }
-                          type="radio"
+                          onChange={(event) => {
+                            const nextIds = event.target.checked
+                              ? [...selectedCollectionIds, row.id]
+                              : selectedCollectionIds.filter((id) => id !== row.id);
+                            applySelectedCollectionIds(nextIds);
+                          }}
+                          type="checkbox"
                           value={row.id}
                         />
                         <span>
@@ -365,12 +397,13 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             <p className="status-text status-error">{collectionsStatus}</p>
           ) : collections.length > 0 ? (
             <p className="status-text">
-              {restrictCollectionScope && form.xaiCollectionId ? (
+              {restrictCollectionScope && selectedCollectionIds.length > 0 ? (
                 <>
-                  Selected: <code>{form.xaiCollectionId}</code>
+                  Selected:{" "}
+                  <code>{selectedCollectionIds.join(", ")}</code>
                 </>
               ) : restrictCollectionScope ? (
-                "Choose one collection from the list."
+                "Choose one or more collections from the list."
               ) : (
                 "Collection restriction disabled (persona can use default collection scope)."
               )}
@@ -623,4 +656,55 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       </article>
     </section>
   );
+}
+
+function extractCollectionIdsFromTools(
+  tools: Array<{ type: string; [key: string]: unknown }>
+): string[] {
+  const ids: string[] = [];
+  for (const tool of tools) {
+    if (tool.type === "collections_search" && Array.isArray(tool.collection_ids)) {
+      for (const id of tool.collection_ids) {
+        if (typeof id === "string" && id.trim().length > 0) {
+          ids.push(id.trim());
+        }
+      }
+    }
+  }
+  return Array.from(new Set(ids));
+}
+
+function extractCollectionIdsFromToolsJson(toolsJson: string): string[] {
+  try {
+    const parsed = parsePersonaXapiToolsJson(toolsJson);
+    return extractCollectionIdsFromTools(parsed);
+  } catch {
+    return [];
+  }
+}
+
+function synchronizeCollectionIdsInToolsJson(
+  toolsJson: string,
+  selectedIdsInput: string[]
+): { ok: true; value: string } | { ok: false; message: string } {
+  let parsedTools: CollectionToolShape[];
+  try {
+    parsedTools = parsePersonaXapiToolsJson(toolsJson);
+  } catch {
+    return { ok: false, message: "Tools JSON is invalid. Fix JSON before changing collection selections." };
+  }
+  const selectedIds = Array.from(new Set(selectedIdsInput.map((id) => id.trim()).filter(Boolean)));
+  const nextTools = parsedTools.map((tool) =>
+    tool.type === "collections_search" ? { ...tool, collection_ids: selectedIds } : { ...tool }
+  );
+  if (!nextTools.some((tool) => tool.type === "collections_search") && selectedIds.length > 0) {
+    const atxIndex = nextTools.findIndex((tool) => tool.type === "atx_function");
+    const collectionTool: CollectionToolShape = { type: "collections_search", collection_ids: selectedIds };
+    if (atxIndex >= 0) {
+      nextTools.splice(atxIndex + 1, 0, collectionTool);
+    } else {
+      nextTools.push(collectionTool);
+    }
+  }
+  return { ok: true, value: JSON.stringify(nextTools, null, 2) };
 }

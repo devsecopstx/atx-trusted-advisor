@@ -135,24 +135,17 @@ export function toXaiRequestTools(
 }
 
 /**
- * Expands persona marker tools (`atxfinance`, `yahoo_finance`) into xAI function schemas,
+ * Expands persona marker tools (`atx_function`, `yahoo_finance`) into xAI function schemas,
  * same as `POST /api/xchat/ask` before `respondWithXaiToolLoop`. Use for batch and any
  * path that must mirror persona tool configuration.
  */
 export function personaXapiToolsToXaiRequestTools(
   tools: PersonaXapiToolDefinition[]
 ): Array<Record<string, unknown>> {
-  const hasAtxfinance = tools.some(
-    (t) => t.type === "atx_function" || t.type === "atxfinance"
-  );
+  const hasAtxfinance = tools.some((t) => t.type === "atx_function");
   const hasYahooFinance = tools.some((t) => t.type === "yahoo_finance");
   const base: Array<Record<string, unknown>> = tools
-    .filter(
-      (t) =>
-        t.type !== "atx_function" &&
-        t.type !== "atxfinance" &&
-        t.type !== "yahoo_finance"
-    )
+    .filter((t) => t.type !== "atx_function" && t.type !== "yahoo_finance")
     .map((t) => ({ ...t }));
   if (hasAtxfinance) {
     base.push(ATXFINANCE_TOOL_DEFINITION as unknown as Record<string, unknown>);

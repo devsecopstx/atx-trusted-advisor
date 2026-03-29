@@ -64,8 +64,7 @@ describe("persona tool validation", () => {
       "file_search",
       "collections_search",
       "yahoo_finance",
-      "atx_function",
-      "atxfinance"
+      "atx_function"
     ]);
   });
 
@@ -108,24 +107,23 @@ describe("persona tool validation", () => {
       mode: "responses",
       toolChoice: "auto",
       maxTurns: 5,
-      tools: [{ type: "web_search" }, { type: "x_search" }, { type: "atxfinance" }]
+      tools: [{ type: "web_search" }, { type: "x_search" }, { type: "atx_function" }]
     });
     const merged = mergeXchatHostedToolBaseline(cfg);
     expect(merged.tools.map((t) => t.type)).toEqual([
       "web_search",
       "x_search",
-      "atxfinance"
+      "atx_function"
     ]);
   });
 
-  it("normalizePersonaXapiConfig keeps one atx function alias and preserves first-seen order", () => {
+  it("normalizePersonaXapiConfig keeps one atx_function tool and preserves first-seen order", () => {
     const result = normalizePersonaXapiConfig({
       mode: "responses",
       toolChoice: "auto",
       maxTurns: 5,
       tools: [
         { type: "x_search" },
-        { type: "atxfinance" },
         { type: "atx_function" },
         { type: "web_search" },
         { type: "code_interpreter" }
@@ -133,7 +131,7 @@ describe("persona tool validation", () => {
     });
     expect(result.tools.map((t) => t.type)).toEqual([
       "x_search",
-      "atxfinance",
+      "atx_function",
       "web_search",
       "code_interpreter"
     ]);

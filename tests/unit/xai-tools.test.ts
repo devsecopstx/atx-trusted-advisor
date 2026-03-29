@@ -82,7 +82,7 @@ describe("buildWireToolsForXaiResponses", () => {
     const tools = [
       { type: "web_search" as const },
       { type: "collections_search" as const, collection_ids: ["c1"] },
-      { type: "atxfinance" as const }
+      { type: "atx_function" as const }
     ];
     const a = personaXapiToolsToXaiRequestTools(tools);
     const b = buildWireToolsForXaiResponses(tools);

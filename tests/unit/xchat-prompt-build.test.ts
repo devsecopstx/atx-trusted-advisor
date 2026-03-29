@@ -7,23 +7,23 @@ import {
 
 describe("buildSessionToolInstructions", () => {
   it("returns empty when no flags", () => {
-    expect(buildSessionToolInstructions({ hostedSearch: false, atxfinance: false })).toBe("");
+    expect(buildSessionToolInstructions({ hostedSearch: false, atxFunction: false })).toBe("");
   });
 
   it("includes hosted copy when hostedSearch", () => {
-    const s = buildSessionToolInstructions({ hostedSearch: true, atxfinance: false });
+    const s = buildSessionToolInstructions({ hostedSearch: true, atxFunction: false });
     expect(s).toContain("web_search");
     expect(s).toContain("native tool");
   });
 
   it("includes both sections when both flags", () => {
-    const s = buildSessionToolInstructions({ hostedSearch: true, atxfinance: true });
+    const s = buildSessionToolInstructions({ hostedSearch: true, atxFunction: true });
     expect(s).toContain("web_search");
     expect(s).toContain("atx_function tool");
   });
 
-  it("includes NL guidance for options/strategy preflight when atxfinance", () => {
-    const s = buildSessionToolInstructions({ hostedSearch: false, atxfinance: true });
+  it("includes NL guidance for options/strategy preflight when atx_function is enabled", () => {
+    const s = buildSessionToolInstructions({ hostedSearch: false, atxFunction: true });
     expect(s).toContain("NL (natural language)");
     expect(s).toContain("strategy jobs");
   });

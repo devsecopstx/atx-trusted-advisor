@@ -800,6 +800,34 @@ describe("xchat ask route collection retrieval", () => {
     expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439088");
   });
 
+  it("falls back to default persona when assigned persona is missing", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce({
+      assignedPersonaId: "507f1f77bcf86cd799439066"
+    });
+    repositoryMocks.getPersonaById.mockResolvedValueOnce(null);
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "hello world"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439066");
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalled();
+  });
+
   it("allows app_user assigned Super-Agent when persona is published", async () => {
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",

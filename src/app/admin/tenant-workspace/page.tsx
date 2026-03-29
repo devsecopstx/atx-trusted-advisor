@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { TenantWorkspaceLimitsPanel } from "@/app/admin/tenant-workspace/ui/tenant-workspace-limits-panel";
+import { XchatDefaultPersonaPanel } from "@/app/admin/tenant-workspace/ui/xchat-default-persona-panel";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
@@ -28,6 +29,7 @@ export default async function AdminTenantWorkspacePage() {
         </p>
       </header>
       <TenantWorkspaceLimitsPanel tenantId={session.tenantId} />
+      <XchatDefaultPersonaPanel />
     </div>
   );
 }
