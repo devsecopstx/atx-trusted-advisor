@@ -34,7 +34,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     id: "premium_monthly",
     name: "Premium",
     tagline: "Complex books — xChat + xStrategyBuilder with fair per-hour caps",
-    priceLabel: "$99",
+    priceLabel: "$29",
     periodNote: "per month",
     highlight: true,
     bullets: [
@@ -49,7 +49,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     id: "premium_plus_yearly",
     name: "Premium+",
     tagline: "Dedicated instance — private, white-glove posture, account trade recomendations and rationale with automated verification",
-    priceLabel: "$299",
+    priceLabel: "$99",
     periodNote: "per month",
     bullets: [
       "White-glove for ultra-complex and family-office books; direct line for structured product input",

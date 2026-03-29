@@ -12,6 +12,7 @@ const repoMocks = vi.hoisted(() => ({
   mutatePortfolioWatchlistSymbols: vi.fn(),
   listScheduledTasks: vi.fn(),
   createScheduledTask: vi.fn(),
+  getScheduledTaskById: vi.fn(),
   updateScheduledTask: vi.fn(),
   deleteScheduledTask: vi.fn()
 }));
@@ -19,9 +20,9 @@ const repoMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => repoMocks);
 
-import { GET as getWatchlist, PATCH as patchWatchlist } from "@/app/api/admin/portfolios/[portfolioId]/watchlist/route";
-import { GET as getPortfolioTasks, POST as postPortfolioTask } from "@/app/api/admin/portfolios/[portfolioId]/tasks/route";
 import { DELETE as deletePortfolioTask, PATCH as patchPortfolioTask } from "@/app/api/admin/portfolios/[portfolioId]/tasks/[taskId]/route";
+import { GET as getPortfolioTasks, POST as postPortfolioTask } from "@/app/api/admin/portfolios/[portfolioId]/tasks/route";
+import { GET as getWatchlist, PATCH as patchWatchlist } from "@/app/api/admin/portfolios/[portfolioId]/watchlist/route";
 
 const portfolioId = "507f1f77bcf86cd799439033";
 const taskId = "507f1f77bcf86cd799439044";
@@ -181,6 +182,16 @@ describe("admin portfolio tasks route", () => {
   });
 
   it("PATCH updates task when portfolio matches", async () => {
+    repoMocks.getScheduledTaskById.mockResolvedValueOnce({
+      _id: new ObjectId(taskId),
+      tenantId: new ObjectId("507f1f77bcf86cd799439022"),
+      portfolioId: new ObjectId(portfolioId),
+      name: "Nightly",
+      category: "sync-broker",
+      scheduleCron: "0 2 * * *",
+      enabled: true,
+      nextRunAt: now
+    });
     repoMocks.updateScheduledTask.mockResolvedValueOnce({
       _id: new ObjectId(taskId),
       name: "Renamed",

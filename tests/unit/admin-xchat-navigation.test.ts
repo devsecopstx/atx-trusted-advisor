@@ -4,17 +4,17 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("admin navigation includes xChat", () => {
-  it("hub page lists xChat card linking to /xchat", () => {
-    const hubPath = path.join(process.cwd(), "src/app/admin/page.tsx");
-    const hub = readFileSync(hubPath, "utf8");
-    expect(hub).toMatch(/href:\s*"\/xchat"/);
-    expect(hub).toContain("title: \"xChat\"");
+  it("admin left rail includes xChat and resources shortcuts", () => {
+    const railPath = path.join(process.cwd(), "src/app/admin/ui/admin-left-rail.tsx");
+    const rail = readFileSync(railPath, "utf8");
+    expect(rail).toContain('href: "/xchat"');
+    expect(rail).toContain('label: "xChat"');
+    expect(rail).toContain('href: "/resources/getting-started"');
   });
 
-  it("admin layout topbar includes xChat", () => {
+  it("admin layout renders persistent left rail", () => {
     const layoutPath = path.join(process.cwd(), "src/app/admin/layout.tsx");
     const layout = readFileSync(layoutPath, "utf8");
-    expect(layout).toMatch(/href:\s*"\/xchat"/);
-    expect(layout).toMatch(/label:\s*"xChat"/);
+    expect(layout).toContain("<AdminLeftRail />");
   });
 });
