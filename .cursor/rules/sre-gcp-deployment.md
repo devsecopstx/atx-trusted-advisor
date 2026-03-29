@@ -57,6 +57,8 @@ Use when you want **`gcloud run deploy --source .`** from your laptop with the *
 
 **Script:** `scripts/ops/deploy-cloud-run-from-env.sh`
 
+**Build / image — not a separate “docker push” step:** The script runs **`gcloud run deploy "${SVC}" --source .`** (see `deploy-cloud-run-from-env.sh`). That **uploads the repo context and runs a remote build** (Cloud Build / buildpacks-style pipeline) in GCP, then deploys the resulting image. You do **not** need a local `docker build` + `docker push` before this unless you intentionally switch to **`--image <artifact-registry-ref>`** (the **Deploy Cloud Run** GitHub workflow instead builds to **Artifact Registry** with an explicit tag/digest, then deploys with `--image "${IMAGE_REF}"` — same runtime outcome, different packaging).
+
 **Prereqs:** `gcloud` authenticated as a principal that can deploy Cloud Run and read Secret Manager in the target project; repo root as cwd; required keys present in the env file (see below).
 
 **Typical staging flow**
@@ -88,8 +90,9 @@ Use when you want **`gcloud run deploy --source .`** from your laptop with the *
 
 **Confirm what is serving**
 
-- **`GET /api/health`** returns JSON including **`version`** (same semver as `package.json` at build time). Example:
+- **`GET /api/health`** returns JSON including **`version`** (same semver as `package.json` at build time) on builds **from `main` at/after** the health payload change. Example:
   - `curl -sS "https://<STAGING_BASE_URL>/api/health" | jq .version`
+- **`jq .version` is `null`:** the field is **missing** — staging is still running an **older image** (health used to return only `status`, `service`, `db`, `redis`). That matches an **old footer** (e.g. v2.6.9) without implying a load-balancer split. **Fix:** pull latest `main`, run `npm run ops:deploy:cloud-run:staging` (or `:staging:ci`), then `curl` the **full** body: `curl -sS "…/api/health"` — you should see `"version":"2.7.x"` when the new revision is live.
 - Compare to **direct Cloud Run URL** (bypasses HTTPS LB / custom host):
   - `gcloud run services describe "$CLOUD_RUN_SERVICE_STAGING" --region "$CLOUD_RUN_REGION" --format='value(status.url)'`
   - `curl -sS "$(gcloud run services describe "$CLOUD_RUN_SERVICE_STAGING" --region "$CLOUD_RUN_REGION" --format='value(status.url)')/api/health" | jq .version`

@@ -11,8 +11,8 @@ const redisMocks = vi.hoisted(() => ({
 vi.mock("@/lib/mongodb", () => mongoMocks);
 vi.mock("@/lib/redis-client", () => redisMocks);
 
-import { APP_VERSION } from "@/lib/app-version";
 import { GET as getHealth } from "@/app/api/health/route";
+import { APP_VERSION } from "@/lib/app-version";
 
 describe("GET /api/health", () => {
   it("returns ok with mongo db name and redis payload", async () => {
