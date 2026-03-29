@@ -1,10 +1,10 @@
-import { redirect } from "next/navigation";
-
 import { AtxBillingCheckoutButton } from "@/app/account/ui/atx-billing-checkout";
 import { BillingFeedbackLink } from "@/app/account/ui/billing-feedback-link";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
+import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-shell";
 import { ATX_BILLING_PLAN_LIMIT_ROWS } from "@/lib/atx-billing-plan-limits";
 import { ATX_BILLING_PLANS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import { getSessionUser } from "@/lib/auth";
@@ -31,17 +31,13 @@ export default async function AccountBillingPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await getSessionUser();
-  if (!session) {
-    redirect("/login?next=/account/billing");
-  }
-  if (!canUserLogin(session.roles)) {
-    redirect("/xchat");
-  }
+  const approved = session ? canUserLogin(session.roles) : false;
+  const guestReadonly = !approved;
 
   const sp = (await searchParams) ?? {};
   const checkout = typeof sp.checkout === "string" ? sp.checkout : undefined;
 
-  const checkoutReady = isStripeBillingFullyConfigured();
+  const checkoutReady = !guestReadonly && isStripeBillingFullyConfigured();
   const publishableConfigured = Boolean(getStripePublishableKey());
   const checkoutBanner =
     checkout === "success"
@@ -75,13 +71,18 @@ export default async function AccountBillingPage({
 
   return (
     <div className="xchat-shell">
-      <AppUserApprovedHeader current="account" feedbackPageLabel="Billing" session={session} />
+      {approved && session ? (
+        <AppUserApprovedHeader current="account" feedbackPageLabel="Billing" session={session} />
+      ) : (
+        <XchatGuestHeader />
+      )}
 
       <div className="xchat-body portfolio-page-body">
-        <AppUserCollapsibleRailLayout
-          mainClassName="app-user-shell-with-rail--padded"
-          rail={<AppUserAccountPublicRailForSession session={session} />}
-        >
+        {approved && session ? (
+          <AppUserCollapsibleRailLayout
+            mainClassName="app-user-shell-with-rail--padded"
+            rail={<AppUserAccountPublicRailForSession session={session} />}
+          >
             <div className="billing-page">
               <header className="billing-hero xf-noise-overlay surface-card xf-widget section-card">
                 <p className="billing-hero__eyebrow">ATX price plans</p>
@@ -140,7 +141,13 @@ export default async function AccountBillingPage({
                         ))}
                       </ul>
                     </div>
-                    <AtxBillingCheckoutButton planId={plan.id} checkoutReady={checkoutReady} />
+                    {guestReadonly ? (
+                      <button className="billing-checkout-button" disabled type="button">
+                        Sign in required
+                      </button>
+                    ) : (
+                      <AtxBillingCheckoutButton planId={plan.id} checkoutReady={checkoutReady} />
+                    )}
                   </article>
                 ))}
               </div>
@@ -151,10 +158,60 @@ export default async function AccountBillingPage({
                 For access or invoice issues, contact your workspace admin. You agree to use aTx Trusted Advisory lawfully
                 and in line with applicable rules and our terms. Share thoughtful, meaningful product feedback when
                 something misses the mark.{" "}
-                <BillingFeedbackLink>Submit feedback</BillingFeedbackLink>.
+                {guestReadonly ? "Sign in to submit feedback." : <BillingFeedbackLink>Submit feedback</BillingFeedbackLink>}
               </p>
             </div>
-        </AppUserCollapsibleRailLayout>
+          </AppUserCollapsibleRailLayout>
+        ) : (
+          <XchatGuestReadonlyShell>
+            <div className="billing-page">
+              <header className="billing-hero xf-noise-overlay surface-card xf-widget section-card">
+                <p className="billing-hero__eyebrow">ATX price plans</p>
+                <h1 className="billing-hero__title">Account &amp; billing</h1>
+                <p className="billing-hero__copy">
+                  Read-only pricing preview for guests. Sign in for checkout and account actions.
+                </p>
+              </header>
+              <div className="billing-grid">
+                {ATX_BILLING_PLANS.map((plan) => (
+                  <article
+                    key={plan.id}
+                    className={`billing-card xf-widget${plan.highlight ? " billing-card--highlight" : ""}`}
+                  >
+                    {plan.highlight ? <span className="billing-card__tag">Popular</span> : null}
+                    <h2 className="billing-card__name">{plan.name}</h2>
+                    <p className="billing-card__tagline">{plan.tagline}</p>
+                    <p className="billing-card__price">{plan.priceLabel}</p>
+                    <p className="billing-card__period">{plan.periodNote}</p>
+                    <ul className="billing-card__list">
+                      {plan.bullets.map((b) => (
+                        <li key={b}>{b}</li>
+                      ))}
+                    </ul>
+                    <div className="billing-card__limits">
+                      <p className="billing-card__limits-title">Workspace limits</p>
+                      <ul className="billing-card__limits-list">
+                        {planLimitsByPlanId[plan.id].map((limit) => (
+                          <li key={`${plan.id}-${limit.metric}`}>
+                            <span className="billing-card__limits-metric">{limit.metric}</span>
+                            <span className="billing-card__limits-value">{limit.value}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <button className="billing-checkout-button" disabled type="button">
+                      Sign in required
+                    </button>
+                  </article>
+                ))}
+              </div>
+              <p className="billing-footnote">
+                <span className="xf-disclaimer-emphasis">Not financial advice.</span> Guest mode is read-only. Sign in
+                for approved access to checkout and account actions.
+              </p>
+            </div>
+          </XchatGuestReadonlyShell>
+        )}
       </div>
     </div>
   );

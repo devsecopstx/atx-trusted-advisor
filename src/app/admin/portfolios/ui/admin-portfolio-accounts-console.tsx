@@ -15,12 +15,13 @@ import {
 } from "./desk-risk-outlook-options";
 import { PortfolioManageNav } from "./portfolio-manage-nav";
 
-const ACCOUNT_TYPES = ["merrill", "fidelity", "etrade"] as const;
+const ACCOUNT_TYPES = ["merrill", "fidelity", "etrade", "ibkr"] as const;
 
 const ACCOUNT_TYPE_LABELS: Record<(typeof ACCOUNT_TYPES)[number], string> = {
   merrill: "Merrill",
   fidelity: "Fidelity",
-  etrade: "E*TRADE"
+  etrade: "E*TRADE",
+  ibkr: "Interactive Brokers (IBKR)"
 };
 
 type AccountRow = {

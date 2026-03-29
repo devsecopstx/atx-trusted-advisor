@@ -22,7 +22,7 @@ class AdminPortfolioAccountsService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
 ) {
-    private val accountTypes = setOf("merrill", "fidelity", "etrade")
+    private val accountTypes = setOf("merrill", "fidelity", "etrade", "ibkr")
     private val riskProfiles = setOf("conservative", "balanced", "growth")
     private val outlookSlugs = setOf("growth", "income", "balanced", "aggressive")
 

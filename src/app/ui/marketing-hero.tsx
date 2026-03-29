@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { AtxFinanceLogo } from "./atxfinance-logo";
@@ -5,18 +6,14 @@ import { USER_PRODUCT_DESCRIPTOR_LINE } from "./product-brand-constants";
 
 function AtxFinanceIcon() {
   return (
-    <svg
-      aria-hidden="true"
+    <Image
+      alt=""
+      aria-hidden
       className="mh-product-icon"
-      fill="none"
-      viewBox="0 0 64 64"
-    >
-      <rect x="6" y="12" width="52" height="40" rx="6" stroke="var(--xf-text-300)" strokeWidth="1.5" />
-      <path d="M6 24h52" stroke="var(--xf-text-300)" strokeWidth="1.5" />
-      <rect x="14" y="30" width="12" height="6" rx="2" fill="rgba(255,255,255,0.06)" stroke="var(--xf-text-300)" strokeWidth="1" />
-      <rect x="14" y="40" width="12" height="6" rx="2" fill="rgba(255,255,255,0.06)" stroke="var(--xf-text-300)" strokeWidth="1" />
-      <path d="M34 33l5 4 9-10" stroke="var(--xf-gain-green)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    </svg>
+      height={48}
+      src="/branding/app-hero-icon.png"
+      width={48}
+    />
   );
 }
 

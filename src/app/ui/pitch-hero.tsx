@@ -2,6 +2,7 @@
 
 import { useForm, ValidationError } from "@formspree/react";
 import { motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 
 const pageVariants = {
@@ -256,6 +257,15 @@ export default function Hero({
         <div className="max-w-4xl mx-auto text-center">
           <motion.div initial="hidden" animate="visible" variants={pageVariants}>
             <motion.div variants={bulletItemVariants} className="mb-8">
+              <div className="mb-5 flex justify-center">
+                <Image
+                  alt="aTx app hero icon"
+                  className="h-20 w-20 rounded-2xl border border-white/10 bg-white/5 p-1 shadow-xl shadow-black/30"
+                  height={80}
+                  src="/branding/app-hero-icon.png"
+                  width={80}
+                />
+              </div>
               <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-emerald-500/90 font-semibold mb-3">
                 Options income · Delegated
               </p>

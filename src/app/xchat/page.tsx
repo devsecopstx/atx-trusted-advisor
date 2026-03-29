@@ -9,6 +9,7 @@ import { resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository
 
 import { XchatConversation } from "./ui/xchat-conversation";
 import { XchatGuestPanel } from "./ui/xchat-guest-panel";
+import { XchatGuestReadonlyShell } from "./ui/xchat-guest-readonly-shell";
 
 type XchatPageProps = {
   searchParams: Promise<{ error?: string; details?: string }>;
@@ -33,12 +34,14 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       <div className="xchat-shell">
         <XchatGuestHeader />
         <div className="xchat-body">
-          <XchatGuestPanel
-            authDetails={authDetails}
-            authError={authError}
-            googleLoginHref={googleLoginHref}
-            pendingXHandle={pendingXHandle}
-          />
+          <XchatGuestReadonlyShell>
+            <XchatGuestPanel
+              authDetails={authDetails}
+              authError={authError}
+              googleLoginHref={googleLoginHref}
+              pendingXHandle={pendingXHandle}
+            />
+          </XchatGuestReadonlyShell>
         </div>
       </div>
     );
@@ -75,14 +78,16 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             welcomeName={appUserPrimaryDisplayName(session)}
           />
         ) : (
-          <XchatGuestPanel
-            authDetails={authDetails}
-            authError={authError}
-            googleLoginHref={googleLoginHref}
-            pendingApproval
-            pendingXHandle={pendingXHandle}
-            userEmail={session.email}
-          />
+          <XchatGuestReadonlyShell>
+            <XchatGuestPanel
+              authDetails={authDetails}
+              authError={authError}
+              googleLoginHref={googleLoginHref}
+              pendingApproval
+              pendingXHandle={pendingXHandle}
+              userEmail={session.email}
+            />
+          </XchatGuestReadonlyShell>
         )}
       </div>
     </div>

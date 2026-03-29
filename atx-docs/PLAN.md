@@ -96,6 +96,14 @@ OpenAPI parity, `atxdesign-review-audit` gaps, product doc parity (`xchat-tools-
 | CI gate              | Pass               | `npm run ci:gate` — lint, typecheck, tests.                                                                                                                                                                                                                                                                                                                            |
 
 
+### Deploy reliability TODOs (GH-first, CLI fallback)
+
+- **GH-first build path:** Keep `gcloud builds submit --async` + explicit `gcloud builds describe` polling in both deploy workflows to avoid false failures from log-stream permission limits on default build buckets.
+- **Terminal-state contract:** Workflow must fail only on terminal non-success statuses (`FAILURE`, `INTERNAL_ERROR`, `TIMEOUT`, `CANCELLED`, `EXPIRED`), and always print Cloud Build id + log URL for operator triage.
+- **Version verification gate:** After deploy, verify both URLs return the same footer/app version: custom staging domain (`STAGING_BASE_URL`) and Cloud Run service URL (`status.url`). Treat mismatch as routing/cache drift.
+- **Fallback runbook:** If GH deploy stalls or permission-drifts, use `scripts/ops/deploy-cloud-run-from-env.sh --staging` (or `--production` with approvals) as documented operator fallback.
+- **Promotion discipline:** Prefer immutable image promotion (`image_ref` with digest) when rebuilding is unnecessary; use branch SHA tags only for build provenance.
+
 ### BFF completion status (rolling)
 
 Major app-user and admin domains are proxied when `ATXFINANCE_BACKEND_ORIGIN` is set; registry ↔ Next wiring is enforced by `tests/unit/bff-proxy-registry-next-handlers.test.ts`. **Deferred:** xChat `/api/xchat/*` stays Next-authoritative.

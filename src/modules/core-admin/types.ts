@@ -172,7 +172,7 @@ export type DeployNoteConfig = {
   updatedAt: Date;
 };
 
-export const accountTypeValues = ["merrill", "fidelity", "etrade"] as const;
+export const accountTypeValues = ["merrill", "fidelity", "etrade", "ibkr"] as const;
 export type AccountType = (typeof accountTypeValues)[number];
 
 /** Account positioning outlook (admin pick list); user surfaces may concatenate with other context. */
@@ -187,7 +187,7 @@ export function parseAccountOutlook(raw: unknown): AccountOutlook | null {
   return (accountOutlookValues as readonly string[]).includes(t) ? (t as AccountOutlook) : null;
 }
 
-/** Admin-managed broker definitions (slug + display); seeds Merrill / Fidelity / E*TRADE. */
+/** Admin-managed broker definitions (slug + display); seeds Merrill / Fidelity / E*TRADE / IBKR. */
 export type BrokerCatalogEntry = {
   _id?: ObjectId;
   /** Lowercase slug used as portfolio `broker_type` (e.g. merrill). */

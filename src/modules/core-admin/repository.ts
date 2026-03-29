@@ -1798,6 +1798,7 @@ async function seedBrokerCatalogIfEmpty(): Promise<void> {
       name: "Merrill Edge",
       description:
         "Bank of America Merrill Edge — typical CSV exports for positions and activity (admin + broker import defaults).",
+      iconUrl: "/brokers/merrill-edge.png",
       createdAt: now,
       updatedAt: now
     },
@@ -1805,6 +1806,7 @@ async function seedBrokerCatalogIfEmpty(): Promise<void> {
       type: "fidelity",
       name: "Fidelity",
       description: "Fidelity Investments — common retail brokerage CSV layouts for holdings.",
+      iconUrl: "/brokers/fidelity.png",
       createdAt: now,
       updatedAt: now
     },
@@ -1812,13 +1814,22 @@ async function seedBrokerCatalogIfEmpty(): Promise<void> {
       type: "etrade",
       name: "E*TRADE",
       description: "E*TRADE from Morgan Stanley — CSV holdings and history exports.",
+      iconUrl: "/brokers/etrade.png",
+      createdAt: now,
+      updatedAt: now
+    },
+    {
+      type: "ibkr",
+      name: "Interactive Brokers (IBKR)",
+      description: "Interactive Brokers (IBKR) — multi-asset brokerage accounts and global trading.",
+      iconUrl: "/brokers/ibkr.png",
       createdAt: now,
       updatedAt: now
     }
   ]);
 }
 
-/** Ensures indexes and default Merrill / Fidelity / E*TRADE rows when the catalog is empty. */
+/** Ensures indexes and default Merrill / Fidelity / E*TRADE / IBKR rows when the catalog is empty. */
 export async function adminEnsureBrokerCatalogReady(): Promise<void> {
   await seedBrokerCatalogIfEmpty();
 }

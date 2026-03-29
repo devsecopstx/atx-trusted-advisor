@@ -14,7 +14,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "aTx Trusted Advisory",
   description:
-    "aTx⚡Finance — Powered by xAI. No Atoms Moved. Just Gains Earned. Options workspace, xChat, and portfolio tools."
+    "aTx⚡Finance — Powered by xAI. No Atoms Moved. Just Gains Earned. Options workspace, xChat, and portfolio tools.",
+  icons: {
+    icon: "/branding/app-hero-icon.png",
+    shortcut: "/branding/app-hero-icon.png",
+    apple: "/branding/app-hero-icon.png"
+  }
 };
 
 type RootLayoutProps = {

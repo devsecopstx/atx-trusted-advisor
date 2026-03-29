@@ -20,7 +20,7 @@ class PortfolioNestedResourceService(
     private val portfolioCrud: PortfolioCrudService,
     private val provisionService: DefaultPortfolioProvisionService,
 ) {
-    private val accountTypes = setOf("merrill", "fidelity", "etrade")
+    private val accountTypes = setOf("merrill", "fidelity", "etrade", "ibkr")
     private val defaultWatchlistSymbol = "TSLA"
 
     fun listAccountsShaped(session: ResolvedSession, portfolioId: String): List<Map<String, Any?>>? {

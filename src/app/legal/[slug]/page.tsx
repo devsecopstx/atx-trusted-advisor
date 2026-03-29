@@ -16,6 +16,7 @@ import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
+import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-shell";
 import { getSessionUser } from "@/lib/auth";
 import { canUserLogin } from "@/modules/identity/authorization";
 import "../../xchat/xchat.css";
@@ -83,8 +84,10 @@ export default async function LegalSlugPage({ params }: PageProps) {
     <div className="xchat-shell">
       <XchatGuestHeader />
       <div className="xchat-body" style={{ padding: "1rem" }}>
-        {legalDoc}
-        <GlobalFooter />
+        <XchatGuestReadonlyShell>
+          {legalDoc}
+          <GlobalFooter />
+        </XchatGuestReadonlyShell>
       </div>
     </div>
   );

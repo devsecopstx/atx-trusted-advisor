@@ -159,6 +159,10 @@ export type AppUserRailNavProps = {
   isGlobalAdmin: boolean;
   /** When false, disclosure starts collapsed (e.g. xChat first land). Default true elsewhere. */
   railDisclosureDefaultOpen?: boolean;
+  /** Hide non-resource shortcuts (used by guest/public shells). */
+  showReferenceDocs?: boolean;
+  /** Hide account settings row (used by guest/read-only shells). */
+  showSettingsLink?: boolean;
 };
 
 export type AppUserPublicRailContext = {
@@ -172,7 +176,8 @@ export type AppUserAccountPublicRailProps = AppUserRailNavProps & {
 
 export function AppUserResourcesRailSection({
   isGlobalAdmin,
-  railDisclosureDefaultOpen = true
+  railDisclosureDefaultOpen = true,
+  showReferenceDocs = true
 }: AppUserRailNavProps) {
   return (
     <section className="app-user-rail-section" aria-label="Resources">
@@ -185,19 +190,21 @@ export function AppUserResourcesRailSection({
           <RailNavLink href="/resources/about">About</RailNavLink>
           <RailNavLink href="/resources/getting-started">Getting Started</RailNavLink>
           <RailNavLink href="/resources/secret-sauce">Secret Sauce</RailNavLink>
-          <RailNavLink href="/resources/building-wheel">Building Wheel</RailNavLink>
+          <RailNavLink href="/resources/building-wheel">Building a Wheel</RailNavLink>
           <RailNavLink href="/resources/building-wheel/wheel-vs-iron-condor">
             Wheel vs Iron Condor
           </RailNavLink>
-          {isGlobalAdmin ? (
-            <RailNavLink href="/admin/api-docs">Reference Docs</RailNavLink>
-          ) : (
-            <XfHoverHint hint="Open API reference from Hub when you have admin access">
-              <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
-                Reference Docs
-              </span>
-            </XfHoverHint>
-          )}
+          {showReferenceDocs
+            ? isGlobalAdmin ? (
+                <RailNavLink href="/admin/api-docs">Reference Docs</RailNavLink>
+              ) : (
+                <XfHoverHint hint="Open API reference from Hub when you have admin access">
+                  <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
+                    Reference Docs
+                  </span>
+                </XfHoverHint>
+              )
+            : null}
         </nav>
       </RailDisclosure>
     </section>
@@ -233,7 +240,8 @@ export function AppUserXchatRailSection({ railDisclosureDefaultOpen = true }: { 
 
 export function AppUserAccountRailSection({
   isGlobalAdmin,
-  railDisclosureDefaultOpen = true
+  railDisclosureDefaultOpen = true,
+  showSettingsLink = true
 }: AppUserRailNavProps) {
   return (
     <section className="app-user-rail-section" aria-label="Account">
@@ -247,15 +255,17 @@ export function AppUserAccountRailSection({
             Plans &amp; billing
           </RailNavLink>
           <AccountLegalLink />
-          {isGlobalAdmin ? (
-            <AccountSublink href="/admin/manage_account">Settings</AccountSublink>
-          ) : (
-            <XfHoverHint hint="Workspace settings are available from Hub (admin)">
-              <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
-                Settings
-              </span>
-            </XfHoverHint>
-          )}
+          {showSettingsLink
+            ? isGlobalAdmin ? (
+                <AccountSublink href="/admin/manage_account">Settings</AccountSublink>
+              ) : (
+                <XfHoverHint hint="Workspace settings are available from Hub (admin)">
+                  <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
+                    Settings
+                  </span>
+                </XfHoverHint>
+              )
+            : null}
         </nav>
       </RailDisclosure>
     </section>

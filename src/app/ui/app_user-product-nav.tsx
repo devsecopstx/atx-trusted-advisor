@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -43,35 +44,14 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
     href: "/xstrategybuilder",
     icon: (
       <IconWrap>
-        <svg viewBox="0 0 20 20" fill="none">
-          <circle cx="10" cy="10" r="1.75" fill="currentColor" />
-          <ellipse
-            cx="10"
-            cy="10"
-            rx="7.25"
-            ry="2.4"
-            stroke="currentColor"
-            strokeWidth="1.35"
-          />
-          <ellipse
-            cx="10"
-            cy="10"
-            rx="7.25"
-            ry="2.4"
-            stroke="currentColor"
-            strokeWidth="1.35"
-            transform="rotate(60 10 10)"
-          />
-          <ellipse
-            cx="10"
-            cy="10"
-            rx="7.25"
-            ry="2.4"
-            stroke="currentColor"
-            strokeWidth="1.35"
-            transform="rotate(-60 10 10)"
-          />
-        </svg>
+        <Image
+          alt=""
+          aria-hidden
+          className="xchat-header-icon-link__glyph-img"
+          height={20}
+          src="/branding/xstrategybuilder-topnav-icon.png"
+          width={20}
+        />
       </IconWrap>
     )
   },
