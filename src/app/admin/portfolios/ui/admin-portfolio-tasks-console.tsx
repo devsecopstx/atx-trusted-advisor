@@ -37,6 +37,12 @@ type TaskRun = {
   output: string;
 };
 
+type SchedulePayload = {
+  scheduleCron?: string;
+  scheduleRRule?: string;
+  scheduleDescription?: string;
+};
+
 const CATEGORIES = [...SCHEDULED_TASK_CATEGORIES];
 const POLL_INTERVAL_MS = 30_000;
 
@@ -83,6 +89,16 @@ const JOB_TYPE_LABELS: Record<ScheduledTaskDoc["category"], string> = {
   watchlist_price_scanner: "watchlist_price_scanner (legacy)",
   daily_options_scanner: "daily_options_scanner (legacy)"
 };
+
+function buildSchedulePayload(schedule: SchedulePayload) {
+  return {
+    schedule: {
+      cron: schedule.scheduleCron,
+      rrule: schedule.scheduleRRule,
+      description: schedule.scheduleDescription
+    }
+  };
+}
 
 export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: string }) {
   const [activePanel, setActivePanel] = useState<"jobs" | "task-runs">("jobs");
@@ -202,9 +218,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
           body: JSON.stringify({
             name: jobName,
             category: createJobType,
-            scheduleCron: createSchedule.scheduleCron,
-            scheduleRRule: createSchedule.scheduleRRule,
-            scheduleDescription: createSchedule.scheduleDescription,
+            ...buildSchedulePayload(createSchedule),
             enabled: true
           })
         })
@@ -234,9 +248,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
           body: JSON.stringify({
             name: m.name,
             category: m.category,
-            scheduleCron: m.scheduleCron,
-            scheduleRRule: m.scheduleRRule,
-            scheduleDescription: m.scheduleDescription,
+            ...buildSchedulePayload(m),
             enabled: m.enabled
           })
         })
@@ -314,9 +326,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
             body: JSON.stringify({
               name: m.name,
               category: m.category,
-              scheduleCron: m.scheduleCron,
-              scheduleRRule: m.scheduleRRule,
-              scheduleDescription: m.scheduleDescription,
+              ...buildSchedulePayload(m),
               enabled: m.enabled
             })
           })
@@ -475,7 +485,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
                   })
                 }
               >
-                Open Cron Builder
+                Open RRULE Builder
               </button>
               <button className="cta cta-primary" type="button" disabled={loading} onClick={() => void createJob()}>
                 <AddIcon className="crud-icon" /> Create job schedule
@@ -566,7 +576,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
                                 setCronBuilder({
                                   mode: "edit",
                                   taskId: id,
-                                  title: `Edit Cron — ${m.name}`,
+                                  title: `Edit Schedule — ${m.name}`,
                                   schedule: {
                                     scheduleCron: m.scheduleCron,
                                     scheduleRRule: m.scheduleRRule,
@@ -576,7 +586,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
                               }
                               type="button"
                             >
-                              Cron Builder
+                              RRULE Builder
                             </button>
                           </td>
                           <td>

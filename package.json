@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-core-app",
-  "version": "2.6.4",
+  "version": "2.6.5",
   "description": "aTx⚡Finance Advisory software and services for finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -74,7 +74,6 @@
   "dependencies": {
     "@formspree/react": "^3.0.0",
     "@google-cloud/pubsub": "^4.11.0",
-    "antd": "^6.3.4",
     "apexcharts": "^5.10.4",
     "chart.js": "^4.5.1",
     "chartjs-plugin-annotation": "^3.1.0",
@@ -86,8 +85,8 @@
     "react-apexcharts": "^2.1.0",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.4",
-    "react-js-cron": "^5.2.0",
     "react-markdown": "^10.1.0",
+    "react-rrule-generator": "^1.2.0",
     "react-syntax-highlighter": "^16.1.1",
     "redis": "^4.7.1",
     "rehype-sanitize": "^6.0.0",

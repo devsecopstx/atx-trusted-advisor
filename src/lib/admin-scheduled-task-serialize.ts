@@ -7,6 +7,11 @@ export function serializeScheduledTaskForJson(t: ScheduledTask) {
     portfolioId: t.portfolioId?.toHexString(),
     name: t.name,
     category: t.category,
+    schedule: {
+      rrule: t.scheduleRRule,
+      cron: t.scheduleCron,
+      description: t.scheduleDescription
+    },
     scheduleCron: t.scheduleCron,
     scheduleRRule: t.scheduleRRule,
     scheduleDescription: t.scheduleDescription,

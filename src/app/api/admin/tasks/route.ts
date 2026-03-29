@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
+import {
+    normalizeScheduledTaskSchedule,
+    scheduledTaskScheduleObjectSchema
+} from "@/lib/scheduled-task-request-payload";
 import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
 import {
     createScheduledTask,
@@ -13,6 +18,7 @@ import {
 const createTaskSchema = z.object({
   name: z.string().min(1),
   category: scheduledTaskCategorySchema,
+  schedule: scheduledTaskScheduleObjectSchema,
   scheduleCron: z.string().trim().min(5).optional(),
   scheduleRRule: z.string().trim().min(1).max(1024).optional(),
   scheduleDescription: z.string().trim().min(1).max(280).optional(),
@@ -35,7 +41,7 @@ export async function GET(request: Request) {
   const tasks = await listScheduledTasks({
     tenantId: session.tenantId
   });
-  return NextResponse.json({ data: tasks });
+  return NextResponse.json({ data: tasks.map(serializeScheduledTaskForJson) });
 }
 
 export async function POST(request: Request) {
@@ -58,10 +64,8 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const scheduleValidation = validateScheduleInput({
-    scheduleCron: parsed.data.scheduleCron,
-    scheduleRRule: parsed.data.scheduleRRule
-  });
+  const normalizedSchedule = normalizeScheduledTaskSchedule(parsed.data);
+  const scheduleValidation = validateScheduleInput(normalizedSchedule);
   if (!scheduleValidation.ok) {
     return NextResponse.json(
       { error: scheduleValidation.message ?? "Invalid schedule payload" },
@@ -70,8 +74,15 @@ export async function POST(request: Request) {
   }
 
   const created = await createScheduledTask({
-    ...parsed.data,
+    name: parsed.data.name,
+    category: parsed.data.category,
+    enabled: parsed.data.enabled,
+    lastRunAt: parsed.data.lastRunAt,
+    nextRunAt: parsed.data.nextRunAt,
+    scheduleCron: normalizedSchedule.scheduleCron,
+    scheduleRRule: normalizedSchedule.scheduleRRule,
+    scheduleDescription: normalizedSchedule.scheduleDescription,
     tenantId: session.tenantId
   });
-  return NextResponse.json({ data: created }, { status: 201 });
+  return NextResponse.json({ data: serializeScheduledTaskForJson(created) }, { status: 201 });
 }

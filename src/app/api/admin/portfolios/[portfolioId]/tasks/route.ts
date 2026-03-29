@@ -5,6 +5,10 @@ import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serial
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
+import {
+    normalizeScheduledTaskSchedule,
+    scheduledTaskScheduleObjectSchema
+} from "@/lib/scheduled-task-request-payload";
 import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
 import {
     adminGetPortfolioById,
@@ -19,6 +23,7 @@ type RouteContext = {
 const createTaskSchema = z.object({
   name: z.string().min(1).max(200),
   category: scheduledTaskCategorySchema,
+  schedule: scheduledTaskScheduleObjectSchema,
   scheduleCron: z.string().trim().min(5).max(128).optional(),
   scheduleRRule: z.string().trim().min(1).max(1024).optional(),
   scheduleDescription: z.string().trim().min(1).max(280).optional(),
@@ -82,10 +87,8 @@ export async function POST(request: Request, context: RouteContext) {
       { status: 400 }
     );
   }
-  const scheduleValidation = validateScheduleInput({
-    scheduleCron: parsed.data.scheduleCron,
-    scheduleRRule: parsed.data.scheduleRRule
-  });
+  const normalizedSchedule = normalizeScheduledTaskSchedule(parsed.data);
+  const scheduleValidation = validateScheduleInput(normalizedSchedule);
   if (!scheduleValidation.ok) {
     return NextResponse.json(
       { error: scheduleValidation.message ?? "Invalid schedule payload" },
@@ -96,9 +99,9 @@ export async function POST(request: Request, context: RouteContext) {
   const created = await createScheduledTask({
     name: parsed.data.name,
     category: parsed.data.category,
-    scheduleCron: parsed.data.scheduleCron,
-    scheduleRRule: parsed.data.scheduleRRule,
-    scheduleDescription: parsed.data.scheduleDescription,
+    scheduleCron: normalizedSchedule.scheduleCron,
+    scheduleRRule: normalizedSchedule.scheduleRRule,
+    scheduleDescription: normalizedSchedule.scheduleDescription,
     enabled: parsed.data.enabled ?? true,
     lastRunAt: parsed.data.lastRunAt,
     nextRunAt: parsed.data.nextRunAt,

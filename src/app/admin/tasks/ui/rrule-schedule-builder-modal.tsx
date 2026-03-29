@@ -10,9 +10,6 @@ type ScheduleDraft = {
   scheduleDescription?: string;
 };
 
-type BuilderFrequency = "DAILY" | "WEEKLY" | "MONTHLY";
-type MonthMode = "day_of_month" | "last_day";
-
 type Props = {
   open: boolean;
   title: string;
@@ -22,196 +19,99 @@ type Props = {
   onApply: (next: Required<Pick<ScheduleDraft, "scheduleRRule" | "scheduleDescription">> & Pick<ScheduleDraft, "scheduleCron">) => void;
 };
 
-const WEEK_DAYS: Array<{ key: number; label: string }> = [
-  { key: 1, label: "Mon" },
-  { key: 2, label: "Tue" },
-  { key: 3, label: "Wed" },
-  { key: 4, label: "Thu" },
-  { key: 5, label: "Fri" },
-  { key: 6, label: "Sat" },
-  { key: 0, label: "Sun" }
-];
-
-type SchedulerState = {
-  frequency: BuilderFrequency;
-  interval: number;
-  hour: number;
-  minute: number;
-  weekDays: number[];
-  monthMode: MonthMode;
-  monthDay: number;
-};
-
-function weekdayLabelToNumber(value: string): number {
-  switch (value) {
-    case "SU":
-      return 0;
-    case "MO":
-      return 1;
-    case "TU":
-      return 2;
-    case "WE":
-      return 3;
-    case "TH":
-      return 4;
-    case "FR":
-      return 5;
-    case "SA":
-      return 6;
-    default:
-      return 1;
-  }
-}
-
-function parseRRuleToState(rruleValue?: string): SchedulerState {
-  const fallback: SchedulerState = {
-    frequency: "DAILY",
-    interval: 1,
-    hour: 9,
-    minute: 0,
-    weekDays: [1],
-    monthMode: "day_of_month",
-    monthDay: 1
-  };
-  if (!rruleValue) {
-    return fallback;
-  }
-  try {
-    const parsed = rrulestr(rruleValue);
-    if (!(parsed instanceof RRule)) {
-      return fallback;
-    }
-    const options = parsed.origOptions;
-    const hour = Array.isArray(options.byhour) ? options.byhour[0] ?? 9 : 9;
-    const minute = Array.isArray(options.byminute) ? options.byminute[0] ?? 0 : 0;
-    const interval = options.interval ?? 1;
-    if (options.freq === RRule.WEEKLY) {
-      const byweekday = Array.isArray(options.byweekday)
-        ? options.byweekday
-        : options.byweekday !== undefined
-          ? [options.byweekday]
-          : [RRule.MO];
-      const days = byweekday.map((day) => {
-        if (day == null) {
-          return 1;
-        }
-        if (typeof day === "number") {
-          return day;
-        }
-        if (typeof day === "string") {
-          return weekdayLabelToNumber(day);
-        }
-        return day.weekday;
-      });
-      return {
-        frequency: "WEEKLY",
-        interval,
-        hour,
-        minute,
-        weekDays: days,
-        monthMode: "day_of_month",
-        monthDay: 1
-      };
-    }
-    if (options.freq === RRule.MONTHLY) {
-      const monthDay = Array.isArray(options.bymonthday) ? options.bymonthday[0] ?? 1 : 1;
-      return {
-        frequency: "MONTHLY",
-        interval,
-        hour,
-        minute,
-        weekDays: [1],
-        monthMode: monthDay === -1 ? "last_day" : "day_of_month",
-        monthDay: monthDay > 0 ? monthDay : 1
-      };
-    }
-    return {
-      frequency: "DAILY",
-      interval,
-      hour,
-      minute,
-      weekDays: [1],
-      monthMode: "day_of_month",
-      monthDay: 1
-    };
-  } catch {
-    return fallback;
-  }
-}
-
-function monthDayOptions(): number[] {
-  return Array.from({ length: 31 }, (_, idx) => idx + 1);
-}
-
-function buildRRuleFromState(state: SchedulerState): RRule {
+function buildPresetRRule(preset: "daily_8" | "weekly_mon_9" | "monthly_1st_9" | "eom_16"): string {
   const now = new Date();
-  const dtstart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), state.hour, state.minute, 0)
-  );
-  if (state.frequency === "DAILY") {
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const day = now.getUTCDate();
+  if (preset === "daily_8") {
     return new RRule({
       freq: RRule.DAILY,
-      interval: state.interval,
-      byhour: [state.hour],
-      byminute: [state.minute],
-      dtstart
-    });
+      interval: 1,
+      byhour: [8],
+      byminute: [0],
+      dtstart: new Date(Date.UTC(year, month, day, 8, 0, 0))
+    }).toString();
   }
-  if (state.frequency === "WEEKLY") {
-    const weekdays = state.weekDays.length > 0 ? state.weekDays : [1];
-    const byweekday = weekdays.map((day) => weekdayFromNumber(day));
+  if (preset === "weekly_mon_9") {
     return new RRule({
       freq: RRule.WEEKLY,
-      interval: state.interval,
-      byhour: [state.hour],
-      byminute: [state.minute],
-      byweekday,
-      dtstart
-    });
+      interval: 1,
+      byweekday: [RRule.MO],
+      byhour: [9],
+      byminute: [0],
+      dtstart: new Date(Date.UTC(year, month, day, 9, 0, 0))
+    }).toString();
+  }
+  if (preset === "monthly_1st_9") {
+    return new RRule({
+      freq: RRule.MONTHLY,
+      interval: 1,
+      bymonthday: [1],
+      byhour: [9],
+      byminute: [0],
+      dtstart: new Date(Date.UTC(year, month, day, 9, 0, 0))
+    }).toString();
   }
   return new RRule({
     freq: RRule.MONTHLY,
-    interval: state.interval,
-    byhour: [state.hour],
-    byminute: [state.minute],
-    bymonthday: [state.monthMode === "last_day" ? -1 : state.monthDay],
-    dtstart
-  });
+    interval: 1,
+    bymonthday: [-1],
+    byhour: [16],
+    byminute: [0],
+    dtstart: new Date(Date.UTC(year, month, day, 16, 0, 0))
+  }).toString();
 }
 
-function weekdayFromNumber(value: number) {
-  switch (value) {
-    case 0:
-      return RRule.SU;
-    case 1:
-      return RRule.MO;
-    case 2:
-      return RRule.TU;
-    case 3:
-      return RRule.WE;
-    case 4:
-      return RRule.TH;
-    case 5:
-      return RRule.FR;
-    case 6:
-      return RRule.SA;
-    default:
-      return RRule.MO;
-  }
-}
+function rruleToCronFallback(rruleValue: string): string | undefined {
+  try {
+    const parsed = rrulestr(rruleValue);
+    if (!(parsed instanceof RRule)) {
+      return undefined;
+    }
+    const options = parsed.origOptions;
+    const interval = options.interval ?? 1;
+    const hour = Array.isArray(options.byhour) ? options.byhour[0] : undefined;
+    const minute = Array.isArray(options.byminute) ? options.byminute[0] : undefined;
+    if (hour === undefined || minute === undefined) {
+      return undefined;
+    }
 
-function cronSuggestionFromState(state: SchedulerState): string | undefined {
-  if (state.frequency === "DAILY" && state.interval === 1) {
-    return `${state.minute} ${state.hour} * * *`;
+    if (options.freq === RRule.DAILY && interval === 1) {
+      return `${minute} ${hour} * * *`;
+    }
+    if (options.freq === RRule.WEEKLY && interval === 1) {
+      const daysRaw = Array.isArray(options.byweekday)
+        ? options.byweekday
+        : options.byweekday !== undefined
+          ? [options.byweekday]
+          : [];
+      const days = daysRaw
+        .map((day) => {
+          if (typeof day === "number") {
+            return day;
+          }
+          if (day && typeof day === "object" && "weekday" in day) {
+            return day.weekday;
+          }
+          return undefined;
+        })
+        .filter((day): day is number => day !== undefined)
+        .sort((a, b) => a - b);
+      if (days.length > 0) {
+        return `${minute} ${hour} * * ${days.join(",")}`;
+      }
+    }
+    if (options.freq === RRule.MONTHLY && interval === 1 && Array.isArray(options.bymonthday)) {
+      const monthDay = options.bymonthday[0];
+      if (typeof monthDay === "number" && monthDay > 0) {
+        return `${minute} ${hour} ${monthDay} * *`;
+      }
+    }
+    return undefined;
+  } catch {
+    return undefined;
   }
-  if (state.frequency === "WEEKLY" && state.interval === 1 && state.weekDays.length > 0) {
-    const sorted = [...state.weekDays].sort((a, b) => a - b).join(",");
-    return `${state.minute} ${state.hour} * * ${sorted}`;
-  }
-  if (state.frequency === "MONTHLY" && state.interval === 1 && state.monthMode === "day_of_month") {
-    return `${state.minute} ${state.hour} ${state.monthDay} * *`;
-  }
-  return undefined;
 }
 
 export function RRuleScheduleBuilderModal({
@@ -222,25 +122,38 @@ export function RRuleScheduleBuilderModal({
   onClose,
   onApply
 }: Props) {
-  const [state, setState] = useState<SchedulerState>(() => parseRRuleToState(initial.scheduleRRule));
+  const [rruleValue, setRRuleValue] = useState<string>(
+    initial.scheduleRRule ?? buildPresetRRule("daily_8")
+  );
 
   const built = useMemo(() => {
-    const rule = buildRRuleFromState(state);
-    const scheduleRRule = rule.toString();
-    const scheduleDescription = rule.toText().slice(0, 280);
-    const scheduleCron = cronSuggestionFromState(state);
-    const cronDescription =
-      scheduleCron != null
-        ? (() => {
-            try {
-              return cronstrue.toString(scheduleCron);
-            } catch {
-              return "";
-            }
-          })()
-        : "";
-    return { scheduleRRule, scheduleDescription, scheduleCron, cronDescription };
-  }, [state]);
+    try {
+      const parsed = rrulestr(rruleValue);
+      const rule = parsed instanceof RRule ? parsed : null;
+      const scheduleRRule = rule?.toString() ?? rruleValue;
+      const scheduleDescription = (rule?.toText() ?? "Custom RRULE schedule").slice(0, 280);
+      const scheduleCron = rruleToCronFallback(scheduleRRule);
+      const cronDescription =
+        scheduleCron != null
+          ? (() => {
+              try {
+                return cronstrue.toString(scheduleCron);
+              } catch {
+                return "";
+              }
+            })()
+          : "";
+      return { isValid: true, scheduleRRule, scheduleDescription, scheduleCron, cronDescription };
+    } catch {
+      return {
+        isValid: false,
+        scheduleRRule: rruleValue,
+        scheduleDescription: "Invalid RRULE",
+        scheduleCron: undefined,
+        cronDescription: ""
+      };
+    }
+  }, [rruleValue]);
 
   if (!open) {
     return null;
@@ -275,9 +188,7 @@ export function RRuleScheduleBuilderModal({
             type="button"
             className="tiny-button"
             disabled={disabled}
-            onClick={() =>
-              setState((prev) => ({ ...prev, frequency: "DAILY", interval: 1, hour: 8, minute: 0 }))
-            }
+            onClick={() => setRRuleValue(buildPresetRRule("daily_8"))}
           >
             Daily 8:00
           </button>
@@ -285,16 +196,7 @@ export function RRuleScheduleBuilderModal({
             type="button"
             className="tiny-button"
             disabled={disabled}
-            onClick={() =>
-              setState((prev) => ({
-                ...prev,
-                frequency: "WEEKLY",
-                interval: 1,
-                weekDays: [1],
-                hour: 9,
-                minute: 0
-              }))
-            }
+            onClick={() => setRRuleValue(buildPresetRRule("weekly_mon_9"))}
           >
             Weekly Mon 9:00
           </button>
@@ -302,17 +204,7 @@ export function RRuleScheduleBuilderModal({
             type="button"
             className="tiny-button"
             disabled={disabled}
-            onClick={() =>
-              setState((prev) => ({
-                ...prev,
-                frequency: "MONTHLY",
-                interval: 1,
-                monthMode: "day_of_month",
-                monthDay: 1,
-                hour: 9,
-                minute: 0
-              }))
-            }
+            onClick={() => setRRuleValue(buildPresetRRule("monthly_1st_9"))}
           >
             Monthly 1st 9:00
           </button>
@@ -320,158 +212,27 @@ export function RRuleScheduleBuilderModal({
             type="button"
             className="tiny-button"
             disabled={disabled}
-            onClick={() =>
-              setState((prev) => ({
-                ...prev,
-                frequency: "MONTHLY",
-                interval: 1,
-                monthMode: "last_day",
-                hour: 16,
-                minute: 0
-              }))
-            }
+            onClick={() => setRRuleValue(buildPresetRRule("eom_16"))}
           >
             End of month 16:00
           </button>
         </div>
 
-        <div className="crud-table-wrap">
-          <table className="crud-table">
-            <tbody>
-              <tr>
-                <td style={{ width: "180px" }}>Frequency</td>
-                <td>
-                  <select
-                    value={state.frequency}
-                    disabled={disabled}
-                    onChange={(event) =>
-                      setState((prev) => ({ ...prev, frequency: event.currentTarget.value as BuilderFrequency }))
-                    }
-                  >
-                    <option value="DAILY">Daily</option>
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="MONTHLY">Monthly</option>
-                  </select>
-                </td>
-              </tr>
-              <tr>
-                <td>Every</td>
-                <td>
-                  <input
-                    type="number"
-                    min={1}
-                    max={90}
-                    value={state.interval}
-                    disabled={disabled}
-                    onChange={(event) =>
-                      setState((prev) => ({
-                        ...prev,
-                        interval: Math.max(1, Math.min(90, Number(event.currentTarget.value) || 1))
-                      }))
-                    }
-                  />
-                </td>
-              </tr>
-              <tr>
-                <td>Time (UTC)</td>
-                <td className="tool-row" style={{ gap: "0.5rem" }}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={state.hour}
-                    disabled={disabled}
-                    onChange={(event) =>
-                      setState((prev) => ({
-                        ...prev,
-                        hour: Math.max(0, Math.min(23, Number(event.currentTarget.value) || 0))
-                      }))
-                    }
-                  />
-                  <span>:</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={state.minute}
-                    disabled={disabled}
-                    onChange={(event) =>
-                      setState((prev) => ({
-                        ...prev,
-                        minute: Math.max(0, Math.min(59, Number(event.currentTarget.value) || 0))
-                      }))
-                    }
-                  />
-                </td>
-              </tr>
-              {state.frequency === "WEEKLY" ? (
-                <tr>
-                  <td>Weekdays</td>
-                  <td className="tool-row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
-                    {WEEK_DAYS.map((day) => {
-                      const active = state.weekDays.includes(day.key);
-                      return (
-                        <button
-                          key={day.key}
-                          type="button"
-                          className={`tiny-button ${active ? "cta cta-primary" : ""}`}
-                          disabled={disabled}
-                          onClick={() =>
-                            setState((prev) => {
-                              const next = active
-                                ? prev.weekDays.filter((item) => item !== day.key)
-                                : [...prev.weekDays, day.key];
-                              return { ...prev, weekDays: next.length > 0 ? next : [1] };
-                            })
-                          }
-                        >
-                          {day.label}
-                        </button>
-                      );
-                    })}
-                  </td>
-                </tr>
-              ) : null}
-              {state.frequency === "MONTHLY" ? (
-                <tr>
-                  <td>Monthly mode</td>
-                  <td className="tool-row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      className={`tiny-button ${state.monthMode === "day_of_month" ? "cta cta-primary" : ""}`}
-                      disabled={disabled}
-                      onClick={() => setState((prev) => ({ ...prev, monthMode: "day_of_month" }))}
-                    >
-                      Day of month
-                    </button>
-                    <button
-                      type="button"
-                      className={`tiny-button ${state.monthMode === "last_day" ? "cta cta-primary" : ""}`}
-                      disabled={disabled}
-                      onClick={() => setState((prev) => ({ ...prev, monthMode: "last_day" }))}
-                    >
-                      Last day
-                    </button>
-                    {state.monthMode === "day_of_month" ? (
-                      <select
-                        value={state.monthDay}
-                        disabled={disabled}
-                        onChange={(event) =>
-                          setState((prev) => ({ ...prev, monthDay: Number(event.currentTarget.value) || 1 }))
-                        }
-                      >
-                        {monthDayOptions().map((day) => (
-                          <option key={day} value={day}>
-                            {day}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+        <div className="surface-card" style={{ border: "1px solid var(--xf-border-subtle)", padding: "0.75rem" }}>
+          <label className="status-text" htmlFor="rrule-editor">
+            RRULE expression
+          </label>
+          <textarea
+            id="rrule-editor"
+            className="crud-input font-mono text-xs"
+            rows={4}
+            disabled={disabled}
+            value={rruleValue}
+            onChange={(event) => setRRuleValue(event.currentTarget.value)}
+          />
+          <p className="status-text" style={{ marginTop: "0.5rem" }}>
+            Use presets above or paste full RRULE (`FREQ=...;INTERVAL=...`). DTSTART is optional.
+          </p>
         </div>
 
         <div className="stack-gap" style={{ marginTop: "0.8rem" }}>
@@ -499,7 +260,7 @@ export function RRuleScheduleBuilderModal({
           <button
             className="cta cta-primary"
             type="button"
-            disabled={disabled}
+            disabled={disabled || !built.isValid}
             onClick={() =>
               onApply({
                 scheduleRRule: built.scheduleRRule,
