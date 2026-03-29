@@ -588,6 +588,52 @@ describe("respondWithXaiToolLoop", () => {
     expect(secondBody.previous_response_id).toBe("resp_ws_hosted_1");
   });
 
+  it("acks hosted file_search function_call without calling executor", async () => {
+    const executor = vi.fn(async () => ({ result: "should-not-run" }));
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: "resp_fs_hosted_1",
+        model: "grok-4-1-fast",
+        output: [
+          {
+            type: "function_call",
+            call_id: "call_fs",
+            name: "file_search",
+            arguments: JSON.stringify({ vector_store_ids: ["collection_team_default"], query: "TSLA" })
+          }
+        ]
+      })
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: "resp_fs_hosted_2",
+        model: "grok-4-1-fast",
+        output_text: "Collection hits summarized."
+      })
+    });
+
+    const { respondWithXaiToolLoop } = await import("@/lib/xai");
+    const result = await respondWithXaiToolLoop({
+      systemPrompt: "Test",
+      userPrompt: "Search collection for TSLA",
+      tools: [{ type: "file_search", vector_store_ids: ["collection_team_default"] }],
+      maxTurns: 5,
+      executor
+    });
+
+    expect(executor).not.toHaveBeenCalled();
+    expect(result.toolCalls[0]?.name).toBe("file_search");
+    expect(result.toolCalls[0]?.result).toBe("{}");
+    expect(result.outputText).toBe("Collection hits summarized.");
+    const secondBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string) as {
+      previous_response_id?: string;
+    };
+    expect(secondBody.previous_response_id).toBe("resp_fs_hosted_1");
+  });
+
   it("executes tool call and returns final text", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,

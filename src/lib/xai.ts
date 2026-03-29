@@ -604,8 +604,17 @@ type ParsedToolCall = {
   args: Record<string, unknown>;
 };
 
-/** xAI executes these on the server; the local executor must not treat them as atxfinance ops. */
-const XAI_HOSTED_FUNCTION_NAMES = new Set(["web_search", "x_search"]);
+/**
+ * xAI executes these on the server; the local executor must not treat them as
+ * app-level tools. `collections_search` is normalized to `file_search` on wire
+ * for `/v1/responses`, but we keep both for defensive handling.
+ */
+const XAI_HOSTED_FUNCTION_NAMES = new Set([
+  "web_search",
+  "x_search",
+  "file_search",
+  "collections_search"
+]);
 
 /** Matches `ATXFINANCE_TOOL_DEFINITION.function.parameters.properties.operation.enum` — recover when the model prints JSON instead of using API function_call. */
 const ATXFINANCE_SYNTHETIC_OPERATIONS = new Set([

@@ -17,5 +17,6 @@ atxFinance xChat, personas, RAG, batch jobs, and tool wiring are built against *
 - **Interactive xChat:** `POST /api/xchat/ask` → `respondWithXaiToolLoop` or `chatWithXai` (`src/lib/xai.ts`).
 - **Batch:** `POST /api/xchat/batch` → `submitBatchJob` (`src/modules/xchat/batch-service.ts`) using the Batch API.
 - **Tool schemas:** Persona `xapi.tools` are mapped to xAI request tools in `src/lib/xai-tools.ts` (hosted tools + `atxfinance` / `yahoo_finance` function tools).
+ - **Collections mapping:** Persona `collections_search` is normalized to hosted `file_search` (`vector_store_ids`) for `/v1/responses`; xChat loop treats hosted `web_search` / `x_search` / `file_search` as provider-executed and only acknowledges the call output in follow-up turns.
 
 If xAI changes field names, endpoints, or tool semantics, update implementation **and** this folder’s contracts (`atxfinance-tool-stub.md`, `xfeature-tools-plan.md`, [`xchat-tools-guide.md`](./xchat-tools-guide.md)) after verifying against the official docs.

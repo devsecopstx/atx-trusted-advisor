@@ -336,6 +336,48 @@ describe("xchat ask route collection retrieval", () => {
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
   });
 
+  it("wires hybrid hosted tools for ask (collections_search + web_search/x_search)", async () => {
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [
+            { type: "collections_search", collection_ids: ["collection_extra"] },
+            { type: "web_search" },
+            { type: "x_search" }
+          ]
+        }
+      })
+    );
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "hybrid hosted tools wiring"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tools: expect.arrayContaining([
+          {
+            type: "file_search",
+            name: "file_search",
+            vector_store_ids: expect.arrayContaining(["collection_team_default", "collection_extra"])
+          },
+          { type: "web_search", name: "web_search" },
+          { type: "x_search", name: "x_search" }
+        ])
+      })
+    );
+  });
+
   it("keeps context empty when rag is disabled", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({ enableRag: false })
