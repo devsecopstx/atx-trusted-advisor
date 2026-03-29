@@ -101,6 +101,8 @@ Use when you want **`gcloud run deploy --source .`** from your laptop with the *
 
 If **custom domain** and **\*.run.app** show **different `version` values**, the load balancer / serverless NEG is mapped to a **different backend service** than `CLOUD_RUN_SERVICE_STAGING` in `.env.stage`. Fix the LB host rule / NEG attachment so `staging.atx…` points at the service you deploy.
 
+**Two Cloud Run service names in one project (e.g. `xfinance-core-prod` vs `fintech-advisor-prod`):** Deploy scripts target **`CLOUD_RUN_SERVICE_PROD`** only. If `https://xfinance-core-prod-….run.app` still shows an old footer but `https://fintech-advisor-prod-….run.app` matches `package.json`, the **custom domain** is still mapped to the **legacy** service — move **Cloud Run → Domain mappings** for `atx.…` to the service you deploy to, or delete the unused service after cutover. Route 53 only points DNS at Google; **which service** receives traffic is decided in **GCP domain mapping**, not AWS.
+
 **Checklist**
 
 1. **`CLOUD_RUN_SERVICE_STAGING`** in `.env.stage` matches the Cloud Run service behind **`STAGING_BASE_URL`** (same name as in Console → Cloud Run for that hostname’s backend).
