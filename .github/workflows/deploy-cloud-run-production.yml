@@ -157,13 +157,42 @@ jobs:
 
           IMAGE_REPO="${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev/${ARTIFACT_PROJECT_ID}/${ARTIFACT_REPOSITORY}/${{ env.IMAGE_NAME }}"
           IMAGE_TAG="${IMAGE_REPO}:${GITHUB_SHA}"
+          SUBMIT_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           BUILD_META="$(gcloud builds submit --project "${ARTIFACT_PROJECT_ID}" --tag "${IMAGE_TAG}" . --async --format='value(metadata.build.id,metadata.build.logUrl)' || true)"
           BUILD_ID="$(printf '%s\n' "${BUILD_META}" | awk 'NR==1 {print $1}')"
           BUILD_LOG_URL="$(printf '%s\n' "${BUILD_META}" | awk 'NR==1 {$1=""; sub(/^[[:space:]]+/, ""); print}')"
           if [ -z "${BUILD_ID}" ]; then
-            echo "::warning::Cloud Build ID missing from submit output; resolving via builds list for image tag"
+            echo "::warning::Cloud Build ID missing from submit output; resolving via recent builds lookup"
             for _ in $(seq 1 24); do
-              BUILD_ID="$(gcloud builds list --project "${ARTIFACT_PROJECT_ID}" --filter="images:${IMAGE_TAG}" --sort-by=~createTime --limit=1 --format='value(id)' 2>/dev/null || true)"
+              BUILD_ID="$(
+                gcloud builds list --project "${ARTIFACT_PROJECT_ID}" --limit=30 --format=json 2>/dev/null | python3 - "${IMAGE_TAG}" "${SUBMIT_STARTED_AT}" <<'PY'
+import json
+import sys
+
+image_tag = sys.argv[1]
+started_at = sys.argv[2]
+
+try:
+    builds = json.load(sys.stdin)
+except Exception:
+    print("")
+    raise SystemExit(0)
+
+matches = []
+for build in builds:
+    images = build.get("images") or []
+    create_time = build.get("createTime", "")
+    if image_tag in images and (not started_at or create_time >= started_at):
+        matches.append(build)
+
+if not matches:
+    print("")
+    raise SystemExit(0)
+
+matches.sort(key=lambda b: b.get("createTime", ""), reverse=True)
+print(matches[0].get("id", ""))
+PY
+              )"
               if [ -n "${BUILD_ID}" ]; then
                 break
               fi
