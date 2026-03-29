@@ -20,7 +20,7 @@ export function GlobalFooter({ subline }: GlobalFooterProps) {
   const year = new Date().getFullYear();
   const effectiveSubline = subline ?? (
     <>
-      xChat provides educational information and illustrative examples only. It is not investment, tax, or financial
+      provides decision insights, information and illustrative examples only. It is not investment, tax, or financial
       advice. The content is for approved users and does not constitute a licensed professional service. All decisions
       remain the sole responsibility of the user. Consult a qualified, licensed advisor before acting.
     </>
