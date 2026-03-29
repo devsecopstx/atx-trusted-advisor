@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
+import { SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type CollectionBindingEditorPageProps = {
@@ -90,7 +91,7 @@ export function CollectionBindingEditorPage({ collectionId }: CollectionBindingE
           />
           <div className="tool-row">
             <button className="cta cta-primary" type="submit">
-              Save binding
+              <SaveIcon className="crud-icon" /> Save binding
             </button>
             <button className="cta cta-secondary" onClick={() => router.push("/admin/personas")} type="button">
               Cancel

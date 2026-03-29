@@ -17,6 +17,7 @@ import {
     DeleteIcon,
     EditIcon,
     RefreshIcon,
+    SaveIcon,
     UploadIcon
 } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
@@ -703,7 +704,7 @@ export function PersonasConsole({
               Enable RAG
             </label>
             <button className="cta cta-primary" type="submit">
-              <AddIcon className="crud-icon" /> Save persona
+              <SaveIcon className="crud-icon" /> Save persona
             </button>
           </form>
         </article>
@@ -916,7 +917,7 @@ export function PersonasConsole({
                     type="button"
                     disabled={!persona._id || collectionInventory.length === 0}
                   >
-                    <EditIcon className="crud-icon" /> Save collection id
+                    <SaveIcon className="crud-icon" /> Save collection id
                   </button>
                 </div>
               </li>
@@ -1154,7 +1155,7 @@ export function PersonasConsole({
             </label>
             <div className="tool-row">
               <button className="cta cta-primary" type="submit">
-                <EditIcon className="crud-icon" /> Update persona
+                <SaveIcon className="crud-icon" /> Update persona
               </button>
               <button
                 className="cta cta-secondary"

@@ -551,7 +551,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .admin-layout .cta:not(:has(.crud-icon))::before {
-  content: "↗";
+  content: "+";
   font-size: 1.05rem;
   font-weight: 700;
   line-height: 1;
@@ -1351,6 +1351,69 @@ button.xf-icon-edit-btn:disabled {
   gap: 0.35rem 0.5rem;
 }
 
+.admin-portfolio-save-row .cta {
+  min-width: 10.5rem;
+  justify-content: center;
+}
+
+.admin-portfolio-col-name {
+  min-width: 16rem;
+}
+
+.admin-portfolio-name-input {
+  min-width: 16rem;
+  width: min(24rem, 100%);
+}
+
+.admin-portfolio-child-actions {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 15rem;
+}
+
+.admin-portfolio-child-link {
+  display: grid;
+  gap: 0.12rem;
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-900) 40%, transparent);
+  text-decoration: none;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+
+.admin-portfolio-child-link:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 42%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 8%, transparent);
+  transform: translateY(-1px);
+}
+
+.admin-portfolio-child-link__label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+  line-height: 1.2;
+}
+
+.admin-portfolio-child-link__type {
+  font-size: 0.68rem;
+  color: var(--xf-text-300);
+  line-height: 1.25;
+}
+
+.admin-portfolio-child-link--danger {
+  font: inherit;
+  text-align: left;
+  color: var(--xf-text-100);
+  cursor: pointer;
+}
+
+.admin-portfolio-child-link--danger:hover {
+  border-color: color-mix(in srgb, var(--xf-danger-400) 45%, transparent);
+  background: color-mix(in srgb, var(--xf-danger-400) 12%, transparent);
+}
+
 .admin-scoring-factor-cell {
   display: flex;
   flex-direction: row;
@@ -1492,6 +1555,81 @@ button.xf-icon-edit-btn:disabled {
 
 .stack-form textarea {
   resize: vertical;
+}
+
+/* Shared admin input contract for forms outside crud-table cells. */
+input.crud-input,
+textarea.crud-input,
+select.crud-input {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  color: var(--xf-text-100);
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+}
+
+textarea.crud-input {
+  resize: vertical;
+}
+
+input.crud-input::placeholder,
+textarea.crud-input::placeholder {
+  color: color-mix(in srgb, var(--xf-text-300) 78%, transparent);
+}
+
+input.crud-input:focus-visible,
+textarea.crud-input:focus-visible,
+select.crud-input:focus-visible {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 1px;
+  border-color: color-mix(in srgb, var(--xf-gain-green) 48%, transparent);
+}
+
+input.crud-input:disabled,
+textarea.crud-input:disabled,
+select.crud-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+input.crud-input[type="file"] {
+  padding: 0.35rem 0.5rem;
+  color: var(--xf-text-200);
+}
+
+input.crud-input[type="file"]::file-selector-button {
+  margin-right: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 24%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  color: var(--xf-text-100);
+  padding: 0.32rem 0.58rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+input.crud-input[type="file"]::file-selector-button:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 40%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  color: var(--xf-gain-green);
+}
+
+html[data-xf-ui="soft"] input.crud-input,
+html[data-xf-ui="soft"] textarea.crud-input,
+html[data-xf-ui="soft"] select.crud-input {
+  color-scheme: light;
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  border-color: color-mix(in srgb, var(--xf-text-100) 24%, transparent);
+  color: var(--xf-text-100);
+}
+
+html[data-xf-ui="soft"] input.crud-input[type="file"]::file-selector-button {
+  background: color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  border-color: color-mix(in srgb, var(--xf-text-100) 28%, transparent);
+  color: var(--xf-text-100);
 }
 
 .tool-row {

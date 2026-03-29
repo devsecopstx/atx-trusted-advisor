@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type BrokerCatalogOption = { type: string; name: string };
@@ -311,9 +311,9 @@ export function AdminPortfoliosCrud() {
 
   return (
     <article className="surface-card xf-widget section-card">
-      <div className="tool-row" style={{ marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.75rem" }}>
+      <div className="tool-row admin-portfolio-save-row" style={{ marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.75rem" }}>
         <button className="cta cta-secondary" disabled={loading} onClick={() => void refresh()} type="button">
-          <RefreshIcon className="crud-icon" /> Refresh
+          <RefreshIcon className="crud-icon" /> Refresh list
         </button>
         <button
           className="cta cta-primary"
@@ -321,7 +321,7 @@ export function AdminPortfoliosCrud() {
           onClick={() => void saveAllChanges()}
           type="button"
         >
-          Save changes
+          <SaveIcon className="crud-icon" /> Save all changes
         </button>
         <p className="status-text">{status}</p>
       </div>
@@ -347,7 +347,7 @@ export function AdminPortfoliosCrud() {
         <table className="crud-table">
           <thead>
             <tr>
-              <th title="Editable portfolio / book name">Name</th>
+              <th className="admin-portfolio-col-name" title="Editable portfolio / book name">Name</th>
               <th title="Links open User settings for that core user">User</th>
               <th>Tenant org key</th>
               <th title="Cohort / integration grouping; persisted as ext_broker_ref">Tenant org ref</th>
@@ -367,7 +367,7 @@ export function AdminPortfoliosCrud() {
                 <tr key={row._id}>
                   <td>
                     <input
-                      className="crud-input"
+                      className="crud-input admin-portfolio-name-input"
                       value={m.name}
                       onChange={(e) =>
                         setEdits((prev) => ({
@@ -502,7 +502,7 @@ export function AdminPortfoliosCrud() {
                           href={action.path}
                           title={action.title}
                         >
-                          <span>{action.label}</span>
+                          <span className="admin-portfolio-child-link__label">{action.label}</span>
                           <span className="admin-portfolio-child-link__type">{action.typeLabel}</span>
                         </Link>
                       ))}

@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
-import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 import { PortfolioManageNav } from "./portfolio-manage-nav";
@@ -170,7 +170,7 @@ export function AdminPortfolioDeliveryChannelsConsole({ portfolioId }: { portfol
     <section className="panel stack-gap">
       <PortfolioManageNav portfolioId={portfolioId} active="delivery_channels">
         <button type="button" className="cta cta-primary" disabled={loading || !hasAnyDirty} onClick={() => void saveAll()}>
-          Save changes
+          <SaveIcon className="crud-icon" /> Save changes
         </button>
         <button type="button" className="cta cta-secondary" disabled={loading} onClick={() => void refresh()}>
           <RefreshIcon className="crud-icon" /> Refresh

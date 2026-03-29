@@ -11,7 +11,7 @@ import {
     parsePersonaXapiToolsJson,
     personaToolsIncludeHostedSearch
 } from "@/app/admin/personas/ui/personas-onboarding";
-import { DeleteIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
@@ -199,8 +199,13 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             })
           })
         );
-        router.push("/admin/personas");
-        router.refresh();
+        if (mode === "create") {
+          router.push("/admin/personas");
+          router.refresh();
+          return;
+        }
+        setStatus("Changes saved.");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Failed to save persona");
       }
@@ -525,11 +530,31 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             the final response.
           </small>
           <div className="tool-row">
-            <button className="cta cta-primary" disabled={loading} type="submit">
-              {mode === "create" ? "Create persona" : "Save persona"}
+            <button
+              aria-label={mode === "create" ? "Create persona" : "Save persona changes"}
+              className="cta cta-primary"
+              disabled={loading}
+              title={mode === "create" ? "Create this persona" : "Save persona changes"}
+              type="submit"
+            >
+              {mode === "create" ? (
+                <>
+                  <AddIcon className="crud-icon" /> Create persona
+                </>
+              ) : (
+                <>
+                  <SaveIcon className="crud-icon" /> Save changes
+                </>
+              )}
             </button>
-            <button className="cta cta-secondary" onClick={() => router.push("/admin/personas")} type="button">
-              Cancel
+            <button
+              aria-label="Back to personas"
+              className="cta cta-secondary"
+              onClick={() => router.push("/admin/personas")}
+              title="Back to personas list without saving"
+              type="button"
+            >
+              Back to personas
             </button>
             {mode === "edit" && personaId ? (
               <button
@@ -538,8 +563,9 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
                 onClick={() => void onDelete()}
                 type="button"
                 aria-label="Delete persona"
+                title="Delete persona permanently"
               >
-                <DeleteIcon className="crud-icon" /> Delete
+                <DeleteIcon className="crud-icon" /> Delete persona
               </button>
             ) : null}
           </div>

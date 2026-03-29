@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
-import { AddIcon, DeleteIcon, RefreshIcon, RunIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon, RunIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { SCHEDULED_TASK_CATEGORIES } from "@/lib/scheduled-task-category-schema";
 import type { ScheduledTask as ScheduledTaskDoc } from "@/modules/core-admin/types";
@@ -251,7 +251,7 @@ export function TasksConsole() {
           onClick={() => void saveAllDirty()}
           type="button"
         >
-          Save changes
+          <SaveIcon className="crud-icon" /> Save changes
         </button>
         <button className="cta cta-secondary" disabled={loading} onClick={() => void refreshAll()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh

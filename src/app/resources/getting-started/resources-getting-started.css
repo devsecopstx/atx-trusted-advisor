@@ -184,6 +184,20 @@
 .resources-doc-footnote--center {
   text-align: center;
 }
+
+.resources-doc-footnote--full {
+  width: 100%;
+  max-width: none;
+  display: block;
+}
+
+.resources-doc-footnote--legal {
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 86%, var(--xf-bg-900));
+  padding: 0.8rem 0.9rem;
+  line-height: 1.5;
+}
 .resources-guide {
   width: 100%;
   max-width: 980px;

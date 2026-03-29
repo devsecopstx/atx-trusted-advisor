@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
-import { AddIcon, DeleteIcon, EditIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
 
@@ -500,7 +500,7 @@ export function UserSettingsConsole() {
                         onClick={() => void saveUserEdits(user.userId)}
                         type="button"
                       >
-                        <EditIcon className="crud-icon" /> Save
+                        <SaveIcon className="crud-icon" /> Save
                       </button>
                       <button className="tiny-button" onClick={() => void deleteUser(user.userId)} type="button">
                         <DeleteIcon className="crud-icon" /> Delete
@@ -827,7 +827,7 @@ export function UserSettingsConsole() {
               </fieldset>
 
               <button className="cta cta-primary" type="submit">
-                <AddIcon className="crud-icon" /> Save settings
+                <SaveIcon className="crud-icon" /> Save settings
               </button>
             </form>
           )}

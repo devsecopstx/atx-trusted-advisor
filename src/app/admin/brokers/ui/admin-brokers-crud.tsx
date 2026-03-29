@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type BrokerRow = {
@@ -179,6 +179,9 @@ export function AdminBrokersCrud() {
       </button>
 
       <h3>Catalog</h3>
+      <p className="status-text" style={{ marginBottom: "0.5rem" }}>
+        Edit any row, then click <strong>Save changes</strong> in that row.
+      </p>
       <div className="crud-table-wrap">
         <table className="crud-table">
           <thead>
@@ -256,9 +259,10 @@ function BrokerCatalogRow(props: {
           className="cta cta-secondary text-xs"
           disabled={!dirty}
           onClick={() => void props.onSave(row, { name, description, iconUrl })}
+          title="Save changes for this broker row"
           type="button"
         >
-          Save
+          <SaveIcon className="crud-icon" /> Save changes
         </button>
         <button
           className="cta cta-secondary text-xs ml-1"

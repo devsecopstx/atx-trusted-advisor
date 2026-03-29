@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/types";
 
@@ -456,7 +456,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
           onClick={() => void saveAllChanges()}
           type="button"
         >
-          Save changes
+          <SaveIcon className="crud-icon" /> Save changes
         </button>
         <Link
           className="cta cta-secondary"

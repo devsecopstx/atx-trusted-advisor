@@ -963,6 +963,24 @@
   line-height: 1.45;
 }
 
+.portfolio-edit-holdings-card__table-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.portfolio-edit-holdings-card__table-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  color: var(--xf-text-300);
+  line-height: 1.4;
+}
+
+.portfolio-edit-holdings-card__table-wrap .crud-table {
+  min-width: 780px;
+}
+
 .portfolio-edit-holdings-card__divider {
   height: 0;
   margin: 1rem 0 0.85rem;
@@ -1295,4 +1313,22 @@
 .portfolio-edit-disabled {
   opacity: 0.72;
   cursor: not-allowed;
+}
+
+@media (min-width: 1100px) {
+  .portfolio-account-page--edit {
+    width: min(1080px, 100%);
+  }
+
+  .portfolio-workspace {
+    gap: 1.15rem;
+  }
+
+  .portfolio-edit-account-card {
+    max-width: 760px;
+  }
+
+  .portfolio-edit-holdings-card {
+    width: 100%;
+  }
 }

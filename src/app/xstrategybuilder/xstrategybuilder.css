@@ -52,6 +52,12 @@
   margin: 0 auto;
 }
 
+@media (min-width: 1200px) {
+  .xsb-pitch {
+    max-width: 1200px;
+  }
+}
+
 .xsb-hero-subcopy {
   margin: 0.75rem 0 0;
   max-width: none;
@@ -232,7 +238,7 @@
 }
 
 .xsb-iconized .cta:not(:has(.crud-icon))::before {
-  content: "↗";
+  content: "+";
   font-size: 0.95rem;
   font-weight: 700;
   line-height: 1;
@@ -712,6 +718,24 @@ html[data-xf-ui="soft"] .xsb-builder-preview--friendly select {
   margin: 0.65rem 0 0 2.6rem;
 }
 
+@media (min-width: 1200px) {
+  .xsb-builder-preview--friendly {
+    padding: 1.35rem 1.5rem 1.25rem;
+  }
+
+  .xsb-engine-step__sub {
+    max-width: 90ch;
+  }
+
+  .xsb-engine-step__body {
+    margin-left: 2.35rem;
+  }
+
+  .xsb-payoff-lab {
+    padding: 0.85rem;
+  }
+}
+
 .xsb-engine-step__chevron {
   flex-shrink: 0;
   font-size: 0.72rem;
@@ -794,6 +818,18 @@ html[data-xf-ui="soft"] .xsb-builder-preview--friendly select {
   gap: 0.35rem;
 }
 
+@media (min-width: 980px) {
+  .xsb-live-symbol-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .xsb-live-symbol-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .xsb-live-symbol-item {
   width: 100%;
   display: grid;
@@ -838,6 +874,12 @@ html[data-xf-ui="soft"] .xsb-builder-preview--friendly select {
 @media (min-width: 760px) {
   .xsb-live-strategy-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .xsb-live-strategy-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

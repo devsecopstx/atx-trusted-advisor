@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { SaveIcon } from "@/app/admin/ui/crud-icons";
 import type { TenantWorkspaceLimits } from "@/modules/identity/tenant-workspace-limits";
 
 type Props = {
@@ -148,7 +149,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         </p>
       ) : null}
       <button className="cta cta-primary" disabled={saving} type="submit">
-        {saving ? "Saving…" : "Save workspace limits"}
+        <SaveIcon className="crud-icon" /> {saving ? "Saving…" : "Save workspace limits"}
       </button>
     </form>
   );

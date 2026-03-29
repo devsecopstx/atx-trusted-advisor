@@ -166,7 +166,7 @@ export function PortfolioOverview({
           ) : null}
         </div>
         <details className="portfolio-tech-details">
-          <summary>Technical</summary>
+          <summary>SE Scoring Factors</summary>
           <pre>Portfolio ID: {portfolioIdHex}</pre>
           <PortfolioScoringFactorsReadonlyTable factors={scoringFactors} variant="full" />
         </details>

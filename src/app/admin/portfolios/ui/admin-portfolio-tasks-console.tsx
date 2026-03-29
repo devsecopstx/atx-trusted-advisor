@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
-import { AddIcon, DeleteIcon, RefreshIcon, RunIcon } from "@/app/admin/ui/crud-icons";
+import { AddIcon, DeleteIcon, RefreshIcon, RunIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { SCHEDULED_TASK_CATEGORIES } from "@/lib/scheduled-task-category-schema";
 import type { ScheduledTask as ScheduledTaskDoc } from "@/modules/core-admin/types";
@@ -220,7 +220,7 @@ export function AdminPortfolioTasksConsole({ portfolioId }: { portfolioId: strin
     <section className="panel stack-gap">
       <PortfolioManageNav portfolioId={portfolioId} active="tasks">
         <button type="button" className="cta cta-primary" disabled={loading || !hasAnyDirty} onClick={() => void saveAllDirty()}>
-          Save changes
+          <SaveIcon className="crud-icon" /> Save changes
         </button>
         <button type="button" className="cta cta-secondary" disabled={loading} onClick={() => void refresh()}>
           <RefreshIcon className="crud-icon" /> Refresh

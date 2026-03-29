@@ -113,6 +113,13 @@ export default async function ResourcesGettingStartedPage() {
                   </p>
                 </div>
                 <div className="resources-doc-card">
+                  <h3>Secret Sauce (how responses are built)</h3>
+                  <p>
+                    Read <Link href="/resources/secret-sauce">Secret Sauce</Link> for the end-to-end flow: workspace
+                    context, SE scoring factors, collections search, web/x-search, and tool-loop synthesis.
+                  </p>
+                </div>
+                <div className="resources-doc-card">
                   <h3>Alerts and reviews</h3>
                   <p>
                     Treat scanner recommendations as decision support, not auto-execution. Re-check liquidity, spreads,

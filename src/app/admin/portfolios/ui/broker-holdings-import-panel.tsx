@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "@/app/admin/lib/broker-import-description";
+import { UploadIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type PortfolioOption = {
@@ -49,9 +50,7 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [brokerCsv, setBrokerCsv] = useState("");
   const [brokerKind, setBrokerKind] = useState<"merrill" | "fidelity">("merrill");
-  const [fidelityRef, setFidelityRef] = useState("");
   const [brokerPreview, setBrokerPreview] = useState<BrokerPreviewAccount[] | null>(null);
-  const [accountRefMap, setAccountRefMap] = useState<Record<string, string>>({});
   const [brokerBusy, setBrokerBusy] = useState(false);
   const [brokerMessage, setBrokerMessage] = useState<string | null>(null);
   const [brokerResults, setBrokerResults] = useState<BrokerApplyRow[] | null>(null);
@@ -101,21 +100,13 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
     void loadAccounts();
   }, [loadAccounts]);
 
-  useEffect(() => {
-    if (!brokerPreview?.length || !accounts.length) return;
-    setAccountRefMap((prev) => {
-      const next = { ...prev };
-      for (const row of brokerPreview) {
-        if (next[row.accountRef]) continue;
-        const ref = row.accountRef.trim();
-        const byExt = accounts.find((a) => (a.extAccountId || "").trim() === ref);
-        const byName = accounts.find((a) => (a.name || "").trim() === row.label.trim());
-        const pick = byExt ?? byName;
-        if (pick?._id) next[row.accountRef] = pick._id;
-      }
-      return next;
-    });
-  }, [brokerPreview, accounts]);
+  const findAccountByExternalRef = (accountRef: string): Account | undefined => {
+    const ref = accountRef.trim();
+    if (!ref) {
+      return undefined;
+    }
+    return accounts.find((a) => (a.extAccountId || "").trim() === ref);
+  };
 
   const runBrokerPreview = async () => {
     if (!portfolioId) {
@@ -143,7 +134,6 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
             exportType: "holdings",
             csv: brokerCsv,
             mappings: {},
-            fidelityHoldingsDefaultAccountRef: fidelityRef.trim() || undefined,
             dryRun: true
           })
         })
@@ -164,10 +154,35 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
   };
 
   const runBrokerImport = async () => {
-    if (!portfolioId || !brokerPreview?.length) {
-      setBrokerMessage("Run preview first.");
+    if (!portfolioId) {
+      setBrokerMessage("Select a portfolio.");
       return;
     }
+    if (!brokerCsv.trim()) {
+      setBrokerMessage("Paste a holdings CSV export.");
+      return;
+    }
+    if (brokerPreview?.length) {
+      const missing = brokerPreview
+        .filter((row) => !findAccountByExternalRef(row.accountRef)?._id)
+        .map((row) => row.accountRef || "(blank)");
+      if (missing.length > 0) {
+        setBrokerMessage(
+          `Import blocked: ${missing.length} broker account ref(s) do not match any portfolio account ext_account_ref. ` +
+            `Missing: ${missing.join(", ")}`
+        );
+        return;
+      }
+    }
+    const mappings =
+      brokerPreview?.length
+        ? Object.fromEntries(
+            brokerPreview.flatMap((row) => {
+              const matched = findAccountByExternalRef(row.accountRef)?._id;
+              return matched ? [[row.accountRef, matched] as const] : [];
+            })
+          )
+        : {};
     setBrokerBusy(true);
     setBrokerMessage(null);
     setBrokerResults(null);
@@ -181,8 +196,7 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
             broker: brokerKind,
             exportType: "holdings",
             csv: brokerCsv,
-            mappings: accountRefMap,
-            fidelityHoldingsDefaultAccountRef: fidelityRef.trim() || undefined,
+            mappings,
             dryRun: false
           })
         })
@@ -229,6 +243,34 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
           </select>
         </label>
       )}
+      {portfolioId ? (
+        <div className="crud-table-wrap" style={{ marginBottom: "0.75rem" }}>
+          <table className="crud-table">
+            <thead>
+              <tr>
+                <th>Portfolio account</th>
+                <th>ext_account_ref (required match key)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accounts.length > 0 ? (
+                accounts.map((a) => (
+                  <tr key={a._id ?? a.name}>
+                    <td>{a.name}</td>
+                    <td className="font-mono text-xs">{(a.extAccountId || "").trim() || "—"}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={2} className="status-text">
+                    No accounts found for selected portfolio.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
       <div className="stack-gap" style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
         <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
           Broker
@@ -242,18 +284,10 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
             <option value="fidelity">Fidelity (positions, all accounts)</option>
           </select>
         </label>
-        {brokerKind === "fidelity" ? (
-          <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            Map file to external ref
-            <input
-              className="crud-input"
-              placeholder="Must match account extAccountId"
-              value={fidelityRef}
-              onChange={(e) => setFidelityRef(e.target.value)}
-              disabled={brokerBusy}
-            />
-          </label>
-        ) : null}
+        <p className="status-text" style={{ flex: "1 1 280px", margin: 0 }}>
+          Note: import account refs in the file must match portfolio account{" "}
+          <code className="font-mono text-xs">ext_account_ref</code> values exactly, or rows will not sync.
+        </p>
         <label className="status-text" style={{ flex: "1 1 240px", minWidth: "200px" }}>
           CSV file
           <input
@@ -281,13 +315,30 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
         />
       </label>
       <div className="tool-row" style={{ marginTop: "0.75rem" }}>
-        <button type="button" className="cta cta-secondary" disabled={brokerBusy} onClick={() => void runBrokerPreview()}>
-          Preview (dry run)
+        <button
+          type="button"
+          className="cta cta-secondary"
+          disabled={brokerBusy}
+          onClick={() => void runBrokerPreview()}
+          aria-label="Preview broker CSV"
+          title="Parse CSV and preview account mapping without saving"
+        >
+          <UploadIcon className="crud-icon" /> Preview CSV (dry run)
         </button>
-        <button type="button" className="cta cta-primary" disabled={brokerBusy} onClick={() => void runBrokerImport()}>
-          Import holdings
+        <button
+          type="button"
+          className="cta cta-primary"
+          disabled={brokerBusy}
+          onClick={() => void runBrokerImport()}
+          aria-label="Import broker CSV"
+          title="Parse CSV and import holdings to mapped core accounts"
+        >
+          <UploadIcon className="crud-icon" /> Import Broker
         </button>
       </div>
+      <p className="status-text" style={{ marginTop: "0.4rem" }}>
+        Actions: <strong>Preview CSV</strong> parses only (no writes). <strong>Import Broker</strong> parses + writes holdings.
+      </p>
       {brokerMessage ? <p className="status-text">{brokerMessage}</p> : null}
       {brokerPreview && brokerPreview.length > 0 ? (
         <div className="crud-table-wrap" style={{ marginTop: "1rem" }}>
@@ -299,7 +350,7 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
                 <th>Rows</th>
                 <th>Stock / opt / cash</th>
                 <th>Sample tickers</th>
-                <th>Core account</th>
+                <th>Matched portfolio account (by ext_account_ref)</th>
               </tr>
             </thead>
             <tbody>
@@ -313,25 +364,18 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
                   </td>
                   <td className="font-mono text-xs">{row.sampleTickers.join(", ") || "—"}</td>
                   <td>
-                    <select
-                      className="crud-input"
-                      value={accountRefMap[row.accountRef] ?? ""}
-                      onChange={(e) =>
-                        setAccountRefMap((m) => ({ ...m, [row.accountRef]: e.target.value }))
+                    {(() => {
+                      const matched = findAccountByExternalRef(row.accountRef);
+                      if (!matched?._id) {
+                        return <span className="status-text status-error">No ext_account_ref match</span>;
                       }
-                      disabled={brokerBusy}
-                    >
-                      <option value="">— Select —</option>
-                      {accounts.map((a) => (
-                        <option
-                          key={a._id ?? a.name}
-                          value={a._id ?? ""}
-                          title={a.extAccountId ? `Ref: ${a.extAccountId}` : undefined}
-                        >
-                          {a.name}
-                        </option>
-                      ))}
-                    </select>
+                      return (
+                        <span className="status-text">
+                          {matched.name}{" "}
+                          <code className="font-mono text-xs">({matched.extAccountId || "—"})</code>
+                        </span>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
+import { SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 import "./options-strategy-preference-editor.css";
@@ -116,7 +117,7 @@ export function OptionsStrategyPreferenceEditor({ preferenceId }: OptionsStrateg
 
           <div className="tool-row" style={{ marginTop: "0.5rem" }}>
             <button className="cta cta-primary" disabled={saving || !loaded} type="submit">
-              {saving ? "Saving…" : "Save"}
+              <SaveIcon className="crud-icon" /> {saving ? "Saving…" : "Save"}
             </button>
             <Link className="cta cta-secondary" href="/admin/options-strategy-preferences">
               Back to list

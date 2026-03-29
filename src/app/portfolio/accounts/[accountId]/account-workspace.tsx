@@ -405,10 +405,16 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
         <h2 id="edit-holdings-title" className="portfolio-edit-account-card__title portfolio-edit-account-card__title--section">
           Holdings
         </h2>
+        <h3 className="portfolio-edit-holdings-card__table-title">Current holdings table</h3>
+        <p className="portfolio-edit-holdings-card__table-hint">
+          Review and edit this account&apos;s positions directly from the table before adding new entries.
+        </p>
         {positions.length === 0 ? (
           <p className="portfolio-edit-holdings-card__empty">No positions yet — add stock, options, or cash below.</p>
         ) : (
-          <AccountHoldingsLiveTable pending={pending} positions={positions} onRemove={removePosition} />
+          <div className="portfolio-edit-holdings-card__table-wrap">
+            <AccountHoldingsLiveTable pending={pending} positions={positions} onRemove={removePosition} />
+          </div>
         )}
 
         <div className="portfolio-edit-holdings-card__divider" aria-hidden />

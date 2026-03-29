@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { DeleteIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/types";
 import {
@@ -267,7 +267,7 @@ function AdminWatchlistSymbolRow({ row, patchWatchlist, setStatus, loading }: Sy
           disabled={loading}
           onClick={() => void saveRow()}
         >
-          Save row
+          <SaveIcon className="crud-icon" /> Save row
         </button>
       </td>
       <td className="align-top whitespace-nowrap">
@@ -411,7 +411,7 @@ export function AdminPortfolioWatchlistConsole({ portfolioId }: { portfolioId: s
           disabled={loading || !deskDirty}
           onClick={() => void saveDeskContext()}
         >
-          Save risk &amp; outlook
+          <SaveIcon className="crud-icon" /> Save risk &amp; outlook
         </button>
         <p className="status-text" role="status" aria-live="polite">
           {status}

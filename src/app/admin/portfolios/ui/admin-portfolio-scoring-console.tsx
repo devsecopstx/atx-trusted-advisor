@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import {
     DEFAULT_PORTFOLIO_SCORING_FACTORS,
@@ -194,7 +194,7 @@ export function AdminPortfolioScoringConsole({ portfolioId }: { portfolioId: str
 
       <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
         <button type="button" className="cta cta-primary" disabled={loading} onClick={() => void save()}>
-          Save weights
+          <SaveIcon className="crud-icon" /> Save weights
         </button>
         <button type="button" className="cta cta-secondary" disabled={loading} onClick={applyCatalogDefaults}>
           Reset form to defaults

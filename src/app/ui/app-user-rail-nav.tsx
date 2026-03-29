@@ -183,6 +183,7 @@ export function AppUserResourcesRailSection({
       >
         <nav className="app-user-rail-sublinks" aria-label="Resource links">
           <RailNavLink href="/resources/getting-started">Getting Started</RailNavLink>
+          <RailNavLink href="/resources/secret-sauce">Secret Sauce</RailNavLink>
           <RailNavLink href="/resources/building-wheel">Building Wheel</RailNavLink>
           <RailNavLink href="/resources/building-wheel/wheel-vs-iron-condor">
             Wheel vs Iron Condor

@@ -940,7 +940,7 @@ export function XchatConversation({
       <div className="xchat-main">
         <header className="xchat-welcome-header">
           <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
-          <p className="xchat-welcome-sub">Overview of xChat — personas, history, and advisor tools.</p>
+          <p className="xchat-welcome-sub">Overview of xChat — portoflio, watchlist and advisor options-tools. See Examples on left.</p>
         </header>
 
       {!(threadUiCollapsed && messages.length > 0 && !loading) ? (

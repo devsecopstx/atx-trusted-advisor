@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ComponentProps } from "react";
 
-import { EditIcon } from "@/app/admin/ui/crud-icons";
+import { EditIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 function merge(...parts: (string | undefined | false)[]): string {
@@ -49,6 +49,10 @@ function linkVariantClass(v: "neutral" | "tiny"): string {
   }
 }
 
+function shouldUseSaveIcon(label: string): boolean {
+  return /^\s*(save|update)\b/i.test(label);
+}
+
 export type IconEditButtonProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
   "children" | "title" | "aria-label"
@@ -64,6 +68,7 @@ export function IconEditButton({
   type = "button",
   ...rest
 }: IconEditButtonProps) {
+  const useSaveIcon = shouldUseSaveIcon(label);
   return (
     <XfHoverHint hint={label}>
       <button
@@ -72,7 +77,7 @@ export function IconEditButton({
         type={type}
         {...rest}
       >
-        <EditIcon className="crud-icon" />
+        {useSaveIcon ? <SaveIcon className="crud-icon" /> : <EditIcon className="crud-icon" />}
       </button>
     </XfHoverHint>
   );
@@ -87,10 +92,11 @@ export type IconEditLinkProps = Omit<
 };
 
 export function IconEditLink({ label, variant = "neutral", className, ...rest }: IconEditLinkProps) {
+  const useSaveIcon = shouldUseSaveIcon(label);
   return (
     <XfHoverHint hint={label}>
       <Link aria-label={label} className={merge(linkVariantClass(variant), className)} {...rest}>
-        <EditIcon className="crud-icon" />
+        {useSaveIcon ? <SaveIcon className="crud-icon" /> : <EditIcon className="crud-icon" />}
       </Link>
     </XfHoverHint>
   );
