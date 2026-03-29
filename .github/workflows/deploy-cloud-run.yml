@@ -194,9 +194,22 @@ jobs:
 
           IMAGE_REPO="${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev/${ARTIFACT_PROJECT_ID}/${ARTIFACT_REPOSITORY}/${{ env.IMAGE_NAME }}"
           IMAGE_TAG="${IMAGE_REPO}:${GITHUB_SHA}"
-          BUILD_META="$(gcloud builds submit --project "${ARTIFACT_PROJECT_ID}" --tag "${IMAGE_TAG}" . --async --format='value(metadata.build.id,metadata.build.logUrl)')"
+          BUILD_META="$(gcloud builds submit --project "${ARTIFACT_PROJECT_ID}" --tag "${IMAGE_TAG}" . --async --format='value(metadata.build.id,metadata.build.logUrl)' || true)"
           BUILD_ID="$(printf '%s\n' "${BUILD_META}" | awk 'NR==1 {print $1}')"
           BUILD_LOG_URL="$(printf '%s\n' "${BUILD_META}" | awk 'NR==1 {$1=""; sub(/^[[:space:]]+/, ""); print}')"
+          if [ -z "${BUILD_ID}" ]; then
+            echo "::warning::Cloud Build ID missing from submit output; resolving via builds list for image tag"
+            for _ in $(seq 1 24); do
+              BUILD_ID="$(gcloud builds list --project "${ARTIFACT_PROJECT_ID}" --filter="images:${IMAGE_TAG}" --sort-by=~createTime --limit=1 --format='value(id)' 2>/dev/null || true)"
+              if [ -n "${BUILD_ID}" ]; then
+                break
+              fi
+              sleep 5
+            done
+            if [ -n "${BUILD_ID}" ] && [ -z "${BUILD_LOG_URL}" ]; then
+              BUILD_LOG_URL="$(gcloud builds describe "${BUILD_ID}" --project "${ARTIFACT_PROJECT_ID}" --format='value(logUrl)' 2>/dev/null || true)"
+            fi
+          fi
           if [ -z "${BUILD_ID}" ]; then
             echo "::error::Failed to start Cloud Build for ${IMAGE_TAG}"
             exit 1
