@@ -840,6 +840,16 @@ html[data-xf-ui="soft"] .xchat-main-shell {
   max-width: 100%;
 }
 
+.xchat-rail-persona-panel {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.xchat-rail-persona-block {
+  display: grid;
+  gap: 0.32rem;
+}
+
 .xchat-rail-title {
   margin: 0;
   font-size: 0.75rem;

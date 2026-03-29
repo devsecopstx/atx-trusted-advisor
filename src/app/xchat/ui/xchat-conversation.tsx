@@ -182,6 +182,20 @@ function RecentChatsRailGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function PersonaRailGlyph(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+    </svg>
+  );
+}
+
 /** Narrow left-rail select: keep closed state readable without clipping. */
 function compactPersonaOptionLabel(name: string): string {
   const normalized = name.replace(/\s+/g, " ").trim();
@@ -785,93 +799,105 @@ export function XchatConversation({
                 </div>
               </section>
             ) : null}
-            <section className="xchat-rail-section xchat-rail-section--persona">
-              <h3 className="xchat-rail-title xchat-rail-title--caps">Persona</h3>
-              <div className="xchat-composer__persona-wrap xchat-rail-persona-wrap">
-                <label className="xchat-composer__persona-label" htmlFor="xchat-persona-picker">
-                  Persona picker
-                </label>
-                <select
-                  aria-describedby="xchat-persona-picker-hint"
-                  className="xchat-composer__persona-select xchat-rail-persona-select"
-                  disabled={
-                    personaSelectRows.length === 0 ||
-                    Boolean(personaListError)
-                  }
-                  id="xchat-persona-picker"
-                  onChange={(e) => {
-                    userPickedPersonaRef.current = true;
-                    setSelectedPersonaId(e.target.value);
-                  }}
-                  value={selectedPersonaId}
-                >
-                  <option value="">Default (role / account)</option>
-                  {personaSelectRows.map((p) => (
-                    <option key={p._id} title={p.name} value={p._id}>
-                      {compactPersonaOptionLabel(p.name)}
-                    </option>
-                  ))}
-                </select>
-                {personaListError ? (
-                  <span className="xchat-composer__persona-err" role="status">
-                    {personaListError}
-                  </span>
-                ) : null}
-              </div>
-              <p className="status-text xchat-rail-persona-hint" id="xchat-persona-picker-hint">
-                Choose which published persona to use for this prompt. You can change it anytime before you send.
-              </p>
-            </section>
-            <section
-              aria-label="Active persona and last turn tools"
-              className="xchat-rail-section xchat-rail-section--active-persona"
-            >
-              <h3 className="xchat-rail-title xchat-rail-title--caps">Active persona</h3>
-              <div className="xchat-rail-active-persona">
-                <p className="status-text xchat-rail-active-persona-name" style={{ margin: "0 0 0.25rem" }}>
-                  <strong>{activePersonaName}</strong>
-                </p>
-                <XfHoverHint
-                  hint={
-                    lastTurnToolSummary ?? "Tool names and durations from the last completed ask"
-                  }
-                >
-                  <p
-                    className="status-text xchat-rail-last-turn-tools"
-                    role="note"
-                    style={{ fontSize: "0.72rem", lineHeight: 1.35, margin: 0 }}
-                    tabIndex={0}
-                  >
-                    {lastTurnToolSummary ? (
-                      lastTurnToolSummary
-                    ) : (
-                      <span style={{ opacity: 0.8 }}>Send a message to see tool stats</span>
-                    )}
+            <section className="app-user-rail-section" aria-label="Persona">
+              <RailDisclosure
+                defaultOpen
+                icon={<PersonaRailGlyph className="app-user-rail-disclosure__glyph" />}
+                title="Persona"
+              >
+                <div className="xchat-rail-persona-panel">
+                  <div className="xchat-composer__persona-wrap xchat-rail-persona-wrap">
+                    <label className="xchat-composer__persona-label" htmlFor="xchat-persona-picker">
+                      Persona picker
+                    </label>
+                    <select
+                      aria-describedby="xchat-persona-picker-hint"
+                      className="xchat-composer__persona-select xchat-rail-persona-select"
+                      disabled={
+                        personaSelectRows.length === 0 ||
+                        Boolean(personaListError)
+                      }
+                      id="xchat-persona-picker"
+                      onChange={(e) => {
+                        userPickedPersonaRef.current = true;
+                        setSelectedPersonaId(e.target.value);
+                      }}
+                      value={selectedPersonaId}
+                    >
+                      <option value="">Default (role / account)</option>
+                      {personaSelectRows.map((p) => (
+                        <option key={p._id} title={p.name} value={p._id}>
+                          {compactPersonaOptionLabel(p.name)}
+                        </option>
+                      ))}
+                    </select>
+                    {personaListError ? (
+                      <span className="xchat-composer__persona-err" role="status">
+                        {personaListError}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="status-text xchat-rail-persona-hint" id="xchat-persona-picker-hint">
+                    Choose which published persona to use for this prompt. You can change it anytime before you send.
                   </p>
-                </XfHoverHint>
-              </div>
-            </section>
-            <section
-              aria-label="Knowledge collections and scope status"
-              className="xchat-rail-section xchat-rail-section--status"
-            >
-              <h3 className="xchat-rail-title xchat-rail-title--caps">Status</h3>
-              <p className="status-text" style={{ fontSize: "0.72rem", margin: "0 0 0.35rem", lineHeight: 1.35 }}>
-                Collection list loaded for ask:{" "}
-                {visibleCollections.length > 0
-                  ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
-                  : "—"}
-              </p>
-              {collectionsScopeDegraded ? (
-                <p className="status-text status-warn" style={{ fontSize: "0.72rem", margin: 0, lineHeight: 1.35 }}>
-                  Default Finance scope only — server collection list unavailable (404 or network).
-                </p>
-              ) : null}
-              {collectionsStatus ? (
-                <p className="status-text status-error" style={{ fontSize: "0.72rem", margin: "0.35rem 0 0" }}>
-                  {collectionsStatus}
-                </p>
-              ) : null}
+
+                  <div className="xchat-rail-persona-block" aria-label="Active persona and last turn tools">
+                    <h3 className="xchat-rail-title xchat-rail-title--caps">Active persona</h3>
+                    <div className="xchat-rail-active-persona">
+                      <p className="status-text xchat-rail-active-persona-name" style={{ margin: "0 0 0.25rem" }}>
+                        <strong>{activePersonaName}</strong>
+                      </p>
+                      <XfHoverHint
+                        hint={
+                          lastTurnToolSummary ?? "Tool names and durations from the last completed ask"
+                        }
+                      >
+                        <p
+                          className="status-text xchat-rail-last-turn-tools"
+                          role="note"
+                          style={{ fontSize: "0.72rem", lineHeight: 1.35, margin: 0 }}
+                          tabIndex={0}
+                        >
+                          {lastTurnToolSummary ? (
+                            lastTurnToolSummary
+                          ) : (
+                            <span style={{ opacity: 0.8 }}>Send a message to see tool stats</span>
+                          )}
+                        </p>
+                      </XfHoverHint>
+                    </div>
+                  </div>
+
+                  <div className="xchat-rail-persona-block" aria-label="Knowledge collections and scope status">
+                    <h3 className="xchat-rail-title xchat-rail-title--caps">Status</h3>
+                    <p
+                      className="status-text"
+                      style={{ fontSize: "0.72rem", margin: "0 0 0.35rem", lineHeight: 1.35 }}
+                    >
+                      Collection list loaded for ask:{" "}
+                      {visibleCollections.length > 0
+                        ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
+                        : "—"}
+                    </p>
+                    {collectionsScopeDegraded ? (
+                      <p
+                        className="status-text status-warn"
+                        style={{ fontSize: "0.72rem", margin: 0, lineHeight: 1.35 }}
+                      >
+                        Default Finance scope only — server collection list unavailable (404 or network).
+                      </p>
+                    ) : null}
+                    {collectionsStatus ? (
+                      <p
+                        className="status-text status-error"
+                        style={{ fontSize: "0.72rem", margin: "0.35rem 0 0" }}
+                      >
+                        {collectionsStatus}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </RailDisclosure>
             </section>
             <section className="app-user-rail-section" aria-label="Examples">
               <RailDisclosure

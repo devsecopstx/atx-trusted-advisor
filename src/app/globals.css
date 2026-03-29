@@ -813,6 +813,9 @@ html[data-xf-ui="soft"]
   margin: 0;
   padding: 0;
   border: none;
+  width: 50%;
+  margin-left: auto;
+  margin-right: auto;
   text-align: center;
   font-size: 0.7rem;
   line-height: 1.45;
