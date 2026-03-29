@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
@@ -25,7 +26,7 @@ import {
 
 const reviewAccessRequestSchema = z.object({
   status: z.enum(["approved", "rejected"]).optional(),
-  requestedPlan: z.enum(["free", "pro", "enterprise"]).optional()
+  requestedPlan: z.string().trim().optional()
 }).refine((value) => value.status !== undefined || value.requestedPlan !== undefined, {
   message: "Provide status or requestedPlan."
 });
@@ -99,6 +100,14 @@ async function handleUpdate(request: Request, context: RouteContext) {
       { status: 400 }
     );
   }
+  const requestedPlan =
+    parsed.data.requestedPlan !== undefined ? parseAccessRequestPlanInput(parsed.data.requestedPlan) : undefined;
+  if (parsed.data.requestedPlan !== undefined && !requestedPlan) {
+    return NextResponse.json(
+      { error: "Invalid requestedPlan. Expected Basic, Premium, or Premium+." },
+      { status: 400 }
+    );
+  }
 
   const existing = await getAccessRequestById(requestId, {
     tenantId: undefined
@@ -114,10 +123,10 @@ async function handleUpdate(request: Request, context: RouteContext) {
     );
   }
 
-  if (parsed.data.requestedPlan) {
+  if (requestedPlan) {
     const updatedRequest = await updateAccessRequestPlanById({
       requestId,
-      requestedPlan: parsed.data.requestedPlan,
+      requestedPlan,
       tenantId: undefined
     });
     if (!updatedRequest) {
@@ -134,14 +143,14 @@ async function handleUpdate(request: Request, context: RouteContext) {
           username: session.username
         },
         details: {
-          requestedPlan: parsed.data.requestedPlan
+          requestedPlan
         }
       });
       return NextResponse.json({ data: serializeAccessRequest(updatedRequest) });
     }
   }
 
-  const effectivePlan = parsed.data.requestedPlan ?? existing.requestedPlan ?? "free";
+  const effectivePlan = requestedPlan ?? existing.requestedPlan ?? "free";
   let approvedUserObjectId: ObjectId | null = null;
 
   if (parsed.data.status === "approved") {

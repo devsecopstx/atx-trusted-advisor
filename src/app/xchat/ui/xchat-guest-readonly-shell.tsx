@@ -5,17 +5,22 @@ import type { ReactNode } from "react";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserAccountRailSection, AppUserResourcesRailSection } from "@/app/ui/app-user-rail-nav";
 import { XchatGuestPanel } from "@/app/xchat/ui/xchat-guest-panel";
+import type { AccessRequestPlanValue } from "@/lib/access-request-plans";
 
 type XchatGuestReadonlyShellProps = {
   children: ReactNode;
   googleLoginHref?: string | null;
   showAccessPanel?: boolean;
+  registerDefaultPlan?: AccessRequestPlanValue;
+  openRegisterByDefault?: boolean;
 };
 
 export function XchatGuestReadonlyShell({
   children,
   googleLoginHref = null,
-  showAccessPanel = true
+  showAccessPanel = true,
+  registerDefaultPlan = "free",
+  openRegisterByDefault = false
 }: XchatGuestReadonlyShellProps) {
   return (
     <AppUserCollapsibleRailLayout
@@ -37,7 +42,12 @@ export function XchatGuestReadonlyShell({
       }
     >
       {showAccessPanel ? (
-        <XchatGuestPanel content={children} googleLoginHref={googleLoginHref} />
+        <XchatGuestPanel
+          content={children}
+          googleLoginHref={googleLoginHref}
+          registerDefaultPlan={registerDefaultPlan}
+          openRegisterByDefault={openRegisterByDefault}
+        />
       ) : (
         children
       )}

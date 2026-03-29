@@ -5,6 +5,10 @@ import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-shell";
+import {
+  parseAccessRequestPlanInput,
+  type AccessRequestPlanValue
+} from "@/lib/access-request-plans";
 import { ATX_BILLING_PLAN_LIMIT_ROWS } from "@/lib/atx-billing-plan-limits";
 import { ATX_BILLING_PLANS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import { getSessionUser } from "@/lib/auth";
@@ -40,6 +44,11 @@ export default async function AccountBillingPage({
 
   const sp = (await searchParams) ?? {};
   const checkout = typeof sp.checkout === "string" ? sp.checkout : undefined;
+  const selectedGuestPlanRaw = typeof sp.plan === "string" ? sp.plan : undefined;
+  const openRegisterRaw = typeof sp.register === "string" ? sp.register : undefined;
+  const openRegisterByDefault = openRegisterRaw === "1" || openRegisterRaw === "true";
+  const guestRegisterDefaultPlan: AccessRequestPlanValue =
+    parseAccessRequestPlanInput(selectedGuestPlanRaw) ?? "free";
 
   const checkoutReady = !guestReadonly && isStripeBillingFullyConfigured();
   const publishableConfigured = Boolean(getStripePublishableKey());
@@ -167,13 +176,17 @@ export default async function AccountBillingPage({
             </div>
           </AppUserCollapsibleRailLayout>
         ) : (
-          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref}>
+          <XchatGuestReadonlyShell
+            googleLoginHref={googleLoginHref}
+            openRegisterByDefault={openRegisterByDefault}
+            registerDefaultPlan={guestRegisterDefaultPlan}
+          >
             <div className="billing-page">
               <header className="billing-hero xf-noise-overlay surface-card xf-widget section-card">
                 <p className="billing-hero__eyebrow">ATX price plans</p>
                 <h1 className="billing-hero__title">Account &amp; billing</h1>
                 <p className="billing-hero__copy">
-                  Read-only pricing preview for guests. Sign in for checkout and account actions.
+                  Select a plan, then continue with Register for access. Basic is the default selection.
                 </p>
               </header>
               <div className="billing-grid">
@@ -203,9 +216,13 @@ export default async function AccountBillingPage({
                         ))}
                       </ul>
                     </div>
-                    <button className="billing-checkout-button" disabled type="button">
-                      Sign in required
-                    </button>
+                    <form method="get">
+                      <input name="register" type="hidden" value="1" />
+                      <input name="plan" type="hidden" value={plan.id} />
+                      <button className="billing-checkout-button" type="submit">
+                        Select {plan.name} and Register for access
+                      </button>
+                    </form>
                   </article>
                 ))}
               </div>

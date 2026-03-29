@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
@@ -21,7 +22,7 @@ const createAccessRequestSchema = z.object({
   userId: z.string().trim().min(1).optional(),
   email: z.string().trim().email().optional(),
   requestedRole: z.enum(["global_admin", "advisor", "operator", "viewer"]),
-  requestedPlan: z.enum(["free", "pro", "enterprise"]).optional().default("free"),
+  requestedPlan: z.string().trim().optional().default("free"),
   reason: z.string().min(5),
   status: z.enum(accessRequestStatusValues).optional()
 }).superRefine((value, ctx) => {
@@ -71,7 +72,6 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
-
   const raw = parsed.data.status;
   const requests =
     raw === "all"
@@ -114,6 +114,13 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid request payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+  const requestedPlan = parseAccessRequestPlanInput(parsed.data.requestedPlan);
+  if (!requestedPlan) {
+    return NextResponse.json(
+      { error: "Invalid requestedPlan. Expected Basic, Premium, or Premium+." },
       { status: 400 }
     );
   }
@@ -161,7 +168,7 @@ export async function POST(request: Request) {
       userId: resolvedUserId,
       contactEmail: resolvedEmail,
       requestedRole: parsed.data.requestedRole,
-      requestedPlan: parsed.data.requestedPlan,
+      requestedPlan,
       reason: parsed.data.reason,
       status: parsed.data.email ? "pending" : parsed.data.status
     });

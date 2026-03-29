@@ -1,11 +1,16 @@
 "use client";
 
-import { FormEvent, useState, type ReactNode } from "react";
+import { FormEvent, useEffect, useState, type ReactNode } from "react";
 
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import { LinkEmailForm } from "@/app/login/ui/link-email-form";
 import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import {
+  ACCESS_REQUEST_PLAN_OPTIONS,
+  accessRequestPlanLabel,
+  type AccessRequestPlanValue
+} from "@/lib/access-request-plans";
 
 type XchatGuestPanelProps = {
   userEmail?: string;
@@ -16,6 +21,8 @@ type XchatGuestPanelProps = {
   content?: ReactNode;
   /** When set (server: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`), show Sign in with Google beside X. */
   googleLoginHref?: string | null;
+  registerDefaultPlan?: AccessRequestPlanValue;
+  openRegisterByDefault?: boolean;
 };
 
 const DEFAULT_SIGNIN_HREF = "/api/auth/x/login?next=%2Fxchat";
@@ -71,7 +78,9 @@ export function XchatGuestPanel({
   authDetails,
   pendingXHandle,
   content,
-  googleLoginHref = null
+  googleLoginHref = null,
+  registerDefaultPlan = "free",
+  openRegisterByDefault = false
 }: XchatGuestPanelProps) {
   const authMessage = authError ? (AUTH_ERROR_COPY[authError] ?? "Sign-in failed.") : null;
   const [registerName, setRegisterName] = useState("");
@@ -81,6 +90,19 @@ export function XchatGuestPanel({
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
+  const [registerPlan, setRegisterPlan] = useState<AccessRequestPlanValue>(registerDefaultPlan);
+
+  useEffect(() => {
+    setRegisterPlan(registerDefaultPlan);
+  }, [registerDefaultPlan]);
+
+  useEffect(() => {
+    if (!openRegisterByDefault || pendingApproval) {
+      return;
+    }
+    setAccessOpen(true);
+    setRegisterOpen(true);
+  }, [openRegisterByDefault, pendingApproval]);
 
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -98,11 +120,13 @@ export function XchatGuestPanel({
     setRegisterLoading(true);
     setRegisterError(null);
     setRegisterSuccess(null);
+    const submittedPlan = registerPlan;
+    const submittedPlanLabel = accessRequestPlanLabel(submittedPlan);
     try {
       const response = await fetch("/api/access-requests/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email })
+        body: JSON.stringify({ name, email, requestedPlan: submittedPlan })
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
@@ -117,11 +141,12 @@ export function XchatGuestPanel({
       }
       setRegisterSuccess(
         payload.data?.existing
-          ? "You already have a pending request. We will review it soon."
-          : "Request submitted. An admin will review your access."
+          ? `You already have a pending ${submittedPlanLabel} request. We will review it soon.`
+          : `Request submitted for ${submittedPlanLabel}. An admin will review your access.`
       );
       setRegisterName("");
       setRegisterEmail("");
+      setRegisterPlan(registerDefaultPlan);
     } catch {
       setRegisterError("Network error. Retry in a moment.");
     } finally {
@@ -200,7 +225,7 @@ export function XchatGuestPanel({
                 type="button"
                 onClick={() => setRegisterOpen((prev) => !prev)}
               >
-                Register
+                Register for access
               </button>
             ) : (
               <button className="cta cta-secondary xchat-guest-actions__cta xchat-guest-actions__cta--disabled" disabled type="button">
@@ -249,6 +274,21 @@ export function XchatGuestPanel({
                     type="email"
                     value={registerEmail}
                   />
+                </label>
+                <label className="xchat-guest-register-form__field">
+                  <span>Plan</span>
+                  <select
+                    disabled={registerLoading}
+                    name="requestedPlan"
+                    onChange={(event) => setRegisterPlan(event.target.value as AccessRequestPlanValue)}
+                    value={registerPlan}
+                  >
+                    {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
               <button

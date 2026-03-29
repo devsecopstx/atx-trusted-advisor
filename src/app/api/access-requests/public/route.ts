@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { buildAccessRequestNotification, sendSlackNotification } from "@/lib/slack";
 import { createAuditEvent } from "@/modules/audit/repository";
@@ -13,7 +14,8 @@ import { ensureCoreUserByEmail } from "@/modules/identity/repository";
 
 const guestAccessRequestSchema = z.object({
   name: z.string().trim().min(2).max(120),
-  email: z.string().trim().email()
+  email: z.string().trim().email(),
+  requestedPlan: z.string().trim().optional()
 });
 
 export async function POST(request: Request) {
@@ -39,6 +41,14 @@ export async function POST(request: Request) {
 
   const name = parsed.data.name.trim();
   const email = parsed.data.email.trim().toLowerCase();
+  const requestedPlan =
+    parsed.data.requestedPlan === undefined ? "free" : parseAccessRequestPlanInput(parsed.data.requestedPlan);
+  if (!requestedPlan) {
+    return NextResponse.json(
+      { error: "Invalid requestedPlan. Expected Basic, Premium, or Premium+." },
+      { status: 400 }
+    );
+  }
   const requestedRole = "viewer" as const;
 
   const user = await ensureCoreUserByEmail({ email });
@@ -58,6 +68,7 @@ export async function POST(request: Request) {
         ok: true,
         data: {
           requestedRole: existingPending.requestedRole,
+          requestedPlan: existingPending.requestedPlan,
           status: existingPending.status,
           requestedAt: existingPending.requestedAt.toISOString(),
           existing: true
@@ -73,6 +84,7 @@ export async function POST(request: Request) {
       userId,
       contactEmail: email,
       requestedRole,
+      requestedPlan,
       reason: `Guest xChat registration from ${name}`,
       status: "pending"
     });
@@ -94,6 +106,7 @@ export async function POST(request: Request) {
       },
       details: {
         requestedRole: created.requestedRole,
+        requestedPlan: created.requestedPlan,
         reason: created.reason,
         source: "xchat_guest_register",
         displayName: name
@@ -105,7 +118,7 @@ export async function POST(request: Request) {
     buildAccessRequestNotification({
       email,
       requestedRole,
-      reason: `Guest xChat registration from ${name}`
+      reason: `Guest xChat registration from ${name} (${requestedPlan})`
     })
   );
 
@@ -114,6 +127,7 @@ export async function POST(request: Request) {
       ok: true,
       data: {
         requestedRole: created.requestedRole,
+        requestedPlan: created.requestedPlan,
         status: created.status,
         requestedAt: created.requestedAt.toISOString()
       }

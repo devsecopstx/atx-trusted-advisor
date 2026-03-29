@@ -6,6 +6,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
+import { ACCESS_REQUEST_PLAN_OPTIONS } from "@/lib/access-request-plans";
 import { formatUserFacingIdentityLabel } from "@/lib/x-identity-email";
 
 type AccessRequestStatus = "new" | "triaged" | "pending" | "approved" | "rejected" | "expired";
@@ -294,9 +295,11 @@ export function AccessRequestsConsole() {
             <option value="viewer">viewer</option>
           </select>
           <select defaultValue="free" name="requestedPlan">
-            <option value="free">free</option>
-            <option value="pro">pro</option>
-            <option value="enterprise">enterprise</option>
+            {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           <textarea name="reason" placeholder="reason" required rows={3} />
           <button className="cta cta-primary" type="submit">
@@ -381,9 +384,11 @@ export function AccessRequestsConsole() {
                         }}
                         value={item._id ? (planEdits[item._id] ?? item.requestedPlan) : "free"}
                       >
-                        <option value="free">free</option>
-                        <option value="pro">pro</option>
-                        <option value="enterprise">enterprise</option>
+                        {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td>
