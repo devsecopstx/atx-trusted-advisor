@@ -242,7 +242,7 @@ jobs:
             gcloud builds describe "${BUILD_ID}" --project "${ARTIFACT_PROJECT_ID}" --format='yaml(status,statusDetail,logUrl)'
             exit 1
           fi
-          DIGEST="$(gcloud artifacts docker images describe "${IMAGE_TAG}" --project "${ARTIFACT_PROJECT_ID}" --location "${{ vars.CLOUD_RUN_REGION }}" --format='value(image_summary.digest)')"
+          DIGEST="$(gcloud artifacts docker images describe "${IMAGE_TAG}" --project "${ARTIFACT_PROJECT_ID}" --format='value(image_summary.digest)')"
           if [ -z "${DIGEST}" ]; then
             echo "::error::Failed to resolve image digest for ${IMAGE_TAG}"
             exit 1
