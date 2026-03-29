@@ -66,6 +66,7 @@ export type OpenApiOperation = {
   operationId: string;
   summary: string;
   description?: string;
+  deprecated?: boolean;
   tags?: string[];
   parameters?: OpenApiParameter[];
   requestBody?: OpenApiRequestBody;

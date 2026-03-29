@@ -39,7 +39,6 @@ import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     getLatestXchatResponseIdByUser,
     getPersonaById,
-    listXChatHistoryByUser,
     resolveDefaultXchatPersonaForSession,
     saveXChatLog
 } from "@/modules/xchat/repository";
@@ -55,7 +54,6 @@ import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-sna
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
 import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
-import { buildRecentXchatHistoryPromptBlock } from "@/modules/xchat/xchat-recent-history-prompt";
 
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
@@ -374,7 +372,6 @@ export async function POST(request: Request) {
   }
 
   const useRemoteConversationHistory = isXchatRemoteHistoryEnabled();
-  let recentHistoryBlock: string | null = null;
   let previousResponseId: string | undefined;
   if (useRemoteConversationHistory && userId) {
     try {
@@ -391,25 +388,6 @@ export async function POST(request: Request) {
       });
     }
   }
-  if (!useRemoteConversationHistory && userId) {
-    try {
-      const priorNewestFirst = await listXChatHistoryByUser({
-        userId,
-        tenantId,
-        limit: 20
-      });
-      const personaHex = persona?._id?.toHexString();
-      const priorForPersona = personaHex
-        ? priorNewestFirst.filter((row) => row.personaId === personaHex).slice(0, 12)
-        : priorNewestFirst.slice(0, 12);
-      recentHistoryBlock = buildRecentXchatHistoryPromptBlock(priorForPersona);
-    } catch (error) {
-      console.warn("[xchat/ask] recent history load failed (non-fatal)", {
-        userId: session.userId,
-        message: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
 
   const teamKbMetaLine =
     linkedCollectionIds.length > 0
@@ -420,7 +398,7 @@ export async function POST(request: Request) {
     personaSystem: persona?.systemPrompt ?? "",
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,
-    recentHistoryBlock,
+    recentHistoryBlock: null,
     workspaceSnapshot: workspaceServerSnapshot,
     sessionToolInstructions: buildSessionToolInstructions({
       hostedSearch: hasHostedSearchTool,

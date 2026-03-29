@@ -182,7 +182,7 @@ describe("xchat ask route collection retrieval", () => {
         collectionIds: ["collection_team_default"]
       })
     );
-    expect(repositoryMocks.listXChatHistoryByUser).toHaveBeenCalled();
+    expect(repositoryMocks.listXChatHistoryByUser).not.toHaveBeenCalled();
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
       expect.objectContaining({
         systemPrompt: expect.stringContaining("Collection context snippet"),

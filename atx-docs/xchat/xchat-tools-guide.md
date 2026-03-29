@@ -37,9 +37,10 @@ flowchart TD
 **Model (ask):** persona `model`, else `XAI_CHAT_MODEL` or **`grok-4-1-fast-reasoning`** (`getDefaultPersonaChatModelId` in `ask/route.ts`); optional `reasoningEffort` for multi-agent ids only.
 
 **Continuity mode (ask):**
+
 - `XCHAT_USE_REMOTE_HISTORY=true` (preferred): use xAI hosted state via `store_messages` + `previous_response_id`.
-- unset / `false`: inject recent Mongo `xchat_logs` turns into the system prompt (`buildRecentXchatHistoryPromptBlock`).
-- Mongo logs are still written in both modes for audit/debug/UI history rails.
+- unset / `false`: no cross-turn continuity is injected.
+- Mongo logs are still written for audit/debug/UI rails; they are not injected into ask prompts.
 
 ---
 

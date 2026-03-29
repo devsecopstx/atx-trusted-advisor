@@ -20,6 +20,7 @@ type RouteOperation = {
   method: RouteMethod;
   auth: AuthScope;
   summary?: string;
+  deprecated?: boolean;
   hasRequestBody?: boolean;
 };
 
@@ -594,7 +595,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/xchat/history/sync-turn",
-    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true, deprecated: true }],
     tag: "xchat"
   },
   {
@@ -911,6 +912,7 @@ function buildOperation(path: string, op: RouteOperation, tag: string): OpenApiO
           }
         }
       : undefined,
+    deprecated: op.deprecated ?? false,
     responses: buildResponses(op.auth),
     security: op.auth === "public" ? undefined : [{ cookieAuth: [] }]
   };

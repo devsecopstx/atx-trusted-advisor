@@ -352,6 +352,8 @@ export function XchatConversation({
     () => trimTranscriptToRecentResponses(messages, XCHAT_UI_RESPONSE_LIMIT),
     [messages]
   );
+  const historyMode = historyStats?.historyMode ?? "mongo";
+  const isRemoteHistoryMode = historyMode === "xai_remote";
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -404,6 +406,16 @@ export function XchatConversation({
     let active = true;
     async function hydrateThreadFromHistory() {
       try {
+        const statsRes = await fetch("/api/xchat/history/stats");
+        const statsPayload = (await statsRes.json().catch(() => ({}))) as {
+          data?: HistoryStats;
+        };
+        if (!statsRes.ok || !active) {
+          return;
+        }
+        if ((statsPayload.data?.historyMode ?? "mongo") === "xai_remote") {
+          return;
+        }
         const res = await fetch(`/api/xchat/history?limit=${XCHAT_UI_PROMPT_LIMIT}`);
         const payload = (await res.json().catch(() => ({}))) as {
           data?: { items?: HistoryItem[] };
@@ -551,27 +563,32 @@ export function XchatConversation({
       setHistoryLoading(true);
       setHistoryError(null);
       try {
-        const [historyRes, statsRes] = await Promise.all([
-          fetch(`/api/xchat/history?limit=${XCHAT_UI_PROMPT_LIMIT}`),
-          fetch("/api/xchat/history/stats")
-        ]);
-        const historyPayload = (await historyRes.json().catch(() => ({}))) as {
-          data?: { items?: HistoryItem[] };
-          error?: string;
-        };
+        const statsRes = await fetch("/api/xchat/history/stats");
         const statsPayload = (await statsRes.json().catch(() => ({}))) as {
           data?: HistoryStats;
           error?: string;
         };
-
-        if (!historyRes.ok || !statsRes.ok) {
-          throw new Error(
-            historyPayload.error ??
-              statsPayload.error ??
-              `History request failed (${historyRes.status}/${statsRes.status})`
-          );
+        if (!statsRes.ok) {
+          throw new Error(statsPayload.error ?? `History stats request failed (${statsRes.status})`);
         }
-
+        if (!active) {
+          return;
+        }
+        const resolvedHistoryMode = statsPayload.data?.historyMode ?? "mongo";
+        setHistoryStats(statsPayload.data ?? null);
+        if (resolvedHistoryMode === "xai_remote") {
+          setSavedHistory([]);
+          setHistoryLoaded(true);
+          return;
+        }
+        const historyRes = await fetch(`/api/xchat/history?limit=${XCHAT_UI_PROMPT_LIMIT}`);
+        const historyPayload = (await historyRes.json().catch(() => ({}))) as {
+          data?: { items?: HistoryItem[] };
+          error?: string;
+        };
+        if (!historyRes.ok) {
+          throw new Error(historyPayload.error ?? `History request failed (${historyRes.status})`);
+        }
         if (!active) {
           return;
         }
@@ -583,7 +600,6 @@ export function XchatConversation({
           })
           .slice(0, XCHAT_UI_PROMPT_LIMIT * 3);
         setSavedHistory(filteredRecentHistory);
-        setHistoryStats(statsPayload.data ?? null);
         setHistoryLoaded(true);
       } catch (error) {
         if (!active) {
@@ -892,14 +908,17 @@ export function XchatConversation({
               <RailDisclosure
                 defaultOpen={false}
                 icon={<RecentChatsRailGlyph className="app-user-rail-disclosure__glyph" />}
-                title="Recent chats"
+                title={isRemoteHistoryMode ? "Recent chats (local archive)" : "Recent chats"}
               >
-                {historyLoading ? <p className="status-text">Loading history...</p> : null}
-                {historyError ? <p className="status-text status-error">{historyError}</p> : null}
-                {!historyLoading && !historyError && savedHistory.length === 0 ? (
+                {isRemoteHistoryMode ? (
+                  <p className="status-text">Remote continuity is active; local Mongo history is hidden.</p>
+                ) : null}
+                {!isRemoteHistoryMode && historyLoading ? <p className="status-text">Loading history...</p> : null}
+                {!isRemoteHistoryMode && historyError ? <p className="status-text status-error">{historyError}</p> : null}
+                {!isRemoteHistoryMode && !historyLoading && !historyError && savedHistory.length === 0 ? (
                   <p className="status-text">No past chat history yet.</p>
                 ) : null}
-                {!historyLoading && !historyError && savedHistory.length > 0 ? (
+                {!isRemoteHistoryMode && !historyLoading && !historyError && savedHistory.length > 0 ? (
                   <ul className="xchat-rail-history-list">
                     {savedHistory.map((item) => (
                       <li className="xchat-rail-history-item" key={item.id}>
@@ -948,9 +967,8 @@ export function XchatConversation({
         <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
           Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side in
           {" "}
-          Mongo; continuity uses{" "}
-          <strong>{historyStats?.historyMode === "xai_remote" ? "xAI remote conversation state" : "recent saved turns"}</strong>.
-          Open <strong>Recent chats</strong> in the sidebar for the saved list. Persona choice locks after your first
+          Mongo; continuity uses <strong>{isRemoteHistoryMode ? "xAI remote conversation state" : "recent saved turns"}</strong>.
+          Persona choice locks after your first
           successful reply in this thread (unless your admin assigned one).
         </p>
       ) : null}

@@ -9,7 +9,7 @@ type RouteMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HE
 
 type OperationOverride = Pick<
   OpenApiOperation,
-  "summary" | "description" | "parameters" | "requestBody" | "responses"
+  "summary" | "description" | "parameters" | "requestBody" | "responses" | "deprecated"
 >;
 
 function refSchema(name: string): OpenApiSchema {
@@ -336,7 +336,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback). Hosted RAG pre-search uses **TEAM KB collections only** (`persona.teamCollection` + deploy team default from `resolveTeamKbCollectionId`); persona `xaiCollection` is not merged into ask RAG. Continuity defaults to recent Mongo `xchat_logs` prompt injection and can be switched to xAI hosted state (`store_messages` + `previous_response_id`) via `XCHAT_USE_REMOTE_HISTORY=true`. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same TEAM id list wired into tools.",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback). Hosted RAG pre-search uses **TEAM KB collections only** (`persona.teamCollection` + deploy team default from `resolveTeamKbCollectionId`); persona `xaiCollection` is not merged into ask RAG. Local Mongo prompt-history injection is retired. Continuity now uses xAI hosted state (`store_messages` + `previous_response_id`) when `XCHAT_USE_REMOTE_HISTORY=true`. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same TEAM id list wired into tools.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -401,6 +401,33 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "200": jsonResponse("Saved xChat history stats.", "XChatHistoryStatsResponseEnvelope"),
       "400": jsonResponse("Invalid session user id.", "ErrorResponse"),
       "401": json401Session()
+    }
+  },
+  "POST /api/xchat/history/sync-turn": {
+    summary: "Sync one local xChat turn to user history collection (deprecated)",
+    description:
+      "Deprecated endpoint kept for backward compatibility while xChat continuity migrates to xAI hosted conversation state (`store_messages` + `previous_response_id`).",
+    deprecated: true,
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+            required: ["logId"],
+            properties: {
+              logId: { type: "string" }
+            }
+          }
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Sync accepted.", "AtxSessionJsonSuccess"),
+      "400": jsonResponse("Invalid JSON payload.", "ValidationErrorResponse"),
+      "401": json401Session(),
+      "404": jsonResponse("Log not found.", "ErrorResponse"),
+      "502": jsonResponse("Upstream sync failed.", "UpstreamErrorResponse")
     }
   },
   "POST /api/xchat/batch": {
