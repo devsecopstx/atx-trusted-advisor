@@ -57,13 +57,10 @@ export default async function ResourcesAboutPage() {
     <article className="resources-doc-shell" aria-label="About resources">
       <header className="resources-doc-hero">
         <p className="resources-doc-hero__eyebrow">Resources · About</p>
-        <h1 className="resources-doc-hero__title">workflow at a glance</h1>
+        <h1 className="resources-doc-hero__title">Decisioning workflow at a glance</h1>
         <p className="resources-doc-hero__copy resources-doc-hero__copy--full">
-          Decision Insights, to provide end-to-end flow for options users: discover opportunities,
-          analyze risk/reward, build strategy legs decision insights.
-        </p>
-        <p className="resources-doc-hero__copy resources-doc-hero__copy--full">
-          * future * (premium+) execute with intent, and manage positions as conditions change.
+          Portfolio and Investment Decision Insights, to provide end-to-end flow for options users: discover opportunities,
+          analyze risk/reward, build strategy legs decision insights, for premium+ subscribers execute with intent, and manage positions as conditions change.
         </p>
       </header>
 

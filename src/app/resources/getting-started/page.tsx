@@ -43,7 +43,7 @@ export default async function ResourcesGettingStartedPage() {
           <p className="resources-doc-hero__eyebrow">Resources · Getting Started</p>
           <h1 className="resources-doc-hero__title">Guide to investing with options</h1>
           <p className="resources-doc-hero__copy">
-            Migrated from the legacy docs with focus on practical options workflows: onboarding, day-to-day usage,
+            Once approaved for TIER 2 Level trading with your broker, onboarding, day-to-day usage,
             strategy patterns, and risk controls. Automation/tasks/config sections are intentionally excluded.
           </p>
         </header>
