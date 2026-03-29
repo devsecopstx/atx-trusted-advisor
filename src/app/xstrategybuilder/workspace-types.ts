@@ -7,6 +7,8 @@ export type XsbWorkspaceAccount = {
   accountRef: string;
   brokerType: string;
   balance: number;
+  /** True when this row is the portfolio default account (Mongo). */
+  isDefault?: boolean;
   riskProfile: "conservative" | "balanced" | "growth" | null;
   outlook: AccountOutlook | null;
 };

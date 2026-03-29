@@ -45,6 +45,8 @@ Default to production-grade, secure, observable, and SRE-minded solutions unless
 
 **Preflight:** `npm run ops:secrets:verify:staging` / `ops:secrets:verify:prod` (or `verify-gcp-runtime-secrets.sh --project …`) asserts these exist with non-empty latest versions, along with core app secrets (`MONGODB_URI_B64`, xAI, OAuth, `AUTH_SECRET`, etc.).
 
+**Export / diff vs local `.env.prod`:** `atx-docs/sre-ops/gcp-secrets-export-diff.md` — `npm run ops:secrets:export:prod` (writes `.env.prod.gcp-export`, sensitive), `npm run ops:secrets:diff:prod` (masked `MATCH`/`MISMATCH`; use for xAI key rotation checks).
+
 **Deploy:** Cloud Run workflows bind `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_PUBLIC_KEY` from Secret Manager on every deploy (no GitHub Variables fallback for those three).
 
 Other Stripe config (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_*`) remains as documented in `atx-docs/sre-ops/stripe-billing-setup.md` (secret key in SM when checkout is enabled; price ids via GitHub Environment **variables** unless you add separate SM secrets later).

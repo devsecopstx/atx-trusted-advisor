@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/ops/gcp-runtime-secrets.inc.sh
+source "${SCRIPT_DIR}/gcp-runtime-secrets.inc.sh"
+
 PROJECT=""
 EXPECT_NON_EMPTY="true"
 REQUIRE_NON_EMPTY_SLACK_WEBHOOK="false"
@@ -56,19 +60,7 @@ if [[ -z "${PROJECT//[[:space:]]/}" ]]; then
   exit 1
 fi
 
-REQUIRED_SECRETS=(
-  "MONGODB_URI_B64"
-  "XAI_API_KEY"
-  "XAI_MANAGEMENT_API_KEY"
-  "X_OAUTH_CLIENT_ID"
-  "X_OAUTH_CLIENT_SECRET"
-  "AUTH_SECRET"
-  "SLACK_WEBHOOK_URL"
-  "ADMIN_SEED_EMAIL"
-  "REDIS_URL"
-  "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
-  "STRIPE_PUBLIC_KEY"
-)
+REQUIRED_SECRETS=("${GCP_RUNTIME_SECRETS_REQUIRED[@]}")
 
 echo "[verify-secrets] project=$PROJECT expect_non_empty=$EXPECT_NON_EMPTY require_non_empty_slack_webhook=$REQUIRE_NON_EMPTY_SLACK_WEBHOOK"
 

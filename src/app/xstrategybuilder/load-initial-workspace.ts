@@ -32,6 +32,7 @@ export async function loadXsbInitialWorkspace(session: SessionUser): Promise<Xsb
           accountRef: a.accountRef,
           brokerType: a.brokerType,
           balance: a.balance,
+          isDefault: a.isDefault,
           riskProfile: a.riskProfile,
           outlook: a.outlook
         }))

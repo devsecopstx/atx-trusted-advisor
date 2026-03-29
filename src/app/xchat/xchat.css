@@ -2015,6 +2015,41 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
   min-width: 0;
 }
 
+.app-user-rail-workspace-row--stack {
+  gap: 0.28rem;
+}
+
+.app-user-rail-account-select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.32rem 0.4rem;
+  border-radius: 8px;
+  border: 1px solid var(--xf-app-rail-border);
+  background: var(--xf-bg-900);
+  color: var(--xf-text-100);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.app-user-rail-account-select:focus-visible {
+  outline: 2px solid var(--xf-gain-green);
+  outline-offset: 2px;
+}
+
+.app-user-rail-account-open {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--xf-gain-green);
+  text-decoration: none;
+}
+
+.app-user-rail-account-open:hover {
+  color: var(--xf-lightning-yellow);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .app-user-rail-workspace-k {
   font-size: 0.6rem;
   font-weight: 700;

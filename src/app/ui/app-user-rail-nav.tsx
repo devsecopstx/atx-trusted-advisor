@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState, type ReactNode, type SVGProps } from "react";
 
+import { AppUserWorkspaceAccountPicker } from "@/app/ui/app-user-workspace-account-picker";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 
@@ -289,20 +290,11 @@ export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUser
                 {railContext.book.portfolioName}
               </Link>
             </div>
-            <div className="app-user-rail-workspace-row">
-              <span className="app-user-rail-workspace-k">Account</span>
-              {railContext.book.accountId ? (
-                <Link
-                  className="app-user-rail-workspace-v app-user-rail-workspace-v--link"
-                  href={`/portfolio/accounts/${railContext.book.accountId}`}
-                  title="Open account workspace"
-                >
-                  {railContext.book.accountName}
-                </Link>
-              ) : (
-                <span className="app-user-rail-workspace-v">{railContext.book.accountName}</span>
-              )}
-            </div>
+            <AppUserWorkspaceAccountPicker
+              accounts={railContext.book.accounts}
+              portfolioId={railContext.book.portfolioId}
+              serverDefaultAccountId={railContext.book.accountId}
+            />
           </div>
         ) : (
           <p className="app-user-rail-workspace-hint">

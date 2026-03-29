@@ -59,6 +59,7 @@ export async function buildPortfolioSummaryPayload(
     accountRef: string;
     brokerType: string;
     balance: number;
+    isDefault: boolean;
     riskProfile: "conservative" | "balanced" | "growth" | null;
     outlook: AccountOutlook | null;
     riskLevel: "low" | "medium" | "high";
@@ -105,6 +106,7 @@ export async function buildPortfolioSummaryPayload(
         accountRef: account.extAccountId ?? "",
         brokerType: account.type ?? "fidelity",
         balance: account.cashBalance ?? DEFAULT_COALESCE_CASH,
+        isDefault: account.isDefault === true,
         riskProfile,
         outlook,
         riskLevel: riskLevelFromProfile(riskProfile),
