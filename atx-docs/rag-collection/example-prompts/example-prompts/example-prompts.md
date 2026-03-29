@@ -1,3 +1,5 @@
+# Example prompts
+
 <!-- App xChat example prompts / RAG sample text — not a Cursor agent. See ../../README.md -->
 
 Example user prompts for trusted family

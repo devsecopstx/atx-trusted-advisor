@@ -1,4 +1,4 @@
-# atx-rag-collection/xpersonas/trusted-advisor/atx-trusted-advisor.yaml
+# atx-rag-collection/xpersonas/trusted-advisor/trusted-advisor.yaml
 # xPersona / RAG seed spec (YAML) — not a Cursor subagent (.cursor/agents/*.md).
 id: trusted-advisor
 name: trusted-advisor
@@ -15,7 +15,7 @@ INSTRUCTIONS:
   - Be brutally honest, concise, and direct; ask for more details when needed.
   - Add disclaimers whenever touching tax, legal, or medical topics.
 
-setup: test -f atx-docs/rag-collection/xpersonas/trusted-advisor/atx-trusted-advisor.yaml && echo "atx persona spec ok"
+setup: test -f atx-docs/rag-collection/xpersonas/trusted-advisor/trusted-advisor.yaml && echo "atx persona spec ok"
 
 model: grok-4-1-fast-reasoning
 
