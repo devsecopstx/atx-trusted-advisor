@@ -15,6 +15,18 @@ export type AtxBillingPlan = {
   highlight?: boolean;
 };
 
+/** Compact period for UI that uses a slash (e.g. `/month`, `/year`). Single source with {@link ATX_BILLING_PLANS}. */
+export function atxBillingPeriodSlash(plan: Pick<AtxBillingPlan, "periodNote">): string {
+  const n = plan.periodNote.trim().toLowerCase();
+  if (n === "per month") {
+    return "/month";
+  }
+  if (n === "per year") {
+    return "/year";
+  }
+  return "";
+}
+
 export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
   {
     id: "basic",
@@ -34,7 +46,7 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     id: "premium_monthly",
     name: "Premium",
     tagline: "Complex books — xChat + xStrategyBuilder with fair per-hour caps",
-    priceLabel: "$29",
+    priceLabel: "$99",
     periodNote: "per month",
     highlight: true,
     bullets: [
@@ -49,8 +61,8 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     id: "premium_plus_yearly",
     name: "Premium+",
     tagline: "Dedicated instance — private, white-glove posture, account trade recomendations and rationale with automated verification",
-    priceLabel: "$99",
-    periodNote: "per month",
+    priceLabel: "$299",
+    periodNote: "per year",
     bullets: [
       "White-glove for ultra-complex and family-office books; direct line for structured product input",
       "Dedicated enterprise-grade instance sized for your workflow",

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 
 import { SendIcon } from "@/app/admin/ui/crud-icons";
+import { ATX_BILLING_PLANS, atxBillingPeriodSlash } from "@/lib/atx-billing-plans";
 
 type PlanFeature = {
   text: string;
@@ -15,6 +16,8 @@ type PlanTier = {
   featured?: boolean;
   features: PlanFeature[];
 };
+
+const [, premiumPlan, plusPlan] = ATX_BILLING_PLANS;
 
 const PLANS: PlanTier[] = [
   {
@@ -34,8 +37,8 @@ const PLANS: PlanTier[] = [
   },
   {
     name: "Pro",
-    price: "$29",
-    period: "/month",
+    price: premiumPlan.priceLabel,
+    period: atxBillingPeriodSlash(premiumPlan),
     featured: true,
     features: [
       { text: "Unlimited xchat prompts" },
@@ -51,8 +54,8 @@ const PLANS: PlanTier[] = [
   },
   {
     name: "Enterprise",
-    price: "$99",
-    period: "/month",
+    price: plusPlan.priceLabel,
+    period: atxBillingPeriodSlash(plusPlan),
     features: [
       { text: "Everything in Pro" },
       { text: "xStrategyBuilder weekly range: extended / unlimited posture" },

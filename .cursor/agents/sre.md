@@ -17,6 +17,8 @@ no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer doc
 **Tenant workspace limits:** `atx-docs/sre-ops/tenant-workspace-limits.md` — `core_tenants.workspaceLimits`, collection
 `app_feature_daily_usage`, admin route `/api/admin/tenants/{tenantId}/workspace-limits`, billing surfacing.
 
+**Billing list prices (single source of truth):** `src/lib/atx-billing-plans.ts` (`ATX_BILLING_PLANS`) — guest and logged-in `/account/billing`, xChat plans landing, and `atx-billing-plan-limits` / `atx-docs/resouces/atx-limits.txt.tsv` must stay aligned; Stripe **Price** objects must match amounts before swapping `STRIPE_PRICE_*` ids.
+
 Review format: (1) scope & risk (2) issues + file refs (3) mitigation (4) Approve / Block / Conditional.
 
 **OptionsStrategyEngine (PLAN 245):** SRE phase (runtime, observability, secrets/quotas) — `.cursor/agents/reviewer.md` § *Core feature plan: OptionsStrategyEngine*; spec — `atx-docs/design-system/xStrategyBuilder/strategy-engine.md`.

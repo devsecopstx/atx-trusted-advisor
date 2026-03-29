@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 
+import {
+    ATX_BILLING_PLANS,
+    atxBillingPeriodSlash,
+    type AtxBillingPlanId
+} from "@/lib/atx-billing-plans";
+
 type PlanTier = {
   id: string;
   name: string;
@@ -12,31 +18,38 @@ type PlanTier = {
   limits: string[];
 };
 
+const LIMITS_BY_PLAN: Record<AtxBillingPlanId, string[]> = {
+  basic: ["Unlimited xChat prompts", "Unlimited Exams (capped)"],
+  premium_monthly: [
+    "Unlimited xChat prompts",
+    "Unlimited Exams (expanded caps)",
+    "Expanded xStrategyBuilder posture"
+  ],
+  premium_plus_yearly: [
+    "Unlimited xChat prompts",
+    "Unlimited Exams",
+    "Early access to new features",
+    "Dedicated / white-glove posture"
+  ]
+};
+
 const PLAN_TIERS: PlanTier[] = [
   {
     id: "free",
     name: "Free",
     price: "$0",
     period: "",
-    limits: ["10 xChat prompts / day", "1 Exam included"],
+    limits: ["10 xChat prompts / day", "1 Exam included"]
   },
-  {
-    id: "paid",
-    name: "Paid",
-    price: "$9",
-    period: "/month",
-    highlight: true,
-    tag: "Popular",
-    limits: ["Unlimited xChat prompts", "Unlimited Exams (capped)"],
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    price: "$99",
-    period: "/year",
-    tag: "Beta",
-    limits: ["Unlimited xChat prompts", "Unlimited Exams", "Early access to new features"],
-  },
+  ...ATX_BILLING_PLANS.map((p) => ({
+    id: p.id,
+    name: p.name,
+    price: p.priceLabel,
+    period: atxBillingPeriodSlash(p),
+    highlight: Boolean(p.highlight),
+    tag: p.highlight ? "Popular" : p.id === "premium_plus_yearly" ? "Beta" : undefined,
+    limits: LIMITS_BY_PLAN[p.id]
+  }))
 ];
 
 export function ProductPlans() {
