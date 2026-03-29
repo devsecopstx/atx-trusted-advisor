@@ -157,7 +157,40 @@ jobs:
 
           IMAGE_REPO="${{ vars.CLOUD_RUN_REGION }}-docker.pkg.dev/${ARTIFACT_PROJECT_ID}/${ARTIFACT_REPOSITORY}/${{ env.IMAGE_NAME }}"
           IMAGE_TAG="${IMAGE_REPO}:${GITHUB_SHA}"
-          gcloud builds submit --project "${ARTIFACT_PROJECT_ID}" --tag "${IMAGE_TAG}" .
+          BUILD_META="$(gcloud builds submit --project "${ARTIFACT_PROJECT_ID}" --tag "${IMAGE_TAG}" . --async --format='value(metadata.build.id,metadata.build.logUrl)')"
+          BUILD_ID="$(printf '%s\n' "${BUILD_META}" | awk 'NR==1 {print $1}')"
+          BUILD_LOG_URL="$(printf '%s\n' "${BUILD_META}" | awk 'NR==1 {$1=""; sub(/^[[:space:]]+/, ""); print}')"
+          if [ -z "${BUILD_ID}" ]; then
+            echo "::error::Failed to start Cloud Build for ${IMAGE_TAG}"
+            exit 1
+          fi
+          echo "::notice::Cloud Build started: ${BUILD_ID}"
+          if [ -n "${BUILD_LOG_URL}" ]; then
+            echo "::notice::Cloud Build logs: ${BUILD_LOG_URL}"
+          fi
+          FINAL_STATUS=""
+          for _ in $(seq 1 240); do
+            STATUS="$(gcloud builds describe "${BUILD_ID}" --project "${ARTIFACT_PROJECT_ID}" --format='value(status)')"
+            case "${STATUS}" in
+              SUCCESS)
+                FINAL_STATUS="${STATUS}"
+                break
+                ;;
+              FAILURE|INTERNAL_ERROR|TIMEOUT|CANCELLED|EXPIRED)
+                echo "::error::Cloud Build ${BUILD_ID} failed with status ${STATUS}"
+                gcloud builds describe "${BUILD_ID}" --project "${ARTIFACT_PROJECT_ID}" --format='yaml(status,statusDetail,logUrl)'
+                exit 1
+                ;;
+              *)
+                sleep 5
+                ;;
+            esac
+          done
+          if [ "${FINAL_STATUS}" != "SUCCESS" ]; then
+            echo "::error::Cloud Build ${BUILD_ID} did not reach SUCCESS within polling window"
+            gcloud builds describe "${BUILD_ID}" --project "${ARTIFACT_PROJECT_ID}" --format='yaml(status,statusDetail,logUrl)'
+            exit 1
+          fi
           DIGEST="$(gcloud artifacts docker images describe "${IMAGE_TAG}" --project "${ARTIFACT_PROJECT_ID}" --location "${{ vars.CLOUD_RUN_REGION }}" --format='value(image_summary.digest)')"
           if [ -z "${DIGEST}" ]; then
             echo "::error::Failed to resolve image digest for ${IMAGE_TAG}"
