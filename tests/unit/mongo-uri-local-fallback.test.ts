@@ -11,6 +11,8 @@ describe("getMongoUriFromB64 local fallback", () => {
   beforeEach(() => {
     vi.resetModules();
     Object.assign(process.env, requiredEnv);
+    // Isolate from developer shell / Vitest-loaded .env (Atlas/stage URIs); fallback tests need these unset.
+    delete process.env.MONGODB_URI;
     delete process.env.MONGODB_URI_B64;
     delete process.env.MONGODB_URI_B4;
     delete process.env.ADMIN_X_USERNAME;
