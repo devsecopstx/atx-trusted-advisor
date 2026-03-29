@@ -8,6 +8,8 @@ export function serializeScheduledTaskForJson(t: ScheduledTask) {
     name: t.name,
     category: t.category,
     scheduleCron: t.scheduleCron,
+    scheduleRRule: t.scheduleRRule,
+    scheduleDescription: t.scheduleDescription,
     enabled: t.enabled,
     runTimeoutSeconds: t.runTimeoutSeconds,
     maxRetries: t.maxRetries,

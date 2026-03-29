@@ -8,9 +8,9 @@ const auditMocks = vi.hoisted(() => ({
 vi.mock("@/modules/audit/repository", () => auditMocks);
 
 import {
-  isCoreScannerCategory,
-  logCoreScannerRunAudit,
-  type ScheduledCategoryResult
+    isCoreScannerCategory,
+    logCoreScannerRunAudit,
+    type ScheduledCategoryResult
 } from "@/modules/scanner/core-scanner-service";
 
 describe("core-scanner-service", () => {
@@ -19,7 +19,9 @@ describe("core-scanner-service", () => {
     auditMocks.createAuditEvent.mockResolvedValue({});
   });
 
-  it("isCoreScannerCategory is true for watchlist and options scanners", () => {
+  it("isCoreScannerCategory is true for scanner categories", () => {
+    expect(isCoreScannerCategory("price_scanner")).toBe(true);
+    expect(isCoreScannerCategory("options_scanner")).toBe(true);
     expect(isCoreScannerCategory("watchlist_price_scanner")).toBe(true);
     expect(isCoreScannerCategory("daily_options_scanner")).toBe(true);
     expect(isCoreScannerCategory("sync-broker")).toBe(false);

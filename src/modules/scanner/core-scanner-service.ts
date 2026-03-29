@@ -17,6 +17,8 @@ export type ScheduledCategoryResult = {
 };
 
 const CORE_SCANNER_CATEGORIES = new Set<ScheduledTask["category"]>([
+  "price_scanner",
+  "options_scanner",
   "watchlist_price_scanner",
   "daily_options_scanner"
 ]);

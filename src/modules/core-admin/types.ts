@@ -83,6 +83,9 @@ export type ScheduledTask = {
   portfolioId?: ObjectId;
   name: string;
   category:
+    | "price_scanner"
+    | "options_scanner"
+    | "user_access_requests"
     | "sync-broker"
     | "rebalance"
     | "compliance"
@@ -90,7 +93,11 @@ export type ScheduledTask = {
     | "user-history"
     | "watchlist_price_scanner"
     | "daily_options_scanner";
-  scheduleCron: string;
+  scheduleCron?: string;
+  /** RRULE expression for rich recurrence; preferred over cron when present. */
+  scheduleRRule?: string;
+  /** Human-readable recurrence summary shown in admin scheduler UI. */
+  scheduleDescription?: string;
   enabled: boolean;
   runTimeoutSeconds?: number;
   maxRetries?: number;
@@ -305,7 +312,7 @@ export type WatchlistSymbol = {
   strategy?: string;
   quantity?: number;
   entryPrice?: number;
-  /** Populated by WatchlistScannerService (`watchlist_price_scanner` ScheduledTask). */
+  /** Populated by price scanners (`price_scanner` or legacy `watchlist_price_scanner`). */
   lastPrice?: number;
   lastUpdatedAt?: Date;
 };

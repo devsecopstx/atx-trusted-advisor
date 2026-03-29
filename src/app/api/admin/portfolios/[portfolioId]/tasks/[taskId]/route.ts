@@ -5,7 +5,13 @@ import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serial
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
-import { adminGetPortfolioById, deleteScheduledTask, updateScheduledTask } from "@/modules/core-admin/repository";
+import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
+import {
+    adminGetPortfolioById,
+    deleteScheduledTask,
+    getScheduledTaskById,
+    updateScheduledTask
+} from "@/modules/core-admin/repository";
 
 type RouteContext = {
   params: Promise<{ portfolioId: string; taskId: string }>;
@@ -16,6 +22,8 @@ const patchTaskSchema = z
     name: z.string().trim().min(1).max(200).optional(),
     category: scheduledTaskCategorySchema.optional(),
     scheduleCron: z.string().trim().min(5).max(128).optional(),
+    scheduleRRule: z.union([z.string().trim().min(1).max(1024), z.null()]).optional(),
+    scheduleDescription: z.string().trim().min(1).max(280).optional(),
     enabled: z.boolean().optional(),
     nextRunAt: z.union([z.coerce.date(), z.null()]).optional()
   })
@@ -24,6 +32,8 @@ const patchTaskSchema = z
       d.name !== undefined ||
       d.category !== undefined ||
       d.scheduleCron !== undefined ||
+      d.scheduleRRule !== undefined ||
+      d.scheduleDescription !== undefined ||
       d.enabled !== undefined ||
       d.nextRunAt !== undefined,
     { message: "At least one field is required" }
@@ -60,6 +70,24 @@ export async function PATCH(request: Request, context: RouteContext) {
       { status: 400 }
     );
   }
+  const existing = await getScheduledTaskById(taskId, { tenantId: session.tenantId });
+  if (!existing?._id || existing.portfolioId?.toHexString() !== portfolioId) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
+  if (parsed.data.scheduleCron !== undefined || parsed.data.scheduleRRule !== undefined) {
+    const scheduleValidation = validateScheduleInput({
+      scheduleCron:
+        parsed.data.scheduleCron !== undefined ? parsed.data.scheduleCron : existing.scheduleCron,
+      scheduleRRule:
+        parsed.data.scheduleRRule !== undefined ? parsed.data.scheduleRRule : existing.scheduleRRule
+    });
+    if (!scheduleValidation.ok) {
+      return NextResponse.json(
+        { error: scheduleValidation.message ?? "Invalid schedule payload" },
+        { status: 400 }
+      );
+    }
+  }
 
   const updated = await updateScheduledTask({
     taskId,
@@ -68,6 +96,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     name: parsed.data.name,
     category: parsed.data.category,
     scheduleCron: parsed.data.scheduleCron,
+    scheduleRRule: parsed.data.scheduleRRule,
+    scheduleDescription: parsed.data.scheduleDescription,
     enabled: parsed.data.enabled,
     nextRunAt: parsed.data.nextRunAt === null ? null : parsed.data.nextRunAt
   });

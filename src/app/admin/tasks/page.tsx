@@ -18,9 +18,9 @@ export default async function AdminTasksPage() {
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
         <p className="eyebrow">atxfinance core admin</p>
-        <h1 className="hero-title">Scheduler Tasks</h1>
+        <h1 className="hero-title">Scheduler Jobs</h1>
         <p className="hero-copy">
-          Create and run scheduler tasks with quick controls optimized for mobile.
+          Create and run predefined scheduler jobs with robust cron controls.
         </p>
       </section>
 

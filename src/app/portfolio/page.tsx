@@ -12,6 +12,7 @@ import { caughtErrorMessage } from "@/lib/caught-error";
 import { buildPortfolioHoldingRows } from "@/lib/portfolio-holding-rows";
 import { computePortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import {
+    adminListBrokerCatalog,
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
     listPortfolioAccounts,
@@ -102,6 +103,23 @@ export default async function PortfolioPage() {
   const portfolioIdHex = portfolio?._id?.toHexString?.() ?? null;
   const portfolioDisplayName =
     portfolio?.name && portfolio.name.trim().length > 0 ? portfolio.name : "Default portfolio";
+  const portfolioBrokerType =
+    typeof portfolio?.broker_type === "string" ? portfolio.broker_type.trim().toLowerCase() : "";
+  let portfolioBrokerDisplayName: string | null = null;
+  let portfolioBrokerIconUrl: string | null = null;
+  if (portfolioBrokerType) {
+    try {
+      const brokerCatalog = await adminListBrokerCatalog();
+      const brokerRow = brokerCatalog.find((row) => row.type === portfolioBrokerType);
+      portfolioBrokerDisplayName = brokerRow?.name ?? null;
+      portfolioBrokerIconUrl = brokerRow?.iconUrl ?? null;
+    } catch (error) {
+      const detail = caughtErrorMessage(error);
+      console.warn(
+        `[portfolio] broker catalog lookup failed userId=${session.userId} portfolioId=${portfolioIdHex ?? "n/a"} detail=${detail}`
+      );
+    }
+  }
 
   const quickAddAccounts = accounts
     .filter((account): account is Account & { _id: NonNullable<Account["_id"]> } => Boolean(account._id))
@@ -207,6 +225,9 @@ export default async function PortfolioPage() {
             metrics={metrics}
             portfolioDisplayName={portfolioDisplayName}
             portfolioIdHex={portfolioIdHex}
+            portfolioBrokerDisplayName={portfolioBrokerDisplayName}
+            portfolioBrokerIconUrl={portfolioBrokerIconUrl}
+            portfolioBrokerType={portfolioBrokerType}
             quickAddAccounts={quickAddAccounts}
             scoringFactors={scoringFactors}
           />

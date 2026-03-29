@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
+import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
 import {
     createScheduledTask,
     listScheduledTasks
@@ -12,7 +13,9 @@ import {
 const createTaskSchema = z.object({
   name: z.string().min(1),
   category: scheduledTaskCategorySchema,
-  scheduleCron: z.string().min(5),
+  scheduleCron: z.string().trim().min(5).optional(),
+  scheduleRRule: z.string().trim().min(1).max(1024).optional(),
+  scheduleDescription: z.string().trim().min(1).max(280).optional(),
   enabled: z.boolean(),
   lastRunAt: z.coerce.date().optional(),
   nextRunAt: z.coerce.date().optional()
@@ -52,6 +55,16 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid request payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+  const scheduleValidation = validateScheduleInput({
+    scheduleCron: parsed.data.scheduleCron,
+    scheduleRRule: parsed.data.scheduleRRule
+  });
+  if (!scheduleValidation.ok) {
+    return NextResponse.json(
+      { error: scheduleValidation.message ?? "Invalid schedule payload" },
       { status: 400 }
     );
   }

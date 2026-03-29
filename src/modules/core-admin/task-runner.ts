@@ -7,10 +7,12 @@ import {
     markTaskRunWindow
 } from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
+import { runUserAccessRequestsTask } from "@/modules/core-admin/user-access-requests-task";
 import {
     logCoreScannerRunAudit,
     type ScheduledCategoryResult
 } from "@/modules/scanner/core-scanner-service";
+import { runPriceScanner } from "@/modules/scanner/price-scanner";
 import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-strategy-scanner";
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
@@ -37,7 +39,10 @@ export async function executeScheduledTask(
   }
 
   const startedAt = run.startedAt;
-  await markTaskRunWindow(task._id, startedAt);
+  await markTaskRunWindow(task._id, startedAt, {
+    scheduleCron: task.scheduleCron,
+    scheduleRRule: task.scheduleRRule
+  });
 
   const execution = await runScheduledCategory(task);
   const completedAt = new Date();
@@ -66,6 +71,15 @@ export async function executeScheduledTask(
 }
 
 async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCategoryResult> {
+  if (task.category === "price_scanner") {
+    return runPriceScanner(task);
+  }
+  if (task.category === "options_scanner") {
+    return runOptionsStrategyScanner(task);
+  }
+  if (task.category === "user_access_requests") {
+    return runUserAccessRequestsTask(task);
+  }
   if (task.category === "user-history") {
     return runUserHistoryAgent(task);
   }

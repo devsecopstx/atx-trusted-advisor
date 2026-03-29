@@ -32,6 +32,9 @@ type QuickAcct = {
 type PortfolioOverviewProps = {
   portfolioDisplayName: string;
   portfolioIdHex: string;
+  portfolioBrokerType: string;
+  portfolioBrokerDisplayName: string | null;
+  portfolioBrokerIconUrl: string | null;
   accounts: Account[];
   metrics: PortfolioOverviewMetrics;
   admin: boolean;
@@ -72,6 +75,9 @@ function strategyPillClass(outlook: Account["outlook"]): string {
 export function PortfolioOverview({
   portfolioDisplayName,
   portfolioIdHex,
+  portfolioBrokerType,
+  portfolioBrokerDisplayName,
+  portfolioBrokerIconUrl,
   accounts,
   metrics,
   admin,
@@ -165,6 +171,42 @@ export function PortfolioOverview({
             </div>
           ) : null}
         </div>
+        {portfolioBrokerType ? (
+          <div
+            className="portfolio-panel"
+            style={{
+              marginTop: "0.8rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.7rem",
+              padding: "0.6rem 0.85rem"
+            }}
+          >
+            {portfolioBrokerIconUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- broker icon URL is admin-managed catalog content
+              <img
+                alt={`${portfolioBrokerDisplayName ?? formatBrokerType(portfolioBrokerType)} logo`}
+                className="h-10 w-10 rounded border border-white/10 object-contain"
+                src={portfolioBrokerIconUrl}
+              />
+            ) : (
+              <span
+                className="inline-flex h-10 w-10 items-center justify-center rounded border border-white/10 text-xs font-mono uppercase text-[var(--xf-text-300)]"
+                title={portfolioBrokerType}
+              >
+                {portfolioBrokerType.slice(0, 2)}
+              </span>
+            )}
+            <div>
+              <p className="portfolio-metric__label" style={{ marginBottom: "0.15rem" }}>
+                Broker
+              </p>
+              <p className="portfolio-manage-head__portfolio-name" style={{ fontSize: "1rem" }}>
+                {portfolioBrokerDisplayName ?? formatBrokerType(portfolioBrokerType)}
+              </p>
+            </div>
+          </div>
+        ) : null}
         <details className="portfolio-tech-details">
           <summary>SE Scoring Factors</summary>
           <pre>Portfolio ID: {portfolioIdHex}</pre>

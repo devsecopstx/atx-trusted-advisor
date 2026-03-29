@@ -224,7 +224,26 @@ function BrokerCatalogRow(props: {
 
   return (
     <tr>
-      <td className="font-mono text-xs align-top">{row.type}</td>
+      <td className="align-top">
+        <div className="flex items-center gap-2">
+          {iconUrl.trim() ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin-supplied arbitrary icon URLs
+            <img
+              alt={`${row.name || row.type} broker icon`}
+              className="h-12 w-12 rounded border border-white/10 object-contain"
+              src={iconUrl.trim()}
+              title={row.type}
+            />
+          ) : (
+            <span
+              className="inline-flex h-12 w-12 items-center justify-center rounded border border-white/10 text-xs font-mono uppercase text-[var(--xf-text-300)]"
+              title={row.type}
+            >
+              {row.type.slice(0, 2)}
+            </span>
+          )}
+        </div>
+      </td>
       <td className="align-top">
         <input className="crud-input" value={name} onChange={(e) => setName(e.target.value)} aria-label="Name" />
       </td>
@@ -248,7 +267,7 @@ function BrokerCatalogRow(props: {
           // eslint-disable-next-line @next/next/no-img-element -- admin-supplied arbitrary icon URLs
           <img
             alt=""
-            className="mt-1 h-8 w-8 rounded border border-white/10 object-contain"
+            className="mt-1 h-12 w-12 rounded border border-white/10 object-contain"
             src={iconUrl.trim()}
           />
         ) : null}

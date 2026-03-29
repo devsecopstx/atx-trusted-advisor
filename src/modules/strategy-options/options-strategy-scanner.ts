@@ -1,6 +1,6 @@
 import {
-  adminListOptionsStrategyPreferenceSummaries,
-  adminListOptionsStrategySummaries,
+    adminListOptionsStrategyPreferenceSummaries,
+    adminListOptionsStrategySummaries,
 } from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
@@ -11,9 +11,10 @@ import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-ser
  * Full chain scan / ranking stays on roadmap (see `atx-docs/design-system/scheduled-task/options-scanner.md`).
  */
 export async function runOptionsStrategyScanner(
-  _task: ScheduledTask
+  task: ScheduledTask
 ): Promise<ScheduledCategoryResult> {
-  void _task;
+  const categoryLabel =
+    task.category === "options_scanner" ? "options_scanner" : "daily_options_scanner";
   try {
     const strategies = await adminListOptionsStrategySummaries();
     const prefs = await adminListOptionsStrategyPreferenceSummaries();
@@ -26,7 +27,7 @@ export async function runOptionsStrategyScanner(
           : `${slugs.slice(0, 24).join(", ")} …+${slugs.length - 24}`;
     return {
       status: "success",
-      output: `daily_options_scanner: catalog check — ${strategies.length} strategies, ${prefs.length} preference docs — slugs: ${slugPreview}`,
+      output: `${categoryLabel}: catalog check — ${strategies.length} strategies, ${prefs.length} preference docs — slugs: ${slugPreview}`,
       auditDetails: {
         strategyCount: strategies.length,
         preferenceCount: prefs.length,
@@ -37,7 +38,7 @@ export async function runOptionsStrategyScanner(
     const msg = error instanceof Error ? error.message : String(error);
     return {
       status: "failed",
-      output: `daily_options_scanner failed: ${msg}`
+      output: `${categoryLabel} failed: ${msg}`
     };
   }
 }

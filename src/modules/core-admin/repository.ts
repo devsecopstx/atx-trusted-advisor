@@ -2,6 +2,10 @@ import { type Filter, MongoServerError, ObjectId } from "mongodb";
 
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { getDb } from "@/lib/mongodb";
+import {
+    computeNextRunAtFromSchedule,
+    resolveScheduleDescription
+} from "@/lib/scheduled-task-schedule";
 import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
@@ -710,15 +714,29 @@ export async function createScheduledTask(
     payload.portfolioId && ObjectId.isValid(payload.portfolioId)
       ? new ObjectId(payload.portfolioId)
       : undefined;
+  const scheduleDescription = resolveScheduleDescription({
+    scheduleCron: payload.scheduleCron,
+    scheduleRRule: payload.scheduleRRule,
+    scheduleDescription: payload.scheduleDescription
+  });
+  const resolvedNextRunAt =
+    payload.nextRunAt ??
+    computeNextRunAtFromSchedule(
+      { scheduleCron: payload.scheduleCron, scheduleRRule: payload.scheduleRRule },
+      now
+    ) ??
+    new Date(now.getTime() + 5 * 60 * 1000);
   const document: ScheduledTask = {
     name: payload.name,
     category: payload.category,
     scheduleCron: payload.scheduleCron,
+    scheduleRRule: payload.scheduleRRule,
+    scheduleDescription,
     enabled: payload.enabled,
     runTimeoutSeconds: payload.runTimeoutSeconds,
     maxRetries: payload.maxRetries,
     lastRunAt: payload.lastRunAt,
-    nextRunAt: payload.nextRunAt ?? new Date(now.getTime() + 5 * 60 * 1000),
+    nextRunAt: resolvedNextRunAt,
     tenantId: toTenantObjectId(payload.tenantId),
     ...(portfolioOid ? { portfolioId: portfolioOid } : {})
   };
@@ -735,6 +753,8 @@ export async function updateScheduledTask(input: {
   name?: string;
   category?: ScheduledTask["category"];
   scheduleCron?: string;
+  scheduleRRule?: string | null;
+  scheduleDescription?: string;
   enabled?: boolean;
   nextRunAt?: Date | null;
 }): Promise<ScheduledTask | null> {
@@ -751,6 +771,15 @@ export async function updateScheduledTask(input: {
   }
   const db = await getDb();
   const $set: Record<string, unknown> = {};
+  const $unset: Record<string, unknown> = {};
+  const nextScheduleCron =
+    input.scheduleCron !== undefined ? input.scheduleCron.trim() : existing.scheduleCron;
+  const nextScheduleRRule =
+    input.scheduleRRule !== undefined
+      ? input.scheduleRRule === null
+        ? undefined
+        : input.scheduleRRule.trim()
+      : existing.scheduleRRule;
   if (input.name !== undefined) {
     $set.name = input.name.trim().slice(0, 200);
   }
@@ -758,7 +787,22 @@ export async function updateScheduledTask(input: {
     $set.category = input.category;
   }
   if (input.scheduleCron !== undefined) {
-    $set.scheduleCron = input.scheduleCron.trim();
+    $set.scheduleCron = nextScheduleCron;
+  }
+  if (input.scheduleRRule !== undefined) {
+    if (input.scheduleRRule === null) {
+      $unset.scheduleRRule = "";
+    } else {
+      $set.scheduleRRule = nextScheduleRRule;
+    }
+  }
+  if (input.scheduleDescription !== undefined) {
+    $set.scheduleDescription = input.scheduleDescription.trim().slice(0, 280);
+  } else if (input.scheduleCron !== undefined || input.scheduleRRule !== undefined) {
+    $set.scheduleDescription = resolveScheduleDescription({
+      scheduleCron: nextScheduleCron,
+      scheduleRRule: nextScheduleRRule
+    });
   }
   if (input.enabled !== undefined) {
     $set.enabled = input.enabled;
@@ -766,12 +810,19 @@ export async function updateScheduledTask(input: {
   if (input.nextRunAt !== undefined) {
     $set.nextRunAt = input.nextRunAt;
   }
-  if (Object.keys($set).length === 0) {
+  if (Object.keys($set).length === 0 && Object.keys($unset).length === 0) {
     return existing;
+  }
+  const updateDoc: Record<string, unknown> = {};
+  if (Object.keys($set).length > 0) {
+    updateDoc.$set = $set;
+  }
+  if (Object.keys($unset).length > 0) {
+    updateDoc.$unset = $unset;
   }
   await db.collection<ScheduledTask>(collections.scheduledTasks).updateOne(
     withTenantScope({ _id: existing._id }, input.tenantId),
-    { $set }
+    updateDoc
   );
   return getScheduledTaskById(input.taskId, { tenantId: input.tenantId });
 }
@@ -834,15 +885,19 @@ export async function listDueScheduledTasks(
 
 export async function markTaskRunWindow(
   taskId: ObjectId,
-  startedAt: Date
+  startedAt: Date,
+  schedule: { scheduleCron?: string | null; scheduleRRule?: string | null }
 ): Promise<void> {
   const db = await getDb();
+  const nextRunAt =
+    computeNextRunAtFromSchedule(schedule, startedAt) ??
+    new Date(startedAt.getTime() + 24 * 60 * 60 * 1000);
   await db.collection<ScheduledTask>(collections.scheduledTasks).updateOne(
     { _id: taskId },
     {
       $set: {
         lastRunAt: startedAt,
-        nextRunAt: new Date(startedAt.getTime() + 24 * 60 * 60 * 1000)
+        nextRunAt
       }
     }
   );
