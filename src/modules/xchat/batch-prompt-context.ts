@@ -45,8 +45,8 @@ function describePersonaToolForKbPrompt(tool: PersonaXapiToolDefinition): string
     const idPart = ids.length > 0 ? ` → collection_ids: ${ids.join(", ")}` : "";
     return `- collections_search (mapped to file_search for xAI)${idPart}`;
   }
-  if (t === "atxfinance") {
-    return "- atxfinance (portfolio/workspace reads + default-watchlist add/remove; sent to xAI as the atxfinance function tool in ask and batch)";
+  if (t === "atx_function") {
+    return "- atx_function (portfolio/workspace reads + default-watchlist add/remove; sent to xAI as the atx_function function tool in ask and batch)";
   }
   return `- ${t}`;
 }

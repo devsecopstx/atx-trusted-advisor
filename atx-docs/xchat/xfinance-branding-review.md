@@ -91,7 +91,7 @@ The **home** experience uses `**MarketingHero`** + shared chrome — not the rev
 
 - **Constants:** `**src/app/ui/product-brand-constants.ts**` — `USER_PRODUCT_HOME_ARIA_LABEL`, `USER_PRODUCT_DESCRIPTOR_LINE` for marketing (no whitelabel subline constant on public chrome).
 - **xChat header:** `**XchatHeaderBrand**` — **Trusted / Advisory** wordmark plus inline gains tagline (see component).
-- **xChat left rail (signed-in):** **Persona** picker, then **Active persona** (name + last-turn tool summary), then **Status** (collection list / scope messages) — not duplicated in the main column.
+- **xChat left rail (signed-in):** **Persona** picker, then **Active persona** (name + last-turn tool summary), then **Status** (collection list / scope messages) — not duplicated in the main column. Persona now uses the same disclosure pattern as **Examples** and **Recent chats** for consistent rail behavior.
 - **App user header / guest xChat:** Home link uses `USER_PRODUCT_HOME_ARIA_LABEL`.
 - **Footer:** `**GlobalFooter**` — © line **atx Trusted Advisor** in `**app-footer-brand-stack**`.
 - **Marketing / plans / portfolio / xStrategyBuilder:** User-facing copy uses **atx Trusted Advisor** where the old product string **xFinance** appeared.

@@ -68,7 +68,7 @@ function basePersona(overrides?: Partial<PersonaConfig>): PersonaConfig {
       toolChoice: "auto",
       maxTurns: 5,
       tools: [
-        { type: "atxfinance" },
+        { type: "atx_function" },
         { type: "yahoo_finance" },
         { type: "collections_search", collection_ids: ["col_test"] }
       ]
@@ -143,7 +143,7 @@ describe("gatherMultiSourceWorkspaceContext", () => {
     expect(gathered.meta.yahooSymbolsRequested).toContain("TSLA");
   });
 
-  it("skips snapshot without atxfinance tool", async () => {
+  it("skips snapshot without atx_function tool", async () => {
     await gatherMultiSourceWorkspaceContext({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -160,7 +160,7 @@ describe("gatherMultiSourceWorkspaceContext", () => {
     expect(snapshotMocks.buildWorkspaceServerSnapshotBlock).not.toHaveBeenCalled();
   });
 
-  it("skips Yahoo batch without yahoo_finance or atxfinance", async () => {
+  it("skips Yahoo batch without yahoo_finance or atx_function", async () => {
     await gatherMultiSourceWorkspaceContext({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",

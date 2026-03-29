@@ -8,7 +8,7 @@ describe("appendXchatKbMetadata", () => {
       tools: [
         { type: "web_search" },
         { type: "file_search", source: { collection_ids: ["col_a", "col_b"] } },
-        { type: "atxfinance" }
+        { type: "atx_function" }
       ],
       linkedCollectionIds: ["col_rag", "col_other"]
     });
@@ -18,7 +18,7 @@ describe("appendXchatKbMetadata", () => {
     expect(text).not.toContain("ATXFINANCE_COLLECTION_ID");
     expect(text).toContain("- web_search");
     expect(text).toContain("collection_ids: col_a, col_b");
-    expect(text).toContain("atxfinance");
+    expect(text).toContain("atx_function");
   });
 
   it("notes when no collection ids are declared", () => {
