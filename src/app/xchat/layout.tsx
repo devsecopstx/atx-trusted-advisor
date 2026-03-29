@@ -5,6 +5,9 @@ import { GlobalFooter } from "../ui/global-footer";
 
 import "./xchat.css";
 
+/** Avoid stale RSC/HTML at CDN/LB after deploys; footer embeds APP_VERSION. */
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "xChat"
 };

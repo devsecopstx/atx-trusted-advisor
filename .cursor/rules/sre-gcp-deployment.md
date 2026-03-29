@@ -63,6 +63,8 @@ Use when you want **`gcloud run deploy --source .`** from your laptop with the *
 
 **Typical staging flow**
 
+**Env file:** `npm run ops:deploy:cloud-run:staging` (and `:staging:ci`) invoke `deploy-cloud-run-from-env.sh --staging`, which sets **`ENV_REL=.env.stage`** and **`source`s `${REPO_ROOT}/.env.stage`** after `cd` to the repo root. It is **not** `.env` or `.env.prod`. To use a different file explicitly: `bash scripts/ops/deploy-cloud-run-from-env.sh --staging /path/to/custom.env.stage`.
+
 1. Optional quality gate (same as CI verify job): `npm run ops:deploy:cloud-run:staging:ci` — runs `ci:gate` then deploy.  
    Or skip full CI and only assert Secret Manager: `npm run ops:deploy:cloud-run:staging`.
 

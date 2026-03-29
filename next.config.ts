@@ -13,6 +13,28 @@ const nextConfig: NextConfig = {
       }
     ]
   },
+  async headers() {
+    return [
+      {
+        source: "/xchat",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        source: "/xchat/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-store, must-revalidate"
+          }
+        ]
+      }
+    ];
+  },
   async redirects() {
     return [
       {
