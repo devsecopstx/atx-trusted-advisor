@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { PersonaModelSelect } from "@/app/admin/personas/ui/persona-model-select";
 import {
@@ -67,8 +67,10 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
   const [showAdvanced, setShowAdvanced] = useState(mode === "edit");
   const [collections, setCollections] = useState<CollectionRow[]>([]);
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
+  const [restrictCollectionScope, setRestrictCollectionScope] = useState(false);
+  const [collectionFilter, setCollectionFilter] = useState("");
   /** When true, save merges `web_search` + `x_search` into the tools array if missing. */
-  const [includeHostedSearchInTools, setIncludeHostedSearchInTools] = useState(true);
+  const [includeHostedSearchInTools, setIncludeHostedSearchInTools] = useState(false);
   const [showEmptyToolsGuard, setShowEmptyToolsGuard] = useState(false);
   const router = useRouter();
 
@@ -127,9 +129,8 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           xapiMaxTurns: String(payload.data.xapi.maxTurns),
           xapiToolsJson: JSON.stringify(loadedTools, null, 2)
         });
-        setIncludeHostedSearchInTools(
-          personaToolsIncludeHostedSearch(loadedTools) || loadedTools.length === 0
-        );
+        setRestrictCollectionScope(Boolean((payload.data.xaiCollection.collectionId ?? "").trim()));
+        setIncludeHostedSearchInTools(personaToolsIncludeHostedSearch(loadedTools));
         setShowEmptyToolsGuard(false);
         setStatus("Loaded");
       } catch (error) {
@@ -151,6 +152,10 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
       }
       if (!Number.isInteger(parsedMaxTurns) || parsedMaxTurns < 1 || parsedMaxTurns > 10) {
         setStatus("max_turns must be an integer between 1 and 10");
+        return;
+      }
+      if (restrictCollectionScope && !form.xaiCollectionId.trim()) {
+        setStatus("Select a collection or disable restrict access.");
         return;
       }
       let parsedTools: Array<{ type: string; [key: string]: unknown }>;
@@ -210,29 +215,24 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
         setStatus(error instanceof Error ? error.message : "Failed to save persona");
       }
     },
-    [form, includeHostedSearchInTools, mode, personaId, router]
+    [form, includeHostedSearchInTools, mode, personaId, restrictCollectionScope, router]
   );
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     void submitPersona(event, false);
   }
 
-  function applyCollection(row: CollectionRow) {
-    setForm((current) => ({
-      ...current,
-      xaiCollectionId: row.id,
-      xaiCollectionName: row.name ?? current.xaiCollectionName
-    }));
-  }
-
-  async function copyCollectionId(id: string) {
-    try {
-      await navigator.clipboard.writeText(id);
-      setStatus("Copied collection id");
-    } catch {
-      setStatus("Copy failed — select the id manually");
+  const visibleCollections = useMemo(() => {
+    const query = collectionFilter.trim().toLowerCase();
+    if (!query) {
+      return collections;
     }
-  }
+    return collections.filter((row) => {
+      const name = row.name?.trim().toLowerCase() ?? "";
+      const id = row.id.toLowerCase();
+      return name.includes(query) || id.includes(query);
+    });
+  }, [collectionFilter, collections]);
 
   async function onDelete() {
     if (!personaId || mode !== "edit") return;
@@ -279,53 +279,102 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             value={form.overridePrompt}
           />
           <label className="status-text">Linked collection id (RAG / KB scope for xChat)</label>
-          <input
-            onChange={(event) => setForm((current) => ({ ...current, xaiCollectionId: event.target.value }))}
-            placeholder="collection_…"
-            value={form.xaiCollectionId}
-          />
+          <label
+            className="status-text"
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "-0.2rem" }}
+          >
+            <input
+              checked={restrictCollectionScope}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setRestrictCollectionScope(checked);
+                if (!checked) {
+                  setForm((current) => ({
+                    ...current,
+                    xaiCollectionId: "",
+                    xaiCollectionName: ""
+                  }));
+                }
+              }}
+              type="checkbox"
+            />
+            <span>Restrict access to a specific collection</span>
+          </label>
+          {restrictCollectionScope ? (
+            <>
+              <input
+                onChange={(event) => setCollectionFilter(event.target.value)}
+                placeholder="Search by collection name or id"
+                value={collectionFilter}
+              />
+              <div
+                className="stack-gap"
+                style={{
+                  maxHeight: "14rem",
+                  overflow: "auto",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                  borderRadius: 8,
+                  padding: "0.55rem 0.7rem"
+                }}
+              >
+                {visibleCollections.length > 0 ? (
+                  visibleCollections.map((row) => {
+                    const displayName = row.name?.trim() || "Unnamed collection";
+                    const selected = form.xaiCollectionId === row.id;
+                    return (
+                      <label
+                        key={row.id}
+                        className="status-text"
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1.1rem 1fr",
+                          alignItems: "start",
+                          gap: "0.5rem"
+                        }}
+                      >
+                        <input
+                          checked={selected}
+                          name="persona-collection-id"
+                          onChange={() =>
+                            setForm((current) => ({
+                              ...current,
+                              xaiCollectionId: row.id,
+                              xaiCollectionName: row.name ?? current.xaiCollectionName
+                            }))
+                          }
+                          type="radio"
+                          value={row.id}
+                        />
+                        <span>
+                          {displayName}
+                          <br />
+                          <code>{row.id}</code>
+                        </span>
+                      </label>
+                    );
+                  })
+                ) : (
+                  <p className="status-text" style={{ margin: 0 }}>
+                    No collections match <code>{collectionFilter.trim()}</code>
+                  </p>
+                )}
+              </div>
+            </>
+          ) : null}
           {collectionsStatus ? (
             <p className="status-text status-error">{collectionsStatus}</p>
           ) : collections.length > 0 ? (
-            <div className="stack-gap" style={{ maxHeight: "14rem", overflow: "auto" }}>
-              <table className="crud-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Collection id</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {collections.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.name ?? "—"}</td>
-                      <td>
-                        <code className="status-text">{row.id}</code>
-                      </td>
-                      <td>
-                        <div className="tool-row">
-                          <button
-                            className="tiny-button"
-                            onClick={() => applyCollection(row)}
-                            type="button"
-                          >
-                            Use
-                          </button>
-                          <button
-                            className="tiny-button"
-                            onClick={() => void copyCollectionId(row.id)}
-                            type="button"
-                          >
-                            Copy id
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <p className="status-text">
+              {restrictCollectionScope && form.xaiCollectionId ? (
+                <>
+                  Selected: <code>{form.xaiCollectionId}</code>
+                </>
+              ) : restrictCollectionScope ? (
+                "Choose one collection from the list."
+              ) : (
+                "Collection restriction disabled (persona can use default collection scope)."
+              )}
+            </p>
           ) : (
             <p className="status-text">No collections returned from xAI inventory.</p>
           )}
@@ -344,7 +393,8 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           />
 
           <label className="status-text" htmlFor="persona-xapi-tools-json">
-            xAPI tools (JSON array) — default enables web, X, collections, Yahoo, and atxfinance
+            xAPI tools (JSON array) — supports hosted tools like web_search, x_search, code_interpreter,
+            collections_search, plus yahoo_finance and atx_function
           </label>
           <textarea
             id="persona-xapi-tools-json"
@@ -383,8 +433,8 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
               />
               <span>
                 On save, prepend <code>web_search</code> and <code>x_search</code> if they are missing (recommended).
-                Interactive xChat still merges these for each ask on the server; saving them keeps batch jobs,{" "}
-                <code>tool_choice</code>, and the DB consistent.
+                Keep this off if you want strict admin-controlled tool ordering; enable only when you want automatic
+                hosted-search insertion.
               </span>
             </label>
             <div
@@ -398,7 +448,7 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
               }}
             >
               Prefer a non-empty tools array with <code>web_search</code>, <code>x_search</code>, and usually{" "}
-              <code>atxfinance</code> (plus RAG / Yahoo as needed). Saving with no tools and merge off can break live
+              <code>atx_function</code> (plus RAG / Yahoo as needed). Saving with no tools and merge off can break live
               search expectations and trigger provider errors.
             </div>
             {showEmptyToolsGuard ? (

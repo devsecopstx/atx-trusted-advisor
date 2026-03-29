@@ -37,11 +37,17 @@ describe("toXaiRequestTools", () => {
     expect(out[0]).toEqual({ type: "x_search", name: "x_search", foo: 1 });
     expect(out[0]).not.toBe(tool);
   });
+
+  it("passes through code_interpreter and adds responses compatibility name", () => {
+    const tool = { type: "code_interpreter" };
+    const out = toXaiRequestTools([tool]);
+    expect(out[0]).toEqual({ type: "code_interpreter", name: "code_interpreter" });
+  });
 });
 
 describe("personaXapiToolsToXaiRequestTools", () => {
-  it("expands atxfinance to flat function tool for /v1/responses (name + parameters at root)", () => {
-    const out = personaXapiToolsToXaiRequestTools([{ type: "atxfinance" }]);
+  it("expands atx_function to flat function tool for /v1/responses (name + parameters at root)", () => {
+    const out = personaXapiToolsToXaiRequestTools([{ type: "atx_function" }]);
     expect(out).toHaveLength(1);
     const t = out[0] as {
       type?: string;
@@ -50,21 +56,21 @@ describe("personaXapiToolsToXaiRequestTools", () => {
       function?: unknown;
     };
     expect(t.type).toBe("function");
-    expect(t.name).toBe("atxfinance");
+    expect(t.name).toBe("atx_function");
     expect(t.function).toBeUndefined();
     expect(t.parameters?.properties?.operation?.enum).toEqual(
       expect.arrayContaining(["positions_snapshot", "portfolio_summary"])
     );
   });
 
-  it("merges hosted tools with expanded yahoo_finance and atxfinance (flat function entries)", () => {
+  it("merges hosted tools with expanded yahoo_finance and atx_function (flat function entries)", () => {
     const out = personaXapiToolsToXaiRequestTools([
       { type: "web_search" },
       { type: "yahoo_finance" },
-      { type: "atxfinance" }
+      { type: "atx_function" }
     ]);
     expect(out.map((t) => t.type)).toEqual(["web_search", "function", "function"]);
-    expect((out[1] as { name?: string; function?: unknown }).name).toBe("atxfinance");
+    expect((out[1] as { name?: string; function?: unknown }).name).toBe("atx_function");
     expect((out[1] as { function?: unknown }).function).toBeUndefined();
     expect((out[2] as { name?: string }).name).toBe("yahoo_finance");
     expect((out[2] as { function?: unknown }).function).toBeUndefined();

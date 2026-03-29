@@ -73,20 +73,18 @@ export function personaToolsIncludeHostedSearch(tools: ReadonlyArray<{ type: str
   return tools.some((t) => t.type === "web_search" || t.type === "x_search");
 }
 
-/** Prepends `web_search` / `x_search` when missing so saved personas stay usable for live + batch. */
+/** Appends `web_search` / `x_search` when missing; preserves admin-defined sequence otherwise. */
 export function mergeHostedSearchIntoPersonaTools(
   tools: Array<{ type: string; [key: string]: unknown }>
 ): Array<{ type: string; [key: string]: unknown }> {
-  const hasWeb = tools.some((t) => t.type === "web_search");
-  const hasX = tools.some((t) => t.type === "x_search");
-  const prefix: Array<{ type: string; [key: string]: unknown }> = [];
-  if (!hasWeb) {
-    prefix.push({ type: "web_search" });
+  const merged = [...tools];
+  if (!merged.some((tool) => tool.type === "web_search")) {
+    merged.push({ type: "web_search" });
   }
-  if (!hasX) {
-    prefix.push({ type: "x_search" });
+  if (!merged.some((tool) => tool.type === "x_search")) {
+    merged.push({ type: "x_search" });
   }
-  return [...prefix, ...tools];
+  return merged;
 }
 
 export const EMPTY_CREATE_FORM: PersonaFormState = {

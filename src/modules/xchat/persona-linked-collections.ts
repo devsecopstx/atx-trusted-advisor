@@ -1,5 +1,6 @@
 import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
 import {
+    isAtxFunctionToolType,
     normalizePersonaXapiConfig,
     type PersonaXapiConfig,
     type PersonaXapiToolDefinition
@@ -101,10 +102,31 @@ export function withLinkedCollectionTools(
   if (linkedCollectionIds.length === 0) {
     return config;
   }
+  const hasCollectionTool = config.tools.some(
+    (tool) => tool.type === "file_search" || tool.type === "collections_search"
+  );
+  const toolsWithCollection = hasCollectionTool
+    ? config.tools
+    : addCollectionToolInPreferredOrder(config.tools, linkedCollectionIds);
   return {
     ...config,
-    tools: config.tools.map((tool) => mergeCollectionIdsIntoTool(tool, linkedCollectionIds))
+    tools: toolsWithCollection.map((tool) => mergeCollectionIdsIntoTool(tool, linkedCollectionIds))
   };
+}
+
+function addCollectionToolInPreferredOrder(
+  tools: PersonaXapiToolDefinition[],
+  linkedCollectionIds: string[]
+): PersonaXapiToolDefinition[] {
+  const collectionTool: PersonaXapiToolDefinition = {
+    type: "collections_search",
+    collection_ids: linkedCollectionIds
+  };
+  const atxIndex = tools.findIndex((tool) => isAtxFunctionToolType(tool.type));
+  if (atxIndex === -1) {
+    return [...tools, collectionTool];
+  }
+  return [...tools.slice(0, atxIndex + 1), collectionTool, ...tools.slice(atxIndex + 1)];
 }
 
 function mergeCollectionIdsIntoTool(

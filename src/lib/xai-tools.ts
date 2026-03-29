@@ -85,7 +85,7 @@ function ensureResponsesToolNameCompat(tool: Record<string, unknown>): Record<st
     }
   }
   if (
-    (t === "web_search" || t === "x_search" || t === "file_search") &&
+    (t === "web_search" || t === "x_search" || t === "file_search" || t === "code_interpreter") &&
     tool.name === undefined
   ) {
     return { ...tool, name: String(t) };
@@ -142,10 +142,17 @@ export function toXaiRequestTools(
 export function personaXapiToolsToXaiRequestTools(
   tools: PersonaXapiToolDefinition[]
 ): Array<Record<string, unknown>> {
-  const hasAtxfinance = tools.some((t) => t.type === "atxfinance");
+  const hasAtxfinance = tools.some(
+    (t) => t.type === "atx_function" || t.type === "atxfinance"
+  );
   const hasYahooFinance = tools.some((t) => t.type === "yahoo_finance");
   const base: Array<Record<string, unknown>> = tools
-    .filter((t) => t.type !== "atxfinance" && t.type !== "yahoo_finance")
+    .filter(
+      (t) =>
+        t.type !== "atx_function" &&
+        t.type !== "atxfinance" &&
+        t.type !== "yahoo_finance"
+    )
     .map((t) => ({ ...t }));
   if (hasAtxfinance) {
     base.push(ATXFINANCE_TOOL_DEFINITION as unknown as Record<string, unknown>);

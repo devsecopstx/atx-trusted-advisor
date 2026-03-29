@@ -1,13 +1,13 @@
 
 /**
- * Wire definitions for atxfinance and yahoo_finance tools.
+ * Wire definitions for atx_function and yahoo_finance tools.
  * Kept separate from tool-executor so xai-tools (and thus xai) can be used
  * in contexts that must not pull in Mongo/core-admin (e.g. client bundles).
  */
 export const ATXFINANCE_TOOL_DEFINITION = {
   type: "function" as const,
   function: {
-    name: "atxfinance",
+    name: "atx_function",
     description:
       "Portfolio, accounts, watchlist (read + add/remove on the user's default watchlist), positions, scheduled tasks, and Yahoo quotes. Scoped to the signed-in user only—never pass a user id. watchlist_add_symbols upserts tickers with default row metadata (Stock / balanced) and fills desk risk growth + outlook balanced only when unset; use when the user says e.g. \"add NVDA to my watchlist\". watchlist_remove_symbols removes tickers.",
     parameters: {

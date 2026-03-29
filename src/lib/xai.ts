@@ -160,6 +160,26 @@ export async function createXaiCollection(collectionName: string): Promise<{
   return { id, name };
 }
 
+export async function deleteXaiCollection(collectionId: string): Promise<void> {
+  const { managementApiKey, managementBaseUrl } = getXaiManagementConfig();
+  const normalizedId = collectionId.trim();
+  if (!normalizedId) {
+    throw new Error("Collection id is required");
+  }
+
+  const response = await fetch(`${managementBaseUrl}/collections/${encodeURIComponent(normalizedId)}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${managementApiKey}`
+    }
+  });
+
+  if (!response.ok) {
+    const payload = (await parseXaiResponseJson(response)) as Record<string, unknown>;
+    throw new Error(`xAI collection delete failed: ${JSON.stringify(payload.error ?? payload)}`);
+  }
+}
+
 export async function addFileToXaiCollection(input: {
   collectionId: string;
   fileId: string;
@@ -481,11 +501,11 @@ export async function respondWithXaiToolLoop(input: {
         const toolResults: Array<{ type: "function_call_output"; call_id: string; output: string }> = [];
         for (let i = 0; i < syntheticArgsList.length; i++) {
           const syntheticArgs = syntheticArgsList[i];
-          const syntheticCallId = `synthetic_atxfinance_${turn}_${i}`;
+          const syntheticCallId = `synthetic_${ATX_FUNCTION_PRIMARY_NAME}_${turn}_${i}`;
           const start = Date.now();
           let executorResult: { result: string; error?: string };
           try {
-            executorResult = await input.executor("atxfinance", syntheticArgs);
+            executorResult = await input.executor(ATX_FUNCTION_PRIMARY_NAME, syntheticArgs);
           } catch (error) {
             executorResult = {
               result: "",
@@ -494,7 +514,7 @@ export async function respondWithXaiToolLoop(input: {
           }
           const durationMs = Date.now() - start;
           toolCalls.push({
-            name: "atxfinance",
+            name: ATX_FUNCTION_PRIMARY_NAME,
             args: syntheticArgs,
             result: executorResult.result,
             error: executorResult.error,
@@ -612,6 +632,9 @@ type ParsedToolCall = {
   args: Record<string, unknown>;
 };
 
+const ATX_FUNCTION_PRIMARY_NAME = "atx_function";
+const ATX_FUNCTION_ALIASES = new Set([ATX_FUNCTION_PRIMARY_NAME, "atxfinance"]);
+
 /**
  * xAI executes these on the server; the local executor must not treat them as
  * app-level tools. `collections_search` is normalized to `file_search` on wire
@@ -621,7 +644,8 @@ const XAI_HOSTED_FUNCTION_NAMES = new Set([
   "web_search",
   "x_search",
   "file_search",
-  "collections_search"
+  "collections_search",
+  "code_interpreter"
 ]);
 
 /** Matches `ATXFINANCE_TOOL_DEFINITION.function.parameters.properties.operation.enum` — recover when the model prints JSON instead of using API function_call. */
@@ -644,7 +668,10 @@ function syntheticAtxfinanceArgsFromParsedJson(
     return null;
   }
   const toolField = obj.tool;
-  if (toolField !== undefined && toolField !== "atxfinance") {
+  if (
+    toolField !== undefined &&
+    !(typeof toolField === "string" && ATX_FUNCTION_ALIASES.has(toolField))
+  ) {
     return null;
   }
   const out: Record<string, unknown> = { operation: op };
@@ -664,12 +691,12 @@ function syntheticAtxfinanceArgsFromParsedJson(
 
 function requestToolsIncludeAtxfinance(tools: Array<Record<string, unknown>>): boolean {
   for (const t of tools) {
-    if (t.type === "function" && asString(t.name) === "atxfinance") {
+    if (t.type === "function" && ATX_FUNCTION_ALIASES.has(asString(t.name) ?? "")) {
       return true;
     }
     const fn = t.function as Record<string, unknown> | undefined;
     const nestedName = fn && typeof fn === "object" ? asString(fn.name) : "";
-    if (nestedName === "atxfinance") {
+    if (ATX_FUNCTION_ALIASES.has(nestedName ?? "")) {
       return true;
     }
   }
@@ -861,14 +888,14 @@ function trySyntheticWebSearchJsonPayload(
 }
 
 /**
- * KB-style: model prints multiple `<function_call name="atxfinance">…</function_call>` blocks in one turn.
+ * KB-style: model prints multiple `<function_call name="atx_function">…</function_call>` blocks in one turn.
  * Inner body may be `<argument name="operation">…</argument>` (legacy) or a single JSON object with
  * `operation`, optional `symbol`, and optional `symbols` (watchlist mutations).
  */
 function parseAllAtxfinanceXmlFunctionCalls(assistantText: string): Record<string, unknown>[] {
   const results: Record<string, unknown>[] = [];
   const blockRe =
-    /<function_call\b[^>]*\bname\s*=\s*["']atxfinance["'][^>]*>([\s\S]*?)<\/\s*function_call\s*>/gi;
+    /<function_call\b[^>]*\bname\s*=\s*["'](?:atx_function|atxfinance)["'][^>]*>([\s\S]*?)<\/\s*function_call\s*>/gi;
   let m: RegExpExecArray | null;
   while ((m = blockRe.exec(assistantText)) !== null) {
     const inner = (m[1] ?? "").trim();
@@ -905,8 +932,8 @@ function parseAllAtxfinanceXmlFunctionCalls(assistantText: string): Record<strin
 }
 
 /**
- * Some models return ```json { "tool": "atxfinance", "operation": "..." } ``` or one or more XML
- * `<function_call name="atxfinance">…</function_call>` blocks as assistant text instead of emitting
+ * Some models return ```json { "tool": "atx_function", "operation": "..." } ``` or one or more XML
+ * `<function_call name="atx_function">…</function_call>` blocks as assistant text instead of emitting
  * API `function_call` items; the host then never runs the executor without this recovery.
  */
 function listSyntheticAtxfinanceToolArgs(
@@ -927,7 +954,7 @@ function listSyntheticAtxfinanceToolArgs(
       if (!opQuoted?.[1] || !ATXFINANCE_SYNTHETIC_OPERATIONS.has(opQuoted[1])) {
         return [];
       }
-      if (!/\batxfinance\b/i.test(assistantText)) {
+      if (!/\batx_function\b/i.test(assistantText) && !/\batxfinance\b/i.test(assistantText)) {
         return [];
       }
       return [{ operation: opQuoted[1] }];

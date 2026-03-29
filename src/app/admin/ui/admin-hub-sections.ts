@@ -160,6 +160,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         title: "xOptions API test",
         description:
           "TODO: Remove or merge into product when strategy-options is fully integrated. Exercise GET expirations and option-chain reads (BFF / backend parity)."
+      },
+      {
+        href: "/admin/xchat-api-test",
+        title: "xChat API test",
+        description:
+          "Run canned POST /api/xchat/ask checks (including code_interpreter prompts) to verify persona tool wiring and response payloads."
       }
     ]
   }

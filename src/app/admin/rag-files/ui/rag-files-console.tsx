@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { CopyIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { CopyIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 const RAG_COLLECTIONS_CACHE_KEY = "xfinance:admin:rag-collections:v2";
@@ -171,6 +171,8 @@ export function RagFilesConsole() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [nameFilter, setNameFilter] = useState("");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const visibleCollections = useMemo(() => {
@@ -222,6 +224,9 @@ export function RagFilesConsole() {
     };
   }, [visibleCollections]);
 
+  const allVisibleSelected =
+    visibleCollections.length > 0 && visibleCollections.every((row) => selectedCollectionIds.includes(row.id));
+
   const copyCollectionId = useCallback(async (id: string) => {
     try {
       await writeTextToClipboard(id);
@@ -243,6 +248,7 @@ export function RagFilesConsole() {
     try {
       const data = await fetchCollectionsFromApi();
       setCollections(data);
+      setSelectedCollectionIds((previous) => previous.filter((id) => data.some((row) => row.id === id)));
       writeCollectionsCache(data);
       setStatus(`Loaded ${data.length} collection(s)`);
     } catch (error) {
@@ -250,6 +256,91 @@ export function RagFilesConsole() {
       setStatus(`${msg} — list unchanged`);
     }
   }, []);
+
+  const toggleRowSelected = useCallback((collectionId: string, selected: boolean) => {
+    setSelectedCollectionIds((previous) => {
+      if (selected) {
+        if (previous.includes(collectionId)) {
+          return previous;
+        }
+        return [...previous, collectionId];
+      }
+      return previous.filter((id) => id !== collectionId);
+    });
+  }, []);
+
+  const toggleAllVisible = useCallback(
+    (selected: boolean) => {
+      setSelectedCollectionIds((previous) => {
+        if (!selected) {
+          return previous.filter((id) => !visibleCollections.some((row) => row.id === id));
+        }
+        const next = new Set(previous);
+        for (const row of visibleCollections) {
+          next.add(row.id);
+        }
+        return Array.from(next);
+      });
+    },
+    [visibleCollections]
+  );
+
+  const deleteSelectedCollections = useCallback(async () => {
+    const selectedRows = visibleCollections.filter((row) => selectedCollectionIds.includes(row.id));
+    if (selectedRows.length === 0) {
+      setStatus("Select at least one collection before deleting.");
+      return;
+    }
+    const label =
+      selectedRows.length === 1
+        ? `${selectedRows[0]?.name || selectedRows[0]?.id}`
+        : `${selectedRows.length} collections`;
+    const confirmed = window.confirm(
+      `Delete ${label}? This permanently removes the collection from xAI Management API scope for this key.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleting(true);
+    setStatus(`Deleting ${selectedRows.length} collection(s)…`);
+    const failed: Array<{ id: string; error: string }> = [];
+
+    for (const row of selectedRows) {
+      try {
+        const response = await fetch(`/api/personas/collections/${encodeURIComponent(row.id)}`, {
+          method: "DELETE",
+          credentials: "include"
+        });
+        if (!response.ok) {
+          const payload = await parseJson<{ error?: string; code?: string }>(response);
+          failed.push({
+            id: row.id,
+            error: payload.error || payload.code || `HTTP ${response.status}`
+          });
+          continue;
+        }
+        setCollections((previous) => previous.filter((candidate) => candidate.id !== row.id));
+        setSelectedCollectionIds((previous) => previous.filter((id) => id !== row.id));
+      } catch (error) {
+        failed.push({
+          id: row.id,
+          error: error instanceof Error ? error.message : "Unknown delete error"
+        });
+      }
+    }
+
+    setDeleting(false);
+    if (failed.length > 0) {
+      setStatus(
+        `Deleted ${selectedRows.length - failed.length}/${selectedRows.length} collection(s). Failed: ${failed
+          .map((item) => `${item.id} (${item.error})`)
+          .join(", ")}`
+      );
+      return;
+    }
+    setStatus(`Deleted ${selectedRows.length} collection(s).`);
+  }, [selectedCollectionIds, visibleCollections]);
 
   useEffect(() => {
     let cancelled = false;
@@ -303,11 +394,11 @@ export function RagFilesConsole() {
   return (
     <section className="panel stack-gap">
       <p className="status-text" style={{ maxWidth: "72ch" }}>
-        Read-only inventory from the xAI Management API (
+        Collection inventory from the xAI Management API (
         <code style={{ fontSize: "0.85em" }}>GET /v1/collections</code>
         ), scoped to <code style={{ fontSize: "0.85em" }}>XAI_MANAGEMENT_API_KEY</code> in this
-        deployment. Create or mutate collections from{" "}
-        <strong>Personas</strong> flows or the xAI console — not from this page.
+        deployment. This page allows <strong>delete</strong> only; use Personas flows or the xAI console for
+        create/update.
       </p>
       <p className="status-text">
         <strong>Last sync</strong> uses the vendor&apos;s last-sync field when present; otherwise it falls back to{" "}
@@ -337,6 +428,15 @@ export function RagFilesConsole() {
       <div className="tool-row">
         <button className="cta cta-secondary" onClick={() => void refreshCollections()} type="button">
           <RefreshIcon className="crud-icon" /> Refresh collections
+        </button>
+        <button
+          className="cta cta-danger"
+          disabled={deleting || selectedCollectionIds.length === 0}
+          onClick={() => void deleteSelectedCollections()}
+          type="button"
+        >
+          <DeleteIcon className="crud-icon" />
+          {deleting ? "Deleting…" : `Delete selected (${selectedCollectionIds.length})`}
         </button>
         <p className="status-text">{status}</p>
       </div>
@@ -411,6 +511,14 @@ export function RagFilesConsole() {
             <table className="crud-table">
               <thead>
                 <tr>
+                  <th scope="col" style={{ width: "3rem" }}>
+                    <input
+                      aria-label="Select all visible collections"
+                      checked={allVisibleSelected}
+                      onChange={(event) => toggleAllVisible(event.target.checked)}
+                      type="checkbox"
+                    />
+                  </th>
                   <th scope="col">Name</th>
                   <th scope="col">Collection ID</th>
                   <th scope="col" style={{ textAlign: "right" }}>
@@ -434,6 +542,14 @@ export function RagFilesConsole() {
                   const usage = formatUsageStats(row.stats.usageStats);
                   return (
                     <tr key={row.id}>
+                      <td>
+                        <input
+                          aria-label={`Select collection ${row.name || row.id}`}
+                          checked={selectedCollectionIds.includes(row.id)}
+                          onChange={(event) => toggleRowSelected(row.id, event.target.checked)}
+                          type="checkbox"
+                        />
+                      </td>
                       <td>
                         <strong>{row.name?.trim() || "—"}</strong>
                       </td>

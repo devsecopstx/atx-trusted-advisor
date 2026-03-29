@@ -36,21 +36,21 @@ describe("xpersona onboarding ui helpers", () => {
   });
 
   it("detects hosted search markers in persona tools", () => {
-    expect(personaToolsIncludeHostedSearch([{ type: "atxfinance" }])).toBe(false);
+    expect(personaToolsIncludeHostedSearch([{ type: "atx_function" }])).toBe(false);
     expect(personaToolsIncludeHostedSearch([{ type: "web_search" }])).toBe(true);
     expect(personaToolsIncludeHostedSearch([{ type: "x_search" }])).toBe(true);
   });
 
-  it("mergeHostedSearchIntoPersonaTools prepends missing web and X search", () => {
+  it("mergeHostedSearchIntoPersonaTools preserves admin order and only appends missing hosted tools", () => {
     expect(mergeHostedSearchIntoPersonaTools([])).toEqual([{ type: "web_search" }, { type: "x_search" }]);
-    expect(mergeHostedSearchIntoPersonaTools([{ type: "atxfinance" }])).toEqual([
-      { type: "web_search" },
-      { type: "x_search" },
-      { type: "atxfinance" }
-    ]);
-    expect(mergeHostedSearchIntoPersonaTools([{ type: "web_search" }, { type: "x_search" }])).toEqual([
+    expect(mergeHostedSearchIntoPersonaTools([{ type: "atx_function" }])).toEqual([
+      { type: "atx_function" },
       { type: "web_search" },
       { type: "x_search" }
+    ]);
+    expect(mergeHostedSearchIntoPersonaTools([{ type: "x_search" }, { type: "web_search" }])).toEqual([
+      { type: "x_search" },
+      { type: "web_search" }
     ]);
   });
 

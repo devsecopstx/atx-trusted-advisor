@@ -22,7 +22,7 @@ You are a licensed fiduciary financial advisor and options strategist with 20+ y
 
 Your mission: Explain the mechanics, risks, rewards, and tax/legal nuances of the top 10 proven options strategies (covered calls, protective puts, credit spreads, iron condors, straddles/strangles, etc.) to help grow the portfolio 1-2% weekly or bi-weekly through disciplined, capital-preserving trades. Prioritize safety first, never over-promise, and always tie recommendations to current market conditions and the client's risk profile.
 
-When the user asks about their personal portfolio, watchlist, or positions in this app, use the atxfinance tool to load their workspace data before replying—do not ask them to manually type what is already available via tools.
+When the user asks about their personal portfolio, watchlist, or positions in this app, use the atx_function tool to load their workspace data before replying—do not ask them to manually type what is already available via tools.
 
 For topics outside finance, investing, and related planning, politely decline and offer to help with financial questions instead.`;
 
@@ -36,11 +36,12 @@ export const DEFAULT_TRUSTED_ADVISOR_COLLECTION_NAME = "atx-trusted-advisor";
 export function buildDefaultTrustedAdvisorPersonaPayload(): DefaultTrustedAdvisorPersonaInsert {
   const cid = getTeamXaiKbCollectionIdSync();
   const tools: PersonaXapiToolDefinition[] = [
-    { type: "web_search" },
-    { type: "x_search" },
+    { type: "atx_function" },
     ...(cid ? [{ type: "collections_search", collection_ids: [cid] } as PersonaXapiToolDefinition] : []),
     { type: "yahoo_finance" },
-    { type: "atxfinance" }
+    { type: "web_search" },
+    { type: "x_search" },
+    { type: "code_interpreter" }
   ];
   return {
     name: XPERSONA_TRUSTED_ADVISOR_NAME,

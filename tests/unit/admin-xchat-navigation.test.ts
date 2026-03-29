@@ -17,4 +17,11 @@ describe("admin navigation includes xChat", () => {
     const layout = readFileSync(layoutPath, "utf8");
     expect(layout).toContain("<AdminLeftRail />");
   });
+
+  it("developer & integration group includes xChat API test link", () => {
+    const groupsPath = path.join(process.cwd(), "src/app/admin/ui/admin-hub-sections.ts");
+    const groups = readFileSync(groupsPath, "utf8");
+    expect(groups).toContain('href: "/admin/xchat-api-test"');
+    expect(groups).toContain('title: "xChat API test"');
+  });
 });

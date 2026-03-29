@@ -8,6 +8,27 @@ import {
 } from "./tool-types";
 
 export { PERSONA_XAPI_TOOL_TYPES, type PersonaXapiToolDefinition, type PersonaXapiToolType };
+export const ATX_FUNCTION_TOOL_TYPES = ["atx_function", "atxfinance"] as const;
+
+export function isAtxFunctionToolType(type: string): boolean {
+  return type === "atx_function" || type === "atxfinance";
+}
+
+export function orderPersonaXapiTools(
+  tools: PersonaXapiToolDefinition[],
+  options?: { ensureHostedSearch?: boolean }
+): PersonaXapiToolDefinition[] {
+  const merged = [...tools];
+  if (options?.ensureHostedSearch) {
+    if (!merged.some((tool) => tool.type === "web_search")) {
+      merged.push({ type: "web_search" });
+    }
+    if (!merged.some((tool) => tool.type === "x_search")) {
+      merged.push({ type: "x_search" });
+    }
+  }
+  return merged;
+}
 
 export type PersonaCollectionVerification = {
   status: "verified" | "missing" | "error" | "skipped";
@@ -39,18 +60,20 @@ export function getSuperAgentDefaultTools(): PersonaXapiToolDefinition[] {
   const cid = getTeamXaiKbCollectionIdSync();
   if (cid) {
     return [
-      { type: "web_search" },
-      { type: "x_search" },
+      { type: "atx_function" },
       { type: "collections_search", collection_ids: [cid] },
       { type: "yahoo_finance" },
-      { type: "atxfinance" }
+      { type: "web_search" },
+      { type: "x_search" },
+      { type: "code_interpreter" }
     ];
   }
   return [
+    { type: "atx_function" },
+    { type: "yahoo_finance" },
     { type: "web_search" },
     { type: "x_search" },
-    { type: "yahoo_finance" },
-    { type: "atxfinance" }
+    { type: "code_interpreter" }
   ];
 }
 
@@ -81,17 +104,11 @@ export function ensureSuperAgentDefaultTools(
 }
 
 /**
- * xChat always exposes hosted `web_search` + `x_search` on the wire; Mongo may omit them after admin edits.
- * Call after `withLinkedCollectionTools` so collection merges stay intact.
+ * No-op baseline merge: preserve admin-defined tool ordering on ask/batch.
+ * Hosted search insertion is controlled by admin persona config (or optional UI guardrail toggle).
  */
 export function mergeXchatHostedToolBaseline(config: PersonaXapiConfig): PersonaXapiConfig {
-  const rest = config.tools.filter(
-    (t) => t.type !== "web_search" && t.type !== "x_search"
-  );
-  return {
-    ...config,
-    tools: [{ type: "web_search" }, { type: "x_search" }, ...rest]
-  };
+  return config;
 }
 
 export const personaStatusValues = ["draft", "published", "archived"] as const;
@@ -282,7 +299,16 @@ export function normalizePersonaXapiConfig(input?: Partial<PersonaXapiConfig> | 
   const seenTypes = new Set<string>();
   const tools: PersonaXapiToolDefinition[] = [];
   for (const tool of rawTools) {
+    const isAtxFunctionTool = isAtxFunctionToolType(tool.type);
     const isCollectionTool = tool.type === "file_search" || tool.type === "collections_search";
+    if (isAtxFunctionTool) {
+      if (seenTypes.has("__atx_function__")) {
+        continue;
+      }
+      seenTypes.add("__atx_function__");
+      tools.push(tool);
+      continue;
+    }
     if (isCollectionTool) {
       if (seenTypes.has("__collection__")) {
         continue;
@@ -301,6 +327,6 @@ export function normalizePersonaXapiConfig(input?: Partial<PersonaXapiConfig> | 
     mode,
     toolChoice,
     maxTurns,
-    tools
+    tools: orderPersonaXapiTools(tools)
   };
 }

@@ -42,7 +42,7 @@ describe("persona tool validation", () => {
       maxTurns: 5,
       tools: [
         { type: "web_search" },
-        { type: "code_execution" as never },
+        { type: "code_executor" as never },
         { type: "x_search" }
       ]
     });
@@ -60,22 +60,25 @@ describe("persona tool validation", () => {
     expect(PERSONA_XAPI_TOOL_TYPES).toEqual([
       "web_search",
       "x_search",
+      "code_interpreter",
       "file_search",
       "collections_search",
       "yahoo_finance",
+      "atx_function",
       "atxfinance"
     ]);
   });
 
-  it("getSuperAgentDefaultTools has web_search, x_search, collections_search, yahoo_finance, and atxfinance when XAI_TEAM_ID is a collection id", () => {
+  it("getSuperAgentDefaultTools follows admin default ordering with collection tool", () => {
     const tools = getSuperAgentDefaultTools();
-    expect(tools).toHaveLength(5);
+    expect(tools).toHaveLength(6);
     expect(tools.map((t) => t.type)).toEqual([
-      "web_search",
-      "x_search",
+      "atx_function",
       "collections_search",
       "yahoo_finance",
-      "atxfinance"
+      "web_search",
+      "x_search",
+      "code_interpreter"
     ]);
     const collectionsSearch = tools.find((t) => t.type === "collections_search");
     expect(collectionsSearch).toHaveProperty("collection_ids");
@@ -100,18 +103,39 @@ describe("persona tool validation", () => {
     expect(ensureSuperAgentDefaultTools(yahooOnly, "atx-trusted-advisor")).toEqual(yahooOnly);
   });
 
-  it("mergeXchatHostedToolBaseline prepends web_search and x_search and dedupes", () => {
+  it("mergeXchatHostedToolBaseline preserves admin-defined tool ordering", () => {
     const cfg = normalizePersonaXapiConfig({
       mode: "responses",
       toolChoice: "auto",
       maxTurns: 5,
-      tools: [{ type: "atxfinance" }, { type: "web_search" }, { type: "x_search" }]
+      tools: [{ type: "web_search" }, { type: "x_search" }, { type: "atxfinance" }]
     });
     const merged = mergeXchatHostedToolBaseline(cfg);
     expect(merged.tools.map((t) => t.type)).toEqual([
       "web_search",
       "x_search",
       "atxfinance"
+    ]);
+  });
+
+  it("normalizePersonaXapiConfig keeps one atx function alias and preserves first-seen order", () => {
+    const result = normalizePersonaXapiConfig({
+      mode: "responses",
+      toolChoice: "auto",
+      maxTurns: 5,
+      tools: [
+        { type: "x_search" },
+        { type: "atxfinance" },
+        { type: "atx_function" },
+        { type: "web_search" },
+        { type: "code_interpreter" }
+      ]
+    });
+    expect(result.tools.map((t) => t.type)).toEqual([
+      "x_search",
+      "atxfinance",
+      "web_search",
+      "code_interpreter"
     ]);
   });
 
@@ -221,10 +245,24 @@ describe("persona tool validation", () => {
         mode: "responses",
         toolChoice: "auto",
         maxTurns: 5,
-        tools: [{ type: "code_execution" }]
+        tools: [{ type: "unknown_tool_type" }]
       }
     });
     expect(result.success).toBe(false);
+  });
+
+  it("createPersonaPayloadSchema allows code_interpreter tool type", () => {
+    const result = createPersonaPayloadSchema.safeParse({
+      name: "Code Agent",
+      systemPrompt: "You are a test agent that can run quantitative calculations.",
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "code_interpreter" }]
+      }
+    });
+    expect(result.success).toBe(true);
   });
 
   it("createPersonaPayloadSchema allows empty tools array", () => {

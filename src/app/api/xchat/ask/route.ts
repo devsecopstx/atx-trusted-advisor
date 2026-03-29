@@ -46,6 +46,7 @@ import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import {
     ensureSuperAgentDefaultTools,
+    isAtxFunctionToolType,
     mergeXchatHostedToolBaseline,
     normalizePersonaXapiConfig,
     type PersonaXapiConfig
@@ -346,7 +347,7 @@ export async function POST(request: Request) {
 
   }
 
-  const hasXfinanceTool = xapiConfig.tools.some((t) => t.type === "atxfinance");
+  const hasXfinanceTool = xapiConfig.tools.some((t) => isAtxFunctionToolType(t.type));
   const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
   /** Custom tools must run through `respondWithXaiToolLoop`; `chatWithXai` does not execute tool_calls. */
   const needsLocalToolLoop = hasXfinanceTool || hasYahooFinanceTool;

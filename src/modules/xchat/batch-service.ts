@@ -21,6 +21,7 @@ import {
 } from "@/modules/xchat/persona-linked-collections";
 import {
     ensureSuperAgentDefaultTools,
+    isAtxFunctionToolType,
     mergeXchatHostedToolBaseline,
     normalizePersonaXapiConfig,
     type PersonaConfig
@@ -115,7 +116,9 @@ export async function submitBatchJob(
     withLinkedCollectionTools(xapiConfig, linkedCollectionIds)
   );
   const batchTools = personaXapiToolsToXaiRequestTools(xapiConfigMerged.tools);
-  const hasAtxfinancePersonaTool = xapiConfigMerged.tools.some((t) => t.type === "atxfinance");
+  const hasAtxfinancePersonaTool = xapiConfigMerged.tools.some((t) =>
+    isAtxFunctionToolType(t.type)
+  );
   const hasHostedSearchPersonaTool = xapiConfigMerged.tools.some(
     (t) => t.type === "web_search" || t.type === "x_search"
   );

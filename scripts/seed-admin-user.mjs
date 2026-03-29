@@ -7,13 +7,13 @@ import { MongoClient } from "mongodb";
 
 import { buildSuperAgentXapiTools, dedupeTrimmedIds } from "./lib/persona-xapi-tools.mjs";
 import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
-import { runSeedXaiRagIngest } from "./lib/seed-xai-rag-ingest.mjs";
 import { loadSeedTenantContext, pickFirstNonEmpty } from "./lib/tenant-defaults-seed.mjs";
 
 const SEED_SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SEED_SCRIPT_DIR, "..");
 const ADMIN_LOG_PATH = join(REPO_ROOT, "admin.log");
 const seedTenant = loadSeedTenantContext(REPO_ROOT);
+const RAG_SYNC_SUMMARY_MARKER = "SEED_ADMIN_RAG_SYNC_JSON=";
 
 function runPostSeedXaiHelloVerify() {
   const s = String(process.env.SKIP_XAI_POST_SEED_VERIFY ?? "").toLowerCase();
@@ -59,7 +59,14 @@ function childEnvWithSeedParentMongoDb() {
 }
 
 function parseSeedSummaryMarker(output) {
-  const marker = "SEED_SUMMARY_JSON=";
+  return parseJsonMarker(output, "SEED_SUMMARY_JSON=");
+}
+
+function parseRagSyncSummaryMarker(output) {
+  return parseJsonMarker(output, RAG_SYNC_SUMMARY_MARKER);
+}
+
+function parseJsonMarker(output, marker) {
   const lines = String(output ?? "").split(/\r?\n/);
   for (let i = lines.length - 1; i >= 0; i -= 1) {
     const line = lines[i]?.trim();
@@ -73,6 +80,29 @@ function parseSeedSummaryMarker(output) {
     }
   }
   return null;
+}
+
+function runSeedAdminRagSync() {
+  const script = join(SEED_SCRIPT_DIR, "seed-admin-rag-sync.mjs");
+  const result = spawnSync(process.execPath, [script], {
+    cwd: REPO_ROOT,
+    env: {
+      ...process.env,
+      // Keep legacy seed:admin ordering: verify after full seed summary/log write.
+      SKIP_XAI_POST_SEED_RAG_VERIFY: "1"
+    },
+    encoding: "utf8"
+  });
+  if (result.stdout) {
+    process.stdout.write(result.stdout);
+  }
+  if (result.stderr) {
+    process.stderr.write(result.stderr);
+  }
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+  return parseRagSyncSummaryMarker(result.stdout);
 }
 
 function appendAdminSeedLog({ summaryLine, summaryJson }) {
@@ -372,22 +402,9 @@ async function seed() {
     let teamKbCollectionId = "";
 
     if (!shouldSkipSeedXaiRagIngest()) {
-      const mgmtBase = m.xaiMgmtBaseUrl.replace(/\/$/, "");
-      const xaiBaseUrl = m.xaiBaseUrl.replace(/\/$/, "");
-      ragIngest = await runSeedXaiRagIngest({
-        repoRoot: REPO_ROOT,
-        teamId: teamUuidForXaiIngest(m.xaiTeamId),
-        xaiApiKey: m.xaiApiKey,
-        xaiBaseUrl,
-        mgmtKey: m.xaiMgmtKey,
-        mgmtBase,
-        trustedAdvisorDeploySlug: seedTenant.trustedAdvisorDeploySlug
-      });
+      ragIngest = runSeedAdminRagSync() ?? ragIngest;
       strategyCollectionIds = ragIngest.strategyCollectionIds ?? [];
       teamKbCollectionId = ragIngest.tenantTrustedAdvisorRootCollectionId || "";
-      for (const w of ragIngest.warnings ?? []) {
-        console.warn("[seed:admin] xai RAG ingest:", w);
-      }
       console.log(
         `[seed:admin] xAI RAG ingest done (files uploaded: ${ragIngest.ragUploaded}; tenant collections: ${strategyCollectionIds.length})`
       );

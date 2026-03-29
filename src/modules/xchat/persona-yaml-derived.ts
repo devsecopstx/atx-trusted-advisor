@@ -40,14 +40,21 @@ function buildSeedPersonaTools(collectionId: string): PersonaXapiToolDefinition[
   const cid = collectionId.trim();
   if (cid) {
     return [
-      { type: "web_search" },
-      { type: "x_search" },
+      { type: "atx_function" },
       { type: "collections_search", collection_ids: [cid] },
       { type: "yahoo_finance" },
-      { type: "atxfinance" }
+      { type: "web_search" },
+      { type: "x_search" },
+      { type: "code_interpreter" }
     ];
   }
-  return [{ type: "web_search" }, { type: "x_search" }, { type: "yahoo_finance" }, { type: "atxfinance" }];
+  return [
+    { type: "atx_function" },
+    { type: "yahoo_finance" },
+    { type: "web_search" },
+    { type: "x_search" },
+    { type: "code_interpreter" }
+  ];
 }
 
 function buildXapiFromYamlDoc(raw: Record<string, unknown>, collectionId: string): PersonaXapiConfig {

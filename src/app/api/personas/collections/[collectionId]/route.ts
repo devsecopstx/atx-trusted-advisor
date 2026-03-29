@@ -1,24 +1,34 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { getXaiCollectionById, XaiCollectionNotFoundError } from "@/lib/xai";
+import { deleteXaiCollection, getXaiCollectionById, XaiCollectionNotFoundError } from "@/lib/xai";
+import { createAuditEvent } from "@/modules/audit/repository";
 
-type RouteParams = { params: Promise<{ collectionId: string }> };
+type RouteContext = {
+  params: Promise<{ collectionId: string }>;
+};
 
-export async function GET(_request: Request, { params }: RouteParams) {
+type XaiManagementErrorCode =
+  | "missing_management_key"
+  | "upstream_unauthorized"
+  | "upstream_forbidden"
+  | "upstream_not_found"
+  | "upstream_error";
+
+export async function GET(_request: Request, context: RouteContext) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
   }
 
-  const { collectionId } = await params;
-  const normalized = collectionId?.trim();
-  if (!normalized) {
+  const { collectionId } = await context.params;
+  const normalizedId = collectionId?.trim();
+  if (!normalizedId) {
     return NextResponse.json({ error: "Collection ID required" }, { status: 400 });
   }
 
   try {
-    const stats = await getXaiCollectionById(normalized);
+    const stats = await getXaiCollectionById(normalizedId);
     return NextResponse.json({
       data: {
         id: stats.id,
@@ -41,12 +51,80 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: error.message, code: "collection_not_found" }, { status: 404 });
     }
     console.error("xpersona collection stats fetch failed", {
-      collectionId: normalized,
+      collectionId: normalizedId,
       error: error instanceof Error ? error.message : "Unknown error"
     });
-    return NextResponse.json(
-      { error: "Failed to load collection stats" },
-      { status: 502 }
-    );
+    return NextResponse.json({ error: "Failed to load collection stats" }, { status: 502 });
   }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  const session = await requireAdminSession();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const { collectionId } = await context.params;
+  const normalizedId = collectionId.trim();
+  if (!normalizedId) {
+    return NextResponse.json({ error: "Collection id is required", code: "validation_error" }, { status: 400 });
+  }
+
+  try {
+    await deleteXaiCollection(normalizedId);
+  } catch (error) {
+    const code = classifyXaiManagementError(error);
+    const message = error instanceof Error ? error.message : String(error);
+    const status =
+      code === "upstream_not_found"
+        ? 404
+        : code === "upstream_unauthorized" || code === "upstream_forbidden"
+          ? 502
+          : 502;
+    return NextResponse.json({ error: "Failed to delete xAI collection", code, details: message }, { status });
+  }
+
+  enqueueAuditEvent({
+    entityType: "xpersona",
+    entityId: normalizedId,
+    action: "collection_deleted",
+    actor: {
+      userId: session.userId,
+      email: session.email,
+      username: session.username
+    },
+    details: {
+      collectionId: normalizedId
+    }
+  });
+
+  return NextResponse.json({ ok: true });
+}
+
+function enqueueAuditEvent(input: Parameters<typeof createAuditEvent>[0]) {
+  void createAuditEvent(input).catch((error: unknown) => {
+    console.error("xpersona collection delete audit write failed", {
+      action: input.action,
+      entityId: input.entityId,
+      error: error instanceof Error ? error.message : "Unknown audit error"
+    });
+  });
+}
+
+function classifyXaiManagementError(error: unknown): XaiManagementErrorCode {
+  const message = error instanceof Error ? error.message : String(error);
+  const lowered = message.toLowerCase();
+  if (lowered.includes("missing xai_management_api_key") || lowered.includes("missing xai_api_key")) {
+    return "missing_management_key";
+  }
+  if (lowered.includes("404") || lowered.includes("not found")) {
+    return "upstream_not_found";
+  }
+  if (lowered.includes("401") || lowered.includes("unauthorized") || lowered.includes("authentication")) {
+    return "upstream_unauthorized";
+  }
+  if (lowered.includes("403") || lowered.includes("forbidden")) {
+    return "upstream_forbidden";
+  }
+  return "upstream_error";
 }

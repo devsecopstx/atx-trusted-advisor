@@ -19,7 +19,7 @@ describe("buildSessionToolInstructions", () => {
   it("includes both sections when both flags", () => {
     const s = buildSessionToolInstructions({ hostedSearch: true, atxfinance: true });
     expect(s).toContain("web_search");
-    expect(s).toContain("atxfinance tool");
+    expect(s).toContain("atx_function tool");
   });
 
   it("includes NL guidance for options/strategy preflight when atxfinance", () => {

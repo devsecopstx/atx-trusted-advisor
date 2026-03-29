@@ -20,7 +20,7 @@ export default async function AdminRagFilesPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">RAG collections</h1>
         <p className="hero-copy">
-          Read-only view of xAI collections visible to this app&apos;s management API key (team scope).
+          View xAI collections in team scope and remove selected collections from this admin-only page.
         </p>
       </section>
 

@@ -6,6 +6,7 @@ import { resolveXchatLinkedCollectionIds } from "@/modules/xchat/persona-linked-
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import { retrieveRagChunks } from "@/modules/xchat/repository";
 import {
+    isAtxFunctionToolType,
     normalizePersonaXapiConfig,
     type PersonaConfig,
     type PersonaXapiConfig,
@@ -268,11 +269,11 @@ export type MultiSourceOrchestratorInput = {
 };
 
 function personaAllowsAtxfinance(xapi: PersonaXapiConfig): boolean {
-  return xapi.tools.some((t) => t.type === "atxfinance");
+  return xapi.tools.some((t) => isAtxFunctionToolType(t.type));
 }
 
 function personaAllowsYahooBatch(xapi: PersonaXapiConfig): boolean {
-  return xapi.tools.some((t) => t.type === "yahoo_finance" || t.type === "atxfinance");
+  return xapi.tools.some((t) => t.type === "yahoo_finance" || isAtxFunctionToolType(t.type));
 }
 
 /**

@@ -67,9 +67,12 @@ const xaiCollectionSchema = z.object({
 const SUPPORTED_XAPI_TOOL_TYPES = [
   "web_search",
   "x_search",
+  "code_interpreter",
   "file_search",
   "collections_search",
   "yahoo_finance",
+  "atx_function",
+  // Legacy alias kept so older persona payloads still validate.
   "atxfinance"
 ] as const;
 
