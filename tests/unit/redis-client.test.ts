@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("redis", () => ({
   createClient: vi.fn()
@@ -17,6 +17,13 @@ import {
 } from "@/lib/redis-client";
 
 describe("redis-client", () => {
+  beforeEach(async () => {
+    delete process.env.REDIS_URL;
+    delete process.env.REDIS_TLS;
+    delete process.env.REDIS_QUOTE_CACHE_TTL_SECONDS;
+    await resetRedisClientForTests();
+  });
+
   afterEach(async () => {
     delete process.env.REDIS_URL;
     delete process.env.REDIS_TLS;

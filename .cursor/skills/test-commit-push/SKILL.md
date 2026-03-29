@@ -46,6 +46,7 @@ Ship changes safely by validating locally and preparing an accurate commit workf
 13. After push: create or update PR targeting **`main`** (`gh pr create --base main` or `gh pr view` + `gh pr edit` as needed).
 14. **Staging first (when applicable):** Push branch, open/merge PR per policy, and verify staging before production (see `AGENTS.md` / deploy skills).
 15. **Deploy (manual workflow):** Use **Deploy Cloud Run** (`.github/workflows/deploy-cloud-run.yml`) via **`workflow_dispatch`** with required inputs: `branch`, `target` (`staging` | `production`), and `confirm_manual_approval=yes` (optional `deployment_notes`). Environment required reviewers enforce manual approval gates; post-deploy Slack notification is sent when `SLACK_WEBHOOK_URL` is configured in Secret Manager. See `AGENTS.md` if jobs skip.
+16. **Deploy from laptop (Actions blocked or smoke-before-prod):** Same commit CI would build — **`npm run ops:deploy:cloud-run:staging`** (`.env.stage` + `gcloud`), verify staging, then **`npm run ops:deploy:cloud-run:production`** (`.env.prod`). Preflight: `npm run ops:secrets:verify:staging` / `ops:secrets:verify:prod`. Details: **`.cursor/agents/sre.md`** § *Manual deploy* and *Version vs staging*.
 
 ## Output
 
