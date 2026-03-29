@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   description:
     "aTx⚡Finance — Powered by xAI. No Atoms Moved. Just Gains Earned. Options workspace, xChat, and portfolio tools.",
   icons: {
-    icon: "/branding/app-hero-icon.png",
-    shortcut: "/branding/app-hero-icon.png",
-    apple: "/branding/app-hero-icon.png"
+    icon: "/branding/app-hero-icon-transparent.png",
+    shortcut: "/branding/app-hero-icon-transparent.png",
+    apple: "/branding/app-hero-icon-transparent.png"
   }
 };
 

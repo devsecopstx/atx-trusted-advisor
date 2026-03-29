@@ -34,7 +34,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       <div className="xchat-shell">
         <XchatGuestHeader />
         <div className="xchat-body">
-          <XchatGuestReadonlyShell>
+          <XchatGuestReadonlyShell showAccessPanel={false}>
             <XchatGuestPanel
               authDetails={authDetails}
               authError={authError}
@@ -78,7 +78,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             welcomeName={appUserPrimaryDisplayName(session)}
           />
         ) : (
-          <XchatGuestReadonlyShell>
+          <XchatGuestReadonlyShell showAccessPanel={false}>
             <XchatGuestPanel
               authDetails={authDetails}
               authError={authError}

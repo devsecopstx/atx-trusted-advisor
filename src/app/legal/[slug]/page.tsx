@@ -18,6 +18,7 @@ import { GlobalFooter } from "@/app/ui/global-footer";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-shell";
 import { getSessionUser } from "@/lib/auth";
+import { isGoogleOAuthConfigured } from "@/lib/env";
 import { canUserLogin } from "@/modules/identity/authorization";
 import "../../xchat/xchat.css";
 
@@ -56,6 +57,9 @@ export default async function LegalSlugPage({ params }: PageProps) {
   const key = slug as LegalSlug;
   const session = await getSessionUser();
   const approved = session ? canUserLogin(session.roles) : false;
+  const googleLoginHref = isGoogleOAuthConfigured()
+    ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
+    : null;
   const legalDoc = (
     <article className="legal-stub-page" aria-label={`${TITLES[key]} agreement`}>
       <p className="legal-stub-back">
@@ -84,7 +88,7 @@ export default async function LegalSlugPage({ params }: PageProps) {
     <div className="xchat-shell">
       <XchatGuestHeader />
       <div className="xchat-body" style={{ padding: "1rem" }}>
-        <XchatGuestReadonlyShell>
+        <XchatGuestReadonlyShell googleLoginHref={googleLoginHref}>
           {legalDoc}
           <GlobalFooter />
         </XchatGuestReadonlyShell>

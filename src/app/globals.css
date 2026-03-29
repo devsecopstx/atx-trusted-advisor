@@ -20,6 +20,19 @@ html[data-xf-ui="soft"] {
   color-scheme: light;
 }
 
+/* Theme-aware raster icon treatment: dark shell uses lightened mark; soft shell uses original dark mark. */
+.app-hero-icon-img {
+  object-fit: contain;
+}
+
+html:not([data-xf-ui="soft"]) .app-hero-icon-img {
+  filter: invert(1) brightness(1.08);
+}
+
+html[data-xf-ui="soft"] .app-hero-icon-img {
+  filter: none;
+}
+
 .xf-theme-picker-root {
   position: relative;
   flex-shrink: 0;

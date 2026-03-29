@@ -19,7 +19,18 @@ const protectedPathPrefixes = [
   "/xcoach"
 ];
 
+const publicGuestReadablePaths = ["/account/billing"] as const;
+
+function isPublicGuestReadablePath(pathname: string): boolean {
+  return publicGuestReadablePaths.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
+
 function isProtectedPath(pathname: string): boolean {
+  if (isPublicGuestReadablePath(pathname)) {
+    return false;
+  }
   return protectedPathPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 

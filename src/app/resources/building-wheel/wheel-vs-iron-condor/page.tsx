@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
+import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
+import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-shell";
 import { getSessionUser } from "@/lib/auth";
+import { isGoogleOAuthConfigured } from "@/lib/env";
 import { canUserLogin } from "@/modules/identity/authorization";
 
 import "../../../xchat/xchat.css";
@@ -104,60 +106,73 @@ const COMPARISON_ROWS: ComparisonRow[] = [
 
 export default async function WheelVsIronCondorPage() {
   const session = await getSessionUser();
-  if (!session) {
-    redirect("/xchat");
-  }
-  if (!canUserLogin(session.roles)) {
-    redirect("/xchat");
-  }
+  const approved = session ? canUserLogin(session.roles) : false;
+  const googleLoginHref = isGoogleOAuthConfigured()
+    ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
+    : null;
+  const shellContent = (
+    <>
+      <article className="resources-doc-shell" aria-label="Wheel vs Iron Condor comparison">
+        <header className="resources-doc-hero">
+          <p className="resources-doc-hero__eyebrow">Resources · Building Wheel</p>
+          <h1 className="resources-doc-hero__title">Wheel vs Iron Condor</h1>
+          <p className="resources-doc-hero__copy">
+            Side-by-side view of the wheel income cycle versus an iron condor credit structure for range-bound
+            setups.
+          </p>
+          <p className="resources-doc-footnote resources-doc-footnote--center">
+            <Link href="/resources/building-wheel">Back to Building Wheel</Link>
+          </p>
+        </header>
+
+        <section className="resources-doc-section">
+          <h2>Comparison</h2>
+          <table className="resources-doc-table" aria-label="Wheel versus Iron Condor comparison">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Options Wheel</th>
+                <th>Iron Condor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON_ROWS.map((row) => (
+                <tr key={row.feature}>
+                  <td>{row.feature}</td>
+                  <td>{row.optionsWheel}</td>
+                  <td>{row.ironCondor}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="resources-doc-footnote resources-doc-footnote--center">
+            <span className="xf-disclaimer-emphasis">Not financial advice.</span> Use this comparison for education
+            and scenario planning only.
+          </p>
+        </section>
+      </article>
+      <GlobalFooter />
+    </>
+  );
 
   return (
     <div className="xchat-shell">
-      <AppUserApprovedHeader current="xchat" feedbackPageLabel="Resources · Wheel vs Iron Condor" session={session} />
+      {approved && session ? (
+        <AppUserApprovedHeader current="xchat" feedbackPageLabel="Resources · Wheel vs Iron Condor" session={session} />
+      ) : (
+        <XchatGuestHeader />
+      )}
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
-        <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
-          <article className="resources-doc-shell" aria-label="Wheel vs Iron Condor comparison">
-            <header className="resources-doc-hero">
-              <p className="resources-doc-hero__eyebrow">Resources · Building Wheel</p>
-              <h1 className="resources-doc-hero__title">Wheel vs Iron Condor</h1>
-              <p className="resources-doc-hero__copy">
-                Side-by-side view of the wheel income cycle versus an iron condor credit structure for range-bound
-                setups.
-              </p>
-              <p className="resources-doc-footnote resources-doc-footnote--center">
-                <Link href="/resources/building-wheel">Back to Building Wheel</Link>
-              </p>
-            </header>
-
-            <section className="resources-doc-section">
-              <h2>Comparison</h2>
-              <table className="resources-doc-table" aria-label="Wheel versus Iron Condor comparison">
-                <thead>
-                  <tr>
-                    <th>Feature</th>
-                    <th>Options Wheel</th>
-                    <th>Iron Condor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON_ROWS.map((row) => (
-                    <tr key={row.feature}>
-                      <td>{row.feature}</td>
-                      <td>{row.optionsWheel}</td>
-                      <td>{row.ironCondor}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="resources-doc-footnote resources-doc-footnote--center">
-                <span className="xf-disclaimer-emphasis">Not financial advice.</span> Use this comparison for education
-                and scenario planning only.
-              </p>
-            </section>
-          </article>
-          <GlobalFooter />
-        </AppUserCollapsibleRailLayout>
+        {approved && session ? (
+          <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
+            {shellContent}
+          </AppUserCollapsibleRailLayout>
+        ) : (
+          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref}>
+            {shellContent}
+          </XchatGuestReadonlyShell>
+        )}
       </div>
     </div>
   );

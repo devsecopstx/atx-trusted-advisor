@@ -9,9 +9,9 @@ function AtxFinanceIcon() {
     <Image
       alt=""
       aria-hidden
-      className="mh-product-icon"
+      className="mh-product-icon app-hero-icon-img"
       height={48}
-      src="/branding/app-hero-icon.png"
+      src="/branding/app-hero-icon-transparent.png"
       width={48}
     />
   );

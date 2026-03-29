@@ -60,6 +60,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }]
   },
   {
+    path: "/api/access-requests/public",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "access-requests"
+  },
+  {
     path: "/api/user-feedback",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "user-feedback"

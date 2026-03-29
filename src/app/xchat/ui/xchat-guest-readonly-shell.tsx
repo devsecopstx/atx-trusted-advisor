@@ -4,12 +4,19 @@ import type { ReactNode } from "react";
 
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserAccountRailSection, AppUserResourcesRailSection } from "@/app/ui/app-user-rail-nav";
+import { XchatGuestPanel } from "@/app/xchat/ui/xchat-guest-panel";
 
 type XchatGuestReadonlyShellProps = {
   children: ReactNode;
+  googleLoginHref?: string | null;
+  showAccessPanel?: boolean;
 };
 
-export function XchatGuestReadonlyShell({ children }: XchatGuestReadonlyShellProps) {
+export function XchatGuestReadonlyShell({
+  children,
+  googleLoginHref = null,
+  showAccessPanel = true
+}: XchatGuestReadonlyShellProps) {
   return (
     <AppUserCollapsibleRailLayout
       allowCollapse={false}
@@ -29,7 +36,11 @@ export function XchatGuestReadonlyShell({ children }: XchatGuestReadonlyShellPro
         </aside>
       }
     >
-      {children}
+      {showAccessPanel ? (
+        <XchatGuestPanel content={children} googleLoginHref={googleLoginHref} />
+      ) : (
+        children
+      )}
     </AppUserCollapsibleRailLayout>
   );
 }

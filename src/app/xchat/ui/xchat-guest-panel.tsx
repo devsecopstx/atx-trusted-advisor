@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, type ReactNode } from "react";
 
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import { LinkEmailForm } from "@/app/login/ui/link-email-form";
@@ -13,6 +13,7 @@ type XchatGuestPanelProps = {
   authError?: string;
   authDetails?: string;
   pendingXHandle?: string;
+  content?: ReactNode;
   /** When set (server: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`), show Sign in with Google beside X. */
   googleLoginHref?: string | null;
 };
@@ -69,6 +70,7 @@ export function XchatGuestPanel({
   authError,
   authDetails,
   pendingXHandle,
+  content,
   googleLoginHref = null
 }: XchatGuestPanelProps) {
   const authMessage = authError ? (AUTH_ERROR_COPY[authError] ?? "Sign-in failed.") : null;
@@ -137,16 +139,20 @@ export function XchatGuestPanel({
       </div>
 
       <div className="xchat-messages">
-        <div className="xchat-msg xchat-msg-ai">
-          <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>
-            xChat
-          </small>
-          <span style={{ whiteSpace: "pre-wrap" }}>
-            {pendingApproval
-              ? `Your account${userEmail ? ` (${userEmail})` : ""} is signed in but not approved yet. Request access and we will review it.`
-              : "Welcome to aTx Trusted Advisory xChat. This is an invite-only app. Sign up to request access."}
-          </span>
-        </div>
+        {content ? (
+          <div className="xchat-msg xchat-msg-ai xchat-guest-content-panel">{content}</div>
+        ) : (
+          <div className="xchat-msg xchat-msg-ai">
+            <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>
+              xChat
+            </small>
+            <span style={{ whiteSpace: "pre-wrap" }}>
+              {pendingApproval
+                ? `Your account${userEmail ? ` (${userEmail})` : ""} is signed in but not approved yet. Request access and we will review it.`
+                : "Welcome to aTx Trusted Advisory xChat. This is an invite-only app. Sign up to request access."}
+            </span>
+          </div>
+        )}
       </div>
 
       <section className="xchat-guest-actions">

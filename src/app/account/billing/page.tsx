@@ -8,6 +8,7 @@ import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-she
 import { ATX_BILLING_PLAN_LIMIT_ROWS } from "@/lib/atx-billing-plan-limits";
 import { ATX_BILLING_PLANS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import { getSessionUser } from "@/lib/auth";
+import { isGoogleOAuthConfigured } from "@/lib/env";
 import { getStripePublishableKey, isStripeBillingFullyConfigured } from "@/lib/stripe-config";
 import { canUserLogin } from "@/modules/identity/authorization";
 
@@ -33,6 +34,9 @@ export default async function AccountBillingPage({
   const session = await getSessionUser();
   const approved = session ? canUserLogin(session.roles) : false;
   const guestReadonly = !approved;
+  const googleLoginHref = isGoogleOAuthConfigured()
+    ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
+    : null;
 
   const sp = (await searchParams) ?? {};
   const checkout = typeof sp.checkout === "string" ? sp.checkout : undefined;
@@ -163,7 +167,7 @@ export default async function AccountBillingPage({
             </div>
           </AppUserCollapsibleRailLayout>
         ) : (
-          <XchatGuestReadonlyShell>
+          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref}>
             <div className="billing-page">
               <header className="billing-hero xf-noise-overlay surface-card xf-widget section-card">
                 <p className="billing-hero__eyebrow">ATX price plans</p>

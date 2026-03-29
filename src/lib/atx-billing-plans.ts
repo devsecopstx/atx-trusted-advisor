@@ -34,11 +34,11 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     id: "premium_monthly",
     name: "Premium",
     tagline: "Complex books — xChat + xStrategyBuilder with fair per-hour caps",
-    priceLabel: "$29",
+    priceLabel: "$99",
     periodNote: "per month",
     highlight: true,
     bullets: [
-      "Complex portfolios: international, real estate, listed equities & options, and multi-account context",
+      "User defined, Complex portfolios: listed equities & options, and multi-account context",
       "Generous posture with fair per-hour caps on xChat and xStrategyBuilder (scenario builder)",
       "Expanded weekly range coverage and broader article context for strategy preparation",
       "Power-user tier — meaningful Feedback on real scenarios helps us prioritize caps, tools, and roadmap"
@@ -48,8 +48,8 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     /** Stripe env may still use `STRIPE_PRICE_PREMIUM_PLUS_YEARLY` until price ids are renamed. */
     id: "premium_plus_yearly",
     name: "Premium+",
-    tagline: "Dedicated instance — private, white-glove posture",
-    priceLabel: "$99",
+    tagline: "Dedicated instance — private, white-glove posture, account trade recomendations and rationale with automated verification",
+    priceLabel: "$299",
     periodNote: "per month",
     bullets: [
       "White-glove for ultra-complex and family-office books; direct line for structured product input",

@@ -260,9 +260,9 @@ export default function Hero({
               <div className="mb-5 flex justify-center">
                 <Image
                   alt="aTx app hero icon"
-                  className="h-20 w-20 rounded-2xl border border-white/10 bg-white/5 p-1 shadow-xl shadow-black/30"
+                  className="app-hero-icon-img h-20 w-20"
                   height={80}
-                  src="/branding/app-hero-icon.png"
+                  src="/branding/app-hero-icon-transparent.png"
                   width={80}
                 />
               </div>

@@ -398,6 +398,14 @@
   display: block;
 }
 
+html:not([data-xf-ui="soft"]) .xstrategybuilder-nav-icon-img {
+  filter: invert(1) brightness(1.08);
+}
+
+html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
+  filter: none;
+}
+
 .xchat-header-cta {
   padding: 0.35rem 0.75rem;
   border-radius: 8px;
@@ -1196,6 +1204,18 @@ html[data-xf-ui="soft"] .xchat-main-shell {
   background: var(--xf-surface-700);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--xf-text-100);
+}
+
+.xchat-guest-content-panel {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.xchat-guest-content-panel .resources-doc-shell,
+.xchat-guest-content-panel .legal-stub-page,
+.xchat-guest-content-panel .billing-page {
+  margin: 0;
 }
 
 .xchat-msg-error {

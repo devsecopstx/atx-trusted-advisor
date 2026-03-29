@@ -47,9 +47,9 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
         <Image
           alt=""
           aria-hidden
-          className="xchat-header-icon-link__glyph-img"
+          className="xchat-header-icon-link__glyph-img xstrategybuilder-nav-icon-img"
           height={20}
-          src="/branding/xstrategybuilder-topnav-icon.png"
+          src="/branding/xstrategybuilder-topnav-icon-transparent.png"
           width={20}
         />
       </IconWrap>
