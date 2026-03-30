@@ -413,6 +413,132 @@ export async function updateCoreUserById(
   return db.collection<CoreUser>(collections.users).findOne({ _id: userId });
 }
 
+export type CoreUserBackofficePatch = {
+  subscriptionPlan?: NonNullable<CoreUser["subscriptionPlan"]>;
+  status?: CoreUser["status"];
+  roles?: CoreUser["roles"];
+  email?: string;
+  xAccountDisplayName?: string;
+  xAccountUsername?: string;
+  xAccountAvatarUrl?: string | null;
+  xaiCollectionId?: string | null;
+  xaiCollectionName?: string | null;
+};
+
+export async function lookupCoreUserBackoffice(input: {
+  by: "email" | "id";
+  value: string;
+}): Promise<CoreUser | null> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  if (input.by === "email") {
+    return db.collection<CoreUser>(collections.users).findOne({ email: normalizeEmail(input.value) });
+  }
+  const trimmed = input.value.trim();
+  if (!ObjectId.isValid(trimmed)) {
+    return null;
+  }
+  return db.collection<CoreUser>(collections.users).findOne({ _id: new ObjectId(trimmed) });
+}
+
+export async function patchCoreUserBackoffice(
+  userId: ObjectId,
+  patch: CoreUserBackofficePatch
+): Promise<
+  | { ok: true; user: CoreUser }
+  | { ok: false; code: "not_found" | "x_account_required" | "duplicate_email" }
+> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const existing = await db.collection<CoreUser>(collections.users).findOne({ _id: userId });
+  if (!existing?._id) {
+    return { ok: false, code: "not_found" };
+  }
+
+  const now = new Date();
+  const $set: Record<string, unknown> = { updatedAt: now };
+  const $unset: Record<string, ""> = {};
+
+  if (patch.subscriptionPlan !== undefined) {
+    $set.subscriptionPlan = patch.subscriptionPlan;
+  }
+  if (patch.status !== undefined) {
+    $set.status = patch.status;
+  }
+  if (patch.roles !== undefined) {
+    $set.roles = patch.roles;
+  }
+  if (patch.email !== undefined) {
+    $set.email = normalizeEmail(patch.email);
+  }
+
+  const needsXAccount =
+    patch.xAccountDisplayName !== undefined ||
+    patch.xAccountUsername !== undefined ||
+    patch.xAccountAvatarUrl !== undefined;
+  if (needsXAccount && !existing.xAccount) {
+    return { ok: false, code: "x_account_required" };
+  }
+  if (patch.xAccountDisplayName !== undefined) {
+    const t = patch.xAccountDisplayName.trim();
+    if (t.length === 0) {
+      $unset["xAccount.displayName"] = "";
+    } else {
+      $set["xAccount.displayName"] = t.slice(0, 200);
+    }
+  }
+  if (patch.xAccountUsername !== undefined) {
+    const t = patch.xAccountUsername.trim();
+    if (t.length > 0) {
+      $set["xAccount.username"] = t.slice(0, 200);
+    }
+  }
+  if (patch.xAccountAvatarUrl !== undefined) {
+    if (patch.xAccountAvatarUrl === null || patch.xAccountAvatarUrl === "") {
+      $unset["xAccount.avatarUrl"] = "";
+    } else {
+      $set["xAccount.avatarUrl"] = patch.xAccountAvatarUrl.trim().slice(0, 500);
+    }
+  }
+
+  if (patch.xaiCollectionId !== undefined) {
+    if (patch.xaiCollectionId === null || patch.xaiCollectionId === "") {
+      $unset.xaiCollectionId = "";
+    } else {
+      $set.xaiCollectionId = patch.xaiCollectionId.trim();
+    }
+  }
+  if (patch.xaiCollectionName !== undefined) {
+    if (patch.xaiCollectionName === null || patch.xaiCollectionName === "") {
+      $unset.xaiCollectionName = "";
+    } else {
+      $set.xaiCollectionName = patch.xaiCollectionName.trim().slice(0, 200);
+    }
+  }
+
+  try {
+    await db.collection<CoreUser>(collections.users).updateOne(
+      { _id: userId },
+      {
+        $set,
+        ...(Object.keys($unset).length > 0 ? { $unset } : {})
+      }
+    );
+  } catch (error) {
+    const isDuplicate = error instanceof Error && /E11000/.test(error.message);
+    if (isDuplicate) {
+      return { ok: false, code: "duplicate_email" };
+    }
+    throw error;
+  }
+
+  const user = await db.collection<CoreUser>(collections.users).findOne({ _id: userId });
+  if (!user?._id) {
+    return { ok: false, code: "not_found" };
+  }
+  return { ok: true, user };
+}
+
 export async function deleteCoreUserById(userId: ObjectId): Promise<boolean> {
   await ensureIdentityIndexes();
   const db = await getDb();

@@ -544,6 +544,28 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "404": jsonResponse("Not found or not owned by the caller.", "ErrorResponse")
     }
   },
+  "POST /api/admin/backoffice/core-users": {
+    summary: "Backoffice core_users lookup or constrained patch",
+    description:
+      "global_admin only. Body discriminates on `op`: `lookup` (by email or user id) or `patch` (allowlisted core_users fields: plan, status, roles, email, X profile, xAI collection hints). Emits audit `backoffice_user_lookup` / `backoffice_user_patch`. Not an arbitrary Mongo shell.",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("AdminBackofficeCoreUsersRequest")
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Lookup result or patched user.", "AdminBackofficeCoreUsersResponseEnvelope"),
+      "400": jsonResponse("Invalid payload.", "ValidationErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "404": jsonResponse("User not found.", "ErrorResponse"),
+      "409": jsonResponse("Duplicate email on patch.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
   "GET /api/admin/users": {
     summary: "List users",
     parameters: [
@@ -1676,6 +1698,46 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         }
       }
     }
+  },
+  AdminBackofficeCoreUsersRequest: {
+    oneOf: [
+      {
+        type: "object",
+        required: ["op", "by", "value"],
+        properties: {
+          op: { type: "string", enum: ["lookup"] },
+          by: { type: "string", enum: ["email", "id"] },
+          value: { type: "string", minLength: 1 }
+        }
+      },
+      {
+        type: "object",
+        required: ["op", "userId"],
+        properties: {
+          op: { type: "string", enum: ["patch"] },
+          userId: { type: "string", minLength: 24, maxLength: 24 },
+          subscriptionPlan: refSchema("AdminUserSubscriptionPlan"),
+          status: refSchema("AdminUserStatus"),
+          roles: {
+            type: "array",
+            items: refSchema("AdminUserRole"),
+            minItems: 1
+          },
+          email: { type: "string", format: "email" },
+          xAccountDisplayName: { type: "string" },
+          xAccountUsername: { type: "string" },
+          xAccountAvatarUrl: { type: "string", nullable: true },
+          xaiCollectionId: { type: "string", nullable: true },
+          xaiCollectionName: { type: "string", nullable: true }
+        },
+        description: "At least one patch field besides op/userId is required at runtime."
+      }
+    ]
+  },
+  AdminBackofficeCoreUsersResponseEnvelope: {
+    type: "object",
+    description: "Lookup: { data, found }. Patch: { data } with serialized core user.",
+    additionalProperties: true
   },
   AdminUserUpdatePlanRequest: {
     type: "object",

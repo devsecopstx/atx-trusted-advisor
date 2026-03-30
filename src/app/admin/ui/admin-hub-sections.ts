@@ -135,6 +135,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
           "Platform default published xPersona for app users who do not have an admin-assigned persona."
       },
       {
+        href: "/admin/manage-backoffice",
+        title: "Manage backoffice",
+        description:
+          "Audited core_users lookup and allowlisted field patches (subscription plan, roles, status, email, X profile, xAI collection) — constrained DB ops, not an open Mongo shell."
+      },
+      {
         href: "/admin/audit",
         title: "Audit explorer",
         description: "Browse and filter change trails across users, access requests, and xPersonas."

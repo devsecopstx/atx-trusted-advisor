@@ -14,6 +14,8 @@ no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer doc
 
 **Auth cookies (Next BFF):** Signed session cookie (`SESSION_COOKIE_NAME`, `src/lib/auth.ts`) remains **12h** `maxAge` / payload `exp`. On each read, if `exp` is within **30 minutes**, the cookie is **re-issued** (sliding extension for active users) — see `SESSION_REFRESH_WHEN_REMAINING_MS` / `getSessionUser` in `src/lib/auth.ts`. **OAuth in-flight** cookies (PKCE state/verifier, return path, pending X link) use **`OAUTH_FLOW_TTL_SECONDS` (30 minutes)** so users can complete X/Google OAuth after tab switches or slow networks without restarting the flow. Keep callback host alignment per `atx-docs/sre-ops/x-oauth-atx-callbacks.md`.
 
+**Admin backoffice (core_users, audited):** Platform & compliance hub → **Manage backoffice** (`/admin/manage-backoffice`). Not a raw Mongo shell: `POST /api/admin/backoffice/core-users` with `op: lookup` (email or user id) or `op: patch` (allowlisted fields — subscription plan, status, roles, email, linked-X profile fields, xAI collection id/name). Requires **global_admin**; audit actions `backoffice_user_lookup` / `backoffice_user_patch`. Prefer **Manage users** (`/admin/manage-users`) for routine plan/persona edits; use backoffice for operational repairs and visibility into the stored document shape.
+
 **Tenant workspace limits:** `atx-docs/sre-ops/tenant-workspace-limits.md` — `core_tenants.workspaceLimits`, optional
 `workspaceLimits.planOverrides.<tier>.price` (USD list price per tenant/plan, default **10**), collection
 `app_feature_daily_usage`, admin API `PATCH /api/admin/tenants/{tenantId}/workspace-limits`, UI rail **Tenant preferences → Workspace limits** (`/admin/tenant-preferences/workspace-limits`), billing surfacing.
