@@ -205,6 +205,38 @@ describe("admin user settings route", () => {
     expect(coreAdminRepositoryMocks.upsertUserAdminSettings).toHaveBeenCalled();
   });
 
+  it("PUT accepts finraLicenseUploadUrl null (round-trip from GET / Mongo)", async () => {
+    const response = await PUT(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignedPersonaId: "507f1f77bcf86cd799439055",
+          finraLicenseUploadUrl: null,
+          broker: { provider: "paper", accountRef: "paper-main", enabled: true },
+          portfolio: {
+            riskProfile: "balanced",
+            investmentStrategy: "balanced",
+            baseCurrency: "USD",
+            rebalanceFrequencyDays: 14
+          },
+          account: { accountStatus: "active", maxConcurrentSessions: 2, timezone: "America/New_York" },
+          notificationDefaults: { email: true, push: true, sms: false, digestHourUTC: 13 }
+        })
+      }),
+      {
+        params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(coreAdminRepositoryMocks.upsertUserAdminSettings).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439033",
+      expect.objectContaining({ finraLicenseUploadUrl: undefined }),
+      expect.any(Object)
+    );
+  });
+
   it("PUT rejects non-published persona assignment", async () => {
     xchatRepositoryMocks.getPersonaById.mockResolvedValueOnce({
       _id: { toHexString: () => "507f1f77bcf86cd799439055" },

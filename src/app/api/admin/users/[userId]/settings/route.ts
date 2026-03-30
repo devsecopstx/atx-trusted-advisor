@@ -15,9 +15,15 @@ import {
 import { getCoreUserById } from "@/modules/identity/repository";
 import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
 
+/** JSON/Mongo often send explicit null; treat like omitted for optional string fields. */
+const nullToUndefined = (val: unknown) => (val === null ? undefined : val);
+
 const updateSettingsSchema = z.object({
-  assignedPersonaId: z.string().trim().optional(),
-  finraLicenseUploadUrl: z.string().trim().max(500).optional(),
+  assignedPersonaId: z.preprocess(nullToUndefined, z.string().trim().optional()),
+  finraLicenseUploadUrl: z.preprocess(
+    nullToUndefined,
+    z.string().trim().max(500).optional()
+  ),
   broker: z.object({
     provider: z.enum(["alpaca", "interactive-brokers", "paper"]),
     accountRef: z.string().min(1),
