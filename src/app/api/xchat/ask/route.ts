@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
+import { effectiveWorkspaceLimitsForTenantAndPlan } from "@/lib/tenant-workspace-limits";
 import {
     respondWithXaiToolLoop,
     searchDocumentsInCollections,
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
   const topK = isAdminSession ? requestedTopK : clampTopK(requestedTopK, subscriptionPlan);
   let dailyPromptCap: number | undefined;
   if (!isAdminSession) {
-    const workspaceLimits = await getResolvedWorkspaceLimitsForTenantId(session.tenantId);
+    const workspaceLimits = effectiveWorkspaceLimitsForTenantAndPlan(tenantForDebug, subscriptionPlan);
     const planDaily = getPlanLimits(subscriptionPlan).maxPromptsPerDay;
     dailyPromptCap = Math.min(planDaily, workspaceLimits.userChatLimit);
   }

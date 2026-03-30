@@ -10,7 +10,7 @@ const bffMocks = vi.hoisted(() => ({
 }));
 
 const tenantLimitsMocks = vi.hoisted(() => ({
-  getResolvedWorkspaceLimitsForTenantId: vi.fn()
+  getEffectiveWorkspaceLimitsForUser: vi.fn()
 }));
 
 const coreAdminMocks = vi.hoisted(() => ({
@@ -65,7 +65,7 @@ describe("workspace limit enforcement on admin portfolio routes", () => {
       tenantRole: "tenant_admin",
       xUserId: "x1"
     });
-    tenantLimitsMocks.getResolvedWorkspaceLimitsForTenantId.mockResolvedValue(DEFAULT_LIMITS);
+    tenantLimitsMocks.getEffectiveWorkspaceLimitsForUser.mockResolvedValue(DEFAULT_LIMITS);
   });
 
   it("POST /api/admin/portfolios returns 403 workspace_tenant_portfolio_limit_exceeded when at cap", async () => {
@@ -83,7 +83,10 @@ describe("workspace limit enforcement on admin portfolio routes", () => {
     const json = (await res.json()) as { code: string; error: string };
     expect(json.code).toBe("workspace_tenant_portfolio_limit_exceeded");
     expect(json.error).toContain("Tenant portfolio limit");
-    expect(tenantLimitsMocks.getResolvedWorkspaceLimitsForTenantId).toHaveBeenCalledWith(tenantId);
+    expect(tenantLimitsMocks.getEffectiveWorkspaceLimitsForUser).toHaveBeenCalledWith({
+      tenantId,
+      userId
+    });
     expect(coreAdminMocks.countPortfoliosForUserInTenant).toHaveBeenCalledWith({
       userId,
       tenantId
@@ -118,6 +121,9 @@ describe("workspace limit enforcement on admin portfolio routes", () => {
     const json = (await res.json()) as { code: string; error: string };
     expect(json.code).toBe("workspace_portfolio_account_limit_exceeded");
     expect(json.error).toContain("Account limit reached");
-    expect(tenantLimitsMocks.getResolvedWorkspaceLimitsForTenantId).toHaveBeenCalledWith(tenantId);
+    expect(tenantLimitsMocks.getEffectiveWorkspaceLimitsForUser).toHaveBeenCalledWith({
+      tenantId,
+      userId
+    });
   });
 });

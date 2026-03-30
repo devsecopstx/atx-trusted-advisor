@@ -14,7 +14,12 @@ import {
     parseTenantBrandingPreferencesPayload,
     parseTenantXchatDebugEnabled
 } from "@/modules/identity/tenant-branding-preferences";
-import { parseWorkspaceLimitsPayload } from "@/modules/identity/tenant-workspace-limits";
+import {
+    normalizePlanOverridesFromUnknown,
+    parsePlanOverridesPayload,
+    parseWorkspaceLimitsPayload,
+    type TenantPlanWorkspaceOverrides
+} from "@/modules/identity/tenant-workspace-limits";
 
 type RouteContext = {
   params: Promise<{ tenantId: string }>;
@@ -22,6 +27,7 @@ type RouteContext = {
 
 const patchSchema = z.object({
   workspaceLimits: z.record(z.string(), z.unknown()).optional(),
+  planOverrides: z.record(z.string(), z.unknown()).optional(),
   tenantPreferences: z.record(z.string(), z.unknown()).optional()
 });
 
@@ -43,12 +49,14 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const effective = resolvedWorkspaceLimitsForTenant(tenant);
+  const planOverrides = normalizePlanOverridesFromUnknown(tenant.workspaceLimits?.planOverrides);
   return NextResponse.json({
     data: {
       tenantId: tenant._id.toHexString(),
       slug: tenant.slug,
       name: tenant.name,
       workspaceLimits: effective,
+      planOverrides,
       workspaceLimitsRaw: tenant.workspaceLimits ?? null,
       tenantPreferences: tenant.tenantPreferences ?? {},
       tenantPreferencesRaw: tenant.tenantPreferences ?? {}
@@ -92,6 +100,14 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (!wlParsed.ok) {
     return NextResponse.json({ error: wlParsed.error }, { status: 400 });
   }
+  let planOverridesPatch: TenantPlanWorkspaceOverrides | undefined;
+  if (parsed.data.planOverrides !== undefined) {
+    const po = parsePlanOverridesPayload(parsed.data.planOverrides);
+    if (!po.ok) {
+      return NextResponse.json({ error: po.error }, { status: 400 });
+    }
+    planOverridesPatch = po.value;
+  }
   const tpParsed = parseTenantBrandingPreferencesPayload(parsed.data.tenantPreferences ?? {});
   if (!tpParsed.ok) {
     return NextResponse.json({ error: tpParsed.error }, { status: 400 });
@@ -107,7 +123,11 @@ export async function PATCH(request: Request, context: RouteContext) {
         )
       : undefined;
 
-  const limitsUpdated = await updateTenantWorkspaceLimits(tenantId.trim(), wlParsed.value);
+  const limitsUpdated = await updateTenantWorkspaceLimits(
+    tenantId.trim(),
+    wlParsed.value,
+    planOverridesPatch
+  );
   if (!limitsUpdated?._id) {
     return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
   }
@@ -133,6 +153,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const effective = resolvedWorkspaceLimitsForTenant(updated);
+  const planOverridesOut = normalizePlanOverridesFromUnknown(updated.workspaceLimits?.planOverrides);
   if (!updated._id) {
     return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
   }
@@ -140,6 +161,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     data: {
       tenantId: updated._id.toHexString(),
       workspaceLimits: effective,
+      planOverrides: planOverridesOut,
       workspaceLimitsRaw: updated.workspaceLimits ?? null,
       tenantPreferences: updated.tenantPreferences ?? {},
       tenantPreferencesRaw: updated.tenantPreferences ?? {}

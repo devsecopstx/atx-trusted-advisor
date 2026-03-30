@@ -3,6 +3,13 @@
  */
 export type AtxBillingPlanId = "basic" | "premium_monthly" | "premium_plus_yearly";
 
+/** Retail tiers (Account → Billing) — use for tenant `workspaceLimits.planOverrides` keys. */
+export const ATX_BILLING_PLAN_IDS: readonly AtxBillingPlanId[] = [
+  "basic",
+  "premium_monthly",
+  "premium_plus_yearly"
+] as const;
+
 export type AtxBillingPlan = {
   id: AtxBillingPlanId;
   /** Short marketing name */

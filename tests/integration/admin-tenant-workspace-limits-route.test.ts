@@ -43,7 +43,7 @@ const TENANT_HEX = "507f1f77bcf86cd799439022";
 
 function baseTenant(
   overrides: {
-    workspaceLimits?: Record<string, number> | null;
+    workspaceLimits?: Record<string, unknown> | null;
     tenantPreferences?: {
       xchat_brandname?: string;
       xstrategybuilder_brandname?: string;
@@ -118,6 +118,7 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
         tenantId: string;
         slug: string;
         workspaceLimits: Record<string, number>;
+        planOverrides: Record<string, unknown>;
         workspaceLimitsRaw: Record<string, number> | null;
         tenantPreferences: { xchat_brandname?: string; xstrategybuilder_brandname?: string };
       };
@@ -128,6 +129,30 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     expect(json.data.workspaceLimits.userXoptionsLimit).toBe(10);
     expect(json.data.workspaceLimitsRaw?.userChatLimit).toBe(8);
     expect(json.data.tenantPreferences).toEqual({});
+    expect(json.data.planOverrides).toEqual({});
+  });
+
+  it("GET returns normalized planOverrides from tenant.workspaceLimits", async () => {
+    identityRepoMocks.getTenantByHexId.mockResolvedValue(
+      baseTenant({
+        workspaceLimits: {
+          userChatLimit: 8,
+          planOverrides: {
+            basic: { userChatLimit: 3 },
+            premium_monthly: { tenantPortfolioLimit: 5 }
+          }
+        }
+      })
+    );
+    const res = await GET(new Request("http://test"), {
+      params: Promise.resolve({ tenantId: TENANT_HEX })
+    });
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      data: { planOverrides: Record<string, Record<string, number>> };
+    };
+    expect(json.data.planOverrides.basic?.userChatLimit).toBe(3);
+    expect(json.data.planOverrides.premium_monthly?.tenantPortfolioLimit).toBe(5);
   });
 
   it("PATCH updates limits and returns effective workspaceLimits", async () => {
@@ -154,10 +179,14 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     };
     expect(json.data.workspaceLimits.userChatLimit).toBe(25);
     expect(json.data.workspaceLimits.tenantPortfolioLimit).toBe(2);
-    expect(identityRepoMocks.updateTenantWorkspaceLimits).toHaveBeenCalledWith(TENANT_HEX, {
-      userChatLimit: 25,
-      tenantPortfolioLimit: 2
-    });
+    expect(identityRepoMocks.updateTenantWorkspaceLimits).toHaveBeenCalledWith(
+      TENANT_HEX,
+      {
+        userChatLimit: 25,
+        tenantPortfolioLimit: 2
+      },
+      undefined
+    );
     expect(identityRepoMocks.updateTenantBrandingPreferencesOneTime).toHaveBeenCalledWith(TENANT_HEX, {});
   });
 
@@ -267,6 +296,39 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     expect(res.status).toBe(200);
     expect(identityRepoMocks.updateTenantBrandingPreferencesOneTime).toHaveBeenCalledWith(TENANT_HEX, {});
     expect(identityRepoMocks.updateTenantXchatDebugEnabled).toHaveBeenCalledWith(TENANT_HEX, true);
+  });
+
+  it("PATCH persists planOverrides as third argument", async () => {
+    identityRepoMocks.getTenantByHexId.mockResolvedValue(baseTenant());
+    const afterPatch = baseTenant({
+      workspaceLimits: {
+        userChatLimit: 8,
+        planOverrides: { basic: { userChatLimit: 4 } }
+      }
+    });
+    identityRepoMocks.updateTenantWorkspaceLimits.mockResolvedValue(afterPatch);
+    identityRepoMocks.updateTenantBrandingPreferencesOneTime.mockResolvedValue({
+      tenant: afterPatch,
+      conflictKeys: []
+    });
+
+    const req = new Request(`http://test/api/admin/tenants/${TENANT_HEX}/workspace-limits`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceLimits: { userChatLimit: 8 },
+        planOverrides: { basic: { userChatLimit: 4 } }
+      })
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ tenantId: TENANT_HEX }) });
+    expect(res.status).toBe(200);
+    expect(identityRepoMocks.updateTenantWorkspaceLimits).toHaveBeenCalledWith(
+      TENANT_HEX,
+      { userChatLimit: 8 },
+      { basic: { userChatLimit: 4 } }
+    );
+    const json = (await res.json()) as { data: { planOverrides: { basic?: { userChatLimit: number } } } };
+    expect(json.data.planOverrides.basic?.userChatLimit).toBe(4);
   });
 
   it("PATCH returns 400 for invalid workspaceLimits values", async () => {

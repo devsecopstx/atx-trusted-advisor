@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
-import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
+import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import {
     adminGetPortfolioById,
     adminInsertAccountForPortfolio,
@@ -144,7 +144,10 @@ export async function POST(request: Request, context: RouteContext) {
     cashBalance: parsed.data.cashBalance
   });
   if (!created?._id) {
-    const limits = await getResolvedWorkspaceLimitsForTenantId(tenantHex);
+    const limits = await getEffectiveWorkspaceLimitsForUser({
+      tenantId: tenantHex,
+      userId: ownerId
+    });
     const n = await countPortfolioAccountsForUser({
       userId: ownerId,
       portfolioId,

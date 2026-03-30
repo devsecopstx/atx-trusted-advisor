@@ -4,7 +4,7 @@ import { z } from "zod";
 import { adminBrokerSlugSchema, requireKnownBrokerCatalogSlug } from "@/lib/admin/broker-catalog-guard";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
-import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
+import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import {
     adminCreatePortfolio,
     adminListPortfoliosWithStats,
@@ -115,7 +115,10 @@ export async function POST(request: Request) {
     broker_type: parsed.data.broker_type
   });
   if (!created?._id) {
-    const limits = await getResolvedWorkspaceLimitsForTenantId(tenantId);
+    const limits = await getEffectiveWorkspaceLimitsForUser({
+      tenantId,
+      userId: parsed.data.userId
+    });
     const n = await countPortfoliosForUserInTenant({
       userId: parsed.data.userId,
       tenantId

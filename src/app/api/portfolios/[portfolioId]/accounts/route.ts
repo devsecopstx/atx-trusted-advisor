@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
-import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
+import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import {
     countPortfolioAccountsForUser,
     insertPortfolioAccountForUser,
@@ -188,7 +188,10 @@ export async function POST(request: Request, context: RouteContext) {
     cashBalance: parsed.data.cashBalance
   });
   if (!created?._id) {
-    const limits = await getResolvedWorkspaceLimitsForTenantId(session.tenantId);
+    const limits = await getEffectiveWorkspaceLimitsForUser({
+      tenantId: session.tenantId,
+      userId: session.userId
+    });
     const n = await countPortfolioAccountsForUser({
       userId: session.userId,
       portfolioId,

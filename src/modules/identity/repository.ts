@@ -4,6 +4,7 @@ import { getDb } from "@/lib/mongodb";
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import {
     mergeTenantWorkspaceLimits,
+    type TenantPlanWorkspaceOverrides,
     type TenantWorkspaceLimits
 } from "@/modules/identity/tenant-workspace-limits";
 import type {
@@ -621,7 +622,8 @@ export async function getTenantByHexId(tenantIdHex: string): Promise<Tenant | nu
 
 export async function updateTenantWorkspaceLimits(
   tenantIdHex: string,
-  patch: Partial<TenantWorkspaceLimits>
+  patch: Partial<TenantWorkspaceLimits>,
+  planOverrides?: TenantPlanWorkspaceOverrides | null
 ): Promise<Tenant | null> {
   if (!ObjectId.isValid(tenantIdHex)) {
     return null;
@@ -635,6 +637,9 @@ export async function updateTenantWorkspaceLimits(
     if (typeof v === "number" && Number.isInteger(v) && v >= 1) {
       $set[`workspaceLimits.${k}`] = v;
     }
+  }
+  if (planOverrides !== undefined && planOverrides !== null) {
+    $set["workspaceLimits.planOverrides"] = planOverrides;
   }
   if (Object.keys($set).length <= 1) {
     return db.collection<Tenant>(collections.tenants).findOne({ _id: id });

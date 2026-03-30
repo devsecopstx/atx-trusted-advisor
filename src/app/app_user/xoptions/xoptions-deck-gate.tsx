@@ -2,9 +2,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { getSessionUser } from "@/lib/auth";
+import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { tryIncrementFeatureDailyUsage } from "@/modules/identity/feature-daily-usage";
-import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
 
 type Props = {
   children: ReactNode;
@@ -19,7 +19,10 @@ export async function XoptionsDeckGate({ children }: Props) {
     return <>{children}</>;
   }
 
-  const limits = await getResolvedWorkspaceLimitsForTenantId(session.tenantId);
+  const limits = await getEffectiveWorkspaceLimitsForUser({
+    tenantId: session.tenantId,
+    userId: session.userId
+  });
   const result = await tryIncrementFeatureDailyUsage({
     feature: "xoptions_deck",
     userId: session.userId,

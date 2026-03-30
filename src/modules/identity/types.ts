@@ -1,7 +1,10 @@
 import { ObjectId } from "mongodb";
 
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
-import type { TenantWorkspaceLimits } from "@/modules/identity/tenant-workspace-limits";
+import type {
+    TenantPlanWorkspaceOverrides,
+    TenantWorkspaceLimits
+} from "@/modules/identity/tenant-workspace-limits";
 
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
 export type SubscriptionPlan = "free" | "pro" | "enterprise";
@@ -38,8 +41,11 @@ export type Tenant = {
   isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
-  /** Optional per-tenant quotas; omitted keys use product defaults (see `mergeTenantWorkspaceLimits`). */
-  workspaceLimits?: Partial<TenantWorkspaceLimits> | null;
+  /**
+   * Optional per-tenant quotas; omitted keys use product defaults (see `mergeTenantWorkspaceLimits`).
+   * Optional `planOverrides` — per retail tier (basic / premium_monthly / premium_plus_yearly).
+   */
+  workspaceLimits?: (Partial<TenantWorkspaceLimits> & { planOverrides?: TenantPlanWorkspaceOverrides }) | null;
   /** Branding (one-time) + optional flags (e.g. xchat_debug_enabled). */
   tenantPreferences?: TenantPreferences | null;
 };

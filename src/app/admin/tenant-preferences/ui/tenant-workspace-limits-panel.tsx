@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
+import { ATX_BILLING_PLAN_IDS, ATX_BILLING_PLANS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import {
     DEFAULT_TENANT_WORKSPACE_LIMITS,
+    type TenantPlanWorkspaceOverrides,
     type TenantWorkspaceLimits
 } from "@/modules/identity/tenant-workspace-limits";
 
@@ -40,6 +42,62 @@ const FIELDS: { key: keyof TenantWorkspaceLimits; label: string; abbr: string; h
   }
 ];
 
+type PlanLimitDrafts = Record<AtxBillingPlanId, Partial<Record<keyof TenantWorkspaceLimits, string>>>;
+
+function emptyPlanDrafts(): PlanLimitDrafts {
+  return {
+    basic: {},
+    premium_monthly: {},
+    premium_plus_yearly: {}
+  };
+}
+
+function planLabel(id: AtxBillingPlanId): string {
+  return ATX_BILLING_PLANS.find((p) => p.id === id)?.name ?? id;
+}
+
+function draftsFromPlanOverrides(po: TenantPlanWorkspaceOverrides | null | undefined): PlanLimitDrafts {
+  const d = emptyPlanDrafts();
+  if (!po) {
+    return d;
+  }
+  for (const planId of ATX_BILLING_PLAN_IDS) {
+    const row = po[planId];
+    if (!row) {
+      continue;
+    }
+    for (const f of FIELDS) {
+      const v = row[f.key];
+      if (typeof v === "number") {
+        d[planId][f.key] = String(v);
+      }
+    }
+  }
+  return d;
+}
+
+function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOverrides {
+  const out: TenantPlanWorkspaceOverrides = {};
+  for (const planId of ATX_BILLING_PLAN_IDS) {
+    const partial: Partial<TenantWorkspaceLimits> = {};
+    for (const f of FIELDS) {
+      const raw = drafts[planId]?.[f.key]?.trim() ?? "";
+      if (raw === "") {
+        continue;
+      }
+      const n = Number.parseInt(raw, 10);
+      if (!Number.isFinite(n) || n < 1) {
+        continue;
+      }
+      partial[f.key] = n;
+    }
+    if (Object.keys(partial).length > 0) {
+      out[planId] = partial;
+    }
+  }
+  return out;
+}
+
 function buildTenantPreferencesForSave(
   tenantPreferences: TenantBrandingPreferences,
   xchatDebugEnabled: boolean
@@ -69,6 +127,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
   const [tenantPreferencesRaw, setTenantPreferencesRaw] = useState<Record<string, unknown>>({});
   const [xchatDebugEnabled, setXchatDebugEnabled] = useState(false);
   const [slug, setSlug] = useState("");
+  const [planDrafts, setPlanDrafts] = useState<PlanLimitDrafts>(() => emptyPlanDrafts());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,6 +139,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       const payload = (await res.json().catch(() => ({}))) as {
         data?: {
           workspaceLimits?: TenantWorkspaceLimits;
+          planOverrides?: TenantPlanWorkspaceOverrides;
           slug?: string;
           tenantPreferences?: TenantBrandingPreferences;
           tenantPreferencesRaw?: Record<string, unknown>;
@@ -93,6 +153,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         throw new Error("Missing limits payload");
       }
       setValues(payload.data.workspaceLimits);
+      setPlanDrafts(draftsFromPlanOverrides(payload.data.planOverrides));
       setSlug(payload.data.slug ?? "");
       setTenantPreferences({
         xchat_brandname: payload.data.tenantPreferences?.xchat_brandname ?? "",
@@ -117,6 +178,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
 
   function onResetDraftToDefaults() {
     setValues({ ...DEFAULT_TENANT_WORKSPACE_LIMITS });
+    setPlanDrafts(emptyPlanDrafts());
     setStatus("Draft reset to product defaults (save to apply).");
     window.setTimeout(() => setStatus(""), 5000);
   }
@@ -136,12 +198,14 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceLimits: values,
+          planOverrides: planOverridesFromDrafts(planDrafts),
           tenantPreferences: buildTenantPreferencesForSave(tenantPreferences, xchatDebugEnabled)
         })
       });
       const payload = (await res.json().catch(() => ({}))) as {
         data?: {
           workspaceLimits?: TenantWorkspaceLimits;
+          planOverrides?: TenantPlanWorkspaceOverrides;
           tenantPreferences?: TenantBrandingPreferences;
           tenantPreferencesRaw?: Record<string, unknown>;
         };
@@ -152,6 +216,9 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       }
       if (payload.data?.workspaceLimits) {
         setValues(payload.data.workspaceLimits);
+      }
+      if (payload.data?.planOverrides !== undefined) {
+        setPlanDrafts(draftsFromPlanOverrides(payload.data.planOverrides));
       }
       if (payload.data?.tenantPreferences) {
         setTenantPreferences({
@@ -285,6 +352,61 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-6 space-y-2">
+        <h3 className="text-sm font-semibold text-white">Per-billing-plan overrides</h3>
+        <p className="admin-muted text-xs max-w-3xl">
+          Maps to subscription tier (Basic → free, Premium → pro, Premium+ → enterprise). Leave cells empty to
+          inherit the tenant defaults in the row above. Saving writes all three tiers; clear every cell and save
+          to remove overrides.
+        </p>
+        <div className="crud-table-wrap admin-tenant-pref-table-wrap">
+          <table className="crud-table admin-tenant-pref-crud-table">
+            <thead>
+              <tr>
+                <th scope="col">Plan</th>
+                {FIELDS.map((f) => (
+                  <th key={f.key} scope="col" title={f.hint}>
+                    <span className="admin-tenant-pref-crud-table__abbr">{f.abbr}</span>
+                    <span className="admin-tenant-pref-crud-table__full">{f.label}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ATX_BILLING_PLAN_IDS.map((planId) => (
+                <tr key={planId}>
+                  <td>
+                    <span className="text-sm font-medium text-white">{planLabel(planId)}</span>
+                    <div className="font-mono text-[10px] text-slate-500">{planId}</div>
+                  </td>
+                  {FIELDS.map((f) => (
+                    <td key={f.key}>
+                      <input
+                        aria-label={`${planLabel(planId)} ${f.label}`}
+                        className="crud-input text-sm"
+                        min={1}
+                        max={1_000_000}
+                        placeholder="inherit"
+                        title={f.hint}
+                        type="number"
+                        value={planDrafts[planId]?.[f.key] ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPlanDrafts((prev) => ({
+                            ...prev,
+                            [planId]: { ...prev[planId], [f.key]: v }
+                          }));
+                        }}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <details className="admin-tenant-pref-meta">

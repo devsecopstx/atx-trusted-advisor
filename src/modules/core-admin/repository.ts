@@ -6,7 +6,7 @@ import {
     computeNextRunAtFromSchedule,
     resolveScheduleDescription
 } from "@/lib/scheduled-task-schedule";
-import { getResolvedWorkspaceLimitsForTenantId } from "@/lib/tenant-workspace-limits";
+import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
@@ -3097,7 +3097,10 @@ export async function insertPortfolioAccountForUser(
     return null;
   }
 
-  const limits = await getResolvedWorkspaceLimitsForTenantId(input.tenantId.trim());
+  const limits = await getEffectiveWorkspaceLimitsForUser({
+    tenantId: input.tenantId.trim(),
+    userId: input.userId
+  });
   const accountCount = await countPortfolioAccountsForUser({
     userId: input.userId,
     portfolioId: input.portfolioId,
@@ -3344,7 +3347,10 @@ export async function adminCreatePortfolio(input: {
   const isDefault = Boolean(input.isDefault);
 
   if (tenantObjectId && input.tenantId?.trim()) {
-    const limits = await getResolvedWorkspaceLimitsForTenantId(input.tenantId.trim());
+    const limits = await getEffectiveWorkspaceLimitsForUser({
+      tenantId: input.tenantId.trim(),
+      userId: input.userId.trim()
+    });
     const existingPortfolios = await countPortfoliosForUserInTenant({
       userId: input.userId.trim(),
       tenantId: input.tenantId.trim()
