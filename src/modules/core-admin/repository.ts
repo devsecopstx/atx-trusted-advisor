@@ -3501,20 +3501,20 @@ export async function adminUpdatePortfolioAccount(input: {
   return db.collection<Account>(collections.accounts).findOne(filter);
 }
 
-export async function adminDeleteAccountForPortfolio(input: {
+/**
+ * Deletes a custodian account (and its positions) within a portfolio when more than one account exists.
+ * Reassigns default when the deleted row was default.
+ */
+export async function deleteAccountInPortfolioForOwner(input: {
+  ownerUserId: string;
+  tenantId: string | undefined;
   portfolioId: string;
   accountId: string;
 }): Promise<boolean> {
-  const portfolio = await adminGetPortfolioById(input.portfolioId);
-  if (!portfolio?._id) {
-    return false;
-  }
-  const tenantId = portfolioTenantIdString(portfolio);
-  const ownerId = portfolioOwnerUserIdString(portfolio.userId);
   const accounts = await listPortfolioAccounts({
-    userId: ownerId,
-    portfolioId: portfolio._id.toHexString(),
-    tenantId
+    userId: input.ownerUserId,
+    portfolioId: input.portfolioId,
+    tenantId: input.tenantId
   });
   const target = accounts.find((a) => a._id?.toHexString() === input.accountId);
   if (!target?._id) {
@@ -3528,21 +3528,21 @@ export async function adminDeleteAccountForPortfolio(input: {
   const aid = new ObjectId(input.accountId);
   const scope = withTenantScope(
     {
-      ...userIdQuery(ownerId),
+      ...userIdQuery(input.ownerUserId),
       portfolioId: pid,
       accountId: aid
     },
-    tenantId
+    input.tenantId
   );
   await db.collection<Position>(collections.positions).deleteMany(scope);
   const del = await db.collection<Account>(collections.accounts).deleteOne(
     strictWriteTenantFilter(
       {
         _id: aid,
-        ...userIdQuery(ownerId),
+        ...userIdQuery(input.ownerUserId),
         portfolioId: pid
       },
-      tenantId
+      input.tenantId
     )
   );
   if ((del.deletedCount ?? 0) === 0) {
@@ -3553,14 +3553,46 @@ export async function adminDeleteAccountForPortfolio(input: {
     if (next?._id) {
       await db.collection<Account>(collections.accounts).updateOne(
         strictWriteTenantFilter(
-          { _id: next._id, ...userIdQuery(ownerId), portfolioId: pid },
-          tenantId
+          { _id: next._id, ...userIdQuery(input.ownerUserId), portfolioId: pid },
+          input.tenantId
         ),
         { $set: { isDefault: true, updatedAt: new Date() } }
       );
     }
   }
   return true;
+}
+
+export async function deletePortfolioAccountForUser(input: {
+  userId: string;
+  tenantId: string | undefined;
+  portfolioId: string;
+  accountId: string;
+}): Promise<boolean> {
+  return deleteAccountInPortfolioForOwner({
+    ownerUserId: input.userId,
+    tenantId: input.tenantId,
+    portfolioId: input.portfolioId,
+    accountId: input.accountId
+  });
+}
+
+export async function adminDeleteAccountForPortfolio(input: {
+  portfolioId: string;
+  accountId: string;
+}): Promise<boolean> {
+  const portfolio = await adminGetPortfolioById(input.portfolioId);
+  if (!portfolio?._id) {
+    return false;
+  }
+  const tenantId = portfolioTenantIdString(portfolio);
+  const ownerId = portfolioOwnerUserIdString(portfolio.userId);
+  return deleteAccountInPortfolioForOwner({
+    ownerUserId: ownerId,
+    tenantId,
+    portfolioId: portfolio._id.toHexString(),
+    accountId: input.accountId
+  });
 }
 
 type AdminPortfolioAccountContext = {

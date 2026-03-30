@@ -160,6 +160,7 @@ export default async function PortfolioAccountPage({
             portfolioId={portfolioIdHex}
             account={serializeAccount(account)}
             initialPositions={serializePositions(positions)}
+            portfolioAccountCount={accounts.length}
           />
         </div>
         </AppUserCollapsibleRailLayout>

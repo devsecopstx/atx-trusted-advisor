@@ -29,14 +29,16 @@ export function PortfolioHoldingsPanel({ rows }: PortfolioHoldingsPanelProps) {
   return (
     <section className="portfolio-panel portfolio-holdings-panel" aria-labelledby="portfolio-all-holdings-heading">
       <h2 className="portfolio-panel__title" id="portfolio-all-holdings-heading">
-        All holdings
+        Holdings
       </h2>
       <p className="portfolio-holdings-panel__hint">
-        Book values (cost basis) across every linked account. Live last prices load from the same Yahoo path as your
-        watchlist. Edit lots from each account’s manage screen.
+        Cost basis book values; live marks where shown. Edit lots from each account page.
       </p>
       {rows.length === 0 ? (
-        <p className="status-text">No positions yet. Add holdings from an account or use quick add on the portfolios tab.</p>
+        <p className="status-text">
+          No positions yet — use <strong>Add holdings</strong> on an account in Overview, or open an account to edit
+          lots.
+        </p>
       ) : (
         <div className="portfolio-table-wrap">
           <table className="portfolio-manage-table">

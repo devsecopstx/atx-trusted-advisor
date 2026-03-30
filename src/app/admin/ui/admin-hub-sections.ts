@@ -39,12 +39,6 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/admin/broker-import",
         title: "Broker import",
         description: ADMIN_BROKER_IMPORT_DESCRIPTION
-      },
-      {
-        href: "/admin/tenant-workspace",
-        title: "Workspace limits",
-        description:
-          "Per-tenant quotas: xoptions deck views/day, xChat prompts/day (min with plan), max portfolios per user, max accounts per portfolio."
       }
     ]
   },
@@ -129,10 +123,16 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
     blurb: "Observability, docs, and audit trails.",
     items: [
       {
-        href: "/admin/tenant-workspace",
-        title: "Tenant preferences",
+        href: "/admin/tenant-preferences/workspace-limits",
+        title: "Workspace limits",
         description:
-          "Workspace limits + tenant_preferences fields + platform default xChat persona for app users."
+          "Per-tenant quotas on core_tenants.workspaceLimits; tenant_preferences (xChat debug, one-time branding aliases)."
+      },
+      {
+        href: "/admin/tenant-preferences/default-persona",
+        title: "Default xChat persona",
+        description:
+          "Platform default published xPersona for app users who do not have an admin-assigned persona."
       },
       {
         href: "/admin/audit",

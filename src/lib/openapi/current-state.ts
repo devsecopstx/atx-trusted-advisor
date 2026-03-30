@@ -522,7 +522,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/portfolios/{portfolioId}/accounts/{accountId}",
-    operations: [{ method: "PATCH", auth: "session", hasRequestBody: true }],
+    operations: [
+      { method: "PATCH", auth: "session", hasRequestBody: true },
+      { method: "DELETE", auth: "session" }
+    ],
     tag: "portfolios"
   },
   {

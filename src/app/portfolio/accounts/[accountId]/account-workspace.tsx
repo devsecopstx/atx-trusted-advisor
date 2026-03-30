@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
-import { BackIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
+import { BackIcon, DeleteIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
 import { AccountHoldingsLiveTable } from "@/app/portfolio/ui/account-holdings-live-table";
 import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
 import {
@@ -21,6 +21,8 @@ type AccountWorkspaceProps = {
   portfolioId: string;
   account: SerializableAccount;
   initialPositions: SerializablePosition[];
+  /** Total accounts in the workspace portfolio (enables delete when there is more than one). */
+  portfolioAccountCount: number;
 };
 
 function formatBrokerType(type: string): string {
@@ -31,9 +33,15 @@ function formatBrokerType(type: string): string {
     .join(" ");
 }
 
-export function AccountWorkspace({ portfolioId, account, initialPositions }: AccountWorkspaceProps) {
+export function AccountWorkspace({
+  portfolioId,
+  account,
+  initialPositions,
+  portfolioAccountCount
+}: AccountWorkspaceProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [deletePending, setDeletePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [positions, setPositions] = useState(initialPositions);
 
@@ -279,7 +287,9 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
               required
               autoComplete="off"
             />
-            <p className="portfolio-edit-field__hint">Match your broker account ID for CSV imports.</p>
+            <p className="portfolio-edit-field__hint">
+              Match your broker account ID. Bulk CSV import for this book is handled in admin Hub, not here.
+            </p>
           </div>
 
           <div className="portfolio-edit-field">
@@ -400,6 +410,65 @@ export function AccountWorkspace({ portfolioId, account, initialPositions }: Acc
           </div>
         </form>
       </section>
+
+      {portfolioAccountCount > 1 ? (
+        <section
+          className="portfolio-edit-account-card xf-noise-overlay"
+          aria-labelledby="delete-account-title"
+          style={{
+            borderColor: "color-mix(in srgb, var(--xf-danger-400) 35%, transparent)"
+          }}
+        >
+          <h2 id="delete-account-title" className="portfolio-edit-account-card__title">
+            Remove account
+          </h2>
+          <p className="portfolio-edit-field__hint" style={{ marginTop: 0 }}>
+            Deletes this account and its positions. You must keep at least one account in the workspace portfolio.
+          </p>
+          <button
+            type="button"
+            className="cta"
+            style={{
+              borderColor: "color-mix(in srgb, var(--xf-danger-400) 45%, transparent)",
+              color: "var(--xf-danger-400)"
+            }}
+            disabled={deletePending}
+            onClick={() => {
+              if (
+                !window.confirm(
+                  `Delete account "${account.name}"? This removes its positions and cannot be undone.`
+                )
+              ) {
+                return;
+              }
+              setDeletePending(true);
+              setError(null);
+              void (async () => {
+                try {
+                  const res = await fetch(
+                    `/api/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(account._id)}`,
+                    { method: "DELETE", credentials: "include" }
+                  );
+                  const body = (await res.json().catch(() => ({}))) as { error?: string };
+                  if (!res.ok) {
+                    setError(body.error ?? "Could not delete account.");
+                    return;
+                  }
+                  router.push("/portfolio");
+                  router.refresh();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Delete failed.");
+                } finally {
+                  setDeletePending(false);
+                }
+              })();
+            }}
+          >
+            <DeleteIcon className="crud-icon" aria-hidden />
+            {deletePending ? "Deleting…" : "Delete this account"}
+          </button>
+        </section>
+      ) : null}
 
       <section className="portfolio-edit-holdings-card xf-noise-overlay" aria-labelledby="edit-holdings-title">
         <h2 id="edit-holdings-title" className="portfolio-edit-account-card__title portfolio-edit-account-card__title--section">

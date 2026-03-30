@@ -31,7 +31,7 @@ export const nextBffApi = {
     },
     accountById: {
       pathTemplate: "/api/portfolios/{portfolioId}/accounts/{accountId}",
-      methods: ["PATCH"]
+      methods: ["PATCH", "DELETE"]
     },
     watchlist: {
       pathTemplate: "/api/portfolios/{portfolioId}/watchlist",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 
 import { AddIcon } from "@/app/admin/ui/crud-icons";
 import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
@@ -15,6 +15,8 @@ type AccountOption = {
 type PortfolioPositionQuickAddProps = {
   portfolioId: string;
   accounts: AccountOption[];
+  /** When set, account is fixed (no dropdown) — used by add-holdings route. */
+  lockedAccountId?: string;
 };
 
 function formatBrokerType(type: string): string {
@@ -43,13 +45,27 @@ function isFutureIsoDate(value: string): boolean {
   return parsed.getTime() > todayUtc.getTime();
 }
 
-export function PortfolioPositionQuickAdd({ portfolioId, accounts }: PortfolioPositionQuickAddProps) {
+export function PortfolioPositionQuickAdd({
+  portfolioId,
+  accounts,
+  lockedAccountId
+}: PortfolioPositionQuickAddProps) {
   const router = useRouter();
   const [, startNavTransition] = useTransition();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
+  const initialAccount =
+    lockedAccountId && accounts.some((a) => a.id === lockedAccountId)
+      ? lockedAccountId
+      : accounts[0]?.id ?? "";
+  const [accountId, setAccountId] = useState(initialAccount);
+
+  useEffect(() => {
+    if (lockedAccountId) {
+      setAccountId(lockedAccountId);
+    }
+  }, [lockedAccountId]);
   const [type, setType] = useState<"stock" | "option" | "cash">("stock");
   const [ticker, setTicker] = useState("");
   const [shares, setShares] = useState("");
@@ -196,8 +212,10 @@ export function PortfolioPositionQuickAdd({ portfolioId, accounts }: PortfolioPo
     );
   }
 
+  const locked = Boolean(lockedAccountId);
+
   return (
-    <section style={{ marginTop: "1.5rem" }}>
+    <section style={{ marginTop: locked ? 0 : "1.5rem" }}>
       <h2
         style={{
           fontSize: "1rem",
@@ -206,11 +224,12 @@ export function PortfolioPositionQuickAdd({ portfolioId, accounts }: PortfolioPo
           color: "var(--xf-text-100)"
         }}
       >
-        Quick add position
+        {locked ? "Add holdings" : "Quick add position"}
       </h2>
       <p className="status-text" style={{ marginBottom: "0.75rem" }}>
-        Use OpenAPI position shape fields (`type`, `ticker`, `shares`, `purchasePrice`) and choose the account.
-        Option rows also support `contracts`, `optionType`, `strike`, and `expiration`.
+        {locked
+          ? "Enter type, symbol, quantity, and purchase price. Options need expiration and usually strike."
+          : "Use OpenAPI position shape fields (`type`, `ticker`, `shares`, `purchasePrice`) and choose the account. Option rows also support `contracts`, `optionType`, `strike`, and `expiration`."}
       </p>
       {selectedAccount ? (
         <p className="status-text" style={{ marginBottom: "0.75rem", fontSize: "0.8rem" }}>
@@ -237,21 +256,30 @@ export function PortfolioPositionQuickAdd({ portfolioId, accounts }: PortfolioPo
           alignItems: "end"
         }}
       >
-        <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-          <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Account</span>
-          <select
-            className="crud-input"
-            value={accountId}
-            onChange={(event) => setAccountId(event.target.value)}
-            required
-          >
-            {accounts.map((account) => (
-              <option value={account.id} key={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {locked ? (
+          <div className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+            <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Account</span>
+            <span className="crud-input" style={{ display: "block", padding: "0.45rem 0.65rem" }}>
+              {selectedAccount?.name ?? accountId}
+            </span>
+          </div>
+        ) : (
+          <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
+            <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Account</span>
+            <select
+              className="crud-input"
+              value={accountId}
+              onChange={(event) => setAccountId(event.target.value)}
+              required
+            >
+              {accounts.map((account) => (
+                <option value={account.id} key={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
           <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Type</span>
           <select

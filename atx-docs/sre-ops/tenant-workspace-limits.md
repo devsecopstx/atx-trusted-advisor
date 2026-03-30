@@ -21,7 +21,7 @@ Indexes are created best-effort on first use (same pattern as other identity usa
 ## Admin API
 
 - `GET/PATCH /api/admin/tenants/{tenantId}/workspace-limits` — `global_admin` only.
-- UI: `/admin/tenant-workspace` (session tenant id is the managed workspace for the signed-in admin).
+- UI: `/admin/tenant-preferences/workspace-limits` (session `tenantId` is the managed tenant). Legacy `/admin/tenant-workspace` redirects there.
 
 ## App user surfacing
 

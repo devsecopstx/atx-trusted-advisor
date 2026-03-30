@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export type PortfolioManageSection =
+  | "tools"
   | "accounts"
   | "watchlist"
   | "scoring"
@@ -20,6 +21,7 @@ type NavProps = {
 };
 
 const SECTIONS: { key: PortfolioManageSection; label: string; path: string }[] = [
+  { key: "tools", label: "Tools", path: "tools" },
   { key: "accounts", label: "Accounts", path: "accounts" },
   { key: "watchlist", label: "Watchlist", path: "watchlist" },
   { key: "scoring", label: "Scoring", path: "scoring" },

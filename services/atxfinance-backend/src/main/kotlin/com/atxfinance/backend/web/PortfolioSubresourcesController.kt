@@ -9,6 +9,7 @@ import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -86,6 +87,28 @@ class PortfolioSubresourcesController(
         val updated = nested.patchAccount(session, portfolioId, accountId, name, cash, ext)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Account not found"))
         return ResponseEntity.ok(mapOf("data" to BsonJson.documentToMap(updated)))
+    }
+
+    @DeleteMapping("/api/portfolios/{portfolioId}/accounts/{accountId}")
+    fun deleteAccount(
+        request: HttpServletRequest,
+        @PathVariable portfolioId: String,
+        @PathVariable accountId: String,
+    ): ResponseEntity<Map<String, Any?>> {
+        val session = requireSession(request) ?: return unauthorized()
+        if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid id"))
+        }
+        val ok = nested.deleteAccount(session, portfolioId, accountId)
+        if (!ok) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                mapOf(
+                    "error" to
+                        "Could not delete account. Ensure the account exists and the portfolio has more than one account.",
+                ),
+            )
+        }
+        return ResponseEntity.ok(mapOf("ok" to true))
     }
 
     @GetMapping("/api/portfolios/{portfolioId}/watchlist")

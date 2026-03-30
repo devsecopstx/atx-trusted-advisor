@@ -121,14 +121,6 @@ export default async function PortfolioPage() {
     }
   }
 
-  const quickAddAccounts = accounts
-    .filter((account): account is Account & { _id: NonNullable<Account["_id"]> } => Boolean(account._id))
-    .map((account) => ({
-      id: account._id.toHexString(),
-      name: account.name,
-      brokerType: account.type
-    }));
-
   const metrics =
     portfolioIdHex && accounts.length > 0
       ? computePortfolioOverviewMetrics(allPositions, accounts, DEFAULT_ACCOUNT_CASH_BALANCE)
@@ -228,7 +220,6 @@ export default async function PortfolioPage() {
             portfolioBrokerDisplayName={portfolioBrokerDisplayName}
             portfolioBrokerIconUrl={portfolioBrokerIconUrl}
             portfolioBrokerType={portfolioBrokerType}
-            quickAddAccounts={quickAddAccounts}
             scoringFactors={scoringFactors}
           />
         ) : null}

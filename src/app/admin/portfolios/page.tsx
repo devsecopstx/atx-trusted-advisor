@@ -28,16 +28,26 @@ export default async function AdminPortfoliosPage() {
           Tenant portfolios
         </h1>
         <p className="hero-copy">
-          <strong>Private / Secure</strong> — Per-user workspace portfolios live in{" "}
-          <code className="font-mono text-xs">tenant_portfolio</code>. Each app user&apos;s default portfolio is
-          tagged with <code className="font-mono text-xs">tenantPortfolioOrgKey</code> (default{" "}
-          <code className="font-mono text-xs">org-atx-finance</code>) under your{" "}
-          <code className="font-mono text-xs">core_tenants</code> scope — this instance&apos;s client data bucket.
+          <strong>API-first.</strong> Portfolios are created and managed through{" "}
+          <code className="font-mono text-xs">GET</code> / <code className="font-mono text-xs">POST</code>{" "}
+          <code className="font-mono text-xs">/api/admin/portfolios</code> and{" "}
+          <code className="font-mono text-xs">GET</code> / <code className="font-mono text-xs">PATCH</code> /{" "}
+          <code className="font-mono text-xs">DELETE</code>{" "}
+          <code className="font-mono text-xs">{"/api/admin/portfolios/{portfolioId}"}</code> (session:{" "}
+          <code className="font-mono text-xs">global_admin</code>). OpenAPI:{" "}
+          <Link className="underline font-medium" href="/admin/api-docs">
+            Admin API docs
+          </Link>
+          .
         </p>
         <p className="hero-copy" style={{ marginTop: "0.65rem" }}>
-          Edit book names in the table, then <strong>Save changes</strong>. Per-book{" "}
-          <strong>strategy scoring</strong> weights (IV rank, OI, volume, liquidity, portfolio fit, alignment) live
-          under each row&apos;s <strong>Scoring</strong> link. Holdings CSV:{" "}
+          <strong>Flow:</strong> use the table below for full CRUD — edit rows and <strong>Save all changes</strong>,
+          create a book under <strong>New portfolio</strong>, or remove a row with <strong>Delete</strong>. Open{" "}
+          <strong>Tools</strong> on a row for watchlist, accounts, scoring, tasks, alerts, recommendations, delivery
+          channels, and broker import for that book. Per-user workspace data lives in{" "}
+          <code className="font-mono text-xs">tenant_portfolio</code> with{" "}
+          <code className="font-mono text-xs">tenantPortfolioOrgKey</code> (default{" "}
+          <code className="font-mono text-xs">org-atx-finance</code>). Global holdings CSV hub:{" "}
           <Link className="underline font-medium" href="/admin/broker-import">
             Broker import
           </Link>

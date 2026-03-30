@@ -243,6 +243,32 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     expect(json.data.tenantPreferences.xchat_debug_enabled).toBe(true);
   });
 
+  it("PATCH succeeds when tenantPreferences include empty branding strings (debug-only update)", async () => {
+    identityRepoMocks.getTenantByHexId.mockResolvedValue(baseTenant());
+    identityRepoMocks.updateTenantWorkspaceLimits.mockResolvedValue(baseTenant());
+    identityRepoMocks.updateTenantBrandingPreferencesOneTime.mockResolvedValue({
+      tenant: baseTenant(),
+      conflictKeys: []
+    });
+
+    const req = new Request(`http://test/api/admin/tenants/${TENANT_HEX}/workspace-limits`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceLimits: { userChatLimit: 8 },
+        tenantPreferences: {
+          xchat_brandname: "",
+          xstrategybuilder_brandname: "",
+          xchat_debug_enabled: true
+        }
+      })
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ tenantId: TENANT_HEX }) });
+    expect(res.status).toBe(200);
+    expect(identityRepoMocks.updateTenantBrandingPreferencesOneTime).toHaveBeenCalledWith(TENANT_HEX, {});
+    expect(identityRepoMocks.updateTenantXchatDebugEnabled).toHaveBeenCalledWith(TENANT_HEX, true);
+  });
+
   it("PATCH returns 400 for invalid workspaceLimits values", async () => {
     identityRepoMocks.getTenantByHexId.mockResolvedValue(baseTenant());
     const req = new Request(`http://test/api/admin/tenants/${TENANT_HEX}/workspace-limits`, {

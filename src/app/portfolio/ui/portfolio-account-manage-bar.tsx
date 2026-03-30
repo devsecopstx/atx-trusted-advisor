@@ -13,9 +13,16 @@ export type PortfolioAccountManageOption = {
 
 type Props = {
   accounts: PortfolioAccountManageOption[];
+  /** When set with `onSelectedAccountIdChange`, the bar is controlled (e.g. table row radios). */
+  selectedAccountId?: string;
+  onSelectedAccountIdChange?: (accountId: string) => void;
 };
 
-export function PortfolioAccountManageBar({ accounts }: Props) {
+export function PortfolioAccountManageBar({
+  accounts,
+  selectedAccountId: controlledId,
+  onSelectedAccountIdChange
+}: Props) {
   const router = useRouter();
   const preferredId = useMemo(() => {
     const d = accounts.find((a) => a.isDefault);
@@ -25,11 +32,19 @@ export function PortfolioAccountManageBar({ accounts }: Props) {
   const [userSelectedId, setUserSelectedId] = useState("");
 
   const effectiveId = useMemo(() => {
+    if (controlledId !== undefined) {
+      if (controlledId && accounts.some((a) => a.id === controlledId)) {
+        return controlledId;
+      }
+      return preferredId;
+    }
     if (userSelectedId && accounts.some((a) => a.id === userSelectedId)) {
       return userSelectedId;
     }
     return preferredId;
-  }, [accounts, preferredId, userSelectedId]);
+  }, [accounts, controlledId, preferredId, userSelectedId]);
+
+  const isControlled = controlledId !== undefined && onSelectedAccountIdChange !== undefined;
 
   if (accounts.length === 0) {
     return null;
@@ -48,7 +63,7 @@ export function PortfolioAccountManageBar({ accounts }: Props) {
         flexWrap: "wrap",
         alignItems: "center",
         gap: "0.65rem",
-        marginBottom: "0.85rem"
+        marginBottom: "0.5rem"
       }}
     >
       <label
@@ -68,7 +83,14 @@ export function PortfolioAccountManageBar({ accounts }: Props) {
           className="crud-input"
           style={{ minWidth: "12rem", maxWidth: "100%" }}
           value={effectiveId}
-          onChange={(e) => setUserSelectedId(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (isControlled) {
+              onSelectedAccountIdChange?.(v);
+            } else {
+              setUserSelectedId(v);
+            }
+          }}
           aria-label="Select account to manage"
         >
           {accounts.map((a) => (

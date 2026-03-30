@@ -12,7 +12,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/portfolios/default", methods: ["GET", "POST"] },
   { pathTemplate: "/api/portfolios/current", methods: ["GET"] },
   { pathTemplate: "/api/portfolios/{portfolioId}/accounts", methods: ["GET", "POST"] },
-  { pathTemplate: "/api/portfolios/{portfolioId}/accounts/{accountId}", methods: ["PATCH"] },
+  { pathTemplate: "/api/portfolios/{portfolioId}/accounts/{accountId}", methods: ["PATCH", "DELETE"] },
   { pathTemplate: "/api/portfolios/{portfolioId}/watchlist", methods: ["GET", "PATCH"] },
   { pathTemplate: "/api/positions", methods: ["GET", "POST"] },
   { pathTemplate: "/api/positions/{positionId}", methods: ["DELETE"] },

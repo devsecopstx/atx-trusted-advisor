@@ -69,7 +69,7 @@ function AdminRailChevron({ open }: { open: boolean }) {
 
 function AdminRailDisclosure({
   title,
-  defaultOpen = true,
+  defaultOpen = false,
   children
 }: {
   title: string;

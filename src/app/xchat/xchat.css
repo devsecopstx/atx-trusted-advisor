@@ -1260,8 +1260,13 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   font-size: 0.95rem;
 }
 
-.xchat-markdown p {
+.xchat-markdown p,
+.xchat-markdown .xchat-md-p {
   margin: 0.4rem 0;
+}
+
+.xchat-markdown .xchat-md-pre-wrap {
+  margin: 0;
 }
 
 .xchat-markdown ul,

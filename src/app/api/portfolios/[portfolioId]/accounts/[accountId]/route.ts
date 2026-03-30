@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
-import { updatePortfolioAccountForUser } from "@/modules/core-admin/repository";
+import { deletePortfolioAccountForUser, updatePortfolioAccountForUser } from "@/modules/core-admin/repository";
 import { accountOutlookValues } from "@/modules/core-admin/types";
 
 const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);
@@ -67,4 +67,42 @@ export async function PATCH(
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
   return NextResponse.json({ data: updated });
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ portfolioId: string; accountId: string }> }
+) {
+  const proxied = await proxyRequestToBackend(request);
+  if (proxied) {
+    return proxied;
+  }
+
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  const { portfolioId, accountId } = await context.params;
+  const denied = await requireAccountInPortfolio(session, portfolioId, accountId);
+  if (denied) {
+    return denied;
+  }
+
+  const ok = await deletePortfolioAccountForUser({
+    userId: session.userId,
+    tenantId: session.tenantId,
+    portfolioId,
+    accountId
+  });
+  if (!ok) {
+    return NextResponse.json(
+      {
+        error:
+          "Could not delete account. Ensure the account exists and the portfolio has more than one account."
+      },
+      { status: 400 }
+    );
+  }
+  return NextResponse.json({ ok: true });
 }

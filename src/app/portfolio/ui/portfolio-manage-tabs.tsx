@@ -20,14 +20,14 @@ export function PortfolioManageTabs({
 
   return (
     <>
-      <nav className="portfolio-manage-tabs" aria-label="Portfolio views">
+      <nav className="portfolio-manage-tabs" aria-label="Portfolio sections">
         <button
           type="button"
           className={`portfolio-manage-tabs__btn${tab === "portfolios" ? " portfolio-manage-tabs__btn--active" : ""}`}
           onClick={() => setTab("portfolios")}
         >
           <FolderPortfolioIcon className="crud-icon" />
-          My portfolios
+          Overview
         </button>
         <button
           type="button"
@@ -35,7 +35,7 @@ export function PortfolioManageTabs({
           onClick={() => setTab("holdings")}
         >
           <ListRowsIcon className="crud-icon" />
-          My holdings
+          Holdings
         </button>
         <button
           type="button"
@@ -43,7 +43,7 @@ export function PortfolioManageTabs({
           onClick={() => setTab("activity")}
         >
           <ActivityPulseIcon className="crud-icon" />
-          My activity
+          Activity
         </button>
       </nav>
       {tab === "portfolios" ? <div className="portfolio-manage-tabs__panel">{portfoliosPanel}</div> : null}

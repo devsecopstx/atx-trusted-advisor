@@ -20,7 +20,8 @@ const repositoryMocks = vi.hoisted(() => ({
   deletePositionForAccount: vi.fn(),
   updatePortfolioAccountForUser: vi.fn(),
   updatePortfolioForUser: vi.fn(),
-  insertPortfolioAccountForUser: vi.fn()
+  insertPortfolioAccountForUser: vi.fn(),
+  deletePortfolioAccountForUser: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
@@ -60,7 +61,10 @@ vi.mock("@/modules/core-admin/repository", async () => {
   };
 });
 
-import { PATCH as patchPortfolioAccount } from "@/app/api/portfolios/[portfolioId]/accounts/[accountId]/route";
+import {
+    DELETE as deletePortfolioAccount,
+    PATCH as patchPortfolioAccount
+} from "@/app/api/portfolios/[portfolioId]/accounts/[accountId]/route";
 import { GET as getPortfolioAccounts, POST as postPortfolioAccount } from "@/app/api/portfolios/[portfolioId]/accounts/route";
 import { GET as getPortfolioById, PATCH as patchPortfolioById } from "@/app/api/portfolios/[portfolioId]/route";
 import { GET as getPortfolioWatchlist } from "@/app/api/portfolios/[portfolioId]/watchlist/route";
@@ -340,6 +344,49 @@ describe("portfolio API routes", () => {
       portfolioId: "507f1f77bcf86cd799439033",
       accountId: "507f1f77bcf86cd799439099",
       positionId: "507f1f77bcf86cd799439055"
+    });
+  });
+
+  it("DELETE /api/portfolios/:id/accounts/:accountId removes an account when more than one exists", async () => {
+    repositoryMocks.listPortfolioAccounts.mockResolvedValueOnce([
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+        userId: "507f1f77bcf86cd799439011",
+        portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+        name: "defaultaccount",
+        type: "fidelity",
+        extAccountId: "ext_account_xref",
+        cashBalance: 25_000,
+        isDefault: true,
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-01T00:00:00.000Z")
+      },
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439088" },
+        userId: "507f1f77bcf86cd799439011",
+        portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+        name: "second",
+        type: "merrill",
+        extAccountId: "ext2",
+        cashBalance: 10_000,
+        isDefault: false,
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-01T00:00:00.000Z")
+      }
+    ]);
+    repositoryMocks.deletePortfolioAccountForUser.mockResolvedValueOnce(true);
+    const response = await deletePortfolioAccount(new Request("http://test", { method: "DELETE" }), {
+      params: Promise.resolve({
+        portfolioId: "507f1f77bcf86cd799439033",
+        accountId: "507f1f77bcf86cd799439088"
+      })
+    });
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.deletePortfolioAccountForUser).toHaveBeenCalledWith({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      portfolioId: "507f1f77bcf86cd799439033",
+      accountId: "507f1f77bcf86cd799439088"
     });
   });
 

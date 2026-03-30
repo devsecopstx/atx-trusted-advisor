@@ -18,7 +18,20 @@ type XchatMarkdownBodyProps = {
 
 type MdCodeProps = HTMLAttributes<HTMLElement> & { inline?: boolean };
 
+/**
+ * react-markdown can emit fenced `code` inside `p` when the model's markdown is loose;
+ * SyntaxHighlighter renders a `<div>` (PreTag), which is invalid inside `<p>` and breaks hydration.
+ * Use `div` for paragraphs and pre-wrappers so block code / highlighter output stays valid.
+ */
 const markdownComponents: Components = {
+  p({ children, className }) {
+    return <div className={className ? `xchat-md-p ${className}` : "xchat-md-p"}>{children}</div>;
+  },
+  pre({ children, className }) {
+    return (
+      <div className={className ? `xchat-md-pre-wrap ${className}` : "xchat-md-pre-wrap"}>{children}</div>
+    );
+  },
   a({ href, children, ...rest }) {
     return (
       <a

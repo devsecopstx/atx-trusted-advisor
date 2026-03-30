@@ -7,6 +7,9 @@ describe("buildAdminPortfolioSwitchHref", () => {
     expect(buildAdminPortfolioSwitchHref("/admin/portfolios/old-id/watchlist", "new-id")).toBe(
       "/admin/portfolios/new-id/watchlist"
     );
+    expect(buildAdminPortfolioSwitchHref("/admin/portfolios/old-id/tools", "new-id")).toBe(
+      "/admin/portfolios/new-id/tools"
+    );
   });
 
   it("falls back to accounts when pathname is not under portfolios", () => {

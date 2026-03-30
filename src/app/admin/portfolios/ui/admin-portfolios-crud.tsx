@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AddIcon, DeleteIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
+import { portfolioToolsHubHref } from "./portfolio-child-tools";
+
 type BrokerCatalogOption = { type: string; name: string };
 
 type PortfolioRow = {
@@ -29,62 +31,6 @@ const money = new Intl.NumberFormat("en-US", {
   currency: "USD",
   maximumFractionDigits: 0
 });
-
-type PortfolioChildAction = {
-  path: string;
-  label: string;
-  typeLabel: string;
-  title: string;
-};
-
-function portfolioChildActions(portfolioId: string): PortfolioChildAction[] {
-  const pid = encodeURIComponent(portfolioId);
-  const base = `/admin/portfolios/${pid}`;
-  return [
-    {
-      path: `${base}/accounts`,
-      label: "Accounts",
-      typeLabel: "Custodian accounts",
-      title: "Manage custodian accounts linked to this portfolio book"
-    },
-    {
-      path: `${base}/watchlist`,
-      label: "Watchlist",
-      typeLabel: "Symbol list",
-      title: "Edit portfolio watchlist symbols"
-    },
-    {
-      path: `${base}/tasks`,
-      label: "Tasks",
-      typeLabel: "Scheduled jobs",
-      title: "Portfolio-scoped scheduler tasks"
-    },
-    {
-      path: `${base}/alerts`,
-      label: "Alerts",
-      typeLabel: "Price & notifications",
-      title: "Manage alerts for this book"
-    },
-    {
-      path: `${base}/scoring`,
-      label: "Scoring",
-      typeLabel: "Portfolio scoring weights",
-      title: "Edit IV, liquidity, and desk scoring weights"
-    },
-    {
-      path: `${base}/recommendations`,
-      label: "Recs",
-      typeLabel: "Book recommendations",
-      title: "View and manage recommendations for this portfolio"
-    },
-    {
-      path: `${base}/delivery-channels`,
-      label: "Delivery",
-      typeLabel: "Channels & routing",
-      title: "Delivery channels for this portfolio"
-    }
-  ];
-}
 
 function userSettingsHref(userId: string): string {
   return `/admin/manage_account?userId=${encodeURIComponent(userId)}`;
@@ -326,21 +272,26 @@ export function AdminPortfoliosCrud() {
         <p className="status-text">{status}</p>
       </div>
 
-      <h3>All tenant portfolios</h3>
+      <h3>Portfolio list</h3>
+      <p className="status-text" style={{ marginBottom: "0.35rem" }}>
+        This table is driven by <code className="font-mono text-xs">GET /api/admin/portfolios</code>. Row edits persist
+        via <code className="font-mono text-xs">{`PATCH /api/admin/portfolios/{portfolioId}`}</code>; removals use{" "}
+        <code className="font-mono text-xs">DELETE</code> on the same path. Add books with{" "}
+        <strong>New portfolio</strong> (<code className="font-mono text-xs">POST /api/admin/portfolios</code>).
+      </p>
       <div className="status-text" style={{ marginBottom: "0.75rem" }}>
-        <strong>Portfolio name</strong> is the first column — type directly in the field, then press{" "}
-        <strong>Save changes</strong> (same flow after <code className="font-mono text-xs">seed:admin</code>).{" "}
-        <strong>User</strong> shows display name + id: both link to{" "}
+        <strong>Name</strong> — edit in place, then <strong>Save all changes</strong>. <strong>User</strong> shows
+        display name + id (links to{" "}
         <Link className="underline font-medium" href="/admin/manage_account">
           user settings
-        </Link>{" "}
-        (not a dropdown — books are listed here; pick the user to open their admin profile). Also edit{" "}
-        <strong>tenant org ref</strong> (stored as <code className="font-mono text-xs">ext_broker_ref</code>) and
-        broker type (slugs from the{" "}
+        </Link>
+        ). Edit <strong>tenant org ref</strong> (<code className="font-mono text-xs">ext_broker_ref</code>) and broker
+        type from the{" "}
         <Link className="underline font-medium" href="/admin/brokers">
           broker catalog
         </Link>
-        ). Choose one default per user (radio). Tenant org key is read-only.
+        . One <strong>default</strong> book per user (radio). Tenant org key column is read-only. Use{" "}
+        <strong>Tools</strong> for watchlist, scoring, tasks, and other book-scoped consoles.
       </div>
 
       <div className="crud-table-wrap">
@@ -354,10 +305,9 @@ export function AdminPortfoliosCrud() {
               <th>Broker type</th>
               <th>Default</th>
               <th>Accounts</th>
-              <th>Watchlist</th>
               <th>Total cash</th>
               <th>Updated</th>
-              <th scope="col">Child tools</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -472,51 +422,23 @@ export function AdminPortfoliosCrud() {
                     </label>
                   </td>
                   <td>
-                    <Link
-                      className="login-xoptions-link"
-                      href={`/admin/portfolios/${encodeURIComponent(row._id)}/accounts`}
-                      title="Manage custodian accounts"
-                    >
-                      {row.accountCount}
-                    </Link>
+                    <span className="font-mono text-sm">{row.accountCount}</span>
                     <span className="admin-portfolio-col-type">Custodian accounts</span>
-                  </td>
-                  <td>
-                    <Link
-                      className="login-xoptions-link"
-                      href={`/admin/portfolios/${encodeURIComponent(row._id)}/watchlist`}
-                      title="Manage watchlist symbols"
-                    >
-                      Open
-                    </Link>
-                    <span className="admin-portfolio-col-type">Symbol list</span>
                   </td>
                   <td>{money.format(row.totalCashBalance)}</td>
                   <td className="text-xs">{new Date(row.updatedAt).toLocaleString()}</td>
                   <td>
-                    <div className="admin-portfolio-child-actions" role="group" aria-label="Portfolio child tools">
-                      {portfolioChildActions(row._id).map((action) => (
-                        <Link
-                          key={action.path}
-                          className="admin-portfolio-child-link"
-                          href={action.path}
-                          title={action.title}
-                        >
-                          <span className="admin-portfolio-child-link__label">{action.label}</span>
-                          <span className="admin-portfolio-child-link__type">{action.typeLabel}</span>
-                        </Link>
-                      ))}
+                    <div className="admin-portfolio-table-actions" role="group" aria-label="Portfolio actions">
+                      <Link className="cta cta-secondary" href={portfolioToolsHubHref(row._id)} title="Open tools hub">
+                        Tools
+                      </Link>
                       <button
                         type="button"
-                        className="admin-portfolio-child-link admin-portfolio-child-link--danger"
+                        className="cta cta-danger"
                         title="Delete this portfolio book and all linked accounts, positions, and watchlists"
                         onClick={() => void deleteRow(row)}
                       >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-                          <DeleteIcon className="crud-icon" />
-                          Delete
-                        </span>
-                        <span className="admin-portfolio-child-link__type">Portfolio book (destructive)</span>
+                        <DeleteIcon className="crud-icon" /> Delete
                       </button>
                     </div>
                   </td>

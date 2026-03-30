@@ -44,7 +44,7 @@ export function parseTenantBrandingPreferencesPayload(
     }
     const normalized = sanitizeBrandName(input[key]);
     if (!normalized) {
-      return { ok: false, error: `Invalid ${key}: non-empty string required` };
+      continue;
     }
     value[key] = normalized;
   }

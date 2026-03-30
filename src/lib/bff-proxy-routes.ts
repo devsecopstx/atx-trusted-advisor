@@ -27,6 +27,7 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "GET", path: "/api/portfolios/{portfolioId}/accounts" },
   { method: "POST", path: "/api/portfolios/{portfolioId}/accounts" },
   { method: "PATCH", path: "/api/portfolios/{portfolioId}/accounts/{accountId}" },
+  { method: "DELETE", path: "/api/portfolios/{portfolioId}/accounts/{accountId}" },
   { method: "GET", path: "/api/portfolios/{portfolioId}/watchlist" },
   { method: "PATCH", path: "/api/portfolios/{portfolioId}/watchlist" },
   { method: "GET", path: "/api/positions" },

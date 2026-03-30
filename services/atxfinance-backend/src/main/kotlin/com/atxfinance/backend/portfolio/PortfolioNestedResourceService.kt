@@ -150,6 +150,61 @@ class PortfolioNestedResourceService(
         return mongoTemplate.findOne(Query.query(filter), Document::class.java, props.accountsCollection)
     }
 
+    fun deleteAccount(session: ResolvedSession, portfolioId: String, accountId: String): Boolean {
+        if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId)) {
+            return false
+        }
+        val portfolio = portfolioCrud.findPortfolioForSessionUser(portfolioId, session) ?: return false
+        val pid = portfolio.getObjectId("_id") ?: return false
+        val aid = ObjectId(accountId)
+        val accounts = portfolioCrud.listAccountsForPortfolio(pid, session)
+        if (accounts.size <= 1) {
+            return false
+        }
+        val target = accounts.firstOrNull { it.getObjectId("_id") == aid } ?: return false
+        val wasDefault = target["isDefault"] as? Boolean ?: false
+
+        val posFilter =
+            PortfolioMongoFilter.withTenantScopeCriteria(
+                Criteria().andOperator(
+                    PortfolioMongoFilter.userIdCriteria(session.userId),
+                    Criteria.where("portfolioId").`is`(pid),
+                    Criteria.where("accountId").`is`(aid),
+                ),
+                session.tenantId,
+            )
+        mongoTemplate.remove(Query.query(posFilter), props.positionsCollection)
+
+        val accBase =
+            Criteria().andOperator(
+                Criteria.where("_id").`is`(aid),
+                PortfolioMongoFilter.userIdCriteria(session.userId),
+                Criteria.where("portfolioId").`is`(pid),
+            )
+        val accFilter = PortfolioMongoFilter.strictWriteTenantCriteria(accBase, session.tenantId)
+        val removed = mongoTemplate.remove(Query.query(accFilter), props.accountsCollection)
+        if (removed.deletedCount != 1L) {
+            return false
+        }
+        if (wasDefault) {
+            val next = accounts.firstOrNull { it.getObjectId("_id") != aid }
+            val nextId = next?.getObjectId("_id") ?: return true
+            val promoteBase =
+                Criteria().andOperator(
+                    Criteria.where("_id").`is`(nextId),
+                    PortfolioMongoFilter.userIdCriteria(session.userId),
+                    Criteria.where("portfolioId").`is`(pid),
+                )
+            val promoteFilter = PortfolioMongoFilter.strictWriteTenantCriteria(promoteBase, session.tenantId)
+            mongoTemplate.updateFirst(
+                Query.query(promoteFilter),
+                Update().set("isDefault", true).set("updatedAt", Date()),
+                props.accountsCollection,
+            )
+        }
+        return true
+    }
+
     fun getWatchlistPayload(session: ResolvedSession, portfolioId: String, quotes: Boolean): Map<String, Any?>? {
         val wl = getWatchlistOrProvision(session, portfolioId) ?: return null
         return buildWatchlistJson(wl, quotes)

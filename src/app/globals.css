@@ -1626,6 +1626,26 @@ button.xf-icon-edit-btn:disabled {
   min-width: 15rem;
 }
 
+.admin-portfolio-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-portfolio-tools-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.65rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-portfolio-tools-hub-grid > li {
+  margin: 0;
+}
+
 .admin-portfolio-child-link {
   display: grid;
   gap: 0.12rem;
@@ -2306,6 +2326,76 @@ html[data-xf-ui="soft"] select optgroup {
 /* Admin portfolio watchlist: single editor row (no duplicate read-only cols) — narrower min width */
 .crud-table.admin-portfolio-watchlist-table {
   min-width: 720px;
+}
+
+.admin-tenant-pref-page {
+  max-width: min(1200px, 100%);
+}
+
+.admin-tenant-pref-form {
+  padding: 1rem;
+}
+
+.admin-tenant-pref-table-wrap {
+  margin-top: 0;
+}
+
+.crud-table.admin-tenant-pref-crud-table {
+  min-width: 920px;
+}
+
+.admin-tenant-pref-crud-table__abbr {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .admin-tenant-pref-crud-table__full {
+    display: none;
+  }
+
+  .admin-tenant-pref-crud-table__abbr {
+    display: inline;
+  }
+}
+
+.admin-tenant-pref-crud-table__actions {
+  white-space: nowrap;
+  width: 1%;
+  vertical-align: middle;
+}
+
+.admin-tenant-pref-action-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.admin-tenant-pref-action-stack--horizontal {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.admin-tenant-pref-meta {
+  margin-top: 1rem;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  padding: 0.5rem 0.65rem;
+}
+
+.admin-tenant-pref-meta summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--xf-text-200);
+}
+
+.admin-tenant-pref-hint-list {
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .crud-table th,
