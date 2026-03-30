@@ -18,7 +18,7 @@ const protectedPathPrefixes = [
   "/xstrategybuilder",
   "/xfinance",
   "/xcoach",
-  "/app_user/xoptions/strategy-builder"
+  "/xoptions"
 ];
 
 const publicGuestReadablePaths = ["/account/billing"] as const;
@@ -69,7 +69,7 @@ export const config = {
     "/account/:path*",
     "/xstrategybuilder/:path*",
     "/xfinance/:path*",
-    "/app_user/xoptions/strategy-builder",
-    "/app_user/xoptions/strategy-builder/:path*"
+    "/xoptions",
+    "/xoptions/:path*"
   ]
 };

@@ -59,7 +59,7 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
   {
     id: "xoptions",
     label: "xOptions",
-    href: "/app_user/xoptions/strategy-builder",
+    href: "/xoptions",
     icon: (
       <IconWrap>
         <svg viewBox="0 0 20 20" fill="none" aria-hidden>

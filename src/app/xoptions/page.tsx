@@ -10,10 +10,10 @@ import { XoptionsStrategyBuilderWorkspace } from "./xoptions-strategy-builder-wo
 
 export const dynamic = "force-dynamic";
 
-export default async function XoptionsStrategyBuilderPage() {
+export default async function XoptionsPage() {
   const session = await getSessionUser();
   if (!session) {
-    redirect("/login?next=/app_user/xoptions/strategy-builder");
+    redirect("/login?next=/xoptions");
   }
   if (!canUserLogin(session.roles)) {
     redirect("/xchat");

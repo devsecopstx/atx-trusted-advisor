@@ -38,6 +38,16 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/app_user/xoptions",
+        destination: "/xoptions",
+        permanent: true
+      },
+      {
+        source: "/app_user/xoptions/:path*",
+        destination: "/xoptions",
+        permanent: true
+      },
+      {
         source: "/admin/user-settings",
         destination: "/admin/manage-users",
         permanent: true

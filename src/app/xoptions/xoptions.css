@@ -1,0 +1,253 @@
+/**
+ * xOptions strategy workspace — readable in deep (dark) and soft (light) shells.
+ * Uses design tokens only (no hex). See `html[data-xf-ui="soft"]` in globals.css.
+ */
+
+.xoptions-workspace {
+  color: var(--xf-text-300);
+}
+
+.xoptions-workspace__eyebrow {
+  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
+}
+
+.xoptions-workspace__h1 {
+  color: var(--xf-text-100);
+}
+
+.xoptions-workspace__lead {
+  color: var(--xf-text-400);
+}
+
+.xoptions-workspace__label {
+  color: var(--xf-text-400);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.xoptions-workspace__label-muted {
+  color: var(--xf-text-400);
+  font-size: 0.75rem;
+}
+
+.xoptions-workspace__body {
+  color: var(--xf-text-300);
+}
+
+.xoptions-workspace__stat {
+  color: var(--xf-text-100);
+}
+
+/* Account (≈66%) + target expiration (≈34%) — same visual row on md+ */
+.xoptions-account-expiry-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  align-items: start;
+}
+
+@media (max-width: 767px) {
+  .xoptions-account-expiry-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.xoptions-expiry-col {
+  min-width: 0;
+  border-left: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  padding-left: 1rem;
+}
+
+@media (max-width: 767px) {
+  .xoptions-expiry-col {
+    border-left: none;
+    padding-left: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  }
+}
+
+.xoptions-expiry-col .xoptions-choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.xoptions-expiry-col .xoptions-choice {
+  padding: 0.28rem 0.65rem;
+  font-size: 0.8125rem;
+}
+
+.xoptions-panel {
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  border-radius: var(--xf-radius-md);
+}
+
+html[data-xf-ui="soft"] .xoptions-panel {
+  border-color: color-mix(in srgb, var(--xf-text-100) 20%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 7%, transparent);
+}
+
+.xoptions-desk-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  color: var(--xf-text-100);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.xoptions-desk-toggle:hover {
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  border-color: color-mix(in srgb, var(--xf-text-100) 24%, transparent);
+}
+
+.xoptions-desk-toggle__chev {
+  color: var(--xf-text-400);
+  flex-shrink: 0;
+}
+
+/* Week horizon + symbol pickers — must stay visible in deep + soft */
+.xoptions-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  color: var(--xf-text-100);
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.xoptions-choice:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 50%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  color: color-mix(in srgb, var(--xf-gain-green) 92%, var(--xf-text-100));
+}
+
+.xoptions-choice--active {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 70%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 16%, transparent);
+  color: color-mix(in srgb, var(--xf-gain-green) 95%, var(--xf-text-100));
+}
+
+.xoptions-symbol-row {
+  width: 100%;
+  text-align: left;
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: color-mix(in srgb, var(--xf-gain-green) 85%, var(--xf-text-100));
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.xoptions-symbol-row:hover {
+  background: color-mix(in srgb, var(--xf-text-100) 7%, transparent);
+  border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+}
+
+.xoptions-symbol-row__sym {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 600;
+}
+
+.xoptions-symbol-row__meta {
+  color: var(--xf-text-400);
+  margin-left: 0.35rem;
+}
+
+.xoptions-cta {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 65%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 14%, transparent);
+  color: color-mix(in srgb, var(--xf-gain-green) 92%, var(--xf-text-100));
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.xoptions-cta:hover {
+  background: color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 80%, transparent);
+}
+
+.xoptions-workspace .xoptions-inline-muted {
+  color: var(--xf-text-400);
+  font-size: 0.75rem;
+}
+
+.xoptions-workspace .xoptions-hint {
+  color: var(--xf-text-400);
+  font-size: 0.75rem;
+}
+
+.xoptions-pricing-em {
+  font-weight: 500;
+  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
+}
+
+.xoptions-workspace .xoptions-warning {
+  color: color-mix(in srgb, var(--xf-warning-400) 95%, var(--xf-text-100));
+}
+
+.xoptions-alert {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-warning-400) 42%, transparent);
+  background: color-mix(in srgb, var(--xf-warning-400) 14%, transparent);
+  color: var(--xf-text-100);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.xoptions-text-link {
+  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.xoptions-text-link:hover {
+  color: var(--xf-gain-green);
+}
+
+.xoptions-workspace__divider {
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}

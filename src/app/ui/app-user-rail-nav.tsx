@@ -241,24 +241,21 @@ export function AppUserResourcesRailSection({
   );
 }
 
-export function AppUserFindOptionsRailSection({
+export function AppUserOptionsRailSection({
   railDisclosureDefaultOpen = true
 }: {
   railDisclosureDefaultOpen?: boolean;
 }) {
   return (
-    <section className="app-user-rail-section" aria-label="Find options">
+    <section className="app-user-rail-section" aria-label="Options">
       <RailDisclosure
         defaultOpen={railDisclosureDefaultOpen}
         icon={<FindOptionsGlyph className="app-user-rail-disclosure__glyph" />}
-        title="Find Options"
+        title="Options"
       >
-        <nav className="app-user-rail-sublinks" aria-label="Find options links">
-          <RailNavLink href="/app_user/xoptions/strategy-builder" title="Strategy builder — symbol, outlook, chain filters">
-            Strategy builder
-          </RailNavLink>
-          <RailNavLink href="/app_user/xoptions" title="xOptions pitch and follow-up">
-            xOptions overview
+        <nav className="app-user-rail-sublinks" aria-label="Options links">
+          <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
+            xOptions
           </RailNavLink>
         </nav>
       </RailDisclosure>
@@ -384,7 +381,7 @@ export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUser
         )}
       </section>
       <AppUserXchatRailSection />
-      <AppUserFindOptionsRailSection />
+      <AppUserOptionsRailSection />
       <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
       <AppUserAccountRailSection isGlobalAdmin={isGlobalAdmin} />
       {isGlobalAdmin ? <AppUserManageWorkspaceRailSection /> : null}
