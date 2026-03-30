@@ -9,9 +9,9 @@ export const RISK_LEVEL_OPTIONS: ReadonlyArray<{
   riskProfile: RiskProfileValue;
   dotClass: string;
 }> = [
-  { tier: "low", label: "Low", riskProfile: "conservative", dotClass: "bg-emerald-500" },
-  { tier: "medium", label: "Medium", riskProfile: "balanced", dotClass: "bg-amber-400" },
-  { tier: "high", label: "High", riskProfile: "growth", dotClass: "bg-red-500" }
+  { tier: "low", label: "Conservative", riskProfile: "conservative", dotClass: "bg-emerald-500" },
+  { tier: "medium", label: "Balanced", riskProfile: "balanced", dotClass: "bg-amber-400" },
+  { tier: "high", label: "Aggressive", riskProfile: "growth", dotClass: "bg-red-500" }
 ];
 
 export const INVESTMENT_STRATEGY_OPTIONS: ReadonlyArray<{

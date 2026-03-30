@@ -1,13 +1,14 @@
 import { ObjectId } from "mongodb";
 
+import type { SubscriptionPlan } from "@/lib/subscription-plan";
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 import type {
-    TenantPlanWorkspaceOverrides,
-    TenantWorkspaceLimits
+  TenantPlanWorkspaceOverrides,
+  TenantWorkspaceLimits
 } from "@/modules/identity/tenant-workspace-limits";
 
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
-export type SubscriptionPlan = "free" | "pro" | "enterprise";
+export type { SubscriptionPlan };
 
 export type CoreUser = {
   _id?: ObjectId;

@@ -19,7 +19,7 @@ export function XchatGuestReadonlyShell({
   children,
   googleLoginHref = null,
   showAccessPanel = true,
-  registerDefaultPlan = "free",
+  registerDefaultPlan = "basic",
   openRegisterByDefault = false
 }: XchatGuestReadonlyShellProps) {
   return (

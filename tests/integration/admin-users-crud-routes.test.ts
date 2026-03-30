@@ -24,12 +24,12 @@ vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 
-import { GET as getUsers, POST as postUser } from "@/app/api/admin/users/route";
 import {
-  DELETE as deleteUser,
-  GET as getUser,
-  PUT as putUser
+    DELETE as deleteUser,
+    GET as getUser,
+    PUT as putUser
 } from "@/app/api/admin/users/[userId]/route";
+import { GET as getUsers, POST as postUser } from "@/app/api/admin/users/route";
 
 describe("admin users CRUD routes", () => {
   beforeEach(() => {
@@ -43,7 +43,7 @@ describe("admin users CRUD routes", () => {
         _id: { toHexString: () => "507f1f77bcf86cd799439033" },
         email: "user@atxfinance.ai",
         roles: ["viewer"],
-        subscriptionPlan: "free",
+        subscriptionPlan: "basic",
         status: "active",
         createdAt: new Date("2026-03-16T00:00:00.000Z"),
         updatedAt: new Date("2026-03-16T00:00:00.000Z")
@@ -53,7 +53,7 @@ describe("admin users CRUD routes", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439044" },
       email: "new@atxfinance.ai",
       roles: ["viewer"],
-      subscriptionPlan: "free",
+      subscriptionPlan: "basic",
       status: "active",
       createdAt: new Date("2026-03-16T00:00:00.000Z"),
       updatedAt: new Date("2026-03-16T00:00:00.000Z")
@@ -62,7 +62,7 @@ describe("admin users CRUD routes", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       email: "user@atxfinance.ai",
       roles: ["viewer"],
-      subscriptionPlan: "free",
+      subscriptionPlan: "basic",
       status: "active",
       createdAt: new Date("2026-03-16T00:00:00.000Z"),
       updatedAt: new Date("2026-03-16T00:00:00.000Z")
@@ -71,7 +71,7 @@ describe("admin users CRUD routes", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       email: "updated@atxfinance.ai",
       roles: ["advisor"],
-      subscriptionPlan: "pro",
+      subscriptionPlan: "premium",
       status: "active",
       createdAt: new Date("2026-03-16T00:00:00.000Z"),
       updatedAt: new Date("2026-03-16T00:00:00.000Z")
@@ -101,7 +101,7 @@ describe("admin users CRUD routes", () => {
         body: JSON.stringify({
           email: "new@atxfinance.ai",
           role: "viewer",
-          subscriptionPlan: "free",
+          subscriptionPlan: "basic",
           status: "active"
         })
       })
@@ -125,7 +125,7 @@ describe("admin users CRUD routes", () => {
         body: JSON.stringify({
           email: "updated@atxfinance.ai",
           role: "advisor",
-          subscriptionPlan: "pro"
+          subscriptionPlan: "premium"
         })
       }),
       {

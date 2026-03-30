@@ -44,9 +44,9 @@ describe("GET /api/app-user/find-options/*", () => {
         id: "a1",
         name: "Primary",
         riskProfile: "balanced",
-        outlook: "growth"
+        outlook: "bullish"
       },
-      bookOutlookText: "Cautious",
+      bookOutlook: "bearish",
       bookRiskProfile: "conservative",
       scoringFactors: [
         {

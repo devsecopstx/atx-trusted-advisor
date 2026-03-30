@@ -13,10 +13,8 @@ import {
     formatUsdWhole,
     type PortfolioOverviewMetrics
 } from "@/lib/portfolio-overview-metrics";
-import {
-    INVESTMENT_STRATEGY_OPTIONS,
-    RISK_LEVEL_OPTIONS
-} from "@/modules/core-admin/portfolio-preference-labels";
+import { DESK_OUTLOOK_LABELS } from "@/modules/core-admin/desk-fields";
+import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
 import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 import type { Account } from "@/modules/core-admin/types";
 
@@ -87,10 +85,7 @@ export function PortfolioOverview({
       acct?.riskProfile != null
         ? RISK_LEVEL_OPTIONS.find((r) => r.riskProfile === acct.riskProfile)?.label
         : null;
-    const outlookTitle =
-      acct?.outlook != null
-        ? INVESTMENT_STRATEGY_OPTIONS.find((o) => o.value === acct.outlook)?.title
-        : null;
+    const outlookTitle = acct?.outlook != null ? DESK_OUTLOOK_LABELS[acct.outlook] : null;
     const deskBits = [riskLabel ? `${riskLabel} risk` : null, outlookTitle ?? null].filter(Boolean);
     const deskLine = deskBits.length > 0 ? deskBits.join(" · ") : "Desk not set";
     const costBasis = row.valueExcludingOptions + row.optionBookValue;

@@ -1,3 +1,4 @@
+import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import type { SubscriptionPlan } from "@/modules/identity/types";
 
 /** Parallelism payload for `grok-4.20-multi-agent` (xAI `agent_count` + `reasoning.effort`). */
@@ -26,7 +27,7 @@ export type PlanTierLimits = {
 };
 
 const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
-  free: {
+  basic: {
     maxPromptsPerDay: 5,
     maxTurns: 3,
     maxTopK: 3,
@@ -40,7 +41,7 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     softLimitPercent: 100,
     multiAgentParallelMaxAgents: 0
   },
-  pro: {
+  premium: {
     maxPromptsPerDay: 200,
     maxTurns: 5,
     maxTopK: 6,
@@ -54,7 +55,7 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
     softLimitPercent: 80,
     multiAgentParallelMaxAgents: 0
   },
-  enterprise: {
+  premium_plus: {
     maxPromptsPerDay: 2000,
     maxTurns: 10,
     maxTopK: 10,
@@ -70,12 +71,12 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanTierLimits> = {
   }
 };
 
-export function getPlanLimits(plan?: SubscriptionPlan): PlanTierLimits {
-  return PLAN_LIMITS[plan ?? "free"];
+export function getPlanLimits(plan?: SubscriptionPlan | string): PlanTierLimits {
+  return PLAN_LIMITS[normalizeSubscriptionPlan(plan)];
 }
 
 export function resolveModel(
-  plan: SubscriptionPlan | undefined,
+  plan: SubscriptionPlan | string | undefined,
   messageLength: number,
   personaModel?: string
 ): string {
@@ -91,7 +92,7 @@ export function resolveModel(
 
 export function clampTurns(
   requested: number,
-  plan?: SubscriptionPlan
+  plan?: SubscriptionPlan | string
 ): number {
   const max = getPlanLimits(plan).maxTurns;
   return Math.min(Math.max(1, requested), max);
@@ -99,7 +100,7 @@ export function clampTurns(
 
 export function clampTopK(
   requested: number,
-  plan?: SubscriptionPlan
+  plan?: SubscriptionPlan | string
 ): number {
   const max = getPlanLimits(plan).maxTopK;
   return Math.min(Math.max(1, requested), max);
@@ -137,7 +138,7 @@ export function clampMultiAgentParallelismWithMax(
 
 export function clampMultiAgentParallelismForPlan(
   config: ParallelismPlanClamp | undefined,
-  plan?: SubscriptionPlan
+  plan?: SubscriptionPlan | string
 ): ParallelismPlanClamp | undefined {
   return clampMultiAgentParallelismWithMax(
     config,
@@ -147,7 +148,7 @@ export function clampMultiAgentParallelismForPlan(
 
 export function checkBudget(
   usedCents: number,
-  plan?: SubscriptionPlan
+  plan?: SubscriptionPlan | string
 ): BudgetCheckResult {
   const limits = getPlanLimits(plan);
   if (limits.monthlyBudgetCents === 0) {

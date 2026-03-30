@@ -4,6 +4,7 @@ import { z } from "zod";
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import {
     createAuditEvent,
     listLatestAuditEventsForEntities
@@ -22,7 +23,7 @@ const createAccessRequestSchema = z.object({
   userId: z.string().trim().min(1).optional(),
   email: z.string().trim().email().optional(),
   requestedRole: z.enum(["global_admin", "advisor", "operator", "viewer"]),
-  requestedPlan: z.string().trim().optional().default("free"),
+  requestedPlan: z.string().trim().optional().default("basic"),
   reason: z.string().min(5),
   status: z.enum(accessRequestStatusValues).optional()
 }).superRefine((value, ctx) => {
@@ -213,6 +214,7 @@ export async function POST(request: Request) {
 function serializeAccessRequest(request: AccessRequestListItem) {
   return {
     ...request,
+    requestedPlan: normalizeSubscriptionPlan(request.requestedPlan),
     _id: request._id?.toHexString(),
     tenantId: request.tenantId?.toHexString(),
     requestedAt: request.requestedAt.toISOString(),

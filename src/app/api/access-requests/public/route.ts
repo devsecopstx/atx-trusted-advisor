@@ -42,7 +42,9 @@ export async function POST(request: Request) {
   const name = parsed.data.name.trim();
   const email = parsed.data.email.trim().toLowerCase();
   const requestedPlan =
-    parsed.data.requestedPlan === undefined ? "free" : parseAccessRequestPlanInput(parsed.data.requestedPlan);
+    parsed.data.requestedPlan === undefined
+      ? "basic"
+      : parseAccessRequestPlanInput(parsed.data.requestedPlan);
   if (!requestedPlan) {
     return NextResponse.json(
       { error: "Invalid requestedPlan. Expected Basic, Premium, or Premium+." },

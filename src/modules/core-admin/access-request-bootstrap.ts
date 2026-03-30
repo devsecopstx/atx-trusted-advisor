@@ -7,6 +7,7 @@ import {
 } from "@/lib/atx-instance-collection-root";
 import { getDb } from "@/lib/mongodb";
 import { sendSlackNotification } from "@/lib/slack";
+import type { SubscriptionPlan } from "@/lib/subscription-plan";
 import {
     addFileToXaiCollection,
     createXaiCollection,
@@ -41,7 +42,7 @@ type EnqueueAccessRequestBootstrapInput = {
   userId: string;
   userEmail: string;
   tenantId?: string;
-  requestedPlan: "free" | "pro" | "enterprise";
+  requestedPlan: SubscriptionPlan;
   actor: BootstrapActor;
 };
 
@@ -55,7 +56,7 @@ type UserBootstrapProfile = {
   watchlistId?: ObjectId;
   xaiCollectionId?: string;
   xaiCollectionName?: string;
-  requestedPlan?: "free" | "pro" | "enterprise";
+  requestedPlan?: SubscriptionPlan;
   syncStatus: "pending" | "synced" | "warning";
   syncError?: string;
   createdAt: Date;

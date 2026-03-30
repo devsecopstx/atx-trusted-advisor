@@ -413,7 +413,7 @@ describe("portfolio API routes", () => {
       new Request("http://test", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ riskProfile: "balanced", outlook: "growth" })
+        body: JSON.stringify({ riskProfile: "balanced", outlook: "bullish" })
       }),
       {
         params: Promise.resolve({
@@ -426,7 +426,7 @@ describe("portfolio API routes", () => {
     expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalledWith(
       expect.objectContaining({
         riskProfile: "balanced",
-        outlook: "growth"
+        outlook: "bullish"
       })
     );
   });

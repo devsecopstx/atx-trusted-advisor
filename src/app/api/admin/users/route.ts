@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { normalizeSubscriptionPlan, zSubscriptionPlan } from "@/lib/subscription-plan";
 import {
     createAuditEvent,
     listLatestAuditEventsForEntities
@@ -22,7 +23,7 @@ const listUsersQuerySchema = z.object({
 const createUserSchema = z.object({
   email: z.string().trim().email(),
   role: z.enum(["global_admin", "advisor", "operator", "viewer"]).default("viewer"),
-  subscriptionPlan: z.enum(["free", "pro", "enterprise"]).default("free"),
+  subscriptionPlan: zSubscriptionPlan.default("basic"),
   status: z.enum(["active", "suspended"]).default("active")
 });
 
@@ -128,7 +129,7 @@ function serializeUser(user: CoreUser) {
     _id: user._id?.toHexString(),
     email: user.email,
     roles: user.roles,
-    subscriptionPlan: user.subscriptionPlan ?? "free",
+    subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     status: user.status,
     xAccount: user.xAccount
       ? {

@@ -997,7 +997,7 @@ describe("xchat ask route collection retrieval", () => {
 
   it("loads core user for non-admin ask to apply multi-agent plan clamp", async () => {
     identityMocks.getCoreUserById.mockResolvedValueOnce({
-      subscriptionPlan: "enterprise"
+      subscriptionPlan: "premium_plus"
     } as never);
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",

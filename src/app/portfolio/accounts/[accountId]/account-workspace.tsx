@@ -7,10 +7,8 @@ import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { BackIcon, DeleteIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
 import { AccountHoldingsLiveTable } from "@/app/portfolio/ui/account-holdings-live-table";
 import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
-import {
-    INVESTMENT_STRATEGY_OPTIONS,
-    RISK_LEVEL_OPTIONS
-} from "@/modules/core-admin/portfolio-preference-labels";
+import { DESK_OUTLOOK_CARD_OPTIONS } from "@/modules/core-admin/desk-fields";
+import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
 import type { AccountOutlook, PositionType } from "@/modules/core-admin/types";
 
 import type { SerializableAccount, SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
@@ -370,7 +368,7 @@ export function AccountWorkspace({
           <fieldset className="portfolio-edit-fieldset">
             <legend className="portfolio-edit-field__label">Market outlook</legend>
             <div className="portfolio-strategy-grid portfolio-strategy-grid--legacy" role="group" aria-label="Market outlook">
-              {INVESTMENT_STRATEGY_OPTIONS.map((opt) => (
+              {DESK_OUTLOOK_CARD_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"

@@ -79,7 +79,7 @@ export function XchatGuestPanel({
   pendingXHandle,
   content,
   googleLoginHref = null,
-  registerDefaultPlan = "free",
+  registerDefaultPlan = "basic",
   openRegisterByDefault = false
 }: XchatGuestPanelProps) {
   const authMessage = authError ? (AUTH_ERROR_COPY[authError] ?? "Sign-in failed.") : null;

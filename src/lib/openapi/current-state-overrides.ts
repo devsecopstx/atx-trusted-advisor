@@ -1518,7 +1518,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
   },
   AdminUserSubscriptionPlan: {
     type: "string",
-    enum: ["free", "pro", "enterprise"]
+    enum: ["basic", "premium", "premium_plus"]
   },
   AdminUserStatus: {
     type: "string",

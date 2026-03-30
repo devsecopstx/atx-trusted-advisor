@@ -370,7 +370,10 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       <div className="mt-6 space-y-2">
         <h3 className="text-sm font-semibold text-white">Per-billing-plan overrides</h3>
         <p className="admin-muted text-xs max-w-3xl">
-          Maps to subscription tier (Basic → free, Premium → pro, Premium+ → enterprise). Leave limit cells empty
+          Workspace overrides use billing tier keys (Basic, Premium monthly, Premium+ monthly). Core user plan enum is{" "}
+          <code className="font-mono text-[0.7rem]">basic</code>,{" "}
+          <code className="font-mono text-[0.7rem]">premium</code>,{" "}
+          <code className="font-mono text-[0.7rem]">premium_plus</code>. Leave limit cells empty
           to inherit the tenant defaults in the row above. List price (USD) defaults to {DEFAULT_TENANT_PLAN_PRICE}{" "}
           per plan when unset. Saving persists all three tiers (including price).
         </p>

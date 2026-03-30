@@ -12,7 +12,7 @@ import {
     DEFAULT_ACCOUNT_CASH_BALANCE
 } from "@/modules/core-admin/repository";
 import { patchPortfolioScoringFactorsSchema, scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
-import type { Portfolio } from "@/modules/core-admin/types";
+import { accountOutlookValues, type Portfolio } from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 
 type RouteContext = {
@@ -42,7 +42,7 @@ const patchPortfolioSchema = z.object({
   ext_broker_ref: z.union([z.string(), z.null()]).optional(),
   broker_type: z.union([adminBrokerSlugSchema, z.null()]).optional(),
   riskProfile: z.union([z.enum(["conservative", "balanced", "growth"]), z.null()]).optional(),
-  outlook: z.union([z.string().max(4000), z.null()]).optional(),
+  outlook: z.union([z.enum(accountOutlookValues), z.null()]).optional(),
   scoringFactors: patchPortfolioScoringFactorsSchema.optional(),
   isDefault: z.literal(true).optional()
 });

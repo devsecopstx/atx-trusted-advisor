@@ -107,14 +107,14 @@ describe("PATCH /api/admin/portfolios/[portfolioId]/accounts/[accountId]", () =>
   it("updates account when payload has outlook slug only", async () => {
     repoMocks.adminUpdatePortfolioAccount.mockResolvedValueOnce({
       ...mockAccount(),
-      outlook: "income" as const
+      outlook: "bearish" as const
     });
     const req = new Request(
       `http://test/api/admin/portfolios/${portfolioId}/accounts/${accountId}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ outlook: "income" })
+        body: JSON.stringify({ outlook: "bearish" })
       }
     );
     const res = await patchAdminPortfolioAccount(req, {
@@ -125,7 +125,7 @@ describe("PATCH /api/admin/portfolios/[portfolioId]/accounts/[accountId]", () =>
       expect.objectContaining({
         portfolioId,
         accountId,
-        outlook: "income"
+        outlook: "bearish"
       })
     );
   });

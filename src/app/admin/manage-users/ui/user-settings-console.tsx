@@ -5,6 +5,11 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AddIcon, DeleteIcon, EditIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
+import {
+    normalizeSubscriptionPlan,
+    SUBSCRIPTION_PLAN_SELECT_OPTIONS,
+    type SubscriptionPlan
+} from "@/lib/subscription-plan";
 
 type BrokerSettings = {
   provider: "alpaca" | "interactive-brokers" | "paper";
@@ -65,7 +70,7 @@ type ApprovedUser = {
   userId: string;
   name: string;
   email: string;
-  subscriptionPlan: "free" | "pro" | "enterprise";
+  subscriptionPlan: SubscriptionPlan;
   approvedAt?: string;
   latestAuditEvent?: {
     action: string;
@@ -82,7 +87,7 @@ type ApiUser = {
   _id?: string;
   email: string;
   roles: Array<"global_admin" | "advisor" | "operator" | "viewer">;
-  subscriptionPlan: "free" | "pro" | "enterprise";
+  subscriptionPlan: SubscriptionPlan;
   status: "active" | "suspended";
   xAccount?: {
     username?: string;
@@ -123,7 +128,7 @@ export function UserSettingsConsole() {
   const [emailEdits, setEmailEdits] = useState<Record<string, string>>({});
   const [planEdits, setPlanEdits] = useState<Record<string, ApprovedUser["subscriptionPlan"]>>({});
   const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserPlan, setNewUserPlan] = useState<ApprovedUser["subscriptionPlan"]>("free");
+  const [newUserPlan, setNewUserPlan] = useState<ApprovedUser["subscriptionPlan"]>("basic");
 
   const [settingsForm, setSettingsForm] = useState<UserAdminSettingsPayload>(DEFAULT_SETTINGS);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -154,7 +159,7 @@ export function UserSettingsConsole() {
       setPlanEdits((previous) => {
         const next = { ...previous };
         for (const user of normalizedUsers) {
-          next[user.userId] = previous[user.userId] ?? user.subscriptionPlan ?? "free";
+          next[user.userId] = previous[user.userId] ?? user.subscriptionPlan ?? "basic";
         }
         return next;
       });
@@ -263,7 +268,7 @@ export function UserSettingsConsole() {
       setStatus("Email is required.");
       return;
     }
-    const subscriptionPlan = planEdits[userId] ?? "free";
+    const subscriptionPlan = planEdits[userId] ?? "basic";
     setStatus(`Saving user changes for ${userId}...`);
     try {
       await parseJson(
@@ -311,7 +316,7 @@ export function UserSettingsConsole() {
         })
       );
       setNewUserEmail("");
-      setNewUserPlan("free");
+      setNewUserPlan("basic");
       await refreshApprovedUsers();
       setStatus("User created");
     } catch (error) {
@@ -399,10 +404,13 @@ export function UserSettingsConsole() {
           <select
             onChange={(event) => setNewUserPlan(event.target.value as ApprovedUser["subscriptionPlan"])}
             value={newUserPlan}
+            aria-label="Subscription plan for new user"
           >
-            <option value="free">free</option>
-            <option value="pro">pro</option>
-            <option value="enterprise">enterprise</option>
+            {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
           <button className="cta cta-primary" type="submit">
             <AddIcon className="crud-icon" /> Add user
@@ -445,10 +453,13 @@ export function UserSettingsConsole() {
                         }))
                       }
                       value={planEdits[user.userId] ?? user.subscriptionPlan}
+                      aria-label={`Subscription plan for ${user.email}`}
                     >
-                      <option value="free">free</option>
-                      <option value="pro">pro</option>
-                      <option value="enterprise">enterprise</option>
+                      {SUBSCRIPTION_PLAN_SELECT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
                     </select>
                   </td>
                   <td>
@@ -850,7 +861,7 @@ function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
     userId: user._id,
     name: user.xAccount?.displayName ?? user.xAccount?.username ?? user.email,
     email: user.email,
-    subscriptionPlan: user.subscriptionPlan ?? "free",
+    subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     approvedAt: user.updatedAt,
     latestAuditEvent: user.latestAuditEvent ?? null
   };

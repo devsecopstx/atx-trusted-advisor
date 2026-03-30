@@ -114,7 +114,7 @@ function appendAdminSeedLog({ summaryLine, summaryJson }) {
   appendFileSync(ADMIN_LOG_PATH, `${chunks.join("\n")}\n`, "utf8");
 }
 
-/** Upsert YAML/MD xPersona specs from `atx-rag-collection/xpersonas` into `xchat_personas` (separate from xAI collection ingest). */
+/** Upsert YAML/MD xPersona specs from `atx-docs/rag-collection/xpersonas` into `xchat_personas` (separate from xAI collection ingest). */
 function runPostSeedXpersonasFromDisk() {
   const s = String(process.env.SKIP_SEED_XPERSONAS ?? "").toLowerCase();
   if (s === "1" || s === "true" || s === "yes") {
@@ -122,7 +122,7 @@ function runPostSeedXpersonasFromDisk() {
     return { skipped: true };
   }
   const script = join(SEED_SCRIPT_DIR, "sync-xpersonas-from-yaml.ts");
-  console.log("[seed:admin] syncing xPersonas from atx-rag-collection/xpersonas → Mongo (npm run seed:xpersonas)…");
+  console.log("[seed:admin] syncing xPersonas from atx-docs/rag-collection/xpersonas → Mongo (npm run seed:xpersonas)…");
   const r = spawnSync(process.execPath, ["--import", "tsx", script], {
     cwd: REPO_ROOT,
     env: childEnvWithSeedParentMongoDb(),
@@ -136,7 +136,7 @@ function runPostSeedXpersonasFromDisk() {
   }
   if (r.status !== 0 && r.status != null) {
     console.error(
-      "[seed:admin] seed:xpersonas failed — fix specs under atx-rag-collection/xpersonas or set SKIP_SEED_XPERSONAS=1"
+      "[seed:admin] seed:xpersonas failed — fix specs under atx-docs/rag-collection/xpersonas or set SKIP_SEED_XPERSONAS=1"
     );
     process.exit(r.status ?? 1);
   }
@@ -239,6 +239,10 @@ const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core"
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
 const DB_NAME = resolveAdminSeedDbName();
 const DEFAULT_PERSONA_NAME = "Super-Agent";
+/** Matches `id` / nameNormalized in `atx-docs/rag-collection/xpersonas/super-agent/super-agent.yaml`. */
+const DEFAULT_PERSONA_NAME_NORMALIZED = "super-agent";
+/** Product default for seeded admin (`core_users.subscriptionPlan`, access-request paper row). */
+const DEFAULT_SEED_SUBSCRIPTION_PLAN = "basic";
 const DEFAULT_PERSONA_SYSTEM_PROMPT = `You are The Architect, the elite administrative agent for atxFinance global admins. You have live xAI tools — call them; do not guess time-sensitive facts from memory.
 
 Tool discipline (use the API tool channel; do not fake tool calls in plain text):
@@ -389,6 +393,8 @@ async function seed() {
   let strategyCollectionsDetail = [];
   let strategyFilesUploaded = 0;
   let ragFileCandidates = 0;
+  let xpersonasSyncSummary = { created: 0, updated: 0, noop: 0, skipped: false };
+  let strategySyncSummary = { upserted: 0, skipped: false };
 
   try {
     await ensureIndexes(db);
@@ -443,11 +449,11 @@ async function seed() {
     }
 
     await db.collection("xchat_personas").updateOne(
-      { nameNormalized: DEFAULT_PERSONA_NAME.toLowerCase() },
+      { nameNormalized: DEFAULT_PERSONA_NAME_NORMALIZED },
       {
         $setOnInsert: {
           name: DEFAULT_PERSONA_NAME,
-          nameNormalized: DEFAULT_PERSONA_NAME.toLowerCase(),
+          nameNormalized: DEFAULT_PERSONA_NAME_NORMALIZED,
           createdAt: now
         },
         $set: {
@@ -474,7 +480,7 @@ async function seed() {
     );
     const persona = await db
       .collection("xchat_personas")
-      .findOne({ nameNormalized: DEFAULT_PERSONA_NAME.toLowerCase() });
+      .findOne({ nameNormalized: DEFAULT_PERSONA_NAME_NORMALIZED });
     if (!persona?._id) {
       throw new Error("Failed to create or fetch default Super-Agent persona");
     }
@@ -491,6 +497,7 @@ async function seed() {
         $set: {
           roles: ["global_admin"],
           status: "active",
+          subscriptionPlan: DEFAULT_SEED_SUBSCRIPTION_PLAN,
           updatedAt: now,
           ...xPre
         }
@@ -515,9 +522,9 @@ async function seed() {
         userId: seedUserIdHex,
         contactEmail: email,
         requestedRole: "global_admin",
-        requestedPlan: "enterprise",
+        requestedPlan: DEFAULT_SEED_SUBSCRIPTION_PLAN,
         reason:
-          "Bootstrap global_admin via npm run seed:admin (ADMIN_SEED_EMAIL); approved paper trail for elevated platform role.",
+          "Bootstrap global_admin via npm run seed:admin (ADMIN_SEED_EMAIL); approved paper trail — default plan basic, persona Super-Agent (atx-docs/rag-collection/xpersonas/super-agent/super-agent.yaml).",
         status: "approved",
         requestedAt: now,
         reviewedBy: seedUserIdHex,
@@ -671,6 +678,30 @@ async function seed() {
       }
     }
 
+    xpersonasSyncSummary = runPostSeedXpersonasFromDisk();
+    strategySyncSummary = runPostSeedOptionsStrategyPreferencesFromDisk();
+    runPostSeedOptionsStrategyFromDisk();
+
+    const personaAfterDisk = await db
+      .collection("xchat_personas")
+      .findOne({ nameNormalized: DEFAULT_PERSONA_NAME_NORMALIZED });
+    if (!personaAfterDisk?._id) {
+      throw new Error(
+        `[seed:admin] Super-Agent persona missing after seed:xpersonas — expected nameNormalized "${DEFAULT_PERSONA_NAME_NORMALIZED}" (see atx-docs/rag-collection/xpersonas/super-agent/super-agent.yaml).`
+      );
+    }
+
+    const adminSettingsAfterSync = await db.collection("admin_user_settings").findOne(adminSettingsFilter);
+    const assignedAfter = adminSettingsAfterSync?.assignedPersonaId;
+    const stillMissingPersona =
+      assignedAfter == null || (typeof assignedAfter === "string" && assignedAfter.trim() === "");
+    if (stillMissingPersona && adminSettingsAfterSync?._id) {
+      await db.collection("admin_user_settings").updateOne(
+        { _id: adminSettingsAfterSync._id },
+        { $set: { assignedPersonaId: String(personaAfterDisk._id), updatedAt: now } }
+      );
+    }
+
     const payload = {
       ok: true,
       adminEmail: email,
@@ -695,8 +726,8 @@ async function seed() {
       userId: String(user._id),
       tenantId: String(tenant._id),
       tenantSlug: tenant.slug,
-      defaultPersonaId: String(persona._id),
-      defaultPersonaName: persona.name,
+      defaultPersonaId: String(personaAfterDisk._id),
+      defaultPersonaName: personaAfterDisk.name,
       defaultPortfolioId: String(portfolio._id),
       defaultAccountId: String(account._id),
       defaultWatchlistId: String(watchlist._id),
@@ -704,7 +735,7 @@ async function seed() {
       mongo: {
         database: DB_NAME,
         accessRequestInserted,
-        note: "Upserted core_tenants, xchat_personas (Super-Agent), core_users, core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS) and options_strategy_preferences from atx-rag-collection/options-strategy (unless SKIP_SEED_OPTIONS_STRATEGY_PREFS). See accessRequestInserted for admin_access_requests."
+        note: "Upserted core_tenants, xchat_personas (Super-Agent), core_users (subscriptionPlan basic), core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS) from atx-docs/rag-collection/xpersonas and options_strategy_preferences from atx-rag-collection/options-strategy (unless SKIP_SEED_OPTIONS_STRATEGY_PREFS). See accessRequestInserted for admin_access_requests."
       }
     };
 
@@ -713,10 +744,10 @@ async function seed() {
         "",
         "======== seed:admin summary ==============================================",
         `Mongo database:              ${DB_NAME}`,
-        "Mongo writes:                tenant, Super-Agent persona, admin user, membership, default portfolio/account/watchlist, admin_user_settings (upsert)",
+        "Mongo writes:                tenant, Super-Agent (inline + seed:xpersonas from atx-docs/rag-collection/xpersonas), admin user (subscriptionPlan basic), membership, default portfolio/account/watchlist, admin_user_settings",
         String(process.env.SKIP_SEED_XPERSONAS ?? "").match(/^(1|true|yes)$/i)
           ? "xPersonas from disk:       skipped (SKIP_SEED_XPERSONAS)"
-          : "xPersonas from disk:       seed:xpersonas (atx-rag-collection/xpersonas → xchat_personas) after this summary",
+          : "xPersonas from disk:       seed:xpersonas (atx-docs/rag-collection/xpersonas → xchat_personas) before summary JSON",
         String(process.env.SKIP_SEED_OPTIONS_STRATEGY_PREFS ?? "").match(/^(1|true|yes)$/i)
           ? "Options strategy prefs:    skipped (SKIP_SEED_OPTIONS_STRATEGY_PREFS)"
           : "Options strategy prefs:    atx-rag-collection/options-strategy → options_strategy_preferences",
@@ -749,9 +780,6 @@ async function seed() {
   } finally {
     await client.close();
   }
-  const xpersonasSyncSummary = runPostSeedXpersonasFromDisk();
-  const strategySyncSummary = runPostSeedOptionsStrategyPreferencesFromDisk();
-  runPostSeedOptionsStrategyFromDisk();
   appendAdminSeedLog({
     summaryLine:
       `[seed:admin] db=${DB_NAME} ` +

@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  DESK_OUTLOOK_LABELS,
+  DESK_RISK_DISPLAY_LABELS
+} from "@/modules/core-admin/desk-fields";
+import type { AccountOutlook } from "@/modules/core-admin/types";
+
 type ScoringFactorRow = {
   id: string;
   weight: number;
@@ -17,9 +23,9 @@ type ContextPayload = {
     id: string | null;
     name: string;
     riskProfile: "conservative" | "balanced" | "growth" | null;
-    outlook: string | null;
+    outlook: AccountOutlook | null;
   };
-  bookOutlookText: string | null;
+  bookOutlook: AccountOutlook | null;
   bookRiskProfile: "conservative" | "balanced" | "growth" | null;
   scoringFactors: ScoringFactorRow[];
 };
@@ -52,19 +58,36 @@ const WEEK_CHIPS: { label: string; days: number }[] = [
   { label: "4 wk", days: 28 }
 ];
 
-function riskLabel(r: ContextPayload["account"]["riskProfile"]): string {
-  if (r === "conservative") return "Conservative";
-  if (r === "growth") return "Growth";
-  if (r === "balanced") return "Balanced";
+const MOVE_PCTS = [5, 10, 15] as const;
+
+function riskLabel(r: ContextPayload["account"]["riskProfile"] | null | undefined): string {
+  if (r === "conservative" || r === "balanced" || r === "growth") {
+    return DESK_RISK_DISPLAY_LABELS[r];
+  }
   return "—";
 }
 
-function mergedServerOutlook(ctx: ContextPayload | null): string {
+function outlookLabel(o: AccountOutlook | null | undefined): string {
+  if (o === "bullish" || o === "neutral" || o === "bearish") {
+    return DESK_OUTLOOK_LABELS[o];
+  }
+  return "—";
+}
+
+function mergedOutlookLabels(ctx: ContextPayload | null): string {
   if (!ctx) return "";
-  const desk = ctx.account.outlook ? String(ctx.account.outlook) : "";
-  const book = ctx.bookOutlookText?.trim() ?? "";
-  if (desk && book) return `${desk} · ${book}`;
-  return desk || book || "";
+  const la = outlookLabel(ctx.account.outlook);
+  const lb = outlookLabel(ctx.bookOutlook);
+  if (la !== "—" && lb !== "—" && la !== lb) {
+    return `${la} · ${lb}`;
+  }
+  if (la !== "—") {
+    return la;
+  }
+  if (lb !== "—") {
+    return lb;
+  }
+  return "";
 }
 
 export function XoptionsStrategyBuilderWorkspace() {
@@ -76,10 +99,9 @@ export function XoptionsStrategyBuilderWorkspace() {
   const [symbol, setSymbol] = useState("");
   const [snapshot, setSnapshot] = useState<SnapshotPayload | null>(null);
   const [snapLoading, setSnapLoading] = useState(false);
-  const [deskEditOpen, setDeskEditOpen] = useState(false);
   const [weeks, setWeeks] = useState(14);
 
-  const [outlookOverride, setOutlookOverride] = useState("");
+  const [outlookOverride, setOutlookOverride] = useState<"" | AccountOutlook>("");
   const [riskOverride, setRiskOverride] = useState<"" | "conservative" | "balanced" | "growth">("");
   const [factorWeights, setFactorWeights] = useState<{ id: string; weight: number; label: string }[] | null>(null);
 
@@ -155,9 +177,10 @@ export function XoptionsStrategyBuilderWorkspace() {
   }, [symbol]);
 
   const effectiveOutlook = useMemo(() => {
-    const o = outlookOverride.trim();
-    if (o.length > 0) return o;
-    return mergedServerOutlook(ctx);
+    if (outlookOverride !== "") {
+      return outlookLabel(outlookOverride);
+    }
+    return mergedOutlookLabels(ctx);
   }, [ctx, outlookOverride]);
 
   const effectiveRisk = useMemo(() => {
@@ -173,11 +196,6 @@ export function XoptionsStrategyBuilderWorkspace() {
   );
   const weightOk = Math.abs(weightSum - 1) < 0.02;
 
-  const scoringSummaryCollapsed = useMemo(() => {
-    if (effectiveFactors.length === 0) return "No scoring factors — defaults apply when missing.";
-    return effectiveFactors.map((f) => `${f.label} (${(f.weight * 100).toFixed(0)}%)`).join(" · ");
-  }, [effectiveFactors]);
-
   function resetDeskToPortfolio() {
     setOutlookOverride("");
     setRiskOverride("");
@@ -192,6 +210,17 @@ export function XoptionsStrategyBuilderWorkspace() {
     }
   }
 
+  function resetWeightsToPortfolio() {
+    if (!ctx) return;
+    setFactorWeights(
+      ctx.scoringFactors.map((f) => ({
+        id: f.id,
+        weight: f.weight,
+        label: f.label
+      }))
+    );
+  }
+
   function updateFactorWeight(id: string, pct: number) {
     setFactorWeights((prev) => {
       const base = prev ?? [];
@@ -202,27 +231,53 @@ export function XoptionsStrategyBuilderWorkspace() {
   }
 
   return (
-    <div className="xoptions-workspace space-y-5 max-w-3xl">
-      <div className="xoptions-top-band">
-        <header className="xoptions-workspace-header xoptions-workspace-header--compact">
-          <p className="xoptions-workspace-header__eyebrow">xoptions</p>
-          <h1 className="xoptions-workspace-header__title">Strategy builder</h1>
-          <p className="xoptions-workspace-header__lead">
-            Default portfolio, desk, and watchlist. Set outlook and scoring if needed, pick an expiration window, enter a
-            symbol, then open the chain.
-          </p>
-        </header>
+    <div className="xoptions-workspace space-y-4 max-w-3xl">
+      <p className="xoptions-page-kicker">xoptions · Strategy builder</p>
 
-        <aside className="xoptions-top-band__glance min-w-0" aria-label="At a glance">
-          <div className="xoptions-at-a-glance">
+      <section className="xoptions-top-option-header" aria-label="Account, target horizon, and at a glance">
+        <div className="xoptions-top-option-header__col xoptions-top-option-header__col--account min-w-0">
+          <p className="xoptions-top-option-header__label">Account</p>
+          <p className="xoptions-top-option-header__stat">{ctx?.account.name ?? "—"}</p>
+          <p className="xoptions-top-option-header__hint">{ctx?.portfolio?.name ?? "Default portfolio"}</p>
+          <div className="xoptions-top-option-header__desk">
+            <p className="xoptions-top-option-header__desk-line line-clamp-2">
+              <span className="xoptions-inline-muted">Outlook </span>
+              {effectiveOutlook || "—"}
+            </p>
+            <p className="xoptions-top-option-header__desk-line">
+              <span className="xoptions-inline-muted">Risk </span>
+              {ctx ? effectiveRisk : "—"}
+            </p>
+          </div>
+        </div>
+
+        <div className="xoptions-top-option-header__col min-w-0">
+          <p className="xoptions-top-option-header__label">Target expiration</p>
+          <div className="xoptions-top-option-header__chips">
+            {WEEK_CHIPS.map((w) => (
+              <button
+                key={w.days}
+                type="button"
+                className={`xoptions-choice xoptions-choice--header ${weeks === w.days ? "xoptions-choice--active" : ""}`}
+                onClick={() => setWeeks(w.days)}
+              >
+                {w.label}
+              </button>
+            ))}
+          </div>
+          <p className="xoptions-top-option-header__hint">~{weeks}d in chain</p>
+        </div>
+
+        <aside className="xoptions-top-option-header__col xoptions-top-option-header__col--glance min-w-0" aria-label="At a glance">
+          <div className="xoptions-at-a-glance xoptions-at-a-glance--header">
             <p className="xoptions-at-a-glance__head">At a glance</p>
             <div className="xoptions-at-a-glance__grid">
               <div className="min-w-0">
-                <p className="xoptions-at-a-glance__title">Top holdings</p>
-                <p className="xoptions-at-a-glance__sub">By market value</p>
+                <p className="xoptions-at-a-glance__title">Holdings</p>
+                <p className="xoptions-at-a-glance__sub">By value</p>
                 <ul className="xoptions-at-a-glance__list">
                   {holdings.length === 0 ? (
-                    <li className="xoptions-at-a-glance__sub">No stock positions.</li>
+                    <li className="xoptions-at-a-glance__sub">None.</li>
                   ) : (
                     holdings.map((row) => (
                       <li key={row.symbol}>
@@ -233,8 +288,7 @@ export function XoptionsStrategyBuilderWorkspace() {
                         >
                           <span className="xoptions-symbol-row__sym">{row.symbol}</span>
                           <span className="xoptions-symbol-row__meta">
-                            {row.lastPrice != null ? `≈ $${row.lastPrice.toFixed(2)}` : "—"}
-                            <span className="opacity-90"> · mv ${row.marketValue.toFixed(0)}</span>
+                            {row.lastPrice != null ? `$${row.lastPrice.toFixed(2)}` : "—"} · ${row.marketValue.toFixed(0)}
                           </span>
                         </button>
                       </li>
@@ -243,12 +297,12 @@ export function XoptionsStrategyBuilderWorkspace() {
                 </ul>
               </div>
               <div className="min-w-0">
-                <p className="xoptions-at-a-glance__title">Hot watchlist</p>
-                <p className="xoptions-at-a-glance__sub">IV &gt; 70%, OI &gt; 100 · nearest exp</p>
+                <p className="xoptions-at-a-glance__title">Hot list</p>
+                <p className="xoptions-at-a-glance__sub">IV/OI</p>
                 <ul className="xoptions-at-a-glance__list">
                   {hot.length === 0 ? (
                     <li className="xoptions-at-a-glance__sub">
-                      No matches{hotMeta ? ` (${hotMeta.scanned} scanned)` : ""}.
+                      —{hotMeta ? ` (${hotMeta.scanned})` : ""}
                     </li>
                   ) : (
                     hot.map((row) => (
@@ -260,8 +314,7 @@ export function XoptionsStrategyBuilderWorkspace() {
                         >
                           <span className="xoptions-symbol-row__sym">{row.symbol}</span>
                           <span className="xoptions-symbol-row__meta">
-                            IV {row.impliedVolatilityPercent.toFixed(1)}% · OI {row.openInterest.toLocaleString()} ·{" "}
-                            {row.contractType} {row.strike}
+                            {row.impliedVolatilityPercent.toFixed(0)}% · {row.openInterest.toLocaleString()}
                           </span>
                         </button>
                       </li>
@@ -272,83 +325,166 @@ export function XoptionsStrategyBuilderWorkspace() {
             </div>
           </div>
         </aside>
-      </div>
+      </section>
 
       {ctxErr ? <p className="xoptions-alert">{ctxErr}</p> : null}
 
-      <section className="xoptions-panel p-3" aria-label="Account, horizon, and desk context">
-        <div className="xoptions-account-expiry-row">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-              <div className="min-w-0">
-                <p className="xoptions-workspace__label">Account</p>
-                <p className="xoptions-workspace__stat text-base font-semibold md:text-lg">{ctx?.account.name ?? "—"}</p>
-                <p className="xoptions-hint text-xs">{ctx?.portfolio?.name ?? "Default portfolio"}</p>
-              </div>
-              <div className="text-right text-xs xoptions-workspace__body sm:text-sm">
-                <p className="line-clamp-2">
-                  <span className="xoptions-inline-muted">Outlook </span>
-                  <span className="xoptions-workspace__stat">{effectiveOutlook || "—"}</span>
+      <section className="xoptions-panel p-2.5" aria-label="Scoring, symbol, market, and price levels">
+        <div className="xoptions-mid-three">
+          <div className="xoptions-mid-three__col min-w-0">
+            <p className="xoptions-mid-three__label" id="scoringFactors-label">
+              Scoring factors
+            </p>
+            <details
+              id="scoringFactors"
+              className="xoptions-scoring-drop"
+              aria-labelledby="scoringFactors-label"
+            >
+              <summary className="xoptions-scoring-drop__summary">
+                <span className="xoptions-scoring-drop__summary-text">View / edit weights</span>
+                <span className="xoptions-scoring-drop__chev" aria-hidden>
+                  ▾
+                </span>
+              </summary>
+              <div className="xoptions-scoring-drop__body">
+                <ul className="xoptions-scoring-drop__factors">
+                  {effectiveFactors.length === 0 ? (
+                    <li className="xoptions-hint text-xs list-none">No factors — portfolio defaults apply.</li>
+                  ) : (
+                    effectiveFactors.map((f) => (
+                      <li key={f.id} className="xoptions-scoring-drop__factor-row">
+                        <span className="xoptions-scoring-drop__factor-label">{f.label}</span>
+                        <input
+                          type="number"
+                          className="crud-input xoptions-scoring-drop__factor-input font-mono"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={Math.round(f.weight * 1000) / 10}
+                          onChange={(e) => updateFactorWeight(f.id, Number(e.target.value))}
+                          aria-label={`Weight percent for ${f.label}`}
+                        />
+                        <span className="xoptions-inline-muted">%</span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+                <p className={`text-xs ${weightOk ? "xoptions-hint" : "xoptions-warning"}`}>
+                  Sum {(weightSum * 100).toFixed(1)}% (target 100%)
                 </p>
-                <p>
-                  <span className="xoptions-inline-muted">Risk </span>
-                  <span className="xoptions-workspace__stat">{ctx ? effectiveRisk : "—"}</span>
-                </p>
+                <button type="button" className="xoptions-text-link text-xs" onClick={resetWeightsToPortfolio}>
+                  Reset weights
+                </button>
               </div>
-            </div>
+            </details>
           </div>
 
-          <div className="xoptions-expiry-col">
-            <p className="xoptions-workspace__label mb-1.5">Target expiration</p>
-            <div className="xoptions-choice-row">
-              {WEEK_CHIPS.map((w) => (
-                <button
-                  key={w.days}
-                  type="button"
-                  className={`xoptions-choice ${weeks === w.days ? "xoptions-choice--active" : ""}`}
-                  onClick={() => setWeeks(w.days)}
-                >
-                  {w.label}
-                </button>
-              ))}
-            </div>
-            <p className="xoptions-hint mt-1.5 text-xs leading-snug">
-              Chain: pick exp nearest ~{weeks} calendar days.
-            </p>
+          <div className="xoptions-mid-three__col min-w-0">
+            <label className="xoptions-mid-three__label block" htmlFor="xo-symbol">
+              Symbol
+            </label>
+            <input
+              id="xo-symbol"
+              className="crud-input mt-0.5 w-full max-w-[14rem] font-mono text-sm uppercase"
+              placeholder="e.g. TSLA"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              aria-label="Underlying symbol"
+            />
+          </div>
+
+          <div className="xoptions-mid-three__col xoptions-mid-three__col--quote min-w-0" role="status" aria-live="polite">
+            <p className="xoptions-mid-three__label">Market</p>
+            {symbol.trim().length === 0 ? (
+              <p className="xoptions-mid-three__quote-muted">Enter symbol</p>
+            ) : snapLoading ? (
+              <p className="xoptions-mid-three__quote-muted">Loading…</p>
+            ) : snapshot ? (
+              <div className="xoptions-mid-three__quote-stack">
+                <p className="xoptions-mid-three__quote-line">
+                  <span className="xoptions-mid-three__quote-k">Last</span>{" "}
+                  <span className="xoptions-mid-three__quote-val font-mono">
+                    {snapshot.lastPrice != null ? snapshot.lastPrice.toFixed(2) : "—"}
+                  </span>
+                  {snapshot.currency ? (
+                    <span className="xoptions-mid-three__quote-ccy"> {snapshot.currency}</span>
+                  ) : null}
+                </p>
+                <p className="xoptions-mid-three__quote-line">
+                  <span className="xoptions-mid-three__quote-k">RSI 14d</span>{" "}
+                  <span className="xoptions-mid-three__quote-val font-mono">
+                    {snapshot.rsi14 != null ? snapshot.rsi14.toFixed(1) : "—"}
+                  </span>
+                </p>
+              </div>
+            ) : (
+              <p className="xoptions-mid-three__quote-muted">No quote</p>
+            )}
+          </div>
+
+          <div
+            className="xoptions-mid-three__col xoptions-moves min-w-0"
+            aria-label="Last price plus and minus five, ten, and fifteen percent"
+          >
+            <p className="xoptions-mid-three__label">±5/10/15%</p>
+            {symbol.trim().length === 0 ? (
+              <p className="xoptions-mid-three__quote-muted">—</p>
+            ) : snapLoading ? (
+              <p className="xoptions-mid-three__quote-muted">…</p>
+            ) : snapshot && snapshot.lastPrice != null ? (
+              (() => {
+                const lastPx = snapshot.lastPrice;
+                return (
+              <div className="xoptions-moves__grid">
+                {MOVE_PCTS.map((pct) => (
+                  <p key={`up-${pct}`} className="xoptions-moves__line">
+                    <span className="xoptions-moves__tag xoptions-moves__tag--up">+{pct}%</span>
+                    <span className="xoptions-moves__px font-mono">
+                      {(lastPx * (1 + pct / 100)).toFixed(2)}
+                    </span>
+                  </p>
+                ))}
+                {MOVE_PCTS.map((pct) => (
+                  <p key={`dn-${pct}`} className="xoptions-moves__line">
+                    <span className="xoptions-moves__tag xoptions-moves__tag--dn">−{pct}%</span>
+                    <span className="xoptions-moves__px font-mono">
+                      {(lastPx * (1 - pct / 100)).toFixed(2)}
+                    </span>
+                  </p>
+                ))}
+              </div>
+                );
+              })()
+            ) : (
+              <p className="xoptions-mid-three__quote-muted">—</p>
+            )}
           </div>
         </div>
 
-        <p className="xoptions-hint mt-2 line-clamp-2 text-xs" aria-hidden={deskEditOpen}>
-          <span className="opacity-80">Scoring · </span>
-          {scoringSummaryCollapsed}
-        </p>
-
-        <button
-          type="button"
-          className="xoptions-desk-toggle mt-2"
-          onClick={() => setDeskEditOpen((o) => !o)}
-          aria-expanded={deskEditOpen}
-        >
-          <span>{deskEditOpen ? "Hide desk & scoring" : "Edit outlook, risk & scoring"}</span>
-          <span aria-hidden className="xoptions-desk-toggle__chev">
-            {deskEditOpen ? "▼" : "▶"}
-          </span>
-        </button>
-
-        {deskEditOpen ? (
-          <div className="xoptions-workspace__divider space-y-4">
+        <details className="xoptions-desk-drop">
+          <summary className="xoptions-desk-drop__summary">Outlook & risk (session)</summary>
+          <div className="xoptions-desk-drop__body space-y-3">
             <div>
               <label className="xoptions-workspace__label block" htmlFor="xo-outlook">
-                Outlook (overrides desk line for this session)
+                Outlook override
               </label>
-              <textarea
+              <select
                 id="xo-outlook"
-                className="crud-input mt-1"
-                rows={3}
-                placeholder={mergedServerOutlook(ctx) || "e.g. income · neutral"}
+                className="crud-input mt-1 w-full max-w-xs"
                 value={outlookOverride}
-                onChange={(e) => setOutlookOverride(e.target.value)}
-              />
+                onChange={(e) =>
+                  setOutlookOverride(
+                    e.target.value === "" ? "" : (e.target.value as AccountOutlook)
+                  )
+                }
+              >
+                <option value="">
+                  Use account / book ({mergedOutlookLabels(ctx) || "—"})
+                </option>
+                <option value="bullish">{DESK_OUTLOOK_LABELS.bullish}</option>
+                <option value="neutral">{DESK_OUTLOOK_LABELS.neutral}</option>
+                <option value="bearish">{DESK_OUTLOOK_LABELS.bearish}</option>
+              </select>
             </div>
             <div>
               <label className="xoptions-workspace__label block" htmlFor="xo-risk">
@@ -369,77 +505,14 @@ export function XoptionsStrategyBuilderWorkspace() {
                 <option value="">Use portfolio / account ({riskLabel(ctx?.account.riskProfile ?? ctx?.bookRiskProfile ?? null)})</option>
                 <option value="conservative">Conservative</option>
                 <option value="balanced">Balanced</option>
-                <option value="growth">Growth</option>
+                <option value="growth">{DESK_RISK_DISPLAY_LABELS.growth}</option>
               </select>
             </div>
-            <div>
-              <p className="xoptions-workspace__label">Scoring factor weights</p>
-              <ul className="mt-2 space-y-2">
-                {effectiveFactors.map((f) => (
-                  <li key={f.id} className="flex flex-wrap items-center gap-3 text-sm xoptions-workspace__body">
-                    <span className="min-w-[8rem]">{f.label}</span>
-                    <input
-                      type="number"
-                      className="crud-input w-20 font-mono"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={Math.round(f.weight * 1000) / 10}
-                      onChange={(e) => updateFactorWeight(f.id, Number(e.target.value))}
-                      aria-label={`Weight percent for ${f.label}`}
-                    />
-                    <span className="xoptions-inline-muted">%</span>
-                  </li>
-                ))}
-              </ul>
-              <p className={`mt-2 text-xs ${weightOk ? "xoptions-hint" : "xoptions-warning"}`}>
-                Weights sum to {(weightSum * 100).toFixed(1)}% — target 100% for a normalized composite (session-only;
-                persist via Portfolio when wired).
-              </p>
-            </div>
             <button type="button" className="xoptions-text-link text-sm" onClick={resetDeskToPortfolio}>
-              Reset to portfolio
+              Reset desk to portfolio
             </button>
           </div>
-        ) : null}
-      </section>
-
-      <section className="xoptions-symbol-group" aria-label="Symbol and quote">
-        <div className="xoptions-symbol-strip">
-          <div className="xoptions-symbol-strip__field">
-            <p className="xoptions-workspace__label mb-1">Symbol</p>
-            <input
-              className="crud-input font-mono text-sm uppercase"
-              placeholder="e.g. TSLA"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              aria-label="Underlying symbol"
-            />
-          </div>
-          <div className="xoptions-symbol-quote-inline pb-0.5" role="status" aria-live="polite">
-            {symbol.trim().length === 0 ? (
-              <span className="xoptions-hint text-xs">Last · RSI</span>
-            ) : snapLoading ? (
-              <span className="xoptions-hint text-xs">Loading…</span>
-            ) : snapshot ? (
-              <>
-                <span className="xoptions-symbol-quote-inline__muted">Last </span>
-                <span className="xoptions-symbol-quote-inline__stat">
-                  {snapshot.lastPrice != null ? snapshot.lastPrice.toFixed(2) : "—"}
-                </span>
-                {snapshot.currency ? (
-                  <span className="xoptions-symbol-quote-inline__muted"> {snapshot.currency}</span>
-                ) : null}
-                <span className="xoptions-symbol-quote-inline__muted"> · RSI </span>
-                <span className="xoptions-symbol-quote-inline__stat">
-                  {snapshot.rsi14 != null ? snapshot.rsi14.toFixed(1) : "—"}
-                </span>
-              </>
-            ) : (
-              <span className="xoptions-hint text-xs">No quote</span>
-            )}
-          </div>
-        </div>
+        </details>
       </section>
 
       <div>

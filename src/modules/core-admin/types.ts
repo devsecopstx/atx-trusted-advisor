@@ -1,5 +1,7 @@
 import { ObjectId } from "mongodb";
 
+import type { SubscriptionPlan } from "@/lib/subscription-plan";
+
 import type { PortfolioScoringFactor } from "./scoring-factors";
 
 export const accessRequestStatusValues = [
@@ -34,7 +36,7 @@ export type AccessRequest = {
   contactEmail?: string;
   /** Product roles + `global_admin` (elevated; admin-created or seed paper trail — not self-service). */
   requestedRole: "global_admin" | "advisor" | "operator" | "viewer";
-  requestedPlan: "free" | "pro" | "enterprise";
+  requestedPlan: import("@/lib/subscription-plan").SubscriptionPlan;
   reason: string;
   status: AccessRequestStatus;
   requestedAt: Date;
@@ -51,7 +53,7 @@ export type AccessRequestUserSummary = {
   email?: string;
   status?: "active" | "suspended";
   roles?: ("global_admin" | "advisor" | "operator" | "viewer")[];
-  subscriptionPlan?: "free" | "pro" | "enterprise";
+  subscriptionPlan?: SubscriptionPlan;
   xUserId?: string;
   username?: string;
   displayName?: string;
@@ -72,7 +74,7 @@ export type ApprovedUserListItem = {
   name: string;
   email: string;
   role: "global_admin" | "advisor" | "operator" | "viewer" | "unknown";
-  subscriptionPlan: "free" | "pro" | "enterprise";
+  subscriptionPlan: SubscriptionPlan;
   approvedAt?: Date;
 };
 
@@ -182,16 +184,29 @@ export type DeployNoteConfig = {
 export const accountTypeValues = ["merrill", "fidelity", "etrade", "ibkr"] as const;
 export type AccountType = (typeof accountTypeValues)[number];
 
-/** Account positioning outlook (admin pick list); user surfaces may concatenate with other context. */
-export const accountOutlookValues = ["growth", "income", "balanced", "aggressive"] as const;
+/** Account / book market outlook (desk pick list). */
+export const accountOutlookValues = ["bullish", "neutral", "bearish"] as const;
 export type AccountOutlook = (typeof accountOutlookValues)[number];
+
+const LEGACY_ACCOUNT_OUTLOOK: Readonly<Record<string, AccountOutlook>> = {
+  bullish: "bullish",
+  neutral: "neutral",
+  bearish: "bearish",
+  growth: "bullish",
+  aggressive: "bullish",
+  balanced: "neutral",
+  income: "bearish"
+};
 
 export function parseAccountOutlook(raw: unknown): AccountOutlook | null {
   if (typeof raw !== "string") {
     return null;
   }
   const t = raw.trim().toLowerCase();
-  return (accountOutlookValues as readonly string[]).includes(t) ? (t as AccountOutlook) : null;
+  if ((accountOutlookValues as readonly string[]).includes(t)) {
+    return t as AccountOutlook;
+  }
+  return LEGACY_ACCOUNT_OUTLOOK[t] ?? null;
 }
 
 /** Admin-managed broker definitions (slug + display); seeds Merrill / Fidelity / E*TRADE / IBKR. */
@@ -275,8 +290,8 @@ export type Portfolio = {
   tenantPortfolioOrgKey?: string;
   /** Book-level risk stance for desk context (optional). */
   riskProfile?: "conservative" | "balanced" | "growth";
-  /** Free-text market / positioning outlook for this book (optional). */
-  outlook?: string;
+  /** Book-level market outlook slug (optional); same values as {@link Account.outlook}. */
+  outlook?: AccountOutlook | null;
   /**
    * Optional portfolio scoring factor weights for chain / recommendation ranking (defaults when absent).
    * Weights must sum to 1; defaults in `scoring-factors.ts`.

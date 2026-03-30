@@ -9,6 +9,7 @@ import {
 } from "@/modules/core-admin/scoring-factors";
 import { getTenantPortfolioOrgKey } from "@/modules/core-admin/tenant-portfolio-org";
 import type { AccountOutlook, Portfolio } from "@/modules/core-admin/types";
+import { parseAccountOutlook } from "@/modules/core-admin/types";
 
 const DEFAULT_COALESCE_CASH = 25_000;
 
@@ -37,8 +38,14 @@ function riskLevelFromProfile(
 function strategyFromOutlook(
   outlook: AccountOutlook | null | undefined
 ): "growth" | "income" | "balanced" | "aggressive" {
-  if (outlook === "growth" || outlook === "income" || outlook === "balanced" || outlook === "aggressive") {
-    return outlook;
+  if (outlook === "bullish") {
+    return "aggressive";
+  }
+  if (outlook === "bearish") {
+    return "income";
+  }
+  if (outlook === "neutral") {
+    return "balanced";
   }
   return "balanced";
 }
@@ -99,7 +106,7 @@ export async function buildPortfolioSummaryPayload(
     name: portfolio.name?.length ? portfolio.name : "Default Portfolio",
     accounts: accounts.map((account) => {
       const riskProfile = account.riskProfile ?? null;
-      const outlook = account.outlook ?? null;
+      const outlook = parseAccountOutlook(account.outlook ?? null);
       return {
         _id: account._id?.toHexString(),
         name: account.name ?? "Account",

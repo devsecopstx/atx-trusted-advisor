@@ -8,8 +8,7 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
-import type { AccountOutlook, Portfolio } from "@/modules/core-admin/types";
-import { normalizePositionType } from "@/modules/core-admin/types";
+import { type AccountOutlook, normalizePositionType, parseAccountOutlook, type Portfolio } from "@/modules/core-admin/types";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
@@ -27,7 +26,7 @@ export type FindOptionsContextPayload = {
     riskProfile: "conservative" | "balanced" | "growth" | null;
     outlook: AccountOutlook | null;
   };
-  bookOutlookText: string | null;
+  bookOutlook: AccountOutlook | null;
   bookRiskProfile: Portfolio["riskProfile"] | null;
   scoringFactors: ReturnType<typeof scoringFactorsPayloadForAdminApi>["scoringFactors"];
 };
@@ -58,7 +57,7 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
         riskProfile: null,
         outlook: null
       },
-      bookOutlookText: null,
+      bookOutlook: null,
       bookRiskProfile: null,
       scoringFactors: scoringFactorsPayloadForAdminApi(undefined).scoringFactors
     };
@@ -86,9 +85,7 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
       riskProfile: defaultAccount?.riskProfile ?? null,
       outlook: defaultAccount?.outlook ?? null
     },
-    bookOutlookText: typeof portfolio.outlook === "string" && portfolio.outlook.trim().length > 0
-      ? portfolio.outlook.trim()
-      : null,
+    bookOutlook: parseAccountOutlook(portfolio.outlook ?? null),
     bookRiskProfile: portfolio.riskProfile ?? null,
     scoringFactors
   };

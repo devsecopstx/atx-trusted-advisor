@@ -1,51 +1,29 @@
 import type { AtxBillingPlanId } from "@/lib/atx-billing-plans";
+import {
+    strictParseSubscriptionPlan,
+    SUBSCRIPTION_PLAN_LABELS,
+    SUBSCRIPTION_PLAN_SELECT_OPTIONS,
+    type SubscriptionPlan
+} from "@/lib/subscription-plan";
 
-export type AccessRequestPlanValue = "free" | "pro" | "enterprise";
+export type AccessRequestPlanValue = SubscriptionPlan;
 
-export const ACCESS_REQUEST_PLAN_OPTIONS: ReadonlyArray<{
-  value: AccessRequestPlanValue;
-  label: string;
-}> = [
-  { value: "free", label: "Basic" },
-  { value: "pro", label: "Premium" },
-  { value: "enterprise", label: "Premium+" }
-] as const;
+export const ACCESS_REQUEST_PLAN_OPTIONS = SUBSCRIPTION_PLAN_SELECT_OPTIONS;
 
-const ACCESS_REQUEST_PLAN_ALIAS_TO_VALUE: Record<string, AccessRequestPlanValue> = {
-  basic: "free",
-  free: "free",
-  premium: "pro",
-  pro: "pro",
-  premium_monthly: "pro",
-  "premium+": "enterprise",
-  premium_plus: "enterprise",
-  premium_plus_monthly: "enterprise",
-  premium_plus_yearly: "enterprise",
-  enterprise: "enterprise"
-};
-
-export function parseAccessRequestPlanInput(input: unknown): AccessRequestPlanValue | null {
-  if (typeof input !== "string") {
-    return null;
-  }
-  const normalized = input.trim().toLowerCase();
-  if (!normalized) {
-    return null;
-  }
-  return ACCESS_REQUEST_PLAN_ALIAS_TO_VALUE[normalized] ?? null;
+export function parseAccessRequestPlanInput(input: unknown): SubscriptionPlan | null {
+  return strictParseSubscriptionPlan(input);
 }
 
-export function accessRequestPlanLabel(value: AccessRequestPlanValue): string {
-  const hit = ACCESS_REQUEST_PLAN_OPTIONS.find((option) => option.value === value);
-  return hit?.label ?? "Basic";
+export function accessRequestPlanLabel(value: SubscriptionPlan): string {
+  return SUBSCRIPTION_PLAN_LABELS[value];
 }
 
-export function accessRequestPlanFromBillingPlanId(planId: AtxBillingPlanId): AccessRequestPlanValue {
+export function accessRequestPlanFromBillingPlanId(planId: AtxBillingPlanId): SubscriptionPlan {
   if (planId === "premium_monthly") {
-    return "pro";
+    return "premium";
   }
   if (planId === "premium_plus_monthly") {
-    return "enterprise";
+    return "premium_plus";
   }
-  return "free";
+  return "basic";
 }

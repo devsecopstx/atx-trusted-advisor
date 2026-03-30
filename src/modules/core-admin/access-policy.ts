@@ -1,3 +1,4 @@
+import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import type {
     AccessRequest,
     AccessRequestPolicyViolation,
@@ -9,7 +10,8 @@ import type { SubscriptionPlan } from "@/modules/identity/types";
 
 export type PolicyCheckInput = {
   requestedRole: AccessRequest["requestedRole"];
-  requestedPlan: AccessRequest["requestedPlan"];
+  /** Accepts canonical slugs or legacy `free` / `pro` / `enterprise` (normalized). */
+  requestedPlan: AccessRequest["requestedPlan"] | string;
   currentRoles: string[];
   currentPlan?: SubscriptionPlan;
   tenantId?: string;
@@ -19,6 +21,7 @@ export function checkAccessRequestPolicy(
   input: PolicyCheckInput
 ): AccessRequestPolicyViolation[] {
   const violations: AccessRequestPolicyViolation[] = [];
+  const requestedPlan = normalizeSubscriptionPlan(input.requestedPlan);
 
   if (input.currentRoles.includes(input.requestedRole)) {
     violations.push({
@@ -35,20 +38,20 @@ export function checkAccessRequestPolicy(
   }
 
   if (input.requestedRole !== "global_admin") {
-    if (input.requestedRole === "advisor" && input.requestedPlan === "free") {
+    if (input.requestedRole === "advisor" && requestedPlan === "basic") {
       violations.push({
         code: "ADVISOR_REQUIRES_PAID_PLAN",
-        message: "Advisor role requires Pro or Enterprise plan"
+        message: "Advisor role requires Premium or Premium+ plan"
       });
     }
 
     if (
-      input.requestedPlan === "enterprise" &&
+      requestedPlan === "premium_plus" &&
       input.requestedRole === "viewer"
     ) {
       violations.push({
         code: "ENTERPRISE_REQUIRES_ELEVATED_ROLE",
-        message: "Enterprise plan requires advisor or operator role"
+        message: "Premium+ plan requires advisor or operator role"
       });
     }
   }

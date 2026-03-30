@@ -51,7 +51,7 @@ describe("access request item CRUD route", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       userId: "507f1f77bcf86cd799439044",
       requestedRole: "viewer",
-      requestedPlan: "free",
+      requestedPlan: "basic",
       reason: "Need access",
       status: "pending",
       requestedAt: new Date("2026-03-16T00:00:00.000Z")
@@ -60,7 +60,7 @@ describe("access request item CRUD route", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       userId: "507f1f77bcf86cd799439044",
       requestedRole: "viewer",
-      requestedPlan: "pro",
+      requestedPlan: "premium",
       reason: "Need access",
       status: "pending",
       requestedAt: new Date("2026-03-16T00:00:00.000Z")
@@ -69,7 +69,7 @@ describe("access request item CRUD route", () => {
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       userId: "507f1f77bcf86cd799439044",
       requestedRole: "viewer",
-      requestedPlan: "pro",
+      requestedPlan: "premium",
       reason: "Need access",
       status: "approved",
       reviewedBy: "507f1f77bcf86cd799439011",
@@ -105,7 +105,7 @@ describe("access request item CRUD route", () => {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          requestedPlan: "pro",
+          requestedPlan: "premium",
           status: "approved"
         })
       }),

@@ -7,6 +7,7 @@ import { AddIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { ACCESS_REQUEST_PLAN_OPTIONS } from "@/lib/access-request-plans";
+import type { SubscriptionPlan } from "@/lib/subscription-plan";
 import { formatUserFacingIdentityLabel } from "@/lib/x-identity-email";
 
 type AccessRequestStatus = "new" | "triaged" | "pending" | "approved" | "rejected" | "expired";
@@ -15,7 +16,7 @@ type AccessRequest = {
   _id?: string;
   userId: string;
   requestedRole: "global_admin" | "advisor" | "operator" | "viewer";
-  requestedPlan: "free" | "pro" | "enterprise";
+  requestedPlan: SubscriptionPlan;
   reason: string;
   status: AccessRequestStatus;
   requestedAt: string;
@@ -156,7 +157,7 @@ export function AccessRequestsConsole() {
         const next = { ...previous };
         for (const item of payload.data) {
           if (!item._id) continue;
-          next[item._id] = previous[item._id] ?? item.requestedPlan ?? "free";
+          next[item._id] = previous[item._id] ?? item.requestedPlan ?? "basic";
         }
         return next;
       });
@@ -184,7 +185,7 @@ export function AccessRequestsConsole() {
             userId: userId || undefined,
             email: email || undefined,
             requestedRole: String(formData.get("requestedRole") ?? ""),
-            requestedPlan: String(formData.get("requestedPlan") ?? "free"),
+            requestedPlan: String(formData.get("requestedPlan") ?? "basic"),
             reason: String(formData.get("reason") ?? "")
           })
         })
@@ -240,7 +241,7 @@ export function AccessRequestsConsole() {
         method: "PUT",
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestedPlan: planEdits[requestId] ?? "free" })
+        body: JSON.stringify({ requestedPlan: planEdits[requestId] ?? "basic" })
       }));
       await refreshAccessRequests();
     } catch (error) {
@@ -294,7 +295,7 @@ export function AccessRequestsConsole() {
             <option value="operator">operator</option>
             <option value="viewer">viewer</option>
           </select>
-          <select defaultValue="free" name="requestedPlan">
+          <select defaultValue="basic" name="requestedPlan">
             {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -382,7 +383,7 @@ export function AccessRequestsConsole() {
                           if (!item._id) return;
                           setPlanEdits((p) => ({ ...p, [item._id as string]: e.target.value as AccessRequest["requestedPlan"] }));
                         }}
-                        value={item._id ? (planEdits[item._id] ?? item.requestedPlan) : "free"}
+                        value={item._id ? (planEdits[item._id] ?? item.requestedPlan) : "basic"}
                       >
                         {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>

@@ -6,6 +6,7 @@ import {
     computeNextRunAtFromSchedule,
     resolveScheduleDescription
 } from "@/lib/scheduled-task-schedule";
+import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
@@ -486,7 +487,7 @@ export async function createAccessRequest(
   const document: AccessRequest = {
     ...payload,
     tenantId: toTenantObjectId(payload.tenantId),
-    requestedPlan: payload.requestedPlan ?? "free",
+    requestedPlan: payload.requestedPlan ?? "basic",
     status: payload.status ?? "pending",
     requestedAt: payload.requestedAt ?? new Date()
   };
@@ -621,7 +622,7 @@ export async function listApprovedUsers(
       name,
       email: request.user?.email ?? "",
       role,
-      subscriptionPlan: request.user?.subscriptionPlan ?? "free",
+      subscriptionPlan: normalizeSubscriptionPlan(request.user?.subscriptionPlan ?? "basic"),
       approvedAt: request.reviewedAt
     });
   }
@@ -672,7 +673,7 @@ export async function listApprovedUsers(
         name: user.xAccount?.displayName ?? user.xAccount?.username ?? user.email,
         email: user.email,
         role: "global_admin",
-        subscriptionPlan: user.subscriptionPlan ?? "free"
+        subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan ?? "basic")
       });
     }
   }
@@ -3249,7 +3250,7 @@ export async function adminUpdatePortfolio(input: {
   ext_broker_ref?: string | null;
   broker_type?: string | null;
   riskProfile?: Portfolio["riskProfile"] | null;
-  outlook?: string | null;
+  outlook?: AccountOutlook | null;
   /** Validated rows, or null to unset (read path uses catalog defaults). */
   scoringFactors?: PortfolioScoringFactor[] | null;
   /** When true, clears `isDefault` on other portfolios for the same user (and tenant scope). */
@@ -3283,12 +3284,7 @@ export async function adminUpdatePortfolio(input: {
     fieldSet.riskProfile = input.riskProfile;
   }
   if (input.outlook !== undefined) {
-    if (input.outlook === null) {
-      fieldSet.outlook = null;
-    } else {
-      const o = input.outlook.trim();
-      fieldSet.outlook = o.length > 0 ? o.slice(0, 4000) : null;
-    }
+    fieldSet.outlook = input.outlook;
   }
   let unsetScoringFactors = false;
   if (input.scoringFactors !== undefined) {

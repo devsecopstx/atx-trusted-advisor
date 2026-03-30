@@ -37,7 +37,7 @@ export default async function AccountBillingPage({
   const openRegisterRaw = typeof sp.register === "string" ? sp.register : undefined;
   const openRegisterByDefault = openRegisterRaw === "1" || openRegisterRaw === "true";
   const guestRegisterDefaultPlan: AccessRequestPlanValue =
-    parseAccessRequestPlanInput(selectedGuestPlanRaw) ?? "free";
+    parseAccessRequestPlanInput(selectedGuestPlanRaw) ?? "basic";
 
   const checkoutReady = !guestReadonly && isStripeBillingFullyConfigured();
   const publishableConfigured = Boolean(getStripePublishableKey());

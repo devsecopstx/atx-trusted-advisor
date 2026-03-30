@@ -8,10 +8,8 @@ import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
 import { OptionsPayoffChart } from "@/app/xstrategybuilder/ui/options-payoff-chart";
 import type { OptionsPayoffLeg } from "@/lib/options-payoff";
-import {
-    INVESTMENT_STRATEGY_OPTIONS,
-    RISK_LEVEL_OPTIONS
-} from "@/modules/core-admin/portfolio-preference-labels";
+import { DESK_OUTLOOK_LABELS } from "@/modules/core-admin/desk-fields";
+import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
 
 import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
 
@@ -148,7 +146,7 @@ function outlookLabel(account: XsbWorkspaceAccount): string {
   if (account.outlook == null) {
     return "Not set";
   }
-  return INVESTMENT_STRATEGY_OPTIONS.find((o) => o.value === account.outlook)?.title ?? account.outlook;
+  return DESK_OUTLOOK_LABELS[account.outlook];
 }
 
 function tradeOutlookDisplay(o: TradeOutlook): string {

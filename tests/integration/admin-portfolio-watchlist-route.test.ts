@@ -38,7 +38,7 @@ function mockWatchlist() {
     portfolioId: new ObjectId(portfolioId),
     name: "DefaultWatchlist",
     riskProfile: "balanced" as const,
-    outlook: "growth" as const,
+    outlook: "bullish" as const,
     symbols: [{ symbol: "TSLA", addedAt: now }],
     isDefault: true,
     createdAt: now,
@@ -94,7 +94,7 @@ describe("/api/admin/portfolios/[portfolioId]/watchlist", () => {
     expect(json.data.symbols).toHaveLength(1);
     expect(json.data.symbols[0]?.symbol).toBe("TSLA");
     expect(json.data.riskProfile).toBe("balanced");
-    expect(json.data.outlook).toBe("growth");
+    expect(json.data.outlook).toBe("bullish");
     expect(repoMocks.getPortfolioWatchlist).toHaveBeenCalledWith({
       userId: "507f1f77bcf86cd799439011",
       portfolioId,

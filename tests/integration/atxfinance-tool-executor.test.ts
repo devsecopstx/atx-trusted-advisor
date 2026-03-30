@@ -340,7 +340,7 @@ describe("atxfinance tool executor", () => {
           }
         ],
         riskProfile: "growth",
-        outlook: "balanced"
+        outlook: "neutral"
       })
     );
   });

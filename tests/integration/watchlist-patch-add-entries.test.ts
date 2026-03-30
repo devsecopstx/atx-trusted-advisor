@@ -183,7 +183,7 @@ describe("PATCH /api/portfolios/:portfolioId/watchlist addEntries", () => {
       name: "Default",
       isDefault: true,
       riskProfile: "conservative",
-      outlook: "growth",
+      outlook: "bullish",
       createdAt: addedAt,
       updatedAt: addedAt,
       symbols: [{ symbol: "TSLA", addedAt }]
@@ -193,7 +193,7 @@ describe("PATCH /api/portfolios/:portfolioId/watchlist addEntries", () => {
       new Request("http://test/api/portfolios/p1/watchlist", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ riskProfile: "conservative", outlook: "growth" })
+        body: JSON.stringify({ riskProfile: "conservative", outlook: "bullish" })
       }),
       { params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" }) }
     );
@@ -203,7 +203,7 @@ describe("PATCH /api/portfolios/:portfolioId/watchlist addEntries", () => {
       expect.objectContaining({
         portfolioId: "507f1f77bcf86cd799439033",
         riskProfile: "conservative",
-        outlook: "growth"
+        outlook: "bullish"
       })
     );
   });

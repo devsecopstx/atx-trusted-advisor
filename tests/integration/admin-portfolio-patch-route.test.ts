@@ -31,7 +31,7 @@ function mockPortfolio(overrides: Partial<{ outlook: string | null }> = {}) {
     name: "Book A",
     isDefault: true,
     riskProfile: "balanced" as const,
-    outlook: overrides.outlook ?? "Risk-on",
+    outlook: overrides.outlook ?? "neutral",
     createdAt: now,
     updatedAt: now
   };
@@ -74,7 +74,7 @@ describe("PATCH /api/admin/portfolios/[portfolioId]", () => {
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ riskProfile: "growth", outlook: "Cautious near-term" })
+      body: JSON.stringify({ riskProfile: "growth", outlook: "bearish" })
     });
     const res = await patchAdminPortfolio(req, { params: Promise.resolve({ portfolioId }) });
     expect(res.status).toBe(200);
@@ -82,12 +82,12 @@ describe("PATCH /api/admin/portfolios/[portfolioId]", () => {
       data: { riskProfile: string | null; outlook: string | null };
     };
     expect(json.data.riskProfile).toBe("growth");
-    expect(json.data.outlook).toBe("Cautious near-term");
+    expect(json.data.outlook).toBe("bearish");
     expect(repoMocks.adminUpdatePortfolio).toHaveBeenCalledWith(
       expect.objectContaining({
         portfolioId,
         riskProfile: "growth",
-        outlook: "Cautious near-term"
+        outlook: "bearish"
       })
     );
   });

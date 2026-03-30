@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { normalizeSubscriptionPlan, zSubscriptionPlan } from "@/lib/subscription-plan";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import {
     deleteCoreUserById,
@@ -15,7 +16,7 @@ import type { CoreUser } from "@/modules/identity/types";
 const updateUserSchema = z.object({
   email: z.string().trim().email().optional(),
   role: z.enum(["global_admin", "advisor", "operator", "viewer"]).optional(),
-  subscriptionPlan: z.enum(["free", "pro", "enterprise"]).optional(),
+  subscriptionPlan: zSubscriptionPlan.optional(),
   status: z.enum(["active", "suspended"]).optional()
 }).refine(
   (value) =>
@@ -160,7 +161,7 @@ function serializeUser(user: CoreUser) {
     _id: user._id?.toHexString(),
     email: user.email,
     roles: user.roles,
-    subscriptionPlan: user.subscriptionPlan ?? "free",
+    subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     status: user.status,
     xAccount: user.xAccount
       ? {

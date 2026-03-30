@@ -79,7 +79,7 @@ export async function upsertCoreUserByEmail(input: {
     {
       $setOnInsert: {
         createdAt: now,
-        subscriptionPlan: "free"
+        subscriptionPlan: "basic"
       },
       $set: {
         email,
@@ -200,7 +200,7 @@ export async function createCoreUser(input: {
   const document: CoreUser = {
     email: normalizeEmail(input.email),
     roles: [input.role],
-    subscriptionPlan: input.subscriptionPlan ?? "free",
+    subscriptionPlan: input.subscriptionPlan ?? "basic",
     status: input.status ?? "active",
     createdAt: now,
     updatedAt: now
@@ -227,7 +227,7 @@ export async function ensureCoreUserByEmail(input: {
         email,
         roles: input.defaultRoles ?? [],
         status: input.defaultStatus ?? "active",
-        subscriptionPlan: "free",
+        subscriptionPlan: "basic",
         createdAt: now,
         updatedAt: now
       }

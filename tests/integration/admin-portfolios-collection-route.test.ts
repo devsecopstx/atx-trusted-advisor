@@ -87,7 +87,7 @@ describe("GET /api/admin/portfolios", () => {
             _id: new ObjectId(userId),
             email: "owner@test.local",
             roles: ["viewer"] as const,
-            subscriptionPlan: "free" as const,
+            subscriptionPlan: "basic" as const,
             status: "active" as const,
             createdAt: new Date(),
             updatedAt: new Date()

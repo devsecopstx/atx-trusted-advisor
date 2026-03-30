@@ -10,6 +10,7 @@ import { parseAccountOutlook, type AccountOutlook } from "@/modules/core-admin/t
 import {
     accountOutlookValues,
     DESK_OUTLOOK_LABELS,
+    DESK_RISK_DISPLAY_LABELS,
     DESK_RISK_PROFILE_OPTIONS,
     type DeskRiskProfileOption
 } from "./desk-risk-outlook-options";
@@ -46,7 +47,7 @@ type PortfolioMeta = {
   userEmail?: string | null;
   tenantPortfolioOrgKey?: string;
   riskProfile: DeskRiskProfileOption | null;
-  /** Book-level free text (distinct from account outlook slugs). */
+  /** Book-level outlook slug (same values as account outlook). */
   outlook: string | null;
 };
 
@@ -165,7 +166,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   const [cashEditText, setCashEditText] = useState<Record<string, string>>({});
   /** Book-level fields (PATCH portfolio); kept in sync on refresh. */
   const [portfolioRiskDraft, setPortfolioRiskDraft] = useState<DeskRiskProfileOption | "">("");
-  const [portfolioOutlookDraft, setPortfolioOutlookDraft] = useState("");
+  const [portfolioOutlookDraft, setPortfolioOutlookDraft] = useState<AccountOutlook | "">("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -198,7 +199,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
       };
       setPortfolio(po);
       setPortfolioRiskDraft(riskNorm ?? "");
-      setPortfolioOutlookDraft(po.outlook ?? "");
+      setPortfolioOutlookDraft(parseAccountOutlook(po.outlook) ?? "");
       setAccountCount(payload.data.accountCount);
       setTotalCashBalance(payload.data.totalCashBalance);
       setAccounts(
@@ -286,8 +287,8 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     if (riskDraft !== riskPrev) {
       return true;
     }
-    const outPrev = (portfolio.outlook ?? "").trim();
-    const outDraft = portfolioOutlookDraft.trim();
+    const outPrev = parseAccountOutlook(portfolio.outlook);
+    const outDraft = portfolioOutlookDraft === "" ? null : portfolioOutlookDraft;
     return outDraft !== outPrev;
   }, [portfolio, portfolioRiskDraft, portfolioOutlookDraft]);
 
@@ -303,10 +304,10 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     if (riskNext !== riskPrev) {
       body.riskProfile = riskNext;
     }
-    const outPrev = (portfolio.outlook ?? "").trim();
-    const outDraft = portfolioOutlookDraft.trim();
+    const outPrev = parseAccountOutlook(portfolio.outlook);
+    const outDraft = portfolioOutlookDraft === "" ? null : portfolioOutlookDraft;
     if (outDraft !== outPrev) {
-      body.outlook = outDraft.length > 0 ? outDraft : null;
+      body.outlook = outDraft;
     }
     return Object.keys(body).length > 0 ? body : null;
   };
@@ -541,7 +542,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                 <th>External ID</th>
                 <th>Cash balance</th>
                 <th title="Portfolio-wide desk risk (PATCH book)">Book risk</th>
-                <th title="Portfolio-wide desk outlook note (PATCH book)">Book outlook</th>
+                <th title="Portfolio-wide desk outlook (PATCH book)">Book outlook</th>
                 <th title="Per-account risk profile">Acct risk</th>
                 <th title="Per-account outlook slug">Acct outlook</th>
                 <th>Default</th>
@@ -570,7 +571,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                         <option value="">—</option>
                         {DESK_RISK_PROFILE_OPTIONS.map((v) => (
                           <option key={v} value={v}>
-                            {v}
+                            {DESK_RISK_DISPLAY_LABELS[v]}
                           </option>
                         ))}
                       </select>
@@ -580,13 +581,23 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                   </td>
                   <td style={{ minWidth: "10rem", verticalAlign: "top" }}>
                     {portfolio ? (
-                      <input
+                      <select
                         className="crud-input text-xs"
                         value={portfolioOutlookDraft}
-                        onChange={(e) => setPortfolioOutlookDraft(e.target.value)}
-                        placeholder="Short desk note"
+                        onChange={(e) =>
+                          setPortfolioOutlookDraft(
+                            e.target.value === "" ? "" : (e.target.value as AccountOutlook)
+                          )
+                        }
                         aria-label="Book outlook"
-                      />
+                      >
+                        <option value="">—</option>
+                        {accountOutlookValues.map((v) => (
+                          <option key={v} value={v}>
+                            {DESK_OUTLOOK_LABELS[v]}
+                          </option>
+                        ))}
+                      </select>
                     ) : (
                       <span className="status-text">—</span>
                     )}
@@ -712,7 +723,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                               <option value="">—</option>
                               {DESK_RISK_PROFILE_OPTIONS.map((v) => (
                                 <option key={v} value={v}>
-                                  {v}
+                                  {DESK_RISK_DISPLAY_LABELS[v]}
                                 </option>
                               ))}
                             </select>
@@ -721,13 +732,23 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                             </p>
                           </td>
                           <td rowSpan={rs} style={{ minWidth: "10rem", verticalAlign: "top" }}>
-                            <input
+                            <select
                               className="crud-input text-xs"
                               value={portfolioOutlookDraft}
-                              onChange={(e) => setPortfolioOutlookDraft(e.target.value)}
-                              placeholder="Short desk note"
+                              onChange={(e) =>
+                                setPortfolioOutlookDraft(
+                                  e.target.value === "" ? "" : (e.target.value as AccountOutlook)
+                                )
+                              }
                               aria-label="Book outlook"
-                            />
+                            >
+                              <option value="">—</option>
+                              {accountOutlookValues.map((v) => (
+                                <option key={v} value={v}>
+                                  {DESK_OUTLOOK_LABELS[v]}
+                                </option>
+                              ))}
+                            </select>
                           </td>
                         </>
                       ) : null}
@@ -749,7 +770,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                           <option value="">—</option>
                           {DESK_RISK_PROFILE_OPTIONS.map((v) => (
                             <option key={v} value={v}>
-                              {v}
+                              {DESK_RISK_DISPLAY_LABELS[v]}
                             </option>
                           ))}
                         </select>

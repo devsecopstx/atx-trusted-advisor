@@ -4,11 +4,12 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { normalizeSubscriptionPlan, zSubscriptionPlan } from "@/lib/subscription-plan";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { updateCoreUserSubscriptionPlan } from "@/modules/identity/repository";
 
 const updatePlanSchema = z.object({
-  subscriptionPlan: z.enum(["free", "pro", "enterprise"])
+  subscriptionPlan: zSubscriptionPlan
 });
 
 type RouteContext = {
@@ -54,14 +55,14 @@ export async function PATCH(request: Request, context: RouteContext) {
       username: session.username
     },
     details: {
-      subscriptionPlan: updated.subscriptionPlan ?? "free"
+      subscriptionPlan: normalizeSubscriptionPlan(updated.subscriptionPlan)
     }
   });
 
   return NextResponse.json({
     data: {
       userId: updated._id?.toHexString(),
-      subscriptionPlan: updated.subscriptionPlan ?? "free"
+      subscriptionPlan: normalizeSubscriptionPlan(updated.subscriptionPlan)
     }
   });
 }
