@@ -11,12 +11,14 @@ const protectedPathPrefixes = [
   "/api/xchat",
   "/api/recommendations",
   "/api/strategy-jobs",
+  "/api/app-user",
   "/portfolio",
   "/watchlist",
   "/account",
   "/xstrategybuilder",
   "/xfinance",
-  "/xcoach"
+  "/xcoach",
+  "/app_user/xoptions/strategy-builder"
 ];
 
 const publicGuestReadablePaths = ["/account/billing"] as const;
@@ -61,11 +63,13 @@ export const config = {
     "/api/xchat/:path*",
     "/api/recommendations/:path*",
     "/api/strategy-jobs/:path*",
+    "/api/app-user/:path*",
     "/portfolio/:path*",
     "/watchlist/:path*",
     "/account/:path*",
     "/xstrategybuilder/:path*",
     "/xfinance/:path*",
-    "/xcoach/:path*"
+    "/app_user/xoptions/strategy-builder",
+    "/app_user/xoptions/strategy-builder/:path*"
   ]
 };

@@ -57,6 +57,20 @@ function BookIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function FindOptionsGlyph(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M5 18h12M5 14h12M5 10h12M6 6h12"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth={1.75}
+      />
+      <circle cx="8" cy="6" r="1.75" fill="currentColor" />
+    </svg>
+  );
+}
+
 function ChatIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
@@ -227,6 +241,31 @@ export function AppUserResourcesRailSection({
   );
 }
 
+export function AppUserFindOptionsRailSection({
+  railDisclosureDefaultOpen = true
+}: {
+  railDisclosureDefaultOpen?: boolean;
+}) {
+  return (
+    <section className="app-user-rail-section" aria-label="Find options">
+      <RailDisclosure
+        defaultOpen={railDisclosureDefaultOpen}
+        icon={<FindOptionsGlyph className="app-user-rail-disclosure__glyph" />}
+        title="Find Options"
+      >
+        <nav className="app-user-rail-sublinks" aria-label="Find options links">
+          <RailNavLink href="/app_user/xoptions/strategy-builder" title="Strategy builder — symbol, outlook, chain filters">
+            Strategy builder
+          </RailNavLink>
+          <RailNavLink href="/app_user/xoptions" title="xOptions pitch and follow-up">
+            xOptions overview
+          </RailNavLink>
+        </nav>
+      </RailDisclosure>
+    </section>
+  );
+}
+
 export function AppUserXchatRailSection({ railDisclosureDefaultOpen = true }: { railDisclosureDefaultOpen?: boolean }) {
   return (
     <section className="app-user-rail-section" aria-label="xChat">
@@ -345,6 +384,7 @@ export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUser
         )}
       </section>
       <AppUserXchatRailSection />
+      <AppUserFindOptionsRailSection />
       <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
       <AppUserAccountRailSection isGlobalAdmin={isGlobalAdmin} />
       {isGlobalAdmin ? <AppUserManageWorkspaceRailSection /> : null}

@@ -9,6 +9,7 @@ import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 export type AppUserProductNavCurrent =
   | "xchat"
   | "xstrategybuilder"
+  | "xoptions"
   | "portfolio"
   | "watchlist"
   | "account";
@@ -52,6 +53,24 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
           src="/branding/xstrategybuilder-topnav-icon-transparent.png"
           width={20}
         />
+      </IconWrap>
+    )
+  },
+  {
+    id: "xoptions",
+    label: "xOptions",
+    href: "/app_user/xoptions/strategy-builder",
+    icon: (
+      <IconWrap>
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden>
+          <path
+            d="M3.5 14.5h2.5l3-6 2 4 2.5-7h3.5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.5"
+          />
+        </svg>
       </IconWrap>
     )
   },

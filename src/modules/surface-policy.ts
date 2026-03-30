@@ -10,7 +10,8 @@ export const APP_USER_PRODUCT_PATH_PREFIXES = [
   "/xstrategybuilder",
   "/portfolio",
   "/watchlist",
-  "/account"
+  "/account",
+  "/app_user/xoptions"
 ] as const;
 
 export type AppUserProductPathPrefix = (typeof APP_USER_PRODUCT_PATH_PREFIXES)[number];
