@@ -99,9 +99,12 @@ Use when you want **`gcloud run deploy --source .`** from your laptop with the *
   - `gcloud run services describe "$CLOUD_RUN_SERVICE_STAGING" --region "$CLOUD_RUN_REGION" --format='value(status.url)'`
   - `curl -sS "$(gcloud run services describe "$CLOUD_RUN_SERVICE_STAGING" --region "$CLOUD_RUN_REGION" --format='value(status.url)')/api/health" | jq .version`
 
-If **custom domain** and **\*.run.app** show **different `version` values**, the load balancer / serverless NEG is mapped to a **different backend service** than `CLOUD_RUN_SERVICE_STAGING` in `.env.stage`. Fix the LB host rule / NEG attachment so `staging.atx…` points at the service you deploy.
+If **custom domain** and **\*.run.app** show **different `version` values**, traffic is not reaching the same runtime as your deploy:
 
-**Two Cloud Run service names in one project (e.g. `xfinance-core-prod` vs `fintech-advisor-prod`):** Deploy scripts target **`CLOUD_RUN_SERVICE_PROD`** only. If `https://xfinance-core-prod-….run.app` still shows an old footer but `https://fintech-advisor-prod-….run.app` matches `package.json`, the **custom domain** is still mapped to the **legacy** service — move **Cloud Run → Domain mappings** for `atx.…` to the service you deploy to, or delete the unused service after cutover. Route 53 only points DNS at Google; **which service** receives traffic is decided in **GCP domain mapping**, not AWS.
+1. **No GCP HTTPS load balancer** (common): **`atx.<domain>`** is attached via **Cloud Run → Domain mappings** to **one** service. If `https://fintech-advisor-prod-….run.app` shows the new footer but **`https://atx.<domain>/xchat`** still shows **v4.x** (legacy), the hostname is almost certainly still mapped to **`xfinance-core-prod`** (or another old service) — **not** a CDN issue. **Fix:** In **Console → Cloud Run →** open **`CLOUD_RUN_SERVICE_PROD`** from `.env.prod` (e.g. `fintech-advisor-prod`) → **Manage custom domains** → **Add mapping** for `atx.<domain>` (follow the wizard). Then **remove** that domain from the **legacy** service’s mappings (or delete the legacy service after cutover). See [Map custom domains to Cloud Run](https://cloud.google.com/run/docs/mapping-custom-domains). **Route 53** only satisfies DNS records Google shows; it does **not** choose which Cloud Run service receives traffic.
+2. **HTTPS load balancer + serverless NEG** (if you use one): the **host rule / backend** for `atx.<domain>` must point at the **same** Cloud Run service as `CLOUD_RUN_SERVICE_PROD`. Fix the URL map / NEG attachment.
+
+**Two Cloud Run service names in one project (e.g. `xfinance-core-prod` vs `fintech-advisor-prod`):** Deploy scripts target **`CLOUD_RUN_SERVICE_PROD`** only. If `https://xfinance-core-prod-….run.app` still shows an old footer but `https://fintech-advisor-prod-….run.app` matches `package.json`, **do not** redeploy again — **reattach the custom domain** to `fintech-advisor-prod` as above.
 
 **Checklist**
 
