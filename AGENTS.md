@@ -14,6 +14,8 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 4. `npm run seed:admin` — **or** `npm run local:bootstrap` to run step 3 + seed in one shot
 5. `npm run dev`
 
+**Seed defaults (`ADMIN_SEED_EMAIL`):** `core_users.subscriptionPlan` is **`basic`**; bootstrap `admin_access_requests` uses **`requestedPlan: basic`** when the paper row is first inserted; default xChat persona is **Super-Agent** from **`atx-docs/rag-collection/xpersonas/super-agent/super-agent.yaml`**. Re-running **`seed:admin`** sets **`subscriptionPlan`** back to **`basic`** for that email.
+
 **Wipe local DB and re-seed:** `RESET_LOCAL_MONGO=1 npm run mongo:reset` (destructive — removes the Compose Mongo volume).
 
 ## Validation Gates

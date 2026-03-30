@@ -44,8 +44,9 @@ For each new instance, run:
 
 What it does:
 
-- upserts admin + tenant bootstrap
-- runs xPersona sync from `atx-docs/rag-collection/xpersonas` (legacy `atx-rag-collection/xpersonas` still supported) unless `SKIP_SEED_XPERSONAS=1`
+- upserts admin + tenant bootstrap; sets **`core_users.subscriptionPlan`** to **`basic`** for `ADMIN_SEED_EMAIL` (each run normalizes that row)
+- inserts an approved bootstrap **`admin_access_requests`** row with **`requestedPlan: basic`** when none exists for that user + `global_admin`
+- runs xPersona sync from `atx-docs/rag-collection/xpersonas` (legacy `atx-rag-collection/xpersonas` still supported) unless `SKIP_SEED_XPERSONAS=1`; default admin persona is **Super-Agent** (`nameNormalized` **`super-agent`**, canonical spec `super-agent/super-agent.yaml` in that tree)
 - uploads RAG sources to xAI (when keys are present) unless `SKIP_SEED_XAI_RAG_INGEST=1`
 - runs strict xAI seeded RAG collection verification unless `SKIP_XAI_POST_SEED_RAG_VERIFY=1`
 - runs xAI hello verification unless `SKIP_XAI_POST_SEED_VERIFY=1`

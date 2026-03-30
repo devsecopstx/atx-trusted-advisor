@@ -3,11 +3,11 @@
  * DB-only admin bootstrap wrapper.
  *
  * Guarantees Mongo onboarding primitives:
- * - core admin user + role
- * - approved admin_access_requests paper trail
+ * - core admin user + role; `subscriptionPlan` **basic** (re-seed resets plan for `ADMIN_SEED_EMAIL`)
+ * - approved admin_access_requests paper trail (`requestedPlan` **basic** when bootstrap row is inserted)
  * - tenant/account/watchlist bootstrap
- * - xPersona sync from disk -> Mongo
- * - admin_user_settings.assignedPersonaId -> Super-Agent
+ * - xPersona sync from disk -> Mongo (`atx-docs/rag-collection/xpersonas`, Super-Agent `super-agent`)
+ * - admin_user_settings.assignedPersonaId -> Super-Agent after sync
  *
  * Intentionally disables xAI network-dependent verification/upload steps.
  */
