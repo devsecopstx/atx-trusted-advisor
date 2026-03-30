@@ -66,6 +66,26 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "access-requests"
   },
   {
+    path: "/api/app-user/find-options/context",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "find-options"
+  },
+  {
+    path: "/api/app-user/find-options/symbol-snapshot",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "find-options"
+  },
+  {
+    path: "/api/app-user/find-options/top-holdings",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "find-options"
+  },
+  {
+    path: "/api/app-user/find-options/watchlist-hot",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "find-options"
+  },
+  {
     path: "/api/user-feedback",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "user-feedback"
