@@ -203,16 +203,76 @@ export function XoptionsStrategyBuilderWorkspace() {
 
   return (
     <div className="xoptions-workspace space-y-5 max-w-3xl">
-      <header className="space-y-2">
-        <p className="xoptions-workspace__eyebrow text-xs font-semibold uppercase tracking-[0.2em]">xoptions</p>
-        <h1 className="xoptions-workspace__h1 text-xl font-bold tracking-tight md:text-2xl">Strategy builder</h1>
-        <p className="xoptions-workspace__lead text-xs leading-relaxed md:text-sm">
-          Uses your default portfolio, scoring factors, account desk, and watchlist. Select a symbol, outlook, risk, and
-          scoring weights (expand to override), pick an expiration window (1, 2, or 4 weeks), then open the chain to
-          filter and trade. Top holdings are ranked by value; hot watchlist picks are the top symbols with IV &gt; 70%
-          and OI &gt; 100 on the nearest expiration slice.
-        </p>
-      </header>
+      <div className="xoptions-top-band">
+        <header className="xoptions-workspace-header xoptions-workspace-header--compact">
+          <p className="xoptions-workspace-header__eyebrow">xoptions</p>
+          <h1 className="xoptions-workspace-header__title">Strategy builder</h1>
+          <p className="xoptions-workspace-header__lead">
+            Default portfolio, desk, and watchlist. Set outlook and scoring if needed, pick an expiration window, enter a
+            symbol, then open the chain.
+          </p>
+        </header>
+
+        <aside className="xoptions-top-band__glance min-w-0" aria-label="At a glance">
+          <div className="xoptions-at-a-glance">
+            <p className="xoptions-at-a-glance__head">At a glance</p>
+            <div className="xoptions-at-a-glance__grid">
+              <div className="min-w-0">
+                <p className="xoptions-at-a-glance__title">Top holdings</p>
+                <p className="xoptions-at-a-glance__sub">By market value</p>
+                <ul className="xoptions-at-a-glance__list">
+                  {holdings.length === 0 ? (
+                    <li className="xoptions-at-a-glance__sub">No stock positions.</li>
+                  ) : (
+                    holdings.map((row) => (
+                      <li key={row.symbol}>
+                        <button
+                          type="button"
+                          className="xoptions-symbol-row xoptions-symbol-row--compact"
+                          onClick={() => setSymbol(row.symbol)}
+                        >
+                          <span className="xoptions-symbol-row__sym">{row.symbol}</span>
+                          <span className="xoptions-symbol-row__meta">
+                            {row.lastPrice != null ? `≈ $${row.lastPrice.toFixed(2)}` : "—"}
+                            <span className="opacity-90"> · mv ${row.marketValue.toFixed(0)}</span>
+                          </span>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+              <div className="min-w-0">
+                <p className="xoptions-at-a-glance__title">Hot watchlist</p>
+                <p className="xoptions-at-a-glance__sub">IV &gt; 70%, OI &gt; 100 · nearest exp</p>
+                <ul className="xoptions-at-a-glance__list">
+                  {hot.length === 0 ? (
+                    <li className="xoptions-at-a-glance__sub">
+                      No matches{hotMeta ? ` (${hotMeta.scanned} scanned)` : ""}.
+                    </li>
+                  ) : (
+                    hot.map((row) => (
+                      <li key={row.symbol}>
+                        <button
+                          type="button"
+                          className="xoptions-symbol-row xoptions-symbol-row--compact"
+                          onClick={() => setSymbol(row.symbol)}
+                        >
+                          <span className="xoptions-symbol-row__sym">{row.symbol}</span>
+                          <span className="xoptions-symbol-row__meta">
+                            IV {row.impliedVolatilityPercent.toFixed(1)}% · OI {row.openInterest.toLocaleString()} ·{" "}
+                            {row.contractType} {row.strike}
+                          </span>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
 
       {ctxErr ? <p className="xoptions-alert">{ctxErr}</p> : null}
 
@@ -344,92 +404,45 @@ export function XoptionsStrategyBuilderWorkspace() {
         ) : null}
       </section>
 
-      <section aria-label="Symbol">
-        <p className="xoptions-workspace__label mb-1.5">Symbol</p>
-        <input
-          className="crud-input mb-3 max-w-xs font-mono uppercase"
-          placeholder="Enter symbol (e.g. TSLA)"
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-          aria-label="Underlying symbol"
-        />
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <p className="mb-2 text-sm font-medium xoptions-workspace__stat">Top account holdings</p>
-            <p className="xoptions-hint mb-2">By market value</p>
-            <ul className="space-y-1 text-sm">
-              {holdings.length === 0 ? (
-                <li className="xoptions-hint">No stock positions found.</li>
-              ) : (
-                holdings.map((row) => (
-                  <li key={row.symbol}>
-                    <button type="button" className="xoptions-symbol-row" onClick={() => setSymbol(row.symbol)}>
-                      <span className="xoptions-symbol-row__sym">{row.symbol}</span>
-                      <span className="xoptions-symbol-row__meta">
-                        {row.lastPrice != null ? `≈ $${row.lastPrice.toFixed(2)}` : ""}
-                        <span className="ml-2">mv ${row.marketValue.toFixed(0)}</span>
-                      </span>
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>
+      <section className="xoptions-symbol-group" aria-label="Symbol and quote">
+        <div className="xoptions-symbol-strip">
+          <div className="xoptions-symbol-strip__field">
+            <p className="xoptions-workspace__label mb-1">Symbol</p>
+            <input
+              className="crud-input font-mono text-sm uppercase"
+              placeholder="e.g. TSLA"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              aria-label="Underlying symbol"
+            />
           </div>
-          <div>
-            <p className="mb-2 text-sm font-medium xoptions-workspace__stat">Hot watchlist</p>
-            <p className="xoptions-hint mb-2">Top matches: IV &gt; 70%, OI &gt; 100 (nearest exp)</p>
-            <ul className="space-y-1 text-sm">
-              {hot.length === 0 ? (
-                <li className="xoptions-hint">
-                  No symbols matched filters
-                  {hotMeta ? ` (scanned ${hotMeta.scanned})` : ""}.
-                </li>
-              ) : (
-                hot.map((row) => (
-                  <li key={row.symbol}>
-                    <button type="button" className="xoptions-symbol-row" onClick={() => setSymbol(row.symbol)}>
-                      <span className="xoptions-symbol-row__sym">{row.symbol}</span>
-                      <span className="xoptions-symbol-row__meta">
-                        IV {row.impliedVolatilityPercent.toFixed(1)}% · OI {row.openInterest.toLocaleString()} ·{" "}
-                        {row.contractType} {row.strike}
-                      </span>
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>
+          <div className="xoptions-symbol-quote-inline pb-0.5" role="status" aria-live="polite">
+            {symbol.trim().length === 0 ? (
+              <span className="xoptions-hint text-xs">Last · RSI</span>
+            ) : snapLoading ? (
+              <span className="xoptions-hint text-xs">Loading…</span>
+            ) : snapshot ? (
+              <>
+                <span className="xoptions-symbol-quote-inline__muted">Last </span>
+                <span className="xoptions-symbol-quote-inline__stat">
+                  {snapshot.lastPrice != null ? snapshot.lastPrice.toFixed(2) : "—"}
+                </span>
+                {snapshot.currency ? (
+                  <span className="xoptions-symbol-quote-inline__muted"> {snapshot.currency}</span>
+                ) : null}
+                <span className="xoptions-symbol-quote-inline__muted"> · RSI </span>
+                <span className="xoptions-symbol-quote-inline__stat">
+                  {snapshot.rsi14 != null ? snapshot.rsi14.toFixed(1) : "—"}
+                </span>
+              </>
+            ) : (
+              <span className="xoptions-hint text-xs">No quote</span>
+            )}
           </div>
         </div>
       </section>
 
-      <section className="xoptions-panel p-3" aria-label="Quote snapshot">
-        <p className="xoptions-workspace__label">Selected symbol</p>
-        {snapLoading ? (
-          <p className="xoptions-hint mt-2">Loading quote…</p>
-        ) : snapshot && symbol.trim() ? (
-          <div className="mt-2 flex flex-wrap gap-6 text-sm">
-            <div>
-              <p className="xoptions-inline-muted">Last</p>
-              <p className="font-mono text-lg xoptions-workspace__stat">
-                {snapshot.lastPrice != null ? snapshot.lastPrice.toFixed(2) : "—"}{" "}
-                <span className="xoptions-inline-muted">{snapshot.currency ?? ""}</span>
-              </p>
-            </div>
-            <div>
-              <p className="xoptions-inline-muted">RSI (14d)</p>
-              <p className="font-mono text-lg xoptions-workspace__stat">
-                {snapshot.rsi14 != null ? snapshot.rsi14.toFixed(1) : "—"}
-              </p>
-              <p className="xoptions-hint">Daily closes · this symbol</p>
-            </div>
-          </div>
-        ) : (
-          <p className="xoptions-hint mt-2">Enter or pick a symbol for last price and RSI.</p>
-        )}
-      </section>
-
-      <div className="flex flex-wrap items-center gap-3">
+      <div>
         <Link
           className="xoptions-cta"
           href={
@@ -440,13 +453,6 @@ export function XoptionsStrategyBuilderWorkspace() {
         >
           Open option chain
         </Link>
-        <span className="xoptions-inline-muted">
-          xStrategyBuilder ·{" "}
-          <span className="xoptions-pricing-em" title="Cheapest xFinance on earth — pay only for what you use.">
-            $2/hr
-          </span>{" "}
-          usage
-        </span>
       </div>
     </div>
   );
