@@ -34,7 +34,10 @@ vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
-vi.mock("@/modules/xchat/repository", () => xchatRepositoryMocks);
+vi.mock("@/modules/xchat/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/repository")>();
+  return { ...actual, ...xchatRepositoryMocks };
+});
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/xchat/team-xai-collection", () => ({
   resolveTeamKbCollectionId: teamXaiMocks.resolveTeamKbCollectionId

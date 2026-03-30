@@ -25,7 +25,7 @@ const PLANS: PlanTier[] = [
     price: "$0",
     period: "/month",
     features: [
-      { text: "5 xchat prompts per day" },
+      { text: "5 xChat prompts / hr" },
       { text: "xStrategyBuilder weekly range: entry-level" },
       { text: "Research articles / week: core context set" },
       { text: "Default xChat: published FinExpert persona" },

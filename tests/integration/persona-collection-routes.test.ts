@@ -19,7 +19,10 @@ const repositoryMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/api-auth", () => apiAuthMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
-vi.mock("@/modules/xchat/repository", () => repositoryMocks);
+vi.mock("@/modules/xchat/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/repository")>();
+  return { ...actual, ...repositoryMocks };
+});
 
 import { POST as postCreateCollection } from "@/app/api/personas/[personaId]/collection/create/route";
 import { POST as postLinkFiles } from "@/app/api/personas/[personaId]/collection/link-files/route";

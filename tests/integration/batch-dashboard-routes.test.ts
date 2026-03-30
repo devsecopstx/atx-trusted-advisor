@@ -24,7 +24,10 @@ const personaMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/lib/rate-limit", () => rateLimitMocks);
 vi.mock("@/modules/xchat/batch-service", () => batchServiceMocks);
-vi.mock("@/modules/xchat/repository", () => personaMocks);
+vi.mock("@/modules/xchat/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/repository")>();
+  return { ...actual, ...personaMocks };
+});
 
 import { GET as listBatchJobsRoute } from "@/app/api/xchat/batch/route";
 import {

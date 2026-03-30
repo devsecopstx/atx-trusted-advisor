@@ -1,11 +1,8 @@
 import { ObjectId } from "mongodb";
 
 import { atxBillingPlanIdForSubscriptionPlan } from "@/lib/atx-billing-plan-tier-map";
-import {
-    getCoreUserById,
-    getTenantByHexId,
-    resolvedWorkspaceLimitsForTenant
-} from "@/modules/identity/repository";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { getCoreUserById, resolvedWorkspaceLimitsForTenant } from "@/modules/identity/repository";
 import {
     applyTenantPlanRowToBase,
     mergeTenantWorkspaceLimits,
@@ -30,7 +27,7 @@ export function effectiveWorkspaceLimitsForTenantAndPlan(
 export async function getResolvedWorkspaceLimitsForTenantId(
   tenantIdHex: string
 ): Promise<TenantWorkspaceLimits> {
-  const tenant = await getTenantByHexId(tenantIdHex.trim());
+  const tenant = await getTenantByHexIdCached(tenantIdHex);
   return resolvedWorkspaceLimitsForTenant(tenant);
 }
 
@@ -43,7 +40,7 @@ export async function getEffectiveWorkspaceLimitsForUser(input: {
   tenantId: string;
   userId: string;
 }): Promise<TenantWorkspaceLimits> {
-  const tenant = await getTenantByHexId(input.tenantId.trim());
+  const tenant = await getTenantByHexIdCached(input.tenantId);
   let subscriptionPlan: SubscriptionPlan | undefined;
   if (ObjectId.isValid(input.userId)) {
     const u = await getCoreUserById(new ObjectId(input.userId));

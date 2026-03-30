@@ -147,7 +147,7 @@ Major app-user and admin domains are proxied when `ATXFINANCE_BACKEND_ORIGIN` is
 
 ## Stripe & billing (from frontend plan)
 
-**Shipped (slice 1):** Account → **Billing** (`/account/billing`), ATX plans (Basic $9/mo with limits; Premium $99/mo complex portfolios + per-hour caps on xChat/xStrategyBuilder; Premium+ $299/yr dedicated instance / no training use; limited-time full-access trial), `POST /api/billing/checkout-session` (Stripe Checkout subscription). Env + ops: `atx-docs/sre-ops/stripe-billing-setup.md`. List pricing matrix: `atx-docs/resouces/atx-limits.txt.tsv`.
+**Shipped (slice 1):** Account → **Billing** (`/account/billing`), ATX plans (Basic $9/mo with limits; Premium $99/mo complex portfolios + per-hour caps on xChat/xStrategyBuilder; Premium+ $299/mo dedicated instance / no training use; limited-time full-access trial), `POST /api/billing/checkout-session` (Stripe Checkout subscription). Billing cards show **tenant-resolved** workspace caps per tier (`src/lib/billing-plan-workspace-display.ts`) for signed-in users; guests see catalog caps. Env + ops: `atx-docs/sre-ops/stripe-billing-setup.md`. List pricing matrix: `atx-docs/resouces/atx-limits.txt.tsv`.
 
 **Remaining:** Customer portal deep link, `POST /api/webhooks/stripe`, Mongo subscription / plan fields, `getPlanLimits()` gating from paid tier.
 

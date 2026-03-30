@@ -19,6 +19,7 @@ const ACCESS_REQUEST_PLAN_ALIAS_TO_VALUE: Record<string, AccessRequestPlanValue>
   premium_monthly: "pro",
   "premium+": "enterprise",
   premium_plus: "enterprise",
+  premium_plus_monthly: "enterprise",
   premium_plus_yearly: "enterprise",
   enterprise: "enterprise"
 };
@@ -43,7 +44,7 @@ export function accessRequestPlanFromBillingPlanId(planId: AtxBillingPlanId): Ac
   if (planId === "premium_monthly") {
     return "pro";
   }
-  if (planId === "premium_plus_yearly") {
+  if (planId === "premium_plus_monthly") {
     return "enterprise";
   }
   return "free";

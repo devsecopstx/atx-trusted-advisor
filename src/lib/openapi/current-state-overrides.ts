@@ -76,11 +76,13 @@ function xchatLimiterHeaders(includeRetryAfter: boolean): NonNullable<OpenApiRes
       schema: { type: "string" }
     },
     "x-xchat-limit-remaining-day": {
-      description: "Remaining asks in the current UTC day for the caller plan (non-admin sessions).",
+      description:
+        "Remaining asks in the current UTC calendar window (non-admin). Billing surfaces per-hour labels for caps; this header reflects the underlying day-bucket counter.",
       schema: { type: "string" }
     },
     "x-xchat-limit-daily": {
-      description: "Daily ask limit for the current caller plan (non-admin sessions).",
+      description:
+        "Configured ask cap envelope for the caller plan + tenant (non-admin). Product copy uses per-hour framing on `/account/billing`; value aligns with usage window semantics in `ask-usage-limits`.",
       schema: { type: "string" }
     }
   };

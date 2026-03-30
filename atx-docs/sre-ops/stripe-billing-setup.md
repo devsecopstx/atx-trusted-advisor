@@ -8,9 +8,15 @@ End-to-end notes for **Account → Billing** (`/account/billing`), `POST /api/bi
 |-----------|------------------------|----------|-----------|--------------------------------------|
 | Basic     | HNWI-focused; workspace users, portfolios, accounts (risk & outlook), portfolio scoring factors; plan limits | $9       | Monthly   | `STRIPE_PRICE_BASIC_MONTHLY`         |
 | Premium   | Complex portfolios; unlimited with fair per-hour caps on xChat + xStrategyBuilder | $99 | Monthly | `STRIPE_PRICE_PREMIUM_MONTHLY` |
-| Premium+  | White-glove; dedicated enterprise-grade instance; private (no training use) | $299    | Yearly    | `STRIPE_PRICE_PREMIUM_PLUS_YEARLY`   |
+| Premium+  | White-glove; dedicated enterprise-grade instance; private (no training use) | $299    | Monthly   | `STRIPE_PRICE_PREMIUM_PLUS_MONTHLY` (fallback: `STRIPE_PRICE_PREMIUM_PLUS_YEARLY`) |
 
 Create matching **Products** and **Prices** in Stripe (recurring subscription) and copy each Price id (`price_…`) into env. **Amount changes require new Price objects in Stripe** — update `STRIPE_PRICE_*` to the new `price_…` ids (existing ids keep their original amounts).
+
+### Billing page vs admin list price
+
+Stripe Checkout charges the **Stripe Price** bound to `STRIPE_PRICE_*`. The **dollar amount shown on `/account/billing`** for each tier can additionally reflect **`workspaceLimits.planOverrides.<tier>.price`** (admin-managed list price for that tenant). Keep Stripe recurring amounts and admin list price in sync when you intend them to match; see `atx-docs/sre-ops/tenant-workspace-limits.md` § App user surfacing. Unit coverage: `tests/unit/billing-plan-workspace-display.test.ts`.
+
+**Workspace limits copy (post-deploy check):** Under each plan card, the first two limit rows must read **xOptions views / hr** and **xChat prompts / hr** (`BILLING_WORKSPACE_LABEL_*` in `src/lib/billing-plan-workspace-display.ts`). If the UI shows **/ day**, redeploy a fresh Cloud Run revision or clear local `.next` — see `.cursor/agents/sre.md` § Account → Billing — workspace limit row labels.
 
 ## GitHub: Variables vs Secrets
 
@@ -38,7 +44,7 @@ Create matching **Products** and **Prices** in Stripe (recurring subscription) a
 3. **Prices:** For each product, add a **recurring** price:
    - Basic: **$9 / month**
    - Premium: **$99 / month**
-   - Premium+: **$299 / year** (UI/list matrix: `atx-limits.txt.tsv`; env key may still be `STRIPE_PRICE_PREMIUM_PLUS_YEARLY` until renamed)
+   - Premium+: **$299 / month** (UI/list matrix: `atx-limits.txt.tsv`; set `STRIPE_PRICE_PREMIUM_PLUS_MONTHLY`; `STRIPE_PRICE_PREMIUM_PLUS_YEARLY` is still read as a fallback until old Price ids are rotated)
 4. **Checkout:** Hosted Checkout is created by the API (`mode: subscription`). No extra Dashboard toggle required beyond valid prices.
 5. **Customer portal (optional):** Enable the Billing customer portal when you want self-serve cancel/update payment method.
 6. **Webhooks (next):** Add endpoint `https://<your-host>/api/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.*`, and verify with `STRIPE_WEBHOOK_SECRET`. Persist subscription tier on `core_users` (or equivalent) to drive plan limits.
@@ -58,7 +64,9 @@ STRIPE_SECRET_KEY=sk_test_...
 # Price ids (Variables or plain env on Cloud Run)
 STRIPE_PRICE_BASIC_MONTHLY=price_...
 STRIPE_PRICE_PREMIUM_MONTHLY=price_...
-STRIPE_PRICE_PREMIUM_PLUS_YEARLY=price_...
+STRIPE_PRICE_PREMIUM_PLUS_MONTHLY=price_...
+# Optional legacy fallback (same Stripe Price id as monthly after migration, or old yearly id during cutover):
+# STRIPE_PRICE_PREMIUM_PLUS_YEARLY=price_...
 ```
 
 ## Success / cancel URLs

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
+import {
+    getPersonaByIdCached,
+    loadDefaultXchatPersonaForSessionDeduped
+} from "@/lib/server-request-cache";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
-import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
-import { getPersonaById, resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository";
 import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
+import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
 
 type VisibleCollection = {
   collectionId: string;
@@ -19,7 +22,7 @@ export async function GET() {
     return session;
   }
 
-  const defaultPersona = await resolveDefaultXchatPersonaForSession(session.roles);
+  const defaultPersona = await loadDefaultXchatPersonaForSessionDeduped(session.roles);
   let activePersonaName = defaultPersona?.name;
   const teamDefaultId = await resolveTeamKbCollectionId();
   const visible: VisibleCollection[] = [];
@@ -58,7 +61,7 @@ export async function GET() {
   const assignedPersonaId = userSettings?.assignedPersonaId?.trim();
   let assignedPersonaIdForClient: string | null = null;
   if (assignedPersonaId) {
-    const assignedPersona = await getPersonaById(assignedPersonaId);
+    const assignedPersona = await getPersonaByIdCached(assignedPersonaId);
     if (assignedPersona?.status === "published") {
       activePersonaName = assignedPersona.name;
       assignedPersonaIdForClient = assignedPersonaId;

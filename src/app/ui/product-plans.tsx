@@ -25,7 +25,7 @@ const LIMITS_BY_PLAN: Record<AtxBillingPlanId, string[]> = {
     "Unlimited Exams (expanded caps)",
     "Expanded xStrategyBuilder posture"
   ],
-  premium_plus_yearly: [
+  premium_plus_monthly: [
     "Unlimited xChat prompts",
     "Unlimited Exams",
     "Early access to new features",
@@ -39,7 +39,7 @@ const PLAN_TIERS: PlanTier[] = [
     name: "Free",
     price: "$0",
     period: "",
-    limits: ["10 xChat prompts / day", "1 Exam included"]
+    limits: ["10 xChat prompts / hr", "1 Exam included"]
   },
   ...ATX_BILLING_PLANS.map((p) => ({
     id: p.id,
@@ -47,7 +47,7 @@ const PLAN_TIERS: PlanTier[] = [
     price: p.priceLabel,
     period: atxBillingPeriodSlash(p),
     highlight: Boolean(p.highlight),
-    tag: p.highlight ? "Popular" : p.id === "premium_plus_yearly" ? "Beta" : undefined,
+    tag: p.highlight ? "Popular" : p.id === "premium_plus_monthly" ? "Beta" : undefined,
     limits: LIMITS_BY_PLAN[p.id]
   }))
 ];

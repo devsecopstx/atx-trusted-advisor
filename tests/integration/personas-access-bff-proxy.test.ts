@@ -26,12 +26,15 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/api-auth", () => ({
   requireAdminSession: authMocks.requireAdminSession
 }));
-vi.mock("@/modules/xchat/repository", () => ({
-  listPersonas: repositoryMocks.listPersonas,
-  listPersonasByStatus: repositoryMocks.listPersonasByStatus,
-  createPersona: repositoryMocks.createPersona,
-  PersonaNameConflictError: class PersonaNameConflictError extends Error {}
-}));
+vi.mock("@/modules/xchat/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/repository")>();
+  return {
+    ...actual,
+    listPersonas: repositoryMocks.listPersonas,
+    listPersonasByStatus: repositoryMocks.listPersonasByStatus,
+    createPersona: repositoryMocks.createPersona
+  };
+});
 vi.mock("@/modules/audit/repository", () => ({
   listLatestAuditEventsForEntities: auditMocks.listLatestAuditEventsForEntities,
   createAuditEvent: auditMocks.createAuditEvent

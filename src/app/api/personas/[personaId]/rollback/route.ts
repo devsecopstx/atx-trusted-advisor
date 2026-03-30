@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import { createAuditEvent } from "@/modules/audit/repository";
-import { getPersonaById, rollbackPersona } from "@/modules/xchat/repository";
+import { rollbackPersona } from "@/modules/xchat/repository";
 
 type RouteContext = {
   params: Promise<{ personaId: string }>;
@@ -18,7 +19,7 @@ export async function POST(request: Request, context: RouteContext) {
   if (session instanceof NextResponse) return session;
 
   const { personaId } = await context.params;
-  const existing = await getPersonaById(personaId);
+  const existing = await getPersonaByIdCached(personaId);
   if (!existing) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }

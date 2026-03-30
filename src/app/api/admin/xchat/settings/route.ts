@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireGlobalAdminSession } from "@/lib/api-auth";
-import { getPersonaById } from "@/modules/xchat/repository";
+import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import {
-  getXchatPlatformSettings,
-  upsertXchatPlatformSettings
+    getXchatPlatformSettings,
+    upsertXchatPlatformSettings
 } from "@/modules/xchat/xchat-platform-settings";
 
 const patchSchema = z.object({
@@ -75,7 +75,7 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const persona = await getPersonaById(rawId);
+  const persona = await getPersonaByIdCached(rawId);
   if (!persona) {
     return NextResponse.json({ error: "Persona not found", code: "persona_not_found" }, { status: 404 });
   }

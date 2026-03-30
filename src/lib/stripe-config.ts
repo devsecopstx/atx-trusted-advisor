@@ -16,19 +16,30 @@ export function getStripeSecretKey(): string | undefined {
   return s && s.length > 0 ? s : undefined;
 }
 
-const PRICE_ENV_KEYS: Record<AtxBillingPlanId, string> = {
+const PRICE_ENV_KEYS: Record<Exclude<AtxBillingPlanId, "premium_plus_monthly">, string> = {
   basic: "STRIPE_PRICE_BASIC_MONTHLY",
-  premium_monthly: "STRIPE_PRICE_PREMIUM_MONTHLY",
-  premium_plus_yearly: "STRIPE_PRICE_PREMIUM_PLUS_YEARLY"
+  premium_monthly: "STRIPE_PRICE_PREMIUM_MONTHLY"
 };
 
+/**
+ * Premium+ is billed monthly. Prefer `STRIPE_PRICE_PREMIUM_PLUS_MONTHLY`; fall back to
+ * `STRIPE_PRICE_PREMIUM_PLUS_YEARLY` until Stripe Price ids / GitHub vars are renamed everywhere.
+ */
 export function getStripePriceIdForPlan(planId: AtxBillingPlanId): string | undefined {
+  if (planId === "premium_plus_monthly") {
+    const monthly = process.env.STRIPE_PRICE_PREMIUM_PLUS_MONTHLY?.trim();
+    if (monthly && monthly.length > 0) {
+      return monthly;
+    }
+    const legacyYearlyName = process.env.STRIPE_PRICE_PREMIUM_PLUS_YEARLY?.trim();
+    return legacyYearlyName && legacyYearlyName.length > 0 ? legacyYearlyName : undefined;
+  }
   const key = PRICE_ENV_KEYS[planId];
   const v = key ? process.env[key]?.trim() : undefined;
   return v && v.length > 0 ? v : undefined;
 }
 
-const ATX_BILLING_PLAN_IDS: AtxBillingPlanId[] = ["basic", "premium_monthly", "premium_plus_yearly"];
+const ATX_BILLING_PLAN_IDS: AtxBillingPlanId[] = ["basic", "premium_monthly", "premium_plus_monthly"];
 
 export function isStripeBillingFullyConfigured(): boolean {
   if (!getStripeSecretKey()) {

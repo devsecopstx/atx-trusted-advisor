@@ -4,8 +4,8 @@ import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
+import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
-import { resolveDefaultXchatPersonaForSession } from "@/modules/xchat/repository";
 
 import { XchatConversation } from "./ui/xchat-conversation";
 import { XchatGuestPanel } from "./ui/xchat-guest-panel";
@@ -49,7 +49,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
 
   const approved = canUserLogin(session.roles);
   const defaultPersona = approved
-    ? await resolveDefaultXchatPersonaForSession(session.roles)
+    ? await loadDefaultXchatPersonaForSessionDeduped(session.roles)
     : null;
 
   let defaultBookLabels: { portfolioName: string; accountName: string } | null = null;

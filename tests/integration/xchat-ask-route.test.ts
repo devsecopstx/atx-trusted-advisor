@@ -65,7 +65,10 @@ const workspaceSnapshotMocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/xchat/ask-usage-limits", () => usageLimitMocks);
-vi.mock("@/modules/xchat/repository", () => repositoryMocks);
+vi.mock("@/modules/xchat/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/repository")>();
+  return { ...actual, ...repositoryMocks };
+});
 vi.mock("@/modules/xchat/team-xai-collection", () => teamKbMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);

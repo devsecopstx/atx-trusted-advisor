@@ -1,14 +1,19 @@
 /**
  * Per-tenant workspace quotas (stored on `core_tenants.workspaceLimits`, partial override of defaults).
  * Field names mirror product language; Mongo may store camelCase keys.
- * Optional `planOverrides` keyed by retail billing plan id (`basic`, `premium_monthly`, `premium_plus_yearly`).
+ * Optional `planOverrides` keyed by retail billing plan id (`basic`, `premium_monthly`, `premium_plus_monthly`).
+ * Legacy key `premium_plus_yearly` is normalized to `premium_plus_monthly` on read.
  */
-import { ATX_BILLING_PLAN_IDS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
+import {
+    ATX_BILLING_PLAN_IDS,
+    LEGACY_ATX_BILLING_PLAN_ID_PREMIUM_PLUS,
+    type AtxBillingPlanId
+} from "@/lib/atx-billing-plans";
 
 export type TenantWorkspaceLimits = {
-  /** Daily xoptions deck / follow-up views per user (calendar UTC day). */
+  /** xOptions deck / follow-up views per user — labeled **per hour** on `/account/billing` and admin workspace limits; enforced via `app_feature_daily_usage` (UTC day bucket) until hourly metering ships. */
   userXoptionsLimit: number;
-  /** Daily xChat prompts per user — capped with plan limits via min(plan, tenant). */
+  /** xChat prompts per user — labeled **per hour** on billing/admin; effective cap `min(plan, tenant)` in `POST /api/xchat/ask` (usage currently tracks UTC calendar day). */
   userChatLimit: number;
   /** Max portfolios per user in this tenant workspace. */
   tenantPortfolioLimit: number;
@@ -109,6 +114,14 @@ export function normalizePlanOverridesFromUnknown(raw: unknown): TenantPlanWorks
       out[planId] = parsed;
     }
   }
+  const legacyRow = src[LEGACY_ATX_BILLING_PLAN_ID_PREMIUM_PLUS];
+  if (legacyRow && typeof legacyRow === "object" && !Array.isArray(legacyRow)) {
+    const parsed = parsePlanOverrideRowLoose(legacyRow as Record<string, unknown>);
+    if (Object.keys(parsed).length > 0) {
+      const existing = out.premium_plus_monthly ?? {};
+      out.premium_plus_monthly = { ...parsed, ...existing };
+    }
+  }
   return out;
 }
 
@@ -153,6 +166,16 @@ export function parseWorkspaceLimitsPayload(
   return { ok: true, value };
 }
 
+function canonicalPlanOverridesKey(key: string): AtxBillingPlanId | undefined {
+  if (key === LEGACY_ATX_BILLING_PLAN_ID_PREMIUM_PLUS) {
+    return "premium_plus_monthly";
+  }
+  if (ATX_BILLING_PLAN_IDS.includes(key as AtxBillingPlanId)) {
+    return key as AtxBillingPlanId;
+  }
+  return undefined;
+}
+
 export function parsePlanOverridesPayload(
   raw: unknown
 ): { ok: true; value: TenantPlanWorkspaceOverrides } | { ok: false; error: string } {
@@ -163,18 +186,20 @@ export function parsePlanOverridesPayload(
     return { ok: false, error: "planOverrides must be an object" };
   }
   const o = raw as Record<string, unknown>;
-  const out: TenantPlanWorkspaceOverrides = {};
+  type RowEntry = { legacy: boolean; parsed: TenantPlanWorkspaceRow };
+  const byPlan = new Map<AtxBillingPlanId, RowEntry[]>();
+
   for (const key of Object.keys(o)) {
-    if (!ATX_BILLING_PLAN_IDS.includes(key as AtxBillingPlanId)) {
+    const planId = canonicalPlanOverridesKey(key);
+    if (!planId) {
       return { ok: false, error: `Unknown planOverrides key: ${key}` };
     }
-    const planId = key as AtxBillingPlanId;
-    const row = o[planId];
+    const row = o[key];
     if (row === null || row === undefined) {
       continue;
     }
     if (typeof row !== "object" || Array.isArray(row)) {
-      return { ok: false, error: `planOverrides.${planId} must be an object` };
+      return { ok: false, error: `planOverrides.${key} must be an object` };
     }
     const parsed: TenantPlanWorkspaceRow = {};
     for (const k of LIMIT_KEYS) {
@@ -183,20 +208,32 @@ export function parsePlanOverridesPayload(
         continue;
       }
       if (!isPositiveInt(cell)) {
-        return { ok: false, error: `Invalid planOverrides.${planId}.${k}: positive integer required` };
+        return { ok: false, error: `Invalid planOverrides.${key}.${k}: positive integer required` };
       }
       parsed[k] = cell;
     }
     const priceCell = (row as Record<string, unknown>).price;
     if (priceCell !== undefined && priceCell !== null) {
       if (!isPositiveInt(priceCell)) {
-        return { ok: false, error: `Invalid planOverrides.${planId}.price: positive integer required` };
+        return { ok: false, error: `Invalid planOverrides.${key}.price: positive integer required` };
       }
       parsed.price = priceCell;
     }
     if (Object.keys(parsed).length > 0) {
-      out[planId] = parsed;
+      const list = byPlan.get(planId) ?? [];
+      list.push({ legacy: key === LEGACY_ATX_BILLING_PLAN_ID_PREMIUM_PLUS, parsed });
+      byPlan.set(planId, list);
     }
+  }
+
+  const out: TenantPlanWorkspaceOverrides = {};
+  for (const [planId, rows] of byPlan) {
+    rows.sort((a, b) => (a.legacy === b.legacy ? 0 : a.legacy ? -1 : 1));
+    let merged: TenantPlanWorkspaceRow = {};
+    for (const r of rows) {
+      merged = { ...merged, ...r.parsed };
+    }
+    out[planId] = merged;
   }
   return { ok: true, value: out };
 }

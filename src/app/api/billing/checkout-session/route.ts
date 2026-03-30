@@ -12,7 +12,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
-  planId: z.enum(["basic", "premium_monthly", "premium_plus_yearly"])
+  planId: z.enum(["basic", "premium_monthly", "premium_plus_monthly"])
 });
 
 export async function POST(request: Request) {

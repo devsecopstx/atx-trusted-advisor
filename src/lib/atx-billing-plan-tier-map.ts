@@ -7,7 +7,7 @@ import type { SubscriptionPlan } from "@/modules/identity/types";
  */
 export function atxBillingPlanIdForSubscriptionPlan(plan?: SubscriptionPlan): AtxBillingPlanId {
   if (plan === "enterprise") {
-    return "premium_plus_yearly";
+    return "premium_plus_monthly";
   }
   if (plan === "pro") {
     return "premium_monthly";

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import { createAuditEvent } from "@/modules/audit/repository";
-import { getPersonaById, publishPersona } from "@/modules/xchat/repository";
+import { publishPersona } from "@/modules/xchat/repository";
 
 type RouteContext = {
   params: Promise<{ personaId: string }>;
@@ -13,7 +14,7 @@ export async function POST(_request: Request, context: RouteContext) {
   if (session instanceof NextResponse) return session;
 
   const { personaId } = await context.params;
-  const existing = await getPersonaById(personaId);
+  const existing = await getPersonaByIdCached(personaId);
   if (!existing) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }

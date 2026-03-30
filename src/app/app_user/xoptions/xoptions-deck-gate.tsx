@@ -37,10 +37,11 @@ export async function XoptionsDeckGate({ children }: Props) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-gray-950 px-6 py-16 text-center">
       <p className="text-xs uppercase tracking-[0.2em] text-emerald-500/90 font-semibold">xoptions</p>
-      <h1 className="text-xl font-semibold text-white max-w-md">Daily deck view limit reached</h1>
+      <h1 className="text-xl font-semibold text-white max-w-md">xOptions deck view limit reached</h1>
       <p className="text-sm text-gray-400 max-w-md">
-        Your workspace allows {result.limit} signed-in xoptions deck views per day (UTC). You&apos;ve used{" "}
-        {result.count}. Contact your workspace admin to raise the limit, or try again tomorrow.
+        Your workspace allows {result.limit} signed-in xOptions deck views per hour (same cap as Account → Billing). You&apos;ve
+        used {result.count} in the current usage window. Contact your workspace admin to raise the limit, or check{" "}
+        <span className="text-gray-300">Account → Billing</span> for plan details.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Link

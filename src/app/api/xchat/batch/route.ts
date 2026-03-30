@@ -5,8 +5,8 @@ import { ObjectId } from "mongodb";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getPersonaByIdCached, getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
-import { getTenantByHexId } from "@/modules/identity/repository";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import {
     buildBatchDashboardSummary,
@@ -16,7 +16,6 @@ import {
     listBatchJobs,
     submitBatchJob
 } from "@/modules/xchat/batch-service";
-import { getPersonaById } from "@/modules/xchat/repository";
 
 const submitBatchSchema = z.object({
   personaId: z.string().min(1),
@@ -74,7 +73,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const persona = await getPersonaById(parsed.data.personaId);
+  const persona = await getPersonaByIdCached(parsed.data.personaId);
   if (!persona) {
     return NextResponse.json(
       { error: "Persona not found" },
@@ -83,7 +82,7 @@ export async function POST(request: Request) {
   }
 
   const tenantForDebug = ObjectId.isValid(session.tenantId)
-    ? await getTenantByHexId(session.tenantId.trim())
+    ? await getTenantByHexIdCached(session.tenantId)
     : null;
   const tenantDebugFlag = isTenantXchatDebugPreferenceEnabled(tenantForDebug);
 

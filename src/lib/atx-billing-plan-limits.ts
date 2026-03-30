@@ -14,17 +14,17 @@ export const ATX_BILLING_PLAN_LIMIT_ROWS: readonly AtxBillingPlanLimitRow[] = [
     metric: "Price",
     basic: "$9/mo",
     premium: "$99/mo",
-    premiumPlus: "$299/yr"
+    premiumPlus: "$299/mo"
   },
   {
-    metric: "xstrategybuilder / day",
+    metric: "xstrategybuilder / hr",
     basic: "10",
     premium: "Unlimited capped per hr (TBD)",
     premiumPlus: "Unlimited"
   },
   {
     metric: "xStrategyBuilder ranges / week",
-    basic: "Up to 70 (10/day)",
+    basic: "Up to 70 (10/hr)",
     premium: "Expanded range (hourly caps apply)",
     premiumPlus: "Unlimited"
   },
@@ -35,7 +35,7 @@ export const ATX_BILLING_PLAN_LIMIT_ROWS: readonly AtxBillingPlanLimitRow[] = [
     premiumPlus: "Extended context set"
   },
   {
-    metric: "xChat research/prompts / day",
+    metric: "xChat research/prompts / hr",
     basic: "1",
     premium: "Unlimited capped per hr (TBD)",
     premiumPlus: "Unlimited"

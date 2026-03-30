@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import {
     hasFileSearchTool,
@@ -10,12 +11,7 @@ import {
     personaSatisfiesFileSearchCollectionRequirement,
     updatePersonaPayloadSchema
 } from "@/modules/xchat/persona-validation";
-import {
-    PersonaNameConflictError,
-    deletePersona,
-    getPersonaById,
-    updatePersona
-} from "@/modules/xchat/repository";
+import { PersonaNameConflictError, deletePersona, updatePersona } from "@/modules/xchat/repository";
 import { normalizePersonaXapiConfig, type PersonaConfig } from "@/modules/xchat/types";
 
 type RouteContext = {
@@ -34,7 +30,7 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { personaId } = await context.params;
-  const persona = await getPersonaById(personaId);
+  const persona = await getPersonaByIdCached(personaId);
   if (!persona) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }
@@ -81,7 +77,7 @@ export async function PUT(request: Request, context: RouteContext) {
   }
 
   const { personaId } = await context.params;
-  const existingPersona = await getPersonaById(personaId);
+  const existingPersona = await getPersonaByIdCached(personaId);
   if (!existingPersona) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }
@@ -155,7 +151,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 
   const { personaId } = await context.params;
-  const existing = await getPersonaById(personaId);
+  const existing = await getPersonaByIdCached(personaId);
   if (!existing) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }

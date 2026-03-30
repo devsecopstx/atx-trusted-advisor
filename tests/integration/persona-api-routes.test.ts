@@ -39,7 +39,10 @@ const verifierMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/api-auth", () => apiAuthMocks);
-vi.mock("@/modules/xchat/repository", () => repositoryMocks);
+vi.mock("@/modules/xchat/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/repository")>();
+  return { ...actual, ...repositoryMocks };
+});
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 

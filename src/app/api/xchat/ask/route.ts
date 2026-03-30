@@ -4,6 +4,11 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import {
+    getPersonaByIdCached,
+    getTenantByHexIdCached,
+    loadDefaultXchatPersonaForSessionDeduped
+} from "@/lib/server-request-cache";
 import { effectiveWorkspaceLimitsForTenantAndPlan } from "@/lib/tenant-workspace-limits";
 import {
     respondWithXaiToolLoop,
@@ -22,7 +27,7 @@ import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getCoreUserById, getTenantByHexId } from "@/modules/identity/repository";
+import { getCoreUserById } from "@/modules/identity/repository";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
@@ -38,12 +43,7 @@ import {
     getPlanLimits
 } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
-import {
-    getLatestXchatResponseIdByUser,
-    getPersonaById,
-    resolveDefaultXchatPersonaForSession,
-    saveXChatLog
-} from "@/modules/xchat/repository";
+import { getLatestXchatResponseIdByUser, saveXChatLog } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import {
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   }
 
   const tenantForDebug = ObjectId.isValid(session.tenantId)
-    ? await getTenantByHexId(session.tenantId.trim())
+    ? await getTenantByHexIdCached(session.tenantId)
     : null;
   const tenantDebugFlag = isTenantXchatDebugPreferenceEnabled(tenantForDebug);
 
@@ -161,7 +161,7 @@ export async function POST(request: Request) {
         {
           error:
             usageCheck.code === "xchat_daily_limit_exceeded"
-              ? "Daily xChat prompt limit reached for current plan"
+              ? "xChat prompt limit reached for your current plan (per-hour cap on billing; usage window may reset on UTC day)"
               : "Rate limit exceeded",
           code: usageCheck.code,
           retryAfterSeconds: usageCheck.retryAfterSeconds ?? 60
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const defaultPersona = await resolveDefaultXchatPersonaForSession(session.roles);
+  const defaultPersona = await loadDefaultXchatPersonaForSessionDeduped(session.roles);
   if (!defaultPersona) {
     return NextResponse.json(
       {
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
         : [];
   let resolvedPersonaIdOverride: string | undefined;
   for (const candidatePersonaId of personaOverrideCandidates) {
-    const requestedPersona = await getPersonaById(candidatePersonaId);
+    const requestedPersona = await getPersonaByIdCached(candidatePersonaId);
     if (!requestedPersona) {
       const isAssignedCandidate = Boolean(
         assignedPersonaId && candidatePersonaId === assignedPersonaId

@@ -19,7 +19,10 @@ vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/identity/repository", () => ({
   getTenantByHexId: identityMocks.getTenantByHexId
 }));
-vi.mock("@/modules/xchat/repository", () => repositoryMocks);
+vi.mock("@/modules/xchat/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/repository")>();
+  return { ...actual, ...repositoryMocks };
+});
 
 import { GET as getHistory } from "@/app/api/xchat/history/route";
 import { GET as getHistoryStats } from "@/app/api/xchat/history/stats/route";

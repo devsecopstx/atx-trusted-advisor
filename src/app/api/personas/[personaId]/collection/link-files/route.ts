@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
+import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import { addFileToXaiCollection } from "@/lib/xai";
 import { evaluateRagFileReadiness, isRagFileReadyForSemanticSearch } from "@/modules/xchat/rag-file-readiness";
-import { getPersonaById, listRagFiles } from "@/modules/xchat/repository";
+import { listRagFiles } from "@/modules/xchat/repository";
 
 type RouteContext = {
   params: Promise<{ personaId: string }>;
@@ -22,7 +23,7 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { personaId } = await context.params;
-  const persona = await getPersonaById(personaId);
+  const persona = await getPersonaByIdCached(personaId);
   if (!persona) {
     return NextResponse.json({ error: "Persona not found" }, { status: 404 });
   }

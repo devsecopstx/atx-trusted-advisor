@@ -2,10 +2,8 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
-import {
-    getXChatHistoryStatsByUser,
-    resolveDefaultXchatPersonaForSession
-} from "@/modules/xchat/repository";
+import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
+import { getXChatHistoryStatsByUser } from "@/modules/xchat/repository";
 import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
 
 export async function GET() {
@@ -25,7 +23,7 @@ export async function GET() {
 
   const [stats, persona] = await Promise.all([
     getXChatHistoryStatsByUser({ userId, tenantId }),
-    resolveDefaultXchatPersonaForSession(session.roles)
+    loadDefaultXchatPersonaForSessionDeduped(session.roles)
   ]);
   const historyMode = isXchatRemoteHistoryEnabled() ? "xai_remote" : "mongo";
 

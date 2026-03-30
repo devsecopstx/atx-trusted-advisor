@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/api-auth";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { listPersonasByStatusCached, listPersonasCached } from "@/lib/server-request-cache";
 import {
     createAuditEvent,
     listLatestAuditEventsForEntities
@@ -13,12 +14,7 @@ import {
     isPersonaPayloadTooLargeByBody,
     isPersonaPayloadTooLargeByHeader
 } from "@/modules/xchat/persona-validation";
-import {
-    PersonaNameConflictError,
-    createPersona,
-    listPersonas,
-    listPersonasByStatus
-} from "@/modules/xchat/repository";
+import { PersonaNameConflictError, createPersona } from "@/modules/xchat/repository";
 import { normalizePersonaXapiConfig, personaStatusValues, type PersonaConfig, type PersonaStatus } from "@/modules/xchat/types";
 
 export async function GET(request: Request) {
@@ -38,11 +34,11 @@ export async function GET(request: Request) {
 
   let personas: PersonaConfig[];
   if (!isAdmin) {
-    personas = await listPersonasByStatus("published");
+    personas = await listPersonasByStatusCached("published");
   } else if (statusParam && (personaStatusValues as readonly string[]).includes(statusParam)) {
-    personas = await listPersonasByStatus(statusParam as PersonaStatus);
+    personas = await listPersonasByStatusCached(statusParam as PersonaStatus);
   } else {
-    personas = await listPersonas();
+    personas = await listPersonasCached();
   }
 
   const serialized = personas.map(serializePersona);

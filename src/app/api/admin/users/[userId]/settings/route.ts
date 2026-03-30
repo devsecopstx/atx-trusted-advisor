@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
 import { withDefaultInvestmentStrategy } from "@/modules/core-admin/portfolio-preference-labels";
@@ -12,7 +13,6 @@ import {
     upsertUserAdminSettings
 } from "@/modules/core-admin/repository";
 import { getCoreUserById } from "@/modules/identity/repository";
-import { getPersonaById } from "@/modules/xchat/repository";
 import { resolveTeamKbCollectionId } from "@/modules/xchat/team-xai-collection";
 
 const updateSettingsSchema = z.object({
@@ -142,7 +142,7 @@ export async function PUT(request: Request, context: RouteContext) {
     );
   }
   if (assignedPersonaId) {
-    const assignedPersona = await getPersonaById(assignedPersonaId);
+    const assignedPersona = await getPersonaByIdCached(assignedPersonaId);
     if (!assignedPersona) {
       return NextResponse.json(
         {
@@ -219,7 +219,7 @@ async function resolveUserLinkedCollections(input: {
 
   const assignedPersonaId = input.assignedPersonaId?.trim();
   if (assignedPersonaId && ObjectId.isValid(assignedPersonaId)) {
-    const assignedPersona = await getPersonaById(assignedPersonaId);
+    const assignedPersona = await getPersonaByIdCached(assignedPersonaId);
     const personaCollectionId = assignedPersona?.xaiCollection?.collectionId?.trim();
     if (personaCollectionId) {
       linked.push({

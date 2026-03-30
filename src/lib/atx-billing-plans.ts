@@ -1,14 +1,20 @@
 /**
  * ATX retail subscription tiers (Account → Billing). Stripe Price IDs come from env — see `stripe-config.ts`.
  */
-export type AtxBillingPlanId = "basic" | "premium_monthly" | "premium_plus_yearly";
+export type AtxBillingPlanId = "basic" | "premium_monthly" | "premium_plus_monthly";
 
 /** Retail tiers (Account → Billing) — use for tenant `workspaceLimits.planOverrides` keys. */
 export const ATX_BILLING_PLAN_IDS: readonly AtxBillingPlanId[] = [
   "basic",
   "premium_monthly",
-  "premium_plus_yearly"
+  "premium_plus_monthly"
 ] as const;
+
+/**
+ * Legacy Mongo key for Premium+ before list pricing was corrected to monthly.
+ * Normalize reads to `premium_plus_monthly` (see `normalizePlanOverridesFromUnknown` / `parsePlanOverridesPayload`).
+ */
+export const LEGACY_ATX_BILLING_PLAN_ID_PREMIUM_PLUS = "premium_plus_yearly" as const;
 
 export type AtxBillingPlan = {
   id: AtxBillingPlanId;
@@ -64,12 +70,11 @@ export const ATX_BILLING_PLANS: readonly AtxBillingPlan[] = [
     ]
   },
   {
-    /** Stripe env may still use `STRIPE_PRICE_PREMIUM_PLUS_YEARLY` until price ids are renamed. */
-    id: "premium_plus_yearly",
+    id: "premium_plus_monthly",
     name: "Premium+",
     tagline: "Dedicated instance — private, white-glove posture, account trade recomendations and rationale with automated verification",
     priceLabel: "$299",
-    periodNote: "per year",
+    periodNote: "per month",
     bullets: [
       "White-glove for ultra-complex and family-office books; direct line for structured product input",
       "Dedicated enterprise-grade instance sized for your workflow",

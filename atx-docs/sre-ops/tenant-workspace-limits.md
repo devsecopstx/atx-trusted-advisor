@@ -6,14 +6,16 @@ Per-tenant quotas for the Next.js BFF. Defaults are code-defined; overrides live
 
 | Key | Default | Enforcement |
 |-----|---------|-------------|
-| `userXoptionsLimit` | 10 | Daily UTC bucket per user+tenant; `app_feature_daily_usage` (`feature: xoptions_deck`). Signed-in app users with `canUserLogin`; `global_admin` bypass. |
-| `userChatLimit` | 10 | `min(plan daily max, userChatLimit)` in `POST /api/xchat/ask`; `global_admin` bypasses daily cap. |
+| `userXoptionsLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** `app_feature_daily_usage` (`feature: xoptions_deck`) UTC day bucket per user+tenant. Signed-in app users with `canUserLogin`; `global_admin` bypass. |
+| `userChatLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** `min(plan max, userChatLimit)` in `POST /api/xchat/ask` with UTC day usage; `global_admin` bypasses cap. |
 | `tenantPortfolioLimit` | 1 | New portfolio rows in tenant for that user (admin + app flows). |
 | `portfolioAccountLimit` | 1 | New `portfolio_accounts` per portfolio. |
 
+**Product vs runtime:** xOptions/xChat are labeled **per hour** on `/account/billing`, admin workspace limits, xOptions gate, and xChat limit errors. The **Runtime** column above is source of truth for the current counter implementation; align code and docs when moving to true hourly metering.
+
 ### Per-plan overrides (`workspaceLimits.planOverrides`)
 
-Keyed by retail tier id: `basic`, `premium_monthly`, `premium_plus_yearly`. Each value is a partial of the quota fields above, plus optional:
+Keyed by retail tier id: `basic`, `premium_monthly`, `premium_plus_monthly`. Legacy documents may still use `premium_plus_yearly`; it is normalized to `premium_plus_monthly` on read. Each value is a partial of the quota fields above, plus optional:
 
 | Key | Default | Notes |
 |-----|---------|--------|
@@ -33,7 +35,10 @@ Indexes are created best-effort on first use (same pattern as other identity usa
 
 ## App user surfacing
 
-- `/account/billing` shows **resolved** effective limits for the signed-in user’s tenant.
+- `/account/billing` (see `src/app/account/billing/page.tsx`, `billing-plan-grid.tsx`) resolves each retail tier with **`billingCardWorkspaceDisplay`** in `src/lib/billing-plan-workspace-display.ts`:
+  - **Signed-in:** loads `core_tenants` by session `tenantId`, merges `workspaceLimits` + `planOverrides.<tier>` via `mergeTenantWorkspaceLimits` + `applyTenantPlanRowToBase` (same shape as enforcement). **List price** on the card uses `planOverrides.<tier>.price` (USD whole dollars) when set; otherwise catalog from `ATX_BILLING_PLANS`.
+  - **Guests:** list **price** and four **catalog** cap strings from `src/lib/atx-billing-plan-limits.ts` (aligned with `atx-docs/resouces/atx-limits.txt.tsv`).
+  - **Workspace limits** block on each card: exactly **four** rows (xOptions/hr, xChat/hr, portfolios/user, accounts/portfolio); **price is not duplicated** in that list (only in the card header). Labels follow published billing copy (per-hour caps for xOptions/xChat on the card).
 
 ## Deploy / rollback
 

@@ -133,4 +133,33 @@ describe("tenant workspace limits", () => {
       })
     ).toEqual({ basic: { userChatLimit: 2, price: 42 } });
   });
+
+  it("normalizePlanOverridesFromUnknown maps legacy premium_plus_yearly to premium_plus_monthly", () => {
+    expect(
+      normalizePlanOverridesFromUnknown({
+        premium_plus_yearly: { userChatLimit: 9 }
+      })
+    ).toEqual({ premium_plus_monthly: { userChatLimit: 9 } });
+  });
+
+  it("parsePlanOverridesPayload maps legacy premium_plus_yearly to premium_plus_monthly", () => {
+    const parsed = parsePlanOverridesPayload({
+      premium_plus_yearly: { userChatLimit: 3 }
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.premium_plus_monthly?.userChatLimit).toBe(3);
+    }
+  });
+
+  it("parsePlanOverridesPayload merges legacy then canonical when both present for Premium+", () => {
+    const parsed = parsePlanOverridesPayload({
+      premium_plus_yearly: { userChatLimit: 1 },
+      premium_plus_monthly: { userChatLimit: 5 }
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.premium_plus_monthly?.userChatLimit).toBe(5);
+    }
+  });
 });

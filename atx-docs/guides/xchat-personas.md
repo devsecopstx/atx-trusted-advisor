@@ -47,7 +47,7 @@ All governance actions should emit audit events.
 
 Plan limits are defined in `src/modules/xchat/plan-limits.ts` and include:
 
-- prompts/day
+- prompts/hr (billing copy; see `plan-limits` + ask route for enforcement window)
 - max turns
 - max tool calls
 - batch availability and limits

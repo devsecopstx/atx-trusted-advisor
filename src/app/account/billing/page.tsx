@@ -1,4 +1,4 @@
-import { AtxBillingCheckoutButton } from "@/app/account/ui/atx-billing-checkout";
+import { BillingPlanGrid } from "@/app/account/billing/billing-plan-grid";
 import { BillingFeedbackLink } from "@/app/account/ui/billing-feedback-link";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
@@ -9,26 +9,15 @@ import {
   parseAccessRequestPlanInput,
   type AccessRequestPlanValue
 } from "@/lib/access-request-plans";
-import { ATX_BILLING_PLAN_LIMIT_ROWS } from "@/lib/atx-billing-plan-limits";
-import { ATX_BILLING_PLANS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import { getSessionUser } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { getStripePublishableKey, isStripeBillingFullyConfigured } from "@/lib/stripe-config";
 import { canUserLogin } from "@/modules/identity/authorization";
 
 import "./billing-plans.css";
 
 export const dynamic = "force-dynamic";
-
-const PLAN_LIMIT_COLUMN_BY_ID = {
-  basic: "basic",
-  premium_monthly: "premium",
-  premium_plus_yearly: "premiumPlus"
-} as const;
-type PlanLimitItem = {
-  metric: string;
-  value: string;
-};
 
 export default async function AccountBillingPage({
   searchParams
@@ -65,22 +54,9 @@ export default async function AccountBillingPage({
             message: "Checkout canceled — no charge. Pick a plan below when you're ready."
           }
         : null;
-  const planLimitsByPlanId = ATX_BILLING_PLANS.reduce<Record<AtxBillingPlanId, PlanLimitItem[]>>(
-    (acc, plan) => {
-      const planLimitKey = PLAN_LIMIT_COLUMN_BY_ID[plan.id];
-      const limits = ATX_BILLING_PLAN_LIMIT_ROWS.filter((row) => row.metric !== "Price").map((row) => ({
-        metric: row.metric,
-        value: row[planLimitKey]
-      }));
-      acc[plan.id] = limits;
-      return acc;
-    },
-    {
-      basic: [],
-      premium_monthly: [],
-      premium_plus_yearly: []
-    }
-  );
+
+  const tenant =
+    approved && session?.tenantId ? await getTenantByHexIdCached(session.tenantId) : null;
 
   return (
     <div className="xchat-shell">
@@ -102,7 +78,7 @@ export default async function AccountBillingPage({
                 <h1 className="billing-hero__title">Account &amp; billing</h1>
                 <p className="billing-hero__copy">
                   Choose a plan for <strong className="text-[var(--xf-gain-green)]">aTx Trusted Advisory</strong>. Billing
-                  runs on Stripe.
+                  runs on Stripe. Workspace limits below reflect your tenant (and per-plan overrides when set).
                 </p>
               </header>
 
@@ -127,43 +103,7 @@ export default async function AccountBillingPage({
                 </div>
               ) : null}
 
-              <div className="billing-grid">
-                {ATX_BILLING_PLANS.map((plan) => (
-                  <article
-                    key={plan.id}
-                    className={`billing-card xf-widget${plan.highlight ? " billing-card--highlight" : ""}`}
-                  >
-                    {plan.highlight ? <span className="billing-card__tag">Popular</span> : null}
-                    <h2 className="billing-card__name">{plan.name}</h2>
-                    <p className="billing-card__tagline">{plan.tagline}</p>
-                    <p className="billing-card__price">{plan.priceLabel}</p>
-                    <p className="billing-card__period">{plan.periodNote}</p>
-                    <ul className="billing-card__list">
-                      {plan.bullets.map((b) => (
-                        <li key={b}>{b}</li>
-                      ))}
-                    </ul>
-                    <div className="billing-card__limits">
-                      <p className="billing-card__limits-title">Workspace limits</p>
-                      <ul className="billing-card__limits-list">
-                        {planLimitsByPlanId[plan.id].map((limit) => (
-                          <li key={`${plan.id}-${limit.metric}`}>
-                            <span className="billing-card__limits-metric">{limit.metric}</span>
-                            <span className="billing-card__limits-value">{limit.value}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    {guestReadonly ? (
-                      <button className="billing-checkout-button" disabled type="button">
-                        Sign in required
-                      </button>
-                    ) : (
-                      <AtxBillingCheckoutButton planId={plan.id} checkoutReady={checkoutReady} />
-                    )}
-                  </article>
-                ))}
-              </div>
+              <BillingPlanGrid tenant={tenant} approved={approved} checkoutReady={checkoutReady} />
 
               <p className="billing-footnote">
                 <span className="xf-disclaimer-emphasis">Not financial advice.</span> Trial access is time-limited;
@@ -186,46 +126,11 @@ export default async function AccountBillingPage({
                 <p className="billing-hero__eyebrow">ATX price plans</p>
                 <h1 className="billing-hero__title">Account &amp; billing</h1>
                 <p className="billing-hero__copy">
-                  Select a plan, then continue with Register for access. Basic is the default selection.
+                  Select a plan, then continue with Register for access. Basic is the default selection. Limits below are
+                  list defaults; signed-in users see tenant-resolved caps.
                 </p>
               </header>
-              <div className="billing-grid">
-                {ATX_BILLING_PLANS.map((plan) => (
-                  <article
-                    key={plan.id}
-                    className={`billing-card xf-widget${plan.highlight ? " billing-card--highlight" : ""}`}
-                  >
-                    {plan.highlight ? <span className="billing-card__tag">Popular</span> : null}
-                    <h2 className="billing-card__name">{plan.name}</h2>
-                    <p className="billing-card__tagline">{plan.tagline}</p>
-                    <p className="billing-card__price">{plan.priceLabel}</p>
-                    <p className="billing-card__period">{plan.periodNote}</p>
-                    <ul className="billing-card__list">
-                      {plan.bullets.map((b) => (
-                        <li key={b}>{b}</li>
-                      ))}
-                    </ul>
-                    <div className="billing-card__limits">
-                      <p className="billing-card__limits-title">Workspace limits</p>
-                      <ul className="billing-card__limits-list">
-                        {planLimitsByPlanId[plan.id].map((limit) => (
-                          <li key={`${plan.id}-${limit.metric}`}>
-                            <span className="billing-card__limits-metric">{limit.metric}</span>
-                            <span className="billing-card__limits-value">{limit.value}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <form method="get">
-                      <input name="register" type="hidden" value="1" />
-                      <input name="plan" type="hidden" value={plan.id} />
-                      <button className="billing-checkout-button" type="submit">
-                        Select {plan.name} and Register for access
-                      </button>
-                    </form>
-                  </article>
-                ))}
-              </div>
+              <BillingPlanGrid tenant={null} approved={false} checkoutReady={false} />
               <p className="billing-footnote">
                 <span className="xf-disclaimer-emphasis">Not financial advice.</span> Guest mode is read-only. Sign in
                 for approved access to checkout and account actions.

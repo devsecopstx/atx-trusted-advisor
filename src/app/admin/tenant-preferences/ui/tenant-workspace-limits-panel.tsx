@@ -20,15 +20,15 @@ type Props = {
 const FIELDS: { key: keyof TenantWorkspaceLimits; label: string; abbr: string; hint: string }[] = [
   {
     key: "userXoptionsLimit",
-    label: "xoptions views / day (per user)",
-    abbr: "xOpt/day",
-    hint: "Signed-in xoptions deck + follow-up share this UTC daily bucket."
+    label: "xoptions views / hr (per user)",
+    abbr: "xOpt/hr",
+    hint: "Signed-in xoptions deck + follow-up; billing copy uses per-hour caps (see tenant-workspace-limits enforcement notes)."
   },
   {
     key: "userChatLimit",
-    label: "xChat prompts / day (per user)",
-    abbr: "xChat/day",
-    hint: "Capped with plan: effective = min(plan, tenant)."
+    label: "xChat prompts / hr (per user)",
+    abbr: "xChat/hr",
+    hint: "Capped with plan: effective = min(plan, tenant). Billing UI labels per-hour caps."
   },
   {
     key: "tenantPortfolioLimit",
@@ -53,7 +53,7 @@ function emptyPlanDrafts(): PlanLimitDrafts {
   return {
     basic: {},
     premium_monthly: {},
-    premium_plus_yearly: {}
+    premium_plus_monthly: {}
   };
 }
 

@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { requireGlobalAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
-    getTenantByHexId,
     resolvedWorkspaceLimitsForTenant,
     updateTenantBrandingPreferencesOneTime,
     updateTenantWorkspaceLimits,
@@ -43,7 +43,7 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const { tenantId } = await context.params;
-  const tenant = await getTenantByHexId(tenantId.trim());
+  const tenant = await getTenantByHexIdCached(tenantId);
   if (!tenant?._id) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
@@ -76,7 +76,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const { tenantId } = await context.params;
-  const tenant = await getTenantByHexId(tenantId.trim());
+  const tenant = await getTenantByHexIdCached(tenantId);
   if (!tenant?._id) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }

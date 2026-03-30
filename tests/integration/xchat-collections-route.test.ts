@@ -25,7 +25,10 @@ const teamXaiMocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/modules/core-admin/repository", () => settingsMocks);
-vi.mock("@/modules/xchat/repository", () => repositoryMocks);
+vi.mock("@/modules/xchat/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/repository")>();
+  return { ...actual, ...repositoryMocks };
+});
 vi.mock("@/modules/xchat/team-xai-collection", () => ({
   resolveTeamKbCollectionId: teamXaiMocks.resolveTeamKbCollectionId
 }));
