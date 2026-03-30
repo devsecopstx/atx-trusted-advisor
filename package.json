@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "2.7.7",
+  "version": "2.7.8",
   "description": "aTx⚡ Trusted Advisory software and services for finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
