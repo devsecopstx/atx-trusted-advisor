@@ -8,7 +8,7 @@ import { getMongoConnectionLabel } from "@/lib/env";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { GlobalFooter } from "../ui/global-footer";
 import { XchatHeaderBrand } from "../ui/xchat-header-brand";
-import { AdminLeftRail } from "./ui/admin-left-rail";
+import { AdminLayoutShell } from "./ui/admin-layout-shell";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
 
 type AdminLayoutProps = {
@@ -52,10 +52,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </header>
       <main className="admin-layout-content">
-        <div className="admin-layout-shell">
-          <AdminLeftRail />
-          <div className="admin-layout-main">{children}</div>
-        </div>
+        <AdminLayoutShell>{children}</AdminLayoutShell>
       </main>
       <GlobalFooter />
     </div>

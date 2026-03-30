@@ -28,6 +28,45 @@ Use Secret Manager, Binary Authorization, VPC Service Controls, and strict least
 
 Default to production-grade, secure, observable, and SRE-minded solutions unless the user specifically asks for something simpler.
 
+## 0. Greenfield: new GCP project + staging (ground zero)
+
+Use this ordered path when **nothing exists yet** (new org/repo clone of [devsecopstx/xfinance](https://github.com/devsecopstx/xfinance), staging first). Production repeats the same pattern in a **second** project.
+
+### A. Google Cloud (staging project, e.g. `fintech-advisor-staging`)
+
+1. **Create project** → link **billing**.
+2. **Enable APIs** (minimum for this repo’s workflows + manual deploy):  
+   `run.googleapis.com`, `secretmanager.googleapis.com`, `artifactregistry.googleapis.com`, `cloudbuild.googleapis.com`, `iamcredentials.googleapis.com`, `serviceusage.googleapis.com`.
+3. **Artifact Registry:** Docker repo **`atxfinance-core-app`** in your deploy region (e.g. **`us-central1`**) — matches `.github/workflows/deploy-cloud-run.yml` defaults unless overridden by vars.
+4. **Secret Manager:** Create **latest** versions for every name in `scripts/ops/gcp-runtime-secrets.inc.sh` (`MONGODB_URI_B64`, `XAI_API_KEY`, `X_OAUTH_*`, `AUTH_SECRET`, `SLACK_WEBHOOK_URL`, `ADMIN_SEED_EMAIL`, `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PUBLIC_KEY`; optional `STRIPE_SECRET_KEY`). Use staging-appropriate values (staging DB URI, test Stripe keys if needed).
+5. **Deploy identity (for GitHub Actions):** Service account + **Workload Identity Federation** so GitHub (`devsecopstx/xfinance`) can impersonate it with **OIDC** — grant roles such as **Cloud Run Admin**, **Secret Manager Secret Accessor** (on needed secrets), **Artifact Registry** push, **Cloud Build Editor** (workflows use `gcloud builds submit`). Exact bindings follow least-privilege in your org; see `AGENTS.md` / `DEVELOPMENT.md` for OIDC env secret names.
+6. **First Cloud Run service:** Either let the **first deploy** create it (`gcloud run deploy <name>`) or create an empty service — name must match **`CLOUD_RUN_SERVICE_STAGING`** everywhere (`.env.stage`, GitHub **Variables**).
+
+### B. Local operator machine (staging)
+
+1. `gcloud auth login` → `gcloud config set project <staging-project-id>`.
+2. Copy **`.env.example`** → **`.env.stage`** at repo root; set **`GOOGLE_PROJECT_ID`**, **`CLOUD_RUN_REGION`**, **`CLOUD_RUN_SERVICE_STAGING`**, **`STAGING_BASE_URL`** (public URL, no trailing slash — e.g. `https://staging.atx.example.com` once DNS exists).
+3. **Redis / Stripe publishable sync** (if using): `npm run ops:secrets:sync-redis:staging`, `npm run ops:secrets:sync-stripe-publishable:staging` (after values exist in the file).
+4. **Preflight:** `npm run ops:secrets:verify:staging` must pass.
+5. **First deploy:** `npm run ops:deploy:cloud-run:staging:ci` (or `:staging` without local CI gate). See **§7** for details.
+
+### C. GitHub repo ([Actions](https://github.com/devsecopstx/xfinance/actions))
+
+1. **Billing:** GitHub Actions must be allowed to run (org billing / spending limits) or use **§7** manual deploy only.
+2. **Environments:** **`staging`** and **`production`** with optional **required reviewers** for deploy workflows.
+3. **Environment secrets** (per env): **`GCP_WORKLOAD_IDENTITY_PROVIDER`**, **`GCP_SERVICE_ACCOUNT_EMAIL`** (from WIF setup). Optional **`XAI_API_KEY`** only if a workflow uses it (runtime app keys live in **GCP Secret Manager**, not GitHub, for Cloud Run).
+4. **Environment variables** (non-secret): align with `.github/workflows/deploy-cloud-run.yml` — at minimum **`GCP_PROJECT_ID_STAGING`**, **`CLOUD_RUN_REGION`**, **`CLOUD_RUN_SERVICE_STAGING`**, **`STAGING_BASE_URL`**, **`ARTIFACT_REGISTRY_REPOSITORY`** (default `atxfinance-core-app`), optional **`GCP_ARTIFACT_PROJECT_ID`** if Artifact Registry lives in a different project than Cloud Run.
+
+### D. DNS + OAuth (staging hostname)
+
+1. **Cloud Run → Domain mappings:** Add **`staging.atx.<your-domain>`** to the **staging** service; apply **Route 53** (or DNS) records **exactly** as Google shows (CNAME to `ghs.googlehosted.com`, verification records).
+2. **X Developer app:** Register callback **`https://staging.atx.<domain>/api/auth/x/callback`** (see `atx-docs/sre-ops/x-oauth-atx-callbacks.md`).
+
+### E. Verify
+
+- `curl -sS "$STAGING_BASE_URL/api/health" | jq .` → `status: ok`, **`version`** matches `package.json` after deploy.
+- **§8** if custom domain and `*.run.app` disagree on **`version`**.
+
 ## 6. GCP Secret Manager — atxFinance runtime (staging / production)
 
 **Source of truth** for Cloud Run is **Secret Manager** in the GCP project that matches your env file’s project id. Prefer **`GOOGLE_PROJECT_ID`** in `.env.stage` / `.env.prod` (e.g. `GOOGLE_PROJECT_ID=fintech-advisor-staging` for staging); **`GOOGLE_CLOUD_PROJECT`** and **`GCP_PROJECT_ID`** are accepted aliases. Do not commit real values; sync from local env files only on secure operator machines.

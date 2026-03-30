@@ -4,6 +4,9 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { logXchatHistoryListDebug } from "@/lib/xchat-debug";
+import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
+import { getTenantByHexId } from "@/modules/identity/repository";
+import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import { listXChatHistoryByUser } from "@/modules/xchat/repository";
 
 const historyQuerySchema = z.object({
@@ -18,6 +21,12 @@ export async function GET(request: Request) {
     return session;
   }
 
+  const tenantForDebug = ObjectId.isValid(session.tenantId)
+    ? await getTenantByHexId(session.tenantId.trim())
+    : null;
+  const tenantDebugFlag = isTenantXchatDebugPreferenceEnabled(tenantForDebug);
+
+  return runWithXchatTenantDebugAsync(tenantDebugFlag, async () => {
   if (!ObjectId.isValid(session.userId)) {
     return NextResponse.json({ error: "Invalid session user id" }, { status: 400 });
   }
@@ -79,5 +88,6 @@ export async function GET(request: Request) {
       nextCursorId,
       hasMore
     }
+  });
   });
 }

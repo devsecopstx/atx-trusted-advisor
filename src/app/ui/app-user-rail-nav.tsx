@@ -71,6 +71,21 @@ function ChatIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Hub / workspace tools — matches admin product chrome */
+function ManageWorkspaceIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.65}
+      />
+    </svg>
+  );
+}
+
 type RailDisclosureProps = {
   title: string;
   icon: ReactNode;
@@ -273,6 +288,29 @@ export function AppUserAccountRailSection({
   );
 }
 
+/** Global admin only — tenant Hub and admin console entry from the same rail as product surfaces */
+export function AppUserManageWorkspaceRailSection({
+  railDisclosureDefaultOpen = true
+}: {
+  railDisclosureDefaultOpen?: boolean;
+}) {
+  return (
+    <section className="app-user-rail-section" aria-label="Manage workspace">
+      <RailDisclosure
+        defaultOpen={railDisclosureDefaultOpen}
+        icon={<ManageWorkspaceIcon className="app-user-rail-disclosure__glyph" />}
+        title="Manage workspace"
+      >
+        <nav className="app-user-rail-sublinks" aria-label="Workspace administration">
+          <RailNavLink href="/admin" title="Open Admin Hub (tenant tools, personas, portfolios)">
+            Admin hub
+          </RailNavLink>
+        </nav>
+      </RailDisclosure>
+    </section>
+  );
+}
+
 export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUserAccountPublicRailProps) {
   return (
     <aside className="app-user-public-rail xf-widget" aria-label="Account navigation">
@@ -309,6 +347,7 @@ export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUser
       <AppUserXchatRailSection />
       <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
       <AppUserAccountRailSection isGlobalAdmin={isGlobalAdmin} />
+      {isGlobalAdmin ? <AppUserManageWorkspaceRailSection /> : null}
     </aside>
   );
 }

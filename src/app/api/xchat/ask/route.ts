@@ -18,10 +18,12 @@ import {
     logXchatAskPreRequestDebug,
     logXchatAskProviderErrorDebug
 } from "@/lib/xchat-debug";
+import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserAdminSettings } from "@/modules/core-admin/repository";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getCoreUserById } from "@/modules/identity/repository";
+import { getCoreUserById, getTenantByHexId } from "@/modules/identity/repository";
+import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
@@ -95,6 +97,12 @@ export async function POST(request: Request) {
     return session;
   }
 
+  const tenantForDebug = ObjectId.isValid(session.tenantId)
+    ? await getTenantByHexId(session.tenantId.trim())
+    : null;
+  const tenantDebugFlag = isTenantXchatDebugPreferenceEnabled(tenantForDebug);
+
+  return runWithXchatTenantDebugAsync(tenantDebugFlag, async () => {
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(contentLength) && contentLength > MAX_ASK_PAYLOAD_BYTES) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 });
@@ -624,6 +632,7 @@ export async function POST(request: Request) {
       })
     }
   );
+  });
 }
 
 function createSnippetFingerprint(input: string): string {

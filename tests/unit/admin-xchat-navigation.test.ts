@@ -12,10 +12,13 @@ describe("admin navigation includes xChat", () => {
     expect(rail).toContain('href: "/resources/getting-started"');
   });
 
-  it("admin layout renders persistent left rail", () => {
+  it("admin layout renders shell that mounts the left rail", () => {
     const layoutPath = path.join(process.cwd(), "src/app/admin/layout.tsx");
     const layout = readFileSync(layoutPath, "utf8");
-    expect(layout).toContain("<AdminLeftRail />");
+    expect(layout).toContain("<AdminLayoutShell>");
+    const shellPath = path.join(process.cwd(), "src/app/admin/ui/admin-layout-shell.tsx");
+    const shell = readFileSync(shellPath, "utf8");
+    expect(shell).toContain("<AdminLeftRail");
   });
 
   it("developer & integration group includes xChat API test link", () => {

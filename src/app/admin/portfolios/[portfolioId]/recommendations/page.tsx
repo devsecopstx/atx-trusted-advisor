@@ -18,9 +18,5 @@ export default async function AdminPortfolioRecommendationsPage({ params }: Page
     redirect("/admin?error=forbidden");
   }
   const { portfolioId } = await params;
-  return (
-    <div className="core-shell">
-      <AdminPortfolioRecommendationsConsole portfolioId={portfolioId} />
-    </div>
-  );
+  return <AdminPortfolioRecommendationsConsole portfolioId={portfolioId} />;
 }

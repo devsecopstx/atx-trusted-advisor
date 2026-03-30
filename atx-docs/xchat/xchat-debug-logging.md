@@ -1,14 +1,14 @@
 # xChat Debug Logging
 
-When `ENABLE_XCHAT_DEBUG=true` is set in the environment (local `.env`, Cloud Run, or GitHub Actions vars → deploy), the app emits **structured JSON** lines for xChat ask and batch flows. Use these for RAG tuning, expert learning, and replay analysis.
+When **`ENABLE_XCHAT_DEBUG=true`** (env) **or** **`core_tenants.tenantPreferences.xchat_debug_enabled=true`** (per-tenant, set by **global_admin** in **Admin → Tenant workspace**), the app emits **structured JSON** lines for xChat ask, history, and batch flows. Use these for RAG tuning, expert learning, and replay analysis.
 
-**Implementation:** `src/lib/xchat-debug.ts` · **Flag:** `isXchatDebugEnabled()` in `src/lib/env.ts`.
+**Implementation:** `src/lib/xchat-debug.ts` · **Env flag:** `isXchatDebugEnvEnabled()` in `src/lib/env.ts` · **Tenant flag:** `AsyncLocalStorage` context from `src/lib/xchat-debug-context.ts` when the tenant preference is on.
 
 ## Log taxonomy (prefixes)
 
 | Prefix | When | Contents |
 |--------|------|----------|
-| **`[xchat/debug]`** | Only if `ENABLE_XCHAT_DEBUG=true` | JSON with `type` (see below). User id / email **masked**; xAI collection id **masked**; full prompts + RAG + response in `xchat_ask_full` only when debug is on. |
+| **`[xchat/debug]`** | Only if env **or** tenant flag is on | JSON with `type` (see below). User id / email **masked**; xAI collection id **masked**; full prompts + RAG + response in `xchat_ask_full` only when debug is on. |
 | **`[xchat/ask]`** | Always on errors/warnings | Operational: RAG search failures, mongo scope failures, responses→chat fallback, provider 502 path. **No** full message bodies by default. |
 | **`[xchat/batch]`** | Always on batch errors | Operational: batch submit failures, poll issues (see routes). |
 
@@ -32,8 +32,9 @@ Exported as `XCHAT_DEBUG_LOG_TYPES` in `src/lib/xchat-debug.ts`.
 ## Enabling
 
 1. **Local:** `.env` → `ENABLE_XCHAT_DEBUG=true` (see `.env.example`). **Restart `next dev`** after changing env — Next only reads `.env` at process start.
-2. **GitHub variable** (recommended for Cloud Run): `ENABLE_XCHAT_DEBUG=true` for the environment. The deploy workflows pass it (see `.github/workflows/deploy-cloud-run.yml` and `.github/workflows/deploy-cloud-run-production.yml`).
-3. **Manual:** `gcloud run services update <service> --region <region> --set-env-vars ENABLE_XCHAT_DEBUG=true`
+2. **Per-tenant (no redeploy):** Admin → **Tenant workspace** → check **Enable xChat debug logs for this tenant** (writes `tenantPreferences.xchat_debug_enabled`). Applies to users on that tenant only.
+3. **GitHub variable** (recommended for Cloud Run): `ENABLE_XCHAT_DEBUG=true` for the environment. The deploy workflows pass it (see `.github/workflows/deploy-cloud-run.yml` and `.github/workflows/deploy-cloud-run-production.yml`).
+4. **Manual:** `gcloud run services update <service> --region <region> --set-env-vars ENABLE_XCHAT_DEBUG=true`
 
 ## Log retention (30 days)
 

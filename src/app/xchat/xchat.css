@@ -633,25 +633,12 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
 }
 
 .xchat-main-shell {
-  --xf-xchat-rail-bg: var(--xf-bg-900);
-  --xf-xchat-rail-border: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
-  --xf-xchat-rail-surface: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
-  --xf-xchat-rail-toggle-bg: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
-  --xf-xchat-rail-toggle-color: var(--xf-text-200);
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(76px, 300px) minmax(0, 1fr);
   gap: 0.85rem;
   padding: 0.65rem 0.85rem 0;
-}
-
-html[data-xf-ui="soft"] .xchat-main-shell {
-  --xf-xchat-rail-bg: color-mix(in srgb, #ffffff 90%, var(--xf-surface-700));
-  --xf-xchat-rail-border: color-mix(in srgb, var(--xf-text-100) 18%, transparent);
-  --xf-xchat-rail-surface: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
-  --xf-xchat-rail-toggle-bg: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
-  --xf-xchat-rail-toggle-color: var(--xf-text-100);
 }
 
 .xchat-main-shell--rail-collapsed {
@@ -1832,22 +1819,7 @@ html[data-xf-ui="soft"] .xchat-main-shell {
   }
 }
 
-/* App user collapsible rail sections (xChat + public product shell) */
-.app-user-shell-with-rail {
-  --xf-app-rail-bg: var(--xf-bg-900);
-  --xf-app-rail-border: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
-  --xf-app-rail-surface: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
-  --xf-app-rail-toggle-bg: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
-  --xf-app-rail-toggle-color: var(--xf-text-200);
-}
-
-html[data-xf-ui="soft"] .app-user-shell-with-rail {
-  --xf-app-rail-bg: color-mix(in srgb, #ffffff 90%, var(--xf-surface-700));
-  --xf-app-rail-border: color-mix(in srgb, var(--xf-text-100) 18%, transparent);
-  --xf-app-rail-surface: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
-  --xf-app-rail-toggle-bg: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
-  --xf-app-rail-toggle-color: var(--xf-text-100);
-}
+/* App user collapsible rail — uses same --xf-xchat-rail-* tokens as xChat (globals.css) */
 
 .app-user-rail-section {
   margin: 0;
@@ -1855,8 +1827,8 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
 
 .app-user-rail-disclosure {
   border-radius: 10px;
-  border: 1px solid var(--xf-app-rail-border);
-  background: var(--xf-app-rail-surface);
+  border: 1px solid var(--xf-xchat-rail-border);
+  background: var(--xf-xchat-rail-surface);
   overflow: hidden;
 }
 
@@ -1972,9 +1944,9 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
 .app-user-public-rail {
   min-height: 0;
   align-self: stretch;
-  border: 1px solid var(--xf-app-rail-border);
+  border: 1px solid var(--xf-xchat-rail-border);
   border-radius: 14px;
-  background: var(--xf-app-rail-bg);
+  background: var(--xf-xchat-rail-bg);
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -2004,8 +1976,8 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
   gap: 0.38rem;
   padding: 0.42rem 0.46rem;
   border-radius: 10px;
-  border: 1px solid var(--xf-app-rail-border);
-  background: var(--xf-app-rail-surface);
+  border: 1px solid var(--xf-xchat-rail-border);
+  background: var(--xf-xchat-rail-surface);
   min-width: 0;
 }
 
@@ -2025,7 +1997,7 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
   box-sizing: border-box;
   padding: 0.32rem 0.4rem;
   border-radius: 8px;
-  border: 1px solid var(--xf-app-rail-border);
+  border: 1px solid var(--xf-xchat-rail-border);
   background: var(--xf-bg-900);
   color: var(--xf-text-100);
   font-size: 0.76rem;
@@ -2131,9 +2103,9 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--xf-app-rail-border);
+  border: 1px solid var(--xf-xchat-rail-border);
   border-radius: 14px;
-  background: var(--xf-app-rail-bg);
+  background: var(--xf-xchat-rail-bg);
   align-self: stretch;
 }
 
@@ -2185,9 +2157,9 @@ html[data-xf-ui="soft"] .app-user-shell-with-rail {
   height: 2.35rem;
   padding: 0;
   border-radius: 10px;
-  border: 1px solid var(--xf-app-rail-border);
-  background: var(--xf-app-rail-toggle-bg);
-  color: var(--xf-app-rail-toggle-color);
+  border: 1px solid var(--xf-xchat-rail-border);
+  background: var(--xf-xchat-rail-toggle-bg);
+  color: var(--xf-xchat-rail-toggle-color);
   cursor: pointer;
   flex-shrink: 0;
   transition:

@@ -13,7 +13,8 @@ const bffMocks = vi.hoisted(() => ({
 const identityRepoMocks = vi.hoisted(() => ({
   getTenantByHexId: vi.fn(),
   updateTenantWorkspaceLimits: vi.fn(),
-  updateTenantBrandingPreferencesOneTime: vi.fn()
+  updateTenantBrandingPreferencesOneTime: vi.fn(),
+  updateTenantXchatDebugEnabled: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => ({
@@ -31,7 +32,8 @@ vi.mock("@/modules/identity/repository", async (importOriginal) => {
     ...actual,
     getTenantByHexId: identityRepoMocks.getTenantByHexId,
     updateTenantWorkspaceLimits: identityRepoMocks.updateTenantWorkspaceLimits,
-    updateTenantBrandingPreferencesOneTime: identityRepoMocks.updateTenantBrandingPreferencesOneTime
+    updateTenantBrandingPreferencesOneTime: identityRepoMocks.updateTenantBrandingPreferencesOneTime,
+    updateTenantXchatDebugEnabled: identityRepoMocks.updateTenantXchatDebugEnabled
   };
 });
 
@@ -42,7 +44,11 @@ const TENANT_HEX = "507f1f77bcf86cd799439022";
 function baseTenant(
   overrides: {
     workspaceLimits?: Record<string, number> | null;
-    tenantPreferences?: { xchat_brandname?: string; xstrategybuilder_brandname?: string } | null;
+    tenantPreferences?: {
+      xchat_brandname?: string;
+      xstrategybuilder_brandname?: string;
+      xchat_debug_enabled?: boolean;
+    } | null;
   } = {}
 ) {
   const id = new ObjectId(TENANT_HEX);
@@ -76,6 +82,9 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
       tenant: baseTenant(),
       conflictKeys: []
     });
+    identityRepoMocks.updateTenantXchatDebugEnabled.mockImplementation(async (_id: string, enabled: boolean) =>
+      baseTenant({ tenantPreferences: { xchat_debug_enabled: enabled } })
+    );
   });
 
   it("GET returns 403 when session is not global_admin", async () => {
@@ -207,6 +216,31 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     expect(res.status).toBe(409);
     const json = (await res.json()) as { error: string };
     expect(json.error).toContain("xchat_brandname");
+  });
+
+  it("PATCH sets tenantPreferences.xchat_debug_enabled", async () => {
+    identityRepoMocks.getTenantByHexId.mockResolvedValue(baseTenant());
+    identityRepoMocks.updateTenantWorkspaceLimits.mockResolvedValue(baseTenant());
+    identityRepoMocks.updateTenantBrandingPreferencesOneTime.mockResolvedValue({
+      tenant: baseTenant(),
+      conflictKeys: []
+    });
+
+    const req = new Request(`http://test/api/admin/tenants/${TENANT_HEX}/workspace-limits`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceLimits: { userChatLimit: 8 },
+        tenantPreferences: { xchat_debug_enabled: true }
+      })
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ tenantId: TENANT_HEX }) });
+    expect(res.status).toBe(200);
+    expect(identityRepoMocks.updateTenantXchatDebugEnabled).toHaveBeenCalledWith(TENANT_HEX, true);
+    const json = (await res.json()) as {
+      data: { tenantPreferences: Record<string, unknown> };
+    };
+    expect(json.data.tenantPreferences.xchat_debug_enabled).toBe(true);
   });
 
   it("PATCH returns 400 for invalid workspaceLimits values", async () => {

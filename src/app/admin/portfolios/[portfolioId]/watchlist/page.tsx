@@ -18,9 +18,5 @@ export default async function AdminPortfolioWatchlistPage({ params }: PageProps)
     redirect("/admin?error=forbidden");
   }
   const { portfolioId } = await params;
-  return (
-    <div className="core-shell">
-      <AdminPortfolioWatchlistConsole portfolioId={portfolioId} />
-    </div>
-  );
+  return <AdminPortfolioWatchlistConsole portfolioId={portfolioId} />;
 }

@@ -694,6 +694,25 @@ export async function updateTenantBrandingPreferencesOneTime(
   return { tenant: updated, conflictKeys: [] };
 }
 
+/** Toggle `tenantPreferences.xchat_debug_enabled` (global_admin — Admin → Tenant workspace). */
+export async function updateTenantXchatDebugEnabled(
+  tenantIdHex: string,
+  enabled: boolean
+): Promise<Tenant | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const now = new Date();
+  await db.collection<Tenant>(collections.tenants).updateOne(
+    { _id: id },
+    { $set: { "tenantPreferences.xchat_debug_enabled": enabled, updatedAt: now } }
+  );
+  return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+}
+
 export function resolvedWorkspaceLimitsForTenant(tenant: Tenant | null): TenantWorkspaceLimits {
   return mergeTenantWorkspaceLimits(tenant?.workspaceLimits ?? null);
 }

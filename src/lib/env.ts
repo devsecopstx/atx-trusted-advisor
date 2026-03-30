@@ -284,7 +284,7 @@ export function isAllowAnyXUserLoginEnabled(): boolean {
   return false;
 }
 
-/** When true, xChat emits detailed payload logs for RAG/expert learning. Set ENABLE_XCHAT_DEBUG=true in GCP. */
+/** When true, xChat emits detailed payload logs for RAG/expert learning. Set ENABLE_XCHAT_DEBUG=true in GCP. Tenant override: `core_tenants.tenantPreferences.xchat_debug_enabled`. */
 export type LicensingPitchContact = {
   licensingEmail?: string;
   licensingXUrl?: string;
@@ -330,7 +330,8 @@ export function getLicensingPitchContact(): LicensingPitchContact {
   };
 }
 
-export function isXchatDebugEnabled(): boolean {
+/** Env-only gate for xChat `[xchat/debug]` logs (`ENABLE_XCHAT_DEBUG`). */
+export function isXchatDebugEnvEnabled(): boolean {
   const val = process.env.ENABLE_XCHAT_DEBUG;
   if (typeof val === "boolean") {
     return val;

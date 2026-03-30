@@ -102,11 +102,38 @@ function AdminRailDisclosure({
   );
 }
 
-export function AdminLeftRail() {
+function ChevronLeftIcon() {
+  return (
+    <svg aria-hidden fill="none" height={18} viewBox="0 0 24 24" width={18}>
+      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+    </svg>
+  );
+}
+
+type AdminLeftRailProps = {
+  /** When set, shows a collapse control at the top of the rail */
+  onCollapse?: () => void;
+};
+
+export function AdminLeftRail({ onCollapse }: AdminLeftRailProps) {
   const pathname = usePathname() ?? "";
 
   return (
-    <aside className="admin-left-rail surface-card xf-widget" aria-label="Admin navigation">
+    <aside className="admin-left-rail xf-widget" aria-label="Admin navigation">
+      {onCollapse ? (
+        <div className="admin-left-rail__collapse-row">
+          <button
+            type="button"
+            className="admin-left-rail__collapse-btn"
+            onClick={onCollapse}
+            aria-label="Collapse navigation sidebar"
+            title="Collapse navigation"
+          >
+            <ChevronLeftIcon />
+            <span className="admin-left-rail__collapse-label">Collapse</span>
+          </button>
+        </div>
+      ) : null}
       <div className="admin-left-rail__section">
         <Link
           className={`admin-left-rail__link${isActive(pathname, "/admin") ? " admin-left-rail__link--active" : ""}`}

@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { ObjectId } from "mongodb";
+
 import { requireAdminSession } from "@/lib/api-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { getPersonaById } from "@/modules/xchat/repository";
+import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
+import { getTenantByHexId } from "@/modules/identity/repository";
+import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import {
-  buildBatchDashboardSummary,
-  toBatchDashboardJob
+    buildBatchDashboardSummary,
+    toBatchDashboardJob
 } from "@/modules/xchat/batch-dashboard";
 import {
-  listBatchJobs,
-  submitBatchJob
+    listBatchJobs,
+    submitBatchJob
 } from "@/modules/xchat/batch-service";
+import { getPersonaById } from "@/modules/xchat/repository";
 
 const submitBatchSchema = z.object({
   personaId: z.string().min(1),
@@ -77,7 +82,13 @@ export async function POST(request: Request) {
     );
   }
 
+  const tenantForDebug = ObjectId.isValid(session.tenantId)
+    ? await getTenantByHexId(session.tenantId.trim())
+    : null;
+  const tenantDebugFlag = isTenantXchatDebugPreferenceEnabled(tenantForDebug);
+
   try {
+    return await runWithXchatTenantDebugAsync(tenantDebugFlag, async () => {
     const job = await submitBatchJob({
       personaId: parsed.data.personaId,
       persona,
@@ -97,6 +108,7 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
+    });
   } catch (error) {
     console.error(
       "[xchat/batch] submit failed:",

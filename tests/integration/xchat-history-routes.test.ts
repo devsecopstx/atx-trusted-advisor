@@ -11,7 +11,14 @@ const repositoryMocks = vi.hoisted(() => ({
   resolveDefaultXchatPersonaForSession: vi.fn()
 }));
 
+const identityMocks = vi.hoisted(() => ({
+  getTenantByHexId: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
+vi.mock("@/modules/identity/repository", () => ({
+  getTenantByHexId: identityMocks.getTenantByHexId
+}));
 vi.mock("@/modules/xchat/repository", () => repositoryMocks);
 
 import { GET as getHistory } from "@/app/api/xchat/history/route";
@@ -19,6 +26,9 @@ import { GET as getHistoryStats } from "@/app/api/xchat/history/stats/route";
 
 describe("xchat history routes", () => {
   beforeEach(() => {
+    identityMocks.getTenantByHexId.mockResolvedValue({
+      tenantPreferences: {}
+    });
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       email: "viewer@atxfinance.ai",

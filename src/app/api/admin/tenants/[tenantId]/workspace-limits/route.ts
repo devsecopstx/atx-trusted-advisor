@@ -7,9 +7,13 @@ import {
     getTenantByHexId,
     resolvedWorkspaceLimitsForTenant,
     updateTenantBrandingPreferencesOneTime,
-    updateTenantWorkspaceLimits
+    updateTenantWorkspaceLimits,
+    updateTenantXchatDebugEnabled
 } from "@/modules/identity/repository";
-import { parseTenantBrandingPreferencesPayload } from "@/modules/identity/tenant-branding-preferences";
+import {
+    parseTenantBrandingPreferencesPayload,
+    parseTenantXchatDebugEnabled
+} from "@/modules/identity/tenant-branding-preferences";
 import { parseWorkspaceLimitsPayload } from "@/modules/identity/tenant-workspace-limits";
 
 type RouteContext = {
@@ -93,6 +97,16 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: tpParsed.error }, { status: 400 });
   }
 
+  const tpBody = parsed.data.tenantPreferences;
+  const xchatDebugToggle =
+    tpBody &&
+    typeof tpBody === "object" &&
+    !Array.isArray(tpBody)
+      ? parseTenantXchatDebugEnabled(
+          (tpBody as Record<string, unknown>).xchat_debug_enabled
+        )
+      : undefined;
+
   const limitsUpdated = await updateTenantWorkspaceLimits(tenantId.trim(), wlParsed.value);
   if (!limitsUpdated?._id) {
     return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
@@ -106,12 +120,22 @@ export async function PATCH(request: Request, context: RouteContext) {
       { status: 409 }
     );
   }
-  const updated = brandingUpdate.tenant ?? limitsUpdated;
+  let updated = brandingUpdate.tenant ?? limitsUpdated;
   if (!updated?._id) {
     return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
   }
 
+  if (xchatDebugToggle !== undefined) {
+    const afterDebug = await updateTenantXchatDebugEnabled(tenantId.trim(), xchatDebugToggle);
+    if (afterDebug?._id) {
+      updated = afterDebug;
+    }
+  }
+
   const effective = resolvedWorkspaceLimitsForTenant(updated);
+  if (!updated._id) {
+    return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
+  }
   return NextResponse.json({
     data: {
       tenantId: updated._id.toHexString(),

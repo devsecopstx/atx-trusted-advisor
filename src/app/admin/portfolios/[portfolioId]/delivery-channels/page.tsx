@@ -18,9 +18,5 @@ export default async function AdminPortfolioDeliveryChannelsPage({ params }: Pag
     redirect("/admin?error=forbidden");
   }
   const { portfolioId } = await params;
-  return (
-    <div className="core-shell">
-      <AdminPortfolioDeliveryChannelsConsole portfolioId={portfolioId} />
-    </div>
-  );
+  return <AdminPortfolioDeliveryChannelsConsole portfolioId={portfolioId} />;
 }

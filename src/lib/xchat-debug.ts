@@ -12,7 +12,15 @@
  *   provider failures (always on; no full prompts).
  * - **`[xchat/batch]`** — operational errors on batch submit/poll (always on).
  */
-import { isXchatDebugEnabled } from "@/lib/env";
+import { isXchatDebugEnvEnabled } from "@/lib/env";
+import { getXchatTenantDebugFromContext } from "@/lib/xchat-debug-context";
+
+function isXchatDebugEnabled(): boolean {
+  if (isXchatDebugEnvEnabled()) {
+    return true;
+  }
+  return getXchatTenantDebugFromContext();
+}
 
 export const XCHAT_DEBUG_LOG_TYPES = [
   "xchat_ask",

@@ -15,6 +15,7 @@ import {
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import {
     AppUserAccountRailSection,
+    AppUserManageWorkspaceRailSection,
     AppUserResourcesRailSection,
     RailDisclosure
 } from "@/app/ui/app-user-rail-nav";
@@ -979,6 +980,9 @@ export function XchatConversation({
               isGlobalAdmin={isGlobalAdminSession}
               railDisclosureDefaultOpen={false}
             />
+            {isGlobalAdminSession ? (
+              <AppUserManageWorkspaceRailSection railDisclosureDefaultOpen={false} />
+            ) : null}
           </div>
         ) : null}
       </aside>

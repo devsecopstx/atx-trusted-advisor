@@ -32,20 +32,25 @@ const SECTIONS: { key: PortfolioManageSection; label: string; path: string }[] =
 export function PortfolioManageNav({ portfolioId, active, children }: NavProps) {
   const pid = encodeURIComponent(portfolioId);
   return (
-    <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
-      <Link className="cta cta-secondary" href="/admin/portfolios">
-        ← Portfolios
-      </Link>
-      {SECTIONS.map(({ key, label, path }) => (
-        <Link
-          key={key}
-          className={key === active ? "cta cta-primary" : "cta cta-secondary"}
-          href={`/admin/portfolios/${pid}/${path}`}
-        >
-          {label}
+    <div className="admin-portfolio-tool-panel">
+      <div className="admin-portfolio-tool-panel__tabs-row">
+        <Link className="admin-portfolio-tool-back" href="/admin/portfolios">
+          ← All portfolios
         </Link>
-      ))}
-      {children}
+        <nav className="admin-portfolio-tool-tablist" aria-label="Portfolio tools">
+          {SECTIONS.map(({ key, label, path }) => (
+            <Link
+              key={key}
+              className={`admin-portfolio-tool-tab${key === active ? " admin-portfolio-tool-tab--active" : ""}`}
+              href={`/admin/portfolios/${pid}/${path}`}
+              aria-current={key === active ? "page" : undefined}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      {children ? <div className="admin-portfolio-tool-panel__actions tool-row">{children}</div> : null}
     </div>
   );
 }

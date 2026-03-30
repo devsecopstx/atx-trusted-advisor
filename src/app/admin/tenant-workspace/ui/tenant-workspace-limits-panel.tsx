@@ -44,6 +44,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
     xstrategybuilder_brandname: ""
   });
   const [tenantPreferencesRaw, setTenantPreferencesRaw] = useState<Record<string, unknown>>({});
+  const [xchatDebugEnabled, setXchatDebugEnabled] = useState(false);
   const [slug, setSlug] = useState("");
 
   const load = useCallback(async () => {
@@ -74,7 +75,11 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         xchat_brandname: payload.data.tenantPreferences?.xchat_brandname ?? "",
         xstrategybuilder_brandname: payload.data.tenantPreferences?.xstrategybuilder_brandname ?? ""
       });
-      setTenantPreferencesRaw(payload.data.tenantPreferencesRaw ?? payload.data.tenantPreferences ?? {});
+      const raw = (payload.data.tenantPreferencesRaw ??
+        payload.data.tenantPreferences ??
+        {}) as Record<string, unknown>;
+      setTenantPreferencesRaw(raw);
+      setXchatDebugEnabled(raw.xchat_debug_enabled === true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Load failed");
       setValues(null);
@@ -102,7 +107,10 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceLimits: values,
-          tenantPreferences
+          tenantPreferences: {
+            ...tenantPreferences,
+            xchat_debug_enabled: xchatDebugEnabled
+          }
         })
       });
       const payload = (await res.json().catch(() => ({}))) as {
@@ -127,6 +135,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       }
       if (payload.data?.tenantPreferencesRaw) {
         setTenantPreferencesRaw(payload.data.tenantPreferencesRaw);
+        setXchatDebugEnabled(payload.data.tenantPreferencesRaw.xchat_debug_enabled === true);
       }
       setStatus("Saved.");
       window.setTimeout(() => setStatus(""), 4000);
@@ -171,6 +180,29 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         </label>
       ))}
       <hr style={{ borderColor: "var(--xf-text-400)", opacity: 0.25, margin: "0 0 0.85rem" }} />
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          marginBottom: "0.85rem",
+          cursor: "pointer"
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={xchatDebugEnabled}
+          onChange={(e) => setXchatDebugEnabled(e.target.checked)}
+        />
+        <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>
+          Enable xChat debug logs for this tenant
+        </span>
+      </label>
+      <p className="admin-muted" style={{ fontSize: "0.72rem", marginTop: "-0.5rem", marginBottom: "0.85rem" }}>
+        Sets <code className="font-mono text-xs">tenantPreferences.xchat_debug_enabled</code> — opt-in{" "}
+        <code className="font-mono text-xs">[xchat/debug]</code> Cloud Logging (same taxonomy as{" "}
+        <code className="font-mono text-xs">ENABLE_XCHAT_DEBUG</code>).
+      </p>
       <p className="admin-session-popover__eyebrow">Tenant preferences (one-time set)</p>
       <label style={{ display: "grid", gap: "0.25rem", marginBottom: "0.85rem" }}>
         <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>xchat_brandname</span>
