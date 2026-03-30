@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
     applyTenantPlanRowToBase,
+    DEFAULT_TENANT_PLAN_PRICE,
     DEFAULT_TENANT_WORKSPACE_LIMITS,
     mergeTenantWorkspaceLimits,
     normalizePlanOverridesFromUnknown,
     parsePlanOverridesPayload,
-    parseWorkspaceLimitsPayload
+    parseWorkspaceLimitsPayload,
+    resolvedTenantPlanPrice
 } from "@/modules/identity/tenant-workspace-limits";
 
 describe("tenant workspace limits", () => {
@@ -81,6 +83,40 @@ describe("tenant workspace limits", () => {
     expect(merged.userXoptionsLimit).toBe(base.userXoptionsLimit);
   });
 
+  it("applyTenantPlanRowToBase ignores price on the row", () => {
+    const base = DEFAULT_TENANT_WORKSPACE_LIMITS;
+    const merged = applyTenantPlanRowToBase(
+      base,
+      { basic: { userChatLimit: 5, price: 99 } },
+      "basic"
+    );
+    expect(merged.userChatLimit).toBe(5);
+    expect((merged as { price?: number }).price).toBeUndefined();
+  });
+
+  it("parsePlanOverridesPayload accepts price per plan", () => {
+    const parsed = parsePlanOverridesPayload({
+      basic: { price: DEFAULT_TENANT_PLAN_PRICE },
+      premium_monthly: { userChatLimit: 3, price: 99 }
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.basic?.price).toBe(DEFAULT_TENANT_PLAN_PRICE);
+      expect(parsed.value.premium_monthly).toEqual({ userChatLimit: 3, price: 99 });
+    }
+  });
+
+  it("parsePlanOverridesPayload rejects invalid price", () => {
+    const parsed = parsePlanOverridesPayload({ basic: { price: 0 } });
+    expect(parsed.ok).toBe(false);
+  });
+
+  it("resolvedTenantPlanPrice defaults when missing or invalid", () => {
+    expect(resolvedTenantPlanPrice(undefined)).toBe(DEFAULT_TENANT_PLAN_PRICE);
+    expect(resolvedTenantPlanPrice({ price: 25 })).toBe(25);
+    expect(resolvedTenantPlanPrice({ userChatLimit: 3 })).toBe(DEFAULT_TENANT_PLAN_PRICE);
+  });
+
   it("normalizePlanOverridesFromUnknown drops invalid nested rows", () => {
     expect(
       normalizePlanOverridesFromUnknown({
@@ -88,5 +124,13 @@ describe("tenant workspace limits", () => {
         premium_monthly: { userChatLimit: 7 }
       })
     ).toEqual({ premium_monthly: { userChatLimit: 7 } });
+  });
+
+  it("normalizePlanOverridesFromUnknown reads price when valid", () => {
+    expect(
+      normalizePlanOverridesFromUnknown({
+        basic: { price: 42, userChatLimit: 2 }
+      })
+    ).toEqual({ basic: { userChatLimit: 2, price: 42 } });
   });
 });

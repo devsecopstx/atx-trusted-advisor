@@ -14,7 +14,8 @@ no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer doc
 
 **Auth cookies (Next BFF):** Signed session cookie (`SESSION_COOKIE_NAME`, `src/lib/auth.ts`) remains **12h** `maxAge` / payload `exp`. On each read, if `exp` is within **30 minutes**, the cookie is **re-issued** (sliding extension for active users) — see `SESSION_REFRESH_WHEN_REMAINING_MS` / `getSessionUser` in `src/lib/auth.ts`. **OAuth in-flight** cookies (PKCE state/verifier, return path, pending X link) use **`OAUTH_FLOW_TTL_SECONDS` (30 minutes)** so users can complete X/Google OAuth after tab switches or slow networks without restarting the flow. Keep callback host alignment per `atx-docs/sre-ops/x-oauth-atx-callbacks.md`.
 
-**Tenant workspace limits:** `atx-docs/sre-ops/tenant-workspace-limits.md` — `core_tenants.workspaceLimits`, collection
+**Tenant workspace limits:** `atx-docs/sre-ops/tenant-workspace-limits.md` — `core_tenants.workspaceLimits`, optional
+`workspaceLimits.planOverrides.<tier>.price` (USD list price per tenant/plan, default **10**), collection
 `app_feature_daily_usage`, admin API `PATCH /api/admin/tenants/{tenantId}/workspace-limits`, UI rail **Tenant preferences → Workspace limits** (`/admin/tenant-preferences/workspace-limits`), billing surfacing.
 
 **Billing list prices (single source of truth):** `src/lib/atx-billing-plans.ts` (`ATX_BILLING_PLANS`) — guest and logged-in `/account/billing`, xChat plans landing, and `atx-billing-plan-limits` / `atx-docs/resouces/atx-limits.txt.tsv` must stay aligned; Stripe **Price** objects must match amounts before swapping `STRIPE_PRICE_*` ids.

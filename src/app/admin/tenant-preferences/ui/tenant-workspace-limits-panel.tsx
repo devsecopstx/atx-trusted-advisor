@@ -6,8 +6,10 @@ import { RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { ATX_BILLING_PLAN_IDS, ATX_BILLING_PLANS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import {
+    DEFAULT_TENANT_PLAN_PRICE,
     DEFAULT_TENANT_WORKSPACE_LIMITS,
     type TenantPlanWorkspaceOverrides,
+    type TenantPlanWorkspaceRow,
     type TenantWorkspaceLimits
 } from "@/modules/identity/tenant-workspace-limits";
 
@@ -42,7 +44,10 @@ const FIELDS: { key: keyof TenantWorkspaceLimits; label: string; abbr: string; h
   }
 ];
 
-type PlanLimitDrafts = Record<AtxBillingPlanId, Partial<Record<keyof TenantWorkspaceLimits, string>>>;
+type PlanLimitDrafts = Record<
+  AtxBillingPlanId,
+  Partial<Record<keyof TenantWorkspaceLimits | "price", string>>
+>;
 
 function emptyPlanDrafts(): PlanLimitDrafts {
   return {
@@ -64,6 +69,7 @@ function draftsFromPlanOverrides(po: TenantPlanWorkspaceOverrides | null | undef
   for (const planId of ATX_BILLING_PLAN_IDS) {
     const row = po[planId];
     if (!row) {
+      d[planId] = { price: String(DEFAULT_TENANT_PLAN_PRICE) };
       continue;
     }
     for (const f of FIELDS) {
@@ -72,6 +78,8 @@ function draftsFromPlanOverrides(po: TenantPlanWorkspaceOverrides | null | undef
         d[planId][f.key] = String(v);
       }
     }
+    const listPrice = row.price;
+    d[planId].price = listPrice != null ? String(listPrice) : String(DEFAULT_TENANT_PLAN_PRICE);
   }
   return d;
 }
@@ -79,7 +87,7 @@ function draftsFromPlanOverrides(po: TenantPlanWorkspaceOverrides | null | undef
 function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOverrides {
   const out: TenantPlanWorkspaceOverrides = {};
   for (const planId of ATX_BILLING_PLAN_IDS) {
-    const partial: Partial<TenantWorkspaceLimits> = {};
+    const partial: TenantPlanWorkspaceRow = {};
     for (const f of FIELDS) {
       const raw = drafts[planId]?.[f.key]?.trim() ?? "";
       if (raw === "") {
@@ -91,9 +99,14 @@ function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOv
       }
       partial[f.key] = n;
     }
-    if (Object.keys(partial).length > 0) {
-      out[planId] = partial;
-    }
+    const rawPrice = drafts[planId]?.price?.trim() ?? "";
+    const priceNum =
+      rawPrice === ""
+        ? DEFAULT_TENANT_PLAN_PRICE
+        : Number.parseInt(rawPrice, 10);
+    partial.price =
+      Number.isFinite(priceNum) && priceNum >= 1 ? priceNum : DEFAULT_TENANT_PLAN_PRICE;
+    out[planId] = partial;
   }
   return out;
 }
@@ -357,15 +370,19 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       <div className="mt-6 space-y-2">
         <h3 className="text-sm font-semibold text-white">Per-billing-plan overrides</h3>
         <p className="admin-muted text-xs max-w-3xl">
-          Maps to subscription tier (Basic → free, Premium → pro, Premium+ → enterprise). Leave cells empty to
-          inherit the tenant defaults in the row above. Saving writes all three tiers; clear every cell and save
-          to remove overrides.
+          Maps to subscription tier (Basic → free, Premium → pro, Premium+ → enterprise). Leave limit cells empty
+          to inherit the tenant defaults in the row above. List price (USD) defaults to {DEFAULT_TENANT_PLAN_PRICE}{" "}
+          per plan when unset. Saving persists all three tiers (including price).
         </p>
         <div className="crud-table-wrap admin-tenant-pref-table-wrap">
           <table className="crud-table admin-tenant-pref-crud-table">
             <thead>
               <tr>
                 <th scope="col">Plan</th>
+                <th scope="col" title="Admin list price in USD (whole dollars); not Stripe">
+                  <span className="admin-tenant-pref-crud-table__abbr">$</span>
+                  <span className="admin-tenant-pref-crud-table__full">Price (USD)</span>
+                </th>
                 {FIELDS.map((f) => (
                   <th key={f.key} scope="col" title={f.hint}>
                     <span className="admin-tenant-pref-crud-table__abbr">{f.abbr}</span>
@@ -380,6 +397,25 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                   <td>
                     <span className="text-sm font-medium text-white">{planLabel(planId)}</span>
                     <div className="font-mono text-[10px] text-slate-500">{planId}</div>
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${planLabel(planId)} list price USD`}
+                      className="crud-input text-sm"
+                      min={1}
+                      max={1_000_000}
+                      placeholder={String(DEFAULT_TENANT_PLAN_PRICE)}
+                      title={`Default ${DEFAULT_TENANT_PLAN_PRICE} USD if cleared`}
+                      type="number"
+                      value={planDrafts[planId]?.price ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setPlanDrafts((prev) => ({
+                          ...prev,
+                          [planId]: { ...prev[planId], price: v }
+                        }));
+                      }}
+                    />
                   </td>
                   {FIELDS.map((f) => (
                     <td key={f.key}>

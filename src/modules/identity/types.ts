@@ -43,7 +43,7 @@ export type Tenant = {
   updatedAt: Date;
   /**
    * Optional per-tenant quotas; omitted keys use product defaults (see `mergeTenantWorkspaceLimits`).
-   * Optional `planOverrides` — per retail tier (basic / premium_monthly / premium_plus_yearly).
+   * Optional `planOverrides` — per retail tier (basic / premium_monthly / premium_plus_yearly): quota partials plus optional `price` (USD list price for admin).
    */
   workspaceLimits?: (Partial<TenantWorkspaceLimits> & { planOverrides?: TenantPlanWorkspaceOverrides }) | null;
   /** Branding (one-time) + optional flags (e.g. xchat_debug_enabled). */

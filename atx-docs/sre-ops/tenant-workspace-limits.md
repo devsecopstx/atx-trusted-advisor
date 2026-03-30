@@ -11,6 +11,14 @@ Per-tenant quotas for the Next.js BFF. Defaults are code-defined; overrides live
 | `tenantPortfolioLimit` | 1 | New portfolio rows in tenant for that user (admin + app flows). |
 | `portfolioAccountLimit` | 1 | New `portfolio_accounts` per portfolio. |
 
+### Per-plan overrides (`workspaceLimits.planOverrides`)
+
+Keyed by retail tier id: `basic`, `premium_monthly`, `premium_plus_yearly`. Each value is a partial of the quota fields above, plus optional:
+
+| Key | Default | Notes |
+|-----|---------|--------|
+| `price` | **10** (see `DEFAULT_TENANT_PLAN_PRICE` in `tenant-workspace-limits.ts`) | Admin-managed **list price in USD** (whole dollars) for that tier in this tenant. Not used for quota enforcement; use `resolvedTenantPlanPrice()` when displaying billing. Stripe Price IDs remain env-driven; keep amounts aligned before rotating `STRIPE_PRICE_*`. |
+
 ## Mongo collections
 
 - **`core_tenants`**: optional `workspaceLimits` subdocument.

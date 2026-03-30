@@ -16,10 +16,25 @@ export type TenantWorkspaceLimits = {
   portfolioAccountLimit: number;
 };
 
-/** Partial limits per retail plan; omitted fields fall back to merged tenant defaults. */
-export type TenantPlanWorkspaceOverrides = Partial<
-  Record<AtxBillingPlanId, Partial<TenantWorkspaceLimits>>
->;
+/** Default list price (USD, whole units) per plan when `planOverrides.*.price` is unset. */
+export const DEFAULT_TENANT_PLAN_PRICE = 10;
+
+/** Per-plan workspace row: quota overrides plus optional admin-managed list price. */
+export type TenantPlanWorkspaceRow = Partial<TenantWorkspaceLimits> & {
+  /** List price in USD (whole units) for this tier in this tenant; not used for limit enforcement. */
+  price?: number;
+};
+
+/** Partial limits (and optional price) per retail plan; omitted limit fields fall back to merged tenant defaults. */
+export type TenantPlanWorkspaceOverrides = Partial<Record<AtxBillingPlanId, TenantPlanWorkspaceRow>>;
+
+export function resolvedTenantPlanPrice(row: TenantPlanWorkspaceRow | undefined): number {
+  const p = row?.price;
+  if (typeof p === "number" && Number.isInteger(p) && p >= 1 && p <= 1_000_000) {
+    return p;
+  }
+  return DEFAULT_TENANT_PLAN_PRICE;
+}
 
 export const DEFAULT_TENANT_WORKSPACE_LIMITS: TenantWorkspaceLimits = {
   userXoptionsLimit: 10,
@@ -39,7 +54,7 @@ function isPositiveInt(n: unknown): n is number {
   return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 1_000_000;
 }
 
-function parseScalarRow(o: Record<string, unknown>): Partial<TenantWorkspaceLimits> {
+function parseLimitScalars(o: Record<string, unknown>): Partial<TenantWorkspaceLimits> {
   const value: Partial<TenantWorkspaceLimits> = {};
   for (const k of LIMIT_KEYS) {
     if (o[k] === undefined) {
@@ -51,6 +66,14 @@ function parseScalarRow(o: Record<string, unknown>): Partial<TenantWorkspaceLimi
     value[k] = o[k] as number;
   }
   return value;
+}
+
+function parsePlanOverrideRowLoose(o: Record<string, unknown>): TenantPlanWorkspaceRow {
+  const row: TenantPlanWorkspaceRow = { ...parseLimitScalars(o) };
+  if (o.price !== undefined && o.price !== null && isPositiveInt(o.price)) {
+    row.price = o.price;
+  }
+  return row;
 }
 
 export function mergeTenantWorkspaceLimits(
@@ -81,7 +104,7 @@ export function normalizePlanOverridesFromUnknown(raw: unknown): TenantPlanWorks
     if (!row || typeof row !== "object" || Array.isArray(row)) {
       continue;
     }
-    const parsed = parseScalarRow(row as Record<string, unknown>);
+    const parsed = parsePlanOverrideRowLoose(row as Record<string, unknown>);
     if (Object.keys(parsed).length > 0) {
       out[planId] = parsed;
     }
@@ -89,6 +112,7 @@ export function normalizePlanOverridesFromUnknown(raw: unknown): TenantPlanWorks
   return out;
 }
 
+/** Merges quota fields only; `planOverrides.*.price` is not part of enforcement. */
 export function applyTenantPlanRowToBase(
   base: TenantWorkspaceLimits,
   planOverrides: TenantPlanWorkspaceOverrides,
@@ -152,7 +176,7 @@ export function parsePlanOverridesPayload(
     if (typeof row !== "object" || Array.isArray(row)) {
       return { ok: false, error: `planOverrides.${planId} must be an object` };
     }
-    const parsed: Partial<TenantWorkspaceLimits> = {};
+    const parsed: TenantPlanWorkspaceRow = {};
     for (const k of LIMIT_KEYS) {
       const cell = (row as Record<string, unknown>)[k];
       if (cell === undefined || cell === null) {
@@ -162,6 +186,13 @@ export function parsePlanOverridesPayload(
         return { ok: false, error: `Invalid planOverrides.${planId}.${k}: positive integer required` };
       }
       parsed[k] = cell;
+    }
+    const priceCell = (row as Record<string, unknown>).price;
+    if (priceCell !== undefined && priceCell !== null) {
+      if (!isPositiveInt(priceCell)) {
+        return { ok: false, error: `Invalid planOverrides.${planId}.price: positive integer required` };
+      }
+      parsed.price = priceCell;
     }
     if (Object.keys(parsed).length > 0) {
       out[planId] = parsed;
