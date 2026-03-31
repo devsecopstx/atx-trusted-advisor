@@ -141,92 +141,93 @@ export function LegalPrivacyContent() {
 export function LegalTermsContent() {
   return (
     <div className="legal-prose">
-      <p className="legal-stub-lead">{EFFECTIVE_NOTE}</p>
+      <p className="legal-stub-subtitle">{PRODUCT_PUBLIC_NAME}</p>
+      <p className="legal-stub-effective">Effective as of March 22, 2026</p>
       <h2>Agreement</h2>
       <p>
-        By accessing or using the {PRODUCT_PUBLIC_NAME} web application and related services (the “Service”),
-        you agree to these Terms of Service. If you do not agree, do not use the Service.
+        By accessing or using {PRODUCT_PUBLIC_NAME} (the {`\u201c`}Service{`\u201d`}), you agree to these Terms. If you do
+        not agree, you may not use the Service.
       </p>
       <h2>The Service</h2>
       <p>
-        The Service provides tools and interfaces for portfolio-related workflows, AI-assisted chat
-        (including integrations with third-party model providers), and administrative features for
-        approved accounts. Features, availability, and limits may change. We may suspend or modify the
-        Service for maintenance, security, or business reasons.
+        {PRODUCT_PUBLIC_NAME} is a software platform that provides tools to help high-net-worth families and their
+        advisors consolidate, track, analyze, and report on portfolios. This includes dashboards, reporting,
+        collaboration features, and AI-assisted chat.
       </p>
-      <h2>Eligibility and accounts</h2>
+      <h2>Not Financial, Legal, or Tax Advice</h2>
+      <p>The Service and any content it generates (including AI chat responses) are for informational and operational purposes only.</p>
       <p>
-        You must have authority to enter this agreement. You are responsible for safeguarding your
-        credentials and for activity under your account. You must provide accurate information where
-        requested. We may refuse or revoke access that violates these Terms or our policies.
+        {PRODUCT_PUBLIC_NAME} is not a financial advisor, wealth manager, tax advisor, or law firm.
       </p>
-      <h2>Acceptable use</h2>
-      <p>You agree not to:</p>
+      <p>We do not provide investment, financial, tax, legal, or any other professional advice. Nothing on the platform creates a fiduciary or advisory relationship.</p>
+      <p>
+        You are solely responsible for all your investment, tax, legal, and financial decisions. You should consult your
+        own qualified professionals before making any decisions based on information from the Service.
+      </p>
+      <h2>Eligibility</h2>
+      <p>
+        You must be at least 18 years old and have the authority to enter into this agreement. You are responsible for
+        keeping your account credentials secure and for all activity under your account.
+      </p>
+      <h2>Acceptable Use</h2>
+      <p>You agree not to misuse the Service, including:</p>
       <ul>
-        <li>Use the Service in violation of law or third-party rights;</li>
-        <li>Attempt to probe, scan, or test vulnerabilities except through our coordinated disclosure process;</li>
-        <li>Interfere with or overload the Service, or circumvent access controls;</li>
-        <li>Use the Service to transmit malware, spam, or unlawful content;</li>
-        <li>Reverse engineer or copy the Service except where permitted by law.</li>
+        <li>Violating any laws or third-party rights</li>
+        <li>Attempting to hack, probe, or overload the Service</li>
+        <li>Reverse engineering or copying the Service (except as permitted by law)</li>
+        <li>Transmitting malware, spam, or unlawful content</li>
       </ul>
-      <h2>Not financial, legal, or tax advice</h2>
+      <h2>Third-Party Services</h2>
       <p>
-        The Service and any AI-generated content are for informational and operational purposes only.
-        They are <strong>not</strong> investment, legal, tax, or professional advice. You are solely
-        responsible for your decisions. Past performance does not guarantee future results.
+        The Service uses third-party data sources, APIs, and AI models. We are not responsible for their availability,
+        accuracy, or terms.
       </p>
-      <h2>Third-party services</h2>
+      <h2>Intellectual Property &amp; License</h2>
       <p>
-        The Service may rely on third-party APIs, data sources, and infrastructure. Their terms and
-        availability may affect your use. We are not responsible for third-party services outside our
-        reasonable control.
+        We (and our licensors) own all rights to the Service. We grant you a limited, non-exclusive, non-transferable
+        license to use the Service solely for your own internal portfolio management and reporting purposes.
       </p>
-      <h2>Intellectual property</h2>
       <p>
-        We and our licensors retain rights in the Service, branding, and software. Subject to these
-        Terms, we grant you a limited, non-exclusive, non-transferable right to use the Service for
-        your internal or permitted business purposes. You retain rights in content you submit; you
-        grant us a license to host and process it to operate the Service.
+        You retain ownership of the data you upload, but you give us permission to host, process, and display it as
+        needed to provide the Service.
       </p>
-      <h2>Disclaimer of warranties</h2>
+      <h2>Disclaimer of Warranties</h2>
       <p>
-        THE SERVICE IS PROVIDED “AS IS” AND “AS AVAILABLE,” WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR
-        IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+        The Service is provided {`\u201c`}AS IS{`\u201d`} and {`\u201c`}AS AVAILABLE{`\u201d`} without any warranties, express or implied.
       </p>
-      <h2>Limitation of liability</h2>
+      <h2>Limitation of Liability</h2>
       <p>
-        TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE AND OUR AFFILIATES AND SUPPLIERS WILL NOT BE LIABLE
-        FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF
-        PROFITS, DATA, OR GOODWILL. OUR AGGREGATE LIABILITY FOR CLAIMS ARISING OUT OF THE SERVICE WILL
-        NOT EXCEED THE GREATER OF (A) THE AMOUNTS YOU PAID US FOR THE SERVICE IN THE TWELVE MONTHS
-        BEFORE THE CLAIM OR (B) ONE HUNDRED U.S. DOLLARS (US $100), EXCEPT WHERE PROHIBITED BY LAW.
+        To the fullest extent permitted by law, {PRODUCT_PUBLIC_NAME} and its suppliers will not be liable for any
+        indirect, incidental, special, or consequential damages.
+      </p>
+      <p>
+        Our total liability to you will not exceed the greater of (a) the total amount you paid for the Service in the
+        twelve months before the claim arose, or (b) one thousand U.S. dollars (US $1,000).
       </p>
       <h2>Indemnity</h2>
       <p>
-        You will defend and indemnify us against claims arising from your use of the Service, your
-        content, or your violation of these Terms, subject to applicable law.
+        You agree to indemnify and defend us against any claims, losses, or damages arising from your use of the Service,
+        your content, or your violation of these Terms.
       </p>
       <h2>Termination</h2>
       <p>
-        You may stop using the Service at any time. We may suspend or terminate access for breach,
-        risk, or legal compliance. Provisions that by nature should survive will survive termination.
+        You may stop using the Service at any time. We may suspend or terminate your access if you breach these Terms or
+        for security/legal reasons.
       </p>
-      <h2>Governing law</h2>
+      <h2>Governing Law</h2>
       <p>
-        These Terms are governed by the laws of the State of Delaware, USA, excluding conflict-of-law
-        rules, unless a different governing law is required by your jurisdiction. Courts in Delaware
-        (or another forum we specify in writing) may have exclusive jurisdiction, subject to mandatory
-        consumer protections where applicable.
+        These Terms are governed by the laws of the State of Texas. Any disputes will be resolved in the courts located in
+        Travis County, Texas.
       </p>
-      <h2>Changes</h2>
+      <h2>Changes to These Terms</h2>
       <p>
-        We may update these Terms. Continued use after changes become effective constitutes acceptance
-        of the revised Terms where permitted by law.
+        We may update these Terms from time to time. Continued use of the Service after the changes take effect means you
+        accept the new Terms.
       </p>
       <h2>Contact</h2>
       <p>
-        For questions about these Terms, use the contact path provided in your account or onboarding
-        materials.
+        If you have questions about these Terms, please contact us through the support channel provided in your account
+        or onboarding materials.
       </p>
     </div>
   );

@@ -1033,6 +1033,20 @@ html[data-xf-ui="soft"]
   font-style: italic;
 }
 
+.legal-prose .legal-stub-subtitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--xf-text-200);
+}
+
+.legal-prose .legal-stub-effective {
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--xf-text-300);
+}
+
 .legal-prose {
   font-size: 0.9rem;
   line-height: 1.55;
