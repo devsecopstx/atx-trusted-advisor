@@ -13,38 +13,12 @@ import "../getting-started/resources-getting-started.css";
 
 export const dynamic = "force-dynamic";
 
-type AboutCard = {
-  id: string;
-  title: string;
-  body: string;
-};
-
-const ABOUT_CARDS: AboutCard[] = [
-  {
-    id: "discover",
-    title: "Discover",
-    body: "Find new opportunities with scanner surfaces, seller workflows, and watchlist-driven idea generation."
-  },
-  {
-    id: "analyze",
-    title: "Analyze",
-    body: "Evaluate probability, volatility, and position scenarios before committing capital."
-  },
-  {
-    id: "build",
-    title: "Build",
-    body: "Compose multi-leg options strategies and inspect payoff behavior directly in the strategy workspace."
-  },
-  {
-    id: "execute",
-    title: "Execute",
-    body: "Move from analysis to action with clear leg context, trade intent, and disciplined order flow."
-  },
-  {
-    id: "manage-refine",
-    title: "Manage & Refine",
-    body: "Adjust legs, strikes, and expirations over time as market conditions and risk constraints evolve."
-  }
+const ABOUT_BULLETS: string[] = [
+  "Consolidate all your accounts and assets into a single dashboard",
+  "Track performance, cash flow, and net worth in real time",
+  "Generate clean, professional reports",
+  "Collaborate securely with your advisors and family members",
+  "Get powerful insights tailored to Austin's unique market — from tech wealth and real estate concentration to Texas tax advantages"
 ];
 
 export default async function ResourcesAboutPage() {
@@ -54,34 +28,37 @@ export default async function ResourcesAboutPage() {
     ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
     : null;
   const article = (
-    <article className="resources-doc-shell" aria-label="About resources">
+    <article className="resources-doc-shell" aria-label="About aTx Trusted Advisory">
       <header className="resources-doc-hero">
         <p className="resources-doc-hero__eyebrow">Resources · About</p>
-        <h1 className="resources-doc-hero__title">Decisioning workflow at a glance</h1>
+        <h1 className="resources-doc-hero__title">About aTx Trusted Advisory</h1>
         <p className="resources-doc-hero__copy resources-doc-hero__copy--full">
-          Portfolio and Investment Decision Insights, to provide end-to-end flow for options users: discover opportunities,
-          analyze risk/reward, build strategy legs decision insights, for premium+ subscribers execute with intent, and manage positions as conditions change.
+          {`Sophisticated portfolio management software for Austin's high-net-worth families and their advisors.`}
         </p>
       </header>
 
       <section className="resources-doc-section">
-        <h2>Platform flow</h2>
         <p className="resources-doc-section__desc">
-          Illustrative overview, mirrors the product workflow used by approved users across xChat, portfolio, watchlist,
-          and xStrategyBuilder.
+          Welcome to aTx Trusted Advisory. We built our platform to help high-net-worth families and their trusted
+          advisors in the Austin area manage complex family portfolios with clarity and confidence.
         </p>
-        <div className="resources-about-grid" role="list" aria-label="About flow cards">
-          {ABOUT_CARDS.map((card) => (
-            <article
-              key={card.id}
-              className={`resources-about-card resources-about-card--${card.id}`}
-              role="listitem"
-            >
-              <h3>{card.title}</h3>
-              <p>{card.body}</p>
-            </article>
+        <p className="resources-doc-section__desc">
+          {`Whether you're overseeing multiple accounts, multiple generations, or a mix of investments and real estate, aTx Trusted Advisory brings everything together in one secure, easy-to-use place. You can:`}
+        </p>
+        <ul className="resources-about-list">
+          {ABOUT_BULLETS.map((line) => (
+            <li key={line}>{line}</li>
           ))}
-        </div>
+        </ul>
+        <p className="resources-doc-section__desc">
+          {`It's designed specifically for families with portfolios exceeding $1 million and the financial professionals who serve them. Simple enough for daily use, powerful enough for serious wealth management.`}
+        </p>
+        <p className="resources-doc-section__desc">
+          {`At aTx Trusted Advisory, we focus on giving you better visibility, better organization, and better control over your family's financial picture — all in a private, Austin-built platform.`}
+        </p>
+        <p className="resources-doc-section__desc resources-doc-section__desc--closing">
+          {`We'd love to show you how it works.`}
+        </p>
       </section>
     </article>
   );

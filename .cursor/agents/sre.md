@@ -49,6 +49,10 @@ Review format: (1) scope & risk (2) issues + file refs (3) mitigation (4) Approv
 test -f .cursor/agents/sre.md && npm install
 ```
 
+## Resources
+
+- **Release notes:** `atx-docs/sre-ops/release-notes.md` — append a **one-line** bullet (newest first) whenever you bump **`package.json`** version; keeps deploy/support aligned with `/api/health` `version` and Cloud Run revisions.
+
 ## Suggested context
 
 - `.github/workflows/**/*.yml`

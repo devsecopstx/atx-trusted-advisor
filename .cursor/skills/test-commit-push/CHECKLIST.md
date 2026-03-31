@@ -45,6 +45,7 @@
 - [ ] **Spring BFF (proxied routes):** Kotlin **`@*Mapping`** ↔ **`bff-proxy-routes.ts`**, **`nextBffApi`** / **`backend-bff-api-object.test.ts`**, **`atx-docs/sre-ops/atxfinance-backend-http-api.md`**, smoke parity test, **`proxyRequestToBackend`** on affected **`src/app/api/**/route.ts`**.
 - [ ] Skill docs updated when process changed (`generate-docs`, `test-commit-push`, `AGENTS.md`).
 - [ ] App version resolves from `package.json` via `src/lib/app-version.ts` — no hardcoded version strings in skills or UI.
+- [ ] **`package.json` version bumped:** **`atx-docs/sre-ops/release-notes.md`** has a **newest-first** one-line entry for that semver (see **`.cursor/agents/sre.md`** § Resources).
 - [ ] Open gaps (if any) are captured in **`atx-docs/sre-ops/api-consolidation-spring-backend.md`**, **`.cursor/plans/*.plan.md`**, or the relevant ops doc — or consciously not applicable to this change (see **`generate-docs`**).
 
 ## Staging and production
