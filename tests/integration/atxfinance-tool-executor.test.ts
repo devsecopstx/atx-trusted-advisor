@@ -378,17 +378,63 @@ describe("atxfinance tool executor", () => {
     );
   });
 
-  it("market_quote returns provider-backed quote snapshot", async () => {
+  it("market_quote returns provider-backed quote snapshot with numeric price for assistant prose", async () => {
     const executor = createXfinanceToolExecutor(ctx);
     const result = await executor("atxfinance", {
       operation: "market_quote",
       symbol: "tsla"
     });
-    const data = JSON.parse(result.result);
+    const data = JSON.parse(result.result) as {
+      symbol: string;
+      price?: number;
+      source: string;
+      disclaimer?: string;
+    };
     expect(marketDataMocks.getYahooMarketQuote).toHaveBeenCalledWith({ symbol: "tsla" });
     expect(data.symbol).toBe("TSLA");
     expect(data.source).toBe("yahoo-finance2");
     expect(data.disclaimer).toBeDefined();
+    expect(typeof data.price).toBe("number");
+    expect(Number.isFinite(data.price)).toBe(true);
+    expect(data.price).toBe(250.12);
+  });
+
+  it("yahoo_finance and atx_function market_quote return distinct SPY/QQQ prices in tool JSON", async () => {
+    marketDataMocks.getYahooMarketQuote.mockImplementation(async (input: { symbol?: string }) => {
+      const sym = (input.symbol ?? "TSLA").toUpperCase();
+      const base = { source: "yahoo-finance2" as const, disclaimer: "market disclaimer" };
+      if (sym === "SPY") {
+        return { ...base, symbol: "SPY", price: 501.25, previousClose: 499.0, change: 2.25 };
+      }
+      if (sym === "QQQ") {
+        return { ...base, symbol: "QQQ", price: 402.5, previousClose: 401.0, change: 1.5 };
+      }
+      return { ...base, symbol: sym, price: 1 };
+    });
+    const executor = createXfinanceToolExecutor(ctx);
+
+    const yfSpy = await executor("yahoo_finance", { symbol: "SPY" });
+    const yfQqq = await executor("yahoo_finance", { symbol: "QQQ" });
+    const atxSpy = await executor("atx_function", { operation: "market_quote", symbol: "SPY" });
+    const atxQqq = await executor("atx_function", { operation: "market_quote", symbol: "QQQ" });
+
+    for (const [label, raw] of [
+      ["yahoo_finance SPY", yfSpy.result],
+      ["yahoo_finance QQQ", yfQqq.result],
+      ["atx_function SPY", atxSpy.result],
+      ["atx_function QQQ", atxQqq.result]
+    ] as const) {
+      const row = JSON.parse(raw) as { symbol: string; price?: number };
+      expect(row.symbol, label).toMatch(/^(SPY|QQQ)$/);
+      expect(typeof row.price, label).toBe("number");
+      expect(Number.isFinite(row.price), label).toBe(true);
+      expect(row.price, label).toBeGreaterThan(100);
+    }
+
+    expect(JSON.parse(yfSpy.result).price).toBe(501.25);
+    expect(JSON.parse(yfQqq.result).price).toBe(402.5);
+    expect(JSON.parse(atxSpy.result).price).toBe(501.25);
+    expect(JSON.parse(atxQqq.result).price).toBe(402.5);
   });
 
   it("truncates output exceeding 8KB", async () => {

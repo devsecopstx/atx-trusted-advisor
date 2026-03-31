@@ -15,6 +15,28 @@ describe("preprocessXchatMarkdown", () => {
     expect(preprocessXchatMarkdown("Summary: hello world")).toBe("### Summary\nhello world");
   });
 
+  it("does not promote SPY vs QQQ comparison titles or parenthetical ticker lines", () => {
+    const spyQqq = "SPY vs. QQQ: Today's Performance (as of March 30 close / post-market)";
+    expect(preprocessXchatMarkdown(spyQqq)).toBe(spyQqq);
+    const etfLine = "SPY (S&P 500 ETF): Closed at 631.97 (-2.12, -0.33% from prev close 634.09).";
+    expect(preprocessXchatMarkdown(etfLine)).toBe(etfLine);
+  });
+
+  it("SPY vs QQQ style answer keeps prose intact and wraps bare yahoo_finance cite", () => {
+    const raw = [
+      "SPY vs. QQQ: Today's Performance (as of March 30 close / post-market)",
+      "XF_CITE:yahoo_finance",
+      "",
+      "SPY (S&P 500 ETF): Closed at 631.97 (-2.12, -0.33% from prev close 634.09)."
+    ].join("\n");
+    const out = preprocessXchatMarkdown(raw);
+    expect(out).toContain("`XF_CITE:yahoo_finance`");
+    expect(out).not.toContain("### SPY vs. QQQ");
+    expect(out).not.toContain("### SPY (S&P");
+    expect(out).toContain("SPY vs. QQQ: Today's Performance");
+    expect(out).toContain("Closed at 631.97");
+  });
+
   it("does not touch table rows", () => {
     const t = "| A | B |\n| 1 | 2 |";
     expect(preprocessXchatMarkdown(t)).toBe(t);
@@ -32,12 +54,20 @@ describe("preprocessXchatMarkdown", () => {
       "Ref `XF_CITE:yahoo_finance|Chain` end."
     );
     expect(preprocessXchatMarkdown("T [@tool:web_search] done.")).toBe("T `XF_TOOL:web_search` done.");
-    expect(preprocessXchatMarkdown("[@citation:atxfinance]")).toBe("`XF_CITE:atx_function`");
+    expect(preprocessXchatMarkdown("[@citation:atxfinance]")).toBe("`XF_CITE:atxfinance`");
   });
 
   it("wraps bare XF_CITE lines (model prose) into inline citation tokens", () => {
     const inMd = "Holdings intro.\nXF_CITE:atxfinance\nNext paragraph.";
-    expect(preprocessXchatMarkdown(inMd)).toBe("Holdings intro.\n`XF_CITE:atx_function`\nNext paragraph.");
+    expect(preprocessXchatMarkdown(inMd)).toBe("Holdings intro.\n`XF_CITE:atxfinance`\nNext paragraph.");
+  });
+
+  it("dedupes consecutive duplicate bare XF_CITE lines into a single chip", () => {
+    const raw = "Key Risks: exposure.\nXF_CITE:yahoo_finance\nXF_CITE:yahoo_finance\n";
+    const out = preprocessXchatMarkdown(raw);
+    expect(out).toContain("### Key Risks\nexposure.");
+    expect(out).toMatch(/`XF_CITE:yahoo_finance`/);
+    expect(out.match(/`XF_CITE:yahoo_finance`/g)?.length).toBe(1);
   });
 
   it("wraps bare XF_CITE:slug, prose on same line into chip + readable tail", () => {

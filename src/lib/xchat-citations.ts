@@ -29,17 +29,20 @@ export const CITATION_KIND_META: Record<string, CitationPresentation> = {
   file_search: { title: "Knowledge search" },
   web_search: { title: "Web search" },
   x_search: { title: "X search" },
-  atx_function: { title: "Workspace tools", href: "/portfolio" },
+  /** Citation slug for workspace tools (xAI tool name remains `atx_function`). */
+  atxfinance: { title: "Workspace tools", href: "/portfolio" },
   code_interpreter: { title: "Code interpreter" },
   tool_call: { title: "Tool data" }
 };
 
 const SLUG_RE = /^[a-z0-9_]+$/;
 
-/** Legacy / model slugs → canonical chip key (extend when renaming citations). */
+/**
+ * Map wire / model variants → canonical chip slug in inline `XF_CITE:` / fences.
+ * Keep workspace cites as `atxfinance` so unwrapped prose is less GFM-fragile than `atx_function` (`_…` emphasis).
+ */
 const CITATION_SLUG_ALIASES: Record<string, string> = {
-  /** Tool type in xAPI is often `atxfinance`; citation slug matches `atx_function` in prompts */
-  atxfinance: "atx_function"
+  atx_function: "atxfinance"
 };
 
 export function canonicalizeCitationSlug(slug: string): string {
@@ -354,7 +357,7 @@ export function inferCitationSlugFromGrokInner(inner: string): string {
     t.includes("account_health") ||
     t.includes("workspace snapshot")
   ) {
-    return "atx_function";
+    return "atxfinance";
   }
   return "tool_call";
 }
@@ -363,32 +366,152 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Blockquote / indent models sometimes emit before bare sentinels */
+const MD_BARE_CITE_LINE_LEAD = "(?:> ?)?[ \\t]*";
+
+function stripInvisibleWhitespace(markdown: string): string {
+  return markdown.replace(/\uFEFF/g, "").replace(/[\u200B-\u200D]/g, "");
+}
+
+/** Line is only a bare XF_CITE/XF_TOOL sentinel (optional blockquote indent, footnote markers, trailing period). */
+function bareXfLineDedupeKey(line: string): string | null {
+  const t = line.trimEnd();
+  const cite = t.match(
+    /^(?:> ?)?[ \t]*(?:XF_CITE|xf_cite):\s*([a-z0-9_]+)(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/i
+  );
+  if (cite) {
+    return `c:${cite[1].toLowerCase()}`;
+  }
+  const tool = t.match(
+    /^(?:> ?)?[ \t]*(?:XF_TOOL|xf_tool):\s*([a-z0-9_]+)(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/i
+  );
+  if (tool) {
+    return `t:${tool[1].toLowerCase()}`;
+  }
+  return null;
+}
+
+/**
+ * Grok often emits the same bare `XF_CITE:yahoo_finance` on consecutive lines — chips would duplicate.
+ * Run **before** {@link wrapBareXfCiteLines}.
+ */
+export function collapseAdjacentDuplicateBareXfLines(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const out: string[] = [];
+  let prevKey: string | null = null;
+  for (const line of lines) {
+    const key = bareXfLineDedupeKey(line);
+    if (key !== null) {
+      if (key === prevKey) {
+        continue;
+      }
+      prevKey = key;
+    } else {
+      prevKey = null;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
+/** `XF_CITE:yahoo_finance XF_CITE:yahoo_finance` on one line → single sentinel. */
+export function dedupeInlineRepeatedBareXfSentinels(markdown: string): string {
+  let s = markdown;
+  s = s.replace(
+    /(XF_CITE:\s*([a-z0-9_]+)(?:\s*\[\d+\])*)(?:\s+XF_CITE:\s*\2(?:\s*\[\d+\])*)+/gi,
+    "$1"
+  );
+  s = s.replace(
+    /(XF_TOOL:\s*([a-z0-9_]+)(?:\s*\[\d+\])*)(?:\s+XF_TOOL:\s*\2(?:\s*\[\d+\])*)+/gi,
+    "$1"
+  );
+  return s;
+}
+
+/** After wrapping, collapse consecutive lines that are only the same `` `XF_CITE:slug` `` chip. */
+export function collapseAdjacentDuplicateWrappedXfChipLines(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const out: string[] = [];
+  let prevKey: string | null = null;
+  for (const line of lines) {
+    const tr = line.trim();
+    if (tr === "") {
+      out.push(line);
+      prevKey = null;
+      continue;
+    }
+    const c = tr.match(/^`XF_CITE:([a-z0-9_]+)`$/);
+    const t = tr.match(/^`XF_TOOL:([a-z0-9_]+)`$/);
+    const key = c ? `c:${c[1]}` : t ? `t:${t[1]}` : null;
+    if (key !== null) {
+      if (key === prevKey) {
+        continue;
+      }
+      prevKey = key;
+    } else {
+      prevKey = null;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
 /**
  * Models print `XF_CITE:slug` / `XF_TOOL:slug` without backticks (own line, or same line as trailing prose).
  * Wrap so markdown emits inline `code` → {@link XchatCitationChip}. Drops a dangling ", " when the tail is empty.
+ *
+ * Tolerates: optional space after `:`, leading spaces / `> ` blockquote, odd `xf_cite:` casing.
  */
 export function wrapBareXfCiteLines(markdown: string): string {
-  let s = markdown;
+  let s = stripInvisibleWhitespace(markdown);
+  s = s.replace(
+    new RegExp(`^(${MD_BARE_CITE_LINE_LEAD})xf_cite:`, "gim"),
+    `$1${XF_INLINE_CITE_PREFIX}`
+  );
+  s = s.replace(
+    new RegExp(`^(${MD_BARE_CITE_LINE_LEAD})xf_tool:`, "gim"),
+    `$1${XF_TOOL_BADGE_PREFIX}`
+  );
+
+  const lead = `^(${MD_BARE_CITE_LINE_LEAD})`;
   for (const prefix of [XF_INLINE_CITE_PREFIX, XF_TOOL_BADGE_PREFIX] as const) {
     const p = escapeRegExp(prefix);
-    // Line: XF_CITE:slug, rest of sentence (common model leak)
-    s = s.replace(new RegExp(`^${p}([a-z0-9_]+)\\s*,\\s*(.*)$`, "gim"), (_, rawSlug: string, rest: string) => {
+    const comma = new RegExp(`${lead}${p}\\s*([a-z0-9_]+)\\s*,\\s*(.*)$`, "gim");
+    s = s.replace(comma, (_full: string, indent: string, rawSlug: string, rest: string) => {
       const slug = canonicalizeCitationSlug(rawSlug);
       const chip = `\`${prefix}${slug}\``;
       const tail = rest.trim();
-      return tail ? `${chip}, ${tail}` : chip;
+      return tail ? `${indent}${chip}, ${tail}` : `${indent}${chip}`;
     });
-    // Same line only: \s would match \n and glue the next line into "prose" (e.g. single-letter "b").
-    s = s.replace(new RegExp(`^${p}([a-z0-9_]+)[ \\t]+(.+)$`, "gim"), (_, rawSlug: string, prose: string) => {
+    /** Before `spaced`, so lines like `XF_CITE:yahoo_finance [1] [2]` are not treated as slug + prose. */
+    const lone = new RegExp(
+      `${lead}${p}\\s*([a-z0-9_]+)(?:\\s*\\[\\d+\\])*(?:\\s*\\.?)?\\s*$`,
+      "gim"
+    );
+    s = s.replace(lone, (_full: string, indent: string, rawSlug: string) => {
       const slug = canonicalizeCitationSlug(rawSlug);
-      return `\`${prefix}${slug}\` ${prose.trimStart()}`;
+      return `${indent}\`${prefix}${slug}\``;
     });
-    // Line: only sentinel (optional whitespace)
-    s = s.replace(new RegExp(`^${p}([a-z0-9_]+)\\s*$`, "gim"), (_, rawSlug: string) => {
+    const spaced = new RegExp(`${lead}${p}\\s*([a-z0-9_]+)[ \\t]+(.+)$`, "gim");
+    s = s.replace(spaced, (_full: string, indent: string, rawSlug: string, prose: string) => {
       const slug = canonicalizeCitationSlug(rawSlug);
-      return `\`${prefix}${slug}\``;
+      return `${indent}\`${prefix}${slug}\` ${prose.trimStart()}`;
     });
   }
+
+  const citeTail =
+    /(^|[\n ])(XF_CITE:\s*([a-z0-9_]+))(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/gim;
+  s = s.replace(citeTail, (_full: string, before: string, _sent: string, rawSlug: string) => {
+    const slug = canonicalizeCitationSlug(rawSlug);
+    return `${before}\`${XF_INLINE_CITE_PREFIX}${slug}\``;
+  });
+  const toolTail =
+    /(^|[\n ])(XF_TOOL:\s*([a-z0-9_]+))(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/gim;
+  s = s.replace(toolTail, (_full: string, before: string, _sent: string, rawSlug: string) => {
+    const slug = canonicalizeCitationSlug(rawSlug);
+    return `${before}\`${XF_TOOL_BADGE_PREFIX}${slug}\``;
+  });
+
   return s;
 }
 

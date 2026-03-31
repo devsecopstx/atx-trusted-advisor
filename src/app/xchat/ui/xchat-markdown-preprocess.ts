@@ -8,6 +8,9 @@
 
 import {
     applyLeakedMarkupRules,
+    collapseAdjacentDuplicateBareXfLines,
+    collapseAdjacentDuplicateWrappedXfChipLines,
+    dedupeInlineRepeatedBareXfSentinels,
     expandBracketCitationsToInlineCode,
     grokRenderBlocksToCitationMarkdown,
     grokRenderSelfClosingToCitationMarkdown,
@@ -22,7 +25,10 @@ export function preprocessXchatMarkdown(raw: string): string {
   s = grokRenderBlocksToCitationMarkdown(s);
   s = grokRenderSelfClosingToCitationMarkdown(s);
   s = expandBracketCitationsToInlineCode(s);
+  s = dedupeInlineRepeatedBareXfSentinels(s);
+  s = collapseAdjacentDuplicateBareXfLines(s);
   s = wrapBareXfCiteLines(s);
+  s = collapseAdjacentDuplicateWrappedXfChipLines(s);
   s = s.replace(/\*\*\*\*/g, "**");
   s = s.replace(/(?:\n[ \t]*){3,}/g, "\n\n");
 
@@ -44,8 +50,15 @@ export function preprocessXchatMarkdown(raw: string): string {
       const colon = t.indexOf(":");
       const key = t.slice(0, colon).trim();
       const rest = t.slice(colon + 1).trim();
-      out.push(`### ${key}`);
-      out.push(rest);
+      /** Grok often writes comparison titles ("SPY vs. QQQ: …") and parenthetical tickers ("SPY (S&P 500 ETF): Closed …") — not summary keys. */
+      const looksLikeFinanceProseTitle =
+        /\bvs\.?\b/i.test(key) || key.includes("(") || key.includes(")");
+      if (looksLikeFinanceProseTitle) {
+        out.push(line);
+      } else {
+        out.push(`### ${key}`);
+        out.push(rest);
+      }
     } else {
       out.push(line);
     }

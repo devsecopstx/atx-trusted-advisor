@@ -26,7 +26,7 @@ export const ATXFINANCE_TOOL_DEFINITION = {
             "market_quote"
           ],
           description:
-            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt) on the default portfolio; use watchlist_snapshot for watchlist-only. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. market_quote: Yahoo quote for symbol."
+            "portfolio_summary: portfolio + accounts (cashBalance, position counts) + watchlist (name, symbols, addedAt) on the default portfolio; use watchlist_snapshot for watchlist-only. positions_snapshot: holdings per account (qty, avgCost; capped). watchlist_add_symbols / watchlist_remove_symbols: require symbols array or symbol (see properties). account_health: balances + default account. task_status: scheduled tasks/runs. market_quote: Yahoo quote for symbol—echo price, change, and previousClose from the tool JSON in your reply so users see live numbers."
         },
         symbol: {
           type: "string",
@@ -50,7 +50,8 @@ export const YAHOO_FINANCE_TOOL_DEFINITION = {
   function: {
     name: "yahoo_finance",
     description:
-      "Fetch market quote data from Yahoo Finance (internal canonical market data source).",
+      "Fetch market quote data from Yahoo Finance (internal canonical market data source). " +
+      "The tool returns JSON with price, previousClose, change, and changePercent—**repeat those numbers in your answer** (e.g. SPY vs QQQ comparisons) so users see live figures, not only a citation chip.",
     parameters: {
       type: "object",
       properties: {
