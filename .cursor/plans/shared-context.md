@@ -51,5 +51,6 @@ There is **no** shipped `POST /api/v1/auth/login` in this repo; do not build the
 
 ## Related
 
+- `.cursor/plans/market-data-provider-isolation.md` — isolate market quotes/options behind server adapters; Massive/Polygon secrets, deploy, observability, cutover (SRE phases).
 - `atx-docs/sre-ops/api-consolidation-spring-backend.md` — migration board + auth topology.
 - `atx-docs/sre-ops/atxfinance-backend-http-api.md` — Spring HTTP surface as it lands.
