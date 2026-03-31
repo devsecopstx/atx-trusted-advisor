@@ -1,12 +1,29 @@
 /**
  * Light cleanup before ReactMarkdown — Grok/xAI output quirks and denser market summaries.
+ *
+ * Citations: stable `[@citation:slug]` / `[@citation:slug|Label]` → inline-code sentinels rendered as chips
+ * in {@link XchatMarkdownBody}. Legacy `<grok:render type="render_inline_citation">…</grok:render>` maps to the
+ * same pipeline (see `src/lib/xchat-citations.ts`).
  */
+
+import {
+    applyLeakedMarkupRules,
+    expandBracketCitationsToInlineCode,
+    grokRenderBlocksToCitationMarkdown,
+    grokRenderSelfClosingToCitationMarkdown,
+    wrapBareXfCiteLines
+} from "@/lib/xchat-citations";
 
 export function preprocessXchatMarkdown(raw: string): string {
   if (!raw.trim()) {
     return raw;
   }
-  let s = raw.replace(/\*\*\*\*/g, "**");
+  let s = applyLeakedMarkupRules(raw);
+  s = grokRenderBlocksToCitationMarkdown(s);
+  s = grokRenderSelfClosingToCitationMarkdown(s);
+  s = expandBracketCitationsToInlineCode(s);
+  s = wrapBareXfCiteLines(s);
+  s = s.replace(/\*\*\*\*/g, "**");
   s = s.replace(/(?:\n[ \t]*){3,}/g, "\n\n");
 
   const lines = s.split("\n");

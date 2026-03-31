@@ -1317,6 +1317,49 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.xchat-markdown .xchat-citation-fence {
+  margin: 0.5rem 0;
+}
+
+.xchat-markdown .xchat-citation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  max-width: 100%;
+  padding: 0.12rem 0.45rem 0.12rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  vertical-align: middle;
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-gain-green) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 42%, transparent);
+}
+
+.xchat-markdown .xchat-citation-chip:hover {
+  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 55%, transparent);
+  color: var(--xf-text-100);
+}
+
+.xchat-markdown .xchat-citation-chip--static {
+  cursor: default;
+}
+
+.xchat-markdown .xchat-citation-chip__glyph {
+  font-size: 0.65rem;
+  line-height: 1;
+  color: var(--xf-gain-green);
+  flex-shrink: 0;
+}
+
+.xchat-markdown .xchat-citation-chip__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .xchat-markdown .xchat-md-code-block-wrap {
   max-width: 100%;
 }
@@ -1355,6 +1398,87 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
 @keyframes xchat-pulse {
   0%, 80% { opacity: 0.3; transform: scale(0.85); }
   40% { opacity: 1; transform: scale(1); }
+}
+
+/* In-flight ask: status + skeleton while POST /api/xchat/ask completes */
+.xchat-await {
+  align-self: flex-start;
+  max-width: min(100%, 42rem);
+  padding: 0.5rem 0.85rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-400) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 55%, transparent);
+}
+
+.xchat-await__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.65rem 0.85rem;
+}
+
+.xchat-await .xchat-typing {
+  padding: 0.35rem 0 0;
+}
+
+.xchat-await__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.xchat-await__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--xf-text-100);
+  letter-spacing: 0.02em;
+}
+
+.xchat-await__hint {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--xf-text-400);
+}
+
+.xchat-await__timer {
+  font-family: ui-monospace, monospace;
+  font-size: 0.68rem;
+  color: var(--xf-gain-green);
+  margin-top: 0.15rem;
+}
+
+.xchat-await__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-400) 12%, transparent);
+}
+
+.xchat-await__sk-line {
+  display: block;
+  height: 0.5rem;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--xf-text-400) 14%, transparent) 0%,
+    color-mix(in srgb, var(--xf-gain-green) 18%, transparent) 50%,
+    color-mix(in srgb, var(--xf-text-400) 14%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: xchat-await-shimmer 1.8s ease-in-out infinite;
+}
+
+.xchat-await__sk-line--long { width: 92%; animation-delay: 0s; }
+.xchat-await__sk-line--med { width: 72%; animation-delay: 0.15s; }
+.xchat-await__sk-line--short { width: 48%; animation-delay: 0.3s; }
+
+@keyframes xchat-await-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
 }
 
 .xchat-input-bar {

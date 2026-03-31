@@ -16,6 +16,8 @@ no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer doc
 
 **Admin backoffice (core_users, audited):** Platform & compliance hub → **Manage backoffice** (`/admin/manage-backoffice`). Not a raw Mongo shell: `POST /api/admin/backoffice/core-users` with `op: lookup` (email or user id) or `op: patch` (allowlisted fields — subscription plan, status, roles, email, linked-X profile fields, xAI collection id/name). Requires **global_admin**; audit actions `backoffice_user_lookup` / `backoffice_user_patch`. Prefer **Manage users** (`/admin/manage-users`) for routine plan/persona edits; use backoffice for operational repairs and visibility into the stored document shape.
 
+**App user left rail — Options:** `AppUserOptionsRailSection` in `src/app/ui/app-user-rail-nav.tsx` (used on xChat rail and `AppUserAccountPublicRail`) lists **xOptions** (`/xoptions`) and **Strategy Builder** (`/xstrategybuilder`, xStrategyBuilder). Keep both links in sync with `proxy.ts` / `APP_USER_PRODUCT_PATH_PREFIXES` so authenticated product users can reach strategy surfaces from the rail without hunting the top icon row.
+
 **Tenant workspace limits:** `atx-docs/sre-ops/tenant-workspace-limits.md` — `core_tenants.workspaceLimits`, optional
 `workspaceLimits.planOverrides.<tier>.price` (USD list price per tenant/plan, default **10**), collection
 `app_feature_daily_usage`, admin API `PATCH /api/admin/tenants/{tenantId}/workspace-limits`, UI rail **Tenant preferences → Workspace limits** (`/admin/tenant-preferences/workspace-limits`), billing surfacing.

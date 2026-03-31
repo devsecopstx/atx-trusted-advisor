@@ -44,13 +44,15 @@ describe("buildXchatSystemPrompt", () => {
     const iHist = out.indexOf("HIST");
     const iSnap = out.indexOf("SNAP");
     const iSess = out.indexOf("SESS");
+    const iCite = out.indexOf("Citation chips");
     const iBeta = out.indexOf("Client UI (beta)");
     expect(iP).toBe(0);
     expect(iRag).toBeGreaterThan(iP);
     expect(iHist).toBeGreaterThan(iRag);
     expect(iSnap).toBeGreaterThan(iHist);
     expect(iSess).toBeGreaterThan(iSnap);
-    expect(iBeta).toBeGreaterThan(iSess);
+    expect(iCite).toBeGreaterThan(iSess);
+    expect(iBeta).toBeGreaterThan(iCite);
   });
 
   it("uses fallback persona when base empty", () => {
@@ -78,6 +80,7 @@ describe("buildXchatSystemPrompt", () => {
     expect(out).toContain("Hi");
     expect(out).toContain("No RAG context available.");
     expect(out).not.toContain("SNAP");
+    expect(out).toContain("Citation chips");
     expect(out).toContain("Client UI (beta)");
   });
 });

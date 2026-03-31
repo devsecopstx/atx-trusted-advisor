@@ -8,6 +8,8 @@ Invoke these only through the API’s native tool mechanism. Do not print pseudo
 
 const XCHAT_BETA_CLIENT_UI_INSTRUCTIONS = `Client UI (beta): The xChat composer shows attach (paperclip), an Auto model shortcut, dictation (microphone), and voice mode (waveform). These controls are not wired to the backend yet—only typed text and Send submit a turn. If the user asks about attachments, speech-to-text, hotkeys, or live voice, say they are in beta and coming soon; do not imply those features work today.`;
 
+const XCHAT_CITATION_MARKDOWN_CONTRACT = `Citation chips (xChat UI): When a sentence is grounded on live market data or tools, add a chip using bracket syntax: [@citation:market_quote], [@citation:yahoo_finance], [@citation:file_search], [@citation:web_search], [@citation:x_search], [@citation:code_interpreter], or [@citation:atx_function] for workspace/portfolio tools (legacy [@citation:atxfinance] maps to the same chip). Equivalent tool-style token: [@tool:slug] (same chip). Optional label: [@citation:market_quote|Yahoo Finance]. Slugs are lowercase with underscores. Do not emit <grok:render>, <function_calls>, or other pseudo-execution XML—the client strips or maps those; prefer bracket citations in prose. For a standalone line, use a fenced block with language xf-citation and JSON: {"slug":"atx_function","label":"Optional"}.`;
+
 const ATX_FUNCTION_TOOL_COPY = `Workspace tools (this signed-in user only):
 When a "Workspace snapshot" JSON block appears in system context, it was loaded server-side for this turn—use it as authoritative for portfolio, accounts, watchlist, and the positions preview; call atx_function for a full positions refresh, live market_quote, task_status, or if you suspect the snapshot is stale.
 You MUST use the atx_function tool when the user asks about their own portfolio, accounts, cash balances, watchlist tickers, or stock/option positions (holdings). Call it before answering—do not ask them to paste holdings or balances if a tool can retrieve them.
@@ -83,6 +85,7 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
   if (session) {
     parts.push(session);
   }
+  parts.push(XCHAT_CITATION_MARKDOWN_CONTRACT);
   parts.push(XCHAT_BETA_CLIENT_UI_INSTRUCTIONS);
   return parts.join("\n\n");
 }

@@ -16,6 +16,7 @@ import { SendIcon } from "@/app/admin/ui/crud-icons";
 import {
     AppUserAccountRailSection,
     AppUserManageWorkspaceRailSection,
+    AppUserOptionsRailSection,
     AppUserResourcesRailSection,
     RailDisclosure
 } from "@/app/ui/app-user-rail-nav";
@@ -355,6 +356,8 @@ export function XchatConversation({
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
   const userPickedPersonaRef = useRef(false);
+  /** Seconds since current ask started (UI only; resets when loading ends). */
+  const [askWaitSeconds, setAskWaitSeconds] = useState(0);
 
   const threadUiSummary = useMemo(() => {
     const userMsgs = messages.filter((m) => m.role === "user");
@@ -407,7 +410,19 @@ export function XchatConversation({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
+
+  useEffect(() => {
+    if (!loading) {
+      setAskWaitSeconds(0);
+      return;
+    }
+    const started = Date.now();
+    const id = window.setInterval(() => {
+      setAskWaitSeconds(Math.floor((Date.now() - started) / 1000));
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [loading]);
 
   useEffect(() => {
     resizeComposer();
@@ -972,6 +987,7 @@ export function XchatConversation({
                 ) : null}
               </RailDisclosure>
             </section>
+            <AppUserOptionsRailSection railDisclosureDefaultOpen={false} />
             <AppUserResourcesRailSection
               isGlobalAdmin={isGlobalAdminSession}
               railDisclosureDefaultOpen={false}
@@ -1067,10 +1083,37 @@ export function XchatConversation({
           ))}
 
           {loading ? (
-            <div className="xchat-typing">
-              <span className="xchat-typing-dot" />
-              <span className="xchat-typing-dot" />
-              <span className="xchat-typing-dot" />
+            <div
+              aria-busy="true"
+              aria-live="polite"
+              className="xchat-await"
+              role="status"
+            >
+              <div className="xchat-await__row">
+                <div className="xchat-typing" aria-hidden>
+                  <span className="xchat-typing-dot" />
+                  <span className="xchat-typing-dot" />
+                  <span className="xchat-typing-dot" />
+                </div>
+                <div className="xchat-await__copy">
+                  <span className="xchat-await__title">Advisor is working</span>
+                  <span className="xchat-await__hint">
+                    {askWaitSeconds >= 10
+                      ? "Still running — portfolio or market tools can take up to a minute."
+                      : askWaitSeconds >= 3
+                        ? "Your persona may be calling workspace or Yahoo tools…"
+                        : "Sending to xAI…"}
+                  </span>
+                  <span className="xchat-await__timer" aria-label={`Elapsed ${askWaitSeconds} seconds`}>
+                    {askWaitSeconds > 0 ? `${askWaitSeconds}s` : "…"}
+                  </span>
+                </div>
+              </div>
+              <div aria-hidden className="xchat-await__skeleton">
+                <span className="xchat-await__sk-line xchat-await__sk-line--long" />
+                <span className="xchat-await__sk-line xchat-await__sk-line--med" />
+                <span className="xchat-await__sk-line xchat-await__sk-line--short" />
+              </div>
             </div>
           ) : null}
 
@@ -1105,7 +1148,7 @@ export function XchatConversation({
                     e.preventDefault();
                     e.currentTarget.form?.requestSubmit();
                   }}
-                  placeholder={loading ? "Thinking..." : "What's on your mind?"}
+                  placeholder={loading ? "Wait for reply…" : "What's on your mind?"}
                   readOnly={loading}
                   rows={1}
                   value={input}

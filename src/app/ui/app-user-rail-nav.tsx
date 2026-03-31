@@ -257,6 +257,9 @@ export function AppUserOptionsRailSection({
           <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
             xOptions
           </RailNavLink>
+          <RailNavLink href="/xstrategybuilder" title="xStrategyBuilder — strategy workspace">
+            Strategy Builder
+          </RailNavLink>
         </nav>
       </RailDisclosure>
     </section>
