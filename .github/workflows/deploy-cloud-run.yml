@@ -263,7 +263,11 @@ jobs:
         run: |
           set -euo pipefail
           PROJECT="${{ steps.ctx.outputs.project_id }}"
-          for s in MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL REDIS_URL NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY STRIPE_PUBLIC_KEY; do
+          REQUIRED=(MONGODB_URI_B64 XAI_API_KEY XAI_MANAGEMENT_API_KEY X_OAUTH_CLIENT_ID X_OAUTH_CLIENT_SECRET AUTH_SECRET SLACK_WEBHOOK_URL ADMIN_SEED_EMAIL REDIS_URL NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY STRIPE_PUBLIC_KEY)
+          if [ "${{ inputs.target }}" = "staging" ]; then
+            REQUIRED+=(GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET)
+          fi
+          for s in "${REQUIRED[@]}"; do
             errfile="$(mktemp)"
             if gcloud secrets describe "$s" --project="$PROJECT" --format='value(name)' >/dev/null 2>"$errfile"; then
               rm -f "$errfile"
@@ -307,6 +311,13 @@ jobs:
             echo "::notice::Optional secret STRIPE_SECRET_KEY found — binding to Cloud Run (Stripe Checkout)"
           else
             echo "::notice::Optional secret STRIPE_SECRET_KEY not in ${PROJECT} — billing checkout returns 503 until configured"
+          fi
+          if gcloud secrets describe GOOGLE_CLIENT_ID --project="$PROJECT" --format='value(name)' >/dev/null 2>&1 && \
+            gcloud secrets describe GOOGLE_CLIENT_SECRET --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+            SECRETS="${SECRETS},GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest"
+            echo "::notice::Google OAuth secrets found — binding to Cloud Run (Sign in with Google)"
+          else
+            echo "::notice::Google OAuth secrets not both present in ${PROJECT} — Sign in with Google unavailable until both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET exist (staging deploy requires them)"
           fi
           ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=${{ steps.ctx.outputs.deploy_target }},X_OAUTH_CALLBACK_URL=${{ steps.ctx.outputs.base_url }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
           if [ -n "${ATXFINANCE_BACKEND_ORIGIN}" ]; then

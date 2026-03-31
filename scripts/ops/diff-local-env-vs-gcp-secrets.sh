@@ -20,7 +20,8 @@ usage() {
 Usage:
   bash scripts/ops/diff-local-env-vs-gcp-secrets.sh --project <gcp-project-id> --env-file <path>
 
-  --include-optional   Also compare STRIPE_SECRET_KEY when the secret exists in GCP.
+  --include-optional   Also compare optional keys (STRIPE_SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+                       when each secret exists in GCP.
 
 Compares keys in GCP_RUNTIME_SECRETS_REQUIRED to vars set in the env file (after sourcing).
 Prints sha256 of each side when values differ (safe fingerprint; not the raw secret).

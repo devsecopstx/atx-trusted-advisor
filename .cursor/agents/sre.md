@@ -96,6 +96,32 @@ test -f .cursor/agents/sre.md && npm install
 
 **Docs:** `atx-docs/sre-ops/stripe-billing-setup.md`, `.cursor/rules/sre-gcp-deployment.md` § Stripe / Redis sync.
 
+## Google OAuth (Sign in with Google) — staging verify + Secret Manager
+
+**Names:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in GCP Secret Manager (same pattern as X OAuth keys).
+
+**Verify:** `npm run ops:secrets:verify:staging` runs `verify-gcp-runtime-secrets.sh` with **`--with-google-oauth`** so staging preflight matches GitHub Actions for `Deploy Cloud Run` when `target=staging`. Production: `npm run ops:secrets:verify:prod` does **not** require Google keys (optional until you enable Google login in prod).
+
+**Important:** `verify-gcp-runtime-secrets.sh` **does not read** `.env.stage` or `.env.prod`. It only runs **`gcloud secrets describe`** on the **staging GCP project**. Having `GOOGLE_CLIENT_ID` in a local file does **not** satisfy verify until those secrets exist (with non-empty latest versions) **in Secret Manager**.
+
+**Sync from local env:** `npm run ops:secrets:sync-google-oauth:staging` / `:prod` → `scripts/ops/sync-google-oauth-secrets-from-env.sh` (requires `gcloud` auth to the correct project; reads `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` from the file). Then re-run `npm run ops:secrets:verify:staging`.
+
+**Deploy:** `deploy-cloud-run-from-env.sh` and both deploy workflows append `--set-secrets` bindings for Google when **both** secrets exist (optional on prod; required for staging verify + recommended before staging deploy).
+
+**Docs:** `atx-docs/guides/deploy-and-ops.md`, `scripts/ops/gcp-runtime-secrets.inc.sh`.
+
+### Hotfix: `[verify-secrets] missing: GOOGLE_CLIENT_ID` but the variable is in `.env.stage`
+
+**Cause:** Secret Manager in **`fintech-advisor-staging`** (or your `GOOGLE_PROJECT_ID_STAGING`) has no secret named **`GOOGLE_CLIENT_ID`** yet — only your laptop file has the value.
+
+**Fix:**
+
+1. `gcloud config set project <staging-project-id>` (or ensure your `gcloud` identity can create/add versions on that project).
+2. From repo root: **`npm run ops:secrets:sync-google-oauth:staging`** (uses `.env.stage` by default).
+3. **`npm run ops:secrets:verify:staging`** — should print `exists` / `non-empty-latest-version` for both Google secrets.
+
+If sync fails with permission errors, grant the operator account **Secret Manager Admin** or **Secret Manager Secret Accessor** + ability to **create** secrets on that project.
+
 ## Manual deploy to GCP (skip GitHub Actions)
 
 **When:** Actions shows *“The job was not started because recent account payments have failed or your spending limit needs to be increased”* — that is **GitHub** billing, not GCP. You can still deploy from your laptop if **`gcloud`** is authenticated to the right project and Secret Manager has the required secrets.

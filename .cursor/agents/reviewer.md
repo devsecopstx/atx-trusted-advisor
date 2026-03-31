@@ -17,6 +17,8 @@ Read: `.cursor/agents/README.md`, `.cursor/agents/frontend.md`, `.cursor/agents/
 
 Block on: scope creep, missing tests, type/lint failures, API or Mongo contract regressions, undocumented risky changes.
 
+**Infra / Secret Manager:** If a PR changes OAuth providers, `gcp-runtime-secrets.inc.sh`, deploy workflows, or `verify-gcp-runtime-secrets.sh`, confirm **`atx-docs/guides/deploy-and-ops.md`** stays accurate (verify vs local `.env`, promotion model, optional secrets), staging still documents **`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`** where applicable (`ops:secrets:verify:staging` uses `--with-google-oauth`), and optional prod bindings stay consistent with `deploy-cloud-run*.yml`.
+
 **Tenant workspace limits:** If a PR touches quotas (`workspaceLimits`, xChat daily min-with-plan, portfolio/account caps,
 xoptions deck usage, or `/api/admin/tenants/.../workspace-limits`), verify OpenAPI `CURRENT_STATE_ROUTES` parity,
 `atx-docs/sre-ops/tenant-workspace-limits.md` is accurate, and tests cover merge/parse or critical API paths where
@@ -85,6 +87,7 @@ If **`npm install` still fails**, check **Node version** matches the range in `p
 
 ## Suggested context
 
+- `atx-docs/guides/deploy-and-ops.md` (deploy/ops entrypoint: preflight, Secret Manager, staging vs prod)
 - `.cursor/agents/README.md`
 - `.cursor/agents/frontend.md`
 - `.cursor/agents/backend.md`

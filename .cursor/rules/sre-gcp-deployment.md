@@ -38,7 +38,7 @@ Use this ordered path when **nothing exists yet** (new org/repo clone of [devsec
 2. **Enable APIs** (minimum for this repo’s workflows + manual deploy):  
    `run.googleapis.com`, `secretmanager.googleapis.com`, `artifactregistry.googleapis.com`, `cloudbuild.googleapis.com`, `iamcredentials.googleapis.com`, `serviceusage.googleapis.com`.
 3. **Artifact Registry:** Docker repo **`atxfinance-core-app`** in your deploy region (e.g. **`us-central1`**) — matches `.github/workflows/deploy-cloud-run.yml` defaults unless overridden by vars.
-4. **Secret Manager:** Create **latest** versions for every name in `scripts/ops/gcp-runtime-secrets.inc.sh` (`MONGODB_URI_B64`, `XAI_API_KEY`, `X_OAUTH_*`, `AUTH_SECRET`, `SLACK_WEBHOOK_URL`, `ADMIN_SEED_EMAIL`, `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PUBLIC_KEY`; optional `STRIPE_SECRET_KEY`). Use staging-appropriate values (staging DB URI, test Stripe keys if needed).
+4. **Secret Manager:** Create **latest** versions for every name in `scripts/ops/gcp-runtime-secrets.inc.sh` (`MONGODB_URI_B64`, `XAI_API_KEY`, `X_OAUTH_*`, `AUTH_SECRET`, `SLACK_WEBHOOK_URL`, `ADMIN_SEED_EMAIL`, `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PUBLIC_KEY`; optional `STRIPE_SECRET_KEY`). **Staging** also needs **`GOOGLE_CLIENT_ID`** and **`GOOGLE_CLIENT_SECRET`** for Sign in with Google (`npm run ops:secrets:verify:staging` enforces both). Use staging-appropriate values (staging DB URI, test Stripe keys if needed).
 5. **Deploy identity (for GitHub Actions):** Service account + **Workload Identity Federation** so GitHub (`devsecopstx/xfinance`) can impersonate it with **OIDC** — grant roles such as **Cloud Run Admin**, **Secret Manager Secret Accessor** (on needed secrets), **Artifact Registry** push, **Cloud Build Editor** (workflows use `gcloud builds submit`). Exact bindings follow least-privilege in your org; see `AGENTS.md` / `DEVELOPMENT.md` for OIDC env secret names.
 6. **First Cloud Run service:** Either let the **first deploy** create it (`gcloud run deploy <name>`) or create an empty service — name must match **`CLOUD_RUN_SERVICE_STAGING`** everywhere (`.env.stage`, GitHub **Variables**).
 
@@ -46,7 +46,7 @@ Use this ordered path when **nothing exists yet** (new org/repo clone of [devsec
 
 1. `gcloud auth login` → `gcloud config set project <staging-project-id>`.
 2. Copy **`.env.example`** → **`.env.stage`** at repo root; set **`GOOGLE_PROJECT_ID`**, **`CLOUD_RUN_REGION`**, **`CLOUD_RUN_SERVICE_STAGING`**, **`STAGING_BASE_URL`** (public URL, no trailing slash — e.g. `https://staging.atx.example.com` once DNS exists).
-3. **Redis / Stripe publishable sync** (if using): `npm run ops:secrets:sync-redis:staging`, `npm run ops:secrets:sync-stripe-publishable:staging` (after values exist in the file).
+3. **Redis / Stripe publishable / Google OAuth sync** (if using): `npm run ops:secrets:sync-redis:staging`, `npm run ops:secrets:sync-stripe-publishable:staging`, `npm run ops:secrets:sync-google-oauth:staging` (after values exist in the file).
 4. **Preflight:** `npm run ops:secrets:verify:staging` must pass.
 5. **First deploy:** `npm run ops:deploy:cloud-run:staging:ci` (or `:staging` without local CI gate). See **§7** for details.
 
@@ -76,17 +76,20 @@ Use this ordered path when **nothing exists yet** (new org/repo clone of [devsec
 | `REDIS_URL` | `REDIS_URL` | Next.js Redis (quotes, health, optional caches) — see `atx-docs/sre-ops/redis-cache-next.md` |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_…`); mounted at runtime for server-side reads (`getStripePublishableKey`) |
 | `STRIPE_PUBLIC_KEY` | `STRIPE_PUBLIC_KEY` (or same value as publishable) | Alias for publishable key; keep in sync or duplicate `pk_…` value |
+| `GOOGLE_CLIENT_ID` | `GOOGLE_CLIENT_ID` | Google OAuth client id (Sign in with Google) — **required in staging** for verify + deploy preflight |
+| `GOOGLE_CLIENT_SECRET` | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret — **required in staging** when using Google login |
 
 **Sync from env file to Secret Manager**
 
 - **Redis:** `bash scripts/ops/sync-redis-url-secret.sh .env.stage` or `.env.prod` (requires `REDIS_URL` + project id in file).
 - **Stripe publishable (both secrets):** `bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.stage` or `.env.prod` (requires `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; `STRIPE_PUBLIC_KEY` optional and defaults to the same value).
+- **Google OAuth:** `bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.stage` or `.env.prod` (requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`).
 
-**Preflight:** `npm run ops:secrets:verify:staging` / `ops:secrets:verify:prod` (or `verify-gcp-runtime-secrets.sh --project …`) asserts these exist with non-empty latest versions, along with core app secrets (`MONGODB_URI_B64`, xAI, OAuth, `AUTH_SECRET`, etc.).
+**Preflight:** `npm run ops:secrets:verify:staging` / `ops:secrets:verify:prod` (or `verify-gcp-runtime-secrets.sh --project …`) asserts core app secrets with non-empty latest versions. **Staging** verify also requires **`GOOGLE_CLIENT_ID`** and **`GOOGLE_CLIENT_SECRET`** (`--with-google-oauth`). Production verify does not require Google keys; deploy still binds them when both exist in Secret Manager.
 
 **Export / diff vs local `.env.prod`:** `atx-docs/sre-ops/gcp-secrets-export-diff.md` — `npm run ops:secrets:export:prod` (writes `.env.prod.gcp-export`, sensitive), `npm run ops:secrets:diff:prod` (masked `MATCH`/`MISMATCH`; use for xAI key rotation checks).
 
-**Deploy:** Cloud Run workflows bind `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_PUBLIC_KEY` from Secret Manager on every deploy (no GitHub Variables fallback for those three).
+**Deploy:** Cloud Run workflows bind `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_PUBLIC_KEY` from Secret Manager on every deploy (no GitHub Variables fallback for those three). When both Google OAuth secrets exist, workflows also bind `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
 Other Stripe config (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_*`) remains as documented in `atx-docs/sre-ops/stripe-billing-setup.md` (secret key in SM when checkout is enabled; price ids via GitHub Environment **variables** unless you add separate SM secrets later).
 

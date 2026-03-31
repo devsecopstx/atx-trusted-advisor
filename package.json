@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "2.7.11",
+  "version": "2.7.12",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -53,7 +53,7 @@
     "status:deploy": "bash scripts/ops/print-deploy-status.sh",
     "ops:rotate:oauth": "bash scripts/ops/rotate-oauth-secrets.sh",
     "ops:secrets:verify": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GOOGLE_PROJECT_ID:-${GCP_PROJECT_ID:?set GOOGLE_PROJECT_ID or GCP_PROJECT_ID}}\"",
-    "ops:secrets:verify:staging": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GOOGLE_PROJECT_ID_STAGING:-${GCP_PROJECT_ID_STAGING:-fintech-advisor-staging}}\"",
+    "ops:secrets:verify:staging": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GOOGLE_PROJECT_ID_STAGING:-${GCP_PROJECT_ID_STAGING:-fintech-advisor-staging}}\" --with-google-oauth",
     "ops:secrets:verify:prod": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\"",
     "ops:secrets:export:prod": "bash scripts/ops/export-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --output .env.prod.gcp-export",
     "ops:secrets:diff:prod": "bash scripts/ops/diff-local-env-vs-gcp-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --env-file .env.prod",
@@ -65,6 +65,8 @@
     "ops:secrets:sync-mongodb:prod": "bash scripts/ops/sync-mongodb-uri-secret-from-env.sh .env.prod",
     "ops:secrets:sync-stripe-publishable:staging": "bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.stage",
     "ops:secrets:sync-stripe-publishable:prod": "bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.prod",
+    "ops:secrets:sync-google-oauth:staging": "bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.stage",
+    "ops:secrets:sync-google-oauth:prod": "bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.prod",
     "ops:deploy:cloud-run:staging": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging",
     "ops:deploy:cloud-run:staging:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging --with-ci-gate",
     "ops:deploy:cloud-run:production": "bash scripts/ops/deploy-cloud-run-from-env.sh --production",

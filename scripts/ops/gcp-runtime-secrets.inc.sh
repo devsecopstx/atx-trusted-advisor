@@ -5,7 +5,7 @@
 #   - scripts/ops/verify-gcp-runtime-secrets.sh
 #   - .github/workflows/deploy-cloud-run.yml (preflight loop)
 #   - .github/workflows/deploy-cloud-run-production.yml (preflight loop)
-# Optional secrets (export/diff when present): see gcp-runtime-secrets-optional array.
+# Optional secrets (export/diff when present): GCP_RUNTIME_SECRETS_OPTIONAL.
 
 GCP_RUNTIME_SECRETS_REQUIRED=(
   "MONGODB_URI_B64"
@@ -21,7 +21,16 @@ GCP_RUNTIME_SECRETS_REQUIRED=(
   "STRIPE_PUBLIC_KEY"
 )
 
+# Sign in with Google (`/api/auth/google/*`). Use verify-gcp-runtime-secrets.sh --with-google-oauth (staging npm script).
+GCP_RUNTIME_SECRETS_GOOGLE_OAUTH=(
+  "GOOGLE_CLIENT_ID"
+  "GOOGLE_CLIENT_SECRET"
+)
+
 # Bound to Cloud Run when the secret exists (billing). Not required for deploy preflight.
+# Google OAuth keys: compared with diff-local-env --include-optional when the secret exists in GCP.
 GCP_RUNTIME_SECRETS_OPTIONAL=(
   "STRIPE_SECRET_KEY"
+  "GOOGLE_CLIENT_ID"
+  "GOOGLE_CLIENT_SECRET"
 )

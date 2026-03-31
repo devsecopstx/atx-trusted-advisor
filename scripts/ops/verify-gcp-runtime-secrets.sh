@@ -8,14 +8,18 @@ source "${SCRIPT_DIR}/gcp-runtime-secrets.inc.sh"
 PROJECT=""
 EXPECT_NON_EMPTY="true"
 REQUIRE_NON_EMPTY_SLACK_WEBHOOK="false"
+WITH_GOOGLE_OAUTH="false"
 
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/ops/verify-gcp-runtime-secrets.sh [--project <gcp-project-id>] [--expect-non-empty true|false] [--require-non-empty-slack-webhook true|false]
+  bash scripts/ops/verify-gcp-runtime-secrets.sh [--project <gcp-project-id>] [--expect-non-empty true|false] [--require-non-empty-slack-webhook true|false] [--with-google-oauth]
 
   If --project is omitted, uses GOOGLE_PROJECT_ID, GOOGLE_CLOUD_PROJECT, or GCP_PROJECT_ID (e.g. after
   'set -a && source .env.stage && set +a'). Staging default in docs: GOOGLE_PROJECT_ID=fintech-advisor-staging.
+
+  --with-google-oauth   Also require GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (Sign in with Google).
+                        npm run ops:secrets:verify:staging passes this flag.
 
 Checks that required runtime secrets exist in GCP Secret Manager and (optionally)
 that their latest secret versions are non-empty.
@@ -37,6 +41,10 @@ while [[ $# -gt 0 ]]; do
     --require-non-empty-slack-webhook)
       REQUIRE_NON_EMPTY_SLACK_WEBHOOK="${2:-false}"
       shift 2
+      ;;
+    --with-google-oauth)
+      WITH_GOOGLE_OAUTH="true"
+      shift
       ;;
     -h|--help)
       usage
@@ -61,8 +69,11 @@ if [[ -z "${PROJECT//[[:space:]]/}" ]]; then
 fi
 
 REQUIRED_SECRETS=("${GCP_RUNTIME_SECRETS_REQUIRED[@]}")
+if [[ "$WITH_GOOGLE_OAUTH" == "true" ]]; then
+  REQUIRED_SECRETS+=("${GCP_RUNTIME_SECRETS_GOOGLE_OAUTH[@]}")
+fi
 
-echo "[verify-secrets] project=$PROJECT expect_non_empty=$EXPECT_NON_EMPTY require_non_empty_slack_webhook=$REQUIRE_NON_EMPTY_SLACK_WEBHOOK"
+echo "[verify-secrets] project=$PROJECT expect_non_empty=$EXPECT_NON_EMPTY require_non_empty_slack_webhook=$REQUIRE_NON_EMPTY_SLACK_WEBHOOK with_google_oauth=$WITH_GOOGLE_OAUTH"
 
 for secret in "${REQUIRED_SECRETS[@]}"; do
   if ! gcloud secrets describe "$secret" --project "$PROJECT" --format="value(name)" >/dev/null 2>&1; then

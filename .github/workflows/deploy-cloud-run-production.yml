@@ -269,6 +269,13 @@ jobs:
           else
             echo "::notice::Optional secret STRIPE_SECRET_KEY not in ${PROJECT} — billing checkout returns 503 until configured"
           fi
+          if gcloud secrets describe GOOGLE_CLIENT_ID --project="$PROJECT" --format='value(name)' >/dev/null 2>&1 && \
+            gcloud secrets describe GOOGLE_CLIENT_SECRET --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+            SECRETS="${SECRETS},GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest"
+            echo "::notice::Google OAuth secrets found — binding to Cloud Run (Sign in with Google)"
+          else
+            echo "::notice::Google OAuth secrets not both present in ${PROJECT} — Sign in with Google unavailable until configured"
+          fi
           ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=deploy,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL}"
           for pair in "STRIPE_PRICE_BASIC_MONTHLY:${STRIPE_PRICE_BASIC_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_MONTHLY:${STRIPE_PRICE_PREMIUM_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:${STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}"; do
             k="${pair%%:*}"

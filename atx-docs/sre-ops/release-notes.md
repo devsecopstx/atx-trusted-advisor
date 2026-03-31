@@ -6,6 +6,8 @@ Not user marketing copy — enough for deploy triage, support, and “what shipp
 
 ## Entries
 
+- **2.7.12** — Ops: **`GOOGLE_CLIENT_ID`** / **`GOOGLE_CLIENT_SECRET`** in Secret Manager — staging verify (`--with-google-oauth`), sync script (`ops:secrets:sync-google-oauth:*`), optional Cloud Run bindings in deploy workflows + `deploy-cloud-run-from-env.sh`; docs/agents updated.
+
 - **2.7.11** — Tenant workspace: per-plan **`changePersonaEnabled`** + **`chatHistoryMax`** (admin UI, `/account/billing`, xChat picker + history depth); `npm run ops:users:reset-basic-super-agent` one-off (Basic + Super-Agent + `xchat_platform_settings`); admin portfolio routes scoped to session tenant/user with **`ADMIN_PORTFOLIOS_LIST_ALL`** break-glass.
 
 - **2.7.10** — Ops/docs: `atx-docs/sre-ops/release-notes.md` + **Resources → Release notes** in **`.cursor/agents/sre.md`**; version bump checklist in **test-commit-push** (append a one-line entry here when shipping).

@@ -86,11 +86,14 @@ npm run ops:secrets:verify:staging
 npm run ops:secrets:verify:prod
 ```
 
-Push **Redis** and **Stripe publishable** keys from `.env.stage` / `.env.prod` into the matching GCP project’s Secret Manager (see `.cursor/rules/sre-gcp-deployment.md`):
+**Staging** `ops:secrets:verify:staging` also requires **`GOOGLE_CLIENT_ID`** and **`GOOGLE_CLIENT_SECRET`** (Sign in with Google). Sync them with `npm run ops:secrets:sync-google-oauth:staging` (see `atx-docs/guides/deploy-and-ops.md`).
+
+Push **Redis**, **Stripe publishable**, and (when using Google login) **Google OAuth** keys from `.env.stage` / `.env.prod` into the matching GCP project’s Secret Manager (see `.cursor/rules/sre-gcp-deployment.md`):
 
 ```bash
 npm run ops:secrets:sync-redis:staging
 npm run ops:secrets:sync-stripe-publishable:staging
+npm run ops:secrets:sync-google-oauth:staging
 # production: …:prod variants
 ```
 
