@@ -9,6 +9,7 @@ import { getDb } from "@/lib/mongodb";
 import {
     ensureDefaultPortfolioInvariantForUser,
     getDefaultPortfolio,
+    listPortfoliosForSessionUser,
     provisionDefaultPortfolioForUser,
     upsertPositionForAccount
 } from "@/modules/core-admin/repository";
@@ -237,6 +238,38 @@ describe("portfolio provisioning repository", () => {
     const found = await getDefaultPortfolio(userId, { tenantId });
     expect(found).not.toBeNull();
     expect(found?.userId).toBe(userId);
+  });
+
+  it("listPortfoliosForSessionUser returns all tenant-scoped portfolios for user", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+    const userId = "507f1f77bcf86cd799439011";
+    const tenantId = "507f1f77bcf86cd799439022";
+    const tenantOid = new ObjectId(tenantId);
+    const idA = new ObjectId();
+    const idB = new ObjectId();
+    fakeDb.seed("tenant_portfolio", {
+      _id: idA,
+      userId,
+      isDefault: true,
+      tenantId: tenantOid,
+      name: "A",
+      createdAt: new Date("2020-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2020-01-01T00:00:00.000Z")
+    });
+    fakeDb.seed("tenant_portfolio", {
+      _id: idB,
+      userId,
+      isDefault: false,
+      tenantId: tenantOid,
+      name: "B",
+      createdAt: new Date("2021-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2021-01-01T00:00:00.000Z")
+    });
+
+    const list = await listPortfoliosForSessionUser({ userId, tenantId });
+    expect(list.length).toBe(2);
+    expect(list.map((p) => p.name)).toEqual(["A", "B"]);
   });
 
   it("ensureDefaultPortfolioInvariantForUser clears duplicate isDefault and keeps oldest", async () => {

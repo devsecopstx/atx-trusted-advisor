@@ -12,12 +12,134 @@ import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.Date
+import java.util.regex.Pattern
 
 @Service
 class PortfolioCrudService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
 ) {
+
+    private val brokerTypeRe = Pattern.compile("^[a-z][a-z0-9_]{0,31}$")
+
+    fun countPortfoliosForSessionUser(session: ResolvedSession): Long {
+        val crit =
+            PortfolioMongoFilter.withTenantScopeCriteria(
+                PortfolioMongoFilter.userIdCriteria(session.userId),
+                session.tenantId,
+            )
+        return mongoTemplate.count(Query.query(crit), props.portfoliosCollection)
+    }
+
+    /**
+     * App-user portfolio create (parity with Next `POST /api/portfolios`).
+     * Returns null when limit reached or payload invalid.
+     */
+    fun createPortfolioForSessionUser(
+        session: ResolvedSession,
+        body: Map<String, Any?>,
+    ): Document? {
+        val nameRaw = body["name"] as? String ?: return null
+        val trimmed = nameRaw.trim()
+        if (trimmed.isEmpty() || trimmed.length > 200) {
+            return null
+        }
+        val tenantOid = PortfolioMongoFilter.tenantObjectId(session.tenantId)
+        if (tenantOid != null && countPortfoliosForSessionUser(session) >= MAX_PORTFOLIOS_PER_TENANT_USER) {
+            return null
+        }
+        val isDefault = body["isDefault"] == true
+        val now = Date()
+        if (isDefault) {
+            val base =
+                Criteria.where("isDefault").`is`(true).andOperator(
+                    PortfolioMongoFilter.userIdCriteria(session.userId),
+                )
+            val crit = PortfolioMongoFilter.strictWriteTenantCriteria(base, session.tenantId)
+            mongoTemplate.updateMulti(
+                Query.query(crit),
+                Update().set("isDefault", false).set("updatedAt", now),
+                props.portfoliosCollection,
+            )
+        }
+        val doc = Document()
+        doc["userId"] = session.userId
+        doc["name"] = trimmed
+        doc["isDefault"] = isDefault
+        doc["tenantPortfolioOrgKey"] = props.tenantPortfolioOrgKey
+        doc["createdAt"] = now
+        doc["updatedAt"] = now
+        doc["ext_broker_ref"] = props.defaultExtBrokerRef
+        if (tenantOid != null) {
+            doc["tenantId"] = tenantOid
+        }
+        parseBrokerType(body["broker_type"])?.let { doc["broker_type"] = it }
+        parseOutlook(body["outlook"])?.let { doc["outlook"] = it }
+        parsePortfolioKind(body["portfolioKind"])?.let { doc["portfolioKind"] = it }
+        return try {
+            mongoTemplate.insert(doc, props.portfoliosCollection)
+            val id = doc.getObjectId("_id") ?: return null
+            mongoTemplate.findById(id, Document::class.java, props.portfoliosCollection)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    sealed class DeleteSessionPortfolioResult {
+        object Ok : DeleteSessionPortfolioResult()
+
+        object NotFound : DeleteSessionPortfolioResult()
+
+        object LastPortfolio : DeleteSessionPortfolioResult()
+    }
+
+    fun deletePortfolioForSessionUser(
+        portfolioId: String,
+        session: ResolvedSession,
+    ): DeleteSessionPortfolioResult {
+        val portfolio = findPortfolioForSessionUser(portfolioId, session) ?: return DeleteSessionPortfolioResult.NotFound
+        if (countPortfoliosForSessionUser(session) <= 1L) {
+            return DeleteSessionPortfolioResult.LastPortfolio
+        }
+        cascadeDeleteOwnedPortfolio(portfolio, session)
+        return DeleteSessionPortfolioResult.Ok
+    }
+
+    private fun cascadeDeleteOwnedPortfolio(portfolio: Document, session: ResolvedSession) {
+        val pid = portfolio.getObjectId("_id") ?: return
+        val uidCrit = PortfolioMongoFilter.userIdCriteria(session.userId)
+        val pf = Criteria.where("portfolioId").`is`(pid).andOperator(uidCrit)
+        mongoTemplate.remove(Query.query(pf), props.positionsCollection)
+        mongoTemplate.remove(Query.query(pf), props.portfolioRecommendationsCollection)
+        mongoTemplate.remove(Query.query(pf), props.portfolioAlertsCollection)
+        mongoTemplate.remove(Query.query(pf), props.portfolioDeliveryChannelsCollection)
+        mongoTemplate.remove(Query.query(pf), props.accountsCollection)
+        mongoTemplate.remove(Query.query(pf), props.watchlistsCollection)
+        mongoTemplate.remove(Query.query(Criteria.where("_id").`is`(pid)), props.portfoliosCollection)
+    }
+
+    private fun parseOutlook(raw: Any?): String? {
+        val s = (raw as? String)?.trim()?.lowercase() ?: return null
+        return when (s) {
+            "bullish", "up" -> "bullish"
+            "neutral", "flat" -> "neutral"
+            "bearish", "down" -> "bearish"
+            else -> null
+        }
+    }
+
+    private fun parsePortfolioKind(raw: Any?): String? {
+        val s = (raw as? String)?.trim()?.lowercase() ?: return null
+        return if (s == "real_estate" || s == "investments") s else null
+    }
+
+    private fun parseBrokerType(raw: Any?): String? {
+        if (raw == null) {
+            return null
+        }
+        val s = (raw as? String)?.trim()?.lowercase()?.take(32) ?: return null
+        return if (brokerTypeRe.matcher(s).matches()) s else null
+    }
 
     fun findPortfolioForSessionUser(portfolioId: String, session: ResolvedSession): Document? {
         if (!ObjectId.isValid(portfolioId)) {
@@ -134,4 +256,8 @@ class PortfolioCrudService(
             is String -> runCatching { Instant.parse(value).toString() }.getOrElse { Instant.now().toString() }
             else -> Instant.now().toString()
         }
+
+    private companion object {
+        private const val MAX_PORTFOLIOS_PER_TENANT_USER = 50
+    }
 }

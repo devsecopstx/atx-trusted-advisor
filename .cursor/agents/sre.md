@@ -100,11 +100,19 @@ test -f .cursor/agents/sre.md && npm install
 
 **Names:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in GCP Secret Manager (same pattern as X OAuth keys).
 
-**Verify:** `npm run ops:secrets:verify:staging` runs `verify-gcp-runtime-secrets.sh` with **`--with-google-oauth`** so staging preflight matches GitHub Actions for `Deploy Cloud Run` when `target=staging`. Production: `npm run ops:secrets:verify:prod` does **not** require Google keys (optional until you enable Google login in prod).
+**Verify scripts — staging vs prod (read the log line `with_google_oauth=…`):**
 
-**Important:** `verify-gcp-runtime-secrets.sh` **does not read** `.env.stage` or `.env.prod`. It only runs **`gcloud secrets describe`** on the **staging GCP project**. Having `GOOGLE_CLIENT_ID` in a local file does **not** satisfy verify until those secrets exist (with non-empty latest versions) **in Secret Manager**.
+| npm command | GCP project (default) | Google OAuth in verify? | When to use |
+|-------------|------------------------|-------------------------|-------------|
+| `ops:secrets:verify:staging` | `fintech-advisor-staging` | **Yes** — log shows `with_google_oauth=true`; requires **`GOOGLE_CLIENT_ID`** + **`GOOGLE_CLIENT_SECRET`** in Secret Manager | Default staging preflight; matches **Deploy Cloud Run** preflight when `target=staging` |
+| `ops:secrets:verify:prod` | `fintech-advisor-prod` | **No** — log shows `with_google_oauth=false`; core runtime secrets only | Default prod check; Google is **optional** until Sign-in with Google is enabled in prod |
+| `ops:secrets:verify:prod:with-google-oauth` | `fintech-advisor-prod` | **Yes** — log shows `with_google_oauth=true` | After you sync Google secrets to **prod** SM and want the same strict check as staging |
 
-**Sync from local env:** `npm run ops:secrets:sync-google-oauth:staging` / `:prod` → `scripts/ops/sync-google-oauth-secrets-from-env.sh` (requires `gcloud` auth to the correct project; reads `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` from the file). Then re-run `npm run ops:secrets:verify:staging`.
+Production **Deploy Cloud Run Production** preflight does **not** require Google secrets (bindings are added when both exist). Use **`ops:secrets:verify:prod:with-google-oauth`** before prod releases if Google login must not ship without credentials.
+
+**Important:** `verify-gcp-runtime-secrets.sh` **does not read** `.env.stage` or `.env.prod`. It only runs **`gcloud secrets describe`** (and non-empty latest checks) on the **GCP project** passed via `--project`. Having `GOOGLE_CLIENT_ID` in a local file does **not** satisfy verify until those secrets exist (with non-empty latest versions) **in Secret Manager** for that project.
+
+**Sync from local env:** `npm run ops:secrets:sync-google-oauth:staging` / `:prod` → `scripts/ops/sync-google-oauth-secrets-from-env.sh` (requires `gcloud` auth to the correct project; reads `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` from the file). Then re-run **`ops:secrets:verify:staging`** or **`ops:secrets:verify:prod:with-google-oauth`** as appropriate.
 
 **Deploy:** `deploy-cloud-run-from-env.sh` and both deploy workflows append `--set-secrets` bindings for Google when **both** secrets exist (optional on prod; required for staging verify + recommended before staging deploy).
 

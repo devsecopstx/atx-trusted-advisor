@@ -1245,6 +1245,21 @@ export async function getPortfolioByIdForSessionUser(input: {
     );
 }
 
+/** All portfolios for the session user (tenant-scoped), oldest first. */
+export async function listPortfoliosForSessionUser(input: {
+  userId: string;
+  tenantId?: string;
+}): Promise<Portfolio[]> {
+  await ensurePortfolioIndexes();
+  const db = await getDb();
+  const filter = userPortfoliosInSessionScopeFilter(input.userId, input.tenantId);
+  return db
+    .collection<Portfolio>(collections.portfolios)
+    .find(filter)
+    .sort({ createdAt: 1, _id: 1 })
+    .toArray();
+}
+
 /** Removes all position lots for an account (replace-before-import). Returns deleted count. */
 export async function deletePositionsForPortfolioAccount(input: {
   userId: string;
@@ -3044,31 +3059,65 @@ export async function updatePortfolioForUser(input: {
   userId: string;
   tenantId?: string;
   portfolioId: string;
-  name: string;
+  name?: string;
+  outlook?: AccountOutlook | null;
+  broker_type?: string | null;
+  portfolioKind?: Portfolio["portfolioKind"];
+  isDefault?: boolean;
 }): Promise<Portfolio | null> {
-  await ensurePortfolioIndexes();
-  const existing = await getPortfolioByIdForSessionUser({
+  const owned = await getPortfolioByIdForSessionUser({
     userId: input.userId,
     tenantId: input.tenantId,
     portfolioId: input.portfolioId
   });
-  if (!existing?._id) {
+  if (!owned?._id) {
     return null;
   }
-  const trimmed = input.name.trim();
-  if (!trimmed) {
-    return existing;
+  const hasFieldUpdate =
+    input.name !== undefined ||
+    input.outlook !== undefined ||
+    input.broker_type !== undefined ||
+    input.portfolioKind !== undefined ||
+    input.isDefault !== undefined;
+  if (!hasFieldUpdate) {
+    return owned;
   }
-  const db = await getDb();
-  await db.collection<Portfolio>(collections.portfolios).updateOne(
-    { _id: existing._id },
-    { $set: { name: trimmed.slice(0, 200), updatedAt: new Date() } }
-  );
-  return getPortfolioByIdForSessionUser({
+  return adminUpdatePortfolio({
+    portfolioId: input.portfolioId,
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.outlook !== undefined ? { outlook: input.outlook } : {}),
+    ...(input.broker_type !== undefined ? { broker_type: input.broker_type } : {}),
+    ...(input.portfolioKind !== undefined ? { portfolioKind: input.portfolioKind } : {}),
+    ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {})
+  });
+}
+
+/**
+ * Deletes an owned portfolio and dependent rows (accounts, positions, etc.).
+ * Refuses when this is the user's only portfolio in tenant scope.
+ */
+export async function deletePortfolioForSessionUser(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+}): Promise<{ ok: true } | { ok: false; code: "NOT_FOUND" | "LAST_PORTFOLIO" }> {
+  const owned = await getPortfolioByIdForSessionUser({
     userId: input.userId,
     tenantId: input.tenantId,
     portfolioId: input.portfolioId
   });
+  if (!owned?._id) {
+    return { ok: false, code: "NOT_FOUND" };
+  }
+  const count = await countPortfoliosForUserInTenant({
+    userId: input.userId,
+    tenantId: input.tenantId
+  });
+  if (count <= 1) {
+    return { ok: false, code: "LAST_PORTFOLIO" };
+  }
+  const deleted = await adminDeletePortfolio(input.portfolioId);
+  return deleted ? { ok: true } : { ok: false, code: "NOT_FOUND" };
 }
 
 export type InsertPortfolioAccountInput = {
@@ -3264,6 +3313,8 @@ export async function adminUpdatePortfolio(input: {
   broker_type?: string | null;
   riskProfile?: Portfolio["riskProfile"] | null;
   outlook?: AccountOutlook | null;
+  /** Workspace manage UI — real estate vs investments bucket. */
+  portfolioKind?: Portfolio["portfolioKind"];
   /** Validated rows, or null to unset (read path uses catalog defaults). */
   scoringFactors?: PortfolioScoringFactor[] | null;
   /** When true, clears `isDefault` on other portfolios for the same user (and tenant scope). */
@@ -3298,6 +3349,9 @@ export async function adminUpdatePortfolio(input: {
   }
   if (input.outlook !== undefined) {
     fieldSet.outlook = input.outlook;
+  }
+  if (input.portfolioKind !== undefined) {
+    fieldSet.portfolioKind = input.portfolioKind;
   }
   let unsetScoringFactors = false;
   if (input.scoringFactors !== undefined) {
@@ -3344,6 +3398,8 @@ export async function adminCreatePortfolio(input: {
   name: string;
   isDefault?: boolean;
   broker_type?: string;
+  outlook?: AccountOutlook | null;
+  portfolioKind?: Portfolio["portfolioKind"];
 }): Promise<Portfolio | null> {
   await ensurePortfolioIndexes();
   const name = input.name.trim().slice(0, 200);
@@ -3389,6 +3445,10 @@ export async function adminCreatePortfolio(input: {
           const raw = String(input.broker_type).trim().toLowerCase().slice(0, 32);
           return BROKER_CATALOG_TYPE_RE.test(raw) ? { broker_type: raw } : {};
         })()
+      : {}),
+    ...(input.outlook !== undefined && input.outlook !== null ? { outlook: input.outlook } : {}),
+    ...(input.portfolioKind !== undefined && input.portfolioKind !== null
+      ? { portfolioKind: input.portfolioKind }
       : {})
   };
   const res = await db.collection<Portfolio>(collections.portfolios).insertOne(doc);

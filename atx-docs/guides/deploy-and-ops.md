@@ -102,7 +102,8 @@ Recommended checks before merge/deploy:
 | Script | Purpose |
 |--------|--------|
 | `ops:secrets:verify:staging` | GCP Secret Manager preflight for **staging** project (includes **`GOOGLE_CLIENT_ID`**, **`GOOGLE_CLIENT_SECRET`**) |
-| `ops:secrets:verify:prod` | GCP preflight for **production** project (Google keys optional) |
+| `ops:secrets:verify:prod` | GCP preflight for **production** — core secrets only; log shows `with_google_oauth=false` |
+| `ops:secrets:verify:prod:with-google-oauth` | Same as prod + requires Google secrets in SM (use when Sign-in with Google is enabled in prod) |
 | `ops:secrets:sync-google-oauth:staging` / `:prod` | Create/update Google OAuth secrets from `.env.stage` / `.env.prod` |
 | `ops:secrets:sync-stripe-publishable:*` | Stripe publishable keys → SM |
 | `ops:secrets:sync-redis:*` | `REDIS_URL` → SM |

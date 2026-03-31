@@ -180,7 +180,7 @@ function AccountLegalLink() {
       className={`app-user-rail-sublink${active ? " app-user-rail-sublink--active" : ""}`}
       href="/legal/terms"
     >
-      Legal Agreements
+      Legal
     </Link>
   );
 }
@@ -218,16 +218,16 @@ export function AppUserResourcesRailSection({
       >
         <nav className="app-user-rail-sublinks" aria-label="Resource links">
           <RailNavLink href="/resources/about">About</RailNavLink>
-          <RailNavLink href="/resources/decision-workflow">Decision Workflow</RailNavLink>
-          <RailNavLink href="/resources/getting-started">Getting Started</RailNavLink>
-          <RailNavLink href="/resources/secret-sauce">Secret Sauce</RailNavLink>
-          <RailNavLink href="/resources/building-wheel">Building a Wheel</RailNavLink>
+          <RailNavLink href="/resources/decision-workflow">Decision workflow</RailNavLink>
+          <RailNavLink href="/resources/getting-started">Getting started</RailNavLink>
+          <RailNavLink href="/resources/secret-sauce">Secret sauce</RailNavLink>
+          <RailNavLink href="/resources/building-wheel">Building a wheel</RailNavLink>
           <RailNavLink href="/resources/building-wheel/wheel-vs-iron-condor">
             Wheel vs Iron Condor
           </RailNavLink>
           {showReferenceDocs
             ? isGlobalAdmin ? (
-                <RailNavLink href="/admin/api-docs">Reference Docs</RailNavLink>
+                <RailNavLink href="/admin/api-docs">Reference docs</RailNavLink>
               ) : (
                 <XfHoverHint hint="Open API reference from Hub when you have admin access">
                   <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
@@ -258,8 +258,8 @@ export function AppUserOptionsRailSection({
           <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
             xOptions
           </RailNavLink>
-          <RailNavLink href="/xstrategybuilder" title="xStrategyBuilder — strategy workspace">
-            Strategy Builder
+          <RailNavLink href="/xstrategybuilder" title="xStrategyBuilder">
+            xstrategy-scanner
           </RailNavLink>
         </nav>
       </RailDisclosure>
@@ -328,11 +328,13 @@ export function AppUserAccountRailSection({
   );
 }
 
-/** Global admin only — tenant Hub and admin console entry from the same rail as product surfaces */
+/** Manage workspace — portfolios for all app users; Admin hub for global_admin only */
 export function AppUserManageWorkspaceRailSection({
-  railDisclosureDefaultOpen = true
+  railDisclosureDefaultOpen = true,
+  isGlobalAdmin = false
 }: {
   railDisclosureDefaultOpen?: boolean;
+  isGlobalAdmin?: boolean;
 }) {
   return (
     <section className="app-user-rail-section" aria-label="Manage workspace">
@@ -342,9 +344,17 @@ export function AppUserManageWorkspaceRailSection({
         title="Manage workspace"
       >
         <nav className="app-user-rail-sublinks" aria-label="Workspace administration">
-          <RailNavLink href="/admin" title="Open Admin Hub (tenant tools, personas, portfolios)">
-            Admin hub
+          <RailNavLink
+            href="/account/workspace/portfolios"
+            title="Manage your portfolios (name, outlook, default — no account detail)"
+          >
+            Manage portfolios
           </RailNavLink>
+          {isGlobalAdmin ? (
+            <RailNavLink href="/admin" title="Open Admin Hub (tenant tools, personas, portfolios)">
+              Admin hub
+            </RailNavLink>
+          ) : null}
         </nav>
       </RailDisclosure>
     </section>
@@ -388,7 +398,7 @@ export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUser
       <AppUserOptionsRailSection />
       <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
       <AppUserAccountRailSection isGlobalAdmin={isGlobalAdmin} />
-      {isGlobalAdmin ? <AppUserManageWorkspaceRailSection /> : null}
+      <AppUserManageWorkspaceRailSection isGlobalAdmin={isGlobalAdmin} />
     </aside>
   );
 }

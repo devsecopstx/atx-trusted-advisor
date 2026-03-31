@@ -13,9 +13,13 @@ type BffRouteDefinition = {
  */
 export const nextBffApi = {
   portfolio: {
+    index: {
+      pathTemplate: "/api/portfolios",
+      methods: ["POST"]
+    },
     byId: {
       pathTemplate: "/api/portfolios/{portfolioId}",
-      methods: ["GET", "PATCH"]
+      methods: ["GET", "PATCH", "DELETE"]
     },
     default: {
       pathTemplate: "/api/portfolios/default",

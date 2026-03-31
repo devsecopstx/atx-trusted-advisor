@@ -221,3 +221,9 @@
   width: 100%;
   line-height: 1.45;
 }
+
+/* Manage workspace portfolios: .crud-input + global `select` rules follow shell theme (deep = dark color-scheme, soft = light). */
+.portfolio-manage-form input.crud-input,
+.portfolio-manage-form select.crud-input {
+  max-width: 100%;
+}

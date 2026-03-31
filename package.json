@@ -55,6 +55,7 @@
     "ops:secrets:verify": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GOOGLE_PROJECT_ID:-${GCP_PROJECT_ID:?set GOOGLE_PROJECT_ID or GCP_PROJECT_ID}}\"",
     "ops:secrets:verify:staging": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GOOGLE_PROJECT_ID_STAGING:-${GCP_PROJECT_ID_STAGING:-fintech-advisor-staging}}\" --with-google-oauth",
     "ops:secrets:verify:prod": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\"",
+    "ops:secrets:verify:prod:with-google-oauth": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --with-google-oauth",
     "ops:secrets:export:prod": "bash scripts/ops/export-gcp-runtime-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --output .env.prod.gcp-export",
     "ops:secrets:diff:prod": "bash scripts/ops/diff-local-env-vs-gcp-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --env-file .env.prod",
     "ops:secrets:diff:prod:optional": "bash scripts/ops/diff-local-env-vs-gcp-secrets.sh --project \"${GCP_PROJECT_ID_PROD:-fintech-advisor-prod}\" --env-file .env.prod --include-optional",

@@ -1449,6 +1449,18 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 15%, transparent);
 }
 
+.portfolio-strategy-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.portfolio-strategy-card__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  margin-top: 0.06rem;
+}
+
 .portfolio-strategy-card__title {
   margin: 0;
   font-size: 0.88rem;

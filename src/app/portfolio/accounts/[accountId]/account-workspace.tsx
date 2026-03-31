@@ -7,6 +7,7 @@ import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { BackIcon, DeleteIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
 import { AccountHoldingsLiveTable } from "@/app/portfolio/ui/account-holdings-live-table";
 import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
+import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
 import { DESK_OUTLOOK_CARD_OPTIONS } from "@/modules/core-admin/desk-fields";
 import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
 import type { AccountOutlook, PositionType } from "@/modules/core-admin/types";
@@ -375,8 +376,15 @@ export function AccountWorkspace({
                   className={`portfolio-strategy-card${outlook === opt.value ? " portfolio-strategy-card--active" : ""}`}
                   onClick={() => setOutlook(opt.value)}
                 >
-                  <p className="portfolio-strategy-card__title">{opt.title}</p>
-                  <p className="portfolio-strategy-card__desc">{opt.description}</p>
+                  <div className="portfolio-strategy-card__head">
+                    <span className={`portfolio-strategy-card__icon ${outlookIconClassForSlug(opt.value)}`}>
+                      <OutlookIconFor className="h-4 w-4" outlook={opt.value} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <p className="portfolio-strategy-card__title">{opt.title}</p>
+                      <p className="portfolio-strategy-card__desc">{opt.description}</p>
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>

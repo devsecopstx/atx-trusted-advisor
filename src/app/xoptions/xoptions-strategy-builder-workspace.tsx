@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
 import {
-  DESK_OUTLOOK_LABELS,
-  DESK_RISK_DISPLAY_LABELS
+    DESK_OUTLOOK_LABELS,
+    DESK_RISK_DISPLAY_LABELS
 } from "@/modules/core-admin/desk-fields";
 import type { AccountOutlook } from "@/modules/core-admin/types";
 
@@ -183,6 +184,17 @@ export function XoptionsStrategyBuilderWorkspace() {
     return mergedOutlookLabels(ctx);
   }, [ctx, outlookOverride]);
 
+  /** Slug for trend icons: session override, else account, else book. */
+  const outlookIconSlug = useMemo((): AccountOutlook | null => {
+    if (outlookOverride !== "") {
+      return outlookOverride;
+    }
+    if (!ctx) {
+      return null;
+    }
+    return ctx.account.outlook ?? ctx.bookOutlook ?? null;
+  }, [ctx, outlookOverride]);
+
   const effectiveRisk = useMemo(() => {
     const r = riskOverride || ctx?.account.riskProfile || ctx?.bookRiskProfile || null;
     return riskLabel(r);
@@ -240,9 +252,17 @@ export function XoptionsStrategyBuilderWorkspace() {
           <p className="xoptions-top-option-header__stat">{ctx?.account.name ?? "—"}</p>
           <p className="xoptions-top-option-header__hint">{ctx?.portfolio?.name ?? "Default portfolio"}</p>
           <div className="xoptions-top-option-header__desk">
-            <p className="xoptions-top-option-header__desk-line line-clamp-2">
-              <span className="xoptions-inline-muted">Outlook </span>
-              {effectiveOutlook || "—"}
+            <p className="xoptions-top-option-header__desk-line line-clamp-2 inline-flex flex-wrap items-center gap-1.5">
+              <span className="xoptions-inline-muted shrink-0">Outlook </span>
+              {outlookIconSlug ? (
+                <span
+                  className={`inline-flex shrink-0 items-center ${outlookIconClassForSlug(outlookIconSlug)}`}
+                  aria-hidden
+                >
+                  <OutlookIconFor className="h-4 w-4" outlook={outlookIconSlug} />
+                </span>
+              ) : null}
+              <span>{effectiveOutlook || "—"}</span>
             </p>
             <p className="xoptions-top-option-header__desk-line">
               <span className="xoptions-inline-muted">Risk </span>
@@ -468,23 +488,35 @@ export function XoptionsStrategyBuilderWorkspace() {
               <label className="xoptions-workspace__label block" htmlFor="xo-outlook">
                 Outlook override
               </label>
-              <select
-                id="xo-outlook"
-                className="crud-input mt-1 w-full max-w-xs"
-                value={outlookOverride}
-                onChange={(e) =>
-                  setOutlookOverride(
-                    e.target.value === "" ? "" : (e.target.value as AccountOutlook)
-                  )
-                }
-              >
-                <option value="">
-                  Use account / book ({mergedOutlookLabels(ctx) || "—"})
-                </option>
-                <option value="bullish">{DESK_OUTLOOK_LABELS.bullish}</option>
-                <option value="neutral">{DESK_OUTLOOK_LABELS.neutral}</option>
-                <option value="bearish">{DESK_OUTLOOK_LABELS.bearish}</option>
-              </select>
+              <div className="mt-1 flex max-w-xs items-center gap-2">
+                {outlookIconSlug ? (
+                  <span
+                    className={`inline-flex shrink-0 ${outlookIconClassForSlug(outlookIconSlug)}`}
+                    aria-hidden
+                  >
+                    <OutlookIconFor className="h-5 w-5" outlook={outlookIconSlug} />
+                  </span>
+                ) : (
+                  <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />
+                )}
+                <select
+                  id="xo-outlook"
+                  className="crud-input min-w-0 flex-1"
+                  value={outlookOverride}
+                  onChange={(e) =>
+                    setOutlookOverride(
+                      e.target.value === "" ? "" : (e.target.value as AccountOutlook)
+                    )
+                  }
+                >
+                  <option value="">
+                    Use account / book ({mergedOutlookLabels(ctx) || "—"})
+                  </option>
+                  <option value="bullish">{DESK_OUTLOOK_LABELS.bullish}</option>
+                  <option value="neutral">{DESK_OUTLOOK_LABELS.neutral}</option>
+                  <option value="bearish">{DESK_OUTLOOK_LABELS.bearish}</option>
+                </select>
+              </div>
             </div>
             <div>
               <label className="xoptions-workspace__label block" htmlFor="xo-risk">

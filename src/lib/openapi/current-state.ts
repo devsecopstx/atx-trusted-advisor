@@ -501,6 +501,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "personas"
   },
   {
+    path: "/api/portfolios",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "portfolios"
+  },
+  {
     path: "/api/portfolios/default",
     operations: [
       { method: "GET", auth: "session" },
@@ -517,7 +522,8 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     path: "/api/portfolios/{portfolioId}",
     operations: [
       { method: "GET", auth: "session" },
-      { method: "PATCH", auth: "session", hasRequestBody: true }
+      { method: "PATCH", auth: "session", hasRequestBody: true },
+      { method: "DELETE", auth: "session" }
     ],
     tag: "portfolios"
   },

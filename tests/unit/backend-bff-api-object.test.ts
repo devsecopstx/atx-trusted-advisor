@@ -8,7 +8,8 @@ type ExpectedRoute = {
 };
 
 const expectedRoutes: readonly ExpectedRoute[] = [
-  { pathTemplate: "/api/portfolios/{portfolioId}", methods: ["GET", "PATCH"] },
+  { pathTemplate: "/api/portfolios", methods: ["POST"] },
+  { pathTemplate: "/api/portfolios/{portfolioId}", methods: ["GET", "PATCH", "DELETE"] },
   { pathTemplate: "/api/portfolios/default", methods: ["GET", "POST"] },
   { pathTemplate: "/api/portfolios/current", methods: ["GET"] },
   { pathTemplate: "/api/portfolios/{portfolioId}/accounts", methods: ["GET", "POST"] },

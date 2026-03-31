@@ -19,8 +19,10 @@ export type BffProxyRoute = {
 };
 
 export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
+  { method: "POST", path: "/api/portfolios" },
   { method: "GET", path: "/api/portfolios/{portfolioId}" },
   { method: "PATCH", path: "/api/portfolios/{portfolioId}" },
+  { method: "DELETE", path: "/api/portfolios/{portfolioId}" },
   { method: "GET", path: "/api/portfolios/default" },
   { method: "POST", path: "/api/portfolios/default" },
   { method: "GET", path: "/api/portfolios/current" },

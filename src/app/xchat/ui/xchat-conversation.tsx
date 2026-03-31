@@ -1006,9 +1006,10 @@ export function XchatConversation({
               isGlobalAdmin={isGlobalAdminSession}
               railDisclosureDefaultOpen={false}
             />
-            {isGlobalAdminSession ? (
-              <AppUserManageWorkspaceRailSection railDisclosureDefaultOpen={false} />
-            ) : null}
+            <AppUserManageWorkspaceRailSection
+              isGlobalAdmin={isGlobalAdminSession}
+              railDisclosureDefaultOpen={false}
+            />
           </div>
         ) : null}
       </aside>

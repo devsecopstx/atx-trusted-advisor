@@ -188,6 +188,13 @@ export type AccountType = (typeof accountTypeValues)[number];
 export const accountOutlookValues = ["bullish", "neutral", "bearish"] as const;
 export type AccountOutlook = (typeof accountOutlookValues)[number];
 
+/** UI / desk labels for canonical outlook slugs (stored values stay bullish | neutral | bearish). */
+export const accountOutlookChoiceLabels: Record<AccountOutlook, string> = {
+  bullish: "Bullish / Up",
+  neutral: "Flat / Neutral",
+  bearish: "Bearish / Down"
+};
+
 const LEGACY_ACCOUNT_OUTLOOK: Readonly<Record<string, AccountOutlook>> = {
   bullish: "bullish",
   neutral: "neutral",
@@ -198,6 +205,14 @@ const LEGACY_ACCOUNT_OUTLOOK: Readonly<Record<string, AccountOutlook>> = {
   income: "bearish"
 };
 
+/** API / UI aliases → canonical slug (Mongo stores canonical only). */
+const OUTLOOK_API_ALIASES: Readonly<Record<string, AccountOutlook>> = {
+  ...LEGACY_ACCOUNT_OUTLOOK,
+  up: "bullish",
+  down: "bearish",
+  flat: "neutral"
+};
+
 export function parseAccountOutlook(raw: unknown): AccountOutlook | null {
   if (typeof raw !== "string") {
     return null;
@@ -206,7 +221,19 @@ export function parseAccountOutlook(raw: unknown): AccountOutlook | null {
   if ((accountOutlookValues as readonly string[]).includes(t)) {
     return t as AccountOutlook;
   }
-  return LEGACY_ACCOUNT_OUTLOOK[t] ?? null;
+  return OUTLOOK_API_ALIASES[t] ?? null;
+}
+
+/** Portfolio kind labels for workspace / account UI (canonical: real_estate | investments). */
+export function portfolioKindChoiceLabel(kind: "real_estate" | "investments" | null | undefined): string {
+  return kind === "real_estate" ? "Real Estate" : "Investments";
+}
+
+export function accountOutlookDisplayLabel(outlook: AccountOutlook | null | undefined): string {
+  if (!outlook || !(accountOutlookValues as readonly string[]).includes(outlook)) {
+    return "—";
+  }
+  return accountOutlookChoiceLabels[outlook];
 }
 
 /** Admin-managed broker definitions (slug + display); seeds Merrill / Fidelity / E*TRADE / IBKR. */
@@ -292,6 +319,10 @@ export type Portfolio = {
   riskProfile?: "conservative" | "balanced" | "growth";
   /** Book-level market outlook slug (optional); same values as {@link Account.outlook}. */
   outlook?: AccountOutlook | null;
+  /**
+   * Workspace “Manage portfolios” bucket (optional; unset = show as investments in UI).
+   */
+  portfolioKind?: "real_estate" | "investments" | null;
   /**
    * Optional portfolio scoring factor weights for chain / recommendation ranking (defaults when absent).
    * Weights must sum to 1; defaults in `scoring-factors.ts`.
