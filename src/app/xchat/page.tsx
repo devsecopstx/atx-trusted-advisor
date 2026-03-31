@@ -5,6 +5,7 @@ import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
+import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { XchatConversation } from "./ui/xchat-conversation";
@@ -53,11 +54,19 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     : null;
 
   let defaultBookLabels: { portfolioName: string; accountName: string } | null = null;
+  let workspaceChangePersonaEnabled = true;
+  let workspaceChatHistoryMax = 10;
   if (approved) {
     const book = await loadAppUserDefaultBook(session);
     if (book) {
       defaultBookLabels = { portfolioName: book.portfolioName, accountName: book.accountName };
     }
+    const wl = await getEffectiveWorkspaceLimitsForUser({
+      tenantId: session.tenantId,
+      userId: session.userId
+    });
+    workspaceChangePersonaEnabled = wl.changePersonaEnabled;
+    workspaceChatHistoryMax = wl.chatHistoryMax;
   }
 
   return (
@@ -76,6 +85,8 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
             isGlobalAdmin={isGlobalAdmin(session.roles)}
             welcomeName={appUserPrimaryDisplayName(session)}
+            workspaceChangePersonaEnabled={workspaceChangePersonaEnabled}
+            workspaceChatHistoryMax={workspaceChatHistoryMax}
           />
         ) : (
           <XchatGuestReadonlyShell showAccessPanel={false}>

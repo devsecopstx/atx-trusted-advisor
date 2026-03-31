@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     adminEnsurePortfolioWatchlist,
-    adminGetPortfolioById,
     getPortfolioWatchlist,
     mutatePortfolioWatchlistSymbols
 } from "@/modules/core-admin/repository";
 import {
     accountOutlookValues,
     parseAccountOutlook,
+    type Portfolio,
     type Watchlist,
     type WatchlistSymbol
 } from "@/modules/core-admin/types";
@@ -66,8 +67,8 @@ function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
   };
 }
 
-function portfolioTenantIdStringFromPortfolio(p: Awaited<ReturnType<typeof adminGetPortfolioById>>): string | undefined {
-  if (!p?._id) return undefined;
+function portfolioTenantIdStringFromPortfolio(p: Portfolio): string | undefined {
+  if (!p._id) return undefined;
   return p.tenantId?.toHexString();
 }
 
@@ -100,9 +101,9 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const portfolio = await requireAdminPortfolioForApi(portfolioId, session);
+  if (portfolio instanceof NextResponse) {
+    return portfolio;
   }
 
   const ownerUserId = normalizeMongoUserIdHex(portfolio.userId) ?? "";
@@ -133,9 +134,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const portfolio = await requireAdminPortfolioForApi(portfolioId, session);
+  if (portfolio instanceof NextResponse) {
+    return portfolio;
   }
 
   const tenantId = portfolioTenantIdStringFromPortfolio(portfolio);

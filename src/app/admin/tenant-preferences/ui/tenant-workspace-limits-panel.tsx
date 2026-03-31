@@ -17,7 +17,9 @@ type Props = {
   tenantId: string;
 };
 
-const FIELDS: { key: keyof TenantWorkspaceLimits; label: string; abbr: string; hint: string }[] = [
+type QuotaFieldKey = "userXoptionsLimit" | "userChatLimit" | "tenantPortfolioLimit" | "portfolioAccountLimit";
+
+const QUOTA_FIELDS: { key: QuotaFieldKey; label: string; abbr: string; hint: string }[] = [
   {
     key: "userXoptionsLimit",
     label: "xoptions views / hr (per user)",
@@ -41,6 +43,32 @@ const FIELDS: { key: keyof TenantWorkspaceLimits; label: string; abbr: string; h
     label: "Accounts per portfolio",
     abbr: "Acct/pf",
     hint: "Max custodian accounts per portfolio."
+  }
+];
+
+const PREF_FIELDS: (
+  | {
+      key: "changePersonaEnabled";
+      label: string;
+      abbr: string;
+      hint: string;
+      kind: "checkbox";
+    }
+  | { key: "chatHistoryMax"; label: string; abbr: string; hint: string; kind: "number" }
+)[] = [
+  {
+    key: "changePersonaEnabled",
+    label: "Change persona",
+    abbr: "Chg persona",
+    kind: "checkbox",
+    hint: "When off, app users cannot switch xChat persona (picker disabled). global_admin is unaffected."
+  },
+  {
+    key: "chatHistoryMax",
+    label: "Chat history max (turns)",
+    abbr: "Hist max",
+    kind: "number",
+    hint: "Recent prompts loaded in xChat thread + history panel (default 10)."
   }
 ];
 
@@ -72,11 +100,17 @@ function draftsFromPlanOverrides(po: TenantPlanWorkspaceOverrides | null | undef
       d[planId] = { price: String(DEFAULT_TENANT_PLAN_PRICE) };
       continue;
     }
-    for (const f of FIELDS) {
+    for (const f of QUOTA_FIELDS) {
       const v = row[f.key];
       if (typeof v === "number") {
         d[planId][f.key] = String(v);
       }
+    }
+    if (typeof row.changePersonaEnabled === "boolean") {
+      d[planId].changePersonaEnabled = row.changePersonaEnabled ? "true" : "false";
+    }
+    if (typeof row.chatHistoryMax === "number") {
+      d[planId].chatHistoryMax = String(row.chatHistoryMax);
     }
     const listPrice = row.price;
     d[planId].price = listPrice != null ? String(listPrice) : String(DEFAULT_TENANT_PLAN_PRICE);
@@ -88,7 +122,7 @@ function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOv
   const out: TenantPlanWorkspaceOverrides = {};
   for (const planId of ATX_BILLING_PLAN_IDS) {
     const partial: TenantPlanWorkspaceRow = {};
-    for (const f of FIELDS) {
+    for (const f of QUOTA_FIELDS) {
       const raw = drafts[planId]?.[f.key]?.trim() ?? "";
       if (raw === "") {
         continue;
@@ -98,6 +132,19 @@ function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOv
         continue;
       }
       partial[f.key] = n;
+    }
+    const rawCp = drafts[planId]?.changePersonaEnabled?.trim() ?? "";
+    if (rawCp === "true") {
+      partial.changePersonaEnabled = true;
+    } else if (rawCp === "false") {
+      partial.changePersonaEnabled = false;
+    }
+    const rawHist = drafts[planId]?.chatHistoryMax?.trim() ?? "";
+    if (rawHist !== "") {
+      const n = Number.parseInt(rawHist, 10);
+      if (Number.isFinite(n) && n >= 1) {
+        partial.chatHistoryMax = n;
+      }
     }
     const rawPrice = drafts[planId]?.price?.trim() ?? "";
     const priceNum =
@@ -266,7 +313,13 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
           <thead>
             <tr>
               <th scope="col">Tenant</th>
-              {FIELDS.map((f) => (
+              {QUOTA_FIELDS.map((f) => (
+                <th key={f.key} scope="col" title={f.hint}>
+                  <span className="admin-tenant-pref-crud-table__abbr">{f.abbr}</span>
+                  <span className="admin-tenant-pref-crud-table__full">{f.label}</span>
+                </th>
+              ))}
+              {PREF_FIELDS.map((f) => (
                 <th key={f.key} scope="col" title={f.hint}>
                   <span className="admin-tenant-pref-crud-table__abbr">{f.abbr}</span>
                   <span className="admin-tenant-pref-crud-table__full">{f.label}</span>
@@ -287,7 +340,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
               <td>
                 <code className="font-mono text-xs">{slug || tenantId}</code>
               </td>
-              {FIELDS.map((f) => (
+              {QUOTA_FIELDS.map((f) => (
                 <td key={f.key}>
                   <input
                     aria-label={f.label}
@@ -307,6 +360,45 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                   />
                 </td>
               ))}
+              {PREF_FIELDS.map((f) =>
+                f.kind === "checkbox" ? (
+                  <td key={f.key}>
+                    <input
+                      aria-label={f.label}
+                      checked={values[f.key]}
+                      title={f.hint}
+                      type="checkbox"
+                      onChange={(e) => {
+                        setValues((prev) => (prev ? { ...prev, [f.key]: e.target.checked } : prev));
+                      }}
+                    />
+                  </td>
+                ) : (
+                  <td key={f.key}>
+                    <input
+                      aria-label={f.label}
+                      className="crud-input text-sm"
+                      min={1}
+                      max={1_000_000}
+                      required
+                      title={f.hint}
+                      type="number"
+                      value={values.chatHistoryMax}
+                      onChange={(e) => {
+                        const n = Number.parseInt(e.target.value, 10);
+                        setValues((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                chatHistoryMax: Number.isFinite(n) ? n : prev.chatHistoryMax
+                              }
+                            : prev
+                        );
+                      }}
+                    />
+                  </td>
+                )
+              )}
               <td>
                 <input
                   aria-label="Enable xChat debug logs for this tenant"
@@ -386,7 +478,13 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                   <span className="admin-tenant-pref-crud-table__abbr">$</span>
                   <span className="admin-tenant-pref-crud-table__full">Price (USD)</span>
                 </th>
-                {FIELDS.map((f) => (
+                {QUOTA_FIELDS.map((f) => (
+                  <th key={f.key} scope="col" title={f.hint}>
+                    <span className="admin-tenant-pref-crud-table__abbr">{f.abbr}</span>
+                    <span className="admin-tenant-pref-crud-table__full">{f.label}</span>
+                  </th>
+                ))}
+                {PREF_FIELDS.map((f) => (
                   <th key={f.key} scope="col" title={f.hint}>
                     <span className="admin-tenant-pref-crud-table__abbr">{f.abbr}</span>
                     <span className="admin-tenant-pref-crud-table__full">{f.label}</span>
@@ -420,7 +518,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                       }}
                     />
                   </td>
-                  {FIELDS.map((f) => (
+                  {QUOTA_FIELDS.map((f) => (
                     <td key={f.key}>
                       <input
                         aria-label={`${planLabel(planId)} ${f.label}`}
@@ -441,6 +539,49 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                       />
                     </td>
                   ))}
+                  {PREF_FIELDS.map((f) =>
+                    f.kind === "checkbox" ? (
+                      <td key={f.key}>
+                        <select
+                          aria-label={`${planLabel(planId)} ${f.label}`}
+                          className="crud-input text-sm"
+                          title={`${f.hint} Use inherit for tenant default.`}
+                          value={planDrafts[planId]?.[f.key] ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setPlanDrafts((prev) => ({
+                              ...prev,
+                              [planId]: { ...prev[planId], [f.key]: v }
+                            }));
+                          }}
+                        >
+                          <option value="">inherit</option>
+                          <option value="true">on</option>
+                          <option value="false">off</option>
+                        </select>
+                      </td>
+                    ) : (
+                      <td key={f.key}>
+                        <input
+                          aria-label={`${planLabel(planId)} ${f.label}`}
+                          className="crud-input text-sm"
+                          min={1}
+                          max={1_000_000}
+                          placeholder="inherit"
+                          title={f.hint}
+                          type="number"
+                          value={planDrafts[planId]?.[f.key] ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setPlanDrafts((prev) => ({
+                              ...prev,
+                              [planId]: { ...prev[planId], [f.key]: v }
+                            }));
+                          }}
+                        />
+                      </td>
+                    )
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -451,7 +592,12 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       <details className="admin-tenant-pref-meta">
         <summary>Field hints &amp; raw tenant_preferences</summary>
         <ul className="admin-muted admin-tenant-pref-hint-list">
-          {FIELDS.map((f) => (
+          {QUOTA_FIELDS.map((f) => (
+            <li key={f.key}>
+              <strong>{f.label}:</strong> {f.hint}
+            </li>
+          ))}
+          {PREF_FIELDS.map((f) => (
             <li key={f.key}>
               <strong>{f.label}:</strong> {f.hint}
             </li>

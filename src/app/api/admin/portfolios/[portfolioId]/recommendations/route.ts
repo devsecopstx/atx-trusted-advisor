@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     adminCreateRecommendationForPortfolio,
-    adminGetPortfolioById,
     adminListRecommendationsForPortfolio
 } from "@/modules/core-admin/repository";
 import type { Recommendation } from "@/modules/core-admin/types";
@@ -53,9 +53,9 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
   }
 
   const rows = await adminListRecommendationsForPortfolio(portfolioId);
@@ -74,9 +74,9 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
   }
 
   let body: unknown;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
@@ -110,6 +111,12 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { portfolioId, accountId } = await context.params;
+
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
+  }
+
   const bundle = await adminListPositionsForPortfolioAccount({ portfolioId, accountId });
   if (!bundle) {
     return NextResponse.json({ error: "Portfolio or account not found" }, { status: 404 });
@@ -145,6 +152,11 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { portfolioId, accountId } = await context.params;
+
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
+  }
 
   let body: unknown;
   try {

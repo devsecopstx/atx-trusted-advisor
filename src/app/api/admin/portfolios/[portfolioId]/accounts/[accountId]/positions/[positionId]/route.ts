@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { adminDeletePositionForPortfolioAccount } from "@/modules/core-admin/repository";
 
@@ -14,6 +15,12 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   const { portfolioId, accountId, positionId } = await context.params;
+
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
+  }
+
   const deleted = await adminDeletePositionForPortfolioAccount({
     portfolioId,
     accountId,

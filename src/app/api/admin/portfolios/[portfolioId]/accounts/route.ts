@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import {
-    adminGetPortfolioById,
     adminInsertAccountForPortfolio,
     adminListAccountsForPortfolio,
     countPortfolioAccountsForUser,
@@ -63,9 +63,9 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const portfolio = await requireAdminPortfolioForApi(portfolioId, session);
+  if (portfolio instanceof NextResponse) {
+    return portfolio;
   }
 
   const accounts = await adminListAccountsForPortfolio(portfolioId);
@@ -85,7 +85,7 @@ export async function GET(request: Request, context: RouteContext) {
   return NextResponse.json({
     data: {
       portfolio: {
-        _id: portfolio._id.toHexString(),
+        _id: portfolio._id!.toHexString(),
         name: portfolio.name,
         userId: ownerHex ?? "",
         tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey,
@@ -129,9 +129,9 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const portfolioRow = await adminGetPortfolioById(portfolioId);
-  if (!portfolioRow?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const portfolioRow = await requireAdminPortfolioForApi(portfolioId, session);
+  if (portfolioRow instanceof NextResponse) {
+    return portfolioRow;
   }
   const ownerId = normalizeMongoUserIdHex(portfolioRow.userId) ?? "";
   const tenantHex = portfolioRow.tenantId?.toHexString() ?? "";

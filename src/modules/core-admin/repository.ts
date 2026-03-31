@@ -3207,13 +3207,25 @@ export async function adminGetPortfolioById(portfolioId: string): Promise<Portfo
   return db.collection<Portfolio>(collections.portfolios).findOne({ _id: new ObjectId(portfolioId) });
 }
 
-export async function adminListPortfolios(input: { limit?: number }): Promise<Portfolio[]> {
+/** Admin portfolio list: unscoped (`all`) only when `ADMIN_PORTFOLIOS_LIST_ALL` is enabled for the session’s operator tooling. */
+export type AdminPortfolioListScope =
+  | { mode: "all" }
+  | { mode: "scoped"; userId: string; tenantId: string };
+
+export async function adminListPortfolios(input: {
+  limit?: number;
+  listScope: AdminPortfolioListScope;
+}): Promise<Portfolio[]> {
   await ensurePortfolioIndexes();
   const db = await getDb();
   const limit = Math.min(Math.max(input.limit ?? 200, 1), 500);
+  const filter =
+    input.listScope.mode === "all"
+      ? {}
+      : withTenantScope({ ...userIdQuery(input.listScope.userId.trim()) }, input.listScope.tenantId);
   return db
     .collection<Portfolio>(collections.portfolios)
-    .find({})
+    .find(filter)
     .sort({ updatedAt: -1 })
     .limit(limit)
     .toArray();
@@ -3221,6 +3233,7 @@ export async function adminListPortfolios(input: { limit?: number }): Promise<Po
 
 export async function adminListPortfoliosWithStats(input: {
   limit?: number;
+  listScope: AdminPortfolioListScope;
 }): Promise<Array<Portfolio & { accountCount: number; totalCashBalance: number }>> {
   const rows = await adminListPortfolios(input);
   const enriched = await Promise.all(

@@ -1,5 +1,5 @@
 /**
- * Account → Billing: per-card price + four workspace limit rows (tenant merge or guest catalog).
+ * Account → Billing: per-card price + workspace quota rows + preference rows (tenant merge or guest catalog).
  * @see atx-docs/sre-ops/tenant-workspace-limits.md — App user surfacing
  * @see atx-docs/sre-ops/stripe-billing-setup.md — Billing page vs admin list price
  */
@@ -7,10 +7,10 @@ import { ATX_BILLING_PLAN_LIMIT_ROWS } from "@/lib/atx-billing-plan-limits";
 import type { AtxBillingPlan, AtxBillingPlanId } from "@/lib/atx-billing-plans";
 import {
     applyTenantPlanRowToBase,
+    DEFAULT_TENANT_WORKSPACE_LIMITS,
     mergeTenantWorkspaceLimits,
     normalizePlanOverridesFromUnknown,
-    type TenantPlanWorkspaceRow,
-    type TenantWorkspaceLimits
+    type TenantPlanWorkspaceRow
 } from "@/modules/identity/tenant-workspace-limits";
 import type { Tenant } from "@/modules/identity/types";
 
@@ -20,6 +20,8 @@ import type { Tenant } from "@/modules/identity/types";
  */
 export const BILLING_WORKSPACE_LABEL_XOPTIONS = "xOptions views / hr";
 export const BILLING_WORKSPACE_LABEL_XCHAT = "xChat prompts / hr";
+export const BILLING_WORKSPACE_LABEL_CHANGE_PERSONA = "Change persona";
+export const BILLING_WORKSPACE_LABEL_CHAT_HISTORY = "Chat history max (turns)";
 
 /** Column in `ATX_BILLING_PLAN_LIMIT_ROWS` for each retail plan. */
 const PLAN_ID_TO_LIMIT_COLUMN: Record<AtxBillingPlanId, "basic" | "premium" | "premiumPlus"> = {
@@ -28,6 +30,12 @@ const PLAN_ID_TO_LIMIT_COLUMN: Record<AtxBillingPlanId, "basic" | "premium" | "p
   premium_plus_monthly: "premiumPlus"
 };
 
+type BillingWorkspaceQuotaKey =
+  | "userXoptionsLimit"
+  | "userChatLimit"
+  | "tenantPortfolioLimit"
+  | "portfolioAccountLimit";
+
 /**
  * Four workspace caps shown on Account → Billing (price is rendered separately on the card).
  * Order matches `ATX_BILLING_PLAN_LIMIT_ROWS` catalog metrics used for guest display.
@@ -35,7 +43,7 @@ const PLAN_ID_TO_LIMIT_COLUMN: Record<AtxBillingPlanId, "basic" | "premium" | "p
 export const BILLING_WORKSPACE_LIMIT_SPECS: readonly {
   label: string;
   catalogMetric: string;
-  limitKey: keyof TenantWorkspaceLimits;
+  limitKey: BillingWorkspaceQuotaKey;
 }[] = [
   {
     label: BILLING_WORKSPACE_LABEL_XOPTIONS,
@@ -59,6 +67,15 @@ export const BILLING_WORKSPACE_LIMIT_SPECS: readonly {
   }
 ] as const;
 
+/** Shown after the four quota rows on Account → Billing (tenant + per-plan effective). */
+export const BILLING_WORKSPACE_PREFERENCE_SPECS: readonly {
+  label: string;
+  kind: "boolean" | "limit";
+}[] = [
+  { label: BILLING_WORKSPACE_LABEL_CHANGE_PERSONA, kind: "boolean" },
+  { label: BILLING_WORKSPACE_LABEL_CHAT_HISTORY, kind: "limit" }
+] as const;
+
 const UNLIMITED_THRESHOLD = 100_000;
 
 export function formatWorkspaceLimitScalar(n: number): string {
@@ -66,6 +83,10 @@ export function formatWorkspaceLimitScalar(n: number): string {
     return "Unlimited";
   }
   return String(n);
+}
+
+export function formatChangePersonaEnabled(enabled: boolean): string {
+  return enabled ? "Yes" : "No";
 }
 
 export function billingCardPriceParts(
@@ -80,7 +101,7 @@ export function billingCardPriceParts(
 }
 
 /**
- * Workspace limits block: four rows only; list price uses tenant `planOverrides.<tier>.price` when set.
+ * Workspace limits block: four quota rows + Change persona + Chat history max; list price uses tenant `planOverrides.<tier>.price` when set.
  * Guests use the published catalog matrix (`ATX_BILLING_PLAN_LIMIT_ROWS`).
  */
 export function billingCardWorkspaceDisplay(input: {
@@ -94,19 +115,37 @@ export function billingCardWorkspaceDisplay(input: {
 
   if (!tenant) {
     const col = PLAN_ID_TO_LIMIT_COLUMN[plan.id];
-    const limitRows = BILLING_WORKSPACE_LIMIT_SPECS.map((spec) => {
+    const quotaRows = BILLING_WORKSPACE_LIMIT_SPECS.map((spec) => {
       const catalogRow = ATX_BILLING_PLAN_LIMIT_ROWS.find((r) => r.metric === spec.catalogMetric);
       const value = catalogRow?.[col] ?? "—";
       return { label: spec.label, value };
     });
-    return { priceParts, limitRows };
+    const prefRows = BILLING_WORKSPACE_PREFERENCE_SPECS.map((spec) => {
+      if (spec.kind === "boolean") {
+        return { label: spec.label, value: formatChangePersonaEnabled(true) };
+      }
+      return {
+        label: spec.label,
+        value: formatWorkspaceLimitScalar(DEFAULT_TENANT_WORKSPACE_LIMITS.chatHistoryMax)
+      };
+    });
+    return { priceParts, limitRows: [...quotaRows, ...prefRows] };
   }
 
   const base = mergeTenantWorkspaceLimits(tenant.workspaceLimits ?? null);
   const effective = applyTenantPlanRowToBase(base, planOverrides, plan.id);
-  const limitRows = BILLING_WORKSPACE_LIMIT_SPECS.map((spec) => ({
+  const quotaRows = BILLING_WORKSPACE_LIMIT_SPECS.map((spec) => ({
     label: spec.label,
     value: formatWorkspaceLimitScalar(effective[spec.limitKey])
   }));
-  return { priceParts, limitRows };
+  const prefRows = BILLING_WORKSPACE_PREFERENCE_SPECS.map((spec) => {
+    if (spec.kind === "boolean") {
+      return { label: spec.label, value: formatChangePersonaEnabled(effective.changePersonaEnabled) };
+    }
+    return {
+      label: spec.label,
+      value: formatWorkspaceLimitScalar(effective.chatHistoryMax)
+    };
+  });
+  return { priceParts, limitRows: [...quotaRows, ...prefRows] };
 }

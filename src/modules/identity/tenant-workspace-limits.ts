@@ -19,6 +19,10 @@ export type TenantWorkspaceLimits = {
   tenantPortfolioLimit: number;
   /** Max custodian accounts per portfolio. */
   portfolioAccountLimit: number;
+  /** When false, app users cannot switch persona in xChat (picker disabled); `global_admin` sessions ignore. */
+  changePersonaEnabled: boolean;
+  /** Max recent user turns shown in xChat thread + history fetch (UI); default **10**. */
+  chatHistoryMax: number;
 };
 
 /** Default list price (USD, whole units) per plan when `planOverrides.*.price` is unset. */
@@ -45,14 +49,18 @@ export const DEFAULT_TENANT_WORKSPACE_LIMITS: TenantWorkspaceLimits = {
   userXoptionsLimit: 10,
   userChatLimit: 10,
   tenantPortfolioLimit: 1,
-  portfolioAccountLimit: 1
+  portfolioAccountLimit: 1,
+  changePersonaEnabled: true,
+  chatHistoryMax: 10
 };
 
+/** Numeric quota keys (positive integers), including chat history depth. */
 const LIMIT_KEYS = [
   "userXoptionsLimit",
   "userChatLimit",
   "tenantPortfolioLimit",
-  "portfolioAccountLimit"
+  "portfolioAccountLimit",
+  "chatHistoryMax"
 ] as const satisfies readonly (keyof TenantWorkspaceLimits)[];
 
 function isPositiveInt(n: unknown): n is number {
@@ -73,10 +81,27 @@ function parseLimitScalars(o: Record<string, unknown>): Partial<TenantWorkspaceL
   return value;
 }
 
+function parseChangePersonaLoose(v: unknown): boolean | undefined {
+  if (typeof v === "boolean") {
+    return v;
+  }
+  if (v === "true" || v === 1) {
+    return true;
+  }
+  if (v === "false" || v === 0) {
+    return false;
+  }
+  return undefined;
+}
+
 function parsePlanOverrideRowLoose(o: Record<string, unknown>): TenantPlanWorkspaceRow {
   const row: TenantPlanWorkspaceRow = { ...parseLimitScalars(o) };
   if (o.price !== undefined && o.price !== null && isPositiveInt(o.price)) {
     row.price = o.price;
+  }
+  const cp = parseChangePersonaLoose(o.changePersonaEnabled);
+  if (cp !== undefined) {
+    row.changePersonaEnabled = cp;
   }
   return row;
 }
@@ -94,6 +119,10 @@ export function mergeTenantWorkspaceLimits(
     if (isPositiveInt(v)) {
       out[k] = v;
     }
+  }
+  const cp = parseChangePersonaLoose(o.changePersonaEnabled);
+  if (cp !== undefined) {
+    out.changePersonaEnabled = cp;
   }
   return out;
 }
@@ -139,7 +168,9 @@ export function applyTenantPlanRowToBase(
     userXoptionsLimit: row.userXoptionsLimit ?? base.userXoptionsLimit,
     userChatLimit: row.userChatLimit ?? base.userChatLimit,
     tenantPortfolioLimit: row.tenantPortfolioLimit ?? base.tenantPortfolioLimit,
-    portfolioAccountLimit: row.portfolioAccountLimit ?? base.portfolioAccountLimit
+    portfolioAccountLimit: row.portfolioAccountLimit ?? base.portfolioAccountLimit,
+    changePersonaEnabled: row.changePersonaEnabled ?? base.changePersonaEnabled,
+    chatHistoryMax: row.chatHistoryMax ?? base.chatHistoryMax
   };
 }
 
@@ -162,6 +193,13 @@ export function parseWorkspaceLimitsPayload(
       return { ok: false, error: `Invalid ${k}: positive integer required` };
     }
     value[k] = o[k] as number;
+  }
+  if (o.changePersonaEnabled !== undefined) {
+    const cp = parseChangePersonaLoose(o.changePersonaEnabled);
+    if (cp === undefined) {
+      return { ok: false, error: "Invalid changePersonaEnabled: boolean required" };
+    }
+    value.changePersonaEnabled = cp;
   }
   return { ok: true, value };
 }
@@ -211,6 +249,14 @@ export function parsePlanOverridesPayload(
         return { ok: false, error: `Invalid planOverrides.${key}.${k}: positive integer required` };
       }
       parsed[k] = cell;
+    }
+    const changeCell = (row as Record<string, unknown>).changePersonaEnabled;
+    if (changeCell !== undefined && changeCell !== null) {
+      const cp = parseChangePersonaLoose(changeCell);
+      if (cp === undefined) {
+        return { ok: false, error: `Invalid planOverrides.${key}.changePersonaEnabled: boolean required` };
+      }
+      parsed.changePersonaEnabled = cp;
     }
     const priceCell = (row as Record<string, unknown>).price;
     if (priceCell !== undefined && priceCell !== null) {

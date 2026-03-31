@@ -117,7 +117,10 @@ describe("GET /api/admin/portfolios", () => {
     expect(json.data[0].accountCount).toBe(2);
     expect(json.data[0].userDisplayName).toBe("owner@test.local");
     expect(json.data[0].userEmail).toBe("owner@test.local");
-    expect(repoMocks.adminListPortfoliosWithStats).toHaveBeenCalledWith({ limit: 200 });
+    expect(repoMocks.adminListPortfoliosWithStats).toHaveBeenCalledWith({
+      limit: 200,
+      listScope: { mode: "scoped", userId, tenantId }
+    });
   });
 });
 

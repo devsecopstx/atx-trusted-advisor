@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { adminBrokerSlugSchema, requireKnownBrokerCatalogSlug } from "@/lib/admin/broker-catalog-guard";
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     adminDeletePortfolio,
-    adminGetPortfolioById,
     adminListAccountsForPortfolio,
     adminUpdatePortfolio,
     DEFAULT_ACCOUNT_CASH_BALANCE
@@ -59,9 +59,9 @@ export async function GET(request: Request, context: RouteContext) {
     return session;
   }
 
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const portfolio = await requireAdminPortfolioForApi(portfolioId, session);
+  if (portfolio instanceof NextResponse) {
+    return portfolio;
   }
 
   const accounts = await adminListAccountsForPortfolio(portfolioId);
@@ -95,6 +95,11 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
+
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
+  }
 
   let body: unknown;
   try {
@@ -160,6 +165,11 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
+  const delAccess = await requireAdminPortfolioForApi(portfolioId, session);
+  if (delAccess instanceof NextResponse) {
+    return delAccess;
+  }
+
   const ok = await adminDeletePortfolio(portfolioId);
   if (!ok) {
     return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });

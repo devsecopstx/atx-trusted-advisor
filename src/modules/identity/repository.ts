@@ -759,7 +759,13 @@ export async function updateTenantWorkspaceLimits(
   const id = new ObjectId(tenantIdHex);
   const now = new Date();
   const $set: Record<string, unknown> = { updatedAt: now };
-  for (const [k, v] of Object.entries(patch) as [keyof TenantWorkspaceLimits, number][]) {
+  for (const [k, v] of Object.entries(patch) as [keyof TenantWorkspaceLimits, unknown][]) {
+    if (k === "changePersonaEnabled") {
+      if (typeof v === "boolean") {
+        $set[`workspaceLimits.${k}`] = v;
+      }
+      continue;
+    }
     if (typeof v === "number" && Number.isInteger(v) && v >= 1) {
       $set[`workspaceLimits.${k}`] = v;
     }

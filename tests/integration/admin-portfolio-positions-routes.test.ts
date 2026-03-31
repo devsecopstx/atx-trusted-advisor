@@ -8,7 +8,8 @@ const authMocks = vi.hoisted(() => ({
 const repoMocks = vi.hoisted(() => ({
   adminListPositionsForPortfolioAccount: vi.fn(),
   adminUpsertPositionForPortfolioAccount: vi.fn(),
-  adminDeletePositionForPortfolioAccount: vi.fn()
+  adminDeletePositionForPortfolioAccount: vi.fn(),
+  adminGetPortfolioById: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
@@ -20,7 +21,8 @@ vi.mock("@/modules/core-admin/repository", async () => {
     ...actual,
     adminListPositionsForPortfolioAccount: repoMocks.adminListPositionsForPortfolioAccount,
     adminUpsertPositionForPortfolioAccount: repoMocks.adminUpsertPositionForPortfolioAccount,
-    adminDeletePositionForPortfolioAccount: repoMocks.adminDeletePositionForPortfolioAccount
+    adminDeletePositionForPortfolioAccount: repoMocks.adminDeletePositionForPortfolioAccount,
+    adminGetPortfolioById: repoMocks.adminGetPortfolioById
   };
 });
 
@@ -85,6 +87,18 @@ function mockPosition(
   };
 }
 
+function mockPortfolioForAccess() {
+  return {
+    _id: new ObjectId(portfolioId),
+    tenantId: new ObjectId("507f1f77bcf86cd799439022"),
+    userId: "507f1f77bcf86cd799439011",
+    name: "Desk A",
+    isDefault: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+}
+
 describe("/api/admin/portfolios/[portfolioId]/accounts/[accountId]/positions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -97,6 +111,7 @@ describe("/api/admin/portfolios/[portfolioId]/accounts/[accountId]/positions", (
       xUserId: "x1",
       username: "adminuser"
     });
+    repoMocks.adminGetPortfolioById.mockResolvedValue(mockPortfolioForAccess());
   });
 
   it("GET returns 404 when bundle is null", async () => {

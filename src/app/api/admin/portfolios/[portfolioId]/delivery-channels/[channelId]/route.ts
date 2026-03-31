@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     adminDeletePortfolioDeliveryChannel,
-    adminGetPortfolioById,
     adminUpdatePortfolioDeliveryChannel
 } from "@/modules/core-admin/repository";
 import type { PortfolioDeliveryChannel } from "@/modules/core-admin/types";
@@ -55,9 +55,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const { portfolioId, channelId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
   }
 
   let body: unknown;
@@ -99,9 +99,9 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 
   const { portfolioId, channelId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
   }
 
   const ok = await adminDeletePortfolioDeliveryChannel(portfolioId, channelId);

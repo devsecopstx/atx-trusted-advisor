@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { ATX_BILLING_PLANS } from "@/lib/atx-billing-plans";
 import {
+    BILLING_WORKSPACE_LABEL_CHANGE_PERSONA,
+    BILLING_WORKSPACE_LABEL_CHAT_HISTORY,
     billingCardPriceParts,
     billingCardWorkspaceDisplay,
     formatWorkspaceLimitScalar
@@ -25,14 +27,18 @@ describe("billingCardWorkspaceDisplay", () => {
   const basicPlan = ATX_BILLING_PLANS[0];
   const premiumPlan = ATX_BILLING_PLANS[1];
 
-  it("guest uses catalog four rows and default list price", () => {
+  it("guest uses catalog quota rows plus default prefs and default list price", () => {
     const d = billingCardWorkspaceDisplay({ tenant: null, plan: basicPlan });
     expect(d.priceParts).toEqual({ priceAmount: "$9", periodNote: "per month" });
-    expect(d.limitRows).toHaveLength(4);
+    expect(d.limitRows).toHaveLength(6);
     expect(d.limitRows[0]?.label).toBe("xOptions views / hr");
     expect(d.limitRows[0]?.value).toBe("10");
     expect(d.limitRows[1]?.label).toBe("xChat prompts / hr");
     expect(d.limitRows[1]?.value).toBe("1");
+    expect(d.limitRows[4]?.label).toBe(BILLING_WORKSPACE_LABEL_CHANGE_PERSONA);
+    expect(d.limitRows[4]?.value).toBe("Yes");
+    expect(d.limitRows[5]?.label).toBe(BILLING_WORKSPACE_LABEL_CHAT_HISTORY);
+    expect(d.limitRows[5]?.value).toBe("10");
   });
 
   it("guest premium column uses catalog premium cells", () => {
@@ -82,6 +88,21 @@ describe("billingCardWorkspaceDisplay", () => {
     expect(d.priceParts).toEqual({ priceAmount: "$350", periodNote: "per month" });
     const chat = d.limitRows.find((r) => r.label === "xChat prompts / hr");
     expect(chat?.value).toBe("99");
+  });
+
+  it("tenant resolves change persona + chat history from plan row", () => {
+    const tenant = mockTenant({
+      workspaceLimits: {
+        planOverrides: {
+          basic: { changePersonaEnabled: false, chatHistoryMax: 25 }
+        }
+      }
+    });
+    const d = billingCardWorkspaceDisplay({ tenant, plan: basicPlan });
+    const cp = d.limitRows.find((r) => r.label === BILLING_WORKSPACE_LABEL_CHANGE_PERSONA);
+    const hm = d.limitRows.find((r) => r.label === BILLING_WORKSPACE_LABEL_CHAT_HISTORY);
+    expect(cp?.value).toBe("No");
+    expect(hm?.value).toBe("25");
   });
 });
 

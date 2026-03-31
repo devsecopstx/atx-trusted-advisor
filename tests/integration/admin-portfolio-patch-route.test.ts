@@ -6,13 +6,14 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 const repoMocks = vi.hoisted(() => ({
-  adminUpdatePortfolio: vi.fn()
+  adminUpdatePortfolio: vi.fn(),
+  adminGetPortfolioById: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => ({
   adminUpdatePortfolio: repoMocks.adminUpdatePortfolio,
-  adminGetPortfolioById: vi.fn(),
+  adminGetPortfolioById: repoMocks.adminGetPortfolioById,
   adminListAccountsForPortfolio: vi.fn(),
   adminDeletePortfolio: vi.fn(),
   DEFAULT_ACCOUNT_CASH_BALANCE: 25_000
@@ -27,7 +28,7 @@ function mockPortfolio(overrides: Partial<{ outlook: string | null }> = {}) {
   return {
     _id: new ObjectId(portfolioId),
     tenantId: new ObjectId("507f1f77bcf86cd799439022"),
-    userId: "user-1",
+    userId: "507f1f77bcf86cd799439011",
     name: "Book A",
     isDefault: true,
     riskProfile: "balanced" as const,
@@ -49,6 +50,7 @@ describe("PATCH /api/admin/portfolios/[portfolioId]", () => {
       xUserId: "x1",
       username: "adminuser"
     });
+    repoMocks.adminGetPortfolioById.mockResolvedValue(mockPortfolio());
     repoMocks.adminUpdatePortfolio.mockImplementation(
       async (input: {
         portfolioId: string;

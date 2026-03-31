@@ -7,12 +7,14 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 const repoMocks = vi.hoisted(() => ({
-  adminUpdatePortfolioAccount: vi.fn()
+  adminUpdatePortfolioAccount: vi.fn(),
+  adminGetPortfolioById: vi.fn()
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => ({
   adminUpdatePortfolioAccount: repoMocks.adminUpdatePortfolioAccount,
+  adminGetPortfolioById: repoMocks.adminGetPortfolioById,
   adminDeleteAccountForPortfolio: vi.fn(),
   DEFAULT_ACCOUNT_CASH_BALANCE: 25_000
 }));
@@ -21,6 +23,20 @@ import { PATCH as patchAdminPortfolioAccount } from "@/app/api/admin/portfolios/
 
 const portfolioId = "507f1f77bcf86cd799439033";
 const accountId = "507f1f77bcf86cd799439044";
+
+function mockPortfolioForScope() {
+  const pid = new ObjectId(portfolioId);
+  const now = new Date("2026-01-15T12:00:00.000Z");
+  return {
+    _id: pid,
+    tenantId: new ObjectId("507f1f77bcf86cd799439022"),
+    userId: "507f1f77bcf86cd799439011",
+    name: "Book",
+    isDefault: true,
+    createdAt: now,
+    updatedAt: now
+  };
+}
 
 function mockAccount(overrides: Partial<{ name: string; extAccountId: string }> = {}) {
   const pid = new ObjectId(portfolioId);
@@ -54,6 +70,7 @@ describe("PATCH /api/admin/portfolios/[portfolioId]/accounts/[accountId]", () =>
       username: "adminuser"
     });
     repoMocks.adminUpdatePortfolioAccount.mockResolvedValue(mockAccount({ name: "Renamed" }));
+    repoMocks.adminGetPortfolioById.mockResolvedValue(mockPortfolioForScope());
   });
 
   it("updates account when payload has name", async () => {

@@ -95,6 +95,23 @@ const envSchema = z.object({
   NODE_ENV: z.preprocess(
     preprocessNodeEnv,
     z.enum(["development", "test", "production"]).optional().default("development")
+  ),
+  /**
+   * When true, `global_admin` may list and mutate **any** portfolio via `/api/admin/portfolios` (support / break-glass).
+   * When false (default), list + per-portfolio routes are scoped to the session `userId` + `tenantId`.
+   */
+  ADMIN_PORTFOLIOS_LIST_ALL: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null || v === "") {
+        return false;
+      }
+      if (typeof v === "boolean") {
+        return v;
+      }
+      const s = String(v).trim().toLowerCase();
+      return s === "1" || s === "true" || s === "yes";
+    },
+    z.boolean().optional().default(false)
   )
 });
 

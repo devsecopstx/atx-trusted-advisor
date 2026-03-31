@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { adminBrokerSlugSchema, requireKnownBrokerCatalogSlug } from "@/lib/admin/broker-catalog-guard";
+import { isAdminPortfoliosListAllEnabled, resolveAdminPortfolioListScope } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
@@ -56,7 +57,8 @@ export async function GET(request: Request) {
     return session;
   }
 
-  const rows = await adminListPortfoliosWithStats({ limit: 200 });
+  const listScope = resolveAdminPortfolioListScope(session);
+  const rows = await adminListPortfoliosWithStats({ limit: 200, listScope });
   const userIds = [...new Set(rows.map((r) => normalizeMongoUserIdHex(r.userId)).filter((x): x is string => Boolean(x)))];
   const userMap = await getCoreUsersByIds(userIds);
   const data = rows.map((r) => {
@@ -107,6 +109,15 @@ export async function POST(request: Request) {
   }
 
   const tenantId = parsed.data.tenantId?.trim() || session.tenantId;
+  if (!isAdminPortfoliosListAllEnabled()) {
+    if (parsed.data.userId.trim() !== session.userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (tenantId !== session.tenantId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   const created = await adminCreatePortfolio({
     userId: parsed.data.userId,
     tenantId,

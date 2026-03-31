@@ -219,6 +219,10 @@ type XchatConversationProps = {
   welcomeName: string;
   /** Drives Reference Docs + Settings links in the left rail. */
   isGlobalAdmin?: boolean;
+  /** Tenant workspace limit: allow switching persona (app users; global_admin ignores). */
+  workspaceChangePersonaEnabled?: boolean;
+  /** Tenant workspace limit: max recent prompts in thread + history fetch. */
+  workspaceChatHistoryMax?: number;
 };
 
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
@@ -226,8 +230,6 @@ type XchatPromptExample = string | { prompt: string };
 
 const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Main thread + lazy history panel: show the same number of recent prompts by default. */
-const XCHAT_UI_PROMPT_LIMIT = 10;
 const XCHAT_UI_RESPONSE_LIMIT = 3;
 
 function trimTranscriptToRecentPrompts(
@@ -328,8 +330,13 @@ export function XchatConversation({
   defaultBookLabels = null,
   includeSuperAgentInPersonaPicker = false,
   welcomeName,
-  isGlobalAdmin: isGlobalAdminSession = false
+  isGlobalAdmin: isGlobalAdminSession = false,
+  workspaceChangePersonaEnabled = true,
+  workspaceChatHistoryMax = 10
 }: XchatConversationProps) {
+  const uiPromptLimit = Math.max(1, Math.min(500, workspaceChatHistoryMax));
+  const personaPickerLocked =
+    !workspaceChangePersonaEnabled && !isGlobalAdminSession;
   const [messages, setMessages] = useState<Message[]>([]);
   const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
   const [historyStats, setHistoryStats] = useState<HistoryStats | null>(null);
@@ -446,7 +453,7 @@ export function XchatConversation({
         if ((statsPayload.data?.historyMode ?? "mongo") === "xai_remote") {
           return;
         }
-        const res = await fetch(`/api/xchat/history?limit=${XCHAT_UI_PROMPT_LIMIT}`);
+        const res = await fetch(`/api/xchat/history?limit=${uiPromptLimit}`);
         const payload = (await res.json().catch(() => ({}))) as {
           data?: { items?: HistoryItem[] };
         };
@@ -467,7 +474,7 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, []);
+  }, [uiPromptLimit]);
 
   useEffect(() => {
     let active = true;
@@ -611,7 +618,7 @@ export function XchatConversation({
           setHistoryLoaded(true);
           return;
         }
-        const historyRes = await fetch(`/api/xchat/history?limit=${XCHAT_UI_PROMPT_LIMIT}`);
+        const historyRes = await fetch(`/api/xchat/history?limit=${uiPromptLimit}`);
         const historyPayload = (await historyRes.json().catch(() => ({}))) as {
           data?: { items?: HistoryItem[] };
           error?: string;
@@ -628,7 +635,7 @@ export function XchatConversation({
             const createdAtMs = new Date(item.createdAt).getTime();
             return Number.isFinite(createdAtMs) && nowMs - createdAtMs <= THIRTY_DAY_WINDOW_MS;
           })
-          .slice(0, XCHAT_UI_PROMPT_LIMIT * 3);
+          .slice(0, uiPromptLimit * 3);
         setSavedHistory(filteredRecentHistory);
         setHistoryLoaded(true);
       } catch (error) {
@@ -647,7 +654,7 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, [historyLoaded]);
+  }, [historyLoaded, uiPromptLimit]);
 
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -666,7 +673,7 @@ export function XchatConversation({
 
     setMessages((prev) => {
       const added = [...prev, userMsg];
-      const { next } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
+      const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
       return next;
     });
     setInput("");
@@ -709,7 +716,7 @@ export function XchatConversation({
               timestamp: Date.now()
             }
           ];
-          const { next } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
+          const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
           return next;
         });
         return;
@@ -733,7 +740,7 @@ export function XchatConversation({
             serverLogId: logId
           }
         ];
-        const { next } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
+        const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
         return next;
       });
       setSavedHistory((prev) => {
@@ -748,7 +755,7 @@ export function XchatConversation({
           toolCallCount: payload.data?.toolCalls?.length ?? 0
         };
         const deduped = prev.filter((item) => item.id !== nextItem.id);
-        return [nextItem, ...deduped].slice(0, XCHAT_UI_PROMPT_LIMIT);
+        return [nextItem, ...deduped].slice(0, uiPromptLimit);
       });
     } catch {
       setMessages((prev) => {
@@ -761,7 +768,7 @@ export function XchatConversation({
             timestamp: Date.now()
           }
         ];
-        const { next } = trimTranscriptToRecentPrompts(added, XCHAT_UI_PROMPT_LIMIT);
+        const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
         return next;
       });
     } finally {
@@ -831,7 +838,8 @@ export function XchatConversation({
                       className="xchat-composer__persona-select xchat-rail-persona-select"
                       disabled={
                         personaSelectRows.length === 0 ||
-                        Boolean(personaListError)
+                        Boolean(personaListError) ||
+                        personaPickerLocked
                       }
                       id="xchat-persona-picker"
                       onChange={(e) => {
@@ -854,7 +862,9 @@ export function XchatConversation({
                     ) : null}
                   </div>
                   <p className="status-text xchat-rail-persona-hint" id="xchat-persona-picker-hint">
-                    Choose which published persona to use for this prompt. You can change it anytime before you send.
+                    {personaPickerLocked
+                      ? "Your workspace has disabled switching personas; the default applies."
+                      : "Choose which published persona to use for this prompt. You can change it anytime before you send."}
                   </p>
 
                   <div className="xchat-rail-persona-block" aria-label="Active persona and last turn tools">
@@ -1011,7 +1021,7 @@ export function XchatConversation({
 
       {!(threadUiCollapsed && messages.length > 0 && !loading) ? (
         <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
-          Thread shows your last <strong>{XCHAT_UI_PROMPT_LIMIT}</strong> prompts. Each send is stored server-side in
+          Thread shows your last <strong>{uiPromptLimit}</strong> prompts. Each send is stored server-side in
           {" "}
           Mongo; continuity uses <strong>{isRemoteHistoryMode ? "xAI remote conversation state" : "recent saved turns"}</strong>.
           Persona choice locks after your first

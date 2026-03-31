@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
@@ -10,12 +11,7 @@ import {
     scheduledTaskScheduleObjectSchema
 } from "@/lib/scheduled-task-request-payload";
 import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
-import {
-    adminGetPortfolioById,
-    deleteScheduledTask,
-    getScheduledTaskById,
-    updateScheduledTask
-} from "@/modules/core-admin/repository";
+import { deleteScheduledTask, getScheduledTaskById, updateScheduledTask } from "@/modules/core-admin/repository";
 
 type RouteContext = {
   params: Promise<{ portfolioId: string; taskId: string }>;
@@ -57,9 +53,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const { portfolioId, taskId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
   }
 
   let json: unknown;
@@ -132,9 +128,9 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 
   const { portfolioId, taskId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
   }
 
   const ok = await deleteScheduledTask({

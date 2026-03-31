@@ -68,7 +68,8 @@
     "ops:deploy:cloud-run:staging": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging",
     "ops:deploy:cloud-run:staging:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging --with-ci-gate",
     "ops:deploy:cloud-run:production": "bash scripts/ops/deploy-cloud-run-from-env.sh --production",
-    "ops:deploy:cloud-run:production:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --production --with-ci-gate"
+    "ops:deploy:cloud-run:production:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --production --with-ci-gate",
+    "ops:users:reset-basic-super-agent": "node scripts/ops/reset-all-users-basic-super-agent.mjs"
   },
   "keywords": [],
   "author": "",

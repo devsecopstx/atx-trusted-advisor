@@ -10,6 +10,8 @@ Per-tenant quotas for the Next.js BFF. Defaults are code-defined; overrides live
 | `userChatLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** `min(plan max, userChatLimit)` in `POST /api/xchat/ask` with UTC day usage; `global_admin` bypasses cap. |
 | `tenantPortfolioLimit` | 1 | New portfolio rows in tenant for that user (admin + app flows). |
 | `portfolioAccountLimit` | 1 | New `portfolio_accounts` per portfolio. |
+| `changePersonaEnabled` | **true** | App users: xChat persona picker enabled. When **false**, picker is disabled ( **`global_admin`** sessions ignore). Per-plan override in `planOverrides.<tier>`. |
+| `chatHistoryMax` | **10** | Recent prompts loaded in xChat thread + `/api/xchat/history?limit=` (clamped 1–500 in UI). Per-plan override. |
 
 **Product vs runtime:** xOptions/xChat are labeled **per hour** on `/account/billing`, admin workspace limits, xOptions gate, and xChat limit errors. The **Runtime** column above is source of truth for the current counter implementation; align code and docs when moving to true hourly metering.
 
@@ -38,7 +40,7 @@ Indexes are created best-effort on first use (same pattern as other identity usa
 - `/account/billing` (see `src/app/account/billing/page.tsx`, `billing-plan-grid.tsx`) resolves each retail tier with **`billingCardWorkspaceDisplay`** in `src/lib/billing-plan-workspace-display.ts`:
   - **Signed-in:** loads `core_tenants` by session `tenantId`, merges `workspaceLimits` + `planOverrides.<tier>` via `mergeTenantWorkspaceLimits` + `applyTenantPlanRowToBase` (same shape as enforcement). **List price** on the card uses `planOverrides.<tier>.price` (USD whole dollars) when set; otherwise catalog from `ATX_BILLING_PLANS`.
   - **Guests:** list **price** and four **catalog** cap strings from `src/lib/atx-billing-plan-limits.ts` (aligned with `atx-docs/resouces/atx-limits.txt.tsv`).
-  - **Workspace limits** block on each card: exactly **four** rows (xOptions/hr, xChat/hr, portfolios/user, accounts/portfolio); **price is not duplicated** in that list (only in the card header). Labels follow published billing copy (per-hour caps for xOptions/xChat on the card).
+  - **Workspace limits** block on each card: **four** quota rows plus **Change persona** (Yes/No) and **Chat history max (turns)**; **price is not duplicated** in that list (only in the card header). Labels follow published billing copy (per-hour caps for xOptions/xChat on the card).
 
 ## Deploy / rollback
 

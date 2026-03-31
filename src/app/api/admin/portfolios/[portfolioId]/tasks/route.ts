@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
@@ -10,11 +11,7 @@ import {
     scheduledTaskScheduleObjectSchema
 } from "@/lib/scheduled-task-request-payload";
 import { validateScheduleInput } from "@/lib/scheduled-task-schedule";
-import {
-    adminGetPortfolioById,
-    createScheduledTask,
-    listScheduledTasks
-} from "@/modules/core-admin/repository";
+import { createScheduledTask, listScheduledTasks } from "@/modules/core-admin/repository";
 
 type RouteContext = {
   params: Promise<{ portfolioId: string }>;
@@ -44,9 +41,9 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
   }
 
   const tasks = await listScheduledTasks({
@@ -68,9 +65,9 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { portfolioId } = await context.params;
-  const portfolio = await adminGetPortfolioById(portfolioId);
-  if (!portfolio?._id) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
   }
 
   let json: unknown;

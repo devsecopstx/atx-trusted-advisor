@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
@@ -85,6 +86,11 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const { portfolioId, accountId } = await context.params;
 
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -130,6 +136,12 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 
   const { portfolioId, accountId } = await context.params;
+
+  const access = await requireAdminPortfolioForApi(portfolioId, session);
+  if (access instanceof NextResponse) {
+    return access;
+  }
+
   const ok = await adminDeleteAccountForPortfolio({ portfolioId, accountId });
   if (!ok) {
     return NextResponse.json(
