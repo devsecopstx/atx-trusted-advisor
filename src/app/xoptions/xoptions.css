@@ -50,6 +50,20 @@ html[data-xf-ui="soft"] .xoptions-top-option-header {
   padding: 0.4rem 0.45rem;
 }
 
+/* Bottom-align horizon chips with Account / At-a-glance row height */
+.xoptions-top-option-header__col--horizon {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.xoptions-top-option-header__horizon-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .xoptions-top-option-header__col + .xoptions-top-option-header__col {
   border-left: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
 }
@@ -159,17 +173,43 @@ html[data-xf-ui="soft"] .xoptions-at-a-glance--header {
   font-size: 0.5625rem;
 }
 
-/* Scoring | Symbol | Market | ±% levels */
-.xoptions-mid-three {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.72fr);
-  gap: 0.45rem 0.5rem;
-  align-items: start;
+/* Row 1: scoring (full width, left). Row 2: symbol + market + moves (left-aligned row). */
+.xoptions-mid-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: stretch;
+  text-align: left;
 }
 
-@media (max-width: 768px) {
-  .xoptions-mid-three {
-    grid-template-columns: 1fr;
+.xoptions-mid-stack__row--factors {
+  width: 100%;
+}
+
+.xoptions-mid-stack__row--symbol-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.65rem 1.25rem;
+  width: 100%;
+}
+
+.xoptions-mid-stack__block--symbol {
+  flex: 0 1 14rem;
+  min-width: min(14rem, 100%);
+}
+
+.xoptions-mid-stack__block--market,
+.xoptions-mid-stack__block--moves {
+  flex: 1 1 11rem;
+  min-width: min(11rem, 100%);
+}
+
+@media (max-width: 640px) {
+  .xoptions-mid-stack__block--market,
+  .xoptions-mid-stack__block--moves {
+    flex: 1 1 100%;
   }
 }
 
@@ -524,25 +564,28 @@ html[data-xf-ui="soft"] .xoptions-at-a-glance {
   line-height: 1.25;
 }
 
-.xoptions-cta {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 9999px;
-  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 65%, transparent);
-  background: color-mix(in srgb, var(--xf-gain-green) 14%, transparent);
-  color: color-mix(in srgb, var(--xf-gain-green) 92%, var(--xf-text-100));
-  padding: 0.45rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-decoration: none;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease;
+/* Primary chain CTA — aligns with app `cta` + gain-green (xChat / billing-style). */
+a.xoptions-chain-cta.cta.cta-primary {
+  margin-top: 0.25rem;
+  padding: 0.65rem 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
+  background: var(--xf-gain-green);
+  color: var(--xf-bg-900);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
 }
 
-.xoptions-cta:hover {
-  background: color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
-  border-color: color-mix(in srgb, var(--xf-gain-green) 80%, transparent);
+a.xoptions-chain-cta.cta.cta-primary:hover {
+  background: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
+  border-color: color-mix(in srgb, var(--xf-gain-green) 75%, transparent);
+  color: var(--xf-bg-900);
+}
+
+html[data-xf-ui="soft"] a.xoptions-chain-cta.cta.cta-primary {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--xf-gain-green) 18%, transparent);
 }
 
 .xoptions-workspace .xoptions-inline-muted {

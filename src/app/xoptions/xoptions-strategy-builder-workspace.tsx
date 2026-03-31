@@ -100,7 +100,7 @@ export function XoptionsStrategyBuilderWorkspace() {
   const [symbol, setSymbol] = useState("");
   const [snapshot, setSnapshot] = useState<SnapshotPayload | null>(null);
   const [snapLoading, setSnapLoading] = useState(false);
-  const [weeks, setWeeks] = useState(14);
+  const [weeks, setWeeks] = useState<number | null>(null);
 
   const [outlookOverride, setOutlookOverride] = useState<"" | AccountOutlook>("");
   const [riskOverride, setRiskOverride] = useState<"" | "conservative" | "balanced" | "growth">("");
@@ -271,21 +271,25 @@ export function XoptionsStrategyBuilderWorkspace() {
           </div>
         </div>
 
-        <div className="xoptions-top-option-header__col min-w-0">
+        <div className="xoptions-top-option-header__col xoptions-top-option-header__col--horizon min-w-0">
           <p className="xoptions-top-option-header__label">Target expiration</p>
-          <div className="xoptions-top-option-header__chips">
-            {WEEK_CHIPS.map((w) => (
-              <button
-                key={w.days}
-                type="button"
-                className={`xoptions-choice xoptions-choice--header ${weeks === w.days ? "xoptions-choice--active" : ""}`}
-                onClick={() => setWeeks(w.days)}
-              >
-                {w.label}
-              </button>
-            ))}
+          <div className="xoptions-top-option-header__horizon-foot">
+            <div className="xoptions-top-option-header__chips">
+              {WEEK_CHIPS.map((w) => (
+                <button
+                  key={w.days}
+                  type="button"
+                  className={`xoptions-choice xoptions-choice--header ${weeks !== null && weeks === w.days ? "xoptions-choice--active" : ""}`}
+                  onClick={() => setWeeks(w.days)}
+                >
+                  {w.label}
+                </button>
+              ))}
+            </div>
+            <p className="xoptions-top-option-header__hint">
+              {weeks === null ? "Select a horizon for the chain" : `~${weeks}d in chain`}
+            </p>
           </div>
-          <p className="xoptions-top-option-header__hint">~{weeks}d in chain</p>
         </div>
 
         <aside className="xoptions-top-option-header__col xoptions-top-option-header__col--glance min-w-0" aria-label="At a glance">
@@ -350,8 +354,8 @@ export function XoptionsStrategyBuilderWorkspace() {
       {ctxErr ? <p className="xoptions-alert">{ctxErr}</p> : null}
 
       <section className="xoptions-panel p-2.5" aria-label="Scoring, symbol, market, and price levels">
-        <div className="xoptions-mid-three">
-          <div className="xoptions-mid-three__col min-w-0">
+        <div className="xoptions-mid-stack">
+          <div className="xoptions-mid-stack__row xoptions-mid-stack__row--factors min-w-0 text-left">
             <p className="xoptions-mid-three__label" id="scoringFactors-label">
               Scoring factors
             </p>
@@ -399,85 +403,91 @@ export function XoptionsStrategyBuilderWorkspace() {
             </details>
           </div>
 
-          <div className="xoptions-mid-three__col min-w-0">
-            <label className="xoptions-mid-three__label block" htmlFor="xo-symbol">
-              Symbol
-            </label>
-            <input
-              id="xo-symbol"
-              className="crud-input mt-0.5 w-full max-w-[14rem] font-mono text-sm uppercase"
-              placeholder="e.g. TSLA"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              aria-label="Underlying symbol"
-            />
-          </div>
+          <div className="xoptions-mid-stack__row xoptions-mid-stack__row--symbol-line">
+            <div className="xoptions-mid-stack__block xoptions-mid-stack__block--symbol min-w-0 text-left">
+              <label className="xoptions-mid-three__label block" htmlFor="xo-symbol">
+                Symbol
+              </label>
+              <input
+                id="xo-symbol"
+                className="crud-input mt-0.5 w-full max-w-[14rem] font-mono text-sm uppercase"
+                placeholder="e.g. TSLA"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                aria-label="Underlying symbol"
+              />
+            </div>
 
-          <div className="xoptions-mid-three__col xoptions-mid-three__col--quote min-w-0" role="status" aria-live="polite">
-            <p className="xoptions-mid-three__label">Market</p>
-            {symbol.trim().length === 0 ? (
-              <p className="xoptions-mid-three__quote-muted">Enter symbol</p>
-            ) : snapLoading ? (
-              <p className="xoptions-mid-three__quote-muted">Loading…</p>
-            ) : snapshot ? (
-              <div className="xoptions-mid-three__quote-stack">
-                <p className="xoptions-mid-three__quote-line">
-                  <span className="xoptions-mid-three__quote-k">Last</span>{" "}
-                  <span className="xoptions-mid-three__quote-val font-mono">
-                    {snapshot.lastPrice != null ? snapshot.lastPrice.toFixed(2) : "—"}
-                  </span>
-                  {snapshot.currency ? (
-                    <span className="xoptions-mid-three__quote-ccy"> {snapshot.currency}</span>
-                  ) : null}
-                </p>
-                <p className="xoptions-mid-three__quote-line">
-                  <span className="xoptions-mid-three__quote-k">RSI 14d</span>{" "}
-                  <span className="xoptions-mid-three__quote-val font-mono">
-                    {snapshot.rsi14 != null ? snapshot.rsi14.toFixed(1) : "—"}
-                  </span>
-                </p>
-              </div>
-            ) : (
-              <p className="xoptions-mid-three__quote-muted">No quote</p>
-            )}
-          </div>
-
-          <div
-            className="xoptions-mid-three__col xoptions-moves min-w-0"
-            aria-label="Last price plus and minus five, ten, and fifteen percent"
-          >
-            <p className="xoptions-mid-three__label">±5/10/15%</p>
-            {symbol.trim().length === 0 ? (
-              <p className="xoptions-mid-three__quote-muted">—</p>
-            ) : snapLoading ? (
-              <p className="xoptions-mid-three__quote-muted">…</p>
-            ) : snapshot && snapshot.lastPrice != null ? (
-              (() => {
-                const lastPx = snapshot.lastPrice;
-                return (
-              <div className="xoptions-moves__grid">
-                {MOVE_PCTS.map((pct) => (
-                  <p key={`up-${pct}`} className="xoptions-moves__line">
-                    <span className="xoptions-moves__tag xoptions-moves__tag--up">+{pct}%</span>
-                    <span className="xoptions-moves__px font-mono">
-                      {(lastPx * (1 + pct / 100)).toFixed(2)}
+            <div
+              className="xoptions-mid-stack__block xoptions-mid-stack__block--market xoptions-mid-three__col--quote min-w-0 text-left"
+              role="status"
+              aria-live="polite"
+            >
+              <p className="xoptions-mid-three__label">Market</p>
+              {symbol.trim().length === 0 ? (
+                <p className="xoptions-mid-three__quote-muted">Enter symbol</p>
+              ) : snapLoading ? (
+                <p className="xoptions-mid-three__quote-muted">Loading…</p>
+              ) : snapshot ? (
+                <div className="xoptions-mid-three__quote-stack">
+                  <p className="xoptions-mid-three__quote-line">
+                    <span className="xoptions-mid-three__quote-k">Last</span>{" "}
+                    <span className="xoptions-mid-three__quote-val font-mono">
+                      {snapshot.lastPrice != null ? snapshot.lastPrice.toFixed(2) : "—"}
+                    </span>
+                    {snapshot.currency ? (
+                      <span className="xoptions-mid-three__quote-ccy"> {snapshot.currency}</span>
+                    ) : null}
+                  </p>
+                  <p className="xoptions-mid-three__quote-line">
+                    <span className="xoptions-mid-three__quote-k">RSI 14d</span>{" "}
+                    <span className="xoptions-mid-three__quote-val font-mono">
+                      {snapshot.rsi14 != null ? snapshot.rsi14.toFixed(1) : "—"}
                     </span>
                   </p>
-                ))}
-                {MOVE_PCTS.map((pct) => (
-                  <p key={`dn-${pct}`} className="xoptions-moves__line">
-                    <span className="xoptions-moves__tag xoptions-moves__tag--dn">−{pct}%</span>
-                    <span className="xoptions-moves__px font-mono">
-                      {(lastPx * (1 - pct / 100)).toFixed(2)}
-                    </span>
-                  </p>
-                ))}
-              </div>
-                );
-              })()
-            ) : (
-              <p className="xoptions-mid-three__quote-muted">—</p>
-            )}
+                </div>
+              ) : (
+                <p className="xoptions-mid-three__quote-muted">No quote</p>
+              )}
+            </div>
+
+            <div
+              className="xoptions-mid-stack__block xoptions-mid-stack__block--moves xoptions-moves min-w-0 text-left"
+              aria-label="Last price plus and minus five, ten, and fifteen percent"
+            >
+              <p className="xoptions-mid-three__label">±5/10/15%</p>
+              {symbol.trim().length === 0 ? (
+                <p className="xoptions-mid-three__quote-muted">—</p>
+              ) : snapLoading ? (
+                <p className="xoptions-mid-three__quote-muted">…</p>
+              ) : snapshot && snapshot.lastPrice != null ? (
+                (() => {
+                  const lastPx = snapshot.lastPrice;
+                  return (
+                    <div className="xoptions-moves__grid">
+                      {MOVE_PCTS.map((pct) => (
+                        <p key={`up-${pct}`} className="xoptions-moves__line">
+                          <span className="xoptions-moves__tag xoptions-moves__tag--up">+{pct}%</span>
+                          <span className="xoptions-moves__px font-mono">
+                            {(lastPx * (1 + pct / 100)).toFixed(2)}
+                          </span>
+                        </p>
+                      ))}
+                      {MOVE_PCTS.map((pct) => (
+                        <p key={`dn-${pct}`} className="xoptions-moves__line">
+                          <span className="xoptions-moves__tag xoptions-moves__tag--dn">−{pct}%</span>
+                          <span className="xoptions-moves__px font-mono">
+                            {(lastPx * (1 - pct / 100)).toFixed(2)}
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  );
+                })()
+              ) : (
+                <p className="xoptions-mid-three__quote-muted">—</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -549,7 +559,7 @@ export function XoptionsStrategyBuilderWorkspace() {
 
       <div>
         <Link
-          className="xoptions-cta"
+          className="cta cta-primary xoptions-chain-cta"
           href={
             symbol.trim()
               ? `/xstrategybuilder/strategy-options?symbol=${encodeURIComponent(symbol.trim())}`
