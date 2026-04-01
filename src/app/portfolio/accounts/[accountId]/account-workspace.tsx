@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
 import {
+    ActivityPulseIcon,
     BackIcon,
     DeleteIcon,
     EditIcon,
@@ -301,6 +302,25 @@ export function AccountWorkspace({
           {error}
         </p>
       ) : null}
+
+      <div className="portfolio-account-portfolio-links" role="navigation" aria-label="Portfolio watchlist and alerts">
+        <Link
+          className="portfolio-account-portfolio-links__btn"
+          href={`/watchlist?portfolioId=${encodeURIComponent(portfolioId)}`}
+          title="Open watchlist for this portfolio"
+        >
+          <ListRowsIcon className="crud-icon" aria-hidden />
+          <span className="portfolio-account-portfolio-links__label">Watchlist</span>
+        </Link>
+        <Link
+          className="portfolio-account-portfolio-links__btn"
+          href={`/portfolio/alerts?portfolioId=${encodeURIComponent(portfolioId)}`}
+          title="Open alerts for this portfolio"
+        >
+          <ActivityPulseIcon className="crud-icon" aria-hidden />
+          <span className="portfolio-account-portfolio-links__label">Alerts</span>
+        </Link>
+      </div>
 
       <nav className="portfolio-manage-tabs" role="tablist" aria-label="Account workspace">
         <button

@@ -332,11 +332,19 @@ export function AppUserAccountRailSection({
 /** Manage workspace — My portfolios for all app users; Admin hub link only for global_admin */
 export function AppUserManageWorkspaceRailSection({
   railDisclosureDefaultOpen = false,
-  isGlobalAdmin = false
+  isGlobalAdmin = false,
+  workspacePortfolioId = null
 }: {
   railDisclosureDefaultOpen?: boolean;
   isGlobalAdmin?: boolean;
+  /** Active book id from rail context — deep-links watchlist & alerts to this portfolio when set */
+  workspacePortfolioId?: string | null;
 }) {
+  const pid = workspacePortfolioId?.trim();
+  const portfolioQs = pid && pid.length > 0 ? `?portfolioId=${encodeURIComponent(pid)}` : "";
+  const watchlistHref = `/watchlist${portfolioQs}`;
+  const alertsHref = `/portfolio/alerts${portfolioQs}`;
+
   return (
     <section className="app-user-rail-section" aria-label="Manage workspace">
       <RailDisclosure
@@ -350,6 +358,12 @@ export function AppUserManageWorkspaceRailSection({
             title="My portfolios — book value by portfolio, edit metadata (no account detail)"
           >
             My portfolios
+          </RailNavLink>
+          <RailNavLink href={watchlistHref} title="Watchlist for the active workspace portfolio">
+            Watchlist
+          </RailNavLink>
+          <RailNavLink href={alertsHref} title="Alerts for the active workspace portfolio">
+            Alerts
           </RailNavLink>
           {isGlobalAdmin ? (
             <RailNavLink href="/admin" title="Open Admin Hub (global admin only)">
@@ -365,7 +379,10 @@ export function AppUserManageWorkspaceRailSection({
 export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUserAccountPublicRailProps) {
   return (
     <aside className="app-user-public-rail xf-widget" aria-label="Account navigation">
-      <AppUserManageWorkspaceRailSection isGlobalAdmin={isGlobalAdmin} />
+      <AppUserManageWorkspaceRailSection
+        isGlobalAdmin={isGlobalAdmin}
+        workspacePortfolioId={railContext.book?.portfolioId ?? null}
+      />
       <section className="app-user-rail-section app-user-rail-section--workspace" aria-label="Your workspace">
         <p className="app-user-rail-workspace-name">{railContext.userDisplayName}</p>
         {railContext.book ? (

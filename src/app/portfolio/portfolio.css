@@ -1838,6 +1838,165 @@
   cursor: not-allowed;
 }
 
+/* Quick links: watchlist + alerts (same portfolio as this account workspace) */
+.portfolio-account-portfolio-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.portfolio-account-portfolio-links__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 88%, transparent);
+  color: var(--xf-text-100);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.portfolio-account-portfolio-links__btn:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 42%, transparent);
+  color: var(--xf-gain-green);
+}
+
+.portfolio-account-portfolio-links__label {
+  line-height: 1.2;
+}
+
+/* App-user portfolio alerts list */
+.portfolio-alerts-console {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.15rem 1.2rem 1.35rem;
+}
+
+.portfolio-alerts-console__head {
+  margin-bottom: 1rem;
+}
+
+.portfolio-alerts-console__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+  letter-spacing: -0.02em;
+}
+
+.portfolio-alerts-console__meta {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+  color: var(--xf-text-300);
+}
+
+.portfolio-alerts-console__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.portfolio-alerts-console__empty {
+  margin: 0.5rem 0 0;
+}
+
+.portfolio-alerts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.portfolio-alerts-row {
+  position: relative;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--xf-surface-700) 92%, transparent),
+    color-mix(in srgb, var(--xf-bg-900) 96%, transparent)
+  );
+}
+
+.portfolio-alerts-row--info {
+  border-color: color-mix(in srgb, var(--xf-blue-400) 28%, transparent);
+}
+
+.portfolio-alerts-row--warn {
+  border-color: color-mix(in srgb, var(--xf-warning-400) 40%, transparent);
+}
+
+.portfolio-alerts-row--critical {
+  border-color: color-mix(in srgb, var(--xf-danger-400) 45%, transparent);
+}
+
+.portfolio-alerts-row__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.portfolio-alerts-row__title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--xf-text-100);
+  flex: 1 1 12rem;
+}
+
+.portfolio-alerts-row__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.portfolio-alerts-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  color: var(--xf-text-300);
+}
+
+.portfolio-alerts-badge--muted {
+  opacity: 0.9;
+}
+
+.portfolio-alerts-badge--sym {
+  font-family: ui-monospace, monospace;
+  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 35%, transparent);
+}
+
+.portfolio-alerts-row__body {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--xf-text-300);
+}
+
+.portfolio-alerts-row__time {
+  margin: 0.5rem 0 0;
+  font-size: 0.68rem;
+  color: var(--xf-text-400);
+}
+
 @media (min-width: 1100px) {
   .portfolio-account-page--edit {
     width: min(1080px, 100%);

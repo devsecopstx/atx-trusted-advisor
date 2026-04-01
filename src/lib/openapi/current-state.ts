@@ -186,6 +186,28 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/admin/delivery-channels",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "POST", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-system"
+  },
+  {
+    path: "/api/admin/delivery-channels/{channelId}",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true },
+      { method: "DELETE", auth: "admin" }
+    ],
+    tag: "admin-system"
+  },
+  {
+    path: "/api/admin/delivery-channels/{channelId}/test",
+    operations: [{ method: "POST", auth: "admin" }],
+    tag: "admin-system"
+  },
+  {
     path: "/api/admin/import/broker",
     operations: [{ method: "POST", auth: "admin", hasRequestBody: true }],
     tag: "admin-system"
@@ -538,6 +560,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
       { method: "GET", auth: "session" },
       { method: "POST", auth: "session", hasRequestBody: true }
     ],
+    tag: "portfolios"
+  },
+  {
+    path: "/api/portfolios/{portfolioId}/alerts",
+    operations: [{ method: "GET", auth: "session" }],
     tag: "portfolios"
   },
   {

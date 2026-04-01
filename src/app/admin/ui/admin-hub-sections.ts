@@ -64,7 +64,7 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
     items: [
       {
         href: "/admin/tasks",
-        title: "Scheduler tasks",
+        title: "Scheduled tasks",
         description: "Create scheduled tasks, run jobs manually, and monitor status."
       },
       {
@@ -76,6 +76,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/admin/recommendations",
         title: "Recommendations",
         description: "Admin notes and tags (session-scoped list); portfolio book recs live under Portfolios → Recommendations."
+      },
+      {
+        href: "/admin/delivery-channels",
+        title: "Delivery channels",
+        description:
+          "Create platform delivery channels (in-app or Slack webhook), store Slack incoming webhook URLs, and send a test message."
       }
     ]
   },

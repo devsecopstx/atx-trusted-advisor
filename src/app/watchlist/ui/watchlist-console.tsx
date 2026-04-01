@@ -192,6 +192,49 @@ function toCsv(rows: WatchlistRow[]): string {
   return [headers.join(","), ...lines].join("\n");
 }
 
+const WATCHLIST_LIST_NAV_COLLAPSED_KEY = "xf-watchlist-list-sidebar-collapsed";
+
+function WatchlistSidebarChevron({ direction }: { direction: "left" | "right" }) {
+  if (direction === "left") {
+    return (
+      <svg
+        aria-hidden
+        className="xf-watchlist-sidebar-toggle__icon"
+        fill="none"
+        height="18"
+        viewBox="0 0 24 24"
+        width="18"
+      >
+        <path
+          d="M15 18l-6-6 6-6"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      aria-hidden
+      className="xf-watchlist-sidebar-toggle__icon"
+      fill="none"
+      height="18"
+      viewBox="0 0 24 24"
+      width="18"
+    >
+      <path
+        d="M9 18l6-6-6-6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
 function buildImportWorkload(
   entries: WatchlistCsvEntry[],
   currentSymbols: string[]
@@ -245,6 +288,30 @@ export function WatchlistConsole({
   const [mutating, setMutating] = useState(false);
   const [removingSymbol, setRemovingSymbol] = useState<string | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
+  const [listNavCollapsed, setListNavCollapsed] = useState(true);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(WATCHLIST_LIST_NAV_COLLAPSED_KEY);
+      if (v === "false") {
+        setListNavCollapsed(false);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggleListNav = useCallback(() => {
+    setListNavCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(WATCHLIST_LIST_NAV_COLLAPSED_KEY, next ? "true" : "false");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -515,15 +582,42 @@ export function WatchlistConsole({
   return (
     <div className="xf-watchlist-app">
       <div className="xf-watchlist-layout">
-        <aside className="xf-watchlist-sidebar">
-          <h2 className="xf-watchlist-sidebar-title">Watchlists</h2>
-          <button className="xf-watchlist-new-btn" disabled type="button">
-            <AddIcon className="crud-icon" />
-            New watchlist
-          </button>
-          <div className="xf-watchlist-nav-item">
-            {sidebarTitle}
-            <small>General watchlist for tracking positions and opportunities.</small>
+        <aside
+          className={`xf-watchlist-sidebar${listNavCollapsed ? " xf-watchlist-sidebar--collapsed" : ""}`}
+        >
+          <div className="xf-watchlist-sidebar-head">
+            <h2
+              className={`xf-watchlist-sidebar-title${listNavCollapsed ? " sr-only" : ""}`}
+              id="watchlist-nav-heading"
+            >
+              Watchlists
+            </h2>
+            <button
+              aria-controls="watchlist-nav-panel"
+              aria-expanded={!listNavCollapsed}
+              className="xf-watchlist-sidebar-toggle"
+              type="button"
+              onClick={toggleListNav}
+            >
+              <WatchlistSidebarChevron direction={listNavCollapsed ? "right" : "left"} />
+              <span className="sr-only">
+                {listNavCollapsed ? "Expand watchlist list" : "Collapse watchlist list"}
+              </span>
+            </button>
+          </div>
+          <div
+            className="xf-watchlist-sidebar-panel"
+            hidden={listNavCollapsed}
+            id="watchlist-nav-panel"
+          >
+            <button className="xf-watchlist-new-btn" disabled type="button">
+              <AddIcon className="crud-icon" />
+              New watchlist
+            </button>
+            <div className="xf-watchlist-nav-item">
+              {sidebarTitle}
+              <small>General watchlist for tracking positions and opportunities.</small>
+            </div>
           </div>
         </aside>
 

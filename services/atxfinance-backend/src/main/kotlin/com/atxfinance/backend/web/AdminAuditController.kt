@@ -25,6 +25,7 @@ class AdminAuditController(
         "access_request",
         "core_user",
         "deploy_note_config",
+        "admin_delivery_channel",
         "xchat_session",
         "core_scanner",
     )

@@ -10,6 +10,7 @@ const sessionMocks = vi.hoisted(() => ({
 }));
 
 const repositoryMocks = vi.hoisted(() => ({
+  adminListPortfolioAlerts: vi.fn(),
   getDefaultPortfolio: vi.fn(),
   getPortfolioByIdForSessionUser: vi.fn(),
   listPortfolioAccounts: vi.fn(),
@@ -66,6 +67,7 @@ import {
     PATCH as patchPortfolioAccount
 } from "@/app/api/portfolios/[portfolioId]/accounts/[accountId]/route";
 import { GET as getPortfolioAccounts, POST as postPortfolioAccount } from "@/app/api/portfolios/[portfolioId]/accounts/route";
+import { GET as getPortfolioAlerts } from "@/app/api/portfolios/[portfolioId]/alerts/route";
 import { GET as getPortfolioById, PATCH as patchPortfolioById } from "@/app/api/portfolios/[portfolioId]/route";
 import { GET as getPortfolioWatchlist } from "@/app/api/portfolios/[portfolioId]/watchlist/route";
 import { GET as getCurrentPortfolio } from "@/app/api/portfolios/current/route";
@@ -157,6 +159,7 @@ describe("portfolio API routes", () => {
       createdAt: new Date("2025-01-01T00:00:00.000Z"),
       updatedAt: new Date("2025-01-01T00:00:00.000Z")
     });
+    repositoryMocks.adminListPortfolioAlerts.mockResolvedValue([]);
     repositoryMocks.updatePortfolioForUser.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       userId: "507f1f77bcf86cd799439011",
@@ -278,6 +281,16 @@ describe("portfolio API routes", () => {
     const payload = (await response.json()) as { data: { name: string } };
     expect(response.status).toBe(200);
     expect(payload.data.name).toBe("Default Watchlist");
+  });
+
+  it("returns portfolio alerts for session user", async () => {
+    const response = await getPortfolioAlerts(new Request("http://test"), {
+      params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" })
+    });
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data: unknown[] };
+    expect(Array.isArray(payload.data)).toBe(true);
+    expect(repositoryMocks.adminListPortfolioAlerts).toHaveBeenCalledWith("507f1f77bcf86cd799439033");
   });
 
   it("GET /api/portfolios/:id/watchlist provisions when missing then returns TSLA root", async () => {

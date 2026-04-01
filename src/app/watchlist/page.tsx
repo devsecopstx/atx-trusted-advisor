@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -10,6 +11,7 @@ import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import {
     getDefaultPortfolio,
+    getPortfolioByIdForSessionUser,
     getPortfolioWatchlist,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
@@ -21,7 +23,11 @@ import "../xchat/xchat.css";
 import { WatchlistConsole } from "./ui/watchlist-console";
 import "./watchlist.css";
 
-export default async function WatchlistPage() {
+export default async function WatchlistPage({
+  searchParams
+}: {
+  searchParams: Promise<{ portfolioId?: string | string[] }>;
+}) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/login?next=/watchlist");
@@ -31,11 +37,28 @@ export default async function WatchlistPage() {
     redirect("/xchat");
   }
 
+  const sp = await searchParams;
+  const rawPid = sp.portfolioId;
+  const requested =
+    typeof rawPid === "string" ? rawPid.trim() : Array.isArray(rawPid) ? rawPid[0]?.trim() ?? "" : "";
+
   let portfolio: Awaited<ReturnType<typeof getDefaultPortfolio>> = null;
   let workspaceError: string | null = null;
 
   try {
-    portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
+    if (requested && ObjectId.isValid(requested)) {
+      const owned = await getPortfolioByIdForSessionUser({
+        userId: session.userId,
+        tenantId: session.tenantId,
+        portfolioId: requested
+      });
+      if (owned?._id) {
+        portfolio = owned;
+      }
+    }
+    if (!portfolio?._id) {
+      portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
+    }
     if (!portfolio?._id) {
       const provisioned = await provisionDefaultPortfolioForUser({
         userId: session.userId,
@@ -86,6 +109,7 @@ export default async function WatchlistPage() {
       <div className="xchat-body" style={{ padding: 0 }}>
         <AppUserCollapsibleRailLayout
           mainClassName="app-user-shell-with-rail--padded"
+          preferCollapsed
           rail={<AppUserAccountPublicRailForSession session={session} />}
         >
         {workspaceError || !portfolioId ? (

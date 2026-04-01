@@ -171,6 +171,18 @@ export const nextBffApi = {
       pathTemplate: "/api/admin/deploy-note-configs/{configId}",
       methods: ["GET", "PUT", "DELETE"]
     },
+    deliveryChannelsIndex: {
+      pathTemplate: "/api/admin/delivery-channels",
+      methods: ["GET", "POST"]
+    },
+    deliveryChannelById: {
+      pathTemplate: "/api/admin/delivery-channels/{channelId}",
+      methods: ["GET", "PATCH", "DELETE"]
+    },
+    deliveryChannelTest: {
+      pathTemplate: "/api/admin/delivery-channels/{channelId}/test",
+      methods: ["POST"]
+    },
     importBroker: {
       pathTemplate: "/api/admin/import/broker",
       methods: ["POST"]

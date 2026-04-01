@@ -181,6 +181,18 @@ export type DeployNoteConfig = {
   updatedAt: Date;
 };
 
+/** Platform-wide delivery channels (admin desk — ops / notifications). */
+export type AdminDeliveryChannel = {
+  _id?: ObjectId;
+  tenantId?: ObjectId;
+  name: string;
+  deliveryTarget: "in_app" | "slack";
+  /** Required when `deliveryTarget` is `slack` (HTTPS hooks.slack.com incoming webhook). */
+  slackWebhookUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export const accountTypeValues = ["merrill", "fidelity", "etrade", "ibkr"] as const;
 export type AccountType = (typeof accountTypeValues)[number];
 

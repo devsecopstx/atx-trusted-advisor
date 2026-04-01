@@ -19,6 +19,7 @@ import {
     type Account,
     type AccountOutlook,
     type AccountType,
+    type AdminDeliveryChannel,
     type ApprovedUserListItem,
     type BrokerCatalogEntry,
     type DeployNoteConfig,
@@ -51,6 +52,7 @@ const collections = {
   taskRuns: "admin_task_runs",
   userSettings: "admin_user_settings",
   deployNoteConfigs: "admin_deploy_note_configs",
+  adminDeliveryChannels: "admin_delivery_channels",
   portfolios: TENANT_PORTFOLIO_COLLECTION,
   accounts: "portfolio_accounts",
   watchlists: "portfolio_watchlists",
@@ -1075,6 +1077,109 @@ export async function deleteDeployNoteConfigById(
   const result = await db
     .collection<DeployNoteConfig>(collections.deployNoteConfigs)
     .deleteOne(withTenantScope({ _id: new ObjectId(configId) }, options?.tenantId));
+  return result.deletedCount === 1;
+}
+
+export async function listAdminDeliveryChannels(options?: {
+  tenantId?: string;
+}): Promise<AdminDeliveryChannel[]> {
+  const db = await getDb();
+  return db
+    .collection<AdminDeliveryChannel>(collections.adminDeliveryChannels)
+    .find(withTenantScope({}, options?.tenantId))
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .toArray();
+}
+
+export async function createAdminDeliveryChannel(
+  payload: Omit<AdminDeliveryChannel, "_id" | "tenantId" | "createdAt" | "updatedAt"> & {
+    tenantId?: string;
+  }
+): Promise<AdminDeliveryChannel> {
+  const db = await getDb();
+  const now = new Date();
+  const document: AdminDeliveryChannel = {
+    tenantId: toTenantObjectId(payload.tenantId),
+    name: payload.name.trim(),
+    deliveryTarget: payload.deliveryTarget,
+    slackWebhookUrl:
+      payload.deliveryTarget === "slack" ? payload.slackWebhookUrl?.trim() : undefined,
+    createdAt: now,
+    updatedAt: now
+  };
+  const result = await db
+    .collection<AdminDeliveryChannel>(collections.adminDeliveryChannels)
+    .insertOne(document);
+  return { ...document, _id: result.insertedId };
+}
+
+export async function getAdminDeliveryChannelById(
+  id: string,
+  options?: TenantScopedOptions
+): Promise<AdminDeliveryChannel | null> {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+  const db = await getDb();
+  return db
+    .collection<AdminDeliveryChannel>(collections.adminDeliveryChannels)
+    .findOne(withTenantScope({ _id: new ObjectId(id) }, options?.tenantId));
+}
+
+export async function updateAdminDeliveryChannelById(input: {
+  channelId: string;
+  patch: Partial<Pick<AdminDeliveryChannel, "name" | "deliveryTarget" | "slackWebhookUrl">>;
+  tenantId?: string;
+}): Promise<AdminDeliveryChannel | null> {
+  if (!ObjectId.isValid(input.channelId)) {
+    return null;
+  }
+  const db = await getDb();
+  const _id = new ObjectId(input.channelId);
+  const $set: Record<string, unknown> = { updatedAt: new Date() };
+  const $unset: Record<string, string> = {};
+  const p = input.patch;
+  if (p.name !== undefined) {
+    $set.name = p.name.trim();
+  }
+  if (p.deliveryTarget !== undefined) {
+    $set.deliveryTarget = p.deliveryTarget;
+    if (p.deliveryTarget === "in_app") {
+      $unset.slackWebhookUrl = "";
+    }
+  }
+  if (p.slackWebhookUrl !== undefined) {
+    const t = p.slackWebhookUrl?.trim();
+    if (t) {
+      $set.slackWebhookUrl = t;
+    } else {
+      $unset.slackWebhookUrl = "";
+    }
+  }
+  const updateDoc: Record<string, unknown> = { $set };
+  if (Object.keys($unset).length > 0) {
+    updateDoc.$unset = $unset;
+  }
+  await db.collection<AdminDeliveryChannel>(collections.adminDeliveryChannels).updateOne(
+    withTenantScope({ _id }, input.tenantId),
+    updateDoc
+  );
+  return db
+    .collection<AdminDeliveryChannel>(collections.adminDeliveryChannels)
+    .findOne(withTenantScope({ _id }, input.tenantId));
+}
+
+export async function deleteAdminDeliveryChannelById(
+  channelId: string,
+  options?: TenantScopedOptions
+): Promise<boolean> {
+  if (!ObjectId.isValid(channelId)) {
+    return false;
+  }
+  const db = await getDb();
+  const result = await db
+    .collection<AdminDeliveryChannel>(collections.adminDeliveryChannels)
+    .deleteOne(withTenantScope({ _id: new ObjectId(channelId) }, options?.tenantId));
   return result.deletedCount === 1;
 }
 

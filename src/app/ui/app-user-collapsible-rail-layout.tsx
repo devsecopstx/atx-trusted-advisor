@@ -14,6 +14,12 @@ type AppUserCollapsibleRailLayoutProps = {
   mainClassName?: string;
   /** Set false to keep the rail always expanded. */
   allowCollapse?: boolean;
+  /**
+   * When true, the workspace rail starts collapsed after hydration (e.g. Watchlist).
+   * User expand/collapse still persists via localStorage; revisiting a page with this flag
+   * collapses again so the main content has focus on entry.
+   */
+  preferCollapsed?: boolean;
 };
 
 function readStoredCollapsed(): boolean {
@@ -31,7 +37,8 @@ export function AppUserCollapsibleRailLayout({
   rail,
   children,
   mainClassName,
-  allowCollapse = true
+  allowCollapse = true,
+  preferCollapsed = false
 }: AppUserCollapsibleRailLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -40,14 +47,15 @@ export function AppUserCollapsibleRailLayout({
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       if (allowCollapse) {
-        setCollapsed(readStoredCollapsed());
+        const stored = readStoredCollapsed();
+        setCollapsed(preferCollapsed ? true : stored);
       } else {
         setCollapsed(false);
       }
       setHydrated(true);
     });
     return () => cancelAnimationFrame(id);
-  }, [allowCollapse]);
+  }, [allowCollapse, preferCollapsed]);
 
   const toggle = useCallback(() => {
     if (!allowCollapse) {
