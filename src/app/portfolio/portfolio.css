@@ -602,7 +602,16 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 0.35rem 0.5rem;
+  width: 100%;
+}
+
+.portfolio-account-actions__trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 .portfolio-account-actions__focus {
@@ -643,20 +652,6 @@
 .portfolio-account-actions__icon-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.portfolio-account-actions__add-holdings {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--xf-gain-green);
-  text-decoration: none;
-}
-
-.portfolio-account-actions__add-holdings:hover {
-  text-decoration: underline;
 }
 
 .portfolio-manage-head {
@@ -871,6 +866,106 @@
   color: var(--xf-text-400);
 }
 
+/* Account edit: collapsed desk (risk + outlook) */
+.portfolio-edit-desk-disclosure {
+  margin-top: 0.15rem;
+  margin-bottom: 0.35rem;
+}
+
+.portfolio-edit-desk-disclosure__summary {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.portfolio-edit-desk-disclosure[open] .portfolio-edit-desk-disclosure__chevron {
+  display: inline-block;
+  transform: rotate(90deg);
+}
+
+.portfolio-edit-desk-disclosure__chevron {
+  display: inline-block;
+  margin-right: 0.2rem;
+  font-size: 0.65em;
+  opacity: 0.88;
+  transition: transform 0.15s ease;
+  vertical-align: middle;
+}
+
+.portfolio-edit-desk-disclosure__summary-main {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.portfolio-edit-desk-disclosure__preview {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--xf-text-400);
+  max-width: min(14rem, 46vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portfolio-edit-desk-disclosure__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-top: 0.35rem;
+}
+
+.portfolio-edit-desk-disclosure__fieldset {
+  gap: 0.4rem;
+}
+
+.portfolio-edit-desk-disclosure .portfolio-edit-fieldset .portfolio-edit-field__label {
+  font-size: 0.78rem;
+}
+
+.portfolio-risk-row--desk-compact {
+  gap: 0.35rem !important;
+}
+
+.portfolio-risk-btn--desk-compact {
+  padding: 0.38rem 0.5rem;
+  font-size: 0.76rem;
+}
+
+.portfolio-strategy-grid--desk-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+@media (max-width: 520px) {
+  .portfolio-strategy-grid--desk-compact {
+    grid-template-columns: 1fr;
+  }
+}
+
+.portfolio-strategy-card--desk-compact {
+  min-height: 0;
+  padding: 0.42rem 0.5rem;
+}
+
+.portfolio-strategy-card__title--desk-compact {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.portfolio-strategy-card__desc--desk-compact {
+  display: none;
+}
+
+.portfolio-edit-clear--desk-compact {
+  margin-top: 0.05rem;
+}
+
 .portfolio-manage-table--accounts {
   min-width: 0;
 }
@@ -996,6 +1091,51 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--xf-text-200);
+}
+
+/**
+ * Workspace “My portfolios” row action — replaces UA default (light) button chrome.
+ * Uses shell tokens so deep + soft (`html[data-xf-ui="soft"]`) stay consistent.
+ */
+.portfolio-manage-table__row-select-btn {
+  appearance: none;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--xf-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-800) 94%, var(--xf-bg-900));
+  color: var(--xf-gain-green);
+  text-decoration: none;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.portfolio-manage-table__row-select-btn:hover {
+  background: color-mix(in srgb, var(--xf-surface-600) 72%, var(--xf-bg-900));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.portfolio-manage-table__row-select-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.portfolio-manage-table__row-select-btn[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 48%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 14%, var(--xf-bg-800));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 22%, transparent);
 }
 
 .portfolio-manage-table__account-cell {
@@ -1151,6 +1291,31 @@
   font-size: clamp(1.25rem, 3.5vw, 1.65rem);
 }
 
+.portfolio-hero__portfolio-readonly {
+  margin: 0.35rem 0 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--xf-text-300);
+}
+
+.portfolio-hero__portfolio-readonly-label {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.portfolio-hero__portfolio-readonly-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--xf-text-100);
+}
+
 .portfolio-edit-account-card,
 .portfolio-edit-holdings-card {
   position: relative;
@@ -1204,6 +1369,57 @@
   font-size: 0.8rem;
   color: var(--xf-text-300);
   line-height: 1.45;
+}
+
+/* Remove-account card + theme-aware delete control (deep + soft / light shell) */
+.portfolio-edit-account-card--danger-zone {
+  border-color: color-mix(in srgb, var(--xf-danger-400) 35%, transparent);
+}
+
+.portfolio-account-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--xf-radius-md);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    color 120ms ease,
+    transform 120ms ease,
+    opacity 120ms ease;
+  color: color-mix(in srgb, var(--xf-danger-400) 70%, var(--xf-text-100) 30%);
+  border: 1px solid color-mix(in srgb, var(--xf-danger-400) 45%, var(--xf-text-100) 14%);
+  background: color-mix(in srgb, var(--xf-danger-400) 14%, var(--xf-surface-700));
+}
+
+.portfolio-account-delete-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--xf-danger-400) 55%, var(--xf-text-100) 10%);
+  background: color-mix(in srgb, var(--xf-danger-400) 24%, var(--xf-surface-700));
+}
+
+.portfolio-account-delete-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-danger-400) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.portfolio-account-delete-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.portfolio-account-delete-btn .crud-icon,
+.portfolio-account-delete-btn svg {
+  flex-shrink: 0;
+  color: inherit;
 }
 
 .portfolio-edit-fieldset {

@@ -5,9 +5,20 @@ import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
 import { deletePortfolioAccountForUser, updatePortfolioAccountForUser } from "@/modules/core-admin/repository";
-import { accountOutlookValues } from "@/modules/core-admin/types";
+import { accountOutlookValues, parseAccountOutlook } from "@/modules/core-admin/types";
 
 const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);
+
+/** Maps legacy desk slugs (e.g. growth, balanced) to canonical bullish | neutral | bearish before enum parse. */
+const outlookPatchField = z.preprocess(
+  (raw: unknown) => {
+    if (raw === undefined) return undefined;
+    if (raw === null) return null;
+    if (typeof raw !== "string") return raw;
+    return parseAccountOutlook(raw);
+  },
+  z.union([z.enum(accountOutlookValues), z.null()]).optional()
+);
 
 const patchAccountSchema = z
   .object({
@@ -15,7 +26,7 @@ const patchAccountSchema = z
     cashBalance: z.number().finite().nonnegative().optional(),
     extAccountId: z.string().trim().min(1).max(200).optional(),
     riskProfile: z.union([deskRiskEnum, z.null()]).optional(),
-    outlook: z.union([z.enum(accountOutlookValues), z.null()]).optional()
+    outlook: outlookPatchField
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field is required"

@@ -23,7 +23,7 @@ import { PATCH as patchAdminPortfolio } from "@/app/api/admin/portfolios/[portfo
 
 const portfolioId = "507f1f77bcf86cd799439033";
 
-function mockPortfolio(overrides: Partial<{ outlook: string | null }> = {}) {
+function mockPortfolio() {
   const now = new Date("2026-01-15T12:00:00.000Z");
   return {
     _id: new ObjectId(portfolioId),
@@ -31,8 +31,6 @@ function mockPortfolio(overrides: Partial<{ outlook: string | null }> = {}) {
     userId: "507f1f77bcf86cd799439011",
     name: "Book A",
     isDefault: true,
-    riskProfile: "balanced" as const,
-    outlook: overrides.outlook ?? "neutral",
     createdAt: now,
     updatedAt: now
   };
@@ -54,8 +52,7 @@ describe("PATCH /api/admin/portfolios/[portfolioId]", () => {
     repoMocks.adminUpdatePortfolio.mockImplementation(
       async (input: {
         portfolioId: string;
-        riskProfile?: "conservative" | "balanced" | "growth" | null;
-        outlook?: string | null;
+        name?: string;
         scoringFactors?: Array<{ id: string; weight: number }> | null;
       }) => {
         if (input.portfolioId !== portfolioId) {
@@ -64,32 +61,27 @@ describe("PATCH /api/admin/portfolios/[portfolioId]", () => {
         const base = mockPortfolio();
         return {
           ...base,
-          ...(input.riskProfile !== undefined ? { riskProfile: input.riskProfile ?? undefined } : {}),
-          ...(input.outlook !== undefined ? { outlook: input.outlook } : {}),
+          ...(input.name !== undefined ? { name: input.name } : {}),
           ...(input.scoringFactors !== undefined ? { scoringFactors: input.scoringFactors ?? undefined } : {})
         };
       }
     );
   });
 
-  it("updates riskProfile and outlook when provided", async () => {
+  it("updates name when provided", async () => {
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ riskProfile: "growth", outlook: "bearish" })
+      body: JSON.stringify({ name: "Renamed book" })
     });
     const res = await patchAdminPortfolio(req, { params: Promise.resolve({ portfolioId }) });
     expect(res.status).toBe(200);
-    const json = (await res.json()) as {
-      data: { riskProfile: string | null; outlook: string | null };
-    };
-    expect(json.data.riskProfile).toBe("growth");
-    expect(json.data.outlook).toBe("bearish");
+    const json = (await res.json()) as { data: { name: string } };
+    expect(json.data.name).toBe("Renamed book");
     expect(repoMocks.adminUpdatePortfolio).toHaveBeenCalledWith(
       expect.objectContaining({
         portfolioId,
-        riskProfile: "growth",
-        outlook: "bearish"
+        name: "Renamed book"
       })
     );
   });
@@ -112,22 +104,6 @@ describe("PATCH /api/admin/portfolios/[portfolioId]", () => {
       expect.objectContaining({
         portfolioId,
         scoringFactors: factors
-      })
-    );
-  });
-
-  it("accepts clearing outlook with null", async () => {
-    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ outlook: null })
-    });
-    const res = await patchAdminPortfolio(req, { params: Promise.resolve({ portfolioId }) });
-    expect(res.status).toBe(200);
-    expect(repoMocks.adminUpdatePortfolio).toHaveBeenCalledWith(
-      expect.objectContaining({
-        portfolioId,
-        outlook: null
       })
     );
   });

@@ -740,7 +740,6 @@ describe("xchat ask route collection retrieval", () => {
           id: "p1",
           name: "Main",
           isDefault: true,
-          ext_broker_ref: "ibkr",
           totalPositionCount: 0
         },
         accounts: [],

@@ -153,7 +153,6 @@ describe("portfolio API routes", () => {
       userId: "507f1f77bcf86cd799439011",
       name: "Default Portfolio",
       isDefault: true,
-      ext_broker_ref: "extBrokerName",
       tenantPortfolioOrgKey: "org-atx-finance",
       createdAt: new Date("2025-01-01T00:00:00.000Z"),
       updatedAt: new Date("2025-01-01T00:00:00.000Z")
@@ -163,7 +162,6 @@ describe("portfolio API routes", () => {
       userId: "507f1f77bcf86cd799439011",
       name: "Renamed Portfolio",
       isDefault: true,
-      ext_broker_ref: "extBrokerName",
       tenantPortfolioOrgKey: "org-atx-finance",
       createdAt: new Date("2025-01-01T00:00:00.000Z"),
       updatedAt: new Date("2025-01-02T00:00:00.000Z")
@@ -200,9 +198,6 @@ describe("portfolio API routes", () => {
     const payload = (await response.json()) as { data: { name: string } };
     expect(response.status).toBe(200);
     expect(payload.data.name).toBe("Default Portfolio");
-    expect(
-      (payload as { data: { ext_broker_ref?: string } }).data.ext_broker_ref
-    ).toBe("extBrokerName");
     expect(
       (payload as { data: { tenantPortfolioOrgKey?: string } }).data.tenantPortfolioOrgKey
     ).toBe("org-atx-finance");
@@ -426,6 +421,28 @@ describe("portfolio API routes", () => {
     expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalledWith(
       expect.objectContaining({
         riskProfile: "balanced",
+        outlook: "bullish"
+      })
+    );
+  });
+
+  it("PATCH account accepts legacy outlook slug and maps to canonical value", async () => {
+    const response = await patchPortfolioAccount(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outlook: "growth" })
+      }),
+      {
+        params: Promise.resolve({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
         outlook: "bullish"
       })
     );

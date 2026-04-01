@@ -85,8 +85,6 @@ const BROKER_CATALOG_TYPE_RE = /^[a-z][a-z0-9_]{0,31}$/;
 const OPTIONS_STRATEGY_DESCRIPTION_MAX_LEN = 512_000;
 
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
-/** Default broker bucket on new portfolios for future trader cohort grouping. */
-export const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "defaultaccount";
 const DEFAULT_ACCOUNT_REF = "fidelity-default-account";
 /** Default paper cash for provision + read-time coalesce when Mongo field is missing. */
@@ -2628,7 +2626,6 @@ export async function provisionDefaultPortfolioForUser(
   const portfolioSetFields = {
     name: portfolioName,
     isDefault: true,
-    ext_broker_ref: DEFAULT_EXT_BROKER_REF,
     tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
     updatedAt: now,
     ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
@@ -3096,9 +3093,9 @@ export async function updatePortfolioAccountForUser(
     }
   }
 
-  const hasScalarUpdates = Object.keys($set).length > 1;
+  const hasSetMutation = Object.keys($set).some((k) => k !== "updatedAt");
   const hasUnsets = Object.keys($unset).length > 0;
-  if (!hasScalarUpdates && !hasUnsets) {
+  if (!hasSetMutation && !hasUnsets) {
     return existing;
   }
 
@@ -3120,8 +3117,6 @@ export async function updatePortfolioForUser(input: {
   tenantId?: string;
   portfolioId: string;
   name?: string;
-  outlook?: AccountOutlook | null;
-  broker_type?: string | null;
   portfolioKind?: Portfolio["portfolioKind"];
   isDefault?: boolean;
 }): Promise<Portfolio | null> {
@@ -3135,8 +3130,6 @@ export async function updatePortfolioForUser(input: {
   }
   const hasFieldUpdate =
     input.name !== undefined ||
-    input.outlook !== undefined ||
-    input.broker_type !== undefined ||
     input.portfolioKind !== undefined ||
     input.isDefault !== undefined;
   if (!hasFieldUpdate) {
@@ -3145,8 +3138,6 @@ export async function updatePortfolioForUser(input: {
   return adminUpdatePortfolio({
     portfolioId: input.portfolioId,
     ...(input.name !== undefined ? { name: input.name } : {}),
-    ...(input.outlook !== undefined ? { outlook: input.outlook } : {}),
-    ...(input.broker_type !== undefined ? { broker_type: input.broker_type } : {}),
     ...(input.portfolioKind !== undefined ? { portfolioKind: input.portfolioKind } : {}),
     ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {})
   });
@@ -3382,10 +3373,6 @@ export async function adminListPortfoliosWithStats(input: {
 export async function adminUpdatePortfolio(input: {
   portfolioId: string;
   name?: string;
-  ext_broker_ref?: string | null;
-  broker_type?: string | null;
-  riskProfile?: Portfolio["riskProfile"] | null;
-  outlook?: AccountOutlook | null;
   /** Workspace manage UI — real estate vs investments bucket. */
   portfolioKind?: Portfolio["portfolioKind"];
   /** Validated rows, or null to unset (read path uses catalog defaults). */
@@ -3402,26 +3389,6 @@ export async function adminUpdatePortfolio(input: {
   const fieldSet: Record<string, unknown> = {};
   if (typeof input.name === "string" && input.name.trim()) {
     fieldSet.name = input.name.trim().slice(0, 200);
-  }
-  if (input.ext_broker_ref !== undefined) {
-    const v = input.ext_broker_ref?.trim();
-    fieldSet.ext_broker_ref = v && v.length > 0 ? v.slice(0, 128) : null;
-  }
-  if (input.broker_type !== undefined) {
-    if (input.broker_type === null) {
-      fieldSet.broker_type = null;
-    } else {
-      const raw = String(input.broker_type).trim().toLowerCase().slice(0, 32);
-      if (BROKER_CATALOG_TYPE_RE.test(raw)) {
-        fieldSet.broker_type = raw;
-      }
-    }
-  }
-  if (input.riskProfile !== undefined) {
-    fieldSet.riskProfile = input.riskProfile;
-  }
-  if (input.outlook !== undefined) {
-    fieldSet.outlook = input.outlook;
   }
   if (input.portfolioKind !== undefined) {
     fieldSet.portfolioKind = input.portfolioKind;
@@ -3477,8 +3444,6 @@ export async function adminCreatePortfolio(input: {
   tenantId?: string;
   name: string;
   isDefault?: boolean;
-  broker_type?: string;
-  outlook?: AccountOutlook | null;
   portfolioKind?: Portfolio["portfolioKind"];
 }): Promise<Portfolio | null> {
   await ensurePortfolioIndexes();
@@ -3520,13 +3485,6 @@ export async function adminCreatePortfolio(input: {
     tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
     createdAt: now,
     updatedAt: now,
-    ...(input.broker_type !== undefined
-      ? (() => {
-          const raw = String(input.broker_type).trim().toLowerCase().slice(0, 32);
-          return BROKER_CATALOG_TYPE_RE.test(raw) ? { broker_type: raw } : {};
-        })()
-      : {}),
-    ...(input.outlook !== undefined && input.outlook !== null ? { outlook: input.outlook } : {}),
     ...(input.portfolioKind !== undefined && input.portfolioKind !== null
       ? { portfolioKind: input.portfolioKind }
       : {})

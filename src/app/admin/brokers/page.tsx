@@ -20,9 +20,10 @@ export default async function AdminBrokersPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Manage Brokers</h1>
         <p className="hero-copy">
-          Define broker <strong>type</strong> slugs (used on portfolios as <code className="font-mono text-xs">broker_type</code>
-          ), human-readable <strong>name</strong>, optional <strong>description</strong>, and <strong>icon URL</strong> for this
-          console. Defaults seed Merrill, Fidelity, E*TRADE, and Interactive Brokers (IBKR) when the catalog is empty.
+          Define custodian <strong>type</strong> slugs (stored on <strong>accounts</strong> as{" "}
+          <code className="font-mono text-xs">type</code>), human-readable <strong>name</strong>, optional{" "}
+          <strong>description</strong>, and <strong>icon URL</strong> for this console. Defaults seed Merrill, Fidelity,
+          E*TRADE, and Interactive Brokers (IBKR) when the catalog is empty.
         </p>
       </section>
 

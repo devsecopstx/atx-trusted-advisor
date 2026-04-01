@@ -254,7 +254,6 @@ Tool discipline (use the API tool channel; do not fake tool calls in plain text)
 
 Prefer tool-grounded answers over unsupported claims. When tools return nothing useful, say so clearly.`;
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
-const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
 /** Default `portfolio_accounts.extAccountId` — matches `provisionDefaultPortfolioForUser` / Spring provision. */
 const DEFAULT_EXT_ACCOUNT_XREF = "ext_account_xref";
@@ -581,7 +580,6 @@ async function seed() {
         $set: {
           name: DEFAULT_PORTFOLIO_NAME,
           isDefault: true,
-          ext_broker_ref: DEFAULT_EXT_BROKER_REF,
           tenantPortfolioOrgKey: DEFAULT_TENANT_PORTFOLIO_ORG_KEY,
           updatedAt: now
         }

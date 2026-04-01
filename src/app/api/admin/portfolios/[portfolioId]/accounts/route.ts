@@ -89,8 +89,6 @@ export async function GET(request: Request, context: RouteContext) {
         name: portfolio.name,
         userId: ownerHex ?? "",
         tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey,
-        riskProfile: portfolio.riskProfile ?? null,
-        outlook: portfolio.outlook ?? null,
         userDisplayName: formatCoreUserDisplayName(owner),
         userEmail: owner?.email ?? null
       },

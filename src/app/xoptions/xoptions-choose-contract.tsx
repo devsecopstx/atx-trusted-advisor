@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-payoff-chart";
 import {
-  addCalendarDaysUtc,
-  otmPercentCall,
-  otmPercentPut,
-  pickExpirationOnOrAfter,
-  sliceStrikesAroundSpot,
-  spreadMetrics,
-  spreadQuality
+    addCalendarDaysUtc,
+    otmPercentCall,
+    otmPercentPut,
+    pickExpirationOnOrAfter,
+    sliceStrikesAroundSpot,
+    spreadMetrics,
+    spreadQuality
 } from "@/lib/xoptions/xoptions-chain-helpers";
 
 type ChainLeg = {
@@ -216,6 +216,15 @@ export function XoptionsChooseContract({ symbol, weeks, lastPrice }: XoptionsCho
     return sliceStrikesAroundSpot(baseRows, chain.stockPrice, ATM_STRIKE_WINDOW);
   }, [chain, baseRows, showAllStrikes]);
 
+  /** Keep the selected strike visible even when the ATM window omits it. */
+  const tableRowsForDisplay = useMemo(() => {
+    if (selectedStrike == null) return tableRows;
+    if (tableRows.some((r) => r.strike === selectedStrike)) return tableRows;
+    const extra = baseRows.find((r) => r.strike === selectedStrike);
+    if (!extra) return tableRows;
+    return [...tableRows, extra].sort((a, b) => a.strike - b.strike);
+  }, [tableRows, baseRows, selectedStrike]);
+
   const truncated = showAllStrikes && baseRows.length > CHAIN_TABLE_MAX;
 
   const selectedRow = useMemo(() => {
@@ -382,9 +391,8 @@ export function XoptionsChooseContract({ symbol, weeks, lastPrice }: XoptionsCho
             {needsOverlay ? (
               <div className="xoptions-contract-overlay pointer-events-none" role="status">
                 <ul className="xoptions-contract-overlay__list">
-                  <li>Select an expiration date</li>
-                  <li>Select a strike price</li>
-                  <li>Enter or confirm limit price</li>
+                  <li>Select a strike (table or Strike dropdown)</li>
+                  <li>Confirm limit price (filled from mid when you pick)</li>
                 </ul>
               </div>
             ) : null}
@@ -405,7 +413,7 @@ export function XoptionsChooseContract({ symbol, weeks, lastPrice }: XoptionsCho
                   </tr>
                 </thead>
                 <tbody>
-                  {tableRows.map((row) => {
+                  {tableRowsForDisplay.map((row) => {
                     const leg = side === "call" ? row.call : row.put;
                     const spot = chain.stockPrice;
                     const otm =

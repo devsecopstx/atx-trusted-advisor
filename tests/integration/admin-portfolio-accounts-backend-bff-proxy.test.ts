@@ -71,9 +71,7 @@ describe("admin portfolio accounts API BFF proxy", () => {
       _id: pid,
       name: "P1",
       userId: "507f1f77bcf86cd799439011",
-      tenantPortfolioOrgKey: "org",
-      riskProfile: null,
-      outlook: null
+      tenantPortfolioOrgKey: "org"
     });
     repoMocks.adminListAccountsForPortfolio.mockResolvedValue([]);
   });

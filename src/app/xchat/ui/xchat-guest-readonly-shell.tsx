@@ -30,12 +30,12 @@ export function XchatGuestReadonlyShell({
         <aside aria-label="Public read-only navigation" className="app-user-public-rail xf-widget">
           <AppUserResourcesRailSection
             isGlobalAdmin={false}
-            railDisclosureDefaultOpen
+            railDisclosureDefaultOpen={false}
             showReferenceDocs={false}
           />
           <AppUserAccountRailSection
             isGlobalAdmin={false}
-            railDisclosureDefaultOpen
+            railDisclosureDefaultOpen={false}
             showSettingsLink={false}
           />
         </aside>

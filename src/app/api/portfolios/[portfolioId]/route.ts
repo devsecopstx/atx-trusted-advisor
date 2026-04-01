@@ -5,7 +5,6 @@ import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
 import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
-import { portfolioOutlookRequestSchema } from "@/lib/portfolio-outlook-api";
 import {
     deletePortfolioForSessionUser,
     getPortfolioByIdForSessionUser,
@@ -19,14 +18,6 @@ type RouteContext = {
 const patchPortfolioSchema = z
   .object({
     name: z.string().trim().min(1).max(200).optional(),
-    outlook: portfolioOutlookRequestSchema,
-    broker_type: z
-      .string()
-      .trim()
-      .max(32)
-      .nullable()
-      .optional()
-      .transform((s) => (s === "" ? null : s)),
     portfolioKind: z.enum(["real_estate", "investments"]).nullable().optional(),
     isDefault: z.boolean().optional()
   })
@@ -100,8 +91,6 @@ export async function PATCH(request: Request, context: RouteContext) {
     tenantId: session.tenantId,
     portfolioId,
     ...(p.name !== undefined ? { name: p.name } : {}),
-    ...(p.outlook !== undefined ? { outlook: p.outlook } : {}),
-    ...(p.broker_type !== undefined ? { broker_type: p.broker_type } : {}),
     ...(p.portfolioKind !== undefined ? { portfolioKind: p.portfolioKind } : {}),
     ...(p.isDefault !== undefined ? { isDefault: p.isDefault } : {})
   });

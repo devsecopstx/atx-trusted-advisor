@@ -8,16 +8,12 @@ import { parseJson } from "@/app/admin/ui/http";
 
 import { portfolioToolsHubHref } from "./portfolio-child-tools";
 
-type BrokerCatalogOption = { type: string; name: string };
-
 type PortfolioRow = {
   _id: string;
   userId: string;
   name: string;
   isDefault: boolean;
   tenantPortfolioOrgKey?: string;
-  ext_broker_ref?: string;
-  broker_type?: string | null;
   createdAt: string;
   updatedAt: string;
   accountCount: number;
@@ -40,30 +36,17 @@ export function AdminPortfoliosCrud() {
   const [rows, setRows] = useState<PortfolioRow[]>([]);
   const [status, setStatus] = useState("Ready — tap refresh");
   const [loading, setLoading] = useState(false);
-  const [edits, setEdits] = useState<
-    Record<string, Partial<Pick<PortfolioRow, "name" | "ext_broker_ref" | "broker_type" | "isDefault">>>
-  >({});
+  const [edits, setEdits] = useState<Record<string, Partial<Pick<PortfolioRow, "name" | "isDefault">>>>({});
   const [createUserId, setCreateUserId] = useState("");
   const [createName, setCreateName] = useState("");
   const [createDefault, setCreateDefault] = useState(false);
-  const [createBrokerType, setCreateBrokerType] = useState("");
-  const [brokerCatalog, setBrokerCatalog] = useState<BrokerCatalogOption[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setStatus("Loading portfolios…");
     try {
-      const [portfolioRes, brokerRes] = await Promise.all([
-        fetch("/api/admin/portfolios", { cache: "no-store" }),
-        fetch("/api/admin/brokers", { cache: "no-store" })
-      ]);
+      const portfolioRes = await fetch("/api/admin/portfolios", { cache: "no-store" });
       const payload = await parseJson<{ data: PortfolioRow[] }>(portfolioRes);
-      try {
-        const brokers = await parseJson<{ data: BrokerCatalogOption[] }>(brokerRes);
-        setBrokerCatalog(brokers.data);
-      } catch {
-        setBrokerCatalog([]);
-      }
       setRows(payload.data);
       setEdits({});
       setStatus(`Loaded ${payload.data.length} portfolio(s)`);
@@ -86,26 +69,11 @@ export function AdminPortfoliosCrud() {
     return {
       ...row,
       name: d.name !== undefined ? d.name : row.name,
-      ext_broker_ref: d.ext_broker_ref !== undefined ? d.ext_broker_ref ?? "" : row.ext_broker_ref ?? "",
-      broker_type: d.broker_type !== undefined ? d.broker_type : row.broker_type ?? null,
       isDefault: d.isDefault !== undefined ? Boolean(d.isDefault) : row.isDefault
     };
   };
 
   const hasDirty = useMemo(() => Object.keys(edits).length > 0, [edits]);
-
-  const catalogByType = useMemo(() => new Map(brokerCatalog.map((b) => [b.type, b])), [brokerCatalog]);
-
-  const rowBrokerSelectOptions = useCallback(
-    (currentSlug: string | null | undefined): BrokerCatalogOption[] => {
-      const cur = currentSlug ?? "";
-      if (cur && !catalogByType.has(cur)) {
-        return [{ type: cur, name: `${cur} (not in catalog)` }, ...brokerCatalog];
-      }
-      return brokerCatalog;
-    },
-    [brokerCatalog, catalogByType]
-  );
 
   const selectDefaultForUser = (userId: string, portfolioId: string) => {
     setEdits((prev) => {
@@ -131,13 +99,6 @@ export function AdminPortfoliosCrud() {
         return null;
       }
       body.name = trimmed;
-    }
-    if (d.ext_broker_ref !== undefined) {
-      const v = (m.ext_broker_ref ?? "").trim();
-      body.ext_broker_ref = v.length > 0 ? v : null;
-    }
-    if (d.broker_type !== undefined) {
-      body.broker_type = m.broker_type;
     }
     if (m.isDefault && (!row.isDefault || d.isDefault === true)) {
       body.isDefault = true;
@@ -239,15 +200,13 @@ export function AdminPortfoliosCrud() {
           body: JSON.stringify({
             userId: uid,
             name,
-            isDefault: createDefault,
-            ...(createBrokerType ? { broker_type: createBrokerType } : {})
+            isDefault: createDefault
           })
         })
       );
       setCreateUserId("");
       setCreateName("");
       setCreateDefault(false);
-      setCreateBrokerType("");
       setStatus("Created");
       void refresh();
     } catch (e) {
@@ -285,24 +244,24 @@ export function AdminPortfoliosCrud() {
         <Link className="underline font-medium" href="/admin/manage_account">
           user settings
         </Link>
-        ). Edit <strong>tenant org ref</strong> (<code className="font-mono text-xs">ext_broker_ref</code>) and broker
-        type from the{" "}
+        ). Custodian / broker type is set per account under{" "}
         <Link className="underline font-medium" href="/admin/brokers">
           broker catalog
-        </Link>
-        . One <strong>default</strong> book per user (radio). Tenant org key column is read-only. Use{" "}
-        <strong>Tools</strong> for watchlist, scoring, tasks, and other book-scoped consoles.
+        </Link>{" "}
+        (account <code className="font-mono text-xs">type</code>), not on the portfolio book. One{" "}
+        <strong>default</strong> book per user (radio). Tenant org key column is read-only. Use <strong>Tools</strong>{" "}
+        for watchlist, scoring, tasks, and other book-scoped consoles.
       </div>
 
       <div className="crud-table-wrap">
         <table className="crud-table">
           <thead>
             <tr>
-              <th className="admin-portfolio-col-name" title="Editable portfolio / book name">Name</th>
+              <th className="admin-portfolio-col-name" title="Editable portfolio / book name">
+                Name
+              </th>
               <th title="Links open User settings for that core user">User</th>
               <th>Tenant org key</th>
-              <th title="Cohort / integration grouping; persisted as ext_broker_ref">Tenant org ref</th>
-              <th>Broker type</th>
               <th>Default</th>
               <th>Accounts</th>
               <th>Total cash</th>
@@ -360,54 +319,6 @@ export function AdminPortfoliosCrud() {
                     title={row.tenantPortfolioOrgKey ?? ""}
                   >
                     {row.tenantPortfolioOrgKey ?? "—"}
-                  </td>
-                  <td>
-                    <input
-                      className="crud-input font-mono text-xs"
-                      value={
-                        draft(row._id).ext_broker_ref !== undefined
-                          ? draft(row._id).ext_broker_ref ?? ""
-                          : row.ext_broker_ref ?? ""
-                      }
-                      onChange={(e) =>
-                        setEdits((prev) => ({
-                          ...prev,
-                          [row._id]: { ...prev[row._id], ext_broker_ref: e.target.value }
-                        }))
-                      }
-                      aria-label="Tenant org ref"
-                      placeholder="e.g. extBrokerName"
-                    />
-                  </td>
-                  <td>
-                    <select
-                      className="crud-input text-xs"
-                      value={
-                        (draft(row._id).broker_type !== undefined
-                          ? draft(row._id).broker_type
-                          : row.broker_type) ?? ""
-                      }
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setEdits((prev) => ({
-                          ...prev,
-                          [row._id]: {
-                            ...prev[row._id],
-                            broker_type: v === "" ? null : v
-                          }
-                        }));
-                      }}
-                      aria-label="Broker type"
-                    >
-                      <option value="">—</option>
-                      {rowBrokerSelectOptions(
-                        draft(row._id).broker_type !== undefined ? draft(row._id).broker_type : row.broker_type
-                      ).map((bt) => (
-                        <option key={bt.type} value={bt.type}>
-                          {bt.name} ({bt.type})
-                        </option>
-                      ))}
-                    </select>
                   </td>
                   <td>
                     <label className="flex items-center gap-2 text-sm">
@@ -474,21 +385,6 @@ export function AdminPortfoliosCrud() {
               onChange={(e) => setCreateName(e.target.value)}
               placeholder="e.g. Secondary book"
             />
-          </label>
-          <label className="status-text" style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            Broker type (optional)
-            <select
-              className="crud-input text-xs"
-              value={createBrokerType}
-              onChange={(e) => setCreateBrokerType(e.target.value === "" ? "" : e.target.value)}
-            >
-              <option value="">—</option>
-              {brokerCatalog.map((bt) => (
-                <option key={bt.type} value={bt.type}>
-                  {bt.name} ({bt.type})
-                </option>
-              ))}
-            </select>
           </label>
           <label className="status-text" style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
             <input type="checkbox" checked={createDefault} onChange={(e) => setCreateDefault(e.target.checked)} />

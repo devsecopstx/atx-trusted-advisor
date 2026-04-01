@@ -15,7 +15,7 @@ type AccountOption = {
 type PortfolioPositionQuickAddProps = {
   portfolioId: string;
   accounts: AccountOption[];
-  /** When set, account is fixed (no dropdown) — used by add-holdings route. */
+  /** When set, account is fixed (no dropdown). */
   lockedAccountId?: string;
 };
 

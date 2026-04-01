@@ -7,7 +7,6 @@ const TENANT_PORTFOLIO_COLLECTION = "tenant_portfolio";
 const DEFAULT_TENANT_PORTFOLIO_ORG_KEY =
   (process.env.TENANT_PORTFOLIO_ORG_KEY || "").trim() || "org-atx-finance";
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
-const DEFAULT_EXT_BROKER_REF = "extBrokerName";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
 const DEFAULT_EXT_ACCOUNT_XREF = "ext_account_xref";
 const DEFAULT_WATCHLIST_NAME = "Default Watchlist";
@@ -69,7 +68,6 @@ async function provisionDefaultsForUser(db, { userId, tenantId }) {
       $set: {
         name: DEFAULT_PORTFOLIO_NAME,
         isDefault: true,
-        ext_broker_ref: DEFAULT_EXT_BROKER_REF,
         tenantPortfolioOrgKey: DEFAULT_TENANT_PORTFOLIO_ORG_KEY,
         updatedAt: now
       }

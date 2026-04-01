@@ -800,6 +800,10 @@ export function XchatConversation({
         </div>
         {!leftRailCollapsed ? (
           <div className="xchat-rail-body">
+            <AppUserManageWorkspaceRailSection
+              isGlobalAdmin={isGlobalAdminSession}
+              railDisclosureDefaultOpen={false}
+            />
             {defaultBookLabels ? (
               <section
                 aria-label="Default portfolio and account"
@@ -824,7 +828,7 @@ export function XchatConversation({
             ) : null}
             <section className="app-user-rail-section" aria-label="Persona">
               <RailDisclosure
-                defaultOpen
+                defaultOpen={false}
                 icon={<PersonaRailGlyph className="app-user-rail-disclosure__glyph" />}
                 title="Persona"
               >
@@ -1003,10 +1007,6 @@ export function XchatConversation({
               railDisclosureDefaultOpen={false}
             />
             <AppUserAccountRailSection
-              isGlobalAdmin={isGlobalAdminSession}
-              railDisclosureDefaultOpen={false}
-            />
-            <AppUserManageWorkspaceRailSection
               isGlobalAdmin={isGlobalAdminSession}
               railDisclosureDefaultOpen={false}
             />

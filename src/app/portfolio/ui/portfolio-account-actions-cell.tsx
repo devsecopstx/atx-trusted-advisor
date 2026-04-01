@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { AddIcon, DeleteIcon } from "@/app/admin/ui/crud-icons";
+import { DeleteIcon } from "@/app/admin/ui/crud-icons";
 import { IconEditLink } from "@/app/ui/icon-edit-control";
 
 type Props = {
@@ -69,31 +68,25 @@ export function PortfolioAccountActionsCell({
         />
         <span className="portfolio-account-actions__focus-label">Select</span>
       </label>
-      <IconEditLink
-        href={`/portfolio/accounts/${accountIdHex}`}
-        label={`Edit ${accountName}`}
-        variant="tiny"
-      />
-      {canDelete ? (
-        <button
-          type="button"
-          className="portfolio-account-actions__icon-btn"
-          disabled={deletePending}
-          title="Delete account"
-          aria-label={`Delete ${accountName}`}
-          onClick={() => void onDelete()}
-        >
-          <DeleteIcon className="crud-icon" aria-hidden />
-        </button>
-      ) : null}
-      <Link
-        className="portfolio-account-actions__add-holdings"
-        href={`/portfolio/accounts/${encodeURIComponent(accountIdHex)}/add-holdings`}
-        title="Add positions to this account"
-      >
-        <AddIcon className="crud-icon" aria-hidden />
-        <span>Add holdings</span>
-      </Link>
+      <div className="portfolio-account-actions__trailing">
+        {canDelete ? (
+          <button
+            type="button"
+            className="portfolio-account-actions__icon-btn"
+            disabled={deletePending}
+            title="Delete account"
+            aria-label={`Delete ${accountName}`}
+            onClick={() => void onDelete()}
+          >
+            <DeleteIcon className="crud-icon" aria-hidden />
+          </button>
+        ) : null}
+        <IconEditLink
+          href={`/portfolio/accounts/${accountIdHex}`}
+          label={`Edit ${accountName}`}
+          variant="tiny"
+        />
+      </div>
     </div>
   );
 }

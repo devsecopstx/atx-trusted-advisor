@@ -239,7 +239,7 @@ export function accountOutlookDisplayLabel(outlook: AccountOutlook | null | unde
 /** Admin-managed broker definitions (slug + display); seeds Merrill / Fidelity / E*TRADE / IBKR. */
 export type BrokerCatalogEntry = {
   _id?: ObjectId;
-  /** Lowercase slug used as portfolio `broker_type` (e.g. merrill). */
+  /** Lowercase slug used as account custodian type (`Account.type`, e.g. merrill). */
   type: string;
   name: string;
   description?: string;
@@ -303,22 +303,10 @@ export type Portfolio = {
   name: string;
   isDefault: boolean;
   /**
-   * Cohort / broker grouping key (e.g. linked integration). Defaults to `extBrokerName` until set.
-   */
-  ext_broker_ref?: string;
-  /**
-   * Broker catalog slug (see {@link BrokerCatalogEntry}); aligns with import {@link AccountType} for built-ins.
-   */
-  broker_type?: string;
-  /**
    * Deployment org bucket (e.g. `org-atx-finance`): all app_user “client” portfolios for this instance.
    * See `getTenantPortfolioOrgKey()` / `TENANT_PORTFOLIO_ORG_KEY`.
    */
   tenantPortfolioOrgKey?: string;
-  /** Book-level risk stance for desk context (optional). */
-  riskProfile?: "conservative" | "balanced" | "growth";
-  /** Book-level market outlook slug (optional); same values as {@link Account.outlook}. */
-  outlook?: AccountOutlook | null;
   /**
    * Workspace “Manage portfolios” bucket (optional; unset = show as investments in UI).
    */

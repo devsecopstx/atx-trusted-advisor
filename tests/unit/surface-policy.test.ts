@@ -13,6 +13,7 @@ describe("surface-policy", () => {
     expect(isAppUserProductPath("/portfolio/accounts/abc")).toBe(true);
     expect(isAppUserProductPath("/xoptions")).toBe(true);
     expect(isAppUserProductPath("/xoptions/builder")).toBe(true);
+    expect(isAppUserProductPath("/workspace/portfolios")).toBe(true);
     expect(isAppUserProductPath("/recommendations")).toBe(false);
     expect(isAppUserProductPath("/admin")).toBe(false);
     expect(isAppUserProductPath("/login")).toBe(false);

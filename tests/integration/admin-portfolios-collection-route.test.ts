@@ -53,10 +53,6 @@ function mockListRow() {
     name: "Primary book",
     isDefault: true,
     tenantPortfolioOrgKey: "org-atx-finance",
-    ext_broker_ref: "",
-    broker_type: null as string | null,
-    riskProfile: null as "conservative" | "balanced" | "growth" | null,
-    outlook: null as string | null,
     scoringFactors: undefined,
     createdAt: now,
     updatedAt: now,
@@ -149,10 +145,6 @@ describe("POST /api/admin/portfolios", () => {
       name: "Secondary book",
       isDefault: false,
       tenantPortfolioOrgKey: "org-atx-finance",
-      ext_broker_ref: "",
-      broker_type: null,
-      riskProfile: null,
-      outlook: null,
       createdAt: now,
       updatedAt: now
     });
@@ -171,8 +163,7 @@ describe("POST /api/admin/portfolios", () => {
       userId,
       tenantId,
       name: "Secondary book",
-      isDefault: undefined,
-      broker_type: undefined
+      isDefault: undefined
     });
   });
 });

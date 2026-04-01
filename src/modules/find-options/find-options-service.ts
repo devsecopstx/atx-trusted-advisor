@@ -1,4 +1,4 @@
-import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
+import { loadAppUserDefaultBook, type AppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { getEnv } from "@/lib/env";
 import {
@@ -10,14 +10,27 @@ import {
 } from "@/modules/core-admin/repository";
 import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
 import {
-    type Account,
-    type AccountOutlook,
     normalizePositionType,
     parseAccountOutlook,
+    type Account,
+    type AccountOutlook,
     type Portfolio
 } from "@/modules/core-admin/types";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+
+function resolveWorkspaceAccount(
+  accounts: Account[],
+  book: AppUserDefaultBook | null
+): Account | undefined {
+  if (book?.accountId) {
+    const match = accounts.find((a) => a._id?.toHexString() === book.accountId);
+    if (match) {
+      return match;
+    }
+  }
+  return accounts.find((a) => a.isDefault) ?? accounts[0];
+}
 
 import { scanUnderlyingForHotOptions } from "./options-hot-scan";
 import { computeRsiFromCloses } from "./rsi";
@@ -46,7 +59,7 @@ export type FindOptionsContextPayload = {
     optionsApproved: boolean;
   };
   bookOutlook: AccountOutlook | null;
-  bookRiskProfile: Portfolio["riskProfile"] | null;
+  bookRiskProfile: "conservative" | "balanced" | "growth" | null;
   scoringFactors: ReturnType<typeof scoringFactorsPayloadForAdminApi>["scoringFactors"];
 };
 
@@ -114,13 +127,13 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
     portfolioId: portfolio._id.toHexString(),
     tenantId: session.tenantId
   });
-  const defaultAccount = accounts.find((a) => a.isDefault) ?? accounts[0];
+  const workspaceAccount = resolveWorkspaceAccount(accounts, book);
   const { scoringFactors } = scoringFactorsPayloadForAdminApi(portfolio.scoringFactors);
   const accountRows = buildFindOptionsAccountRows(accounts, assumeAllApproved);
-  const defaultRow = defaultAccount?._id
-    ? accountRows.find((r) => r.id === defaultAccount._id!.toHexString())
+  const workspaceRow = workspaceAccount?._id
+    ? accountRows.find((r) => r.id === workspaceAccount._id!.toHexString())
     : undefined;
-  const optionsApprovedDefault = defaultRow?.optionsApproved ?? false;
+  const optionsApprovedDefault = workspaceRow?.optionsApproved ?? false;
 
   return {
     portfolio: {
@@ -129,17 +142,14 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
     },
     accounts: accountRows,
     account: {
-      id: defaultAccount?._id ? defaultAccount._id.toHexString() : book?.accountId ?? null,
-      name:
-        defaultAccount?.name?.trim() ||
-        book?.accountName ||
-        "Account",
-      riskProfile: defaultAccount?.riskProfile ?? null,
-      outlook: defaultAccount?.outlook ?? null,
+      id: workspaceAccount?._id ? workspaceAccount._id.toHexString() : book?.accountId ?? null,
+      name: workspaceAccount?.name?.trim() || book?.accountName || "Account",
+      riskProfile: workspaceAccount?.riskProfile ?? null,
+      outlook: workspaceAccount?.outlook ?? null,
       optionsApproved: optionsApprovedDefault
     },
-    bookOutlook: parseAccountOutlook(portfolio.outlook ?? null),
-    bookRiskProfile: portfolio.riskProfile ?? null,
+    bookOutlook: parseAccountOutlook(workspaceAccount?.outlook ?? null),
+    bookRiskProfile: workspaceAccount?.riskProfile ?? null,
     scoringFactors
   };
 }

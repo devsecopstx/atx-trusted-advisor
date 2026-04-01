@@ -377,7 +377,6 @@ describe("portfolio provisioning repository", () => {
     expect(fakeDb.count("tenant_portfolio")).toBe(1);
     expect(fakeDb.count("portfolio_accounts")).toBe(1);
     expect(fakeDb.count("portfolio_watchlists")).toBe(1);
-    expect(first.portfolio.ext_broker_ref).toBe("extBrokerName");
   });
 
   it("rejects position writes when account does not belong to portfolio", async () => {

@@ -7,14 +7,15 @@ import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-port
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { buildPortfolioHoldingRows } from "@/lib/portfolio-holding-rows";
 import { computePortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import {
-    adminListBrokerCatalog,
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
+    getPortfolioByIdForSessionUser,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
@@ -38,7 +39,17 @@ export default async function PortfolioPage() {
   let accountsLoadError: string | null = null;
 
   try {
-    portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
+    const workspacePortfolioId = await resolveActiveWorkspacePortfolioId(session);
+    portfolio = workspacePortfolioId
+      ? await getPortfolioByIdForSessionUser({
+          userId: session.userId,
+          tenantId: session.tenantId,
+          portfolioId: workspacePortfolioId
+        })
+      : null;
+    if (!portfolio?._id) {
+      portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
+    }
     if (!portfolio?._id) {
       const provisioned = await provisionDefaultPortfolioForUser({
         userId: session.userId,
@@ -103,23 +114,6 @@ export default async function PortfolioPage() {
   const portfolioIdHex = portfolio?._id?.toHexString?.() ?? null;
   const portfolioDisplayName =
     portfolio?.name && portfolio.name.trim().length > 0 ? portfolio.name : "Default portfolio";
-  const portfolioBrokerType =
-    typeof portfolio?.broker_type === "string" ? portfolio.broker_type.trim().toLowerCase() : "";
-  let portfolioBrokerDisplayName: string | null = null;
-  let portfolioBrokerIconUrl: string | null = null;
-  if (portfolioBrokerType) {
-    try {
-      const brokerCatalog = await adminListBrokerCatalog();
-      const brokerRow = brokerCatalog.find((row) => row.type === portfolioBrokerType);
-      portfolioBrokerDisplayName = brokerRow?.name ?? null;
-      portfolioBrokerIconUrl = brokerRow?.iconUrl ?? null;
-    } catch (error) {
-      const detail = caughtErrorMessage(error);
-      console.warn(
-        `[portfolio] broker catalog lookup failed userId=${session.userId} portfolioId=${portfolioIdHex ?? "n/a"} detail=${detail}`
-      );
-    }
-  }
 
   const metrics =
     portfolioIdHex && accounts.length > 0
@@ -217,9 +211,6 @@ export default async function PortfolioPage() {
             metrics={metrics}
             portfolioDisplayName={portfolioDisplayName}
             portfolioIdHex={portfolioIdHex}
-            portfolioBrokerDisplayName={portfolioBrokerDisplayName}
-            portfolioBrokerIconUrl={portfolioBrokerIconUrl}
-            portfolioBrokerType={portfolioBrokerType}
             scoringFactors={scoringFactors}
           />
         ) : null}

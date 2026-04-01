@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
-import { BackIcon, DeleteIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
+import {
+    BackIcon,
+    DeleteIcon,
+    EditIcon,
+    ListRowsIcon,
+    SaveIcon,
+    XMarkIcon
+} from "@/app/admin/ui/crud-icons";
 import { AccountHoldingsLiveTable } from "@/app/portfolio/ui/account-holdings-live-table";
 import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
@@ -32,6 +39,24 @@ function formatBrokerType(type: string): string {
     .join(" ");
 }
 
+/** Short preview for collapsed desk summary (outlook first, then risk). */
+function deskFieldsSummaryPreview(
+  outlook: AccountOutlook | null,
+  riskProfile: SerializableAccount["riskProfile"]
+): string {
+  const parts: string[] = [];
+  if (outlook) {
+    const opt = DESK_OUTLOOK_CARD_OPTIONS.find((o) => o.value === outlook);
+    const short = opt?.title.split(" / ")[0]?.trim();
+    if (short) parts.push(short);
+  }
+  if (riskProfile) {
+    const label = RISK_LEVEL_OPTIONS.find((o) => o.riskProfile === riskProfile)?.label;
+    if (label) parts.push(label);
+  }
+  return parts.length > 0 ? parts.join(" · ") : "Not set";
+}
+
 export function AccountWorkspace({
   portfolioId,
   account,
@@ -40,6 +65,7 @@ export function AccountWorkspace({
 }: AccountWorkspaceProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [savePending, setSavePending] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [positions, setPositions] = useState(initialPositions);
@@ -67,6 +93,8 @@ export function AccountWorkspace({
   const [caLabel, setCaLabel] = useState("");
   const [caAmt, setCaAmt] = useState("");
 
+  const [workspaceTab, setWorkspaceTab] = useState<"edit" | "holdings">("edit");
+
   useEffect(() => {
     setPositions(initialPositions);
   }, [initialPositions]);
@@ -87,26 +115,42 @@ export function AccountWorkspace({
       setError("Cash balance must be a non-negative number.");
       return;
     }
-    const res = await fetch(
-      `/api/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(account._id)}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: acctName.trim() || undefined,
-          cashBalance: cash,
-          extAccountId: extRef.trim() || undefined,
-          riskProfile,
-          outlook
-        })
-      }
-    );
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    if (!res.ok) {
-      setError(body.error ?? "Could not update account");
+    const nameTrim = acctName.trim();
+    if (!nameTrim) {
+      setError("Account name is required.");
       return;
     }
-    startTransition(() => router.refresh());
+    const extTrim = extRef.trim();
+    if (!extTrim) {
+      setError("Account ref is required.");
+      return;
+    }
+    setSavePending(true);
+    try {
+      const res = await fetch(
+        `/api/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(account._id)}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: nameTrim,
+            cashBalance: cash,
+            extAccountId: extTrim,
+            riskProfile,
+            outlook
+          })
+        }
+      );
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(body.error ?? "Could not update account");
+        return;
+      }
+      startTransition(() => router.refresh());
+    } finally {
+      setSavePending(false);
+    }
   }
 
   async function addHolding(e: FormEvent) {
@@ -127,6 +171,7 @@ export function AccountWorkspace({
       }
       const res = await fetch("/api/positions", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           portfolioId,
@@ -174,6 +219,7 @@ export function AccountWorkspace({
       }
       const res = await fetch("/api/positions", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           portfolioId,
@@ -211,6 +257,7 @@ export function AccountWorkspace({
     const label = caLabel.trim().toUpperCase() || "CASH";
     const res = await fetch("/api/positions", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         portfolioId,
@@ -236,7 +283,7 @@ export function AccountWorkspace({
     const qs = new URLSearchParams({ portfolioId, accountId: account._id });
     const res = await fetch(
       `/api/positions/${encodeURIComponent(positionId)}?${qs.toString()}`,
-      { method: "DELETE" }
+      { method: "DELETE", credentials: "include" }
     );
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -255,6 +302,40 @@ export function AccountWorkspace({
         </p>
       ) : null}
 
+      <nav className="portfolio-manage-tabs" role="tablist" aria-label="Account workspace">
+        <button
+          type="button"
+          role="tab"
+          id="account-tab-edit"
+          aria-selected={workspaceTab === "edit"}
+          aria-controls="account-panel-edit"
+          className={`portfolio-manage-tabs__btn${workspaceTab === "edit" ? " portfolio-manage-tabs__btn--active" : ""}`}
+          onClick={() => setWorkspaceTab("edit")}
+        >
+          <EditIcon className="crud-icon" aria-hidden />
+          Edit account
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="account-tab-holdings"
+          aria-selected={workspaceTab === "holdings"}
+          aria-controls="account-panel-holdings"
+          className={`portfolio-manage-tabs__btn${workspaceTab === "holdings" ? " portfolio-manage-tabs__btn--active" : ""}`}
+          onClick={() => setWorkspaceTab("holdings")}
+        >
+          <ListRowsIcon className="crud-icon" aria-hidden />
+          Holdings
+        </button>
+      </nav>
+
+      {workspaceTab === "edit" ? (
+      <div
+        className="portfolio-manage-tabs__panel"
+        role="tabpanel"
+        id="account-panel-edit"
+        aria-labelledby="account-tab-edit"
+      >
       <section className="portfolio-edit-account-card xf-noise-overlay" aria-labelledby="edit-account-card-title">
         <h2 id="edit-account-card-title" className="portfolio-edit-account-card__title">
           Edit account
@@ -329,76 +410,108 @@ export function AccountWorkspace({
             </p>
           </div>
 
-          <fieldset className="portfolio-edit-fieldset">
-            <legend className="portfolio-edit-field__label">Risk level</legend>
-            <div className="portfolio-risk-row portfolio-risk-row--legacy" role="group" aria-label="Risk level">
-              {RISK_LEVEL_OPTIONS.map((opt) => (
-                <button
-                  key={opt.riskProfile}
-                  type="button"
-                  className={`portfolio-risk-btn${riskProfile === opt.riskProfile ? " portfolio-risk-btn--active" : ""}`}
-                  onClick={() => setRiskProfile(opt.riskProfile)}
+          <details className="portfolio-disclosure portfolio-edit-desk-disclosure">
+            <summary className="portfolio-disclosure__summary portfolio-edit-desk-disclosure__summary">
+              <span className="portfolio-edit-desk-disclosure__summary-main">
+                <span className="portfolio-edit-desk-disclosure__chevron" aria-hidden>
+                  ▸
+                </span>
+                Outlook &amp; risk
+              </span>
+              <span className="portfolio-edit-desk-disclosure__preview" title={deskFieldsSummaryPreview(outlook, riskProfile)}>
+                {deskFieldsSummaryPreview(outlook, riskProfile)}
+              </span>
+            </summary>
+            <div className="portfolio-disclosure__body portfolio-edit-desk-disclosure__body">
+              <fieldset className="portfolio-edit-fieldset portfolio-edit-desk-disclosure__fieldset">
+                <legend className="portfolio-edit-field__label">Market outlook</legend>
+                <div
+                  className="portfolio-strategy-grid portfolio-strategy-grid--legacy portfolio-strategy-grid--desk-compact"
+                  role="group"
+                  aria-label="Market outlook"
                 >
-                  <span
-                    className="portfolio-risk-btn__dot"
-                    style={{
-                      background:
-                        opt.tier === "low"
-                          ? "color-mix(in srgb, var(--xf-success-400) 90%, var(--xf-gain-green))"
-                          : opt.tier === "medium"
-                            ? "color-mix(in srgb, var(--xf-lightning-yellow) 85%, var(--xf-text-100))"
-                            : "color-mix(in srgb, var(--xf-danger-400) 85%, var(--xf-text-100))"
-                    }}
-                  />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <div className="portfolio-edit-clear">
-              <button
-                type="button"
-                className={`portfolio-edit-clear__btn${riskProfile === null ? " portfolio-edit-clear__btn--active" : ""}`}
-                onClick={() => setRiskProfile(null)}
-              >
-                <XMarkIcon className="crud-icon" />
-                Clear risk level
-              </button>
-            </div>
-          </fieldset>
+                  {DESK_OUTLOOK_CARD_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`portfolio-strategy-card portfolio-strategy-card--desk-compact${
+                        outlook === opt.value ? " portfolio-strategy-card--active" : ""
+                      }`}
+                      aria-label={`${opt.title}. ${opt.description}`}
+                      onClick={() => setOutlook(opt.value)}
+                    >
+                      <div className="portfolio-strategy-card__head">
+                        <span className={`portfolio-strategy-card__icon ${outlookIconClassForSlug(opt.value)}`}>
+                          <OutlookIconFor className="h-3.5 w-3.5" outlook={opt.value} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <p className="portfolio-strategy-card__title portfolio-strategy-card__title--desk-compact">
+                            {opt.title.split(" / ")[0]}
+                          </p>
+                          <span className="portfolio-strategy-card__desc portfolio-strategy-card__desc--desk-compact">
+                            {opt.description}
+                          </span>
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="portfolio-edit-clear portfolio-edit-clear--desk-compact">
+                  <button
+                    type="button"
+                    className={`portfolio-edit-clear__btn${outlook === null ? " portfolio-edit-clear__btn--active" : ""}`}
+                    onClick={() => setOutlook(null)}
+                  >
+                    <XMarkIcon className="crud-icon" />
+                    Clear outlook
+                  </button>
+                </div>
+              </fieldset>
 
-          <fieldset className="portfolio-edit-fieldset">
-            <legend className="portfolio-edit-field__label">Market outlook</legend>
-            <div className="portfolio-strategy-grid portfolio-strategy-grid--legacy" role="group" aria-label="Market outlook">
-              {DESK_OUTLOOK_CARD_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`portfolio-strategy-card${outlook === opt.value ? " portfolio-strategy-card--active" : ""}`}
-                  onClick={() => setOutlook(opt.value)}
+              <fieldset className="portfolio-edit-fieldset portfolio-edit-desk-disclosure__fieldset">
+                <legend className="portfolio-edit-field__label">Risk level</legend>
+                <div
+                  className="portfolio-risk-row portfolio-risk-row--legacy portfolio-risk-row--desk-compact"
+                  role="group"
+                  aria-label="Risk level"
                 >
-                  <div className="portfolio-strategy-card__head">
-                    <span className={`portfolio-strategy-card__icon ${outlookIconClassForSlug(opt.value)}`}>
-                      <OutlookIconFor className="h-4 w-4" outlook={opt.value} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <p className="portfolio-strategy-card__title">{opt.title}</p>
-                      <p className="portfolio-strategy-card__desc">{opt.description}</p>
-                    </span>
-                  </div>
-                </button>
-              ))}
+                  {RISK_LEVEL_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.riskProfile}
+                      type="button"
+                      className={`portfolio-risk-btn portfolio-risk-btn--desk-compact${
+                        riskProfile === opt.riskProfile ? " portfolio-risk-btn--active" : ""
+                      }`}
+                      onClick={() => setRiskProfile(opt.riskProfile)}
+                    >
+                      <span
+                        className="portfolio-risk-btn__dot"
+                        style={{
+                          background:
+                            opt.tier === "low"
+                              ? "color-mix(in srgb, var(--xf-success-400) 90%, var(--xf-gain-green))"
+                              : opt.tier === "medium"
+                                ? "color-mix(in srgb, var(--xf-lightning-yellow) 85%, var(--xf-text-100))"
+                                : "color-mix(in srgb, var(--xf-danger-400) 85%, var(--xf-text-100))"
+                        }}
+                      />
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="portfolio-edit-clear portfolio-edit-clear--desk-compact">
+                  <button
+                    type="button"
+                    className={`portfolio-edit-clear__btn${riskProfile === null ? " portfolio-edit-clear__btn--active" : ""}`}
+                    onClick={() => setRiskProfile(null)}
+                  >
+                    <XMarkIcon className="crud-icon" />
+                    Clear risk
+                  </button>
+                </div>
+              </fieldset>
             </div>
-            <div className="portfolio-edit-clear">
-              <button
-                type="button"
-                className={`portfolio-edit-clear__btn${outlook === null ? " portfolio-edit-clear__btn--active" : ""}`}
-                onClick={() => setOutlook(null)}
-              >
-                <XMarkIcon className="crud-icon" />
-                Clear outlook
-              </button>
-            </div>
-          </fieldset>
+          </details>
 
           {account.isDefault ? (
             <p className="portfolio-edit-account-card__note">This is your default account for quick actions.</p>
@@ -409,9 +522,9 @@ export function AccountWorkspace({
               <XMarkIcon className="crud-icon" />
               Cancel
             </Link>
-            <button type="submit" className="cta cta-primary portfolio-form-actions__submit" disabled={pending}>
+            <button type="submit" className="cta cta-primary portfolio-form-actions__submit" disabled={pending || savePending}>
               <SaveIcon className="crud-icon" />
-              {pending ? "Saving…" : "Update account"}
+              {savePending || pending ? "Saving…" : "Update account"}
             </button>
           </div>
         </form>
@@ -419,11 +532,8 @@ export function AccountWorkspace({
 
       {portfolioAccountCount > 1 ? (
         <section
-          className="portfolio-edit-account-card xf-noise-overlay"
+          className="portfolio-edit-account-card portfolio-edit-account-card--danger-zone xf-noise-overlay"
           aria-labelledby="delete-account-title"
-          style={{
-            borderColor: "color-mix(in srgb, var(--xf-danger-400) 35%, transparent)"
-          }}
         >
           <h2 id="delete-account-title" className="portfolio-edit-account-card__title">
             Remove account
@@ -433,11 +543,7 @@ export function AccountWorkspace({
           </p>
           <button
             type="button"
-            className="cta"
-            style={{
-              borderColor: "color-mix(in srgb, var(--xf-danger-400) 45%, transparent)",
-              color: "var(--xf-danger-400)"
-            }}
+            className="portfolio-account-delete-btn"
             disabled={deletePending}
             onClick={() => {
               if (
@@ -475,7 +581,16 @@ export function AccountWorkspace({
           </button>
         </section>
       ) : null}
+      </div>
+      ) : null}
 
+      {workspaceTab === "holdings" ? (
+      <div
+        className="portfolio-manage-tabs__panel"
+        role="tabpanel"
+        id="account-panel-holdings"
+        aria-labelledby="account-tab-holdings"
+      >
       <section className="portfolio-edit-holdings-card xf-noise-overlay" aria-labelledby="edit-holdings-title">
         <h2 id="edit-holdings-title" className="portfolio-edit-account-card__title portfolio-edit-account-card__title--section">
           Holdings
@@ -647,6 +762,8 @@ export function AccountWorkspace({
           ) : null}
         </form>
       </section>
+      </div>
+      ) : null}
 
       <div className="cta-row">
         <Link className="cta cta-secondary" href="/portfolio">

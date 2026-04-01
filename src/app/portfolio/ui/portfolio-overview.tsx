@@ -21,9 +21,6 @@ import type { Account } from "@/modules/core-admin/types";
 type PortfolioOverviewProps = {
   portfolioDisplayName: string;
   portfolioIdHex: string;
-  portfolioBrokerType: string;
-  portfolioBrokerDisplayName: string | null;
-  portfolioBrokerIconUrl: string | null;
   accounts: Account[];
   metrics: PortfolioOverviewMetrics;
   admin: boolean;
@@ -54,9 +51,6 @@ function riskDotClass(account: Account | undefined): string {
 export function PortfolioOverview({
   portfolioDisplayName,
   portfolioIdHex,
-  portfolioBrokerType,
-  portfolioBrokerDisplayName,
-  portfolioBrokerIconUrl,
   accounts,
   metrics,
   admin,
@@ -86,7 +80,7 @@ export function PortfolioOverview({
         ? RISK_LEVEL_OPTIONS.find((r) => r.riskProfile === acct.riskProfile)?.label
         : null;
     const outlookTitle = acct?.outlook != null ? DESK_OUTLOOK_LABELS[acct.outlook] : null;
-    const deskBits = [riskLabel ? `${riskLabel} risk` : null, outlookTitle ?? null].filter(Boolean);
+    const deskBits = [outlookTitle ?? null, riskLabel ? `${riskLabel} risk` : null].filter(Boolean);
     const deskLine = deskBits.length > 0 ? deskBits.join(" · ") : "Desk not set";
     const costBasis = row.valueExcludingOptions + row.optionBookValue;
     const posLabel =
@@ -225,28 +219,6 @@ export function PortfolioOverview({
               <div className="portfolio-manage-head__metric">
                 <p className="portfolio-metric__label">Options (basis)</p>
                 <p className="portfolio-manage-head__metric-val">{formatUsd2(metrics.optionBookValueUsd)}</p>
-              </div>
-            ) : null}
-            {portfolioBrokerType ? (
-              <div className="portfolio-broker-inline">
-                {portfolioBrokerIconUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- broker icon URL is admin-managed catalog content
-                  <img
-                    alt={`${portfolioBrokerDisplayName ?? formatBrokerType(portfolioBrokerType)} logo`}
-                    className="portfolio-broker-inline__img"
-                    src={portfolioBrokerIconUrl}
-                  />
-                ) : (
-                  <span className="portfolio-broker-inline__abbr" title={portfolioBrokerType}>
-                    {portfolioBrokerType.slice(0, 2).toUpperCase()}
-                  </span>
-                )}
-                <div>
-                  <p className="portfolio-metric__label">Broker</p>
-                  <p className="portfolio-broker-inline__name">
-                    {portfolioBrokerDisplayName ?? formatBrokerType(portfolioBrokerType)}
-                  </p>
-                </div>
               </div>
             ) : null}
           </div>

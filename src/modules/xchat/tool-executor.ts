@@ -1,7 +1,6 @@
 import type { ToolExecutor } from "@/lib/xai";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
-    DEFAULT_EXT_BROKER_REF,
     ensurePortfolioWatchlistForUser,
     getDefaultPortfolio,
     getPortfolioWatchlist,
@@ -200,7 +199,6 @@ function buildOperations(invalidateWorkspacePreload: () => void): Record<string,
       return {
         name: portfolio.name,
         isDefault: portfolio.isDefault,
-        ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
         accountCount: accounts.length,
         totalPositionCount: positions.length,
         accounts: accounts.map((a) => ({

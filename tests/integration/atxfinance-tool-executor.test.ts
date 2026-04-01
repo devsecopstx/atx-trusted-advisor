@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const repositoryMocks = vi.hoisted(() => ({
   DEFAULT_ACCOUNT_CASH_BALANCE: 25_000,
-  DEFAULT_EXT_BROKER_REF: "extBrokerName",
   getDefaultPortfolio: vi.fn(),
   ensurePortfolioWatchlistForUser: vi.fn(),
   provisionDefaultPortfolioForUser: vi.fn(),
@@ -149,7 +148,6 @@ describe("atxfinance tool executor", () => {
     const result = await executor("atxfinance", { operation: "portfolio_summary" });
     const data = JSON.parse(result.result);
     expect(data.name).toBe("Default Portfolio");
-    expect(data.ext_broker_ref).toBe("extBrokerName");
     expect(data.accountCount).toBe(1);
     expect(data.totalPositionCount).toBe(1);
     expect(data.accounts[0].type).toBe("fidelity");
@@ -464,7 +462,6 @@ describe("atxfinance tool executor", () => {
           id: portfolioId.toHexString(),
           name: "PreloadP",
           isDefault: true,
-          ext_broker_ref: "ibkr",
           totalPositionCount: 3
         },
         accounts: [
@@ -520,7 +517,6 @@ describe("atxfinance tool executor", () => {
           id: portfolioId.toHexString(),
           name: "PreloadP",
           isDefault: true,
-          ext_broker_ref: "ibkr",
           totalPositionCount: 1
         },
         accounts: [

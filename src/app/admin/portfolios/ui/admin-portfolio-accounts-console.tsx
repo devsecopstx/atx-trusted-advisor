@@ -46,9 +46,6 @@ type PortfolioMeta = {
   userDisplayName?: string;
   userEmail?: string | null;
   tenantPortfolioOrgKey?: string;
-  riskProfile: DeskRiskProfileOption | null;
-  /** Book-level outlook slug (same values as account outlook). */
-  outlook: string | null;
 };
 
 const money = new Intl.NumberFormat("en-US", {
@@ -164,9 +161,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
   /** Row id actively editing cash — value in `cashEditText` until blur. */
   const [cashFocusId, setCashFocusId] = useState<string | null>(null);
   const [cashEditText, setCashEditText] = useState<Record<string, string>>({});
-  /** Book-level fields (PATCH portfolio); kept in sync on refresh. */
-  const [portfolioRiskDraft, setPortfolioRiskDraft] = useState<DeskRiskProfileOption | "">("");
-  const [portfolioOutlookDraft, setPortfolioOutlookDraft] = useState<AccountOutlook | "">("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -174,9 +168,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     try {
       const payload = await parseJson<{
         data: {
-          portfolio: Omit<PortfolioMeta, "riskProfile" | "outlook" | "userDisplayName" | "userEmail"> & {
-            riskProfile?: string | null;
-            outlook?: string | null;
+          portfolio: PortfolioMeta & {
             userDisplayName?: string;
             userEmail?: string | null;
           };
@@ -186,20 +178,15 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         };
       }>(await fetch(`/api/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`, { cache: "no-store" }));
       const raw = payload.data.portfolio;
-      const riskNorm =
-        raw.riskProfile && (DESK_RISK_PROFILE_OPTIONS as readonly string[]).includes(raw.riskProfile)
-          ? (raw.riskProfile as DeskRiskProfileOption)
-          : null;
       const po: PortfolioMeta = {
-        ...raw,
-        riskProfile: riskNorm,
-        outlook: raw.outlook ?? null,
+        _id: raw._id,
+        name: raw.name,
+        userId: raw.userId,
+        tenantPortfolioOrgKey: raw.tenantPortfolioOrgKey,
         userDisplayName: typeof raw.userDisplayName === "string" ? raw.userDisplayName : undefined,
-        userEmail: "userEmail" in raw ? (raw.userEmail ?? null) : undefined
+        userEmail: raw.userEmail ?? null
       };
       setPortfolio(po);
-      setPortfolioRiskDraft(riskNorm ?? "");
-      setPortfolioOutlookDraft(parseAccountOutlook(po.outlook) ?? "");
       setAccountCount(payload.data.accountCount);
       setTotalCashBalance(payload.data.totalCashBalance);
       setAccounts(
@@ -278,55 +265,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     );
   }, [accounts, edits, cashFocusId, cashEditText]);
 
-  const bookRiskOutlookDirty = useMemo(() => {
-    if (!portfolio) {
-      return false;
-    }
-    const riskPrev = portfolio.riskProfile ?? null;
-    const riskDraft = portfolioRiskDraft === "" ? null : portfolioRiskDraft;
-    if (riskDraft !== riskPrev) {
-      return true;
-    }
-    const outPrev = parseAccountOutlook(portfolio.outlook);
-    const outDraft = portfolioOutlookDraft === "" ? null : portfolioOutlookDraft;
-    return outDraft !== outPrev;
-  }, [portfolio, portfolioRiskDraft, portfolioOutlookDraft]);
-
-  const hasAnythingDirty = hasDirty || bookRiskOutlookDirty;
-
-  const buildPortfolioBookPatchBody = (): Record<string, unknown> | null => {
-    if (!portfolio) {
-      return null;
-    }
-    const body: Record<string, unknown> = {};
-    const riskPrev = portfolio.riskProfile ?? null;
-    const riskNext = portfolioRiskDraft === "" ? null : portfolioRiskDraft;
-    if (riskNext !== riskPrev) {
-      body.riskProfile = riskNext;
-    }
-    const outPrev = parseAccountOutlook(portfolio.outlook);
-    const outDraft = portfolioOutlookDraft === "" ? null : portfolioOutlookDraft;
-    if (outDraft !== outPrev) {
-      body.outlook = outDraft;
-    }
-    return Object.keys(body).length > 0 ? body : null;
-  };
-
-  const persistPortfolioBookIfDirty = async (): Promise<boolean> => {
-    const body = buildPortfolioBookPatchBody();
-    if (!body) {
-      return false;
-    }
-    await parseJson(
-      await fetch(`/api/admin/portfolios/${encodeURIComponent(portfolioId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      })
-    );
-    return true;
-  };
-
   const saveAllChanges = async () => {
     let mergedEdits = { ...edits };
     const mergedCashText = { ...cashEditText };
@@ -343,7 +281,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     const targets = accounts.filter(
       (row) => computeAccountPatchBody(row, draftMerged(row._id), false, undefined) !== null
     );
-    if (targets.length === 0 && !bookRiskOutlookDirty) {
+    if (targets.length === 0) {
       setStatus("No changes");
       return;
     }
@@ -354,10 +292,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
     setLoading(true);
     setStatus("Saving…");
     try {
-      let savedBook = false;
-      if (bookRiskOutlookDirty) {
-        savedBook = await persistPortfolioBookIfDirty();
-      }
       let saved = 0;
       for (const row of targets) {
         const body = computeAccountPatchBody(row, draftMerged(row._id), false, undefined);
@@ -379,14 +313,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         delete mergedEdits[row._id];
       }
       setEdits({ ...mergedEdits });
-      const parts: string[] = [];
-      if (savedBook) {
-        parts.push("book risk & outlook");
-      }
-      if (saved > 0) {
-        parts.push(`${saved} account(s)`);
-      }
-      setStatus(parts.length > 0 ? `Saved ${parts.join(" · ")}` : "Saved");
+      setStatus(`Saved ${saved} account(s)`);
       void refresh();
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Save failed");
@@ -454,7 +381,7 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         </button>
         <button
           className="cta cta-primary"
-          disabled={loading || !hasAnythingDirty}
+          disabled={loading || !hasDirty}
           onClick={() => void saveAllChanges()}
           type="button"
         >
@@ -529,9 +456,8 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
         <h3>Accounts</h3>
         <p className="status-text" style={{ marginBottom: "0.75rem" }}>
           Edit inline like the main <strong>Portfolios</strong> table: change fields, then press <strong>Save changes</strong>{" "}
-          (book risk &amp; outlook + all dirty account rows in one batch). <strong>Book risk &amp; outlook</strong> apply to
-          the whole portfolio (controls on the first row). <strong>Acct risk / Acct outlook</strong> are per custodian
-          account. Watchlist desk fields live under <strong>Manage watchlist</strong>.
+          to persist all dirty account rows in one batch. <strong>Risk</strong> and <strong>outlook</strong> are per
+          custodian account. Watchlist desk fields live under <strong>Manage watchlist</strong>.
         </p>
         <div className="crud-table-wrap">
           <table className="crud-table">
@@ -541,10 +467,8 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                 <th>Type</th>
                 <th>External ID</th>
                 <th>Cash balance</th>
-                <th title="Portfolio-wide desk risk (PATCH book)">Book risk</th>
-                <th title="Portfolio-wide desk outlook (PATCH book)">Book outlook</th>
-                <th title="Per-account risk profile">Acct risk</th>
-                <th title="Per-account outlook slug">Acct outlook</th>
+                <th title="Per-account risk profile">Risk</th>
+                <th title="Per-account outlook slug">Outlook</th>
                 <th>Default</th>
                 <th>Updated</th>
                 <th />
@@ -553,63 +477,13 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
             <tbody>
               {accounts.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="status-text text-sm">
-                    No accounts yet — add one below. You can still set book desk fields for this portfolio.
-                  </td>
-                  <td style={{ minWidth: "8.5rem", verticalAlign: "top" }}>
-                    {portfolio ? (
-                      <select
-                        className="crud-input text-xs"
-                        value={portfolioRiskDraft}
-                        onChange={(e) =>
-                          setPortfolioRiskDraft(
-                            e.target.value === "" ? "" : (e.target.value as DeskRiskProfileOption)
-                          )
-                        }
-                        aria-label="Book risk profile"
-                      >
-                        <option value="">—</option>
-                        {DESK_RISK_PROFILE_OPTIONS.map((v) => (
-                          <option key={v} value={v}>
-                            {DESK_RISK_DISPLAY_LABELS[v]}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="status-text">—</span>
-                    )}
-                  </td>
-                  <td style={{ minWidth: "10rem", verticalAlign: "top" }}>
-                    {portfolio ? (
-                      <select
-                        className="crud-input text-xs"
-                        value={portfolioOutlookDraft}
-                        onChange={(e) =>
-                          setPortfolioOutlookDraft(
-                            e.target.value === "" ? "" : (e.target.value as AccountOutlook)
-                          )
-                        }
-                        aria-label="Book outlook"
-                      >
-                        <option value="">—</option>
-                        {accountOutlookValues.map((v) => (
-                          <option key={v} value={v}>
-                            {DESK_OUTLOOK_LABELS[v]}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="status-text">—</span>
-                    )}
-                  </td>
-                  <td colSpan={5} className="status-text text-xs">
-                    —
+                  <td colSpan={9} className="status-text text-sm">
+                    No accounts yet — add one below. Set risk and outlook per account.
                   </td>
                 </tr>
               ) : (
-                accounts.map((row, idx) => {
+                accounts.map((row) => {
                   const m = mergeRow(row);
-                  const rs = accounts.length;
                   return (
                     <tr key={row._id}>
                       <td>
@@ -702,56 +576,6 @@ export function AdminPortfolioAccountsConsole({ portfolioId }: AdminPortfolioAcc
                           }}
                         />
                       </td>
-                      {!portfolio ? (
-                        <>
-                          <td className="status-text text-xs">—</td>
-                          <td className="status-text text-xs">—</td>
-                        </>
-                      ) : idx === 0 ? (
-                        <>
-                          <td rowSpan={rs} style={{ minWidth: "8.5rem", verticalAlign: "top" }}>
-                            <select
-                              className="crud-input text-xs"
-                              value={portfolioRiskDraft}
-                              onChange={(e) =>
-                                setPortfolioRiskDraft(
-                                  e.target.value === "" ? "" : (e.target.value as DeskRiskProfileOption)
-                                )
-                              }
-                              aria-label="Book risk profile"
-                            >
-                              <option value="">—</option>
-                              {DESK_RISK_PROFILE_OPTIONS.map((v) => (
-                                <option key={v} value={v}>
-                                  {DESK_RISK_DISPLAY_LABELS[v]}
-                                </option>
-                              ))}
-                            </select>
-                            <p className="status-text text-xs" style={{ marginTop: "0.35rem", maxWidth: "11rem" }}>
-                              Same value for every account row (portfolio scope).
-                            </p>
-                          </td>
-                          <td rowSpan={rs} style={{ minWidth: "10rem", verticalAlign: "top" }}>
-                            <select
-                              className="crud-input text-xs"
-                              value={portfolioOutlookDraft}
-                              onChange={(e) =>
-                                setPortfolioOutlookDraft(
-                                  e.target.value === "" ? "" : (e.target.value as AccountOutlook)
-                                )
-                              }
-                              aria-label="Book outlook"
-                            >
-                              <option value="">—</option>
-                              {accountOutlookValues.map((v) => (
-                                <option key={v} value={v}>
-                                  {DESK_OUTLOOK_LABELS[v]}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                        </>
-                      ) : null}
                       <td style={{ minWidth: "8.5rem" }}>
                         <select
                           className="crud-input text-xs"

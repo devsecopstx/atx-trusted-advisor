@@ -36,8 +36,8 @@ export function PortfolioHoldingsPanel({ rows }: PortfolioHoldingsPanelProps) {
       </p>
       {rows.length === 0 ? (
         <p className="status-text">
-          No positions yet — use <strong>Add holdings</strong> on an account in Overview, or open an account to edit
-          lots.
+          No positions yet — open an account from Overview, use the <strong>Holdings</strong> tab, and add stock,
+          options, or cash there.
         </p>
       ) : (
         <div className="portfolio-table-wrap">

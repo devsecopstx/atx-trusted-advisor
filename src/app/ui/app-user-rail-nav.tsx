@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useId, useState, type ReactNode, type SVGProps } from "react";
 
 import { AppUserWorkspaceAccountPicker } from "@/app/ui/app-user-workspace-account-picker";
+import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-portfolio-picker";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 
@@ -107,7 +108,7 @@ type RailDisclosureProps = {
   children: ReactNode;
 };
 
-export function RailDisclosure({ title, icon, defaultOpen = true, children }: RailDisclosureProps) {
+export function RailDisclosure({ title, icon, defaultOpen = false, children }: RailDisclosureProps) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
   const btnId = useId();
@@ -187,7 +188,7 @@ function AccountLegalLink() {
 
 export type AppUserRailNavProps = {
   isGlobalAdmin: boolean;
-  /** When false, disclosure starts collapsed (e.g. xChat first land). Default true elsewhere. */
+  /** When true, disclosure starts expanded. Default collapsed across product + xChat rails. */
   railDisclosureDefaultOpen?: boolean;
   /** Hide non-resource shortcuts (used by guest/public shells). */
   showReferenceDocs?: boolean;
@@ -206,7 +207,7 @@ export type AppUserAccountPublicRailProps = AppUserRailNavProps & {
 
 export function AppUserResourcesRailSection({
   isGlobalAdmin,
-  railDisclosureDefaultOpen = true,
+  railDisclosureDefaultOpen = false,
   showReferenceDocs = true
 }: AppUserRailNavProps) {
   return (
@@ -243,7 +244,7 @@ export function AppUserResourcesRailSection({
 }
 
 export function AppUserOptionsRailSection({
-  railDisclosureDefaultOpen = true
+  railDisclosureDefaultOpen = false
 }: {
   railDisclosureDefaultOpen?: boolean;
 }) {
@@ -267,7 +268,7 @@ export function AppUserOptionsRailSection({
   );
 }
 
-export function AppUserXchatRailSection({ railDisclosureDefaultOpen = true }: { railDisclosureDefaultOpen?: boolean }) {
+export function AppUserXchatRailSection({ railDisclosureDefaultOpen = false }: { railDisclosureDefaultOpen?: boolean }) {
   return (
     <section className="app-user-rail-section" aria-label="xChat">
       <RailDisclosure
@@ -296,7 +297,7 @@ export function AppUserXchatRailSection({ railDisclosureDefaultOpen = true }: { 
 
 export function AppUserAccountRailSection({
   isGlobalAdmin,
-  railDisclosureDefaultOpen = true,
+  railDisclosureDefaultOpen = false,
   showSettingsLink = true
 }: AppUserRailNavProps) {
   return (
@@ -328,9 +329,9 @@ export function AppUserAccountRailSection({
   );
 }
 
-/** Manage workspace — portfolios for all app users; Admin hub for global_admin only */
+/** Manage workspace — My portfolios for all app users; Admin hub link only for global_admin */
 export function AppUserManageWorkspaceRailSection({
-  railDisclosureDefaultOpen = true,
+  railDisclosureDefaultOpen = false,
   isGlobalAdmin = false
 }: {
   railDisclosureDefaultOpen?: boolean;
@@ -345,13 +346,13 @@ export function AppUserManageWorkspaceRailSection({
       >
         <nav className="app-user-rail-sublinks" aria-label="Workspace administration">
           <RailNavLink
-            href="/account/workspace/portfolios"
-            title="Manage your portfolios (name, outlook, default — no account detail)"
+            href="/workspace/portfolios"
+            title="My portfolios — book value by portfolio, edit metadata (no account detail)"
           >
-            Manage portfolios
+            My portfolios
           </RailNavLink>
           {isGlobalAdmin ? (
-            <RailNavLink href="/admin" title="Open Admin Hub (tenant tools, personas, portfolios)">
+            <RailNavLink href="/admin" title="Open Admin Hub (global admin only)">
               Admin hub
             </RailNavLink>
           ) : null}
@@ -364,20 +365,15 @@ export function AppUserManageWorkspaceRailSection({
 export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUserAccountPublicRailProps) {
   return (
     <aside className="app-user-public-rail xf-widget" aria-label="Account navigation">
+      <AppUserManageWorkspaceRailSection isGlobalAdmin={isGlobalAdmin} />
       <section className="app-user-rail-section app-user-rail-section--workspace" aria-label="Your workspace">
         <p className="app-user-rail-workspace-name">{railContext.userDisplayName}</p>
         {railContext.book ? (
           <div className="app-user-rail-workspace-card">
-            <div className="app-user-rail-workspace-row">
-              <span className="app-user-rail-workspace-k">Portfolio</span>
-              <Link
-                className="app-user-rail-workspace-v app-user-rail-workspace-v--link"
-                href="/portfolio"
-                title="Open portfolio"
-              >
-                {railContext.book.portfolioName}
-              </Link>
-            </div>
+            <AppUserWorkspacePortfolioPicker
+              portfolios={railContext.book.workspacePortfolios}
+              selectedPortfolioId={railContext.book.portfolioId}
+            />
             <AppUserWorkspaceAccountPicker
               accounts={railContext.book.accounts}
               portfolioId={railContext.book.portfolioId}
@@ -398,7 +394,6 @@ export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUser
       <AppUserOptionsRailSection />
       <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
       <AppUserAccountRailSection isGlobalAdmin={isGlobalAdmin} />
-      <AppUserManageWorkspaceRailSection isGlobalAdmin={isGlobalAdmin} />
     </aside>
   );
 }

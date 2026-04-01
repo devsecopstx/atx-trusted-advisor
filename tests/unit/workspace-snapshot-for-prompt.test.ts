@@ -49,8 +49,7 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
     repo.getDefaultPortfolio.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439001" },
       name: "Main",
-      isDefault: true,
-      ext_broker_ref: "ibkr"
+      isDefault: true
     });
     repo.listPortfolioAccounts.mockResolvedValue([
       {

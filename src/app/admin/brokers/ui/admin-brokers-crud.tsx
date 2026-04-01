@@ -99,7 +99,7 @@ export function AdminBrokersCrud() {
   }
 
   async function deleteRow(row: BrokerRow) {
-    if (!window.confirm(`Delete broker “${row.name}” (${row.type})? Portfolios may still reference this slug.`)) {
+    if (!window.confirm(`Delete broker “${row.name}” (${row.type})? Accounts may still reference this slug.`)) {
       return;
     }
     setStatus(`Deleting ${row.type}…`);
@@ -126,7 +126,7 @@ export function AdminBrokersCrud() {
       <h3>Add broker</h3>
       <p className="status-text" style={{ marginBottom: "0.75rem" }}>
         <strong>Type</strong> is a lowercase slug (<code className="font-mono text-xs">a–z</code>, digits, underscore) used
-        as portfolio <code className="font-mono text-xs">broker_type</code>. Name, description, and icon URL are for the
+        as custodian account <code className="font-mono text-xs">type</code>. Name, description, and icon URL are for the
         admin console; icon URL is optional.
       </p>
       <div

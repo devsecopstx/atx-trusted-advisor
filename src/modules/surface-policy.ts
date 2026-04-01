@@ -11,6 +11,7 @@ export const APP_USER_PRODUCT_PATH_PREFIXES = [
   "/portfolio",
   "/watchlist",
   "/account",
+  "/workspace",
   "/xoptions"
 ] as const;
 

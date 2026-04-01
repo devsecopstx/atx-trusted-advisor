@@ -1,8 +1,5 @@
 import type { SessionUser } from "@/lib/auth";
-import {
-    DEFAULT_EXT_BROKER_REF,
-    listPortfolioAccounts
-} from "@/modules/core-admin/repository";
+import { listPortfolioAccounts } from "@/modules/core-admin/repository";
 import {
     scoringFactorsPayloadForAdminApi,
     type PortfolioScoringFactorApi
@@ -79,7 +76,6 @@ export async function buildPortfolioSummaryPayload(
   dailyChangePercent: number;
   userId: string;
   isDefault: boolean;
-  ext_broker_ref: string;
   tenantPortfolioOrgKey: string;
   createdAt: string;
   updatedAt: string;
@@ -127,7 +123,6 @@ export async function buildPortfolioSummaryPayload(
     dailyChangePercent: 0,
     userId,
     isDefault: Boolean(portfolio.isDefault),
-    ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
     tenantPortfolioOrgKey: portfolio.tenantPortfolioOrgKey ?? getTenantPortfolioOrgKey(),
     createdAt: toIsoTimestamp(portfolio.createdAt),
     updatedAt: toIsoTimestamp(portfolio.updatedAt),

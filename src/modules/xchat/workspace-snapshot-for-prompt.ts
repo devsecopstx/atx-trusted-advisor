@@ -2,7 +2,6 @@ import { isXchatDebugEnvEnabled } from "@/lib/env";
 import { getXchatTenantDebugFromContext } from "@/lib/xchat-debug-context";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
-    DEFAULT_EXT_BROKER_REF,
     getDefaultPortfolio,
     getPortfolioWatchlist,
     listPortfolioAccounts,
@@ -57,7 +56,6 @@ export type WorkspaceSnapshotPromptJson = {
     id: string;
     name: string;
     isDefault: boolean;
-    ext_broker_ref: string;
     totalPositionCount: number;
   };
   accounts: Array<{
@@ -166,7 +164,6 @@ async function buildPreloadFromPortfolio(
       id: portfolioId,
       name: portfolio.name,
       isDefault: portfolio.isDefault,
-      ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
       totalPositionCount: positions.length
     },
     accounts: accounts.map((a) => ({
@@ -342,7 +339,6 @@ export function portfolioSummaryFromWorkspacePreload(p: WorkspaceSnapshotPreload
   return {
     name: j.portfolio.name,
     isDefault: j.portfolio.isDefault,
-    ext_broker_ref: j.portfolio.ext_broker_ref,
     accountCount: j.accounts.length,
     totalPositionCount: j.portfolio.totalPositionCount,
     accounts: j.accounts.map((a) => ({

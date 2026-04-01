@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { adminBrokerSlugSchema, requireKnownBrokerCatalogSlug } from "@/lib/admin/broker-catalog-guard";
 import { isAdminPortfoliosListAllEnabled, resolveAdminPortfolioListScope } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
@@ -28,10 +27,6 @@ function serializePortfolio(p: Portfolio) {
     name: p.name,
     isDefault: p.isDefault,
     tenantPortfolioOrgKey: p.tenantPortfolioOrgKey,
-    ext_broker_ref: p.ext_broker_ref,
-    broker_type: p.broker_type ?? null,
-    riskProfile: p.riskProfile ?? null,
-    outlook: p.outlook ?? null,
     ...scoringFactorsPayloadForAdminApi(p.scoringFactors),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString()
@@ -42,8 +37,7 @@ const postPortfolioSchema = z.object({
   userId: z.string().trim().min(1).max(128),
   name: z.string().trim().min(1).max(200),
   isDefault: z.boolean().optional(),
-  tenantId: z.string().trim().optional(),
-  broker_type: adminBrokerSlugSchema.optional()
+  tenantId: z.string().trim().optional()
 });
 
 export async function GET(request: Request) {
@@ -101,13 +95,6 @@ export async function POST(request: Request) {
     );
   }
 
-  if (parsed.data.broker_type) {
-    const denied = await requireKnownBrokerCatalogSlug(parsed.data.broker_type);
-    if (denied) {
-      return denied;
-    }
-  }
-
   const tenantId = parsed.data.tenantId?.trim() || session.tenantId;
   if (!isAdminPortfoliosListAllEnabled()) {
     if (parsed.data.userId.trim() !== session.userId) {
@@ -122,8 +109,7 @@ export async function POST(request: Request) {
     userId: parsed.data.userId,
     tenantId,
     name: parsed.data.name,
-    isDefault: parsed.data.isDefault,
-    broker_type: parsed.data.broker_type
+    isDefault: parsed.data.isDefault
   });
   if (!created?._id) {
     const limits = await getEffectiveWorkspaceLimitsForUser({

@@ -5,11 +5,13 @@ import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-w
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
+    getPortfolioByIdForSessionUser,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
@@ -17,6 +19,7 @@ import {
 import {
     formatPositionUsd,
     normalizePositionType,
+    parseAccountOutlook,
     type Account,
     type Position
 } from "@/modules/core-admin/types";
@@ -30,7 +33,7 @@ function serializeAccount(account: Account) {
     cashBalance: account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
     isDefault: account.isDefault,
     riskProfile: account.riskProfile ?? null,
-    outlook: account.outlook ?? null
+    outlook: parseAccountOutlook(account.outlook) ?? null
   };
 }
 
@@ -83,7 +86,18 @@ export default async function PortfolioAccountPage({
 
   const { accountId } = await params;
 
-  let portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
+  /** Must match `/portfolio`: cookie-selected workspace portfolio, else Mongo default (then provision). */
+  const workspacePortfolioId = await resolveActiveWorkspacePortfolioId(session);
+  let portfolio = workspacePortfolioId
+    ? await getPortfolioByIdForSessionUser({
+        userId: session.userId,
+        tenantId: session.tenantId,
+        portfolioId: workspacePortfolioId
+      })
+    : null;
+  if (!portfolio?._id) {
+    portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
+  }
   if (!portfolio?._id) {
     const provisioned = await provisionDefaultPortfolioForUser({
       userId: session.userId,
@@ -149,10 +163,16 @@ export default async function PortfolioAccountPage({
               <span aria-hidden> · </span>
               <span>Edit account</span>
             </p>
-            <h1 className="portfolio-hero__title">{account.name}</h1>
+            <p className="portfolio-hero__portfolio-readonly" title="This account belongs to this portfolio">
+              <span className="portfolio-hero__portfolio-readonly-label">Portfolio</span>
+              <span className="portfolio-hero__portfolio-readonly-name">
+                {portfolio.name?.trim() || "Default portfolio"}
+              </span>
+            </p>
+            <h1 className="portfolio-hero__title">Account</h1>
             <p className="portfolio-hero__sub">
-              Adjust labels, cash, and how you want this book characterized. Save with <strong>Update account</strong>;
-              add or remove positions in the holdings card below.
+              Use <strong>Edit account</strong> for name, cash, and desk fields; switch to <strong>Holdings</strong> to
+              review positions and add stock, options, or cash.
             </p>
           </header>
 

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { adminBrokerSlugSchema, requireKnownBrokerCatalogSlug } from "@/lib/admin/broker-catalog-guard";
 import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
@@ -12,7 +11,7 @@ import {
     DEFAULT_ACCOUNT_CASH_BALANCE
 } from "@/modules/core-admin/repository";
 import { patchPortfolioScoringFactorsSchema, scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
-import { accountOutlookValues, type Portfolio } from "@/modules/core-admin/types";
+import { type Portfolio } from "@/modules/core-admin/types";
 import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 
 type RouteContext = {
@@ -27,10 +26,6 @@ function serializePortfolio(p: Portfolio) {
     name: p.name,
     isDefault: p.isDefault,
     tenantPortfolioOrgKey: p.tenantPortfolioOrgKey,
-    ext_broker_ref: p.ext_broker_ref,
-    broker_type: p.broker_type ?? null,
-    riskProfile: p.riskProfile ?? null,
-    outlook: p.outlook ?? null,
     ...scoringFactorsPayloadForAdminApi(p.scoringFactors),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString()
@@ -39,10 +34,6 @@ function serializePortfolio(p: Portfolio) {
 
 const patchPortfolioSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
-  ext_broker_ref: z.union([z.string(), z.null()]).optional(),
-  broker_type: z.union([adminBrokerSlugSchema, z.null()]).optional(),
-  riskProfile: z.union([z.enum(["conservative", "balanced", "growth"]), z.null()]).optional(),
-  outlook: z.union([z.enum(accountOutlookValues), z.null()]).optional(),
   scoringFactors: patchPortfolioScoringFactorsSchema.optional(),
   isDefault: z.literal(true).optional()
 });
@@ -117,19 +108,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const p = parsed.data;
-  if (p.broker_type !== undefined && p.broker_type !== null) {
-    const denied = await requireKnownBrokerCatalogSlug(p.broker_type);
-    if (denied) {
-      return denied;
-    }
-  }
 
   const hasPayload =
     p.name !== undefined ||
-    p.ext_broker_ref !== undefined ||
-    p.broker_type !== undefined ||
-    p.riskProfile !== undefined ||
-    p.outlook !== undefined ||
     p.scoringFactors !== undefined ||
     p.isDefault === true;
   if (!hasPayload) {
@@ -139,10 +120,6 @@ export async function PATCH(request: Request, context: RouteContext) {
   const updated = await adminUpdatePortfolio({
     portfolioId,
     name: p.name,
-    ext_broker_ref: p.ext_broker_ref,
-    broker_type: p.broker_type,
-    riskProfile: p.riskProfile,
-    outlook: p.outlook,
     scoringFactors: p.scoringFactors,
     isDefault: p.isDefault
   });
