@@ -285,6 +285,33 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
   white-space: nowrap;
 }
 
+button.xf-watchlist-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+button.xf-watchlist-sort-btn:hover {
+  color: var(--xf-text-200);
+}
+
+.xf-watchlist-sort-indicator {
+  font-size: 0.75em;
+  opacity: 0.85;
+}
+
 .xf-watchlist-table td {
   padding: 0.75rem 0.85rem;
   vertical-align: top;

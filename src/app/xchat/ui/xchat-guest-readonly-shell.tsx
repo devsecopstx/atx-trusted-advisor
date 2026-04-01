@@ -3,7 +3,11 @@
 import type { ReactNode } from "react";
 
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
-import { AppUserAccountRailSection, AppUserResourcesRailSection } from "@/app/ui/app-user-rail-nav";
+import {
+    AppUserAccountRailSection,
+    AppUserOptionsRailSection,
+    AppUserResourcesRailSection
+} from "@/app/ui/app-user-rail-nav";
 import { XchatGuestPanel } from "@/app/xchat/ui/xchat-guest-panel";
 import type { AccessRequestPlanValue } from "@/lib/access-request-plans";
 
@@ -28,6 +32,7 @@ export function XchatGuestReadonlyShell({
       mainClassName="app-user-shell-with-rail--padded"
       rail={
         <aside aria-label="Public read-only navigation" className="app-user-public-rail xf-widget">
+          <AppUserOptionsRailSection railDisclosureDefaultOpen={false} />
           <AppUserResourcesRailSection
             isGlobalAdmin={false}
             railDisclosureDefaultOpen={false}

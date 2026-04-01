@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import {
     AddIcon,
@@ -135,13 +135,55 @@ function buildDirtyAddEntries(baseline: WatchlistRow[], draft: WatchlistRow[]): 
   return out;
 }
 
-/** Notional dollars at 100× current quote (e.g. standard equity/options contract sizing). */
-function formatTargetEntryCell(row: WatchlistRow): string {
+type WatchlistSortColumn = "instrument" | "targetEntry";
+
+/** Whole-dollar notional: round(100× live quote) for sort and display. */
+function getTargetEntryNumeric(row: WatchlistRow): number | null {
   const px = row.quote?.price;
   if (typeof px === "number" && Number.isFinite(px)) {
-    return (100 * px).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+    return Math.round(100 * px);
+  }
+  return null;
+}
+
+/** Notional dollars at 100× current quote, rounded to nearest whole dollar. */
+function formatTargetEntryCell(row: WatchlistRow): string {
+  const v = getTargetEntryNumeric(row);
+  if (v !== null) {
+    return v.toLocaleString(undefined, { maximumFractionDigits: 0, minimumFractionDigits: 0 });
   }
   return "—";
+}
+
+function applyWatchlistSort(
+  list: WatchlistRow[],
+  sortColumn: WatchlistSortColumn,
+  sortDir: "asc" | "desc"
+): WatchlistRow[] {
+  const mult = sortDir === "asc" ? 1 : -1;
+  const out = [...list];
+  out.sort((a, b) => {
+    if (sortColumn === "instrument") {
+      return mult * a.symbol.localeCompare(b.symbol, undefined, { sensitivity: "base" });
+    }
+    const va = getTargetEntryNumeric(a);
+    const vb = getTargetEntryNumeric(b);
+    if (va === null && vb === null) {
+      return mult * a.symbol.localeCompare(b.symbol, undefined, { sensitivity: "base" });
+    }
+    if (va === null) {
+      return 1;
+    }
+    if (vb === null) {
+      return -1;
+    }
+    const cmp = va - vb;
+    if (cmp !== 0) {
+      return mult * cmp;
+    }
+    return a.symbol.localeCompare(b.symbol, undefined, { sensitivity: "base" });
+  });
+  return out;
 }
 
 function formatLastUpdateCell(row: WatchlistRow): string {
@@ -174,9 +216,8 @@ function toCsv(rows: WatchlistRow[]): string {
   const lines = rows.map((r) => {
     const q = r.quote;
     const company = (q?.companyName ?? r.symbol).replaceAll('"', '""');
-    const px = q?.price;
-    const target100 =
-      typeof px === "number" && Number.isFinite(px) ? (100 * px).toFixed(2) : "";
+    const te = getTargetEntryNumeric(r);
+    const target100 = te !== null ? String(te) : "";
     let lastUp = "";
     if (r.lastUpdatedAt) {
       try {
@@ -301,6 +342,18 @@ export function WatchlistConsole({
   const [removingSymbol, setRemovingSymbol] = useState<string | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [listNavCollapsed, setListNavCollapsed] = useState(true);
+  const [sort, setSort] = useState<{ column: WatchlistSortColumn; dir: "asc" | "desc" }>({
+    column: "instrument",
+    dir: "asc"
+  });
+
+  const toggleWatchlistSort = useCallback((column: WatchlistSortColumn) => {
+    setSort((prev) =>
+      prev.column === column
+        ? { column, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { column, dir: column === "instrument" ? "asc" : "desc" }
+    );
+  }, []);
 
   useEffect(() => {
     try {
@@ -500,14 +553,15 @@ export function WatchlistConsole({
     if (rows.length === 0) {
       return;
     }
-    const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const sorted = applyWatchlistSort(rows, sort.column, sort.dir);
+    const blob = new Blob([toCsv(sorted)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `atxfinance-watchlist-${listName.replace(/\s+/g, "-").toLowerCase()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [listName, rows]);
+  }, [listName, rows, sort.column, sort.dir]);
 
   const onPickImportFile = useCallback(() => {
     importFileRef.current?.click();
@@ -589,6 +643,10 @@ export function WatchlistConsole({
   );
 
   const displayRows = editMode ? draftRows : rows;
+  const sortedDisplayRows = useMemo(
+    () => applyWatchlistSort(displayRows, sort.column, sort.dir),
+    [displayRows, sort.column, sort.dir]
+  );
   const sidebarTitle = editMode ? draftName || listName : listName;
 
   return (
@@ -750,20 +808,60 @@ export function WatchlistConsole({
               <p className="xf-watchlist-status">Loading watchlist…</p>
             ) : null}
 
-            {!loading && displayRows.length === 0 ? (
+            {!loading && sortedDisplayRows.length === 0 ? (
               <p className="xf-watchlist-empty">
                 No symbols yet. Use + Add, Import CSV (e.g. <code>atxfinance-watchlist.csv</code>), or open xChat to
                 seed defaults.
               </p>
             ) : null}
 
-            {!loading && displayRows.length > 0 ? (
+            {!loading && sortedDisplayRows.length > 0 ? (
               <div className="xf-watchlist-table-wrap">
                 <table className="xf-watchlist-table">
                   <thead>
                     <tr>
-                      <th scope="col">Instrument</th>
-                      <th scope="col">Target entry</th>
+                      <th
+                        aria-sort={
+                          sort.column === "instrument"
+                            ? sort.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                        scope="col"
+                      >
+                        <button
+                          className="xf-watchlist-sort-btn"
+                          type="button"
+                          onClick={() => toggleWatchlistSort("instrument")}
+                        >
+                          Instrument
+                          <span aria-hidden className="xf-watchlist-sort-indicator">
+                            {sort.column === "instrument" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                          </span>
+                        </button>
+                      </th>
+                      <th
+                        aria-sort={
+                          sort.column === "targetEntry"
+                            ? sort.dir === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                        scope="col"
+                      >
+                        <button
+                          className="xf-watchlist-sort-btn"
+                          type="button"
+                          onClick={() => toggleWatchlistSort("targetEntry")}
+                        >
+                          Target entry
+                          <span aria-hidden className="xf-watchlist-sort-indicator">
+                            {sort.column === "targetEntry" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
+                          </span>
+                        </button>
+                      </th>
                       <th scope="col">Last update</th>
                       {/* TODO(options-scanner): Rationale column — populate from options-scanner (planned); UI placeholder until then. */}
                       <th scope="col">Rationale</th>
@@ -771,7 +869,7 @@ export function WatchlistConsole({
                     </tr>
                   </thead>
                   <tbody>
-                    {displayRows.map((row) => (
+                    {sortedDisplayRows.map((row) => (
                       <tr key={row.symbol}>
                         <td>
                           <WatchlistSymbolShape

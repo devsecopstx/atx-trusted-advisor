@@ -6,6 +6,14 @@ const repoMocks = vi.hoisted(() => ({
   listPrefs: vi.fn(),
 }));
 
+vi.mock("@/lib/mongodb", () => ({
+  getDb: vi.fn(async () => ({
+    collection: () => ({
+      countDocuments: vi.fn().mockResolvedValue(3)
+    })
+  }))
+}));
+
 vi.mock("@/modules/core-admin/repository", () => ({
   adminListOptionsStrategySummaries: repoMocks.listStrategies,
   adminListOptionsStrategyPreferenceSummaries: repoMocks.listPrefs,
@@ -31,11 +39,17 @@ describe("runOptionsStrategyScanner", () => {
     });
 
     expect(r.status).toBe("success");
-    expect(r.output).toContain("daily_options_scanner: catalog check");
-    expect(r.output).toContain("2 strategies");
-    expect(r.output).toContain("1 preference");
+    expect(r.output).toContain("daily_options_scanner:");
+    expect(r.output).toContain("portfolios=3");
+    expect(r.output).toContain("accounts=3");
+    expect(r.output).toContain("items_scanned=3");
+    expect(r.output).toContain("strategies=2");
+    expect(r.output).toContain("preferences=1");
     expect(r.output).toMatch(/pmcc|wheel/);
     expect(r.auditDetails).toEqual({
+      portfolioCount: 3,
+      accountCount: 3,
+      itemsScanned: 3,
       strategyCount: 2,
       preferenceCount: 1,
       slugCount: 2

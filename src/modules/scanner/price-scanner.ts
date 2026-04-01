@@ -134,14 +134,16 @@ export async function runPriceScanner(task: ScheduledTask): Promise<ScheduledCat
       : "outside market hours";
     return {
       status: "success",
-      output: `price_scanner: skipped — ${reason} [${market.marketDate} ${market.timezone}]`,
+      output: `price_scanner: skipped — ${reason} [${market.marketDate} ${market.timezone}] | portfolios=${portfolioCount} accounts=${accountCount} items_updated=0 items_scanned=0`,
       auditDetails: {
         skipped: true,
         marketDate: market.marketDate,
         marketTimezone: market.timezone,
         holiday: market.holidayName ?? null,
         portfolioCount,
-        accountCount
+        accountCount,
+        itemsUpdated: 0,
+        itemsScanned: 0
       }
     };
   }
@@ -199,9 +201,11 @@ export async function runPriceScanner(task: ScheduledTask): Promise<ScheduledCat
   });
 
   const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
+  const itemsScanned = symbolList.length;
+  const itemsUpdated = watchlistSymbolUpdates;
   return {
     status: "success",
-    output: `price_scanner: scanned ${symbolList.length} symbols (${quoteBySymbol.size} quoted) across ${portfolioCount} portfolios, ${accountCount} accounts, ${positions.length} holdings, ${watchlists.length} watchlists in ${durationSeconds}s`,
+    output: `price_scanner: portfolios=${portfolioCount} accounts=${accountCount} items_updated=${itemsUpdated} items_scanned=${itemsScanned} symbols_quoted=${quoteBySymbol.size} holdings=${positions.length} watchlists=${watchlists.length} duration_s=${durationSeconds}`,
     auditDetails: {
       marketDate: market.marketDate,
       marketTimezone: market.timezone,
@@ -212,7 +216,9 @@ export async function runPriceScanner(task: ScheduledTask): Promise<ScheduledCat
       watchlistCount: watchlists.length,
       symbolCount: symbolList.length,
       quotedSymbolCount: quoteBySymbol.size,
-      watchlistSymbolUpdates
+      watchlistSymbolUpdates,
+      itemsUpdated,
+      itemsScanned
     }
   };
 }

@@ -3,8 +3,10 @@ import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-ser
 import { ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
+import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 
 const ACCESS_REQUESTS_COLLECTION = "admin_access_requests";
+const ACCOUNT_COLLECTION = "portfolio_accounts";
 const ACTIONABLE_STATUSES = ["new", "triaged", "pending"] as const;
 
 function tenantFilter(tenantId?: ObjectId): Record<string, unknown> {
@@ -21,7 +23,10 @@ export async function runUserAccessRequestsTask(
   const tenantIdHex = task.tenantId?.toHexString() ?? null;
   const tenantScoped = tenantFilter(task.tenantId);
 
-  const [actionable, approvedToday] = await Promise.all([
+  const [portfolioCount, accountCount, itemsScanned, actionable, approvedToday] = await Promise.all([
+    db.collection(TENANT_PORTFOLIO_COLLECTION).countDocuments(tenantScoped),
+    db.collection(ACCOUNT_COLLECTION).countDocuments(tenantScoped),
+    db.collection(ACCESS_REQUESTS_COLLECTION).countDocuments(tenantScoped),
     db.collection(ACCESS_REQUESTS_COLLECTION).countDocuments({
       ...tenantScoped,
       status: { $in: ACTIONABLE_STATUSES }
@@ -37,9 +42,12 @@ export async function runUserAccessRequestsTask(
 
   return {
     status: "success",
-    output: `user_access_requests: actionable=${actionable} approved_last_24h=${approvedToday}`,
+    output: `user_access_requests: portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} actionable=${actionable} approved_last_24h=${approvedToday}`,
     auditDetails: {
       tenantId: tenantIdHex,
+      portfolioCount,
+      accountCount,
+      itemsScanned,
       actionableCount: actionable,
       approvedLast24h: approvedToday
     }
