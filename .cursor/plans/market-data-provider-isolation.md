@@ -40,7 +40,7 @@ Capture answers in this section or a linked doc so implementation does not stall
 | **A — Proxy via Next BFF only** | Single Massive/Yahoo integration in TS; one secret surface; fewer JVM deps; faster iteration | More CPU/network on **xfinance-core** Cloud Run; larger cold paths if chain is heavy |
 | **B — Keep / extend Kotlin `atxfinance-backend`** | Offload chain work from Next; JVM SDK ([client-jvm](https://github.com/massive-com/client-jvm)); independent scaling | Two services to configure, key bind, deploy, observe; contract parity TS ↔ Kotlin |
 
-**Decision:** A / B / hybrid (define: e.g. quotes in BFF, chain in Kotlin).
+**Decision:** A.
 
 **If unblocked default:** **A** for speed and ops simplicity unless chain traffic is proven to dominate BFF.
 
@@ -50,11 +50,9 @@ Capture answers in this section or a linked doc so implementation does not stall
 
 | Option | Notes |
 |--------|--------|
-| **Yahoo primary, Massive optional** | Lowest change risk; Massive behind flag for staging tests |
-| **Massive primary, Yahoo fallback** | Paid data path first; implement fallback mapping + error handling |
 | **Massive only** (after cutover) | Simplest runtime; must accept Yahoo removal risk |
 
-**Decision:** Primary = ___ · Fallback = ___ · **Dual-run period?** yes/no (how long).
+**Decision:** Primary = massive Fallback = yahoo **Dual-run period?** no.
 
 ---
 

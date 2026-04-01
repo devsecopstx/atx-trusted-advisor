@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
+import { XoptionsChainScanner } from "@/app/xoptions/xoptions-chain-scanner";
 import {
     DESK_OUTLOOK_LABELS,
     DESK_RISK_DISPLAY_LABELS
@@ -243,7 +244,7 @@ export function XoptionsStrategyBuilderWorkspace() {
   }
 
   return (
-    <div className="xoptions-workspace space-y-4 max-w-3xl">
+    <div className="xoptions-workspace space-y-4 max-w-6xl">
       <p className="xoptions-page-kicker">xoptions · Strategy builder</p>
 
       <section className="xoptions-top-option-header" aria-label="Account, target horizon, and at a glance">
@@ -555,6 +556,14 @@ export function XoptionsStrategyBuilderWorkspace() {
             </button>
           </div>
         </details>
+      </section>
+
+      <section className="xoptions-workspace__divider" aria-label="Option chain scanner">
+        <XoptionsChainScanner
+          symbol={symbol}
+          weeks={weeks}
+          lastPrice={snapshot?.lastPrice ?? null}
+        />
       </section>
 
       <div>

@@ -631,3 +631,99 @@ html[data-xf-ui="soft"] a.xoptions-chain-cta.cta.cta-primary {
   padding-top: 0.75rem;
   margin-top: 0.75rem;
 }
+
+/* ── Option chain scanner (BFF: GET /api/strategy-options*) ── */
+.xoptions-chain-scanner {
+  margin-top: 0.5rem;
+}
+
+.xoptions-chain-scanner__toolbar {
+  align-items: center;
+}
+
+.xoptions-chain-scanner__panel {
+  border-radius: var(--xf-radius-md);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  padding: 0.75rem;
+}
+
+.xoptions-chain-scanner__meta {
+  margin-bottom: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--xf-text-300);
+}
+
+.xoptions-chain-scanner__headline {
+  margin: 0;
+  font-weight: 600;
+  color: var(--xf-text-100);
+}
+
+.xoptions-chain-scanner__loaded {
+  font-weight: 400;
+  color: var(--xf-text-400);
+}
+
+.xoptions-chain-scanner__line {
+  margin: 0.25rem 0 0;
+}
+
+.xoptions-chain-scanner__note {
+  color: var(--xf-text-400);
+}
+
+.xoptions-chain-scanner__warn {
+  margin: 0.35rem 0 0;
+  color: var(--xf-warning-400);
+}
+
+.xoptions-chain-scanner__table-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--xf-gain-green) 82%, var(--xf-text-100));
+}
+
+.xoptions-chain-scanner__tables {
+  align-items: start;
+}
+
+.xoptions-chain-table__head {
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  color: var(--xf-text-400);
+}
+
+.xoptions-chain-table__row {
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.xoptions-chain-table__strike {
+  color: var(--xf-text-100);
+}
+
+.xoptions-chain-table__empty {
+  color: var(--xf-text-400);
+}
+
+.xoptions-chain-spread--ok {
+  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
+}
+
+.xoptions-chain-spread--mid {
+  color: var(--xf-warning-400);
+}
+
+.xoptions-chain-spread--wide {
+  color: color-mix(in srgb, var(--xf-danger-400) 88%, var(--xf-text-100));
+}
+
+.xoptions-chain-scanner__disclaimer {
+  margin-top: 0.75rem;
+  font-size: 0.625rem;
+  line-height: 1.35;
+  color: var(--xf-text-400);
+}
