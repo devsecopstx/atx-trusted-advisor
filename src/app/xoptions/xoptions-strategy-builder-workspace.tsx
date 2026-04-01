@@ -93,6 +93,10 @@ const STEPS = [
 
 const OPTIONS_APPLY_URL = (process.env.NEXT_PUBLIC_XOPTIONS_OPTIONS_APPLY_URL ?? "").trim();
 
+function priceAtPctMove(last: number, pct: number): number {
+  return last * (1 + pct / 100);
+}
+
 function riskLabel(r: DeskAccountSlice["riskProfile"] | null | undefined): string {
   if (r === "conservative" || r === "balanced" || r === "growth") {
     return DESK_RISK_DISPLAY_LABELS[r];
@@ -287,6 +291,13 @@ export function XoptionsStrategyBuilderWorkspace() {
   const weightOk = Math.abs(weightSum - 1) < 0.02;
 
   const symbolUpper = symbol.trim().toUpperCase();
+  const quoteLastPrice = useMemo((): number | null => {
+    if (snapshot?.symbol !== symbolUpper || snapshot.lastPrice == null) {
+      return null;
+    }
+    const p = snapshot.lastPrice;
+    return Number.isFinite(p) ? p : null;
+  }, [snapshot, symbolUpper]);
   const step1Complete = symbolUpper.length >= 1 && !snapLoading;
   const canGoStep2 = step1Complete;
 
@@ -360,85 +371,71 @@ export function XoptionsStrategyBuilderWorkspace() {
         </h1>
       </div>
 
-      <section className="xoptions-symbol-hero" aria-label="Enter symbol">
-        <p className="xoptions-step__question m-0">{STEPS[0]?.question}</p>
-        <div className="mt-3 max-w-md">
-          <label
-            className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--xf-text-400)]"
-            htmlFor="xo-symbol"
-          >
-            Symbol
-          </label>
-          <div className="relative">
-            <input
-              id="xo-symbol"
-              className="crud-input w-full pr-10 font-mono text-base uppercase md:text-lg"
-              placeholder="e.g. AAPL"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              autoComplete="off"
-              spellCheck={false}
-              aria-label="Underlying symbol"
-            />
-            <span
-              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--xf-text-400)]"
-              aria-hidden
-            >
-              🔍
-            </span>
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            className="xoptions-next-btn"
-            disabled={!canGoStep2}
-            onClick={() => advanceFrom(1)}
-          >
-            Next
-          </button>
-          {symbolUpper.length > 0 ? (
-            <div className="text-xs text-[var(--xf-text-400)]" role="status">
-              {snapLoading
-                ? "Loading quote…"
-                : snapshot?.symbol === symbolUpper
-                  ? `Last ${snapshot.lastPrice ?? "—"}`
-                  : "Enter a valid symbol"}
-            </div>
-          ) : null}
-        </div>
-      </section>
-
-      <nav className="xoptions-stepper" aria-label="Strategy builder progress">
-        {STEPS.map((s, i) => (
-          <div key={s.n} className="xoptions-stepper__segment">
-            <button
-              type="button"
-              className={`xoptions-stepper__node ${s.n === activeStep ? "xoptions-stepper__node--current" : ""} ${s.n < activeStep ? "xoptions-stepper__node--complete" : ""} ${s.n > activeStep ? "xoptions-stepper__node--future" : ""}`}
-              aria-current={s.n === activeStep ? "step" : undefined}
-              disabled={s.n > unlockedStep}
-              onClick={() => goStep(s.n)}
-            >
-              <span className="xoptions-stepper__node-num">{s.n}</span>
-              <span className="xoptions-stepper__node-label">{s.title}</span>
-            </button>
-            {i < STEPS.length - 1 ? <span className="xoptions-stepper__rail" aria-hidden /> : null}
-          </div>
-        ))}
-      </nav>
-
       <section className="xoptions-workspace-meta" aria-label="Workspace">
-        <p className="xoptions-workspace-meta__line text-sm">
-          <span className="text-[var(--xf-text-400)]">Portfolio</span>{" "}
-          <span className="font-semibold text-[var(--xf-text-200)]">{ctx?.portfolio?.name ?? "—"}</span>
-          <span className="mx-2 text-[var(--xf-text-500)]" aria-hidden>
-            ·
-          </span>
-          <span className="text-[var(--xf-text-400)]">Account</span>{" "}
-          <span className="font-semibold text-[var(--xf-text-200)]">
-            {workspaceDeskAccount?.name ?? ctx?.account?.name ?? "—"}
-          </span>
-        </p>
+        <div className="xoptions-workspace-meta__row">
+          <div className="xoptions-workspace-meta__primary min-w-0">
+            <p className="xoptions-workspace-meta__line text-sm">
+              <span className="text-[var(--xf-text-400)]">Portfolio</span>{" "}
+              <span className="font-semibold text-[var(--xf-text-200)]">{ctx?.portfolio?.name ?? "—"}</span>
+              <span className="mx-2 text-[var(--xf-text-500)]" aria-hidden>
+                ·
+              </span>
+              <span className="text-[var(--xf-text-400)]">Account</span>{" "}
+              <span className="font-semibold text-[var(--xf-text-200)]">
+                {workspaceDeskAccount?.name ?? ctx?.account?.name ?? "—"}
+              </span>
+            </p>
+          </div>
+          <div className="xoptions-workspace-meta__preferences min-w-0">
+            <details
+              id="xoptions-preferences"
+              className="xoptions-workspace-preferences xoptions-scoring-drop"
+              aria-labelledby="xoptions-preferences-label"
+            >
+              <summary className="xoptions-scoring-drop__summary" id="xoptions-preferences-label">
+                <span className="xoptions-scoring-drop__summary-text">
+                  <span className="xoptions-workspace-preferences__title">Preferences</span>
+                  <span className="xoptions-workspace-preferences__sub">
+                    Scoring weights — optional overrides
+                  </span>
+                </span>
+                <span className="xoptions-scoring-drop__chev" aria-hidden>
+                  ▾
+                </span>
+              </summary>
+              <div className="xoptions-scoring-drop__body">
+                <ul className="xoptions-scoring-drop__factors">
+                  {effectiveFactors.length === 0 ? (
+                    <li className="xoptions-hint text-xs list-none">No factors — portfolio defaults apply.</li>
+                  ) : (
+                    effectiveFactors.map((f) => (
+                      <li key={f.id} className="xoptions-scoring-drop__factor-row">
+                        <span className="xoptions-scoring-drop__factor-label">{f.label}</span>
+                        <input
+                          type="number"
+                          className="crud-input xoptions-scoring-drop__factor-input font-mono"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={Math.round(f.weight * 1000) / 10}
+                          onChange={(e) => updateFactorWeight(f.id, Number(e.target.value))}
+                          aria-label={`Weight percent for ${f.label}`}
+                        />
+                        <span className="xoptions-inline-muted">%</span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+                <p className={`text-xs ${weightOk ? "xoptions-hint" : "xoptions-warning"}`}>
+                  Sum {(weightSum * 100).toFixed(1)}% (target 100%)
+                </p>
+                <button type="button" className="xoptions-text-link text-xs" onClick={resetWeightsToPortfolio}>
+                  Reset weights to portfolio
+                </button>
+              </div>
+            </details>
+          </div>
+        </div>
         {workspaceDeskAccount && !workspaceDeskAccount.optionsApproved ? (
           <div className="xoptions-account-bar__notice mt-2" role="status">
             <span className="xoptions-account-bar__notice-icon" aria-hidden>
@@ -463,9 +460,109 @@ export function XoptionsStrategyBuilderWorkspace() {
         ) : null}
       </section>
 
-      <section className="xoptions-top-option-header xoptions-top-option-header--glance-only" aria-label="At a glance">
-        <aside className="xoptions-top-option-header__col xoptions-top-option-header__col--glance min-w-0 w-full" aria-label="At a glance">
-          <div className="xoptions-at-a-glance xoptions-at-a-glance--header">
+      <nav className="xoptions-stepper" aria-label="Strategy builder progress">
+        {STEPS.map((s, i) => (
+          <div key={s.n} className="xoptions-stepper__segment">
+            <button
+              type="button"
+              className={`xoptions-stepper__node ${s.n === activeStep ? "xoptions-stepper__node--current" : ""} ${s.n < activeStep ? "xoptions-stepper__node--complete" : ""} ${s.n > activeStep ? "xoptions-stepper__node--future" : ""}`}
+              aria-current={s.n === activeStep ? "step" : undefined}
+              disabled={s.n > unlockedStep}
+              onClick={() => goStep(s.n)}
+            >
+              <span className="xoptions-stepper__node-num">{s.n}</span>
+              <span className="xoptions-stepper__node-label">{s.title}</span>
+            </button>
+            {i < STEPS.length - 1 ? <span className="xoptions-stepper__rail" aria-hidden /> : null}
+          </div>
+        ))}
+      </nav>
+
+      <section className="xoptions-symbol-glance-row" aria-label="Enter symbol and portfolio snapshot">
+        <div className="xoptions-symbol-hero xoptions-symbol-hero--in-row" aria-label="Enter symbol">
+          <p className="xoptions-step__question m-0">{STEPS[0]?.question}</p>
+          <div className="mt-3 max-w-md">
+            <label
+              className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--xf-text-400)]"
+              htmlFor="xo-symbol"
+            >
+              Symbol
+            </label>
+            <div className="relative">
+              <input
+                id="xo-symbol"
+                className="crud-input w-full pr-10 font-mono text-base uppercase md:text-lg"
+                placeholder="e.g. AAPL"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                autoComplete="off"
+                spellCheck={false}
+                aria-label="Underlying symbol"
+              />
+              <span
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--xf-text-400)]"
+                aria-hidden
+              >
+                🔍
+              </span>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <button
+              type="button"
+              className="xoptions-next-btn"
+              disabled={!canGoStep2}
+              onClick={() => advanceFrom(1)}
+            >
+              Next
+            </button>
+            {symbolUpper.length > 0 ? (
+              snapLoading ? (
+                <div className="text-xs text-[var(--xf-text-400)]" role="status">
+                  Loading quote…
+                </div>
+              ) : snapshot?.symbol !== symbolUpper ? (
+                <div className="text-xs text-[var(--xf-text-400)]" role="status">
+                  Enter a valid symbol
+                </div>
+              ) : quoteLastPrice == null ? (
+                <div className="text-xs text-[var(--xf-text-400)]" role="status">
+                  No last price
+                </div>
+              ) : (
+                <div
+                  className="xoptions-price-ladder min-w-0 flex-1"
+                  role="status"
+                  aria-label={`Price levels vs last ${quoteLastPrice.toFixed(2)}`}
+                >
+                  {([-15, -10, -5] as const).map((pct) => (
+                    <span key={pct} className="xoptions-price-ladder__cell">
+                      <span className="xoptions-price-ladder__label">{pct}%</span>
+                      <span className="xoptions-price-ladder__value">
+                        ${priceAtPctMove(quoteLastPrice, pct).toFixed(2)}
+                      </span>
+                    </span>
+                  ))}
+                  <span className="xoptions-price-ladder__cell xoptions-price-ladder__cell--spot">
+                    <span className="xoptions-price-ladder__label">Last</span>
+                    <span className="xoptions-price-ladder__value">${quoteLastPrice.toFixed(2)}</span>
+                  </span>
+                  {([5, 10, 15] as const).map((pct) => (
+                    <span key={pct} className="xoptions-price-ladder__cell">
+                      <span className="xoptions-price-ladder__label">+{pct}%</span>
+                      <span className="xoptions-price-ladder__value">
+                        ${priceAtPctMove(quoteLastPrice, pct).toFixed(2)}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )
+            ) : null}
+          </div>
+        </div>
+
+        <aside className="xoptions-symbol-glance-row__glance min-w-0" aria-label="At a glance">
+          <div className="xoptions-at-a-glance xoptions-at-a-glance--symbol-column">
             <p className="xoptions-at-a-glance__head">At a glance</p>
             <div className="xoptions-at-a-glance__grid">
               <div className="min-w-0">
@@ -549,8 +646,7 @@ export function XoptionsStrategyBuilderWorkspace() {
           {activeStep === 1 ? (
             <div className="xoptions-step__body">
               <p className="xoptions-hint text-sm text-[var(--xf-text-400)]">
-                Enter a ticker in the field at the top of the page. Holdings and hot list below use your workspace
-                account from the left rail.
+                Enter a ticker in the field above. Holdings and hot list use your workspace account from the left rail.
               </p>
             </div>
           ) : null}
@@ -593,72 +689,74 @@ export function XoptionsStrategyBuilderWorkspace() {
                   {ctx ? effectiveRisk : "—"}
                 </p>
               </div>
-              <div>
-                <label className="xoptions-workspace__label block" htmlFor="xo-outlook">
-                  Outlook override
-                </label>
-                <div className="mt-1 flex max-w-xs items-center gap-2">
-                  {outlookIconSlug ? (
-                    <span
-                      className={`inline-flex shrink-0 ${outlookIconClassForSlug(outlookIconSlug)}`}
-                      aria-hidden
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                <div className="min-w-0">
+                  <label className="xoptions-workspace__label block" htmlFor="xo-outlook">
+                    Outlook override
+                  </label>
+                  <div className="mt-1 flex max-w-full items-center gap-2">
+                    {outlookIconSlug ? (
+                      <span
+                        className={`inline-flex shrink-0 ${outlookIconClassForSlug(outlookIconSlug)}`}
+                        aria-hidden
+                      >
+                        <OutlookIconFor className="h-5 w-5" outlook={outlookIconSlug} />
+                      </span>
+                    ) : (
+                      <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />
+                    )}
+                    <select
+                      id="xo-outlook"
+                      className="crud-input min-w-0 flex-1"
+                      value={outlookOverride}
+                      onChange={(e) =>
+                        setOutlookOverride(
+                          e.target.value === "" ? "" : (e.target.value as AccountOutlook)
+                        )
+                      }
                     >
-                      <OutlookIconFor className="h-5 w-5" outlook={outlookIconSlug} />
-                    </span>
-                  ) : (
-                    <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />
-                  )}
+                      <option value="">
+                        Use account / book (
+                        {mergedOutlookLabels(workspaceDeskAccount?.outlook, ctx?.bookOutlook) || "—"})
+                      </option>
+                      <option value="bullish">{DESK_OUTLOOK_LABELS.bullish}</option>
+                      <option value="neutral">{DESK_OUTLOOK_LABELS.neutral}</option>
+                      <option value="bearish">{DESK_OUTLOOK_LABELS.bearish}</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <label className="xoptions-workspace__label block" htmlFor="xo-risk">
+                    Risk
+                  </label>
                   <select
-                    id="xo-outlook"
-                    className="crud-input min-w-0 flex-1"
-                    value={outlookOverride}
+                    id="xo-risk"
+                    className="crud-input mt-1 w-full min-w-0"
+                    value={riskOverride}
                     onChange={(e) =>
-                      setOutlookOverride(
-                        e.target.value === "" ? "" : (e.target.value as AccountOutlook)
+                      setRiskOverride(
+                        e.target.value === ""
+                          ? ""
+                          : (e.target.value as "conservative" | "balanced" | "growth")
                       )
                     }
                   >
                     <option value="">
-                      Use account / book (
-                      {mergedOutlookLabels(workspaceDeskAccount?.outlook, ctx?.bookOutlook) || "—"})
+                      Use portfolio / account (
+                      {riskLabel(workspaceDeskAccount?.riskProfile ?? ctx?.bookRiskProfile ?? null)})
                     </option>
-                    <option value="bullish">{DESK_OUTLOOK_LABELS.bullish}</option>
-                    <option value="neutral">{DESK_OUTLOOK_LABELS.neutral}</option>
-                    <option value="bearish">{DESK_OUTLOOK_LABELS.bearish}</option>
+                    <option value="conservative">Conservative</option>
+                    <option value="balanced">Balanced</option>
+                    <option value="growth">{DESK_RISK_DISPLAY_LABELS.growth}</option>
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="xoptions-workspace__label block" htmlFor="xo-risk">
-                  Risk
-                </label>
-                <select
-                  id="xo-risk"
-                  className="crud-input mt-1 w-full max-w-xs"
-                  value={riskOverride}
-                  onChange={(e) =>
-                    setRiskOverride(
-                      e.target.value === ""
-                        ? ""
-                        : (e.target.value as "conservative" | "balanced" | "growth")
-                    )
-                  }
-                >
-                  <option value="">
-                    Use portfolio / account (
-                    {riskLabel(workspaceDeskAccount?.riskProfile ?? ctx?.bookRiskProfile ?? null)})
-                  </option>
-                  <option value="conservative">Conservative</option>
-                  <option value="balanced">Balanced</option>
-                  <option value="growth">{DESK_RISK_DISPLAY_LABELS.growth}</option>
-                </select>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="xoptions-text-link text-sm" onClick={resetDeskToPortfolio}>
-                  Reset desk to portfolio
-                </button>
+              <div className="flex flex-wrap items-center gap-2">
                 <button type="button" className="xoptions-next-btn" onClick={() => advanceFrom(2)}>
                   Next
+                </button>
+                <button type="button" className="xoptions-text-link text-sm" onClick={resetDeskToPortfolio}>
+                  Reset desk to portfolio
                 </button>
               </div>
             </div>
@@ -711,53 +809,6 @@ export function XoptionsStrategyBuilderWorkspace() {
                 <p className="xoptions-hint mt-1 text-xs">
                   {weeks === null ? "Select a horizon for the chain" : `~${weeks}d in chain`}
                 </p>
-              </div>
-              <div className="min-w-0 text-left">
-                <p className="xoptions-mid-three__label" id="scoringFactors-label">
-                  Scoring factors
-                </p>
-                <details
-                  id="scoringFactors"
-                  className="xoptions-scoring-drop"
-                  aria-labelledby="scoringFactors-label"
-                >
-                  <summary className="xoptions-scoring-drop__summary">
-                    <span className="xoptions-scoring-drop__summary-text">View / edit weights</span>
-                    <span className="xoptions-scoring-drop__chev" aria-hidden>
-                      ▾
-                    </span>
-                  </summary>
-                  <div className="xoptions-scoring-drop__body">
-                    <ul className="xoptions-scoring-drop__factors">
-                      {effectiveFactors.length === 0 ? (
-                        <li className="xoptions-hint text-xs list-none">No factors — portfolio defaults apply.</li>
-                      ) : (
-                        effectiveFactors.map((f) => (
-                          <li key={f.id} className="xoptions-scoring-drop__factor-row">
-                            <span className="xoptions-scoring-drop__factor-label">{f.label}</span>
-                            <input
-                              type="number"
-                              className="crud-input xoptions-scoring-drop__factor-input font-mono"
-                              min={0}
-                              max={100}
-                              step={1}
-                              value={Math.round(f.weight * 1000) / 10}
-                              onChange={(e) => updateFactorWeight(f.id, Number(e.target.value))}
-                              aria-label={`Weight percent for ${f.label}`}
-                            />
-                            <span className="xoptions-inline-muted">%</span>
-                          </li>
-                        ))
-                      )}
-                    </ul>
-                    <p className={`text-xs ${weightOk ? "xoptions-hint" : "xoptions-warning"}`}>
-                      Sum {(weightSum * 100).toFixed(1)}% (target 100%)
-                    </p>
-                    <button type="button" className="xoptions-text-link text-xs" onClick={resetWeightsToPortfolio}>
-                      Reset weights
-                    </button>
-                  </div>
-                </details>
               </div>
               <button type="button" className="xoptions-next-btn" onClick={() => advanceFrom(3)}>
                 Next
