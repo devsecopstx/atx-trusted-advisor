@@ -20,12 +20,13 @@ This is the xChat/persona entrypoint. It summarizes operational behavior and lin
 
 ## Persona resolution policy
 
-`POST /api/xchat/ask` resolves persona from authenticated role context.
+`POST /api/xchat/ask` resolves the effective persona after session defaults, optional **`personaId`** in the JSON body, and **`admin_user_settings.assignedPersonaId`**.
 
-- `global_admin` -> `super-agent`
-- non-admin app roles -> `atx-trusted-advisor`
+- **Sidebar / body `personaId`:** When effective tenant workspace limits have **`changePersonaEnabled: true`** (see `atx-docs/sre-ops/tenant-workspace-limits.md`) or the session is **`global_admin`**, the requested **`personaId`** is preferred over **`assignedPersonaId`** when both differ. When **`changePersonaEnabled`** is **false** for app users, only the assigned persona is used (body `personaId` ignored for switching).
+- **Role defaults** still apply for directory access (`canSessionUsePersona`), published vs draft, and Super-Agent gating for non-admin personas.
+- If the default persona row is missing in edge cases, the route may fail with operator guidance (503 path). Explicit seeding is preferred for consistency.
 
-If admin default persona is missing, the route fails with operator guidance (503 path). Non-admin trusted-advisor can be lazily created, but explicit seeding is preferred for consistency.
+Implementation: `src/app/api/xchat/ask/route.ts`.
 
 ## Persona governance lifecycle
 

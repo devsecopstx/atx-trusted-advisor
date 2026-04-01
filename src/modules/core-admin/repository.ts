@@ -1242,6 +1242,26 @@ function userAccountsForPortfolioSessionScopeFilter(
   };
 }
 
+/**
+ * Session-scoped filter for `portfolio_accounts` by owning user (any portfolio), mirroring
+ * {@link userPortfoliosInSessionScopeFilter} tenant legacy rules.
+ */
+function userAccountsInSessionScopeFilter(userId: string, tenantId?: string): Record<string, unknown> {
+  const tenantObjectId = toTenantObjectId(tenantId);
+  const base = userIdQuery(userId);
+  if (!tenantObjectId) {
+    return base;
+  }
+  return {
+    ...base,
+    $or: [
+      { tenantId: tenantObjectId },
+      { tenantId: { $type: "null" } },
+      { tenantId: { $exists: false } }
+    ]
+  };
+}
+
 /** Watchlist rows for a portfolio — same tenant legacy scope as accounts. */
 function userWatchlistsForPortfolioSessionScopeFilter(
   userId: string,
@@ -1479,6 +1499,27 @@ export async function listPortfolioAccounts(input: {
     .find(userAccountsForPortfolioSessionScopeFilter(input.userId, input.portfolioId, input.tenantId))
     .sort({ isDefault: -1, createdAt: 1 })
     .toArray();
+}
+
+/**
+ * Loads a custodian account by id when it belongs to the session user (any portfolio).
+ * Use when the active workspace portfolio may differ from the portfolio that owns the account (e.g. `/portfolios` focus vs cookie).
+ */
+export async function getPortfolioAccountByIdForSessionUser(input: {
+  userId: string;
+  tenantId?: string;
+  accountId: string;
+}): Promise<Account | null> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.accountId)) {
+    return null;
+  }
+  const db = await getDb();
+  const filter = {
+    _id: new ObjectId(input.accountId),
+    ...userAccountsInSessionScopeFilter(input.userId, input.tenantId)
+  };
+  return db.collection<Account>(collections.accounts).findOne(filter);
 }
 
 export async function countPortfolioAccountsForUser(input: {

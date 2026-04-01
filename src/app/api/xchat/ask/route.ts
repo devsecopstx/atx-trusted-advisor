@@ -209,15 +209,25 @@ export async function POST(request: Request) {
   const hasAppRole = session.roles.some((role) =>
     role === "advisor" || role === "operator" || role === "viewer"
   );
-  // If admin assigned a persona, it is authoritative for app_user sessions.
-  // If it was deleted, fail open to requested persona/default so xChat remains usable.
-  const effectivePersonaId = assignedPersonaId || requestedPersonaId;
-  const personaOverrideCandidates =
-    assignedPersonaId && requestedPersonaId && assignedPersonaId !== requestedPersonaId
-      ? [assignedPersonaId, requestedPersonaId]
-      : effectivePersonaId
-        ? [effectivePersonaId]
-        : [];
+  const workspaceLimitsForPersona = effectiveWorkspaceLimitsForTenantAndPlan(
+    tenantForDebug,
+    subscriptionPlan
+  );
+  const allowRequestPersonaOverride =
+    isAdminSession || workspaceLimitsForPersona.changePersonaEnabled;
+  const personaOverrideCandidates = (() => {
+    if (!allowRequestPersonaOverride) {
+      if (assignedPersonaId) {
+        return [assignedPersonaId];
+      }
+      return [];
+    }
+    const effectivePersonaId = assignedPersonaId || requestedPersonaId;
+    if (requestedPersonaId && assignedPersonaId && requestedPersonaId !== assignedPersonaId) {
+      return [requestedPersonaId, assignedPersonaId];
+    }
+    return effectivePersonaId ? [effectivePersonaId] : [];
+  })();
   let resolvedPersonaIdOverride: string | undefined;
   for (const candidatePersonaId of personaOverrideCandidates) {
     const requestedPersona = await getPersonaByIdCached(candidatePersonaId);

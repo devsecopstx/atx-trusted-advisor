@@ -23,9 +23,9 @@ const ADMIN_APP_USER_SHORTCUTS: Array<{ href: string; label: string; title: stri
     title: "Open app-user watchlist workspace"
   },
   {
-    href: "/xstrategybuilder",
-    label: "xStrategyBuilder",
-    title: "Open app-user strategy builder"
+    href: "/xoptions",
+    label: "xOptions",
+    title: "Open app-user options workspace"
   },
   {
     href: "/resources/getting-started",

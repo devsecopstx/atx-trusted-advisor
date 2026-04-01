@@ -24,7 +24,7 @@ export default async function StrategyOptionsPage({ searchParams }: StrategyOpti
 
   return (
     <div className="xchat-shell">
-      <AppUserApprovedHeader current="xstrategybuilder" feedbackPageLabel="xStrategyBuilder" session={session} />
+      <AppUserApprovedHeader current="xoptions" feedbackPageLabel="xOptions" session={session} />
       <StrategyOptionsConsole initialSymbol={initialSymbol} />
     </div>
   );

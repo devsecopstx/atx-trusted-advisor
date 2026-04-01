@@ -796,13 +796,68 @@ describe("xchat ask route collection retrieval", () => {
     );
   });
 
-  it("uses assigned persona when request persona differs for app_user", async () => {
+  it("prefers request persona over assigned when sidebar persona differs for app_user", async () => {
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
       email: "viewer@atxfinance.ai",
       username: "xf-viewer",
       roles: ["viewer"]
+    });
+    coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce({
+      assignedPersonaId: "507f1f77bcf86cd799439088"
+    });
+    repositoryMocks.getPersonaById.mockImplementation((id: string) => {
+      if (id === "507f1f77bcf86cd799439077") {
+        return Promise.resolve(
+          buildPersona({
+            _id: new ObjectId("507f1f77bcf86cd799439077"),
+            name: "xfinance-options",
+            nameNormalized: "xfinance-options"
+          })
+        );
+      }
+      if (id === "507f1f77bcf86cd799439088") {
+        return Promise.resolve(
+          buildPersona({
+            _id: new ObjectId("507f1f77bcf86cd799439088"),
+            name: "atx-trusted-advisor",
+            nameNormalized: "atx-trusted-advisor"
+          })
+        );
+      }
+      return Promise.resolve(buildPersona());
+    });
+
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439077",
+          message: "somegoodnewstx"
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.getPersonaById).toHaveBeenNthCalledWith(
+      1,
+      "507f1f77bcf86cd799439077"
+    );
+  });
+
+  it("uses assigned persona only when changePersonaEnabled is false for app_user", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "viewer@atxfinance.ai",
+      username: "xf-viewer",
+      roles: ["viewer"]
+    });
+    identityMocks.getTenantByHexId.mockResolvedValueOnce({
+      _id: new ObjectId("507f1f77bcf86cd799439022"),
+      workspaceLimits: { changePersonaEnabled: false }
     });
     coreAdminRepositoryMocks.getUserAdminSettings.mockResolvedValueOnce({
       assignedPersonaId: "507f1f77bcf86cd799439088"
@@ -827,6 +882,7 @@ describe("xchat ask route collection retrieval", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(repositoryMocks.getPersonaById).toHaveBeenCalledTimes(1);
     expect(repositoryMocks.getPersonaById).toHaveBeenCalledWith("507f1f77bcf86cd799439088");
   });
 

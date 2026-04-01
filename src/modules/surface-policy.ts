@@ -7,8 +7,8 @@ import { canUserLogin } from "@/modules/identity/authorization";
  */
 export const APP_USER_PRODUCT_PATH_PREFIXES = [
   "/xchat",
-  "/xstrategybuilder",
   "/portfolio",
+  "/portfolios",
   "/watchlist",
   "/account",
   "/workspace",
@@ -45,7 +45,7 @@ export function isAdminConsolePath(pathname: string): boolean {
 }
 
 /**
- * Product pages that require an approved platform role (viewer+), matching watchlist/xstrategybuilder.
+ * Product pages that require an approved platform role (viewer+), matching watchlist/xoptions.
  * Use in Server Components after `getSessionUser()`.
  */
 export function requireApprovedLoginForProduct(session: SessionUser | null): session is SessionUser {

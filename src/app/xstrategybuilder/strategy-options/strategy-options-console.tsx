@@ -37,7 +37,7 @@ type StrategyOptionsConsoleProps = {
 
 export function StrategyOptionsConsole({
   eyebrow = "xStrategyBuilder · live options",
-  backHref = "/xstrategybuilder",
+  backHref = "/xoptions",
   backLabel = "Back to xStrategyBuilder",
   initialSymbol = "TSLA"
 }: StrategyOptionsConsoleProps) {

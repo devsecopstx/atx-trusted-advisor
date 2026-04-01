@@ -6,13 +6,8 @@ import type { ReactNode } from "react";
 
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
-export type AppUserProductNavCurrent =
-  | "xchat"
-  | "xstrategybuilder"
-  | "xoptions"
-  | "portfolio"
-  | "watchlist"
-  | "account";
+/** Which product icon is active; use `null` on secondary surfaces (e.g. `/account/billing`) so none are highlighted. */
+export type AppUserProductNavCurrent = "xchat" | "xoptions" | "portfolio" | "watchlist" | null;
 
 type AppUserProductNavProps = {
   current: AppUserProductNavCurrent;
@@ -26,7 +21,7 @@ function IconWrap({ children }: { children: ReactNode }) {
   );
 }
 
-const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: ReactNode }[] = [
+const NAV: { id: Exclude<AppUserProductNavCurrent, null>; label: string; href: string; icon: ReactNode }[] = [
   {
     id: "xchat",
     label: "xChat",
@@ -40,9 +35,9 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
     )
   },
   {
-    id: "xstrategybuilder",
-    label: "xStrategyBuilder",
-    href: "/xstrategybuilder",
+    id: "xoptions",
+    label: "xOptions",
+    href: "/xoptions",
     icon: (
       <IconWrap>
         <Image
@@ -57,27 +52,9 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
     )
   },
   {
-    id: "xoptions",
-    label: "xOptions",
-    href: "/xoptions",
-    icon: (
-      <IconWrap>
-        <svg viewBox="0 0 20 20" fill="none" aria-hidden>
-          <path
-            d="M3.5 14.5h2.5l3-6 2 4 2.5-7h3.5"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.5"
-          />
-        </svg>
-      </IconWrap>
-    )
-  },
-  {
     id: "portfolio",
     label: "Portfolio",
-    href: "/portfolio",
+    href: "/portfolios",
     icon: (
       <IconWrap>
         <svg viewBox="0 0 20 20" fill="none">
@@ -104,31 +81,13 @@ const NAV: { id: AppUserProductNavCurrent; label: string; href: string; icon: Re
         </svg>
       </IconWrap>
     )
-  },
-  {
-    id: "account",
-    label: "Account & billing",
-    href: "/account/billing",
-    icon: (
-      <IconWrap>
-        <svg viewBox="0 0 20 20" fill="none">
-          <path
-            d="M4 5.5h12v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 014 14.5v-9z"
-            stroke="currentColor"
-            strokeLinejoin="round"
-            strokeWidth="1.4"
-          />
-          <path d="M4 7.5h12" stroke="currentColor" strokeWidth="1.4" />
-          <path d="M7 12h4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" />
-        </svg>
-      </IconWrap>
-    )
   }
 ];
 
 /**
- * Approved app_user accounts: xChat, xStrategyBuilder, Portfolio (`/portfolio`), Watchlist, Account & billing (`/account/billing`).
- * **Hub** (`/admin`) is shown for every approved session; non-admins are redirected to `/xchat` if they lack `global_admin`.
+ * Product row: xChat, **xOptions** (legacy xStrategyBuilder PNG glyph), Portfolio → **`/portfolios`**, Watchlist.
+ * No billing or Hub icon — billing is Account menu / `/account/billing`; admins reach **`/admin`** from bookmarks or admin shell nav.
+ * Legacy **`/xstrategybuilder`** redirects to **`/xoptions`**.
  */
 export function AppUserProductNav({ current }: AppUserProductNavProps) {
   return (
@@ -145,21 +104,6 @@ export function AppUserProductNav({ current }: AppUserProductNavProps) {
           </Link>
         </XfHoverHint>
       ))}
-      <XfHoverHint hint="Hub">
-        <Link aria-label="Hub" className="xchat-header-icon-link" href="/admin">
-        <IconWrap>
-          <svg viewBox="0 0 24 24" fill="none">
-            <path
-              d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.75"
-            />
-          </svg>
-        </IconWrap>
-        </Link>
-      </XfHoverHint>
     </nav>
   );
 }

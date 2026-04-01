@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -11,6 +12,7 @@ import { caughtErrorMessage } from "@/lib/caught-error";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
+    getPortfolioAccountByIdForSessionUser,
     getPortfolioByIdForSessionUser,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
@@ -85,8 +87,11 @@ export default async function PortfolioAccountPage({
   }
 
   const { accountId } = await params;
+  if (!ObjectId.isValid(accountId)) {
+    notFound();
+  }
 
-  /** Must match `/portfolio`: cookie-selected workspace portfolio, else Mongo default (then provision). */
+  /** Prefer cookie-selected workspace portfolio, else Mongo default (then provision). Account may live on another portfolio (e.g. `/portfolios?focus=` vs workspace cookie). */
   const workspacePortfolioId = await resolveActiveWorkspacePortfolioId(session);
   let portfolio = workspacePortfolioId
     ? await getPortfolioByIdForSessionUser({
@@ -111,7 +116,7 @@ export default async function PortfolioAccountPage({
     notFound();
   }
 
-  const portfolioIdHex = portfolio._id.toHexString();
+  let portfolioIdHex = portfolio._id.toHexString();
 
   let accounts: Account[] = [];
   try {
@@ -128,7 +133,42 @@ export default async function PortfolioAccountPage({
     notFound();
   }
 
-  const account = accounts.find((a) => a._id?.toHexString() === accountId);
+  let account = accounts.find((a) => a._id?.toHexString() === accountId);
+  if (!account?._id) {
+    const direct = await getPortfolioAccountByIdForSessionUser({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      accountId
+    });
+    if (!direct?._id) {
+      notFound();
+    }
+    const owning = await getPortfolioByIdForSessionUser({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      portfolioId: direct.portfolioId.toHexString()
+    });
+    if (!owning?._id) {
+      notFound();
+    }
+    portfolio = owning;
+    portfolioIdHex = owning._id.toHexString();
+    try {
+      accounts = await listPortfolioAccounts({
+        userId: session.userId,
+        portfolioId: portfolioIdHex,
+        tenantId: session.tenantId
+      });
+    } catch (error) {
+      const detail = caughtErrorMessage(error);
+      console.error(
+        `[portfolio/account] accounts load failed userId=${session.userId} portfolioId=${portfolioIdHex} detail=${detail}`
+      );
+      notFound();
+    }
+    account = accounts.find((a) => a._id?.toHexString() === accountId) ?? direct;
+  }
+
   if (!account?._id) {
     notFound();
   }

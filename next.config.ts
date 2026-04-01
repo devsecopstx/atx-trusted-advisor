@@ -61,6 +61,16 @@ const nextConfig: NextConfig = {
         source: "/recommendations/:path*",
         destination: "/admin/recommendations",
         permanent: false
+      },
+      {
+        source: "/xstrategybuilder",
+        destination: "/xoptions",
+        permanent: false
+      },
+      {
+        source: "/xstrategybuilder/:path*",
+        destination: "/xoptions",
+        permanent: false
       }
     ];
   }

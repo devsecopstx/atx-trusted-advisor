@@ -6,8 +6,8 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { XchatGuestReadonlyShell } from "@/app/xchat/ui/xchat-guest-readonly-shell";
 import {
-  parseAccessRequestPlanInput,
-  type AccessRequestPlanValue
+    parseAccessRequestPlanInput,
+    type AccessRequestPlanValue
 } from "@/lib/access-request-plans";
 import { getSessionUser } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
@@ -61,7 +61,7 @@ export default async function AccountBillingPage({
   return (
     <div className="xchat-shell">
       {approved && session ? (
-        <AppUserApprovedHeader current="account" feedbackPageLabel="Billing" session={session} />
+        <AppUserApprovedHeader current={null} feedbackPageLabel="Billing" session={session} />
       ) : (
         <XchatGuestHeader />
       )}

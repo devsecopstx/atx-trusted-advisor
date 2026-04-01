@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { EditIcon, ListRowsIcon } from "@/app/admin/ui/crud-icons";
-import { formatUsd2, formatUsdWhole } from "@/lib/portfolio-overview-metrics";
-import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
+import { formatUsd2 } from "@/lib/portfolio-overview-metrics";
 import { portfolioKindChoiceLabel } from "@/modules/core-admin/types";
 
 export type WorkspacePortfolioRow = {
@@ -17,189 +16,49 @@ export type WorkspacePortfolioRow = {
   kindLabel: string;
 };
 
-/** @deprecated Use WorkspacePortfolioRow — alias for callers migrating from manage-workspace. */
+/** @deprecated Use WorkspacePortfolioRow */
 export type ManagePortfolioRow = WorkspacePortfolioRow;
 
 export type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
 
 type Props = {
+  focusPortfolioId: string | null;
   initialRows: WorkspacePortfolioRow[];
-  initialAccountSlices: WorkspaceDashboardAccountSlice[];
 };
 
-function accountSlicesForPortfolio(
-  portfolioId: string,
-  slices: WorkspaceDashboardAccountSlice[]
-): WorkspaceDashboardAccountSlice[] {
-  return slices.filter((s) => s.portfolioId === portfolioId);
-}
-
-function WorkspaceAccountsByPortfolioChart({
-  rows,
-  accountSlices
-}: {
-  rows: WorkspacePortfolioRow[];
-  accountSlices: WorkspaceDashboardAccountSlice[];
-}) {
-  const groups = useMemo(() => {
-    return rows.map((r) => {
-      const slices = accountSlicesForPortfolio(r.id, accountSlices);
-      const total = slices.reduce((s, x) => s + Math.max(0, x.valueUsd), 0);
-      const safe = total > 0 ? total : 1;
-      const barSlices = slices.map((x) => ({
-        key: `${r.id}-${x.accountId}`,
-        label: x.accountName,
-        percent: (Math.max(0, x.valueUsd) / safe) * 100,
-        valueUsd: x.valueUsd
-      }));
-      return { portfolioId: r.id, portfolioName: r.name, total, barSlices };
-    });
-  }, [rows, accountSlices]);
-
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return (
-    <section className="portfolio-panel portfolio-panel--tight">
-      <h3 className="portfolio-panel__title portfolio-panel__title--sub">Accounts by portfolio</h3>
-      <p className="portfolio-metric__label mb-3 text-[var(--xf-text-200)]">
-        Book per account within each portfolio (stable API ids; names are display-only).
-      </p>
-      <div className="flex flex-col gap-5">
-        {groups.map((g) => (
-          <div key={g.portfolioId}>
-            <h4 className="mb-1 text-sm font-medium text-[var(--xf-text-100)]">{g.portfolioName}</h4>
-            {g.barSlices.length === 0 ? (
-              <p className="text-sm text-[var(--xf-text-300)]">No accounts yet.</p>
-            ) : (
-              <div className="portfolio-allocation">
-                <div className="portfolio-allocation__bar portfolio-allocation__bar--accounts" role="presentation">
-                  {g.barSlices.map((s) => (
-                    <div
-                      key={s.key}
-                      className="portfolio-allocation__segment"
-                      style={{ flexGrow: Math.max(s.percent, 0.01) }}
-                      title={`${s.label}: ${s.percent.toFixed(1)}% (${formatUsd2(s.valueUsd)})`}
-                    />
-                  ))}
-                </div>
-                <ul className="portfolio-allocation__legend portfolio-allocation__legend--plain">
-                  {g.barSlices.map((s) => (
-                    <li key={s.key}>
-                      <span className="min-w-0 truncate" title={s.label}>
-                        {s.label}
-                      </span>
-                      <span>{s.percent.toFixed(0)}%</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function WorkspaceAllAccountsChart({ accountSlices }: { accountSlices: WorkspaceDashboardAccountSlice[] }) {
-  const { totalUsd, barSlices } = useMemo(() => {
-    const totalUsd = accountSlices.reduce((s, x) => s + Math.max(0, x.valueUsd), 0);
-    const safe = totalUsd > 0 ? totalUsd : 1;
-    const sorted = [...accountSlices].sort((a, b) => b.valueUsd - a.valueUsd);
-    const barSlices = sorted.map((x) => {
-      const label = `${x.accountName} · ${x.portfolioName}`;
-      const pct = (Math.max(0, x.valueUsd) / safe) * 100;
-      return {
-        key: `${x.portfolioId}-${x.accountId}`,
-        label,
-        percent: pct,
-        valueUsd: x.valueUsd
-      };
-    });
-    return { totalUsd, barSlices };
-  }, [accountSlices]);
-
-  if (accountSlices.length === 0) {
-    return null;
-  }
-
-  return (
-    <section className="portfolio-panel portfolio-panel--tight">
-      <h3 className="portfolio-panel__title portfolio-panel__title--sub">All accounts</h3>
-      <p className="portfolio-metric__label mb-2">
-        Total (all accounts):{" "}
-        <span className="font-mono text-[var(--xf-text-100)] tabular-nums">{formatUsdWhole(totalUsd)}</span>
-      </p>
-      <div className="portfolio-allocation">
-        <div className="portfolio-allocation__bar portfolio-allocation__bar--accounts" role="presentation">
-          {barSlices.map((s) => (
-            <div
-              key={s.key}
-              className="portfolio-allocation__segment"
-              style={{ flexGrow: Math.max(s.percent, 0.01) }}
-              title={`${s.label}: ${s.percent.toFixed(1)}% (${formatUsd2(s.valueUsd)})`}
-            />
-          ))}
-        </div>
-        <ul className="portfolio-allocation__legend portfolio-allocation__legend--plain">
-          {barSlices.map((s) => (
-            <li key={s.key}>
-              <span className="min-w-0 truncate" title={s.label}>
-                {s.label}
-              </span>
-              <span>{s.percent.toFixed(0)}%</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
-}
-
-function WorkspaceDashboardCharts({
-  rows,
-  accountSlices
-}: {
-  rows: WorkspacePortfolioRow[];
-  accountSlices: WorkspaceDashboardAccountSlice[];
-}) {
-  return (
-    <aside className="portfolio-top-band__charts xf-noise-overlay mb-1" aria-label="Workspace book charts">
-      <div className="portfolio-top-band__charts-inner grid gap-6 lg:grid-cols-2">
-        <WorkspaceAccountsByPortfolioChart accountSlices={accountSlices} rows={rows} />
-        <WorkspaceAllAccountsChart accountSlices={accountSlices} />
-      </div>
-    </aside>
-  );
-}
-
-export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }: Props) {
+export function PortfoliosDashboardClient({ focusPortfolioId, initialRows }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
-  const [accountSlices, setAccountSlices] = useState(initialAccountSlices);
-  const [selectedId, setSelectedId] = useState<string | null>(initialRows[0]?.id ?? null);
+  const [creating, setCreating] = useState(false);
+
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    if (focusPortfolioId && initialRows.some((r) => r.id === focusPortfolioId)) {
+      return focusPortfolioId;
+    }
+    return initialRows.find((r) => r.isDefault)?.id ?? initialRows[0]?.id ?? null;
+  });
 
   useEffect(() => {
     setRows(initialRows);
-    setAccountSlices(initialAccountSlices);
     if (initialRows.length === 0) {
       setSelectedId(null);
       return;
     }
-    setSelectedId((prev) =>
-      prev && initialRows.some((r) => r.id === prev) ? prev : initialRows[0].id
-    );
-  }, [initialRows, initialAccountSlices]);
-
-  const [creating, setCreating] = useState(false);
+    if (!creating) {
+      const fid =
+        focusPortfolioId && initialRows.some((r) => r.id === focusPortfolioId)
+          ? focusPortfolioId
+          : initialRows.find((r) => r.isDefault)?.id ?? initialRows[0].id;
+      setSelectedId(fid);
+    }
+  }, [initialRows, focusPortfolioId, creating]);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<string>("investments");
   const [isDefault, setIsDefault] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [workspaceTab, setWorkspaceTab] = useState<"portfolios" | "edit">("portfolios");
+  const [manageNavPortfolioId, setManageNavPortfolioId] = useState<string | null>(null);
 
   const selected = useMemo(
     () => rows.find((r) => r.id === selectedId) ?? null,
@@ -232,11 +91,12 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
     setCreating(false);
     setError(null);
     setSelectedId(id);
-    setWorkspaceTab("edit");
+    setWorkspaceTab("portfolios");
     const row = rows.find((r) => r.id === id);
     if (row) {
       syncFormFromRow(row);
     }
+    router.replace(`/portfolios?focus=${encodeURIComponent(id)}`);
   };
 
   const startCreate = () => {
@@ -273,11 +133,12 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
         return;
       }
       const id = json.data?._id;
-      router.refresh();
       if (id) {
         setCreating(false);
         setSelectedId(id);
+        router.replace(`/portfolios?focus=${encodeURIComponent(id)}`);
       }
+      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -333,6 +194,26 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
     }
   };
 
+  const goManagePortfolio = async (portfolioId: string) => {
+    setManageNavPortfolioId(portfolioId);
+    try {
+      const res = await fetch("/api/user/workspace-portfolio", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ portfolioId })
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        window.alert(body.error ?? "Could not open portfolio");
+        return;
+      }
+      router.push("/portfolio");
+    } finally {
+      setManageNavPortfolioId(null);
+    }
+  };
+
   const remove = async () => {
     if (!selectedId) {
       return;
@@ -351,10 +232,13 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
       }
       const next = rows.filter((r) => r.id !== selectedId);
       setRows(next);
-      setSelectedId(next[0]?.id ?? null);
+      const n = next[0]?.id ?? null;
+      setSelectedId(n);
       if (next[0]) {
         syncFormFromRow(next[0]);
+        router.replace(n ? `/portfolios?focus=${encodeURIComponent(n)}` : "/portfolios");
       } else {
+        router.replace("/portfolios");
         startCreate();
       }
       router.refresh();
@@ -365,9 +249,7 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
 
   return (
     <div className="grid gap-4">
-      <WorkspaceDashboardCharts accountSlices={accountSlices} rows={rows} />
-
-      <nav className="portfolio-manage-tabs" role="tablist" aria-label="Portfolio workspace">
+      <nav className="portfolio-manage-tabs" role="tablist" aria-label="Portfolios">
         <button
           type="button"
           role="tab"
@@ -378,7 +260,7 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
           onClick={() => setWorkspaceTab("portfolios")}
         >
           <ListRowsIcon className="crud-icon" aria-hidden />
-          My portfolios
+          Portfolios
         </button>
         <button
           type="button"
@@ -402,7 +284,7 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
           aria-labelledby="workspace-tab-portfolios"
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="portfolio-panel__title text-base">All portfolios</h2>
+            <h2 className="portfolio-panel__title text-base">Your portfolios</h2>
             <button
               className="rounded-md border border-[var(--xf-border)] bg-[var(--xf-bg-800)] px-3 py-1.5 text-sm text-[var(--xf-text-100)] hover:bg-[var(--xf-bg-700)]"
               type="button"
@@ -415,12 +297,15 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
             <table className="portfolio-manage-table min-w-[480px] w-full">
               <thead>
                 <tr>
-                  <th scope="col">Select</th>
+                  <th scope="col">Focus</th>
                   <th scope="col">Name</th>
                   <th scope="col">Default</th>
                   <th scope="col">Type</th>
                   <th scope="col" className="text-right">
                     Value
+                  </th>
+                  <th scope="col" className="text-right whitespace-nowrap">
+                    Manage
                   </th>
                 </tr>
               </thead>
@@ -439,13 +324,23 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
                         type="button"
                         onClick={() => selectRow(row.id)}
                       >
-                        {selectedId === row.id && !creating ? "Selected" : "Select"}
+                        {selectedId === row.id && !creating ? "Focused" : "Focus"}
                       </button>
                     </td>
                     <td className="font-medium text-[var(--xf-text-100)]">{row.name}</td>
                     <td>{row.isDefault ? <span className="text-[var(--xf-gain-green)]">Yes</span> : "—"}</td>
                     <td className="text-[var(--xf-text-200)] text-sm">{row.kindLabel}</td>
                     <td className="text-right font-mono text-sm tabular-nums">{formatUsd2(row.valueUsd)}</td>
+                    <td className="text-right">
+                      <button
+                        className="portfolio-table-link border-0 bg-transparent p-0 text-sm font-medium underline-offset-2 hover:underline disabled:cursor-not-allowed"
+                        type="button"
+                        disabled={manageNavPortfolioId === row.id}
+                        onClick={() => void goManagePortfolio(row.id)}
+                      >
+                        {manageNavPortfolioId === row.id ? "Opening…" : "Manage portfolio"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -481,7 +376,7 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
             </label>
             {!creating && selectedId ? (
               <p className="text-xs text-[var(--xf-text-300)]">
-                Portfolio id (for APIs &amp; admin):{" "}
+                Portfolio id (APIs &amp; admin):{" "}
                 <span className="font-mono text-[var(--xf-text-200)]">{selectedId}</span>
               </p>
             ) : null}
@@ -539,5 +434,8 @@ export function WorkspacePortfoliosClient({ initialRows, initialAccountSlices }:
   );
 }
 
-/** @deprecated Use WorkspacePortfoliosClient */
-export const ManageWorkspacePortfoliosClient = WorkspacePortfoliosClient;
+/** @deprecated Use PortfoliosDashboardClient */
+export const WorkspacePortfoliosClient = PortfoliosDashboardClient;
+
+/** @deprecated Use PortfoliosDashboardClient */
+export const ManageWorkspacePortfoliosClient = PortfoliosDashboardClient;

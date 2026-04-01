@@ -31,7 +31,7 @@ Output: (1) scope (2) Pass / Block / Conditional (3) issues with file:line (4) m
 - Classify scope (frontend / backend / mixed / infra) and cite file:line for issues.
 - Block on missing tests, contract drift, or undisclosed risky changes; require `npm run ci:gate` (or equivalent) evidence when claiming green.
 - Cross-check `.cursor/skills/atxdesign-review/SKILL.md`, `.cursor/skills/feature-delivery/SKILL.md`, and peer personas under `.cursor/agents/*.md` (see `.cursor/agents/README.md`).
-- **Docs + ship hygiene:** For any non-trivial change, cross-check **`.cursor/skills/generate-docs/SKILL.md`** (impacted docs set, OpenAPI/BFF/strategy-options/strategy-engine parity) and **`.cursor/skills/test-commit-push/SKILL.md`** + **`CHECKLIST.md`** (`ci:gate`, optional `build`, Gradle when Kotlin moves, commit message conventions).
+- **Docs + ship hygiene:** For any non-trivial change, cross-check **`.cursor/skills/generate-docs/SKILL.md`** (impacted docs set, OpenAPI/BFF/strategy-options/strategy-engine parity) and **`.cursor/skills/test-commit-push/SKILL.md`** + **`CHECKLIST.md`** (`ci:gate`, optional `build`, Gradle when Kotlin moves, commit message conventions). **App shell / nav / `APP_USER_PRODUCT_PATH_PREFIXES`:** extend **`tests/unit/surface-policy.test.ts`** when prefixes change; add **`atx-docs/guides/*`** notes for ask persona rules, portfolio vs account URLs, or **`next.config` redirects**. **Version:** bump **`package.json`** and append **one line** to **`atx-docs/sre-ops/release-notes.md`** (newest first).
 - Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
 ## Core feature plan: OptionsStrategyEngine (priority 245)

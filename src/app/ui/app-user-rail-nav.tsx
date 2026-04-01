@@ -263,9 +263,6 @@ export function AppUserOptionsRailSection({
           <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
             xOptions
           </RailNavLink>
-          <RailNavLink href="/xstrategybuilder" title="xStrategyBuilder">
-            xStrategy builder
-          </RailNavLink>
         </nav>
       </RailDisclosure>
     </section>
@@ -382,8 +379,8 @@ export function AppUserManageWorkspaceRailSection({
               ) : (
                 <p className="app-user-rail-workspace-hint">
                   Default portfolio isn&apos;t available yet.{" "}
-                  <Link className="app-user-rail-workspace-hint-link" href="/workspace/portfolios">
-                    Workspace dashboard
+                  <Link className="app-user-rail-workspace-hint-link" href="/portfolios">
+                    Portfolios
                   </Link>{" "}
                   to add a portfolio, or use <span className="text-[var(--xf-text-200)]">Portfolio</span> in the nav
                   for positions.
@@ -392,11 +389,8 @@ export function AppUserManageWorkspaceRailSection({
             </div>
           ) : null}
           <nav className="app-user-rail-sublinks" aria-label="Workspace administration">
-            <RailNavLink
-              href="/workspace/portfolios"
-              title="My Portfolios (Dashboard) — allocation, default portfolio, rename"
-            >
-              My Portfolios (Dashboard)
+            <RailNavLink href="/portfolios" title="Portfolios — workspace, accounts, allocation">
+              myPortfolios
             </RailNavLink>
             <RailNavLink href={watchlistHref} title="Watchlist for the active workspace portfolio">
               Watchlist
@@ -405,9 +399,9 @@ export function AppUserManageWorkspaceRailSection({
               Alerts
             </RailNavLink>
             {isGlobalAdmin ? (
-              <RailNavLink href="/admin" title="Open Admin Hub (global admin only)">
-                Admin hub
-              </RailNavLink>
+             <RailNavLink href="/admin" title="Open Admin Hub (global admin only)">
+              Admin hub
+             </RailNavLink>
             ) : null}
           </nav>
         </>

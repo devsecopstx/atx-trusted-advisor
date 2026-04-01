@@ -20,7 +20,7 @@ no secrets in repo, cost of idle Cloud Run / queries without indexes. Prefer doc
 
 **Admin Hub → Portfolios (`/admin/portfolios`, `GET /api/admin/portfolios`):** Portfolios are **per user** (`userId` on each portfolio row). **Enforced:** `GET` and all `/api/admin/portfolios/{portfolioId}/…` handlers scope to **session `userId` + `tenantId`** via `adminListPortfolios*` (`listScope: { mode: "scoped", … }`) and `requireAdminPortfolioForApi` (`src/lib/admin-portfolio-access.ts`). **Break-glass (support):** set **`ADMIN_PORTFOLIOS_LIST_ALL=true`** in env / Secret Manager so `global_admin` can list and mutate **any** portfolio (omit in prod unless actively supporting).
 
-**App user left rail — Options:** `AppUserOptionsRailSection` in `src/app/ui/app-user-rail-nav.tsx` (used on xChat rail and `AppUserAccountPublicRail`) lists **xOptions** (`/xoptions`) and **Strategy Builder** (`/xstrategybuilder`, xStrategyBuilder). Keep both links in sync with `proxy.ts` / `APP_USER_PRODUCT_PATH_PREFIXES` so authenticated product users can reach strategy surfaces from the rail without hunting the top icon row.
+**App user left rail — Options:** `AppUserOptionsRailSection` in `src/app/ui/app-user-rail-nav.tsx` (used on xChat rail and `AppUserAccountPublicRail`) lists **xOptions** (`/xoptions`) only; legacy **`/xstrategybuilder`** redirects to **`/xoptions`** (`next.config.ts`). Top product nav (`AppUserProductNav`) uses the same **xOptions** entry; keep `proxy.ts` matchers aligned with protected app_user surfaces.
 
 **Tenant workspace limits:** `atx-docs/sre-ops/tenant-workspace-limits.md` — `core_tenants.workspaceLimits`, optional
 `workspaceLimits.planOverrides.<tier>.price` (USD list price per tenant/plan, default **10**), per-tier **`changePersonaEnabled`** (default **true**) and **`chatHistoryMax`** (default **10**), collection
@@ -75,6 +75,14 @@ test -f .cursor/agents/sre.md && npm install
 - **logs-cr:** `gcloud logging read 'resource.type=cloud_run_revision' --limit=20 --format='table(timestamp,textPayload)'`
 - **cost-check:** `gcloud billing budgets list`
 - **xai-chat-smoke:** `npm run smoke:xai-chat`
+
+## Hotfix: xChat sidebar persona ignored (assigned persona always won)
+
+**Symptom:** User selects a persona in the xChat sidebar (e.g. **xfinance-options**) but the model still runs **Super-Agent** or another **admin-assigned** persona from `admin_user_settings.assignedPersonaId`.
+
+**Cause (fixed in app):** `POST /api/xchat/ask` resolved overrides in **`[assigned, request]`** order, so assigned always matched first.
+
+**App behavior:** `src/app/api/xchat/ask/route.ts` — If **`changePersonaEnabled`** is true (effective tenant workspace limits + user plan) **or** the session is **`global_admin`**, **`personaId` in the JSON body** is preferred over assigned when both differ. If **`changePersonaEnabled`** is **false**, app users are locked to **assigned only** (request `personaId` ignored); admins still override. See **`atx-docs/sre-ops/tenant-workspace-limits.md`**.
 
 ## Hotfix: duplicate default portfolio / account after OAuth re-login
 

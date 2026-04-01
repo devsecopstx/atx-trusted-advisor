@@ -99,6 +99,13 @@ Admin portfolio routes include:
 - `GET /api/strategy-options/expirations`
 - `GET /api/strategy-options`
 
+## Product pages and redirects (Next.js)
+
+These are **not** OpenAPI JSON routes; listed for operator and support alignment.
+
+- **`/xstrategybuilder`** and **`/xstrategybuilder/*`** → **`/xoptions`** (`next.config.ts` `redirects`). Deep links do not preserve query strings; prefer **`/xoptions`** in product copy.
+- **`/portfolios`**: workspace portfolio list/create/edit; custodian accounts and holdings remain on **`/portfolio`** and **`/portfolio/accounts/:accountId`** (the account page resolves the owning portfolio even when the workspace cookie differs from the focused portfolio on `/portfolios`).
+
 ## xChat
 
 - `POST /api/xchat/ask`

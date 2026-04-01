@@ -114,7 +114,7 @@ export default async function XstrategyBuilderPage() {
 
   return (
     <div className="xchat-shell xsb-iconized">
-      <AppUserApprovedHeader current="xstrategybuilder" feedbackPageLabel="xStrategyBuilder" session={session} />
+      <AppUserApprovedHeader current="xoptions" feedbackPageLabel="xOptions" session={session} />
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
         <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
@@ -190,7 +190,7 @@ export default async function XstrategyBuilderPage() {
             <p className="xsb-pitch-cta-sub xsb-pitch-cta-sub--tight">
               <Link href="/">aTx⚡Finance</Link>
               {" · "}
-              <Link href="/api/auth/x/login?next=%2Fxstrategybuilder">Sign in with X</Link> (approved access)
+              <Link href="/api/auth/x/login?next=%2Fxoptions">Sign in with X</Link> (approved access)
             </p>
           </div>
 
@@ -198,7 +198,7 @@ export default async function XstrategyBuilderPage() {
             <Link
               aria-label="Open strategy options chain"
               className="cta cta-primary"
-              href="/xstrategybuilder/strategy-options"
+              href="/xoptions"
               title="Open strategy options chain"
             >
               <RunIcon className="crud-icon" />
