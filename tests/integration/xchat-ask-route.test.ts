@@ -59,7 +59,8 @@ const identityMocks = vi.hoisted(() => ({
 }));
 
 const workspaceSnapshotMocks = vi.hoisted(() => ({
-  buildWorkspaceServerSnapshotBlock: vi.fn()
+  loadWorkspaceSnapshotPreload: vi.fn(),
+  formatWorkspaceServerSnapshotBlock: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -75,7 +76,10 @@ vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
-vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", () => workspaceSnapshotMocks);
+vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", () => ({
+  loadWorkspaceSnapshotPreload: workspaceSnapshotMocks.loadWorkspaceSnapshotPreload,
+  formatWorkspaceServerSnapshotBlock: workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock
+}));
 
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
 
@@ -153,7 +157,8 @@ describe("xchat ask route collection retrieval", () => {
       blocked: false,
       nonReadyFiles: []
     });
-    workspaceSnapshotMocks.buildWorkspaceServerSnapshotBlock.mockResolvedValue(null);
+    workspaceSnapshotMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
+    workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock.mockReturnValue("");
   });
 
   it("uses xai collection snippets first when available", async () => {
@@ -722,12 +727,31 @@ describe("xchat ask route collection retrieval", () => {
     const toolLoopArg = xaiMocks.respondWithXaiToolLoop.mock.calls[0]?.[0] as {
       systemPrompt?: string;
     };
-    expect(toolLoopArg?.systemPrompt ?? "").not.toContain("You MUST use the atx_function tool");
+    expect(toolLoopArg?.systemPrompt ?? "").not.toContain("Workspace snapshot");
     expect(toolLoopArg?.systemPrompt ?? "").toContain("Hosted search (web_search / x_search):");
   });
 
   it("injects server workspace snapshot before model when atx_function tool is active", async () => {
-    workspaceSnapshotMocks.buildWorkspaceServerSnapshotBlock.mockResolvedValueOnce(
+    workspaceSnapshotMocks.loadWorkspaceSnapshotPreload.mockResolvedValueOnce({
+      promptJson: {
+        loadedAt: "2026-01-01T00:00:00.000Z",
+        workspaceContentRev: 0,
+        portfolio: {
+          id: "p1",
+          name: "Main",
+          isDefault: true,
+          ext_broker_ref: "ibkr",
+          totalPositionCount: 0
+        },
+        accounts: [],
+        positionsPreview: [],
+        positionsPreviewTruncated: false,
+        positionsOmittedCount: 0,
+        watchlist: { error: "no_watchlist" as const }
+      },
+      positionsFull: []
+    });
+    workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock.mockReturnValueOnce(
       "Workspace snapshot (loaded server-side for this request; SNAPSHOT_TEST_MARKER"
     );
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
@@ -762,7 +786,7 @@ describe("xchat ask route collection retrieval", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(workspaceSnapshotMocks.buildWorkspaceServerSnapshotBlock).toHaveBeenCalledWith({
+    expect(workspaceSnapshotMocks.loadWorkspaceSnapshotPreload).toHaveBeenCalledWith({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022"
     });

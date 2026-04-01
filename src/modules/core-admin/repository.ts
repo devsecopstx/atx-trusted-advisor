@@ -1221,6 +1221,36 @@ export async function getDefaultPortfolio(
   return ensureDefaultPortfolioInvariantForUser(userId, options);
 }
 
+/**
+ * Bumps `workspaceContentRev` on an owned portfolio so xChat workspace snapshot cache keys miss
+ * after positions, accounts, watchlist, or portfolio metadata changes.
+ */
+export async function bumpPortfolioWorkspaceContentRev(input: {
+  userId: string;
+  portfolioId: string;
+  tenantId?: string;
+}): Promise<void> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId)) {
+    return;
+  }
+  const db = await getDb();
+  const pid = new ObjectId(input.portfolioId);
+  await db.collection<Portfolio>(collections.portfolios).updateOne(
+    withTenantScope(
+      {
+        _id: pid,
+        ...userIdQuery(input.userId.trim())
+      },
+      input.tenantId
+    ),
+    {
+      $inc: { workspaceContentRev: 1 },
+      $set: { updatedAt: new Date() }
+    }
+  );
+}
+
 /** Portfolio must belong to the session user (tenant-scoped). */
 export async function getPortfolioByIdForSessionUser(input: {
   userId: string;
@@ -1282,7 +1312,15 @@ export async function deletePositionsForPortfolioAccount(input: {
       input.tenantId
     )
   );
-  return result.deletedCount ?? 0;
+  const n = result.deletedCount ?? 0;
+  if (n > 0) {
+    await bumpPortfolioWorkspaceContentRev({
+      userId: input.userId,
+      portfolioId: input.portfolioId,
+      tenantId: input.tenantId
+    });
+  }
+  return n;
 }
 
 export async function listPortfolioAccounts(input: {
@@ -2471,6 +2509,12 @@ export async function mutatePortfolioWatchlistSymbols(
 
   await db.collection<Watchlist>(collections.watchlists).updateOne(filter, update);
 
+  await bumpPortfolioWorkspaceContentRev({
+    userId: input.userId,
+    portfolioId: input.portfolioId,
+    tenantId: input.tenantId
+  });
+
   return getPortfolioWatchlist({
     userId: input.userId,
     portfolioId: input.portfolioId,
@@ -2530,6 +2574,11 @@ export async function adminEnsurePortfolioWatchlist(portfolioId: string): Promis
     },
     { upsert: true }
   );
+  await bumpPortfolioWorkspaceContentRev({
+    userId: ownerId,
+    portfolioId,
+    tenantId
+  });
   return getPortfolioWatchlist({
     userId: ownerId,
     portfolioId,
@@ -2963,6 +3012,12 @@ export async function upsertPositionForAccount(input: UpsertPositionInput): Prom
     { upsert: true }
   );
 
+  await bumpPortfolioWorkspaceContentRev({
+    userId: input.userId,
+    portfolioId: portfolioId.toHexString(),
+    tenantId: input.tenantId
+  });
+
   const position = await db.collection<Position>(collections.positions).findOne(filter);
   if (!position?._id) {
     throw new Error("Failed to upsert position");
@@ -3052,6 +3107,11 @@ export async function updatePortfolioAccountForUser(
     updateDoc.$unset = $unset;
   }
   await db.collection<Account>(collections.accounts).updateOne(filter, updateDoc);
+  await bumpPortfolioWorkspaceContentRev({
+    userId: input.userId,
+    portfolioId: input.portfolioId,
+    tenantId: input.tenantId
+  });
   return db.collection<Account>(collections.accounts).findOne(filter);
 }
 
@@ -3195,6 +3255,11 @@ export async function insertPortfolioAccountForUser(
   };
 
   const result = await db.collection<Account>(collections.accounts).insertOne(doc);
+  await bumpPortfolioWorkspaceContentRev({
+    userId: input.userId,
+    portfolioId: input.portfolioId,
+    tenantId: input.tenantId
+  });
   return db.collection<Account>(collections.accounts).findOne({ _id: result.insertedId });
 }
 
@@ -3225,7 +3290,15 @@ export async function deletePositionForAccount(input: {
       input.tenantId
     )
   );
-  return result.deletedCount === 1;
+  const ok = result.deletedCount === 1;
+  if (ok) {
+    await bumpPortfolioWorkspaceContentRev({
+      userId: input.userId,
+      portfolioId: input.portfolioId,
+      tenantId: input.tenantId
+    });
+  }
+  return ok;
 }
 
 export async function deleteAccessRequest(
@@ -3389,6 +3462,13 @@ export async function adminUpdatePortfolio(input: {
       { $set: { isDefault: true, updatedAt: now } }
     );
   }
+  if (hasSetFields || unsetScoringFactors || input.isDefault === true) {
+    await bumpPortfolioWorkspaceContentRev({
+      userId: portfolioOwnerUserIdString(existing.userId),
+      portfolioId: input.portfolioId,
+      tenantId: portfolioTenantIdString(existing)
+    });
+  }
   return adminGetPortfolioById(input.portfolioId);
 }
 
@@ -3452,7 +3532,15 @@ export async function adminCreatePortfolio(input: {
       : {})
   };
   const res = await db.collection<Portfolio>(collections.portfolios).insertOne(doc);
-  return db.collection<Portfolio>(collections.portfolios).findOne({ _id: res.insertedId });
+  const created = await db.collection<Portfolio>(collections.portfolios).findOne({ _id: res.insertedId });
+  if (created?._id) {
+    await bumpPortfolioWorkspaceContentRev({
+      userId: input.userId.trim(),
+      portfolioId: created._id.toHexString(),
+      tenantId: input.tenantId?.trim()
+    });
+  }
+  return created;
 }
 
 export async function adminDeletePortfolio(portfolioId: string): Promise<boolean> {
@@ -3573,6 +3661,11 @@ export async function adminUpdatePortfolioAccount(input: {
     return db.collection<Account>(collections.accounts).findOne(filter);
   }
   await db.collection<Account>(collections.accounts).updateOne(filter, { $set });
+  await bumpPortfolioWorkspaceContentRev({
+    userId: ownerId,
+    portfolioId: input.portfolioId,
+    tenantId
+  });
   return db.collection<Account>(collections.accounts).findOne(filter);
 }
 
@@ -3635,6 +3728,11 @@ export async function deleteAccountInPortfolioForOwner(input: {
       );
     }
   }
+  await bumpPortfolioWorkspaceContentRev({
+    userId: input.ownerUserId,
+    portfolioId: input.portfolioId,
+    tenantId: input.tenantId
+  });
   return true;
 }
 

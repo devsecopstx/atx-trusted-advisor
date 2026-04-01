@@ -8,13 +8,32 @@ const repo = vi.hoisted(() => ({
   provisionDefaultPortfolioForUser: vi.fn()
 }));
 
+const wsCacheMocks = vi.hoisted(() => ({
+  readWorkspaceSnapshotCache: vi.fn(),
+  writeWorkspaceSnapshotCache: vi.fn()
+}));
+
 vi.mock("@/modules/core-admin/repository", () => repo);
+vi.mock("@/modules/xchat/workspace-snapshot-cache", () => ({
+  buildWorkspaceSnapshotCacheKey: (input: {
+    tenantId: string | undefined;
+    userId: string;
+    portfolioIdHex: string;
+    workspaceContentRev: number;
+  }) =>
+    `xf:wsnap:v1:${input.tenantId ?? "_"}:${input.userId}:${input.portfolioIdHex}:${String(input.workspaceContentRev)}`,
+  getWorkspaceSnapshotCacheTtlSeconds: () => 120,
+  readWorkspaceSnapshotCache: wsCacheMocks.readWorkspaceSnapshotCache,
+  writeWorkspaceSnapshotCache: wsCacheMocks.writeWorkspaceSnapshotCache
+}));
 
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 describe("buildWorkspaceServerSnapshotBlock", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    wsCacheMocks.readWorkspaceSnapshotCache.mockResolvedValue(null);
+    wsCacheMocks.writeWorkspaceSnapshotCache.mockResolvedValue(undefined);
   });
 
   it("returns null when no portfolio and provision fails", async () => {
@@ -65,5 +84,8 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
     expect(r).toContain('"name":"Main"');
     expect(r).toContain('"symbol":"TSLA"');
     expect(r).toContain('"cashBalance":100');
+    expect(r).toContain('"workspaceContentRev":0');
+    expect(r).toContain('"accountId":"507f1f77bcf86cd799439002"');
+    expect(wsCacheMocks.writeWorkspaceSnapshotCache).toHaveBeenCalled();
   });
 });

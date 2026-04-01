@@ -53,7 +53,11 @@ import {
     normalizePersonaXapiConfig,
     type PersonaXapiConfig
 } from "@/modules/xchat/types";
-import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
+import {
+    formatWorkspaceServerSnapshotBlock,
+    loadWorkspaceSnapshotPreload,
+    type WorkspaceSnapshotPreload
+} from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
 import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
@@ -383,12 +387,16 @@ export async function POST(request: Request) {
   const hasHostedSearchTool = xapiConfig.tools.some((t) => t.type === "web_search" || t.type === "x_search");
 
   let workspaceServerSnapshot: string | null = null;
+  let workspacePreload: WorkspaceSnapshotPreload | null = null;
   if (hasXfinanceTool) {
     try {
-      workspaceServerSnapshot = await buildWorkspaceServerSnapshotBlock({
+      workspacePreload = await loadWorkspaceSnapshotPreload({
         userId: session.userId,
         tenantId: session.tenantId
       });
+      workspaceServerSnapshot = workspacePreload
+        ? formatWorkspaceServerSnapshotBlock(workspacePreload)
+        : null;
     } catch (error) {
       console.warn("[xchat/ask] workspace server snapshot failed (non-fatal)", {
         userId: session.userId,
@@ -459,7 +467,8 @@ export async function POST(request: Request) {
     const executor = needsLocalToolLoop
       ? createXfinanceToolExecutor({
           userId: session.userId,
-          tenantId: session.tenantId
+          tenantId: session.tenantId,
+          workspacePreload: hasXfinanceTool ? workspacePreload : undefined
         })
       : async () => ({
           result: "",

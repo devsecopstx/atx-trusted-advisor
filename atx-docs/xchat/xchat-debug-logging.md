@@ -29,6 +29,8 @@ Exported as `XCHAT_DEBUG_LOG_TYPES` in `src/lib/xchat-debug.ts`.
 | `xchat_ask_provider_error` | On provider failure (same request as above): `error` message plus `wireTools` again for correlation. |
 | `xchat_batch` | Batch flows: includes `batchPhase` — `item_prepare` (per JSONL line while building upload) or `job_created` (xAI batch id known). |
 
+**Workspace snapshot (optional, same prefix):** when env **or** tenant xChat debug is on, `[workspace-snapshot-for-prompt.ts](../../src/modules/xchat/workspace-snapshot-for-prompt.ts)` logs `console.info("[xchat/debug]", { type: "workspace_snapshot_load", … })` (cache vs mongo, `elapsedMs`, masked portfolio id) and `{ type: "workspace_snapshot_build", … }` after a Mongo build. These `type` strings are **not** in `XCHAT_DEBUG_LOG_TYPES` yet; filter on `workspace_snapshot_` in JSON if needed.
+
 ## Enabling
 
 1. **Local:** `.env` → `ENABLE_XCHAT_DEBUG=true` (see `.env.example`). **Restart `next dev`** after changing env — Next only reads `.env` at process start.

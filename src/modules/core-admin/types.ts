@@ -328,6 +328,11 @@ export type Portfolio = {
    * Weights must sum to 1; defaults in `scoring-factors.ts`.
    */
   scoringFactors?: PortfolioScoringFactor[];
+  /**
+   * Bumped on workspace-affecting writes (positions, accounts, watchlist) for xChat snapshot cache keys.
+   * Legacy documents omit — treat as 0.
+   */
+  workspaceContentRev?: number;
   createdAt: Date;
   updatedAt: Date;
 };

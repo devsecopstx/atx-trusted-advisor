@@ -30,14 +30,28 @@ import {
     ATXFINANCE_TOOL_DEFINITION,
     YAHOO_FINANCE_TOOL_DEFINITION
 } from "@/modules/xchat/tool-definitions";
+import {
+    accountHealthFromWorkspacePreload,
+    portfolioSummaryFromWorkspacePreload,
+    positionsSnapshotFromWorkspacePreload,
+    type WorkspaceSnapshotPreload
+} from "@/modules/xchat/workspace-snapshot-for-prompt";
+
+export type { WorkspaceSnapshotPreload } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 const MAX_OUTPUT_BYTES = 8 * 1024;
 /** Cap rows returned by positions_snapshot before JSON serialization (freshness; not cached). */
 const MAX_POSITIONS_RETURNED = 200;
-/** portfolio_summary omitted: must reflect live position counts after imports/trades (positions_snapshot was already uncached). */
 const CACHEABLE_OPERATIONS = new Set(["watchlist_snapshot", "account_health"]);
 /** Matches PATCH `/api/portfolios/:id/watchlist` batch size. */
 const MAX_WATCHLIST_MUTATE_PER_CALL = 20;
+
+const PRELOAD_SHORT_CIRCUIT_OPS = new Set([
+  "portfolio_summary",
+  "account_health",
+  "positions_snapshot",
+  "watchlist_snapshot"
+]);
 
 function watchlistSymbolToJson(s: WatchlistSymbol) {
   return {
@@ -71,6 +85,18 @@ async function loadWatchlistSummary(ctx: ExecutorContext, portfolioId: string): 
   };
 }
 
+function watchlistSnapshotFromWorkspacePreload(p: WorkspaceSnapshotPreload): Record<string, unknown> {
+  const wl = p.promptJson.watchlist;
+  if ("error" in wl) {
+    return { error: "no_watchlist" as const };
+  }
+  return {
+    name: wl.name,
+    symbolCount: wl.symbols.length,
+    symbols: wl.symbols
+  };
+}
+
 function parseTickerListFromArgs(args: Record<string, unknown>, max: number): string[] {
   if (Array.isArray(args.symbols)) {
     const out: string[] = [];
@@ -97,10 +123,14 @@ function parseTickerListFromArgs(args: Record<string, unknown>, max: number): st
   return [];
 }
 
-type ExecutorContext = {
+export type XfinanceToolExecutorContext = {
   userId: string;
   tenantId?: string;
+  /** Same-request workspace preload from `loadWorkspaceSnapshotPreload`; invalidated after watchlist mutations. */
+  workspacePreload?: WorkspaceSnapshotPreload | null;
 };
+
+type ExecutorContext = XfinanceToolExecutorContext;
 
 async function getDefaultPortfolioOrProvision(
   ctx: ExecutorContext
@@ -137,303 +167,309 @@ function positionCountsByAccountId(
   return counts;
 }
 
-const operations: Record<string, OperationHandler> = {
-  portfolio_summary: async (_args, ctx) => {
-    const portfolio = await getDefaultPortfolioOrProvision(ctx);
-    if (!portfolio?._id) {
-      return { error: "no_default_portfolio" };
-    }
+function buildOperations(invalidateWorkspacePreload: () => void): Record<string, OperationHandler> {
+  return {
+    portfolio_summary: async (_args, ctx) => {
+      const portfolio = await getDefaultPortfolioOrProvision(ctx);
+      if (!portfolio?._id) {
+        return { error: "no_default_portfolio" };
+      }
 
-    const portfolioId = portfolio._id.toHexString();
-    const accounts = await listPortfolioAccounts({
-      userId: ctx.userId,
-      portfolioId,
-      tenantId: ctx.tenantId
-    });
-
-    const accountIds = accounts
-      .map((a) => a._id)
-      .filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
-    const positions =
-      accountIds.length > 0
-        ? await listPortfolioPositionsByAccount({
-            userId: ctx.userId,
-            portfolioId,
-            accountIds,
-            tenantId: ctx.tenantId
-          })
-        : [];
-    const counts = positionCountsByAccountId(positions);
-    const watchlist = await loadWatchlistSummary(ctx, portfolioId);
-
-    return {
-      name: portfolio.name,
-      isDefault: portfolio.isDefault,
-      ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
-      accountCount: accounts.length,
-      totalPositionCount: positions.length,
-      accounts: accounts.map((a) => ({
-        name: a.name,
-        type: a.type,
-        extAccountId: a.extAccountId,
-        isDefault: a.isDefault,
-        cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
-        positionCount: a._id ? (counts.get(a._id.toHexString()) ?? 0) : 0
-      })),
-      watchlist
-    };
-  },
-
-  watchlist_snapshot: async (_args, ctx) => {
-    const portfolio = await getDefaultPortfolioOrProvision(ctx);
-    if (!portfolio?._id) {
-      return { error: "no_default_portfolio" };
-    }
-
-    return loadWatchlistSummary(ctx, portfolio._id.toHexString());
-  },
-
-  watchlist_add_symbols: async (args, ctx) => {
-    const toAdd = parseTickerListFromArgs(args, MAX_WATCHLIST_MUTATE_PER_CALL);
-    if (toAdd.length === 0) {
-      return {
-        error: "no_symbols",
-        hint: "Provide symbols (string array) or symbol (string), e.g. NVDA or [\"NVDA\",\"AMD\"]."
-      };
-    }
-    const portfolio = await getDefaultPortfolioOrProvision(ctx);
-    if (!portfolio?._id) {
-      return { error: "no_default_portfolio" };
-    }
-    const portfolioId = portfolio._id.toHexString();
-    const wl = await ensurePortfolioWatchlistForUser({
-      userId: ctx.userId,
-      portfolioId,
-      tenantId: ctx.tenantId
-    });
-    if (!wl) {
-      return { error: "no_watchlist" };
-    }
-    const existingSyms = new Set((wl.symbols ?? []).map((s) => s.symbol));
-    const addEntries = toAdd.map((sym) =>
-      existingSyms.has(sym)
-        ? { symbol: sym }
-        : {
-            symbol: sym,
-            lineType: WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
-            strategy: WATCHLIST_ENTRY_DEFAULT_STRATEGY
-          }
-    );
-    const mutateInput: {
-      userId: string;
-      portfolioId: string;
-      tenantId?: string;
-      addEntries: typeof addEntries;
-      riskProfile?: "conservative" | "balanced" | "growth";
-      outlook?: AccountOutlook;
-    } = {
-      userId: ctx.userId,
-      portfolioId,
-      tenantId: ctx.tenantId,
-      addEntries
-    };
-    if (wl.riskProfile == null) {
-      mutateInput.riskProfile = WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE;
-    }
-    if (parseAccountOutlook(wl.outlook) == null) {
-      mutateInput.outlook = WATCHLIST_UPSERT_DEFAULT_OUTLOOK;
-    }
-    const updated = await mutatePortfolioWatchlistSymbols(mutateInput);
-    deleteCachedToolResult(ctx.userId, "watchlist_snapshot");
-    if (!updated) {
-      return { error: "no_watchlist" };
-    }
-    const symbols = updated.symbols ?? [];
-    const addedNew = toAdd.filter((s) => !existingSyms.has(s));
-    const alreadyHad = toAdd.filter((s) => existingSyms.has(s));
-    return {
-      ok: true,
-      requested: toAdd,
-      addedNew,
-      alreadyPresent: alreadyHad,
-      appliedDefaults: {
-        newRowLineType: WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
-        newRowStrategy: WATCHLIST_ENTRY_DEFAULT_STRATEGY,
-        deskRiskIfWasUnset: WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE,
-        deskOutlookIfWasUnset: WATCHLIST_UPSERT_DEFAULT_OUTLOOK
-      },
-      watchlistName: updated.name,
-      symbolCount: symbols.length,
-      symbols: symbols.map(watchlistSymbolToJson)
-    };
-  },
-
-  watchlist_remove_symbols: async (args, ctx) => {
-    const toRemove = parseTickerListFromArgs(args, MAX_WATCHLIST_MUTATE_PER_CALL);
-    if (toRemove.length === 0) {
-      return {
-        error: "no_symbols",
-        hint: "Provide symbols (string array) or symbol (string) to remove from the default watchlist."
-      };
-    }
-    const portfolio = await getDefaultPortfolioOrProvision(ctx);
-    if (!portfolio?._id) {
-      return { error: "no_default_portfolio" };
-    }
-    const updated = await mutatePortfolioWatchlistSymbols({
-      userId: ctx.userId,
-      portfolioId: portfolio._id.toHexString(),
-      tenantId: ctx.tenantId,
-      removeSymbols: toRemove
-    });
-    deleteCachedToolResult(ctx.userId, "watchlist_snapshot");
-    if (!updated) {
-      return { error: "no_watchlist" };
-    }
-    const symbols = updated.symbols ?? [];
-    return {
-      ok: true,
-      removed: toRemove,
-      watchlistName: updated.name,
-      symbolCount: symbols.length,
-      symbols: symbols.map(watchlistSymbolToJson)
-    };
-  },
-
-  account_health: async (_args, ctx) => {
-    const portfolio = await getDefaultPortfolioOrProvision(ctx);
-    if (!portfolio?._id) {
-      return { error: "no_default_portfolio" };
-    }
-
-    const accounts = await listPortfolioAccounts({
-      userId: ctx.userId,
-      portfolioId: portfolio._id.toHexString(),
-      tenantId: ctx.tenantId
-    });
-
-    const defaultAccount = accounts.find((a) => a.isDefault);
-
-    return {
-      accountCount: accounts.length,
-      accounts: accounts.map((a) => ({
-        name: a.name,
-        type: a.type,
-        extAccountId: a.extAccountId,
-        isDefault: a.isDefault,
-        cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE
-      })),
-      defaultAccountName: defaultAccount?.name
-    };
-  },
-
-  positions_snapshot: async (_args, ctx) => {
-    const portfolio = await getDefaultPortfolioOrProvision(ctx);
-    if (!portfolio?._id) {
-      return { error: "no_default_portfolio" };
-    }
-
-    const portfolioId = portfolio._id.toHexString();
-    const accounts = await listPortfolioAccounts({
-      userId: ctx.userId,
-      portfolioId,
-      tenantId: ctx.tenantId
-    });
-    const accountIds = accounts
-      .map((a) => a._id)
-      .filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
-
-    if (accountIds.length === 0) {
-      return {
-        portfolioName: portfolio.name,
-        accounts: [],
-        totalPositionsReturned: 0,
-        totalPositionsAvailable: 0,
-        truncated: false
-      };
-    }
-
-    const allPositions = await listPortfolioPositionsByAccount({
-      userId: ctx.userId,
-      portfolioId,
-      accountIds,
-      tenantId: ctx.tenantId
-    });
-
-    const totalAvailable = allPositions.length;
-    const truncated = totalAvailable > MAX_POSITIONS_RETURNED;
-    const sliced = allPositions.slice(0, MAX_POSITIONS_RETURNED);
-
-    const byAccountHex = new Map<string, typeof sliced>();
-    for (const p of sliced) {
-      const hex = p.accountId.toHexString();
-      const list = byAccountHex.get(hex) ?? [];
-      list.push(p);
-      byAccountHex.set(hex, list);
-    }
-
-    const accountsWithPositions = accounts
-      .filter((a) => a._id)
-      .map((a) => {
-        const hex = a._id!.toHexString();
-        const rows = byAccountHex.get(hex) ?? [];
-        return {
-          name: a.name,
-          isDefault: a.isDefault,
-          positions: rows.map((p) => ({
-            symbol: p.symbol,
-            qty: p.qty,
-            avgCost: p.avgCost
-          }))
-        };
+      const portfolioId = portfolio._id.toHexString();
+      const accounts = await listPortfolioAccounts({
+        userId: ctx.userId,
+        portfolioId,
+        tenantId: ctx.tenantId
       });
 
-    return {
-      portfolioName: portfolio.name,
-      accounts: accountsWithPositions,
-      totalPositionsReturned: sliced.length,
-      totalPositionsAvailable: totalAvailable,
-      truncated,
-      ...(truncated
-        ? { omittedCount: totalAvailable - sliced.length }
-        : {})
-    };
-  },
+      const accountIds = accounts
+        .map((a) => a._id)
+        .filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
+      const positions =
+        accountIds.length > 0
+          ? await listPortfolioPositionsByAccount({
+              userId: ctx.userId,
+              portfolioId,
+              accountIds,
+              tenantId: ctx.tenantId
+            })
+          : [];
+      const counts = positionCountsByAccountId(positions);
+      const watchlist = await loadWatchlistSummary(ctx, portfolioId);
 
-  task_status: async (_args, ctx) => {
-    const tasks = await listScheduledTasks({
-      tenantId: ctx.tenantId,
-      limit: 20
-    });
-    const runs = await listTaskRuns({
-      tenantId: ctx.tenantId,
-      limit: 10
-    });
+      return {
+        name: portfolio.name,
+        isDefault: portfolio.isDefault,
+        ext_broker_ref: portfolio.ext_broker_ref ?? DEFAULT_EXT_BROKER_REF,
+        accountCount: accounts.length,
+        totalPositionCount: positions.length,
+        accounts: accounts.map((a) => ({
+          name: a.name,
+          type: a.type,
+          extAccountId: a.extAccountId,
+          isDefault: a.isDefault,
+          cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
+          positionCount: a._id ? (counts.get(a._id.toHexString()) ?? 0) : 0
+        })),
+        watchlist
+      };
+    },
 
-    return {
-      taskCount: tasks.length,
-      tasks: tasks.map((t) => ({
-        name: t.name,
-        category: t.category,
-        enabled: t.enabled,
-        scheduleCron: t.scheduleCron
-      })),
-      recentRunCount: runs.length,
-      recentRuns: runs.map((r) => ({
-        taskName: r.taskName,
-        status: r.status,
-        triggeredBy: r.triggeredBy,
-        durationMs: r.durationMs
-      }))
-    };
-  },
+    watchlist_snapshot: async (_args, ctx) => {
+      const portfolio = await getDefaultPortfolioOrProvision(ctx);
+      if (!portfolio?._id) {
+        return { error: "no_default_portfolio" };
+      }
 
-  market_quote: async (args, ctx: ExecutorContext) => {
-    void ctx;
-    const symbol = typeof args.symbol === "string" ? args.symbol : undefined;
-    return getYahooMarketQuote({ symbol });
-  }
-};
+      return loadWatchlistSummary(ctx, portfolio._id.toHexString());
+    },
+
+    watchlist_add_symbols: async (args, ctx) => {
+      const toAdd = parseTickerListFromArgs(args, MAX_WATCHLIST_MUTATE_PER_CALL);
+      if (toAdd.length === 0) {
+        return {
+          error: "no_symbols",
+          hint: "Provide symbols (string array) or symbol (string), e.g. NVDA or [\"NVDA\",\"AMD\"]."
+        };
+      }
+      const portfolio = await getDefaultPortfolioOrProvision(ctx);
+      if (!portfolio?._id) {
+        return { error: "no_default_portfolio" };
+      }
+      const portfolioId = portfolio._id.toHexString();
+      const wl = await ensurePortfolioWatchlistForUser({
+        userId: ctx.userId,
+        portfolioId,
+        tenantId: ctx.tenantId
+      });
+      if (!wl) {
+        return { error: "no_watchlist" };
+      }
+      const existingSyms = new Set((wl.symbols ?? []).map((s) => s.symbol));
+      const addEntries = toAdd.map((sym) =>
+        existingSyms.has(sym)
+          ? { symbol: sym }
+          : {
+              symbol: sym,
+              lineType: WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
+              strategy: WATCHLIST_ENTRY_DEFAULT_STRATEGY
+            }
+      );
+      const mutateInput: {
+        userId: string;
+        portfolioId: string;
+        tenantId?: string;
+        addEntries: typeof addEntries;
+        riskProfile?: "conservative" | "balanced" | "growth";
+        outlook?: AccountOutlook;
+      } = {
+        userId: ctx.userId,
+        portfolioId,
+        tenantId: ctx.tenantId,
+        addEntries
+      };
+      if (wl.riskProfile == null) {
+        mutateInput.riskProfile = WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE;
+      }
+      if (parseAccountOutlook(wl.outlook) == null) {
+        mutateInput.outlook = WATCHLIST_UPSERT_DEFAULT_OUTLOOK;
+      }
+      const updated = await mutatePortfolioWatchlistSymbols(mutateInput);
+      invalidateWorkspacePreload();
+      deleteCachedToolResult(ctx.userId, "watchlist_snapshot");
+      deleteCachedToolResult(ctx.userId, "account_health");
+      if (!updated) {
+        return { error: "no_watchlist" };
+      }
+      const symbols = updated.symbols ?? [];
+      const addedNew = toAdd.filter((s) => !existingSyms.has(s));
+      const alreadyHad = toAdd.filter((s) => existingSyms.has(s));
+      return {
+        ok: true,
+        requested: toAdd,
+        addedNew,
+        alreadyPresent: alreadyHad,
+        appliedDefaults: {
+          newRowLineType: WATCHLIST_ENTRY_DEFAULT_LINE_TYPE,
+          newRowStrategy: WATCHLIST_ENTRY_DEFAULT_STRATEGY,
+          deskRiskIfWasUnset: WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE,
+          deskOutlookIfWasUnset: WATCHLIST_UPSERT_DEFAULT_OUTLOOK
+        },
+        watchlistName: updated.name,
+        symbolCount: symbols.length,
+        symbols: symbols.map(watchlistSymbolToJson)
+      };
+    },
+
+    watchlist_remove_symbols: async (args, ctx) => {
+      const toRemove = parseTickerListFromArgs(args, MAX_WATCHLIST_MUTATE_PER_CALL);
+      if (toRemove.length === 0) {
+        return {
+          error: "no_symbols",
+          hint: "Provide symbols (string array) or symbol (string) to remove from the default watchlist."
+        };
+      }
+      const portfolio = await getDefaultPortfolioOrProvision(ctx);
+      if (!portfolio?._id) {
+        return { error: "no_default_portfolio" };
+      }
+      const updated = await mutatePortfolioWatchlistSymbols({
+        userId: ctx.userId,
+        portfolioId: portfolio._id.toHexString(),
+        tenantId: ctx.tenantId,
+        removeSymbols: toRemove
+      });
+      invalidateWorkspacePreload();
+      deleteCachedToolResult(ctx.userId, "watchlist_snapshot");
+      deleteCachedToolResult(ctx.userId, "account_health");
+      if (!updated) {
+        return { error: "no_watchlist" };
+      }
+      const symbols = updated.symbols ?? [];
+      return {
+        ok: true,
+        removed: toRemove,
+        watchlistName: updated.name,
+        symbolCount: symbols.length,
+        symbols: symbols.map(watchlistSymbolToJson)
+      };
+    },
+
+    account_health: async (_args, ctx) => {
+      const portfolio = await getDefaultPortfolioOrProvision(ctx);
+      if (!portfolio?._id) {
+        return { error: "no_default_portfolio" };
+      }
+
+      const accounts = await listPortfolioAccounts({
+        userId: ctx.userId,
+        portfolioId: portfolio._id.toHexString(),
+        tenantId: ctx.tenantId
+      });
+
+      const defaultAccount = accounts.find((a) => a.isDefault);
+
+      return {
+        accountCount: accounts.length,
+        accounts: accounts.map((a) => ({
+          name: a.name,
+          type: a.type,
+          extAccountId: a.extAccountId,
+          isDefault: a.isDefault,
+          cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE
+        })),
+        defaultAccountName: defaultAccount?.name
+      };
+    },
+
+    positions_snapshot: async (_args, ctx) => {
+      const portfolio = await getDefaultPortfolioOrProvision(ctx);
+      if (!portfolio?._id) {
+        return { error: "no_default_portfolio" };
+      }
+
+      const portfolioId = portfolio._id.toHexString();
+      const accounts = await listPortfolioAccounts({
+        userId: ctx.userId,
+        portfolioId,
+        tenantId: ctx.tenantId
+      });
+      const accountIds = accounts
+        .map((a) => a._id)
+        .filter((id): id is NonNullable<(typeof accounts)[0]["_id"]> => Boolean(id));
+
+      if (accountIds.length === 0) {
+        return {
+          portfolioName: portfolio.name,
+          accounts: [],
+          totalPositionsReturned: 0,
+          totalPositionsAvailable: 0,
+          truncated: false
+        };
+      }
+
+      const allPositions = await listPortfolioPositionsByAccount({
+        userId: ctx.userId,
+        portfolioId,
+        accountIds,
+        tenantId: ctx.tenantId
+      });
+
+      const totalAvailable = allPositions.length;
+      const truncated = totalAvailable > MAX_POSITIONS_RETURNED;
+      const sliced = allPositions.slice(0, MAX_POSITIONS_RETURNED);
+
+      const byAccountHex = new Map<string, typeof sliced>();
+      for (const p of sliced) {
+        const hex = p.accountId.toHexString();
+        const list = byAccountHex.get(hex) ?? [];
+        list.push(p);
+        byAccountHex.set(hex, list);
+      }
+
+      const accountsWithPositions = accounts
+        .filter((a) => a._id)
+        .map((a) => {
+          const hex = a._id!.toHexString();
+          const rows = byAccountHex.get(hex) ?? [];
+          return {
+            name: a.name,
+            isDefault: a.isDefault,
+            positions: rows.map((p) => ({
+              symbol: p.symbol,
+              qty: p.qty,
+              avgCost: p.avgCost
+            }))
+          };
+        });
+
+      return {
+        portfolioName: portfolio.name,
+        accounts: accountsWithPositions,
+        totalPositionsReturned: sliced.length,
+        totalPositionsAvailable: totalAvailable,
+        truncated,
+        ...(truncated
+          ? { omittedCount: totalAvailable - sliced.length }
+          : {})
+      };
+    },
+
+    task_status: async (_args, ctx) => {
+      const tasks = await listScheduledTasks({
+        tenantId: ctx.tenantId,
+        limit: 20
+      });
+      const runs = await listTaskRuns({
+        tenantId: ctx.tenantId,
+        limit: 10
+      });
+
+      return {
+        taskCount: tasks.length,
+        tasks: tasks.map((t) => ({
+          name: t.name,
+          category: t.category,
+          enabled: t.enabled,
+          scheduleCron: t.scheduleCron
+        })),
+        recentRunCount: runs.length,
+        recentRuns: runs.map((r) => ({
+          taskName: r.taskName,
+          status: r.status,
+          triggeredBy: r.triggeredBy,
+          durationMs: r.durationMs
+        }))
+      };
+    },
+
+    market_quote: async (args, ctx: ExecutorContext) => {
+      void ctx;
+      const symbol = typeof args.symbol === "string" ? args.symbol : undefined;
+      return getYahooMarketQuote({ symbol });
+    }
+  };
+}
 
 function truncateOutput(output: string): string {
   const bytes = new TextEncoder().encode(output);
@@ -442,9 +478,44 @@ function truncateOutput(output: string): string {
   return truncated + "\n[truncated]";
 }
 
-export function createXfinanceToolExecutor(
-  ctx: ExecutorContext
-): ToolExecutor {
+function tryPreloadResult(
+  operation: string,
+  preload: WorkspaceSnapshotPreload,
+  preloadValid: boolean
+): string | null {
+  if (!preloadValid || !PRELOAD_SHORT_CIRCUIT_OPS.has(operation)) {
+    return null;
+  }
+  let data: Record<string, unknown>;
+  switch (operation) {
+    case "portfolio_summary":
+      data = portfolioSummaryFromWorkspacePreload(preload);
+      break;
+    case "account_health":
+      data = accountHealthFromWorkspacePreload(preload);
+      break;
+    case "positions_snapshot":
+      data = positionsSnapshotFromWorkspacePreload(preload);
+      break;
+    case "watchlist_snapshot":
+      data = watchlistSnapshotFromWorkspacePreload(preload);
+      break;
+    default:
+      return null;
+  }
+  return truncateOutput(JSON.stringify(data));
+}
+
+export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): ToolExecutor {
+  let preloadValid = Boolean(ctx.workspacePreload);
+  const preload = ctx.workspacePreload ?? null;
+
+  const invalidateWorkspacePreload = (): void => {
+    preloadValid = false;
+  };
+
+  const operations = buildOperations(invalidateWorkspacePreload);
+
   return async (name: string, args: Record<string, unknown>) => {
     const operation =
       name === "yahoo_finance"
@@ -458,6 +529,13 @@ export function createXfinanceToolExecutor(
         result: JSON.stringify({ error: "unknown_operation", operation }),
         error: `unknown_operation: ${operation}`
       };
+    }
+
+    if (preload && preloadValid) {
+      const fromPreload = tryPreloadResult(operation, preload, preloadValid);
+      if (fromPreload !== null) {
+        return { result: fromPreload };
+      }
     }
 
     if (CACHEABLE_OPERATIONS.has(operation)) {

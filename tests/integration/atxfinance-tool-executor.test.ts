@@ -454,4 +454,109 @@ describe("atxfinance tool executor", () => {
     expect(bytes).toBeLessThanOrEqual(8 * 1024 + 20);
     expect(result.result).toContain("[truncated]");
   });
+
+  it("serves portfolio_summary from workspacePreload without Mongo list calls", async () => {
+    const preload = {
+      promptJson: {
+        loadedAt: "2026-01-01T00:00:00.000Z",
+        workspaceContentRev: 0,
+        portfolio: {
+          id: portfolioId.toHexString(),
+          name: "PreloadP",
+          isDefault: true,
+          ext_broker_ref: "ibkr",
+          totalPositionCount: 3
+        },
+        accounts: [
+          {
+            accountId: accountId.toHexString(),
+            name: "Default Account",
+            type: "fidelity",
+            extAccountId: "ext_account_xref",
+            isDefault: true,
+            cashBalance: 25_000,
+            positionCount: 3
+          }
+        ],
+        positionsPreview: [],
+        positionsPreviewTruncated: false,
+        positionsOmittedCount: 0,
+        watchlist: {
+          name: "DefaultWatchlist",
+          riskProfile: null,
+          outlook: null,
+          symbols: [{ symbol: "NVDA", addedAt: "2026-01-02T00:00:00.000Z" }]
+        }
+      },
+      positionsFull: [
+        { symbol: "TSLA", qty: 10, avgCost: 200, accountId: accountId.toHexString() },
+        { symbol: "AMD", qty: 5, avgCost: 90, accountId: accountId.toHexString() },
+        { symbol: "NVDA", qty: 2, avgCost: 400, accountId: accountId.toHexString() }
+      ]
+    };
+    const executor = createXfinanceToolExecutor({
+      ...ctx,
+      workspacePreload: preload
+    });
+    const out = await executor("atx_function", { operation: "portfolio_summary" });
+    const j = JSON.parse(out.result) as {
+      name: string;
+      totalPositionCount: number;
+      watchlist: { name: string; symbolCount: number };
+    };
+    expect(j.name).toBe("PreloadP");
+    expect(j.totalPositionCount).toBe(3);
+    expect(j.watchlist).toMatchObject({ name: "DefaultWatchlist", symbolCount: 1 });
+    expect(repositoryMocks.listPortfolioAccounts).not.toHaveBeenCalled();
+    expect(repositoryMocks.listPortfolioPositionsByAccount).not.toHaveBeenCalled();
+  });
+
+  it("invalidates workspacePreload after watchlist_add_symbols so portfolio_summary hits Mongo", async () => {
+    const preload = {
+      promptJson: {
+        loadedAt: "2026-01-01T00:00:00.000Z",
+        workspaceContentRev: 0,
+        portfolio: {
+          id: portfolioId.toHexString(),
+          name: "PreloadP",
+          isDefault: true,
+          ext_broker_ref: "ibkr",
+          totalPositionCount: 1
+        },
+        accounts: [
+          {
+            accountId: accountId.toHexString(),
+            name: "Default Account",
+            type: "fidelity",
+            extAccountId: "ext_account_xref",
+            isDefault: true,
+            cashBalance: 25_000,
+            positionCount: 1
+          }
+        ],
+        positionsPreview: [],
+        positionsPreviewTruncated: false,
+        positionsOmittedCount: 0,
+        watchlist: {
+          name: "WL",
+          riskProfile: null,
+          outlook: null,
+          symbols: [{ symbol: "TSLA", addedAt: "2026-01-02T00:00:00.000Z" }]
+        }
+      },
+      positionsFull: [{ symbol: "TSLA", qty: 10, avgCost: 200, accountId: accountId.toHexString() }]
+    };
+    const executor = createXfinanceToolExecutor({
+      ...ctx,
+      workspacePreload: preload
+    });
+    await executor("atx_function", { operation: "portfolio_summary" });
+    expect(repositoryMocks.listPortfolioAccounts).not.toHaveBeenCalled();
+
+    await executor("atx_function", { operation: "watchlist_add_symbols", symbols: ["AMD"] });
+
+    repositoryMocks.listPortfolioAccounts.mockClear();
+    await executor("atx_function", { operation: "portfolio_summary" });
+    expect(repositoryMocks.listPortfolioAccounts).toHaveBeenCalled();
+  });
 });

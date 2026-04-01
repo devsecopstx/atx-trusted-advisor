@@ -19,7 +19,8 @@ describe("buildSessionToolInstructions", () => {
   it("includes both sections when both flags", () => {
     const s = buildSessionToolInstructions({ hostedSearch: true, atxFunction: true });
     expect(s).toContain("web_search");
-    expect(s).toContain("atx_function tool");
+    expect(s).toContain("Workspace tools");
+    expect(s).toContain("atx_function");
   });
 
   it("includes NL guidance for options/strategy preflight when atx_function is enabled", () => {

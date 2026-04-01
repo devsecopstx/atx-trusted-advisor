@@ -26,7 +26,10 @@ import {
     normalizePersonaXapiConfig,
     type PersonaConfig
 } from "@/modules/xchat/types";
-import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
+import {
+    formatWorkspaceServerSnapshotBlock,
+    loadWorkspaceSnapshotPreload
+} from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
 
 const BATCH_JOBS_COLLECTION = "xchat_batch_jobs";
@@ -162,10 +165,11 @@ export async function submitBatchJob(
     let workspaceServerSnapshot: string | null = null;
     if (hasAtxFunctionPersonaTool) {
       try {
-        workspaceServerSnapshot = await buildWorkspaceServerSnapshotBlock({
+        const preload = await loadWorkspaceSnapshotPreload({
           userId: input.userId,
           tenantId: input.tenantId
         });
+        workspaceServerSnapshot = preload ? formatWorkspaceServerSnapshotBlock(preload) : null;
       } catch (error) {
         console.warn("[xchat/batch] workspace server snapshot failed (non-fatal)", {
           itemId: item.itemId,
