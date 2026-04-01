@@ -136,7 +136,7 @@ Use when you want **`gcloud run deploy --source .`** from your laptop with the *
 
 - **`GET /api/health`** returns JSON including **`version`** (same semver as `package.json` at build time) on builds **from `main` at/after** the health payload change. Example:
   - `curl -sS "https://<STAGING_BASE_URL>/api/health" | jq .version`
-- **`jq .version` is `null`:** the field is **missing** — staging is still running an **older image** (health used to return only `status`, `service`, `db`, `redis`). That matches an **old footer** (e.g. v2.6.9) without implying a load-balancer split. **Fix:** pull latest `main`, run `npm run ops:deploy:cloud-run:staging` (or `:staging:ci`), then `curl` the **full** body: `curl -sS "…/api/health"` — you should see `"version":"2.7.x"` when the new revision is live.
+- **`jq .version` is `null`:** the field is **missing** — staging is still running an **older image** (health used to return only `status`, `service`, `db`, `redis`). That matches an **old footer** (e.g. v2.6.9) without implying a load-balancer split. **Fix:** pull latest `main`, run `npm run ops:deploy:cloud-run:staging` (or `:staging:ci`), then `curl` the **full** body: `curl -sS "…/api/health"` — you should see `"version":"2.8.x"` (or current `package.json` semver) when the new revision is live.
 - Compare to **direct Cloud Run URL** (bypasses HTTPS LB / custom host):
   - `gcloud run services describe "$CLOUD_RUN_SERVICE_STAGING" --region "$CLOUD_RUN_REGION" --format='value(status.url)'`
   - `curl -sS "$(gcloud run services describe "$CLOUD_RUN_SERVICE_STAGING" --region "$CLOUD_RUN_REGION" --format='value(status.url)')/api/health" | jq .version`

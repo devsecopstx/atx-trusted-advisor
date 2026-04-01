@@ -6,6 +6,8 @@ Not user marketing copy — enough for deploy triage, support, and “what shipp
 
 ## Entries
 
+- **2.8.0** — **xOptions (Choose contract / step 4):** Review order **summary bar** (limit/bid, breakeven, P(OTM) + gauge), narrative + disclaimer in an **info box**; **Ask xChat** beside **Open full option chain** — copies review plain text to clipboard and one-shot **`sessionStorage`** key `xf_xchat_pending_prompt_v1` (panel footnote excluded from handoff). **xChat:** composer **prefill** on load when that key is set; markdown preprocess **`repairAdjacentMangledXfInlineChips`** fixes mangled adjacent `` `XF_CITE` / `XF_TOOL` `` codes that leaked raw sentinels in prose. Choose-contract **strategy links** font size aligned with help links. **Tests:** `xoptions-order-preview`, `xchat-citations`, `xchat-markdown-preprocess` (pipeline). **Manual smoke before prod:** xOptions step 4 → Ask xChat → confirm composer text; spot-check citation chips after long Grok replies.
+
 - **2.7.12** — Ops: **`GOOGLE_CLIENT_ID`** / **`GOOGLE_CLIENT_SECRET`** in Secret Manager — staging verify (`--with-google-oauth`), sync script (`ops:secrets:sync-google-oauth:*`), optional Cloud Run bindings in deploy workflows + `deploy-cloud-run-from-env.sh`; docs/agents updated.
 
 - **2.7.11** — Tenant workspace: per-plan **`changePersonaEnabled`** + **`chatHistoryMax`** (admin UI, `/account/billing`, xChat picker + history depth); `npm run ops:users:reset-basic-super-agent` one-off (Basic + Super-Agent + `xchat_platform_settings`); admin portfolio routes scoped to session tenant/user with **`ADMIN_PORTFOLIOS_LIST_ALL`** break-glass.
