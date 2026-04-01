@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { resolveCitationPresentation } from "@/lib/xchat-citations";
+import { citationChipRenderable, resolveCitationPresentation } from "@/lib/xchat-citations";
 
 type XchatCitationChipProps = {
   slug: string;
@@ -10,6 +10,9 @@ type XchatCitationChipProps = {
 };
 
 export function XchatCitationChip({ slug, label }: XchatCitationChipProps) {
+  if (!citationChipRenderable(slug, label)) {
+    return null;
+  }
   const { title, href, external } = resolveCitationPresentation(slug, label);
 
   const className = "xchat-citation-chip";

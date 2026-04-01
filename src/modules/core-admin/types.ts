@@ -351,6 +351,11 @@ export type Account = {
   riskProfile?: "conservative" | "balanced" | "growth" | null;
   /** Positioning outlook slug for this account (optional); see {@link accountOutlookValues}. */
   outlook?: AccountOutlook | null;
+  /**
+   * When set, xOptions uses this for per-account options-trading eligibility UI.
+   * When omitted, server env default applies for that account.
+   */
+  optionsTradingEnabled?: boolean | null;
   createdAt: Date;
   updatedAt: Date;
 };

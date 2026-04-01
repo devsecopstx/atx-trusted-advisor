@@ -1,5 +1,6 @@
 import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
+import { getEnv } from "@/lib/env";
 import {
     ensurePortfolioWatchlistForUser,
     getDefaultPortfolio,
@@ -8,28 +9,70 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
-import { type AccountOutlook, normalizePositionType, parseAccountOutlook, type Portfolio } from "@/modules/core-admin/types";
+import {
+    type Account,
+    type AccountOutlook,
+    normalizePositionType,
+    parseAccountOutlook,
+    type Portfolio
+} from "@/modules/core-admin/types";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 import { scanUnderlyingForHotOptions } from "./options-hot-scan";
 import { computeRsiFromCloses } from "./rsi";
 
+export type FindOptionsAccountRow = {
+  id: string;
+  name: string;
+  extAccountId: string;
+  isDefault: boolean;
+  optionsApproved: boolean;
+  riskProfile: "conservative" | "balanced" | "growth" | null;
+  outlook: AccountOutlook | null;
+};
+
 export type FindOptionsContextPayload = {
   portfolio: {
     id: string;
     name: string;
   } | null;
+  accounts: FindOptionsAccountRow[];
   account: {
     id: string | null;
     name: string;
     riskProfile: "conservative" | "balanced" | "growth" | null;
     outlook: AccountOutlook | null;
+    optionsApproved: boolean;
   };
   bookOutlook: AccountOutlook | null;
   bookRiskProfile: Portfolio["riskProfile"] | null;
   scoringFactors: ReturnType<typeof scoringFactorsPayloadForAdminApi>["scoringFactors"];
 };
+
+export function resolveAccountOptionsApproved(account: Account, assumeAllApproved: boolean): boolean {
+  if (typeof account.optionsTradingEnabled === "boolean") {
+    return account.optionsTradingEnabled;
+  }
+  return assumeAllApproved;
+}
+
+export function buildFindOptionsAccountRows(
+  accounts: Account[],
+  assumeAllApproved: boolean
+): FindOptionsAccountRow[] {
+  return accounts
+    .filter((a): a is Account & { _id: NonNullable<Account["_id"]> } => Boolean(a._id))
+    .map((a) => ({
+      id: a._id.toHexString(),
+      name: a.name?.trim() || "Account",
+      extAccountId: a.extAccountId?.trim() || "—",
+      isDefault: Boolean(a.isDefault),
+      optionsApproved: resolveAccountOptionsApproved(a, assumeAllApproved),
+      riskProfile: a.riskProfile ?? null,
+      outlook: a.outlook ?? null
+    }));
+}
 
 async function resolveDefaultPortfolio(session: SessionUser): Promise<Portfolio | null> {
   let portfolio = await getDefaultPortfolio(session.userId, { tenantId: session.tenantId });
@@ -47,15 +90,18 @@ async function resolveDefaultPortfolio(session: SessionUser): Promise<Portfolio 
 export async function getFindOptionsContext(session: SessionUser): Promise<FindOptionsContextPayload> {
   const portfolio = await resolveDefaultPortfolio(session);
   const book = await loadAppUserDefaultBook(session);
+  const assumeAllApproved = getEnv().XOPTIONS_ASSUME_OPTIONS_APPROVED;
 
   if (!portfolio?._id) {
     return {
       portfolio: null,
+      accounts: [],
       account: {
         id: null,
         name: "Account",
         riskProfile: null,
-        outlook: null
+        outlook: null,
+        optionsApproved: false
       },
       bookOutlook: null,
       bookRiskProfile: null,
@@ -70,12 +116,18 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
   });
   const defaultAccount = accounts.find((a) => a.isDefault) ?? accounts[0];
   const { scoringFactors } = scoringFactorsPayloadForAdminApi(portfolio.scoringFactors);
+  const accountRows = buildFindOptionsAccountRows(accounts, assumeAllApproved);
+  const defaultRow = defaultAccount?._id
+    ? accountRows.find((r) => r.id === defaultAccount._id!.toHexString())
+    : undefined;
+  const optionsApprovedDefault = defaultRow?.optionsApproved ?? false;
 
   return {
     portfolio: {
       id: portfolio._id.toHexString(),
       name: portfolio.name?.trim() || "Portfolio"
     },
+    accounts: accountRows,
     account: {
       id: defaultAccount?._id ? defaultAccount._id.toHexString() : book?.accountId ?? null,
       name:
@@ -83,7 +135,8 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
         book?.accountName ||
         "Account",
       riskProfile: defaultAccount?.riskProfile ?? null,
-      outlook: defaultAccount?.outlook ?? null
+      outlook: defaultAccount?.outlook ?? null,
+      optionsApproved: optionsApprovedDefault
     },
     bookOutlook: parseAccountOutlook(portfolio.outlook ?? null),
     bookRiskProfile: portfolio.riskProfile ?? null,

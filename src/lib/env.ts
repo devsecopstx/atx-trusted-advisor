@@ -112,7 +112,26 @@ const envSchema = z.object({
       return s === "1" || s === "true" || s === "yes";
     },
     z.boolean().optional().default(false)
-  )
+  ),
+  /**
+   * When true, all portfolio accounts are treated as options-approved in xOptions context unless
+   * `Account.optionsTradingEnabled` is explicitly false.
+   */
+  XOPTIONS_ASSUME_OPTIONS_APPROVED: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null || v === "") {
+        return false;
+      }
+      if (typeof v === "boolean") {
+        return v;
+      }
+      const s = String(v).trim().toLowerCase();
+      return s === "1" || s === "true" || s === "yes";
+    },
+    z.boolean().optional().default(false)
+  ),
+  /** Optional absolute URL for xOptions “enable options” CTA (broker application, etc.). */
+  NEXT_PUBLIC_XOPTIONS_OPTIONS_APPLY_URL: optionalUrl
 });
 
 export const REQUIRED_RUNTIME_ENV_VARS = [

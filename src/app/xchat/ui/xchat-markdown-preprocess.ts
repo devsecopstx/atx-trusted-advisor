@@ -14,6 +14,8 @@ import {
     expandBracketCitationsToInlineCode,
     grokRenderBlocksToCitationMarkdown,
     grokRenderSelfClosingToCitationMarkdown,
+    stripNonRenderableBareCitationLines,
+    stripNonRenderableCitationInlineSpans,
     wrapBareXfCiteLines
 } from "@/lib/xchat-citations";
 
@@ -27,8 +29,11 @@ export function preprocessXchatMarkdown(raw: string): string {
   s = expandBracketCitationsToInlineCode(s);
   s = dedupeInlineRepeatedBareXfSentinels(s);
   s = collapseAdjacentDuplicateBareXfLines(s);
+  s = stripNonRenderableBareCitationLines(s);
   s = wrapBareXfCiteLines(s);
   s = collapseAdjacentDuplicateWrappedXfChipLines(s);
+  s = stripNonRenderableCitationInlineSpans(s);
+  s = stripNonRenderableBareCitationLines(s);
   s = s.replace(/\*\*\*\*/g, "**");
   s = s.replace(/(?:\n[ \t]*){3,}/g, "\n\n");
 

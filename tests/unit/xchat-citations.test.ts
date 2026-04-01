@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     applyLeakedMarkupRules,
+    citationChipRenderable,
     collapseAdjacentDuplicateBareXfLines,
     collapseAdjacentDuplicateWrappedXfChipLines,
     dedupeInlineRepeatedBareXfSentinels,
@@ -18,10 +19,34 @@ import {
     parseXfCitationFenceJson,
     resolveCitationPresentation,
     resolveGrokRenderSlug,
+    stripNonRenderableBareCitationLines,
+    stripNonRenderableCitationInlineSpans,
     wrapBareXfCiteLines
 } from "@/lib/xchat-citations";
 
 describe("xchat-citations", () => {
+  it("citationChipRenderable is false for unknown slugs without label", () => {
+    expect(citationChipRenderable("yahoo_finance")).toBe(true);
+    expect(citationChipRenderable("atxfinance")).toBe(true);
+    expect(citationChipRenderable("made_up_tool_xyz")).toBe(false);
+    expect(citationChipRenderable("made_up_tool_xyz", "Custom label")).toBe(true);
+    expect(citationChipRenderable("")).toBe(false);
+    expect(citationChipRenderable("bad-slug")).toBe(false);
+  });
+
+  it("stripNonRenderableCitationInlineSpans removes unknown slug chips", () => {
+    expect(stripNonRenderableCitationInlineSpans("a `XF_CITE:yahoo_finance` b")).toBe("a `XF_CITE:yahoo_finance` b");
+    expect(stripNonRenderableCitationInlineSpans("a `XF_CITE:fake_tool` b")).toBe("a  b");
+    expect(stripNonRenderableCitationInlineSpans("`XF_CITE:fake|My label`")).toBe("`XF_CITE:fake|My label`");
+  });
+
+  it("stripNonRenderableBareCitationLines removes invalid or unknown bare sentinels", () => {
+    expect(stripNonRenderableBareCitationLines("x\nXF_CITE:yahoo_finance\ny")).toBe("x\nXF_CITE:yahoo_finance\ny");
+    expect(stripNonRenderableBareCitationLines("x\nXF_CITE:unknown_thing\ny")).toBe("x\ny");
+    expect(stripNonRenderableBareCitationLines("x\nXF_CITE:\ny")).toBe("x\ny");
+    expect(stripNonRenderableBareCitationLines("x\nXF_CITE:bad-hyphen\ny")).toBe("x\ny");
+  });
+
   it("parses inline XF_CITE and XF_TOOL payloads", () => {
     expect(parseInlineCitationCode("XF_CITE:market_quote")).toEqual({ slug: "market_quote" });
     expect(parseInlineToolBadgeCode("XF_TOOL:yahoo_finance|Chain")).toEqual({

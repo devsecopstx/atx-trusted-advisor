@@ -11,7 +11,11 @@ import remarkGfm from "remark-gfm";
 
 import { XchatCitationChip } from "@/app/xchat/ui/xchat-citation-chip";
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
-import { parseInlineXfChipCode, parseXfCitationFenceJson } from "@/lib/xchat-citations";
+import {
+    citationChipRenderable,
+    parseInlineXfChipCode,
+    parseXfCitationFenceJson
+} from "@/lib/xchat-citations";
 
 type XchatMarkdownBodyProps = {
   content: string;
@@ -55,6 +59,9 @@ const markdownComponents: Components = {
       if (lang === "xf-citation") {
         const parsed = parseXfCitationFenceJson(text);
         if (parsed) {
+          if (!citationChipRenderable(parsed.slug, parsed.label)) {
+            return null;
+          }
           return (
             <div className="xchat-citation-fence">
               <XchatCitationChip label={parsed.label} slug={parsed.slug} />

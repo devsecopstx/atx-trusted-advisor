@@ -61,12 +61,75 @@ function humanizeSlug(slug: string): string {
 export function resolveCitationPresentation(slug: string, label?: string): CitationPresentation {
   const c = canonicalizeCitationSlug(slug);
   const meta = CITATION_KIND_META[c];
-  const title = label?.trim() || meta?.title || humanizeSlug(c);
+  const title = (label?.trim() || meta?.title || humanizeSlug(c)).trim();
   return {
     title,
     href: meta?.href,
     external: meta?.external
   };
+}
+
+/**
+ * Whether an inline citation chip should render. Unknown slugs without a custom label are dropped
+ * (model hallucination / stale wire id) so the UI does not show empty or meaningless chips.
+ */
+export function citationChipRenderable(slug: string, label?: string): boolean {
+  const c = canonicalizeCitationSlug(slug.trim());
+  if (!c || !SLUG_RE.test(c)) {
+    return false;
+  }
+  const hasLabel = Boolean(label?.trim());
+  const meta = CITATION_KIND_META[c];
+  if (!meta && !hasLabel) {
+    return false;
+  }
+  const { title } = resolveCitationPresentation(slug, label);
+  return title.length > 0;
+}
+
+/** Remove `` `XF_CITE:…` `` / `` `XF_TOOL:…` `` spans that would not render as chips. */
+export function stripNonRenderableCitationInlineSpans(markdown: string): string {
+  let s = markdown.replace(/`XF_CITE:([a-z0-9_]+)(\|[^`]+)?`/gi, (full, rawSlug: string, labelPipe?: string) => {
+    const label = labelPipe ? String(labelPipe).slice(1).trim() : undefined;
+    const slug = canonicalizeCitationSlug(rawSlug);
+    return citationChipRenderable(slug, label) ? full : "";
+  });
+  s = s.replace(/`XF_TOOL:([a-z0-9_]+)(\|[^`]+)?`/gi, (full, rawSlug: string, labelPipe?: string) => {
+    const label = labelPipe ? String(labelPipe).slice(1).trim() : undefined;
+    const slug = canonicalizeCitationSlug(rawSlug);
+    return citationChipRenderable(slug, label) ? full : "";
+  });
+  return s;
+}
+
+/**
+ * Drop lines that are only a bare XF_CITE/XF_TOOL sentinel when the slug is invalid or not renderable.
+ */
+export function stripNonRenderableBareCitationLines(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const out: string[] = [];
+  for (const line of lines) {
+    const t = line.trimEnd();
+    const m =
+      t.match(/^(?:> ?)?[ \t]*(?:XF_CITE|xf_cite):\s*(\S*)(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/i) ||
+      t.match(/^(?:> ?)?[ \t]*(?:XF_TOOL|xf_tool):\s*(\S*)(?:\s*\[\d+\])*(?:\s*\.?)?\s*$/i);
+    if (m) {
+      const raw = (m[1] ?? "").replace(/\[\d+\]/g, "").trim().split(/[\s,]/)[0] ?? "";
+      if (!raw) {
+        continue;
+      }
+      const low = raw.toLowerCase();
+      if (!SLUG_RE.test(low)) {
+        continue;
+      }
+      const slug = canonicalizeCitationSlug(low);
+      if (!citationChipRenderable(slug)) {
+        continue;
+      }
+    }
+    out.push(line);
+  }
+  return out.join("\n");
 }
 
 /** `type="…"` / `name="…"` on `<grok:render …>` */

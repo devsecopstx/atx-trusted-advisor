@@ -81,3 +81,36 @@ export function otmPercentPut(strike: number, underlying: number): number {
   }
   return strike < underlying ? ((underlying - strike) / underlying) * 100 : 0;
 }
+
+/**
+ * For compact chain views: keep strikes closest to spot (e.g. ATM window).
+ * `windowSize` = max rows to show (e.g. 7).
+ */
+export function sliceStrikesAroundSpot<T extends { strike: number }>(
+  rows: T[],
+  spot: number,
+  windowSize: number
+): T[] {
+  if (rows.length === 0) {
+    return [];
+  }
+  if (!Number.isFinite(spot) || spot <= 0) {
+    return rows.slice(0, Math.min(windowSize, rows.length));
+  }
+  const sorted = [...rows].sort((a, b) => a.strike - b.strike);
+  let bestIdx = 0;
+  let bestDist = Infinity;
+  sorted.forEach((r, i) => {
+    const d = Math.abs(r.strike - spot);
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i;
+    }
+  });
+  const start = Math.max(
+    0,
+    Math.min(bestIdx - Math.floor(windowSize / 2), Math.max(0, sorted.length - windowSize))
+  );
+  const end = Math.min(sorted.length, start + windowSize);
+  return sorted.slice(start, end);
+}

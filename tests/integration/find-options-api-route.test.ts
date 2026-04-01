@@ -40,11 +40,23 @@ describe("GET /api/app-user/find-options/*", () => {
   it("returns context payload", async () => {
     serviceMocks.getFindOptionsContext.mockResolvedValue({
       portfolio: { id: "p1", name: "Book" },
+      accounts: [
+        {
+          id: "a1",
+          name: "Primary",
+          extAccountId: "Z06276930",
+          isDefault: true,
+          optionsApproved: false,
+          riskProfile: "balanced",
+          outlook: "bullish"
+        }
+      ],
       account: {
         id: "a1",
         name: "Primary",
         riskProfile: "balanced",
-        outlook: "bullish"
+        outlook: "bullish",
+        optionsApproved: false
       },
       bookOutlook: "bearish",
       bookRiskProfile: "conservative",
@@ -62,9 +74,16 @@ describe("GET /api/app-user/find-options/*", () => {
     const res = await getContext(new Request("http://localhost/api/app-user/find-options/context"));
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
-      data: { portfolio: { name: string }; scoringFactors: { id: string }[] };
+      data: {
+        portfolio: { name: string };
+        accounts: { extAccountId: string }[];
+        account: { optionsApproved: boolean };
+        scoringFactors: { id: string }[];
+      };
     };
     expect(json.data.portfolio.name).toBe("Book");
+    expect(json.data.accounts[0]?.extAccountId).toBe("Z06276930");
+    expect(json.data.account.optionsApproved).toBe(false);
     expect(json.data.scoringFactors[0]?.id).toBe("iv_rank");
     expect(serviceMocks.getFindOptionsContext).toHaveBeenCalledTimes(1);
   });
