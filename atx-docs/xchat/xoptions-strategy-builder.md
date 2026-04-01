@@ -1,4 +1,4 @@
-# xOptions — Option Strategy Builder (`/xoptions`)
+# xOptions — Find options (`/xoptions`)
 
 ## UX flow
 

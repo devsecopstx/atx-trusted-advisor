@@ -29,6 +29,22 @@
   color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
 }
 
+/* Landing: single symbol field (workspace account drives at-a-glance via API) */
+.xoptions-symbol-hero {
+  padding: 0.75rem 0 0.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.xoptions-workspace-meta {
+  padding: 0.35rem 0 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.xoptions-workspace-meta__line {
+  margin: 0;
+  line-height: 1.4;
+}
+
 /* ── Stepper (horizontal) ── */
 .xoptions-stepper {
   display: flex;

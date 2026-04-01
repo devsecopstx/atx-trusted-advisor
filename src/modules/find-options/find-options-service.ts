@@ -176,7 +176,12 @@ export async function getTopStockHoldingsByValue(
     portfolioId,
     tenantId: session.tenantId
   });
-  const accountIds = accounts.flatMap((a) => (a._id ? [a._id] : []));
+  const book = await loadAppUserDefaultBook(session);
+  const workspaceAccount = resolveWorkspaceAccount(accounts, book);
+  const accountIds =
+    workspaceAccount?._id != null
+      ? [workspaceAccount._id]
+      : accounts.flatMap((a) => (a._id ? [a._id] : []));
   if (accountIds.length === 0) {
     return { holdings: [] };
   }

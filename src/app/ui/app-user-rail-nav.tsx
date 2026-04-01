@@ -251,12 +251,6 @@ export function AppUserOptionsRailSection({
         title="Options"
       >
         <nav className="app-user-rail-sublinks" aria-label="Options links">
-          <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
-            xOptions
-          </RailNavLink>
-          <RailNavLink href="/xstrategybuilder" title="xStrategyBuilder">
-            xstrategy-scanner
-          </RailNavLink>
           <RailNavLink href="/resources/getting-started" title="Guide to investing with options">
             Getting started
           </RailNavLink>
@@ -265,6 +259,12 @@ export function AppUserOptionsRailSection({
           </RailNavLink>
           <RailNavLink href="/resources/building-wheel/wheel-vs-iron-condor" title="Wheel vs iron condor">
             Wheel vs Iron Condor
+          </RailNavLink>
+          <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
+            xOptions
+          </RailNavLink>
+          <RailNavLink href="/xstrategybuilder" title="xStrategyBuilder">
+            xStrategy builder
           </RailNavLink>
         </nav>
       </RailDisclosure>

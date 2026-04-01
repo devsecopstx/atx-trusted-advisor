@@ -7,13 +7,13 @@ import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
 import { XoptionsChooseContract } from "@/app/xoptions/xoptions-choose-contract";
 import {
-    StrategyChoicePanels,
-    strategyShortLabel,
-    type StrategyChoiceId
+  StrategyChoicePanels,
+  strategyShortLabel,
+  type StrategyChoiceId
 } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import {
-    DESK_OUTLOOK_LABELS,
-    DESK_RISK_DISPLAY_LABELS
+  DESK_OUTLOOK_LABELS,
+  DESK_RISK_DISPLAY_LABELS
 } from "@/modules/core-admin/desk-fields";
 import type { AccountOutlook } from "@/modules/core-admin/types";
 
@@ -125,12 +125,6 @@ function mergedOutlookLabels(
   return "";
 }
 
-function accountSelectLabel(row: ContextPayload["accounts"][number]): string {
-  const tail = row.extAccountId && row.extAccountId !== "—" ? ` (${row.extAccountId})` : "";
-  const name = row.name.length > 22 ? `${row.name.slice(0, 20)}…` : row.name;
-  return `${name}${tail}`;
-}
-
 export function XoptionsStrategyBuilderWorkspace() {
   const [ctx, setCtx] = useState<ContextPayload | null>(null);
   const [ctxErr, setCtxErr] = useState<string | null>(null);
@@ -145,7 +139,6 @@ export function XoptionsStrategyBuilderWorkspace() {
   /** Highest step the user may open (1–4); advances on Next, never ahead of symbol readiness. */
   const [unlockedStep, setUnlockedStep] = useState(1);
   const [strategyChoiceId, setStrategyChoiceId] = useState<StrategyChoiceId | null>(null);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
   const [outlookOverride, setOutlookOverride] = useState<"" | AccountOutlook>("");
   const [riskOverride, setRiskOverride] = useState<"" | "conservative" | "balanced" | "growth">("");
@@ -203,14 +196,6 @@ export function XoptionsStrategyBuilderWorkspace() {
 
   useEffect(() => {
     if (!ctx) return;
-    setSelectedAccountId((prev) => {
-      if (prev !== null) return prev;
-      return ctx.account.id ?? ctx.accounts[0]?.id ?? null;
-    });
-  }, [ctx]);
-
-  useEffect(() => {
-    if (!ctx) return;
     setFactorWeights(
       ctx.scoringFactors.map((f) => ({
         id: f.id,
@@ -248,10 +233,11 @@ export function XoptionsStrategyBuilderWorkspace() {
     return () => window.clearTimeout(t);
   }, [symbol]);
 
-  const selectedDeskAccount = useMemo((): DeskAccountSlice | null => {
+  /** Workspace rail default account — same source as find-options APIs (holdings / hot list). */
+  const workspaceDeskAccount = useMemo((): DeskAccountSlice | null => {
     if (!ctx) return null;
-    const id = selectedAccountId ?? ctx.account.id;
-    const row = ctx.accounts.find((a) => a.id === id);
+    const id = ctx.account.id;
+    const row = id ? ctx.accounts.find((a) => a.id === id) : undefined;
     if (row) {
       return {
         id: row.id,
@@ -268,14 +254,14 @@ export function XoptionsStrategyBuilderWorkspace() {
       outlook: ctx.account.outlook,
       optionsApproved: ctx.account.optionsApproved
     };
-  }, [ctx, selectedAccountId]);
+  }, [ctx]);
 
   const effectiveOutlook = useMemo(() => {
     if (outlookOverride !== "") {
       return outlookLabel(outlookOverride);
     }
-    return mergedOutlookLabels(selectedDeskAccount?.outlook, ctx?.bookOutlook);
-  }, [ctx?.bookOutlook, outlookOverride, selectedDeskAccount?.outlook]);
+    return mergedOutlookLabels(workspaceDeskAccount?.outlook, ctx?.bookOutlook);
+  }, [ctx?.bookOutlook, outlookOverride, workspaceDeskAccount?.outlook]);
 
   const outlookIconSlug = useMemo((): AccountOutlook | null => {
     if (outlookOverride !== "") {
@@ -284,13 +270,13 @@ export function XoptionsStrategyBuilderWorkspace() {
     if (!ctx) {
       return null;
     }
-    return selectedDeskAccount?.outlook ?? ctx.bookOutlook ?? null;
-  }, [ctx, outlookOverride, selectedDeskAccount?.outlook]);
+    return workspaceDeskAccount?.outlook ?? ctx.bookOutlook ?? null;
+  }, [ctx, outlookOverride, workspaceDeskAccount?.outlook]);
 
   const effectiveRisk = useMemo(() => {
-    const r = riskOverride || selectedDeskAccount?.riskProfile || ctx?.bookRiskProfile || null;
+    const r = riskOverride || workspaceDeskAccount?.riskProfile || ctx?.bookRiskProfile || null;
     return riskLabel(r);
-  }, [ctx?.bookRiskProfile, riskOverride, selectedDeskAccount?.riskProfile]);
+  }, [ctx?.bookRiskProfile, riskOverride, workspaceDeskAccount?.riskProfile]);
 
   const effectiveFactors = useMemo(() => factorWeights ?? [], [factorWeights]);
 
@@ -370,9 +356,58 @@ export function XoptionsStrategyBuilderWorkspace() {
       <div>
         <p className="xoptions-page-kicker">Options analysis &amp; research</p>
         <h1 className="xoptions-workspace__h1 mt-1 text-xl font-semibold tracking-tight md:text-2xl">
-          Option Strategy Builder
+          Find options
         </h1>
       </div>
+
+      <section className="xoptions-symbol-hero" aria-label="Enter symbol">
+        <p className="xoptions-step__question m-0">{STEPS[0]?.question}</p>
+        <div className="mt-3 max-w-md">
+          <label
+            className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--xf-text-400)]"
+            htmlFor="xo-symbol"
+          >
+            Symbol
+          </label>
+          <div className="relative">
+            <input
+              id="xo-symbol"
+              className="crud-input w-full pr-10 font-mono text-base uppercase md:text-lg"
+              placeholder="e.g. AAPL"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              autoComplete="off"
+              spellCheck={false}
+              aria-label="Underlying symbol"
+            />
+            <span
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--xf-text-400)]"
+              aria-hidden
+            >
+              🔍
+            </span>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="xoptions-next-btn"
+            disabled={!canGoStep2}
+            onClick={() => advanceFrom(1)}
+          >
+            Next
+          </button>
+          {symbolUpper.length > 0 ? (
+            <div className="text-xs text-[var(--xf-text-400)]" role="status">
+              {snapLoading
+                ? "Loading quote…"
+                : snapshot?.symbol === symbolUpper
+                  ? `Last ${snapshot.lastPrice ?? "—"}`
+                  : "Enter a valid symbol"}
+            </div>
+          ) : null}
+        </div>
+      </section>
 
       <nav className="xoptions-stepper" aria-label="Strategy builder progress">
         {STEPS.map((s, i) => (
@@ -392,30 +427,20 @@ export function XoptionsStrategyBuilderWorkspace() {
         ))}
       </nav>
 
-      <section className="xoptions-account-bar" aria-label="Account">
-        <div className="xoptions-account-bar__row">
-          <label className="xoptions-top-option-header__label block" htmlFor="xo-account">
-            Account
-          </label>
-          {ctx && ctx.accounts.length > 0 ? (
-            <select
-              id="xo-account"
-              className="crud-input mt-0.5 w-full max-w-md font-mono text-sm"
-              value={selectedAccountId ?? ""}
-              onChange={(e) => setSelectedAccountId(e.target.value || null)}
-            >
-              {ctx.accounts.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {accountSelectLabel(row)}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p className="xoptions-top-option-header__stat mt-0.5">{ctx?.account.name ?? "—"}</p>
-          )}
-        </div>
-        {selectedDeskAccount && !selectedDeskAccount.optionsApproved ? (
-          <div className="xoptions-account-bar__notice" role="status">
+      <section className="xoptions-workspace-meta" aria-label="Workspace">
+        <p className="xoptions-workspace-meta__line text-sm">
+          <span className="text-[var(--xf-text-400)]">Portfolio</span>{" "}
+          <span className="font-semibold text-[var(--xf-text-200)]">{ctx?.portfolio?.name ?? "—"}</span>
+          <span className="mx-2 text-[var(--xf-text-500)]" aria-hidden>
+            ·
+          </span>
+          <span className="text-[var(--xf-text-400)]">Account</span>{" "}
+          <span className="font-semibold text-[var(--xf-text-200)]">
+            {workspaceDeskAccount?.name ?? ctx?.account?.name ?? "—"}
+          </span>
+        </p>
+        {workspaceDeskAccount && !workspaceDeskAccount.optionsApproved ? (
+          <div className="xoptions-account-bar__notice mt-2" role="status">
             <span className="xoptions-account-bar__notice-icon" aria-hidden>
               ⓘ
             </span>
@@ -436,7 +461,6 @@ export function XoptionsStrategyBuilderWorkspace() {
             ) : null}
           </div>
         ) : null}
-        <p className="xoptions-top-option-header__hint mt-1">{ctx?.portfolio?.name ?? "Default portfolio"}</p>
       </section>
 
       <section className="xoptions-top-option-header xoptions-top-option-header--glance-only" aria-label="At a glance">
@@ -524,38 +548,10 @@ export function XoptionsStrategyBuilderWorkspace() {
           </button>
           {activeStep === 1 ? (
             <div className="xoptions-step__body">
-              <p className="xoptions-step__question">{STEPS[0]?.question}</p>
-              <div className="relative mt-2 max-w-md">
-                <label className="sr-only" htmlFor="xo-symbol">
-                  Symbol
-                </label>
-                <input
-                  id="xo-symbol"
-                  className="crud-input w-full pr-10 font-mono text-sm uppercase"
-                  placeholder="Symbol"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                  aria-label="Underlying symbol"
-                />
-                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--xf-text-400)]" aria-hidden>
-                  🔍
-                </span>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  className="xoptions-next-btn"
-                  disabled={!canGoStep2}
-                  onClick={() => advanceFrom(1)}
-                >
-                  Next
-                </button>
-                {symbolUpper.length > 0 ? (
-                  <div className="text-xs text-[var(--xf-text-400)]" role="status">
-                    {snapLoading ? "Loading quote…" : snapshot?.symbol === symbolUpper ? `Last ${snapshot.lastPrice ?? "—"}` : "Enter a valid symbol"}
-                  </div>
-                ) : null}
-              </div>
+              <p className="xoptions-hint text-sm text-[var(--xf-text-400)]">
+                Enter a ticker in the field at the top of the page. Holdings and hot list below use your workspace
+                account from the left rail.
+              </p>
             </div>
           ) : null}
         </section>
@@ -624,7 +620,7 @@ export function XoptionsStrategyBuilderWorkspace() {
                   >
                     <option value="">
                       Use account / book (
-                      {mergedOutlookLabels(selectedDeskAccount?.outlook, ctx?.bookOutlook) || "—"})
+                      {mergedOutlookLabels(workspaceDeskAccount?.outlook, ctx?.bookOutlook) || "—"})
                     </option>
                     <option value="bullish">{DESK_OUTLOOK_LABELS.bullish}</option>
                     <option value="neutral">{DESK_OUTLOOK_LABELS.neutral}</option>
@@ -650,7 +646,7 @@ export function XoptionsStrategyBuilderWorkspace() {
                 >
                   <option value="">
                     Use portfolio / account (
-                    {riskLabel(selectedDeskAccount?.riskProfile ?? ctx?.bookRiskProfile ?? null)})
+                    {riskLabel(workspaceDeskAccount?.riskProfile ?? ctx?.bookRiskProfile ?? null)})
                   </option>
                   <option value="conservative">Conservative</option>
                   <option value="balanced">Balanced</option>
