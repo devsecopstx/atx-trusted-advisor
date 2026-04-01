@@ -333,19 +333,26 @@ export function AppUserAccountRailSection({
   );
 }
 
-/** Manage workspace — My portfolios for all app users; Admin hub link only for global_admin */
+/** Manage workspace — user + portfolio/account pickers (when `railContext` is set) and workspace links */
 export function AppUserManageWorkspaceRailSection({
   railDisclosureDefaultOpen = false,
   isGlobalAdmin = false,
-  workspacePortfolioId = null
+  workspacePortfolioId = null,
+  railContext = null
 }: {
   railDisclosureDefaultOpen?: boolean;
   isGlobalAdmin?: boolean;
-  /** Active book id from rail context — deep-links watchlist & alerts to this portfolio when set */
+  /** Prefer explicit id when `railContext` is not passed (e.g. xChat rail). */
   workspacePortfolioId?: string | null;
+  /** When set (product shell), renders user name and portfolio/account pickers inside this group. */
+  railContext?: AppUserPublicRailContext | null;
 }) {
-  const pid = workspacePortfolioId?.trim();
-  const portfolioQs = pid && pid.length > 0 ? `?portfolioId=${encodeURIComponent(pid)}` : "";
+  const rawPid =
+    workspacePortfolioId?.trim() ||
+    railContext?.book?.portfolioId?.trim() ||
+    "";
+  const portfolioQs =
+    rawPid.length > 0 ? `?portfolioId=${encodeURIComponent(rawPid)}` : "";
   const watchlistHref = `/watchlist${portfolioQs}`;
   const alertsHref = `/portfolio/alerts${portfolioQs}`;
 
@@ -356,25 +363,53 @@ export function AppUserManageWorkspaceRailSection({
         icon={<ManageWorkspaceIcon className="app-user-rail-disclosure__glyph" />}
         title="Manage workspace"
       >
-        <nav className="app-user-rail-sublinks" aria-label="Workspace administration">
-          <RailNavLink
-            href="/workspace/portfolios"
-            title="My portfolios — book value by portfolio, edit metadata (no account detail)"
-          >
-            My portfolios
-          </RailNavLink>
-          <RailNavLink href={watchlistHref} title="Watchlist for the active workspace portfolio">
-            Watchlist
-          </RailNavLink>
-          <RailNavLink href={alertsHref} title="Alerts for the active workspace portfolio">
-            Alerts
-          </RailNavLink>
-          {isGlobalAdmin ? (
-            <RailNavLink href="/admin" title="Open Admin Hub (global admin only)">
-              Admin hub
-            </RailNavLink>
+        <>
+          {railContext ? (
+            <div className="app-user-rail-section--workspace">
+              <p className="app-user-rail-workspace-name">{railContext.userDisplayName}</p>
+              {railContext.book ? (
+                <div className="app-user-rail-workspace-card">
+                  <AppUserWorkspacePortfolioPicker
+                    portfolios={railContext.book.workspacePortfolios}
+                    selectedPortfolioId={railContext.book.portfolioId}
+                  />
+                  <AppUserWorkspaceAccountPicker
+                    accounts={railContext.book.accounts}
+                    portfolioId={railContext.book.portfolioId}
+                    serverDefaultAccountId={railContext.book.accountId}
+                  />
+                </div>
+              ) : (
+                <p className="app-user-rail-workspace-hint">
+                  Default portfolio isn&apos;t available yet.{" "}
+                  <Link className="app-user-rail-workspace-hint-link" href="/portfolio">
+                    Open Portfolio
+                  </Link>{" "}
+                  to sync or repair your book.
+                </p>
+              )}
+            </div>
           ) : null}
-        </nav>
+          <nav className="app-user-rail-sublinks" aria-label="Workspace administration">
+            <RailNavLink
+              href="/workspace/portfolios"
+              title="My portfolios — book value by portfolio, edit metadata (no account detail)"
+            >
+              My portfolios
+            </RailNavLink>
+            <RailNavLink href={watchlistHref} title="Watchlist for the active workspace portfolio">
+              Watchlist
+            </RailNavLink>
+            <RailNavLink href={alertsHref} title="Alerts for the active workspace portfolio">
+              Alerts
+            </RailNavLink>
+            {isGlobalAdmin ? (
+              <RailNavLink href="/admin" title="Open Admin Hub (global admin only)">
+                Admin hub
+              </RailNavLink>
+            ) : null}
+          </nav>
+        </>
       </RailDisclosure>
     </section>
   );
@@ -383,34 +418,7 @@ export function AppUserManageWorkspaceRailSection({
 export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUserAccountPublicRailProps) {
   return (
     <aside className="app-user-public-rail xf-widget" aria-label="Account navigation">
-      <AppUserManageWorkspaceRailSection
-        isGlobalAdmin={isGlobalAdmin}
-        workspacePortfolioId={railContext.book?.portfolioId ?? null}
-      />
-      <section className="app-user-rail-section app-user-rail-section--workspace" aria-label="Your workspace">
-        <p className="app-user-rail-workspace-name">{railContext.userDisplayName}</p>
-        {railContext.book ? (
-          <div className="app-user-rail-workspace-card">
-            <AppUserWorkspacePortfolioPicker
-              portfolios={railContext.book.workspacePortfolios}
-              selectedPortfolioId={railContext.book.portfolioId}
-            />
-            <AppUserWorkspaceAccountPicker
-              accounts={railContext.book.accounts}
-              portfolioId={railContext.book.portfolioId}
-              serverDefaultAccountId={railContext.book.accountId}
-            />
-          </div>
-        ) : (
-          <p className="app-user-rail-workspace-hint">
-            Default portfolio isn&apos;t available yet.{" "}
-            <Link className="app-user-rail-workspace-hint-link" href="/portfolio">
-              Open Portfolio
-            </Link>{" "}
-            to sync or repair your book.
-          </p>
-        )}
-      </section>
+      <AppUserManageWorkspaceRailSection isGlobalAdmin={isGlobalAdmin} railContext={railContext} />
       <AppUserXchatRailSection />
       <AppUserOptionsRailSection />
       <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
