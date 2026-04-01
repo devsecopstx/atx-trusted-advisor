@@ -135,3 +135,48 @@ export function filterStrikesBySpotBand<T extends { strike: number }>(
   const filtered = rows.filter((r) => r.strike >= lo - eps && r.strike <= hi + eps);
   return filtered.length > 0 ? filtered : rows;
 }
+
+/**
+ * Closest strike to spot (ATM). Tie-break: lower strike when distances are equal.
+ */
+export function closestStrikeToSpot(strikes: number[], spot: number): number | null {
+  const uniq = [...new Set(strikes)].filter((k) => Number.isFinite(k));
+  if (uniq.length === 0 || !Number.isFinite(spot) || spot <= 0) {
+    return null;
+  }
+  uniq.sort((a, b) => a - b);
+  let best = uniq[0]!;
+  let bestDist = Math.abs(best - spot);
+  for (const k of uniq) {
+    const d = Math.abs(k - spot);
+    if (d < bestDist - 1e-9 || (Math.abs(d - bestDist) < 1e-9 && k < best)) {
+      bestDist = d;
+      best = k;
+    }
+  }
+  return best;
+}
+
+/**
+ * CSS class for chain row: ATM (nearest strike) gets `--atm`; ITM gets `--itm`; OTM unchanged.
+ */
+export function chainRowMoneynessClass(
+  strike: number,
+  spot: number,
+  side: "call" | "put",
+  atmStrike: number | null
+): string {
+  if (atmStrike != null && Math.abs(strike - atmStrike) < 1e-6) {
+    return "xoptions-contract-row--atm";
+  }
+  const itm = side === "call" ? strike < spot : strike > spot;
+  return itm ? "xoptions-contract-row--itm" : "";
+}
+
+/** Implied vol from chain API is already a percentage (e.g. 35.5 = 35.5%). */
+export function formatImpliedVolatilityDisplay(iv: number | null | undefined): string {
+  if (iv == null || !Number.isFinite(iv)) {
+    return "—";
+  }
+  return `${iv.toFixed(2)}%`;
+}

@@ -17,6 +17,7 @@ import {
     parseInlineToolBadgeCode,
     parseInlineXfChipCode,
     parseXfCitationFenceJson,
+    repairAdjacentMangledXfInlineChips,
     resolveCitationPresentation,
     resolveGrokRenderSlug,
     stripNonRenderableBareCitationLines,
@@ -83,6 +84,21 @@ describe("xchat-citations", () => {
 
   it("wraps bare XF_CITE line with optional trailing period", () => {
     expect(wrapBareXfCiteLines("XF_CITE:yahoo_finance.")).toBe("`XF_CITE:yahoo_finance`");
+  });
+
+  it("repairs doubled-backtick adjacent XF_CITE chips (GFM leak)", () => {
+    const raw = "Quick math `XF_CITE:yahoo_finance``XF_CITE:atxfinance` after";
+    const fixed = repairAdjacentMangledXfInlineChips(raw);
+    expect(fixed).toContain("`XF_CITE:yahoo_finance`");
+    expect(fixed).toContain("`XF_CITE:atxfinance`");
+    expect(fixed).not.toMatch(/XF_CITE:yahoo_finance``XF_CITE/);
+  });
+
+  it("repairs missing opening backtick before second XF_CITE", () => {
+    const raw = "x `XF_CITE:yahoo_finance`XF_CITE:atxfinance` y";
+    const fixed = repairAdjacentMangledXfInlineChips(raw);
+    expect(fixed).toContain("`XF_CITE:yahoo_finance`");
+    expect(fixed).toContain("`XF_CITE:atxfinance`");
   });
 
   it("wraps bare XF_CITE with model footnote-style [n] suffixes (own line or tail)", () => {

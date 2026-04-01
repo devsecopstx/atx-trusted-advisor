@@ -1,23 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-payoff-chart";
+import { XoptionsReviewOrderSummaryBar } from "@/app/xoptions/xoptions-review-order-summary-bar";
 import {
-    addCalendarDaysUtc,
-    filterStrikesBySpotBand,
-    otmPercentCall,
-    otmPercentPut,
-    pickExpirationOnOrAfter,
-    sliceStrikesAroundSpot,
-    spreadMetrics,
-    spreadQuality,
-    STRIKE_SPOT_BAND_PCT
+  addCalendarDaysUtc,
+  chainRowMoneynessClass,
+  closestStrikeToSpot,
+  filterStrikesBySpotBand,
+  formatImpliedVolatilityDisplay,
+  pickExpirationOnOrAfter,
+  sliceStrikesAroundSpot,
+  STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
+import {
+  buildXoptionsOrderReview,
+  formatXoptionsOrderReviewPlainText,
+  XOPTIONS_REVIEW_ORDER_FOOTNOTE
+} from "@/lib/xoptions/xoptions-order-preview";
 
 type ChainLeg = {
   last_quote: { bid: number; ask: number };
   open_interest?: number;
+  /** Percentage, e.g. 35.5 = 35.5% */
+  implied_volatility?: number;
 } | null;
 
 type ChainRow = {
@@ -89,6 +96,10 @@ export type XoptionsChooseContractProps = {
   weeks: number | null;
   onWeeksChange: (w: number | null) => void;
   lastPrice: number | null;
+  /** Step 3 strategy label — included in Review order preview text. */
+  strategyLabel?: string | null;
+  /** Plain-text Review order for xChat handoff; `null` when preview unavailable. */
+  onReviewOrderPlainTextChange?: (text: string | null) => void;
 };
 
 function ChainSkeleton() {
@@ -127,7 +138,9 @@ export function XoptionsChooseContract({
   symbol,
   weeks,
   onWeeksChange,
-  lastPrice
+  lastPrice,
+  strategyLabel = null,
+  onReviewOrderPlainTextChange
 }: XoptionsChooseContractProps) {
   const u = symbol.trim().toUpperCase();
 
@@ -143,6 +156,10 @@ export function XoptionsChooseContract({
   const [selectedStrike, setSelectedStrike] = useState<number | null>(null);
   const [limitPrice, setLimitPrice] = useState("");
   const [quantity, setQuantity] = useState("");
+
+  const chainTableScrollRef = useRef<HTMLDivElement>(null);
+  const sideRef = useRef(side);
+  sideRef.current = side;
 
   useEffect(() => {
     setExpiration("");
@@ -219,7 +236,24 @@ export function XoptionsChooseContract({
         }
         if (!cancelled) {
           setChain(payload);
-          setSelectedStrike(null);
+          const rows = filterChainRows(payload.optionChain);
+          const spot = payload.stockPrice;
+          const s = sideRef.current;
+          const strikeList = rows
+            .filter((r) => {
+              const leg = s === "call" ? r.call : r.put;
+              return leg != null;
+            })
+            .map((r) => r.strike);
+          const atm = closestStrikeToSpot(strikeList, spot);
+          if (atm != null) {
+            setSelectedStrike(atm);
+            setQuantity("1");
+          } else {
+            setSelectedStrike(null);
+            setLimitPrice("");
+            setQuantity("");
+          }
         }
       } catch (e) {
         if (!cancelled) {
@@ -286,6 +320,16 @@ export function XoptionsChooseContract({
     return [...tableRows, extra].sort((a, b) => a.strike - b.strike);
   }, [tableRows, baseRows, selectedStrike]);
 
+  const atmStrike = useMemo(() => {
+    if (!chain || tableRowsForDisplay.length === 0) {
+      return null;
+    }
+    return closestStrikeToSpot(
+      tableRowsForDisplay.map((r) => r.strike),
+      chain.stockPrice
+    );
+  }, [chain, tableRowsForDisplay]);
+
   const truncated = showAllStrikes && baseRows.length > CHAIN_TABLE_MAX;
 
   const selectedRow = useMemo(() => {
@@ -307,21 +351,70 @@ export function XoptionsChooseContract({
     expiration && selectedStrike != null && limitOk && qtyOk
   );
 
-  const panelLocked = !dataReady || (Boolean(expiration) && loadingChain);
+  const orderReview = useMemo(() => {
+    if (!dataReady || !chain || selectedStrike == null || !expiration) {
+      return null;
+    }
+    const row = chain.optionChain.find((r) => r.strike === selectedStrike);
+    const leg = row ? (side === "call" ? row.call : row.put) : null;
+    return buildXoptionsOrderReview({
+      symbol: u,
+      expirationYyyyMmDd: expiration,
+      side,
+      strike: selectedStrike,
+      limitPrice: limitPrice.trim(),
+      quantity: quantity.trim(),
+      spot: chain.stockPrice,
+      impliedVolatilityPercent: leg?.implied_volatility,
+      strategyLabel
+    });
+  }, [dataReady, chain, selectedStrike, expiration, side, limitPrice, quantity, u, strategyLabel]);
+
+  useEffect(() => {
+    onReviewOrderPlainTextChange?.(
+      orderReview ? formatXoptionsOrderReviewPlainText(orderReview, { includeFootnote: false }) : null
+    );
+  }, [orderReview, onReviewOrderPlainTextChange]);
+
+  /** Chain table is interactive once an expiration is chosen and quotes loaded. */
+  const chainDataVisible = Boolean(expiration && chain && !loadingChain);
+  const chainPanelLocked = !chainDataVisible;
+
+  /** Payoff chart stays gated until strike + limit + quantity are set. */
+  const payoffPanelLocked =
+    !dataReady || (Boolean(expiration) && loadingChain);
+
+  const syncLimitFromBid = useCallback(
+    (strike: number) => {
+      if (!chain) return;
+      const row = chain.optionChain.find((r) => r.strike === strike);
+      const leg = row ? (side === "call" ? row.call : row.put) : null;
+      if (leg?.last_quote && Number.isFinite(leg.last_quote.bid)) {
+        setLimitPrice(leg.last_quote.bid.toFixed(2));
+      }
+    },
+    [chain, side]
+  );
+
+  useEffect(() => {
+    if (!chain || selectedStrike == null) return;
+    syncLimitFromBid(selectedStrike);
+  }, [chain, side, selectedStrike, syncLimitFromBid]);
+
+  useEffect(() => {
+    if (selectedStrike == null) return;
+    const id = requestAnimationFrame(() => {
+      const root = chainTableScrollRef.current;
+      if (!root) return;
+      const el = root.querySelector(`[data-xo-strike="${selectedStrike}"]`);
+      el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [selectedStrike, tableRowsForDisplay, chain]);
 
   const selectRow = useCallback((strike: number) => {
     setSelectedStrike(strike);
   }, []);
-
-  const rowItm = useCallback(
-    (strike: number) => {
-      if (!chain) return false;
-      const spot = chain.stockPrice;
-      if (side === "call") return strike < spot;
-      return strike > spot;
-    },
-    [chain, side]
-  );
 
   const overlayChecklist = (
     <ul className="xoptions-contract-overlay__list">
@@ -407,7 +500,12 @@ export function XoptionsChooseContract({
               disabled={loadingExp || loadingChain || strikeOptions.length === 0}
               onChange={(e) => {
                 const v = e.target.value;
-                setSelectedStrike(v === "" ? null : Number(v));
+                if (v === "") {
+                  setSelectedStrike(null);
+                  setLimitPrice("");
+                  return;
+                }
+                setSelectedStrike(Number(v));
               }}
             >
               <option value="">Select</option>
@@ -502,7 +600,7 @@ export function XoptionsChooseContract({
         <div className="xoptions-contract__grid">
           <div className="xoptions-contract__chain-wrap relative min-w-0">
             <div
-              className={`xoptions-contract__panel-inner ${panelLocked ? "xoptions-contract__panel-inner--locked" : ""}`}
+              className={`xoptions-contract__panel-inner ${chainPanelLocked ? "xoptions-contract__panel-inner--locked" : ""}`}
             >
               {chain ? (
                 <>
@@ -510,7 +608,7 @@ export function XoptionsChooseContract({
                     Option chain · {side === "call" ? "Calls" : "Puts"} · spot{" "}
                     <span className="font-mono">{chain.stockPrice.toFixed(2)}</span>
                   </p>
-                  <div className="xoptions-contract__table-scroll overflow-x-auto">
+                  <div ref={chainTableScrollRef} className="xoptions-contract__table-scroll">
                     <table className="xoptions-chain-table w-full min-w-[22rem] border-collapse text-left text-[0.6875rem]">
                       <thead>
                         <tr className="xoptions-chain-table__head">
@@ -518,22 +616,22 @@ export function XoptionsChooseContract({
                           <th className="py-1 pr-2 font-semibold">Strike</th>
                           <th className="py-1 pr-2 font-semibold">Bid</th>
                           <th className="py-1 pr-2 font-semibold">BE</th>
-                          <th className="py-1 pr-2 font-semibold">OTM%</th>
-                          <th className="py-1 font-semibold">OI</th>
+                          <th className="py-1 pr-2 font-semibold">IV%</th>
+                          <th className="py-1 pl-2 font-semibold text-right">OI</th>
                         </tr>
                       </thead>
                       <tbody>
                         {tableRowsForDisplay.map((row) => {
                           const leg = side === "call" ? row.call : row.put;
                           const spot = chain.stockPrice;
-                          const otm =
-                            side === "call"
-                              ? otmPercentCall(row.strike, spot)
-                              : otmPercentPut(row.strike, spot);
-                          const itm = rowItm(row.strike);
+                          const moneynessClass = chainRowMoneynessClass(row.strike, spot, side, atmStrike);
                           if (!leg) {
                             return (
-                              <tr key={row.strike} className="xoptions-chain-table__row">
+                              <tr
+                                key={row.strike}
+                                className="xoptions-chain-table__row"
+                                data-xo-strike={row.strike}
+                              >
                                 <td colSpan={6} className="py-0.5 xoptions-chain-table__empty">
                                   {row.strike} — no quote
                                 </td>
@@ -545,18 +643,12 @@ export function XoptionsChooseContract({
                           const mid = (bid + ask) / 2;
                           const be = breakevenLong(side, row.strike, mid);
                           const selected = selectedStrike === row.strike;
-                          const { abs, pctMid } = spreadMetrics(bid, ask);
-                          const q = spreadQuality(abs, pctMid);
-                          const spreadClass =
-                            q === "ok"
-                              ? "xoptions-chain-spread--ok"
-                              : q === "mid"
-                                ? "xoptions-chain-spread--mid"
-                                : "xoptions-chain-spread--wide";
+                          const ivDisplay = formatImpliedVolatilityDisplay(leg.implied_volatility);
                           return (
                             <tr
                               key={row.strike}
-                              className={`xoptions-chain-table__row ${itm ? "xoptions-contract-row--itm" : ""} ${selected ? "xoptions-contract-row--selected" : ""}`}
+                              data-xo-strike={row.strike}
+                              className={`xoptions-chain-table__row ${moneynessClass} ${selected ? "xoptions-contract-row--selected" : ""}`}
                             >
                               <td className="py-0.5 pr-1">
                                 <input
@@ -574,16 +666,18 @@ export function XoptionsChooseContract({
                                   type="button"
                                   className="xoptions-contract__bid font-mono"
                                   onClick={() => {
-                                    selectRow(row.strike);
-                                    setLimitPrice(bid.toFixed(2));
+                                    setSelectedStrike(row.strike);
+                                    syncLimitFromBid(row.strike);
                                   }}
                                 >
                                   ${bid.toFixed(2)}
                                 </button>
                               </td>
                               <td className="py-0.5 pr-2 font-mono">${be.toFixed(2)}</td>
-                              <td className={`py-0.5 pr-2 font-mono ${spreadClass}`}>{otm.toFixed(1)}</td>
-                              <td className="py-0.5 font-mono">{legOi(leg).toLocaleString()}</td>
+                              <td className="py-0.5 pr-2 font-mono">{ivDisplay}</td>
+                              <td className="py-0.5 pl-2 font-mono text-right tabular-nums">
+                                {legOi(leg).toLocaleString()}
+                              </td>
                             </tr>
                           );
                         })}
@@ -596,11 +690,16 @@ export function XoptionsChooseContract({
                     </p>
                   ) : null}
                   <p className="xoptions-contract__chain-foot mt-2">
-                    <a className="xoptions-text-link text-xs" href="/xstrategybuilder/strategy-options">
+                    <a className="xoptions-text-link" href="/xstrategybuilder/strategy-options">
                       How to read the option chain
                     </a>
-                    <span className="xoptions-contract__itm-legend text-xs text-[var(--xf-text-400)]">
-                      <span className="xoptions-contract__itm-swatch" aria-hidden /> In the money
+                    <span className="xoptions-contract__moneyness-legend text-xs text-[var(--xf-text-400)]">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="xoptions-contract__atm-swatch" aria-hidden /> ATM
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="xoptions-contract__itm-swatch" aria-hidden /> ITM
+                      </span>
                     </span>
                   </p>
                 </>
@@ -608,7 +707,7 @@ export function XoptionsChooseContract({
                 <ChainSkeleton />
               )}
             </div>
-            {panelLocked ? (
+            {chainPanelLocked ? (
               <div
                 className="xoptions-contract-overlay xoptions-contract-overlay--card"
                 role="status"
@@ -629,7 +728,7 @@ export function XoptionsChooseContract({
 
           <div className="xoptions-contract__payoff relative min-w-0">
             <div
-              className={`xoptions-contract__panel-inner ${panelLocked ? "xoptions-contract__panel-inner--locked" : ""}`}
+              className={`xoptions-contract__panel-inner ${payoffPanelLocked ? "xoptions-contract__panel-inner--locked" : ""}`}
             >
               {chain && selectedRow && dataReady ? (
                 <>
@@ -645,7 +744,7 @@ export function XoptionsChooseContract({
                 <>
                   <PayoffSkeleton />
                   <a
-                    className="xoptions-text-link mt-2 inline-block text-xs"
+                    className="xoptions-text-link mt-2 inline-block"
                     href="/xstrategybuilder/strategy-options"
                   >
                     How to read the graph
@@ -653,7 +752,7 @@ export function XoptionsChooseContract({
                 </>
               )}
             </div>
-            {panelLocked ? (
+            {payoffPanelLocked ? (
               <div
                 className="xoptions-contract-overlay xoptions-contract-overlay--card"
                 role="status"
@@ -676,8 +775,37 @@ export function XoptionsChooseContract({
         <p className="xoptions-hint text-sm">Enter a symbol in step 1.</p>
       )}
 
+      {u && orderReview ? (
+        <div
+          className="xoptions-review-order mt-4 rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_3%,transparent)] p-3"
+          aria-labelledby="xo-review-order-title"
+          data-order-text-preview
+        >
+          <h3 id="xo-review-order-title" className="xoptions-mid-three__label mb-3">
+            Review order
+          </h3>
+          <div className="mb-3">
+            <XoptionsReviewOrderSummaryBar
+              bidDisplay={orderReview.bidPerShareDisplay}
+              beDisplay={orderReview.breakevenDisplay}
+              probDisplay={orderReview.probabilityOtmDisplay}
+              probPercent={orderReview.probabilityOtmPercent}
+            />
+          </div>
+          <div className="xoptions-review-order__info">
+            <p className="xoptions-review-order__narrative m-0 text-[0.75rem] leading-relaxed text-[var(--xf-text-200)]">
+              {orderReview.narrative}
+            </p>
+            <p className="xoptions-review-order__footnote mt-2 mb-0 text-[0.625rem] text-[var(--xf-text-500)]">
+              {XOPTIONS_REVIEW_ORDER_FOOTNOTE}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <p className="xoptions-contract__disclaimer mt-3 text-xs text-[var(--xf-text-400)]">
-        * Values use current chain quotes (bid/ask mid for BE). Not financial advice.
+        * Payoff chart BE uses bid/ask mid; Review order BE and debit use your limit price. Not
+        financial advice.
       </p>
     </section>
   );

@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 
 import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
@@ -137,10 +140,29 @@ export function XoptionsStrategyBuilderWorkspace() {
   /** Highest step the user may open (1–4); advances on Next, never ahead of symbol readiness. */
   const [unlockedStep, setUnlockedStep] = useState(1);
   const [strategyChoiceId, setStrategyChoiceId] = useState<StrategyChoiceId | null>(null);
+  const [reviewOrderPlainText, setReviewOrderPlainText] = useState<string | null>(null);
 
   const [outlookOverride, setOutlookOverride] = useState<"" | AccountOutlook>("");
   const [riskOverride, setRiskOverride] = useState<"" | "conservative" | "balanced" | "growth">("");
   const [factorWeights, setFactorWeights] = useState<{ id: string; weight: number; label: string }[] | null>(null);
+
+  const router = useRouter();
+
+  const onReviewOrderPlainTextChange = useCallback((t: string | null) => {
+    setReviewOrderPlainText(t);
+  }, []);
+
+  const handleAskXchat = useCallback(() => {
+    const t = reviewOrderPlainText?.trim();
+    if (!t) return;
+    try {
+      sessionStorage.setItem(XCHAT_PENDING_PROMPT_STORAGE_KEY, t);
+    } catch {
+      // ignore quota / private mode
+    }
+    void navigator.clipboard.writeText(t).catch(() => {});
+    router.push("/xchat");
+  }, [reviewOrderPlainText, router]);
 
   const loadContext = useCallback(async () => {
     setCtxErr(null);
@@ -815,18 +837,31 @@ export function XoptionsStrategyBuilderWorkspace() {
                 weeks={weeks}
                 onWeeksChange={setWeeks}
                 lastPrice={snapshot?.lastPrice ?? null}
+                strategyLabel={strategyChoiceId ? strategyShortLabel(strategyChoiceId) : null}
+                onReviewOrderPlainTextChange={onReviewOrderPlainTextChange}
               />
-              <div>
+              <div className="flex flex-wrap items-center gap-2">
                 <Link
                   className="cta cta-primary xoptions-chain-cta"
                   href={
                     symbol.trim()
-                      ? `/xstrategybuilder/strategy-options?symbol=${encodeURIComponent(symbol.trim())}`
-                      : "/xstrategybuilder/strategy-options"
+                      ? `/xoptions/full-chain?symbol=${encodeURIComponent(symbol.trim().toUpperCase())}${
+                          weeks != null ? `&weeks=${weeks}` : ""
+                        }`
+                      : "/xoptions/full-chain"
                   }
                 >
                   Open full option chain
                 </Link>
+                <button
+                  type="button"
+                  className="cta cta-secondary xoptions-chain-cta"
+                  disabled={!reviewOrderPlainText?.trim()}
+                  onClick={handleAskXchat}
+                  aria-label="Copy review order to clipboard and open xChat"
+                >
+                  Ask xChat
+                </button>
               </div>
             </div>
           ) : null}

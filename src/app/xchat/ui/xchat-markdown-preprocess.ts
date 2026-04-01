@@ -14,6 +14,7 @@ import {
     expandBracketCitationsToInlineCode,
     grokRenderBlocksToCitationMarkdown,
     grokRenderSelfClosingToCitationMarkdown,
+    repairAdjacentMangledXfInlineChips,
     stripNonRenderableBareCitationLines,
     stripNonRenderableCitationInlineSpans,
     wrapBareXfCiteLines
@@ -31,6 +32,7 @@ export function preprocessXchatMarkdown(raw: string): string {
   s = collapseAdjacentDuplicateBareXfLines(s);
   s = stripNonRenderableBareCitationLines(s);
   s = wrapBareXfCiteLines(s);
+  s = repairAdjacentMangledXfInlineChips(s);
   s = collapseAdjacentDuplicateWrappedXfChipLines(s);
   s = stripNonRenderableCitationInlineSpans(s);
   s = stripNonRenderableBareCitationLines(s);

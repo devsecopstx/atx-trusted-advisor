@@ -86,6 +86,16 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "find-options"
   },
   {
+    path: "/api/app-user/symbol-chart",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "find-options"
+  },
+  {
+    path: "/api/app-user/xoptions/entitlements",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "xoptions"
+  },
+  {
     path: "/api/user-feedback",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "user-feedback"

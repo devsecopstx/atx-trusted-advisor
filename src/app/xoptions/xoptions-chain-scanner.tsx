@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
 import {
     addCalendarDaysUtc,
+    chainRowMoneynessClass,
+    closestStrikeToSpot,
+    formatImpliedVolatilityDisplay,
     horizonShortLabel,
-    otmPercentCall,
-    otmPercentPut,
     pickExpirationOnOrAfter,
     spreadMetrics,
     spreadQuality
@@ -17,6 +18,7 @@ type ChainLeg = {
   last_quote: { bid: number; ask: number };
   open_interest?: number;
   volume?: number;
+  implied_volatility?: number;
 } | null;
 
 function openInterest(leg: ChainLeg): number {
@@ -63,9 +65,16 @@ type XoptionsChainScannerProps = {
   weeks: number | null;
   /** Anchor for GET /api/strategy-options strike (quote or 0). */
   lastPrice: number | null;
+  /** When true, loads chain once when symbol/weeks/lastPrice allow (e.g. full-chain workspace). */
+  autoLoadOnMount?: boolean;
 };
 
-export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChainScannerProps) {
+export function XoptionsChainScanner({
+  symbol,
+  weeks,
+  lastPrice,
+  autoLoadOnMount = false
+}: XoptionsChainScannerProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chain, setChain] = useState<ChainPayload | null>(null);
@@ -137,6 +146,13 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
     }
   }, [symbol, weeks, lastPrice]);
 
+  useEffect(() => {
+    if (!autoLoadOnMount) {
+      return;
+    }
+    void loadChain();
+  }, [autoLoadOnMount, loadChain]);
+
   const copyCsv = useCallback(() => {
     if (!chain || !resolvedMeta) {
       return;
@@ -148,7 +164,7 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
       `horizon,${resolvedMeta.horizon}`,
       `spot,${u}`,
       "",
-      "side,strike,bid,ask,mid,spread,spread_pct_mid,otm_pct,oi"
+      "side,strike,bid,ask,mid,spread,spread_pct_mid,iv_pct,oi"
     ];
     const { rows } = filterChainRows(chain.optionChain);
     for (const r of rows) {
@@ -161,8 +177,10 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
         const ask = leg.last_quote.ask;
         const { abs, pctMid } = spreadMetrics(bid, ask);
         const mid = (bid + ask) / 2;
-        const otm =
-          side === "call" ? otmPercentCall(r.strike, u) : otmPercentPut(r.strike, u);
+        const ivPct =
+          typeof leg.implied_volatility === "number" && Number.isFinite(leg.implied_volatility)
+            ? leg.implied_volatility
+            : "";
         lines.push(
           [
             side,
@@ -172,7 +190,7 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
             mid,
             abs,
             pctMid ?? "",
-            otm.toFixed(2),
+            ivPct === "" ? "" : String(ivPct),
             legOi(leg)
           ].join(",")
         );
@@ -190,6 +208,16 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
   const displayRows = filtered.rows.slice(0, CHAIN_DISPLAY_MAX);
   const truncated =
     chain !== null && filtered.rows.length > CHAIN_DISPLAY_MAX;
+
+  const atmStrike = useMemo(() => {
+    if (!chain || displayRows.length === 0) {
+      return null;
+    }
+    return closestStrikeToSpot(
+      displayRows.map((r) => r.strike),
+      chain.stockPrice
+    );
+  }, [chain, displayRows]);
 
   return (
     <section
@@ -270,8 +298,8 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
                     <th className="py-1 pr-2 font-semibold">Mid</th>
                     <th className="py-1 pr-2 font-semibold">Spread</th>
                     <th className="py-1 pr-2 font-semibold">%</th>
-                    <th className="py-1 pr-2 font-semibold">OTM%</th>
-                    <th className="py-1 font-semibold">OI</th>
+                    <th className="py-1 pr-2 font-semibold">IV%</th>
+                    <th className="py-1 pl-2 font-semibold text-right">OI</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -280,6 +308,7 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
                       key={`c-${row.strike}`}
                       row={row}
                       underlying={chain.stockPrice}
+                      atmStrike={atmStrike}
                     />
                   ))}
                 </tbody>
@@ -296,8 +325,8 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
                     <th className="py-1 pr-2 font-semibold">Mid</th>
                     <th className="py-1 pr-2 font-semibold">Spread</th>
                     <th className="py-1 pr-2 font-semibold">%</th>
-                    <th className="py-1 pr-2 font-semibold">OTM%</th>
-                    <th className="py-1 font-semibold">OI</th>
+                    <th className="py-1 pr-2 font-semibold">IV%</th>
+                    <th className="py-1 pl-2 font-semibold text-right">OI</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -306,6 +335,7 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
                       key={`p-${row.strike}`}
                       row={row}
                       underlying={chain.stockPrice}
+                      atmStrike={atmStrike}
                     />
                   ))}
                 </tbody>
@@ -323,7 +353,15 @@ export function XoptionsChainScanner({ symbol, weeks, lastPrice }: XoptionsChain
   );
 }
 
-function ChainRowCall({ row, underlying }: { row: ChainRow; underlying: number }) {
+function ChainRowCall({
+  row,
+  underlying,
+  atmStrike
+}: {
+  row: ChainRow;
+  underlying: number;
+  atmStrike: number | null;
+}) {
   const leg = row.call;
   if (!leg) {
     return (
@@ -336,11 +374,19 @@ function ChainRowCall({ row, underlying }: { row: ChainRow; underlying: number }
     );
   }
   return (
-    <LegRow strike={row.strike} leg={leg} otm={otmPercentCall(row.strike, underlying)} />
+    <LegRow side="call" strike={row.strike} leg={leg} spot={underlying} atmStrike={atmStrike} />
   );
 }
 
-function ChainRowPut({ row, underlying }: { row: ChainRow; underlying: number }) {
+function ChainRowPut({
+  row,
+  underlying,
+  atmStrike
+}: {
+  row: ChainRow;
+  underlying: number;
+  atmStrike: number | null;
+}) {
   const leg = row.put;
   if (!leg) {
     return (
@@ -353,18 +399,22 @@ function ChainRowPut({ row, underlying }: { row: ChainRow; underlying: number })
     );
   }
   return (
-    <LegRow strike={row.strike} leg={leg} otm={otmPercentPut(row.strike, underlying)} />
+    <LegRow side="put" strike={row.strike} leg={leg} spot={underlying} atmStrike={atmStrike} />
   );
 }
 
 function LegRow({
+  side,
   strike,
   leg,
-  otm
+  spot,
+  atmStrike
 }: {
+  side: "call" | "put";
   strike: number;
   leg: ChainLeg;
-  otm: number;
+  spot: number;
+  atmStrike: number | null;
 }) {
   if (!leg) {
     return null;
@@ -381,8 +431,10 @@ function LegRow({
         ? "xoptions-chain-spread--mid"
         : "xoptions-chain-spread--wide";
   const oi = legOi(leg);
+  const rowClass = chainRowMoneynessClass(strike, spot, side, atmStrike);
+  const iv = formatImpliedVolatilityDisplay(leg.implied_volatility);
   return (
-    <tr className="xoptions-chain-table__row">
+    <tr className={`xoptions-chain-table__row ${rowClass}`}>
       <td className="py-0.5 pr-2 font-mono xoptions-chain-table__strike">{strike}</td>
       <td className="py-0.5 pr-2 font-mono">{bid.toFixed(2)}</td>
       <td className="py-0.5 pr-2 font-mono">{ask.toFixed(2)}</td>
@@ -391,8 +443,8 @@ function LegRow({
       <td className={`py-0.5 pr-2 font-mono ${spreadClass}`}>
         {pctMid != null ? pctMid.toFixed(1) : "—"}
       </td>
-      <td className="py-0.5 pr-2 font-mono">{otm.toFixed(1)}</td>
-      <td className="py-0.5 font-mono">{oi.toLocaleString()}</td>
+      <td className="py-0.5 pr-2 font-mono">{iv}</td>
+      <td className="py-0.5 pl-2 font-mono text-right tabular-nums">{oi.toLocaleString()}</td>
     </tr>
   );
 }

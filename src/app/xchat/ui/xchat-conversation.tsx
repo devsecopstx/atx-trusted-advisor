@@ -22,6 +22,7 @@ import {
 } from "@/app/ui/app-user-rail-nav";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
+import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
 
@@ -362,6 +363,7 @@ export function XchatConversation({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
+  const pendingComposerFromHandoffRef = useRef(false);
   const userPickedPersonaRef = useRef(false);
   /** Seconds since current ask started (UI only; resets when loading ends). */
   const [askWaitSeconds, setAskWaitSeconds] = useState(0);
@@ -397,6 +399,37 @@ export function XchatConversation({
     const maxPx = 320;
     el.style.height = `${Math.min(el.scrollHeight, maxPx)}px`;
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(XCHAT_PENDING_PROMPT_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      sessionStorage.removeItem(XCHAT_PENDING_PROMPT_STORAGE_KEY);
+      setInput((prev) => {
+        if (prev.trim()) {
+          return prev;
+        }
+        pendingComposerFromHandoffRef.current = true;
+        return raw;
+      });
+    } catch {
+      // ignore quota / private mode
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!pendingComposerFromHandoffRef.current) {
+      return;
+    }
+    pendingComposerFromHandoffRef.current = false;
+    const id = requestAnimationFrame(() => {
+      resizeComposer();
+      composerRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [input, resizeComposer]);
 
   const promptExamples: XchatPromptExample[] = [
     "Show my portfolio allocation",

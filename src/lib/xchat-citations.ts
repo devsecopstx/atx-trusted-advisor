@@ -491,6 +491,64 @@ export function dedupeInlineRepeatedBareXfSentinels(markdown: string): string {
   return s;
 }
 
+/**
+ * Models sometimes jam two inline citation codes with an extra backtick (` … `` … `),
+ * e.g. `` `XF_CITE:yahoo_finance``XF_CITE:atxfinance` ``, which breaks GFM and leaks raw `XF_CITE:` in prose.
+ * Split into two valid inline codes separated by a space.
+ */
+export function repairAdjacentMangledXfInlineChips(markdown: string): string {
+  let s = markdown;
+  const doubled =
+    /`XF_(CITE|TOOL):([a-z0-9_]+)(\|[^`]+)?`{2,}XF_(CITE|TOOL):([a-z0-9_]+)(\|[^`]+)?`/gi;
+  for (let i = 0; i < 24; i++) {
+    const next = s.replace(doubled, (full, k1: string, s1: string, l1: string | undefined, k2: string, s2: string, l2: string | undefined) => {
+      const slug1 = canonicalizeCitationSlug(String(s1));
+      const slug2 = canonicalizeCitationSlug(String(s2));
+      const label1 = l1 ? String(l1).replace(/^\|/, "").trim() || undefined : undefined;
+      const label2 = l2 ? String(l2).replace(/^\|/, "").trim() || undefined : undefined;
+      const a =
+        String(k1).toUpperCase() === "CITE"
+          ? encodeCitationInlineMarkdown(slug1, label1)
+          : encodeToolBadgeInlineMarkdown(slug1, label1);
+      const b =
+        String(k2).toUpperCase() === "CITE"
+          ? encodeCitationInlineMarkdown(slug2, label2)
+          : encodeToolBadgeInlineMarkdown(slug2, label2);
+      if (!a || !b) {
+        return full;
+      }
+      return `${a} ${b}`;
+    });
+    if (next === s) {
+      break;
+    }
+    s = next;
+  }
+
+  const missingSecondOpen =
+    /(`XF_(CITE|TOOL):([a-z0-9_]+)(\|[^`]+)?`)XF_(CITE|TOOL):([a-z0-9_]+)(\|[^`]+)?`/gi;
+  for (let i = 0; i < 24; i++) {
+    const next = s.replace(
+      missingSecondOpen,
+      (full, firstChip: string, _k1: string, _s1: string, _l1: string | undefined, k2: string, s2: string, l2: string | undefined) => {
+        const slug2 = canonicalizeCitationSlug(String(s2));
+        const label2 = l2 ? String(l2).replace(/^\|/, "").trim() || undefined : undefined;
+        const second =
+          String(k2).toUpperCase() === "CITE"
+            ? encodeCitationInlineMarkdown(slug2, label2)
+            : encodeToolBadgeInlineMarkdown(slug2, label2);
+        return second ? `${firstChip} ${second}` : full;
+      }
+    );
+    if (next === s) {
+      break;
+    }
+    s = next;
+  }
+
+  return s;
+}
+
 /** After wrapping, collapse consecutive lines that are only the same `` `XF_CITE:slug` `` chip. */
 export function collapseAdjacentDuplicateWrappedXfChipLines(markdown: string): string {
   const lines = markdown.split(/\r?\n/);
