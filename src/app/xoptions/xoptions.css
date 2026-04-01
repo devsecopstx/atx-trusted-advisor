@@ -1437,22 +1437,50 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
 
 /* ── Step 4: choose contract (controls + filtered chain + payoff) ── */
 .xoptions-contract__controls {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.65rem 1rem;
-  align-items: end;
+  width: 100%;
 }
 
-@media (max-width: 900px) {
-  .xoptions-contract__controls {
+.xoptions-contract__controls-row--all {
+  display: grid;
+  grid-template-columns:
+    minmax(3.25rem, 0.5fr)
+    minmax(0, 1.15fr)
+    minmax(0, 1fr)
+    minmax(0, 0.95fr)
+    minmax(2.75rem, 0.45fr);
+  gap: 0.5rem 0.65rem;
+  align-items: start;
+}
+
+.xoptions-contract__control {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .xoptions-contract__controls-row--all {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .xoptions-contract__controls-row--all {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 480px) {
-  .xoptions-contract__controls {
+  .xoptions-contract__controls-row--all {
     grid-template-columns: 1fr;
   }
+}
+
+.xoptions-contract__strike-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.5625rem;
+  line-height: 1.35;
+  color: var(--xf-text-500);
 }
 
 .xoptions-contract__label {
@@ -1465,7 +1493,11 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
 }
 
 .xoptions-contract__symbol-val {
+  display: flex;
+  align-items: center;
   margin: 0;
+  margin-top: 0.125rem;
+  min-height: 2.125rem;
   font-size: 1rem;
   font-weight: 700;
   color: var(--xf-text-100);
@@ -1552,6 +1584,31 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
   }
 }
 
+.xoptions-contract__horizon {
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.xoptions-contract__chain-wrap,
+.xoptions-contract__payoff {
+  min-height: 12rem;
+}
+
+.xoptions-contract__panel-inner {
+  position: relative;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+  padding: 0.5rem;
+  min-height: 11rem;
+}
+
+.xoptions-contract__panel-inner--locked {
+  filter: blur(5px);
+  opacity: 0.72;
+  user-select: none;
+  pointer-events: none;
+}
+
 .xoptions-contract-overlay {
   position: absolute;
   inset: 0;
@@ -1565,12 +1622,94 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
 }
 
+.xoptions-contract-overlay.xoptions-contract-overlay--card {
+  background: color-mix(in srgb, var(--xf-bg-900) 45%, transparent);
+  border: none;
+  pointer-events: auto;
+}
+
+.xoptions-contract-overlay__card {
+  max-width: 18rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 96%, var(--xf-bg-900));
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--xf-bg-900) 65%, transparent);
+}
+
+html[data-xf-ui="soft"] .xoptions-contract-overlay__card {
+  background: color-mix(in srgb, var(--xf-text-100) 99%, var(--xf-bg-900));
+}
+
+.xoptions-contract-overlay__loading {
+  text-align: center;
+}
+
 .xoptions-contract-overlay__list {
   margin: 0;
   padding-left: 1.1rem;
   font-size: 0.75rem;
   line-height: 1.5;
   color: var(--xf-text-200);
+}
+
+.xoptions-contract-overlay__li--done {
+  color: var(--xf-text-500);
+  text-decoration: line-through;
+}
+
+.xoptions-contract-skeleton {
+  padding: 0.25rem 0;
+}
+
+.xoptions-contract-skeleton__bar--head {
+  height: 0.65rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  margin-bottom: 0.5rem;
+}
+
+.xoptions-contract-skeleton__row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.xoptions-contract-skeleton__cell {
+  flex: 1;
+  height: 0.55rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.xoptions-contract-skeleton--payoff .xoptions-contract-skeleton__payoff-mock {
+  position: relative;
+  height: 7rem;
+  border-radius: var(--xf-radius-sm);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.xoptions-contract-skeleton__payoff-loss {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--xf-danger-400) 35%, transparent) 0%,
+    color-mix(in srgb, var(--xf-text-100) 4%, transparent) 52%
+  );
+  opacity: 0.85;
+}
+
+.xoptions-contract-skeleton__payoff-gain {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    315deg,
+    transparent 40%,
+    color-mix(in srgb, var(--xf-gain-green) 28%, transparent) 100%
+  );
+  opacity: 0.75;
 }
 
 .xoptions-contract__bid {

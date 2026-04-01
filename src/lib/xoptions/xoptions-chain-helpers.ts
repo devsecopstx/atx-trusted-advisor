@@ -114,3 +114,24 @@ export function sliceStrikesAroundSpot<T extends { strike: number }>(
   const end = Math.min(sorted.length, start + windowSize);
   return sorted.slice(start, end);
 }
+
+/** Default strike band vs spot for xOptions contract picker (±15%). */
+export const STRIKE_SPOT_BAND_PCT = 0.15;
+
+/**
+ * Keep strikes within `spot * (1 ± bandPct)`. If that would be empty, returns `rows` unchanged.
+ */
+export function filterStrikesBySpotBand<T extends { strike: number }>(
+  rows: T[],
+  spot: number,
+  bandPct: number = STRIKE_SPOT_BAND_PCT
+): T[] {
+  if (rows.length === 0 || !Number.isFinite(spot) || spot <= 0) {
+    return rows;
+  }
+  const lo = spot * (1 - bandPct);
+  const hi = spot * (1 + bandPct);
+  const eps = 1e-6;
+  const filtered = rows.filter((r) => r.strike >= lo - eps && r.strike <= hi + eps);
+  return filtered.length > 0 ? filtered : rows;
+}

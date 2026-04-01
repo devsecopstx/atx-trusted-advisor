@@ -78,12 +78,6 @@ type DeskAccountSlice = {
   optionsApproved: boolean;
 };
 
-const WEEK_CHIPS: { label: string; days: number }[] = [
-  { label: "1 wk", days: 7 },
-  { label: "2 wk", days: 14 },
-  { label: "4 wk", days: 28 }
-];
-
 const STEPS = [
   { n: 1 as const, title: "Input symbol", question: "Which company are you looking for?" },
   { n: 2 as const, title: "Choose outlook" },
@@ -792,24 +786,9 @@ export function XoptionsStrategyBuilderWorkspace() {
                 selectedId={strategyChoiceId}
                 onSelectStrategy={setStrategyChoiceId}
               />
-              <div>
-                <p className="xoptions-top-option-header__label">Target expiration</p>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {WEEK_CHIPS.map((w) => (
-                    <button
-                      key={w.days}
-                      type="button"
-                      className={`xoptions-choice ${weeks !== null && weeks === w.days ? "xoptions-choice--active" : ""}`}
-                      onClick={() => setWeeks(w.days)}
-                    >
-                      {w.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="xoptions-hint mt-1 text-xs">
-                  {weeks === null ? "Select a horizon for the chain" : `~${weeks}d in chain`}
-                </p>
-              </div>
+              <p className="xoptions-hint text-xs text-[var(--xf-text-400)]">
+                Set target horizon and contract details in the next step.
+              </p>
               <button type="button" className="xoptions-next-btn" onClick={() => advanceFrom(3)}>
                 Next
               </button>
@@ -834,6 +813,7 @@ export function XoptionsStrategyBuilderWorkspace() {
               <XoptionsChooseContract
                 symbol={symbol}
                 weeks={weeks}
+                onWeeksChange={setWeeks}
                 lastPrice={snapshot?.lastPrice ?? null}
               />
               <div>
