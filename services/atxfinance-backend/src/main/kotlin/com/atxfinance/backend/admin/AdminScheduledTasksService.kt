@@ -73,6 +73,10 @@ class AdminScheduledTasksService(
         doc["nextRunAt"] = nextRunAt
         PortfolioMongoFilter.tenantObjectId(session.tenantId)?.let { doc["tenantId"] = it }
         parseOptionalDate(body["lastRunAt"])?.let { doc["lastRunAt"] = it }
+        val dctRaw = body["deliveryChannelTarget"] as? String
+        if (!dctRaw.isNullOrBlank()) {
+            doc["deliveryChannelTarget"] = assertDeliveryChannelExists(session, dctRaw.trim())
+        }
         val inserted = mongoTemplate.insert(doc, props.scheduledTasksCollection)
         return mapOf("data" to serializeScheduledTask(inserted))
     }
@@ -99,7 +103,7 @@ class AdminScheduledTasksService(
     fun patchTenantLevelTask(session: ResolvedSession, taskId: String, body: Map<String, Any?>): Map<String, Any?>? {
         val existing = getTenantLevelTask(taskId, session) ?: return null
         val id = existing.getObjectId("_id") ?: return null
-        val allowedKeys = setOf("name", "category", "scheduleCron", "enabled", "nextRunAt")
+        val allowedKeys = setOf("name", "category", "scheduleCron", "enabled", "nextRunAt", "deliveryChannelTarget")
         if (body.keys.none { it in allowedKeys }) {
             throw BadTaskPayloadException("At least one field is required")
         }
@@ -154,6 +158,23 @@ class AdminScheduledTasksService(
                     update.set("nextRunAt", d)
                     modified = true
                 }
+            }
+        }
+        if (body.containsKey("deliveryChannelTarget")) {
+            when (val v = body["deliveryChannelTarget"]) {
+                null -> {
+                    update.unset("deliveryChannelTarget")
+                    modified = true
+                }
+                is String -> {
+                    if (v.isBlank()) {
+                        update.unset("deliveryChannelTarget")
+                    } else {
+                        update.set("deliveryChannelTarget", assertDeliveryChannelExists(session, v.trim()))
+                    }
+                    modified = true
+                }
+                else -> throw BadTaskPayloadException("deliveryChannelTarget invalid")
             }
         }
         if (!modified) {
@@ -385,6 +406,7 @@ class AdminScheduledTasksService(
         m["category"] = doc.getString("category")
         m["scheduleCron"] = doc.getString("scheduleCron")
         m["enabled"] = doc.getBoolean("enabled") ?: true
+        doc.getObjectId("deliveryChannelTarget")?.let { m["deliveryChannelTarget"] = it.toHexString() }
         (doc["runTimeoutSeconds"] as? Number)?.toInt()?.let { m["runTimeoutSeconds"] = it }
         (doc["maxRetries"] as? Number)?.toInt()?.let { m["maxRetries"] = it }
         doc.getDate("lastRunAt")?.let { m["lastRunAt"] = it.toInstant().toString() }
@@ -406,6 +428,22 @@ class AdminScheduledTasksService(
         (doc["durationMs"] as? Number)?.toLong()?.let { m["durationMs"] = it }
         m["output"] = doc.getString("output")
         return m
+    }
+
+    private fun assertDeliveryChannelExists(session: ResolvedSession, hex: String): ObjectId {
+        if (!ObjectId.isValid(hex)) {
+            throw BadTaskPayloadException("Invalid deliveryChannelTarget")
+        }
+        val oid = ObjectId(hex)
+        val q = Query.query(
+            PortfolioMongoFilter.withTenantScopeCriteria(
+                Criteria.where("_id").`is`(oid),
+                session.tenantId.takeIf { it.isNotBlank() },
+            ),
+        )
+        mongoTemplate.findOne(q, Document::class.java, props.adminDeliveryChannelsCollection)
+            ?: throw BadTaskPayloadException("deliveryChannelTarget not found")
+        return oid
     }
 
     private fun parseOptionalDate(value: Any?): Date? = when (value) {

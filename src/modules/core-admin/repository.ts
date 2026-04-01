@@ -739,7 +739,8 @@ export async function createScheduledTask(
     lastRunAt: payload.lastRunAt,
     nextRunAt: resolvedNextRunAt,
     tenantId: toTenantObjectId(payload.tenantId),
-    ...(portfolioOid ? { portfolioId: portfolioOid } : {})
+    ...(portfolioOid ? { portfolioId: portfolioOid } : {}),
+    ...(payload.deliveryChannelTarget ? { deliveryChannelTarget: payload.deliveryChannelTarget } : {})
   };
   const result = await db
     .collection<ScheduledTask>(collections.scheduledTasks)
@@ -758,6 +759,7 @@ export async function updateScheduledTask(input: {
   scheduleDescription?: string;
   enabled?: boolean;
   nextRunAt?: Date | null;
+  deliveryChannelTarget?: ObjectId | null;
 }): Promise<ScheduledTask | null> {
   const existing = await getScheduledTaskById(input.taskId, { tenantId: input.tenantId });
   if (!existing?._id) {
@@ -810,6 +812,13 @@ export async function updateScheduledTask(input: {
   }
   if (input.nextRunAt !== undefined) {
     $set.nextRunAt = input.nextRunAt;
+  }
+  if (input.deliveryChannelTarget !== undefined) {
+    if (input.deliveryChannelTarget === null) {
+      $unset.deliveryChannelTarget = "";
+    } else {
+      $set.deliveryChannelTarget = input.deliveryChannelTarget;
+    }
   }
   if (Object.keys($set).length === 0 && Object.keys($unset).length === 0) {
     return existing;

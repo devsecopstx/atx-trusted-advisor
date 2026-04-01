@@ -63,7 +63,9 @@ function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
     ...(item.lineType !== undefined ? { lineType: item.lineType } : {}),
     ...(item.strategy !== undefined ? { strategy: item.strategy } : {}),
     ...(item.quantity !== undefined ? { quantity: item.quantity } : {}),
-    ...(item.entryPrice !== undefined ? { entryPrice: item.entryPrice } : {})
+    ...(item.entryPrice !== undefined ? { entryPrice: item.entryPrice } : {}),
+    ...(item.lastPrice !== undefined ? { lastPrice: item.lastPrice } : {}),
+    ...(item.lastUpdatedAt ? { lastUpdatedAt: item.lastUpdatedAt.toISOString() } : {})
   };
 }
 

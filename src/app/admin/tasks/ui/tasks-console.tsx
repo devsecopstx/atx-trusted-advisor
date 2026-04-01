@@ -19,8 +19,26 @@ type ScheduledTask = {
   scheduleRRule?: string;
   scheduleDescription?: string;
   enabled: boolean;
+  /** Admin delivery channel id (`admin_delivery_channels`), or unset. */
+  deliveryChannelTarget?: string | null;
   nextRunAt?: string;
 };
+
+type DeliveryChannelRow = {
+  _id: string;
+  name: string;
+  deliveryTarget: "in_app" | "slack";
+  slackWebhookUrl: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function formatSlackWebhookPreview(url: string): string {
+  const t = url.trim();
+  if (!t) return "—";
+  if (t.length <= 48) return t;
+  return `${t.slice(0, 28)}…${t.slice(-12)}`;
+}
 
 type TaskRun = {
   _id?: string;
@@ -90,25 +108,45 @@ const JOB_TYPE_LABELS: Record<ScheduledTaskDoc["category"], string> = {
 };
 
 const TASKS_BASE = "/api/admin/tasks";
+const DELIVERY_CHANNELS_BASE = "/api/admin/delivery-channels";
 
+/** Builds PATCH/POST `schedule` object; omits null/empty so Zod never sees `null` (API JSON can include null from Mongo). */
 function buildSchedulePayload(schedule: SchedulePayload) {
+  const cron =
+    schedule.scheduleCron != null && String(schedule.scheduleCron).trim() !== ""
+      ? String(schedule.scheduleCron).trim()
+      : undefined;
+  const rrule =
+    schedule.scheduleRRule != null && String(schedule.scheduleRRule).trim() !== ""
+      ? String(schedule.scheduleRRule).trim()
+      : undefined;
+  const description =
+    schedule.scheduleDescription != null && String(schedule.scheduleDescription).trim() !== ""
+      ? String(schedule.scheduleDescription).trim()
+      : undefined;
+
+  if (cron === undefined && rrule === undefined && description === undefined) {
+    return {};
+  }
   return {
     schedule: {
-      cron: schedule.scheduleCron,
-      rrule: schedule.scheduleRRule,
-      description: schedule.scheduleDescription
+      ...(cron !== undefined ? { cron } : {}),
+      ...(rrule !== undefined ? { rrule } : {}),
+      ...(description !== undefined ? { description } : {})
     }
   };
 }
 
 export function TasksConsole() {
-  const [activePanel, setActivePanel] = useState<"jobs" | "task-runs">("jobs");
+  const [activeTab, setActiveTab] = useState<"tasks" | "schedule" | "runs" | "channels">("tasks");
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [runs, setRuns] = useState<TaskRun[]>([]);
+  const [deliveryChannels, setDeliveryChannels] = useState<DeliveryChannelRow[]>([]);
   const [status, setStatus] = useState("Ready — tap refresh");
   const [loading, setLoading] = useState(false);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
   const [createJobType, setCreateJobType] = useState<ScheduledTaskDoc["category"]>("price_scanner");
+  const [createDeliveryChannelTarget, setCreateDeliveryChannelTarget] = useState("");
   const [createSchedule, setCreateSchedule] = useState<{
     scheduleCron?: string;
     scheduleRRule?: string;
@@ -132,7 +170,13 @@ export function TasksConsole() {
       Partial<
         Pick<
           ScheduledTask,
-          "name" | "category" | "scheduleCron" | "scheduleRRule" | "scheduleDescription" | "enabled"
+          | "name"
+          | "category"
+          | "scheduleCron"
+          | "scheduleRRule"
+          | "scheduleDescription"
+          | "enabled"
+          | "deliveryChannelTarget"
         >
       >
     >
@@ -162,11 +206,22 @@ export function TasksConsole() {
     }
   }, []);
 
+  const refreshDeliveryChannels = useCallback(async () => {
+    try {
+      const payload = await parseJson<{ data: DeliveryChannelRow[] }>(
+        await fetch(DELIVERY_CHANNELS_BASE, { cache: "no-store" })
+      );
+      setDeliveryChannels(payload.data);
+    } catch {
+      setDeliveryChannels([]);
+    }
+  }, []);
+
   const refreshAll = useCallback(async () => {
     setStatus("Syncing...");
-    await Promise.all([refreshTasks(), refreshRuns()]);
+    await Promise.all([refreshTasks(), refreshRuns(), refreshDeliveryChannels()]);
     setStatus("Synced");
-  }, [refreshTasks, refreshRuns]);
+  }, [refreshTasks, refreshRuns, refreshDeliveryChannels]);
 
   async function createJob() {
     setLoading(true);
@@ -181,11 +236,16 @@ export function TasksConsole() {
             name: jobName,
             category: createJobType,
             ...buildSchedulePayload(createSchedule),
-            enabled: true
+            enabled: true,
+            ...(createDeliveryChannelTarget.trim()
+              ? { deliveryChannelTarget: createDeliveryChannelTarget.trim() }
+              : {})
           })
         })
       );
       await refreshAll();
+      setActiveTab("tasks");
+      setStatus("Created — see Tasks tab");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to create job");
     } finally {
@@ -202,13 +262,16 @@ export function TasksConsole() {
 
   const rowDirty = (row: ScheduledTask): boolean => {
     const d = draft(row._id ?? "");
+    const rowDct = row.deliveryChannelTarget ?? "";
+    const draftDct = d.deliveryChannelTarget !== undefined ? (d.deliveryChannelTarget ?? "") : rowDct;
     return (
       (d.name !== undefined && d.name !== row.name) ||
       (d.category !== undefined && d.category !== row.category) ||
       (d.scheduleCron !== undefined && d.scheduleCron !== row.scheduleCron) ||
       (d.scheduleRRule !== undefined && d.scheduleRRule !== row.scheduleRRule) ||
       (d.scheduleDescription !== undefined && d.scheduleDescription !== row.scheduleDescription) ||
-      (d.enabled !== undefined && d.enabled !== row.enabled)
+      (d.enabled !== undefined && d.enabled !== row.enabled) ||
+      (d.deliveryChannelTarget !== undefined && draftDct !== rowDct)
     );
   };
 
@@ -231,7 +294,11 @@ export function TasksConsole() {
             name: m.name,
             category: m.category,
             ...buildSchedulePayload(m),
-            enabled: m.enabled
+            enabled: m.enabled,
+            deliveryChannelTarget:
+              m.deliveryChannelTarget === undefined || m.deliveryChannelTarget === ""
+                ? null
+                : m.deliveryChannelTarget
           })
         })
       );
@@ -292,7 +359,11 @@ export function TasksConsole() {
               name: m.name,
               category: m.category,
               ...buildSchedulePayload(m),
-              enabled: m.enabled
+              enabled: m.enabled,
+              deliveryChannelTarget:
+                m.deliveryChannelTarget === undefined || m.deliveryChannelTarget === ""
+                  ? null
+                  : m.deliveryChannelTarget
             })
           })
         );
@@ -356,138 +427,66 @@ export function TasksConsole() {
       </div>
 
       <article className="surface-card xf-widget section-card">
-        <div className="tool-row" style={{ gap: "0.5rem", marginBottom: "0.85rem" }}>
+        <div
+          className="tool-row"
+          role="tablist"
+          aria-label="Scheduled tasks sections"
+          style={{
+            gap: "0.35rem",
+            marginBottom: "1rem",
+            flexWrap: "wrap",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+            paddingBottom: "0.75rem"
+          }}
+        >
           <button
             type="button"
-            className={`tiny-button ${activePanel === "jobs" ? "cta cta-primary" : ""}`}
-            onClick={() => setActivePanel("jobs")}
+            role="tab"
+            aria-selected={activeTab === "tasks"}
+            className={`tiny-button ${activeTab === "tasks" ? "cta cta-primary" : ""}`}
+            onClick={() => setActiveTab("tasks")}
             disabled={loading}
           >
-            Jobs
+            Tasks ({tasks.length})
           </button>
           <button
             type="button"
-            className={`tiny-button ${activePanel === "task-runs" ? "cta cta-primary" : ""}`}
-            onClick={() => setActivePanel("task-runs")}
+            role="tab"
+            aria-selected={activeTab === "schedule"}
+            className={`tiny-button ${activeTab === "schedule" ? "cta cta-primary" : ""}`}
+            onClick={() => setActiveTab("schedule")}
             disabled={loading}
           >
-            Task Runs
+            Schedule tasks
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "runs"}
+            className={`tiny-button ${activeTab === "runs" ? "cta cta-primary" : ""}`}
+            onClick={() => setActiveTab("runs")}
+            disabled={loading}
+          >
+            Task runs ({runs.length})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "channels"}
+            className={`tiny-button ${activeTab === "channels" ? "cta cta-primary" : ""}`}
+            onClick={() => setActiveTab("channels")}
+            disabled={loading}
+          >
+            Delivery channels ({deliveryChannels.length})
           </button>
         </div>
 
-        {activePanel === "jobs" ? (
+        {activeTab === "tasks" ? (
           <div className="stack-gap">
-            <h3>Predefined Jobs</h3>
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Configure jobs, then assign cron schedules. Portfolio-scoped jobs still live under each portfolio&apos;s
-              manage → Tasks.
+              Edit scheduled jobs for this tenant. Portfolio-scoped jobs still live under each portfolio&apos;s manage →
+              Tasks. Use <strong>Schedule tasks</strong> to create new job schedules.
             </p>
-            <div className="crud-table-wrap" style={{ marginBottom: "0.75rem" }}>
-              <table className="crud-table">
-                <thead>
-                  <tr>
-                    <th>Job</th>
-                    <th>Job Type</th>
-                    <th>Description</th>
-                    <th>Default Cron</th>
-                    <th>Pick</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {PRIMARY_JOB_DEFINITIONS.map((job) => (
-                    <tr key={job.jobType}>
-                      <td>{job.title}</td>
-                      <td>
-                        <code className="font-mono text-xs">{job.jobType}</code>
-                      </td>
-                      <td>{job.description}</td>
-                      <td>
-                        <code className="font-mono text-xs">
-                          {SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[job.jobType]}
-                        </code>
-                      </td>
-                      <td>
-                        <button
-                          className="tiny-button"
-                          disabled={loading}
-                          onClick={() => {
-                            setCreateJobType(job.jobType);
-                            setCreateSchedule({
-                              scheduleCron: SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[job.jobType],
-                              scheduleRRule: undefined,
-                              scheduleDescription: undefined
-                            });
-                          }}
-                          type="button"
-                        >
-                          Use
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <h3>Create Job Schedule</h3>
-            <div className="stack-form">
-              <select
-                name="jobType"
-                value={createJobType}
-                disabled={loading}
-                onChange={(event) => {
-                  const nextType = event.currentTarget.value as ScheduledTaskDoc["category"];
-                  setCreateJobType(nextType);
-              setCreateSchedule({
-                scheduleCron: SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[nextType],
-                scheduleRRule: undefined,
-                scheduleDescription: undefined
-              });
-                }}
-              >
-                {CREATE_JOB_OPTIONS.map((c) => (
-                  <option key={c} value={c}>
-                    {JOB_TYPE_LABELS[c]}
-                  </option>
-                ))}
-              </select>
-              <p className="status-text">
-                Job name: <code className="font-mono text-xs">{selectedCreateDefinition?.jobName}</code>
-              </p>
-              <p className="status-text">
-                Schedule:{" "}
-                <code className="font-mono text-xs">
-                  {createSchedule.scheduleDescription ??
-                    createSchedule.scheduleRRule ??
-                    createSchedule.scheduleCron ??
-                    "not set"}
-                </code>
-              </p>
-          <button
-            className="tiny-button"
-            type="button"
-            disabled={loading}
-            onClick={() =>
-              setCronBuilder({
-                mode: "create",
-                title: "Create Job Schedule",
-                    schedule: createSchedule
-              })
-            }
-          >
-            Open RRULE Builder
-          </button>
-              <button
-                className="cta cta-primary"
-                type="button"
-                disabled={loading}
-                onClick={() => void createJob()}
-              >
-                <AddIcon className="crud-icon" /> Create job schedule
-              </button>
-            </div>
-
-            <h3>Jobs ({tasks.length})</h3>
             {tasks.length > 0 ? (
               <div className="crud-table-wrap">
                 <table className="crud-table">
@@ -495,6 +494,7 @@ export function TasksConsole() {
                     <tr>
                       <th>Name</th>
                       <th>Job Type</th>
+                      <th>Delivery channel</th>
                       <th>Schedule</th>
                       <th>Enabled</th>
                       <th>Next Run</th>
@@ -544,6 +544,29 @@ export function TasksConsole() {
                             </select>
                           </td>
                           <td>
+                            <select
+                              className="crud-input text-xs"
+                              disabled={loading}
+                              value={m.deliveryChannelTarget ?? ""}
+                              onChange={(e) =>
+                                setEdits((prev) => ({
+                                  ...prev,
+                                  [id]: {
+                                    ...prev[id],
+                                    deliveryChannelTarget: e.target.value === "" ? null : e.target.value
+                                  }
+                                }))
+                              }
+                            >
+                              <option value="">— None —</option>
+                              {deliveryChannels.map((ch) => (
+                                <option key={ch._id} value={ch._id}>
+                                  {ch.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
                             <input
                               className="crud-input font-mono text-xs"
                               disabled={loading}
@@ -567,21 +590,21 @@ export function TasksConsole() {
                               className="tiny-button"
                               style={{ marginTop: "0.35rem" }}
                               disabled={loading}
-                          onClick={() =>
-                            setCronBuilder({
-                              mode: "edit",
-                              taskId: id,
-                              title: `Edit Schedule — ${m.name}`,
+                              onClick={() =>
+                                setCronBuilder({
+                                  mode: "edit",
+                                  taskId: id,
+                                  title: `Edit Schedule — ${m.name}`,
                                   schedule: {
                                     scheduleCron: m.scheduleCron,
                                     scheduleRRule: m.scheduleRRule,
                                     scheduleDescription: m.scheduleDescription
                                   }
-                            })
-                          }
+                                })
+                              }
                               type="button"
                             >
-                          RRULE Builder
+                              RRULE Builder
                             </button>
                           </td>
                           <td>
@@ -634,12 +657,141 @@ export function TasksConsole() {
                 </table>
               </div>
             ) : (
-              <p className="status-text">No jobs yet. Create one above.</p>
+              <p className="status-text">No tasks yet. Open the Schedule tasks tab to create a job schedule.</p>
             )}
           </div>
-        ) : (
+        ) : activeTab === "schedule" ? (
           <div className="stack-gap">
-            <h3>Task Runs ({runs.length})</h3>
+            <h3>Predefined job templates</h3>
+            <p className="status-text" style={{ marginBottom: "0.65rem" }}>
+              Pick a template to prefill job type and default cron. Then set delivery channel and RRULE/cron below.
+            </p>
+            <div className="crud-table-wrap" style={{ marginBottom: "0.75rem" }}>
+              <table className="crud-table">
+                <thead>
+                  <tr>
+                    <th>Job</th>
+                    <th>Job Type</th>
+                    <th>Description</th>
+                    <th>Default Cron</th>
+                    <th>Pick</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PRIMARY_JOB_DEFINITIONS.map((job) => (
+                    <tr key={job.jobType}>
+                      <td>{job.title}</td>
+                      <td>
+                        <code className="font-mono text-xs">{job.jobType}</code>
+                      </td>
+                      <td>{job.description}</td>
+                      <td>
+                        <code className="font-mono text-xs">
+                          {SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[job.jobType]}
+                        </code>
+                      </td>
+                      <td>
+                        <button
+                          className="tiny-button"
+                          disabled={loading}
+                          onClick={() => {
+                            setCreateJobType(job.jobType);
+                            setCreateSchedule({
+                              scheduleCron: SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[job.jobType],
+                              scheduleRRule: undefined,
+                              scheduleDescription: undefined
+                            });
+                          }}
+                          type="button"
+                        >
+                          Use
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Create job schedule</h3>
+            <div className="stack-form">
+              <select
+                name="jobType"
+                value={createJobType}
+                disabled={loading}
+                onChange={(event) => {
+                  const nextType = event.currentTarget.value as ScheduledTaskDoc["category"];
+                  setCreateJobType(nextType);
+                  setCreateSchedule({
+                    scheduleCron: SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[nextType],
+                    scheduleRRule: undefined,
+                    scheduleDescription: undefined
+                  });
+                }}
+              >
+                {CREATE_JOB_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {JOB_TYPE_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+              <p className="status-text">
+                Job name: <code className="font-mono text-xs">{selectedCreateDefinition?.jobName}</code>
+              </p>
+              <label className="flex flex-col gap-1 text-sm">
+                <span>Delivery channel (optional)</span>
+                <select
+                  className="crud-input text-xs"
+                  disabled={loading}
+                  value={createDeliveryChannelTarget}
+                  onChange={(e) => setCreateDeliveryChannelTarget(e.target.value)}
+                >
+                  <option value="">— None —</option>
+                  {deliveryChannels.map((ch) => (
+                    <option key={ch._id} value={ch._id}>
+                      {ch.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="status-text">
+                Schedule:{" "}
+                <code className="font-mono text-xs">
+                  {createSchedule.scheduleDescription ??
+                    createSchedule.scheduleRRule ??
+                    createSchedule.scheduleCron ??
+                    "not set"}
+                </code>
+              </p>
+              <button
+                className="tiny-button"
+                type="button"
+                disabled={loading}
+                onClick={() =>
+                  setCronBuilder({
+                    mode: "create",
+                    title: "Create Job Schedule",
+                    schedule: createSchedule
+                  })
+                }
+              >
+                Open RRULE Builder
+              </button>
+              <button
+                className="cta cta-primary"
+                type="button"
+                disabled={loading}
+                onClick={() => void createJob()}
+              >
+                <AddIcon className="crud-icon" /> Create job schedule
+              </button>
+            </div>
+          </div>
+        ) : activeTab === "runs" ? (
+          <div className="stack-gap">
+            <p className="status-text" style={{ marginBottom: "0.65rem" }}>
+              Recent execution history for tenant-level scheduled tasks.
+            </p>
             {runs.length > 0 ? (
               <div className="crud-table-wrap">
                 <table className="crud-table">
@@ -677,6 +829,47 @@ export function TasksConsole() {
               </div>
             ) : (
               <p className="status-text">No task runs yet.</p>
+            )}
+          </div>
+        ) : (
+          <div className="stack-gap">
+            <p className="status-text" style={{ marginBottom: "0.65rem" }}>
+              Tenant delivery targets for task output and notifications. Use the admin hub <strong>Delivery channels</strong>{" "}
+              page to add, edit, or send test messages.
+            </p>
+            {deliveryChannels.length > 0 ? (
+              <div className="crud-table-wrap">
+                <table className="crud-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Target</th>
+                      <th>Slack webhook</th>
+                      <th>Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deliveryChannels.map((ch) => (
+                      <tr key={ch._id}>
+                        <td>{ch.name}</td>
+                        <td>{ch.deliveryTarget === "slack" ? "Slack" : "In-app"}</td>
+                        <td className="font-mono text-xs">
+                          {ch.deliveryTarget === "slack"
+                            ? formatSlackWebhookPreview(ch.slackWebhookUrl)
+                            : "—"}
+                        </td>
+                        <td className="font-mono text-xs text-slate-400">
+                          {new Date(ch.updatedAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="status-text">
+                No delivery channels yet. Create one from the admin hub <strong>Delivery channels</strong> page.
+              </p>
             )}
           </div>
         )}

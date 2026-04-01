@@ -83,6 +83,7 @@ async function updateWatchlistPrices(
       }
       changed = true;
       symbolUpdates += 1;
+      // lastUpdatedAt: surfaced on watchlist rows as "Last update" after GET (price_scanner job).
       return {
         ...entry,
         lastPrice: price,

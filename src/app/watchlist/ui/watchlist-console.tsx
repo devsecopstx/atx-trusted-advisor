@@ -37,6 +37,9 @@ type WatchlistRow = {
   strategy?: string;
   quantity?: number;
   entryPrice?: number;
+  /** From price scanner job (`lastPrice` / `lastUpdatedAt` on symbol row). */
+  lastPrice?: number;
+  lastUpdatedAt?: string;
 };
 
 type WatchlistApiData = {
@@ -48,6 +51,8 @@ type WatchlistApiData = {
     strategy?: string;
     quantity?: number;
     entryPrice?: number;
+    lastPrice?: number;
+    lastUpdatedAt?: string;
   }>;
   symbolsWithQuotes?: WatchlistRow[];
 };
@@ -63,7 +68,9 @@ function buildRows(data: WatchlistApiData): WatchlistRow[] {
     lineType: s.lineType,
     strategy: s.strategy,
     quantity: s.quantity,
-    entryPrice: s.entryPrice
+    entryPrice: s.entryPrice,
+    lastPrice: s.lastPrice,
+    lastUpdatedAt: s.lastUpdatedAt
   }));
 }
 
@@ -128,34 +135,27 @@ function buildDirtyAddEntries(baseline: WatchlistRow[], draft: WatchlistRow[]): 
   return out;
 }
 
-function formatTypeStrategyCell(row: WatchlistRow): string {
-  const a = row.lineType?.trim();
-  const b = row.strategy?.trim();
-  if (a && b) {
-    return `${a} — ${b}`;
-  }
-  if (a) {
-    return a;
-  }
-  if (b) {
-    return b;
+/** Notional dollars at 100× current quote (e.g. standard equity/options contract sizing). */
+function formatTargetEntryCell(row: WatchlistRow): string {
+  const px = row.quote?.price;
+  if (typeof px === "number" && Number.isFinite(px)) {
+    return (100 * px).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
   }
   return "—";
 }
 
-function formatEntryCell(row: WatchlistRow): string {
-  if (row.quantity === undefined && row.entryPrice === undefined) {
-    return "—";
+function formatLastUpdateCell(row: WatchlistRow): string {
+  if (row.lastUpdatedAt) {
+    try {
+      const d = new Date(row.lastUpdatedAt);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleString();
+      }
+    } catch {
+      /* keep — */
+    }
   }
-  const q = row.quantity != null ? String(row.quantity) : "";
-  const p =
-    row.entryPrice != null
-      ? row.entryPrice.toLocaleString(undefined, { maximumFractionDigits: 6 })
-      : "";
-  if (q && p) {
-    return `${q} @ ${p}`;
-  }
-  return p || q || "—";
+  return "—";
 }
 
 function toCsv(rows: WatchlistRow[]): string {
@@ -165,27 +165,39 @@ function toCsv(rows: WatchlistRow[]): string {
     "Price",
     "ChangePct",
     "Volume",
-    "Type",
-    "Strategy",
     "Quantity",
     "Entry Price",
+    "Target entry (100x price)",
+    "Last update",
     "Rationale"
   ];
   const lines = rows.map((r) => {
     const q = r.quote;
     const company = (q?.companyName ?? r.symbol).replaceAll('"', '""');
-    const typeEsc = (r.lineType ?? "").replaceAll('"', '""');
-    const stratEsc = (r.strategy ?? "").replaceAll('"', '""');
+    const px = q?.price;
+    const target100 =
+      typeof px === "number" && Number.isFinite(px) ? (100 * px).toFixed(2) : "";
+    let lastUp = "";
+    if (r.lastUpdatedAt) {
+      try {
+        const d = new Date(r.lastUpdatedAt);
+        if (!Number.isNaN(d.getTime())) {
+          lastUp = d.toISOString();
+        }
+      } catch {
+        lastUp = "";
+      }
+    }
     return [
       r.symbol,
       `"${company}"`,
       q?.price ?? "",
       q?.changePercent ?? "",
       q?.volume ?? "",
-      typeEsc ? `"${typeEsc}"` : "",
-      stratEsc ? `"${stratEsc}"` : "",
       r.quantity ?? "",
       r.entryPrice ?? "",
+      target100,
+      lastUp,
       ""
     ].join(",");
   });
@@ -751,8 +763,8 @@ export function WatchlistConsole({
                   <thead>
                     <tr>
                       <th scope="col">Instrument</th>
-                      <th scope="col">Type — strategy</th>
-                      <th scope="col">Entry</th>
+                      <th scope="col">Target entry</th>
+                      <th scope="col">Last update</th>
                       {/* TODO(options-scanner): Rationale column — populate from options-scanner (planned); UI placeholder until then. */}
                       <th scope="col">Rationale</th>
                       <th scope="col">Actions</th>
@@ -768,34 +780,6 @@ export function WatchlistConsole({
                             symbol={row.symbol}
                             onRemoveFromWatchlist={() => void onRemoveSymbol(row.symbol)}
                           />
-                        </td>
-                        <td className="xf-watchlist-table-mono">
-                          {editMode ? (
-                            <div className="xf-watchlist-edit-stack">
-                              <input
-                                aria-label={`${row.symbol} type`}
-                                className="xf-watchlist-table-input"
-                                placeholder="Type"
-                                type="text"
-                                value={row.lineType ?? ""}
-                                onChange={(e) =>
-                                  updateDraftRow(row.symbol, { lineType: e.target.value })
-                                }
-                              />
-                              <input
-                                aria-label={`${row.symbol} strategy`}
-                                className="xf-watchlist-table-input"
-                                placeholder="Strategy"
-                                type="text"
-                                value={row.strategy ?? ""}
-                                onChange={(e) =>
-                                  updateDraftRow(row.symbol, { strategy: e.target.value })
-                                }
-                              />
-                            </div>
-                          ) : (
-                            formatTypeStrategyCell(row)
-                          )}
                         </td>
                         <td className="xf-watchlist-table-mono">
                           {editMode ? (
@@ -838,10 +822,18 @@ export function WatchlistConsole({
                                   });
                                 }}
                               />
+                              {row.quote?.price != null && Number.isFinite(row.quote.price) ? (
+                                <span className="xf-watchlist-table-hint" title="100 × live quote price">
+                                  100× price: {formatTargetEntryCell(row)}
+                                </span>
+                              ) : null}
                             </div>
                           ) : (
-                            formatEntryCell(row)
+                            formatTargetEntryCell(row)
                           )}
+                        </td>
+                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
+                          {formatLastUpdateCell(row)}
                         </td>
                         {/* TODO(options-scanner): show rationale / scanner snippet per row when available */}
                         <td className="xf-watchlist-table-mono">—</td>

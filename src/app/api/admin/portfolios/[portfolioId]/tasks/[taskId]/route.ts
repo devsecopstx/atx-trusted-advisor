@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
 import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
+import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
+import {
+    DeliveryChannelTargetError,
+    resolveDeliveryChannelTargetForPatch
+} from "@/lib/scheduled-task-delivery-channel";
 import {
     normalizeScheduledTaskSchedule,
     scheduledTaskScheduleObjectSchema
@@ -26,7 +30,8 @@ const patchTaskSchema = z
     scheduleRRule: z.union([z.string().trim().min(1).max(1024), z.null()]).optional(),
     scheduleDescription: z.string().trim().min(1).max(280).optional(),
     enabled: z.boolean().optional(),
-    nextRunAt: z.union([z.coerce.date(), z.null()]).optional()
+    nextRunAt: z.union([z.coerce.date(), z.null()]).optional(),
+    deliveryChannelTarget: z.union([z.string(), z.null()]).optional()
   })
   .refine(
     (d) =>
@@ -37,7 +42,8 @@ const patchTaskSchema = z
       d.scheduleRRule !== undefined ||
       d.scheduleDescription !== undefined ||
       d.enabled !== undefined ||
-      d.nextRunAt !== undefined,
+      d.nextRunAt !== undefined ||
+      d.deliveryChannelTarget !== undefined,
     { message: "At least one field is required" }
   );
 
@@ -96,6 +102,19 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
   }
 
+  let deliveryChannelTarget;
+  try {
+    deliveryChannelTarget = await resolveDeliveryChannelTargetForPatch(
+      parsed.data.deliveryChannelTarget,
+      session.tenantId
+    );
+  } catch (e) {
+    if (e instanceof DeliveryChannelTargetError) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
+    throw e;
+  }
+
   const updated = await updateScheduledTask({
     taskId,
     tenantId: session.tenantId,
@@ -106,7 +125,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     scheduleRRule: normalizedSchedule.scheduleRRule,
     scheduleDescription: normalizedSchedule.scheduleDescription,
     enabled: parsed.data.enabled,
-    nextRunAt: parsed.data.nextRunAt === null ? null : parsed.data.nextRunAt
+    nextRunAt: parsed.data.nextRunAt === null ? null : parsed.data.nextRunAt,
+    ...(deliveryChannelTarget !== undefined ? { deliveryChannelTarget } : {})
   });
 
   if (!updated) {

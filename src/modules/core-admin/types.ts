@@ -101,6 +101,8 @@ export type ScheduledTask = {
   /** Human-readable recurrence summary shown in admin scheduler UI. */
   scheduleDescription?: string;
   enabled: boolean;
+  /** Optional `admin_delivery_channels` row for task output / notification routing. */
+  deliveryChannelTarget?: ObjectId;
   runTimeoutSeconds?: number;
   maxRetries?: number;
   lastRunAt?: Date;

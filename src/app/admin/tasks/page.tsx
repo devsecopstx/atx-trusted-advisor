@@ -20,7 +20,9 @@ export default async function AdminTasksPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Manage Tasks Schedule</h1>
         <p className="hero-copy">
-          Create and run predefined scheduler jobs with robust cron controls.
+          Create and run predefined scheduler jobs with robust cron controls. Use the tabs below:{" "}
+          <strong>Delivery channels</strong> to review targets, <strong>Schedule tasks</strong> to create jobs and
+          optionally attach a channel for notifications.
         </p>
       </section>
 

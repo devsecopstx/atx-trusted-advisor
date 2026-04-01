@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
 import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
+import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
+import {
+    DeliveryChannelTargetError,
+    resolveDeliveryChannelTargetForCreate
+} from "@/lib/scheduled-task-delivery-channel";
 import {
     normalizeScheduledTaskSchedule,
     scheduledTaskScheduleObjectSchema
@@ -26,7 +30,8 @@ const createTaskSchema = z.object({
   scheduleDescription: z.string().trim().min(1).max(280).optional(),
   enabled: z.boolean().optional(),
   lastRunAt: z.coerce.date().optional(),
-  nextRunAt: z.coerce.date().optional()
+  nextRunAt: z.coerce.date().optional(),
+  deliveryChannelTarget: z.string().trim().optional()
 });
 
 export async function GET(request: Request, context: RouteContext) {
@@ -93,6 +98,19 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  let deliveryChannelTarget;
+  try {
+    deliveryChannelTarget = await resolveDeliveryChannelTargetForCreate(
+      parsed.data.deliveryChannelTarget,
+      session.tenantId
+    );
+  } catch (e) {
+    if (e instanceof DeliveryChannelTargetError) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
+    throw e;
+  }
+
   const created = await createScheduledTask({
     name: parsed.data.name,
     category: parsed.data.category,
@@ -103,7 +121,8 @@ export async function POST(request: Request, context: RouteContext) {
     lastRunAt: parsed.data.lastRunAt,
     nextRunAt: parsed.data.nextRunAt,
     tenantId: session.tenantId,
-    portfolioId
+    portfolioId,
+    ...(deliveryChannelTarget ? { deliveryChannelTarget } : {})
   });
   return NextResponse.json({ data: serializeScheduledTaskForJson(created) }, { status: 201 });
 }

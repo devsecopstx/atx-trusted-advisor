@@ -16,6 +16,7 @@ export function serializeScheduledTaskForJson(t: ScheduledTask) {
     scheduleRRule: t.scheduleRRule,
     scheduleDescription: t.scheduleDescription,
     enabled: t.enabled,
+    deliveryChannelTarget: t.deliveryChannelTarget?.toHexString() ?? null,
     runTimeoutSeconds: t.runTimeoutSeconds,
     maxRetries: t.maxRetries,
     lastRunAt: t.lastRunAt?.toISOString(),

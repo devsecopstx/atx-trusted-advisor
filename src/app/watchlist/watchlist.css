@@ -325,6 +325,17 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
   border-color: rgba(57, 255, 20, 0.45);
 }
 
+.xf-watchlist-table-hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--xf-text-400);
+}
+
+.xf-watchlist-table-nowrap {
+  white-space: nowrap;
+}
+
 .xf-watchlist-name-input {
   width: 100%;
   max-width: 22rem;
