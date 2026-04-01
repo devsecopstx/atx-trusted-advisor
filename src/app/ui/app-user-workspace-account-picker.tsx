@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo } from "react";
 
 import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
@@ -35,9 +34,9 @@ export function AppUserWorkspaceAccountPicker({
     return (
       <div className="app-user-rail-workspace-row">
         <span className="app-user-rail-workspace-k">Account</span>
-        <Link className="app-user-rail-workspace-v app-user-rail-workspace-v--link" href={`/portfolio/accounts/${only.id}`} title="Open account workspace">
+        <span className="app-user-rail-workspace-v" title="Active workspace account">
           {only.name}
-        </Link>
+        </span>
       </div>
     );
   }
@@ -65,11 +64,6 @@ export function AppUserWorkspaceAccountPicker({
           </option>
         ))}
       </select>
-      {selectedId ? (
-        <Link className="app-user-rail-account-open" href={`/portfolio/accounts/${selectedId}`} title="Open account workspace">
-          Open
-        </Link>
-      ) : null}
     </div>
   );
 }

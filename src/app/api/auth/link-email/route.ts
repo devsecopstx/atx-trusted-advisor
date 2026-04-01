@@ -12,6 +12,7 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     ensureCoreUserByEmail,
     ensureDefaultTenant,
@@ -32,9 +33,18 @@ const linkSchema = z.object({
 
 export async function POST(request: Request) {
   const env = getEnv();
+  const loginMeta = extractClientLoginMeta(request);
   const body = await request.json();
   const parsed = linkSchema.safeParse(body);
   if (!parsed.success) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "invalid_email_payload",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent
+    });
     return NextResponse.json(
       { error: "Invalid email payload", details: parsed.error.flatten() },
       { status: 400 }
@@ -43,6 +53,14 @@ export async function POST(request: Request) {
 
   const pending = await consumePendingXLinkCookie();
   if (!pending) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "no_pending_x_link",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent
+    });
     return NextResponse.json({ error: "No pending X login context found" }, { status: 400 });
   }
 
@@ -81,6 +99,17 @@ export async function POST(request: Request) {
     });
   }
   if (!user?._id) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "unable_to_resolve_user",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      email: requestedEmail,
+      xUserId: pending.xUserId,
+      username: pending.username
+    });
     return NextResponse.json(
       { error: "Unable to create or resolve user by email" },
       { status: 500 }
@@ -121,6 +150,18 @@ export async function POST(request: Request) {
     }
 
     if (!allowAnyXUserLogin) {
+      await appendLoginAuditRecord({
+        outcome: "failure",
+        provider: "link_email",
+        errorCode: "access_request_pending",
+        clientIp: loginMeta.clientIp,
+        country: loginMeta.country,
+        userAgent: loginMeta.userAgent,
+        userId: linkedUser._id?.toHexString(),
+        xUserId: pending.xUserId,
+        username: pending.username,
+        email: requestedEmail
+      });
       return NextResponse.json({
         ok: true,
         redirectTo: "/xchat?error=access_request_pending"
@@ -130,6 +171,18 @@ export async function POST(request: Request) {
 
   const tenant = await ensureDefaultTenant();
   if (!tenant._id || !linkedUser._id) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "link_email",
+      errorCode: "tenant_context_failed",
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      userId: linkedUser._id?.toHexString(),
+      xUserId: pending.xUserId,
+      username: pending.username,
+      email: requestedEmail
+    });
     return NextResponse.json({ error: "Failed to resolve tenant context" }, { status: 500 });
   }
   await upsertTenantMembership({
@@ -151,13 +204,18 @@ export async function POST(request: Request) {
     tenantId: authContext.tenantId.toHexString()
   });
 
-  const loginMeta = extractClientLoginMeta(request);
   try {
     await recordUserSuccessfulLogin({
       userId: authContext.userId,
       clientIp: loginMeta.clientIp,
       country: loginMeta.country,
-      userAgent: loginMeta.userAgent
+      userAgent: loginMeta.userAgent,
+      audit: {
+        provider: "link_email",
+        xUserId: pending.xUserId,
+        username: pending.username,
+        email: authContext.email
+      }
     });
   } catch (e) {
     console.warn("[auth/link-email] recordUserSuccessfulLogin non-fatal", {

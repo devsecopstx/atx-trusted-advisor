@@ -107,6 +107,10 @@ export const nextBffApi = {
       pathTemplate: "/api/admin/audit",
       methods: ["GET"]
     },
+    loginAudit: {
+      pathTemplate: "/api/admin/login-audit",
+      methods: ["GET"]
+    },
     accessRequestsIndex: {
       pathTemplate: "/api/admin/access-requests",
       methods: ["GET", "POST"]

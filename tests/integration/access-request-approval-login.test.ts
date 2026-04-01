@@ -69,6 +69,9 @@ vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
 vi.mock("@/lib/env", () => envMocks);
+vi.mock("@/modules/identity/login-audit", () => ({
+  appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
+}));
 
 import { PATCH as patchAccessRequest } from "@/app/api/admin/access-requests/[requestId]/route";
 import { GET as getAccessRequests } from "@/app/api/admin/access-requests/route";

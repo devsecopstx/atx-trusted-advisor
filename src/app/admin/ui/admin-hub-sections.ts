@@ -152,6 +152,11 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         description: "Browse and filter change trails across users, access requests, and xPersonas."
       },
       {
+        href: "/admin/login-audit",
+        title: "Login audit",
+        description: "Success and failed sign-in attempts with IP and time (audit_login) for security review."
+      },
+      {
         href: "/admin/api-docs",
         title: "API docs",
         description: "OpenAPI current-state and interactive API documentation."

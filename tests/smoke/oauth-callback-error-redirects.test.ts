@@ -13,6 +13,9 @@ const envMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/env", () => envMocks);
+vi.mock("@/modules/identity/login-audit", () => ({
+  appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
+}));
 
 import { GET as callbackGet } from "@/app/api/auth/x/callback/route";
 

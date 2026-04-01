@@ -8,6 +8,7 @@ import {
     readOAuthFlowCookies
 } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import {
     getAtxfinanceBackendOrigin,
     getEnv,
@@ -15,7 +16,6 @@ import {
     isAllowAnyXUserLoginEnabled,
     isGoogleOAuthConfigured
 } from "@/lib/env";
-import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
@@ -24,6 +24,7 @@ import {
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     ensureCoreUserByEmail,
     ensureSeededGlobalAdmin,
@@ -131,6 +132,36 @@ export async function GET(request: Request) {
   }
 
   const origin = getPublicOriginFromRequest(request);
+  const loginMeta = extractClientLoginMeta(request);
+
+  async function redirectWithLoginAudit(
+    errorCode: string,
+    fields?: {
+      userId?: string;
+      xUserId?: string;
+      username?: string;
+      email?: string;
+    },
+    extraParams?: Record<string, string>
+  ): Promise<NextResponse> {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "google_oauth",
+      errorCode,
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      ...fields
+    });
+    const target = new URL(`/xchat?error=${encodeURIComponent(errorCode)}`, origin);
+    if (extraParams) {
+      for (const [k, v] of Object.entries(extraParams)) {
+        target.searchParams.set(k, v);
+      }
+    }
+    return NextResponse.redirect(target.toString());
+  }
+
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const callbackUrl =
@@ -139,9 +170,7 @@ export async function GET(request: Request) {
       : `${origin}/api/auth/google/callback`;
 
   if (!code || !state) {
-    return NextResponse.redirect(
-      new URL("/xchat?error=missing_oauth_callback_params", origin)
-    );
+    return redirectWithLoginAudit("missing_oauth_callback_params");
   }
 
   const flowCookies = await readOAuthFlowCookies();
@@ -154,19 +183,17 @@ export async function GET(request: Request) {
         returnPath && isSafeOAuthReturnPath(returnPath) ? returnPath : fallback;
       return NextResponse.redirect(new URL(target, origin));
     }
-    return NextResponse.redirect(
-      new URL("/xchat?error=missing_oauth_cookie_context", origin)
-    );
+    return redirectWithLoginAudit("missing_oauth_cookie_context");
   }
   if (state !== flowCookies.state) {
     await clearOAuthFlowCookies();
-    return NextResponse.redirect(new URL("/xchat?error=invalid_oauth_state", origin));
+    return redirectWithLoginAudit("invalid_oauth_state");
   }
   await clearOAuthFlowCookies();
 
   const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
   if (!clientSecret) {
-    return NextResponse.redirect(new URL("/xchat?error=google_oauth_not_configured", origin));
+    return redirectWithLoginAudit("google_oauth_not_configured");
   }
 
   const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
@@ -185,27 +212,27 @@ export async function GET(request: Request) {
   });
 
   if (!tokenResponse.ok) {
-    return NextResponse.redirect(new URL("/xchat?error=token_exchange_failed", origin));
+    return redirectWithLoginAudit("token_exchange_failed");
   }
 
   const tokenJson = (await tokenResponse.json()) as GoogleTokenResponse;
   if (!tokenJson.access_token) {
-    return NextResponse.redirect(new URL("/xchat?error=missing_access_token", origin));
+    return redirectWithLoginAudit("missing_access_token");
   }
 
   const userInfoRes = await fetch(GOOGLE_USERINFO_URL, {
     headers: { Authorization: `Bearer ${tokenJson.access_token}` }
   });
   if (!userInfoRes.ok) {
-    return NextResponse.redirect(new URL("/xchat?error=userinfo_failed", origin));
+    return redirectWithLoginAudit("userinfo_failed");
   }
 
   const profile = (await userInfoRes.json()) as GoogleUserInfo;
   if (!profile.sub) {
-    return NextResponse.redirect(new URL("/xchat?error=invalid_user_profile", origin));
+    return redirectWithLoginAudit("invalid_user_profile");
   }
   if (!profile.email || !profile.email_verified) {
-    return NextResponse.redirect(new URL("/xchat?error=google_email_required", origin));
+    return redirectWithLoginAudit("google_email_required");
   }
 
   const emailNormalized = profile.email.trim().toLowerCase();
@@ -251,7 +278,7 @@ export async function GET(request: Request) {
       });
     }
     if (!user?._id) {
-      return NextResponse.redirect(new URL("/xchat?error=not_seeded_email", origin));
+      return redirectWithLoginAudit("not_seeded_email", { email: emailNormalized });
     }
     user = await linkXAccountToUser({
       userId: user._id,
@@ -265,7 +292,7 @@ export async function GET(request: Request) {
   }
 
   if (!user?._id) {
-    return NextResponse.redirect(new URL("/xchat?error=access_request_pending", origin));
+    return redirectWithLoginAudit("access_request_pending", { email: emailNormalized });
   }
 
   const allowAnyLogin = isAllowAnyXUserLoginEnabled();
@@ -274,7 +301,12 @@ export async function GET(request: Request) {
 
   if (!hasLoginRole && !shouldAllowFallbackLogin) {
     await ensurePendingViewerAccessRequestAfterGoogleOAuth(user);
-    return NextResponse.redirect(new URL("/xchat?error=access_request_pending", origin));
+    return redirectWithLoginAudit("access_request_pending", {
+      userId: user._id.toHexString(),
+      xUserId: identity.xUserId,
+      username: identity.username,
+      email: user.email
+    });
   }
 
   return finalizeOAuthSessionAndRedirect({
@@ -282,6 +314,7 @@ export async function GET(request: Request) {
     user,
     identity,
     usernameForAdminAllowlist: username,
-    loginMeta: extractClientLoginMeta(request)
+    loginMeta,
+    provider: "google_oauth"
   });
 }

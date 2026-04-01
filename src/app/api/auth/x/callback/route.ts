@@ -9,18 +9,19 @@ import {
     setPendingXLinkCookie
 } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import {
     getAtxfinanceBackendOrigin, getEnv,
     getXOauthClientId,
     isAllowAnyXUserLoginEnabled
 } from "@/lib/env";
-import { extractClientLoginMeta } from "@/lib/client-request-meta";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import { buildXIdentityPlaceholderEmail, isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { createAccessRequest, getPendingAccessRequestByUserAndRole } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     ensureCoreUserByEmail,
     ensureSeededGlobalAdmin,
@@ -108,6 +109,36 @@ export async function GET(request: Request) {
   }
 
   const origin = getPublicOriginFromRequest(request);
+  const loginMeta = extractClientLoginMeta(request);
+
+  async function redirectWithLoginAudit(
+    errorCode: string,
+    fields?: {
+      userId?: string;
+      xUserId?: string;
+      username?: string;
+      email?: string;
+    },
+    extraParams?: Record<string, string>
+  ): Promise<NextResponse> {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider: "x_oauth",
+      errorCode,
+      clientIp: loginMeta.clientIp,
+      country: loginMeta.country,
+      userAgent: loginMeta.userAgent,
+      ...fields
+    });
+    const target = new URL(`/xchat?error=${encodeURIComponent(errorCode)}`, origin);
+    if (extraParams) {
+      for (const [k, v] of Object.entries(extraParams)) {
+        target.searchParams.set(k, v);
+      }
+    }
+    return NextResponse.redirect(target.toString());
+  }
+
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const tokenUrl = env.X_OAUTH_TOKEN_URL ?? "https://api.x.com/2/oauth2/token";
@@ -117,9 +148,7 @@ export async function GET(request: Request) {
       : `${origin}/api/auth/x/callback`;
 
   if (!code || !state) {
-    return NextResponse.redirect(
-      new URL("/xchat?error=missing_oauth_callback_params", origin)
-    );
+    return redirectWithLoginAudit("missing_oauth_callback_params");
   }
 
   const flowCookies = await readOAuthFlowCookies();
@@ -132,13 +161,11 @@ export async function GET(request: Request) {
         returnPath && isSafeOAuthReturnPath(returnPath) ? returnPath : fallback;
       return NextResponse.redirect(new URL(target, origin));
     }
-    return NextResponse.redirect(
-      new URL("/xchat?error=missing_oauth_cookie_context", origin)
-    );
+    return redirectWithLoginAudit("missing_oauth_cookie_context");
   }
   if (state !== flowCookies.state) {
     await clearOAuthFlowCookies();
-    return NextResponse.redirect(new URL("/xchat?error=invalid_oauth_state", origin));
+    return redirectWithLoginAudit("invalid_oauth_state");
   }
   await clearOAuthFlowCookies();
 
@@ -159,12 +186,12 @@ export async function GET(request: Request) {
   });
 
   if (!tokenResponse.ok) {
-    return NextResponse.redirect(new URL("/xchat?error=token_exchange_failed", origin));
+    return redirectWithLoginAudit("token_exchange_failed");
   }
 
   const tokenJson = (await tokenResponse.json()) as XTokenResponse;
   if (!tokenJson.access_token) {
-    return NextResponse.redirect(new URL("/xchat?error=missing_access_token", origin));
+    return redirectWithLoginAudit("missing_access_token");
   }
 
   const userInfoResult = await fetchXUserProfile(
@@ -172,15 +199,15 @@ export async function GET(request: Request) {
     env.X_OAUTH_USERINFO_URL
   );
   if (!userInfoResult.ok) {
-    const failureUrl = new URL("/xchat?error=userinfo_failed", origin);
-    if (userInfoResult.details) {
-      failureUrl.searchParams.set("details", userInfoResult.details);
-    }
-    return NextResponse.redirect(failureUrl);
+    return redirectWithLoginAudit(
+      "userinfo_failed",
+      undefined,
+      userInfoResult.details ? { details: userInfoResult.details } : undefined
+    );
   }
   const userInfoJson = userInfoResult.profile;
   if (!userInfoJson.data?.id || !userInfoJson.data?.username) {
-    return NextResponse.redirect(new URL("/xchat?error=invalid_user_profile", origin));
+    return redirectWithLoginAudit("invalid_user_profile");
   }
 
   const xIdentity = {
@@ -206,7 +233,10 @@ export async function GET(request: Request) {
   ) {
     const seeded = await ensureSeededGlobalAdmin(env.ADMIN_SEED_EMAIL);
     if (!seeded.user._id) {
-      return NextResponse.redirect(new URL("/xchat?error=bootstrap_failed", origin));
+      return redirectWithLoginAudit("bootstrap_failed", {
+        xUserId: xIdentity.xUserId,
+        username: xIdentity.username
+      });
     }
     user = seeded.user;
   }
@@ -235,7 +265,10 @@ export async function GET(request: Request) {
       });
       if (!user?._id) {
         await setPendingXLinkCookie(xIdentity);
-        return NextResponse.redirect(new URL("/xchat?error=email_link_required", origin));
+        return redirectWithLoginAudit("email_link_required", {
+          xUserId: xIdentity.xUserId,
+          username: xIdentity.username
+        });
       }
       user = await linkXAccountToUser({
         userId: user._id,
@@ -249,7 +282,9 @@ export async function GET(request: Request) {
         });
       }
       if (!user?._id) {
-        return NextResponse.redirect(new URL("/xchat?error=not_seeded_email", origin));
+        return redirectWithLoginAudit("not_seeded_email", {
+          email: emailFromProvider
+        });
       }
       user = await linkXAccountToUser({
         userId: user._id,
@@ -272,7 +307,12 @@ export async function GET(request: Request) {
   ) {
     await ensurePendingViewerAccessRequestAfterOAuth(user);
     await setPendingXLinkCookie(xIdentity);
-    return NextResponse.redirect(new URL("/xchat?error=email_link_required", origin));
+    return redirectWithLoginAudit("email_link_required", {
+      userId: user._id.toHexString(),
+      xUserId: xIdentity.xUserId,
+      username: xIdentity.username,
+      email: user.email
+    });
   }
 
   const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
@@ -286,11 +326,20 @@ export async function GET(request: Request) {
     }
 
     if (!shouldAllowFallbackLogin) {
-      return NextResponse.redirect(new URL("/xchat?error=access_request_pending", origin));
+      return redirectWithLoginAudit("access_request_pending", {
+        userId: user._id?.toHexString(),
+        xUserId: xIdentity.xUserId,
+        username: xIdentity.username,
+        email: user.email
+      });
     }
   }
   if (!user._id) {
-    return NextResponse.redirect(new URL("/xchat?error=access_request_pending", origin));
+    return redirectWithLoginAudit("access_request_pending", {
+      xUserId: xIdentity.xUserId,
+      username: xIdentity.username,
+      email: user.email
+    });
   }
 
   return finalizeOAuthSessionAndRedirect({
@@ -298,7 +347,8 @@ export async function GET(request: Request) {
     user,
     identity: xIdentity,
     usernameForAdminAllowlist: userInfoJson.data.username,
-    loginMeta: extractClientLoginMeta(request)
+    loginMeta,
+    provider: "x_oauth"
   });
 }
 

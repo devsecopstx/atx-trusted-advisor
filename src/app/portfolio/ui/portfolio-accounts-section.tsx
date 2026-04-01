@@ -84,7 +84,7 @@ export function PortfolioAccountsSection({
                       <div className="portfolio-manage-table__account-name">
                         {row.name}
                         {row.isDefault ? (
-                          <span className="portfolio-account-card__badge">Default</span>
+                          <span className="portfolio-account-card__badge ml-2">Default</span>
                         ) : null}
                       </div>
                       <div className="portfolio-manage-table__account-meta portfolio-manage-table__account-desk">

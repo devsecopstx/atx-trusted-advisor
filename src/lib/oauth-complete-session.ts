@@ -8,9 +8,9 @@ import {
 import type { ClientLoginMeta } from "@/lib/client-request-meta";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
-import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
 import { provisionDefaultPortfolioForUser } from "@/modules/core-admin/repository";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     ensureDefaultTenant,
     recordUserSuccessfulLogin,
@@ -18,6 +18,7 @@ import {
     upsertTenantMembership
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
+import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
 
 export type OAuthLinkedIdentity = {
   xUserId: string;
@@ -38,9 +39,20 @@ export async function finalizeOAuthSessionAndRedirect(options: {
   usernameForAdminAllowlist: string;
   /** Optional client IP / country / UA for admin access-request visibility. */
   loginMeta?: ClientLoginMeta;
+  provider: "x_oauth" | "google_oauth";
 }): Promise<NextResponse> {
-  const { origin, user, identity, usernameForAdminAllowlist, loginMeta } = options;
+  const { origin, user, identity, usernameForAdminAllowlist, loginMeta, provider } = options;
   if (!user._id) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider,
+      errorCode: "missing_user_id",
+      clientIp: loginMeta?.clientIp,
+      country: loginMeta?.country,
+      userAgent: loginMeta?.userAgent,
+      xUserId: identity.xUserId,
+      username: identity.username
+    });
     return NextResponse.redirect(new URL("/login?error=access_request_pending", origin));
   }
 
@@ -57,11 +69,35 @@ export async function finalizeOAuthSessionAndRedirect(options: {
   const allowAnyXUserLogin = isAllowAnyXUserLoginEnabled();
 
   if (adminAllowlistDenied && !allowAnyXUserLogin) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider,
+      errorCode: "not_authorized_admin",
+      clientIp: loginMeta?.clientIp,
+      country: loginMeta?.country,
+      userAgent: loginMeta?.userAgent,
+      userId: userObjectId.toHexString(),
+      xUserId: identity.xUserId,
+      username: identity.username,
+      email: user.email
+    });
     return NextResponse.redirect(new URL("/login?error=not_authorized_admin", origin));
   }
 
   const tenant = await ensureDefaultTenant();
   if (!tenant._id) {
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider,
+      errorCode: "tenant_bootstrap_failed",
+      clientIp: loginMeta?.clientIp,
+      country: loginMeta?.country,
+      userAgent: loginMeta?.userAgent,
+      userId: userObjectId.toHexString(),
+      xUserId: identity.xUserId,
+      username: identity.username,
+      email: user.email
+    });
     return NextResponse.redirect(new URL("/login?error=tenant_bootstrap_failed", origin));
   }
 
@@ -130,7 +166,13 @@ export async function finalizeOAuthSessionAndRedirect(options: {
         userId: userObjectId,
         clientIp: loginMeta?.clientIp,
         country: loginMeta?.country,
-        userAgent: loginMeta?.userAgent
+        userAgent: loginMeta?.userAgent,
+        audit: {
+          provider,
+          xUserId: identity.xUserId,
+          username: identity.username,
+          email: user.email
+        }
       });
     } catch (loginMetaError) {
       console.warn("[auth/oauth] recordUserSuccessfulLogin non-fatal", {
@@ -159,6 +201,18 @@ export async function finalizeOAuthSessionAndRedirect(options: {
     console.error("[auth/oauth] session bootstrap failed", {
       userId: userObjectId.toHexString(),
       message: error instanceof Error ? error.message : String(error)
+    });
+    await appendLoginAuditRecord({
+      outcome: "failure",
+      provider,
+      errorCode: "bootstrap_failed",
+      clientIp: loginMeta?.clientIp,
+      country: loginMeta?.country,
+      userAgent: loginMeta?.userAgent,
+      userId: userObjectId.toHexString(),
+      xUserId: identity.xUserId,
+      username: identity.username,
+      email: user.email
     });
     return NextResponse.redirect(new URL("/login?error=bootstrap_failed", origin));
   }

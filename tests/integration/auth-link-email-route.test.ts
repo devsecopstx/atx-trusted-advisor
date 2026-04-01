@@ -38,6 +38,9 @@ vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/env", () => envMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
+vi.mock("@/modules/identity/login-audit", () => ({
+  appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
+}));
 
 import { POST as linkEmailPost } from "@/app/api/auth/link-email/route";
 

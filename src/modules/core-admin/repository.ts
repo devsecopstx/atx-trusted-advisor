@@ -1215,6 +1215,42 @@ function userPortfoliosInSessionScopeFilter(
   };
 }
 
+/**
+ * Same tenant scope as {@link userPortfoliosInSessionScopeFilter} but for `portfolio_accounts` rows.
+ * Keeps list/get/count consistent when legacy docs predate `tenantId` backfill.
+ */
+function userAccountsForPortfolioSessionScopeFilter(
+  userId: string,
+  portfolioId: string,
+  tenantId?: string
+): Record<string, unknown> {
+  const tenantObjectId = toTenantObjectId(tenantId);
+  const base = {
+    ...userIdQuery(userId),
+    portfolioId: new ObjectId(portfolioId)
+  };
+  if (!tenantObjectId) {
+    return base;
+  }
+  return {
+    ...base,
+    $or: [
+      { tenantId: tenantObjectId },
+      { tenantId: { $type: "null" } },
+      { tenantId: { $exists: false } }
+    ]
+  };
+}
+
+/** Watchlist rows for a portfolio — same tenant legacy scope as accounts. */
+function userWatchlistsForPortfolioSessionScopeFilter(
+  userId: string,
+  portfolioId: ObjectId,
+  tenantId?: string
+): Record<string, unknown> {
+  return userAccountsForPortfolioSessionScopeFilter(userId, portfolioId.toHexString(), tenantId);
+}
+
 function defaultPortfolioMarkerFilter(
   userId: string,
   tenantId?: string
@@ -1374,17 +1410,10 @@ export async function getPortfolioByIdForSessionUser(input: {
     return null;
   }
   const db = await getDb();
-  return db
-    .collection<Portfolio>(collections.portfolios)
-    .findOne(
-      withTenantScope(
-        {
-          _id: new ObjectId(input.portfolioId),
-          ...userIdQuery(input.userId)
-        },
-        input.tenantId
-      )
-    );
+  return db.collection<Portfolio>(collections.portfolios).findOne({
+    _id: new ObjectId(input.portfolioId),
+    ...userPortfoliosInSessionScopeFilter(input.userId, input.tenantId)
+  });
 }
 
 /** All portfolios for the session user (tenant-scoped), oldest first. */
@@ -1447,15 +1476,7 @@ export async function listPortfolioAccounts(input: {
   const db = await getDb();
   return db
     .collection<Account>(collections.accounts)
-    .find(
-      withTenantScope(
-        {
-          ...userIdQuery(input.userId),
-          portfolioId: new ObjectId(input.portfolioId)
-        },
-        input.tenantId
-      )
-    )
+    .find(userAccountsForPortfolioSessionScopeFilter(input.userId, input.portfolioId, input.tenantId))
     .sort({ isDefault: -1, createdAt: 1 })
     .toArray();
 }
@@ -1471,13 +1492,7 @@ export async function countPortfolioAccountsForUser(input: {
   }
   const db = await getDb();
   return db.collection<Account>(collections.accounts).countDocuments(
-    withTenantScope(
-      {
-        ...userIdQuery(input.userId),
-        portfolioId: new ObjectId(input.portfolioId)
-      },
-      input.tenantId
-    )
+    userAccountsForPortfolioSessionScopeFilter(input.userId, input.portfolioId, input.tenantId)
   );
 }
 
@@ -1487,9 +1502,9 @@ export async function countPortfoliosForUserInTenant(input: {
 }): Promise<number> {
   await ensurePortfolioIndexes();
   const db = await getDb();
-  return db.collection<Portfolio>(collections.portfolios).countDocuments(
-    withTenantScope({ ...userIdQuery(input.userId.trim()) }, input.tenantId)
-  );
+  return db
+    .collection<Portfolio>(collections.portfolios)
+    .countDocuments(userPortfoliosInSessionScopeFilter(input.userId.trim(), input.tenantId));
 }
 
 export async function listPortfolioPositionsByAccount(input: {
@@ -2729,10 +2744,7 @@ export async function provisionDefaultPortfolioForUser(
     );
   }
 
-  const portfolioLookupFilter = withTenantScope(
-    { ...userIdQuery(input.userId), isDefault: true },
-    input.tenantId
-  );
+  const portfolioLookupFilter = defaultPortfolioMarkerFilter(input.userId, input.tenantId);
   let portfolio = await db
     .collection<Portfolio>(collections.portfolios)
     .findOne(portfolioLookupFilter);
@@ -2804,14 +2816,14 @@ export async function provisionDefaultPortfolioForUser(
   }
 
   const extAccountId = DEFAULT_ACCOUNT_REF;
-  const accountLookupFilter = withTenantScope(
-    {
-      ...userIdQuery(input.userId),
-      portfolioId: portfolio._id,
-      isDefault: true
-    },
-    input.tenantId
-  );
+  const accountLookupFilter = {
+    ...userAccountsForPortfolioSessionScopeFilter(
+      input.userId,
+      portfolio._id.toHexString(),
+      input.tenantId
+    ),
+    isDefault: true
+  };
   let account = await db.collection<Account>(collections.accounts).findOne(accountLookupFilter);
 
   const accountSetFields = {
@@ -2867,11 +2879,9 @@ export async function provisionDefaultPortfolioForUser(
 
   const cashBackfillFilter = {
     $and: [
-      withTenantScope(
-        {
-          ...userIdQuery(input.userId),
-          portfolioId: portfolio._id
-        },
+      userAccountsForPortfolioSessionScopeFilter(
+        input.userId,
+        portfolio._id.toHexString(),
         input.tenantId
       ),
       {
@@ -2886,11 +2896,9 @@ export async function provisionDefaultPortfolioForUser(
     }
   });
 
-  const watchlistLookupFilter = withTenantScope(
-    {
-      ...userIdQuery(input.userId),
-      portfolioId: portfolio._id
-    },
+  const watchlistLookupFilter = userWatchlistsForPortfolioSessionScopeFilter(
+    input.userId,
+    portfolio._id,
     input.tenantId
   );
   const existingWatchlist = await db
@@ -3161,14 +3169,10 @@ export async function updatePortfolioAccountForUser(
   const db = await getDb();
   const portfolioId = new ObjectId(input.portfolioId);
   const accountId = new ObjectId(input.accountId);
-  const filter = withTenantScope(
-    {
-      _id: accountId,
-      ...userIdQuery(input.userId),
-      portfolioId
-    },
-    input.tenantId
-  );
+  const filter = {
+    _id: accountId,
+    ...userAccountsForPortfolioSessionScopeFilter(input.userId, input.portfolioId, input.tenantId)
+  };
   const existing = await db.collection<Account>(collections.accounts).findOne(filter);
   if (!existing?._id) {
     return null;
@@ -3706,14 +3710,10 @@ export async function adminUpdatePortfolioAccount(input: {
   const db = await getDb();
   const pid = new ObjectId(input.portfolioId);
   const aid = new ObjectId(input.accountId);
-  const filter = strictWriteTenantFilter(
-    {
-      _id: aid,
-      ...userIdQuery(ownerId),
-      portfolioId: pid
-    },
-    tenantId
-  );
+  const filter = {
+    _id: aid,
+    ...userAccountsForPortfolioSessionScopeFilter(ownerId, input.portfolioId, tenantId)
+  };
   const existing = await db.collection<Account>(collections.accounts).findOne(filter);
   if (!existing?._id) {
     return null;
@@ -3724,7 +3724,11 @@ export async function adminUpdatePortfolioAccount(input: {
   }
   if (input.isDefault === true) {
     await db.collection<Account>(collections.accounts).updateMany(
-      strictWriteTenantFilter({ ...userIdQuery(ownerId), portfolioId: pid }, tenantId),
+      {
+        ...userAccountsForPortfolioSessionScopeFilter(ownerId, input.portfolioId, tenantId),
+        isDefault: true,
+        _id: { $ne: aid }
+      },
       { $set: { isDefault: false, updatedAt: new Date() } }
     );
     $set.isDefault = true;
@@ -3775,16 +3779,11 @@ export async function deleteAccountInPortfolioForOwner(input: {
     input.tenantId
   );
   await db.collection<Position>(collections.positions).deleteMany(scope);
-  const del = await db.collection<Account>(collections.accounts).deleteOne(
-    strictWriteTenantFilter(
-      {
-        _id: aid,
-        ...userIdQuery(input.ownerUserId),
-        portfolioId: pid
-      },
-      input.tenantId
-    )
-  );
+  const accountDeleteFilter = {
+    _id: aid,
+    ...userAccountsForPortfolioSessionScopeFilter(input.ownerUserId, input.portfolioId, input.tenantId)
+  };
+  const del = await db.collection<Account>(collections.accounts).deleteOne(accountDeleteFilter);
   if ((del.deletedCount ?? 0) === 0) {
     return false;
   }
@@ -3792,10 +3791,10 @@ export async function deleteAccountInPortfolioForOwner(input: {
     const next = accounts.find((a) => a._id?.toHexString() !== input.accountId);
     if (next?._id) {
       await db.collection<Account>(collections.accounts).updateOne(
-        strictWriteTenantFilter(
-          { _id: next._id, ...userIdQuery(input.ownerUserId), portfolioId: pid },
-          input.tenantId
-        ),
+        {
+          _id: next._id,
+          ...userAccountsForPortfolioSessionScopeFilter(input.ownerUserId, input.portfolioId, input.tenantId)
+        },
         { $set: { isDefault: true, updatedAt: new Date() } }
       );
     }

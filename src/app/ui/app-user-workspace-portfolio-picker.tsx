@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -46,13 +45,9 @@ export function AppUserWorkspacePortfolioPicker({
     return (
       <div className="app-user-rail-workspace-row">
         <span className="app-user-rail-workspace-k">Portfolio</span>
-        <Link
-          className="app-user-rail-workspace-v app-user-rail-workspace-v--link"
-          href="/portfolio"
-          title="Open portfolio"
-        >
+        <span className="app-user-rail-workspace-v" title="Active workspace portfolio">
           {only?.name ?? "Portfolio"}
-        </Link>
+        </span>
       </div>
     );
   }
@@ -76,9 +71,6 @@ export function AppUserWorkspacePortfolioPicker({
           </option>
         ))}
       </select>
-      <Link className="app-user-rail-account-open" href="/portfolio" title="Open portfolio overview">
-        Open
-      </Link>
     </div>
   );
 }

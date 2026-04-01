@@ -148,6 +148,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   { path: "/api/admin/audit", operations: [{ method: "GET", auth: "admin" }], tag: "admin-audit" },
   {
+    path: "/api/admin/login-audit",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-audit"
+  },
+  {
     path: "/api/admin/bootstrap-status",
     operations: [{ method: "GET", auth: "admin" }],
     tag: "admin-system"

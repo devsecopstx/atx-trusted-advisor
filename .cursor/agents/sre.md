@@ -76,6 +76,16 @@ test -f .cursor/agents/sre.md && npm install
 - **cost-check:** `gcloud billing budgets list`
 - **xai-chat-smoke:** `npm run smoke:xai-chat`
 
+## Hotfix: duplicate default portfolio / account after OAuth re-login
+
+**Symptom:** After logout and X/Google login, `/portfolio` or `POST /api/portfolios/default` appears to **provision a second** default portfolio and empty default account; older accounts/positions still exist on the **previous** portfolio id; renames on the original default do not show on the “new” default.
+
+**Cause (fixed in app):** `provisionDefaultPortfolioForUser` used **strict** `tenantId` queries (`withTenantScope`) for find/upsert. Legacy rows with **missing/null `tenantId`** did not match → upsert path **inserted** a new default portfolio + account while the real data stayed on the old documents.
+
+**App fix:** Session-scoped filters (`defaultPortfolioMarkerFilter`, `userAccountsForPortfolioSessionScopeFilter`, watchlist scope) in `src/modules/core-admin/repository.ts` — same legacy-or-tenant logic as list/get. Deploy the revision containing that change.
+
+**Data cleanup (optional, Mongo):** If duplicates already exist for a user, identify extra `portfolio_accounts` / `portfolios` rows with the same `userId` and merge or delete orphans in coordination with product; prefer **Manage backoffice** / support playbook over ad-hoc deletes.
+
 ## Hotfix: deploy preflight `NOT_FOUND` on Stripe (or Redis) secrets
 
 **Symptom:** GitHub Actions fails with `set -euo pipefail`, then  

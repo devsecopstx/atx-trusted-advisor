@@ -1,6 +1,10 @@
 import { ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
+import {
+    appendLoginAuditRecord,
+    type LoginAuditProvider
+} from "@/modules/identity/login-audit";
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import {
     mergeTenantWorkspaceLimits,
@@ -551,6 +555,13 @@ export async function recordUserSuccessfulLogin(input: {
   clientIp?: string;
   country?: string;
   userAgent?: string;
+  /** When set, appends a row to `audit_login` with outcome success. */
+  audit?: {
+    provider: LoginAuditProvider;
+    xUserId?: string;
+    username?: string;
+    email?: string;
+  };
 }): Promise<void> {
   await ensureIdentityIndexes();
   const db = await getDb();
@@ -569,6 +580,20 @@ export async function recordUserSuccessfulLogin(input: {
     $set.lastLoginUserAgent = input.userAgent.slice(0, 256);
   }
   await db.collection<CoreUser>(collections.users).updateOne({ _id: input.userId }, { $set });
+
+  if (input.audit) {
+    await appendLoginAuditRecord({
+      outcome: "success",
+      provider: input.audit.provider,
+      clientIp: input.clientIp,
+      country: input.country,
+      userAgent: input.userAgent,
+      userId: input.userId.toHexString(),
+      xUserId: input.audit.xUserId,
+      username: input.audit.username,
+      email: input.audit.email
+    });
+  }
 }
 
 export async function linkXAccountToUser(input: {

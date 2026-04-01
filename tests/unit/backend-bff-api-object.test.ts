@@ -28,6 +28,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/user-feedback", methods: ["POST"] },
   { pathTemplate: "/api/admin/bootstrap-status", methods: ["GET"] },
   { pathTemplate: "/api/admin/audit", methods: ["GET"] },
+  { pathTemplate: "/api/admin/login-audit", methods: ["GET"] },
   { pathTemplate: "/api/admin/access-requests", methods: ["GET", "POST"] },
   { pathTemplate: "/api/admin/access-requests/{requestId}", methods: ["GET", "PATCH", "PUT", "DELETE"] },
   { pathTemplate: "/api/admin/users", methods: ["GET", "POST"] },
