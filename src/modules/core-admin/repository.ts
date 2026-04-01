@@ -3208,7 +3208,6 @@ export async function updatePortfolioAccountForUser(
     return null;
   }
   const db = await getDb();
-  const portfolioId = new ObjectId(input.portfolioId);
   const accountId = new ObjectId(input.accountId);
   const filter = {
     _id: accountId,
@@ -3339,10 +3338,12 @@ export type InsertPortfolioAccountInput = {
   /** External/broker ref; generated if omitted (xfinance-strategy `accountRef` compatibility). */
   extAccountId?: string;
   cashBalance?: number;
+  /** When true, sets `isDefault` on this account (e.g. first account when creating a portfolio). */
+  markAsPortfolioDefault?: boolean;
 };
 
 /**
- * Adds a non-default account under an owned portfolio (manual / multi-broker desks).
+ * Adds an account under an owned portfolio (manual / multi-broker desks, or seeded default row).
  */
 export async function insertPortfolioAccountForUser(
   input: InsertPortfolioAccountInput
@@ -3391,6 +3392,7 @@ export async function insertPortfolioAccountForUser(
       ? input.cashBalance
       : DEFAULT_ACCOUNT_CASH_BALANCE;
 
+  const markDefault = Boolean(input.markAsPortfolioDefault);
   const doc: Account = {
     tenantId: tenantObjectId,
     userId: input.userId,
@@ -3399,7 +3401,7 @@ export async function insertPortfolioAccountForUser(
     type,
     extAccountId: ext,
     cashBalance: cash,
-    isDefault: false,
+    isDefault: markDefault,
     createdAt: now,
     updatedAt: now
   };
@@ -3656,6 +3658,20 @@ export async function adminCreatePortfolio(input: {
       portfolioId: created._id.toHexString(),
       tenantId: input.tenantId?.trim()
     });
+    const tid = input.tenantId?.trim();
+    if (tid && tenantObjectId) {
+      const ordinal = await countPortfoliosForUserInTenant({
+        userId: input.userId.trim(),
+        tenantId: tid
+      });
+      await insertPortfolioAccountForUser({
+        userId: input.userId.trim(),
+        tenantId: tid,
+        portfolioId: created._id.toHexString(),
+        name: `defaultaccount${ordinal}`,
+        markAsPortfolioDefault: true
+      });
+    }
   }
   return created;
 }
@@ -3749,7 +3765,6 @@ export async function adminUpdatePortfolioAccount(input: {
     return base;
   }
   const db = await getDb();
-  const pid = new ObjectId(input.portfolioId);
   const aid = new ObjectId(input.accountId);
   const filter = {
     _id: aid,
