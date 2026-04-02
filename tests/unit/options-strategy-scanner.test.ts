@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const repoMocks = vi.hoisted(() => ({
   listStrategies: vi.fn(),
-  listPrefs: vi.fn()
+  listPrefs: vi.fn(),
+  listFilterRows: vi.fn()
 }));
 
 const calendarMocks = vi.hoisted(() => ({
@@ -58,7 +59,8 @@ vi.mock("@/lib/mongodb", () => ({
 
 vi.mock("@/modules/core-admin/repository", () => ({
   adminListOptionsStrategySummaries: repoMocks.listStrategies,
-  adminListOptionsStrategyPreferenceSummaries: repoMocks.listPrefs
+  adminListOptionsStrategyPreferenceSummaries: repoMocks.listPrefs,
+  adminListOptionsStrategyFilterRows: repoMocks.listFilterRows
 }));
 
 import { processOptionRecommendationsPass } from "@/modules/strategy-options/options-scanner-engine";
@@ -75,12 +77,15 @@ const emptyRecPass = {
   grokCalls: 0,
   skippedBadRow: 0,
   fromPositions: 0,
-  fromWatchlist: 0
+  fromWatchlist: 0,
+  chainBatches: 0,
+  rankedSignals: []
 };
 
 describe("runOptionsStrategyScanner", () => {
   beforeEach(() => {
     vi.mocked(processOptionRecommendationsPass).mockResolvedValue(emptyRecPass);
+    repoMocks.listFilterRows.mockResolvedValue([]);
   });
 
   it("reports counts, market-open path, and slug preview", async () => {
@@ -111,6 +116,9 @@ describe("runOptionsStrategyScanner", () => {
     expect(r.output).toContain("preferences=1");
     expect(r.output).toContain("option_positions=5");
     expect(r.output).toContain("unique_underlyings=2");
+    expect(r.output).toContain("strategy_filter_rows=0");
+    expect(r.output).toContain("scan_targets=");
+    expect(r.output).toContain("prefs_active=false");
     expect(r.output).toContain("rec_examined=0");
     expect(r.output).toContain("rec_from_pos=0");
     expect(r.output).toMatch(/pmcc|wheel/);
@@ -139,6 +147,12 @@ describe("runOptionsStrategyScanner", () => {
       recommendationSourcesFromPositions: 0,
       recommendationSourcesFromWatchlist: 0,
       watchlistOptionRows: 0,
+      strategyFilterRowCount: 0,
+      scanTargetsPrePrefs: 0,
+      scanTargetsPostPrefs: 0,
+      prefsFilterActive: false,
+      rankTopPreview: null,
+      chainBatches: 0,
       durationSeconds: expect.any(Number)
     });
     expect(calendarMocks.updateTenantMarketCalendarSnapshot).toHaveBeenCalledWith(

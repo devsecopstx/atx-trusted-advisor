@@ -10,8 +10,8 @@ Canonical route list is enforced by `tests/smoke/backend-http-api-parity.test.ts
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/actuator/health` | Spring Boot Actuator liveness/readiness (`management.*`). Response is standard actuator JSON (e.g. `{ "status": "UP" }` when authorized to see details per config). |
-| GET | `/api/health` | **Compatibility shim:** lightweight check: Mongo connectivity via `MongoClient`, plus **presence-only** secrets flags (no secret values). `details.secrets` is `ok` if any of `MONGODB_URI`, `SPRING_DATA_MONGODB_URI`, or `MONGODB_URI_B64` is set in the process environment (matches Docker Compose and Atlas-style deploys). |
-| GET | `/api/backend/health` | **SRE / diagnostics:** service name, UTC time, `activeProfiles`, masked Mongo URI (`uriMasked`), resolved host/database, mongo ping status, and env **flags** only (`MONGODB_URI_B64_present`, etc.). HTTP **200** even when nested `details.mongo.status` is `error` (inspect body). |
+| GET | `/api/health` | **Compatibility shim:** Mongo via `MongoClient`; **presence-only** secrets flags; **`details.redis`**: `ok` \| `error` \| `skipped` (skipped when `REDIS_URL` unset). |
+| GET | `/api/backend/health` | **SRE / diagnostics:** service name, UTC time, `activeProfiles`, masked Mongo URI (`uriMasked`), mongo ping, **`details.redis`** (same semantics as `/api/health`), env flags including `REDIS_URL_present`. HTTP **200** even when nested `details.mongo.status` is `error` (inspect body). |
 
 ## Portfolios (session cookie, Mongo CRUD)
 
@@ -64,7 +64,7 @@ Same BFF contract as Next `src/app/api/positions/**`. Query params `portfolioId`
 
 ## Strategy jobs (Phase 1 orchestrator, Mongo)
 
-Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `tenantId` + `emailAccountId`** (body `emailAccountId` optional; defaults to normalized session email or `"primary"`). Collection **`strategy_jobs`** (override `STRATEGY_JOBS_COLLECTION`). Rate limit: **`STRATEGY_MAX_JOBS_HOURLY`** (default **12**) creations per scope per rolling hour — **429** `rate_limited`. **`STRATEGY_SOFT_WARN_JOBS_HOURLY`** (default **8**) surfaces `meta.softWarn` on **201**. Optional header **`Idempotency-Key`**: replay within **24h** returns **200** `{ data, meta: { idempotentReplay: true } }`.
+Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `tenantId` + `emailAccountId`** (body `emailAccountId` optional; defaults to normalized session email or `"primary"`). Collection **`strategy_jobs`** (override `STRATEGY_JOBS_COLLECTION`). Rate limit: **`STRATEGY_MAX_JOBS_HOURLY`** (default **12**) per rolling hour — **429** `rate_limited`. When **`REDIS_URL`** is set, an hourly Redis counter is the primary fuse (Mongo still queried for `meta` / soft warn); when unset, Mongo count only (legacy). **`STRATEGY_SOFT_WARN_JOBS_HOURLY`** (default **8**) surfaces `meta.softWarn` on **201**. Optional header **`Idempotency-Key`**: replay within **24h** returns **200** `{ data, meta: { idempotentReplay: true } }`.
 
 **Indexes (ops):** compound `{ userId: 1, tenantId: 1, emailAccountId: 1, createdAt: -1 }` for rate-limit counts; optional partial unique on `{ userId, tenantId, emailAccountId, idempotencyKey }` where `idempotencyKey` exists (not created by the app yet — add via Atlas/ops when volume warrants).
 
@@ -176,11 +176,16 @@ Resolution order for Spring Data Mongo URI (high level):
 
 Docker Compose sets `SPRING_DATA_MONGODB_URI` explicitly for the `atxfinance-backend` service unless overridden by `.env` / `MONGODB_URI_B64`.
 
-## Auth / OAuth (Next-primary; Spring cutover planned)
+## Auth / OAuth (dual-run: Next-primary + JVM parity)
 
-**Today:** X OAuth **start** and **`GET /api/auth/x/callback`** run on the **Next.js** core app (`src/app/api/auth/x/*`). This Spring service validates the same **`xf_core_session`** cookie as Next when requests are BFF-proxied or forwarded with the browser `Cookie` header.
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/auth/x/login` | **JVM:** PKCE `state` + `code_verifier`, optional **`REDIS_URL`** PKCE row, Set-Cookie `xf_x_oauth_*`, redirect to X authorize URL. **503** if `X_OAUTH_CLIENT_ID` missing. **429** when Redis-backed auth rate limit exceeded. |
+| GET | `/api/auth/x/callback` | **JVM:** Exchange code, issue `xf_core_session` (same shape as Next). Verifier from cookies or Redis PKCE store. **429** when Redis-backed rate limit exceeded. |
 
-**Planned:** Spring-owned callback, Redis-backed PKCE, and dual-run cutover — see [`auth-oauth-spring-dual-run.md`](./auth-oauth-spring-dual-run.md) and the *Auth callback contract* in [`api-consolidation-spring-backend.md`](./api-consolidation-spring-backend.md).
+**Production default:** OAuth **start** still hits **Next** (`src/app/api/auth/x/login`); BFF may proxy **`GET /api/auth/x/callback`** to Spring when `AUTH_CALLBACK_USE_SPRING` + `ATXFINANCE_BACKEND_ORIGIN` are set. This Spring service validates **`xf_core_session`** like Next for all BFF-proxied APIs.
+
+**Redis / Memorystore:** PKCE storage, OAuth path rate limits, strategy-job quota — [spring-redis-memorystore.md](./spring-redis-memorystore.md). Full dual-run checklist: [`auth-oauth-spring-dual-run.md`](./auth-oauth-spring-dual-run.md) · [`api-consolidation-spring-backend.md`](./api-consolidation-spring-backend.md).
 
 ## Testing
 

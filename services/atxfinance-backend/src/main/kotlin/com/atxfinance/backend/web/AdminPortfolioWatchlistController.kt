@@ -44,10 +44,11 @@ class AdminPortfolioWatchlistController(
         @PathVariable portfolioId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
@@ -61,6 +62,7 @@ class AdminPortfolioWatchlistController(
         return when (
             val r =
                 adminPortfolioWatchlistService.patchWatchlist(
+                    session = g.session,
                     portfolioId = portfolioId,
                     addSymbols = addSymbols,
                     addEntries = addEntries,

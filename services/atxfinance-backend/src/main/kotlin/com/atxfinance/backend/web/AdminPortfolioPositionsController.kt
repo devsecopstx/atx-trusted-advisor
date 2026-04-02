@@ -49,10 +49,11 @@ class AdminPortfolioPositionsController(
         @PathVariable accountId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
@@ -60,7 +61,13 @@ class AdminPortfolioPositionsController(
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid id"))
         }
         return try {
-            val data = adminPortfolioPositionsService.upsertFromBodyReturningApiShape(portfolioId, accountId, body)
+            val data =
+                adminPortfolioPositionsService.upsertFromBodyReturningApiShape(
+                    g.session,
+                    portfolioId,
+                    accountId,
+                    body,
+                )
             ResponseEntity.status(HttpStatus.CREATED).body(mapOf("data" to data))
         } catch (e: PositionValidationException) {
             validationResponse(e)

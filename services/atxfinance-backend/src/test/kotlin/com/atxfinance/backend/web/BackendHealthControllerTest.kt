@@ -7,10 +7,19 @@ import org.bson.Document
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.HttpStatus
 import org.springframework.mock.env.MockEnvironment
 
 class BackendHealthControllerTest {
+
+    @Suppress("UNCHECKED_CAST")
+    private fun emptyRedisProvider(): ObjectProvider<StringRedisTemplate> {
+        val p = mock(ObjectProvider::class.java) as ObjectProvider<StringRedisTemplate>
+        `when`(p.ifAvailable).thenReturn(null)
+        return p
+    }
 
     private fun buildControllerWith(
         mongoOk: Boolean,
@@ -31,7 +40,7 @@ class BackendHealthControllerTest {
             `when`(db.runCommand(Document("ping", 1))).thenThrow(RuntimeException("ping failed"))
         }
 
-        return BackendHealthController(env, mongoClient)
+        return BackendHealthController(env, mongoClient, emptyRedisProvider())
     }
 
     @Test
@@ -59,6 +68,10 @@ class BackendHealthControllerTest {
         // Host and database extracted
         assertEquals("localhost:27017", mongo["host"])
         assertEquals("atxfinance", mongo["database"])
+
+        @Suppress("UNCHECKED_CAST")
+        val redis = details["redis"] as Map<*, *>
+        assertEquals("skipped", redis["status"])
     }
 
     @Test
@@ -74,7 +87,7 @@ class BackendHealthControllerTest {
         `when`(mongoClient.listDatabaseNames()).thenReturn(names)
         `when`(names.first()).thenReturn("admin")
 
-        val controller = BackendHealthController(env, mongoClient)
+        val controller = BackendHealthController(env, mongoClient, emptyRedisProvider())
         val response = controller.apiHealthCompat()
 
         assertEquals(HttpStatus.OK, response.statusCode)
@@ -87,6 +100,9 @@ class BackendHealthControllerTest {
         // secrets uses System.getenv (not Spring env); CI/unit JVM often has none → missing map is valid
         val sec = details["secrets"]
         assertTrue(sec == "ok" || sec is Map<*, *>)
+        @Suppress("UNCHECKED_CAST")
+        val redis = details["redis"] as Map<*, *>
+        assertEquals("skipped", redis["status"])
     }
 
     @Test

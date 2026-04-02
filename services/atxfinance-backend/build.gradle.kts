@@ -40,6 +40,7 @@ dependencies {
 
     // MongoDB + ShedLock provider
     implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation(libs.shedlock.spring)
     implementation(libs.shedlock.mongo)
 

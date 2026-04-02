@@ -11,6 +11,8 @@ const SPEC_PATH = resolve(REPO_ROOT, "atx-docs/sre-ops/atxfinance-backend-http-a
 /** Routes that must stay declared in Kotlin controllers and documented in the HTTP spec. */
 const REQUIRED_GET_ROUTES = ["/api/health", "/api/backend/health"] as const;
 
+const REQUIRED_AUTH_GET_ROUTES = ["/api/auth/x/login", "/api/auth/x/callback"] as const;
+
 const REQUIRED_PORTFOLIO_BFF_MAPPINGS = BFF_PROXY_ROUTES.map(toKotlinBffMappingNeedle);
 
 function readTreeFiles(dir: string, acc: string[] = []): string[] {
@@ -26,6 +28,9 @@ describe("atxfinance-backend HTTP API parity (docs ↔ Kotlin)", () => {
   it("spec file exists and lists required routes", () => {
     const spec = readFileSync(SPEC_PATH, "utf8");
     for (const route of REQUIRED_GET_ROUTES) {
+      expect(spec).toContain(route);
+    }
+    for (const route of REQUIRED_AUTH_GET_ROUTES) {
       expect(spec).toContain(route);
     }
     expect(spec).toContain("/api/portfolios/{portfolioId}");
@@ -84,6 +89,12 @@ describe("atxfinance-backend HTTP API parity (docs ↔ Kotlin)", () => {
     const files = readTreeFiles(BACKEND_KOTLIN_MAIN);
     const combined = files.map((f) => readFileSync(f, "utf8")).join("\n");
     for (const route of REQUIRED_GET_ROUTES) {
+      const needle = `@GetMapping("${route}")`;
+      expect(combined.includes(needle), `Missing ${needle} under services/atxfinance-backend/src/main/kotlin`).toBe(
+        true
+      );
+    }
+    for (const route of REQUIRED_AUTH_GET_ROUTES) {
       const needle = `@GetMapping("${route}")`;
       expect(combined.includes(needle), `Missing ${needle} under services/atxfinance-backend/src/main/kotlin`).toBe(
         true

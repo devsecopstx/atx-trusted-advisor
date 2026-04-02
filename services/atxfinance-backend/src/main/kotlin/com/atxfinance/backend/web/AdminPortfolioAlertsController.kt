@@ -45,10 +45,11 @@ class AdminPortfolioAlertsController(
         @PathVariable portfolioId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
@@ -58,7 +59,7 @@ class AdminPortfolioAlertsController(
         if (adminPortfolioAccountsService.findPortfolioById(portfolioId) == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Portfolio not found"))
         }
-        val doc = adminPortfolioAlertsService.create(portfolioId, body)
+        val doc = adminPortfolioAlertsService.create(g.session, portfolioId, body)
         if (doc == null || doc.getObjectId("_id") == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Could not create alert"))
         }
@@ -72,14 +73,15 @@ class AdminPortfolioAlertsController(
         @PathVariable alertId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
-        val updated = adminPortfolioAlertsService.patch(portfolioId, alertId, body)
+        val updated = adminPortfolioAlertsService.patch(g.session, portfolioId, alertId, body)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Alert not found"))
         return ResponseEntity.ok(mapOf("data" to adminPortfolioAlertsService.toJson(updated)))
     }
@@ -90,11 +92,12 @@ class AdminPortfolioAlertsController(
         @PathVariable portfolioId: String,
         @PathVariable alertId: String,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
-        val ok = adminPortfolioAlertsService.delete(portfolioId, alertId)
+        g as AdminGate.Ok
+        val ok = adminPortfolioAlertsService.delete(g.session, portfolioId, alertId)
         if (!ok) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Alert not found"))
         }

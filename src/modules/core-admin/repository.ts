@@ -2349,6 +2349,23 @@ export async function adminListOptionsStrategySummaries(): Promise<OptionsStrate
   return rows as OptionsStrategySummary[];
 }
 
+/** Slug + `filters` only — for scheduled options scanner prefs merge (`PLAN` 270n). */
+export async function adminListOptionsStrategyFilterRows(): Promise<
+  { slug: string; filters: Record<string, unknown> | null | undefined }[]
+> {
+  await ensureOptionsStrategyIndexes();
+  const db = await getDb();
+  const rows = await db
+    .collection<OptionsStrategy>(collections.optionsStrategy)
+    .find({}, { projection: { slug: 1, filters: 1 } })
+    .sort({ slug: 1 })
+    .toArray();
+  return rows.map((r) => ({
+    slug: r.slug,
+    filters: r.filters ?? null
+  }));
+}
+
 export async function adminGetOptionsStrategyById(id: string): Promise<OptionsStrategy | null> {
   await ensureOptionsStrategyIndexes();
   if (!ObjectId.isValid(id)) return null;

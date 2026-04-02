@@ -12,6 +12,7 @@ import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
@@ -26,17 +27,25 @@ class StrategyJobServiceTest {
         username = null,
     )
 
+    @Suppress("UNCHECKED_CAST")
+    private fun quotaProvider(quota: StrategyJobRedisQuota?): ObjectProvider<StrategyJobRedisQuota> {
+        val p = mock(ObjectProvider::class.java) as ObjectProvider<StrategyJobRedisQuota>
+        `when`(p.ifAvailable).thenReturn(quota)
+        return p
+    }
+
     private fun service(
         mongo: MongoTemplate,
         maxHourly: Int = 12,
         softWarn: Int = 8,
+        quota: StrategyJobRedisQuota? = null,
     ): StrategyJobService {
         val props = AtxfinanceProperties(
             strategyJobsCollection = "strategy_jobs",
             strategyMaxJobsHourly = maxHourly,
             strategySoftWarnJobsHourly = softWarn,
         )
-        return StrategyJobService(mongo, props)
+        return StrategyJobService(mongo, props, quotaProvider(quota))
     }
 
     @Test
@@ -44,6 +53,15 @@ class StrategyJobServiceTest {
         val mongo = mock(MongoTemplate::class.java)
         `when`(mongo.count(any(Query::class.java), eq("strategy_jobs"))).thenReturn(12L)
         val out = service(mongo).createJob(session, null, null)
+        assertEquals(CreateJobOutcome.RateLimited, out)
+    }
+
+    @Test
+    fun `createJob returns RateLimited when redis quota denies`() {
+        val mongo = mock(MongoTemplate::class.java)
+        val quota = mock(StrategyJobRedisQuota::class.java)
+        `when`(quota.tryReserveSlot(session.userId)).thenReturn(null)
+        val out = service(mongo, quota = quota).createJob(session, null, null)
         assertEquals(CreateJobOutcome.RateLimited, out)
     }
 

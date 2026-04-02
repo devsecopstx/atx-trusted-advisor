@@ -23,6 +23,13 @@ const MIN_VOL_WARN = 5;
 
 export type CloseKind = "BUY_TO_CLOSE" | "SELL_TO_CLOSE";
 
+export type ScannerRankedSignal = {
+  underlying: string;
+  confidence: number;
+  action: "hold" | "sell";
+  source: "position" | "watchlist";
+};
+
 export type OptionsScannerPassResult = {
   examined: number;
   stored: number;
@@ -35,6 +42,10 @@ export type OptionsScannerPassResult = {
   skippedBadRow: number;
   fromPositions: number;
   fromWatchlist: number;
+  /** Unique underlying|expiration chain batches processed (after target grouping). */
+  chainBatches: number;
+  /** Desk rule/Grok confidence, highest first (trimmed for task output / audit). */
+  rankedSignals: ScannerRankedSignal[];
 };
 
 function scannerEnv() {
@@ -363,8 +374,11 @@ export async function processOptionRecommendationsPass(input: {
     grokCalls: 0,
     skippedBadRow: 0,
     fromPositions: 0,
-    fromWatchlist: 0
+    fromWatchlist: 0,
+    chainBatches: 0,
+    rankedSignals: []
   };
+  const rankedBuffer: ScannerRankedSignal[] = [];
 
   let grokBudget = env.maxGrokCalls;
   let alertsBudget = env.maxAlertsPerRun;
@@ -403,6 +417,8 @@ export async function processOptionRecommendationsPass(input: {
     list.push(t);
     groups.set(key, list);
   }
+
+  result.chainBatches = groups.size;
 
   for (const [, group] of groups) {
     const sample = group[0]!;
@@ -492,6 +508,12 @@ export async function processOptionRecommendationsPass(input: {
 
       const exit = (grokOut?.action ?? rule.action) === "sell";
       const finalConf = grokOut?.confidence ?? rule.confidence;
+      rankedBuffer.push({
+        underlying,
+        confidence: finalConf,
+        action: exit ? "sell" : "hold",
+        source: tgt.source
+      });
       const finalRationale =
         grokOut?.rationale && grokOut.rationale.length > 0 ? grokOut.rationale : rule.rationale;
       const grokLine =
@@ -587,6 +609,8 @@ export async function processOptionRecommendationsPass(input: {
       }
     }
   }
+
+  result.rankedSignals = rankedBuffer.sort((a, b) => b.confidence - a.confidence).slice(0, 12);
 
   return result;
 }

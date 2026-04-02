@@ -16,6 +16,14 @@ The OptionsStrategyEngine is the intelligent brain of the single daily_options_s
 
 **Implementation (JVM):** `services/atxfinance-backend/.../strategy/OptionsStrategyEngine.kt` — `generateRecommendations`, weighted `calculateFitScore` (defaults match the table below), `scheduledTaskDryRunOutput` for Kotlin scheduled-task ticks. Full Yahoo chain + Mongo portfolio pass for app tenants remains in the Next.js task-runner (`src/modules/strategy-options/options-strategy-scanner-job.ts`) unless product moves execution to Spring-only.
 
+### Product umbrella (PLAN 280)
+
+Single narrative for **score/rank** work across surfaces:
+
+- **Goals:** Classic structures with real-time chain data + portfolio constraints; bias toward **capital preservation**, **tax efficiency**, and **income over speculation** (copy-level; risk gates stay in engine + scanner rules).
+- **Components:** Kotlin **`OptionsStrategyEngine`** (weighted fit, ranked `StrategyRecommendation`s, JVM scheduler hook) · Next.js **`executeOptionsStrategyScannerJob`** (Yahoo chain batches, **`options_strategy` `filters`**, desk rule/Grok **`rankedSignals`**, recommendations + alerts) · interactive **xOptions** / xStrategyBuilder for guided execution paths.
+- **Docs:** Scheduled job — [`options-scanner.md`](../scheduled-task/options-scanner.md); this file remains the **fit-score** contract. **PLAN 270n** (prefs + ranked scanner output) and **245n** (Kotlin core) are shipped under this umbrella; deeper chain-expiry expansion and product UI remain backlog unless listed in [`PLAN.md`](../../PLAN.md).
+
 **Terminology (product copy):** At the **account**, user-facing inputs are **risk** and **outlook** only — not “strategy factors.” **Portfolio scoring factors** (the weighted dimensions below, e.g. IV rank, liquidity) apply at the **portfolio book** for ranking recommendations; keep that naming distinct from account-level fields.
 
 Function,Purpose,Key Inputs,Output

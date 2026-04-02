@@ -1,6 +1,8 @@
 package com.atxfinance.backend.admin
 
+import com.atxfinance.backend.audit.AuditEventService
 import com.atxfinance.backend.config.AtxfinanceProperties
+import com.atxfinance.backend.session.ResolvedSession
 import com.atxfinance.backend.portfolio.BsonJson
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
 import org.bson.Document
@@ -19,6 +21,7 @@ class AdminPortfolioDeliveryChannelsService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
     private val adminPortfolioAccountsService: AdminPortfolioAccountsService,
+    private val auditEventService: AuditEventService,
 ) {
     private val kinds = setOf("email", "slack_webhook", "sms", "push")
 
@@ -36,7 +39,7 @@ class AdminPortfolioDeliveryChannelsService(
             .map { toJson(it) }
     }
 
-    fun create(portfolioId: String, body: Map<String, Any?>): Document? {
+    fun create(session: ResolvedSession, portfolioId: String, body: Map<String, Any?>): Document? {
         val scope = adminPortfolioAccountsService.resolvePortfolioOwnerScope(portfolioId) ?: return null
         val pid = scope.portfolio.getObjectId("_id") ?: return null
         val kind =
@@ -59,10 +62,23 @@ class AdminPortfolioDeliveryChannelsService(
         doc["updatedAt"] = now
         mongoTemplate.insert(doc, props.portfolioDeliveryChannelsCollection)
         val id = doc.getObjectId("_id") ?: return null
-        return mongoTemplate.findById(id, Document::class.java, props.portfolioDeliveryChannelsCollection)
+        val saved = mongoTemplate.findById(id, Document::class.java, props.portfolioDeliveryChannelsCollection) ?: return null
+        auditEventService.insertEvent(
+            AdminPortfolioAudit.ENTITY_TYPE,
+            portfolioId,
+            "delivery_channel_created",
+            session,
+            mapOf(
+                "channelId" to id.toHexString(),
+                "kind" to kind,
+                "label" to label,
+                "destinationChars" to destination.length,
+            ),
+        )
+        return saved
     }
 
-    fun patch(portfolioId: String, channelId: String, body: Map<String, Any?>): Document? {
+    fun patch(session: ResolvedSession, portfolioId: String, channelId: String, body: Map<String, Any?>): Document? {
         if (!ObjectId.isValid(channelId)) {
             return null
         }
@@ -117,10 +133,19 @@ class AdminPortfolioDeliveryChannelsService(
         }
         update.set("updatedAt", now)
         mongoTemplate.updateFirst(Query.query(filter), update, props.portfolioDeliveryChannelsCollection)
-        return mongoTemplate.findOne(Query.query(filter), Document::class.java, props.portfolioDeliveryChannelsCollection)
+        val out =
+            mongoTemplate.findOne(Query.query(filter), Document::class.java, props.portfolioDeliveryChannelsCollection)
+        auditEventService.insertEvent(
+            AdminPortfolioAudit.ENTITY_TYPE,
+            portfolioId,
+            "delivery_channel_updated",
+            session,
+            mapOf("channelId" to channelId),
+        )
+        return out
     }
 
-    fun delete(portfolioId: String, channelId: String): Boolean {
+    fun delete(session: ResolvedSession, portfolioId: String, channelId: String): Boolean {
         if (!ObjectId.isValid(channelId)) {
             return false
         }
@@ -136,7 +161,17 @@ class AdminPortfolioDeliveryChannelsService(
                 scope.tenantIdHex,
             )
         val res = mongoTemplate.remove(Query.query(filter), props.portfolioDeliveryChannelsCollection)
-        return res.deletedCount == 1L
+        val ok = res.deletedCount == 1L
+        if (ok) {
+            auditEventService.insertEvent(
+                AdminPortfolioAudit.ENTITY_TYPE,
+                portfolioId,
+                "delivery_channel_deleted",
+                session,
+                mapOf("channelId" to channelId),
+            )
+        }
+        return ok
     }
 
     fun toJson(doc: Document): Map<String, Any?> =

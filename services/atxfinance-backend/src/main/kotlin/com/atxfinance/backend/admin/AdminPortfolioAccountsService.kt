@@ -1,7 +1,9 @@
 package com.atxfinance.backend.admin
 
+import com.atxfinance.backend.audit.AuditEventService
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
+import com.atxfinance.backend.session.ResolvedSession
 import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.data.domain.Sort
@@ -21,6 +23,7 @@ import java.util.Date
 class AdminPortfolioAccountsService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
+    private val auditEventService: AuditEventService,
 ) {
     private val accountTypes = setOf("merrill", "fidelity", "etrade", "ibkr")
     private val riskProfiles = setOf("conservative", "balanced", "growth")
@@ -115,6 +118,7 @@ class AdminPortfolioAccountsService(
     }
 
     fun insertAccount(
+        session: ResolvedSession,
         portfolioId: String,
         name: String,
         type: String?,
@@ -152,10 +156,23 @@ class AdminPortfolioAccountsService(
         tenantHex?.let { PortfolioMongoFilter.tenantObjectId(it) }?.let { doc["tenantId"] = it }
         mongoTemplate.insert(doc, props.accountsCollection)
         val id = doc.getObjectId("_id") ?: return null
-        return mongoTemplate.findById(id, Document::class.java, props.accountsCollection)
+        val saved = mongoTemplate.findById(id, Document::class.java, props.accountsCollection) ?: return null
+        auditEventService.insertEvent(
+            AdminPortfolioAudit.ENTITY_TYPE,
+            portfolioId,
+            "account_created",
+            session,
+            mapOf(
+                "accountId" to id.toHexString(),
+                "name" to trimmedName,
+                "type" to accType,
+            ),
+        )
+        return saved
     }
 
     fun patchAccount(
+        session: ResolvedSession,
         portfolioId: String,
         accountId: String,
         name: String?,
@@ -240,10 +257,18 @@ class AdminPortfolioAccountsService(
             return existing
         }
         mongoTemplate.updateFirst(Query.query(filter), upd, props.accountsCollection)
-        return mongoTemplate.findOne(Query.query(filter), Document::class.java, props.accountsCollection)
+        val out = mongoTemplate.findOne(Query.query(filter), Document::class.java, props.accountsCollection)
+        auditEventService.insertEvent(
+            AdminPortfolioAudit.ENTITY_TYPE,
+            portfolioId,
+            "account_updated",
+            session,
+            mapOf("accountId" to accountId),
+        )
+        return out
     }
 
-    fun deleteAccount(portfolioId: String, accountId: String): Boolean {
+    fun deleteAccount(session: ResolvedSession, portfolioId: String, accountId: String): Boolean {
         if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId)) {
             return false
         }
@@ -263,7 +288,17 @@ class AdminPortfolioAccountsService(
         deletePositionsForAccount(ownerId, tenantHex, pid, aid)
         val delFilter = accountWriteFilter(aid, pid, ownerId, tenantHex)
         val result = mongoTemplate.remove(Query.query(delFilter), props.accountsCollection)
-        return result.deletedCount == 1L
+        val ok = result.deletedCount == 1L
+        if (ok) {
+            auditEventService.insertEvent(
+                AdminPortfolioAudit.ENTITY_TYPE,
+                portfolioId,
+                "account_deleted",
+                session,
+                mapOf("accountId" to accountId),
+            )
+        }
+        return ok
     }
 
     private fun deletePositionsForAccount(

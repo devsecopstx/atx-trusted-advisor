@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "2.9.0",
+  "version": "2.10.2",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -72,7 +72,8 @@
     "ops:deploy:cloud-run:staging:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging --with-ci-gate",
     "ops:deploy:cloud-run:production": "bash scripts/ops/deploy-cloud-run-from-env.sh --production",
     "ops:deploy:cloud-run:production:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --production --with-ci-gate",
-    "ops:users:reset-basic-super-agent": "node scripts/ops/reset-all-users-basic-super-agent.mjs"
+    "ops:users:reset-basic-super-agent": "node scripts/ops/reset-all-users-basic-super-agent.mjs",
+    "ops:scheduled-tasks:sync": "node --env-file=.env --import tsx scripts/ops/sync-scheduled-tasks-from-spec.ts"
   },
   "keywords": [],
   "author": "",

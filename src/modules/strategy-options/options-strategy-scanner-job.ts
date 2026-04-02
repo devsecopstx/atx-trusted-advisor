@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import {
+    adminListOptionsStrategyFilterRows,
     adminListOptionsStrategyPreferenceSummaries,
     adminListOptionsStrategySummaries
 } from "@/modules/core-admin/repository";
@@ -14,8 +15,14 @@ import {
 } from "@/modules/scanner/tenant-market-calendar";
 import {
     daysToExpirationFromYmd,
-    processOptionRecommendationsPass
+    processOptionRecommendationsPass,
+    type ScannerRankedSignal
 } from "@/modules/strategy-options/options-scanner-engine";
+import {
+    filterOptionScanTargetsByMergedPrefs,
+    mergeOptionsStrategyFilters,
+    mergedScannerFiltersActive
+} from "@/modules/strategy-options/options-scanner-prefs-filter";
 import type { OptionScanTarget } from "@/modules/strategy-options/options-scanner-targets";
 import {
     mergeOptionScanTargets,
@@ -56,12 +63,34 @@ function optionPositionFilter(scope: Record<string, unknown>): Record<string, un
 async function loadStrategyInventory(): Promise<{
   strategies: Awaited<ReturnType<typeof adminListOptionsStrategySummaries>>;
   prefs: Awaited<ReturnType<typeof adminListOptionsStrategyPreferenceSummaries>>;
+  strategyFilterRows: Awaited<ReturnType<typeof adminListOptionsStrategyFilterRows>>;
 }> {
-  const [strategies, prefs] = await Promise.all([
+  const [strategies, prefs, strategyFilterRows] = await Promise.all([
     adminListOptionsStrategySummaries(),
-    adminListOptionsStrategyPreferenceSummaries()
+    adminListOptionsStrategyPreferenceSummaries(),
+    adminListOptionsStrategyFilterRows()
   ]);
-  return { strategies, prefs };
+  return { strategies, prefs, strategyFilterRows };
+}
+
+function formatRankTop(signals: ScannerRankedSignal[]): string {
+  if (signals.length === 0) {
+    return "";
+  }
+  return signals
+    .slice(0, 8)
+    .map((s) => `${s.underlying}:${s.confidence}`)
+    .join("|");
+}
+
+function applyPrefsFiltersToTargets(
+  merged: OptionScanTarget[],
+  strategyFilterRows: Awaited<ReturnType<typeof adminListOptionsStrategyFilterRows>>
+): { filtered: OptionScanTarget[]; prefsActive: boolean } {
+  const mergedFilters = mergeOptionsStrategyFilters(strategyFilterRows);
+  const prefsActive = mergedScannerFiltersActive(mergedFilters);
+  const filtered = filterOptionScanTargetsByMergedPrefs(merged, mergedFilters);
+  return { filtered, prefsActive };
 }
 
 async function loadTenantOptionPositions(scope: Record<string, unknown>): Promise<Position[]> {
@@ -165,7 +194,7 @@ export async function executeOptionsExpirationRollJob(input: {
     const scope = tenantFilter(tenantId);
     const market = resolveUsMarketDayContext(new Date());
 
-    const [portfolioCount, accountCount, { strategies, prefs }] = await Promise.all([
+    const [portfolioCount, accountCount, { strategies, prefs, strategyFilterRows }] = await Promise.all([
       db.collection(TENANT_PORTFOLIO_COLLECTION).countDocuments(scope),
       db.collection(ACCOUNT_COLLECTION).countDocuments(scope),
       loadStrategyInventory()
@@ -198,7 +227,7 @@ export async function executeOptionsExpirationRollJob(input: {
       const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
       return {
         status: "success",
-        output: `options-expiration-roll-manager: task_category=${taskCategoryTag} skipped=true reason=${reason} [${market.marketDate} ${market.timezone}] portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} roll_max_dte=${maxDte} duration_s=${durationSeconds}`,
+        output: `options-expiration-roll-manager: task_category=${taskCategoryTag} skipped=true reason=${reason} [${market.marketDate} ${market.timezone}] portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} strategy_filter_rows=${strategyFilterRows.length} roll_max_dte=${maxDte} duration_s=${durationSeconds}`,
         auditDetails: {
           skipped: true,
           taskCategory: taskCategoryTag,
@@ -219,7 +248,11 @@ export async function executeOptionsExpirationRollJob(input: {
     }
 
     const built = await buildMergedOptionScanTargets({ tenantId });
-    const filtered = built.merged.filter((t) => {
+    const { filtered: afterPrefs, prefsActive } = applyPrefsFiltersToTargets(
+      built.merged,
+      strategyFilterRows
+    );
+    const filtered = afterPrefs.filter((t) => {
       const dte = daysToExpirationFromYmd(t.expYmd);
       return dte >= 0 && dte <= maxDte;
     });
@@ -239,7 +272,9 @@ export async function executeOptionsExpirationRollJob(input: {
       grokCalls: 0,
       skippedBadRow: 0,
       fromPositions: 0,
-      fromWatchlist: 0
+      fromWatchlist: 0,
+      chainBatches: 0,
+      rankedSignals: []
     };
 
     await updateTenantMarketCalendarSnapshot({
@@ -255,7 +290,8 @@ export async function executeOptionsExpirationRollJob(input: {
     });
 
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
-    const recSummary = `targets_roll_window=${filtered.length} rec_examined=${recPass.examined} rec_stored=${recPass.stored} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated}`;
+    const rankTop = formatRankTop(recPass.rankedSignals);
+    const recSummary = `scan_targets=${built.merged.length} prefs_after=${afterPrefs.length} prefs_active=${prefsActive} targets_roll_window=${filtered.length} chain_batches=${recPass.chainBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_stored=${recPass.stored} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated}`;
     return {
       status: "success",
       output: `options-expiration-roll-manager: task_category=${taskCategoryTag} skipped=false roll_max_dte=${maxDte} portfolios=${portfolioCount} accounts=${accountCount} option_positions=${built.optionPositions} unique_underlyings=${built.uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
@@ -274,6 +310,12 @@ export async function executeOptionsExpirationRollJob(input: {
         uniqueUnderlyingCount: built.uniqueUnderlyings,
         rollMaxDte: maxDte,
         rollTargets: filtered.length,
+        strategyFilterRowCount: strategyFilterRows.length,
+        scanTargetsPrePrefs: built.merged.length,
+        scanTargetsPostPrefs: afterPrefs.length,
+        prefsFilterActive: prefsActive,
+        rankTopPreview: rankTop || null,
+        chainBatches: recPass.chainBatches,
         recommendationsExamined: recPass.examined,
         chainFailures: recPass.chainFailures,
         grokCalls: recPass.grokCalls,
@@ -313,7 +355,7 @@ export async function executeOptionsStrategyScannerJob(
     const scope = tenantFilter(tenantId);
     const market = resolveUsMarketDayContext(new Date());
 
-    const [portfolioCount, accountCount, { strategies, prefs }] = await Promise.all([
+    const [portfolioCount, accountCount, { strategies, prefs, strategyFilterRows }] = await Promise.all([
       db.collection(TENANT_PORTFOLIO_COLLECTION).countDocuments(scope),
       db.collection(ACCOUNT_COLLECTION).countDocuments(scope),
       loadStrategyInventory()
@@ -346,7 +388,7 @@ export async function executeOptionsStrategyScannerJob(
       const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
       return {
         status: "success",
-        output: `${OPTIONS_STRATEGY_SCANNER_SERVICE_ID}: task_category=${taskCategoryTag} skipped=true reason=${reason} [${market.marketDate} ${market.timezone}] portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} option_positions=0 unique_underlyings=0 slugs: ${slugPreview} duration_s=${durationSeconds}`,
+        output: `${OPTIONS_STRATEGY_SCANNER_SERVICE_ID}: task_category=${taskCategoryTag} skipped=true reason=${reason} [${market.marketDate} ${market.timezone}] portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} strategy_filter_rows=${strategyFilterRows.length} option_positions=0 unique_underlyings=0 slugs: ${slugPreview} duration_s=${durationSeconds}`,
         auditDetails: {
           skipped: true,
           taskCategory: taskCategoryTag,
@@ -367,8 +409,9 @@ export async function executeOptionsStrategyScannerJob(
 
     const built = await buildMergedOptionScanTargets({ tenantId });
     const { merged, optionPositions, uniqueUnderlyings, wlTargetsLength: wlTargetsLen } = built;
+    const { filtered: scanTargets, prefsActive } = applyPrefsFiltersToTargets(merged, strategyFilterRows);
 
-    const recPassRaw = await processOptionRecommendationsPass({ targets: merged, tenantId });
+    const recPassRaw = await processOptionRecommendationsPass({ targets: scanTargets, tenantId });
     const recPass = recPassRaw ?? {
       examined: 0,
       stored: 0,
@@ -380,7 +423,9 @@ export async function executeOptionsStrategyScannerJob(
       grokCalls: 0,
       skippedBadRow: 0,
       fromPositions: 0,
-      fromWatchlist: 0
+      fromWatchlist: 0,
+      chainBatches: 0,
+      rankedSignals: []
     };
 
     await updateTenantMarketCalendarSnapshot({
@@ -396,10 +441,11 @@ export async function executeOptionsStrategyScannerJob(
     });
 
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
-    const recSummary = `rec_examined=${recPass.examined} rec_from_pos=${recPass.fromPositions} rec_from_wl=${recPass.fromWatchlist} rec_stored=${recPass.stored} rec_updated=${recPass.updated} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated} alert_dedupe=${recPass.alertsSuppressedDeduped} hold_dismiss=${recPass.alertsDismissedOnHold} skipped_bad=${recPass.skippedBadRow}`;
+    const rankTop = formatRankTop(recPass.rankedSignals);
+    const recSummary = `scan_targets=${merged.length} prefs_after=${scanTargets.length} prefs_active=${prefsActive} chain_batches=${recPass.chainBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_from_pos=${recPass.fromPositions} rec_from_wl=${recPass.fromWatchlist} rec_stored=${recPass.stored} rec_updated=${recPass.updated} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated} alert_dedupe=${recPass.alertsSuppressedDeduped} hold_dismiss=${recPass.alertsDismissedOnHold} skipped_bad=${recPass.skippedBadRow}`;
     return {
       status: "success",
-      output: `${OPTIONS_STRATEGY_SCANNER_SERVICE_ID}: task_category=${taskCategoryTag} skipped=false market=open portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} option_positions=${optionPositions} unique_underlyings=${uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
+      output: `${OPTIONS_STRATEGY_SCANNER_SERVICE_ID}: task_category=${taskCategoryTag} skipped=false market=open portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} strategy_filter_rows=${strategyFilterRows.length} option_positions=${optionPositions} unique_underlyings=${uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
       auditDetails: {
         skipped: false,
         taskCategory: taskCategoryTag,
@@ -425,6 +471,12 @@ export async function executeOptionsStrategyScannerJob(
         recommendationSourcesFromPositions: recPass.fromPositions,
         recommendationSourcesFromWatchlist: recPass.fromWatchlist,
         watchlistOptionRows: wlTargetsLen,
+        strategyFilterRowCount: strategyFilterRows.length,
+        scanTargetsPrePrefs: merged.length,
+        scanTargetsPostPrefs: scanTargets.length,
+        prefsFilterActive: prefsActive,
+        rankTopPreview: rankTop || null,
+        chainBatches: recPass.chainBatches,
         durationSeconds
       }
     };

@@ -1,5 +1,6 @@
 package com.atxfinance.backend.admin
 
+import com.atxfinance.backend.audit.AuditEventService
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.identity.CoreUserService
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
@@ -25,6 +26,7 @@ class AdminPortfoliosService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
     private val coreUserService: CoreUserService,
+    private val auditEventService: AuditEventService,
 ) {
     private val brokerTypeRe = Pattern.compile("^[a-z][a-z0-9_]{0,31}$")
     private val riskProfiles = setOf("conservative", "balanced", "growth")
@@ -106,13 +108,25 @@ class AdminPortfoliosService(
             val saved =
                 mongoTemplate.findById(id, Document::class.java, props.portfoliosCollection)
                     ?: return Result.Err(500, "Could not create portfolio", emptyMap())
-            Result.Created(serializePortfolioRow(saved))
+            val row = serializePortfolioRow(saved)
+            auditEventService.insertEvent(
+                AdminPortfolioAudit.ENTITY_TYPE,
+                id.toHexString(),
+                "portfolio_created",
+                session,
+                mapOf(
+                    "ownerUserId" to userId,
+                    "name" to name,
+                    "isDefault" to isDefault,
+                ),
+            )
+            Result.Created(row)
         } catch (_: DuplicateKeyException) {
             Result.Err(400, "Could not create portfolio (duplicate name or invalid user?)", emptyMap())
         }
     }
 
-    fun patchPortfolio(portfolioId: String, body: Map<String, Any?>): Result {
+    fun patchPortfolio(session: ResolvedSession, portfolioId: String, body: Map<String, Any?>): Result {
         if (!ObjectId.isValid(portfolioId)) {
             return Result.Err(400, "Invalid request payload", mapOf("message" to "invalid portfolio id"))
         }
@@ -233,10 +247,20 @@ class AdminPortfoliosService(
         val updated =
             mongoTemplate.findById(pid, Document::class.java, props.portfoliosCollection)
                 ?: return Result.Err(404, "Portfolio not found", emptyMap())
+        auditEventService.insertEvent(
+            AdminPortfolioAudit.ENTITY_TYPE,
+            pid.toHexString(),
+            "portfolio_updated",
+            session,
+            mapOf(
+                "patchKeys" to body.keys.map { it.toString() }.sorted(),
+                "setDefault" to setDefault,
+            ),
+        )
         return Result.Ok(serializePortfolioRow(updated))
     }
 
-    fun deletePortfolio(portfolioId: String): Boolean {
+    fun deletePortfolio(session: ResolvedSession, portfolioId: String): Boolean {
         if (!ObjectId.isValid(portfolioId)) {
             return false
         }
@@ -245,6 +269,7 @@ class AdminPortfoliosService(
                 ?: return false
         val pid = portfolio.getObjectId("_id") ?: return false
         val ownerId = portfolioUserIdString(portfolio) ?: return false
+        val portfolioName = portfolio.getString("name") ?: ""
         val uidCrit = PortfolioMongoFilter.userIdCriteria(ownerId)
         val pf = Criteria.where("portfolioId").`is`(pid).andOperator(uidCrit)
         mongoTemplate.remove(Query.query(pf), props.positionsCollection)
@@ -254,7 +279,20 @@ class AdminPortfoliosService(
         mongoTemplate.remove(Query.query(pf), props.accountsCollection)
         mongoTemplate.remove(Query.query(pf), props.watchlistsCollection)
         val res = mongoTemplate.remove(Query.query(Criteria.where("_id").`is`(pid)), props.portfoliosCollection)
-        return res.deletedCount == 1L
+        val ok = res.deletedCount == 1L
+        if (ok) {
+            auditEventService.insertEvent(
+                AdminPortfolioAudit.ENTITY_TYPE,
+                portfolioId,
+                "portfolio_deleted",
+                session,
+                mapOf(
+                    "ownerUserId" to ownerId,
+                    "name" to portfolioName,
+                ),
+            )
+        }
+        return ok
     }
 
     private fun accountStatsForPortfolio(p: Document): Pair<Int, Double> {

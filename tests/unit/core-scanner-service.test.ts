@@ -8,6 +8,8 @@ const auditMocks = vi.hoisted(() => ({
 vi.mock("@/modules/audit/repository", () => auditMocks);
 
 import {
+    extractSummaryForDiff,
+    fingerprintUtf8,
     isCoreScannerCategory,
     logCoreScannerRunAudit,
     type ScheduledCategoryResult
@@ -68,6 +70,9 @@ describe("core-scanner-service", () => {
     expect(details?.alertsCreatedCsv).toContain("portfolioId,symbol,changePct,newPrice");
     expect(details?.alertsCreatedCsv).toContain("TSLA");
     expect(details?.taskRunId).toBe(runId.toHexString());
+    expect(details?.summaryForDiff).toMatchObject({ terminalStatus: "success", alertsCreated: 1 });
+    expect(typeof details?.outputFingerprint).toBe("string");
+    expect((details?.outputFingerprint as string).length).toBe(16);
   });
 
   it("uses explicit actor when provided", async () => {
@@ -129,5 +134,81 @@ describe("core-scanner-service", () => {
 
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
+  });
+
+  it("truncates huge task output and sets flags", async () => {
+    const taskId = new ObjectId();
+    const long = "x".repeat(50_000);
+    vi.stubEnv("CORE_SCANNER_AUDIT_OUTPUT_MAX_CHARS", "1000");
+    const result: ScheduledCategoryResult = { status: "success", output: long };
+
+    await logCoreScannerRunAudit({
+      task: {
+        _id: taskId,
+        name: "P",
+        category: "price_scanner",
+        scheduleCron: "0 * * * *",
+        enabled: true
+      },
+      triggeredBy: "scheduler:t",
+      result,
+      taskRunIdHex: "507f1f77bcf86cd799439088"
+    });
+
+    const payload = auditMocks.createAuditEvent.mock.calls[0]?.[0];
+    const details = payload?.details as Record<string, unknown>;
+    expect(details?.outputTruncated).toBe(true);
+    expect(details?.outputFullChars).toBe(50_000);
+    expect(String(details?.output).length).toBeLessThan(50_000);
+    expect(details?.outputFingerprint).toBe(fingerprintUtf8(long));
+    vi.unstubAllEnvs();
+  });
+
+  it("drops flat auditDetails when merged JSON exceeds cap", async () => {
+    const taskId = new ObjectId();
+    const fat: Record<string, unknown> = {};
+    for (let i = 0; i < 4000; i++) {
+      fat[`k${i}`] = "0123456789";
+    }
+    vi.stubEnv("CORE_SCANNER_AUDIT_DETAILS_JSON_MAX_CHARS", "8000");
+    const result: ScheduledCategoryResult = {
+      status: "success",
+      output: "ok",
+      auditDetails: fat
+    };
+
+    await logCoreScannerRunAudit({
+      task: {
+        _id: taskId,
+        name: "O",
+        category: "options_scanner",
+        scheduleCron: "0 9 * * *",
+        enabled: true
+      },
+      triggeredBy: "scheduler:t",
+      result,
+      taskRunIdHex: "507f1f77bcf86cd799439088"
+    });
+
+    const payload = auditMocks.createAuditEvent.mock.calls[0]?.[0];
+    const details = payload?.details as Record<string, unknown>;
+    expect(details?.auditDetailsOversize).toBe(true);
+    expect(Array.isArray(details?.auditDetailKeys)).toBe(true);
+    vi.unstubAllEnvs();
+  });
+
+  it("extractSummaryForDiff picks preferred scanner keys", () => {
+    const s = extractSummaryForDiff(
+      {
+        portfolioCount: 3,
+        alertsCreated: 2,
+        noise: "x".repeat(500)
+      },
+      "success"
+    );
+    expect(s.terminalStatus).toBe("success");
+    expect(s.portfolioCount).toBe(3);
+    expect(s.alertsCreated).toBe(2);
+    expect(s.noise).toBeUndefined();
   });
 });

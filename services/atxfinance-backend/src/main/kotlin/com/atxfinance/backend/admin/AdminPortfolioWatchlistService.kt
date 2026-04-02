@@ -1,6 +1,8 @@
 package com.atxfinance.backend.admin
 
+import com.atxfinance.backend.audit.AuditEventService
 import com.atxfinance.backend.config.AtxfinanceProperties
+import com.atxfinance.backend.session.ResolvedSession
 import com.atxfinance.backend.portfolio.BsonJson
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
 import com.atxfinance.backend.portfolio.WatchlistSymbolCodec
@@ -23,6 +25,7 @@ class AdminPortfolioWatchlistService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
     private val adminPortfolioAccountsService: AdminPortfolioAccountsService,
+    private val auditEventService: AuditEventService,
 ) {
     private val defaultWatchlistName = "DefaultWatchlist"
     private val defaultSymbol = "TSLA"
@@ -43,6 +46,7 @@ class AdminPortfolioWatchlistService(
     }
 
     fun patchWatchlist(
+        session: ResolvedSession,
         portfolioId: String,
         addSymbols: List<String>?,
         addEntries: List<Map<String, Any?>>?,
@@ -179,6 +183,28 @@ class AdminPortfolioWatchlistService(
         val reloaded =
             mongoTemplate.findById(id, Document::class.java, props.watchlistsCollection)
                 ?: return PatchResult.NotFoundWatchlist
+        val entrySymbolsCsv =
+            addEntries
+                ?.mapNotNull { (it["symbol"] as? String)?.trim()?.uppercase() }
+                ?.filter { it.isNotEmpty() }
+                ?.let { csvSymbols(it) }
+        val details =
+            mutableMapOf<String, Any?>(
+                "watchlistId" to id.toHexString(),
+                "dedupe" to (dedupe == true),
+                "riskProfileTouched" to riskProfilePresent,
+                "outlookTouched" to outlookPresent,
+            )
+        csvSymbols(addSymbols)?.let { details["symbolsAddedCsv"] = it }
+        csvSymbols(removeSymbols)?.let { details["symbolsRemovedCsv"] = it }
+        entrySymbolsCsv?.let { details["addEntriesSymbolsCsv"] = it }
+        auditEventService.insertEvent(
+            AdminPortfolioAudit.ENTITY_TYPE,
+            portfolioId,
+            "watchlist_patched",
+            session,
+            details,
+        )
         return PatchResult.Ok(mapOf("data" to serializeWatchlist(reloaded)))
     }
 

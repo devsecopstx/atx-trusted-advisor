@@ -1,6 +1,8 @@
 package com.atxfinance.backend.admin
 
+import com.atxfinance.backend.audit.AuditEventService
 import com.atxfinance.backend.config.AtxfinanceProperties
+import com.atxfinance.backend.session.ResolvedSession
 import com.atxfinance.backend.portfolio.BsonJson
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
 import org.bson.Document
@@ -22,6 +24,7 @@ class AdminPortfolioRecommendationsService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
     private val adminPortfolioAccountsService: AdminPortfolioAccountsService,
+    private val auditEventService: AuditEventService,
 ) {
 
     fun list(portfolioId: String): List<Map<String, Any?>>? {
@@ -38,7 +41,7 @@ class AdminPortfolioRecommendationsService(
             .map { toJson(it) }
     }
 
-    fun create(portfolioId: String, body: Map<String, Any?>): Document? {
+    fun create(session: ResolvedSession, portfolioId: String, body: Map<String, Any?>): Document? {
         val scope = adminPortfolioAccountsService.resolvePortfolioOwnerScope(portfolioId) ?: return null
         val pid = scope.portfolio.getObjectId("_id") ?: return null
         val symbol =
@@ -70,10 +73,22 @@ class AdminPortfolioRecommendationsService(
         doc["updatedAt"] = now
         mongoTemplate.insert(doc, props.portfolioRecommendationsCollection)
         val id = doc.getObjectId("_id") ?: return null
-        return mongoTemplate.findById(id, Document::class.java, props.portfolioRecommendationsCollection)
+        val saved = mongoTemplate.findById(id, Document::class.java, props.portfolioRecommendationsCollection) ?: return null
+        auditEventService.insertEvent(
+            AdminPortfolioAudit.ENTITY_TYPE,
+            portfolioId,
+            "recommendation_created",
+            session,
+            mapOf(
+                "recommendationId" to id.toHexString(),
+                "symbol" to symbol,
+                "action" to action,
+            ),
+        )
+        return saved
     }
 
-    fun patch(portfolioId: String, recommendationId: String, body: Map<String, Any?>): Document? {
+    fun patch(session: ResolvedSession, portfolioId: String, recommendationId: String, body: Map<String, Any?>): Document? {
         if (!ObjectId.isValid(recommendationId)) {
             return null
         }
@@ -163,10 +178,19 @@ class AdminPortfolioRecommendationsService(
         }
         update.set("updatedAt", now)
         mongoTemplate.updateFirst(Query.query(filter), update, props.portfolioRecommendationsCollection)
-        return mongoTemplate.findOne(Query.query(filter), Document::class.java, props.portfolioRecommendationsCollection)
+        val out =
+            mongoTemplate.findOne(Query.query(filter), Document::class.java, props.portfolioRecommendationsCollection)
+        auditEventService.insertEvent(
+            AdminPortfolioAudit.ENTITY_TYPE,
+            portfolioId,
+            "recommendation_updated",
+            session,
+            mapOf("recommendationId" to recommendationId),
+        )
+        return out
     }
 
-    fun delete(portfolioId: String, recommendationId: String): Boolean {
+    fun delete(session: ResolvedSession, portfolioId: String, recommendationId: String): Boolean {
         if (!ObjectId.isValid(recommendationId)) {
             return false
         }
@@ -182,7 +206,17 @@ class AdminPortfolioRecommendationsService(
                 scope.tenantIdHex,
             )
         val res = mongoTemplate.remove(Query.query(filter), props.portfolioRecommendationsCollection)
-        return res.deletedCount == 1L
+        val ok = res.deletedCount == 1L
+        if (ok) {
+            auditEventService.insertEvent(
+                AdminPortfolioAudit.ENTITY_TYPE,
+                portfolioId,
+                "recommendation_deleted",
+                session,
+                mapOf("recommendationId" to recommendationId),
+            )
+        }
+        return ok
     }
 
     fun toJson(doc: Document): Map<String, Any?> =

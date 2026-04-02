@@ -13,6 +13,7 @@ type AuditEvent = {
     | "core_user"
     | "deploy_note_config"
     | "admin_delivery_channel"
+    | "admin_portfolio"
     | "xchat_session"
     | "core_scanner";
   entityId: string;
@@ -123,6 +124,7 @@ export function AuditConsole() {
             <option value="core_user">core_user</option>
             <option value="deploy_note_config">deploy_note_config</option>
             <option value="admin_delivery_channel">admin_delivery_channel</option>
+            <option value="admin_portfolio">admin_portfolio</option>
             <option value="xchat_session">xchat_session</option>
             <option value="core_scanner">core_scanner</option>
           </select>

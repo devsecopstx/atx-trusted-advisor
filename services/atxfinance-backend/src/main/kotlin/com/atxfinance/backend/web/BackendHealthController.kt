@@ -3,7 +3,9 @@ package com.atxfinance.backend.web
 import com.atxfinance.backend.config.MongoUriResolver
 import com.mongodb.client.MongoClient
 import org.bson.Document
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.core.env.Environment
+import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
@@ -15,6 +17,7 @@ import java.time.ZoneOffset
 class BackendHealthController(
     private val env: Environment,
     private val mongoClient: MongoClient,
+    private val stringRedisTemplate: ObjectProvider<StringRedisTemplate>,
 ) {
 
     /** Compatibility shim for load balancers / parity with core app health shape (see atx-docs/sre-ops/atxfinance-backend-http-api.md). */
@@ -40,6 +43,15 @@ class BackendHealthController(
                 "keys" to listOf("MONGODB_URI", "SPRING_DATA_MONGODB_URI", "MONGODB_URI_B64 (legacy alias)")
             )
         }
+        details["redis"] =
+            stringRedisTemplate.ifAvailable?.let { redis ->
+                try {
+                    redis.execute { conn -> conn.ping() }
+                    "ok"
+                } catch (e: Exception) {
+                    mapOf("status" to "error", "message" to (e.message ?: "redis error"))
+                }
+            } ?: mapOf("status" to "skipped", "reason" to "REDIS_URL not set or Redis disabled")
         val body = mapOf(
             "status" to "ok",
             "service" to "atxfinance-backend",
@@ -79,6 +91,16 @@ class BackendHealthController(
             mongoDetails["error"] = (e.message ?: "mongo error")
         }
 
+        val redisDetails: Map<String, Any?> =
+            stringRedisTemplate.ifAvailable?.let { redis ->
+                try {
+                    redis.execute { conn -> conn.ping() }
+                    mapOf<String, Any?>("status" to "ok")
+                } catch (e: Exception) {
+                    mapOf("status" to "error", "message" to (e.message ?: "redis error"))
+                }
+            } ?: mapOf("status" to "skipped", "reason" to "REDIS_URL not set or Redis disabled")
+
         val body = mapOf(
             "status" to "ok",
             "service" to (env.getProperty("spring.application.name") ?: "atxfinance-backend"),
@@ -86,10 +108,12 @@ class BackendHealthController(
             "activeProfiles" to profiles,
             "details" to mapOf(
                 "mongo" to mongoDetails,
+                "redis" to redisDetails,
                 "env" to mapOf(
                     "MONGODB_URI_present" to !System.getenv("MONGODB_URI").isNullOrBlank(),
                     "MONGODB_URI_B64_present" to !System.getenv("MONGODB_URI_B64").isNullOrBlank(),
                     "SPRING_DATA_MONGODB_URI_present" to !System.getenv("SPRING_DATA_MONGODB_URI").isNullOrBlank(),
+                    "REDIS_URL_present" to !System.getenv("REDIS_URL").isNullOrBlank(),
                     "DEFAULT_TENANT_SLUG" to (System.getenv("DEFAULT_TENANT_SLUG") ?: ""),
                     "TENANT_PORTFOLIO_ORG_KEY" to (System.getenv("TENANT_PORTFOLIO_ORG_KEY") ?: "")
                 )

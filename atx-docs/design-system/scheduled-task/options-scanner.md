@@ -15,7 +15,7 @@
 | **Job entrypoint** | `runOptionsStrategyScanner(task)` — `src/modules/strategy-options/options-strategy-scanner.ts` |
 | **Scheduled task routing** | `runScheduledCategory` → `options_scanner` **or** `daily_options_scanner` → same function — `src/modules/core-admin/task-runner.ts` |
 | **Admin schedule / cron** | `/admin/tasks` — `admin_scheduled_tasks`; default cron via `SCHEDULED_TASK_CATEGORY_DEFAULT_CRON` in `src/lib/scheduled-task-category-schema.ts`; manual run: `POST /api/admin/tasks/{taskId}/run` |
-| **Core scanner audit** | `isCoreScannerCategory` includes both categories — `logCoreScannerRunAudit` in `executeScheduledTask` (`task-runner.ts`) |
+| **Core scanner audit** | `isCoreScannerCategory` includes both categories — `logCoreScannerRunAudit` in `executeScheduledTask` (`task-runner.ts`); payloads include `summaryForDiff`, fingerprints, size caps (`301n` / `CORE_SCANNER_AUDIT_*`). |
 | **Slack run summary** | Optional: task `deliveryChannelTarget` → `admin_delivery_channels` (Slack webhook), same pattern as other scheduled tasks (`scheduled-task-slack-notify.ts`) |
 
 ### Current behavior (market-open path)
@@ -23,14 +23,25 @@
 When the US regular session gate says **open**, the job also:
 
 1. Counts **portfolios** and **accounts**; loads strategy catalog + preference summaries (same as before).
-2. Loads tenant-scoped **option positions** from `portfolio_positions`.
-3. Runs **`processOptionRecommendationsPass`** (`options-scanner-engine.ts`): batched Yahoo chains, rule-based + optional Grok rationale, upserts **`portfolio_recommendations`** (`[options-scanner]` notes), optional **`portfolio_alerts`** on SELL (capped per run).
+2. Loads **`options_strategy`** filter rows (`adminListOptionsStrategyFilterRows`) and merges JSON **`filters`** via **`mergeOptionsStrategyFilters`** (`options-scanner-prefs-filter.ts`) — denylist, allowlist union, DTE bounds, `optionTypes`, `sources`. Applies **`filterOptionScanTargetsByMergedPrefs`** before the recommendation pass (`scan_targets` / `prefs_after` / `prefs_active` in task output).
+3. Loads tenant-scoped **option positions** from `portfolio_positions` (and watchlist rows); builds merged scan targets, then prefs-filtered list.
+4. Runs **`processOptionRecommendationsPass`** (`options-scanner-engine.ts`): batched Yahoo chains (**`chain_batches`** = unique underlying|expiration groups), rule-based + optional Grok rationale, **`rankedSignals`** (top confidence, `rank_top=` in output), upserts **`portfolio_recommendations`** (`[options-scanner]` notes), optional **`portfolio_alerts`** on SELL (capped per run).
+
+**`filters` JSON (admin `options_strategy` documents):**
+
+| Field | Type | Merge rule |
+| --- | --- | --- |
+| `underlyingDenylist` | `string[]` | Union → block if ticker (uppercased) in set |
+| `underlyingAllowlist` | `string[]` | Union across strategies; if any non-empty allowlist exists, target must be in union |
+| `minDte` / `maxDte` | number | `max(minDte)`, `min(maxDte)` across rows |
+| `optionTypes` | `("call"\|"put")[]` | Union of types |
+| `sources` | `("position"\|"watchlist")[]` | Union |
 
 When the market gate **skips** (holiday / after hours), recommendations are not written; output still includes strategy/prefs inventory counts.
 
-Output includes `rec_examined=… rec_stored=…` and related fields. See **`options-scannerp2.md`** for env flags and detail.
+Output includes `scan_targets=… prefs_after=… chain_batches=… rank_top=… rec_examined=…` and related fields. See **`options-scannerp2.md`** for env flags and detail.
 
-**Tests:** `tests/unit/options-strategy-scanner.test.ts`, `tests/unit/options-scanner-engine.test.ts`.
+**Tests:** `tests/unit/options-strategy-scanner.test.ts`, `tests/unit/options-scanner-engine.test.ts`, `tests/unit/options-scanner-prefs-filter.test.ts`.
 
 ---
 
@@ -75,4 +86,4 @@ Intended integration point for the full engine: **`daily_options_scanner`** (and
 
 | Date | Change |
 |------|--------|
-| 2026-04-02 | Rewrote to match **`runOptionsStrategyScanner`** v1; separated roadmap; reviewer/SRE governance; open questions. |
+| 2026-04-02 | Rewrote to match **`runOptionsStrategyScanner`** v1; roadmap; governance. **270n:** merged `filters`, prefs-filtered targets, `chain_batches` + `rank_top`. **280:** umbrella in `strategy-engine.md`. |

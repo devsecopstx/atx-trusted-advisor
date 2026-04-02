@@ -45,10 +45,11 @@ class AdminPortfolioDeliveryChannelsController(
         @PathVariable portfolioId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
@@ -58,7 +59,7 @@ class AdminPortfolioDeliveryChannelsController(
         if (adminPortfolioAccountsService.findPortfolioById(portfolioId) == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Portfolio not found"))
         }
-        val doc = adminPortfolioDeliveryChannelsService.create(portfolioId, body)
+        val doc = adminPortfolioDeliveryChannelsService.create(g.session, portfolioId, body)
         if (doc == null || doc.getObjectId("_id") == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Could not create delivery channel"))
         }
@@ -74,14 +75,15 @@ class AdminPortfolioDeliveryChannelsController(
         @PathVariable channelId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
-        val updated = adminPortfolioDeliveryChannelsService.patch(portfolioId, channelId, body)
+        val updated = adminPortfolioDeliveryChannelsService.patch(g.session, portfolioId, channelId, body)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Delivery channel not found"))
         return ResponseEntity.ok(mapOf("data" to adminPortfolioDeliveryChannelsService.toJson(updated)))
     }
@@ -92,11 +94,12 @@ class AdminPortfolioDeliveryChannelsController(
         @PathVariable portfolioId: String,
         @PathVariable channelId: String,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
-        val ok = adminPortfolioDeliveryChannelsService.delete(portfolioId, channelId)
+        g as AdminGate.Ok
+        val ok = adminPortfolioDeliveryChannelsService.delete(g.session, portfolioId, channelId)
         if (!ok) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Delivery channel not found"))
         }

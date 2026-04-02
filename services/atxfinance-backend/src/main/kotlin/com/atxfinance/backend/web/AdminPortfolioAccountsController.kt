@@ -46,10 +46,11 @@ class AdminPortfolioAccountsController(
         @PathVariable portfolioId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (!ObjectId.isValid(portfolioId)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid portfolio id"))
         }
@@ -66,7 +67,7 @@ class AdminPortfolioAccountsController(
         val ext = body["extAccountId"] as? String
         val cash = (body["cashBalance"] as? Number)?.toDouble()
         val created =
-            adminPortfolioAccountsService.insertAccount(portfolioId, name, type, ext, cash)
+            adminPortfolioAccountsService.insertAccount(g.session, portfolioId, name, type, ext, cash)
                 ?: return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Could not create account"))
         val portfolio = adminPortfolioAccountsService.findPortfolioById(portfolioId)
         val tenantHex =
@@ -86,10 +87,11 @@ class AdminPortfolioAccountsController(
         @PathVariable accountId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
@@ -105,6 +107,7 @@ class AdminPortfolioAccountsController(
         val outlookPresent = body.containsKey("outlook")
         val updated =
             adminPortfolioAccountsService.patchAccount(
+                session = g.session,
                 portfolioId = portfolioId,
                 accountId = accountId,
                 name = name,
@@ -135,11 +138,12 @@ class AdminPortfolioAccountsController(
         @PathVariable portfolioId: String,
         @PathVariable accountId: String,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
-        val ok = adminPortfolioAccountsService.deleteAccount(portfolioId, accountId)
+        g as AdminGate.Ok
+        val ok = adminPortfolioAccountsService.deleteAccount(g.session, portfolioId, accountId)
         if (!ok) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 mapOf("error" to "Cannot delete (not found, or last account in portfolio)"),

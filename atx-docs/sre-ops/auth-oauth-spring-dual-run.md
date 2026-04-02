@@ -1,6 +1,6 @@
 # Auth / OAuth — Spring session + callback dual-run
 
-**Status:** Next.js is **authoritative** for OAuth start, PKCE, callback, and session cookie issuance. **atxfinance-backend** (Spring) **reads** the same signed `xf_core_session` cookie for BFF-proxied product APIs; it does **not** yet expose a production OAuth callback.
+**Status:** Next.js remains **default** for OAuth in production (login + callback). **atxfinance-backend** implements **parity** routes (`GET /api/auth/x/login`, `GET /api/auth/x/callback`) for dual-run; callback is used when BFF + `AUTH_CALLBACK_USE_SPRING` send traffic to Spring. Spring **reads** `xf_core_session` for all BFF-proxied product APIs. Optional **`REDIS_URL`** enables JVM PKCE storage and OAuth path rate limits — [spring-redis-memorystore.md](./spring-redis-memorystore.md).
 
 **Canonical migration plan:** [`api-consolidation-spring-backend.md`](./api-consolidation-spring-backend.md) — *Auth callback contract (approved)*.
 
@@ -20,8 +20,9 @@
 | Concern | Status |
 |---------|--------|
 | Parse `xf_core_session` | `SessionCookieParser` + `SessionCookieParserTest` — same signing secret rules as Next (`AUTH_SECRET` or `X_OAUTH_CLIENT_SECRET`). |
-| Issue session from OAuth | **Not implemented** — no `/api/auth/x/callback` on JVM in this repo yet. |
-| Redis PKCE store | **Not wired** for OAuth (Spring contract assumes 10-minute TTL keyed by `state`). Next stores PKCE in HTTP-only cookies (**30 minutes**, `OAUTH_FLOW_TTL_SECONDS` in `src/lib/auth.ts`). |
+| Issue session from OAuth | **`GET /api/auth/x/callback`** implemented on JVM (`AuthCallbackController` + `OAuthCallbackService`) — dual-run behind BFF + `AUTH_CALLBACK_USE_SPRING` per Next route. |
+| Redis PKCE store | **Wired when `REDIS_URL` is set** — `OAuthPkceRedisStore` (TTL default **600s**); callback falls back to verifier from Redis if cookies are missing. **`GET /api/auth/x/login`** on JVM stores verifier + sets cookies (parity with Next). See [spring-redis-memorystore.md](./spring-redis-memorystore.md). |
+| OAuth path rate limits | **When Redis on:** per-IP rolling minute limits on `/api/auth/x/login` and `/api/auth/x/callback` (defaults 30 / 60 per minute; **429** JSON). |
 
 ## Approved target contract vs gaps
 
@@ -29,7 +30,7 @@
 |---------------|--------------------|-----------|
 | Session authority | Spring only | Next issues session; Spring consumes cookie only. |
 | Cookie `SameSite` | `Strict` | Next uses `lax` (OAuth cross-site return needs careful testing before tightening). |
-| PKCE storage | Redis, TTL 10m (Spring target) | Next uses HTTP-only cookies, **30m** TTL (`OAUTH_FLOW_TTL_SECONDS`). |
+| PKCE storage | Redis, TTL 10m (Spring target) | **Implemented on JVM** when `REDIS_URL` set; Next still uses cookies (**30m**). Spring login also sets cookies for backward compatibility. |
 | Post-login `next` | Allowlisted paths; default `/dashboard` | Next ignores `next` on success; product uses `/admin` \| `/xchat`. Align allowlist with real routes (`/xchat`, `/portfolio`, `/admin`, …) before cutover. |
 | Failure `error` codes | `invalid_state`, `code_reused`, `missing_email`, `access_denied`, `generic` | Next emits **granular** codes (table below). Map or alias in Spring + login UI for dual-run. |
 

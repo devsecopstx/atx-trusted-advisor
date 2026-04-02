@@ -4,6 +4,7 @@ import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.session.ResolvedSession
 import org.bson.Document
 import org.bson.types.ObjectId
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -22,6 +23,7 @@ private data class SlotDef(
 class StrategyJobService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
+    private val strategyJobRedisQuota: ObjectProvider<StrategyJobRedisQuota>,
 ) {
 
     fun createJob(
@@ -30,12 +32,6 @@ class StrategyJobService(
         idempotencyKey: String?,
     ): CreateJobOutcome {
         val emailAccountId = normalizeEmailAccountId(session, emailAccountIdRaw)
-        val since = Date(System.currentTimeMillis() - HOUR_MS)
-        val count = countJobsSince(session, emailAccountId, since)
-        if (count >= props.strategyMaxJobsHourly) {
-            return CreateJobOutcome.RateLimited
-        }
-        val softWarn = count >= props.strategySoftWarnJobsHourly
 
         if (!idempotencyKey.isNullOrBlank()) {
             val idemSince = Date(System.currentTimeMillis() - IDEMPOTENCY_WINDOW_MS)
@@ -53,6 +49,24 @@ class StrategyJobService(
             if (existing != null) {
                 return CreateJobOutcome.Idempotent(existing)
             }
+        }
+
+        val quota = strategyJobRedisQuota.ifAvailable
+        val since = Date(System.currentTimeMillis() - HOUR_MS)
+        val softWarn: Boolean
+        val jobsInLastHourAfterCreate: Int
+        if (quota != null) {
+            val after = quota.tryReserveSlot(session.userId) ?: return CreateJobOutcome.RateLimited
+            val mongoCount = countJobsSince(session, emailAccountId, since)
+            softWarn = mongoCount >= props.strategySoftWarnJobsHourly
+            jobsInLastHourAfterCreate = maxOf(after, mongoCount + 1L).toInt()
+        } else {
+            val count = countJobsSince(session, emailAccountId, since)
+            if (count >= props.strategyMaxJobsHourly) {
+                return CreateJobOutcome.RateLimited
+            }
+            softWarn = count >= props.strategySoftWarnJobsHourly
+            jobsInLastHourAfterCreate = count + 1
         }
 
         val id = ObjectId()
@@ -74,11 +88,16 @@ class StrategyJobService(
         if (!idempotencyKey.isNullOrBlank()) {
             doc["idempotencyKey"] = idempotencyKey.trim()
         }
-        mongoTemplate.insert(doc, props.strategyJobsCollection)
+        try {
+            mongoTemplate.insert(doc, props.strategyJobsCollection)
+        } catch (e: Exception) {
+            quota?.releaseSlot(session.userId)
+            throw e
+        }
         return CreateJobOutcome.Created(
             doc = doc,
             softWarn = softWarn,
-            jobsInLastHourAfterCreate = count + 1,
+            jobsInLastHourAfterCreate = jobsInLastHourAfterCreate,
         )
     }
 

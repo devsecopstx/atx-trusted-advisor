@@ -48,10 +48,11 @@ class AdminPortfolioRecommendationsController(
         @PathVariable portfolioId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
@@ -61,7 +62,7 @@ class AdminPortfolioRecommendationsController(
         if (adminPortfolioAccountsService.findPortfolioById(portfolioId) == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Portfolio not found"))
         }
-        val doc = adminPortfolioRecommendationsService.create(portfolioId, body)
+        val doc = adminPortfolioRecommendationsService.create(g.session, portfolioId, body)
         if (doc == null || doc.getObjectId("_id") == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Could not create recommendation"))
         }
@@ -77,14 +78,15 @@ class AdminPortfolioRecommendationsController(
         @PathVariable recommendationId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
-        val updated = adminPortfolioRecommendationsService.patch(portfolioId, recommendationId, body)
+        val updated = adminPortfolioRecommendationsService.patch(g.session, portfolioId, recommendationId, body)
             ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Recommendation not found"))
         return ResponseEntity.ok(mapOf("data" to adminPortfolioRecommendationsService.toJson(updated)))
     }
@@ -95,11 +97,12 @@ class AdminPortfolioRecommendationsController(
         @PathVariable portfolioId: String,
         @PathVariable recommendationId: String,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
-        val ok = adminPortfolioRecommendationsService.delete(portfolioId, recommendationId)
+        g as AdminGate.Ok
+        val ok = adminPortfolioRecommendationsService.delete(g.session, portfolioId, recommendationId)
         if (!ok) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Recommendation not found"))
         }

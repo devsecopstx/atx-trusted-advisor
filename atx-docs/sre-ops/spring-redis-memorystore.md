@@ -1,0 +1,42 @@
+# Spring / Kotlin Redis (Memorystore) — PLAN 600
+
+**Sibling:** Next.js optional Redis (quotes + health) — [redis-cache-next.md](./redis-cache-next.md).
+
+## When it activates
+
+If **`REDIS_URL`** or **`SPRING_DATA_REDIS_URL`** is set to a `redis://` or `rediss://` URL, the backend enables:
+
+| Feature | Behavior |
+|--------|----------|
+| **Lettuce connection** | `AtxRedisConfiguration` — standalone host/port, password from URL, TLS when scheme is `rediss://`. |
+| **OAuth PKCE** | `OAuthPkceRedisStore` — key `xf:oauth:pkce:{state}`, TTL `OAUTH_PKCE_REDIS_TTL_SECONDS` (default **600**). `GET /api/auth/x/login` writes verifier; `GET /api/auth/x/callback` consumes it if cookies are missing. |
+| **Auth rate limits** | `AuthPathRateLimitFilter` — per client IP, rolling minute bucket (`X-Forwarded-For` first hop). Defaults: login **30**/min, callback **60**/min. Set to **0** to disable a limit. Env: `AUTH_RATE_LIMIT_LOGIN_PER_MINUTE`, `AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE`. |
+| **Strategy jobs** | `StrategyJobRedisQuota` — UTC hour bucket `xf:sj:hourly:{userId}:{yyyyMMddHH}`; primary fuse when Redis is on (Mongo count still read for `softWarn` / meta). On failed insert, quota is decremented. |
+| **Health** | `/api/health` and `/api/backend/health` include **`redis`** / `details.redis`: `ok` \| `error` \| `skipped`. |
+
+When **`REDIS_URL` is unset**, none of the above beans load; behavior matches pre-600 JVM (cookies-only OAuth context, Mongo-only strategy rate count, no auth filter).
+
+## TLS / `rediss://` vs plain
+
+Same operational rule as Next: if the port speaks **plain Redis** but the URL uses **`rediss://`**, set **`REDIS_TLS=false`** (or `app.atxfinance.redis.tls-plain-with-rediss=true`) so the client dials **without** TLS.
+
+## GCP Memorystore
+
+1. Create a **Memorystore for Redis** instance in the **same VPC / connector** as Cloud Run (or use Private Service Connect per your network design).
+2. Store the full URL in **Secret Manager** as `REDIS_URL` (same secret name can be mounted on **both** Next and JVM services if product wants shared keyspace — or use separate DB indexes / key prefixes intentionally).
+3. Grant the **Cloud Run runtime service account** secret accessor on that secret; bind `REDIS_URL=REDIS_URL:latest` on deploy.
+
+## Configuration reference (`application.yml`)
+
+Under `app.atxfinance.redis`:
+
+- `url` ← `${REDIS_URL:}`
+- `tls-plain-with-rediss` ← `${REDIS_TLS_PLAIN_WITH_REDISS:false}`
+- `pkce-ttl-seconds` ← `${OAUTH_PKCE_REDIS_TTL_SECONDS:600}`
+- `auth-login-limit-per-minute` ← `${AUTH_RATE_LIMIT_LOGIN_PER_MINUTE:30}`
+- `auth-callback-limit-per-minute` ← `${AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE:60}`
+- `oauth-flow-cookie-max-age-seconds` ← `${OAUTH_FLOW_TTL_SECONDS:1800}`
+
+## Deploy note (quota drift)
+
+The Redis strategy-job counter starts at **zero** when first enabled. Until the current hour bucket aligns with Mongo history, operators may temporarily allow more creations than a pure Mongo count would — acceptable for soft limits; tighten with a maintenance window or lower `STRATEGY_MAX_JOBS_HOURLY` during cutover if needed.

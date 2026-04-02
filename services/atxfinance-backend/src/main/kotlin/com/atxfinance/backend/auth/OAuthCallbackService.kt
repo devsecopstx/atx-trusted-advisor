@@ -4,6 +4,7 @@ import com.atxfinance.backend.session.SessionCookieWriter
 import com.atxfinance.backend.identity.OAuthIdentityService
 import com.atxfinance.backend.portfolio.DefaultPortfolioProvisionService
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.core.env.Environment
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -25,6 +26,7 @@ class OAuthCallbackService(
     private val oauthIdentityService: OAuthIdentityService,
     private val defaultPortfolioProvisionService: DefaultPortfolioProvisionService,
     private val sessionCookieWriter: SessionCookieWriter,
+    private val pkceRedisStore: ObjectProvider<OAuthPkceRedisStore>,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -40,10 +42,13 @@ class OAuthCallbackService(
         if (code.isBlank() || state.isBlank()) {
             return redirectToLogin(origin, "missing_oauth_callback_params")
         }
-        if (stateFromCookie.isNullOrBlank() || verifierFromCookie.isNullOrBlank()) {
+        val verifier =
+            verifierFromCookie?.takeIf { it.isNotBlank() }
+                ?: pkceRedisStore.ifAvailable?.consumeVerifier(state.trim())
+        if (verifier.isNullOrBlank()) {
             return redirectToLogin(origin, "missing_oauth_cookie_context")
         }
-        if (state != stateFromCookie) {
+        if (!stateFromCookie.isNullOrBlank() && state != stateFromCookie) {
             return redirectToLogin(origin, "invalid_oauth_state")
         }
 
@@ -60,7 +65,7 @@ class OAuthCallbackService(
 
         val tokenResponse = restTemplate.postForEntity(
             tokenUrl,
-            buildTokenRequest(code, callbackUrl, verifierFromCookie, clientId, clientSecret),
+            buildTokenRequest(code, callbackUrl, verifier, clientId, clientSecret),
             Map::class.java,
         )
         if (!tokenResponse.statusCode.is2xxSuccessful || tokenResponse.body == null) {

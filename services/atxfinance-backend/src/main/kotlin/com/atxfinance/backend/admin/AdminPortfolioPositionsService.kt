@@ -1,6 +1,8 @@
 package com.atxfinance.backend.admin
 
+import com.atxfinance.backend.audit.AuditEventService
 import com.atxfinance.backend.config.AtxfinanceProperties
+import com.atxfinance.backend.session.ResolvedSession
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
 import com.atxfinance.backend.portfolio.PositionValidationException
 import org.bson.Document
@@ -29,6 +31,7 @@ class AdminPortfolioPositionsService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
     private val adminPortfolioAccountsService: AdminPortfolioAccountsService,
+    private val auditEventService: AuditEventService,
 ) {
     private val isoDate = Pattern.compile("^\\d{4}-\\d{2}-\\d{2}$")
 
@@ -60,9 +63,28 @@ class AdminPortfolioPositionsService(
     }
 
     /** Same as Next `serializePosition` + `POST` response `data` object. */
-    fun upsertFromBodyReturningApiShape(portfolioId: String, accountId: String, body: Map<String, Any?>): Map<String, Any?> {
+    fun upsertFromBodyReturningApiShape(
+        session: ResolvedSession,
+        portfolioId: String,
+        accountId: String,
+        body: Map<String, Any?>,
+    ): Map<String, Any?> {
         val doc = upsertFromBody(portfolioId, accountId, body)
-        return serializePosition(doc)
+        val shape = serializePosition(doc)
+        val posId = shape["_id"] as? String
+        auditEventService.insertEvent(
+            AdminPortfolioAudit.ENTITY_TYPE,
+            portfolioId,
+            "position_upserted",
+            session,
+            mapOf(
+                "accountId" to accountId,
+                "positionId" to posId,
+                "positionType" to shape["type"],
+                "symbolOrLabel" to (shape["symbol"] ?: shape["label"] ?: ""),
+            ),
+        )
+        return shape
     }
 
     private fun upsertFromBody(portfolioId: String, accountId: String, body: Map<String, Any?>): Document {

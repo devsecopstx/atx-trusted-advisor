@@ -1,5 +1,7 @@
 # Redis cache (Next.js) — PLAN 600
 
+**Kotlin / Spring (Memorystore, PKCE, auth RL, strategy quota):** [spring-redis-memorystore.md](./spring-redis-memorystore.md).
+
 ## Reviewer implementation plan (phased)
 
 1. **Scope:** Optional server-side Redis for the Next.js Cloud Run service only (`src/lib/redis-client.ts`, watchlist Yahoo batch path, `/api/health`). Spring/Kotlin Memorystore remains a separate track.

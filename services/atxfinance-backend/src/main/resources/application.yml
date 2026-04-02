@@ -2,6 +2,11 @@ server:
   port: 8080
 
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
   application:
     name: atxfinance-backend
   servlet:
@@ -47,6 +52,13 @@ app:
     strategy-jobs-collection: ${STRATEGY_JOBS_COLLECTION:strategy_jobs}
     strategy-max-jobs-hourly: ${STRATEGY_MAX_JOBS_HOURLY:12}
     strategy-soft-warn-jobs-hourly: ${STRATEGY_SOFT_WARN_JOBS_HOURLY:8}
+    redis:
+      url: ${REDIS_URL:}
+      tls-plain-with-rediss: ${REDIS_TLS_PLAIN_WITH_REDISS:false}
+      pkce-ttl-seconds: ${OAUTH_PKCE_REDIS_TTL_SECONDS:600}
+      auth-login-limit-per-minute: ${AUTH_RATE_LIMIT_LOGIN_PER_MINUTE:30}
+      auth-callback-limit-per-minute: ${AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE:60}
+      oauth-flow-cookie-max-age-seconds: ${OAUTH_FLOW_TTL_SECONDS:1800}
   pubsub:
     project-id: ${PUBSUB_PROJECT_ID:}
     topic: ${PUBSUB_TOPIC:atxfinance-backend-requests}

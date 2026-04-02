@@ -79,14 +79,15 @@ class AdminPortfoliosController(
         @PathVariable portfolioId: String,
         @RequestBody(required = false) body: Map<String, Any?>?,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
+        g as AdminGate.Ok
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
-        return when (val r = adminPortfoliosService.patchPortfolio(portfolioId, body)) {
+        return when (val r = adminPortfoliosService.patchPortfolio(g.session, portfolioId, body)) {
             is AdminPortfoliosService.Result.Ok ->
                 ResponseEntity.ok(mapOf("data" to r.data))
             is AdminPortfoliosService.Result.Err ->
@@ -101,11 +102,12 @@ class AdminPortfoliosController(
         request: HttpServletRequest,
         @PathVariable portfolioId: String,
     ): ResponseEntity<Map<String, Any?>> {
-        when (val g = adminGate(request)) {
-            is AdminGate.Err -> return g.response
-            is AdminGate.Ok -> Unit
+        val g = adminGate(request)
+        if (g is AdminGate.Err) {
+            return g.response
         }
-        val ok = adminPortfoliosService.deletePortfolio(portfolioId)
+        g as AdminGate.Ok
+        val ok = adminPortfoliosService.deletePortfolio(g.session, portfolioId)
         if (!ok) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Portfolio not found"))
         }

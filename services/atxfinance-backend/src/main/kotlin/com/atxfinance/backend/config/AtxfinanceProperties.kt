@@ -1,6 +1,7 @@
 package com.atxfinance.backend.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.NestedConfigurationProperty
 
 @ConfigurationProperties(prefix = "app.atxfinance")
 data class AtxfinanceProperties(
@@ -36,4 +37,25 @@ data class AtxfinanceProperties(
     val strategyJobsCollection: String = "strategy_jobs",
     val strategyMaxJobsHourly: Int = 12,
     val strategySoftWarnJobsHourly: Int = 8,
+    @NestedConfigurationProperty
+    val redis: RedisProps = RedisProps(),
+)
+
+/** Optional Memorystore / Redis — empty [RedisProps.url] disables Redis-backed features. */
+data class RedisProps(
+    /** `redis://` or `rediss://` (same as Next `REDIS_URL`). */
+    val url: String = "",
+    /**
+     * When true, a `rediss://` URL is dialed as plain TCP (matches Next when `REDIS_TLS=false`
+     * against a non-TLS port).
+     */
+    val tlsPlainWithRediss: Boolean = false,
+    /** OAuth PKCE verifier row TTL (seconds). */
+    val pkceTtlSeconds: Long = 600,
+    /** Max GET `/api/auth/x/login` per client IP per rolling minute (0 = disable). */
+    val authLoginLimitPerMinute: Int = 30,
+    /** Max GET `/api/auth/x/callback` per client IP per rolling minute (0 = disable). */
+    val authCallbackLimitPerMinute: Int = 60,
+    /** PKCE + OAuth flow cookie Max-Age when Spring issues login redirect (align with Next: 30m). */
+    val oauthFlowCookieMaxAgeSeconds: Int = 1800,
 )
