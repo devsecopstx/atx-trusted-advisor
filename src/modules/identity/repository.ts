@@ -296,26 +296,28 @@ export async function linkGoogleAccountToUser(input: {
   const now = new Date();
   const sub = input.sub.trim();
   const existing = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
-  const unsetX =
-    existing?.xAccount?.xUserId && isGoogleLegacyXUserId(existing.xAccount.xUserId)
-      ? { xAccount: "" as const }
-      : {};
+  if (existing?.xAccount?.xUserId && isGoogleLegacyXUserId(existing.xAccount.xUserId)) {
+    await db.collection<CoreUser>(collections.users).updateOne(
+      { _id: input.userId },
+      { $unset: { xAccount: "" }, $set: { updatedAt: now } }
+    );
+  }
 
-  await db.collection<CoreUser>(collections.users).updateOne(
-    { _id: input.userId },
-    {
-      $set: {
-        "googleAccount.sub": sub,
-        "googleAccount.linkedAt": now,
-        "googleAccount.username": input.username,
-        "googleAccount.displayName": input.displayName,
-        "googleAccount.avatarUrl": input.avatarUrl,
-        updatedAt: now,
-        lastLoginAt: now
-      },
-      ...(Object.keys(unsetX).length > 0 ? { $unset: unsetX } : {})
-    }
-  );
+  const $set: Record<string, unknown> = {
+    "googleAccount.sub": sub,
+    "googleAccount.linkedAt": now,
+    "googleAccount.username": input.username,
+    updatedAt: now,
+    lastLoginAt: now
+  };
+  if (input.displayName !== undefined) {
+    $set["googleAccount.displayName"] = input.displayName;
+  }
+  if (input.avatarUrl !== undefined) {
+    $set["googleAccount.avatarUrl"] = input.avatarUrl;
+  }
+
+  await db.collection<CoreUser>(collections.users).updateOne({ _id: input.userId }, { $set });
 
   const user = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
   if (!user?._id) {

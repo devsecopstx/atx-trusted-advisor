@@ -48,12 +48,10 @@ class OAuthIdentityService(
             if (existingByEmail != null) {
                 val existingId = existingByEmail.getObjectId("_id")!!
                 val currentId = userDoc.getObjectId("_id")!!
-                if (existingId != currentId && canUserLogin(existingByEmail)) {
+                if (existingId != currentId) {
                     unlinkXAccount(currentId)
-                    userDoc = linkXAccount(existingId, xUserId, username, displayName, avatarUrl)
-                } else {
-                    userDoc = linkXAccount(currentId, xUserId, username, displayName, avatarUrl)
                 }
+                userDoc = linkXAccount(existingId, xUserId, username, displayName, avatarUrl)
             } else {
                 userDoc = ensureByEmail(emailFromProvider)
                 userDoc = linkXAccount(userDoc.getObjectId("_id")!!, xUserId, username, displayName, avatarUrl)

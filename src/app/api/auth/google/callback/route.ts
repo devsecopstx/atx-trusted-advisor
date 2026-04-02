@@ -252,16 +252,16 @@ export async function GET(request: Request) {
 
   let user: CoreUser | null = null;
 
+  // Google returns a verified email; `core_users.email` is the canonical registration identity.
+  // Always attach `googleAccount.sub` to that row if it exists, even when roles are still empty
+  // (pending access request). Otherwise sub stays on a stray row and approval never unlocks login.
   if (
     userByEmail?._id &&
     userByGoogle?._id &&
     !isSameUserId(userByEmail._id, userByGoogle._id)
   ) {
-    const shouldRelinkToApprovedEmailUser = canUserLogin(userByEmail.roles ?? []);
-    if (shouldRelinkToApprovedEmailUser) {
-      await unlinkGoogleIdentityFromUser({ userId: userByGoogle._id });
-      user = userByEmail;
-    }
+    await unlinkGoogleIdentityFromUser({ userId: userByGoogle._id });
+    user = userByEmail;
   }
 
   if (!user) {

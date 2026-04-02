@@ -8,6 +8,7 @@ const auditMocks = vi.hoisted(() => ({
 vi.mock("@/modules/audit/repository", () => auditMocks);
 
 import {
+    appendTenantIdToScheduledTaskOutput,
     extractSummaryForDiff,
     fingerprintUtf8,
     isCoreScannerCategory,
@@ -210,5 +211,38 @@ describe("core-scanner-service", () => {
     expect(s.portfolioCount).toBe(3);
     expect(s.alertsCreated).toBe(2);
     expect(s.noise).toBeUndefined();
+  });
+
+  it("appendTenantIdToScheduledTaskOutput prefixes once", () => {
+    const oid = new ObjectId();
+    expect(appendTenantIdToScheduledTaskOutput("done", oid)).toBe(
+      `tenantId=${oid.toHexString()} | done`
+    );
+    expect(appendTenantIdToScheduledTaskOutput("done", undefined)).toBe("tenantId=none | done");
+    const already = `tenantId=${oid.toHexString()} | x`;
+    expect(appendTenantIdToScheduledTaskOutput(already, oid)).toBe(already);
+  });
+
+  it("core_scanner audit details include tenantIdHex from task", async () => {
+    const taskId = new ObjectId();
+    const tenantId = new ObjectId();
+    await logCoreScannerRunAudit({
+      task: {
+        _id: taskId,
+        tenantId,
+        name: "P",
+        category: "price_scanner",
+        scheduleCron: "0 * * * *",
+        enabled: true
+      },
+      triggeredBy: "scheduler:t",
+      result: { status: "success", output: "ok" },
+      taskRunIdHex: "507f1f77bcf86cd799439088"
+    });
+    const details = auditMocks.createAuditEvent.mock.calls[0]?.[0]?.details as Record<
+      string,
+      unknown
+    >;
+    expect(details?.tenantIdHex).toBe(tenantId.toHexString());
   });
 });

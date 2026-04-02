@@ -10,6 +10,7 @@ import { notifyScheduledTaskSlackSummary } from "@/modules/core-admin/scheduled-
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { runUserAccessRequestsTask } from "@/modules/core-admin/user-access-requests-task";
 import {
+    appendTenantIdToScheduledTaskOutput,
     logCoreScannerRunAudit,
     type ScheduledCategoryResult
 } from "@/modules/scanner/core-scanner-service";
@@ -41,7 +42,7 @@ export async function executeScheduledTask(
     taskName: task.name,
     category: task.category,
     triggeredBy,
-    output: "Task accepted and started"
+    output: appendTenantIdToScheduledTaskOutput("Task accepted and started", task.tenantId)
   });
   if (!run._id) {
     throw new Error("Task run ID missing");
@@ -57,9 +58,15 @@ export async function executeScheduledTask(
   const completedAt = new Date();
   const durationMs = Math.max(1, completedAt.getTime() - startedAt.getTime());
 
+  const outputWithTenant = appendTenantIdToScheduledTaskOutput(execution.output, task.tenantId);
+  const executionForAudit: ScheduledCategoryResult = {
+    ...execution,
+    output: outputWithTenant
+  };
+
   await finalizeTaskRun(run._id, {
     status: execution.status,
-    output: execution.output,
+    output: outputWithTenant,
     durationMs,
     completedAt
   });
@@ -67,7 +74,7 @@ export async function executeScheduledTask(
   await notifyScheduledTaskSlackSummary({
     task,
     status: execution.status,
-    output: execution.output,
+    output: outputWithTenant,
     durationMs,
     runIdHex: run._id.toHexString(),
     triggeredBy
@@ -77,14 +84,14 @@ export async function executeScheduledTask(
     task,
     triggeredBy,
     actor: auditActor,
-    result: execution,
+    result: executionForAudit,
     taskRunIdHex: run._id.toHexString()
   });
 
   return {
     runId: run._id,
     status: execution.status,
-    output: execution.output
+    output: outputWithTenant
   };
 }
 

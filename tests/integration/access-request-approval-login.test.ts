@@ -416,6 +416,71 @@ describe("access request approval login flow", () => {
     );
   });
 
+  it("relinks X to the registration email user even before that user has a login-eligible role", async () => {
+    const staleUserId = "507f1f77bcf86cd7994390bb";
+    const staleUser = {
+      _id: {
+        toHexString: () => staleUserId
+      },
+      email: "x-stale@placeholder.atxfinance.local",
+      roles: [] as string[],
+      status: "active" as const
+    };
+    const registeredPendingUser = {
+      _id: {
+        toHexString: () => state.userId
+      },
+      email: "approved.user@atxfinance.ai",
+      roles: [] as string[],
+      status: "active" as const
+    };
+
+    identityMocks.getCoreUserByXIdentity.mockResolvedValueOnce(staleUser);
+    identityMocks.getCoreUserByEmail.mockResolvedValueOnce(registeredPendingUser);
+    identityMocks.linkXAccountToUser.mockImplementationOnce(async ({ userId }) => {
+      if (userId.toHexString() === state.userId) {
+        return registeredPendingUser;
+      }
+      return staleUser;
+    });
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "x-user-1",
+            username: "approved_user",
+            email: "approved.user@atxfinance.ai"
+          }
+        })
+      }) as typeof fetch;
+
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+
+    expect(identityMocks.unlinkXAccountFromUser).toHaveBeenCalledWith({
+      userId: staleUser._id
+    });
+    expect(identityMocks.linkXAccountToUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: registeredPendingUser._id,
+        xUserId: "x-user-1",
+        username: "approved_user"
+      })
+    );
+    expect(response.headers.get("location")).toContain("/xchat?error=access_request_pending");
+  });
+
   it("relinks stale X identity to approved email user and redirects to admin", async () => {
     const staleUserId = "507f1f77bcf86cd7994390aa";
     const staleUser = {

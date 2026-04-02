@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { ObjectId } from "mongodb";
+
 import { createAuditEvent } from "@/modules/audit/repository";
 import type { AuditActor } from "@/modules/audit/types";
 import type { ScheduledTask } from "@/modules/core-admin/types";
@@ -17,6 +19,22 @@ export type ScheduledCategoryResult = {
     newPrice: number;
   }>;
 };
+
+/**
+ * Prefixes `admin_task_runs.output` (and Slack / audit copies) with a stable tenant label.
+ * Skips if the string already starts with `tenantId=` (e.g. re-run or handler-supplied).
+ */
+export function appendTenantIdToScheduledTaskOutput(
+  output: string,
+  tenantId: ObjectId | undefined | null
+): string {
+  const trimmed = output.trimStart();
+  if (trimmed.startsWith("tenantId=")) {
+    return output;
+  }
+  const label = tenantId ? `tenantId=${tenantId.toHexString()}` : "tenantId=none";
+  return `${label} | ${output}`;
+}
 
 const CORE_SCANNER_CATEGORIES = new Set<ScheduledTask["category"]>([
   "price_scanner",
@@ -91,7 +109,8 @@ export function extractSummaryForDiff(
     "chainBatches",
     "watchlistOptionRows",
     "rollTargets",
-    "rollMaxDte"
+    "rollMaxDte",
+    "tenantIdHex"
   ]);
   let n = 0;
   const maxKeys = 48;
@@ -165,6 +184,7 @@ function buildCoreScannerAuditPayload(input: {
   const base: Record<string, unknown> = {
     taskName: task.name,
     category: task.category,
+    tenantIdHex: task.tenantId?.toHexString() ?? null,
     taskRunId: taskRunIdHex,
     triggeredBy,
     terminalStatus: result.status,

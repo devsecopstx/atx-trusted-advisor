@@ -240,21 +240,18 @@ export async function GET(request: Request) {
     }
     user = seeded.user;
   }
+  // Prefer the canonical `core_users` row for this email (guest registration, admin approval, etc.)
+  // whenever X returns an email claim — not only after that row has a login-eligible role. Otherwise
+  // X stays on a placeholder/stale user while the approved access request applies to the email user.
   if (user?._id && emailFromProvider) {
     const userByEmail = seededAdmin?.user ?? (await getCoreUserByEmail(emailFromProvider));
-    const approvedEmailUserId = userByEmail?._id;
-    if (approvedEmailUserId !== undefined) {
-      const shouldRelinkToApprovedEmailUser =
-        !isSameUserId(user._id, approvedEmailUserId) &&
-        canUserLogin(userByEmail?.roles ?? []);
-
-      if (shouldRelinkToApprovedEmailUser) {
-        await unlinkXAccountFromUser({ userId: user._id });
-        user = await linkXAccountToUser({
-          userId: approvedEmailUserId,
-          ...xIdentity
-        });
-      }
+    const emailUserId = userByEmail?._id;
+    if (emailUserId !== undefined && !isSameUserId(user._id, emailUserId)) {
+      await unlinkXAccountFromUser({ userId: user._id });
+      user = await linkXAccountToUser({
+        userId: emailUserId,
+        ...xIdentity
+      });
     }
   }
   if (!user) {

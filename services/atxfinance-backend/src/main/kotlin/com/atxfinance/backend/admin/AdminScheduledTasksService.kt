@@ -231,7 +231,7 @@ class AdminScheduledTasksService(
         runDoc["taskName"] = taskName
         runDoc["category"] = category
         runDoc["triggeredBy"] = triggeredBy
-        runDoc["output"] = "Task accepted and started"
+        runDoc["output"] = withTenantIdInTaskOutput("Task accepted and started", tenantOid)
         runDoc["status"] = "running"
         runDoc["startedAt"] = Date()
         tenantOid?.let { runDoc["tenantId"] = it }
@@ -251,11 +251,12 @@ class AdminScheduledTasksService(
                 }
                 val completedAt = Date()
                 val durationMs = maxOf(1L, completedAt.time - startedAt.time)
+                val outputStored = withTenantIdInTaskOutput(execOutput, tenantOid)
                 mongoTemplate.updateFirst(
                     Query.query(Criteria.where("_id").`is`(runId)),
                     Update().apply {
                         set("status", execStatus)
-                        set("output", execOutput)
+                        set("output", outputStored)
                         set("durationMs", durationMs)
                         set("completedAt", completedAt)
                     },
@@ -263,11 +264,16 @@ class AdminScheduledTasksService(
                 )
             } catch (e: Exception) {
                 val completedAt = Date()
+                val errOut =
+                    withTenantIdInTaskOutput(
+                        ("Execution error: " + (e.message ?: e.javaClass.simpleName)).take(500),
+                        tenantOid,
+                    )
                 mongoTemplate.updateFirst(
                     Query.query(Criteria.where("_id").`is`(runId)),
                     Update().apply {
                         set("status", "failed")
-                        set("output", ("Execution error: " + (e.message ?: e.javaClass.simpleName)).take(500))
+                        set("output", errOut)
                         set("completedAt", completedAt)
                     },
                     props.taskRunsCollection,
@@ -278,7 +284,7 @@ class AdminScheduledTasksService(
         return ExecutionResult(
             runIdHex = runId.toHexString(),
             status = "running",
-            output = "Task accepted and started",
+            output = withTenantIdInTaskOutput("Task accepted and started", tenantOid),
         )
     }
 
@@ -471,6 +477,16 @@ class AdminScheduledTasksService(
             null
         }
         else -> null
+    }
+
+    /** Matches Next.js `appendTenantIdToScheduledTaskOutput` for `admin_task_runs.output`. */
+    private fun withTenantIdInTaskOutput(output: String, tenantOid: ObjectId?): String {
+        val t = output.trimStart()
+        if (t.startsWith("tenantId=")) {
+            return output
+        }
+        val label = tenantOid?.toHexString()?.let { hex -> "tenantId=$hex" } ?: "tenantId=none"
+        return "$label | $output"
     }
 
     companion object {

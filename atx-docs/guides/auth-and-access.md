@@ -26,6 +26,14 @@ Session payload distinguishes:
 
 Reference: `src/modules/surface-policy.ts` and `src/proxy.ts`.
 
+## Guest registration MVP (X / Google)
+
+1. User submits **Register for access** on `/xchat` (`POST /api/access-requests/public`) with name, email, and plan. That **upserts `core_users` by normalized email** (lowercased, trimmed) and creates a **pending** access request for role `viewer`.
+2. A **global admin** approves the request in **Admin → Access requests**. Approval adds the login-eligible platform role and provisions default portfolio resources **on that same `core_users` document** (`userId` on the request).
+3. The user signs in with **X** or **Google**. The callback **always prefers the `core_users` row whose `email` matches the verified email from the provider** and **moves** `xAccount` / `googleAccount` onto that row if they were previously linked to another user (for example a placeholder X-only row). This keeps approval, subscription, and OAuth identity on one document per tenant’s user set.
+
+If X does not expose an email, the UI uses the **link email** step so the user can tie their X identity to the same email they registered with.
+
 ## Access request lifecycle
 
 State machine:

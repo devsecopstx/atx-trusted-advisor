@@ -54,7 +54,9 @@ Codes emitted by `src/app/api/auth/x/callback/route.ts` today (non-exhaustive fo
 | `tenant_bootstrap_failed` | Default tenant missing. |
 | `bootstrap_failed` | Session bootstrap exception (logged server-side). |
 
-**Test coverage today:** host canonicalization + happy-path branches are partially covered in `tests/smoke/oauth-host-normalization-smoke.test.ts` and `tests/integration/access-request-approval-login.test.ts`. **Early callback validation** is covered in `tests/smoke/oauth-callback-error-redirects.test.ts`.
+**Email-canonical OAuth (guest registration):** When X or Google returns a verified email, identity is **always** attached to the existing `core_users` row for that normalized email (unlinking `xAccount` / `googleAccount` from any other row first). This matches the access-request `userId` created at self-registration, including while the request is still pending. Next: `src/app/api/auth/x/callback/route.ts`, `src/app/api/auth/google/callback/route.ts`; Spring: `OAuthIdentityService`.
+
+**Test coverage today:** host canonicalization + happy-path branches are partially covered in `tests/smoke/oauth-host-normalization-smoke.test.ts` and `tests/integration/access-request-approval-login.test.ts`. **Early callback validation** is covered in `tests/smoke/oauth-callback-error-redirects.test.ts`. Google email-canonical relink: `tests/integration/google-oauth-email-canonical.test.ts`.
 
 ## Dual-run cutover checklist (operators)
 
