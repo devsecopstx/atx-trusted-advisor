@@ -3,11 +3,7 @@
 import type { ReactNode } from "react";
 
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
-import {
-    AppUserAccountRailSection,
-    AppUserOptionsRailSection,
-    AppUserResourcesRailSection
-} from "@/app/ui/app-user-rail-nav";
+import { AppUserOptionsRailSection, AppUserResourcesRailSection } from "@/app/ui/app-user-rail-nav";
 import { XchatGuestPanel } from "@/app/xchat/ui/xchat-guest-panel";
 import type { AccessRequestPlanValue } from "@/lib/access-request-plans";
 
@@ -37,11 +33,6 @@ export function XchatGuestReadonlyShell({
             isGlobalAdmin={false}
             railDisclosureDefaultOpen={false}
             showReferenceDocs={false}
-          />
-          <AppUserAccountRailSection
-            isGlobalAdmin={false}
-            railDisclosureDefaultOpen={false}
-            showSettingsLink={false}
           />
         </aside>
       }

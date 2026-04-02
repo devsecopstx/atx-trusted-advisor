@@ -159,19 +159,6 @@ function AccountSublink({ href, children, title }: AccountSublinkProps) {
   return <RailNavLink href={href} title={title}>{children}</RailNavLink>;
 }
 
-function AccountLegalLink() {
-  const pathname = usePathname() ?? "";
-  const active = pathname.startsWith("/legal");
-  return (
-    <Link
-      className={`app-user-rail-sublink${active ? " app-user-rail-sublink--active" : ""}`}
-      href="/legal/terms"
-    >
-      Legal
-    </Link>
-  );
-}
-
 export type AppUserRailNavProps = {
   isGlobalAdmin: boolean;
   /** When true, disclosure starts expanded. Default collapsed across product + xChat rails. */
@@ -287,6 +274,10 @@ export function AppUserAccountRailSection({
   railDisclosureDefaultOpen = false,
   showSettingsLink = true
 }: AppUserRailNavProps) {
+  if (!showSettingsLink) {
+    return null;
+  }
+
   return (
     <section className="app-user-rail-section" aria-label="Account">
       <RailDisclosure
@@ -295,21 +286,17 @@ export function AppUserAccountRailSection({
         title="Account"
       >
         <nav className="app-user-rail-sublinks" aria-label="Account links">
-          <RailNavLink href="/account/billing" title="ATX plans and Stripe checkout">
-            Plans &amp; billing
-          </RailNavLink>
-          <AccountLegalLink />
-          {showSettingsLink
-            ? isGlobalAdmin ? (
-                <AccountSublink href="/admin/manage_account">Settings</AccountSublink>
-              ) : (
-                <XfHoverHint hint="Workspace settings are available from Hub (admin)">
-                  <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
-                    Settings
-                  </span>
-                </XfHoverHint>
-              )
-            : null}
+          {isGlobalAdmin ? (
+            <AccountSublink href="/admin/manage_account" title="Workspace and account settings">
+              Settings
+            </AccountSublink>
+          ) : (
+            <XfHoverHint hint="Workspace settings are available from Hub (admin)">
+              <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
+                Settings
+              </span>
+            </XfHoverHint>
+          )}
         </nav>
       </RailDisclosure>
     </section>
@@ -321,7 +308,8 @@ export function AppUserManageWorkspaceRailSection({
   railDisclosureDefaultOpen = false,
   isGlobalAdmin = false,
   workspacePortfolioId = null,
-  railContext = null
+  railContext = null,
+  defaultBookLabels = null
 }: {
   railDisclosureDefaultOpen?: boolean;
   isGlobalAdmin?: boolean;
@@ -329,6 +317,8 @@ export function AppUserManageWorkspaceRailSection({
   workspacePortfolioId?: string | null;
   /** When set (product shell), renders user name and portfolio/account pickers inside this group. */
   railContext?: AppUserPublicRailContext | null;
+  /** xChat: resolved default portfolio + account labels; nested under this section, collapsed by default. */
+  defaultBookLabels?: { portfolioName: string; accountName: string } | null;
 }) {
   const rawPid =
     workspacePortfolioId?.trim() ||
@@ -390,6 +380,33 @@ export function AppUserManageWorkspaceRailSection({
              </RailNavLink>
             ) : null}
           </nav>
+          {defaultBookLabels ? (
+            <div className="app-user-manage-workspace__nested-default-book">
+              <RailDisclosure
+                defaultOpen={false}
+                icon={<BookIcon className="app-user-rail-disclosure__glyph" />}
+                title="Default book"
+              >
+                <div className="xchat-rail-book-card" aria-label="Default portfolio and account">
+                  <div className="xchat-rail-book-row">
+                    <span className="xchat-rail-book-k">Portfolio</span>
+                    <XfHoverHint hint="Open portfolio">
+                      <Link
+                        className="xchat-rail-book-v xchat-rail-book-v--link"
+                        href="/portfolio"
+                      >
+                        {defaultBookLabels.portfolioName}
+                      </Link>
+                    </XfHoverHint>
+                  </div>
+                  <div className="xchat-rail-book-row">
+                    <span className="xchat-rail-book-k">Account</span>
+                    <span className="xchat-rail-book-v">{defaultBookLabels.accountName}</span>
+                  </div>
+                </div>
+              </RailDisclosure>
+            </div>
+          ) : null}
         </>
       </RailDisclosure>
     </section>

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
     FormEvent,
     type KeyboardEvent,
@@ -771,31 +770,10 @@ export function XchatConversation({
         {!leftRailCollapsed ? (
           <div className="xchat-rail-body">
             <AppUserManageWorkspaceRailSection
+              defaultBookLabels={defaultBookLabels}
               isGlobalAdmin={isGlobalAdminSession}
               railDisclosureDefaultOpen={false}
             />
-            {defaultBookLabels ? (
-              <section
-                aria-label="Default portfolio and account"
-                className="xchat-rail-section xchat-rail-section--book"
-              >
-                <h3 className="xchat-rail-title xchat-rail-title--caps">Default book</h3>
-                <div className="xchat-rail-book-card">
-                  <div className="xchat-rail-book-row">
-                    <span className="xchat-rail-book-k">Portfolio</span>
-                    <XfHoverHint hint="Open portfolio">
-                      <Link className="xchat-rail-book-v xchat-rail-book-v--link" href="/portfolio">
-                        {defaultBookLabels.portfolioName}
-                      </Link>
-                    </XfHoverHint>
-                  </div>
-                  <div className="xchat-rail-book-row">
-                    <span className="xchat-rail-book-k">Account</span>
-                    <span className="xchat-rail-book-v">{defaultBookLabels.accountName}</span>
-                  </div>
-                </div>
-              </section>
-            ) : null}
             <section className="app-user-rail-section" aria-label="Persona">
               <RailDisclosure
                 defaultOpen={false}

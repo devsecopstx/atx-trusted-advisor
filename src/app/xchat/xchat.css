@@ -258,6 +258,43 @@
   background: color-mix(in srgb, var(--xf-loss-red, #f87171) 10%, transparent);
 }
 
+a.xchat-profile-menu__item--link {
+  text-decoration: none;
+  display: block;
+  box-sizing: border-box;
+}
+
+.xchat-profile-shortcuts {
+  margin-top: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.xchat-profile-appearance-details {
+  margin-top: 0.35rem;
+}
+
+.xchat-profile-appearance-summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+  padding: 0.45rem 0 0.15rem;
+  user-select: none;
+}
+
+.xchat-profile-appearance-summary::-webkit-details-marker {
+  display: none;
+}
+
+.xchat-profile-appearance-panel {
+  padding-top: 0.2rem;
+}
+
 .xchat-header-code {
   font-size: 0.75em;
   word-break: break-all;
@@ -2063,6 +2100,13 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
 
 .app-user-rail-disclosure__panel {
   padding: 0 0.4rem 0.5rem 0.55rem;
+}
+
+/* Default book nested under Manage workspace (xChat) */
+.app-user-manage-workspace__nested-default-book {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--xf-xchat-rail-border);
 }
 
 .app-user-rail-sublinks {

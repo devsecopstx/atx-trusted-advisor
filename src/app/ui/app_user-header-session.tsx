@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
 import { SendIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
@@ -140,7 +141,7 @@ export function AppUserHeaderSession({
           <button
             aria-controls={profilePopoverId}
             aria-expanded={profileOpen}
-            aria-label="Account, appearance, and actions"
+            aria-label="Account, plans, legal, appearance, and actions"
             className="xchat-header-session-menu-trigger"
             type="button"
             onClick={() => setProfileOpen((v) => !v)}
@@ -187,12 +188,29 @@ export function AppUserHeaderSession({
                 </p>
               ) : null}
 
-              <div className="admin-session-popover__section">
-                <p className="admin-session-popover__section-title" id={`${profilePopoverId}-appearance`}>
-                  Appearance
-                </p>
-                <XfThemePreferenceMenu aria-labelledby={`${profilePopoverId}-appearance`} />
-              </div>
+              <nav className="xchat-profile-shortcuts" aria-label="Plans and legal">
+                <Link
+                  className="xchat-profile-menu__item xchat-profile-menu__item--link"
+                  href="/account/billing"
+                  onClick={() => setProfileOpen(false)}
+                >
+                  Plans &amp; billing
+                </Link>
+                <Link
+                  className="xchat-profile-menu__item xchat-profile-menu__item--link"
+                  href="/legal/terms"
+                  onClick={() => setProfileOpen(false)}
+                >
+                  Legal
+                </Link>
+              </nav>
+
+              <details className="xchat-profile-appearance-details">
+                <summary className="xchat-profile-appearance-summary">Appearance</summary>
+                <div className="xchat-profile-appearance-panel">
+                  <XfThemePreferenceMenu aria-label="Appearance theme" />
+                </div>
+              </details>
 
               <div className="xchat-profile-menu" role="menu" aria-label="Account actions">
                 <button
