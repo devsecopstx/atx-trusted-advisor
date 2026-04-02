@@ -1,8 +1,10 @@
 # atxfinance-backend — Current State (Architecture & Features)
 
-Last updated: 2026-03-26
+Last updated: 2026-04-02
 
 Scope: Kotlin/Spring Boot service that acts as a scheduler/worker and thin HTTP API for portfolio, admin, strategy jobs, and RAG-support operations. Built and deployed from the monorepo (`services/atxfinance-backend`).
+
+**Roadmap & gaps (consolidated index):** [`.cursor/plans/release-checklist.md`](../../.cursor/plans/release-checklist.md) — priorities, BFF/auth deferred work, OptionsStrategyEngine (**245n**), audit lineage, Stripe follow-ons, branding/UI deferrals. **Canonical numbered backlog:** [`atx-docs/PLAN.md`](../PLAN.md).
 
 - Runtime: Kotlin, Spring Boot, JDK 21
 - Build: Gradle (`build.gradle.kts`), repo-root Dockerfile builds this module
@@ -55,7 +57,7 @@ Key env/config (examples)
 - `portfolio/` — portfolio CRUD, nested resources, payload normalization/validation
 - `admin/` — admin services (deploy notes, scheduled tasks, positions/accounts/watchlist, delivery channels)
 - `audit/` — audit writers and admin query surface
-- `strategy/` — options strategy job orchestration and Yahoo client
+- `strategy/` — options strategy job orchestration and Yahoo client (full **OptionsStrategyEngine** scoring pipeline is roadmap **245n** / product **280** — see [`xStrategyBuilder/strategy-engine.md`](./xStrategyBuilder/strategy-engine.md))
 - `rag/` — RAG file ingestion helpers (mime, chunker, xAI collection client)
 - `pubsub/` — Pub/Sub publisher config
 - `session/` — session cookie parsing/writing, roles, auth env secrets
@@ -103,7 +105,7 @@ OpenAPI: SpringDoc 2.x is configured in Gradle (see `atx-docs/sre-ops/atxfinance
 
 - Publisher bean created when `app.pubsub.project-id` and `app.pubsub.topic` are set
 - Uses `NoCredentialsProvider` by default locally; relies on ADC when deployed
-- DLQ topic name tracked in props (`dlqTopic`) for consumer wiring (consumer not yet provided here)
+- DLQ topic name tracked in props (`dlqTopic`) for consumer wiring — **subscriber/consumer not implemented in this module** (platform follow-on; see release checklist § Infra)
 
 
 ## 7) Auth & Session
@@ -152,8 +154,13 @@ Container/JAR
 - Exposes HTTP on `:8080`
 
 
+## Roadmap pointer (companion Next.js app)
+
+The Next.js core app (`src/app`, `src/modules`) owns **xChat** (`/api/xchat/*`), rich **persona governance**, and most **OAuth** session behavior today. BFF proxying to this service is enabled per `bff-proxy-routes.ts` when `ATXFINANCE_BACKEND_ORIGIN` is set; **xChat streaming stays Next-authoritative** until explicitly migrated. See **`PLAN.md`** § BFF routing gaps and **`api-consolidation-spring-backend.md`**.
+
 ---
 References
 - Service README: `services/atxfinance-backend/README.md`
 - SRE/API details: `atx-docs/sre-ops/atxfinance-backend-http-api.md`
+- Consolidated release / gap index: `.cursor/plans/release-checklist.md`
 - Portfolio & admin data contracts in `src/main/kotlin/com/atxfinance/backend` (packages noted above)
