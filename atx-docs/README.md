@@ -111,6 +111,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 | [super-agent-model157.mmd](./xchat/super-agent-model157.mmd) | Super-agent diagram (Mermaid) |
 | [branding/](./branding/) | Brand prompts, palette, marketing copy (reference assets) |
 | [design-system/](./design-system/) | Brand kit CSS/MD/HTML + `design-future-consideration.md` — imported by Next from `src/app/layout.tsx` |
+| [charts-apex.md](./design-system/charts-apex.md) | ApexCharts on xStrategyBuilder / xOptions (PLAN 230n); Chart.js removed |
 
 ---
 

@@ -6,6 +6,8 @@ Scope: Kotlin/Spring Boot service that acts as a scheduler/worker and thin HTTP 
 
 **Roadmap & gaps (consolidated index):** [`.cursor/plans/release-checklist.md`](../../.cursor/plans/release-checklist.md) — priorities, BFF/auth deferred work, OptionsStrategyEngine (**245n**), audit lineage, Stripe follow-ons, branding/UI deferrals. **Canonical numbered backlog:** [`atx-docs/PLAN.md`](../PLAN.md).
 
+**Charts (Next.js):** ApexCharts for xStrategyBuilder / xOptions — [charts-apex.md](./charts-apex.md). **Watchlist price alerts (Next scanner):** thresholds + cooldown documented in `PLAN.md` shipped **240n** (`src/modules/watchlist/price-alert-service.ts`).
+
 - Runtime: Kotlin, Spring Boot, JDK 21
 - Build: Gradle (`build.gradle.kts`), repo-root Dockerfile builds this module
 - Data: MongoDB (Spring Data Mongo)

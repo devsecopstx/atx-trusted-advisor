@@ -131,6 +131,49 @@ describe("PATCH /api/portfolios/:portfolioId/watchlist addEntries", () => {
     expect(json.data.symbols[0]?.entryPrice).toBe(250.5);
   });
 
+  it("forwards priceAlertMinAbsMovePercent in addEntries", async () => {
+    const addedAt = new Date("2026-01-15T00:00:00.000Z");
+    mutateMocks.mutatePortfolioWatchlistSymbols.mockResolvedValue({
+      _id: new ObjectId(),
+      tenantId: new ObjectId(),
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId: new ObjectId(),
+      name: "Default",
+      isDefault: true,
+      createdAt: addedAt,
+      updatedAt: addedAt,
+      symbols: [
+        {
+          symbol: "TSLA",
+          addedAt,
+          priceAlertMinAbsMovePercent: 3.5
+        }
+      ]
+    });
+
+    const res = await patchWatchlist(
+      new Request("http://test/api/portfolios/p1/watchlist", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          addEntries: [{ symbol: "TSLA", priceAlertMinAbsMovePercent: 3.5 }]
+        })
+      }),
+      { params: Promise.resolve({ portfolioId: "507f1f77bcf86cd799439033" }) }
+    );
+
+    expect(res.status).toBe(200);
+    expect(mutateMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
+      expect.objectContaining({
+        addEntries: [{ symbol: "TSLA", priceAlertMinAbsMovePercent: 3.5 }]
+      })
+    );
+    const json = (await res.json()) as {
+      data: { symbols: Array<{ priceAlertMinAbsMovePercent?: number }> };
+    };
+    expect(json.data.symbols[0]?.priceAlertMinAbsMovePercent).toBe(3.5);
+  });
+
   it("returns 400 when payload has no mutation fields", async () => {
     const res = await patchWatchlist(
       new Request("http://test", {

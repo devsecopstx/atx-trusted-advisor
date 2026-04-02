@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import * as repo from "@/modules/core-admin/repository";
-import {
-  DEFAULT_MIN_ABS_MOVE_PERCENT,
-  evaluateSignificantPriceMoves,
-  persistPriceMoveAlerts,
-  resolveMinMovePercent
-} from "@/modules/watchlist/price-alert-service";
 import * as notifications from "@/modules/notifications/portfolio-notification-service";
+import {
+    DEFAULT_MIN_ABS_MOVE_PERCENT,
+    evaluateSignificantPriceMoves,
+    persistPriceMoveAlerts,
+    resolveMinMovePercent
+} from "@/modules/watchlist/price-alert-service";
 
 describe("evaluateSignificantPriceMoves", () => {
   it("returns empty when no prior lastPrice", () => {
@@ -137,7 +137,7 @@ describe("persistPriceMoveAlerts", () => {
     const create = vi.spyOn(repo, "adminCreatePortfolioAlert").mockResolvedValue(null);
     const slack = vi
       .spyOn(notifications, "dispatchPortfolioDeskEventsToSlack")
-      .mockResolvedValue(undefined);
+      .mockResolvedValue({ targets: 0, postsOk: 0 });
 
     const r = await persistPriceMoveAlerts(
       portfolioId,
@@ -166,7 +166,7 @@ describe("persistPriceMoveAlerts", () => {
     });
     const slack = vi
       .spyOn(notifications, "dispatchPortfolioDeskEventsToSlack")
-      .mockResolvedValue(undefined);
+      .mockResolvedValue({ targets: 0, postsOk: 0 });
 
     const r = await persistPriceMoveAlerts(
       portfolioId,
@@ -191,7 +191,10 @@ describe("persistPriceMoveAlerts", () => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    vi.spyOn(notifications, "dispatchPortfolioDeskEventsToSlack").mockResolvedValue(undefined);
+    vi.spyOn(notifications, "dispatchPortfolioDeskEventsToSlack").mockResolvedValue({
+      targets: 0,
+      postsOk: 0
+    });
 
     const r = await persistPriceMoveAlerts(
       portfolioId,

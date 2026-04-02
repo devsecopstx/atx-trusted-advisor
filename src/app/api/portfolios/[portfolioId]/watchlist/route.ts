@@ -97,6 +97,7 @@ async function buildJsonPayload(
         strategy?: string;
         quantity?: number;
         entryPrice?: number;
+        priceAlertMinAbsMovePercent?: number;
         lastPrice?: number;
         lastUpdatedAt?: string;
         quote: SymbolLookupResult | null;

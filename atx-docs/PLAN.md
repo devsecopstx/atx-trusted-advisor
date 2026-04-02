@@ -12,10 +12,17 @@ Living backlog for atx app, xChat, admin, and BFF. **Frontend marketing details*
 
 _Completed slices are rolled off this section; only active backlog stays listed._
 
+### Shipped (reference)
+
+| Priority | Item | Notes |
+| -------- | ---- | ----- |
+| **230n** | **ApexCharts (desktop-first charts)** | `OptionsPayoffChart`, xOptions panels use ApexCharts; unused Chart.js deps removed. See [design-system/charts-apex.md](./design-system/charts-apex.md). |
+| **240n** | **Price alerts follow-on** | Per-row `priceAlertMinAbsMovePercent` on watchlist symbols; cooldown dedupe via `portfolio_alerts` (`adminHasRecentPriceAlertForSymbol`); optional env `PRICE_ALERT_COOLDOWN_MS` (default 4h). `PATCH …/watchlist` `addEntries` accepts the field. |
+
+### Active backlog
+
 | Priority | Item                               | Notes                                                                                                                                                                                                                                                                                                                                                                                                  |
 | -------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 230n     | **ApexCharts migration (desktop-first user surfaces)** | Next priority. Replace Chart.js usage in user product surfaces with ApexCharts (MIT), starting with `xStrategyBuilder` payoff chart (`OptionsPayoffChart`). Follow-on: portfolio analytics charts and shared chart wrapper defaults for desktop-first UX (xChat remains mobile-first). |
-| 240n     | **Price alerts (follow-on)**       | User thresholds / dedupe on top of shipped `PriceAlertService` v1 (`src/modules/watchlist/price-alert-service.ts`).                                                                                                                                                                                                                                                                                    |
 | 245n     | **OptionsStrategyEngine (core)**   | Kotlin `@Component` scoring pipeline for **`daily_options_scanner`**: context → chains → filter → fit score → legs → risk/reward → rationale → ranked recommendations. **Spec + diagram:** [strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) · [StrategyEngine.svg](./design-system/xStrategyBuilder/StrategyEngine.svg). **Team plan:** `.cursor/agents/reviewer.md` § OptionsStrategyEngine. Ship before **250** (notifications follow-on). |
 | 250n     | **Notifications (follow-on)**      | Email / SMS / push / in-app feed / retries beyond shipped Slack v1 (`src/modules/notifications/portfolio-notification-service.ts`).                                                                                                                                                                                                                                                              |
 | 270n     | **Options scanner (follow-on)**    | Chain scan, prefs filters, ranked output per `atx-docs/design-system/scheduled-task/options-scanner.md`.                                                                                                                                                                                                                                                                                               |
