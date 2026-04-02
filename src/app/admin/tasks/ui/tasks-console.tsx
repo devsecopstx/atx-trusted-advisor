@@ -99,12 +99,17 @@ const JOB_TYPE_LABELS: Record<ScheduledTaskDoc["category"], string> = {
   options_scanner: "options_scanner",
   user_access_requests: "user_access_requests",
   "sync-broker": "sync-broker",
-  rebalance: "rebalance",
+  rebalance: "rebalance (allocation drift)",
   compliance: "compliance",
   notifications: "notifications",
   "user-history": "user-history",
   watchlist_price_scanner: "watchlist_price_scanner (legacy)",
-  daily_options_scanner: "daily_options_scanner (legacy)"
+  daily_options_scanner: "daily_options_scanner (legacy)",
+  corporate_events_scanner: "corporate_events_scanner",
+  income_cash_flow_projector: "income_cash_flow_projector",
+  options_expiration_roll_manager: "options_expiration_roll_manager",
+  risk_concentration_scanner: "risk_concentration_scanner",
+  tax_loss_harvest_scanner: "tax_loss_harvest_scanner"
 };
 
 const TASKS_BASE = "/api/admin/tasks";

@@ -1,6 +1,6 @@
 # Scheduled scanners — Phase 3 plan (shared platform + tenant jobs)
 
-**Status:** Plan (not implemented). Builds on Phase 2 options scanner work (`options-scannerp2.md`, `options-scanner-engine.ts`) and the **admin tenant task** model (`schedule-tasks-admin.md`).
+**Status:** **3a–3c implemented in app `2.9.0`** — Mongo `scanner_option_chain_cache` + `scanner_circuit_state`, options scanner + income/roll jobs wired; new categories in `scheduled-task-category-schema.ts`, `task-runner.ts`, Kotlin `ALLOWED_CATEGORIES`. Builds on Phase 2 (`options-scannerp2.md`, `options-scanner-engine.ts`) and `schedule-tasks-admin.md`.
 
 **Goals**
 
@@ -87,10 +87,10 @@ Each row links the **design stub**; implementation order is suggested by depende
 
 ## Success criteria (Phase 3 exit)
 
-- [ ] Single **chain cache** + **circuit breaker** used by at least **two** job types (options scanner + one new).
-- [ ] **No duplicate Yahoo storm** when hourly tasks align — cache hit rate visible in logs/metrics.
-- [ ] Breaker **opens** under synthetic failure tests; **half-open** recovers.
-- [ ] New categories **admin-manageable** (list/create/run) with **documented** default schedules.
+- [x] Single **chain cache** + **circuit breaker** used by at least **two** job types (options scanner + income projector / roll manager).
+- [ ] **No duplicate Yahoo storm** when hourly tasks align — cache hit rate visible in logs/metrics (operational follow-up).
+- [ ] Breaker **opens** under synthetic failure tests; **half-open** recovers (optional integration test).
+- [x] New categories **admin-manageable** (list/create/run) with **documented** default schedules (`SCHEDULED_TASK_CATEGORY_DEFAULT_CRON`).
 - [ ] Each linked stub doc updated with **“Phase 3 — see scanners-phase3-plan.md”** when that job ships.
 
 ---

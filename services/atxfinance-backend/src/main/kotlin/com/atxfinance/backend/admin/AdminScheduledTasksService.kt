@@ -395,6 +395,12 @@ class AdminScheduledTasksService(
                 output =
                     "daily_options_scanner: Kotlin worker noop — options catalog check runs on Next.js task-runner."
             }
+            "corporate_events_scanner", "income_cash_flow_projector", "options_expiration_roll_manager",
+            "risk_concentration_scanner", "tax_loss_harvest_scanner" -> {
+                status = "success"
+                output =
+                    "Phase 3 scanner: Kotlin worker noop — execution runs on Next.js task-runner (category=$category)."
+            }
             else -> {
                 status = "failed"
                 output = "Unsupported task category for \"$taskName\"."
@@ -475,6 +481,11 @@ class AdminScheduledTasksService(
                 "user-history",
                 "watchlist_price_scanner",
                 "daily_options_scanner",
+                "corporate_events_scanner",
+                "income_cash_flow_projector",
+                "options_expiration_roll_manager",
+                "risk_concentration_scanner",
+                "tax_loss_harvest_scanner",
             )
         private const val FIVE_MIN_MS = 5L * 60L * 1000L
         private const val ONE_DAY_MS = 24L * 60L * 60L * 1000L

@@ -13,6 +13,14 @@ import {
     logCoreScannerRunAudit,
     type ScheduledCategoryResult
 } from "@/modules/scanner/core-scanner-service";
+import {
+    runCorporateEventsScanner,
+    runIncomeCashFlowProjector,
+    runOptionsExpirationRollManager,
+    runRebalanceScanner,
+    runRiskConcentrationScanner,
+    runTaxLossHarvestScanner
+} from "@/modules/scanner/phase3-scanner-jobs";
 import { executePriceScannerJob } from "@/modules/scanner/price-scanner-job";
 import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-strategy-scanner";
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
@@ -96,6 +104,24 @@ async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCateg
   if (task.category === "watchlist_price_scanner") {
     return runWatchlistPriceScanner(task);
   }
+  if (task.category === "corporate_events_scanner") {
+    return runCorporateEventsScanner(task);
+  }
+  if (task.category === "income_cash_flow_projector") {
+    return runIncomeCashFlowProjector(task);
+  }
+  if (task.category === "options_expiration_roll_manager") {
+    return runOptionsExpirationRollManager(task);
+  }
+  if (task.category === "risk_concentration_scanner") {
+    return runRiskConcentrationScanner(task);
+  }
+  if (task.category === "tax_loss_harvest_scanner") {
+    return runTaxLossHarvestScanner(task);
+  }
+  if (task.category === "rebalance") {
+    return runRebalanceScanner(task);
+  }
   const waitMs = 120 + Math.floor(Math.random() * 220);
   await new Promise((resolve) => setTimeout(resolve, waitMs));
 
@@ -104,11 +130,6 @@ async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCateg
       return {
         status: "success",
         output: `Broker sync completed for task "${task.name}".`
-      };
-    case "rebalance":
-      return {
-        status: "success",
-        output: `Rebalance analysis completed for task "${task.name}".`
       };
     case "compliance":
       return {

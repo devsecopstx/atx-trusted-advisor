@@ -94,7 +94,12 @@ export type ScheduledTask = {
     | "notifications"
     | "user-history"
     | "watchlist_price_scanner"
-    | "daily_options_scanner";
+    | "daily_options_scanner"
+    | "corporate_events_scanner"
+    | "income_cash_flow_projector"
+    | "options_expiration_roll_manager"
+    | "risk_concentration_scanner"
+    | "tax_loss_harvest_scanner";
   scheduleCron?: string;
   /** RRULE expression for rich recurrence; preferred over cron when present. */
   scheduleRRule?: string;

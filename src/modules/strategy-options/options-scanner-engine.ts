@@ -10,13 +10,11 @@ import {
     adminUpdateRecommendationForPortfolio
 } from "@/modules/core-admin/repository";
 import type { PortfolioAlert, PositionOptionType } from "@/modules/core-admin/types";
-import {
-    fetchYahooOptionChainForExpiration,
-    type OptionContractData
-} from "@/modules/strategy-options/options-chain";
+import { quoteUnderlyingForScanner } from "@/modules/scanner/scanner-yahoo-quote";
+import { fetchYahooOptionChainForScanner } from "@/modules/scanner/yahoo-option-chain-scanner";
+import type { OptionContractData } from "@/modules/strategy-options/options-chain";
 import type { OptionScanTarget, OptionSide } from "@/modules/strategy-options/options-scanner-targets";
 import { contractKeyForTarget } from "@/modules/strategy-options/options-scanner-targets";
-import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 const REC_COLL = "portfolio_recommendations";
 
@@ -350,6 +348,8 @@ async function dismissScannerAlertsForContract(
  */
 export async function processOptionRecommendationsPass(input: {
   targets: OptionScanTarget[];
+  /** Tenant scope for option-chain cache + Yahoo circuit breaker (scheduled scanners). */
+  tenantId?: ObjectId;
 }): Promise<OptionsScannerPassResult> {
   const env = scannerEnv();
   const result: OptionsScannerPassResult = {
@@ -366,7 +366,6 @@ export async function processOptionRecommendationsPass(input: {
     fromWatchlist: 0
   };
 
-  const yahoo = getYahooFinance2();
   let grokBudget = env.maxGrokCalls;
   let alertsBudget = env.maxAlertsPerRun;
   const alertCache = new Map<string, PortfolioAlert[]>();
@@ -410,16 +409,16 @@ export async function processOptionRecommendationsPass(input: {
     const underlying = sample.underlying;
     const expYmd = sample.expYmd;
     let stockPrice = sample.strike ?? 100;
-    try {
-      const q = await yahoo.quote(underlying);
-      stockPrice = q.regularMarketPrice ?? q.postMarketPrice ?? stockPrice;
-    } catch {
+    const q = await quoteUnderlyingForScanner(input.tenantId, underlying);
+    if (!q) {
       result.chainFailures += group.length;
       continue;
     }
+    stockPrice = q.regularMarketPrice ?? q.postMarketPrice ?? stockPrice;
 
     const dteRough = Math.max(1, daysToExpirationFromYmd(expYmd));
-    const chainResult = await fetchYahooOptionChainForExpiration(
+    const chainResult = await fetchYahooOptionChainForScanner(
+      { tenantId: input.tenantId },
       underlying,
       expYmd,
       stockPrice,

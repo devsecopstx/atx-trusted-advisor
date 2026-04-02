@@ -12,6 +12,11 @@ export const SCHEDULED_TASK_CATEGORIES = [
   "user-history",
   "watchlist_price_scanner",
   "daily_options_scanner",
+  "corporate_events_scanner",
+  "income_cash_flow_projector",
+  "options_expiration_roll_manager",
+  "risk_concentration_scanner",
+  "tax_loss_harvest_scanner",
 ] as const;
 
 export type ScheduledTaskCategory = (typeof SCHEDULED_TASK_CATEGORIES)[number];
@@ -19,17 +24,27 @@ export type ScheduledTaskCategory = (typeof SCHEDULED_TASK_CATEGORIES)[number];
 /** Weekday desk window: every 15m from 08:00–17:59 UTC (align cron TZ with your scheduler if needed). */
 export const DEFAULT_SCHEDULED_TASK_CRON = "0,15,30,45 8-17 * * 1-5";
 
+/** Post-US-close snapshots (UTC-oriented; adjust if scheduler TZ differs). */
+const EOD_US_CRON_UTC = "0 21 * * 1-5";
+const RISK_DAILY_CRON = "0 22 * * 1-5";
+const TAX_SCAN_DAILY_CRON = "0 23 * * *";
+
 export const SCHEDULED_TASK_CATEGORY_DEFAULT_CRON: Record<ScheduledTaskCategory, string> = {
   price_scanner: DEFAULT_SCHEDULED_TASK_CRON,
   options_scanner: DEFAULT_SCHEDULED_TASK_CRON,
   user_access_requests: DEFAULT_SCHEDULED_TASK_CRON,
   "sync-broker": DEFAULT_SCHEDULED_TASK_CRON,
-  rebalance: DEFAULT_SCHEDULED_TASK_CRON,
+  rebalance: EOD_US_CRON_UTC,
   compliance: DEFAULT_SCHEDULED_TASK_CRON,
   notifications: DEFAULT_SCHEDULED_TASK_CRON,
   "user-history": DEFAULT_SCHEDULED_TASK_CRON,
   watchlist_price_scanner: DEFAULT_SCHEDULED_TASK_CRON,
-  daily_options_scanner: DEFAULT_SCHEDULED_TASK_CRON
+  daily_options_scanner: DEFAULT_SCHEDULED_TASK_CRON,
+  corporate_events_scanner: "0,30 8-17 * * 1-5",
+  income_cash_flow_projector: EOD_US_CRON_UTC,
+  options_expiration_roll_manager: DEFAULT_SCHEDULED_TASK_CRON,
+  risk_concentration_scanner: RISK_DAILY_CRON,
+  tax_loss_harvest_scanner: TAX_SCAN_DAILY_CRON
 };
 
 export const scheduledTaskCategorySchema = z.enum(SCHEDULED_TASK_CATEGORIES);

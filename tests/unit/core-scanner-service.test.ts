@@ -24,6 +24,12 @@ describe("core-scanner-service", () => {
     expect(isCoreScannerCategory("options_scanner")).toBe(true);
     expect(isCoreScannerCategory("watchlist_price_scanner")).toBe(true);
     expect(isCoreScannerCategory("daily_options_scanner")).toBe(true);
+    expect(isCoreScannerCategory("corporate_events_scanner")).toBe(true);
+    expect(isCoreScannerCategory("income_cash_flow_projector")).toBe(true);
+    expect(isCoreScannerCategory("options_expiration_roll_manager")).toBe(true);
+    expect(isCoreScannerCategory("risk_concentration_scanner")).toBe(true);
+    expect(isCoreScannerCategory("tax_loss_harvest_scanner")).toBe(true);
+    expect(isCoreScannerCategory("rebalance")).toBe(true);
     expect(isCoreScannerCategory("sync-broker")).toBe(false);
   });
 

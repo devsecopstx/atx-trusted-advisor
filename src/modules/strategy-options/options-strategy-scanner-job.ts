@@ -12,7 +12,11 @@ import {
     resolveUsMarketDayContext,
     updateTenantMarketCalendarSnapshot
 } from "@/modules/scanner/tenant-market-calendar";
-import { processOptionRecommendationsPass } from "@/modules/strategy-options/options-scanner-engine";
+import {
+    daysToExpirationFromYmd,
+    processOptionRecommendationsPass
+} from "@/modules/strategy-options/options-scanner-engine";
+import type { OptionScanTarget } from "@/modules/strategy-options/options-scanner-targets";
 import {
     mergeOptionScanTargets,
     positionsToOptionScanTargets,
@@ -108,6 +112,184 @@ async function countOptionPositionsAndUnderlyings(
   return { optionPositions, uniqueUnderlyings };
 }
 
+/** Shared target merge for options scanner + Phase 3 expiration/roll job. */
+export async function buildMergedOptionScanTargets(input: {
+  tenantId?: ObjectId;
+}): Promise<{
+  merged: OptionScanTarget[];
+  optionPositions: number;
+  uniqueUnderlyings: number;
+  wlTargetsLength: number;
+  scope: Record<string, unknown>;
+}> {
+  const { tenantId } = input;
+  const scope = tenantFilter(tenantId);
+  const [countInfo, optionRows, watchlists] = await Promise.all([
+    countOptionPositionsAndUnderlyings(scope),
+    loadTenantOptionPositions(scope),
+    loadTenantWatchlists(scope)
+  ]);
+  const { optionPositions, uniqueUnderlyings } = countInfo;
+
+  const maxWl = Number.parseInt(process.env.OPTIONS_SCANNER_MAX_WATCHLIST_ROWS ?? "50", 10);
+  const maxPosCap = Number.parseInt(process.env.OPTIONS_SCANNER_MAX_POSITIONS ?? "60", 10);
+  const wlLimit = Number.isFinite(maxWl) && maxWl > 0 ? maxWl : 50;
+  const posLimit = Number.isFinite(maxPosCap) && maxPosCap > 0 ? maxPosCap : 60;
+  const posTargets = positionsToOptionScanTargets(optionRows.slice(0, 220));
+  const wlTargets = watchlistsToOptionScanTargets(watchlists, wlLimit);
+  const merged = mergeOptionScanTargets(posTargets, wlTargets).slice(0, posLimit + wlLimit);
+  return {
+    merged,
+    optionPositions,
+    uniqueUnderlyings,
+    wlTargetsLength: wlTargets.length,
+    scope
+  };
+}
+
+/**
+ * Options legs with DTE ≤ {@link OPTIONS_ROLL_MAX_DTE} (default 7) — uses same pipeline as options scanner
+ * with Mongo-backed chain cache + circuit breaker (Phase 3).
+ */
+export async function executeOptionsExpirationRollJob(input: {
+  tenantId?: ObjectId;
+}): Promise<ScheduledCategoryResult> {
+  const taskCategoryTag = "options_expiration_roll_manager";
+  const rollMaxDte = Number.parseInt(process.env.OPTIONS_ROLL_MAX_DTE ?? "7", 10);
+  const maxDte = Number.isFinite(rollMaxDte) && rollMaxDte >= 1 && rollMaxDte <= 60 ? rollMaxDte : 7;
+
+  try {
+    const { tenantId } = input;
+    const start = Date.now();
+    const db = await getDb();
+    const scope = tenantFilter(tenantId);
+    const market = resolveUsMarketDayContext(new Date());
+
+    const [portfolioCount, accountCount, { strategies, prefs }] = await Promise.all([
+      db.collection(TENANT_PORTFOLIO_COLLECTION).countDocuments(scope),
+      db.collection(ACCOUNT_COLLECTION).countDocuments(scope),
+      loadStrategyInventory()
+    ]);
+
+    const slugs = strategies.map((s) => s.slug).sort();
+    const slugPreview =
+      slugs.length === 0
+        ? "(none)"
+        : slugs.length <= 24
+          ? slugs.join(", ")
+          : `${slugs.slice(0, 24).join(", ")} …+${slugs.length - 24}`;
+    const itemsScanned = strategies.length + prefs.length;
+
+    if (!market.isBusinessDay || !market.marketWindowOpen) {
+      await updateTenantMarketCalendarSnapshot({
+        tenantId,
+        market,
+        symbolCount: 0,
+        quoteCount: 0,
+        portfolioCount,
+        accountCount,
+        holdingsCount: 0,
+        watchlistCount: 0,
+        sourceTaskCategory: "options_strategy_scanner"
+      });
+      const reason = market.isHoliday
+        ? `holiday (${market.holidayName ?? "market holiday"})`
+        : "outside market hours";
+      const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
+      return {
+        status: "success",
+        output: `options-expiration-roll-manager: task_category=${taskCategoryTag} skipped=true reason=${reason} [${market.marketDate} ${market.timezone}] portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} roll_max_dte=${maxDte} duration_s=${durationSeconds}`,
+        auditDetails: {
+          skipped: true,
+          taskCategory: taskCategoryTag,
+          marketDate: market.marketDate,
+          marketTimezone: market.timezone,
+          holiday: market.holidayName ?? null,
+          portfolioCount,
+          accountCount,
+          itemsScanned,
+          strategyCount: strategies.length,
+          preferenceCount: prefs.length,
+          slugCount: slugs.length,
+          optionPositionCount: 0,
+          uniqueUnderlyingCount: 0,
+          rollMaxDte: maxDte
+        }
+      };
+    }
+
+    const built = await buildMergedOptionScanTargets({ tenantId });
+    const filtered = built.merged.filter((t) => {
+      const dte = daysToExpirationFromYmd(t.expYmd);
+      return dte >= 0 && dte <= maxDte;
+    });
+
+    const recPassRaw = await processOptionRecommendationsPass({
+      targets: filtered,
+      tenantId
+    });
+    const recPass = recPassRaw ?? {
+      examined: 0,
+      stored: 0,
+      updated: 0,
+      alertsCreated: 0,
+      alertsSuppressedDeduped: 0,
+      alertsDismissedOnHold: 0,
+      chainFailures: 0,
+      grokCalls: 0,
+      skippedBadRow: 0,
+      fromPositions: 0,
+      fromWatchlist: 0
+    };
+
+    await updateTenantMarketCalendarSnapshot({
+      tenantId,
+      market,
+      symbolCount: built.uniqueUnderlyings,
+      quoteCount: 0,
+      portfolioCount,
+      accountCount,
+      holdingsCount: built.optionPositions,
+      watchlistCount: built.wlTargetsLength,
+      sourceTaskCategory: "options_strategy_scanner"
+    });
+
+    const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
+    const recSummary = `targets_roll_window=${filtered.length} rec_examined=${recPass.examined} rec_stored=${recPass.stored} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated}`;
+    return {
+      status: "success",
+      output: `options-expiration-roll-manager: task_category=${taskCategoryTag} skipped=false roll_max_dte=${maxDte} portfolios=${portfolioCount} accounts=${accountCount} option_positions=${built.optionPositions} unique_underlyings=${built.uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
+      auditDetails: {
+        skipped: false,
+        taskCategory: taskCategoryTag,
+        marketDate: market.marketDate,
+        marketTimezone: market.timezone,
+        portfolioCount,
+        accountCount,
+        itemsScanned,
+        strategyCount: strategies.length,
+        preferenceCount: prefs.length,
+        slugCount: slugs.length,
+        optionPositionCount: built.optionPositions,
+        uniqueUnderlyingCount: built.uniqueUnderlyings,
+        rollMaxDte: maxDte,
+        rollTargets: filtered.length,
+        recommendationsExamined: recPass.examined,
+        chainFailures: recPass.chainFailures,
+        grokCalls: recPass.grokCalls,
+        alertsCreated: recPass.alertsCreated,
+        durationSeconds
+      }
+    };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return {
+      status: "failed",
+      output: `options-expiration-roll-manager: task_category=${taskCategoryTag} failed: ${msg}`
+    };
+  }
+}
+
 /**
  * Unified options strategy scanner job for `options_scanner` and `daily_options_scanner`.
  *
@@ -117,7 +299,7 @@ async function countOptionPositionsAndUnderlyings(
  *
  * **Recommendations:** Yahoo chain per underlying+expiration (batched), rule + optional Grok rationale,
  * upsert `portfolio_recommendations` (`[options-scanner]` notes), alerts on SELL signals (capped per run).
- * **Not shipped:** circuit breaker, Prometheus — see `options-scannerp2.md`.
+ * **Phase 3:** Mongo option-chain cache + per-tenant Yahoo circuit breaker (`yahoo-option-chain-scanner`).
  */
 export async function executeOptionsStrategyScannerJob(
   input: OptionsStrategyScannerJobInput
@@ -183,22 +365,10 @@ export async function executeOptionsStrategyScannerJob(
       };
     }
 
-    const [countInfo, optionRows, watchlists] = await Promise.all([
-      countOptionPositionsAndUnderlyings(scope),
-      loadTenantOptionPositions(scope),
-      loadTenantWatchlists(scope)
-    ]);
-    const { optionPositions, uniqueUnderlyings } = countInfo;
+    const built = await buildMergedOptionScanTargets({ tenantId });
+    const { merged, optionPositions, uniqueUnderlyings, wlTargetsLength: wlTargetsLen } = built;
 
-    const maxWl = Number.parseInt(process.env.OPTIONS_SCANNER_MAX_WATCHLIST_ROWS ?? "50", 10);
-    const maxPosCap = Number.parseInt(process.env.OPTIONS_SCANNER_MAX_POSITIONS ?? "60", 10);
-    const wlLimit = Number.isFinite(maxWl) && maxWl > 0 ? maxWl : 50;
-    const posLimit = Number.isFinite(maxPosCap) && maxPosCap > 0 ? maxPosCap : 60;
-    const posTargets = positionsToOptionScanTargets(optionRows.slice(0, 220));
-    const wlTargets = watchlistsToOptionScanTargets(watchlists, wlLimit);
-    const merged = mergeOptionScanTargets(posTargets, wlTargets).slice(0, posLimit + wlLimit);
-
-    const recPassRaw = await processOptionRecommendationsPass({ targets: merged });
+    const recPassRaw = await processOptionRecommendationsPass({ targets: merged, tenantId });
     const recPass = recPassRaw ?? {
       examined: 0,
       stored: 0,
@@ -221,7 +391,7 @@ export async function executeOptionsStrategyScannerJob(
       portfolioCount,
       accountCount,
       holdingsCount: optionPositions,
-      watchlistCount: wlTargets.length,
+      watchlistCount: wlTargetsLen,
       sourceTaskCategory: "options_strategy_scanner"
     });
 
@@ -254,7 +424,7 @@ export async function executeOptionsStrategyScannerJob(
         skippedBadPositions: recPass.skippedBadRow,
         recommendationSourcesFromPositions: recPass.fromPositions,
         recommendationSourcesFromWatchlist: recPass.fromWatchlist,
-        watchlistOptionRows: wlTargets.length,
+        watchlistOptionRows: wlTargetsLen,
         durationSeconds
       }
     };
