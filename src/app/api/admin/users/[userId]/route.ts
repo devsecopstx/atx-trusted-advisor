@@ -6,6 +6,7 @@ import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { normalizeSubscriptionPlan, zSubscriptionPlan } from "@/lib/subscription-plan";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
+import { purgeAllDataAssociatedWithCoreUser } from "@/modules/core-admin/repository";
 import {
     deleteCoreUserById,
     getCoreUserById,
@@ -137,6 +138,18 @@ export async function DELETE(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
   }
 
+  if (session.userId === userId) {
+    return NextResponse.json({ error: "Cannot delete your own account from this console" }, { status: 400 });
+  }
+
+  const user = await getCoreUserById(new ObjectId(userId));
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const emailNormalized = user.email.trim().toLowerCase();
+  await purgeAllDataAssociatedWithCoreUser({ userIdHex: userId, emailNormalized });
+
   const deleted = await deleteCoreUserById(new ObjectId(userId));
   if (!deleted) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -150,6 +163,10 @@ export async function DELETE(request: Request, context: RouteContext) {
       userId: session.userId,
       email: session.email,
       username: session.username
+    },
+    details: {
+      purgeAssociatedData: true,
+      emailNormalized
     }
   });
 

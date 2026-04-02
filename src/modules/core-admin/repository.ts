@@ -3820,19 +3820,68 @@ export async function deleteAllPortfoliosOwnedByUser(userId: string): Promise<nu
 }
 
 /**
- * Removes tenant rows tied to a `core_users` id before deleting that user (OAuth merge / cleanup).
+ * Deletes app data tied to a `core_users` id (and optionally rows keyed by normalized email).
  * Does not delete the `core_users` document — caller must call `deleteCoreUserById` after.
+ *
+ * @param emailNormalizedForKeys — When null/empty (OAuth merge placeholder cleanup), skips deletes that
+ *   could touch another user with the same email (bootstrap profile by `emailNormalized`, bootstrap trace
+ *   tasks, `audit_login` by email).
  */
-export async function purgeEphemeralCoreUserScaffolding(userIdHex: string): Promise<void> {
+async function purgeCoreUserAssociatedData(
+  userIdHex: string,
+  emailNormalizedForKeys: string | null
+): Promise<void> {
   if (!ObjectId.isValid(userIdHex)) {
     return;
   }
   await deleteAllPortfoliosOwnedByUser(userIdHex);
   const db = await getDb();
   const oid = new ObjectId(userIdHex);
+  const uidQ = userIdQuery(userIdHex);
+
   await db.collection("core_tenant_memberships").deleteMany({ userId: oid });
   await db.collection<AccessRequest>(collections.accessRequests).deleteMany({ userId: userIdHex });
   await db.collection<UserAdminSettings>(collections.userSettings).deleteMany({ userId: userIdHex });
+
+  await db.collection<OptionsStrategyPreference>(collections.optionsStrategyPreferences).deleteMany(uidQ);
+  await db.collection("app_user_recommendations").deleteMany(uidQ);
+  await db.collection("xchat_logs").deleteMany({
+    $or: [{ userId: oid }, { userId: userIdHex }]
+  });
+  await db.collection("app_feature_daily_usage").deleteMany({ userId: userIdHex });
+  await db.collection("strategy_jobs").deleteMany(uidQ);
+
+  const em = emailNormalizedForKeys?.trim() ? emailNormalizedForKeys.trim().toLowerCase() : "";
+  if (em) {
+    await db.collection("audit_login").deleteMany({
+      $or: [{ userId: userIdHex }, { email: em }]
+    });
+    await db.collection("admin_user_bootstrap_profiles").deleteMany({
+      $or: [{ userId: userIdHex }, { emailNormalized: em }]
+    });
+    await db.collection<ScheduledTask>(collections.scheduledTasks).deleteMany({
+      name: `access-request-bootstrap:${em}`
+    });
+  } else {
+    await db.collection("audit_login").deleteMany({ userId: userIdHex });
+    await db.collection("admin_user_bootstrap_profiles").deleteMany({ userId: userIdHex });
+  }
+}
+
+/**
+ * Removes tenant rows tied to a `core_users` id before deleting that user (OAuth merge / cleanup).
+ * Does not delete the `core_users` document — caller must call `deleteCoreUserById` after.
+ */
+export async function purgeEphemeralCoreUserScaffolding(userIdHex: string): Promise<void> {
+  await purgeCoreUserAssociatedData(userIdHex, null);
+}
+
+/** Admin-only: full purge before removing `core_users`, including rows keyed by normalized email. */
+export async function purgeAllDataAssociatedWithCoreUser(input: {
+  userIdHex: string;
+  emailNormalized: string;
+}): Promise<void> {
+  await purgeCoreUserAssociatedData(input.userIdHex, input.emailNormalized);
 }
 
 export async function adminListAccountsForPortfolio(portfolioId: string): Promise<Account[]> {

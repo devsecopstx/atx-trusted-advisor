@@ -325,7 +325,28 @@ export function UserSettingsConsole() {
   }
 
   async function deleteUser(userId: string) {
-    setStatus("Deleting user...");
+    const row = approvedUsers.find((u) => u.userId === userId);
+    const email = row?.email ?? userId;
+    const message = [
+      "Permanent delete — this cannot be undone.",
+      "",
+      `User: ${email}`,
+      "",
+      "All data tied to this user id and email will be removed, including:",
+      "• Portfolios, accounts, positions, watchlists, and portfolio-scoped rows",
+      "• Tenant memberships and admin user settings",
+      "• Access requests, xChat logs, app recommendations, options strategy prefs",
+      "• Feature usage meters, strategy jobs, login audit rows for this user/email",
+      "• Bootstrap profile and access-request bootstrap trace tasks for this email",
+      "",
+      "Type DELETE to confirm."
+    ].join("\n");
+    const typed = window.prompt(message);
+    if (typed !== "DELETE") {
+      setStatus(typed === null ? "Delete cancelled" : "Delete cancelled — type DELETE exactly to confirm");
+      return;
+    }
+    setStatus("Deleting user and associated data...");
     try {
       await parseJson(
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" })

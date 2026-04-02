@@ -210,8 +210,12 @@ class AdminUsersService(
 
     fun deleteUser(session: ResolvedSession, userId: String): Boolean {
         if (!ObjectId.isValid(userId)) return false
+        val oid = ObjectId(userId)
+        val existing = mongoTemplate.findById(oid, Document::class.java, props.coreUsersCollection) ?: return false
+        val email = existing.getString("email")
+        purgeAllDataForCoreUser(userId, email)
         val res = mongoTemplate.remove(
-            Query.query(Criteria.where("_id").`is`(ObjectId(userId))),
+            Query.query(Criteria.where("_id").`is`(oid)),
             props.coreUsersCollection,
         )
         if (res.deletedCount != 1L) return false
@@ -220,8 +224,108 @@ class AdminUsersService(
             entityId = userId,
             action = "deleted",
             session = session,
+            details = mapOf(
+                "purgeAssociatedData" to true,
+                "emailNormalized" to (email?.let { normalizeEmail(it) } ?: ""),
+            ),
         )
         return true
+    }
+
+    /**
+     * Mirrors Next `purgeAllDataAssociatedWithCoreUser` / `purgeCoreUserAssociatedData`.
+     * [emailForKeying] null/blank skips email-keyed deletes (not used here; always pass core_users email when deleting).
+     */
+    private fun purgeAllDataForCoreUser(userId: String, emailForKeying: String?) {
+        val oid = ObjectId(userId)
+        val uidCrit = PortfolioMongoFilter.userIdCriteria(userId)
+        val portfolios =
+            mongoTemplate.find(
+                Query.query(uidCrit),
+                Document::class.java,
+                props.portfoliosCollection,
+            )
+        for (p in portfolios) {
+            val pid = p.getObjectId("_id") ?: continue
+            val ownerId =
+                when (val v = p["userId"]) {
+                    is String -> v.ifBlank { userId }
+                    is ObjectId -> v.toHexString()
+                    else -> userId
+                }
+            val oc = PortfolioMongoFilter.userIdCriteria(ownerId)
+            val pf = Criteria.where("portfolioId").`is`(pid).andOperator(oc)
+            mongoTemplate.remove(Query.query(pf), props.positionsCollection)
+            mongoTemplate.remove(Query.query(pf), props.portfolioRecommendationsCollection)
+            mongoTemplate.remove(Query.query(pf), props.portfolioAlertsCollection)
+            mongoTemplate.remove(Query.query(pf), props.portfolioDeliveryChannelsCollection)
+            mongoTemplate.remove(Query.query(pf), props.accountsCollection)
+            mongoTemplate.remove(Query.query(pf), props.watchlistsCollection)
+            mongoTemplate.remove(Query.query(Criteria.where("_id").`is`(pid)), props.portfoliosCollection)
+        }
+
+        mongoTemplate.remove(Query.query(Criteria.where("userId").`is`(oid)), props.coreTenantMembershipsCollection)
+        mongoTemplate.remove(
+            Query.query(
+                Criteria().orOperator(
+                    Criteria.where("userId").`is`(userId),
+                    Criteria.where("userId").`is`(oid),
+                ),
+            ),
+            props.accessRequestsCollection,
+        )
+        mongoTemplate.remove(
+            Query.query(
+                Criteria().orOperator(
+                    Criteria.where("userId").`is`(userId),
+                    Criteria.where("userId").`is`(oid),
+                ),
+            ),
+            props.adminUserSettingsCollection,
+        )
+
+        mongoTemplate.remove(Query.query(uidCrit), "options_strategy_preferences")
+        mongoTemplate.remove(Query.query(uidCrit), props.appUserRecommendationsCollection)
+        mongoTemplate.remove(
+            Query.query(
+                Criteria().orOperator(
+                    Criteria.where("userId").`is`(oid),
+                    Criteria.where("userId").`is`(userId),
+                ),
+            ),
+            props.xchatLogsCollection,
+        )
+        mongoTemplate.remove(Query.query(Criteria.where("userId").`is`(userId)), "app_feature_daily_usage")
+        mongoTemplate.remove(Query.query(uidCrit), props.strategyJobsCollection)
+
+        val em = emailForKeying?.trim()?.lowercase().orEmpty()
+        if (em.isNotEmpty()) {
+            mongoTemplate.remove(
+                Query.query(
+                    Criteria().orOperator(
+                        Criteria.where("userId").`is`(userId),
+                        Criteria.where("email").`is`(em),
+                    ),
+                ),
+                "audit_login",
+            )
+            mongoTemplate.remove(
+                Query.query(
+                    Criteria().orOperator(
+                        Criteria.where("userId").`is`(userId),
+                        Criteria.where("emailNormalized").`is`(normalizeEmail(em)),
+                    ),
+                ),
+                props.adminUserBootstrapProfilesCollection,
+            )
+            mongoTemplate.remove(
+                Query.query(Criteria.where("name").`is`("access-request-bootstrap:$em")),
+                props.scheduledTasksCollection,
+            )
+        } else {
+            mongoTemplate.remove(Query.query(Criteria.where("userId").`is`(userId)), "audit_login")
+            mongoTemplate.remove(Query.query(Criteria.where("userId").`is`(userId)), props.adminUserBootstrapProfilesCollection)
+        }
     }
 
     fun patchRole(session: ResolvedSession, userId: String, role: String): Map<String, Any?>? {

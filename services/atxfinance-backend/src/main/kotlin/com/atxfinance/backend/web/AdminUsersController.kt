@@ -159,6 +159,10 @@ class AdminUsersController(
         if (!ObjectId.isValid(userId)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid user id"))
         }
+        if (session.userId == userId) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(mapOf("error" to "Cannot delete your own account from this console"))
+        }
         val ok = adminUsersService.deleteUser(session, userId)
         if (!ok) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "User not found"))

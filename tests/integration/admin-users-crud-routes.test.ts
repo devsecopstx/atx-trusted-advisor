@@ -20,9 +20,20 @@ const auditMocks = vi.hoisted(() => ({
   listLatestAuditEventsForEntities: vi.fn()
 }));
 
+const coreAdminRepoMocks = vi.hoisted(() => ({
+  purgeAllDataAssociatedWithCoreUser: vi.fn().mockResolvedValue(undefined)
+}));
+
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
+vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/core-admin/repository")>();
+  return {
+    ...actual,
+    purgeAllDataAssociatedWithCoreUser: coreAdminRepoMocks.purgeAllDataAssociatedWithCoreUser
+  };
+});
 
 import {
     DELETE as deleteUser,
@@ -141,6 +152,11 @@ describe("admin users CRUD routes", () => {
       params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
     });
     expect(response.status).toBe(200);
+    expect(identityMocks.getCoreUserById).toHaveBeenCalled();
+    expect(coreAdminRepoMocks.purgeAllDataAssociatedWithCoreUser).toHaveBeenCalledWith({
+      userIdHex: "507f1f77bcf86cd799439033",
+      emailNormalized: "user@atxfinance.ai"
+    });
     expect(identityMocks.deleteCoreUserById).toHaveBeenCalledTimes(1);
   });
 
