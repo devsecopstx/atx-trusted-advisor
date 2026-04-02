@@ -14,17 +14,21 @@ import {
     expandBracketCitationsToInlineCode,
     grokRenderBlocksToCitationMarkdown,
     grokRenderSelfClosingToCitationMarkdown,
+    normalizeXchatMarkdownNoise,
+    rejoinWrappedCiteSplitAcrossParens,
     repairAdjacentMangledXfInlineChips,
     stripNonRenderableBareCitationLines,
     stripNonRenderableCitationInlineSpans,
-    wrapBareXfCiteLines
+    wrapBareXfCiteLines,
+    wrapMidLineBareXfSentinels
 } from "@/lib/xchat-citations";
 
 export function preprocessXchatMarkdown(raw: string): string {
   if (!raw.trim()) {
     return raw;
   }
-  let s = applyLeakedMarkupRules(raw);
+  let s = normalizeXchatMarkdownNoise(raw);
+  s = applyLeakedMarkupRules(s);
   s = grokRenderBlocksToCitationMarkdown(s);
   s = grokRenderSelfClosingToCitationMarkdown(s);
   s = expandBracketCitationsToInlineCode(s);
@@ -32,6 +36,8 @@ export function preprocessXchatMarkdown(raw: string): string {
   s = collapseAdjacentDuplicateBareXfLines(s);
   s = stripNonRenderableBareCitationLines(s);
   s = wrapBareXfCiteLines(s);
+  s = wrapMidLineBareXfSentinels(s);
+  s = rejoinWrappedCiteSplitAcrossParens(s);
   s = repairAdjacentMangledXfInlineChips(s);
   s = collapseAdjacentDuplicateWrappedXfChipLines(s);
   s = stripNonRenderableCitationInlineSpans(s);

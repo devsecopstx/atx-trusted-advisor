@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
+import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 import { requireSessionUser } from "@/lib/auth";
 import {
     getPersonaByIdCached,
@@ -524,6 +525,9 @@ export async function POST(request: Request) {
     );
   }
 
+  /** Same pipeline as the client `preprocessXchatMarkdown` — store and return display-ready markdown (citations, Grok leak cleanup). Idempotent if run twice. */
+  const responseMarkdown = preprocessXchatMarkdown(xaiResponse.outputText);
+
   const contextChunkIds: ObjectId[] = [];
 
   logXchatAskDebug({
@@ -539,7 +543,7 @@ export async function POST(request: Request) {
     contextCount,
     tools: xapiConfig.tools.map((t) => t.type),
     model: effectiveModel,
-    responseLength: xaiResponse.outputText.length,
+    responseLength: responseMarkdown.length,
     mode: xapiConfig.mode,
     scope,
     collectionId: linkedCollectionIds[0],
@@ -598,7 +602,7 @@ export async function POST(request: Request) {
     personaName: persona.name,
     scope,
     message,
-    response: xaiResponse.outputText,
+    response: responseMarkdown,
     contextChunkIds,
     model: xaiResponse.model,
     xaiResponseId: previousResponseId,
@@ -629,7 +633,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       data: {
-        response: xaiResponse.outputText,
+        response: responseMarkdown,
         model: xaiResponse.model,
         personaName: persona.name,
         modelSelectionSource,

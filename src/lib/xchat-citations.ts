@@ -311,6 +311,11 @@ export function grokRenderSelfClosingToCitationMarkdown(markdown: string): strin
   });
 }
 
+/** Same footnote suffix as bare-line / wrap rules — models often put `[7]` inside or after `` `XF_CITE:slug` ``. */
+function stripCitationFootnoteMarkers(token: string): string {
+  return token.replace(/(?:\s*\[\d+\])+/g, "").trim();
+}
+
 function parseSlugLabelAfterPrefix(trimmed: string, prefix: string): { slug: string; label?: string } | null {
   if (!trimmed.startsWith(prefix)) {
     return null;
@@ -318,13 +323,13 @@ function parseSlugLabelAfterPrefix(trimmed: string, prefix: string): { slug: str
   const rest = trimmed.slice(prefix.length);
   const pipe = rest.indexOf("|");
   if (pipe === -1) {
-    const raw = rest.trim().toLowerCase();
+    const raw = stripCitationFootnoteMarkers(rest).toLowerCase();
     if (!SLUG_RE.test(raw)) {
       return null;
     }
     return { slug: canonicalizeCitationSlug(raw) };
   }
-  const raw = rest.slice(0, pipe).trim().toLowerCase();
+  const raw = stripCitationFootnoteMarkers(rest.slice(0, pipe)).toLowerCase();
   const label = rest.slice(pipe + 1).trim();
   if (!SLUG_RE.test(raw)) {
     return null;
@@ -332,12 +337,27 @@ function parseSlugLabelAfterPrefix(trimmed: string, prefix: string): { slug: str
   return { slug: canonicalizeCitationSlug(raw), label: label || undefined };
 }
 
+/**
+ * Normalizes wire/model noise before {@link parseSlugLabelAfterPrefix} (inline `code` from react-markdown).
+ * Grok often emits `xf_cite:` / `xf_tool:`; ZWSP / fullwidth colon breaks strict `XF_CITE:` parsing.
+ */
+export function normalizeXfInlineChipProbeText(text: string): string {
+  let s = text
+    .replace(/\uFEFF/g, "")
+    .replace(/[\u200B-\u200D\u2060]/g, "")
+    .replace(/\uFF1A/g, ":");
+  s = s.trim();
+  s = s.replace(/^xf_cite:/i, XF_INLINE_CITE_PREFIX);
+  s = s.replace(/^xf_tool:/i, XF_TOOL_BADGE_PREFIX);
+  return s;
+}
+
 export function parseInlineCitationCode(text: string): { slug: string; label?: string } | null {
-  return parseSlugLabelAfterPrefix(text.trim(), XF_INLINE_CITE_PREFIX);
+  return parseSlugLabelAfterPrefix(normalizeXfInlineChipProbeText(text), XF_INLINE_CITE_PREFIX);
 }
 
 export function parseInlineToolBadgeCode(text: string): { slug: string; label?: string } | null {
-  return parseSlugLabelAfterPrefix(text.trim(), XF_TOOL_BADGE_PREFIX);
+  return parseSlugLabelAfterPrefix(normalizeXfInlineChipProbeText(text), XF_TOOL_BADGE_PREFIX);
 }
 
 /** Single hook for {@link XchatMarkdownBody} `components.code` (inline). */
@@ -432,8 +452,13 @@ function escapeRegExp(s: string): string {
 /** Blockquote / indent models sometimes emit before bare sentinels */
 const MD_BARE_CITE_LINE_LEAD = "(?:> ?)?[ \\t]*";
 
-function stripInvisibleWhitespace(markdown: string): string {
-  return markdown.replace(/\uFEFF/g, "").replace(/[\u200B-\u200D]/g, "");
+/**
+ * Document-level noise removal before cite/tool wrapping (ZWSP, BOM, fullwidth colon after sentinels).
+ */
+export function normalizeXchatMarkdownNoise(markdown: string): string {
+  let s = markdown.replace(/\uFEFF/g, "").replace(/[\u200B-\u200D\u2060]/g, "");
+  s = s.replace(/(XF_CITE|XF_TOOL|xf_cite|xf_tool)\uFF1A/gi, "$1:");
+  return s;
 }
 
 /** Line is only a bare XF_CITE/XF_TOOL sentinel (optional blockquote indent, footnote markers, trailing period). */
@@ -584,7 +609,7 @@ export function collapseAdjacentDuplicateWrappedXfChipLines(markdown: string): s
  * Tolerates: optional space after `:`, leading spaces / `> ` blockquote, odd `xf_cite:` casing.
  */
 export function wrapBareXfCiteLines(markdown: string): string {
-  let s = stripInvisibleWhitespace(markdown);
+  let s = normalizeXchatMarkdownNoise(markdown);
   s = s.replace(
     new RegExp(`^(${MD_BARE_CITE_LINE_LEAD})xf_cite:`, "gim"),
     `$1${XF_INLINE_CITE_PREFIX}`
@@ -634,6 +659,168 @@ export function wrapBareXfCiteLines(markdown: string): string {
   });
 
   return s;
+}
+
+/** `(?!-)` avoids wrapping a partial slug before a hyphen (`XF_CITE:bad-slug` must not become cite `bad`). */
+const MID_BARE_XF_CITE_IN_PLAIN =
+  /(^|[^A-Za-z0-9_])(?:XF_CITE|xf_cite):\s*([a-z0-9_]+)(?!-)(?:\s*\[\d+\])*(?![a-z0-9_])/gi;
+const MID_BARE_XF_TOOL_IN_PLAIN =
+  /(^|[^A-Za-z0-9_])(?:XF_TOOL|xf_tool):\s*([a-z0-9_]+)(?!-)(?:\s*\[\d+\])*(?![a-z0-9_])/gi;
+
+function findClosingInlineBacktickRun(s: string, from: number, run: number): number {
+  const fence = "`".repeat(run);
+  for (let i = from; i <= s.length - run; i++) {
+    if (s.slice(i, i + run) !== fence) {
+      continue;
+    }
+    if (i + run < s.length && s[i + run] === "`") {
+      continue;
+    }
+    return i;
+  }
+  return -1;
+}
+
+/**
+ * Plain segments only (not inside inline `…` / `` … `` / run≥3); used by {@link wrapMidLineBareXfSentinels}.
+ */
+function wrapBareXfSentinelsInPlainText(plain: string): string {
+  let s = plain.replace(MID_BARE_XF_CITE_IN_PLAIN, (full, before: string, rawSlug: string) => {
+    const slug = canonicalizeCitationSlug(rawSlug);
+    const enc = encodeCitationInlineMarkdown(slug);
+    return enc ? `${before}${enc}` : full;
+  });
+  s = s.replace(MID_BARE_XF_TOOL_IN_PLAIN, (full, before: string, rawSlug: string) => {
+    const slug = canonicalizeCitationSlug(rawSlug);
+    const enc = encodeToolBadgeInlineMarkdown(slug);
+    return enc ? `${before}${enc}` : full;
+  });
+  return s;
+}
+
+function walkInlineCodeCopyingSpans(segment: string, onPlain: (plain: string) => string): string {
+  let out = "";
+  let i = 0;
+  while (i < segment.length) {
+    if (segment[i] !== "`") {
+      const next = segment.indexOf("`", i);
+      const end = next === -1 ? segment.length : next;
+      out += onPlain(segment.slice(i, end));
+      if (next === -1) {
+        break;
+      }
+      i = next;
+      continue;
+    }
+    let run = 0;
+    let j = i;
+    while (j < segment.length && segment[j] === "`") {
+      run++;
+      j++;
+    }
+    const close = findClosingInlineBacktickRun(segment, j, run);
+    if (close === -1) {
+      out += segment.slice(i);
+      break;
+    }
+    out += segment.slice(i, close + run);
+    i = close + run;
+  }
+  return out;
+}
+
+function splitMarkdownByTripleBacktickFences(markdown: string): Array<{ kind: "prose" | "fence"; text: string }> {
+  const out: Array<{ kind: "prose" | "fence"; text: string }> = [];
+  let i = 0;
+  while (i < markdown.length) {
+    if (markdown.slice(i, i + 3) !== "```") {
+      const next = markdown.indexOf("```", i);
+      if (next === -1) {
+        out.push({ kind: "prose", text: markdown.slice(i) });
+        break;
+      }
+      if (next > i) {
+        out.push({ kind: "prose", text: markdown.slice(i, next) });
+      }
+      i = next;
+      continue;
+    }
+    const afterOpen = i + 3;
+    const nl = markdown.indexOf("\n", afterOpen);
+    const searchFrom = nl === -1 ? afterOpen : nl + 1;
+    const closeIdx = markdown.indexOf("```", searchFrom);
+    if (closeIdx === -1) {
+      out.push({ kind: "fence", text: markdown.slice(i) });
+      break;
+    }
+    out.push({ kind: "fence", text: markdown.slice(i, closeIdx + 3) });
+    i = closeIdx + 3;
+  }
+  return out;
+}
+
+/**
+ * Wrap bare `XF_CITE:slug` / `XF_TOOL:slug` when they appear **mid-line** in prose (not only line-start / tail).
+ * Skips fenced ``` blocks and inline `…` / `` … `` so code samples and already-wrapped chips are untouched.
+ * Run after {@link wrapBareXfCiteLines}.
+ */
+export function wrapMidLineBareXfSentinels(markdown: string): string {
+  const chunks = splitMarkdownByTripleBacktickFences(normalizeXchatMarkdownNoise(markdown));
+  return chunks
+    .map((chunk) => {
+      if (chunk.kind === "fence") {
+        return chunk.text;
+      }
+      return walkInlineCodeCopyingSpans(chunk.text, wrapBareXfSentinelsInPlainText);
+    })
+    .join("");
+}
+
+const WRAPPED_XF_CHIP_ONLY_LINE =
+  /^\s*`XF_(CITE|TOOL):[a-z0-9_]+(?:\|[^`]+)?`\s*$/;
+
+function netAsciiParenCount(line: string): number {
+  let n = 0;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === "(") {
+      n++;
+    } else if (c === ")") {
+      n--;
+    }
+  }
+  return n;
+}
+
+/**
+ * Models often emit a cite-only line between an opening `(` and a line that starts with `)`,
+ * which splits CommonMark into paragraphs and makes the closing `)` look missing or broken.
+ * Merge those three lines into one (cite stays inline).
+ *
+ * Run after {@link wrapBareXfCiteLines} / {@link wrapMidLineBareXfSentinels}.
+ */
+export function rejoinWrappedCiteSplitAcrossParens(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const a = lines[i] ?? "";
+    const b = lines[i + 1] ?? "";
+    const c = lines[i + 2] ?? "";
+    if (
+      i + 2 < lines.length &&
+      netAsciiParenCount(a) > 0 &&
+      WRAPPED_XF_CHIP_ONLY_LINE.test(b) &&
+      c.trimStart().startsWith(")")
+    ) {
+      out.push(`${a.trimEnd()} ${b.trim()} ${c.trimStart()}`);
+      i += 3;
+      continue;
+    }
+    out.push(a);
+    i += 1;
+  }
+  return out.join("\n");
 }
 
 /** Optional fenced block: ```xf-citation { "slug": "market_quote", "label": "…" } ``` */

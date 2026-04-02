@@ -13,16 +13,19 @@ import {
     grokRenderBlocksToCitationMarkdown,
     grokRenderSelfClosingToCitationMarkdown,
     inferCitationSlugFromGrokInner,
+    normalizeXfInlineChipProbeText,
     parseInlineCitationCode,
     parseInlineToolBadgeCode,
     parseInlineXfChipCode,
     parseXfCitationFenceJson,
+    rejoinWrappedCiteSplitAcrossParens,
     repairAdjacentMangledXfInlineChips,
     resolveCitationPresentation,
     resolveGrokRenderSlug,
     stripNonRenderableBareCitationLines,
     stripNonRenderableCitationInlineSpans,
-    wrapBareXfCiteLines
+    wrapBareXfCiteLines,
+    wrapMidLineBareXfSentinels
 } from "@/lib/xchat-citations";
 
 describe("xchat-citations", () => {
@@ -57,6 +60,19 @@ describe("xchat-citations", () => {
     expect(parseInlineXfChipCode("XF_CITE:web_search")).toEqual({ slug: "web_search" });
     expect(parseInlineXfChipCode("XF_TOOL:atxfinance")).toEqual({ slug: "atxfinance" });
     expect(parseInlineCitationCode("not a cite")).toBeNull();
+  });
+
+  it("normalizes xf_cite / xf_tool casing and ZWSP so chips render instead of monospace fallback", () => {
+    expect(parseInlineXfChipCode("xf_cite:yahoo_finance")).toEqual({ slug: "yahoo_finance" });
+    expect(parseInlineXfChipCode("Xf_Cite:atxfinance")).toEqual({ slug: "atxfinance" });
+    expect(parseInlineXfChipCode("xf_tool:market_quote")).toEqual({ slug: "market_quote" });
+    expect(normalizeXfInlineChipProbeText("XF_CITE\u200B:yahoo_finance")).toBe("XF_CITE:yahoo_finance");
+  });
+
+  it("parses XF_CITE/XF_TOOL when Grok appends footnote markers to the slug (e.g. atxfinance[7])", () => {
+    expect(parseInlineXfChipCode("XF_CITE:atxfinance[7]")).toEqual({ slug: "atxfinance" });
+    expect(parseInlineXfChipCode("XF_CITE:yahoo_finance[7][8]")).toEqual({ slug: "yahoo_finance" });
+    expect(parseInlineXfChipCode("XF_TOOL:atxfinance[1]")).toEqual({ slug: "atxfinance" });
   });
 
   it("encodes bracket citation and tool syntax", () => {
@@ -139,6 +155,29 @@ describe("xchat-citations", () => {
     expect(wrapBareXfCiteLines("XF_CITE:yahoo_finance,")).toBe("`XF_CITE:yahoo_finance`");
     expect(wrapBareXfCiteLines("XF_CITE:market_quote see below")).toBe("`XF_CITE:market_quote` see below");
     expect(wrapBareXfCiteLines("XF_TOOL:yahoo_finance, source note")).toBe("`XF_TOOL:yahoo_finance`, source note");
+  });
+
+  it("rejoinWrappedCiteSplitAcrossParens merges cite line between ( and closing ) line", () => {
+    const raw = [
+      "Diversify (e.g., add ASTS from watchlist",
+      "`XF_CITE:atxfinance`",
+      ") or hedge?"
+    ].join("\n");
+    expect(rejoinWrappedCiteSplitAcrossParens(raw)).toBe(
+      "Diversify (e.g., add ASTS from watchlist `XF_CITE:atxfinance` ) or hedge?"
+    );
+    expect(rejoinWrappedCiteSplitAcrossParens("a\nb\n")).toBe("a\nb\n");
+  });
+
+  it("wrapMidLineBareXfSentinels wraps bare sentinels inside prose, not in code fences or inline code", () => {
+    expect(wrapMidLineBareXfSentinels("Symbols XF_CITE:atxfinance and XF_TOOL:yahoo_finance done.")).toBe(
+      "Symbols `XF_CITE:atxfinance` and `XF_TOOL:yahoo_finance` done."
+    );
+    expect(wrapMidLineBareXfSentinels("Lower xf_cite:market_quote ok")).toBe("Lower `XF_CITE:market_quote` ok");
+    expect(wrapMidLineBareXfSentinels("no `XF_CITE:yahoo_finance` leak")).toBe("no `XF_CITE:yahoo_finance` leak");
+    expect(wrapMidLineBareXfSentinels("```\nXF_CITE:yahoo_finance\n```")).toBe("```\nXF_CITE:yahoo_finance\n```");
+    expect(wrapMidLineBareXfSentinels("bad XF_CITE:bad-slug stay")).toBe("bad XF_CITE:bad-slug stay");
+    expect(wrapMidLineBareXfSentinels("prefixXF_CITE:yahoo_finance no")).toBe("prefixXF_CITE:yahoo_finance no");
   });
 
   it("maps grok blocks using type and source attributes", () => {

@@ -161,6 +161,34 @@ describe("xchat ask route collection retrieval", () => {
     workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock.mockReturnValue("");
   });
 
+  it("preprocesses assistant markdown on the server before JSON and xchat_logs", async () => {
+    xaiMocks.respondWithXaiToolLoop.mockResolvedValueOnce({
+      outputText: "Summary line\nXF_CITE:yahoo_finance\nMore text\nXF_CITE:atxfinance\n",
+      model: "grok-4-latest",
+      toolCalls: [],
+      turnsUsed: 1,
+      raw: {}
+    });
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "Test preprocess",
+          topK: 4
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data: { response: string } };
+    expect(payload.data.response).toContain("`XF_CITE:yahoo_finance`");
+    expect(payload.data.response).toContain("`XF_CITE:atxfinance`");
+    const saved = repositoryMocks.saveXChatLog.mock.calls.at(-1)?.[0] as { response: string };
+    expect(saved.response).toContain("`XF_CITE:yahoo_finance`");
+    expect(saved.response).toBe(payload.data.response);
+  });
+
   it("uses xai collection snippets first when available", async () => {
     xaiMocks.searchDocumentsInCollections.mockResolvedValueOnce([
       { text: "Collection context snippet", documentName: "ops-handbook.md" }

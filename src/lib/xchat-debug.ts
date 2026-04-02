@@ -181,9 +181,9 @@ export function logXchatAskFullPayload(payload: {
     tools: payload.tools,
     model: payload.model,
     responseText: payload.responseText,
-    /** Raw provider text; `/xchat` runs `preprocessXchatMarkdown` so bare `XF_CITE:` becomes chips in UI. */
+    /** Raw provider text; `/api/xchat/ask` and the client both run `preprocessXchatMarkdown` (idempotent). */
     markdownPipelineNote:
-      "responseText is unprocessed; client wraps XF_CITE:/XF_TOOL: sentinels before ReactMarkdown."
+      "responseText is raw xAI output; assistant bubbles also preprocess before ReactMarkdown for backward compatibility."
   };
 
   console.info(LOG_PREFIX, JSON.stringify(safe));

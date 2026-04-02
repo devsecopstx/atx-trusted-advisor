@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 
+import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 import { getDb } from "@/lib/mongodb";
 import { searchDocumentsInCollections } from "@/lib/xai";
 import {
@@ -430,7 +431,8 @@ async function correlateResults(
   const now = new Date();
 
   for (const result of results) {
-    const responseText = extractOutputText(result);
+    const rawText = extractOutputText(result);
+    const responseText = rawText ? preprocessXchatMarkdown(rawText) : "";
     const state = result.state;
     const statusFromState: BatchItemRecord["status"] | undefined =
       state === "succeeded"

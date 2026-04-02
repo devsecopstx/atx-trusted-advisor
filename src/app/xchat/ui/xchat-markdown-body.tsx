@@ -1,6 +1,6 @@
 "use client";
 
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
@@ -23,6 +23,22 @@ type XchatMarkdownBodyProps = {
 };
 
 type MdCodeProps = HTMLAttributes<HTMLElement> & { inline?: boolean };
+
+function mdInlineCodePlainText(children: ReactNode): string {
+  if (children == null || typeof children === "boolean") {
+    return "";
+  }
+  if (typeof children === "string") {
+    return children;
+  }
+  if (typeof children === "number") {
+    return String(children);
+  }
+  if (Array.isArray(children)) {
+    return children.map(mdInlineCodePlainText).join("");
+  }
+  return "";
+}
 
 /**
  * react-markdown can emit fenced `code` inside `p` when the model's markdown is loose;
@@ -52,7 +68,7 @@ const markdownComponents: Components = {
     );
   },
   code({ className, children, inline, ...rest }: MdCodeProps) {
-    const text = String(children).replace(/\n$/, "");
+    const text = mdInlineCodePlainText(children).replace(/\n$/, "");
     if (!inline) {
       const match = /language-(\w+)/.exec(className ?? "");
       const lang = match?.[1] ?? "text";
