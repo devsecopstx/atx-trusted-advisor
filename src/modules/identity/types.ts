@@ -25,6 +25,14 @@ export type CoreUser = {
     avatarUrl?: string;
     linkedAt: Date;
   };
+  /** Google Sign-In — kept separate from {@link xAccount} so X + Google can attach to one user. */
+  googleAccount?: {
+    sub: string;
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+    linkedAt: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt?: Date;

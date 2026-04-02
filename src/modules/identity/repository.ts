@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
 
+import { googleLinkedId, isGoogleLegacyXUserId } from "@/lib/google-oauth-identity";
 import { getDb } from "@/lib/mongodb";
+import { purgeEphemeralCoreUserScaffolding } from "@/modules/core-admin/repository";
 import {
     appendLoginAuditRecord,
     type LoginAuditProvider
@@ -47,6 +49,16 @@ async function createIdentityIndexes(): Promise<void> {
           unique: true,
           sparse: true,
           name: "uniq_core_user_x_user_id"
+        }
+      ),
+    db
+      .collection<CoreUser>(collections.users)
+      .createIndex(
+        { "googleAccount.sub": 1 },
+        {
+          unique: true,
+          sparse: true,
+          name: "uniq_core_user_google_sub"
         }
       ),
     db
@@ -189,6 +201,11 @@ export function formatCoreUserDisplayName(user: CoreUser | undefined): string {
   if (fromX) {
     return fromX;
   }
+  const g = user.googleAccount;
+  const fromGoogle = g?.displayName?.trim() || g?.username?.trim();
+  if (fromGoogle) {
+    return fromGoogle;
+  }
   return user.email || "Unknown user";
 }
 
@@ -252,6 +269,109 @@ export async function getCoreUserByXIdentity(
   await ensureIdentityIndexes();
   const db = await getDb();
   return db.collection<CoreUser>(collections.users).findOne({ "xAccount.xUserId": xUserId });
+}
+
+export async function getCoreUserByGoogleSub(sub: string): Promise<CoreUser | null> {
+  await ensureIdentityIndexes();
+  const trimmed = sub.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const db = await getDb();
+  const legacyId = googleLinkedId(trimmed);
+  return db.collection<CoreUser>(collections.users).findOne({
+    $or: [{ "googleAccount.sub": trimmed }, { "xAccount.xUserId": legacyId }]
+  });
+}
+
+export async function linkGoogleAccountToUser(input: {
+  userId: ObjectId;
+  sub: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+}): Promise<CoreUser> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const sub = input.sub.trim();
+  const existing = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
+  const unsetX =
+    existing?.xAccount?.xUserId && isGoogleLegacyXUserId(existing.xAccount.xUserId)
+      ? { xAccount: "" as const }
+      : {};
+
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: input.userId },
+    {
+      $set: {
+        "googleAccount.sub": sub,
+        "googleAccount.linkedAt": now,
+        "googleAccount.username": input.username,
+        "googleAccount.displayName": input.displayName,
+        "googleAccount.avatarUrl": input.avatarUrl,
+        updatedAt: now,
+        lastLoginAt: now
+      },
+      ...(Object.keys(unsetX).length > 0 ? { $unset: unsetX } : {})
+    }
+  );
+
+  const user = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
+  if (!user?._id) {
+    throw new Error("Failed to link Google account");
+  }
+  return user;
+}
+
+export async function unlinkGoogleIdentityFromUser(input: { userId: ObjectId }): Promise<void> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const existing = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });
+  const $unset: Record<string, ""> = { googleAccount: "" };
+  if (existing?.xAccount?.xUserId && isGoogleLegacyXUserId(existing.xAccount.xUserId)) {
+    $unset.xAccount = "";
+  }
+  await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: input.userId },
+    {
+      $unset,
+      $set: { updatedAt: new Date() }
+    }
+  );
+}
+
+/**
+ * Merges an X-only placeholder `core_users` row into the account that already has this real email
+ * (e.g. Google OAuth). Frees `xAccount.xUserId` for {@link linkXAccountToUser}.
+ */
+export async function mergePlaceholderXUserIntoEmailUser(input: {
+  canonicalUserId: ObjectId;
+  placeholderUser: CoreUser;
+  xIdentity: {
+    xUserId: string;
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+  };
+}): Promise<CoreUser> {
+  const { canonicalUserId, placeholderUser, xIdentity } = input;
+  if (!placeholderUser._id) {
+    throw new Error("Placeholder user is missing _id");
+  }
+  if (placeholderUser._id.equals(canonicalUserId)) {
+    throw new Error("Canonical and placeholder users must differ");
+  }
+  const phId = placeholderUser._id.toHexString();
+  await purgeEphemeralCoreUserScaffolding(phId);
+  const deleted = await deleteCoreUserById(placeholderUser._id);
+  if (!deleted) {
+    throw new Error("Failed to delete placeholder core user");
+  }
+  return linkXAccountToUser({
+    userId: canonicalUserId,
+    ...xIdentity
+  });
 }
 
 export async function addRoleToCoreUser(input: {
@@ -749,16 +869,25 @@ export async function resolveAuthContext(input: {
     throw new Error("No default tenant membership for user");
   }
 
+  const g = input.user.googleAccount;
+  const x = input.user.xAccount;
+  const xUserId =
+    x?.xUserId ??
+    (g?.sub ? googleLinkedId(g.sub) : undefined);
+  const username = x?.username ?? g?.username;
+  const displayName = x?.displayName ?? g?.displayName;
+  const avatarUrl = x?.avatarUrl ?? g?.avatarUrl;
+
   return {
     userId: input.user._id,
     email: input.user.email,
     roles: input.user.roles,
     tenantId: membership.tenantId,
     tenantRole: membership.role,
-    xUserId: input.user.xAccount?.xUserId,
-    username: input.user.xAccount?.username,
-    displayName: input.user.xAccount?.displayName,
-    avatarUrl: input.user.xAccount?.avatarUrl
+    xUserId,
+    username,
+    displayName,
+    avatarUrl
   };
 }
 

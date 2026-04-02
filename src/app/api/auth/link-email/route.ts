@@ -20,6 +20,7 @@ import {
     getCoreUserByEmail,
     getCoreUserByXIdentity,
     linkXAccountToUser,
+    mergePlaceholderXUserIntoEmailUser,
     recordUserSuccessfulLogin,
     resolveAuthContext,
     unlinkXAccountFromUser,
@@ -85,8 +86,25 @@ export async function POST(request: Request) {
         displayName: pending.displayName,
         avatarUrl: pending.avatarUrl
       });
+    } else if (existingByXIdentity && isXIdentityPlaceholderEmail(existingByXIdentity.email)) {
+      // X (no email) created a placeholder row; the same person later signed in with Google on that email.
+      user = await mergePlaceholderXUserIntoEmailUser({
+        canonicalUserId: emailUserId,
+        placeholderUser: existingByXIdentity,
+        xIdentity: {
+          xUserId: pending.xUserId,
+          username: pending.username,
+          displayName: pending.displayName,
+          avatarUrl: pending.avatarUrl
+        }
+      });
     }
-  } else if (xIdentityUserId && isXIdentityPlaceholderEmail(existingByXIdentity.email)) {
+  } else if (
+    xIdentityUserId &&
+    existingByXIdentity &&
+    isXIdentityPlaceholderEmail(existingByXIdentity.email) &&
+    (!user?._id || isSameUserId(xIdentityUserId, user._id))
+  ) {
     user = await updateCoreUserEmail({
       userId: xIdentityUserId,
       email: requestedEmail

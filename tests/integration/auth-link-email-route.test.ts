@@ -27,6 +27,7 @@ const identityMocks = vi.hoisted(() => ({
   getCoreUserByXIdentity: vi.fn(),
   unlinkXAccountFromUser: vi.fn(),
   linkXAccountToUser: vi.fn(),
+  mergePlaceholderXUserIntoEmailUser: vi.fn(),
   resolveAuthContext: vi.fn(),
   updateCoreUserEmail: vi.fn(),
   upsertTenantMembership: vi.fn(),
@@ -91,6 +92,17 @@ describe("auth link-email route", () => {
       email: "user@atxfinance.ai",
       roles: [...state.userRoles],
       status: "active"
+    }));
+    identityMocks.mergePlaceholderXUserIntoEmailUser.mockImplementation(async () => ({
+      _id: { toHexString: () => "507f1f77bcf86cd799439011" },
+      email: "user@atxfinance.ai",
+      roles: [...state.userRoles],
+      status: "active",
+      xAccount: {
+        xUserId: "x-user-1",
+        username: "new_user",
+        linkedAt: new Date()
+      }
     }));
     identityMocks.ensureDefaultTenant.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439022" }

@@ -3759,6 +3759,40 @@ export async function adminDeletePortfolio(portfolioId: string): Promise<boolean
   return (res.deletedCount ?? 0) === 1;
 }
 
+/** Deletes every portfolio owned by `userId` (hex), including nested accounts/positions/etc. */
+export async function deleteAllPortfoliosOwnedByUser(userId: string): Promise<number> {
+  await ensurePortfolioIndexes();
+  const db = await getDb();
+  const rows = await db
+    .collection<Portfolio>(collections.portfolios)
+    .find({ ...userIdQuery(userId) })
+    .project({ _id: 1 })
+    .toArray();
+  let deleted = 0;
+  for (const row of rows) {
+    if (row._id && (await adminDeletePortfolio(row._id.toHexString()))) {
+      deleted += 1;
+    }
+  }
+  return deleted;
+}
+
+/**
+ * Removes tenant rows tied to a `core_users` id before deleting that user (OAuth merge / cleanup).
+ * Does not delete the `core_users` document — caller must call `deleteCoreUserById` after.
+ */
+export async function purgeEphemeralCoreUserScaffolding(userIdHex: string): Promise<void> {
+  if (!ObjectId.isValid(userIdHex)) {
+    return;
+  }
+  await deleteAllPortfoliosOwnedByUser(userIdHex);
+  const db = await getDb();
+  const oid = new ObjectId(userIdHex);
+  await db.collection("core_tenant_memberships").deleteMany({ userId: oid });
+  await db.collection<AccessRequest>(collections.accessRequests).deleteMany({ userId: userIdHex });
+  await db.collection<UserAdminSettings>(collections.userSettings).deleteMany({ userId: userIdHex });
+}
+
 export async function adminListAccountsForPortfolio(portfolioId: string): Promise<Account[]> {
   const p = await adminGetPortfolioById(portfolioId);
   if (!p?._id) {

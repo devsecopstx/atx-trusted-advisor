@@ -16,6 +16,7 @@ import {
     isAllowAnyXUserLoginEnabled,
     isGoogleOAuthConfigured
 } from "@/lib/env";
+import { googleLinkedId } from "@/lib/google-oauth-identity";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
@@ -29,9 +30,9 @@ import {
     ensureCoreUserByEmail,
     ensureSeededGlobalAdmin,
     getCoreUserByEmail,
-    getCoreUserByXIdentity,
-    linkXAccountToUser,
-    unlinkXAccountFromUser
+    getCoreUserByGoogleSub,
+    linkGoogleAccountToUser,
+    unlinkGoogleIdentityFromUser
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
 
@@ -55,10 +56,6 @@ function googleUsernameFromEmail(email: string): string {
   const local = email.split("@")[0] ?? "user";
   const safe = local.replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 48);
   return safe || "google_user";
-}
-
-function googleLinkedId(sub: string): string {
-  return `google:${sub}`;
 }
 
 async function ensurePendingViewerAccessRequestAfterGoogleOAuth(user: CoreUser): Promise<void> {
@@ -250,46 +247,47 @@ export async function GET(request: Request) {
       ? await ensureSeededGlobalAdmin(emailNormalized)
       : null;
 
-  let user = await getCoreUserByXIdentity(linkedId);
+  const userByEmail = seededAdmin?.user ?? (await getCoreUserByEmail(emailNormalized));
+  const userByGoogle = await getCoreUserByGoogleSub(profile.sub);
 
-  if (user?._id && emailNormalized) {
-    const userByEmail = seededAdmin?.user ?? (await getCoreUserByEmail(emailNormalized));
-    const approvedEmailUserId = userByEmail?._id;
-    if (approvedEmailUserId !== undefined) {
-      const shouldRelinkToApprovedEmailUser =
-        !isSameUserId(user._id, approvedEmailUserId) &&
-        canUserLogin(userByEmail?.roles ?? []);
+  let user: CoreUser | null = null;
 
-      if (shouldRelinkToApprovedEmailUser) {
-        await unlinkXAccountFromUser({ userId: user._id });
-        user = await linkXAccountToUser({
-          userId: approvedEmailUserId,
-          ...identity
-        });
-      }
+  if (
+    userByEmail?._id &&
+    userByGoogle?._id &&
+    !isSameUserId(userByEmail._id, userByGoogle._id)
+  ) {
+    const shouldRelinkToApprovedEmailUser = canUserLogin(userByEmail.roles ?? []);
+    if (shouldRelinkToApprovedEmailUser) {
+      await unlinkGoogleIdentityFromUser({ userId: userByGoogle._id });
+      user = userByEmail;
     }
   }
 
   if (!user) {
-    user = seededAdmin?.user ?? (await getCoreUserByEmail(emailNormalized));
-    if (!user?._id) {
-      user = await ensureCoreUserByEmail({
-        email: emailNormalized
-      });
+    if (userByGoogle?._id) {
+      user = userByGoogle;
+    } else if (userByEmail?._id) {
+      user = userByEmail;
     }
-    if (!user?._id) {
-      return redirectWithLoginAudit("not_seeded_email", { email: emailNormalized });
-    }
-    user = await linkXAccountToUser({
-      userId: user._id,
-      ...identity
-    });
-  } else if (user._id) {
-    user = await linkXAccountToUser({
-      userId: user._id,
-      ...identity
+  }
+
+  if (!user?._id) {
+    user = await ensureCoreUserByEmail({
+      email: emailNormalized
     });
   }
+  if (!user?._id) {
+    return redirectWithLoginAudit("not_seeded_email", { email: emailNormalized });
+  }
+
+  user = await linkGoogleAccountToUser({
+    userId: user._id,
+    sub: profile.sub,
+    username,
+    displayName: profile.name,
+    avatarUrl: profile.picture
+  });
 
   if (!user?._id) {
     return redirectWithLoginAudit("access_request_pending", { email: emailNormalized });

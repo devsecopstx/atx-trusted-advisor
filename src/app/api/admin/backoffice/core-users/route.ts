@@ -85,6 +85,15 @@ function serializeCoreUser(user: CoreUser) {
           linkedAt: user.xAccount.linkedAt.toISOString()
         }
       : undefined,
+    googleAccount: user.googleAccount
+      ? {
+          sub: user.googleAccount.sub,
+          username: user.googleAccount.username,
+          displayName: user.googleAccount.displayName,
+          avatarUrl: user.googleAccount.avatarUrl,
+          linkedAt: user.googleAccount.linkedAt.toISOString()
+        }
+      : undefined,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
     lastLoginAt: user.lastLoginAt?.toISOString(),
