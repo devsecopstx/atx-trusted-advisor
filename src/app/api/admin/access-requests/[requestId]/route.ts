@@ -22,6 +22,7 @@ import {
 import {
     addRoleToCoreUser,
     getCoreUserById,
+    resolveTenantIdForApprovedUserPortfolio,
     updateCoreUserSubscriptionPlan
 } from "@/modules/identity/repository";
 
@@ -155,6 +156,8 @@ async function handleUpdate(request: Request, context: RouteContext) {
     requestedPlan ?? existing.requestedPlan ?? "basic"
   );
   let approvedUserObjectId: ObjectId | null = null;
+  /** Applicant's book tenant (not the approving admin's session tenant). */
+  let applicantPortfolioTenantId: string | undefined;
 
   if (parsed.data.status === "approved") {
     if (!ObjectId.isValid(existing.userId)) {
@@ -173,10 +176,12 @@ async function handleUpdate(request: Request, context: RouteContext) {
       userId,
       subscriptionPlan: effectivePlan
     });
+    applicantPortfolioTenantId = await resolveTenantIdForApprovedUserPortfolio(existing.userId);
     try {
+      /** Default book for new users: one portfolio, default paper account ($25k), watchlist with TSLA (see `provisionDefaultPortfolioForUser`). Runs before review is persisted so approve fails closed if provision errors. */
       await provisionDefaultPortfolioForUser({
         userId: existing.userId,
-        tenantId: session.tenantId
+        tenantId: applicantPortfolioTenantId
       });
     } catch (error) {
       return NextResponse.json(
@@ -242,7 +247,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
         requestId,
         userId: existing.userId,
         userEmail: approvedUser.email,
-        tenantId: session.tenantId,
+        tenantId: applicantPortfolioTenantId!,
         requestedPlan: effectivePlan,
         actor: {
           userId: session.userId,

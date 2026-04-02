@@ -20,6 +20,9 @@ class DefaultPortfolioProvisionService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
 ) {
+    private val coreTenantsCollection = "core_tenants"
+    private val defaultTenantSlug = "atxfinance-core"
+
     private val defaultPortfolioName = "Default Portfolio"
     private val defaultAccountName = "defaultaccount"
     private val defaultAccountRef = "ext_account_xref"
@@ -72,22 +75,33 @@ class DefaultPortfolioProvisionService(
             props.portfoliosCollection,
         )
 
-        val portfolioSet = Update()
-            .set("name", defaultPortfolioName)
+        val portfolioSetExisting = Update()
             .set("isDefault", true)
             .set("ext_broker_ref", props.defaultExtBrokerRef)
             .set("tenantPortfolioOrgKey", props.tenantPortfolioOrgKey)
             .set("updatedAt", now)
         if (tenantOid != null) {
-            portfolioSet.set("tenantId", tenantOid)
+            portfolioSetExisting.set("tenantId", tenantOid)
         }
 
         if (portfolio?.getObjectId("_id") != null) {
+            val pidExisting = portfolio!!.getObjectId("_id")!!
             mongoTemplate.updateFirst(
-                Query.query(Criteria.where("_id").`is`(portfolio!!.getObjectId("_id"))),
-                portfolioSet,
+                Query.query(Criteria.where("_id").`is`(pidExisting)),
+                portfolioSetExisting,
                 props.portfoliosCollection,
             )
+            val existingPortfolioName = (portfolio.getString("name") ?: "").trim()
+            if (existingPortfolioName.isEmpty()) {
+                mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("_id").`is`(pidExisting)),
+                    Update().set("name", defaultPortfolioName).set("updatedAt", Date()),
+                    props.portfoliosCollection,
+                )
+            }
+            portfolio =
+                mongoTemplate.findById(pidExisting, Document::class.java, props.portfoliosCollection)
+                    ?: error("Failed to reload portfolio after provision")
         } else {
             val upsertCrit = PortfolioMongoFilter.strictWriteTenantCriteria(
                 Criteria().andOperator(
@@ -180,23 +194,33 @@ class DefaultPortfolioProvisionService(
             props.accountsCollection,
         )
 
-        val accountSet = Update()
-            .set("name", defaultAccountName)
+        val accountSetExisting = Update()
             .set("type", "fidelity")
             .set("extAccountId", defaultAccountRef)
-            .set("cashBalance", props.defaultAccountCashBalance)
             .set("isDefault", true)
             .set("updatedAt", now)
         if (tenantOid != null) {
-            accountSet.set("tenantId", tenantOid)
+            accountSetExisting.set("tenantId", tenantOid)
         }
 
         if (account?.getObjectId("_id") != null) {
+            val aid = account!!.getObjectId("_id")!!
             mongoTemplate.updateFirst(
-                Query.query(Criteria.where("_id").`is`(account!!.getObjectId("_id"))),
-                accountSet,
+                Query.query(Criteria.where("_id").`is`(aid)),
+                accountSetExisting,
                 props.accountsCollection,
             )
+            val existingAccountName = (account.getString("name") ?: "").trim()
+            if (existingAccountName.isEmpty()) {
+                mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("_id").`is`(aid)),
+                    Update().set("name", defaultAccountName).set("updatedAt", Date()),
+                    props.accountsCollection,
+                )
+            }
+            account =
+                mongoTemplate.findById(aid, Document::class.java, props.accountsCollection)
+                    ?: error("Failed to reload account after provision")
         } else {
             val accUpsert = PortfolioMongoFilter.strictWriteTenantCriteria(
                 Criteria().andOperator(
@@ -284,21 +308,29 @@ class DefaultPortfolioProvisionService(
             existingWl?.get("symbols"),
             seed,
         )
-        val wlSet = Update()
-            .set("name", defaultWatchlistName)
+        val wlSetExisting = Update()
             .set("symbols", mergedSymbols)
             .set("isDefault", true)
             .set("updatedAt", now)
         if (tenantOid != null) {
-            wlSet.set("tenantId", tenantOid)
+            wlSetExisting.set("tenantId", tenantOid)
         }
 
         if (existingWl?.getObjectId("_id") != null) {
+            val wlid = existingWl.getObjectId("_id")!!
             mongoTemplate.updateFirst(
-                Query.query(Criteria.where("_id").`is`(existingWl.getObjectId("_id"))),
-                wlSet,
+                Query.query(Criteria.where("_id").`is`(wlid)),
+                wlSetExisting,
                 props.watchlistsCollection,
             )
+            val existingWlName = (existingWl.getString("name") ?: "").trim()
+            if (existingWlName.isEmpty()) {
+                mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("_id").`is`(wlid)),
+                    Update().set("name", defaultWatchlistName).set("updatedAt", Date()),
+                    props.watchlistsCollection,
+                )
+            }
         } else {
             val wlUpsert = PortfolioMongoFilter.strictWriteTenantCriteria(
                 Criteria().andOperator(
@@ -357,5 +389,41 @@ class DefaultPortfolioProvisionService(
                 username = null,
             )
         return provision(session)
+    }
+
+    /**
+     * Access-request approval: provision the applicant's default book under **their** default tenant
+     * membership (or platform default tenant), never the approving admin's session tenant.
+     */
+    fun provisionForAccessRequestApprovedUser(userId: String): Triple<Document, Document, Document> {
+        val tenantHex = resolveTenantIdForApprovedUserPortfolio(userId)
+        return provisionForUser(userId, tenantHex)
+    }
+
+    private fun resolveTenantIdForApprovedUserPortfolio(userId: String): String {
+        val oid =
+            try {
+                ObjectId(userId)
+            } catch (_: IllegalArgumentException) {
+                error("Invalid user id for portfolio tenant resolution")
+            }
+        val mem =
+            mongoTemplate.findOne(
+                Query.query(
+                    Criteria.where("userId").`is`(oid).and("isDefaultTenant").`is`(true),
+                ),
+                Document::class.java,
+                props.coreTenantMembershipsCollection,
+            )
+        mem?.getObjectId("tenantId")?.toHexString()?.let {
+            return it
+        }
+        val tenant =
+            mongoTemplate.findOne(
+                Query.query(Criteria.where("slug").`is`(defaultTenantSlug)),
+                Document::class.java,
+                coreTenantsCollection,
+            ) ?: error("core default tenant missing (slug=$defaultTenantSlug)")
+        return tenant.getObjectId("_id")!!.toHexString()
     }
 }

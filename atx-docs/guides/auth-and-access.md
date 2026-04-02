@@ -32,6 +32,22 @@ Reference: `src/modules/surface-policy.ts` and `src/proxy.ts`.
 2. A **global admin** approves the request in **Admin → Access requests**. Approval adds the login-eligible platform role and provisions default portfolio resources **on that same `core_users` document** (`userId` on the request).
 3. The user signs in with **X** or **Google**. The callback **always prefers the `core_users` row whose `email` matches the verified email from the provider** and **moves** `xAccount` / `googleAccount` onto that row if they were previously linked to another user (for example a placeholder X-only row). This keeps approval, subscription, and OAuth identity on one document per tenant’s user set.
 
+**Google email:** The Google callback requires a **verified** `email` + `email_verified` from Google userinfo; without that it redirects with `google_email_required`.
+
+**Portfolio tenant on approve:** Default portfolio provisioning for an approved applicant uses **that user’s default tenant membership** (or the platform default tenant `atxfinance-core`), **not** the approving admin’s `session.tenantId`. Using the admin’s tenant used to write `tenant_portfolio` / `portfolio_accounts` under a tenant the applicant’s OAuth session never queries, so the UI looked empty and created a second “Default Portfolio.”
+
+**Names on re-login:** OAuth completion still runs **idempotent** default-book provisioning so the book exists, but repeat runs **must not** reset user-edited **portfolio / account / watchlist names** (or existing **cash** on the default account). Defaults apply only when inserting new rows or when a name was never set.
+
+### Admin approval → default book (portfolio, $25k account, TSLA watchlist)
+
+When a global admin **approves** an access request in **Admin → Access requests** (`PATCH`/`PUT` `/api/admin/access-requests/{id}`):
+
+1. **Synchronous (same HTTP request, before the row is marked reviewed):** `provisionDefaultPortfolioForUser` runs for the applicant’s tenant (same tenant rules as **Guest registration MVP** above). That creates or updates the **default** `tenant_portfolio` row, **default** `portfolio_accounts` row with **$25,000** paper cash (`DEFAULT_ACCOUNT_CASH_BALANCE` in `src/modules/core-admin/repository.ts`), and a **watchlist** seeded with **TSLA** (`DEFAULT_WATCHLIST_SYMBOL`). If this step throws, the API returns **500** and the request is **not** reviewed.
+
+2. **Then:** `enqueueAccessRequestBootstrap` writes `admin_user_bootstrap_profiles` (pending), inserts a **disabled** `admin_scheduled_tasks` row named `access-request-bootstrap:{email}` with `nextRunAt: now` and a `scheduleDescription` explaining that the book was already provisioned — **enabling or “Run now” on that task does not re-run book creation** (category is `notifications` for trace only). A **microtask** immediately runs xChat/xAI bootstrap (`runAccessRequestBootstrap`: idempotent provision again + xAI collection + audit `bootstrap-synced`).
+
+Spring BFF path: `AdminAccessRequestService` uses `DefaultPortfolioProvisionService.provisionForAccessRequestApprovedUser` for the same defaults.
+
 If X does not expose an email, the UI uses the **link email** step so the user can tie their X identity to the same email they registered with.
 
 ## Access request lifecycle

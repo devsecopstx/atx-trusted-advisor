@@ -7,6 +7,7 @@ vi.mock("@/lib/mongodb", () => ({
 
 import { getDb } from "@/lib/mongodb";
 import {
+    DEFAULT_ACCOUNT_CASH_BALANCE,
     ensureDefaultPortfolioInvariantForUser,
     getDefaultPortfolio,
     listPortfoliosForSessionUser,
@@ -358,6 +359,41 @@ describe("portfolio provisioning repository", () => {
     );
   });
 
+  it("creates new-user defaults: $25k cash on default account and TSLA on watchlist (access-approval path uses this)", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+
+    const { account, watchlist } = await provisionDefaultPortfolioForUser({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
+
+    const accDoc = await fakeDb.db
+      .collection("portfolio_accounts")
+      .findOne({ _id: account._id });
+    const wlDoc = await fakeDb.db
+      .collection("portfolio_watchlists")
+      .findOne({ _id: watchlist._id });
+
+    expect(accDoc?.cashBalance).toBe(DEFAULT_ACCOUNT_CASH_BALANCE);
+    expect(accDoc?.isDefault).toBe(true);
+    const rawSyms = wlDoc?.symbols;
+    const flat =
+      Array.isArray(rawSyms) &&
+      rawSyms.some((entry: unknown) => {
+        if (typeof entry === "string") {
+          return entry.toUpperCase().includes("TSLA");
+        }
+        if (entry && typeof entry === "object" && "symbol" in entry) {
+          return String((entry as { symbol?: string }).symbol ?? "")
+            .toUpperCase()
+            .includes("TSLA");
+        }
+        return false;
+      });
+    expect(flat).toBe(true);
+  });
+
   it("provisions defaults idempotently and keeps one watchlist per portfolio", async () => {
     const fakeDb = buildFakeDb();
     mockedGetDb.mockResolvedValue(fakeDb.db);
@@ -377,6 +413,47 @@ describe("portfolio provisioning repository", () => {
     expect(fakeDb.count("tenant_portfolio")).toBe(1);
     expect(fakeDb.count("portfolio_accounts")).toBe(1);
     expect(fakeDb.count("portfolio_watchlists")).toBe(1);
+  });
+
+  it("does not reset custom portfolio, account, or watchlist names on repeat provision (OAuth login)", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+
+    const { portfolio, account, watchlist } = await provisionDefaultPortfolioForUser({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
+    const pid = portfolio._id!;
+    const aid = account._id!;
+    const wid = watchlist._id!;
+
+    await fakeDb.db.collection("tenant_portfolio").updateOne(
+      { _id: pid },
+      { $set: { name: "myPortfolio", updatedAt: new Date() } }
+    );
+    await fakeDb.db.collection("portfolio_accounts").updateOne(
+      { _id: aid },
+      { $set: { name: "myaccount", updatedAt: new Date() } }
+    );
+    await fakeDb.db.collection("portfolio_watchlists").updateOne(
+      { _id: wid },
+      { $set: { name: "MyWatchlist", updatedAt: new Date() } }
+    );
+
+    const again = await provisionDefaultPortfolioForUser({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
+
+    const pAfter = await fakeDb.db.collection("tenant_portfolio").findOne({ _id: pid });
+    const aAfter = await fakeDb.db.collection("portfolio_accounts").findOne({ _id: aid });
+    const wAfter = await fakeDb.db.collection("portfolio_watchlists").findOne({ _id: wid });
+
+    expect(pAfter?.name).toBe("myPortfolio");
+    expect(aAfter?.name).toBe("myaccount");
+    expect(wAfter?.name).toBe("MyWatchlist");
+    expect(again.portfolio.name).toBe("myPortfolio");
+    expect(again.account.name).toBe("myaccount");
   });
 
   it("rejects position writes when account does not belong to portfolio", async () => {

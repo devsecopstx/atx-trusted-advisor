@@ -2854,8 +2854,15 @@ export async function provisionDefaultPortfolioForUser(
     .collection<Portfolio>(collections.portfolios)
     .findOne(portfolioLookupFilter);
 
-  const portfolioSetFields = {
+  /** Idempotent provision runs on every OAuth login — do not clobber user-renamed titles. */
+  const portfolioSetForInsert = {
     name: portfolioName,
+    isDefault: true,
+    tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
+    updatedAt: now,
+    ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
+  };
+  const portfolioSetForExisting = {
     isDefault: true,
     tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
     updatedAt: now,
@@ -2865,8 +2872,15 @@ export async function provisionDefaultPortfolioForUser(
   if (portfolio?._id) {
     await db.collection<Portfolio>(collections.portfolios).updateOne(
       { _id: portfolio._id },
-      { $set: portfolioSetFields }
+      { $set: portfolioSetForExisting }
     );
+    const existingName = typeof portfolio.name === "string" ? portfolio.name.trim() : "";
+    if (!existingName) {
+      await db.collection<Portfolio>(collections.portfolios).updateOne(
+        { _id: portfolio._id },
+        { $set: { name: portfolioName, updatedAt: now } }
+      );
+    }
   } else {
     const portfolioInsertFilter = strictWriteTenantFilter(
       { userId: input.userId, isDefault: true },
@@ -2880,7 +2894,7 @@ export async function provisionDefaultPortfolioForUser(
           userId: input.userId,
           createdAt: now
         },
-        $set: portfolioSetFields
+        $set: portfolioSetForInsert
       },
       { upsert: true }
     );
@@ -2931,7 +2945,7 @@ export async function provisionDefaultPortfolioForUser(
   };
   let account = await db.collection<Account>(collections.accounts).findOne(accountLookupFilter);
 
-  const accountSetFields = {
+  const accountSetForInsert = {
     name: accountName,
     type: accountType,
     extAccountId,
@@ -2940,12 +2954,26 @@ export async function provisionDefaultPortfolioForUser(
     updatedAt: now,
     ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
   };
+  const accountSetForExisting = {
+    type: accountType,
+    extAccountId,
+    isDefault: true,
+    updatedAt: now,
+    ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
+  };
 
   if (account?._id) {
     await db.collection<Account>(collections.accounts).updateOne(
       { _id: account._id },
-      { $set: accountSetFields }
+      { $set: accountSetForExisting }
     );
+    const existingAccName = typeof account.name === "string" ? account.name.trim() : "";
+    if (!existingAccName) {
+      await db.collection<Account>(collections.accounts).updateOne(
+        { _id: account._id },
+        { $set: { name: accountName, updatedAt: now } }
+      );
+    }
   } else {
     const accountInsertFilter = strictWriteTenantFilter(
       {
@@ -2963,7 +2991,7 @@ export async function provisionDefaultPortfolioForUser(
           portfolioId: portfolio._id,
           createdAt: now
         },
-        $set: accountSetFields
+        $set: accountSetForInsert
       },
       { upsert: true }
     );
@@ -3016,8 +3044,14 @@ export async function provisionDefaultPortfolioForUser(
     ).filter(Boolean)
   );
 
-  const watchlistSetFields = {
+  const watchlistSetForInsert = {
     name: watchlistName,
+    symbols: mergedWatchlistSymbols,
+    isDefault: true,
+    updatedAt: now,
+    ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
+  };
+  const watchlistSetForExisting = {
     symbols: mergedWatchlistSymbols,
     isDefault: true,
     updatedAt: now,
@@ -3027,8 +3061,16 @@ export async function provisionDefaultPortfolioForUser(
   if (existingWatchlist?._id) {
     await db.collection<Watchlist>(collections.watchlists).updateOne(
       { _id: existingWatchlist._id },
-      { $set: watchlistSetFields }
+      { $set: watchlistSetForExisting }
     );
+    const existingWlName =
+      typeof existingWatchlist.name === "string" ? existingWatchlist.name.trim() : "";
+    if (!existingWlName) {
+      await db.collection<Watchlist>(collections.watchlists).updateOne(
+        { _id: existingWatchlist._id },
+        { $set: { name: watchlistName, updatedAt: now } }
+      );
+    }
   } else {
     const watchlistInsertFilter = strictWriteTenantFilter(
       {
@@ -3045,7 +3087,7 @@ export async function provisionDefaultPortfolioForUser(
           portfolioId: portfolio._id,
           createdAt: now
         },
-        $set: watchlistSetFields
+        $set: watchlistSetForInsert
       },
       { upsert: true }
     );

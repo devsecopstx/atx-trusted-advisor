@@ -235,7 +235,8 @@ class AdminAccessRequestService(
             coreUserService.addRole(oid, roleToGrant)
             coreUserService.setSubscriptionPlan(oid, effectivePlan)
             try {
-                defaultPortfolioProvisionService.provisionForUser(targetUserId, session.tenantId)
+                // Default book: portfolio + paper account ($25k) + TSLA watchlist (DefaultPortfolioProvisionService)
+                defaultPortfolioProvisionService.provisionForAccessRequestApprovedUser(targetUserId)
             } catch (e: Exception) {
                 return ReviewResult.Error(
                     HttpStatus.INTERNAL_SERVER_ERROR,

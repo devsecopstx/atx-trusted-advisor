@@ -798,6 +798,39 @@ export async function ensureDefaultTenant(): Promise<Tenant> {
   return tenant;
 }
 
+/** Default `core_tenant_memberships` row for this user, if any (e.g. after a prior OAuth login). */
+export async function getDefaultTenantIdHexForCoreUser(userIdHex: string): Promise<string | null> {
+  if (!ObjectId.isValid(userIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const membership = await db.collection<TenantMembership>(collections.memberships).findOne({
+    userId: new ObjectId(userIdHex),
+    isDefaultTenant: true
+  });
+  const tid = membership?.tenantId;
+  return tid ? tid.toHexString() : null;
+}
+
+/**
+ * Tenant id for portfolio/account provisioning when an access request is approved: the applicant's
+ * default membership tenant if present, else the platform default tenant (same as OAuth finalize).
+ * Must not use the approving admin's `session.tenantId` — it can differ and strand book data where
+ * the applicant's session cannot read it (then the UI provisions a second default book).
+ */
+export async function resolveTenantIdForApprovedUserPortfolio(userIdHex: string): Promise<string> {
+  const fromMembership = await getDefaultTenantIdHexForCoreUser(userIdHex);
+  if (fromMembership) {
+    return fromMembership;
+  }
+  const tenant = await ensureDefaultTenant();
+  if (!tenant._id) {
+    throw new Error("Failed to resolve tenant for approved user portfolio");
+  }
+  return tenant._id.toHexString();
+}
+
 export async function upsertTenantMembership(input: {
   userId: ObjectId;
   tenantId: ObjectId;

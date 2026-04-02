@@ -72,6 +72,17 @@ export type UserBootstrapCollectionContext = {
 
 let ensureBootstrapIndexesPromise: Promise<void> | null = null;
 
+/**
+ * After admin approves an access request, the **default book is already created** in the same API
+ * request via `provisionDefaultPortfolioForUser` (default portfolio + paper account with **$25,000**
+ * cash + watchlist seeded with **TSLA**) before the request row is marked reviewed.
+ *
+ * This function: (1) records `admin_user_bootstrap_profiles` as pending, (2) inserts a **disabled**
+ * `admin_scheduled_tasks` row (`nextRunAt: now`) as an audit/trace line in Admin → Tasks — **do not**
+ * enable it expecting book provisioning; the `notifications` category handler does not run this
+ * bootstrap. (3) Immediately schedules `runAccessRequestBootstrap` on a microtask (xAI collection +
+ * idempotent re-provision + profile `synced`).
+ */
 export async function enqueueAccessRequestBootstrap(
   input: EnqueueAccessRequestBootstrapInput
 ): Promise<void> {
@@ -96,6 +107,8 @@ export async function enqueueAccessRequestBootstrap(
     name: `access-request-bootstrap:${normalizedEmail}`,
     category: "notifications",
     scheduleCron: DEFAULT_SCHEDULED_TASK_CRON,
+    scheduleDescription:
+      "Trace row for access approval: default portfolio + $25k paper account + TSLA watchlist are created synchronously when the request is approved (Admin → Access requests). xChat/xAI bootstrap runs immediately after in-process (microtask). Task stays disabled — not used to provision the book.",
     enabled: false,
     maxRetries: 3,
     runTimeoutSeconds: 60,

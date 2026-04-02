@@ -16,7 +16,8 @@ const coreAdminMocks = vi.hoisted(() => ({
 const identityMocks = vi.hoisted(() => ({
   addRoleToCoreUser: vi.fn(),
   updateCoreUserSubscriptionPlan: vi.fn(),
-  getCoreUserById: vi.fn()
+  getCoreUserById: vi.fn(),
+  resolveTenantIdForApprovedUserPortfolio: vi.fn()
 }));
 
 const auditMocks = vi.hoisted(() => ({
@@ -87,6 +88,7 @@ describe("access request item CRUD route", () => {
     identityMocks.getCoreUserById.mockResolvedValue({
       email: "viewer@atxfinance.ai"
     });
+    identityMocks.resolveTenantIdForApprovedUserPortfolio.mockResolvedValue("507f1f77bcf86cd799439055");
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
     bootstrapMocks.enqueueAccessRequestBootstrap.mockResolvedValue(undefined);
@@ -119,6 +121,13 @@ describe("access request item CRUD route", () => {
     expect(identityMocks.addRoleToCoreUser).toHaveBeenCalledWith(
       expect.objectContaining({ role: "viewer" })
     );
+    expect(identityMocks.resolveTenantIdForApprovedUserPortfolio).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439044"
+    );
+    expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledWith({
+      userId: "507f1f77bcf86cd799439044",
+      tenantId: "507f1f77bcf86cd799439055"
+    });
   });
 
   it("deletes access request by id", async () => {

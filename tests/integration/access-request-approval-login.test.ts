@@ -30,6 +30,7 @@ const identityMocks = vi.hoisted(() => ({
   addRoleToCoreUser: vi.fn(),
   updateCoreUserSubscriptionPlan: vi.fn(),
   getCoreUserById: vi.fn(),
+  resolveTenantIdForApprovedUserPortfolio: vi.fn(),
   getCoreUserByXIdentity: vi.fn(),
   getCoreUserByEmail: vi.fn(),
   unlinkXAccountFromUser: vi.fn(),
@@ -155,6 +156,7 @@ describe("access request approval login flow", () => {
     });
     identityMocks.updateCoreUserSubscriptionPlan.mockImplementation(async () => makeUser());
     identityMocks.getCoreUserById.mockResolvedValue(makeUser());
+    identityMocks.resolveTenantIdForApprovedUserPortfolio.mockResolvedValue("507f1f77bcf86cd799439033");
     identityMocks.getCoreUserByXIdentity.mockResolvedValue(null);
     identityMocks.getCoreUserByEmail.mockImplementation(async () => makeUser());
     identityMocks.unlinkXAccountFromUser.mockResolvedValue(undefined);
