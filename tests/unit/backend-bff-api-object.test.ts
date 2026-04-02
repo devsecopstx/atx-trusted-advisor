@@ -70,8 +70,6 @@ const expectedRoutes: readonly ExpectedRoute[] = [
     pathTemplate: "/api/admin/portfolios/{portfolioId}/delivery-channels/{channelId}",
     methods: ["PATCH", "DELETE"]
   },
-  { pathTemplate: "/api/admin/portfolios/{portfolioId}/tasks", methods: ["GET", "POST"] },
-  { pathTemplate: "/api/admin/portfolios/{portfolioId}/tasks/{taskId}", methods: ["PATCH", "DELETE"] },
   { pathTemplate: "/api/rag/files", methods: ["GET", "POST"] },
   { pathTemplate: "/api/rag/files/{fileId}/readiness", methods: ["GET"] },
   { pathTemplate: "/api/access-requests", methods: ["POST"] },

@@ -26,12 +26,6 @@ export function getPortfolioChildToolLinks(portfolioId: string): PortfolioChildT
       title: "Edit portfolio watchlist symbols"
     },
     {
-      path: `${base}/tasks`,
-      label: "Tasks",
-      typeLabel: "Scheduled jobs",
-      title: "Portfolio-scoped scheduler tasks"
-    },
-    {
       path: `${base}/alerts`,
       label: "Alerts",
       typeLabel: "Price & notifications",

@@ -569,8 +569,8 @@ export function TasksConsole() {
         {activeTab === "tasks" ? (
           <div className="stack-gap">
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Edit scheduled jobs for this tenant. Portfolio-scoped jobs still live under each portfolio&apos;s manage →
-              Tasks. Use <strong>Schedule tasks</strong> to create new job schedules. Set a Slack delivery channel on a
+              Edit <strong>tenant-level</strong> scheduled jobs (global admin only). Use <strong>Schedule tasks</strong>{" "}
+              to create job schedules. Set a Slack delivery channel on a
               row to post a summary to Slack after every run (manual or scheduler).
             </p>
             {tasks.length > 0 ? (

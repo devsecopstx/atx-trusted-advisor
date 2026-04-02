@@ -122,8 +122,6 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `
 | PATCH \| DELETE | `/api/admin/portfolios/{portfolioId}/alerts/{alertId}` | **Global admin only.** **PATCH** partial fields; **DELETE** `{ "ok": true }`. |
 | GET \| POST | `/api/admin/portfolios/{portfolioId}/delivery-channels` | **Global admin only.** **`portfolio_delivery_channels`**. **POST** `kind` (email\|slack_webhook\|sms\|push), `label`, `destination`, optional `enabled`. |
 | PATCH \| DELETE | `/api/admin/portfolios/{portfolioId}/delivery-channels/{channelId}` | **Global admin only.** **PATCH** partial; **DELETE** `{ "ok": true }`. |
-| GET \| POST | `/api/admin/portfolios/{portfolioId}/tasks` | **Global admin only.** **`admin_scheduled_tasks`** rows with `portfolioId` set; tenant scope = signed-in admin **`tenantId`** (same as Next portfolio task UI). **POST** `name`, `category`, `scheduleCron`, optional `enabled`, `lastRunAt`, `nextRunAt`. |
-| PATCH \| DELETE | `/api/admin/portfolios/{portfolioId}/tasks/{taskId}` | **Global admin only.** **PATCH** partial task fields; **DELETE** `{ "ok": true }`. Distinct from tenant-level `/api/admin/tasks` (no `portfolioId`). |
 
 **BFF registry:** proxied admin portfolio paths are listed in `src/lib/bff-proxy-routes.ts` (Next `proxyRequestToBackend` first, then local fallback).
 

@@ -2,10 +2,12 @@
 
 Last updated: 2026-03-26
 
-Scope: This document describes the legacy scheduler model used in `atxfinance-backend` (Kotlin/Spring Boot) for tenant-level and portfolio-scoped administrative tasks. It summarizes task types, input schemas, Mongo collections, and execution lifecycle based on current code.
+Scope: This document describes the legacy scheduler model used in `atxfinance-backend` (Kotlin/Spring Boot) for **tenant-level** administrative tasks. It summarizes task types, input schemas, Mongo collections, and execution lifecycle based on current code.
+
+**Removed (2026-04):** Portfolio-nested scheduled task HTTP API and `AdminPortfolioScheduledTasksService` / controller — product uses **tenant-only** `/api/admin/tasks` (Next + `AdminScheduledTasksService`). Legacy Mongo rows may still have `portfolioId`; the JVM `listDueTasks` query excludes them.
 
 Related code (selected):
-- Service: `AdminScheduledTasksService`, `AdminPortfolioScheduledTasksService`
+- Service: `AdminScheduledTasksService`
 - Controller: `AdminScheduledTasksController`
 - Scheduling: `SchedulingConfig` (ShedLock + executor), `scheduling/SampleScheduledTasks.kt`
 - Properties: `AtxfinanceProperties` (collection names)
@@ -34,7 +36,7 @@ Notes:
 Common fields (tenant-level and portfolio-scoped):
 - `_id` (ObjectId) — Mongo id (server-assigned)
 - `tenantId` (ObjectId, optional) — Tenant scope; added when session has a tenant id
-- `portfolioId` (ObjectId, optional) — Present for portfolio-scoped tasks only
+- `portfolioId` (ObjectId, optional) — Legacy only; scheduler does not enqueue these tasks
 - `name` (string, required, 1..200) — Human label
 - `category` (string, required) — One of: `sync-broker`, `rebalance`, `compliance`, `notifications`, `user-history`
 - `scheduleCron` (string, required) — Cron expression
@@ -123,18 +125,7 @@ Auth:
 - All endpoints require a valid session cookie and global admin privileges.
 
 
-## 6) Portfolio-scoped Admin Tasks
-
-Surface: Managed via `AdminPortfolioScheduledTasksService` (nested admin UI/API for a given portfolio).
-
-Differences vs tenant-level tasks:
-- Filter and CRUD require a valid `portfolioId` path param and existing portfolio.
-- Documents include `portfolioId` (ObjectId).
-- On create: if `nextRunAt` is absent, a default is set to `now + 5 minutes` (vs cron-computed for tenant-level).
-- Categories and validation are the same as tenant-level (limited set listed above).
-
-
-## 7) Example Payloads
+## 6) Example Payloads
 
 Create tenant-level task:
 ```json
@@ -143,17 +134,6 @@ Create tenant-level task:
   "category": "sync-broker",
   "scheduleCron": "0 2 * * *",  
   "enabled": true
-}
-```
-
-Create portfolio-scoped task (body for nested API, `portfolioId` comes from path):
-```json
-{
-  "name": "Weekly rebalance check",
-  "category": "rebalance",
-  "scheduleCron": "30 9 * * 1",
-  "enabled": true,
-  "nextRunAt": "2026-03-30T09:30:00Z"
 }
 ```
 
@@ -183,7 +163,7 @@ A `admin_task_runs` record (example shape returned by list):
 ```
 
 
-## 8) Implementation Notes & Gaps
+## 7) Implementation Notes & Gaps
 
 - Retry policy and `maxRetries`/`runTimeoutSeconds` are not enforced yet; fields are serialized for future use.
 - Pub/Sub consumer is not wired here; all execution is in-process on the scheduler thread pool.
@@ -191,7 +171,7 @@ A `admin_task_runs` record (example shape returned by list):
 - Cron granularity: second-level supported when provided; default prepend `0` seconds on 5-field crons.
 
 
-## 9) Discoverability
+## 8) Discoverability
 
 - Admin UI surfaces exist in the Next.js app (`/src/app/admin/...`) which align to these endpoints and collections.
 - API references: see `atx-docs/sre-ops/atxfinance-backend-http-api.md` (Admin tasks section) and `atx-docs/design-system/scheduled-task/schedule-tasks-admin.md` for UX/data notes.
@@ -199,6 +179,5 @@ A `admin_task_runs` record (example shape returned by list):
 ---
 References
 - `services/atxfinance-backend/src/main/kotlin/com/atxfinance/backend/admin/AdminScheduledTasksService.kt`
-- `services/atxfinance-backend/src/main/kotlin/com/atxfinance/backend/admin/AdminPortfolioScheduledTasksService.kt`
 - `services/atxfinance-backend/src/main/kotlin/com/atxfinance/backend/web/AdminScheduledTasksController.kt`
 - `services/atxfinance-backend/src/main/kotlin/com/atxfinance/backend/config/SchedulingConfig.kt`

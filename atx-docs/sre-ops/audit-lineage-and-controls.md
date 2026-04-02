@@ -28,7 +28,7 @@ Rows are **append-only** application inserts (not tamper-evident by themselves):
 
 When `proxyRequestToBackend` in `src/lib/backend-bff.ts` returns a `Response`, the **Next.js route body does not run**. Side effects that only exist in Next (e.g. Pub/Sub publish on recommendations) are skipped — see [`./api-consolidation-spring-backend.md`](./api-consolidation-spring-backend.md) § operational parity.
 
-**Audit implication:** Mutations that move to Spring **must** write audit rows on the JVM for parity **when Next already wrote them** (e.g. access-request approve). The consolidation doc lists JVM status per effect; treat that table as the compliance checklist before enabling BFF in prod. **Admin nested portfolio** CRUD (recommendations, alerts, delivery-channels, portfolio tasks) did **not** emit `admin_audit_events` on Next either; BFF-on does not introduce a new audit gap vs Next for those routes.
+**Audit implication:** Mutations that move to Spring **must** write audit rows on the JVM for parity **when Next already wrote them** (e.g. access-request approve). The consolidation doc lists JVM status per effect; treat that table as the compliance checklist before enabling BFF in prod. **Admin nested portfolio** CRUD (recommendations, alerts, delivery-channels) did **not** emit `admin_audit_events` on Next either; BFF-on does not introduce a new audit gap vs Next for those routes.
 
 ## Retrieval parity (`GET /api/admin/audit`)
 

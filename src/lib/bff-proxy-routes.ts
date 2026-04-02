@@ -5,7 +5,7 @@
  *
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
  * App-user portfolio CRUD/watchlist/positions/recommendations/strategy-jobs + `/api/personas` CRUD proxy when origin set.
- * Admin **portfolio** subtree (accounts, watchlist, positions, recommendations, alerts, delivery-channels, portfolio tasks) proxies when origin set.
+ * Admin **portfolio** subtree (accounts, watchlist, positions, recommendations, alerts, delivery-channels) proxies when origin set.
  * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Scheduler/tasks on Spring when origin set — see atx-docs/sre-ops/api-consolidation-spring-backend.md.
  *
  * Deferred vertical slice: xChat streaming routes — see `atx-docs/sre-ops/api-consolidation-spring-backend.md`.
@@ -109,10 +109,6 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "POST", path: "/api/admin/portfolios/{portfolioId}/delivery-channels" },
   { method: "PATCH", path: "/api/admin/portfolios/{portfolioId}/delivery-channels/{channelId}" },
   { method: "DELETE", path: "/api/admin/portfolios/{portfolioId}/delivery-channels/{channelId}" },
-  { method: "GET", path: "/api/admin/portfolios/{portfolioId}/tasks" },
-  { method: "POST", path: "/api/admin/portfolios/{portfolioId}/tasks" },
-  { method: "PATCH", path: "/api/admin/portfolios/{portfolioId}/tasks/{taskId}" },
-  { method: "DELETE", path: "/api/admin/portfolios/{portfolioId}/tasks/{taskId}" },
   { method: "GET", path: "/api/rag/files" },
   { method: "POST", path: "/api/rag/files" },
   { method: "GET", path: "/api/rag/files/{fileId}/readiness" },

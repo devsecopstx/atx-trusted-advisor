@@ -1,13 +1,13 @@
 # API consolidation: Next.js → atxfinance-backend (Spring)
 
 **Status:** in progress (extended BFF slices shipped).  
-**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **app-user portfolios + positions + watchlist + recommendations**, **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests**, **admin portfolio shell** (`GET`/`POST` list, `GET`/`PATCH`/`DELETE` by id), **admin portfolio nested**: accounts, watchlist, **account positions** (`GET`/`POST` collection only), **portfolio recommendations / alerts / delivery-channels**, **portfolio-scoped scheduled tasks** (`admin_scheduled_tasks` with `portfolioId`; distinct from tenant `GET`/`POST /api/admin/tasks`), plus **deploy-note-configs**, **import/broker**, **tenant tasks/scheduler**, **user-feedback**, **admin bootstrap-status**, **admin audit (GET)**, **RAG files** + readiness — see `./atxfinance-backend-http-api.md`. App-user **recommendations** optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
+**Today:** Canonical proxy list: [`src/lib/bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) (drives `tests/smoke/backend-http-api-parity.test.ts`). Kotlin covers **health / diagnostics**, **app-user portfolios + positions + watchlist + recommendations**, **strategy-options**, **personas**, **self-service access-requests** (with audit + optional Slack), **admin access-requests**, **admin portfolio shell** (`GET`/`POST` list, `GET`/`PATCH`/`DELETE` by id), **admin portfolio nested**: accounts, watchlist, **account positions** (`GET`/`POST` collection only), **portfolio recommendations / alerts / delivery-channels**, tenant **`/api/admin/tasks`** (portfolio-nested task CRUD removed from product), plus **deploy-note-configs**, **import/broker**, **tenant tasks/scheduler**, **user-feedback**, **admin bootstrap-status**, **admin audit (GET)**, **RAG files** + readiness — see `./atxfinance-backend-http-api.md`. App-user **recommendations** optional Pub/Sub on create when `RECOMMENDATIONS_PUBSUB_TOPIC` + project id set. When `ATXFINANCE_BACKEND_ORIGIN` is set, Next proxies via `src/lib/backend-bff.ts`.
 
 ## Migration status board
 
 | Area | Spring | Notes |
 |------|--------|--------|
-| Portfolios, positions, watchlist | Yes | App-user paths; **admin** portfolio root, watchlist, accounts, nested recommendations/alerts/delivery-channels/portfolio tasks, and **GET**/**POST** positions under an account — **Spring + BFF** when origin set. **Gap:** admin **`PATCH`/`DELETE …/positions/{positionId}`** not in `bff-proxy-routes.ts` yet. |
+| Portfolios, positions, watchlist | Yes | App-user paths; **admin** portfolio root, watchlist, accounts, nested recommendations/alerts/delivery-channels, and **GET**/**POST** positions under an account — **Spring + BFF** when origin set. **Gap:** admin **`PATCH`/`DELETE …/positions/{positionId}`** not in `bff-proxy-routes.ts` yet. |
 | Recommendations (app + per-portfolio) | Yes | Pub/Sub: Next `publishRecommendationEvent` when BFF off; Kotlin `RecommendationEventPublisher` when BFF on (`RECOMMENDATIONS_PUBSUB_TOPIC`). |
 | Strategy-options | Yes | Yahoo + synthetic fallback on JVM. |
 | Personas | Yes | Audit writes in Kotlin (`PersonaService`). |
@@ -51,7 +51,7 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 
 **Proxied today:** `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` (read-only); **`/api/admin/access-requests`** (CRUD + review) — see `./atxfinance-backend-http-api.md`.
 
-**Proxied with Spring parity:** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), tenant **tasks / scheduler**, **admin portfolio** tree (root CRUD, accounts, watchlist, positions collection GET/POST, recommendations, alerts, delivery-channels, portfolio-scoped tasks). Enable via **`ATXFINANCE_BACKEND_ORIGIN`** (PR 3 + PR 4 + subsequent admin-portfolio slices — same origin).
+**Proxied with Spring parity:** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), tenant **tasks / scheduler**, **admin portfolio** tree (root CRUD, accounts, watchlist, positions collection GET/POST, recommendations, alerts, delivery-channels). Enable via **`ATXFINANCE_BACKEND_ORIGIN`** (PR 3 + PR 4 + subsequent admin-portfolio slices — same origin).
 
 ## PR 3 & PR 4 — real migration slices (not “code-only” PRs)
 

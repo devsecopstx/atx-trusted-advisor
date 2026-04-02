@@ -238,14 +238,6 @@ export const nextBffApi = {
     portfolioDeliveryChannelById: {
       pathTemplate: "/api/admin/portfolios/{portfolioId}/delivery-channels/{channelId}",
       methods: ["PATCH", "DELETE"]
-    },
-    portfolioTasksIndex: {
-      pathTemplate: "/api/admin/portfolios/{portfolioId}/tasks",
-      methods: ["GET", "POST"]
-    },
-    portfolioTaskById: {
-      pathTemplate: "/api/admin/portfolios/{portfolioId}/tasks/{taskId}",
-      methods: ["PATCH", "DELETE"]
     }
   },
   rag: {

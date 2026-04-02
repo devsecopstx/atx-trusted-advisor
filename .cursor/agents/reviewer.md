@@ -66,6 +66,11 @@ Cross-team implementation plan — use the matching agent files (`.cursor/agents
 - Behavior matches `strategy-engine.md`; **update `StrategyEngine.svg`** if the flow changes so the embedded diagram in the doc stays accurate on GitHub.
 - `PLAN.md` row **245n** updated from “plan” to “shipped” (or equivalent note) when the engine is wired and validated behind the scanner job.
 
+## Scheduled tasks (admin)
+
+- **Tenant admin only:** `admin_scheduled_tasks` are created and run from **`/admin/tasks`** (`global_admin`). There is **no** portfolio-level scheduled-task CRUD in the admin UI; legacy Mongo rows with `portfolioId` are **not** enqueued by the scheduler.
+- **Future (TBD):** app users may create an **options-scanner** (or related) job from an **xChat** prompt — not shipped until explicitly scoped; do not reintroduce per-portfolio `/admin/portfolios/.../tasks` without product sign-off.
+
 ## Parallel worktree
 
 - Hint: `/worktrees/reviewer` — see `.cursor/worktrees.json`.

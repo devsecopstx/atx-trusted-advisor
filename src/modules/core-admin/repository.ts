@@ -883,7 +883,8 @@ export async function listDueScheduledTasks(
       withTenantScope(
         {
           enabled: true,
-          nextRunAt: { $lte: now }
+          nextRunAt: { $lte: now },
+          $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
         },
         options?.tenantId
       )

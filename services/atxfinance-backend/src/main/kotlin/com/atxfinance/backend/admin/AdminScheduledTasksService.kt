@@ -281,7 +281,15 @@ class AdminScheduledTasksService(
     }
 
     fun listDueTasks(now: Date, session: ResolvedSession): List<Document> {
-        val base = Criteria.where("enabled").`is`(true).and("nextRunAt").lte(now)
+        val tenantScopedOnly = Criteria().orOperator(
+            Criteria.where("portfolioId").exists(false),
+            Criteria.where("portfolioId").`is`(null),
+        )
+        val base = Criteria().andOperator(
+            Criteria.where("enabled").`is`(true),
+            Criteria.where("nextRunAt").lte(now),
+            tenantScopedOnly,
+        )
         val q = Query.query(PortfolioMongoFilter.withTenantScopeCriteria(base, session.tenantId.takeIf { it.isNotBlank() }))
             .with(Sort.by(Sort.Direction.ASC, "nextRunAt").and(Sort.by(Sort.Direction.ASC, "_id")))
             .limit(30)

@@ -2,10 +2,10 @@
 
 Last updated: 2026-03-26
 
-Scope: This document describes the legacy scheduler model used in `atxfinance-backend` (Kotlin/Spring Boot) for tenant-level and portfolio-scoped administrative tasks. It summarizes task types, input schemas, Mongo collections, and execution lifecycle based on current code.
+Scope: This document describes the legacy scheduler model used in `atxfinance-backend` (Kotlin/Spring Boot) for **tenant-level** administrative tasks. **Portfolio-nested** scheduled task API/UI is **removed**; see `services/atxfinance-backend/task-types-and-structure.md` for the same content with changelog.
 
 Related code (selected):
-- Service: `AdminScheduledTasksService`, `AdminPortfolioScheduledTasksService`
+- Service: `AdminScheduledTasksService`
 - Controller: `AdminScheduledTasksController`
 - Scheduling: `SchedulingConfig` (ShedLock + executor), `scheduling/SampleScheduledTasks.kt`
 - Properties: `AtxfinanceProperties` (collection names)
@@ -27,17 +27,17 @@ Allowed categories ("type") today:
 - `daily_options_scanner` — Options strategy catalog inventory (**Next.js** task-runner; Kotlin noop when BFF runs the tick)
 
 Notes:
-- Portfolio-scoped tasks use the same categories but include a `portfolioId` field.
+- Legacy Mongo documents may include `portfolioId`; schedulers exclude them from due-task queries.
 - Unknown categories are rejected at validation time.
 - **Next.js** canonical category list: `src/lib/scheduled-task-category-schema.ts` (keep in sync with this doc and Kotlin `ALLOWED_CATEGORIES`).
 
 
 ## 2) Task Definition Schema (`admin_scheduled_tasks`)
 
-Common fields (tenant-level and portfolio-scoped):
+Common fields:
 - `_id` (ObjectId) — Mongo id (server-assigned)
 - `tenantId` (ObjectId, optional) — Tenant scope; added when session has a tenant id
-- `portfolioId` (ObjectId, optional) — Present for portfolio-scoped tasks only
+- `portfolioId` (ObjectId, optional) — Legacy only; not enqueued by scheduler
 - `name` (string, required, 1..200) — Human label
 - `category` (string, required) — One of: `sync-broker`, `rebalance`, `compliance`, `notifications`, `user-history`, `watchlist_price_scanner`, `daily_options_scanner`
 - `scheduleCron` (string, required) — Cron expression
@@ -54,17 +54,13 @@ Creation rules (tenant-level via `POST /api/admin/tasks`):
 - Optional: `enabled` (default true), `lastRunAt`, `nextRunAt`
 - If `enabled=true` and `nextRunAt` not provided, it is computed from `scheduleCron` relative to "now" (UTC).
 
-Portfolio-scoped creation (via service used by nested portfolio admin):
-- Same validations as above, plus required `portfolioId` path param; service validates that the portfolio exists.
-- If `nextRunAt` not provided, defaults to `now + 5 minutes` in portfolio-scoped service; in tenant-level creation it is computed from cron.
-
 Patch rules (tenant-level via `PATCH /api/admin/tasks/{taskId}`):
 - Allowed keys: `name`, `category`, `scheduleCron`, `enabled`, `nextRunAt`
 - If `scheduleCron` changes and `nextRunAt` not provided in the same request, `nextRunAt` is recomputed from the new cron.
 - Empty strings or invalid values are rejected with `400 Invalid request payload`.
 
 Deletion (tenant-level):
-- `DELETE /api/admin/tasks/{taskId}` — hard delete; only tenant-level tasks accepted by this controller.
+- `DELETE /api/admin/tasks/{taskId}` — hard delete.
 
 
 ## 3) Task Run Schema (`admin_task_runs`)
@@ -126,18 +122,7 @@ Auth:
 - All endpoints require a valid session cookie and global admin privileges.
 
 
-## 6) Portfolio-scoped Admin Tasks
-
-Surface: Managed via `AdminPortfolioScheduledTasksService` (nested admin UI/API for a given portfolio).
-
-Differences vs tenant-level tasks:
-- Filter and CRUD require a valid `portfolioId` path param and existing portfolio.
-- Documents include `portfolioId` (ObjectId).
-- On create: if `nextRunAt` is absent, a default is set to `now + 5 minutes` (vs cron-computed for tenant-level).
-- Categories and validation are the same as tenant-level (limited set listed above).
-
-
-## 7) Example Payloads
+## 6) Example Payloads
 
 Create tenant-level task:
 ```json
@@ -146,17 +131,6 @@ Create tenant-level task:
   "category": "sync-broker",
   "scheduleCron": "0 2 * * *",  
   "enabled": true
-}
-```
-
-Create portfolio-scoped task (body for nested API, `portfolioId` comes from path):
-```json
-{
-  "name": "Weekly rebalance check",
-  "category": "rebalance",
-  "scheduleCron": "30 9 * * 1",
-  "enabled": true,
-  "nextRunAt": "2026-03-30T09:30:00Z"
 }
 ```
 
@@ -186,7 +160,7 @@ A `admin_task_runs` record (example shape returned by list):
 ```
 
 
-## 8) Implementation Notes & Gaps
+## 7) Implementation Notes & Gaps
 
 - Retry policy and `maxRetries`/`runTimeoutSeconds` are not enforced yet; fields are serialized for future use.
 - Pub/Sub consumer is not wired here; all execution is in-process on the scheduler thread pool.
@@ -194,7 +168,7 @@ A `admin_task_runs` record (example shape returned by list):
 - Cron granularity: second-level supported when provided; default prepend `0` seconds on 5-field crons.
 
 
-## 9) Discoverability
+## 8) Discoverability
 
 - Admin UI surfaces exist in the Next.js app (`/src/app/admin/...`) which align to these endpoints and collections.
 - API references: see `atx-docs/sre-ops/atxfinance-backend-http-api.md` (Admin tasks section) and `atx-docs/design-system/scheduled-task/schedule-tasks-admin.md` for UX/data notes.
@@ -202,6 +176,5 @@ A `admin_task_runs` record (example shape returned by list):
 ---
 References
 - `services/atxfinance-backend/src/main/kotlin/com/atxfinance/backend/admin/AdminScheduledTasksService.kt`
-- `services/atxfinance-backend/src/main/kotlin/com/atxfinance/backend/admin/AdminPortfolioScheduledTasksService.kt`
 - `services/atxfinance-backend/src/main/kotlin/com/atxfinance/backend/web/AdminScheduledTasksController.kt`
 - `services/atxfinance-backend/src/main/kotlin/com/atxfinance/backend/config/SchedulingConfig.kt`

@@ -1,6 +1,6 @@
 # Admin scheduled tasks — xFinance (design + implementation map)
 
-**Purpose:** Describe how **tenant-level** and **portfolio-scoped** scheduled tasks work in the **core admin** app: UI, APIs, Mongo collections, and optional **Kotlin Spring** execution when the BFF is enabled.
+**Purpose:** Describe how **tenant-level** scheduled tasks work in the **core admin** app (`/admin/tasks`): UI, APIs, Mongo collections, and optional **Kotlin Spring** execution when the BFF is enabled. **Portfolio-scoped** scheduled task CRUD has been **removed**; only **global admin** tenant jobs remain. **TBD:** end-users may create **options-scanner** jobs from **xChat** prompts in a future slice.
 
 **Not in scope:** Generic SQL/ORM schedulers or non-xFinance stacks. This doc tracks **this repo**.
 
@@ -8,7 +8,7 @@
 
 ## Who can use it
 
-- **`global_admin` only** for `/admin/tasks` and `/api/admin/tasks*`, `/api/admin/task-runs`, `/api/admin/scheduler/tick`, and portfolio nested task routes.
+- **`global_admin` only** for `/admin/tasks` and `/api/admin/tasks*`, `/api/admin/task-runs`, `/api/admin/scheduler/tick`.
 - Enforced in **`src/app/admin/tasks/page.tsx`** (redirect if not global admin) and **`requireAdminSession()`** on API routes.
 
 ---
@@ -18,7 +18,6 @@
 | Surface | Route / entry | Component |
 |--------|----------------|-----------|
 | **Tenant tasks** | **`/admin/tasks`** | **`src/app/admin/tasks/ui/tasks-console.tsx`** (`TasksConsole`) |
-| **Portfolio tasks** | **`/admin/portfolios/{id}/tasks`** | **`src/app/admin/portfolios/ui/admin-portfolio-tasks-console.tsx`** — CRUD uses **`/api/admin/portfolios/.../tasks`**; **Run** still posts to **`POST /api/admin/tasks/{taskId}/run`** (task id is global in Mongo). |
 
 **UI behavior (tenant console):**
 
@@ -27,13 +26,13 @@
 - **Edit row:** inline name, category, cron, enabled; per-row **Save** → **`PATCH /api/admin/tasks/{id}`** (or bulk **Save changes**).
 - **Run now:** **`POST /api/admin/tasks/{id}/run`** → shows status and refreshes runs.
 - **Delete:** **`DELETE /api/admin/tasks/{id}`**.
-- Copy in UI: tenant-level jobs omit **`portfolioId`**; portfolio-scoped tasks are edited under each portfolio’s Tasks page.
+- Tenant-level jobs omit **`portfolioId`**. Legacy Mongo rows may still have **`portfolioId`**; the scheduler **does not** enqueue them (`listDueScheduledTasks` filters them out).
 
-**Categories** (must match **`src/lib/scheduled-task-category-schema.ts`** and Kotlin allowlists):
+**Categories** (must match **`src/lib/scheduled-task-category-schema.ts`** and Kotlin allowlists where applicable):
 
-`sync-broker` · `rebalance` · `compliance` · `notifications` · `user-history` · `watchlist_price_scanner` · `daily_options_scanner`
+`price_scanner` · `options_scanner` · `user_access_requests` · `sync-broker` · `rebalance` · `compliance` · `notifications` · `user-history` · `watchlist_price_scanner` · `daily_options_scanner`
 
-**Next.js executors** (`src/modules/core-admin/task-runner.ts`): `user-history`, `watchlist_price_scanner`, `daily_options_scanner`. Other categories use the simulated short sleep + success string (and on Kotlin BFF, `watchlist_price_scanner` / `daily_options_scanner` log a noop message unless execution is routed to Next).
+**Next.js executors** (`src/modules/core-admin/task-runner.ts`): `price_scanner`, `options_scanner`, `user_access_requests`, `user-history`, `watchlist_price_scanner`, `daily_options_scanner` (and others as implemented). Stub categories use a short simulated delay + success string on Kotlin when execution is not routed to Next.
 
 **Desk Slack (PLAN 250):** When `watchlist_price_scanner` creates `portfolio_alerts`, the app calls **`dispatchPortfolioDeskEventsToSlack`** for that portfolio’s enabled **`portfolio_delivery_channels`** rows with `kind: slack_webhook` and HTTPS `hooks.slack.com` destinations (`src/modules/notifications/portfolio-notification-service.ts`).
 
@@ -45,7 +44,7 @@ Canonical collection names (Next repository + Kotlin backend):
 
 | Collection | Role |
 |------------|------|
-| **`admin_scheduled_tasks`** | Task definitions: tenant-scoped; optional **`portfolioId`** for portfolio-bound rows. |
+| **`admin_scheduled_tasks`** | Task definitions: tenant-scoped; optional legacy **`portfolioId`** (ignored by scheduler; no UI to create portfolio-bound tasks). |
 | **`admin_task_runs`** | Run history: status, output, duration, **`triggeredBy`**, timestamps. |
 
 **Next implementation:** **`src/modules/core-admin/repository.ts`** (`COLLECTIONS.scheduledTasks`, `COLLECTIONS.taskRuns`).
@@ -68,14 +67,7 @@ All routes require a valid **global admin** session unless proxied (see BFF belo
 | **GET** | `/api/admin/task-runs` | Recent runs for tenant. |
 | **POST** | `/api/admin/scheduler/tick` | Advance due tasks / simulation path (used when driving scheduler from HTTP). |
 
-**Portfolio nested (same collections, `portfolioId` set):**
-
-| Method | Path |
-|--------|------|
-| **GET** \| **POST** | `/api/admin/portfolios/{portfolioId}/tasks` |
-| **PATCH** \| **DELETE** | `/api/admin/portfolios/{portfolioId}/tasks/{taskId}` |
-
-**Run now:** **`POST /api/admin/tasks/{taskId}/run`** — used by both tenant and portfolio UIs (by `taskId`; BFF list in **`src/lib/bff-proxy-routes.ts`**).
+**Run now:** **`POST /api/admin/tasks/{taskId}/run`** — by `taskId` (BFF list in **`src/lib/bff-proxy-routes.ts`**).
 
 **Authoritative route list + parity:** **`atx-docs/sre-ops/atxfinance-backend-http-api.md`** and **`src/lib/bff-proxy-routes.ts`**.
 
@@ -110,9 +102,7 @@ When **`ATXFINANCE_BACKEND_ORIGIN`** is set, **`proxyRequestToBackend`** in the 
 |------|------|
 | Tenant tasks API | `src/app/api/admin/tasks/route.ts`, `src/app/api/admin/tasks/[taskId]/route.ts`, `src/app/api/admin/tasks/[taskId]/run/route.ts` |
 | Task runs API | `src/app/api/admin/task-runs/route.ts` |
-| Portfolio tasks API | `src/app/api/admin/portfolios/[portfolioId]/tasks/` |
 | Repository | `src/modules/core-admin/repository.ts` |
-| Portfolio tasks UI | `src/app/admin/portfolios/ui/admin-portfolio-tasks-console.tsx` |
 | BFF proxy list | `src/lib/bff-proxy-routes.ts` |
 | Backend HTTP catalog | `atx-docs/sre-ops/atxfinance-backend-http-api.md` |
 
@@ -122,4 +112,5 @@ When **`ATXFINANCE_BACKEND_ORIGIN`** is set, **`proxyRequestToBackend`** in the 
 
 | Date | Author | Change |
 |------|--------|--------|
+| 2026-04-02 | Engineering | **Portfolio** scheduled-task UI/API removed; tenant **`/admin/tasks`** only; scheduler ignores legacy `portfolioId` rows; TBD xChat options-scanner jobs. |
 | 2026-03-25 | Engineering | Replaced generic SQL/FastAPI draft with **xFinance-aligned** map: Mongo **`admin_scheduled_tasks`** / **`admin_task_runs`**, **`/admin/tasks`** + **`TasksConsole`**, admin API table, BFF note, **PLAN.md** pointer. |

@@ -81,7 +81,7 @@ export type ApprovedUserListItem = {
 export type ScheduledTask = {
   _id?: ObjectId;
   tenantId?: ObjectId;
-  /** When set, task is scoped to this portfolio (admin portfolio tasks console). */
+  /** Legacy: portfolio-scoped tasks are removed from product UI/API; scheduler ignores `portfolioId`. */
   portfolioId?: ObjectId;
   name: string;
   category:

@@ -250,7 +250,11 @@ export function AdminPortfoliosCrud() {
         </Link>{" "}
         (account <code className="font-mono text-xs">type</code>), not on the portfolio book. One{" "}
         <strong>default</strong> book per user (radio). Tenant org key column is read-only. Use <strong>Tools</strong>{" "}
-        for watchlist, scoring, tasks, and other book-scoped consoles.
+        for watchlist, scoring, alerts, and other book-scoped consoles. Tenant-wide scheduled jobs:{" "}
+        <Link className="underline font-medium" href="/admin/tasks">
+          Admin → Tasks
+        </Link>
+        .
       </div>
 
       <div className="crud-table-wrap">

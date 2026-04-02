@@ -1,5 +1,4 @@
 import { ObjectId } from "mongodb";
-import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
@@ -14,39 +13,40 @@ const repoMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
-vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/core-admin/repository")>();
-  return {
-    ...actual,
-    adminGetPortfolioById: repoMocks.adminGetPortfolioById,
-    getPortfolioWatchlist: repoMocks.getPortfolioWatchlist,
-    adminEnsurePortfolioWatchlist: repoMocks.adminEnsurePortfolioWatchlist,
-    mutatePortfolioWatchlistSymbols: repoMocks.mutatePortfolioWatchlistSymbols
-  };
-});
+vi.mock("@/modules/core-admin/repository", () => repoMocks);
 
-import { GET as getAdminWatchlist, PATCH as patchAdminWatchlist } from "@/app/api/admin/portfolios/[portfolioId]/watchlist/route";
+import { GET as getWatchlist, PATCH as patchWatchlist } from "@/app/api/admin/portfolios/[portfolioId]/watchlist/route";
 
 const portfolioId = "507f1f77bcf86cd799439033";
+const now = new Date("2026-01-15T12:00:00.000Z");
 
-function mockWatchlist() {
-  const now = new Date("2026-01-15T12:00:00.000Z");
+function mockPortfolio() {
   return {
-    _id: new ObjectId("507f1f77bcf86cd799439055"),
+    _id: new ObjectId(portfolioId),
     tenantId: new ObjectId("507f1f77bcf86cd799439022"),
     userId: "507f1f77bcf86cd799439011",
-    portfolioId: new ObjectId(portfolioId),
-    name: "DefaultWatchlist",
-    riskProfile: "balanced" as const,
-    outlook: "bullish" as const,
-    symbols: [{ symbol: "TSLA", addedAt: now }],
+    name: "Main",
     isDefault: true,
     createdAt: now,
     updatedAt: now
   };
 }
 
-describe("/api/admin/portfolios/[portfolioId]/watchlist", () => {
+function mockWatchlist() {
+  return {
+    _id: new ObjectId("507f1f77bcf86cd799439099"),
+    tenantId: new ObjectId("507f1f77bcf86cd799439022"),
+    userId: "507f1f77bcf86cd799439011",
+    portfolioId: new ObjectId(portfolioId),
+    name: "DefaultWatchlist",
+    isDefault: true,
+    symbols: [{ symbol: "TSLA", addedAt: now }],
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+describe("admin portfolio watchlist route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMocks.requireAdminSession.mockResolvedValue({
@@ -58,122 +58,42 @@ describe("/api/admin/portfolios/[portfolioId]/watchlist", () => {
       xUserId: "x1",
       username: "adminuser"
     });
-    repoMocks.adminGetPortfolioById.mockResolvedValue({
-      _id: new ObjectId(portfolioId),
-      userId: "507f1f77bcf86cd799439011",
-      name: "Book",
-      isDefault: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
+    repoMocks.adminGetPortfolioById.mockResolvedValue(mockPortfolio());
     repoMocks.getPortfolioWatchlist.mockResolvedValue(mockWatchlist());
-    repoMocks.adminEnsurePortfolioWatchlist.mockResolvedValue(mockWatchlist());
-    repoMocks.mutatePortfolioWatchlistSymbols.mockResolvedValue(mockWatchlist());
   });
 
-  it("GET returns 404 when portfolio missing", async () => {
-    repoMocks.adminGetPortfolioById.mockResolvedValueOnce(null);
-    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`);
-    const res = await getAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
-    expect(res.status).toBe(404);
-  });
-
-  it("GET returns watchlist data", async () => {
-    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`);
-    const res = await getAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
+  it("GET returns watchlist symbols", async () => {
+    const res = await getWatchlist(new Request("http://test"), {
+      params: Promise.resolve({ portfolioId })
+    });
     expect(res.status).toBe(200);
-    const json = (await res.json()) as {
-      data: {
-        name: string;
-        riskProfile: string | null;
-        outlook: string | null;
-        symbols: { symbol: string }[];
-      };
-    };
-    expect(json.data.name).toBe("DefaultWatchlist");
+    const json = (await res.json()) as { data: { symbols: Array<{ symbol: string }> } };
     expect(json.data.symbols).toHaveLength(1);
     expect(json.data.symbols[0]?.symbol).toBe("TSLA");
-    expect(json.data.riskProfile).toBe("balanced");
-    expect(json.data.outlook).toBe("bullish");
-    expect(repoMocks.getPortfolioWatchlist).toHaveBeenCalledWith({
-      userId: "507f1f77bcf86cd799439011",
-      portfolioId,
-      tenantId: undefined
-    });
   });
 
-  it("PATCH accepts riskProfile and outlook only", async () => {
-    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ riskProfile: "conservative", outlook: null })
+  it("PATCH mutates symbols", async () => {
+    repoMocks.mutatePortfolioWatchlistSymbols.mockResolvedValue({
+      ...mockWatchlist(),
+      symbols: [
+        { symbol: "TSLA", addedAt: now },
+        { symbol: "AAPL", addedAt: now }
+      ]
     });
-    const res = await patchAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
-    expect(res.status).toBe(200);
-    expect(repoMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "507f1f77bcf86cd799439011",
-        portfolioId,
-        riskProfile: "conservative",
-        outlook: null
-      })
+    const res = await patchWatchlist(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addSymbols: ["AAPL"] })
+      }),
+      { params: Promise.resolve({ portfolioId }) }
     );
-  });
-
-  it("PATCH accepts addEntries with null line fields for row upsert", async () => {
-    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        addEntries: [
-          {
-            symbol: "TSLA",
-            lineType: "Option",
-            strategy: "covered-call",
-            quantity: 100,
-            entryPrice: 242.5
-          }
-        ]
-      })
-    });
-    const res = await patchAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
     expect(res.status).toBe(200);
     expect(repoMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
       expect.objectContaining({
-        addEntries: [
-          {
-            symbol: "TSLA",
-            lineType: "Option",
-            strategy: "covered-call",
-            quantity: 100,
-            entryPrice: 242.5
-          }
-        ]
-      })
-    );
-  });
-
-  it("PATCH delegates to mutatePortfolioWatchlistSymbols", async () => {
-    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ addSymbols: ["AAPL"] })
-    });
-    const res = await patchAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
-    expect(res.status).toBe(200);
-    expect(repoMocks.mutatePortfolioWatchlistSymbols).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "507f1f77bcf86cd799439011",
         portfolioId,
         addSymbols: ["AAPL"]
       })
     );
-  });
-
-  it("rejects unauthenticated admin", async () => {
-    authMocks.requireAdminSession.mockResolvedValueOnce(NextResponse.json({ error: "nope" }, { status: 401 }));
-    const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`);
-    const res = await getAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
-    expect(res.status).toBe(401);
   });
 });

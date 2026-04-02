@@ -43,7 +43,7 @@ export default async function AdminPortfoliosPage() {
         <p className="hero-copy" style={{ marginTop: "0.65rem" }}>
           <strong>Flow:</strong> use the table below for full CRUD — edit rows and <strong>Save all changes</strong>,
           create a book under <strong>New portfolio</strong>, or remove a row with <strong>Delete</strong>. Open{" "}
-          <strong>Tools</strong> on a row for watchlist, accounts, scoring, tasks, alerts, recommendations, delivery
+          <strong>Tools</strong> on a row for watchlist, accounts, scoring, alerts, recommendations, delivery
           channels, and broker import for that book. Per-user workspace data lives in{" "}
           <code className="font-mono text-xs">tenant_portfolio</code> with{" "}
           <code className="font-mono text-xs">tenantPortfolioOrgKey</code> (default{" "}

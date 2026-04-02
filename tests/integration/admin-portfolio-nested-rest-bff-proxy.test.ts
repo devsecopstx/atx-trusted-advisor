@@ -18,12 +18,10 @@ import { GET as getAlerts } from "@/app/api/admin/portfolios/[portfolioId]/alert
 import { POST as postChannels } from "@/app/api/admin/portfolios/[portfolioId]/delivery-channels/route";
 import { DELETE as deleteReco, PATCH as patchReco } from "@/app/api/admin/portfolios/[portfolioId]/recommendations/[recommendationId]/route";
 import { GET as getReco, POST as postReco } from "@/app/api/admin/portfolios/[portfolioId]/recommendations/route";
-import { PATCH as patchTask } from "@/app/api/admin/portfolios/[portfolioId]/tasks/[taskId]/route";
-
 const portfolioId = "507f1f77bcf86cd799439033";
 const childId = "507f1f77bcf86cd799439044";
 
-describe("admin portfolio nested REST BFF proxy (recommendations, alerts, channels, tasks)", () => {
+describe("admin portfolio nested REST BFF proxy (recommendations, alerts, channels)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     bffMocks.proxyRequestToBackend.mockResolvedValue(null);
@@ -96,16 +94,5 @@ describe("admin portfolio nested REST BFF proxy (recommendations, alerts, channe
     });
     await postChannels(g2, { params: Promise.resolve({ portfolioId }) });
     expect(bffMocks.proxyRequestToBackend).toHaveBeenLastCalledWith(g2);
-  });
-
-  it("proxies PATCH …/tasks/:taskId", async () => {
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 200 }));
-    const req = new Request(`http://t/api/admin/portfolios/${portfolioId}/tasks/${childId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled: false })
-    });
-    await patchTask(req, { params: Promise.resolve({ portfolioId, taskId: childId }) });
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
   });
 });

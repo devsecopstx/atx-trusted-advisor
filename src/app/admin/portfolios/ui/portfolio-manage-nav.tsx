@@ -8,7 +8,6 @@ export type PortfolioManageSection =
   | "accounts"
   | "watchlist"
   | "scoring"
-  | "tasks"
   | "alerts"
   | "recommendations"
   | "delivery_channels";
@@ -25,7 +24,6 @@ const SECTIONS: { key: PortfolioManageSection; label: string; path: string }[] =
   { key: "accounts", label: "Accounts", path: "accounts" },
   { key: "watchlist", label: "Watchlist", path: "watchlist" },
   { key: "scoring", label: "Scoring", path: "scoring" },
-  { key: "tasks", label: "Tasks", path: "tasks" },
   { key: "alerts", label: "Alerts", path: "alerts" },
   { key: "recommendations", label: "Recommendations", path: "recommendations" },
   { key: "delivery_channels", label: "Delivery channels", path: "delivery-channels" }

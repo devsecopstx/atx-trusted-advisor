@@ -85,7 +85,7 @@ Portfolio (session cookie required; cookie name from `app.atxfinance.session-coo
 - `PATCH /api/portfolios/{portfolioId}` — rename portfolio (validates name, 1..200)
 
 Additional controllers exist for admin and app surfaces (names reflect intent; see package `web/`):
-- Admin: access requests, audit, bootstrap, import broker, portfolio accounts/alerts/delivery-channels/positions/recommendations/scheduled-tasks/watchlist, users, deploy-note-configs
+- Admin: access requests, audit, bootstrap, import broker, portfolio accounts/alerts/delivery-channels/positions/recommendations/watchlist, tenant **Tasks** (`/admin/tasks`), users, deploy-note-configs
 - App: recommendations (`AppUserRecommendationsController`, `PortfolioRecommendationsController`), positions & portfolio subresources, personas, strategy jobs/options, RAG files, auth callback
 
 OpenAPI: SpringDoc 2.x is configured in Gradle (see `atx-docs/sre-ops/atxfinance-backend-http-api.md`). Swagger UI: `GET /swagger-ui.html`.
