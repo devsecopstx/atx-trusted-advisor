@@ -11,4 +11,4 @@ Every 30 min during market hours + EOD
 
 “Event scan: 2 earnings tomorrow (NVDA, TSLA). 1 ex-div date. No material negative headlines.”
 
-> **Phase 3 (planned):** Shared 15m chain/quote cache, circuit breaker, tenant admin jobs — [scanners-phase3-plan.md](./scanners-phase3-plan.md).
+> **Phase 3 — shipped (app ≥2.9.0):** Category **`corporate_events_scanner`**; Yahoo quote hints (earnings / ex-div style) + circuit breaker; `runCorporateEventsScanner` in **`phase3-scanner-jobs.ts`**. See [scanners-phase3-plan.md](./scanners-phase3-plan.md).

@@ -7,4 +7,4 @@ Every 15 min during market hours + EOD
 # Per-portfolio summary example
 “Expiration scan: 5 positions due in <7 DTE. 3 recommended rolls (credit $2,850). 2 BUY_TO_CLOSE alerts.”
 
-> **Phase 3 (planned):** Heavy user of shared option chain cache + circuit breaker — [scanners-phase3-plan.md](./scanners-phase3-plan.md).
+> **Phase 3 — shipped (app ≥2.9.0):** Category **`options_expiration_roll_manager`**; **`executeOptionsExpirationRollJob`** (DTE ≤ `OPTIONS_ROLL_MAX_DTE`) + shared chain cache — [scanners-phase3-plan.md](./scanners-phase3-plan.md).

@@ -11,4 +11,4 @@ Daily (post-market)
 
 “Risk scan: Tech concentration 48% (+12% vs target). Portfolio beta 1.18. VaR (95%, 1-day) $4,200.”
 
-> **Phase 3 (planned):** [scanners-phase3-plan.md](./scanners-phase3-plan.md)
+> **Phase 3 — shipped (app ≥2.9.0):** Category **`risk_concentration_scanner`** (equity HHI + max weight); **`runRiskConcentrationScanner`** — [scanners-phase3-plan.md](./scanners-phase3-plan.md).

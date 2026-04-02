@@ -3,6 +3,11 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 
 import { SCANNER_CIRCUIT_STATE_COLLECTION } from "@/modules/scanner/scanner-collection-names";
+import {
+    isScannerCircuitBreakerEnabled,
+    scannerCircuitCooldownSeconds,
+    scannerCircuitFailureThreshold
+} from "@/modules/scanner/scanner-platform-env";
 
 export type ScannerUpstreamProvider = "yahoo";
 
@@ -17,23 +22,8 @@ type CircuitDoc = {
   updatedAt: Date;
 };
 
-function tenantKeyFrom(tenantId: ObjectId | undefined): string {
+export function scannerCircuitTenantKey(tenantId: ObjectId | undefined): string {
   return tenantId ? tenantId.toHexString() : "global";
-}
-
-function breakerEnabled(): boolean {
-  return process.env.SCANNER_CIRCUIT_BREAKER_ENABLED !== "false" && process.env.SCANNER_CIRCUIT_BREAKER_ENABLED !== "0";
-}
-
-function cooldownMs(): number {
-  const sec = Number.parseInt(process.env.SCANNER_CIRCUIT_COOLDOWN_SEC ?? "900", 10);
-  const s = Number.isFinite(sec) && sec >= 60 && sec <= 7200 ? sec : 900;
-  return s * 1000;
-}
-
-function failureThreshold(): number {
-  const n = Number.parseInt(process.env.SCANNER_CIRCUIT_FAILURE_THRESHOLD ?? "3", 10);
-  return Number.isFinite(n) && n >= 1 && n <= 20 ? n : 3;
 }
 
 export type CircuitAllowResult = { allowed: true } | { allowed: false; reason: "circuit_open" };
@@ -42,11 +32,11 @@ export async function scannerCircuitAllow(
   tenantId: ObjectId | undefined,
   provider: ScannerUpstreamProvider
 ): Promise<CircuitAllowResult> {
-  if (!breakerEnabled()) {
+  if (!isScannerCircuitBreakerEnabled()) {
     return { allowed: true };
   }
   const db = await getDb();
-  const tk = tenantKeyFrom(tenantId);
+  const tk = scannerCircuitTenantKey(tenantId);
   const doc = await db.collection<CircuitDoc>(SCANNER_CIRCUIT_STATE_COLLECTION).findOne({
     tenantKey: tk,
     provider
@@ -62,11 +52,11 @@ export async function scannerCircuitRecordSuccess(
   tenantId: ObjectId | undefined,
   provider: ScannerUpstreamProvider
 ): Promise<void> {
-  if (!breakerEnabled()) {
+  if (!isScannerCircuitBreakerEnabled()) {
     return;
   }
   const db = await getDb();
-  const tk = tenantKeyFrom(tenantId);
+  const tk = scannerCircuitTenantKey(tenantId);
   const now = new Date();
   await db.collection<CircuitDoc>(SCANNER_CIRCUIT_STATE_COLLECTION).updateOne(
     { tenantKey: tk, provider },
@@ -88,15 +78,15 @@ export async function scannerCircuitRecordFailure(
   tenantId: ObjectId | undefined,
   provider: ScannerUpstreamProvider
 ): Promise<void> {
-  if (!breakerEnabled()) {
+  if (!isScannerCircuitBreakerEnabled()) {
     return;
   }
   const db = await getDb();
-  const tk = tenantKeyFrom(tenantId);
+  const tk = scannerCircuitTenantKey(tenantId);
   const filter = { tenantKey: tk, provider };
   const doc = await db.collection<CircuitDoc>(SCANNER_CIRCUIT_STATE_COLLECTION).findOne(filter);
   const streak = (doc?.failureStreak ?? 0) + 1;
-  const thr = failureThreshold();
+  const thr = scannerCircuitFailureThreshold();
   const now = new Date();
   if (streak >= thr) {
     await db.collection<CircuitDoc>(SCANNER_CIRCUIT_STATE_COLLECTION).updateOne(
@@ -107,7 +97,7 @@ export async function scannerCircuitRecordFailure(
           tenantId,
           provider,
           failureStreak: 0,
-          circuitOpenUntil: new Date(Date.now() + cooldownMs()),
+          circuitOpenUntil: new Date(Date.now() + scannerCircuitCooldownSeconds() * 1000),
           updatedAt: now
         }
       },

@@ -30,9 +30,9 @@
 
 **Categories** (must match **`src/lib/scheduled-task-category-schema.ts`** and Kotlin allowlists where applicable):
 
-`price_scanner` · `options_scanner` · `user_access_requests` · `sync-broker` · `rebalance` · `compliance` · `notifications` · `user-history` · `watchlist_price_scanner` · `daily_options_scanner`
+`price_scanner` · `options_scanner` · `user_access_requests` · `sync-broker` · `rebalance` · `compliance` · `notifications` · `user-history` · `watchlist_price_scanner` · `daily_options_scanner` · `corporate_events_scanner` · `income_cash_flow_projector` · `options_expiration_roll_manager` · `risk_concentration_scanner` · `tax_loss_harvest_scanner`
 
-**Next.js executors** (`src/modules/core-admin/task-runner.ts`): `price_scanner`, `options_scanner`, `user_access_requests`, `user-history`, `watchlist_price_scanner`, `daily_options_scanner` (and others as implemented). Stub categories use a short simulated delay + success string on Kotlin when execution is not routed to Next.
+**Next.js executors** (`src/modules/core-admin/task-runner.ts`): **`price_scanner`**, **`options_scanner`** / **`daily_options_scanner`**, **`user_access_requests`**, **`user-history`**, **`watchlist_price_scanner`**, Phase 3 scanners (**`corporate_events_scanner`**, **`income_cash_flow_projector`**, **`options_expiration_roll_manager`**, **`risk_concentration_scanner`**, **`tax_loss_harvest_scanner`**, **`rebalance`**), then stub switch for **`sync-broker`**, **`compliance`**, **`notifications`**. **Kotlin** BFF may simulate a no-op for some categories when the tick runs in the JVM; **full scanner logic** runs in Next when **`POST /api/admin/tasks/{id}/run`** or **`POST /api/admin/scheduler/tick`** execute **`executeScheduledTask`**.
 
 **Desk Slack (PLAN 250):** When `watchlist_price_scanner` creates `portfolio_alerts`, the app calls **`dispatchPortfolioDeskEventsToSlack`** for that portfolio’s enabled **`portfolio_delivery_channels`** rows with `kind: slack_webhook` and HTTPS `hooks.slack.com` destinations (`src/modules/notifications/portfolio-notification-service.ts`).
 
@@ -112,5 +112,6 @@ When **`ATXFINANCE_BACKEND_ORIGIN`** is set, **`proxyRequestToBackend`** in the 
 
 | Date | Author | Change |
 |------|--------|--------|
+| 2026-04-01 | Engineering | Phase 3 scanner categories + executor map; Mongo option-chain cache / circuit breaker; Kotlin `ALLOWED_CATEGORIES` parity — see **`scanners-phase3-plan.md`**. |
 | 2026-04-02 | Engineering | **Portfolio** scheduled-task UI/API removed; tenant **`/admin/tasks`** only; scheduler ignores legacy `portfolioId` rows; TBD xChat options-scanner jobs. |
 | 2026-03-25 | Engineering | Replaced generic SQL/FastAPI draft with **xFinance-aligned** map: Mongo **`admin_scheduled_tasks`** / **`admin_task_runs`**, **`/admin/tasks`** + **`TasksConsole`**, admin API table, BFF note, **PLAN.md** pointer. |

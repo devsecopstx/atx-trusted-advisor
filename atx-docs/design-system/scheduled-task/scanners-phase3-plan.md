@@ -89,9 +89,9 @@ Each row links the **design stub**; implementation order is suggested by depende
 
 - [x] Single **chain cache** + **circuit breaker** used by at least **two** job types (options scanner + income projector / roll manager).
 - [ ] **No duplicate Yahoo storm** when hourly tasks align — cache hit rate visible in logs/metrics (operational follow-up).
-- [ ] Breaker **opens** under synthetic failure tests; **half-open** recovers (optional integration test).
+- [x] Breaker **opens** under tests — `tests/unit/scanner-circuit-breaker-mongo.test.ts` (mock Mongo); half-open recovery remains optional.
 - [x] New categories **admin-manageable** (list/create/run) with **documented** default schedules (`SCHEDULED_TASK_CATEGORY_DEFAULT_CRON`).
-- [ ] Each linked stub doc updated with **“Phase 3 — see scanners-phase3-plan.md”** when that job ships.
+- [x] Linked stub docs updated with **Phase 3 shipped** lines + pointers to **`task-runner`** / **`phase3-scanner-jobs`**.
 
 ---
 

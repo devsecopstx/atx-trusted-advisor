@@ -8,8 +8,8 @@ import type { OptionContractData } from "@/modules/strategy-options/options-chai
 
 import { SCANNER_OPTION_CHAIN_CACHE_COLLECTION } from "@/modules/scanner/scanner-collection-names";
 import {
-  isOptionsChainCacheEnabled,
-  optionsChainCacheTtlSeconds
+    isOptionsChainCacheEnabled,
+    optionsChainCacheTtlSeconds
 } from "@/modules/scanner/scanner-platform-env";
 
 export type CachedOptionChainPayload = {
@@ -65,12 +65,12 @@ export async function getCachedOptionChain(
   underlying: string,
   expirationYmd: string
 ): Promise<CachedOptionChainPayload | null> {
-  if (!cacheEnabled()) {
+  if (!isOptionsChainCacheEnabled()) {
     return null;
   }
   await ensureOptionChainCacheIndexes();
   const db = await getDb();
-  const cacheKey = buildCacheKey(tenantId, underlying, expirationYmd);
+  const cacheKey = computeScannerOptionChainCacheKey(tenantId, underlying, expirationYmd);
   const now = new Date();
   const doc = await db.collection<CacheDoc>(SCANNER_OPTION_CHAIN_CACHE_COLLECTION).findOne({
     cacheKey,
@@ -85,14 +85,14 @@ export async function setCachedOptionChain(
   expirationYmd: string,
   payload: CachedOptionChainPayload
 ): Promise<void> {
-  if (!cacheEnabled()) {
+  if (!isOptionsChainCacheEnabled()) {
     return;
   }
   await ensureOptionChainCacheIndexes();
   const db = await getDb();
-  const cacheKey = buildCacheKey(tenantId, underlying, expirationYmd);
+  const cacheKey = computeScannerOptionChainCacheKey(tenantId, underlying, expirationYmd);
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + ttlSeconds() * 1000);
+  const expiresAt = new Date(now.getTime() + optionsChainCacheTtlSeconds() * 1000);
   await db.collection<CacheDoc>(SCANNER_OPTION_CHAIN_CACHE_COLLECTION).updateOne(
     { cacheKey },
     {

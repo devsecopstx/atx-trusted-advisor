@@ -8,4 +8,4 @@ Daily (post-market)
 # Per-portfolio summary example
 “Income projection: $8,420 expected premium + dividends. Cash buffer healthy ($60k). 1 upcoming large outflow flagged.”
 
-> **Phase 3 (planned):** [scanners-phase3-plan.md](./scanners-phase3-plan.md)
+> **Phase 3 — shipped (app ≥2.9.0):** Category **`income_cash_flow_projector`**; option-leg heuristics + sample cached chain — **see `runIncomeCashFlowProjector`** — [scanners-phase3-plan.md](./scanners-phase3-plan.md).
