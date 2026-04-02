@@ -438,7 +438,6 @@ export function XchatConversation({
     "Covered call ideas for my holdings",
     "Compare SPY vs QQQ trend today",
     "Stress test portfolio for volatility spike",
-    "xStrategy",
     "How's the weather today in Austin, TX",
     {
       prompt:
