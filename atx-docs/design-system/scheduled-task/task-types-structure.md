@@ -24,7 +24,7 @@ Allowed categories ("type") today:
 - `notifications` — Digest or ad-hoc notification producers
 - `user-history` — Data/insights generation for user activity history (delegates to `UserHistoryAgentService`)
 - `watchlist_price_scanner` — Watchlist Yahoo batch quotes + price alerts (**Next.js** task-runner; Kotlin worker returns noop success when BFF runs the tick)
-- `daily_options_scanner` — Options strategy catalog inventory (**Next.js** task-runner; Kotlin noop when BFF runs the tick)
+- `daily_options_scanner` — Full Yahoo/Mongo scan on **Next.js** task-runner; JVM tick runs **`OptionsStrategyEngine`** dry-run summary when the scheduler executes on Kotlin (`AdminScheduledTasksService`)
 
 Notes:
 - Legacy Mongo documents may include `portfolioId`; schedulers exclude them from due-task queries.

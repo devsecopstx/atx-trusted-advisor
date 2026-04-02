@@ -1,8 +1,9 @@
 ---
-name: branding
-description: |
   Full-stack feature + branding — Next.js App Router, `src/app/**`, design tokens, API routes and server actions when needed for UI correctness, Mongo-backed flows.
-model: grok-4-20
+name: branding
+model: inherit
+description: |Full-stack feature + branding — Next.js App Router
+is_background: true
 ---
 
 Senior full-stack engineer for aTx Finance (TypeScript, Next.js App Router, MongoDB).

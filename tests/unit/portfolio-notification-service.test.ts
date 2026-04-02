@@ -9,7 +9,10 @@ vi.mock("@/modules/core-admin/repository", () => ({
   adminListPortfolioDeliveryChannels: repoMocks.adminListPortfolioDeliveryChannels,
 }));
 
-import { dispatchPortfolioDeskEventsToSlack } from "@/modules/notifications/portfolio-notification-service";
+import {
+    dispatchPortfolioDeskEvents,
+    dispatchPortfolioDeskEventsToSlack
+} from "@/modules/notifications/portfolio-notification-service";
 
 describe("dispatchPortfolioDeskEventsToSlack", () => {
   beforeEach(() => {
@@ -77,5 +80,35 @@ describe("dispatchPortfolioDeskEventsToSlack", () => {
     expect(r.targets).toBe(2);
     expect(r.postsOk).toBe(2);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("dispatchPortfolioDeskEvents counts deferred email or sms channels", async () => {
+    const pid = new ObjectId();
+    repoMocks.adminListPortfolioDeliveryChannels.mockResolvedValueOnce([
+      {
+        kind: "slack_webhook",
+        enabled: true,
+        destination: "https://hooks.slack.com/services/T/B/one",
+        label: "s1",
+        userId: "u",
+        portfolioId: pid,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        kind: "email",
+        enabled: true,
+        destination: "a@b.com",
+        label: "e",
+        userId: "u",
+        portfolioId: pid,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status: 200 }));
+    const r = await dispatchPortfolioDeskEvents("507f1f77bcf86cd799439011", [{ title: "T" }]);
+    expect(r.slack.postsOk).toBe(1);
+    expect(r.email).toEqual({ targets: 1, skipped: 1 });
   });
 });

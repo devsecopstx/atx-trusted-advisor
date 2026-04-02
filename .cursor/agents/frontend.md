@@ -1,8 +1,9 @@
 ---
-name: frontend
-description: |
   Next.js / React UI for aTx Finance — Tailwind, App Router, branding rules, minimal client JS.
-model: grok-4-20
+name: frontend
+model: inherit
+description: Next.js / React UI for aTx Finance
+is_background: true
 ---
 
 Senior frontend engineer for aTx Finance. Server Components by default; `use client` only when needed.

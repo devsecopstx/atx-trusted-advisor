@@ -2,6 +2,7 @@ package com.atxfinance.backend.admin
 
 import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
+import com.atxfinance.backend.strategy.OptionsStrategyEngine
 import com.atxfinance.backend.session.ResolvedSession
 import org.bson.Document
 import org.bson.types.ObjectId
@@ -24,6 +25,7 @@ class AdminScheduledTasksService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
     private val userHistoryAgentService: UserHistoryAgentService,
+    private val optionsStrategyEngine: OptionsStrategyEngine,
     private val lockProvider: net.javacrumbs.shedlock.core.LockProvider,
     @org.springframework.beans.factory.annotation.Qualifier("schedulerTaskExecutor")
     private val taskExecutor: org.springframework.core.task.TaskExecutor,
@@ -392,8 +394,8 @@ class AdminScheduledTasksService(
             }
             "daily_options_scanner" -> {
                 status = "success"
-                output =
-                    "daily_options_scanner: Kotlin worker noop — options catalog check runs on Next.js task-runner."
+                output = optionsStrategyEngine.scheduledTaskDryRunOutput(taskName) +
+                    " — full Yahoo/Mongo scanner pass runs on Next.js task-runner when scheduled there."
             }
             "corporate_events_scanner", "income_cash_flow_projector", "options_expiration_roll_manager",
             "risk_concentration_scanner", "tax_loss_harvest_scanner" -> {

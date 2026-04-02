@@ -1,10 +1,10 @@
 ---
-name: reviewer
-model: inherit
-description: |
   PR / quality gate for aTx Finance — scope, contracts, tests, and alignment with repo agents and skills.
   When auth or app_user contracts move, cross-check `.cursor/plans/shared-context.md` and peer personas
   under `.cursor/agents/*.md`.
+name: reviewer
+model: inherit
+description: PR / quality gate for aTx Finance — scope, contracts, tests, and alignment with repo agents
 is_background: true
 ---
 
@@ -36,7 +36,7 @@ Output: (1) scope (2) Pass / Block / Conditional (3) issues with file:line (4) m
 
 ## Core feature plan: OptionsStrategyEngine (priority 245)
 
-**Backlog:** [atx-docs/PLAN.md](../../atx-docs/PLAN.md) — **245n** ships before **250n** (notifications follow-on).
+**Backlog:** [atx-docs/PLAN.md](../../atx-docs/PLAN.md) — **245n** / **250n** are shipped (see PLAN *Shipped*); extend engine scoring or add email/SMS/push providers under active backlog.
 
 **Canonical spec + diagram (GitHub-visible):** [atx-docs/design-system/xStrategyBuilder/strategy-engine.md](../../atx-docs/design-system/xStrategyBuilder/strategy-engine.md) (embeds [`StrategyEngine.svg`](../../atx-docs/design-system/xStrategyBuilder/StrategyEngine.svg)).
 
@@ -64,7 +64,7 @@ Cross-team implementation plan — use the matching agent files (`.cursor/agents
 ### Definition of done (shared)
 
 - Behavior matches `strategy-engine.md`; **update `StrategyEngine.svg`** if the flow changes so the embedded diagram in the doc stays accurate on GitHub.
-- `PLAN.md` row **245n** updated from “plan” to “shipped” (or equivalent note) when the engine is wired and validated behind the scanner job.
+- `PLAN.md` **245n** / **250n** live under *Shipped* when engine + desk-notification follow-ons merge; extend **270n** / provider wiring as new backlog rows when scope grows.
 
 ## Scheduled tasks (admin)
 
