@@ -13,7 +13,7 @@ import {
     logCoreScannerRunAudit,
     type ScheduledCategoryResult
 } from "@/modules/scanner/core-scanner-service";
-import { runPriceScanner } from "@/modules/scanner/price-scanner";
+import { executePriceScannerJob } from "@/modules/scanner/price-scanner-job";
 import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-strategy-scanner";
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
@@ -82,7 +82,7 @@ export async function executeScheduledTask(
 
 async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCategoryResult> {
   if (task.category === "price_scanner") {
-    return runPriceScanner(task);
+    return executePriceScannerJob({ tenantId: task.tenantId });
   }
   if (task.category === "options_scanner") {
     return runOptionsStrategyScanner(task);
