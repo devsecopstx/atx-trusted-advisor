@@ -1,5 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/font/google", () => ({
+  Inter: () => ({ variable: "--font-inter", className: "inter-mock" })
+}));
 
 import RootLayout from "@/app/layout";
 

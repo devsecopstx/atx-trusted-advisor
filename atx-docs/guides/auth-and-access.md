@@ -56,6 +56,18 @@ If X does not expose an email, the UI uses the **link email** step so the user c
 
 **OAuth merge** of a placeholder X user into an existing email account still uses **`purgeEphemeralCoreUserScaffolding`** only (same user id, **no** email-keyed deletes) so another user’s bootstrap or login-audit rows are not touched.
 
+## App user shell (header profile + left rail)
+
+**Signed-in header** (`AppUserHeaderSession`, avatar menu): **Plans & billing** → `/account/billing`, **Legal** → `/legal/terms`, then **Appearance** in a **collapsed** `<details>` (expand for Light / Dark / System via `XfThemePreferenceMenu`). **Submit feedback** and **Logout** stay in the menu actions block.
+
+**Left rail — Account** (`AppUserAccountRailSection`): **Settings** only — **global_admin** links to `/admin/manage_account`; other roles see a muted “Settings” note. **Plans & billing** and **Legal** are **not** duplicated here (use the profile menu). If there is nothing to show (e.g. guest shell with `showSettingsLink={false}`), the Account section is omitted.
+
+**Manage workspace** (`AppUserManageWorkspaceRailSection` on xChat): includes a nested **Default book** disclosure (**collapsed** by default) when `defaultBookLabels` is passed from the page — portfolio name (link to `/portfolio`) and default account label.
+
+**Rail icons:** collapsed-sidebar **expand** and **Manage workspace** row use the shared **`RailSidebarZapIcon`** (yellow lightning, `xf-rail-sidebar-zap-icon*` in `xchat.css`).
+
+**Theme default:** `DEFAULT_XF_UI_THEME_PREFERENCE` is **`dark`**. On first visit, if `localStorage` has no **`xf-ui-theme`** key, **`seedDefaultXfUiThemePreferenceIfUnset`** (called from **`XfThemeBootClient`**) writes **`dark`** and notifies subscribers.
+
 ## Access request lifecycle
 
 State machine:

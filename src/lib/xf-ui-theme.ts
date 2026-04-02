@@ -21,6 +21,21 @@ export function parseXfUiThemePreference(raw: string | null): XfUiThemePreferenc
   return DEFAULT_XF_UI_THEME_PREFERENCE;
 }
 
+/** Persists **`dark`** when `localStorage` has no preference yet (first visit). */
+export function seedDefaultXfUiThemePreferenceIfUnset(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    if (window.localStorage.getItem(XF_UI_THEME_STORAGE_KEY) === null) {
+      window.localStorage.setItem(XF_UI_THEME_STORAGE_KEY, DEFAULT_XF_UI_THEME_PREFERENCE);
+      dispatchXfUiThemeChange();
+    }
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 export function readXfUiThemePreferenceFromStorage(): XfUiThemePreference {
   if (typeof window === "undefined") {
     return DEFAULT_XF_UI_THEME_PREFERENCE;

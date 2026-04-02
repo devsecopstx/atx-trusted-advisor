@@ -7,6 +7,10 @@ import {
 } from "@/lib/xf-ui-theme";
 
 describe("xf-ui-theme", () => {
+  it("defaults preference constant is dark (deep shell)", () => {
+    expect(DEFAULT_XF_UI_THEME_PREFERENCE).toBe("dark");
+  });
+
   it("resolves light preference to soft density", () => {
     expect(resolveXfUiDensity("light", false)).toBe("soft");
     expect(resolveXfUiDensity("light", true)).toBe("soft");
