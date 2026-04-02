@@ -67,6 +67,9 @@ object WatchlistSymbolCodec {
                 }
                 parseFiniteNumber(o["quantity"])?.let { doc["quantity"] = it }
                 parseFiniteNumber(o["entryPrice"])?.let { doc["entryPrice"] = it }
+                parseFiniteNumber(o["priceAlertMinAbsMovePercent"])?.takeIf { it > 0 }?.let { v ->
+                    doc["priceAlertMinAbsMovePercent"] = v.coerceIn(0.1, 100.0)
+                }
                 return doc
             }
             is Document -> {
@@ -111,6 +114,16 @@ object WatchlistSymbolCodec {
         if (entry.containsKey("entryPrice")) {
             val p = entry["entryPrice"]
             parseFiniteNumber(p)?.let { n -> next["entryPrice"] = n } ?: next.remove("entryPrice")
+        }
+        if (entry.containsKey("priceAlertMinAbsMovePercent")) {
+            val p = entry["priceAlertMinAbsMovePercent"]
+            if (p == null) {
+                next.remove("priceAlertMinAbsMovePercent")
+            } else {
+                parseFiniteNumber(p)?.takeIf { it > 0 }?.let { v ->
+                    next["priceAlertMinAbsMovePercent"] = v.coerceIn(0.1, 100.0)
+                } ?: next.remove("priceAlertMinAbsMovePercent")
+            }
         }
         return next
     }

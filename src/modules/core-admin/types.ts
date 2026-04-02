@@ -375,6 +375,11 @@ export type WatchlistSymbol = {
   strategy?: string;
   quantity?: number;
   entryPrice?: number;
+  /**
+   * Minimum absolute % move vs prior `lastPrice` before firing a price alert for this row.
+   * When unset, `PriceAlertService` uses the global default (see `DEFAULT_MIN_ABS_MOVE_PERCENT`).
+   */
+  priceAlertMinAbsMovePercent?: number;
   /** Populated by price scanners (`price_scanner` or legacy `watchlist_price_scanner`). */
   lastPrice?: number;
   lastUpdatedAt?: Date;
@@ -387,6 +392,7 @@ export type WatchlistSymbolImportEntry = {
   strategy?: string | null;
   quantity?: number | null;
   entryPrice?: number | null;
+  priceAlertMinAbsMovePercent?: number | null;
 };
 
 export type Watchlist = {

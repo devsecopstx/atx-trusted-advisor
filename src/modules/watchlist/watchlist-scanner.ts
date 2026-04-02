@@ -38,6 +38,7 @@ export async function runWatchlistPriceScanner(
 
     let updatedCount = 0;
     let alertCount = 0;
+    let alertsSkippedCooldown = 0;
     const auditAlertRows: PersistedPriceAlertRow[] = [];
 
     for (const wl of watchlists) {
@@ -66,6 +67,7 @@ export async function runWatchlistPriceScanner(
         const moves = evaluateSignificantPriceMoves(symbols, updates);
         const persist = await persistPriceMoveAlerts(wl.portfolioId.toHexString(), moves);
         alertCount += persist.created;
+        alertsSkippedCooldown += persist.skippedCooldown;
         if (persist.recorded.length > 0) {
           auditAlertRows.push(...persist.recorded);
         }
@@ -80,6 +82,7 @@ export async function runWatchlistPriceScanner(
         watchlistCount: watchlists.length,
         updatedSymbols: updatedCount,
         alertsCreated: alertCount,
+        alertsSkippedCooldown,
         durationSeconds: Number(duration)
       },
       auditAlertRows: auditAlertRows.length > 0 ? auditAlertRows : undefined

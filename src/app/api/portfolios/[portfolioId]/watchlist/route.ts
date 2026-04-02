@@ -29,7 +29,9 @@ const watchlistAddEntrySchema = z.object({
   lineType: z.union([z.string().trim().max(128), z.null()]).optional(),
   strategy: z.union([z.string().trim().max(512), z.null()]).optional(),
   quantity: z.union([z.number().finite(), z.null()]).optional(),
-  entryPrice: z.union([z.number().finite(), z.null()]).optional()
+  entryPrice: z.union([z.number().finite(), z.null()]).optional(),
+  /** Min absolute % move to fire price alerts for this row; null clears. */
+  priceAlertMinAbsMovePercent: z.union([z.number().min(0.1).max(100), z.null()]).optional()
 });
 
 const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);
@@ -68,6 +70,9 @@ function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
     ...(item.strategy !== undefined ? { strategy: item.strategy } : {}),
     ...(item.quantity !== undefined ? { quantity: item.quantity } : {}),
     ...(item.entryPrice !== undefined ? { entryPrice: item.entryPrice } : {}),
+    ...(item.priceAlertMinAbsMovePercent !== undefined
+      ? { priceAlertMinAbsMovePercent: item.priceAlertMinAbsMovePercent }
+      : {}),
     ...(item.lastPrice !== undefined ? { lastPrice: item.lastPrice } : {}),
     ...(item.lastUpdatedAt ? { lastUpdatedAt: item.lastUpdatedAt.toISOString() } : {})
   };

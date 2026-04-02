@@ -1840,6 +1840,40 @@ export async function adminCreatePortfolioAlert(input: {
   return db.collection<PortfolioAlert>(collections.portfolioAlerts).findOne({ _id: res.insertedId });
 }
 
+/**
+ * Returns true if an alert already exists for this portfolio + symbol at or after `since`.
+ * Used by price-alert cooldown dedupe (`watchlist_price_scanner`).
+ */
+export async function adminHasRecentPriceAlertForSymbol(
+  portfolioId: string,
+  symbol: string,
+  since: Date
+): Promise<boolean> {
+  await ensurePortfolioIndexes();
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return false;
+  }
+  const sym = symbol.trim().toUpperCase().slice(0, 32);
+  if (!sym) {
+    return false;
+  }
+  const db = await getDb();
+  const row = await db.collection<PortfolioAlert>(collections.portfolioAlerts).findOne(
+    withTenantScope(
+      {
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid,
+        symbol: sym,
+        createdAt: { $gte: since }
+      },
+      ctx.tenantId
+    ),
+    { projection: { _id: 1 } }
+  );
+  return row !== null;
+}
+
 export async function adminUpdatePortfolioAlert(input: {
   portfolioId: string;
   alertId: string;
@@ -2543,6 +2577,18 @@ function mergeImportEntryIntoSymbol(
       delete next.entryPrice;
     } else {
       next.entryPrice = Number.isFinite(entry.entryPrice) ? entry.entryPrice : undefined;
+    }
+  }
+  if (entry.priceAlertMinAbsMovePercent !== undefined) {
+    if (entry.priceAlertMinAbsMovePercent === null) {
+      delete next.priceAlertMinAbsMovePercent;
+    } else {
+      const v = entry.priceAlertMinAbsMovePercent;
+      if (!Number.isFinite(v) || v <= 0) {
+        delete next.priceAlertMinAbsMovePercent;
+      } else {
+        next.priceAlertMinAbsMovePercent = Math.min(100, Math.max(0.1, v));
+      }
     }
   }
   return next;
