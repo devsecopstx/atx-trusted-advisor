@@ -6,6 +6,7 @@ import {
     finalizeTaskRun,
     markTaskRunWindow
 } from "@/modules/core-admin/repository";
+import { notifyScheduledTaskSlackSummary } from "@/modules/core-admin/scheduled-task-slack-notify";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { runUserAccessRequestsTask } from "@/modules/core-admin/user-access-requests-task";
 import {
@@ -53,6 +54,15 @@ export async function executeScheduledTask(
     output: execution.output,
     durationMs,
     completedAt
+  });
+
+  await notifyScheduledTaskSlackSummary({
+    task,
+    status: execution.status,
+    output: execution.output,
+    durationMs,
+    runIdHex: run._id.toHexString(),
+    triggeredBy
   });
 
   await logCoreScannerRunAudit({

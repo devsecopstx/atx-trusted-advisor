@@ -16,17 +16,20 @@ export const SCHEDULED_TASK_CATEGORIES = [
 
 export type ScheduledTaskCategory = (typeof SCHEDULED_TASK_CATEGORIES)[number];
 
+/** Weekday desk window: every 15m from 08:00–17:59 UTC (align cron TZ with your scheduler if needed). */
+export const DEFAULT_SCHEDULED_TASK_CRON = "0,15,30,45 8-17 * * 1-5";
+
 export const SCHEDULED_TASK_CATEGORY_DEFAULT_CRON: Record<ScheduledTaskCategory, string> = {
-  price_scanner: "0 * * * 1-5",
-  options_scanner: "15 9 * * 1-5",
-  user_access_requests: "*/15 * * * 1-5",
-  "sync-broker": "0 2 * * *",
-  rebalance: "0 3 * * *",
-  compliance: "0 5 * * *",
-  notifications: "0 8 * * *",
-  "user-history": "*/30 * * * *",
-  watchlist_price_scanner: "0 * * * 1-5",
-  daily_options_scanner: "15 9 * * 1-5"
+  price_scanner: DEFAULT_SCHEDULED_TASK_CRON,
+  options_scanner: DEFAULT_SCHEDULED_TASK_CRON,
+  user_access_requests: DEFAULT_SCHEDULED_TASK_CRON,
+  "sync-broker": DEFAULT_SCHEDULED_TASK_CRON,
+  rebalance: DEFAULT_SCHEDULED_TASK_CRON,
+  compliance: DEFAULT_SCHEDULED_TASK_CRON,
+  notifications: DEFAULT_SCHEDULED_TASK_CRON,
+  "user-history": DEFAULT_SCHEDULED_TASK_CRON,
+  watchlist_price_scanner: DEFAULT_SCHEDULED_TASK_CRON,
+  daily_options_scanner: DEFAULT_SCHEDULED_TASK_CRON
 };
 
 export const scheduledTaskCategorySchema = z.enum(SCHEDULED_TASK_CATEGORIES);

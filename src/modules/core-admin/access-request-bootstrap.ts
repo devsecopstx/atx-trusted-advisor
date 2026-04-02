@@ -6,6 +6,7 @@ import {
     resolveUserHistoryXaiCollectionDisplayName
 } from "@/lib/atx-instance-collection-root";
 import { getDb } from "@/lib/mongodb";
+import { DEFAULT_SCHEDULED_TASK_CRON } from "@/lib/scheduled-task-category-schema";
 import { sendSlackNotification } from "@/lib/slack";
 import type { SubscriptionPlan } from "@/lib/subscription-plan";
 import {
@@ -94,7 +95,7 @@ export async function enqueueAccessRequestBootstrap(
     tenantId: input.tenantId,
     name: `access-request-bootstrap:${normalizedEmail}`,
     category: "notifications",
-    scheduleCron: "*/15 * * * *",
+    scheduleCron: DEFAULT_SCHEDULED_TASK_CRON,
     enabled: false,
     maxRetries: 3,
     runTimeoutSeconds: 60,

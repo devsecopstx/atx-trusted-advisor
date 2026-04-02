@@ -570,7 +570,8 @@ export function TasksConsole() {
           <div className="stack-gap">
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
               Edit scheduled jobs for this tenant. Portfolio-scoped jobs still live under each portfolio&apos;s manage →
-              Tasks. Use <strong>Schedule tasks</strong> to create new job schedules.
+              Tasks. Use <strong>Schedule tasks</strong> to create new job schedules. Set a Slack delivery channel on a
+              row to post a summary to Slack after every run (manual or scheduler).
             </p>
             {tasks.length > 0 ? (
               <div className="crud-table-wrap">
@@ -749,7 +750,10 @@ export function TasksConsole() {
           <div className="stack-gap">
             <h3>Predefined job templates</h3>
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Pick a template to prefill job type and default cron. Then set delivery channel and RRULE/cron below.
+              Pick a template to prefill job type and default cron (
+              <code className="font-mono text-xs">{SCHEDULED_TASK_CATEGORY_DEFAULT_CRON.price_scanner}</code> — weekdays
+              08:00–17:59 UTC, every 15 minutes). Link a <strong>Slack</strong> delivery channel on each task to receive run
+              summaries (status, duration, full job output including price_scanner counts).
             </p>
             <div className="crud-table-wrap" style={{ marginBottom: "0.75rem" }}>
               <table className="crud-table">
@@ -824,7 +828,7 @@ export function TasksConsole() {
                 Job name: <code className="font-mono text-xs">{selectedCreateDefinition?.jobName}</code>
               </p>
               <label className="flex flex-col gap-1 text-sm">
-                <span>Delivery channel (optional)</span>
+                <span>Delivery channel — Slack recommended (run summary after each execution)</span>
                 <select
                   className="crud-input text-xs"
                   disabled={loading}
