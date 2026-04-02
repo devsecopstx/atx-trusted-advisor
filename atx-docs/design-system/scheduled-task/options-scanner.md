@@ -18,21 +18,19 @@
 | **Core scanner audit** | `isCoreScannerCategory` includes both categories — `logCoreScannerRunAudit` in `executeScheduledTask` (`task-runner.ts`) |
 | **Slack run summary** | Optional: task `deliveryChannelTarget` → `admin_delivery_channels` (Slack webhook), same pattern as other scheduled tasks (`scheduled-task-slack-notify.ts`) |
 
-### v1 behavior (inventory pass)
+### Current behavior (market-open path)
 
-On each run, the job:
+When the US regular session gate says **open**, the job also:
 
-1. Counts **portfolios** and **accounts** for the task’s **`tenantId`** (tenant scope only; legacy `portfolioId` on tasks is ignored by the scheduler).
-2. Loads **`adminListOptionsStrategySummaries()`** — strategy catalog rows (slug, name, etc.).
-3. Loads **`adminListOptionsStrategyPreferenceSummaries()`** — options strategy preference summaries.
+1. Counts **portfolios** and **accounts**; loads strategy catalog + preference summaries (same as before).
+2. Loads tenant-scoped **option positions** from `portfolio_positions`.
+3. Runs **`processOptionRecommendationsPass`** (`options-scanner-engine.ts`): batched Yahoo chains, rule-based + optional Grok rationale, upserts **`portfolio_recommendations`** (`[options-scanner]` notes), optional **`portfolio_alerts`** on SELL (capped per run).
 
-It does **not** (yet) call Yahoo option chains, Grok, or persist per-position recommendations. Output is a single line such as:
+When the market gate **skips** (holiday / after hours), recommendations are not written; output still includes strategy/prefs inventory counts.
 
-`options_scanner: portfolios=N accounts=M items_scanned=… strategies=… preferences=… slugs: …`
+Output includes `rec_examined=… rec_stored=…` and related fields. See **`options-scannerp2.md`** for env flags and detail.
 
-Failures from Mongo/repository calls return `status: "failed"` with the error message in `output`.
-
-**Tests:** `tests/unit/options-strategy-scanner.test.ts`.
+**Tests:** `tests/unit/options-strategy-scanner.test.ts`, `tests/unit/options-scanner-engine.test.ts`.
 
 ---
 

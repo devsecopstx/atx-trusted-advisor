@@ -6,17 +6,25 @@ import {
     adminListOptionsStrategyPreferenceSummaries,
     adminListOptionsStrategySummaries
 } from "@/modules/core-admin/repository";
+import type { Position, Watchlist } from "@/modules/core-admin/types";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 import {
     resolveUsMarketDayContext,
     updateTenantMarketCalendarSnapshot
 } from "@/modules/scanner/tenant-market-calendar";
+import { processOptionRecommendationsPass } from "@/modules/strategy-options/options-scanner-engine";
+import {
+    mergeOptionScanTargets,
+    positionsToOptionScanTargets,
+    watchlistsToOptionScanTargets
+} from "@/modules/strategy-options/options-scanner-targets";
 
 /** Logical service id — both `options_scanner` and `daily_options_scanner` map here. */
 export const OPTIONS_STRATEGY_SCANNER_SERVICE_ID = "options-strategy-scanner";
 
 const ACCOUNT_COLLECTION = "portfolio_accounts";
 const POSITION_COLLECTION = "portfolio_positions";
+const WATCHLIST_COLLECTION = "portfolio_watchlists";
 
 export type OptionsStrategyScannerCategory = "options_scanner" | "daily_options_scanner";
 
@@ -50,6 +58,25 @@ async function loadStrategyInventory(): Promise<{
     adminListOptionsStrategyPreferenceSummaries()
   ]);
   return { strategies, prefs };
+}
+
+async function loadTenantOptionPositions(scope: Record<string, unknown>): Promise<Position[]> {
+  const db = await getDb();
+  const match = optionPositionFilter(scope);
+  return db
+    .collection<Position>(POSITION_COLLECTION)
+    .find(match)
+    .limit(220)
+    .toArray();
+}
+
+async function loadTenantWatchlists(scope: Record<string, unknown>): Promise<Watchlist[]> {
+  const db = await getDb();
+  return db
+    .collection<Watchlist>(WATCHLIST_COLLECTION)
+    .find(scope)
+    .limit(120)
+    .toArray();
 }
 
 async function countOptionPositionsAndUnderlyings(
@@ -88,8 +115,9 @@ async function countOptionPositionsAndUnderlyings(
  * inventory, tenant-scoped option-position counts + distinct underlyings, `tenant_market_calendar` row
  * (`sourceTaskCategory: options_strategy_scanner`).
  *
- * **Not shipped:** Yahoo option chains, `optionRecommendations` writes, Grok, circuit breaker, Prometheus
- * — see `atx-docs/design-system/scheduled-task/options-scannerp2.md` roadmap.
+ * **Recommendations:** Yahoo chain per underlying+expiration (batched), rule + optional Grok rationale,
+ * upsert `portfolio_recommendations` (`[options-scanner]` notes), alerts on SELL signals (capped per run).
+ * **Not shipped:** circuit breaker, Prometheus — see `options-scannerp2.md`.
  */
 export async function executeOptionsStrategyScannerJob(
   input: OptionsStrategyScannerJobInput
@@ -155,7 +183,35 @@ export async function executeOptionsStrategyScannerJob(
       };
     }
 
-    const { optionPositions, uniqueUnderlyings } = await countOptionPositionsAndUnderlyings(scope);
+    const [countInfo, optionRows, watchlists] = await Promise.all([
+      countOptionPositionsAndUnderlyings(scope),
+      loadTenantOptionPositions(scope),
+      loadTenantWatchlists(scope)
+    ]);
+    const { optionPositions, uniqueUnderlyings } = countInfo;
+
+    const maxWl = Number.parseInt(process.env.OPTIONS_SCANNER_MAX_WATCHLIST_ROWS ?? "50", 10);
+    const maxPosCap = Number.parseInt(process.env.OPTIONS_SCANNER_MAX_POSITIONS ?? "60", 10);
+    const wlLimit = Number.isFinite(maxWl) && maxWl > 0 ? maxWl : 50;
+    const posLimit = Number.isFinite(maxPosCap) && maxPosCap > 0 ? maxPosCap : 60;
+    const posTargets = positionsToOptionScanTargets(optionRows.slice(0, 220));
+    const wlTargets = watchlistsToOptionScanTargets(watchlists, wlLimit);
+    const merged = mergeOptionScanTargets(posTargets, wlTargets).slice(0, posLimit + wlLimit);
+
+    const recPassRaw = await processOptionRecommendationsPass({ targets: merged });
+    const recPass = recPassRaw ?? {
+      examined: 0,
+      stored: 0,
+      updated: 0,
+      alertsCreated: 0,
+      alertsSuppressedDeduped: 0,
+      alertsDismissedOnHold: 0,
+      chainFailures: 0,
+      grokCalls: 0,
+      skippedBadRow: 0,
+      fromPositions: 0,
+      fromWatchlist: 0
+    };
 
     await updateTenantMarketCalendarSnapshot({
       tenantId,
@@ -165,14 +221,15 @@ export async function executeOptionsStrategyScannerJob(
       portfolioCount,
       accountCount,
       holdingsCount: optionPositions,
-      watchlistCount: 0,
+      watchlistCount: wlTargets.length,
       sourceTaskCategory: "options_strategy_scanner"
     });
 
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
+    const recSummary = `rec_examined=${recPass.examined} rec_from_pos=${recPass.fromPositions} rec_from_wl=${recPass.fromWatchlist} rec_stored=${recPass.stored} rec_updated=${recPass.updated} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated} alert_dedupe=${recPass.alertsSuppressedDeduped} hold_dismiss=${recPass.alertsDismissedOnHold} skipped_bad=${recPass.skippedBadRow}`;
     return {
       status: "success",
-      output: `${OPTIONS_STRATEGY_SCANNER_SERVICE_ID}: task_category=${taskCategoryTag} skipped=false market=open portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} option_positions=${optionPositions} unique_underlyings=${uniqueUnderlyings} slugs: ${slugPreview} duration_s=${durationSeconds}`,
+      output: `${OPTIONS_STRATEGY_SCANNER_SERVICE_ID}: task_category=${taskCategoryTag} skipped=false market=open portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} option_positions=${optionPositions} unique_underlyings=${uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
       auditDetails: {
         skipped: false,
         taskCategory: taskCategoryTag,
@@ -186,6 +243,18 @@ export async function executeOptionsStrategyScannerJob(
         slugCount: slugs.length,
         optionPositionCount: optionPositions,
         uniqueUnderlyingCount: uniqueUnderlyings,
+        recommendationsExamined: recPass.examined,
+        recommendationsStored: recPass.stored,
+        recommendationsUpdated: recPass.updated,
+        chainFailures: recPass.chainFailures,
+        grokCalls: recPass.grokCalls,
+        alertsCreated: recPass.alertsCreated,
+        alertsSuppressedDeduped: recPass.alertsSuppressedDeduped,
+        alertsDismissedOnHold: recPass.alertsDismissedOnHold,
+        skippedBadPositions: recPass.skippedBadRow,
+        recommendationSourcesFromPositions: recPass.fromPositions,
+        recommendationSourcesFromWatchlist: recPass.fromWatchlist,
+        watchlistOptionRows: wlTargets.length,
         durationSeconds
       }
     };

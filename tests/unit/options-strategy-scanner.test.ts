@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const repoMocks = vi.hoisted(() => ({
   listStrategies: vi.fn(),
@@ -20,6 +20,10 @@ const calendarMocks = vi.hoisted(() => ({
 
 vi.mock("@/modules/scanner/tenant-market-calendar", () => calendarMocks);
 
+vi.mock("@/modules/strategy-options/options-scanner-engine", () => ({
+  processOptionRecommendationsPass: vi.fn()
+}));
+
 vi.mock("@/lib/mongodb", () => ({
   getDb: vi.fn(async () => ({
     collection: (name: string) => {
@@ -28,6 +32,20 @@ vi.mock("@/lib/mongodb", () => ({
           countDocuments: vi.fn().mockResolvedValue(5),
           aggregate: vi.fn().mockReturnValue({
             toArray: vi.fn().mockResolvedValue([{ n: 2 }])
+          }),
+          find: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              toArray: vi.fn().mockResolvedValue([])
+            })
+          })
+        };
+      }
+      if (name === "portfolio_watchlists") {
+        return {
+          find: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              toArray: vi.fn().mockResolvedValue([])
+            })
           })
         };
       }
@@ -43,9 +61,28 @@ vi.mock("@/modules/core-admin/repository", () => ({
   adminListOptionsStrategyPreferenceSummaries: repoMocks.listPrefs
 }));
 
+import { processOptionRecommendationsPass } from "@/modules/strategy-options/options-scanner-engine";
 import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-strategy-scanner";
 
+const emptyRecPass = {
+  examined: 0,
+  stored: 0,
+  updated: 0,
+  alertsCreated: 0,
+  alertsSuppressedDeduped: 0,
+  alertsDismissedOnHold: 0,
+  chainFailures: 0,
+  grokCalls: 0,
+  skippedBadRow: 0,
+  fromPositions: 0,
+  fromWatchlist: 0
+};
+
 describe("runOptionsStrategyScanner", () => {
+  beforeEach(() => {
+    vi.mocked(processOptionRecommendationsPass).mockResolvedValue(emptyRecPass);
+  });
+
   it("reports counts, market-open path, and slug preview", async () => {
     repoMocks.listStrategies.mockResolvedValueOnce([
       { _id: new ObjectId(), slug: "wheel", name: "Wheel", createdAt: new Date(), updatedAt: new Date() },
@@ -74,6 +111,8 @@ describe("runOptionsStrategyScanner", () => {
     expect(r.output).toContain("preferences=1");
     expect(r.output).toContain("option_positions=5");
     expect(r.output).toContain("unique_underlyings=2");
+    expect(r.output).toContain("rec_examined=0");
+    expect(r.output).toContain("rec_from_pos=0");
     expect(r.output).toMatch(/pmcc|wheel/);
     expect(r.auditDetails).toEqual({
       skipped: false,
@@ -88,6 +127,18 @@ describe("runOptionsStrategyScanner", () => {
       slugCount: 2,
       optionPositionCount: 5,
       uniqueUnderlyingCount: 2,
+      recommendationsExamined: 0,
+      recommendationsStored: 0,
+      recommendationsUpdated: 0,
+      chainFailures: 0,
+      grokCalls: 0,
+      alertsCreated: 0,
+      alertsSuppressedDeduped: 0,
+      alertsDismissedOnHold: 0,
+      skippedBadPositions: 0,
+      recommendationSourcesFromPositions: 0,
+      recommendationSourcesFromWatchlist: 0,
+      watchlistOptionRows: 0,
       durationSeconds: expect.any(Number)
     });
     expect(calendarMocks.updateTenantMarketCalendarSnapshot).toHaveBeenCalledWith(

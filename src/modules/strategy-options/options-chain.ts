@@ -2,8 +2,8 @@
  * Option chain + synthetic fallback — ported from xfinance-strategy
  * `apps/frontend/src/app/api/options/route.ts` (keep behavior aligned on upstream changes).
  */
-import { NextResponse } from "next/server";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+import { NextResponse } from "next/server";
 
 import {
     parseStrike,
@@ -14,7 +14,7 @@ import {
 const yahooFinance = getYahooFinance2();
 
 // Type definitions for options data
-type OptionContractData = {
+export type OptionContractData = {
   ticker: string;
   yahoo_symbol: string;
   strike_price: number;
@@ -522,6 +522,22 @@ async function fetchFromYahooOptions(
     console.error(`${OPTIONS_LOG} fetchFromYahooOptions failed:`, e);
     return null;
   }
+}
+
+/**
+ * Yahoo option chain for a single expiration (scheduled scanner, xOptions callers).
+ * Wraps the same logic as `GET /api/strategy-options` / internal `fetchFromYahooOptions`.
+ */
+export async function fetchYahooOptionChainForExpiration(
+  underlying: string,
+  expirationIsoDate: string,
+  stockPrice: number,
+  daysToExp: number
+): Promise<{
+  optionChain: { strike: number; call: OptionContractData | null; put: OptionContractData | null }[];
+  actualExpiration: string;
+} | null> {
+  return fetchFromYahooOptions(underlying, expirationIsoDate, stockPrice, daysToExp);
 }
 
 /** Same contract as xfinance-strategy `GET /api/options`. */

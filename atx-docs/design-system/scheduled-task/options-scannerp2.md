@@ -25,19 +25,17 @@
 1. **US market calendar gate** (same helper as price scanner): non-business days or outside regular session → **success + skipped** with reason; still loads strategy/prefs counts for output.
 2. **Strategy catalog + preference inventory** (`adminListOptionsStrategySummaries`, `adminListOptionsStrategyPreferenceSummaries`).
 3. **Tenant-scoped option position survey:** `portfolio_positions` count for option legs (`type: "option"` or legacy `optionType` call/put) + distinct underlying symbols; when market open, included in output and `tenant_market_calendar` snapshot with `sourceTaskCategory: "options_strategy_scanner"`.
-4. **Try/catch** → failed runs return `options-strategy-scanner: task_category=… failed: …`.
+4. **Recommendations + rationale:** Batched **Yahoo** chains (`fetchYahooOptionChainForExpiration`), **side-aware** rules (long vs short premium, high-IV short puts tighter thresholds), optional **Grok** (`chatWithXai`). Upserts **`portfolio_recommendations`** with `[options-scanner]` notes + `Side` / `BUY_TO_CLOSE` | `SELL_TO_CLOSE` copy. **Long** exit → `action: sell`; **short** exit → `action: buy` (buy-to-close). **Watchlist:** `portfolio_watchlists` rows with OCC-style `symbol` (e.g. CSV `TSLA260327C00370000`) and eligible `lineType` / `strategy` → `options-scanner-targets.ts` → merged with positions (position wins on duplicate contract). Module: `options-scanner-engine.ts`.
+5. **Alerts (deduped):** Close-only; body tags `[afp:underlying|exp|strike|type]` + `[close:BUY_TO_CLOSE|SELL_TO_CLOSE]`. Skips new alert if an **active** alert with the same fingerprint exists; **dismisses** scanner alerts for that contract when the run returns **HOLD**. Cap **`OPTIONS_SCANNER_MAX_ALERTS_PER_RUN`** (default **5**).
+6. **Try/catch** → failed runs return `options-strategy-scanner: task_category=… failed: …`.
 
-**Tests:** `tests/unit/options-strategy-scanner.test.ts` (market-open path mocked).
+**Env (optional):** `OPTIONS_SCANNER_MAX_POSITIONS`, `OPTIONS_SCANNER_MAX_WATCHLIST_ROWS`, `OPTIONS_SCANNER_GROK_ENABLED`, `OPTIONS_SCANNER_GROK_MAX_CALLS`, `OPTIONS_SCANNER_MAX_ALERTS_PER_RUN`.
 
-### Phase 2 roadmap — full engine (not shipped)
+**Tests:** `options-strategy-scanner`, `options-scanner-engine`, `options-scanner-targets`.
 
-On each run, the full engine would:
+### Phase 2 roadmap — full engine (extra)
 
-1. Load **all portfolios** and **default accounts** for the task’s `tenantId` (tenant scope only; legacy `portfolioId` on tasks is ignored).
-2. (Already shipped) Load prefs + strategy catalog from Mongo.
-3. For **every** open option position and relevant watchlist symbols: fetch chains via **Yahoo Finance only**, evaluate, write `optionRecommendations`, alerts, etc. — see PLAN 245 / `strategy-engine.md`.
-
-**No Polygon, no other providers** — Yahoo Finance only (when engine ships).
+- Richer **PLAN 245** / Kotlin **OptionsStrategyEngine** scoring, `option_scan_history` dashboard badges, circuit breaker / metrics — see `strategy-engine.md`.
 
 ---
 
@@ -48,7 +46,7 @@ When a user adds an option call/put chain (or any option position) to a watchlis
 
 **Target end state** (aligned with **PLAN 245** / **OptionsStrategyEngine**): ranked strategy recommendations from chain data, prefs, and the pipeline in [`strategy-engine.md`](../xStrategyBuilder/strategy-engine.md).
 
-**Shipped value (current Phase 2 slice):** unified scanner job, US session gate, strategy/prefs inventory, option-position / underlying counts, `tenant_market_calendar` rows (`options_strategy_scanner`). **Target product value (roadmap):** live option-level recommendations + alerts per PLAN 245.
+**Shipped value (current Phase 2):** unified scanner job, US session gate, strategy/prefs inventory, **positions + watchlist OCC lines**, Yahoo chains, side-aware + Grok rationale into **`portfolio_recommendations`**, **deduped** close alerts, `tenant_market_calendar` snapshots. **Roadmap:** full PLAN 245 engine + history collections + circuit metrics.
 
 ---
 
@@ -72,7 +70,7 @@ For each option position / watchlist symbol:
   • Evaluate rules (DTE, P/L %, time value %, stop-loss, IV spike)
   • Edge cases → optional Grok analysis (if grokEnabled)
   ↓
-Store recommendation + rationale + confidence in Mongo `optionRecommendations`
+Store recommendation + rationale in Mongo **`portfolio_recommendations`** (see shipped section)
 Create alerts (BUY_TO_CLOSE only)
   ↓
 Return per-portfolio stats

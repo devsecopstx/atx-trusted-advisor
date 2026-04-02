@@ -5,3 +5,5 @@ Scans taxable accounts for unrealized losses > threshold; surfaces wash-sale ris
 Daily during tax season; weekly otherwise
 
 “Tax-loss scan: 4 candidates ($14k total loss). 1 wash-sale blocked. Replacements ready.”
+
+> **Phase 3 (planned):** [scanners-phase3-plan.md](./scanners-phase3-plan.md)
