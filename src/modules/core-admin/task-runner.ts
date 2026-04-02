@@ -84,7 +84,7 @@ async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCateg
   if (task.category === "price_scanner") {
     return executePriceScannerJob({ tenantId: task.tenantId });
   }
-  if (task.category === "options_scanner") {
+  if (task.category === "options_scanner" || task.category === "daily_options_scanner") {
     return runOptionsStrategyScanner(task);
   }
   if (task.category === "user_access_requests") {
@@ -96,10 +96,6 @@ async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCateg
   if (task.category === "watchlist_price_scanner") {
     return runWatchlistPriceScanner(task);
   }
-  if (task.category === "daily_options_scanner") {
-    return runOptionsStrategyScanner(task);
-  }
-
   const waitMs = 120 + Math.floor(Math.random() * 220);
   await new Promise((resolve) => setTimeout(resolve, waitMs));
 

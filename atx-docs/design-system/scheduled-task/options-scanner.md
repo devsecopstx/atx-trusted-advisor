@@ -1,90 +1,80 @@
-# Option Scanner Job
+# Options Strategy Scanner Job
 
-**Service**: `option-scanner`  
-**Type**: Scheduled background job (runs as part of unifiedOptionsScanner)  
-**Frequency**: Configurable per tenant (default: every 15 minutes during market hours, once after close)
+**Service id (categories):** `options_scanner` · `daily_options_scanner`  
+**Module:** `runOptionsStrategyScanner` — `src/modules/strategy-options/options-strategy-scanner.ts`  
+**Type:** Tenant-admin scheduled background job (`admin_scheduled_tasks`), same pipeline as other core scanners
 
-## Purpose
-The Option Scanner is a rule-based + Grok-enhanced scheduled job that keeps **every tenant portfolio’s option watchlists and holdings** up-to-date with fresh recommendations and rationale.  
-When a user adds an option call/put chain (or any option position) to a watchlist or portfolio, the scanner evaluates it and generates clear HOLD / BUY_TO_CLOSE recommendations with supporting rationale, confidence score, and alerts where needed.  
-All market data is sourced exclusively from Yahoo Finance (acceptable 15-minute delay).
+**Governance (reviewer / SRE):** Jobs are created only via **`/admin/tasks`** (global admin, tenant-scoped). There is no portfolio-level scheduler UI. **Future (TBD):** end-users might create an options-related job from **xChat** — not shipped until scoped; see `.cursor/agents/reviewer.md` § *Scheduled tasks (admin)*.
 
-## Scope
-- Scans **all portfolios** belonging to the current app tenant.
-- Sources:
-  - Existing open option positions (calls & puts) from default portfolio accounts.
-  - Watchlist symbols (for new opportunities, including user-added option chains).
-- Focus: Calls and puts only.
-- Applies tenant/portfolio-level `option-strategy-prefs` (IV rank/percent, min OI, min volume, max delta, risk profile, etc.).
+---
 
-## Core Flow
-```ts
-runOptionScanner(accountId?, config?)
-  ↓
-Load default portfolio (risk/outlook) + watchlist symbols
-  ↓
-For each option position / watchlist symbol:
-  • Fetch real-time option chain + greeks via Yahoo Finance only
-  • Apply filters (min OI, min volume, IV range, etc.)
-  • Evaluate rules (DTE, P/L %, time value %, stop-loss, IV spike)
-  • Edge cases → optional Grok analysis
-  ↓
-Store recommendation + rationale in optionRecommendations collection
-Create alerts (BUY_TO_CLOSE only)
-  ↓
-Return per-portfolio stats
-Output & Logging Summary (per portfolio)
-After each run, the job emits a clean, human-readable summary for observability and audit trails:
+## Implementation (Next.js) — shipped today
 
-Option scan complete for portfolio [PORTFOLIO_ID] (@ [YYYY-MM-DD HH:MM:SS UTC])
-• Scanned: 27 options
-• Stored: 19 recommendations (12 HOLD, 7 BUY_TO_CLOSE)
-• Alerts created: 3 (BUY_TO_CLOSE)
-• Grok analysis: 2 high-P/L edge cases
-• Duration: 4.2 seconds
-• Next scheduled run: [timestamp]
+| Piece | Location |
+|--------|----------|
+| **Job entrypoint** | `runOptionsStrategyScanner(task)` — `src/modules/strategy-options/options-strategy-scanner.ts` |
+| **Scheduled task routing** | `runScheduledCategory` → `options_scanner` **or** `daily_options_scanner` → same function — `src/modules/core-admin/task-runner.ts` |
+| **Admin schedule / cron** | `/admin/tasks` — `admin_scheduled_tasks`; default cron via `SCHEDULED_TASK_CATEGORY_DEFAULT_CRON` in `src/lib/scheduled-task-category-schema.ts`; manual run: `POST /api/admin/tasks/{taskId}/run` |
+| **Core scanner audit** | `isCoreScannerCategory` includes both categories — `logCoreScannerRunAudit` in `executeScheduledTask` (`task-runner.ts`) |
+| **Slack run summary** | Optional: task `deliveryChannelTarget` → `admin_delivery_channels` (Slack webhook), same pattern as other scheduled tasks (`scheduled-task-slack-notify.ts`) |
 
-The summary is:
+### v1 behavior (inventory pass)
 
-Written to application logs
-Stored in a lightweight option_scan_history table (for dashboard “last updated” badges)
-Optionally pushed to a tenant-specific notification channel if any BUY_TO_CLOSE alerts are generated.
+On each run, the job:
 
-Key Requirements
+1. Counts **portfolios** and **accounts** for the task’s **`tenantId`** (tenant scope only; legacy `portfolioId` on tasks is ignored by the scheduler).
+2. Loads **`adminListOptionsStrategySummaries()`** — strategy catalog rows (slug, name, etc.).
+3. Loads **`adminListOptionsStrategyPreferenceSummaries()`** — options strategy preference summaries.
 
-Idempotent and retry-safe (use unique job ID + lock per tenant).
-Rate-limit friendly to Yahoo Finance.
-Cache-aware: skip options whose chain is <15 minutes old unless forced refresh.
-Zero user-facing impact — runs silently in background.
+It does **not** (yet) call Yahoo option chains, Grok, or persist per-position recommendations. Output is a single line such as:
 
-Error Handling & Resilience
+`options_scanner: portfolios=N accounts=M items_scanned=… strategies=… preferences=… slugs: …`
 
-Isolated per-option failures: An error fetching any single option chain (network, Yahoo outage, invalid ticker, rate-limit 429, etc.) is logged with full context (symbol, expiration, strike, error code) but does NOT stop the scan for the rest of the portfolio or tenant.
-Retry policy: Transient errors receive up to 3 exponential-backoff retries (initial 1s, then 3s, then 8s). Permanent errors (e.g., 404 ticker, auth failure) are recorded once and skipped.
-Fallback: If Yahoo primary call fails, use the last cached chain (still within 15-min window) before marking as failed.
-Circuit breaker: If >20% of options fail in a single run, the job pauses further Yahoo calls for that tenant for 15 minutes and logs a high-severity alert.
-Partial success reporting: Summary always shows “Scanned X / Stored Y / Failed Z / Alerts W” so ops can see exactly what succeeded.
-Dead-letter & alerting: Persistent failures (>3 consecutive runs for same option) are moved to an option_scan_dead_letter queue and trigger a tenant admin Slack/email alert (with portfolio context).
-Transaction safety: All recommendation updates are wrapped in per-portfolio database transactions; partial batch failures roll back only the failed options.
-Monitoring hooks: Every run emits Prometheus metrics (option_scan_duration_seconds, option_scan_options_total, option_scan_errors_total, option_scan_grok_calls).
+Failures from Mongo/repository calls return `status: "failed"` with the error message in `output`.
 
-Key Evaluation Rules (configurable via UnifiedOptionsScannerConfig)
+**Tests:** `tests/unit/options-strategy-scanner.test.ts`.
 
-HOLD if DTE ≥ holdDteMin and time value % ≥ holdTimeValuePercentMin
-BUY_TO_CLOSE if DTE < btcDteMax or P/L < btcStopLossPercent
-High IV puts → conservative treatment
-Grok candidates: high |P/L|%, low DTE, high IV spike
+---
 
-Configuration
-Pulled from UnifiedOptionsScannerConfig:
+## Purpose (product)
 
-optionScanner overrides: holdDteMin, btcDteMax, btcStopLossPercent, holdTimeValuePercentMin, highVolatilityPercent, grokEnabled, etc.
-Strategy prefs: IV rank/percent, min OI, min volume, max delta, risk profile.
+**Target end state** (aligned with **PLAN 245** / **OptionsStrategyEngine** — `.cursor/agents/reviewer.md`, `.cursor/agents/sre.md`): a tenant-scoped job that eventually drives **ranked strategy recommendations** from chain data, prefs, and the pipeline in [`strategy-engine.md`](../xStrategyBuilder/strategy-engine.md) (orchestrator, fit scores, legs, rationale).
 
-Success Criteria
+**Current shipped value:** proves the scheduled path and keeps **strategy + preference inventory** visible in run output for ops and audits; seeds alignment with RAG / admin strategy prefs.
 
-Every option holding/watchlist chain has a recommendation timestamp ≤ current job run time (or explicit failure logged).
-Total scan time per tenant stays under 45 seconds even at scale (hundreds of portfolios + thousands of options).
-Clear, concise per-portfolio summary logged for every execution, including error counts.
+---
 
-Status: Ready for implementation / review.
+## Roadmap (not implemented in `runOptionsStrategyScanner` yet)
+
+The older draft in this file described Grok-enhanced chain scans, `option_scan_history`, Prometheus, circuit breakers, per-option retries, dead-letter queues, and **`UnifiedOptionsScannerConfig`** — **those are not in the v1 code path.** Treat them as **product/engineering backlog** unless/until implemented.
+
+Intended integration point for the full engine: **`daily_options_scanner`** (and/or **`options_scanner`**) should invoke the same brain as interactive **xOptions** / strategy engine once **PLAN 245** lands — reviewer doc calls out **`daily_options_scanner`** as the single job brain candidate.
+
+**SRE (when scale matters):** batch runs on Cloud Run should respect Mongo connection limits, timeouts on scheduled execution, and **structured, safe logs** (task id, tenant mask, counts — no raw PII). Today, primary observability is **`admin_task_runs.output`** + optional Slack + core_scanner audit rows — not dedicated Prometheus metrics for this job.
+
+---
+
+## Alignment checklist
+
+| Area | Status |
+|------|--------|
+| Tenant-only admin tasks | Aligned — no portfolio task UI |
+| BFF / new HTTP routes for scanner | Not required for v1 (in-process only) |
+| OpenAPI | No dedicated public route; inventory is indirect via admin tasks APIs |
+| Kotlin backend | When BFF runs scheduler, categories that are not special-cased in JVM may simulate — Next remains source of truth for `runOptionsStrategyScanner` when not proxied |
+
+---
+
+## Open questions (for product / eng)
+
+1. **Category split:** `options_scanner` vs `daily_options_scanner` today share one implementation (output label differs). Should product keep both template rows in admin UI or converge to a single category when the engine ships?
+2. **Market window:** Unlike `price_scanner`, v1 does **not** skip outside equity hours — runs whenever scheduled. Should options inventory respect US session / `resolveUsMarketDayContext` once chain I/O exists?
+3. **xChat-created jobs:** When users can create scanner jobs from chat, do they create **`admin_scheduled_tasks`** rows (with caps) or a separate job table — needs explicit design before build.
+
+---
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-04-02 | Rewrote to match **`runOptionsStrategyScanner`** v1; separated roadmap; reviewer/SRE governance; open questions. |

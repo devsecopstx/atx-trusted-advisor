@@ -1,0 +1,1 @@
+Rebalance ScannerDetects allocation drift vs user-defined targets; flags suggested trades (sell overweight, buy underweight) with tax-impact estimate.Daily (market close) or weekly“Drift scan: 3 positions flagged (TSLA +8%). Est. tax cost on harvest: $1,240. Recommended trades: 2 sells / 1 buy.”
