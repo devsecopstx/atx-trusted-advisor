@@ -160,6 +160,27 @@ describe("admin users CRUD routes", () => {
     expect(identityMocks.deleteCoreUserById).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects delete when target is the signed-in admin (self)", async () => {
+    const response = await deleteUser(new Request("http://test"), {
+      params: Promise.resolve({ userId: "507f1f77bcf86cd799439011" })
+    });
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error?: string };
+    expect(body.error).toMatch(/cannot delete your own account/i);
+    expect(coreAdminRepoMocks.purgeAllDataAssociatedWithCoreUser).not.toHaveBeenCalled();
+    expect(identityMocks.deleteCoreUserById).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when user does not exist before purge", async () => {
+    identityMocks.getCoreUserById.mockResolvedValueOnce(null);
+    const response = await deleteUser(new Request("http://test"), {
+      params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+    });
+    expect(response.status).toBe(404);
+    expect(coreAdminRepoMocks.purgeAllDataAssociatedWithCoreUser).not.toHaveBeenCalled();
+    expect(identityMocks.deleteCoreUserById).not.toHaveBeenCalled();
+  });
+
   it("returns auth response for non-admin", async () => {
     authMocks.requireAdminSession.mockResolvedValueOnce(
       NextResponse.json({ error: "Forbidden" }, { status: 403 })

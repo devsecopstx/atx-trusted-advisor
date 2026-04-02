@@ -50,6 +50,12 @@ Spring BFF path: `AdminAccessRequestService` uses `DefaultPortfolioProvisionServ
 
 If X does not expose an email, the UI uses the **link email** step so the user can tie their X identity to the same email they registered with.
 
+## Admin — Manage users (destructive delete)
+
+**Global admin** → **Admin → Manage users** → **Delete** runs **`DELETE /api/admin/users/{userId}`** after a prompt that requires typing **`DELETE`**. The server **removes all product data** scoped to that user id **and** normalized email before deleting the **`core_users`** row: portfolios (and nested accounts, positions, watchlists, portfolio-scoped recommendations/alerts/channels), **`core_tenant_memberships`**, **`admin_user_settings`**, **`admin_access_requests`**, **`options_strategy_preferences`**, **`app_user_recommendations`**, **`xchat_logs`**, **`app_feature_daily_usage`**, **`strategy_jobs`**, **`audit_login`** (by user id and by email when purging a full user), **`admin_user_bootstrap_profiles`**, and disabled **`admin_scheduled_tasks`** rows named **`access-request-bootstrap:{email}`**. Admins **cannot** delete their **own** user id from this route (**400**).
+
+**OAuth merge** of a placeholder X user into an existing email account still uses **`purgeEphemeralCoreUserScaffolding`** only (same user id, **no** email-keyed deletes) so another user’s bootstrap or login-audit rows are not touched.
+
 ## Access request lifecycle
 
 State machine:

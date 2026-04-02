@@ -39,7 +39,7 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `GET /api/admin/users/approved`
 - `GET /api/admin/users/:userId`
 - `PUT /api/admin/users/:userId`
-- `DELETE /api/admin/users/:userId`
+- `DELETE /api/admin/users/:userId` — **destructive:** purges all app data for that user id + normalized email, then removes `core_users`; **400** if target is the signed-in admin’s own id
 - `PATCH /api/admin/users/:userId/email`
 - `PATCH /api/admin/users/:userId/plan`
 - `PATCH /api/admin/users/:userId/role`

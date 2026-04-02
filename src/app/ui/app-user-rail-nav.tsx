@@ -6,6 +6,7 @@ import { useId, useState, type ReactNode, type SVGProps } from "react";
 
 import { AppUserWorkspaceAccountPicker } from "@/app/ui/app-user-workspace-account-picker";
 import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-portfolio-picker";
+import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 
@@ -81,21 +82,6 @@ function ChatIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.75}
-      />
-    </svg>
-  );
-}
-
-/** Hub / workspace tools — matches admin product chrome */
-function ManageWorkspaceIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.65}
       />
     </svg>
   );
@@ -357,7 +343,7 @@ export function AppUserManageWorkspaceRailSection({
     <section className="app-user-rail-section" aria-label="Manage workspace">
       <RailDisclosure
         defaultOpen={railDisclosureDefaultOpen}
-        icon={<ManageWorkspaceIcon className="app-user-rail-disclosure__glyph" />}
+        icon={<RailSidebarZapIcon className="app-user-rail-disclosure__glyph" size="disclosure" />}
         title="Manage workspace"
       >
         <>

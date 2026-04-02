@@ -353,8 +353,9 @@
 }
 
 .xchat-header-icon-link {
-  width: 2.28rem;
-  height: 2.28rem;
+  /* Touch target + glyph scale (~1.5× prior 2.28rem / 1.2rem icons) */
+  width: 3.42rem;
+  height: 3.42rem;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.03);
@@ -380,8 +381,8 @@
 }
 
 .xchat-header-icon-link__glyph {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.8rem;
+  height: 1.8rem;
   display: inline-flex;
 }
 
@@ -728,9 +729,30 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   display: block;
 }
 
-.xchat-rail-toggle__glyph--gear {
+/* Shared app-user left rail: yellow lightning (`RailSidebarZapIcon`) — not inherited toggle green */
+.xf-rail-sidebar-zap-icon {
+  display: block;
+  flex-shrink: 0;
+  color: #facc15;
+}
+
+.xf-rail-sidebar-zap-icon--toggle {
   width: 1.55rem;
   height: 1.55rem;
+}
+
+.xf-rail-sidebar-zap-icon--disclosure {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.xchat-rail-toggle:hover .xf-rail-sidebar-zap-icon,
+.app-user-rail-toggle:hover .xf-rail-sidebar-zap-icon {
+  color: #fde047;
+}
+
+.app-user-rail-disclosure__trigger:hover .xf-rail-sidebar-zap-icon {
+  color: #fde047;
 }
 
 .xchat-rail-toggle:hover {
@@ -2338,9 +2360,4 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   width: 1.15rem;
   height: 1.15rem;
   display: block;
-}
-
-.app-user-rail-toggle__glyph--gear {
-  width: 1.55rem;
-  height: 1.55rem;
 }

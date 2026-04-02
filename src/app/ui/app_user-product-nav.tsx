@@ -21,10 +21,18 @@ function IconWrap({ children }: { children: ReactNode }) {
   );
 }
 
-const NAV: { id: Exclude<AppUserProductNavCurrent, null>; label: string; href: string; icon: ReactNode }[] = [
+type NavDef = {
+  id: Exclude<AppUserProductNavCurrent, null>;
+  /** Shown in custom hover tooltip and as the link accessible name (`aria-label`). */
+  hint: string;
+  href: string;
+  icon: ReactNode;
+};
+
+const NAV: NavDef[] = [
   {
     id: "xchat",
-    label: "xChat",
+    hint: "Open xChat",
     href: "/xchat",
     icon: (
       <IconWrap>
@@ -36,24 +44,23 @@ const NAV: { id: Exclude<AppUserProductNavCurrent, null>; label: string; href: s
   },
   {
     id: "xoptions",
-    label: "xOptions",
+    hint: "Open xOptions — options chains & desk",
     href: "/xoptions",
     icon: (
       <IconWrap>
         <Image
-          alt=""
-          aria-hidden
+          alt="xOptions"
           className="xchat-header-icon-link__glyph-img xstrategybuilder-nav-icon-img"
-          height={20}
+          height={30}
           src="/branding/xstrategybuilder-topnav-icon-transparent.png"
-          width={20}
+          width={30}
         />
       </IconWrap>
     )
   },
   {
     id: "portfolio",
-    label: "Portfolio",
+    hint: "Manage portfolios",
     href: "/portfolios",
     icon: (
       <IconWrap>
@@ -72,7 +79,7 @@ const NAV: { id: Exclude<AppUserProductNavCurrent, null>; label: string; href: s
   },
   {
     id: "watchlist",
-    label: "Watchlist",
+    hint: "Manage watchlist",
     href: "/watchlist",
     icon: (
       <IconWrap>
@@ -93,10 +100,10 @@ export function AppUserProductNav({ current }: AppUserProductNavProps) {
   return (
     <nav className="xchat-header-nav" aria-label="Product">
       {NAV.map((item) => (
-        <XfHoverHint key={item.id} hint={item.label}>
+        <XfHoverHint key={item.id} hint={item.hint}>
           <Link
             aria-current={item.id === current ? "page" : undefined}
-            aria-label={item.label}
+            aria-label={item.hint}
             className={`xchat-header-icon-link${item.id === current ? " xchat-header-icon-link--active" : ""}`}
             href={item.href}
           >
