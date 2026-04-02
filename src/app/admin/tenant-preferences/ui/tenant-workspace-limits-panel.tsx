@@ -74,7 +74,7 @@ const PREF_FIELDS: (
 
 type PlanLimitDrafts = Record<
   AtxBillingPlanId,
-  Partial<Record<keyof TenantWorkspaceLimits | "price", string>>
+  Partial<Record<keyof TenantWorkspaceLimits | "price" | "stripeProductId" | "stripePriceId", string>>
 >;
 
 function emptyPlanDrafts(): PlanLimitDrafts {
@@ -114,6 +114,12 @@ function draftsFromPlanOverrides(po: TenantPlanWorkspaceOverrides | null | undef
     }
     const listPrice = row.price;
     d[planId].price = listPrice != null ? String(listPrice) : String(DEFAULT_TENANT_PLAN_PRICE);
+    if (typeof row.stripeProductId === "string" && row.stripeProductId.trim() !== "") {
+      d[planId].stripeProductId = row.stripeProductId.trim();
+    }
+    if (typeof row.stripePriceId === "string" && row.stripePriceId.trim() !== "") {
+      d[planId].stripePriceId = row.stripePriceId.trim();
+    }
   }
   return d;
 }
@@ -153,6 +159,14 @@ function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOv
         : Number.parseInt(rawPrice, 10);
     partial.price =
       Number.isFinite(priceNum) && priceNum >= 1 ? priceNum : DEFAULT_TENANT_PLAN_PRICE;
+    const rawStripeProd = drafts[planId]?.stripeProductId?.trim() ?? "";
+    if (rawStripeProd !== "" && /^prod_[a-zA-Z0-9_]+$/.test(rawStripeProd)) {
+      partial.stripeProductId = rawStripeProd;
+    }
+    const rawStripePrice = drafts[planId]?.stripePriceId?.trim() ?? "";
+    if (rawStripePrice !== "" && /^price_[a-zA-Z0-9_]+$/.test(rawStripePrice)) {
+      partial.stripePriceId = rawStripePrice;
+    }
     out[planId] = partial;
   }
   return out;
@@ -467,7 +481,9 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
           <code className="font-mono text-[0.7rem]">premium</code>,{" "}
           <code className="font-mono text-[0.7rem]">premium_plus</code>. Leave limit cells empty
           to inherit the tenant defaults in the row above. List price (USD) defaults to {DEFAULT_TENANT_PLAN_PRICE}{" "}
-          per plan when unset. Saving persists all three tiers (including price).
+          per plan when unset. Optional Stripe <strong>prod_…</strong> / <strong>price_…</strong> ids override env{" "}
+          <code className="font-mono text-[0.65rem]">STRIPE_PRICE_*</code> for Checkout for this tenant; leave blank to
+          use platform env. Saving persists all three tiers.
         </p>
         <div className="crud-table-wrap admin-tenant-pref-table-wrap">
           <table className="crud-table admin-tenant-pref-crud-table">
@@ -477,6 +493,14 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                 <th scope="col" title="Admin list price in USD (whole dollars); not Stripe">
                   <span className="admin-tenant-pref-crud-table__abbr">$</span>
                   <span className="admin-tenant-pref-crud-table__full">Price (USD)</span>
+                </th>
+                <th scope="col" title="Stripe Product id (optional; reference)">
+                  <span className="admin-tenant-pref-crud-table__abbr">prod</span>
+                  <span className="admin-tenant-pref-crud-table__full">Stripe product</span>
+                </th>
+                <th scope="col" title="Stripe Price id — overrides STRIPE_PRICE_* for Checkout when set">
+                  <span className="admin-tenant-pref-crud-table__abbr">price</span>
+                  <span className="admin-tenant-pref-crud-table__full">Stripe price</span>
                 </th>
                 {QUOTA_FIELDS.map((f) => (
                   <th key={f.key} scope="col" title={f.hint}>
@@ -514,6 +538,44 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                         setPlanDrafts((prev) => ({
                           ...prev,
                           [planId]: { ...prev[planId], price: v }
+                        }));
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${planLabel(planId)} Stripe product id`}
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      className="crud-input font-mono text-xs"
+                      placeholder="prod_…"
+                      spellCheck={false}
+                      title="Optional prod_… — clear to use platform default"
+                      value={planDrafts[planId]?.stripeProductId ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setPlanDrafts((prev) => ({
+                          ...prev,
+                          [planId]: { ...prev[planId], stripeProductId: v }
+                        }));
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${planLabel(planId)} Stripe price id`}
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      className="crud-input font-mono text-xs"
+                      placeholder="price_…"
+                      spellCheck={false}
+                      title="Optional price_… — overrides STRIPE_PRICE_* for this tier; clear for env"
+                      value={planDrafts[planId]?.stripePriceId ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setPlanDrafts((prev) => ({
+                          ...prev,
+                          [planId]: { ...prev[planId], stripePriceId: v }
                         }));
                       }}
                     />

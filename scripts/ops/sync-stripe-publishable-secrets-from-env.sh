@@ -10,6 +10,8 @@
 #   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 # Optional (defaults to publishable if unset):
 #   STRIPE_PUBLIC_KEY
+# Optional (upserts server secret when set — required in GCP for ops:secrets:verify:* / deploy):
+#   STRIPE_SECRET_KEY
 # Project id (first non-empty wins):
 #   GOOGLE_PROJECT_ID | GOOGLE_CLOUD_PROJECT | GCP_PROJECT_ID
 #
@@ -26,7 +28,7 @@ Usage: bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh [env-file]
   env-file   Path to env file (default: .env.stage). Example: .env.prod
 
 Requires: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, and GOOGLE_PROJECT_ID or GOOGLE_CLOUD_PROJECT or GCP_PROJECT_ID.
-Optional: STRIPE_PUBLIC_KEY (defaults to NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).
+Optional: STRIPE_PUBLIC_KEY (defaults to NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY); STRIPE_SECRET_KEY (sk_… — upsert when set).
 EOF
 }
 
@@ -97,4 +99,11 @@ upsert_secret() {
 echo "sync-stripe-publishable-secrets-from-env: project=${PROJECT} env_file=${ENV_ABS}"
 upsert_secret "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" "${PUB}"
 upsert_secret "STRIPE_PUBLIC_KEY" "${ALT}"
+SK="${STRIPE_SECRET_KEY:-}"
+if [[ -n "${SK//[[:space:]]/}" ]]; then
+  upsert_secret "STRIPE_SECRET_KEY" "${SK}"
+  echo "sync-stripe-publishable-secrets-from-env: upserted STRIPE_SECRET_KEY"
+else
+  echo "sync-stripe-publishable-secrets-from-env: STRIPE_SECRET_KEY unset in env file — skip (required in GCP for verify/deploy; add sk_… to file and re-run)"
+fi
 echo "sync-stripe-publishable-secrets-from-env: done"

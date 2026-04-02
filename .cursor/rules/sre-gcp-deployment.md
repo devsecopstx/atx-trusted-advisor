@@ -38,7 +38,7 @@ Use this ordered path when **nothing exists yet** (new org/repo clone of [devsec
 2. **Enable APIs** (minimum for this repo’s workflows + manual deploy):  
    `run.googleapis.com`, `secretmanager.googleapis.com`, `artifactregistry.googleapis.com`, `cloudbuild.googleapis.com`, `iamcredentials.googleapis.com`, `serviceusage.googleapis.com`.
 3. **Artifact Registry:** Docker repo **`atxfinance-core-app`** in your deploy region (e.g. **`us-central1`**) — matches `.github/workflows/deploy-cloud-run.yml` defaults unless overridden by vars.
-4. **Secret Manager:** Create **latest** versions for every name in `scripts/ops/gcp-runtime-secrets.inc.sh` (`MONGODB_URI_B64`, `XAI_API_KEY`, `X_OAUTH_*`, `AUTH_SECRET`, `SLACK_WEBHOOK_URL`, `ADMIN_SEED_EMAIL`, `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PUBLIC_KEY`; optional `STRIPE_SECRET_KEY`). **Staging** also needs **`GOOGLE_CLIENT_ID`** and **`GOOGLE_CLIENT_SECRET`** for Sign in with Google (`npm run ops:secrets:verify:staging` enforces both). Use staging-appropriate values (staging DB URI, test Stripe keys if needed).
+4. **Secret Manager:** Create **latest** versions for every name in `scripts/ops/gcp-runtime-secrets.inc.sh` (`MONGODB_URI_B64`, `XAI_API_KEY`, `X_OAUTH_*`, `AUTH_SECRET`, `SLACK_WEBHOOK_URL`, `ADMIN_SEED_EMAIL`, `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PUBLIC_KEY`, `STRIPE_SECRET_KEY`). **Staging** also needs **`GOOGLE_CLIENT_ID`** and **`GOOGLE_CLIENT_SECRET`** for Sign in with Google (`npm run ops:secrets:verify:staging` enforces both). Use staging-appropriate values (staging DB URI, test Stripe keys if needed).
 5. **Deploy identity (for GitHub Actions):** Service account + **Workload Identity Federation** so GitHub (`devsecopstx/xfinance`) can impersonate it with **OIDC** — grant roles such as **Cloud Run Admin**, **Secret Manager Secret Accessor** (on needed secrets), **Artifact Registry** push, **Cloud Build Editor** (workflows use `gcloud builds submit`). Exact bindings follow least-privilege in your org; see `AGENTS.md` / `DEVELOPMENT.md` for OIDC env secret names.
 6. **First Cloud Run service:** Either let the **first deploy** create it (`gcloud run deploy <name>`) or create an empty service — name must match **`CLOUD_RUN_SERVICE_STAGING`** everywhere (`.env.stage`, GitHub **Variables**).
 
@@ -91,7 +91,7 @@ Use this ordered path when **nothing exists yet** (new org/repo clone of [devsec
 
 **Deploy:** Cloud Run workflows bind `REDIS_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_PUBLIC_KEY` from Secret Manager on every deploy (no GitHub Variables fallback for those three). When both Google OAuth secrets exist, workflows also bind `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
-Other Stripe config (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_*`) remains as documented in `atx-docs/sre-ops/stripe-billing-setup.md` (secret key in SM when checkout is enabled; price ids via GitHub Environment **variables** unless you add separate SM secrets later).
+Other Stripe config (`STRIPE_PRICE_*`) remains as documented in `atx-docs/sre-ops/stripe-billing-setup.md` (price ids via GitHub Environment **variables** unless you add separate SM secrets later).
 
 ## 7. Local deploy to Cloud Run (bypass GitHub Actions)
 

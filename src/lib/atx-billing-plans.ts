@@ -1,5 +1,6 @@
 /**
- * ATX retail subscription tiers (Account → Billing). Stripe Price IDs come from env — see `stripe-config.ts`.
+ * ATX retail subscription tiers (Account → Billing). Stripe Price IDs: env `STRIPE_PRICE_*` or tenant
+ * `workspaceLimits.planOverrides.<tier>.stripePriceId` — see `stripe-config.ts` / admin workspace limits.
  */
 export type AtxBillingPlanId = "basic" | "premium_monthly" | "premium_plus_monthly";
 

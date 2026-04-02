@@ -5,8 +5,16 @@ const auth = vi.hoisted(() => ({
   requireSessionUser: vi.fn()
 }));
 
+const tenantCache = vi.hoisted(() => ({
+  getTenantByHexIdCached: vi.fn().mockResolvedValue(null)
+}));
+
 vi.mock("@/lib/auth", () => ({
   requireSessionUser: auth.requireSessionUser
+}));
+
+vi.mock("@/lib/server-request-cache", () => ({
+  getTenantByHexIdCached: tenantCache.getTenantByHexIdCached
 }));
 
 import { POST as postCheckoutSession } from "@/app/api/billing/checkout-session/route";
@@ -29,6 +37,8 @@ describe("POST /api/billing/checkout-session", () => {
   beforeEach(() => {
     auth.requireSessionUser.mockReset();
     auth.requireSessionUser.mockResolvedValue(sessionUser);
+    tenantCache.getTenantByHexIdCached.mockReset();
+    tenantCache.getTenantByHexIdCached.mockResolvedValue(null);
   });
 
   afterEach(() => {

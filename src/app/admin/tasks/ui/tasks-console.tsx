@@ -277,6 +277,30 @@ export function TasksConsole() {
 
   const hasAnyDirty = tasks.some((t) => rowDirty(t));
 
+  const activeScheduledCount = useMemo(
+    () => tasks.filter((t) => t.enabled).length,
+    [tasks]
+  );
+  const runningJobsCount = useMemo(
+    () => runs.filter((r) => r.status === "running").length,
+    [runs]
+  );
+  const opsStatus = useMemo(() => {
+    if (loading) {
+      return { label: "Busy…", badgeClass: "status-badge status-pending" as const };
+    }
+    if (status === "Syncing...") {
+      return { label: "Syncing…", badgeClass: "status-badge status-pending" as const };
+    }
+    if (runningJobsCount > 0) {
+      return {
+        label: `${runningJobsCount} job${runningJobsCount === 1 ? "" : "s"} running`,
+        badgeClass: "status-badge status-live" as const
+      };
+    }
+    return { label: "Idle", badgeClass: "status-badge status-ready" as const };
+  }, [loading, runningJobsCount, status]);
+
   const saveRow = async (row: ScheduledTask) => {
     const id = row._id;
     if (!id || !rowDirty(row)) {
@@ -424,6 +448,67 @@ export function TasksConsole() {
           <RefreshIcon className="crud-icon" /> Refresh
         </button>
         <p className="status-text">{status}</p>
+      </div>
+
+      <div
+        className="surface-card xf-widget section-card"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))",
+          gap: "1rem",
+          padding: "0.85rem 1rem"
+        }}
+      >
+        <div>
+          <p
+            className="status-text"
+            style={{ margin: 0, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em" }}
+          >
+            Active scheduled tasks
+          </p>
+          <p
+            style={{
+              margin: "0.35rem 0 0",
+              fontSize: "1.4rem",
+              fontWeight: 700,
+              color: "var(--xf-gain-green)",
+              fontVariantNumeric: "tabular-nums"
+            }}
+          >
+            {activeScheduledCount}
+            <span className="status-text" style={{ fontSize: "0.75rem", fontWeight: 500, marginLeft: "0.35rem" }}>
+              / {tasks.length} total
+            </span>
+          </p>
+        </div>
+        <div>
+          <p
+            className="status-text"
+            style={{ margin: 0, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em" }}
+          >
+            Jobs running
+          </p>
+          <p
+            style={{
+              margin: "0.35rem 0 0",
+              fontSize: "1.4rem",
+              fontWeight: 700,
+              color: "var(--xf-lightning-yellow)",
+              fontVariantNumeric: "tabular-nums"
+            }}
+          >
+            {runningJobsCount}
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.35rem" }}>
+          <p
+            className="status-text"
+            style={{ margin: 0, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.06em" }}
+          >
+            Status
+          </p>
+          <span className={opsStatus.badgeClass}>{opsStatus.label}</span>
+        </div>
       </div>
 
       <article className="surface-card xf-widget section-card">

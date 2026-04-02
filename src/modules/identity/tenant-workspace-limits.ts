@@ -32,6 +32,10 @@ export const DEFAULT_TENANT_PLAN_PRICE = 10;
 export type TenantPlanWorkspaceRow = Partial<TenantWorkspaceLimits> & {
   /** List price in USD (whole units) for this tier in this tenant; not used for limit enforcement. */
   price?: number;
+  /** Stripe Product id (`prod_…`); reference / admin only; Checkout uses `stripePriceId`. */
+  stripeProductId?: string;
+  /** Stripe Price id (`price_…`); when set, `POST /api/billing/checkout-session` uses this for the tier instead of `STRIPE_PRICE_*` env. */
+  stripePriceId?: string;
 };
 
 /** Partial limits (and optional price) per retail plan; omitted limit fields fall back to merged tenant defaults. */
@@ -94,6 +98,29 @@ function parseChangePersonaLoose(v: unknown): boolean | undefined {
   return undefined;
 }
 
+/** Lenient read from Mongo: only accept well-formed Stripe ids. */
+function parseStripeProductIdLoose(raw: unknown): string | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  const s = String(raw).trim();
+  if (s === "") {
+    return undefined;
+  }
+  return /^prod_[a-zA-Z0-9_]+$/.test(s) ? s : undefined;
+}
+
+function parseStripePriceIdLoose(raw: unknown): string | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  const s = String(raw).trim();
+  if (s === "") {
+    return undefined;
+  }
+  return /^price_[a-zA-Z0-9_]+$/.test(s) ? s : undefined;
+}
+
 function parsePlanOverrideRowLoose(o: Record<string, unknown>): TenantPlanWorkspaceRow {
   const row: TenantPlanWorkspaceRow = { ...parseLimitScalars(o) };
   if (o.price !== undefined && o.price !== null && isPositiveInt(o.price)) {
@@ -102,6 +129,14 @@ function parsePlanOverrideRowLoose(o: Record<string, unknown>): TenantPlanWorksp
   const cp = parseChangePersonaLoose(o.changePersonaEnabled);
   if (cp !== undefined) {
     row.changePersonaEnabled = cp;
+  }
+  const prod = parseStripeProductIdLoose(o.stripeProductId);
+  if (prod) {
+    row.stripeProductId = prod;
+  }
+  const priceId = parseStripePriceIdLoose(o.stripePriceId);
+  if (priceId) {
+    row.stripePriceId = priceId;
   }
   return row;
 }
@@ -264,6 +299,38 @@ export function parsePlanOverridesPayload(
         return { ok: false, error: `Invalid planOverrides.${key}.price: positive integer required` };
       }
       parsed.price = priceCell;
+    }
+    const stripeProductCell = (row as Record<string, unknown>).stripeProductId;
+    if (stripeProductCell !== undefined && stripeProductCell !== null) {
+      if (typeof stripeProductCell !== "string") {
+        return { ok: false, error: `Invalid planOverrides.${key}.stripeProductId: string required` };
+      }
+      const tp = stripeProductCell.trim();
+      if (tp !== "" && !/^prod_[a-zA-Z0-9_]+$/.test(tp)) {
+        return {
+          ok: false,
+          error: `Invalid planOverrides.${key}.stripeProductId: use prod_… or leave empty`
+        };
+      }
+      if (tp !== "") {
+        parsed.stripeProductId = tp;
+      }
+    }
+    const stripePriceCell = (row as Record<string, unknown>).stripePriceId;
+    if (stripePriceCell !== undefined && stripePriceCell !== null) {
+      if (typeof stripePriceCell !== "string") {
+        return { ok: false, error: `Invalid planOverrides.${key}.stripePriceId: string required` };
+      }
+      const tid = stripePriceCell.trim();
+      if (tid !== "" && !/^price_[a-zA-Z0-9_]+$/.test(tid)) {
+        return {
+          ok: false,
+          error: `Invalid planOverrides.${key}.stripePriceId: use price_… or leave empty`
+        };
+      }
+      if (tid !== "") {
+        parsed.stripePriceId = tid;
+      }
     }
     if (Object.keys(parsed).length > 0) {
       const list = byPlan.get(planId) ?? [];

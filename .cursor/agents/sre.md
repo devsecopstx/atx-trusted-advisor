@@ -106,10 +106,10 @@ test -f .cursor/agents/sre.md && npm install
 
 **Fix (prod, from a machine with `gcloud` auth to `fintech-advisor-prod`):**
 
-1. Ensure `.env.prod` has `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (and optional `STRIPE_PUBLIC_KEY`; the sync script can mirror them).
-2. Push both publishable secrets to Secret Manager:  
+1. Ensure `.env.prod` has `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_PUBLIC_KEY` (optional alias; defaults to publishable), and **`STRIPE_SECRET_KEY`** (`sk_…`).
+2. Push Stripe secrets to Secret Manager:  
    `npm run ops:secrets:sync-stripe-publishable:prod`  
-   (implementation: `scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.prod`).
+   (implementation: `scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.prod` — upserts publishable keys and `STRIPE_SECRET_KEY` when set).
 3. Confirm locally: `npm run ops:secrets:verify:prod` (uses `GCP_PROJECT_ID_PROD` / default `fintech-advisor-prod`).
 
 **Docs:** `atx-docs/sre-ops/stripe-billing-setup.md`, `.cursor/rules/sre-gcp-deployment.md` § Stripe / Redis sync.

@@ -6,7 +6,7 @@
 #   bash scripts/ops/export-gcp-runtime-secrets.sh --project fintech-advisor-prod --output .env.prod.gcp-export
 #   bash scripts/ops/export-gcp-runtime-secrets.sh --project fintech-advisor-prod   # stdout
 #
-# Optional: also export STRIPE_SECRET_KEY when present (--include-optional).
+# Optional: also export GOOGLE OAuth secrets when present (--include-optional).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,7 +23,7 @@ Usage:
   bash scripts/ops/export-gcp-runtime-secrets.sh --project <gcp-project-id> [--output <file>] [--include-optional]
 
   --output <file>   Write KEY=value lines (default: stdout). File is sensitive — add to .gitignore.
-  --include-optional  Also export STRIPE_SECRET_KEY when the secret exists in the project.
+  --include-optional  Also export GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET when present in the project.
 
 Requires: gcloud auth with secretmanager.versions.access on the target project.
 EOF

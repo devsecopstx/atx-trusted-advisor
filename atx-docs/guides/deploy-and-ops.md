@@ -32,7 +32,7 @@ Commands like **`npm run ops:secrets:verify:staging`** / **`ops:secrets:verify:p
 
 If verify reports **`missing: GOOGLE_CLIENT_ID`** (or similar) but the variable is set locally, the value still has to exist **in Secret Manager** for that project. Push with the **`ops:secrets:sync-*`** npm scripts below (from a machine with `gcloud` auth to the target project), then re-run verify. See **`.cursor/agents/sre.md`** § *Google OAuth* and *Hotfix: missing GOOGLE_CLIENT_ID*.
 
-**Compare local file to GCP (fingerprints only):** `npm run ops:secrets:diff:prod` and `npm run ops:secrets:diff:prod:optional` — see `atx-docs/sre-ops/gcp-secrets-export-diff.md` (`--include-optional` also compares optional keys such as **`STRIPE_SECRET_KEY`** and **`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`** when those secrets exist in GCP).
+**Compare local file to GCP (fingerprints only):** `npm run ops:secrets:diff:prod` and `npm run ops:secrets:diff:prod:optional` — see `atx-docs/sre-ops/gcp-secrets-export-diff.md` (`--include-optional` also compares **`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`** when those secrets exist in GCP).
 
 To push **`REDIS_URL`** from a local file (e.g. `.env.stage` / `.env.prod` with `REDIS_URL` + `GOOGLE_PROJECT_ID` or `GCP_PROJECT_ID`):
 
@@ -42,7 +42,7 @@ npm run ops:secrets:sync-redis:prod
 # or: bash scripts/ops/sync-redis-url-secret.sh path/to.env
 ```
 
-To push **Stripe publishable** keys into the same project’s Secret Manager (from `.env.stage` / `.env.prod`):
+To push **Stripe** keys into the same project’s Secret Manager (from `.env.stage` / `.env.prod`): **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`**, **`STRIPE_PUBLIC_KEY`**, and (when set in the file) **`STRIPE_SECRET_KEY`** (`sk_…` — never commit).
 
 ```bash
 npm run ops:secrets:sync-stripe-publishable:staging
@@ -58,13 +58,13 @@ npm run ops:secrets:sync-google-oauth:prod
 # or: bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.prod
 ```
 
-**Staging** treats both Google secrets as required: `npm run ops:secrets:verify:staging` passes **`--with-google-oauth`**, and the **Deploy Cloud Run** workflow’s preflight for **`target=staging`** checks that both secrets exist. Production verify (`ops:secrets:verify:prod`) does **not** require them; production deploy still binds them when **both** exist in the project (same pattern as optional **`STRIPE_SECRET_KEY`** for Stripe Checkout).
+**Staging** treats both Google secrets as required: `npm run ops:secrets:verify:staging` passes **`--with-google-oauth`**, and the **Deploy Cloud Run** workflow’s preflight for **`target=staging`** checks that both secrets exist. Production verify (`ops:secrets:verify:prod`) does **not** require them; production deploy still binds them when **both** exist in the project.
 
-**Optional (when feature enabled):**
+**Optional (prod until Sign-in with Google is enabled):**
 
-- **`STRIPE_SECRET_KEY`** — Stripe Checkout server secret; deploy workflows bind it if the secret exists in the GCP project. Not required for `ops:secrets:verify:*`.
+- **`GOOGLE_CLIENT_ID`** / **`GOOGLE_CLIENT_SECRET`** — compared with `ops:secrets:diff:prod:optional`; not in default prod verify.
 
-Required runtime secrets (core list — always expected in Secret Manager for deploy preflight):
+Required runtime secrets (core list — always expected in Secret Manager for deploy preflight and `ops:secrets:verify:*`):
 
 - `MONGODB_URI_B64` (mapped to env `MONGODB_URI`)
 - `XAI_API_KEY`
@@ -77,6 +77,7 @@ Required runtime secrets (core list — always expected in Secret Manager for de
 - `REDIS_URL` — Next.js Redis; see `atx-docs/sre-ops/redis-cache-next.md`
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe `pk_…` (mounted at runtime)
 - `STRIPE_PUBLIC_KEY` — alias for the same publishable key (often duplicate value)
+- `STRIPE_SECRET_KEY` — Stripe `sk_…` (server-only; Checkout)
 
 **Staging additionally (Sign in with Google):**
 

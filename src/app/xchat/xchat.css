@@ -1686,14 +1686,38 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   align-items: stretch;
 }
 
-.xchat-composer__row--input > .xf-hover-hint:nth-child(2) {
+.xchat-composer__row--input > .xf-hover-hint.xchat-composer__input-grow {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
 }
 
-.xchat-composer__row--input > .xf-hover-hint:nth-child(2) > .xchat-composer__field {
+.xchat-composer__row--input > .xf-hover-hint.xchat-composer__input-grow > .xchat-composer__field {
   width: 100%;
+}
+
+/* Persona dropdown on the actions row (before Auto). */
+.xchat-composer__persona-actions {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(42vw, 11.5rem);
+  display: flex;
+  align-items: center;
+  align-self: center;
+}
+
+.xchat-composer__persona-actions .xf-hover-hint {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+}
+
+.xchat-composer__persona-select--inline {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.32rem 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.2;
 }
 
 .xchat-composer__row--actions {

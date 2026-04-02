@@ -16,7 +16,10 @@ const optionalKeys = [
   "SLACK_WEBHOOK_URL",
   "ADMIN_X_USERNAMES",
   "ADMIN_SEED_X_USER_ID",
-  "X_OAUTH_CALLBACK_URL"
+  "X_OAUTH_CALLBACK_URL",
+  "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+  "STRIPE_PUBLIC_KEY",
+  "STRIPE_SECRET_KEY"
 ];
 
 const args = new Set(process.argv.slice(2));

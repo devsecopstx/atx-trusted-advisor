@@ -1,4 +1,5 @@
-import type { AtxBillingPlanId } from "@/lib/atx-billing-plans";
+import { ATX_BILLING_PLAN_IDS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
+import type { TenantPlanWorkspaceOverrides } from "@/modules/identity/tenant-workspace-limits";
 
 /**
  * Publishable key is safe to expose to the browser. On Cloud Run, mount **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`**
@@ -39,13 +40,33 @@ export function getStripePriceIdForPlan(planId: AtxBillingPlanId): string | unde
   return v && v.length > 0 ? v : undefined;
 }
 
-const ATX_BILLING_PLAN_IDS: AtxBillingPlanId[] = ["basic", "premium_monthly", "premium_plus_monthly"];
+/**
+ * Tenant workspace `planOverrides.*.stripePriceId` wins when set (valid `price_…`); else env `STRIPE_PRICE_*`.
+ */
+export function resolveStripePriceIdForCheckout(
+  planId: AtxBillingPlanId,
+  planOverrides: TenantPlanWorkspaceOverrides | null | undefined
+): string | undefined {
+  const row = planOverrides?.[planId];
+  const custom = row?.stripePriceId?.trim();
+  if (custom && /^price_[a-zA-Z0-9_]+$/.test(custom)) {
+    return custom;
+  }
+  return getStripePriceIdForPlan(planId);
+}
 
-export function isStripeBillingFullyConfigured(): boolean {
+/** Secret key present and every retail tier resolves to a Price id (tenant override or env). */
+export function isStripeCheckoutConfiguredForTenant(
+  planOverrides: TenantPlanWorkspaceOverrides | null | undefined
+): boolean {
   if (!getStripeSecretKey()) {
     return false;
   }
-  return ATX_BILLING_PLAN_IDS.every((id) => Boolean(getStripePriceIdForPlan(id)));
+  return ATX_BILLING_PLAN_IDS.every((id) => Boolean(resolveStripePriceIdForCheckout(id, planOverrides)));
+}
+
+export function isStripeBillingFullyConfigured(): boolean {
+  return isStripeCheckoutConfiguredForTenant(undefined);
 }
 
 export function resolveAppOrigin(): string {

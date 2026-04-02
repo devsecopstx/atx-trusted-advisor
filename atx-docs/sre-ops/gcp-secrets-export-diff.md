@@ -21,7 +21,7 @@ bash scripts/ops/diff-local-env-vs-gcp-secrets.sh \
   --env-file .env.prod
 ```
 
-Include optional keys when they exist in GCP: **`STRIPE_SECRET_KEY`**, **`GOOGLE_CLIENT_ID`**, **`GOOGLE_CLIENT_SECRET`** (see `scripts/ops/gcp-runtime-secrets.inc.sh` → `GCP_RUNTIME_SECRETS_OPTIONAL`).
+Include optional keys when they exist in GCP: **`GOOGLE_CLIENT_ID`**, **`GOOGLE_CLIENT_SECRET`** (see `scripts/ops/gcp-runtime-secrets.inc.sh` → `GCP_RUNTIME_SECRETS_OPTIONAL`).
 
 ```bash
 npm run ops:secrets:diff:prod:optional

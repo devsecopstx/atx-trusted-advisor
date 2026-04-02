@@ -21,7 +21,9 @@ Keyed by retail tier id: `basic`, `premium_monthly`, `premium_plus_monthly`. Leg
 
 | Key | Default | Notes |
 |-----|---------|--------|
-| `price` | **10** (see `DEFAULT_TENANT_PLAN_PRICE` in `tenant-workspace-limits.ts`) | Admin-managed **list price in USD** (whole dollars) for that tier in this tenant. Not used for quota enforcement; use `resolvedTenantPlanPrice()` when displaying billing. Stripe Price IDs remain env-driven; keep amounts aligned before rotating `STRIPE_PRICE_*`. |
+| `price` | **10** (see `DEFAULT_TENANT_PLAN_PRICE` in `tenant-workspace-limits.ts`) | Admin-managed **list price in USD** (whole dollars) for that tier in this tenant. Not used for quota enforcement; use `resolvedTenantPlanPrice()` when displaying billing. |
+| `stripeProductId` | — | Optional Stripe **Product** id (`prod_…`); admin reference; Checkout uses `stripePriceId`. |
+| `stripePriceId` | — | Optional Stripe **Price** id (`price_…`). When set, `POST /api/billing/checkout-session` uses this for the tier instead of `STRIPE_PRICE_*` env (same Stripe account as `STRIPE_SECRET_KEY`). |
 
 ## Mongo collections
 

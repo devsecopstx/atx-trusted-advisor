@@ -131,7 +131,13 @@ const envSchema = z.object({
     z.boolean().optional().default(false)
   ),
   /** Optional absolute URL for xOptions “enable options” CTA (broker application, etc.). */
-  NEXT_PUBLIC_XOPTIONS_OPTIONS_APPLY_URL: optionalUrl
+  NEXT_PUBLIC_XOPTIONS_OPTIONS_APPLY_URL: optionalUrl,
+  /** Stripe publishable key (`pk_…`); Cloud Run mounts from Secret Manager. */
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: optionalNonEmptyString,
+  /** Often same as `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; mounted as a separate secret alias. */
+  STRIPE_PUBLIC_KEY: optionalNonEmptyString,
+  /** Server-only Stripe secret (`sk_…`); Checkout — never expose to the client. */
+  STRIPE_SECRET_KEY: optionalNonEmptyString
 });
 
 export const REQUIRED_RUNTIME_ENV_VARS = [

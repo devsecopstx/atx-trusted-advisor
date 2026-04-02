@@ -3,11 +3,9 @@ import Stripe from "stripe";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import {
-    getStripePriceIdForPlan,
-    getStripeSecretKey,
-    resolveAppOrigin
-} from "@/lib/stripe-config";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { getStripeSecretKey, resolveAppOrigin, resolveStripePriceIdForCheckout } from "@/lib/stripe-config";
+import { normalizePlanOverridesFromUnknown } from "@/modules/identity/tenant-workspace-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -44,12 +42,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const priceId = getStripePriceIdForPlan(parsed.data.planId);
+  const tenant = await getTenantByHexIdCached(session.tenantId);
+  const planOverrides = normalizePlanOverridesFromUnknown(tenant?.workspaceLimits?.planOverrides);
+  const priceId = resolveStripePriceIdForCheckout(parsed.data.planId, planOverrides);
   if (!priceId) {
     return NextResponse.json(
       {
         error: "This plan is not configured yet",
-        hint: `Set the Stripe Price env for ${parsed.data.planId} (see DEVELOPMENT.md / stripe-billing-setup)`
+        hint: `Set Stripe Price id for ${parsed.data.planId} (tenant workspace limits or STRIPE_PRICE_* env; see stripe-billing-setup)`
       },
       { status: 503 }
     );

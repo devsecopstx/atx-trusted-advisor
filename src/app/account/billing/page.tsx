@@ -12,8 +12,9 @@ import {
 import { getSessionUser } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
-import { getStripePublishableKey, isStripeBillingFullyConfigured } from "@/lib/stripe-config";
+import { getStripePublishableKey, isStripeCheckoutConfiguredForTenant } from "@/lib/stripe-config";
 import { canUserLogin } from "@/modules/identity/authorization";
+import { normalizePlanOverridesFromUnknown } from "@/modules/identity/tenant-workspace-limits";
 
 import "./billing-plans.css";
 
@@ -39,7 +40,11 @@ export default async function AccountBillingPage({
   const guestRegisterDefaultPlan: AccessRequestPlanValue =
     parseAccessRequestPlanInput(selectedGuestPlanRaw) ?? "basic";
 
-  const checkoutReady = !guestReadonly && isStripeBillingFullyConfigured();
+  const tenant =
+    approved && session?.tenantId ? await getTenantByHexIdCached(session.tenantId) : null;
+  const planOverridesForStripe = normalizePlanOverridesFromUnknown(tenant?.workspaceLimits?.planOverrides);
+  const checkoutReady =
+    !guestReadonly && isStripeCheckoutConfiguredForTenant(planOverridesForStripe);
   const publishableConfigured = Boolean(getStripePublishableKey());
   const checkoutBanner =
     checkout === "success"
@@ -54,9 +59,6 @@ export default async function AccountBillingPage({
             message: "Checkout canceled — no charge. Pick a plan below when you're ready."
           }
         : null;
-
-  const tenant =
-    approved && session?.tenantId ? await getTenantByHexIdCached(session.tenantId) : null;
 
   return (
     <div className="xchat-shell">
