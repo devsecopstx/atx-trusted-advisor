@@ -1,4 +1,5 @@
 import type { PortfolioAccountTableRow } from "@/app/portfolio/ui/portfolio-accounts-section";
+import { brokerIconUrlForType, formatBrokerTypeLabel } from "@/lib/broker-ui";
 import {
     formatUsdWhole,
     type PortfolioOverviewMetrics
@@ -6,14 +7,6 @@ import {
 import { DESK_OUTLOOK_LABELS } from "@/modules/core-admin/desk-fields";
 import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
 import type { Account } from "@/modules/core-admin/types";
-
-function formatBrokerType(type: string): string {
-  return type
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
-}
 
 function accountByHex(accounts: Account[], hex: string): Account | undefined {
   return accounts.find((a) => a._id?.toHexString() === hex);
@@ -52,7 +45,8 @@ export function buildPortfolioAccountTableRows(
       name: row.name,
       isDefault: row.isDefault,
       deskLine,
-      brokerTypeLabel: formatBrokerType(row.brokerType),
+      brokerTypeLabel: formatBrokerTypeLabel(row.brokerType),
+      brokerIconUrl: brokerIconUrlForType(row.brokerType),
       extAccountId: row.extAccountId || "",
       positionsLabel: posLabel,
       costBasisFormatted: formatUsdWhole(costBasis),

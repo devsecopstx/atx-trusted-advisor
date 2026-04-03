@@ -1,6 +1,8 @@
 /**
- * Admin broker holdings import: CSV → strategy/OpenAPI-aligned Position rows → Mongo stock lots
- * (symbol, qty, avgCost). Option and cash rows are counted as skipped until core supports them.
+ * Broker holdings import: CSV → Mongo stock lots (symbol, qty, avgCost).
+ * For each mapped account, the **file is the source of truth**: existing positions are cleared,
+ * then stock and option legs from the CSV are upserted (symbols absent from the file are removed).
+ * Cash lots are skipped. Option legs need expiration, strike, and call/put; incomplete rows are skipped.
  */
 
 import {
@@ -9,8 +11,23 @@ import {
     upsertPositionForAccount
 } from "@/modules/core-admin/repository";
 
+import { detectFidelityActivitiesCsv, parseFidelityActivitiesAccounts } from "./fidelity-activities-csv";
 import { parseFidelityHoldingsCsv, type FidelityHoldingsPosition } from "./fidelity-holdings-csv";
 import { parseMerrillHoldingsCsv, type MerrillHoldingsPosition } from "./merrill-holdings-csv";
+
+function expirationUtcNoonFromYmd(ymd: string): Date | null {
+  const m = ymd.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) {
+    return null;
+  }
+  const y = parseInt(m[1]!, 10);
+  const mo = parseInt(m[2]!, 10);
+  const d = parseInt(m[3]!, 10);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) {
+    return null;
+  }
+  return new Date(Date.UTC(y, mo - 1, d, 12, 0, 0));
+}
 
 export type BrokerHoldingsPosition = MerrillHoldingsPosition | FidelityHoldingsPosition;
 
@@ -73,11 +90,32 @@ export function parseBrokerHoldingsAccounts(
     };
   }
 
+  if (detectFidelityActivitiesCsv(csv)) {
+    const act = parseFidelityActivitiesAccounts(csv);
+    if (act.parseError && act.accounts.length === 0) {
+      return { accounts: [], parseError: act.parseError };
+    }
+    if (act.accounts.length === 0) {
+      return {
+        accounts: [],
+        parseError: act.parseError ?? "No accounts parsed from Fidelity Accounts History CSV."
+      };
+    }
+    return {
+      accounts: act.accounts.map((a) => ({
+        accountRef: a.accountRef,
+        label: a.label,
+        positions: a.positions
+      }))
+    };
+  }
+
   const ref = fidelityHoldingsDefaultAccountRef.trim();
   if (!ref) {
     return {
       accounts: [],
-      parseError: "Fidelity holdings export has no Account column; set fidelityHoldingsDefaultAccountRef to match an account external ref (extAccountId)."
+      parseError:
+        "Fidelity Positions export needs a default account ref (ext ref). For Accounts History, use a file with Run Date + Account Number columns — no default ref required."
     };
   }
   const result = parseFidelityHoldingsCsv(csv, ref);
@@ -99,7 +137,10 @@ export function previewBrokerHoldingsAccounts(accounts: ParsedBrokerAccount[]): 
   return accounts.map((acc) => {
     const { stockCount, optionCount, cashCount } = countByType(acc.positions);
     const stocks = acc.positions.filter((p): p is BrokerHoldingsPosition & { type: "stock" } => p.type === "stock");
-    const sampleTickers = [...new Set(stocks.map((p) => p.ticker).filter(Boolean))].slice(0, 8);
+    const optU = acc.positions
+      .filter((p): p is BrokerHoldingsPosition & { type: "option" } => p.type === "option")
+      .map((p) => p.ticker);
+    const sampleTickers = [...new Set([...stocks.map((p) => p.ticker), ...optU].filter(Boolean))].slice(0, 8);
     return {
       accountRef: acc.accountRef,
       label: acc.label,
@@ -153,20 +194,19 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
     const accountId = input.mappings[key]?.trim();
     const label = acc.label || acc.accountRef || key;
 
+    const cashOnlySkipped = acc.positions.filter((p) => p.type === "cash").length;
+
     if (!accountId) {
       results.push({
         accountRef: acc.accountRef,
         label,
         imported: 0,
-        skippedNonStock: 0,
+        skippedNonStock: cashOnlySkipped,
         deletedPrior: 0,
         error: "No app account selected for this broker account key"
       });
       continue;
     }
-
-    const { optionCount, cashCount } = countByType(acc.positions);
-    const skippedNonStock = optionCount + cashCount;
 
     let deletedPrior = 0;
     try {
@@ -181,7 +221,7 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
         accountRef: acc.accountRef,
         label,
         imported: 0,
-        skippedNonStock,
+        skippedNonStock: cashOnlySkipped,
         deletedPrior: 0,
         error: "Failed to clear existing positions"
       });
@@ -190,6 +230,7 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
 
     const lots = aggregateStockLots(acc.positions);
     let imported = 0;
+    let skippedNonStock = cashOnlySkipped;
     try {
       for (const lot of lots) {
         await upsertPositionForAccount({
@@ -201,6 +242,39 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
           qty: lot.qty,
           avgCost: lot.avgCost,
           type: "stock"
+        });
+        imported += 1;
+      }
+
+      const optionRows = acc.positions.filter(
+        (p): p is BrokerHoldingsPosition & { type: "option" } => p.type === "option"
+      );
+      for (const op of optionRows) {
+        const exp = op.expiration ? expirationUtcNoonFromYmd(op.expiration) : null;
+        const strike = op.strike;
+        const ot = op.optionType;
+        if (!exp || strike == null || !Number.isFinite(strike) || strike <= 0 || (ot !== "call" && ot !== "put")) {
+          skippedNonStock += 1;
+          continue;
+        }
+        const contracts = Math.round(Number(op.contracts ?? 0));
+        if (!Number.isFinite(contracts) || contracts <= 0) {
+          skippedNonStock += 1;
+          continue;
+        }
+        const prem = op.premium != null && Number.isFinite(op.premium) ? Math.max(0, op.premium) : 0;
+        await upsertPositionForAccount({
+          userId: input.userId,
+          tenantId: input.tenantId,
+          portfolioId: input.portfolioId,
+          accountId,
+          symbol: op.ticker.trim().toUpperCase(),
+          qty: contracts,
+          avgCost: prem,
+          type: "option",
+          optionType: ot,
+          strike,
+          expiration: exp
         });
         imported += 1;
       }

@@ -1160,6 +1160,26 @@
   font-size: 0.78rem;
 }
 
+.portfolio-manage-table__broker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.portfolio-manage-table__broker-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: contain;
+  background: color-mix(in srgb, var(--xf-surface-200) 55%, transparent);
+}
+
+.portfolio-manage-table__broker-label {
+  min-width: 0;
+}
+
 .portfolio-manage-table__ref {
   margin-top: 0.2rem;
   font-size: 0.72rem;
@@ -1836,41 +1856,6 @@
 .portfolio-edit-disabled {
   opacity: 0.72;
   cursor: not-allowed;
-}
-
-/* Quick links: watchlist + alerts (same portfolio as this account workspace) */
-.portfolio-account-portfolio-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.85rem;
-}
-
-.portfolio-account-portfolio-links__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.75rem;
-  border-radius: var(--xf-radius-sm);
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
-  background: color-mix(in srgb, var(--xf-surface-700) 88%, transparent);
-  color: var(--xf-text-100);
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition:
-    border-color 120ms ease,
-    background 120ms ease,
-    color 120ms ease;
-}
-
-.portfolio-account-portfolio-links__btn:hover {
-  border-color: color-mix(in srgb, var(--xf-gain-green) 42%, transparent);
-  color: var(--xf-gain-green);
-}
-
-.portfolio-account-portfolio-links__label {
-  line-height: 1.2;
 }
 
 /* App-user portfolio alerts list */

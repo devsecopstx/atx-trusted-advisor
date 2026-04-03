@@ -53,7 +53,7 @@ describe("POST /api/admin/import/broker", () => {
         userId: "507f1f77bcf86cd799439011",
         portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
         name: "defaultaccount",
-        type: "fidelity",
+        type: "merrill",
         extAccountId: "51X-98940",
         cashBalance: 0,
         isDefault: true,

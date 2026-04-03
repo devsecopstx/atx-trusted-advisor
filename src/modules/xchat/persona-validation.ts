@@ -149,6 +149,8 @@ export const createPersonaPayloadSchema = z.object({
     .min(1)
     .max(PERSONA_VALIDATION_LIMITS.scopeLength)
     .default("global"),
+  citationsEnabled: booleanSchema.default(true),
+  keepXchatHistory: booleanSchema.default(true),
   xapi: xapiSchema.default(DEFAULT_PERSONA_XAPI_CONFIG)
 }).superRefine((value, context) => {
   const xapi = normalizePersonaXapiConfig(value.xapi);
@@ -178,6 +180,8 @@ export const updatePersonaPayloadSchema = z.object({
   temperature: temperatureSchema.optional(),
   enableRag: booleanSchema.optional(),
   defaultScope: optionalTrimmedString(PERSONA_VALIDATION_LIMITS.scopeLength),
+  citationsEnabled: booleanSchema.optional(),
+  keepXchatHistory: booleanSchema.optional(),
   xapi: xapiSchema.optional()
 });
 

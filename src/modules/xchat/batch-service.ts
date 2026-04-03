@@ -188,7 +188,8 @@ export async function submitBatchJob(
       sessionToolInstructions: buildSessionToolInstructions({
         hostedSearch: hasHostedSearchPersonaTool,
         atxFunction: hasAtxFunctionPersonaTool
-      })
+      }),
+      citationsEnabled: input.persona.citationsEnabled !== false
     });
 
     const userPromptBase = input.persona.overridePrompt?.trim()

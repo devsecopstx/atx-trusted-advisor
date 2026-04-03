@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { getPortfolioByIdForSessionUser, listPortfolioAccounts } from "@/modules/core-admin/repository";
+import { validateBrokerImportMappings } from "@/modules/portfolio-import/app-broker-import-job";
 import {
     applyBrokerHoldingsToMappedAccounts,
     parseBrokerHoldingsAccounts,
@@ -82,21 +83,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const accountIdsUsed = [...new Set(Object.values(mappings).map((s) => s.trim()).filter(Boolean))];
-  if (!dryRun && accountIdsUsed.length > 0) {
-    const owned = await listPortfolioAccounts({
-      userId: session.userId,
-      portfolioId,
-      tenantId: session.tenantId
-    });
-    const allowed = new Set(owned.map((a) => a._id?.toHexString()).filter(Boolean) as string[]);
-    for (const id of accountIdsUsed) {
-      if (!allowed.has(id)) {
-        return NextResponse.json(
-          { error: "One or more mapped accounts are not in this portfolio" },
-          { status: 403 }
-        );
-      }
+  const owned = await listPortfolioAccounts({
+    userId: session.userId,
+    portfolioId,
+    tenantId: session.tenantId
+  });
+  if (!dryRun) {
+    const mapErr = validateBrokerImportMappings(parsedAccounts, mappings, owned, broker);
+    if (mapErr) {
+      return NextResponse.json({ error: mapErr }, { status: 400 });
     }
   }
 

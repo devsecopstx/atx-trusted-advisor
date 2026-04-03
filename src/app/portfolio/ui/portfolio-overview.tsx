@@ -216,7 +216,7 @@ export function PortfolioOverview({
     <div className="portfolio-overview">
       <PortfolioManageTabs
         activityPanel={activityPanel}
-        holdingsPanel={<PortfolioHoldingsPanel rows={holdingsRows} />}
+        holdingsPanel={<PortfolioHoldingsPanel rows={holdingsRows} portfolioIdHex={portfolioIdHex} />}
         portfoliosPanel={portfoliosPanel}
       />
     </div>

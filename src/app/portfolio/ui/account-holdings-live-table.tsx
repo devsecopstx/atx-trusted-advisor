@@ -29,9 +29,16 @@ type AccountHoldingsLiveTableProps = {
   positions: SerializablePosition[];
   pending: boolean;
   onRemove: (positionId: string) => void;
+  /** When set, live quotes are withheld while a broker import is running for this book. */
+  portfolioIdHex?: string;
 };
 
-export function AccountHoldingsLiveTable({ positions, pending, onRemove }: AccountHoldingsLiveTableProps) {
+export function AccountHoldingsLiveTable({
+  positions,
+  pending,
+  onRemove,
+  portfolioIdHex
+}: AccountHoldingsLiveTableProps) {
   const quoteSymbols = useMemo(() => {
     const s = new Set<string>();
     for (const p of positions) {
@@ -43,7 +50,7 @@ export function AccountHoldingsLiveTable({ positions, pending, onRemove }: Accou
     return [...s];
   }, [positions]);
 
-  const { quotes, loading } = useSymbolQuotes(quoteSymbols);
+  const { quotes, loading } = useSymbolQuotes(quoteSymbols, { portfolioIdHex });
 
   return (
     <div className="crud-table-wrap">

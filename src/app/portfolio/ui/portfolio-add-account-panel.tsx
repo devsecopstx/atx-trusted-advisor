@@ -4,14 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { AddIcon } from "@/app/admin/ui/crud-icons";
+import { ACCOUNT_TYPE_LABELS } from "@/lib/broker-ui";
 import { accountTypeValues, type AccountType } from "@/modules/core-admin/types";
-
-const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
-  merrill: "Merrill",
-  fidelity: "Fidelity",
-  etrade: "E*TRADE",
-  ibkr: "Interactive Brokers (IBKR)"
-};
 
 type Props = {
   portfolioId: string;

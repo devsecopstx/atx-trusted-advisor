@@ -420,6 +420,28 @@ describe("portfolio API routes", () => {
     expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalled();
   });
 
+  it("patches broker type for an owned account", async () => {
+    const response = await patchPortfolioAccount(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "ibkr" })
+      }),
+      {
+        params: Promise.resolve({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "ibkr"
+      })
+    );
+  });
+
   it("patches desk fields riskProfile and outlook for an owned account", async () => {
     const response = await patchPortfolioAccount(
       new Request("http://test", {

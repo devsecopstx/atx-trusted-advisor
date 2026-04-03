@@ -15,7 +15,8 @@ import {
     APP_BROKER_IMPORT_MAX_CSV_CHARS,
     getAppBrokerImportJobForTenant,
     insertAppBrokerImportJob,
-    validateMappingsAgainstAccounts
+    updateAppBrokerImportJob,
+    validateBrokerImportMappings
 } from "@/modules/portfolio-import/app-broker-import-job";
 import { parseBrokerHoldingsAccounts, previewBrokerHoldingsAccounts } from "@/modules/portfolio-import/broker-holdings-import";
 
@@ -102,8 +103,7 @@ export async function POST(request: Request) {
     portfolioId,
     tenantId: session.tenantId
   });
-  const allowed = new Set(owned.map((a) => a._id?.toHexString()).filter(Boolean) as string[]);
-  const mapErr = validateMappingsAgainstAccounts(parsedAccounts, mappings, allowed);
+  const mapErr = validateBrokerImportMappings(parsedAccounts, mappings, owned, broker);
   if (mapErr) {
     return NextResponse.json({ error: mapErr }, { status: 400 });
   }
@@ -163,6 +163,11 @@ export async function POST(request: Request) {
   } catch (e) {
     await deleteEphemeral().catch(() => {});
     const msg = e instanceof Error ? e.message : "Import task failed";
+    await updateAppBrokerImportJob(jobId, {
+      status: "failed",
+      errorMessage: msg,
+      updatedAt: new Date()
+    }).catch(() => {});
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 

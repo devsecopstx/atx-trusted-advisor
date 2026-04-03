@@ -1132,6 +1132,15 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       temperature: { type: "number" },
       enableRag: { type: "boolean" },
       defaultScope: { type: "string" },
+      citationsEnabled: {
+        type: "boolean",
+        description: "When false, xChat omits citation-chip instructions from the system prompt."
+      },
+      keepXchatHistory: {
+        type: "boolean",
+        description:
+          "When false, persona skips xAI remote conversation continuity when XCHAT_USE_REMOTE_HISTORY is enabled."
+      },
       xapi: refSchema("PersonaXapiConfig"),
       status: refSchema("PersonaStatus"),
       version: { type: "integer", minimum: 0 },

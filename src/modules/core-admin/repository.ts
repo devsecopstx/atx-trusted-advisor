@@ -40,6 +40,7 @@ import {
     type Watchlist,
     type WatchlistSymbol,
     type WatchlistSymbolImportEntry,
+    accountTypeValues,
     normalizePositionType,
     parseAccountOutlook
 } from "@/modules/core-admin/types";
@@ -3345,12 +3346,14 @@ export type UpdatePortfolioAccountInput = {
   name?: string;
   cashBalance?: number;
   extAccountId?: string;
+  /** Custodian slug (`merrill` | `fidelity` | `etrade` | `ibkr`). */
+  type?: AccountType;
   riskProfile?: "conservative" | "balanced" | "growth" | null;
   outlook?: AccountOutlook | null;
 };
 
 /**
- * Patch account metadata for the owning user (name, cash, external ref). Does not change broker type here.
+ * Patch account metadata for the owning user (name, cash, external ref, broker type, desk fields).
  */
 export async function updatePortfolioAccountForUser(
   input: UpdatePortfolioAccountInput
@@ -3382,6 +3385,12 @@ export async function updatePortfolioAccountForUser(
     if (ref) {
       $set.extAccountId = ref;
     }
+  }
+  if (
+    input.type !== undefined &&
+    (accountTypeValues as readonly AccountType[]).includes(input.type)
+  ) {
+    $set.type = input.type;
   }
 
   const $unset: Record<string, string> = {};
@@ -4002,10 +4011,11 @@ export async function adminUpdatePortfolioAccount(input: {
     name: input.name,
     cashBalance: input.cashBalance,
     extAccountId: input.extAccountId,
+    type: input.type,
     riskProfile: input.riskProfile,
     outlook: input.outlook
   });
-  if (input.type === undefined && input.isDefault === undefined) {
+  if (input.isDefault === undefined) {
     return base;
   }
   const db = await getDb();
@@ -4019,9 +4029,6 @@ export async function adminUpdatePortfolioAccount(input: {
     return null;
   }
   const $set: Record<string, unknown> = { updatedAt: new Date() };
-  if (input.type !== undefined) {
-    $set.type = input.type;
-  }
   if (input.isDefault === true) {
     await db.collection<Account>(collections.accounts).updateMany(
       {

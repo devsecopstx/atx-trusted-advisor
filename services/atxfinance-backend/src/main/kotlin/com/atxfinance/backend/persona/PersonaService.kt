@@ -86,6 +86,8 @@ class PersonaService(
         doc["temperature"] = (body["temperature"] as? Number)?.toDouble() ?: 0.2
         doc["enableRag"] = body["enableRag"] as? Boolean ?: true
         doc["defaultScope"] = (body["defaultScope"] as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: "global"
+        doc["citationsEnabled"] = body["citationsEnabled"] as? Boolean ?: true
+        doc["keepXchatHistory"] = body["keepXchatHistory"] as? Boolean ?: true
         doc["xapi"] = normalizeXapiDoc(body["xapi"])
         doc["status"] = "draft"
         doc["version"] = 0
@@ -141,6 +143,8 @@ class PersonaService(
                 "temperature" -> set["temperature"] = (v as Number).toDouble()
                 "enableRag" -> set["enableRag"] = v
                 "defaultScope" -> set["defaultScope"] = v.toString().trim()
+                "citationsEnabled" -> set["citationsEnabled"] = v
+                "keepXchatHistory" -> set["keepXchatHistory"] = v
                 "xapi" -> set["xapi"] = normalizeXapiDoc(v)
             }
         }
@@ -191,6 +195,8 @@ class PersonaService(
                 "temperature" -> copy["temperature"] = (v as Number).toDouble()
                 "enableRag" -> copy["enableRag"] = v
                 "defaultScope" -> copy["defaultScope"] = v.toString().trim()
+                "citationsEnabled" -> copy["citationsEnabled"] = v
+                "keepXchatHistory" -> copy["keepXchatHistory"] = v
             }
         }
         copy["xapi"] = normalizeXapiDoc(copy["xapi"])
@@ -299,6 +305,8 @@ class PersonaService(
             val op = body["overridePrompt"] as? String ?: ""
             if (op.length > 16_000) return "invalid_override"
         }
+        if (body.containsKey("citationsEnabled") && body["citationsEnabled"] !is Boolean) return "invalid_citations_enabled"
+        if (body.containsKey("keepXchatHistory") && body["keepXchatHistory"] !is Boolean) return "invalid_keep_xchat_history"
         return null
     }
 
@@ -321,6 +329,8 @@ class PersonaService(
             map["temperature"] = (doc["temperature"] as? Number)?.toDouble() ?: 0.2
             map["enableRag"] = doc.getBoolean("enableRag", true)
             map["defaultScope"] = doc.getString("defaultScope") ?: "global"
+            map["citationsEnabled"] = doc.getBoolean("citationsEnabled", true)
+            map["keepXchatHistory"] = doc.getBoolean("keepXchatHistory", true)
             map["xapi"] = doc["xapi"] ?: Document()
             map["status"] = doc.getString("status") ?: "draft"
             map["version"] = (doc["version"] as? Number)?.toInt() ?: 0

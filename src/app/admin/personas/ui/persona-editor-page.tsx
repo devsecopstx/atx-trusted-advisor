@@ -36,6 +36,8 @@ type PersonaPayload = {
   xapiToolChoice: "auto" | "required" | "none";
   xapiMaxTurns: string;
   xapiToolsJson: string;
+  citationsEnabled: boolean;
+  keepXchatHistory: boolean;
 };
 
 type CollectionRow = {
@@ -59,7 +61,9 @@ const EMPTY_FORM: PersonaPayload = {
   xapiMode: "responses",
   xapiToolChoice: "auto",
   xapiMaxTurns: "5",
-  xapiToolsJson: DEFAULT_XPERSONA_TOOLS_JSON
+  xapiToolsJson: DEFAULT_XPERSONA_TOOLS_JSON,
+  citationsEnabled: true,
+  keepXchatHistory: true
 };
 
 export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
@@ -108,6 +112,8 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             temperature: number;
             enableRag: boolean;
             defaultScope: string;
+            citationsEnabled?: boolean;
+            keepXchatHistory?: boolean;
             xapi: {
               mode: "responses" | "chat_completions";
               toolChoice: "auto" | "required" | "none";
@@ -135,6 +141,8 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
           temperature: String(payload.data.temperature),
           enableRag: payload.data.enableRag,
           defaultScope: payload.data.defaultScope,
+          citationsEnabled: payload.data.citationsEnabled !== false,
+          keepXchatHistory: payload.data.keepXchatHistory !== false,
           xapiMode: payload.data.xapi.mode,
           xapiToolChoice: payload.data.xapi.toolChoice,
           xapiMaxTurns: String(payload.data.xapi.maxTurns),
@@ -207,6 +215,8 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
               temperature: parsedTemperature,
               enableRag: form.enableRag,
               defaultScope: form.defaultScope,
+              citationsEnabled: form.citationsEnabled,
+              keepXchatHistory: form.keepXchatHistory,
               xapi: {
                 mode: form.xapiMode,
                 toolChoice: form.xapiToolChoice,
@@ -227,7 +237,15 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
         setStatus(error instanceof Error ? error.message : "Failed to save persona");
       }
     },
-    [form, includeHostedSearchInTools, mode, personaId, restrictCollectionScope, router, selectedCollectionIds]
+    [
+      form,
+      includeHostedSearchInTools,
+      mode,
+      personaId,
+      restrictCollectionScope,
+      router,
+      selectedCollectionIds
+    ]
   );
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -612,6 +630,35 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
             Enable RAG means xchat can use collection/search context to ground answers before generating
             the final response.
           </small>
+          <label className="status-text" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+            <input
+              checked={form.citationsEnabled}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, citationsEnabled: event.target.checked }))
+              }
+              type="checkbox"
+            />
+            <span>
+              <strong>Citation chips in xChat</strong> — when on, the system prompt includes the
+              [@citation:…] contract so the model can emit source chips. When off, the prompt tells the model to answer
+              in plain prose without citation markup.
+            </span>
+          </label>
+          <label className="status-text" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+            <input
+              checked={form.keepXchatHistory}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, keepXchatHistory: event.target.checked }))
+              }
+              type="checkbox"
+            />
+            <span>
+              <strong>Keep xChat remote history</strong> — when the platform has{" "}
+              <code>XCHAT_USE_REMOTE_HISTORY=true</code>, this persona participates in xAI conversation continuity (
+              <code>previous_response_id</code> / <code>store_messages</code>). Turn off to isolate turns for this
+              persona (stateless per request for that path).
+            </span>
+          </label>
           <div className="tool-row">
             <button
               aria-label={mode === "create" ? "Create persona" : "Save persona changes"}

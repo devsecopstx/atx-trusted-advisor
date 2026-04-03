@@ -5,7 +5,11 @@ import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
 import { deletePortfolioAccountForUser, updatePortfolioAccountForUser } from "@/modules/core-admin/repository";
-import { accountOutlookValues, parseAccountOutlook } from "@/modules/core-admin/types";
+import {
+    accountOutlookValues,
+    accountTypeValues,
+    parseAccountOutlook
+} from "@/modules/core-admin/types";
 
 const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);
 
@@ -25,6 +29,7 @@ const patchAccountSchema = z
     name: z.string().trim().min(1).max(200).optional(),
     cashBalance: z.number().finite().nonnegative().optional(),
     extAccountId: z.string().trim().min(1).max(200).optional(),
+    type: z.enum(accountTypeValues).optional(),
     riskProfile: z.union([deskRiskEnum, z.null()]).optional(),
     outlook: outlookPatchField
   })

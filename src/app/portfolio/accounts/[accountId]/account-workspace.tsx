@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
 import {
-    ActivityPulseIcon,
     BackIcon,
     DeleteIcon,
     EditIcon,
@@ -16,9 +15,15 @@ import {
 import { AccountHoldingsLiveTable } from "@/app/portfolio/ui/account-holdings-live-table";
 import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
+import { ACCOUNT_TYPE_LABELS } from "@/lib/broker-ui";
 import { DESK_OUTLOOK_CARD_OPTIONS } from "@/modules/core-admin/desk-fields";
 import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
-import type { AccountOutlook, PositionType } from "@/modules/core-admin/types";
+import {
+    accountTypeValues,
+    type AccountOutlook,
+    type AccountType,
+    type PositionType
+} from "@/modules/core-admin/types";
 
 import type { SerializableAccount, SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 
@@ -32,12 +37,8 @@ type AccountWorkspaceProps = {
   portfolioAccountCount: number;
 };
 
-function formatBrokerType(type: string): string {
-  return type
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
+function coerceAccountType(raw: string): AccountType {
+  return (accountTypeValues as readonly string[]).includes(raw) ? (raw as AccountType) : "fidelity";
 }
 
 /** Short preview for collapsed desk summary (outlook first, then risk). */
@@ -76,6 +77,7 @@ export function AccountWorkspace({
   const [extRef, setExtRef] = useState(account.extAccountId);
   const [riskProfile, setRiskProfile] = useState<SerializableAccount["riskProfile"]>(account.riskProfile);
   const [outlook, setOutlook] = useState<AccountOutlook | null>(account.outlook);
+  const [brokerType, setBrokerType] = useState<AccountType>(() => coerceAccountType(account.type));
 
   const [holdingType, setHoldingType] = useState<PositionType>("stock");
 
@@ -106,7 +108,8 @@ export function AccountWorkspace({
     setExtRef(account.extAccountId);
     setRiskProfile(account.riskProfile);
     setOutlook(account.outlook);
-  }, [account.name, account.cashBalance, account.extAccountId, account.riskProfile, account.outlook]);
+    setBrokerType(coerceAccountType(account.type));
+  }, [account.name, account.cashBalance, account.extAccountId, account.riskProfile, account.outlook, account.type]);
 
   async function saveAccount(e: FormEvent) {
     e.preventDefault();
@@ -138,6 +141,7 @@ export function AccountWorkspace({
             name: nameTrim,
             cashBalance: cash,
             extAccountId: extTrim,
+            type: brokerType,
             riskProfile,
             outlook
           })
@@ -303,25 +307,6 @@ export function AccountWorkspace({
         </p>
       ) : null}
 
-      <div className="portfolio-account-portfolio-links" role="navigation" aria-label="Portfolio watchlist and alerts">
-        <Link
-          className="portfolio-account-portfolio-links__btn"
-          href={`/watchlist?portfolioId=${encodeURIComponent(portfolioId)}`}
-          title="Open watchlist for this portfolio"
-        >
-          <ListRowsIcon className="crud-icon" aria-hidden />
-          <span className="portfolio-account-portfolio-links__label">Watchlist</span>
-        </Link>
-        <Link
-          className="portfolio-account-portfolio-links__btn"
-          href={`/portfolio/alerts?portfolioId=${encodeURIComponent(portfolioId)}`}
-          title="Open alerts for this portfolio"
-        >
-          <ActivityPulseIcon className="crud-icon" aria-hidden />
-          <span className="portfolio-account-portfolio-links__label">Alerts</span>
-        </Link>
-      </div>
-
       <nav className="portfolio-manage-tabs" role="tablist" aria-label="Account workspace">
         <button
           type="button"
@@ -393,19 +378,25 @@ export function AccountWorkspace({
           </div>
 
           <div className="portfolio-edit-field">
-            <span className="portfolio-edit-field__label" id="acct-broker-type-label">
-              Broker type
-            </span>
+            <label className="portfolio-edit-field__label" htmlFor="acct-broker-type">
+              Broker
+            </label>
             <select
-              className="crud-input portfolio-edit-account-card__input portfolio-edit-disabled"
-              disabled
-              value={account.type}
-              aria-labelledby="acct-broker-type-label"
-              aria-readonly
+              id="acct-broker-type"
+              className="crud-input portfolio-edit-account-card__input"
+              value={brokerType}
+              onChange={(e) => setBrokerType(e.target.value as AccountType)}
+              aria-label="Broker custodian"
             >
-              <option value={account.type}>{formatBrokerType(account.type)}</option>
+              {accountTypeValues.map((t) => (
+                <option key={t} value={t}>
+                  {ACCOUNT_TYPE_LABELS[t]}
+                </option>
+              ))}
             </select>
-            <p className="portfolio-edit-field__hint">Set when the account was created. Contact support to change.</p>
+            <p className="portfolio-edit-field__hint">
+              Used for CSV import layout hints and labeling. Update account ref if you switch custodians.
+            </p>
           </div>
 
           <div className="portfolio-edit-field">
@@ -623,7 +614,12 @@ export function AccountWorkspace({
           <p className="portfolio-edit-holdings-card__empty">No positions yet — add stock, options, or cash below.</p>
         ) : (
           <div className="portfolio-edit-holdings-card__table-wrap">
-            <AccountHoldingsLiveTable pending={pending} positions={positions} onRemove={removePosition} />
+            <AccountHoldingsLiveTable
+              pending={pending}
+              portfolioIdHex={portfolioId}
+              positions={positions}
+              onRemove={removePosition}
+            />
           </div>
         )}
 

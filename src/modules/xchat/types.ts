@@ -141,6 +141,17 @@ export type PersonaConfig = {
   temperature: number;
   enableRag: boolean;
   defaultScope: string;
+  /**
+   * When false, xChat system prompt omits the citation-chip contract so the model should not emit
+   * `[@citation:…]` / xf-citation markup. Default true when unset (legacy rows).
+   */
+  citationsEnabled?: boolean;
+  /**
+   * When false and `XCHAT_USE_REMOTE_HISTORY=true`, that persona skips xAI `previous_response_id` /
+   * `store_messages` continuity. Default true when unset (legacy rows). Reserved for tighter control
+   * alongside platform env.
+   */
+  keepXchatHistory?: boolean;
   xapi?: PersonaXapiConfig;
   status?: PersonaStatus;
   version?: number;

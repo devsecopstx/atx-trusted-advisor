@@ -11,9 +11,10 @@ import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
 
 type PortfolioHoldingsPanelProps = {
   rows: PortfolioHoldingRow[];
+  portfolioIdHex: string;
 };
 
-export function PortfolioHoldingsPanel({ rows }: PortfolioHoldingsPanelProps) {
+export function PortfolioHoldingsPanel({ rows, portfolioIdHex }: PortfolioHoldingsPanelProps) {
   const quoteSymbols = useMemo(() => {
     const s = new Set<string>();
     for (const r of rows) {
@@ -24,7 +25,7 @@ export function PortfolioHoldingsPanel({ rows }: PortfolioHoldingsPanelProps) {
     return [...s];
   }, [rows]);
 
-  const { quotes, loading } = useSymbolQuotes(quoteSymbols);
+  const { quotes, loading } = useSymbolQuotes(quoteSymbols, { portfolioIdHex });
 
   return (
     <section className="portfolio-panel portfolio-holdings-panel" aria-labelledby="portfolio-all-holdings-heading">

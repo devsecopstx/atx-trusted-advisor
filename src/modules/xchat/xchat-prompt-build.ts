@@ -10,6 +10,8 @@ const XCHAT_BETA_CLIENT_UI_INSTRUCTIONS = `Client UI (beta): The xChat composer 
 
 const XCHAT_CITATION_MARKDOWN_CONTRACT = `Citation chips (xChat UI): When a sentence is grounded on live market data or tools, add a chip using bracket syntax: [@citation:market_quote], [@citation:yahoo_finance], [@citation:file_search], [@citation:web_search], [@citation:x_search], [@citation:code_interpreter], or [@citation:atxfinance] for workspace/portfolio tools (xAI tool name is atx_function; citation slug stays atxfinance for the same chip). Optional alias [@citation:atx_function] maps to atxfinance. Equivalent tool-style token: [@tool:slug] (same chip). Optional label: [@citation:market_quote|Yahoo Finance]. Slugs are lowercase with underscores. Do not emit <grok:render>, <function_calls>, or other pseudo-execution XML—the client strips or maps those; prefer bracket citations in prose. For a standalone line, use a fenced block with language xf-citation and JSON: {"slug":"atxfinance","label":"Optional"}.`;
 
+const XCHAT_NO_CITATIONS_INSTRUCTION = `Output style: Do not use xChat citation chips. Do not write bracket tokens like [@citation:…] or [@tool:…], xf-citation fenced blocks, or <grok:render> citation markup. Answer in plain prose without source chips.`;
+
 const ATX_FUNCTION_TOOL_COPY = `Workspace tools (this signed-in user only):
 When a "Workspace snapshot" JSON block appears in system context, it was loaded server-side for this turn—**treat it as authoritative** for portfolio summary, accounts, cash balances, watchlist tickers, and the positions preview (up to the preview row cap). Answer from that snapshot when it fully covers the question; **do not** call atx_function first for data already present there.
 Call atx_function when you need: **positions_snapshot** (full book beyond the preview, or explicit row-level detail the snapshot omits), **live market_quote**, **task_status**, **watchlist_add_symbols** / **watchlist_remove_symbols**, or when the user asks for a **fresh** reload after changes—or if you suspect the snapshot is stale.
@@ -52,12 +54,18 @@ export type BuildXchatSystemPromptInput = {
   recentHistoryBlock?: string | null;
   workspaceSnapshot: string | null | undefined;
   sessionToolInstructions: string;
+  /**
+   * Persona-driven: include citation-chip contract vs plain-prose-only instruction.
+   * Default true when omitted.
+   */
+  citationsEnabled?: boolean;
 };
 
 /**
- * Locked order: **persona → RAG → recent history → snapshot → session tool instructions → beta client UI note** (double-newline separated).
+ * Locked order: **persona → RAG → recent history → snapshot → session tool instructions → citation policy → beta client UI note** (double-newline separated).
  */
 export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): string {
+  const citationsEnabled = input.citationsEnabled !== false;
   const base =
     typeof input.personaSystem === "string" && input.personaSystem.trim().length > 0
       ? input.personaSystem.trim()
@@ -85,7 +93,7 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
   if (session) {
     parts.push(session);
   }
-  parts.push(XCHAT_CITATION_MARKDOWN_CONTRACT);
+  parts.push(citationsEnabled ? XCHAT_CITATION_MARKDOWN_CONTRACT : XCHAT_NO_CITATIONS_INSTRUCTION);
   parts.push(XCHAT_BETA_CLIENT_UI_INSTRUCTIONS);
   return parts.join("\n\n");
 }

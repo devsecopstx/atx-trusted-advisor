@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 import { PortfolioAccountActionsCell } from "@/app/portfolio/ui/portfolio-account-actions-cell";
@@ -12,6 +13,8 @@ export type PortfolioAccountTableRow = {
   isDefault: boolean;
   deskLine: string;
   brokerTypeLabel: string;
+  /** Static `/brokers/*.png` when type matches a known custodian. */
+  brokerIconUrl: string | null;
   extAccountId: string;
   positionsLabel: string;
   costBasisFormatted: string;
@@ -94,7 +97,18 @@ export function PortfolioAccountsSection({
                   </div>
                 </td>
                 <td className="portfolio-manage-table__mono">
-                  {row.brokerTypeLabel}
+                  <div className="portfolio-manage-table__broker-row">
+                    {row.brokerIconUrl ? (
+                      <Image
+                        className="portfolio-manage-table__broker-icon"
+                        src={row.brokerIconUrl}
+                        alt=""
+                        width={22}
+                        height={22}
+                      />
+                    ) : null}
+                    <span className="portfolio-manage-table__broker-label">{row.brokerTypeLabel}</span>
+                  </div>
                   <div className="portfolio-manage-table__ref">{row.extAccountId || "—"}</div>
                 </td>
                 <td className="portfolio-manage-table__num">{row.positionsLabel}</td>

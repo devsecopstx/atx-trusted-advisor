@@ -3,7 +3,7 @@
  * `apps/frontend/src/lib/fidelity-holdings-csv.ts`.
  */
 
-function parseCsvLine(line: string): string[] {
+export function parseCsvLine(line: string): string[] {
   const out: string[] = [];
   let i = 0;
   while (i < line.length) {
@@ -42,7 +42,7 @@ function parseCsvLine(line: string): string[] {
   return out;
 }
 
-function parseNum(val: string): number | null {
+export function parseNum(val: string): number | null {
   if (val == null || val === "" || val === "--") return null;
   const cleaned = String(val).replace(/,/g, "").replace(/[$()]/g, "").trim();
   const n = parseFloat(cleaned);

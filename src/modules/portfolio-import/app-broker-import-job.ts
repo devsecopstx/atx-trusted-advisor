@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
-import type { ScheduledTask } from "@/modules/core-admin/types";
+import { listPortfolioAccounts } from "@/modules/core-admin/repository";
+import type { Account, ScheduledTask } from "@/modules/core-admin/types";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 
 import {
@@ -80,6 +81,88 @@ export async function updateAppBrokerImportJob(
 }
 
 /**
+ * True while an app-user broker import job for this portfolio is pending or running
+ * (live quote fetches should be skipped so partial deletes + upserts are not priced mid-sync).
+ */
+export async function hasActiveAppBrokerImportForPortfolio(input: {
+  portfolioIdHex: string;
+  userId: string;
+  tenantId: string;
+}): Promise<boolean> {
+  if (!ObjectId.isValid(input.portfolioIdHex)) {
+    return false;
+  }
+  const tenantOid = ObjectId.isValid(input.tenantId) ? new ObjectId(input.tenantId) : null;
+  if (!tenantOid) {
+    return false;
+  }
+  const db = await getDb();
+  const hit = await db.collection<AppBrokerImportJob>(APP_BROKER_IMPORT_JOBS_COLLECTION).findOne(
+    {
+      portfolioId: new ObjectId(input.portfolioIdHex),
+      userId: input.userId,
+      tenantId: tenantOid,
+      status: { $in: ["pending", "running"] }
+    },
+    { projection: { _id: 1 } }
+  );
+  return hit != null;
+}
+
+/**
+ * Validates broker CSV → portfolio account mapping: accounts must belong to the book,
+ * custodian `type` must match the import broker, and `extAccountId` must match the broker row ref.
+ */
+export function validateBrokerImportMappings(
+  parsedAccounts: ParsedBrokerAccount[],
+  mappings: Record<string, string>,
+  portfolioAccounts: Account[],
+  broker: "merrill" | "fidelity"
+): string | null {
+  const byId = new Map<string, Account>();
+  for (const a of portfolioAccounts) {
+    const id = a._id?.toHexString();
+    if (id) {
+      byId.set(id, a);
+    }
+  }
+  const allowed = new Set(byId.keys());
+
+  const accountIdsUsed = [...new Set(Object.values(mappings).map((s) => s.trim()).filter(Boolean))];
+  for (const id of accountIdsUsed) {
+    if (!allowed.has(id)) {
+      return "One or more mapped accounts are not in this portfolio";
+    }
+    const acct = byId.get(id);
+    if (acct && acct.type !== broker) {
+      return `Mapped account "${acct.name}" must have broker type "${broker}" for this import`;
+    }
+  }
+
+  for (const acc of parsedAccounts) {
+    const key = acc.accountRef || acc.label || "default";
+    const mappedId = mappings[key]?.trim();
+    if (!mappedId) {
+      return `Missing mapping for broker account key "${key}"`;
+    }
+    const target = byId.get(mappedId);
+    if (!target) {
+      continue;
+    }
+    const expected = (acc.accountRef || acc.label || "").trim();
+    if (!expected) {
+      return `Broker row "${key}" has no account reference; cannot match portfolio ext ref`;
+    }
+    const ext = (target.extAccountId ?? "").trim();
+    if (ext !== expected) {
+      return `Account ref mismatch for "${key}": portfolio ext ref "${ext || "—"}" must equal broker ref "${expected}"`;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Executes a staged app-user broker import referenced from a `sync-broker` scheduled task.
  */
 export async function runScheduledAppBrokerImportTask(task: ScheduledTask): Promise<ScheduledCategoryResult> {
@@ -120,6 +203,29 @@ export async function runScheduledAppBrokerImportTask(task: ScheduledTask): Prom
     };
   }
 
+  const portfolioAccounts = await listPortfolioAccounts({
+    userId: job.userId,
+    portfolioId: job.portfolioId.toHexString(),
+    tenantId: job.tenantId.toHexString()
+  });
+  const mapErr = validateBrokerImportMappings(
+    parsedAccounts,
+    job.mappings,
+    portfolioAccounts,
+    job.broker
+  );
+  if (mapErr) {
+    await updateAppBrokerImportJob(jobOid, {
+      status: "failed",
+      errorMessage: mapErr,
+      updatedAt: new Date()
+    });
+    return {
+      status: "failed",
+      output: `sync-broker: mapping validation failed for task "${task.name}": ${mapErr}`
+    };
+  }
+
   try {
     const results = await applyBrokerHoldingsToMappedAccounts({
       userId: job.userId,
@@ -153,22 +259,3 @@ export async function runScheduledAppBrokerImportTask(task: ScheduledTask): Prom
   }
 }
 
-export function validateMappingsAgainstAccounts(
-  parsedAccounts: ParsedBrokerAccount[],
-  mappings: Record<string, string>,
-  allowedAccountIds: Set<string>
-): string | null {
-  const accountIdsUsed = [...new Set(Object.values(mappings).map((s) => s.trim()).filter(Boolean))];
-  for (const id of accountIdsUsed) {
-    if (!allowedAccountIds.has(id)) {
-      return "One or more mapped accounts are not in this portfolio";
-    }
-  }
-  for (const acc of parsedAccounts) {
-    const key = acc.accountRef || acc.label || "default";
-    if (!mappings[key]?.trim()) {
-      return `Missing mapping for broker account key "${key}"`;
-    }
-  }
-  return null;
-}

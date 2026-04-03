@@ -44,7 +44,7 @@ export default async function ImportActivityPage() {
           mainClassName="app-user-shell-with-rail--padded"
           rail={<AppUserAccountPublicRailForSession session={session} />}
         >
-          <div className="billing-page mx-auto w-full max-w-sm">
+          <div className="billing-page w-full min-w-0">
             <header className="billing-hero surface-card xf-widget section-card mb-3 px-4 py-3 xf-noise-overlay md:px-5 md:py-4">
               <p className="billing-hero__eyebrow">Workspace</p>
               <h1 className="billing-hero__title text-[clamp(1.15rem,3.5vw,1.35rem)]">Import activities</h1>

@@ -14,6 +14,8 @@ type AccountRow = {
   _id?: string;
   name: string;
   extAccountId: string;
+  /** Custodian slug; must match selected import broker. */
+  type?: string;
 };
 
 type BrokerPreviewAccount = {
@@ -59,7 +61,6 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [brokerCsv, setBrokerCsv] = useState("");
   const [brokerKind, setBrokerKind] = useState<"merrill" | "fidelity">("merrill");
-  const [fidelityDefaultRef, setFidelityDefaultRef] = useState("");
   const [brokerPreview, setBrokerPreview] = useState<BrokerPreviewAccount[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -90,7 +91,9 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
     if (!ref) {
       return undefined;
     }
-    return accounts.find((a) => (a.extAccountId || "").trim() === ref);
+    return accounts.find(
+      (a) => (a.extAccountId || "").trim() === ref && (a.type ?? "") === brokerKind
+    );
   };
 
   const runPreview = async () => {
@@ -99,11 +102,7 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
       return;
     }
     if (!brokerCsv.trim()) {
-      setMessage("Choose or paste a holdings CSV export.");
-      return;
-    }
-    if (brokerKind === "fidelity" && !fidelityDefaultRef.trim()) {
-      setMessage("Fidelity imports require the default account ref (must match a portfolio account ext ref).");
+      setMessage("Choose or paste a broker CSV export.");
       return;
     }
     setBusy(true);
@@ -124,8 +123,6 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
             exportType: "holdings",
             csv: brokerCsv,
             mappings: {},
-            fidelityHoldingsDefaultAccountRef:
-              brokerKind === "fidelity" ? fidelityDefaultRef.trim() : undefined,
             dryRun: true
           })
         })
@@ -151,7 +148,7 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
       return;
     }
     if (!brokerCsv.trim()) {
-      setMessage("Choose or paste a holdings CSV export.");
+      setMessage("Choose or paste a broker CSV export.");
       return;
     }
     if (brokerPreview?.length) {
@@ -196,8 +193,6 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
             exportType: "holdings",
             csv: brokerCsv,
             mappings,
-            fidelityHoldingsDefaultAccountRef:
-              brokerKind === "fidelity" ? fidelityDefaultRef.trim() : undefined,
             dryRun: false
           })
         })
@@ -220,13 +215,16 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
   return (
     <div className="grid w-full gap-2">
       <p className="text-sm text-[var(--xf-text-300)]">
-        Import Merrill Edge or Fidelity <strong>holdings</strong> CSV into your portfolio accounts. Broker account refs in
-        the file must match each account&apos;s <code className="font-mono text-xs">ext ref</code> on the{" "}
+        Import Merrill Edge <strong>holdings</strong> or Fidelity <strong>Positions</strong> /{" "}
+        <strong>Accounts History</strong> CSV. Broker account numbers / refs in the file must match each account&apos;s{" "}
+        <code className="font-mono text-xs">ext ref</code> on the{" "}
         <Link className="underline text-[var(--xf-text-100)]" href="/portfolio">
           Portfolio
         </Link>{" "}
-        workspace. Runs as an immediate <code className="font-mono text-xs">sync-broker</code> job; a short summary is shown
-        when done.
+        workspace. Fidelity <strong>Accounts History</strong> uses the <code className="font-mono text-xs">Account Number</code>{" "}
+        column per row (no extra ref field). Activities are replayed into holdings: net long options import; net short option
+        legs are omitted until shorts are modeled. Runs as an immediate <code className="font-mono text-xs">sync-broker</code>{" "}
+        job; a short summary is shown when done.
       </p>
 
       {portfolios.length === 0 ? (
@@ -296,21 +294,9 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
             disabled={busy}
           >
             <option value="merrill">Merrill Edge (holdings)</option>
-            <option value="fidelity">Fidelity (positions)</option>
+            <option value="fidelity">Fidelity (positions or activities)</option>
           </select>
         </label>
-        {brokerKind === "fidelity" ? (
-          <label className="flex min-w-[200px] flex-1 flex-col gap-1 text-sm">
-            <span>Fidelity default account ref</span>
-            <input
-              className="crud-input rounded-md border border-white/10 bg-black/20 px-3 py-2 font-mono text-xs"
-              value={fidelityDefaultRef}
-              onChange={(e) => setFidelityDefaultRef(e.target.value)}
-              placeholder="Matches portfolio account ext ref"
-              disabled={busy}
-            />
-          </label>
-        ) : null}
         <label className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
           <span>CSV file</span>
           <input

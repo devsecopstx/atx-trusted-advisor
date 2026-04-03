@@ -416,7 +416,8 @@ export async function POST(request: Request) {
     }
   }
 
-  const useRemoteConversationHistory = isXchatRemoteHistoryEnabled();
+  const useRemoteConversationHistory =
+    isXchatRemoteHistoryEnabled() && persona?.keepXchatHistory !== false;
   let previousResponseId: string | undefined;
   if (useRemoteConversationHistory && userId) {
     try {
@@ -448,7 +449,8 @@ export async function POST(request: Request) {
     sessionToolInstructions: buildSessionToolInstructions({
       hostedSearch: hasHostedSearchTool,
       atxFunction: hasXfinanceTool
-    })
+    }),
+    citationsEnabled: persona?.citationsEnabled !== false
   });
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
   const userPromptBase = userPromptTemplate

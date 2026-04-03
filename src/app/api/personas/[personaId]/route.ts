@@ -203,6 +203,8 @@ function serializePersona(persona: PersonaConfig) {
     temperature: persona.temperature,
     enableRag: persona.enableRag,
     defaultScope: persona.defaultScope,
+    citationsEnabled: persona.citationsEnabled !== false,
+    keepXchatHistory: persona.keepXchatHistory !== false,
     xapi: normalizePersonaXapiConfig(persona.xapi),
     status: persona.status ?? "draft",
     version: persona.version ?? 0,

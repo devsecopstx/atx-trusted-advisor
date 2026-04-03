@@ -10,20 +10,21 @@ export function useSymbolQuotes(symbols: string[]): {
 };
 export function useSymbolQuotes(
   symbols: string[],
-  options: { refreshMs?: number }
+  options: { refreshMs?: number; portfolioIdHex?: string }
 ): {
   quotes: Record<string, SymbolLookupResult | null>;
   loading: boolean;
 };
 export function useSymbolQuotes(
   symbols: string[],
-  options?: { refreshMs?: number }
+  options?: { refreshMs?: number; portfolioIdHex?: string }
 ): {
   quotes: Record<string, SymbolLookupResult | null>;
   loading: boolean;
 } {
   const sortedKey = [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))].sort().join(",");
   const refreshMs = options?.refreshMs ?? 0;
+  const portfolioIdHex = options?.portfolioIdHex?.trim() ?? "";
 
   const [fetched, setFetched] = useState<Record<string, SymbolLookupResult | null>>({});
   const [loading, setLoading] = useState(false);
@@ -43,8 +44,16 @@ export function useSymbolQuotes(
       setLoading(true);
       try {
         const qs = list.map((s) => encodeURIComponent(s)).join(",");
-        const response = await fetch(`/api/market/symbol-quotes?symbols=${qs}`, { credentials: "include" });
-        const payload = (await response.json()) as { data?: Record<string, SymbolLookupResult | null> };
+        const portfolioQs = portfolioIdHex
+          ? `&portfolioId=${encodeURIComponent(portfolioIdHex)}`
+          : "";
+        const response = await fetch(`/api/market/symbol-quotes?symbols=${qs}${portfolioQs}`, {
+          credentials: "include"
+        });
+        const payload = (await response.json()) as {
+          data?: Record<string, SymbolLookupResult | null>;
+          brokerImportSuspended?: boolean;
+        };
         if (!cancelled) {
           setFetched(payload.data ?? {});
         }
@@ -72,7 +81,7 @@ export function useSymbolQuotes(
         clearInterval(intervalId);
       }
     };
-  }, [refreshMs, sortedKey]);
+  }, [portfolioIdHex, refreshMs, sortedKey]);
 
   return { quotes, loading };
 }

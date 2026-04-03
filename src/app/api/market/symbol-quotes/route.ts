@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
+import { getPortfolioByIdForSessionUser } from "@/modules/core-admin/repository";
+import { hasActiveAppBrokerImportForPortfolio } from "@/modules/portfolio-import/app-broker-import-job";
 import { lookupSymbols, type SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
 const MAX_SYMBOLS = 28;
@@ -27,6 +29,32 @@ export async function GET(request: Request) {
   const symbols = parseSymbols(searchParams.get("symbols"));
   if (symbols.length === 0) {
     return NextResponse.json({ data: {} as Record<string, SymbolLookupResult | null> });
+  }
+
+  const portfolioIdParam = searchParams.get("portfolioId")?.trim() ?? "";
+  if (portfolioIdParam) {
+    const book = await getPortfolioByIdForSessionUser({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      portfolioId: portfolioIdParam
+    });
+    if (book?._id) {
+      const importRunning = await hasActiveAppBrokerImportForPortfolio({
+        portfolioIdHex: portfolioIdParam,
+        userId: session.userId,
+        tenantId: session.tenantId
+      });
+      if (importRunning) {
+        const empty: Record<string, SymbolLookupResult | null> = {};
+        for (const sym of symbols) {
+          empty[sym] = null;
+        }
+        return NextResponse.json({
+          data: empty,
+          brokerImportSuspended: true
+        });
+      }
+    }
   }
 
   const map = await lookupSymbols(symbols);

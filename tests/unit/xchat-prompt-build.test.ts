@@ -84,4 +84,20 @@ describe("buildXchatSystemPrompt", () => {
     expect(out).toContain("Citation chips");
     expect(out).toContain("Client UI (beta)");
   });
+
+  it("uses no-citations instruction when citationsEnabled is false", () => {
+    const out = buildXchatSystemPrompt({
+      personaSystem: "Hi",
+      fallbackPersonaSystem: "F",
+      ragContext: "",
+      recentHistoryBlock: undefined,
+      workspaceSnapshot: null,
+      sessionToolInstructions: "",
+      citationsEnabled: false
+    });
+    expect(out).toContain("Hi");
+    expect(out).not.toContain("Citation chips");
+    expect(out).toContain("Do not use xChat citation chips");
+    expect(out).toContain("Client UI (beta)");
+  });
 });
