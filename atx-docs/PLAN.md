@@ -2,7 +2,7 @@
 
 Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded in release tags and app changelogs; this file lists **only open work**.
 
-**Docs index:** [README.md](./README.md) · Phase 1 multi-agent: [xchat/atx-multi-agent.md](./xchat/atx-multi-agent.md) · BFF: [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md) · Spring HTTP contract: [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md) · NL / strategy preflight: [xchat/nl-workflows/nl-prompts.md](./xchat/nl-workflows/nl-prompts.md) · OptionsStrategyEngine: [design-system/xStrategyBuilder/strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) · Charts: [design-system/charts-apex.md](./design-system/charts-apex.md) · Redis: [spring-redis-memorystore.md](./sre-ops/spring-redis-memorystore.md) · Auth: [auth-oauth-spring-dual-run.md](./sre-ops/auth-oauth-spring-dual-run.md) · Audit: [audit-lineage-and-controls.md](./sre-ops/audit-lineage-and-controls.md)
+**Docs index:** [README.md](./README.md) · Phase 1 multi-agent: [xchat/atx-multi-agent.md](./xchat/atx-multi-agent.md) · BFF: [api-consolidation-spring-backend.md](./sre-ops/api-consolidation-spring-backend.md) · Spring HTTP contract: [atxfinance-backend-http-api.md](./sre-ops/atxfinance-backend-http-api.md) · Deploy / secrets / desk SMTP: [guides/deploy-and-ops.md](./guides/deploy-and-ops.md) · NL / strategy preflight: [xchat/nl-workflows/nl-prompts.md](./xchat/nl-workflows/nl-prompts.md) · OptionsStrategyEngine: [design-system/xStrategyBuilder/strategy-engine.md](./design-system/xStrategyBuilder/strategy-engine.md) · Charts: [design-system/charts-apex.md](./design-system/charts-apex.md) · Redis: [spring-redis-memorystore.md](./sre-ops/spring-redis-memorystore.md) · Auth: [auth-oauth-spring-dual-run.md](./sre-ops/auth-oauth-spring-dual-run.md) · Audit: [audit-lineage-and-controls.md](./sre-ops/audit-lineage-and-controls.md)
 
 ---
 
@@ -35,10 +35,11 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 - `/login` deprecated (redirect → `/xchat`); fold plan tiers into guest panel or access-request flow.
 - Watchlist quote freshness: background refresh cadence + last-updated + stale badge on `/watchlist` and related tables.
 
-### Email & delivery (ops)
+### Desk email & delivery (ops / PR review)
 
-- Global admin **portfolio delivery channels** (`email`, `slack_webhook`, `sms`, `push`) — ties to desk notifications.
-- ZenBusiness hosted email: IMAP/SMTP host **`mail.b.hostedemail.com`**; [client setup](https://help.zenbusiness.com/Websites_Domains_Emails/Setting_up_Email/How_Do_I_Set_Up_My_Email_on_My_Phone%2C_Computer%2C_Tablet%2C_or_Other_Device%3F).
+- **Reviewer / infra:** Desk SMTP + BFF split (Next vs JVM when `ATXFINANCE_BACKEND_ORIGIN` is set) — [deploy-and-ops.md](./guides/deploy-and-ops.md) (`gcp-runtime-secrets.inc.sh`, `verify-gcp-runtime-secrets.sh`, sync `ops:secrets:sync-desk-smtp:*`). **Current behavior** (portfolio `email`, platform `/admin/delivery-channels` **`email`**, task summaries): [design-system/current-state-features.md](./design-system/current-state-features.md).
+- **Outstanding:** Portfolio **`sms`** / **`push`** channel kinds (still skipped). **486n** auth password-reset mail is separate product work.
+- ZenBusiness hosted mailbox: SMTP host **`mail.b.hostedemail.com`**; [client setup](https://help.zenbusiness.com/Websites_Domains_Emails/Setting_up_Email/How_Do_I_Set_Up_My_Email_on_My_Phone%2C_Computer%2C_Tablet%2C_or_Other_Device%3F).
 
 ---
 
@@ -104,7 +105,7 @@ Order: **Backend orchestrator** → **LLM + artifact** → **SRE** → **Fronten
 - Admin `PATCH/DELETE …/positions/{positionId}` — Next until registry + Kotlin parity.
 - Most auth routes Next; optional Google callback proxy for dual-run.
 
-**Ops:** With Spring enabled, set `ATXFINANCE_BACKEND_ORIGIN` on staging/prod so proxied domains hit Kotlin; unset ⇒ Next-only (avoid split-brain writes).
+**Ops:** With Spring enabled, set **`ATXFINANCE_BACKEND_ORIGIN`** to the backend **HTTPS** origin (no `:8080` on public hostnames; see `.cursor/agents/sre.md` / deploy workflows). Unset ⇒ Next-only (avoid split-brain writes). **Reviewer:** infra PRs that touch desk SMTP or BFF — cross-check [deploy-and-ops.md](./guides/deploy-and-ops.md) and `.cursor/agents/reviewer.md` (Secret Manager + `gcp-runtime-secrets.inc.sh` alignment).
 
 ---
 

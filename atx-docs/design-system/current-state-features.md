@@ -1,10 +1,10 @@
 # atxfinance-backend — Current State (Architecture & Features)
 
-Last updated: 2026-04-02
+Last updated: 2026-04-03
 
 Scope: Kotlin/Spring Boot service that acts as a scheduler/worker and thin HTTP API for portfolio, admin, strategy jobs, and RAG-support operations. Built and deployed from the monorepo (`services/atxfinance-backend`).
 
-**Roadmap & gaps (consolidated index):** [`.cursor/plans/release-checklist.md`](../../.cursor/plans/release-checklist.md) — priorities, BFF/auth deferred work, OptionsStrategyEngine (**245n**), audit lineage, Stripe follow-ons, branding/UI deferrals. **Canonical numbered backlog:** [`atx-docs/PLAN.md`](../PLAN.md).
+**Roadmap & gaps (consolidated index):** [`.cursor/plans/release-checklist.md`](../../.cursor/plans/release-checklist.md) — priorities, BFF/auth deferred work, OptionsStrategyEngine (**245n** shipped; see [`strategy-engine.md`](./xStrategyBuilder/strategy-engine.md)), audit lineage, Stripe follow-ons, branding/UI deferrals. **Outstanding-only backlog + reviewer ops hooks:** [`atx-docs/PLAN.md`](../PLAN.md) (align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md) — Secret Manager / deploy docs when SMTP or BFF changes).
 
 **Charts (Next.js):** ApexCharts for xStrategyBuilder / xOptions — [charts-apex.md](./charts-apex.md). **Watchlist price alerts (Next scanner):** thresholds + cooldown documented in `PLAN.md` shipped **240n** (`src/modules/watchlist/price-alert-service.ts`).
 
@@ -25,7 +25,7 @@ Companion frontend for this backend runs in the same monorepo as the Next.js cor
 - Styling: Tailwind CSS + brand design tokens (`atx-docs/design-system/atxfinance-brand-kit.css`, `--xf-*`)
 - Validation and typing: Zod + strict TypeScript checks (`npm run typecheck`)
 - Docs/API UX: OpenAPI inventory endpoint (`GET /api/openapi`) + admin Swagger surface (`/admin/api-docs`)
-- Data/auth integration: session-cookie auth (`xf_core_session`), Mongo-backed APIs via Next route handlers under `src/app/api/*`, optional BFF proxying to Spring backend with `ATXFINANCE_BACKEND_ORIGIN`
+- Data/auth integration: session-cookie auth (`xf_core_session`), Mongo-backed APIs via Next route handlers under `src/app/api/*`, optional BFF proxying to Spring backend with **`ATXFINANCE_BACKEND_ORIGIN`** (staging/prod: **HTTPS** public backend origin, **no `:8080`** on the hostname; local Next-only dev often `http://127.0.0.1:8080` for the Kotlin service URL — Spring itself does **not** read this var for SMTP)
 - Tooling gates: ESLint, Vitest, CI gate (`npm run ci:gate`)
 
 Frontend quick references:
@@ -57,13 +57,13 @@ Key env/config (examples)
 - `config/` — properties, Mongo URI resolver, ShedLock and executor wiring
 - `web/` — REST controllers (health, portfolio CRUD, admin, strategy, RAG, auth callbacks)
 - `portfolio/` — portfolio CRUD, nested resources, payload normalization/validation
-- `admin/` — admin services (deploy notes, scheduled tasks, positions/accounts/watchlist, delivery channels)
+- `admin/` — admin services (deploy notes, scheduled tasks, positions/accounts/watchlist, platform **`admin_delivery_channels`** CRUD: `in_app` \| `slack` \| **`email`** with `emailTo`; JVM path uses `DeskSmtpSender` when SMTP env is set)
 - `audit/` — audit writers and admin query surface
 - `strategy/` — options strategy job orchestration, Yahoo client, **`OptionsStrategyEngine`** (weighted scoring + JVM `daily_options_scanner` dry run — [`strategy-engine.md`](./xStrategyBuilder/strategy-engine.md)); product **280** remains the umbrella for scanner + interactive surfaces
 - `rag/` — RAG file ingestion helpers (mime, chunker, xAI collection client)
 - `pubsub/` — Pub/Sub publisher config
 - `session/` — session cookie parsing/writing, roles, auth env secrets
-- `auth/`, `identity/`, `notify/` — OAuth callback flow stubs, identity helpers, and Slack webhook notifications
+- `auth/`, `identity/`, `notify/` — OAuth callback flow stubs, identity helpers, Slack webhooks, and **desk SMTP** (`DeskSmtpSender` / Angus Mail) for admin test-send and parity with Next `src/lib/desk-smtp.ts`
 
 
 ## 3) Data Model (Mongo Collections)
@@ -71,7 +71,7 @@ Key env/config (examples)
 Collection names are centralized in `AtxfinanceProperties` (prefix `app.atxfinance.*`). Notable collections:
 - Core/app: `tenant_portfolio`, `portfolio_accounts`, `portfolio_watchlists`, `portfolio_positions`
 - Personas & users: `xchat_personas`, `core_users`, `core_tenant_memberships`, `admin_user_settings`, `admin_user_bootstrap_profiles`
-- Admin ops: `admin_audit_events`, `admin_scheduled_tasks`, `admin_task_runs`, `admin_deploy_note_configs`
+- Admin ops: `admin_audit_events`, `admin_scheduled_tasks`, `admin_task_runs`, `admin_deploy_note_configs`, `admin_delivery_channels` (platform Slack / **email** / in-app; task `deliveryChannelTarget` → run summaries)
 - Recommendations & alerts: `app_user_recommendations`, `portfolio_recommendations`, `portfolio_alerts`, `portfolio_delivery_channels`
 - RAG: `xai_collections`, `xchat_rag_chunks`, `xchat_logs`
 - Strategy orchestration: `strategy_jobs`
@@ -89,7 +89,7 @@ Portfolio (session cookie required; cookie name from `app.atxfinance.session-coo
 - `PATCH /api/portfolios/{portfolioId}` — rename portfolio (validates name, 1..200)
 
 Additional controllers exist for admin and app surfaces (names reflect intent; see package `web/`):
-- Admin: access requests, audit, bootstrap, import broker, portfolio accounts/alerts/delivery-channels/positions/recommendations/watchlist, tenant **Tasks** (`/admin/tasks`), users, deploy-note-configs
+- Admin: access requests, audit, bootstrap, import broker, portfolio accounts/alerts/delivery-channels/positions/recommendations/watchlist, tenant **Tasks** (`/admin/tasks`), **platform delivery channels** (`/api/admin/delivery-channels` — `email` uses SMTP same family as portfolio desk mail), users, deploy-note-configs
 - App: recommendations (`AppUserRecommendationsController`, `PortfolioRecommendationsController`), positions & portfolio subresources, personas, strategy jobs/options, RAG files, auth callback
 
 OpenAPI: SpringDoc 2.x is configured in Gradle (see `atx-docs/sre-ops/atxfinance-backend-http-api.md`). Swagger UI: `GET /swagger-ui.html`.
@@ -160,9 +160,18 @@ Container/JAR
 
 The Next.js core app (`src/app`, `src/modules`) owns **xChat** (`/api/xchat/*`), rich **persona governance**, and most **OAuth** session behavior today. BFF proxying to this service is enabled per `bff-proxy-routes.ts` when `ATXFINANCE_BACKEND_ORIGIN` is set; **xChat streaming stays Next-authoritative** until explicitly migrated. See **`PLAN.md`** § BFF routing gaps and **`api-consolidation-spring-backend.md`**.
 
+### Desk email (portfolio + platform)
+
+When **`SMTP_HOST`**, **`SMTP_USER`**, **`SMTP_PASS`**, and **`DESK_EMAIL_FROM`** are set (optional **`SMTP_PORT`**, TLS flags per env — see repo `.env.example` / `src/lib/env.ts`):
+
+- **Next:** Portfolio desk notifications (`portfolio_delivery_channels` kind **`email`**, price-alert path, etc.) send via `src/lib/desk-smtp.ts`.
+- **Spring:** Proxied admin paths (e.g. **`POST /api/admin/delivery-channels/test`**) send via **`DeskSmtpSender`**; **`EmailSendFailed`** surfaces as **502** on the API.
+- **PR / ops:** With BFF on, **both** Cloud Run services that can handle those code paths need the same SMTP secret bindings — [deploy-and-ops.md](../guides/deploy-and-ops.md). UI: **`/admin/delivery-channels`**.
+
 ---
 References
 - Service README: `services/atxfinance-backend/README.md`
 - SRE/API details: `atx-docs/sre-ops/atxfinance-backend-http-api.md`
 - Consolidated release / gap index: `.cursor/plans/release-checklist.md`
+- Deploy, verify, desk SMTP on BFF: `atx-docs/guides/deploy-and-ops.md`
 - Portfolio & admin data contracts in `src/main/kotlin/com/atxfinance/backend` (packages noted above)
