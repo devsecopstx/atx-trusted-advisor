@@ -90,6 +90,9 @@ const STEPS = [
 
 const OPTIONS_APPLY_URL = (process.env.NEXT_PUBLIC_XOPTIONS_OPTIONS_APPLY_URL ?? "").trim();
 
+/** Written when the user enters a symbol; read on `/portfolios` for "Resume". */
+const PORTFOLIOS_LAST_XOPTIONS_SYMBOL_KEY = "xf_portfolios_last_xoptions_symbol_v1";
+
 function priceAtPctMove(last: number, pct: number): number {
   return last * (1 + pct / 100);
 }
@@ -251,6 +254,18 @@ export function XoptionsStrategyBuilderWorkspace() {
       })();
     }, 350);
     return () => window.clearTimeout(t);
+  }, [symbol]);
+
+  useEffect(() => {
+    const s = symbol.trim().toUpperCase();
+    if (!/^[A-Z0-9.\-]{1,10}$/.test(s)) {
+      return;
+    }
+    try {
+      localStorage.setItem(PORTFOLIOS_LAST_XOPTIONS_SYMBOL_KEY, s);
+    } catch {
+      /* ignore */
+    }
   }, [symbol]);
 
   /** Workspace rail default account — same source as find-options APIs (holdings / hot list). */
