@@ -1,17 +1,32 @@
 /**
- * Broker holdings import: CSV → Mongo stock lots (symbol, qty, avgCost).
- * For each mapped account, the **file is the source of truth**: existing positions are cleared,
- * then stock and option legs from the CSV are upserted (symbols absent from the file are removed).
- * Cash lots are skipped. Option legs need expiration, strike, and call/put; incomplete rows are skipped.
+ * Broker holdings import: CSV → Mongo positions (stocks, options, sweep cash).
+ * For **holdings** snapshots (Merrill, Fidelity Portfolio / legacy positions), the file replaces
+ * account positions after a full clear.
+ * For **Fidelity Accounts History**, activity rows are replayed **on top of** existing app holdings
+ * (e.g. after a portfolio snapshot), then the merged result replaces the account — cash from
+ * holdings is kept unless activities adjust modeled legs; sweep cash is not in the activity file.
  */
+
+import { ObjectId } from "mongodb";
 
 import {
     deletePositionsForPortfolioAccount,
+    listPortfolioPositionsByAccount,
     PositionValidationError,
     upsertPositionForAccount
 } from "@/modules/core-admin/repository";
+import type { Position } from "@/modules/core-admin/types";
+import { normalizePositionType } from "@/modules/core-admin/types";
 
-import { detectFidelityActivitiesCsv, parseFidelityActivitiesAccounts } from "./fidelity-activities-csv";
+import {
+    detectFidelityActivitiesCsv,
+    emptyFidelityActivityReplaySeed,
+    fidelityActivityReplaySeedFromBrokerPositions,
+    parseFidelityActivitiesAccountsWithRows,
+    replayFidelityActivityRows,
+    type BrokerPositionSeedInput,
+    type FidelityActivityRawRow
+} from "./fidelity-activities-csv";
 import {
     detectFidelityPortfolioHoldingsCsv,
     fidelityOptionExpiredOnOrBeforeAsOf,
@@ -41,6 +56,11 @@ export type ParsedBrokerAccount = {
   accountRef: string;
   label: string;
   positions: BrokerHoldingsPosition[];
+  /**
+   * When set, import replays these Fidelity activity lines onto current DB positions, then writes
+   * the merged snapshot (holdings-style imports omit this).
+   */
+  fidelityActivityRows?: FidelityActivityRawRow[];
 };
 
 export type BrokerImportPreviewAccount = {
@@ -97,21 +117,23 @@ export function parseBrokerHoldingsAccounts(
   }
 
   if (detectFidelityActivitiesCsv(csv)) {
-    const act = parseFidelityActivitiesAccounts(csv);
-    if (act.parseError && act.accounts.length === 0) {
-      return { accounts: [], parseError: act.parseError };
+    const structured = parseFidelityActivitiesAccountsWithRows(csv);
+    if (structured.parseError && structured.accounts.length === 0) {
+      return { accounts: [], parseError: structured.parseError };
     }
-    if (act.accounts.length === 0) {
+    if (structured.accounts.length === 0) {
       return {
         accounts: [],
-        parseError: act.parseError ?? "No accounts parsed from Fidelity Accounts History CSV."
+        parseError: structured.parseError ?? "No accounts parsed from Fidelity Accounts History CSV."
       };
     }
+    const emptySeed = emptyFidelityActivityReplaySeed();
     return {
-      accounts: act.accounts.map((a) => ({
+      accounts: structured.accounts.map((a) => ({
         accountRef: a.accountRef,
         label: a.label,
-        positions: a.positions
+        positions: replayFidelityActivityRows(a.rows, emptySeed),
+        fidelityActivityRows: a.rows
       }))
     };
   }
@@ -166,7 +188,13 @@ export function previewBrokerHoldingsAccounts(accounts: ParsedBrokerAccount[]): 
     const optU = acc.positions
       .filter((p): p is BrokerHoldingsPosition & { type: "option" } => p.type === "option")
       .map((p) => p.ticker);
-    const sampleTickers = [...new Set([...stocks.map((p) => p.ticker), ...optU].filter(Boolean))].slice(0, 8);
+    const cashSyms = acc.positions
+      .filter((p): p is BrokerHoldingsPosition & { type: "cash" } => p.type === "cash")
+      .map((p) => p.ticker);
+    const sampleTickers = [...new Set([...stocks.map((p) => p.ticker), ...optU, ...cashSyms].filter(Boolean))].slice(
+      0,
+      8
+    );
     return {
       accountRef: acc.accountRef,
       label: acc.label,
@@ -206,6 +234,63 @@ function aggregateStockLots(positions: BrokerHoldingsPosition[]): StockLot[] {
   }));
 }
 
+/** USD balance for a parsed cash row (sweep / money market / `cash (...)`). */
+function dbPositionToBrokerSeedInput(p: Position): BrokerPositionSeedInput | null {
+  const t = normalizePositionType(p.type);
+  const symbol = (p.symbol ?? "").trim();
+  const qty = Number(p.qty);
+  const avgCost = Number(p.avgCost);
+  if (t === "cash") {
+    if (!Number.isFinite(avgCost) || avgCost < 0) {
+      return null;
+    }
+    return {
+      type: "cash",
+      symbol: symbol || "CASH",
+      qty: Number.isFinite(qty) ? qty : 1,
+      avgCost
+    };
+  }
+  if (t === "stock") {
+    if (!symbol || !Number.isFinite(qty) || qty <= 0) {
+      return null;
+    }
+    return {
+      type: "stock",
+      symbol,
+      qty,
+      avgCost: Number.isFinite(avgCost) && avgCost >= 0 ? avgCost : 0
+    };
+  }
+  if (!symbol || !Number.isFinite(qty) || qty <= 0) {
+    return null;
+  }
+  return {
+    type: "option",
+    symbol,
+    qty,
+    avgCost: Number.isFinite(avgCost) && avgCost >= 0 ? avgCost : 0,
+    optionType: p.optionType ?? null,
+    strike: p.strike ?? null,
+    expiration: p.expiration ?? null
+  };
+}
+
+function brokerCashUsd(p: BrokerHoldingsPosition & { type: "cash" }): number | null {
+  const price = p.purchasePrice != null && Number.isFinite(p.purchasePrice) ? Math.max(0, p.purchasePrice) : null;
+  const sh = p.shares != null && Number.isFinite(p.shares) ? Math.abs(p.shares) : null;
+  if (price != null && price > 0 && sh != null && sh > 0) {
+    return price * sh;
+  }
+  if (price != null && price > 0) {
+    return price;
+  }
+  if (sh != null && sh > 0) {
+    return sh;
+  }
+  return null;
+}
+
 export async function applyBrokerHoldingsToMappedAccounts(input: {
   userId: string;
   tenantId?: string;
@@ -220,18 +305,44 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
     const accountId = input.mappings[key]?.trim();
     const label = acc.label || acc.accountRef || key;
 
-    const cashOnlySkipped = acc.positions.filter((p) => p.type === "cash").length;
-
     if (!accountId) {
       results.push({
         accountRef: acc.accountRef,
         label,
         imported: 0,
-        skippedNonStock: cashOnlySkipped,
+        skippedNonStock: acc.positions.length,
         deletedPrior: 0,
         error: "No app account selected for this broker account key"
       });
       continue;
+    }
+
+    let positionsForApply = acc.positions;
+    if (acc.fidelityActivityRows !== undefined) {
+      let existingBeforeClear: Position[] = [];
+      try {
+        existingBeforeClear = await listPortfolioPositionsByAccount({
+          userId: input.userId,
+          portfolioId: input.portfolioId,
+          tenantId: input.tenantId,
+          accountIds: [new ObjectId(accountId)]
+        });
+      } catch {
+        results.push({
+          accountRef: acc.accountRef,
+          label,
+          imported: 0,
+          skippedNonStock: acc.positions.length,
+          deletedPrior: 0,
+          error: "Failed to load existing positions for activity merge"
+        });
+        continue;
+      }
+      const seedInputs = existingBeforeClear
+        .map(dbPositionToBrokerSeedInput)
+        .filter((x): x is BrokerPositionSeedInput => x != null);
+      const seed = fidelityActivityReplaySeedFromBrokerPositions(seedInputs);
+      positionsForApply = replayFidelityActivityRows(acc.fidelityActivityRows, seed);
     }
 
     let deletedPrior = 0;
@@ -247,16 +358,16 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
         accountRef: acc.accountRef,
         label,
         imported: 0,
-        skippedNonStock: cashOnlySkipped,
+        skippedNonStock: acc.positions.length,
         deletedPrior: 0,
         error: "Failed to clear existing positions"
       });
       continue;
     }
 
-    const lots = aggregateStockLots(acc.positions);
+    const lots = aggregateStockLots(positionsForApply);
     let imported = 0;
-    let skippedNonStock = cashOnlySkipped;
+    let skippedNonStock = 0;
     try {
       for (const lot of lots) {
         await upsertPositionForAccount({
@@ -272,7 +383,7 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
         imported += 1;
       }
 
-      const optionRows = acc.positions.filter(
+      const optionRows = positionsForApply.filter(
         (p): p is BrokerHoldingsPosition & { type: "option" } => p.type === "option"
       );
       for (const op of optionRows) {
@@ -305,6 +416,29 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
           optionType: ot,
           strike,
           expiration: exp
+        });
+        imported += 1;
+      }
+
+      const cashRowsApply = positionsForApply.filter(
+        (p): p is BrokerHoldingsPosition & { type: "cash" } => p.type === "cash"
+      );
+      for (const c of cashRowsApply) {
+        const usd = brokerCashUsd(c);
+        if (usd == null || usd <= 0) {
+          skippedNonStock += 1;
+          continue;
+        }
+        const sym = (c.ticker || "CASH").trim().toUpperCase().slice(0, 32) || "CASH";
+        await upsertPositionForAccount({
+          userId: input.userId,
+          tenantId: input.tenantId,
+          portfolioId: input.portfolioId,
+          accountId,
+          symbol: sym,
+          qty: 1,
+          avgCost: usd,
+          type: "cash"
         });
         imported += 1;
       }

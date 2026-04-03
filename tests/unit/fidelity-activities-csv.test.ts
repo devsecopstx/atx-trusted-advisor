@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { detectFidelityActivitiesCsv, parseFidelityActivitiesAccounts } from "@/modules/portfolio-import/fidelity-activities-csv";
+import {
+    detectFidelityActivitiesCsv,
+    fidelityActivityReplaySeedFromBrokerPositions,
+    parseFidelityActivitiesAccounts,
+    replayFidelityActivityRows
+} from "@/modules/portfolio-import/fidelity-activities-csv";
 
 const SAMPLE = `
 Run Date,Account,Account Number,Action,Symbol,Description,Type,Exchange Quantity,Exchange Currency,Currency,Price,Quantity,Exchange Rate,Commission,Fees,Accrued Interest,Amount,Settlement Date
@@ -44,5 +49,30 @@ Run Date,Account,Account Number,Action,Symbol,Description,Type,Exchange Quantity
     expect(longDated?.contracts).toBe(2);
     const expiredLeg = pos.find((p) => p.type === "option" && p.expiration === "2026-04-02");
     expect(expiredLeg).toBeUndefined();
+  });
+
+  it("replays activities on top of existing holdings seed (merge)", () => {
+    const seed = fidelityActivityReplaySeedFromBrokerPositions([
+      { type: "stock", symbol: "RDW", qty: 50, avgCost: 8 },
+      { type: "cash", symbol: "SPAXX", qty: 1, avgCost: 1000 }
+    ]);
+    const rows = [
+      {
+        sortKey: 1,
+        lineIndex: 1,
+        runIsoYmd: "2026-04-01",
+        accountNumber: "269138837",
+        accountName: "ROTH",
+        action: "YOU BOUGHT",
+        symbol: "RDW",
+        price: 10,
+        quantity: 100
+      }
+    ];
+    const merged = replayFidelityActivityRows(rows, seed);
+    const stock = merged.find((p) => p.type === "stock" && p.ticker === "RDW");
+    expect(stock?.shares).toBe(150);
+    const cash = merged.find((p) => p.type === "cash" && p.ticker === "SPAXX");
+    expect(cash?.purchasePrice).toBe(1000);
   });
 });

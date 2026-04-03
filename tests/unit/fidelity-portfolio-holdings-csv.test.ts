@@ -15,6 +15,8 @@ X65430196,Individual - TOD,RDW,REDWIRE CORPORATION COM,1500,$9.73,+$0.65,$14595.
 269138837,ROTH IRA,SPAXX**,HELD IN MONEY MARKET,,,,$2630.75,,,,,22.67%,,,Cash,
 269138837,ROTH IRA,RDW,REDWIRE CORPORATION COM,100,$9.73,+$0.65,$973.00,--,--,--,--,8.39%,--,--,Cash,
 269138837,ROTH IRA,Pending activity,,,,,$7999.83,,,,,,,,,
+Z06276930,Cash Management (Joint WROS - TOD),CORE**,FDIC-INSURED DEPOSIT SWEEP,,,,$123.07,,,,,213.66%,,,Cash,
+Z06276930,Cash Management (Joint WROS - TOD),Pending activity,,,,,-$65.47,,,,,,,,,
 
 "The data and information in this spreadsheet is provided to you solely for your use"
 `;
@@ -29,15 +31,27 @@ describe("fidelity-portfolio-holdings-csv", () => {
     ).toBe(false);
   });
 
-  it("parses multiple accounts, skips sweep cash and pending rows", () => {
+  it("parses stocks, sweep cash (Current Value), and skips pending rows", () => {
     const asOf = new Date("2026-04-03T12:00:00Z");
     const { accounts, parseError } = parseFidelityPortfolioHoldingsCsv(SAMPLE, asOf);
     expect(parseError).toBeUndefined();
-    expect(accounts.length).toBe(3);
+    expect(accounts.length).toBe(4);
 
     const byRef = new Map(accounts.map((a) => [a.accountRef, a]));
     expect(byRef.get("X65430196")?.positions.find((p) => p.type === "stock" && p.ticker === "RDW")?.shares).toBe(1500);
+    expect(byRef.get("X65430196")?.positions.find((p) => p.type === "cash" && p.ticker === "FCASH")?.purchasePrice).toBe(
+      105.46
+    );
     expect(byRef.get("221238941")?.positions.find((p) => p.ticker === "TSLA")?.shares).toBe(501);
+    expect(byRef.get("221238941")?.positions.find((p) => p.type === "cash" && p.ticker === "SPAXX")?.purchasePrice).toBe(
+      10562.07
+    );
     expect(byRef.get("269138837")?.positions.find((p) => p.ticker === "RDW")?.shares).toBe(100);
+    expect(byRef.get("269138837")?.positions.find((p) => p.type === "cash" && p.ticker === "SPAXX")?.purchasePrice).toBe(
+      2630.75
+    );
+    expect(byRef.get("Z06276930")?.positions.find((p) => p.type === "cash" && p.ticker === "CORE")?.purchasePrice).toBe(
+      123.07
+    );
   });
 });

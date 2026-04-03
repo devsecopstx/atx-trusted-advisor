@@ -305,8 +305,10 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
           Portfolio
         </Link>{" "}
         workspace. For Fidelity, use <strong>Portfolio holdings first</strong> to load positions, then{" "}
-        <strong>Accounts History</strong> when you want activity replay. Activities are replayed into holdings: net long
-        options import; net short option legs are omitted until shorts are modeled. Runs as an immediate{" "}
+        <strong>Accounts History</strong> to apply trades: each activity row is replayed <strong>on top of</strong> your
+        current app holdings (not a standalone replacement). Preview still reflects the file-only net; import merges with
+        what is already in the book. Net long options import; net short option legs are omitted until shorts are modeled.
+        Runs as an immediate{" "}
         <code className="font-mono text-xs">sync-broker</code> job; a short summary is shown when done.
       </p>
 
@@ -440,7 +442,7 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
           <p className="m-0">
             <strong className="text-[var(--xf-text-100)]">Fidelity workflow:</strong> export and import{" "}
             <strong>Portfolio holdings</strong> (positions snapshot) first, then <strong>Accounts History</strong> when you
-            need trades replayed into holdings. The server chooses the parser from the CSV header (
+            need trades merged into existing holdings. The server chooses the parser from the CSV header (
             <code className="font-mono">Account Number</code> + <code className="font-mono">Symbol</code> for positions vs{" "}
             <code className="font-mono">Run Date</code> for activities).
           </p>
@@ -450,7 +452,10 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
             </p>
           ) : null}
           {fidelityDetectedFileKind === "activities" ? (
-            <p className="mt-2 mb-0 text-[var(--xf-gain-green)]">Detected: Accounts History (activities).</p>
+            <p className="mt-2 mb-0 text-[var(--xf-gain-green)]">
+              Detected: Accounts History — on import, transactions replay onto current positions (import portfolio holdings
+              first for a full baseline).
+            </p>
           ) : null}
           {fidelityDetectedFileKind === "legacy_positions" ? (
             <p className="mt-2 mb-0 text-[var(--xf-text-300)]">

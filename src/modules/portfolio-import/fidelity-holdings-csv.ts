@@ -270,6 +270,22 @@ export function parseFidelityPortfolioHoldingsCsv(
     }
     return -1;
   })();
+  const iCurrentValue = (() => {
+    for (const [k, v] of Object.entries(headerIdx)) {
+      if (/^current value$/i.test(k.trim())) {
+        return v;
+      }
+    }
+    return -1;
+  })();
+  const iCostBasisTotal = (() => {
+    for (const [k, v] of Object.entries(headerIdx)) {
+      if (/^cost basis total$/i.test(k.trim())) {
+        return v;
+      }
+    }
+    return -1;
+  })();
 
   if (iAcctNum < 0 || iAcctName < 0 || iSymbol < 0 || iQty < 0) {
     return {
@@ -296,7 +312,30 @@ export function parseFidelityPortfolioHoldingsCsv(
       continue;
     }
     const symClean = symbolRaw.replace(/\s/g, "");
-    if (/^(SPAXX|FCASH|FDRXX|CORE|SPRXX)\*+$/i.test(symClean)) {
+    const isCoreSweep = /^(SPAXX|FCASH|FDRXX|CORE|SPRXX)\*+$/i.test(symClean);
+
+    let bucket = byAccount.get(acctRef);
+    if (!bucket) {
+      bucket = { label: acctName || `Fidelity ${acctRef}`, positions: [] };
+      byAccount.set(acctRef, bucket);
+    } else if (acctName) {
+      bucket.label = acctName;
+    }
+
+    if (isCoreSweep) {
+      const fromCurrent = iCurrentValue >= 0 ? parseNum(row[iCurrentValue] ?? "") : null;
+      const fromCostBasis = iCostBasisTotal >= 0 ? parseNum(row[iCostBasisTotal] ?? "") : null;
+      const dollars = fromCurrent ?? fromCostBasis;
+      if (dollars == null || dollars <= 0) {
+        continue;
+      }
+      const ticker = symClean.replace(/\*+$/i, "").toUpperCase();
+      bucket.positions.push({
+        type: "cash",
+        ticker,
+        shares: 1,
+        purchasePrice: dollars
+      });
       continue;
     }
 
@@ -308,14 +347,6 @@ export function parseFidelityPortfolioHoldingsCsv(
 
     const lastPrice = iLastPrice >= 0 ? parseNum(row[iLastPrice] ?? "") : null;
     const avgCost = iAvgCost >= 0 ? parseNum(row[iAvgCost] ?? "") : null;
-
-    let bucket = byAccount.get(acctRef);
-    if (!bucket) {
-      bucket = { label: acctName || `Fidelity ${acctRef}`, positions: [] };
-      byAccount.set(acctRef, bucket);
-    } else if (acctName) {
-      bucket.label = acctName;
-    }
 
     appendFidelityHoldingPosition(bucket.positions, symbolRaw, quantity, lastPrice, avgCost, asOfDate);
   }
