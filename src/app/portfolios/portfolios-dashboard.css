@@ -224,3 +224,216 @@
   font-size: 0.72rem;
   line-height: 1.35;
 }
+
+/* ── Portfolio workspace landing (/portfolios) ─────────────────── */
+.portfolios-workspace-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  flex-wrap: nowrap;
+}
+
+.portfolios-workspace-header .xchat-header-brand {
+  margin-right: 0;
+  flex: 0 1 auto;
+  max-width: min(220px, 32vw);
+}
+
+.portfolios-workspace-header__title {
+  color: var(--xf-text-100);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.portfolios-workspace-header__center {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+  padding: 0 0.5rem;
+}
+
+.portfolios-workspace-header__total-block {
+  text-align: center;
+  min-width: 0;
+}
+
+.portfolios-workspace-header__total-label {
+  margin: 0;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--xf-text-300);
+}
+
+.portfolios-workspace-header__total-value {
+  margin: 0;
+  font-size: clamp(1rem, 2.8vw, 1.35rem);
+  font-weight: 700;
+  color: var(--xf-gain-green);
+  line-height: 1.15;
+}
+
+.portfolios-workspace-header__total-delta {
+  margin: 0.05rem 0 0;
+  font-size: 0.65rem;
+  line-height: 1.2;
+}
+
+.portfolios-workspace-header__trailing {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+.portfolios-workspace-header__market-pill {
+  font-size: 0.68rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  white-space: nowrap;
+}
+
+.portfolios-workspace-header__import-btn {
+  white-space: nowrap;
+  font-size: 0.72rem;
+  padding: 0.35rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+@media (max-width: 900px) {
+  .portfolios-workspace-header {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+
+  .portfolios-workspace-header__center {
+    order: 3;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .portfolios-workspace-header__total-block {
+    text-align: left;
+  }
+
+  .portfolios-workspace-header .xchat-header-brand {
+    max-width: none;
+  }
+}
+
+.portfolios-workspace-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .portfolios-workspace-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr);
+    gap: 1.25rem;
+  }
+}
+
+.portfolios-workspace-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.15rem 0;
+}
+
+.portfolios-workspace-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  color: var(--xf-text-200);
+  text-decoration: none;
+  line-height: 1.25;
+}
+
+.portfolios-workspace-sidebar__link:hover {
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+  color: var(--xf-text-100);
+}
+
+.portfolios-workspace-sidebar__link--active {
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  color: var(--xf-gain-green);
+}
+
+.portfolios-workspace-sidebar__glyph {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.portfolios-workspace-sidebar__glyph--emph {
+  color: var(--xf-gain-green);
+}
+
+.portfolios-workspace-sidebar__emph {
+  font-weight: 600;
+  color: var(--xf-gain-green);
+}
+
+.portfolios-workspace-sidebar__spacer {
+  flex: 1;
+  min-height: 0.5rem;
+}
+
+.portfolios-workspace-sidebar__disclosure-wrap .app-user-rail-disclosure {
+  margin-top: 0.25rem;
+}
+
+.portfolios-workspace-sidebar__mini-muted {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--xf-text-300);
+}
+
+.portfolios-workspace-sidebar__news-list {
+  margin: 0;
+  padding: 0 0 0 1rem;
+  font-size: 0.65rem;
+  line-height: 1.35;
+}
+
+.portfolios-workspace-sidebar__news-list a {
+  color: var(--xf-text-200);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.portfolios-workspace-sidebar__news-list a:hover {
+  color: var(--xf-gain-green);
+}
+
+.portfolio-allocation--compact .portfolios-portfolio-cards__allocation-bar,
+.portfolio-allocation--compact .portfolios-accounts-footer__bar {
+  min-height: 6px;
+  max-height: 8px;
+  border-radius: 4px;
+}
+
+.portfolios-workspace-advanced summary {
+  list-style: none;
+}
+
+.portfolios-workspace-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.portfolios-watchlist-compact__table th,
+.portfolios-watchlist-compact__table td {
+  vertical-align: middle;
+}

@@ -5,19 +5,13 @@ import { useMemo } from "react";
 import { formatUsd2, formatUsdWhole } from "@/lib/portfolio-overview-metrics";
 import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
 
+import { buildAllAccountsBarSlices, buildPortfolioAllocationBarSlices } from "./portfolios-allocation-utils";
 import type { WorkspacePortfolioRow } from "./portfolios-dashboard-client";
 
 type Props = {
   initialRows: WorkspacePortfolioRow[];
   initialAccountSlices: WorkspaceDashboardAccountSlice[];
 };
-
-function accountSlicesForPortfolio(
-  portfolioId: string,
-  slices: WorkspaceDashboardAccountSlice[]
-): WorkspaceDashboardAccountSlice[] {
-  return slices.filter((s) => s.portfolioId === portfolioId);
-}
 
 function WorkspaceAccountsByPortfolioChart({
   rows,
@@ -28,15 +22,7 @@ function WorkspaceAccountsByPortfolioChart({
 }) {
   const groups = useMemo(() => {
     return rows.map((r) => {
-      const slices = accountSlicesForPortfolio(r.id, accountSlices);
-      const total = slices.reduce((s, x) => s + Math.max(0, x.valueUsd), 0);
-      const safe = total > 0 ? total : 1;
-      const barSlices = slices.map((x) => ({
-        key: `${r.id}-${x.accountId}`,
-        label: x.accountName,
-        percent: (Math.max(0, x.valueUsd) / safe) * 100,
-        valueUsd: x.valueUsd
-      }));
+      const { total, barSlices } = buildPortfolioAllocationBarSlices(r.id, accountSlices);
       return { portfolioId: r.id, portfolioName: r.name, total, barSlices };
     });
   }, [rows, accountSlices]);
@@ -91,22 +77,7 @@ function WorkspaceAccountsByPortfolioChart({
 }
 
 function WorkspaceAllAccountsChart({ accountSlices }: { accountSlices: WorkspaceDashboardAccountSlice[] }) {
-  const { totalUsd, barSlices } = useMemo(() => {
-    const totalUsd = accountSlices.reduce((s, x) => s + Math.max(0, x.valueUsd), 0);
-    const safe = totalUsd > 0 ? totalUsd : 1;
-    const sorted = [...accountSlices].sort((a, b) => b.valueUsd - a.valueUsd);
-    const barSlices = sorted.map((x) => {
-      const label = `${x.accountName} · ${x.portfolioName}`;
-      const pct = (Math.max(0, x.valueUsd) / safe) * 100;
-      return {
-        key: `${x.portfolioId}-${x.accountId}`,
-        label,
-        percent: pct,
-        valueUsd: x.valueUsd
-      };
-    });
-    return { totalUsd, barSlices };
-  }, [accountSlices]);
+  const { totalUsd, barSlices } = useMemo(() => buildAllAccountsBarSlices(accountSlices), [accountSlices]);
 
   if (accountSlices.length === 0) {
     return null;
