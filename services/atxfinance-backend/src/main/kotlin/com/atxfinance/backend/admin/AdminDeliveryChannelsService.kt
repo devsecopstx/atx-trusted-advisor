@@ -5,6 +5,7 @@ import com.atxfinance.backend.config.AtxfinanceProperties
 import com.atxfinance.backend.desk.DeskSmtpSender
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
 import com.atxfinance.backend.session.ResolvedSession
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.bson.Document
 import org.bson.types.ObjectId
 import org.springframework.data.domain.Sort
@@ -19,6 +20,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import java.time.Instant
 import java.util.Date
 
 @Service
@@ -26,13 +28,15 @@ class AdminDeliveryChannelsService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
     private val auditEventService: AuditEventService,
+    private val objectMapper: ObjectMapper,
 ) {
     private val http: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(5))
         .build()
 
-    companion object {
-        private const val TEST_TEXT = "hello from atx"
+    private fun buildTestMessage(tenantId: String): String {
+        val at = Instant.now().toString()
+        return "hello from atx | tenant=$tenantId | at=$at"
     }
 
     fun list(session: ResolvedSession): List<Map<String, Any?>> {
@@ -199,13 +203,16 @@ class AdminDeliveryChannelsService(
     fun test(channelId: String, session: ResolvedSession): TestResult {
         val doc = findDoc(channelId, session) ?: return TestResult.NotFound
         val target = doc.getString("deliveryTarget") ?: return TestResult.BadRequest("invalid channel")
+        val message = buildTestMessage(session.tenantId)
         if (target == "in_app") {
             return TestResult.Ok(
                 mapOf(
                     "ok" to true,
                     "deliveryTarget" to "in_app",
-                    "message" to TEST_TEXT,
-                    "detail" to "In-app delivery has no external test send; channel is saved for future routing.",
+                    "message" to message,
+                    "inAppPreview" to true,
+                    "detail" to
+                        "In-app preview: use the on-screen sample notification (and optional browser notification if allowed). No external send.",
                 ),
             )
         }
@@ -213,19 +220,34 @@ class AdminDeliveryChannelsService(
             val to = doc.getString("emailTo")?.trim()
             if (to.isNullOrEmpty()) return TestResult.BadRequest("Email channel is missing emailTo")
             if (!isPlausibleEmail(to)) return TestResult.BadRequest("emailTo must be a valid email address")
-            val ok = DeskSmtpSender.sendPlain(to, "aTx Finance — delivery channel test", TEST_TEXT)
+            val ok = DeskSmtpSender.sendPlain(to, "aTx Finance — delivery channel test", message)
             if (!ok) {
                 return TestResult.EmailSendFailed(
                     "SMTP send failed — check SMTP_* / DESK_EMAIL_FROM env on the backend service",
                 )
             }
-            return TestResult.Ok(mapOf("ok" to true, "deliveryTarget" to "email", "message" to TEST_TEXT))
+            return TestResult.Ok(
+                mapOf(
+                    "ok" to true,
+                    "deliveryTarget" to "email",
+                    "message" to message,
+                    "detail" to "SMTP test sent to $to. Check that inbox (and spam).",
+                ),
+            )
         }
         val url = doc.getString("slackWebhookUrl")?.trim()
         if (url.isNullOrEmpty()) return TestResult.BadRequest("Slack channel is missing slackWebhookUrl")
-        val ok = postSlackIncomingWebhook(url, """{"text":"$TEST_TEXT"}""")
+        val slackJson = objectMapper.writeValueAsString(mapOf("text" to message))
+        val ok = postSlackIncomingWebhook(url, slackJson)
         if (!ok) return TestResult.UpstreamError
-        return TestResult.Ok(mapOf("ok" to true, "deliveryTarget" to "slack", "message" to TEST_TEXT))
+        return TestResult.Ok(
+            mapOf(
+                "ok" to true,
+                "deliveryTarget" to "slack",
+                "message" to message,
+                "detail" to "Test message posted to the configured Slack incoming webhook.",
+            ),
+        )
     }
 
     sealed class TestResult {

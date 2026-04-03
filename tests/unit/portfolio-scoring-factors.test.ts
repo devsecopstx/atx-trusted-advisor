@@ -4,6 +4,7 @@ import {
     computeWeightedStrategyScore,
     DEFAULT_PORTFOLIO_SCORING_FACTORS,
     parsePortfolioScoringFactorsInput,
+    resolveEffectivePortfolioScoringFactors,
     resolvePortfolioScoringFactors,
     SCORING_WEIGHT_SUM_TOLERANCE
 } from "@/modules/core-admin/scoring-factors";
@@ -67,6 +68,42 @@ describe("portfolio scoring factors", () => {
     expect(a).toEqual([...DEFAULT_PORTFOLIO_SCORING_FACTORS]);
     const b = resolvePortfolioScoringFactors([{ id: "iv_rank", weight: 0.5 }]);
     expect(b).toEqual([...DEFAULT_PORTFOLIO_SCORING_FACTORS]);
+  });
+
+  it("resolveEffective uses tenant when portfolio missing", () => {
+    const tenant = [
+      { id: "iv_rank" as const, weight: 0.35 },
+      { id: "open_interest" as const, weight: 0.2 },
+      { id: "volume" as const, weight: 0.15 },
+      { id: "liquidity" as const, weight: 0.1 },
+      { id: "portfolio_fit" as const, weight: 0.15 },
+      { id: "strategy_alignment" as const, weight: 0.05 }
+    ];
+    const eff = resolveEffectivePortfolioScoringFactors(undefined, tenant);
+    expect(eff).toHaveLength(6);
+    expect(eff[0]?.id).toBe("iv_rank");
+    expect(eff.find((x) => x.id === "strategy_alignment")?.weight).toBe(0.05);
+  });
+
+  it("resolveEffective prefers portfolio over tenant", () => {
+    const portfolio = [
+      { id: "iv_rank" as const, weight: 0.3 },
+      { id: "open_interest" as const, weight: 0.2 },
+      { id: "volume" as const, weight: 0.15 },
+      { id: "liquidity" as const, weight: 0.1 },
+      { id: "portfolio_fit" as const, weight: 0.15 },
+      { id: "strategy_alignment" as const, weight: 0.1 }
+    ];
+    const tenant = [{ id: "iv_rank" as const, weight: 0.9 }, { id: "volume" as const, weight: 0.1 }];
+    const eff = resolveEffectivePortfolioScoringFactors(portfolio, tenant);
+    expect(eff.map((x) => x.id)).toEqual([
+      "iv_rank",
+      "open_interest",
+      "volume",
+      "liquidity",
+      "portfolio_fit",
+      "strategy_alignment"
+    ]);
   });
 
   it("computeWeightedStrategyScore matches formula for all ones", () => {

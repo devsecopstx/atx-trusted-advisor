@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyPersonasRequestToBackend } from "@/lib/backend-bff";
 import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import {
@@ -19,7 +19,7 @@ type RouteContext = {
 };
 
 export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPersonasRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -47,7 +47,7 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPersonasRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -140,7 +140,7 @@ export async function PUT(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPersonasRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

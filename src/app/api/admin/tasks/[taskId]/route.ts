@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
 import {
     DeliveryChannelTargetError,
@@ -62,7 +62,7 @@ async function requireTenantLevelTask(taskId: string, tenantId: string) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminScheduledTasksRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -145,7 +145,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(_request);
+  const proxied = await proxyAdminScheduledTasksRequestToBackend(_request);
   if (proxied) {
     return proxied;
   }

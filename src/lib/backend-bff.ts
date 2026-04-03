@@ -422,3 +422,102 @@ export async function proxyPortfolioRequestToBackend(request: Request): Promise<
   }
   return proxyRequestToBackend(request);
 }
+
+/**
+ * `/api/admin/tasks*`, `/api/admin/task-runs`, `/api/admin/scheduler/tick` — same rule as admin users: **loopback +
+ * dev/test** skips Spring so Admin → Tasks reads the same Mongo as Next (empty list when JVM uses another DB or
+ * session differs).
+ *
+ * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS=false`.
+ * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS=true`.
+ */
+export function shouldProxyAdminScheduledTasksToBackend(): boolean {
+  const origin = getAtxfinanceBackendOrigin();
+  if (!origin) {
+    return false;
+  }
+  const v = process.env.ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS?.trim().toLowerCase();
+  if (v === "0" || v === "false" || v === "no" || v === "off") {
+    return false;
+  }
+  if (v === "1" || v === "true" || v === "yes" || v === "on") {
+    return true;
+  }
+  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  const devLike = nodeEnv === "development" || nodeEnv === "test";
+  if (devLike && isLoopbackBackendOrigin(origin)) {
+    return false;
+  }
+  return true;
+}
+
+/** Admin scheduled-task BFF → Spring; returns `null` when proxy disabled. */
+export async function proxyAdminScheduledTasksRequestToBackend(
+  request: Request
+): Promise<Response | null> {
+  if (!shouldProxyAdminScheduledTasksToBackend()) {
+    return null;
+  }
+  return proxyRequestToBackend(request);
+}
+
+/**
+ * Tenant-level `/api/admin/delivery-channels*` (not portfolio-nested). Same loopback + dev/test rule as scheduled
+ * tasks so Admin → Delivery channels uses Next Mongo.
+ *
+ * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS=false`.
+ * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS=true`.
+ */
+export function shouldProxyAdminDeliveryChannelsToBackend(): boolean {
+  const origin = getAtxfinanceBackendOrigin();
+  if (!origin) {
+    return false;
+  }
+  const v = process.env.ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS?.trim().toLowerCase();
+  if (v === "0" || v === "false" || v === "no" || v === "off") {
+    return false;
+  }
+  if (v === "1" || v === "true" || v === "yes" || v === "on") {
+    return true;
+  }
+  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  const devLike = nodeEnv === "development" || nodeEnv === "test";
+  if (devLike && isLoopbackBackendOrigin(origin)) {
+    return false;
+  }
+  return true;
+}
+
+/** Tenant admin delivery-channels BFF → Spring; returns `null` when proxy disabled. */
+export async function proxyAdminDeliveryChannelsRequestToBackend(
+  request: Request
+): Promise<Response | null> {
+  if (!shouldProxyAdminDeliveryChannelsToBackend()) {
+    return null;
+  }
+  return proxyRequestToBackend(request);
+}
+
+/**
+ * `/api/personas*` — **opt-in** proxy to Spring.
+ *
+ * Default is **off** so Admin Hub persona list / CRUD / seed / xAI sync use the same Mongo as Next. When origin is set,
+ * Spring would otherwise answer with a different DB (empty list, broken tenant default + user assignment). Set
+ * `ATXFINANCE_BACKEND_PROXY_PERSONAS=true` only when the JVM is wired to the same persona store.
+ */
+export function shouldProxyPersonasRequestsToBackend(): boolean {
+  const origin = getAtxfinanceBackendOrigin();
+  if (!origin) {
+    return false;
+  }
+  const v = process.env.ATXFINANCE_BACKEND_PROXY_PERSONAS?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
+/** Personas BFF → Spring; returns `null` unless {@link shouldProxyPersonasRequestsToBackend} is true. */
+export async function proxyPersonasRequestToBackend(request: Request): Promise<Response | null> {
+  if (!shouldProxyPersonasRequestsToBackend()) {
+    return null;
+  }
+  return proxyRequestToBackend(request);
+}

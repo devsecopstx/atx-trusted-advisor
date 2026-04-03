@@ -39,6 +39,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/admin/broker-import",
         title: "Broker import",
         description: ADMIN_BROKER_IMPORT_DESCRIPTION
+      },
+      {
+        href: "/admin/portfolio-scoring-defaults",
+        title: "Portfolio scoring factors",
+        description:
+          "Tenant default IV, liquidity, book-fit, and outlook weights for new portfolios and books without a stored override."
       }
     ]
   },

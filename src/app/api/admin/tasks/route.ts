@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
 import {
     DeliveryChannelTargetError,
@@ -33,7 +33,7 @@ const createTaskSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminScheduledTasksRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminScheduledTasksRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

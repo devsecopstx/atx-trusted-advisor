@@ -22,8 +22,8 @@ export default async function AdminDeliveryChannelsPage() {
         <p className="hero-copy">
           Configure platform delivery targets for operations: <strong>in-app</strong> (saved for future routing) or{" "}
           <strong>Slack</strong> using an incoming webhook URL (<code className="font-mono text-xs">hooks.slack.com</code>
-          ). Use <strong>Send test</strong> to post <code className="font-mono text-xs">hello from atx</code> to Slack or
-          verify an in-app channel.
+          ). Use <strong>Send test</strong> to send a line that includes <code className="font-mono text-xs">hello from atx</code>, your{" "}
+          <strong>tenant id</strong>, and an <strong>ISO timestamp</strong> to Slack/email, or preview in-app.
         </p>
       </section>
 

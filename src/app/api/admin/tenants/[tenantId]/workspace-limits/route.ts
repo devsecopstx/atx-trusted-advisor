@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireGlobalAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     resolvedWorkspaceLimitsForTenant,
@@ -32,11 +31,6 @@ const patchSchema = z.object({
 });
 
 export async function GET(_request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(_request);
-  if (proxied) {
-    return proxied;
-  }
-
   const session = await requireGlobalAdminSession();
   if (session instanceof NextResponse) {
     return session;
@@ -65,11 +59,6 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
   const session = await requireGlobalAdminSession();
   if (session instanceof NextResponse) {
     return session;

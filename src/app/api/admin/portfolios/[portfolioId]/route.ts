@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     adminDeletePortfolio,
     adminListAccountsForPortfolio,
@@ -18,7 +19,7 @@ type RouteContext = {
   params: Promise<{ portfolioId: string }>;
 };
 
-function serializePortfolio(p: Portfolio) {
+function serializePortfolio(p: Portfolio, tenantDefault?: unknown) {
   return {
     _id: p._id!.toHexString(),
     tenantId: p.tenantId?.toHexString(),
@@ -26,7 +27,7 @@ function serializePortfolio(p: Portfolio) {
     name: p.name,
     isDefault: p.isDefault,
     tenantPortfolioOrgKey: p.tenantPortfolioOrgKey,
-    ...scoringFactorsPayloadForAdminApi(p.scoringFactors),
+    ...scoringFactorsPayloadForAdminApi(p.scoringFactors, tenantDefault),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString()
   };
@@ -55,6 +56,9 @@ export async function GET(request: Request, context: RouteContext) {
     return portfolio;
   }
 
+  const tid = portfolio.tenantId?.toHexString() ?? session.tenantId;
+  const tenantRow = tid ? await getTenantByHexIdCached(tid) : null;
+
   const accounts = await adminListAccountsForPortfolio(portfolioId);
   const accountCount = accounts.length;
   const totalCashBalance = accounts.reduce((sum, a) => {
@@ -67,7 +71,7 @@ export async function GET(request: Request, context: RouteContext) {
 
   return NextResponse.json({
     data: {
-      ...serializePortfolio(portfolio),
+      ...serializePortfolio(portfolio, tenantRow?.defaultPortfolioScoringFactors),
       accountCount,
       totalCashBalance
     }
@@ -127,7 +131,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ data: serializePortfolio(updated) });
+  const tidPatch = updated.tenantId?.toHexString() ?? session.tenantId;
+  const tenantPatch = tidPatch ? await getTenantByHexIdCached(tidPatch) : null;
+
+  return NextResponse.json({
+    data: serializePortfolio(updated, tenantPatch?.defaultPortfolioScoringFactors)
+  });
 }
 
 export async function DELETE(request: Request, context: RouteContext) {

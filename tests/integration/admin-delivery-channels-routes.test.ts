@@ -174,9 +174,16 @@ describe("admin delivery-channels routes", () => {
       { params: Promise.resolve({ channelId: "507f1f77bcf86cd799439099" }) }
     );
     expect(response.status).toBe(200);
-    const json = (await response.json()) as { ok?: boolean; deliveryTarget?: string };
+    const json = (await response.json()) as {
+      ok?: boolean;
+      deliveryTarget?: string;
+      inAppPreview?: boolean;
+      message?: string;
+    };
     expect(json.ok).toBe(true);
     expect(json.deliveryTarget).toBe("in_app");
+    expect(json.inAppPreview).toBe(true);
+    expect(json.message).toMatch(/^hello from atx \| tenant=507f1f77bcf86cd799439022 \| at=/);
     expect(slackMocks.postSlackIncomingWebhook).not.toHaveBeenCalled();
   });
 
@@ -196,10 +203,13 @@ describe("admin delivery-channels routes", () => {
       { params: Promise.resolve({ channelId: "507f1f77bcf86cd799439099" }) }
     );
     expect(response.status).toBe(200);
-    expect(slackMocks.postSlackIncomingWebhook).toHaveBeenCalledWith(
-      "https://hooks.slack.com/services/T/A/B",
-      { text: "hello from atx" }
-    );
+    const slackJson = (await response.json()) as { detail?: string; deliveryTarget?: string };
+    expect(slackJson.deliveryTarget).toBe("slack");
+    expect(slackJson.detail).toContain("Slack");
+    expect(slackMocks.postSlackIncomingWebhook).toHaveBeenCalledTimes(1);
+    const slackCall = slackMocks.postSlackIncomingWebhook.mock.calls[0];
+    expect(slackCall?.[0]).toBe("https://hooks.slack.com/services/T/A/B");
+    expect(slackCall?.[1]?.text).toMatch(/^hello from atx \| tenant=507f1f77bcf86cd799439022 \| at=/);
   });
 
   it("test email sends via SMTP helper", async () => {
@@ -218,11 +228,14 @@ describe("admin delivery-channels routes", () => {
       { params: Promise.resolve({ channelId: "507f1f77bcf86cd799439099" }) }
     );
     expect(response.status).toBe(200);
-    expect(deskMocks.sendDeskPlainEmailWithRetry).toHaveBeenCalledWith(
-      "ops@example.com",
-      "aTx Finance — delivery channel test",
-      "hello from atx"
-    );
+    const mailJson = (await response.json()) as { detail?: string; deliveryTarget?: string };
+    expect(mailJson.deliveryTarget).toBe("email");
+    expect(mailJson.detail).toContain("ops@example.com");
+    expect(deskMocks.sendDeskPlainEmailWithRetry).toHaveBeenCalledTimes(1);
+    const mailCall = deskMocks.sendDeskPlainEmailWithRetry.mock.calls[0];
+    expect(mailCall?.[0]).toBe("ops@example.com");
+    expect(mailCall?.[1]).toBe("aTx Finance — delivery channel test");
+    expect(mailCall?.[2]).toMatch(/^hello from atx \| tenant=507f1f77bcf86cd799439022 \| at=/);
     expect(slackMocks.postSlackIncomingWebhook).not.toHaveBeenCalled();
   });
 });

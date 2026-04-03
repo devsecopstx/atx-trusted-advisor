@@ -27,6 +27,10 @@ const repositoryMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/api-auth", () => authMocks);
 
+vi.mock("@/lib/server-request-cache", () => ({
+  getTenantByHexIdCached: vi.fn().mockResolvedValue(null)
+}));
+
 vi.mock("@/lib/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth")>();
   return {

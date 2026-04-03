@@ -11,6 +11,9 @@ const repoMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/lib/server-request-cache", () => ({
+  getTenantByHexIdCached: vi.fn().mockResolvedValue(null)
+}));
 vi.mock("@/modules/core-admin/repository", () => ({
   adminUpdatePortfolio: repoMocks.adminUpdatePortfolio,
   adminGetPortfolioById: repoMocks.adminGetPortfolioById,

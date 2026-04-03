@@ -12,6 +12,7 @@ import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { buildPortfolioHoldingRows } from "@/lib/portfolio-holding-rows";
 import { computePortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
@@ -122,9 +123,17 @@ export default async function PortfolioPage() {
   const holdingsRows =
     portfolioIdHex && accounts.length > 0 ? buildPortfolioHoldingRows(accounts, allPositions) : [];
 
+  const scoringTenantId =
+    portfolio && !portfolioLoadError
+      ? portfolio.tenantId?.toHexString() ?? session.tenantId
+      : null;
+  const tenantForScoring = scoringTenantId ? await getTenantByHexIdCached(scoringTenantId) : null;
   const scoringFactors =
     portfolio && !portfolioLoadError
-      ? scoringFactorsPayloadForAdminApi(portfolio.scoringFactors).scoringFactors
+      ? scoringFactorsPayloadForAdminApi(
+          portfolio.scoringFactors,
+          tenantForScoring?.defaultPortfolioScoringFactors
+        ).scoringFactors
       : [];
 
   return (

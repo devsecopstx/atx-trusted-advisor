@@ -142,6 +142,29 @@ export function resolvePortfolioScoringFactors(
   return parsed;
 }
 
+/**
+ * Portfolio row wins when valid; otherwise tenant default (e.g. `core_tenants.defaultPortfolioScoringFactors`);
+ * otherwise product defaults. Omit or pass `undefined` for `tenantDefault` when there is no tenant row.
+ */
+export function resolveEffectivePortfolioScoringFactors(
+  portfolioStored: unknown,
+  tenantDefault?: unknown
+): PortfolioScoringFactor[] {
+  if (portfolioStored != null && portfolioStored !== undefined) {
+    const fromPortfolio = parsePortfolioScoringFactorsInput(portfolioStored);
+    if (fromPortfolio) {
+      return fromPortfolio;
+    }
+  }
+  if (tenantDefault != null && tenantDefault !== undefined) {
+    const fromTenant = parsePortfolioScoringFactorsInput(tenantDefault);
+    if (fromTenant) {
+      return fromTenant;
+    }
+  }
+  return DEFAULT_PORTFOLIO_SCORING_FACTORS.map((x) => ({ ...x }));
+}
+
 export type PortfolioScoringFactorApi = PortfolioScoringFactor & {
   label: string;
   description: string;
@@ -161,12 +184,13 @@ export function enrichScoringFactorsForApi(factors: PortfolioScoringFactor[]): P
   });
 }
 
-/** Admin GET/PATCH JSON: resolved defaults + catalog copy for UI. */
+/** Admin GET/PATCH JSON: resolved effective weights + catalog copy for UI. */
 export function scoringFactorsPayloadForAdminApi(
-  stored: PortfolioScoringFactor[] | undefined | null | unknown
+  stored: unknown,
+  tenantDefault?: unknown
 ): { scoringFactors: PortfolioScoringFactorApi[] } {
   return {
-    scoringFactors: enrichScoringFactorsForApi(resolvePortfolioScoringFactors(stored))
+    scoringFactors: enrichScoringFactorsForApi(resolveEffectivePortfolioScoringFactors(stored, tenantDefault))
   };
 }
 

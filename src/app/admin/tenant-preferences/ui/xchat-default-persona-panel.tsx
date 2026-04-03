@@ -78,9 +78,10 @@ export function XchatDefaultPersonaPanel() {
   return (
     <div className="xf-widget section-card admin-tenant-pref-form">
       <p className="admin-muted" style={{ marginBottom: "0.75rem", maxWidth: 640 }}>
-        Choose one <strong>published</strong> xPersona (sync from xAI first). Users without an assigned persona get
-        this default in <code className="font-mono text-xs">/xchat</code>. Clear to use the seeded trusted-advisor
-        fallback.
+        Pick a <strong>published</strong> xPersona for the platform default (after xAI sync, publish in Manage xPersonas).{" "}
+        <strong>Draft</strong> rows appear below for visibility — select a published row to save. Users without an
+        assigned persona get this default in <code className="font-mono text-xs">/xchat</code>. Clear to use the seeded
+        trusted-advisor fallback.
       </p>
 
       <div className="crud-table-wrap admin-tenant-pref-table-wrap">
@@ -106,12 +107,16 @@ export function XchatDefaultPersonaPanel() {
                 >
                   <option value="">— Clear (trusted-advisor fallback) —</option>
                   {personas
-                    .filter((p) => p.status === "published" && Boolean(p._id))
-                    .map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.name}
-                      </option>
-                    ))}
+                    .filter((p) => Boolean(p._id) && (p.status === "published" || p.status === "draft"))
+                    .map((p) => {
+                      const id = p._id as string;
+                      const isPublished = p.status === "published";
+                      return (
+                        <option key={id} disabled={!isPublished} value={id}>
+                          {isPublished ? p.name : `${p.name} (draft — publish first)`}
+                        </option>
+                      );
+                    })}
                 </select>
               </td>
               <td className="admin-tenant-pref-crud-table__actions">

@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 
 import type { SubscriptionPlan } from "@/lib/subscription-plan";
+import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 import type {
   TenantPlanWorkspaceOverrides,
@@ -58,6 +59,11 @@ export type Tenant = {
   workspaceLimits?: (Partial<TenantWorkspaceLimits> & { planOverrides?: TenantPlanWorkspaceOverrides }) | null;
   /** Branding (one-time) + optional flags (e.g. xchat_debug_enabled). */
   tenantPreferences?: TenantPreferences | null;
+  /**
+   * Optional default weights for new books (`tenant_portfolio`) when the portfolio row has no `scoringFactors`.
+   * Same shape as portfolio `scoringFactors`; validated in `scoring-factors.ts`.
+   */
+  defaultPortfolioScoringFactors?: PortfolioScoringFactor[] | null;
 };
 
 export type TenantRole = "tenant_admin" | "member";

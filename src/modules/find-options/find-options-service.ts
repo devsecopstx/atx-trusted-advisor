@@ -1,6 +1,7 @@
 import { loadAppUserDefaultBook, type AppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { getEnv } from "@/lib/env";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     ensurePortfolioWatchlistForUser,
     getDefaultPortfolio,
@@ -128,7 +129,12 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
     tenantId: session.tenantId
   });
   const workspaceAccount = resolveWorkspaceAccount(accounts, book);
-  const { scoringFactors } = scoringFactorsPayloadForAdminApi(portfolio.scoringFactors);
+  const scoringTenantId = portfolio.tenantId?.toHexString() ?? session.tenantId;
+  const tenantRow = await getTenantByHexIdCached(scoringTenantId);
+  const { scoringFactors } = scoringFactorsPayloadForAdminApi(
+    portfolio.scoringFactors,
+    tenantRow?.defaultPortfolioScoringFactors
+  );
   const accountRows = buildFindOptionsAccountRows(accounts, assumeAllApproved);
   const workspaceRow = workspaceAccount?._id
     ? accountRows.find((r) => r.id === workspaceAccount._id!.toHexString())

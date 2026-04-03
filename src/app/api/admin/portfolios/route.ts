@@ -4,13 +4,17 @@ import { z } from "zod";
 import { isAdminPortfoliosListAllEnabled, resolveAdminPortfolioListScope } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import {
     adminCreatePortfolio,
     adminListPortfoliosWithStats,
     countPortfoliosForUserInTenant
 } from "@/modules/core-admin/repository";
-import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
+import {
+  parsePortfolioScoringFactorsInput,
+  scoringFactorsPayloadForAdminApi
+} from "@/modules/core-admin/scoring-factors";
 import type { Portfolio } from "@/modules/core-admin/types";
 import {
     formatCoreUserDisplayName,
@@ -18,7 +22,7 @@ import {
     normalizeMongoUserIdHex
 } from "@/modules/identity/repository";
 
-function serializePortfolio(p: Portfolio) {
+function serializePortfolio(p: Portfolio, tenantDefault?: unknown) {
   const userId = normalizeMongoUserIdHex(p.userId) ?? "";
   return {
     _id: p._id!.toHexString(),
@@ -27,7 +31,7 @@ function serializePortfolio(p: Portfolio) {
     name: p.name,
     isDefault: p.isDefault,
     tenantPortfolioOrgKey: p.tenantPortfolioOrgKey,
-    ...scoringFactorsPayloadForAdminApi(p.scoringFactors),
+    ...scoringFactorsPayloadForAdminApi(p.scoringFactors, tenantDefault),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString()
   };
@@ -55,11 +59,26 @@ export async function GET(request: Request) {
   const rows = await adminListPortfoliosWithStats({ limit: 200, listScope });
   const userIds = [...new Set(rows.map((r) => normalizeMongoUserIdHex(r.userId)).filter((x): x is string => Boolean(x)))];
   const userMap = await getCoreUsersByIds(userIds);
+  const tenantHexIds = [
+    ...new Set(
+      rows
+        .map((r) => r.tenantId?.toHexString() ?? session.tenantId)
+        .filter((id): id is string => Boolean(id && id.length > 0))
+    )
+  ];
+  const tenantByHex = new Map<string, Awaited<ReturnType<typeof getTenantByHexIdCached>>>();
+  await Promise.all(
+    tenantHexIds.map(async (id) => {
+      tenantByHex.set(id, await getTenantByHexIdCached(id));
+    })
+  );
   const data = rows.map((r) => {
     const uidHex = normalizeMongoUserIdHex(r.userId);
     const u = uidHex ? userMap.get(uidHex) : undefined;
+    const tid = r.tenantId?.toHexString() ?? session.tenantId;
+    const tenantRow = tid ? tenantByHex.get(tid) : undefined;
     return {
-      ...serializePortfolio(r),
+      ...serializePortfolio(r, tenantRow?.defaultPortfolioScoringFactors),
       accountCount: r.accountCount,
       totalCashBalance: r.totalCashBalance,
       userDisplayName: formatCoreUserDisplayName(u),
@@ -105,11 +124,17 @@ export async function POST(request: Request) {
     }
   }
 
+  const tenantRow = await getTenantByHexIdCached(tenantId);
+  const tenantSf = tenantRow?.defaultPortfolioScoringFactors
+    ? parsePortfolioScoringFactorsInput(tenantRow.defaultPortfolioScoringFactors)
+    : null;
+
   const created = await adminCreatePortfolio({
     userId: parsed.data.userId,
     tenantId,
     name: parsed.data.name,
-    isDefault: parsed.data.isDefault
+    isDefault: parsed.data.isDefault,
+    initialScoringFactors: tenantSf ?? undefined
   });
   if (!created?._id) {
     const limits = await getEffectiveWorkspaceLimitsForUser({
@@ -132,5 +157,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not create portfolio (duplicate name or invalid user?)" }, { status: 400 });
   }
 
-  return NextResponse.json({ data: serializePortfolio(created) }, { status: 201 });
+  return NextResponse.json(
+    { data: serializePortfolio(created, tenantRow?.defaultPortfolioScoringFactors) },
+    { status: 201 }
+  );
 }

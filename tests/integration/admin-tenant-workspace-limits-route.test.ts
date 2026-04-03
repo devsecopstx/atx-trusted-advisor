@@ -6,10 +6,6 @@ const authMocks = vi.hoisted(() => ({
   requireGlobalAdminSession: vi.fn()
 }));
 
-const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
-}));
-
 const identityRepoMocks = vi.hoisted(() => ({
   getTenantByHexId: vi.fn(),
   updateTenantWorkspaceLimits: vi.fn(),
@@ -20,10 +16,6 @@ const identityRepoMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api-auth", () => ({
   requireGlobalAdminSession: authMocks.requireGlobalAdminSession,
   requireAdminSession: authMocks.requireGlobalAdminSession
-}));
-
-vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
 }));
 
 vi.mock("@/modules/identity/repository", async (importOriginal) => {
@@ -68,7 +60,6 @@ function baseTenant(
 describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
     authMocks.requireGlobalAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: TENANT_HEX,

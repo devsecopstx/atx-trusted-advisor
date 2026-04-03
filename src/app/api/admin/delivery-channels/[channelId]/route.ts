@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminDeliveryChannelsRequestToBackend } from "@/lib/backend-bff";
 import { isSlackIncomingWebhookUrl } from "@/lib/post-slack-incoming-webhook";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
-  deleteAdminDeliveryChannelById,
-  getAdminDeliveryChannelById,
-  updateAdminDeliveryChannelById
+    deleteAdminDeliveryChannelById,
+    getAdminDeliveryChannelById,
+    updateAdminDeliveryChannelById
 } from "@/modules/core-admin/repository";
 import type { AdminDeliveryChannel } from "@/modules/core-admin/types";
 
@@ -99,7 +99,7 @@ const patchSchema = z
   );
 
 export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminDeliveryChannelsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -119,7 +119,7 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminDeliveryChannelsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -205,7 +205,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminDeliveryChannelsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

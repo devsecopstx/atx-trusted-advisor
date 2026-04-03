@@ -3752,6 +3752,8 @@ export async function adminCreatePortfolio(input: {
   name: string;
   isDefault?: boolean;
   portfolioKind?: Portfolio["portfolioKind"];
+  /** When set, persisted on the new portfolio row (tenant default from admin API). */
+  initialScoringFactors?: PortfolioScoringFactor[] | null;
 }): Promise<Portfolio | null> {
   await ensurePortfolioIndexes();
   const name = input.name.trim().slice(0, 200);
@@ -3784,6 +3786,12 @@ export async function adminCreatePortfolio(input: {
     );
   }
 
+  const initialSf =
+    input.initialScoringFactors &&
+    Array.isArray(input.initialScoringFactors) &&
+    input.initialScoringFactors.length > 0
+      ? input.initialScoringFactors
+      : undefined;
   const doc: Portfolio = {
     tenantId: tenantObjectId,
     userId: input.userId.trim(),
@@ -3792,6 +3800,7 @@ export async function adminCreatePortfolio(input: {
     tenantPortfolioOrgKey: getTenantPortfolioOrgKey(),
     createdAt: now,
     updatedAt: now,
+    ...(initialSf ? { scoringFactors: initialSf } : {}),
     ...(input.portfolioKind !== undefined && input.portfolioKind !== null
       ? { portfolioKind: input.portfolioKind }
       : {})

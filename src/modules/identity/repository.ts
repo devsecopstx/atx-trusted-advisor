@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 
 import { googleLinkedId, isGoogleLegacyXUserId } from "@/lib/google-oauth-identity";
 import { getDb } from "@/lib/mongodb";
+import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import { purgeEphemeralCoreUserScaffolding } from "@/modules/core-admin/repository";
 import {
     appendLoginAuditRecord,
@@ -966,6 +967,31 @@ export async function updateTenantWorkspaceLimits(
     return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
   }
   await db.collection<Tenant>(collections.tenants).updateOne({ _id: id }, { $set });
+  return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+}
+
+export async function updateTenantDefaultPortfolioScoringFactors(
+  tenantIdHex: string,
+  factors: PortfolioScoringFactor[] | null
+): Promise<Tenant | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const now = new Date();
+  if (factors === null) {
+    await db.collection<Tenant>(collections.tenants).updateOne(
+      { _id: id },
+      { $unset: { defaultPortfolioScoringFactors: "" }, $set: { updatedAt: now } }
+    );
+  } else {
+    await db.collection<Tenant>(collections.tenants).updateOne(
+      { _id: id },
+      { $set: { defaultPortfolioScoringFactors: factors, updatedAt: now } }
+    );
+  }
   return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
 }
 

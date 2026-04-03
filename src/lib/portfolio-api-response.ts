@@ -1,4 +1,5 @@
 import type { SessionUser } from "@/lib/auth";
+import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { listPortfolioAccounts } from "@/modules/core-admin/repository";
 import {
     scoringFactorsPayloadForAdminApi,
@@ -95,7 +96,12 @@ export async function buildPortfolioSummaryPayload(
   const userId =
     typeof portfolio.userId === "string" && portfolio.userId.length > 0 ? portfolio.userId : session.userId;
 
-  const { scoringFactors } = scoringFactorsPayloadForAdminApi(portfolio.scoringFactors);
+  const tid = portfolio.tenantId?.toHexString() ?? session.tenantId;
+  const tenantRow = tid ? await getTenantByHexIdCached(tid) : null;
+  const { scoringFactors } = scoringFactorsPayloadForAdminApi(
+    portfolio.scoringFactors,
+    tenantRow?.defaultPortfolioScoringFactors
+  );
 
   return {
     _id: portfolioId,

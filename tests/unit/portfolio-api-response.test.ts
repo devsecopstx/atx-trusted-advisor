@@ -4,6 +4,10 @@ const repoMocks = vi.hoisted(() => ({
   listPortfolioAccounts: vi.fn()
 }));
 
+vi.mock("@/lib/server-request-cache", () => ({
+  getTenantByHexIdCached: vi.fn().mockResolvedValue(null)
+}));
+
 vi.mock("@/modules/core-admin/repository", async () => {
   const actual = await vi.importActual<typeof import("@/modules/core-admin/repository")>(
     "@/modules/core-admin/repository"

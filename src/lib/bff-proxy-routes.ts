@@ -4,7 +4,8 @@
  * `atx-docs/sre-ops/atxfinance-backend-http-api.md`.
  *
  * PR 4 shipped: deploy-note-configs + import/broker on Kotlin; proxy when ATXFINANCE_BACKEND_ORIGIN set.
- * App-user portfolio CRUD/watchlist/positions/recommendations/strategy-jobs + `/api/personas` CRUD proxy when origin set.
+ * App-user portfolio CRUD/watchlist/positions/recommendations/strategy-jobs. `/api/personas*` proxies to Spring only when
+ * `ATXFINANCE_BACKEND_PROXY_PERSONAS=true` (see `proxyPersonasRequestToBackend`); default stays on Next Mongo.
  * Admin **portfolio** subtree (accounts, watchlist, positions, recommendations, alerts, delivery-channels) proxies when origin set.
  * Portfolio-console uses POST /api/admin/import/broker for CSV imports. Scheduler/tasks on Spring when origin set — see atx-docs/sre-ops/api-consolidation-spring-backend.md.
  *

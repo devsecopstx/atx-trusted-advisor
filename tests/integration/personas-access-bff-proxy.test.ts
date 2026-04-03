@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>(),
+  proxyPersonasRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 const authMocks = vi.hoisted(() => ({
   requireSessionUser: vi.fn(),
@@ -18,7 +19,8 @@ const auditMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyRequestToBackend: bffMocks.proxyRequestToBackend,
+  proxyPersonasRequestToBackend: bffMocks.proxyPersonasRequestToBackend
 }));
 vi.mock("@/lib/auth", () => ({
   requireSessionUser: authMocks.requireSessionUser
@@ -47,6 +49,7 @@ describe("personas + access-requests BFF proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyPersonasRequestToBackend.mockResolvedValue(null);
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -105,13 +108,13 @@ describe("personas + access-requests BFF proxy", () => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPersonasRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request("http://test/api/personas");
     const response = await getPersonas(req);
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPersonasRequestToBackend).toHaveBeenCalledWith(req);
     expect(repositoryMocks.listPersonas).not.toHaveBeenCalled();
   });
 
@@ -120,7 +123,7 @@ describe("personas + access-requests BFF proxy", () => {
     const response = await getPersonas(req);
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPersonasRequestToBackend).toHaveBeenCalledWith(req);
     expect(repositoryMocks.listPersonas).toHaveBeenCalled();
   });
 
@@ -129,7 +132,7 @@ describe("personas + access-requests BFF proxy", () => {
       status: 201,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPersonasRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request("http://test/api/personas", {
       method: "POST",
@@ -147,7 +150,7 @@ describe("personas + access-requests BFF proxy", () => {
     const response = await postPersona(req);
 
     expect(response.status).toBe(201);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPersonasRequestToBackend).toHaveBeenCalledWith(req);
     expect(repositoryMocks.createPersona).not.toHaveBeenCalled();
   });
 
@@ -168,7 +171,7 @@ describe("personas + access-requests BFF proxy", () => {
     const response = await postPersona(req);
 
     expect(response.status).toBe(201);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPersonasRequestToBackend).toHaveBeenCalledWith(req);
     expect(repositoryMocks.createPersona).toHaveBeenCalled();
   });
 });

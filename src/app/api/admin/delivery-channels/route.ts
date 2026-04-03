@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminDeliveryChannelsRequestToBackend } from "@/lib/backend-bff";
 import { isSlackIncomingWebhookUrl } from "@/lib/post-slack-incoming-webhook";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
@@ -48,7 +48,7 @@ const createSchema = z
   });
 
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminDeliveryChannelsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminDeliveryChannelsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

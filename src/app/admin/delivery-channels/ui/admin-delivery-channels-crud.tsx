@@ -1,11 +1,74 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AddIcon, DeleteIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
 type DeliveryTarget = "in_app" | "slack" | "email";
+
+type DeliveryChannelTestResponse = {
+  ok?: boolean;
+  deliveryTarget?: DeliveryTarget;
+  message?: string;
+  detail?: string;
+  inAppPreview?: boolean;
+};
+
+type InAppPreviewState = {
+  channelName: string;
+  message: string;
+};
+
+function tryShowDesktopNotification(title: string, body: string): void {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return;
+  }
+  const show = () => {
+    try {
+      new Notification(title, { body });
+    } catch {
+      /* ignore */
+    }
+  };
+  if (Notification.permission === "granted") {
+    show();
+    return;
+  }
+  if (Notification.permission === "default") {
+    void Notification.requestPermission().then((p) => {
+      if (p === "granted") {
+        show();
+      }
+    });
+  }
+}
+
+function targetLabel(t: DeliveryTarget): string {
+  if (t === "in_app") {
+    return "In-app";
+  }
+  if (t === "email") {
+    return "Email";
+  }
+  return "Slack";
+}
+
+function formatTestStatus(payload: DeliveryChannelTestResponse): string {
+  const t = payload.deliveryTarget;
+  const detail = payload.detail?.trim();
+  if (t) {
+    const prefix = `[${targetLabel(t)}]`;
+    if (detail) {
+      return `${prefix} ${detail}`;
+    }
+    if (payload.message) {
+      return `${prefix} Test payload: ${payload.message}`;
+    }
+    return `${prefix} OK`;
+  }
+  return detail ?? payload.message ?? "Test completed";
+}
 
 type ChannelRow = {
   _id: string;
@@ -28,6 +91,8 @@ export function AdminDeliveryChannelsCrud() {
   const [newSlackUrl, setNewSlackUrl] = useState("");
   const [newEmailTo, setNewEmailTo] = useState("");
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [inAppPreview, setInAppPreview] = useState<InAppPreviewState | null>(null);
+  const previewDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -53,6 +118,14 @@ export function AdminDeliveryChannelsCrud() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    return () => {
+      if (previewDismissRef.current) {
+        clearTimeout(previewDismissRef.current);
+      }
+    };
+  }, []);
 
   async function createChannel() {
     const name = newName.trim();
@@ -131,17 +204,34 @@ export function AdminDeliveryChannelsCrud() {
     }
   }
 
+  function dismissInAppPreview() {
+    if (previewDismissRef.current) {
+      clearTimeout(previewDismissRef.current);
+      previewDismissRef.current = null;
+    }
+    setInAppPreview(null);
+  }
+
   async function sendTest(row: ChannelRow) {
     setTestingId(row._id);
     setStatus("Sending test…");
+    dismissInAppPreview();
     try {
-      const payload = await parseJson<{ ok?: boolean; detail?: string; error?: string }>(
+      const payload = await parseJson<DeliveryChannelTestResponse>(
         await fetch(`${BASE}/${encodeURIComponent(row._id)}/test`, { method: "POST" })
       );
-      if (payload.error) {
-        setStatus(payload.error);
-      } else {
-        setStatus(payload.detail ?? "Test sent: hello from atx");
+      setStatus(formatTestStatus(payload));
+      const msg = payload.message?.trim() || "hello from atx";
+      if (payload.deliveryTarget === "in_app") {
+        setInAppPreview({ channelName: row.name, message: msg });
+        tryShowDesktopNotification("aTx — in-app delivery test", msg);
+        if (previewDismissRef.current) {
+          clearTimeout(previewDismissRef.current);
+        }
+        previewDismissRef.current = setTimeout(() => {
+          previewDismissRef.current = null;
+          setInAppPreview(null);
+        }, 12_000);
       }
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Test failed");
@@ -227,7 +317,9 @@ export function AdminDeliveryChannelsCrud() {
       <h3>Channels</h3>
       <p className="status-text" style={{ marginBottom: "0.5rem" }}>
         Edit a row and click <strong>Save</strong>, or use <strong>Send test</strong> for{" "}
-        <code className="font-mono text-xs">hello from atx</code>.
+        <code className="font-mono text-xs">hello from atx | tenant=… | at=…</code> (tenant id and timestamp are filled in).{" "}
+        <strong>In-app</strong> shows a sample notification in the browser; <strong>Email</strong> and{" "}
+        <strong>Slack</strong> send a real test if configured.
       </p>
       <div className="crud-table-wrap">
         <table className="crud-table">
@@ -256,7 +348,53 @@ export function AdminDeliveryChannelsCrud() {
         </table>
       </div>
       {rows.length === 0 ? <p className="status-text">No delivery channels yet.</p> : null}
+
+      {inAppPreview ? (
+        <InAppPreviewPopout
+          channelName={inAppPreview.channelName}
+          message={inAppPreview.message}
+          onDismiss={dismissInAppPreview}
+        />
+      ) : null}
     </article>
+  );
+}
+
+function InAppPreviewPopout({
+  channelName,
+  message,
+  onDismiss
+}: {
+  channelName: string;
+  message: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      className="pointer-events-auto fixed bottom-6 right-6 z-[200] flex max-w-sm flex-col gap-2 rounded-xl border border-slate-600/80 bg-slate-950/95 p-4 text-left shadow-2xl backdrop-blur-sm"
+      role="status"
+      aria-live="polite"
+      aria-label="In-app delivery preview"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">In-app preview</p>
+          <p className="mt-1 text-sm font-medium text-slate-100">{channelName}</p>
+        </div>
+        <button
+          type="button"
+          className="shrink-0 rounded-md px-2 py-1 text-xs text-slate-300 hover:bg-slate-800 hover:text-white"
+          onClick={onDismiss}
+        >
+          Dismiss
+        </button>
+      </div>
+      <p className="text-sm text-slate-200">{message}</p>
+      <p className="text-xs text-slate-500">
+        Sample of how an in-app alert could look. Allow notifications in the browser for an optional OS-level test as
+        well.
+      </p>
+    </div>
   );
 }
 

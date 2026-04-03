@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
 import { listTaskRuns } from "@/modules/core-admin/repository";
 
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminScheduledTasksRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

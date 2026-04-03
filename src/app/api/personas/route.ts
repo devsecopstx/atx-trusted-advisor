@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyPersonasRequestToBackend } from "@/lib/backend-bff";
 import { listPersonasByStatusCached, listPersonasCached } from "@/lib/server-request-cache";
 import {
     createAuditEvent,
@@ -18,7 +18,7 @@ import { PersonaNameConflictError, createPersona } from "@/modules/xchat/reposit
 import { normalizePersonaXapiConfig, personaStatusValues, type PersonaConfig, type PersonaStatus } from "@/modules/xchat/types";
 
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPersonasRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPersonasRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
