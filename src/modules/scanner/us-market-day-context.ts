@@ -108,8 +108,8 @@ function goodFridayCivilKey(year: number): string {
  * Fixed-date holiday with NYSE-style weekend observation (Sat → prior Fri, Sun → following Mon).
  */
 function observedFixedHolidayCivilKey(month1: number, day: number, year: number): string {
-  let wd = gregorianWeekdaySun0(year, month1, day);
-  let t = new Date(Date.UTC(year, month1 - 1, day, 12, 0, 0));
+  const wd = gregorianWeekdaySun0(year, month1, day);
+  const t = new Date(Date.UTC(year, month1 - 1, day, 12, 0, 0));
   if (wd === 6) {
     t.setUTCDate(t.getUTCDate() - 1);
   } else if (wd === 0) {

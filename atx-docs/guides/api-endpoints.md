@@ -94,6 +94,7 @@ Admin portfolio routes include:
 - `GET|PATCH /api/admin/portfolios/:portfolioId/watchlist`
 - `POST /api/admin/import/broker`
 - `POST /api/import/broker` — app-user Merrill/Fidelity **holdings** CSV (session); dry-run preview or apply via staged `app_broker_import_jobs` + immediate `sync-broker` task (`/import-activity` UI)
+- `POST /api/import/broker/clean` — app-user **destructive** reset: deletes all positions for the portfolio, `app_broker_import_jobs` rows for that user/book, and portfolio-bound `sync-broker` scheduled tasks (session + portfolio must belong to user)
 
 ## xStrategyBuilder / strategy options
 

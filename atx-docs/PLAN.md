@@ -18,13 +18,14 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 | **701** | **xChat — user file attachments** | Allow app_user to **attach** a file from the composer; **persist in Mongo** (metadata + storage ref / GridFS or object store per existing patterns), cap size/types; thread attachment to `xchat_logs` (or successor). **Later:** treat as **attachments** under the per-user **xChat history** handoff — align with [Phase: `user_history_agent`](#phase-xchat-chat_history-xai-collection-user_history_agent) (sync path + retrieval scope). |
 | **702** | **xChat — paste screenshots (clipboard)** | Support **paste from desktop** (clipboard `image/*`) into the chat composer; same persistence + safety pipeline as **701** (virus scan policy TBD, max dimensions/bytes, strip EXIF if required). |
 | **703** | **xChat — voice input (short prompts)** | **Voice capture** for brief utterances (e.g. *“add NVDA to my watchlist”*): browser **Web Speech API** and/or STT provider; **intent routing** into existing NL / tool paths (`watchlist` mutations, etc.) with explicit **confirm-before-mutate** for destructive or multi-symbol actions. |
-| **710** | **Portfolios — Import activities (app user)** | **Shipped** — `/import-activity`, `POST /api/import/broker`; see [§710](#710-app-user-broker-activity-import). |
 
 <a id="710-app-user-broker-activity-import"></a>
 
 ### 710 — App-user broker activity import (shipped)
 
-**Shipped (app ≥2.10.14):** Signed-in app users import Merrill/Fidelity **holdings** CSV without the admin Hub.
+**Shipped (app ≥2.10.14):** Signed-in app users import Merrill/Fidelity **holdings** CSV without the admin Hub. **Not on the open backlog table** above — this section is the canonical shipped summary.
+
+**Tests (app ≥2.10.15):** Vitest **`tests/integration/app-import-broker-route.test.ts`** — dry-run + auth + portfolio ownership; **apply** path (job + `executeScheduledTask`) still covered by **`tests/unit/app-broker-import-job.test.ts`** and manual smoke — optional future integration for full apply if regressions appear.
 
 - **Entry:** **`/portfolios`** → **Import activities** → **`/import-activity`**.
 - **UI:** Portfolio picker, account **ext ref** table, broker select, file + textarea CSV, **Preview (dry run)** then **Run import now** (import disabled until preview succeeds).
@@ -111,6 +112,10 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 - Fail only on terminal non-success; always print Build id + log URL.
 - Post-deploy: staging custom domain + Cloud Run `status.url` must match app version (catch routing/cache drift).
 - Fallback: `scripts/ops/deploy-cloud-run-from-env.sh`; prefer immutable image promotion when skipping rebuild.
+
+### Test / doc follow-ups (conscious)
+
+- **`POST /api/import/broker/clean`:** Documented in **`api-endpoints.md`** and [app-user import](./design-system/portfolio/app-user-import-activity.md); no dedicated route integration test yet (destructive — mock **`deleteAllPositionsForPortfolio`** + job/task deletes if added).
 
 ### BFF / consolidation (intentionally Next-only for now)
 
