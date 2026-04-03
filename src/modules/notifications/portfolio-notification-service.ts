@@ -1,3 +1,4 @@
+import { getDeskSmtpConfig, sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
 import { postSlackIncomingWebhook } from "@/lib/post-slack-incoming-webhook";
 import { adminListPortfolioDeliveryChannels } from "@/modules/core-admin/repository";
 
@@ -9,8 +10,8 @@ export type DeskNotificationEvent = {
 
 export type PortfolioDeskDispatchResult = {
   slack: { targets: number; postsOk: number };
-  /** Enabled email channels — delivery deferred until transactional email provider is wired. */
-  email: { targets: number; skipped: number };
+  /** Enabled `email` channels: sent when SMTP env is set; skipped when SMTP unset; failed on SMTP errors. */
+  email: { targets: number; sent: number; skipped: number; failed: number };
   sms: { targets: number; skipped: number };
   push: { targets: number; skipped: number };
 };
@@ -62,7 +63,7 @@ async function postSlackIncomingWebhookWithRetry(
 
 /**
  * Fan-out desk events to portfolio delivery channels: Slack webhooks (live + retries),
- * plus reserved paths for email / SMS / push (skipped until providers are configured).
+ * SMTP email when `SMTP_*` + `DESK_EMAIL_FROM` are set, plus SMS / push (still skipped until wired).
  */
 export async function dispatchPortfolioDeskEvents(
   portfolioIdHex: string,
@@ -70,7 +71,7 @@ export async function dispatchPortfolioDeskEvents(
 ): Promise<PortfolioDeskDispatchResult> {
   const empty: PortfolioDeskDispatchResult = {
     slack: { targets: 0, postsOk: 0 },
-    email: { targets: 0, skipped: 0 },
+    email: { targets: 0, sent: 0, skipped: 0, failed: 0 },
     sms: { targets: 0, skipped: 0 },
     push: { targets: 0, skipped: 0 }
   };
@@ -80,10 +81,13 @@ export async function dispatchPortfolioDeskEvents(
 
   const channels = await adminListPortfolioDeliveryChannels(portfolioIdHex);
   const text = buildDeskEventText(events);
+  const smtpReady = getDeskSmtpConfig() !== null;
 
   let slackTargets = 0;
   let postsOk = 0;
   let emailTargets = 0;
+  let emailSent = 0;
+  let emailFailed = 0;
   let smsTargets = 0;
   let pushTargets = 0;
 
@@ -104,6 +108,20 @@ export async function dispatchPortfolioDeskEvents(
       }
       case "email": {
         emailTargets += 1;
+        if (!smtpReady) {
+          break;
+        }
+        const to = ch.destination.trim();
+        const ok = await sendDeskPlainEmailWithRetry(
+          to,
+          "aTx Finance — desk alerts",
+          text.replace(/\*/g, "")
+        );
+        if (ok) {
+          emailSent += 1;
+        } else {
+          emailFailed += 1;
+        }
         break;
       }
       case "sms": {
@@ -119,7 +137,12 @@ export async function dispatchPortfolioDeskEvents(
 
   return {
     slack: { targets: slackTargets, postsOk },
-    email: { targets: emailTargets, skipped: emailTargets },
+    email: {
+      targets: emailTargets,
+      sent: emailSent,
+      skipped: smtpReady ? 0 : emailTargets,
+      failed: emailFailed
+    },
     sms: { targets: smsTargets, skipped: smsTargets },
     push: { targets: pushTargets, skipped: pushTargets }
   };

@@ -27,6 +27,12 @@ Include optional keys when they exist in GCP: **`GOOGLE_CLIENT_ID`**, **`GOOGLE_
 npm run ops:secrets:diff:prod:optional
 ```
 
+Portfolio desk SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `DESK_EMAIL_FROM`) when those secrets exist in GCP:
+
+```bash
+npm run ops:secrets:diff:prod:desk-smtp
+```
+
 ## Export GCP latest to a file (SENSITIVE)
 
 Writes `.env.prod.gcp-export` (gitignored via `.env.*`). **Never commit.**
@@ -44,6 +50,15 @@ bash scripts/ops/export-gcp-runtime-secrets.sh \
   --project fintech-advisor-prod \
   --output .env.prod.gcp-export \
   --include-optional
+```
+
+Add desk SMTP secrets to the export when present:
+
+```bash
+bash scripts/ops/export-gcp-runtime-secrets.sh \
+  --project fintech-advisor-prod \
+  --output .env.prod.gcp-export \
+  --include-desk-smtp
 ```
 
 ## Updating xAI keys in GCP

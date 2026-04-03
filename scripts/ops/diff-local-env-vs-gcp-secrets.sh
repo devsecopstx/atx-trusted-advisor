@@ -14,6 +14,7 @@ source "${SCRIPT_DIR}/gcp-runtime-secrets.inc.sh"
 PROJECT=""
 ENV_FILE=""
 INCLUDE_OPTIONAL="false"
+INCLUDE_DESK_SMTP="false"
 
 usage() {
   cat <<'EOF'
@@ -21,6 +22,8 @@ Usage:
   bash scripts/ops/diff-local-env-vs-gcp-secrets.sh --project <gcp-project-id> --env-file <path>
 
   --include-optional   Also compare optional keys (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+                       when each secret exists in GCP.
+  --include-desk-smtp  Also compare SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM
                        when each secret exists in GCP.
 
 Compares keys in GCP_RUNTIME_SECRETS_REQUIRED to vars set in the env file (after sourcing).
@@ -40,6 +43,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --include-optional)
       INCLUDE_OPTIONAL="true"
+      shift
+      ;;
+    --include-desk-smtp)
+      INCLUDE_DESK_SMTP="true"
       shift
       ;;
     -h|--help)
@@ -140,6 +147,16 @@ if [[ "$INCLUDE_OPTIONAL" == "true" ]]; then
       compare_one "$secret"
     else
       echo "${secret}  GCP_OPTIONAL_ABSENT  (skip)"
+    fi
+  done
+fi
+
+if [[ "$INCLUDE_DESK_SMTP" == "true" ]]; then
+  for secret in "${GCP_RUNTIME_SECRETS_DESK_SMTP[@]}"; do
+    if gcloud secrets describe "$secret" --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+      compare_one "$secret"
+    else
+      echo "${secret}  GCP_DESK_SMTP_ABSENT  (skip)"
     fi
   done
 fi

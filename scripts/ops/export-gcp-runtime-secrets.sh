@@ -16,14 +16,16 @@ source "${SCRIPT_DIR}/gcp-runtime-secrets.inc.sh"
 PROJECT=""
 OUTPUT=""
 INCLUDE_OPTIONAL="false"
+INCLUDE_DESK_SMTP="false"
 
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/ops/export-gcp-runtime-secrets.sh --project <gcp-project-id> [--output <file>] [--include-optional]
+  bash scripts/ops/export-gcp-runtime-secrets.sh --project <gcp-project-id> [--output <file>] [--include-optional] [--include-desk-smtp]
 
   --output <file>   Write KEY=value lines (default: stdout). File is sensitive — add to .gitignore.
   --include-optional  Also export GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET when present in the project.
+  --include-desk-smtp   Also export SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM when present.
 
 Requires: gcloud auth with secretmanager.versions.access on the target project.
 EOF
@@ -41,6 +43,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --include-optional)
       INCLUDE_OPTIONAL="true"
+      shift
+      ;;
+    --include-desk-smtp)
+      INCLUDE_DESK_SMTP="true"
       shift
       ;;
     -h|--help)
@@ -108,6 +114,20 @@ write_block() {
 
   if [[ "$INCLUDE_OPTIONAL" == "true" ]]; then
     for secret in "${GCP_RUNTIME_SECRETS_OPTIONAL[@]}"; do
+      if ! gcloud secrets describe "$secret" --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
+        continue
+      fi
+      val="$(gcloud secrets versions access latest --secret="$secret" --project="$PROJECT" 2>/dev/null)" || continue
+      if [[ "$val" == *$'\n'* ]]; then
+        echo "export-gcp-runtime-secrets: warning: ${secret} contains newlines; skipping" >&2
+        continue
+      fi
+      emit "${secret}=${val}"
+    done
+  fi
+
+  if [[ "$INCLUDE_DESK_SMTP" == "true" ]]; then
+    for secret in "${GCP_RUNTIME_SECRETS_DESK_SMTP[@]}"; do
       if ! gcloud secrets describe "$secret" --project="$PROJECT" --format='value(name)' >/dev/null 2>&1; then
         continue
       fi

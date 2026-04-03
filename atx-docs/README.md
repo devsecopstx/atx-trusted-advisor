@@ -42,7 +42,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 | Doc | Purpose |
 |-----|---------|
-| [PLAN.md § Stripe & billing](./PLAN.md#stripe-billing-from-frontend-plan) | **Stripe** / billing still open; shipped UI noted by reference only (no separate `frontend-plan.md`) |
+| [PLAN.md — Stripe & billing](./PLAN.md#stripe-billing-from-frontend-plan) | **Stripe** / billing still open; shipped billing UI lives in app releases; this section tracks portal/webhook/gating follow-ons |
 
 ---
 

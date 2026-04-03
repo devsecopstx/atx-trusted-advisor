@@ -19,7 +19,13 @@ const optionalKeys = [
   "X_OAUTH_CALLBACK_URL",
   "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
   "STRIPE_PUBLIC_KEY",
-  "STRIPE_SECRET_KEY"
+  "STRIPE_SECRET_KEY",
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "SMTP_USER",
+  "SMTP_PASS",
+  "DESK_EMAIL_FROM",
+  "SMTP_SECURE"
 ];
 
 const args = new Set(process.argv.slice(2));

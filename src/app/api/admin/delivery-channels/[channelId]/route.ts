@@ -6,9 +6,9 @@ import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { isSlackIncomingWebhookUrl } from "@/lib/post-slack-incoming-webhook";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
-    deleteAdminDeliveryChannelById,
-    getAdminDeliveryChannelById,
-    updateAdminDeliveryChannelById
+  deleteAdminDeliveryChannelById,
+  getAdminDeliveryChannelById,
+  updateAdminDeliveryChannelById
 } from "@/modules/core-admin/repository";
 import type { AdminDeliveryChannel } from "@/modules/core-admin/types";
 
@@ -18,36 +18,83 @@ type RouteContext = {
   params: Promise<{ channelId: string }>;
 };
 
+type MergedAdminChannel = {
+  name: string;
+  deliveryTarget: "in_app" | "slack" | "email";
+  slackWebhookUrl?: string;
+  emailTo?: string;
+};
+
 function mergedChannel(
   existing: AdminDeliveryChannel,
   patch: {
     name?: string;
-    deliveryTarget?: "in_app" | "slack";
+    deliveryTarget?: "in_app" | "slack" | "email";
     slackWebhookUrl?: string;
+    emailTo?: string;
   }
-): { name: string; deliveryTarget: "in_app" | "slack"; slackWebhookUrl?: string } {
+): MergedAdminChannel {
   const name = patch.name !== undefined ? patch.name.trim() : existing.name;
   const deliveryTarget = patch.deliveryTarget ?? existing.deliveryTarget;
+
   if (deliveryTarget === "in_app") {
-    return { name, deliveryTarget, slackWebhookUrl: undefined };
+    return { name, deliveryTarget };
   }
-  let slackWebhookUrl: string | undefined;
-  if (patch.slackWebhookUrl !== undefined) {
-    slackWebhookUrl = patch.slackWebhookUrl.trim() || undefined;
+
+  if (deliveryTarget === "slack") {
+    let slackWebhookUrl: string | undefined;
+    if (patch.slackWebhookUrl !== undefined) {
+      slackWebhookUrl = patch.slackWebhookUrl.trim() || undefined;
+    } else {
+      slackWebhookUrl = existing.slackWebhookUrl?.trim();
+    }
+    return { name, deliveryTarget, slackWebhookUrl };
+  }
+
+  let emailTo: string | undefined;
+  if (patch.emailTo !== undefined) {
+    emailTo = patch.emailTo.trim() || undefined;
   } else {
-    slackWebhookUrl = existing.slackWebhookUrl?.trim();
+    emailTo = existing.emailTo?.trim();
   }
-  return { name, deliveryTarget, slackWebhookUrl };
+  return { name, deliveryTarget, emailTo };
+}
+
+function buildRepoPatch(
+  existing: AdminDeliveryChannel,
+  parsed: z.infer<typeof patchSchema>
+): Partial<Pick<AdminDeliveryChannel, "name" | "deliveryTarget" | "slackWebhookUrl" | "emailTo">> {
+  const out: Partial<Pick<AdminDeliveryChannel, "name" | "deliveryTarget" | "slackWebhookUrl" | "emailTo">> =
+    {};
+  if (parsed.name !== undefined) {
+    out.name = parsed.name.trim();
+  }
+  if (parsed.deliveryTarget !== undefined) {
+    out.deliveryTarget = parsed.deliveryTarget;
+  }
+  const effectiveTarget = parsed.deliveryTarget ?? existing.deliveryTarget;
+  if (parsed.slackWebhookUrl !== undefined && effectiveTarget === "slack") {
+    out.slackWebhookUrl = parsed.slackWebhookUrl;
+  }
+  if (parsed.emailTo !== undefined && effectiveTarget === "email") {
+    out.emailTo = parsed.emailTo;
+  }
+  return out;
 }
 
 const patchSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
-    deliveryTarget: z.enum(["in_app", "slack"]).optional(),
-    slackWebhookUrl: z.string().optional()
+    deliveryTarget: z.enum(["in_app", "slack", "email"]).optional(),
+    slackWebhookUrl: z.string().optional(),
+    emailTo: z.string().optional()
   })
   .refine(
-    (v) => v.name !== undefined || v.deliveryTarget !== undefined || v.slackWebhookUrl !== undefined,
+    (v) =>
+      v.name !== undefined ||
+      v.deliveryTarget !== undefined ||
+      v.slackWebhookUrl !== undefined ||
+      v.emailTo !== undefined,
     { message: "Provide at least one field to update." }
   );
 
@@ -116,11 +163,20 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
   }
-
-  const patchForRepo = { ...parsed.data };
-  if (merged.deliveryTarget === "in_app") {
-    delete patchForRepo.slackWebhookUrl;
+  if (merged.deliveryTarget === "email") {
+    const em = merged.emailTo;
+    if (!em) {
+      return NextResponse.json(
+        { error: "emailTo is required when deliveryTarget is email" },
+        { status: 400 }
+      );
+    }
+    if (!z.string().email().safeParse(em).success) {
+      return NextResponse.json({ error: "emailTo must be a valid email address" }, { status: 400 });
+    }
   }
+
+  const patchForRepo = buildRepoPatch(existing, parsed.data);
 
   const updated = await updateAdminDeliveryChannelById({
     channelId,

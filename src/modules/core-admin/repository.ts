@@ -1114,6 +1114,7 @@ export async function createAdminDeliveryChannel(
     deliveryTarget: payload.deliveryTarget,
     slackWebhookUrl:
       payload.deliveryTarget === "slack" ? payload.slackWebhookUrl?.trim() : undefined,
+    emailTo: payload.deliveryTarget === "email" ? payload.emailTo?.trim() : undefined,
     createdAt: now,
     updatedAt: now
   };
@@ -1138,7 +1139,7 @@ export async function getAdminDeliveryChannelById(
 
 export async function updateAdminDeliveryChannelById(input: {
   channelId: string;
-  patch: Partial<Pick<AdminDeliveryChannel, "name" | "deliveryTarget" | "slackWebhookUrl">>;
+  patch: Partial<Pick<AdminDeliveryChannel, "name" | "deliveryTarget" | "slackWebhookUrl" | "emailTo">>;
   tenantId?: string;
 }): Promise<AdminDeliveryChannel | null> {
   if (!ObjectId.isValid(input.channelId)) {
@@ -1156,6 +1157,11 @@ export async function updateAdminDeliveryChannelById(input: {
     $set.deliveryTarget = p.deliveryTarget;
     if (p.deliveryTarget === "in_app") {
       $unset.slackWebhookUrl = "";
+      $unset.emailTo = "";
+    } else if (p.deliveryTarget === "slack") {
+      $unset.emailTo = "";
+    } else if (p.deliveryTarget === "email") {
+      $unset.slackWebhookUrl = "";
     }
   }
   if (p.slackWebhookUrl !== undefined) {
@@ -1164,6 +1170,14 @@ export async function updateAdminDeliveryChannelById(input: {
       $set.slackWebhookUrl = t;
     } else {
       $unset.slackWebhookUrl = "";
+    }
+  }
+  if (p.emailTo !== undefined) {
+    const t = p.emailTo?.trim();
+    if (t) {
+      $set.emailTo = t;
+    } else {
+      $unset.emailTo = "";
     }
   }
   const updateDoc: Record<string, unknown> = { $set };

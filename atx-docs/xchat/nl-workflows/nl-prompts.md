@@ -1,4 +1,4 @@
-> **Backlog summary:** [PLAN.md § NL and strategy preflight](../../PLAN.md#nl-and-strategy-preflight-backlog-themes). This document is the **deep spec** (examples, snippets, UX copy).
+> **Backlog summary:** [PLAN.md — NL and strategy preflight](../../PLAN.md#nl-and-strategy-preflight-backlog-themes). This document is the **deep spec** (examples, snippets, UX copy).
 
 # xchat-end-user-response formatting
 Best way to apply formatting for end user (production-ready, minimal code)

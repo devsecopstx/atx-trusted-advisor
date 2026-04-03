@@ -2,11 +2,19 @@ import { ObjectId } from "mongodb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const repoMocks = vi.hoisted(() => ({
-  adminListPortfolioDeliveryChannels: vi.fn(),
+  adminListPortfolioDeliveryChannels: vi.fn()
+}));
+
+const sendMailMock = vi.hoisted(() => vi.fn().mockResolvedValue({ messageId: "test-id" }));
+
+vi.mock("nodemailer", () => ({
+  default: {
+    createTransport: vi.fn(() => ({ sendMail: sendMailMock }))
+  }
 }));
 
 vi.mock("@/modules/core-admin/repository", () => ({
-  adminListPortfolioDeliveryChannels: repoMocks.adminListPortfolioDeliveryChannels,
+  adminListPortfolioDeliveryChannels: repoMocks.adminListPortfolioDeliveryChannels
 }));
 
 import {
@@ -17,6 +25,13 @@ import {
 describe("dispatchPortfolioDeskEventsToSlack", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sendMailMock.mockClear();
+    delete process.env.SMTP_HOST;
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_PASS;
+    delete process.env.DESK_EMAIL_FROM;
+    delete process.env.SMTP_PORT;
+    delete process.env.SMTP_SECURE;
   });
 
   afterEach(() => {
@@ -109,6 +124,33 @@ describe("dispatchPortfolioDeskEventsToSlack", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status: 200 }));
     const r = await dispatchPortfolioDeskEvents("507f1f77bcf86cd799439011", [{ title: "T" }]);
     expect(r.slack.postsOk).toBe(1);
-    expect(r.email).toEqual({ targets: 1, skipped: 1 });
+    expect(r.email).toEqual({ targets: 1, sent: 0, skipped: 1, failed: 0 });
+  });
+
+  it("sends email when SMTP env is configured", async () => {
+    process.env.SMTP_HOST = "mail.example.com";
+    process.env.SMTP_USER = "desk@example.com";
+    process.env.SMTP_PASS = "secret";
+    process.env.DESK_EMAIL_FROM = "desk@example.com";
+
+    const pid = new ObjectId();
+    repoMocks.adminListPortfolioDeliveryChannels.mockResolvedValueOnce([
+      {
+        kind: "email",
+        enabled: true,
+        destination: "client@example.com",
+        label: "e",
+        userId: "u",
+        portfolioId: pid,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+    const r = await dispatchPortfolioDeskEvents("507f1f77bcf86cd799439011", [{ title: "T" }]);
+    expect(r.email).toEqual({ targets: 1, sent: 1, skipped: 0, failed: 0 });
+    expect(sendMailMock).toHaveBeenCalledTimes(1);
+    const arg = sendMailMock.mock.calls[0]?.[0] as { to?: string; subject?: string };
+    expect(arg.to).toBe("client@example.com");
+    expect(arg.subject).toContain("desk alerts");
   });
 });

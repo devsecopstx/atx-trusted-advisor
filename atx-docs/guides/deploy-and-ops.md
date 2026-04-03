@@ -58,11 +58,28 @@ npm run ops:secrets:sync-google-oauth:prod
 # or: bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.prod
 ```
 
+To push **portfolio desk SMTP** credentials (ZenBusiness / hosted mailbox or any SMTP provider — separate from Stripe billing email):
+
+- Secret Manager names: `SMTP_HOST`, `SMTP_PORT` (e.g. `587`), `SMTP_USER`, `SMTP_PASS`, `DESK_EMAIL_FROM` (verified `From:` address, often same as `SMTP_USER`).
+- Per-recipient addresses live in admin **portfolio delivery channels** (`kind: email`), not in env.
+
+```bash
+npm run ops:secrets:sync-desk-smtp:staging
+npm run ops:secrets:sync-desk-smtp:prod
+# or: bash scripts/ops/sync-desk-smtp-secrets-from-env.sh .env.prod
+```
+
+After all five secrets exist, **Deploy Cloud Run** binds them automatically (same pattern as optional Google OAuth). Optional GitHub **variable** `SMTP_SECURE=true` when using SMTPS (e.g. port 465). Verify optionally: `npm run ops:secrets:verify:staging:with-desk-smtp` / `ops:secrets:verify:prod:with-desk-smtp` (adds `--with-desk-smtp` to the verify script). Compare local vs GCP: `npm run ops:secrets:diff:prod:desk-smtp`.
+
 **Staging** treats both Google secrets as required: `npm run ops:secrets:verify:staging` passes **`--with-google-oauth`**, and the **Deploy Cloud Run** workflow’s preflight for **`target=staging`** checks that both secrets exist. Production verify (`ops:secrets:verify:prod`) does **not** require them; production deploy still binds them when **both** exist in the project.
 
 **Optional (prod until Sign-in with Google is enabled):**
 
 - **`GOOGLE_CLIENT_ID`** / **`GOOGLE_CLIENT_SECRET`** — compared with `ops:secrets:diff:prod:optional`; not in default prod verify.
+
+**Optional (portfolio desk email):**
+
+- **`SMTP_HOST`**, **`SMTP_PORT`**, **`SMTP_USER`**, **`SMTP_PASS`**, **`DESK_EMAIL_FROM`** — list in `scripts/ops/gcp-runtime-secrets.inc.sh` (`GCP_RUNTIME_SECRETS_DESK_SMTP`). Default verify does **not** require them; use `--with-desk-smtp` or the `*:with-desk-smtp` npm scripts when you expect desk email in that project.
 
 Required runtime secrets (core list — always expected in Secret Manager for deploy preflight and `ops:secrets:verify:*`):
 

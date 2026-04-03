@@ -2,6 +2,7 @@ package com.atxfinance.backend.admin
 
 import com.atxfinance.backend.audit.AuditEventService
 import com.atxfinance.backend.config.AtxfinanceProperties
+import com.atxfinance.backend.desk.DeskSmtpSender
 import com.atxfinance.backend.portfolio.PortfolioMongoFilter
 import com.atxfinance.backend.session.ResolvedSession
 import org.bson.Document
@@ -50,11 +51,18 @@ class AdminDeliveryChannelsService(
         if (name.isEmpty() || name.length > 120) throw BadPayloadException("name must be 1-120 chars")
         val target = (body["deliveryTarget"] as? String)?.trim()?.lowercase()
             ?: throw BadPayloadException("deliveryTarget is required")
-        if (target !in listOf("in_app", "slack")) throw BadPayloadException("deliveryTarget must be in_app or slack")
+        if (target !in listOf("in_app", "slack", "email")) {
+            throw BadPayloadException("deliveryTarget must be in_app, slack, or email")
+        }
         val slackUrl = (body["slackWebhookUrl"] as? String)?.trim()
+        val emailTo = (body["emailTo"] as? String)?.trim()
         if (target == "slack") {
             if (slackUrl.isNullOrEmpty()) throw BadPayloadException("slackWebhookUrl is required when deliveryTarget is slack")
             if (!isSlackIncomingWebhookUrl(slackUrl)) throw BadPayloadException("Slack webhook must be https://hooks.slack.com/…")
+        }
+        if (target == "email") {
+            if (emailTo.isNullOrEmpty()) throw BadPayloadException("emailTo is required when deliveryTarget is email")
+            if (!isPlausibleEmail(emailTo)) throw BadPayloadException("emailTo must be a valid email address")
         }
 
         val now = Date()
@@ -62,6 +70,7 @@ class AdminDeliveryChannelsService(
         doc["name"] = name
         doc["deliveryTarget"] = target
         if (target == "slack") doc["slackWebhookUrl"] = slackUrl
+        if (target == "email") doc["emailTo"] = emailTo
         doc["createdAt"] = now
         doc["updatedAt"] = now
         PortfolioMongoFilter.tenantObjectId(session.tenantId)?.let { doc["tenantId"] = it }
@@ -87,7 +96,10 @@ class AdminDeliveryChannelsService(
         val hasName = body.containsKey("name")
         val hasTarget = body.containsKey("deliveryTarget")
         val hasSlack = body.containsKey("slackWebhookUrl")
-        if (!hasName && !hasTarget && !hasSlack) throw BadPayloadException("Provide at least one field to update")
+        val hasEmail = body.containsKey("emailTo")
+        if (!hasName && !hasTarget && !hasSlack && !hasEmail) {
+            throw BadPayloadException("Provide at least one field to update")
+        }
 
         val mergedName = if (hasName) (body["name"] as? String)?.trim() ?: "" else existing.getString("name") ?: ""
         val mergedTarget = if (hasTarget) {
@@ -95,27 +107,52 @@ class AdminDeliveryChannelsService(
         } else {
             existing.getString("deliveryTarget")
         }
-        if (mergedTarget !in listOf("in_app", "slack")) throw BadPayloadException("invalid deliveryTarget")
-        val mergedSlack: String? = when {
-            mergedTarget == "in_app" -> null
-            hasSlack -> (body["slackWebhookUrl"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
-            else -> existing.getString("slackWebhookUrl")?.trim()
-        }
+        if (mergedTarget !in listOf("in_app", "slack", "email")) throw BadPayloadException("invalid deliveryTarget")
+        val mergedSlack: String? =
+            if (mergedTarget != "slack") {
+                null
+            } else if (hasSlack) {
+                (body["slackWebhookUrl"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+            } else {
+                existing.getString("slackWebhookUrl")?.trim()
+            }
+        val mergedEmail: String? =
+            if (mergedTarget != "email") {
+                null
+            } else if (hasEmail) {
+                (body["emailTo"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
+            } else {
+                existing.getString("emailTo")?.trim()
+            }
 
         if (mergedName.isBlank() || mergedName.length > 120) throw BadPayloadException("name must be 1-120 chars")
         if (mergedTarget == "slack") {
             if (mergedSlack.isNullOrEmpty()) throw BadPayloadException("slackWebhookUrl is required when deliveryTarget is slack")
             if (!isSlackIncomingWebhookUrl(mergedSlack)) throw BadPayloadException("Slack webhook must be https://hooks.slack.com/…")
         }
+        if (mergedTarget == "email") {
+            if (mergedEmail.isNullOrEmpty()) throw BadPayloadException("emailTo is required when deliveryTarget is email")
+            if (!isPlausibleEmail(mergedEmail)) throw BadPayloadException("emailTo must be a valid email address")
+        }
 
         val u = Update().set("updatedAt", Date())
         if (hasName) u.set("name", mergedName)
         if (hasTarget) {
             u.set("deliveryTarget", mergedTarget)
-            if (mergedTarget == "in_app") u.unset("slackWebhookUrl")
+            when (mergedTarget) {
+                "in_app" -> {
+                    u.unset("slackWebhookUrl")
+                    u.unset("emailTo")
+                }
+                "slack" -> u.unset("emailTo")
+                "email" -> u.unset("slackWebhookUrl")
+            }
         }
-        if (mergedTarget == "slack" && hasSlack) {
+        if (mergedTarget == "slack" && mergedSlack != null) {
             u.set("slackWebhookUrl", mergedSlack)
+        }
+        if (mergedTarget == "email" && mergedEmail != null) {
+            u.set("emailTo", mergedEmail)
         }
 
         val oid = ObjectId(channelId)
@@ -172,6 +209,18 @@ class AdminDeliveryChannelsService(
                 ),
             )
         }
+        if (target == "email") {
+            val to = doc.getString("emailTo")?.trim()
+            if (to.isNullOrEmpty()) return TestResult.BadRequest("Email channel is missing emailTo")
+            if (!isPlausibleEmail(to)) return TestResult.BadRequest("emailTo must be a valid email address")
+            val ok = DeskSmtpSender.sendPlain(to, "aTx Finance — delivery channel test", TEST_TEXT)
+            if (!ok) {
+                return TestResult.EmailSendFailed(
+                    "SMTP send failed — check SMTP_* / DESK_EMAIL_FROM env on the backend service",
+                )
+            }
+            return TestResult.Ok(mapOf("ok" to true, "deliveryTarget" to "email", "message" to TEST_TEXT))
+        }
         val url = doc.getString("slackWebhookUrl")?.trim()
         if (url.isNullOrEmpty()) return TestResult.BadRequest("Slack channel is missing slackWebhookUrl")
         val ok = postSlackIncomingWebhook(url, """{"text":"$TEST_TEXT"}""")
@@ -184,6 +233,7 @@ class AdminDeliveryChannelsService(
         object NotFound : TestResult()
         data class BadRequest(val message: String) : TestResult()
         object UpstreamError : TestResult()
+        data class EmailSendFailed(val message: String) : TestResult()
     }
 
     private fun findDoc(channelId: String, session: ResolvedSession): Document? {
@@ -204,9 +254,21 @@ class AdminDeliveryChannelsService(
             "name" to doc.getString("name"),
             "deliveryTarget" to doc.getString("deliveryTarget"),
             "slackWebhookUrl" to (doc.getString("slackWebhookUrl") ?: ""),
+            "emailTo" to (doc.getString("emailTo") ?: ""),
             "createdAt" to ((doc["createdAt"] as? Date)?.toInstant()?.toString()),
             "updatedAt" to ((doc["updatedAt"] as? Date)?.toInstant()?.toString()),
         )
+    }
+
+    private fun isPlausibleEmail(raw: String): Boolean {
+        val s = raw.trim()
+        if (s.length > 254) return false
+        val at = s.indexOf('@')
+        if (at <= 0 || at == s.length - 1) return false
+        val local = s.substring(0, at)
+        val domain = s.substring(at + 1)
+        if (local.isEmpty() || domain.isEmpty() || !domain.contains('.')) return false
+        return Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$").matches(s)
     }
 
     private fun isSlackIncomingWebhookUrl(raw: String): Boolean {

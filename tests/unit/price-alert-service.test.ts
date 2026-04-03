@@ -135,9 +135,14 @@ describe("persistPriceMoveAlerts", () => {
   it("skips create when recent alert exists (cooldown)", async () => {
     vi.spyOn(repo, "adminHasRecentPriceAlertForSymbol").mockResolvedValue(true);
     const create = vi.spyOn(repo, "adminCreatePortfolioAlert").mockResolvedValue(null);
-    const slack = vi
-      .spyOn(notifications, "dispatchPortfolioDeskEventsToSlack")
-      .mockResolvedValue({ targets: 0, postsOk: 0 });
+    const desk = vi
+      .spyOn(notifications, "dispatchPortfolioDeskEvents")
+      .mockResolvedValue({
+        slack: { targets: 0, postsOk: 0 },
+        email: { targets: 0, sent: 0, skipped: 0, failed: 0 },
+        sms: { targets: 0, skipped: 0 },
+        push: { targets: 0, skipped: 0 }
+      });
 
     const r = await persistPriceMoveAlerts(
       portfolioId,
@@ -149,7 +154,7 @@ describe("persistPriceMoveAlerts", () => {
     expect(r.skippedCooldown).toBe(1);
     expect(r.recorded).toHaveLength(0);
     expect(create).not.toHaveBeenCalled();
-    expect(slack).not.toHaveBeenCalled();
+    expect(desk).not.toHaveBeenCalled();
   });
 
   it("creates alert when no recent row (cooldown)", async () => {
@@ -164,9 +169,14 @@ describe("persistPriceMoveAlerts", () => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    const slack = vi
-      .spyOn(notifications, "dispatchPortfolioDeskEventsToSlack")
-      .mockResolvedValue({ targets: 0, postsOk: 0 });
+    const desk = vi
+      .spyOn(notifications, "dispatchPortfolioDeskEvents")
+      .mockResolvedValue({
+        slack: { targets: 0, postsOk: 0 },
+        email: { targets: 0, sent: 0, skipped: 0, failed: 0 },
+        sms: { targets: 0, skipped: 0 },
+        push: { targets: 0, skipped: 0 }
+      });
 
     const r = await persistPriceMoveAlerts(
       portfolioId,
@@ -176,7 +186,7 @@ describe("persistPriceMoveAlerts", () => {
 
     expect(r.created).toBe(1);
     expect(r.skippedCooldown).toBe(0);
-    expect(slack).toHaveBeenCalled();
+    expect(desk).toHaveBeenCalled();
   });
 
   it("bypasses cooldown when cooldownMs is 0", async () => {
@@ -191,9 +201,11 @@ describe("persistPriceMoveAlerts", () => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    vi.spyOn(notifications, "dispatchPortfolioDeskEventsToSlack").mockResolvedValue({
-      targets: 0,
-      postsOk: 0
+    vi.spyOn(notifications, "dispatchPortfolioDeskEvents").mockResolvedValue({
+      slack: { targets: 0, postsOk: 0 },
+      email: { targets: 0, sent: 0, skipped: 0, failed: 0 },
+      sms: { targets: 0, skipped: 0 },
+      push: { targets: 0, skipped: 0 }
     });
 
     const r = await persistPriceMoveAlerts(

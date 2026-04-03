@@ -3,7 +3,7 @@ import {
   adminHasRecentPriceAlertForSymbol
 } from "@/modules/core-admin/repository";
 import type { WatchlistSymbol } from "@/modules/core-admin/types";
-import { dispatchPortfolioDeskEventsToSlack } from "@/modules/notifications/portfolio-notification-service";
+import { dispatchPortfolioDeskEvents } from "@/modules/notifications/portfolio-notification-service";
 
 /** Default minimum absolute % move vs prior `lastPrice` before creating a portfolio alert. */
 export const DEFAULT_MIN_ABS_MOVE_PERCENT = 5;
@@ -140,9 +140,9 @@ export async function persistPriceMoveAlerts(
   }
   if (notify.length > 0) {
     try {
-      await dispatchPortfolioDeskEventsToSlack(portfolioIdHex, notify);
+      await dispatchPortfolioDeskEvents(portfolioIdHex, notify);
     } catch (error) {
-      console.warn("[notifications/slack] price alert dispatch failed", {
+      console.warn("[notifications/desk] price alert dispatch failed", {
         portfolioIdPrefix: portfolioIdHex.slice(0, 8),
         count: notify.length,
         error: error instanceof Error ? error.message : String(error)

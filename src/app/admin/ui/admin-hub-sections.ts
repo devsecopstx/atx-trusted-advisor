@@ -81,7 +81,7 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/admin/delivery-channels",
         title: "Delivery channels",
         description:
-          "Create platform delivery channels (in-app or Slack webhook), store Slack incoming webhook URLs, and send a test message."
+          "Create platform delivery channels (in-app, Slack webhook, or SMTP email), store destinations, and send a test message."
       }
     ]
   },

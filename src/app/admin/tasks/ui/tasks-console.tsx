@@ -27,8 +27,9 @@ type ScheduledTask = {
 type DeliveryChannelRow = {
   _id: string;
   name: string;
-  deliveryTarget: "in_app" | "slack";
+  deliveryTarget: "in_app" | "slack" | "email";
   slackWebhookUrl: string;
+  emailTo?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -38,6 +39,13 @@ function formatSlackWebhookPreview(url: string): string {
   if (!t) return "—";
   if (t.length <= 48) return t;
   return `${t.slice(0, 28)}…${t.slice(-12)}`;
+}
+
+function formatEmailPreview(email: string): string {
+  const t = email.trim();
+  if (!t) return "—";
+  if (t.length <= 40) return t;
+  return `${t.slice(0, 22)}…${t.slice(-10)}`;
 }
 
 type TaskRun = {
@@ -575,8 +583,8 @@ export function TasksConsole() {
           <div className="stack-gap">
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
               Edit <strong>tenant-level</strong> scheduled jobs (global admin only). Use <strong>Schedule tasks</strong>{" "}
-              to create job schedules. Set a Slack delivery channel on a
-              row to post a summary to Slack after every run (manual or scheduler).
+              to create job schedules. Set a delivery channel on a row to post a run summary to{" "}
+              <strong>Slack</strong> or <strong>email</strong> (SMTP) after every run (manual or scheduler).
             </p>
             {tasks.length > 0 ? (
               <div className="crud-table-wrap">
@@ -938,7 +946,7 @@ export function TasksConsole() {
                     <tr>
                       <th>Name</th>
                       <th>Target</th>
-                      <th>Slack webhook</th>
+                      <th>Slack / email</th>
                       <th>Updated</th>
                     </tr>
                   </thead>
@@ -946,11 +954,19 @@ export function TasksConsole() {
                     {deliveryChannels.map((ch) => (
                       <tr key={ch._id}>
                         <td>{ch.name}</td>
-                        <td>{ch.deliveryTarget === "slack" ? "Slack" : "In-app"}</td>
+                        <td>
+                          {ch.deliveryTarget === "slack"
+                            ? "Slack"
+                            : ch.deliveryTarget === "email"
+                              ? "Email"
+                              : "In-app"}
+                        </td>
                         <td className="font-mono text-xs">
                           {ch.deliveryTarget === "slack"
-                            ? formatSlackWebhookPreview(ch.slackWebhookUrl)
-                            : "—"}
+                            ? formatSlackWebhookPreview(ch.slackWebhookUrl ?? "")
+                            : ch.deliveryTarget === "email"
+                              ? formatEmailPreview(ch.emailTo ?? "")
+                              : "—"}
                         </td>
                         <td className="font-mono text-xs text-slate-400">
                           {new Date(ch.updatedAt).toLocaleString()}

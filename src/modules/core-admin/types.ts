@@ -193,9 +193,11 @@ export type AdminDeliveryChannel = {
   _id?: ObjectId;
   tenantId?: ObjectId;
   name: string;
-  deliveryTarget: "in_app" | "slack";
+  deliveryTarget: "in_app" | "slack" | "email";
   /** Required when `deliveryTarget` is `slack` (HTTPS hooks.slack.com incoming webhook). */
   slackWebhookUrl?: string;
+  /** Required when `deliveryTarget` is `email` (recipient for SMTP — same transport as portfolio desk email). */
+  emailTo?: string;
   createdAt: Date;
   updatedAt: Date;
 };

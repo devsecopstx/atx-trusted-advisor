@@ -56,6 +56,9 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
 
+    // Desk / admin delivery email (SMTP) — same env contract as Next.js nodemailer path
+    implementation("org.eclipse.angus:angus-mail:2.0.3")
+
     // Tests
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.5.4")

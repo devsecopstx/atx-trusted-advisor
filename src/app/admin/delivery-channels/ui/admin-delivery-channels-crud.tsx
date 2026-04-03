@@ -5,11 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { AddIcon, DeleteIcon, RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 
+type DeliveryTarget = "in_app" | "slack" | "email";
+
 type ChannelRow = {
   _id: string;
   name: string;
-  deliveryTarget: "in_app" | "slack";
+  deliveryTarget: DeliveryTarget;
   slackWebhookUrl: string;
+  emailTo: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -21,8 +24,9 @@ export function AdminDeliveryChannelsCrud() {
   const [status, setStatus] = useState("Ready — tap refresh");
   const [loading, setLoading] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newTarget, setNewTarget] = useState<"in_app" | "slack">("in_app");
+  const [newTarget, setNewTarget] = useState<DeliveryTarget>("in_app");
   const [newSlackUrl, setNewSlackUrl] = useState("");
+  const [newEmailTo, setNewEmailTo] = useState("");
   const [testingId, setTestingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -30,7 +34,13 @@ export function AdminDeliveryChannelsCrud() {
     setStatus("Loading…");
     try {
       const payload = await parseJson<{ data: ChannelRow[] }>(await fetch(BASE, { cache: "no-store" }));
-      setRows(payload.data);
+      setRows(
+        payload.data.map((r) => ({
+          ...r,
+          slackWebhookUrl: r.slackWebhookUrl ?? "",
+          emailTo: r.emailTo ?? ""
+        }))
+      );
       setStatus(`Loaded ${payload.data.length} channel(s)`);
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Failed to load");
@@ -54,6 +64,10 @@ export function AdminDeliveryChannelsCrud() {
       setStatus("Slack webhook URL is required for Slack channels");
       return;
     }
+    if (newTarget === "email" && !newEmailTo.trim()) {
+      setStatus("Recipient email is required for Email channels");
+      return;
+    }
     setStatus("Creating…");
     try {
       await parseJson(
@@ -63,13 +77,15 @@ export function AdminDeliveryChannelsCrud() {
           body: JSON.stringify({
             name,
             deliveryTarget: newTarget,
-            ...(newTarget === "slack" ? { slackWebhookUrl: newSlackUrl.trim() } : {})
+            ...(newTarget === "slack" ? { slackWebhookUrl: newSlackUrl.trim() } : {}),
+            ...(newTarget === "email" ? { emailTo: newEmailTo.trim() } : {})
           })
         })
       );
       setNewName("");
       setNewTarget("in_app");
       setNewSlackUrl("");
+      setNewEmailTo("");
       setStatus("Created");
       void refresh();
     } catch (e) {
@@ -77,7 +93,9 @@ export function AdminDeliveryChannelsCrud() {
     }
   }
 
-  async function saveRow(row: ChannelRow, draft: Partial<Pick<ChannelRow, "name" | "deliveryTarget" | "slackWebhookUrl">>) {
+  type RowDraft = Partial<Pick<ChannelRow, "name" | "deliveryTarget" | "slackWebhookUrl" | "emailTo">>;
+
+  async function saveRow(row: ChannelRow, draft: RowDraft) {
     setStatus(`Saving ${row.name}…`);
     try {
       await parseJson(
@@ -87,7 +105,8 @@ export function AdminDeliveryChannelsCrud() {
           body: JSON.stringify({
             ...(draft.name !== undefined ? { name: draft.name } : {}),
             ...(draft.deliveryTarget !== undefined ? { deliveryTarget: draft.deliveryTarget } : {}),
-            ...(draft.slackWebhookUrl !== undefined ? { slackWebhookUrl: draft.slackWebhookUrl } : {})
+            ...(draft.slackWebhookUrl !== undefined ? { slackWebhookUrl: draft.slackWebhookUrl } : {}),
+            ...(draft.emailTo !== undefined ? { emailTo: draft.emailTo } : {})
           })
         })
       );
@@ -141,6 +160,10 @@ export function AdminDeliveryChannelsCrud() {
       </div>
 
       <h3>Add channel</h3>
+      <p className="status-text mb-2 text-sm">
+        <strong>Email</strong> uses the same SMTP settings as portfolio desk alerts (<code className="font-mono text-xs">SMTP_*</code>,{" "}
+        <code className="font-mono text-xs">DESK_EMAIL_FROM</code>).
+      </p>
       <div
         className="grid gap-3"
         style={{
@@ -163,10 +186,11 @@ export function AdminDeliveryChannelsCrud() {
           <select
             className="crud-input"
             value={newTarget}
-            onChange={(e) => setNewTarget(e.target.value as "in_app" | "slack")}
+            onChange={(e) => setNewTarget(e.target.value as DeliveryTarget)}
           >
             <option value="in_app">In-app</option>
             <option value="slack">Slack</option>
+            <option value="email">Email (SMTP)</option>
           </select>
         </label>
         {newTarget === "slack" ? (
@@ -179,6 +203,19 @@ export function AdminDeliveryChannelsCrud() {
               placeholder="https://hooks.slack.com/services/…"
               autoComplete="off"
               spellCheck={false}
+            />
+          </label>
+        ) : null}
+        {newTarget === "email" ? (
+          <label className="flex flex-col gap-1 text-sm md:col-span-2">
+            <span>Recipient email</span>
+            <input
+              className="crud-input font-mono text-xs"
+              type="email"
+              value={newEmailTo}
+              onChange={(e) => setNewEmailTo(e.target.value)}
+              placeholder="you@company.com"
+              autoComplete="email"
             />
           </label>
         ) : null}
@@ -198,7 +235,7 @@ export function AdminDeliveryChannelsCrud() {
             <tr>
               <th>Name</th>
               <th>Target</th>
-              <th>Slack webhook</th>
+              <th>Slack webhook / email</th>
               <th>Updated</th>
               <th />
             </tr>
@@ -234,18 +271,20 @@ function DeliveryChannelRow({
   row: ChannelRow;
   loading: boolean;
   testing: boolean;
-  onSave: (draft: Partial<Pick<ChannelRow, "name" | "deliveryTarget" | "slackWebhookUrl">>) => void;
+  onSave: (draft: Partial<Pick<ChannelRow, "name" | "deliveryTarget" | "slackWebhookUrl" | "emailTo">>) => void;
   onDelete: () => void;
   onTest: () => void;
 }) {
   const [name, setName] = useState(row.name);
   const [deliveryTarget, setDeliveryTarget] = useState(row.deliveryTarget);
   const [slackWebhookUrl, setSlackWebhookUrl] = useState(row.slackWebhookUrl);
+  const [emailTo, setEmailTo] = useState(row.emailTo);
 
   const dirty =
     name.trim() !== row.name ||
     deliveryTarget !== row.deliveryTarget ||
-    slackWebhookUrl.trim() !== (row.slackWebhookUrl ?? "").trim();
+    slackWebhookUrl.trim() !== (row.slackWebhookUrl ?? "").trim() ||
+    emailTo.trim() !== (row.emailTo ?? "").trim();
 
   return (
     <tr>
@@ -261,11 +300,12 @@ function DeliveryChannelRow({
         <select
           className="crud-input"
           value={deliveryTarget}
-          onChange={(e) => setDeliveryTarget(e.target.value as "in_app" | "slack")}
+          onChange={(e) => setDeliveryTarget(e.target.value as DeliveryTarget)}
           aria-label="Delivery target"
         >
           <option value="in_app">In-app</option>
           <option value="slack">Slack</option>
+          <option value="email">Email</option>
         </select>
       </td>
       <td>
@@ -277,6 +317,15 @@ function DeliveryChannelRow({
             placeholder="https://hooks.slack.com/…"
             spellCheck={false}
             aria-label="Slack webhook URL"
+          />
+        ) : deliveryTarget === "email" ? (
+          <input
+            className="crud-input font-mono text-xs"
+            type="email"
+            value={emailTo}
+            onChange={(e) => setEmailTo(e.target.value)}
+            placeholder="recipient@…"
+            aria-label="Recipient email"
           />
         ) : (
           <span className="status-text">—</span>
@@ -293,7 +342,8 @@ function DeliveryChannelRow({
               onSave({
                 name: name.trim(),
                 deliveryTarget,
-                slackWebhookUrl: deliveryTarget === "slack" ? slackWebhookUrl : ""
+                slackWebhookUrl: deliveryTarget === "slack" ? slackWebhookUrl : "",
+                emailTo: deliveryTarget === "email" ? emailTo : ""
               })
             }
           >

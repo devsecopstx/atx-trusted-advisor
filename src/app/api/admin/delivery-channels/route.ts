@@ -14,8 +14,9 @@ import type { AdminDeliveryChannel } from "@/modules/core-admin/types";
 const createSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
-    deliveryTarget: z.enum(["in_app", "slack"]),
-    slackWebhookUrl: z.string().optional()
+    deliveryTarget: z.enum(["in_app", "slack", "email"]),
+    slackWebhookUrl: z.string().optional(),
+    emailTo: z.string().optional()
   })
   .superRefine((data, ctx) => {
     if (data.deliveryTarget === "slack") {
@@ -31,6 +32,16 @@ const createSchema = z
           code: z.ZodIssueCode.custom,
           message: "Slack webhook must be an https://hooks.slack.com/services/… URL",
           path: ["slackWebhookUrl"]
+        });
+      }
+    }
+    if (data.deliveryTarget === "email") {
+      const r = z.string().email().safeParse(data.emailTo?.trim());
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "emailTo is required and must be a valid email when deliveryTarget is email",
+          path: ["emailTo"]
         });
       }
     }
@@ -76,6 +87,7 @@ export async function POST(request: Request) {
     deliveryTarget: parsed.data.deliveryTarget,
     slackWebhookUrl:
       parsed.data.deliveryTarget === "slack" ? parsed.data.slackWebhookUrl?.trim() : undefined,
+    emailTo: parsed.data.deliveryTarget === "email" ? parsed.data.emailTo?.trim() : undefined,
     tenantId: session.tenantId
   });
 
@@ -105,6 +117,7 @@ export function serializeAdminDeliveryChannel(ch: AdminDeliveryChannel) {
     name: ch.name,
     deliveryTarget: ch.deliveryTarget,
     slackWebhookUrl: ch.slackWebhookUrl ?? "",
+    emailTo: ch.emailTo ?? "",
     createdAt: ch.createdAt.toISOString(),
     updatedAt: ch.updatedAt.toISOString()
   };

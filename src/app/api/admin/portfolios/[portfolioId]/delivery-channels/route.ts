@@ -27,12 +27,25 @@ function serializeChannel(c: PortfolioDeliveryChannel) {
   };
 }
 
-const postSchema = z.object({
-  kind: z.enum(["email", "slack_webhook", "sms", "push"]),
-  label: z.string().trim().min(1).max(128),
-  destination: z.string().trim().min(1).max(2048),
-  enabled: z.boolean().optional()
-});
+const postSchema = z
+  .object({
+    kind: z.enum(["email", "slack_webhook", "sms", "push"]),
+    label: z.string().trim().min(1).max(128),
+    destination: z.string().trim().min(1).max(2048),
+    enabled: z.boolean().optional()
+  })
+  .superRefine((data, ctx) => {
+    if (data.kind === "email") {
+      const r = z.string().email().safeParse(data.destination);
+      if (!r.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "destination must be a valid email when kind is email",
+          path: ["destination"]
+        });
+      }
+    }
+  });
 
 export async function GET(request: Request, context: RouteContext) {
   const proxied = await proxyRequestToBackend(request);

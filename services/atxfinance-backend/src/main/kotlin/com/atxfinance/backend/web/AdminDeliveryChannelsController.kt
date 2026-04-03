@@ -123,6 +123,8 @@ class AdminDeliveryChannelsController(
                 ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(
                     mapOf("error" to "Slack webhook test failed (check URL or Slack app configuration)"),
                 )
+            is AdminDeliveryChannelsService.TestResult.EmailSendFailed ->
+                ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(mapOf("error" to r.message))
         }
     }
 

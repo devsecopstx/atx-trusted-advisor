@@ -36,7 +36,7 @@ Output: (1) scope (2) Pass / Block / Conditional (3) issues with file:line (4) m
 
 ## Core feature plan: OptionsStrategyEngine (priority 245)
 
-**Backlog:** [atx-docs/PLAN.md](../../atx-docs/PLAN.md) — **245n** / **250n** are shipped (see PLAN *Shipped*); extend engine scoring or add email/SMS/push providers under active backlog.
+**Backlog:** [atx-docs/PLAN.md](../../atx-docs/PLAN.md) lists **outstanding** work only; **245n** / **250n** are shipped (see release notes / `strategy-engine.md`). Extend engine scoring or add email/SMS/push providers per product priority.
 
 **Canonical spec + diagram (GitHub-visible):** [atx-docs/design-system/xStrategyBuilder/strategy-engine.md](../../atx-docs/design-system/xStrategyBuilder/strategy-engine.md) (embeds [`StrategyEngine.svg`](../../atx-docs/design-system/xStrategyBuilder/StrategyEngine.svg)).
 

@@ -208,12 +208,22 @@ if gcloud secrets describe GOOGLE_CLIENT_ID --project="${PROJECT}" --format='val
 else
   echo "deploy-cloud-run-from-env: Google OAuth secrets not both present — Sign in with Google unavailable until configured"
 fi
+if gcloud secrets describe SMTP_HOST --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe SMTP_PORT --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe SMTP_USER --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe SMTP_PASS --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1 &&
+  gcloud secrets describe DESK_EMAIL_FROM --project="${PROJECT}" --format='value(name)' >/dev/null 2>&1; then
+  SECRETS="${SECRETS},SMTP_HOST=SMTP_HOST:latest,SMTP_PORT=SMTP_PORT:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASS=SMTP_PASS:latest,DESK_EMAIL_FROM=DESK_EMAIL_FROM:latest"
+  echo "deploy-cloud-run-from-env: binding desk SMTP secrets (portfolio email channels)"
+else
+  echo "deploy-cloud-run-from-env: desk SMTP secrets not all present — portfolio email channels skipped"
+fi
 
 ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=${DEPLOY_TARGET},X_OAUTH_CALLBACK_URL=${BASE_URL}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL},AUTH_CALLBACK_USE_SPRING=${AUTH_CALLBACK_USE_SPRING}"
 if [[ -n "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
   ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
 fi
-for pair in "STRIPE_PRICE_BASIC_MONTHLY:${STRIPE_PRICE_BASIC_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_MONTHLY:${STRIPE_PRICE_PREMIUM_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:${STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}"; do
+for pair in "STRIPE_PRICE_BASIC_MONTHLY:${STRIPE_PRICE_BASIC_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_MONTHLY:${STRIPE_PRICE_PREMIUM_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:${STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}" "SMTP_SECURE:${SMTP_SECURE:-}"; do
   k="${pair%%:*}"
   v="${pair#*:}"
   if [[ -n "${v//[[:space:]]/}" ]]; then

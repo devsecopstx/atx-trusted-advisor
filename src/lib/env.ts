@@ -137,7 +137,15 @@ const envSchema = z.object({
   /** Often same as `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`; mounted as a separate secret alias. */
   STRIPE_PUBLIC_KEY: optionalNonEmptyString,
   /** Server-only Stripe secret (`sk_…`); Checkout — never expose to the client. */
-  STRIPE_SECRET_KEY: optionalNonEmptyString
+  STRIPE_SECRET_KEY: optionalNonEmptyString,
+  /** Desk / portfolio delivery email (SMTP). All required together for sending; see `src/lib/desk-smtp.ts`. */
+  SMTP_HOST: optionalNonEmptyString,
+  SMTP_PORT: optionalNonEmptyString,
+  SMTP_USER: optionalNonEmptyString,
+  SMTP_PASS: optionalNonEmptyString,
+  DESK_EMAIL_FROM: optionalEmail,
+  /** `true` / `1` for SMTPS (e.g. port 465); omit for STARTTLS on 587. */
+  SMTP_SECURE: optionalNonEmptyString
 });
 
 export const REQUIRED_RUNTIME_ENV_VARS = [

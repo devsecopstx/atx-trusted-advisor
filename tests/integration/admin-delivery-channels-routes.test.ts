@@ -16,6 +16,10 @@ const slackMocks = vi.hoisted(() => ({
   postSlackIncomingWebhook: vi.fn()
 }));
 
+const deskMocks = vi.hoisted(() => ({
+  sendDeskPlainEmailWithRetry: vi.fn()
+}));
+
 const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
@@ -23,6 +27,7 @@ const auditMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/lib/post-slack-incoming-webhook", () => slackMocks);
+vi.mock("@/lib/desk-smtp", () => deskMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 
 import { DELETE as deleteChannel, PATCH as patchChannel } from "@/app/api/admin/delivery-channels/[channelId]/route";
@@ -66,6 +71,7 @@ describe("admin delivery-channels routes", () => {
     });
     repositoryMocks.deleteAdminDeliveryChannelById.mockResolvedValue(true);
     slackMocks.postSlackIncomingWebhook.mockResolvedValue(true);
+    deskMocks.sendDeskPlainEmailWithRetry.mockResolvedValue(true);
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
   });
 
@@ -85,6 +91,46 @@ describe("admin delivery-channels routes", () => {
     );
     expect(response.status).toBe(201);
     expect(repositoryMocks.createAdminDeliveryChannel).toHaveBeenCalled();
+  });
+
+  it("rejects email without emailTo", async () => {
+    const response = await postChannel(
+      new Request("http://test/api/admin/delivery-channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Mail", deliveryTarget: "email" })
+      })
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("creates email channel", async () => {
+    repositoryMocks.createAdminDeliveryChannel.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439088" },
+      name: "Mail",
+      deliveryTarget: "email",
+      emailTo: "ops@example.com",
+      createdAt: new Date("2026-03-20T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-20T00:00:00.000Z")
+    });
+    const response = await postChannel(
+      new Request("http://test/api/admin/delivery-channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Mail",
+          deliveryTarget: "email",
+          emailTo: "ops@example.com"
+        })
+      })
+    );
+    expect(response.status).toBe(201);
+    expect(repositoryMocks.createAdminDeliveryChannel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deliveryTarget: "email",
+        emailTo: "ops@example.com"
+      })
+    );
   });
 
   it("rejects slack without webhook URL", async () => {
@@ -154,5 +200,29 @@ describe("admin delivery-channels routes", () => {
       "https://hooks.slack.com/services/T/A/B",
       { text: "hello from atx" }
     );
+  });
+
+  it("test email sends via SMTP helper", async () => {
+    repositoryMocks.getAdminDeliveryChannelById.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      name: "Mail",
+      deliveryTarget: "email",
+      emailTo: "ops@example.com",
+      createdAt: new Date("2026-03-20T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-20T00:00:00.000Z")
+    });
+    const response = await postTest(
+      new Request("http://test/api/admin/delivery-channels/507f1f77bcf86cd799439099/test", {
+        method: "POST"
+      }),
+      { params: Promise.resolve({ channelId: "507f1f77bcf86cd799439099" }) }
+    );
+    expect(response.status).toBe(200);
+    expect(deskMocks.sendDeskPlainEmailWithRetry).toHaveBeenCalledWith(
+      "ops@example.com",
+      "aTx Finance — delivery channel test",
+      "hello from atx"
+    );
+    expect(slackMocks.postSlackIncomingWebhook).not.toHaveBeenCalled();
   });
 });

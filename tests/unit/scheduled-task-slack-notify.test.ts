@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import * as deskSmtp from "@/lib/desk-smtp";
 import * as slackWebhook from "@/lib/post-slack-incoming-webhook";
 import * as repository from "@/modules/core-admin/repository";
 import { notifyScheduledTaskSlackSummary } from "@/modules/core-admin/scheduled-task-slack-notify";
@@ -66,5 +67,45 @@ describe("notifyScheduledTaskSlackSummary", () => {
 
     expect(getSpy).not.toHaveBeenCalled();
     expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  it("sends email when task has an email delivery channel", async () => {
+    const channelId = new ObjectId();
+    const postSpy = vi.spyOn(slackWebhook, "postSlackIncomingWebhook");
+    const emailSpy = vi.spyOn(deskSmtp, "sendDeskPlainEmailWithRetry").mockResolvedValue(true);
+    vi.spyOn(repository, "getAdminDeliveryChannelById").mockResolvedValue({
+      _id: channelId,
+      name: "Desk",
+      deliveryTarget: "email",
+      emailTo: "ops@example.com",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const task: ScheduledTask = {
+      _id: new ObjectId(),
+      name: "price-scanner-job",
+      category: "price_scanner",
+      enabled: true,
+      deliveryChannelTarget: channelId
+    };
+
+    await notifyScheduledTaskSlackSummary({
+      task,
+      status: "success",
+      output: "done",
+      durationMs: 500,
+      runIdHex: "507f1f77bcf86cd799439011",
+      triggeredBy: "scheduler"
+    });
+
+    expect(postSpy).not.toHaveBeenCalled();
+    expect(emailSpy).toHaveBeenCalledWith(
+      "ops@example.com",
+      expect.stringContaining("price-scanner-job"),
+      expect.stringContaining("done")
+    );
+    emailSpy.mockRestore();
+    postSpy.mockRestore();
   });
 });

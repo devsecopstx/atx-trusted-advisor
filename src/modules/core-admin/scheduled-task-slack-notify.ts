@@ -1,6 +1,8 @@
+import { sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
 import { isSlackIncomingWebhookUrl, postSlackIncomingWebhook } from "@/lib/post-slack-incoming-webhook";
 import { getAdminDeliveryChannelById } from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
+import { z } from "zod";
 
 const MAX_OUTPUT_CHARS = 3500;
 
@@ -13,8 +15,8 @@ function sanitizeCodeBlockBody(output: string): string {
 }
 
 /**
- * Posts a run summary to the task's `admin_delivery_channels` Slack webhook when configured.
- * Does nothing if `deliveryChannelTarget` is unset, channel is missing, or target is not Slack.
+ * Posts a run summary to the task's linked `admin_delivery_channels` row: Slack webhook or SMTP email when configured.
+ * Does nothing if `deliveryChannelTarget` is unset, channel is missing, or target is in_app.
  */
 export async function notifyScheduledTaskSlackSummary(params: {
   task: ScheduledTask;
@@ -32,7 +34,43 @@ export async function notifyScheduledTaskSlackSummary(params: {
 
   const tenantId = task.tenantId ? task.tenantId.toHexString() : undefined;
   const channel = await getAdminDeliveryChannelById(target.toHexString(), { tenantId });
-  if (!channel || channel.deliveryTarget !== "slack") {
+  if (!channel) {
+    return;
+  }
+
+  if (channel.deliveryTarget === "email") {
+    const to = channel.emailTo?.trim();
+    if (!to || !z.string().email().safeParse(to).success) {
+      console.warn(
+        "[scheduled-task/desk-email] missing or invalid emailTo for delivery channel",
+        channel._id?.toHexString() ?? "?"
+      );
+      return;
+    }
+    const emoji = status === "success" ? "OK" : "FAILED";
+    const durationS = (durationMs / 1000).toFixed(1);
+    const body = (output.trim() || "(no output)").replace(/```/g, "'''").slice(0, MAX_OUTPUT_CHARS);
+    const text =
+      `aTx Finance — scheduled job ${emoji}\n` +
+      `Name: ${task.name}\n` +
+      `Category: ${task.category}\n` +
+      `Status: ${status}\n` +
+      `Duration: ${durationS}s\n` +
+      `Triggered by: ${triggeredBy}\n` +
+      `Run ID: ${runIdHex}\n\n` +
+      `Output:\n${body}`;
+    const ok = await sendDeskPlainEmailWithRetry(
+      to,
+      `aTx Finance — scheduled task: ${task.name} (${status})`,
+      text
+    );
+    if (!ok) {
+      console.warn("[scheduled-task/desk-email] SMTP send failed for task", task._id?.toHexString() ?? "?");
+    }
+    return;
+  }
+
+  if (channel.deliveryTarget !== "slack") {
     return;
   }
 
