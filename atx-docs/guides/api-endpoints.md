@@ -93,6 +93,7 @@ Admin portfolio routes include:
 - `PATCH /api/admin/portfolios/:portfolioId`
 - `GET|PATCH /api/admin/portfolios/:portfolioId/watchlist`
 - `POST /api/admin/import/broker`
+- `POST /api/import/broker` — app-user Merrill/Fidelity **holdings** CSV (session); dry-run preview or apply via staged `app_broker_import_jobs` + immediate `sync-broker` task (`/import-activity` UI)
 
 ## xStrategyBuilder / strategy options
 

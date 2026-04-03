@@ -24,7 +24,7 @@ Allowed categories ("type") today:
 - `notifications` — Digest or ad-hoc notification producers
 - `user-history` — Data/insights generation for user activity history (delegates to `UserHistoryAgentService`)
 - `watchlist_price_scanner` — Watchlist Yahoo batch quotes + price alerts (**Next.js** task-runner; Kotlin worker returns noop success when BFF runs the tick)
-- `daily_options_scanner` — Full Yahoo/Mongo scan on **Next.js** task-runner; JVM tick runs **`OptionsStrategyEngine`** dry-run summary when the scheduler executes on Kotlin (`AdminScheduledTasksService`)
+- `options_scanner` — Full Yahoo/Mongo scan on **Next.js** task-runner; JVM tick runs **`OptionsStrategyEngine`** dry-run summary when the scheduler executes on Kotlin (`AdminScheduledTasksService`)
 
 Notes:
 - Legacy Mongo documents may include `portfolioId`; schedulers exclude them from due-task queries.
@@ -39,7 +39,7 @@ Common fields:
 - `tenantId` (ObjectId, optional) — Tenant scope; added when session has a tenant id
 - `portfolioId` (ObjectId, optional) — Legacy only; not enqueued by scheduler
 - `name` (string, required, 1..200) — Human label
-- `category` (string, required) — One of: `sync-broker`, `rebalance`, `compliance`, `notifications`, `user-history`, `watchlist_price_scanner`, `daily_options_scanner`
+- `category` (string, required) — One of: `sync-broker`, `rebalance`, `compliance`, `notifications`, `user-history`, `watchlist_price_scanner`, `options_scanner` (see `SCHEDULED_TASK_CATEGORIES` in `scheduled-task-category-schema.ts` for the full list)
 - `scheduleCron` (string, required) — Cron expression
     - Accepts standard 5-field (`min hour dom mon dow`) or 6-field with seconds. Internally normalized to Spring format (seconds prepended when 5-field provided).
     - Validation uses `org.springframework.scheduling.support.CronExpression`.

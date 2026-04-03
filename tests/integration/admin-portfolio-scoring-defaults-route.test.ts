@@ -31,6 +31,7 @@ vi.mock("@/modules/identity/repository", async (importOriginal) => {
 });
 
 import { GET, PATCH } from "@/app/api/admin/tenants/[tenantId]/portfolio-scoring-defaults/route";
+import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 
 const TENANT_HEX = "507f1f77bcf86cd799439022";
 
@@ -89,7 +90,7 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/portfolio-scoring-defaults", (
     });
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
-      data: { hasTenantOverride: boolean; scoringFactors: Array<{ id: string; weight: number }> };
+      data: { hasTenantOverride: boolean; scoringFactors: PortfolioScoringFactorApi[] };
     };
     expect(json.data.hasTenantOverride).toBe(true);
     expect(json.data.scoringFactors).toHaveLength(6);

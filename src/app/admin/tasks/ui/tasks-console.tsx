@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RRuleScheduleBuilderModal } from "@/app/admin/tasks/ui/rrule-schedule-builder-modal";
 import { AddIcon, DeleteIcon, RefreshIcon, RunIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { SCHEDULED_TASK_CATEGORY_CATALOG } from "@/lib/scheduled-task-category-catalog";
 import {
     SCHEDULED_TASK_CATEGORIES,
     SCHEDULED_TASK_CATEGORY_DEFAULT_CRON
@@ -71,61 +72,13 @@ const POLL_INTERVAL_MS = 30_000;
 
 const CATEGORIES = [...SCHEDULED_TASK_CATEGORIES];
 
-type JobDefinition = {
-  jobType: ScheduledTaskDoc["category"];
-  jobName: string;
-  title: string;
-  description: string;
-};
-
-const PRIMARY_JOB_DEFINITIONS: JobDefinition[] = [
-  {
-    jobType: "price_scanner",
-    jobName: "price-scanner-job",
-    title: "price-scanner-job",
-    description:
-      "Reads portfolios, holdings, and watchlists, fetches Yahoo prices, and updates tenant_market_calendar during market window."
-  },
-  {
-    jobType: "options_scanner",
-    jobName: "options-scanner-job",
-    title: "options-scanner-job",
-    description: "Runs options strategy scanner checks and emits scanner run audit details."
-  },
-  {
-    jobType: "user_access_requests",
-    jobName: "user-access-request-job",
-    title: "user-access-request-job",
-    description:
-      "Monitors access request queue health (actionable backlog + recent approvals) for admin operations."
-  }
-];
-
 function defaultJobNameForCategory(category: ScheduledTaskDoc["category"]): string {
-  const primary = PRIMARY_JOB_DEFINITIONS.find((j) => j.jobType === category);
-  if (primary) {
-    return primary.jobName;
-  }
-  return `${category.replace(/_/g, "-")}-job`;
+  return SCHEDULED_TASK_CATEGORY_CATALOG[category].defaultJobName;
 }
 
-const JOB_TYPE_LABELS: Record<ScheduledTaskDoc["category"], string> = {
-  price_scanner: "price_scanner",
-  options_scanner: "options_scanner",
-  user_access_requests: "user_access_requests",
-  "sync-broker": "sync-broker",
-  rebalance: "rebalance (allocation drift)",
-  compliance: "compliance",
-  notifications: "notifications",
-  "user-history": "user-history",
-  watchlist_price_scanner: "watchlist_price_scanner (legacy)",
-  daily_options_scanner: "daily_options_scanner (legacy)",
-  corporate_events_scanner: "corporate_events_scanner",
-  income_cash_flow_projector: "income_cash_flow_projector",
-  options_expiration_roll_manager: "options_expiration_roll_manager",
-  risk_concentration_scanner: "risk_concentration_scanner",
-  tax_loss_harvest_scanner: "tax_loss_harvest_scanner"
-};
+const JOB_TYPE_LABELS: Record<ScheduledTaskDoc["category"], string> = Object.fromEntries(
+  SCHEDULED_TASK_CATEGORIES.map((c) => [c, SCHEDULED_TASK_CATEGORY_CATALOG[c].displayName])
+) as Record<ScheduledTaskDoc["category"], string>;
 
 const TASKS_BASE = "/api/admin/tasks";
 const DELIVERY_CHANNELS_BASE = "/api/admin/delivery-channels";
@@ -202,8 +155,8 @@ export function TasksConsole() {
     >
   >({});
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const selectedCreateDefinition = useMemo(
-    () => PRIMARY_JOB_DEFINITIONS.find((j) => j.jobType === createJobType) ?? null,
+  const selectedCreateTemplate = useMemo(
+    () => SCHEDULED_TASK_CATEGORY_CATALOG[createJobType],
     [createJobType]
   );
 
@@ -247,7 +200,7 @@ export function TasksConsole() {
     setLoading(true);
     setStatus("Creating job...");
     try {
-      const jobName = selectedCreateDefinition?.jobName ?? "price-scanner-job";
+      const jobName = selectedCreateTemplate.defaultJobName;
       await parseJson(
         await fetch(TASKS_BASE, {
           method: "POST",
@@ -788,14 +741,16 @@ export function TasksConsole() {
                 </thead>
                 <tbody>
                   {CATEGORIES.map((jobType) => {
-                    const job = PRIMARY_JOB_DEFINITIONS.find((j) => j.jobType === jobType);
+                    const meta = SCHEDULED_TASK_CATEGORY_CATALOG[jobType];
                     return (
                       <tr key={jobType}>
-                        <td>{job?.title ?? JOB_TYPE_LABELS[jobType]}</td>
+                        <td>
+                          <code className="font-mono text-xs">{meta.defaultJobName}</code>
+                        </td>
                         <td>
                           <code className="font-mono text-xs">{jobType}</code>
                         </td>
-                        <td>{job?.description ?? "—"}</td>
+                        <td>{meta.description}</td>
                         <td>
                           <code className="font-mono text-xs">
                             {SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[jobType]}
@@ -850,9 +805,7 @@ export function TasksConsole() {
               <p className="status-text">
                 Job name:{" "}
                 <code className="font-mono text-xs">{defaultJobNameForCategory(createJobType)}</code>
-                {selectedCreateDefinition ? (
-                  <span className="text-[var(--xf-text-300)]"> — {selectedCreateDefinition.description}</span>
-                ) : null}
+                <span className="text-[var(--xf-text-300)]"> — {selectedCreateTemplate.description}</span>
               </p>
               <label className="flex flex-col gap-1 text-sm">
                 <span>Delivery channel — Slack recommended (run summary after each execution)</span>

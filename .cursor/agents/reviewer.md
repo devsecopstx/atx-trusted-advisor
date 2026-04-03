@@ -45,7 +45,7 @@ Cross-team implementation plan — use the matching agent files (`.cursor/agents
 ### Phase A — Backend (owner: `backend.md` persona / Kotlin + TS as needed)
 
 1. Implement the pipeline described in `strategy-engine.md`: orchestrator (`generateRecommendations`), `buildUserContext`, chain + market data fetch, `filterEligibleStrategies`, per-ticker/strategy `calculateFitScore`, `buildOptionLegs`, `calculateRiskRewardMetrics`, `generateRationale`, ranked `StrategyRecommendation` list.
-2. Integrate with the **`daily_options_scanner`** job (single job brain); keep v1 rule-based (no heavy ML) unless product explicitly expands scope.
+2. Integrate with the **`options_scanner`** job (single job brain); keep v1 rule-based (no heavy ML) unless product explicitly expands scope.
 3. Contracts: stable DTOs for recommendations; if any HTTP surface is added, update BFF proxy registry + `atx-docs/sre-ops/atxfinance-backend-http-api.md` and enforce OpenAPI parity tests.
 4. Quality: `./gradlew test` in `services/atxfinance-backend`; Vitest for any new Next modules or BFF handlers; edge-case tests for scoring thresholds and risk gates.
 
@@ -69,6 +69,7 @@ Cross-team implementation plan — use the matching agent files (`.cursor/agents
 ## Scheduled tasks (admin)
 
 - **Tenant admin only:** `admin_scheduled_tasks` are created and run from **`/admin/tasks`** (`global_admin`). There is **no** portfolio-level scheduled-task CRUD in the admin UI; legacy Mongo rows with `portfolioId` are **not** enqueued by the scheduler.
+- **Phase 3 scanner jobs:** Shipped (app **≥2.9.0**) — categories, `task-runner.ts` executors, Kotlin allowlist parity, template catalog — [atx-docs/design-system/scheduled-task/scanners-phase3-plan.md](../../atx-docs/design-system/scheduled-task/scanners-phase3-plan.md). Not listed as open backlog in [atx-docs/PLAN.md](../../atx-docs/PLAN.md); optional ops follow-up (cache-hit metrics) remains in that plan’s success criteria.
 - **Future (TBD):** app users may create an **options-scanner** (or related) job from an **xChat** prompt — not shipped until explicitly scoped; do not reintroduce per-portfolio `/admin/portfolios/.../tasks` without product sign-off.
 
 ## Parallel worktree

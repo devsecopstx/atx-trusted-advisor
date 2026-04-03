@@ -99,14 +99,14 @@ describe("runOptionsStrategyScanner", () => {
 
     const r = await runOptionsStrategyScanner({
       name: "t",
-      category: "daily_options_scanner",
+      category: "options_scanner",
       scheduleCron: "0 9 * * *",
       enabled: true
     });
 
     expect(r.status).toBe("success");
     expect(r.output).toContain("options-strategy-scanner:");
-    expect(r.output).toContain("task_category=daily_options_scanner");
+    expect(r.output).toContain("task_category=options_scanner");
     expect(r.output).toContain("skipped=false");
     expect(r.output).toContain("market=open");
     expect(r.output).toContain("portfolios=3");
@@ -124,7 +124,7 @@ describe("runOptionsStrategyScanner", () => {
     expect(r.output).toMatch(/pmcc|wheel/);
     expect(r.auditDetails).toEqual({
       skipped: false,
-      taskCategory: "daily_options_scanner",
+      taskCategory: "options_scanner",
       marketDate: "2026-04-01",
       marketTimezone: "America/New_York",
       portfolioCount: 3,
@@ -168,7 +168,7 @@ describe("runOptionsStrategyScanner", () => {
     repoMocks.listStrategies.mockRejectedValueOnce(new Error("db down"));
     const r = await runOptionsStrategyScanner({
       name: "t",
-      category: "daily_options_scanner",
+      category: "options_scanner",
       scheduleCron: "0 9 * * *",
       enabled: true
     });

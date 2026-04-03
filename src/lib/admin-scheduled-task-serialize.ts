@@ -5,6 +5,7 @@ export function serializeScheduledTaskForJson(t: ScheduledTask) {
     _id: t._id?.toHexString(),
     tenantId: t.tenantId?.toHexString(),
     portfolioId: t.portfolioId?.toHexString(),
+    appBrokerImportJobId: t.appBrokerImportJobId?.toHexString(),
     name: t.name,
     category: t.category,
     schedule: {

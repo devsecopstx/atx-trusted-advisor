@@ -40,7 +40,6 @@ const CORE_SCANNER_CATEGORIES = new Set<ScheduledTask["category"]>([
   "price_scanner",
   "options_scanner",
   "watchlist_price_scanner",
-  "daily_options_scanner",
   "corporate_events_scanner",
   "income_cash_flow_projector",
   "options_expiration_roll_manager",

@@ -12,7 +12,7 @@ This flow is executed once per scheduled job (user-level or platform-wide). The 
 
 ---
 
-The OptionsStrategyEngine is the intelligent brain of the single daily_options_scanner job. It is a lightweight, rule-based scoring component (Kotlin @Component) that turns raw options-chain data + rich user context into personalized, ranked, structured strategy recommendations. No heavy ML in v1 — just fast, explainable, finance-grade logic that you can extend or swap with an LLM later.
+The OptionsStrategyEngine is the intelligent brain of the scheduled `options_scanner` job. It is a lightweight, rule-based scoring component (Kotlin @Component) that turns raw options-chain data + rich user context into personalized, ranked, structured strategy recommendations. No heavy ML in v1 — just fast, explainable, finance-grade logic that you can extend or swap with an LLM later.
 
 **Implementation (JVM):** `services/atxfinance-backend/.../strategy/OptionsStrategyEngine.kt` — `generateRecommendations`, weighted `calculateFitScore` (defaults match the table below), `scheduledTaskDryRunOutput` for Kotlin scheduled-task ticks. Full Yahoo chain + Mongo portfolio pass for app tenants remains in the Next.js task-runner (`src/modules/strategy-options/options-strategy-scanner-job.ts`) unless product moves execution to Spring-only.
 

@@ -26,7 +26,6 @@ describe("core-scanner-service", () => {
     expect(isCoreScannerCategory("price_scanner")).toBe(true);
     expect(isCoreScannerCategory("options_scanner")).toBe(true);
     expect(isCoreScannerCategory("watchlist_price_scanner")).toBe(true);
-    expect(isCoreScannerCategory("daily_options_scanner")).toBe(true);
     expect(isCoreScannerCategory("corporate_events_scanner")).toBe(true);
     expect(isCoreScannerCategory("income_cash_flow_projector")).toBe(true);
     expect(isCoreScannerCategory("options_expiration_roll_manager")).toBe(true);
@@ -84,7 +83,7 @@ describe("core-scanner-service", () => {
       task: {
         _id: taskId,
         name: "Opt",
-        category: "daily_options_scanner",
+        category: "options_scanner",
         scheduleCron: "0 9 * * *",
         enabled: true
       },

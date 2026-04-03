@@ -398,7 +398,7 @@ class AdminScheduledTasksService(
                 output =
                     "watchlist_price_scanner: Kotlin worker noop — Yahoo batch + alerts execute on Next.js task-runner."
             }
-            "daily_options_scanner" -> {
+            "options_scanner" -> {
                 status = "success"
                 output = optionsStrategyEngine.scheduledTaskDryRunOutput(taskName) +
                     " — full Yahoo/Mongo scanner pass runs on Next.js task-runner when scheduled there."
@@ -501,7 +501,6 @@ class AdminScheduledTasksService(
                 "notifications",
                 "user-history",
                 "watchlist_price_scanner",
-                "daily_options_scanner",
                 "corporate_events_scanner",
                 "income_cash_flow_projector",
                 "options_expiration_roll_manager",

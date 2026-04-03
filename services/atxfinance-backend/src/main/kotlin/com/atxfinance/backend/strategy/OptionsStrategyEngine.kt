@@ -7,7 +7,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
-/** Rule-based options recommendation pipeline for scheduled daily_options_scanner / options_scanner (see repo strategy-engine.md). */
+/** Rule-based options recommendation pipeline for scheduled options_scanner (see repo strategy-engine.md). */
 @Component
 class OptionsStrategyEngine {
 
@@ -265,7 +265,7 @@ class OptionsStrategyEngine {
     }
 
     /**
-     * JVM scheduled-task hook: runs a deterministic in-process demo so [daily_options_scanner] ticks
+     * JVM scheduled-task hook: runs a deterministic in-process demo so [options_scanner] ticks
      * exercise the engine without Yahoo/Mongo (full chain fetch stays on Next.js task-runner when used).
      */
     fun scheduledTaskDryRunOutput(taskName: String): String {
@@ -278,7 +278,7 @@ class OptionsStrategyEngine {
         val prompt = OptionsScanPrompt(minScore = 40, weights = emptyMap())
         val recs = generateRecommendations(ctx, mapOf("DEMO" to demoChain), prompt)
         val top = recs.firstOrNull()
-        return "daily_options_scanner: OptionsStrategyEngine v1 task=\"$taskName\" " +
+        return "options_scanner: OptionsStrategyEngine v1 task=\"$taskName\" " +
             "recommendations=${recs.size} top=${top?.strategy ?: "-"} score=${top?.score ?: 0}"
     }
 

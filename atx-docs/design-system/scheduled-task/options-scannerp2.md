@@ -1,6 +1,6 @@
 # Options Strategy Scanner Job — Phase 2
 
-**Service id (categories):** `options_scanner` · `daily_options_scanner`  
+**Service id (category):** `options_scanner`  
 **Logical service id (output prefix):** `options-strategy-scanner`  
 **Modules:** `executeOptionsStrategyScannerJob` — `src/modules/strategy-options/options-strategy-scanner-job.ts`; thin wrapper `runOptionsStrategyScanner` — `options-strategy-scanner.ts`  
 **Type:** Tenant-admin scheduled background job (`admin_scheduled_tasks`), same pipeline as other core scanners
@@ -15,7 +15,7 @@
 |--------|----------|
 | **Unified job** | `executeOptionsStrategyScannerJob({ tenantId, category })` — `options-strategy-scanner-job.ts` (both categories share one implementation; `task_category=` in output preserves source) |
 | **Scheduled hook** | `runOptionsStrategyScanner(task)` → delegates to the job above |
-| **Scheduled task routing** | Single branch: `options_scanner` **or** `daily_options_scanner` → `runOptionsStrategyScanner` — `src/modules/core-admin/task-runner.ts` |
+| **Scheduled task routing** | `options_scanner` → `runOptionsStrategyScanner` — `src/modules/core-admin/task-runner.ts` |
 | **Admin schedule / cron** | `/admin/tasks` — `admin_scheduled_tasks`; default cron via `SCHEDULED_TASK_CATEGORY_DEFAULT_CRON` in `src/lib/scheduled-task-category-schema.ts`; manual run: `POST /api/admin/tasks/{taskId}/run` |
 | **Core scanner audit** | `isCoreScannerCategory` includes both categories — `logCoreScannerRunAudit` in `executeScheduledTask` (`task-runner.ts`) |
 | **Slack run summary** | Optional: task `deliveryChannelTarget` → `admin_delivery_channels` (Slack webhook), same pattern as other scheduled tasks (`scheduled-task-slack-notify.ts`) |

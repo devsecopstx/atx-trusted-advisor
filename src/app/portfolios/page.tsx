@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
@@ -6,8 +7,8 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { getPortfolioTotalBookUsdForSessionUser } from "@/lib/portfolio-total-book-usd";
 import {
-  listWorkspaceDashboardAccountSlices,
-  type WorkspaceDashboardAccountSlice
+    listWorkspaceDashboardAccountSlices,
+    type WorkspaceDashboardAccountSlice
 } from "@/lib/workspace-dashboard-metrics";
 import { listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
 import type { Portfolio } from "@/modules/core-admin/types";
@@ -116,6 +117,17 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
                 <p className="billing-hero__copy">
                   Create and edit workspace portfolios (name, default, type). Custodian accounts, positions, and holdings
                   live on <span className="text-[var(--xf-text-100)]">Portfolio</span> in the nav.
+                </p>
+                <p className="mt-3 text-sm">
+                  <Link
+                    className="inline-flex items-center rounded-md border border-[var(--xf-gain-green)]/50 bg-[var(--xf-gain-green)]/10 px-3 py-1.5 font-medium text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)]/20"
+                    href="/import-activity"
+                  >
+                    Import activities
+                  </Link>
+                  <span className="ml-2 text-[var(--xf-text-300)]">
+                    — Merrill / Fidelity holdings CSV into your accounts
+                  </span>
                 </p>
               </header>
               <div className="portfolios-hero-band__charts-col surface-card xf-widget section-card min-h-0 min-w-0 p-3 md:p-4">

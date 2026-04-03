@@ -59,7 +59,7 @@ Key env/config (examples)
 - `portfolio/` — portfolio CRUD, nested resources, payload normalization/validation
 - `admin/` — admin services (deploy notes, scheduled tasks, positions/accounts/watchlist, platform **`admin_delivery_channels`** CRUD: `in_app` \| `slack` \| **`email`** with `emailTo`; JVM path uses `DeskSmtpSender` when SMTP env is set)
 - `audit/` — audit writers and admin query surface
-- `strategy/` — options strategy job orchestration, Yahoo client, **`OptionsStrategyEngine`** (weighted scoring + JVM `daily_options_scanner` dry run — [`strategy-engine.md`](./xStrategyBuilder/strategy-engine.md)); product **280** remains the umbrella for scanner + interactive surfaces
+- `strategy/` — options strategy job orchestration, Yahoo client, **`OptionsStrategyEngine`** (weighted scoring + JVM `options_scanner` dry run — [`strategy-engine.md`](./xStrategyBuilder/strategy-engine.md)); product **280** remains the umbrella for scanner + interactive surfaces
 - `rag/` — RAG file ingestion helpers (mime, chunker, xAI collection client)
 - `pubsub/` — Pub/Sub publisher config
 - `session/` — session cookie parsing/writing, roles, auth env secrets

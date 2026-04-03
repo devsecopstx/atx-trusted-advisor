@@ -726,9 +726,10 @@ export async function listScheduledTasks(options?: {
 }
 
 export async function createScheduledTask(
-  payload: Omit<ScheduledTask, "_id" | "tenantId" | "portfolioId"> & {
+  payload: Omit<ScheduledTask, "_id" | "tenantId" | "portfolioId" | "appBrokerImportJobId"> & {
     tenantId?: string;
     portfolioId?: string;
+    appBrokerImportJobId?: string;
   }
 ): Promise<ScheduledTask> {
   const db = await getDb();
@@ -736,6 +737,10 @@ export async function createScheduledTask(
   const portfolioOid =
     payload.portfolioId && ObjectId.isValid(payload.portfolioId)
       ? new ObjectId(payload.portfolioId)
+      : undefined;
+  const appBrokerImportJobOid =
+    payload.appBrokerImportJobId && ObjectId.isValid(payload.appBrokerImportJobId)
+      ? new ObjectId(payload.appBrokerImportJobId)
       : undefined;
   const scheduleDescription = resolveScheduleDescription({
     scheduleCron: payload.scheduleCron,
@@ -762,6 +767,7 @@ export async function createScheduledTask(
     nextRunAt: resolvedNextRunAt,
     tenantId: toTenantObjectId(payload.tenantId),
     ...(portfolioOid ? { portfolioId: portfolioOid } : {}),
+    ...(appBrokerImportJobOid ? { appBrokerImportJobId: appBrokerImportJobOid } : {}),
     ...(payload.deliveryChannelTarget ? { deliveryChannelTarget: payload.deliveryChannelTarget } : {})
   };
   const result = await db

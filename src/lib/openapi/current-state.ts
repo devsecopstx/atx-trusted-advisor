@@ -381,6 +381,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tasks"
   },
   {
+    path: "/api/admin/tenants/{tenantId}/portfolio-scoring-defaults",
+    operations: [
+      { method: "GET", auth: "admin" },
+      { method: "PATCH", auth: "admin", hasRequestBody: true }
+    ],
+    tag: "admin-tenants"
+  },
+  {
     path: "/api/admin/tenants/{tenantId}/workspace-limits",
     operations: [
       { method: "GET", auth: "admin" },
@@ -525,6 +533,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     path: "/api/personas/{personaId}/versions",
     operations: [{ method: "GET", auth: "admin" }],
     tag: "personas"
+  },
+  {
+    path: "/api/import/broker",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "portfolios"
   },
   {
     path: "/api/portfolios",
@@ -700,7 +713,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "admin-users": "Admin management of user records, roles, plans, and settings.",
   "admin-xchat": "Platform xChat defaults (e.g. default published persona for app users).",
   personas: "Persona and collection lifecycle APIs.",
-  portfolios: "Default portfolio, account, and watchlist read APIs for signed-in users.",
+  portfolios:
+    "Default portfolio, account, watchlist, and app-user broker holdings import (`POST /api/import/broker`) for signed-in users.",
   positions: "Position capture and persistence APIs.",
   "strategy-options":
     "Option expirations and chain (Yahoo + synthetic fallback) for xStrategyBuilder; aligned with xfinance-strategy GET /api/options.",

@@ -9,6 +9,7 @@ export const APP_USER_PRODUCT_PATH_PREFIXES = [
   "/xchat",
   "/portfolio",
   "/portfolios",
+  "/import-activity",
   "/watchlist",
   "/account",
   "/workspace",

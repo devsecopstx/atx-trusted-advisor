@@ -1,6 +1,6 @@
 # Options Strategy Scanner Job
 
-**Service id (categories):** `options_scanner` · `daily_options_scanner`  
+**Service id (category):** `options_scanner`  
 **Module:** `runOptionsStrategyScanner` — `src/modules/strategy-options/options-strategy-scanner.ts`  
 **Type:** Tenant-admin scheduled background job (`admin_scheduled_tasks`), same pipeline as other core scanners
 
@@ -13,9 +13,9 @@
 | Piece | Location |
 |--------|----------|
 | **Job entrypoint** | `runOptionsStrategyScanner(task)` — `src/modules/strategy-options/options-strategy-scanner.ts` |
-| **Scheduled task routing** | `runScheduledCategory` → `options_scanner` **or** `daily_options_scanner` → same function — `src/modules/core-admin/task-runner.ts` |
+| **Scheduled task routing** | `runScheduledCategory` → `options_scanner` → `runOptionsStrategyScanner` — `src/modules/core-admin/task-runner.ts` |
 | **Admin schedule / cron** | `/admin/tasks` — `admin_scheduled_tasks`; default cron via `SCHEDULED_TASK_CATEGORY_DEFAULT_CRON` in `src/lib/scheduled-task-category-schema.ts`; manual run: `POST /api/admin/tasks/{taskId}/run` |
-| **Core scanner audit** | `isCoreScannerCategory` includes both categories — `logCoreScannerRunAudit` in `executeScheduledTask` (`task-runner.ts`); payloads include `summaryForDiff`, fingerprints, size caps (`301n` / `CORE_SCANNER_AUDIT_*`). |
+| **Core scanner audit** | `isCoreScannerCategory` includes `options_scanner` — `logCoreScannerRunAudit` in `executeScheduledTask` (`task-runner.ts`); payloads include `summaryForDiff`, fingerprints, size caps (`301n` / `CORE_SCANNER_AUDIT_*`). |
 | **Slack run summary** | Optional: task `deliveryChannelTarget` → `admin_delivery_channels` (Slack webhook), same pattern as other scheduled tasks (`scheduled-task-slack-notify.ts`) |
 
 ### Current behavior (market-open path)
@@ -57,7 +57,7 @@ Output includes `scan_targets=… prefs_after=… chain_batches=… rank_top=…
 
 The older draft in this file described Grok-enhanced chain scans, `option_scan_history`, Prometheus, circuit breakers, per-option retries, dead-letter queues, and **`UnifiedOptionsScannerConfig`** — **those are not in the v1 code path.** Treat them as **product/engineering backlog** unless/until implemented.
 
-Intended integration point for the full engine: **`daily_options_scanner`** (and/or **`options_scanner`**) should invoke the same brain as interactive **xOptions** / strategy engine once **PLAN 245** lands — reviewer doc calls out **`daily_options_scanner`** as the single job brain candidate.
+Intended integration point for the full engine: **`options_scanner`** should invoke the same brain as interactive **xOptions** / strategy engine once **PLAN 245** lands — reviewer doc calls out **`options_scanner`** as the scheduled job brain.
 
 **SRE (when scale matters):** batch runs on Cloud Run should respect Mongo connection limits, timeouts on scheduled execution, and **structured, safe logs** (task id, tenant mask, counts — no raw PII). Today, primary observability is **`admin_task_runs.output`** + optional Slack + core_scanner audit rows — not dedicated Prometheus metrics for this job.
 
@@ -76,9 +76,8 @@ Intended integration point for the full engine: **`daily_options_scanner`** (and
 
 ## Open questions (for product / eng)
 
-1. **Category split:** `options_scanner` vs `daily_options_scanner` today share one implementation (output label differs). Should product keep both template rows in admin UI or converge to a single category when the engine ships?
-2. **Market window:** Unlike `price_scanner`, v1 does **not** skip outside equity hours — runs whenever scheduled. Should options inventory respect US session / `resolveUsMarketDayContext` once chain I/O exists?
-3. **xChat-created jobs:** When users can create scanner jobs from chat, do they create **`admin_scheduled_tasks`** rows (with caps) or a separate job table — needs explicit design before build.
+1. **Market window:** Unlike `price_scanner`, v1 does **not** skip outside equity hours — runs whenever scheduled. Should options inventory respect US session / `resolveUsMarketDayContext` once chain I/O exists?
+2. **xChat-created jobs:** When users can create scanner jobs from chat, do they create **`admin_scheduled_tasks`** rows (with caps) or a separate job table — needs explicit design before build.
 
 ---
 

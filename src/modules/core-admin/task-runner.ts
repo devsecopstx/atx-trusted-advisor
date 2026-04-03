@@ -9,6 +9,7 @@ import {
 import { notifyScheduledTaskSlackSummary } from "@/modules/core-admin/scheduled-task-slack-notify";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { runUserAccessRequestsTask } from "@/modules/core-admin/user-access-requests-task";
+import { runScheduledAppBrokerImportTask } from "@/modules/portfolio-import/app-broker-import-job";
 import {
     appendTenantIdToScheduledTaskOutput,
     logCoreScannerRunAudit,
@@ -99,7 +100,7 @@ async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCateg
   if (task.category === "price_scanner") {
     return executePriceScannerJob({ tenantId: task.tenantId });
   }
-  if (task.category === "options_scanner" || task.category === "daily_options_scanner") {
+  if (task.category === "options_scanner") {
     return runOptionsStrategyScanner(task);
   }
   if (task.category === "user_access_requests") {
@@ -134,6 +135,9 @@ async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCateg
 
   switch (task.category) {
     case "sync-broker":
+      if (task.appBrokerImportJobId) {
+        return runScheduledAppBrokerImportTask(task);
+      }
       return {
         status: "success",
         output: `Broker sync completed for task "${task.name}".`

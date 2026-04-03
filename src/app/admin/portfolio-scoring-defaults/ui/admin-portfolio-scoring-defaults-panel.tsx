@@ -6,11 +6,11 @@ import { AdminScoringFactorVisual } from "@/app/admin/portfolios/ui/admin-scorin
 import { RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import {
-  DEFAULT_PORTFOLIO_SCORING_FACTORS,
-  SCORING_FACTOR_CATALOG,
-  SCORING_FACTOR_IDS,
-  SCORING_FORMULA_DESCRIPTION,
-  type ScoringFactorId
+    DEFAULT_PORTFOLIO_SCORING_FACTORS,
+    SCORING_FACTOR_CATALOG,
+    SCORING_FACTOR_IDS,
+    SCORING_FORMULA_DESCRIPTION,
+    type ScoringFactorId
 } from "@/modules/core-admin/scoring-factors";
 
 type ScoringRowApi = {

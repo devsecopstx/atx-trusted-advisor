@@ -83,6 +83,8 @@ export type ScheduledTask = {
   tenantId?: ObjectId;
   /** Legacy: portfolio-scoped tasks are removed from product UI/API; scheduler ignores `portfolioId`. */
   portfolioId?: ObjectId;
+  /** Staged app-user broker import (`app_broker_import_jobs`) when `category` is `sync-broker`. */
+  appBrokerImportJobId?: ObjectId;
   name: string;
   category:
     | "price_scanner"
@@ -94,7 +96,6 @@ export type ScheduledTask = {
     | "notifications"
     | "user-history"
     | "watchlist_price_scanner"
-    | "daily_options_scanner"
     | "corporate_events_scanner"
     | "income_cash_flow_projector"
     | "options_expiration_roll_manager"

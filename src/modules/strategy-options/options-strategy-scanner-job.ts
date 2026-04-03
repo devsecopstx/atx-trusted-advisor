@@ -30,19 +30,17 @@ import {
     watchlistsToOptionScanTargets
 } from "@/modules/strategy-options/options-scanner-targets";
 
-/** Logical service id — both `options_scanner` and `daily_options_scanner` map here. */
+/** Logical service id for `options_scanner` scheduled tasks. */
 export const OPTIONS_STRATEGY_SCANNER_SERVICE_ID = "options-strategy-scanner";
+
+const OPTIONS_SCANNER_TASK_CATEGORY = "options_scanner" as const;
 
 const ACCOUNT_COLLECTION = "portfolio_accounts";
 const POSITION_COLLECTION = "portfolio_positions";
 const WATCHLIST_COLLECTION = "portfolio_watchlists";
 
-export type OptionsStrategyScannerCategory = "options_scanner" | "daily_options_scanner";
-
 export type OptionsStrategyScannerJobInput = {
   tenantId?: ObjectId;
-  /** Source task category (for output/trace only; execution is identical). */
-  category: OptionsStrategyScannerCategory;
 };
 
 function tenantFilter(tenantId?: ObjectId): Record<string, unknown> {
@@ -333,7 +331,7 @@ export async function executeOptionsExpirationRollJob(input: {
 }
 
 /**
- * Unified options strategy scanner job for `options_scanner` and `daily_options_scanner`.
+ * Options strategy scanner job for scheduled task category `options_scanner`.
  *
  * **Phase 2 (shipped here):** US regular-session gate (same calendar as price scanner), strategy/prefs
  * inventory, tenant-scoped option-position counts + distinct underlyings, `tenant_market_calendar` row
@@ -346,8 +344,7 @@ export async function executeOptionsExpirationRollJob(input: {
 export async function executeOptionsStrategyScannerJob(
   input: OptionsStrategyScannerJobInput
 ): Promise<ScheduledCategoryResult> {
-  const taskCategoryTag =
-    input.category === "daily_options_scanner" ? "daily_options_scanner" : "options_scanner";
+  const taskCategoryTag = OPTIONS_SCANNER_TASK_CATEGORY;
   try {
     const { tenantId } = input;
     const start = Date.now();

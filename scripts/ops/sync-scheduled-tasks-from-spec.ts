@@ -1,9 +1,11 @@
 /**
  * Sync `admin_scheduled_tasks` to canonical **categories** + **default crons** from
- * `src/lib/scheduled-task-category-schema.ts` (`SCHEDULED_TASK_CATEGORY_DEFAULT_CRON`), with human-readable names.
+ * `src/lib/scheduled-task-category-schema.ts` (`SCHEDULED_TASK_CATEGORY_DEFAULT_CRON`), with human-readable names from
+ * `src/lib/scheduled-task-category-catalog.ts` (`SCHEDULED_TASK_CATEGORY_DISPLAY_NAME`).
  *
  * - **Tenant:** first `core_tenants` row (sorted by `_id`), or `SCHEDULED_TASKS_SYNC_TENANT_ID` / `--tenant=<hex>`.
  * - **Upsert key:** `tenantId` + `category` + no `portfolioId` (tenant-level tasks only).
+ * - **Legacy:** rows with `category: daily_options_scanner` are rewritten to `options_scanner` on `--apply` (count shown in dry-run).
  * - **`--seed-if-empty`:** if the tenant has **zero** tenant-level tasks before sync, runs `npm run seed:admin` (requires `.env` / `--file` with `ADMIN_SEED_EMAIL`, etc.) then continues.
  *
  * Usage:
@@ -23,10 +25,10 @@ import { type Collection, type Db, MongoClient, ObjectId } from "mongodb";
 
 import cronstrue from "cronstrue";
 
+import { SCHEDULED_TASK_CATEGORY_DISPLAY_NAME } from "@/lib/scheduled-task-category-catalog";
 import {
     SCHEDULED_TASK_CATEGORIES,
-    SCHEDULED_TASK_CATEGORY_DEFAULT_CRON,
-    type ScheduledTaskCategory
+    SCHEDULED_TASK_CATEGORY_DEFAULT_CRON
 } from "@/lib/scheduled-task-category-schema";
 import { computeNextRunAtFromCron } from "@/lib/scheduled-task-cron";
 
@@ -46,25 +48,6 @@ function describeCron(scheduleCron: string): string {
     return "Custom cron schedule";
   }
 }
-
-/** Display names aligned with `/admin/tasks` — spec windows are documented in `scheduled-task-category-schema.ts`. */
-const TASK_DISPLAY_NAMES: Record<ScheduledTaskCategory, string> = {
-  price_scanner: "Price scanner (weekday desk window, UTC)",
-  options_scanner: "Options strategy scanner (weekday desk window, UTC)",
-  user_access_requests: "User access requests (weekday desk window, UTC)",
-  "sync-broker": "Broker sync (weekday desk window, UTC)",
-  rebalance: "Rebalance (post US close, UTC weekdays)",
-  compliance: "Compliance (weekday desk window, UTC)",
-  notifications: "Notifications digest (weekday desk window, UTC)",
-  "user-history": "User history agent (weekday desk window, UTC)",
-  watchlist_price_scanner: "Watchlist price scanner (weekday desk window, UTC)",
-  daily_options_scanner: "Daily options scanner (weekday desk window, UTC)",
-  corporate_events_scanner: "Corporate events (weekday 30m cadence, UTC)",
-  income_cash_flow_projector: "Income / cash-flow projector (post US close, UTC weekdays)",
-  options_expiration_roll_manager: "Options expiration / roll (weekday desk window, UTC)",
-  risk_concentration_scanner: "Risk concentration (daily weekday evening, UTC)",
-  tax_loss_harvest_scanner: "Tax-loss harvest (daily, UTC)"
-};
 
 type Cli = {
   apply: boolean;
@@ -220,7 +203,7 @@ async function main(): Promise<void> {
 
   for (const category of SCHEDULED_TASK_CATEGORIES) {
     const scheduleCron = SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[category];
-    const name = TASK_DISPLAY_NAMES[category];
+    const name = SCHEDULED_TASK_CATEGORY_DISPLAY_NAME[category];
     const scheduleDescription = describeCron(scheduleCron);
     const nextRunAt =
       computeNextRunAtFromCron(scheduleCron, now) ?? new Date(now.getTime() + 5 * 60 * 1000);
@@ -269,6 +252,22 @@ async function main(): Promise<void> {
           computeNextRunAtFromCron(scheduleCron, now) ?? new Date(now.getTime() + 5 * 60 * 1000);
       }
       await coll.updateOne({ _id: existing._id }, { $set });
+    }
+  }
+
+  const legacyDailyOptions = await coll.countDocuments({
+    ...tenantLevelFilter(tenantId),
+    category: "daily_options_scanner"
+  });
+  if (legacyDailyOptions > 0) {
+    plan.push(
+      `MIGRATE ${legacyDailyOptions} task(s): category daily_options_scanner -> options_scanner (removed alias)`
+    );
+    if (cli.apply) {
+      await coll.updateMany(
+        { ...tenantLevelFilter(tenantId), category: "daily_options_scanner" },
+        { $set: { category: "options_scanner" } }
+      );
     }
   }
 

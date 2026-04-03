@@ -19,6 +19,9 @@ const identityMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/lib/server-request-cache", () => ({
+  getTenantByHexIdCached: vi.fn().mockResolvedValue(null)
+}));
 vi.mock("@/lib/backend-bff", () => ({
   proxyRequestToBackend: bffMocks.proxyRequestToBackend
 }));
@@ -163,7 +166,8 @@ describe("POST /api/admin/portfolios", () => {
       userId,
       tenantId,
       name: "Secondary book",
-      isDefault: undefined
+      isDefault: undefined,
+      initialScoringFactors: undefined
     });
   });
 });
