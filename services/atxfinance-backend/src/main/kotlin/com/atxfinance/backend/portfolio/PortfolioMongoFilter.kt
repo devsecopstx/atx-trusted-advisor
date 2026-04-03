@@ -26,6 +26,18 @@ internal object PortfolioMongoFilter {
         return Criteria().andOperator(base, Criteria.where("tenantId").`is`(oid))
     }
 
+    /** `admin_scheduled_tasks`: session tenant or legacy rows without `tenantId` (Next `scheduledTaskTenantReadScope`). */
+    fun scheduledTaskTenantReadCriteria(base: Criteria, tenantId: String?): Criteria {
+        val oid = tenantObjectId(tenantId ?: return base) ?: return base
+        val tenantFlex =
+            Criteria().orOperator(
+                Criteria.where("tenantId").`is`(oid),
+                Criteria.where("tenantId").`is`(null),
+                Criteria.where("tenantId").exists(false),
+            )
+        return Criteria().andOperator(base, tenantFlex)
+    }
+
     fun strictWriteTenantCriteria(base: Criteria, tenantId: String?): Criteria {
         val oid = tenantObjectId(tenantId ?: return base) ?: return base
         return Criteria().andOperator(base, Criteria.where("tenantId").`is`(oid))

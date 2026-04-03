@@ -38,7 +38,7 @@ class AdminScheduledTasksService(
             Criteria.where("portfolioId").`is`(null),
         )
         val q = Query.query(
-            PortfolioMongoFilter.withTenantScopeCriteria(
+            PortfolioMongoFilter.scheduledTaskTenantReadCriteria(
                 tenantLevelOnly,
                 session.tenantId.takeIf { it.isNotBlank() },
             ),
@@ -89,7 +89,7 @@ class AdminScheduledTasksService(
         }
         val oid = ObjectId(taskId)
         val base = Criteria.where("_id").`is`(oid)
-        val q = Query.query(PortfolioMongoFilter.withTenantScopeCriteria(base, session.tenantId.takeIf { it.isNotBlank() }))
+        val q = Query.query(PortfolioMongoFilter.scheduledTaskTenantReadCriteria(base, session.tenantId.takeIf { it.isNotBlank() }))
         return mongoTemplate.findOne(q, Document::class.java, props.scheduledTasksCollection)
     }
 
@@ -298,7 +298,7 @@ class AdminScheduledTasksService(
             Criteria.where("nextRunAt").lte(now),
             tenantScopedOnly,
         )
-        val q = Query.query(PortfolioMongoFilter.withTenantScopeCriteria(base, session.tenantId.takeIf { it.isNotBlank() }))
+        val q = Query.query(PortfolioMongoFilter.scheduledTaskTenantReadCriteria(base, session.tenantId.takeIf { it.isNotBlank() }))
             .with(Sort.by(Sort.Direction.ASC, "nextRunAt").and(Sort.by(Sort.Direction.ASC, "_id")))
             .limit(30)
         return mongoTemplate.find(q, Document::class.java, props.scheduledTasksCollection)
@@ -492,6 +492,9 @@ class AdminScheduledTasksService(
     companion object {
         private val ALLOWED_CATEGORIES =
             setOf(
+                "price_scanner",
+                "options_scanner",
+                "user_access_requests",
                 "sync-broker",
                 "rebalance",
                 "compliance",

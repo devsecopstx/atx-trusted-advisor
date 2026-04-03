@@ -57,12 +57,12 @@ vi.mock("@/modules/core-admin/repository", async () => {
   };
 });
 
-import { GET as getDefaultPortfolio, POST as postDefaultPortfolio } from "@/app/api/portfolios/default/route";
 import {
-  DELETE as deletePortfolioById,
-  GET as getPortfolioById
+    DELETE as deletePortfolioById,
+    GET as getPortfolioById
 } from "@/app/api/portfolios/[portfolioId]/route";
 import { GET as getCurrentPortfolio } from "@/app/api/portfolios/current/route";
+import { GET as getDefaultPortfolio, POST as postDefaultPortfolio } from "@/app/api/portfolios/default/route";
 
 const portfolioId = "507f1f77bcf86cd799439033";
 

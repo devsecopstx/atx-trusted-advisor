@@ -100,7 +100,14 @@ const PRIMARY_JOB_DEFINITIONS: JobDefinition[] = [
       "Monitors access request queue health (actionable backlog + recent approvals) for admin operations."
   }
 ];
-const CREATE_JOB_OPTIONS = PRIMARY_JOB_DEFINITIONS.map((job) => job.jobType);
+
+function defaultJobNameForCategory(category: ScheduledTaskDoc["category"]): string {
+  const primary = PRIMARY_JOB_DEFINITIONS.find((j) => j.jobType === category);
+  if (primary) {
+    return primary.jobName;
+  }
+  return `${category.replace(/_/g, "-")}-job`;
+}
 
 const JOB_TYPE_LABELS: Record<ScheduledTaskDoc["category"], string> = {
   price_scanner: "price_scanner",
@@ -196,7 +203,7 @@ export function TasksConsole() {
   >({});
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const selectedCreateDefinition = useMemo(
-    () => PRIMARY_JOB_DEFINITIONS.find((j) => j.jobType === createJobType) ?? PRIMARY_JOB_DEFINITIONS[0],
+    () => PRIMARY_JOB_DEFINITIONS.find((j) => j.jobType === createJobType) ?? null,
     [createJobType]
   );
 
@@ -780,37 +787,40 @@ export function TasksConsole() {
                   </tr>
                 </thead>
                 <tbody>
-                  {PRIMARY_JOB_DEFINITIONS.map((job) => (
-                    <tr key={job.jobType}>
-                      <td>{job.title}</td>
-                      <td>
-                        <code className="font-mono text-xs">{job.jobType}</code>
-                      </td>
-                      <td>{job.description}</td>
-                      <td>
-                        <code className="font-mono text-xs">
-                          {SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[job.jobType]}
-                        </code>
-                      </td>
-                      <td>
-                        <button
-                          className="tiny-button"
-                          disabled={loading}
-                          onClick={() => {
-                            setCreateJobType(job.jobType);
-                            setCreateSchedule({
-                              scheduleCron: SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[job.jobType],
-                              scheduleRRule: undefined,
-                              scheduleDescription: undefined
-                            });
-                          }}
-                          type="button"
-                        >
-                          Use
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {CATEGORIES.map((jobType) => {
+                    const job = PRIMARY_JOB_DEFINITIONS.find((j) => j.jobType === jobType);
+                    return (
+                      <tr key={jobType}>
+                        <td>{job?.title ?? JOB_TYPE_LABELS[jobType]}</td>
+                        <td>
+                          <code className="font-mono text-xs">{jobType}</code>
+                        </td>
+                        <td>{job?.description ?? "—"}</td>
+                        <td>
+                          <code className="font-mono text-xs">
+                            {SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[jobType]}
+                          </code>
+                        </td>
+                        <td>
+                          <button
+                            className="tiny-button"
+                            disabled={loading}
+                            onClick={() => {
+                              setCreateJobType(jobType);
+                              setCreateSchedule({
+                                scheduleCron: SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[jobType],
+                                scheduleRRule: undefined,
+                                scheduleDescription: undefined
+                              });
+                            }}
+                            type="button"
+                          >
+                            Use
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -831,14 +841,18 @@ export function TasksConsole() {
                   });
                 }}
               >
-                {CREATE_JOB_OPTIONS.map((c) => (
+                {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
                     {JOB_TYPE_LABELS[c]}
                   </option>
                 ))}
               </select>
               <p className="status-text">
-                Job name: <code className="font-mono text-xs">{selectedCreateDefinition?.jobName}</code>
+                Job name:{" "}
+                <code className="font-mono text-xs">{defaultJobNameForCategory(createJobType)}</code>
+                {selectedCreateDefinition ? (
+                  <span className="text-[var(--xf-text-300)]"> — {selectedCreateDefinition.description}</span>
+                ) : null}
               </p>
               <label className="flex flex-col gap-1 text-sm">
                 <span>Delivery channel — Slack recommended (run summary after each execution)</span>

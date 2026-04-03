@@ -242,6 +242,29 @@ export function resolveDefaultMongoDatabaseName(): string {
   return MONGODB_DB_NAME;
 }
 
+/**
+ * Non-empty database segment from a Mongo connection string path (`...host:27017/mydb`, `...net/mydb?retryWrites`).
+ * Does not validate that the database exists.
+ */
+export function extractMongoDatabaseNameFromConnectionString(uri: string): string | undefined {
+  const s = uri.trim();
+  if (!s.startsWith("mongodb://") && !s.startsWith("mongodb+srv://")) {
+    return undefined;
+  }
+  try {
+    const httpish = s.replace(/^mongodb\+srv:/i, "http:").replace(/^mongodb:/i, "http:");
+    const u = new URL(httpish);
+    const path = u.pathname.replace(/^\//, "").trim();
+    const segment = path.split("/")[0]?.trim();
+    if (!segment) {
+      return undefined;
+    }
+    return decodeURIComponent(segment);
+  } catch {
+    return undefined;
+  }
+}
+
 /** Resolved Mongo connection string (Atlas, local Docker, or compose fallback). */
 export function getMongoUri(): string {
   const fromZod = getEnv().MONGODB_URI;
@@ -268,6 +291,28 @@ export function getMongoUri(): string {
 
 /** @deprecated Use {@link getMongoUri} — name kept for call sites. */
 export const getMongoUriFromB64 = getMongoUri;
+
+/**
+ * Database name Next.js `getDb()` and sync scripts should use: **`MONGODB_DB_NAME`** if set, else path segment
+ * from **`MONGODB_URI`** when present, else {@link resolveDefaultMongoDatabaseName}. Fixes URIs like
+ * `mongodb://localhost:27017/atxfinance-dev` being ignored when the code previously always called `db("atxfinance")`.
+ */
+export function resolveEffectiveMongoDatabaseName(): string {
+  const explicit = process.env.MONGODB_DB_NAME?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  try {
+    const uri = getMongoUriFromB64();
+    const fromUri = extractMongoDatabaseNameFromConnectionString(uri);
+    if (fromUri) {
+      return fromUri;
+    }
+  } catch {
+    /* getEnv() may throw in tests or incomplete env */
+  }
+  return resolveDefaultMongoDatabaseName();
+}
 
 export function getXOauthClientId(): string {
   const { X_OAUTH_CLIENT_ID } = getEnv();
@@ -411,8 +456,9 @@ export function getMongoConnectionLabel(): string {
     ? withoutProtocol.split("@").slice(1).join("@")
     : withoutProtocol;
   const [hostsAndPath] = withoutCredentials.split("?");
-  const [hosts, dbName] = hostsAndPath.split("/", 2);
-  const resolvedDbName = dbName && dbName.length > 0 ? dbName : resolveDefaultMongoDatabaseName();
+  const [hosts, dbFromPath] = hostsAndPath.split("/", 2);
+  const resolvedDbName =
+    dbFromPath && dbFromPath.length > 0 ? decodeURIComponent(dbFromPath) : resolveEffectiveMongoDatabaseName();
   return `${hosts}/${resolvedDbName}`;
 }
 

@@ -218,6 +218,28 @@ function withTenantScope(
 }
 
 /**
+ * `admin_scheduled_tasks` reads (and id-scoped writes): match the session tenant **or** legacy rows with no
+ * `tenantId` (created before tenant was always persisted). Mirrors default-portfolio null-tenant handling.
+ */
+function scheduledTaskTenantReadScope(
+  base: Record<string, unknown>,
+  tenantId?: string
+): Record<string, unknown> {
+  const tenantOid = toTenantObjectId(tenantId);
+  if (!tenantOid) {
+    return base;
+  }
+  return {
+    $and: [
+      base,
+      {
+        $or: [{ tenantId: tenantOid }, { tenantId: null }, { tenantId: { $exists: false } }]
+      }
+    ]
+  };
+}
+
+/**
  * `updateOne` upserts must not use `withTenantScope`'s `$or` — MongoDB upsert + `$or` can fail or
  * skip matches, which breaks OAuth bootstrap (`provisionDefaultPortfolioForUser`).
  */
@@ -697,7 +719,7 @@ export async function listScheduledTasks(options?: {
         };
   return db
     .collection<ScheduledTask>(collections.scheduledTasks)
-    .find(withTenantScope(portfolioFilter, options?.tenantId))
+    .find(scheduledTaskTenantReadScope(portfolioFilter, options?.tenantId))
     .sort({ name: 1 })
     .limit(limit)
     .toArray();
@@ -831,7 +853,7 @@ export async function updateScheduledTask(input: {
     updateDoc.$unset = $unset;
   }
   await db.collection<ScheduledTask>(collections.scheduledTasks).updateOne(
-    withTenantScope({ _id: existing._id }, input.tenantId),
+    scheduledTaskTenantReadScope({ _id: existing._id }, input.tenantId),
     updateDoc
   );
   return getScheduledTaskById(input.taskId, { tenantId: input.tenantId });
@@ -854,7 +876,7 @@ export async function deleteScheduledTask(input: {
   }
   const db = await getDb();
   const res = await db.collection<ScheduledTask>(collections.scheduledTasks).deleteOne(
-    withTenantScope({ _id: existing._id }, input.tenantId)
+    scheduledTaskTenantReadScope({ _id: existing._id }, input.tenantId)
   );
   return (res.deletedCount ?? 0) === 1;
 }
@@ -869,7 +891,7 @@ export async function getScheduledTaskById(
   }
   return db
     .collection<ScheduledTask>(collections.scheduledTasks)
-    .findOne(withTenantScope({ _id: new ObjectId(id) }, options?.tenantId));
+    .findOne(scheduledTaskTenantReadScope({ _id: new ObjectId(id) }, options?.tenantId));
 }
 
 export async function listDueScheduledTasks(
@@ -880,7 +902,7 @@ export async function listDueScheduledTasks(
   return db
     .collection<ScheduledTask>(collections.scheduledTasks)
     .find(
-      withTenantScope(
+      scheduledTaskTenantReadScope(
         {
           enabled: true,
           nextRunAt: { $lte: now },
