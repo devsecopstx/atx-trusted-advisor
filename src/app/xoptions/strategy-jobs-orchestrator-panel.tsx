@@ -130,9 +130,9 @@ export function StrategyJobsOrchestratorPanel(props: {
         setSelectedId(body.data.jobId);
         setJob(body.data);
         await loadList();
+        onAutoStartConsumed?.();
       } finally {
         setBusy(false);
-        onAutoStartConsumed?.();
       }
     })();
   }, [autoStartNewJob, loadList, onAutoStartConsumed]);

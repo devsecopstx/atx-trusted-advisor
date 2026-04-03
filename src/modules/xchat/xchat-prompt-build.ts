@@ -20,7 +20,9 @@ Use real atx_function function calls via the API. Prefer native API tool calls o
 Operations: portfolio_summary (overview, per-account cashBalance, position counts, **and watchlist** on the default portfolio), positions_snapshot (symbol, qty, avgCost per account; may truncate), watchlist_snapshot (watchlist-only: symbols + addedAt), watchlist_add_symbols / watchlist_remove_symbols (pass symbol or symbols array), account_health (balances + default account). For live quotes use yahoo_finance or atx_function with operation market_quote.
 If the tool returns no_default_portfolio, no_watchlist, or empty positions, say that clearly and suggest completing setup in Portfolio / Watchlist in the app—not a generic request to "share your holdings."
 
-**NL (natural language) before structured options / strategy flows:** When the user asks for an xOptions-style or multi-leg strategy setup, use **nl**—short, direct questions—to collect any **required** inputs (underlying, direction, timeframe, risk cap, position context) before you infer strikes or recommend actions. If something essential is missing, ask in nl; do not guess symbols or sizing. Workspace data for *their* book should come from the **Workspace snapshot** and atx_function when needed—not by re-prompting the user to paste holdings. There is no chat tool yet that submits **strategy jobs** or runs the full xOptions builder API—if they need that flow, say so and point them to the in-app xOptions / strategy surface once available.`;
+**NL (natural language) before structured options / strategy flows:** When the user asks for an xOptions-style or multi-leg strategy setup, use **nl**—short, direct questions—to collect any **required** inputs (underlying, direction, timeframe, risk cap, position context) before you infer strikes or recommend actions. If something essential is missing, ask in nl; do not guess symbols or sizing. Workspace data for *their* book should come from the **Workspace snapshot** and atx_function when needed—not by re-prompting the user to paste holdings. For the **full slot + artifact orchestrator** (auditable Markdown + JSON after desk slots), direct them to **xOptions → Hardcore strategy jobs** (\`/xoptions\`, guided \`/api/strategy-jobs\` via BFF). The server may also surface a one-turn preflight in chat when intent clearly matches that flow.`;
+
+export const XCHAT_SERVER_ROUTING_POLICY_BLOCK = `**Server routing policy (TEAM KB + tools):** Snippets from team xAI collections are injected above when available—prefer them first for policy, playbooks, and static docs. **Live portfolio** state: atx_function / workspace tools (and any workspace JSON the server already attached above). **Quotes:** yahoo_finance or atx_function \`market_quote\`—never invent prices from web prose. **Breaking news / sentiment:** web_search / x_search after KB when freshness matters. **Heavy multi-source synthesis** uses parallel multi-agent only when the user explicitly raises effort or the question clearly requires cross-source reconciliation—the default path is one model pass plus retrieval and selective tools.`;
 
 export type SessionToolFlags = {
   /** Effective persona tools include `web_search` and/or `x_search` (after `mergeXchatHostedToolBaseline` on ask, this is usually true). */
@@ -54,6 +56,8 @@ export type BuildXchatSystemPromptInput = {
   recentHistoryBlock?: string | null;
   workspaceSnapshot: string | null | undefined;
   sessionToolInstructions: string;
+  /** Ask route: enforced retrieval/tools/multi-agent policy blurb. */
+  routingPolicyBlock?: string | null;
   /**
    * Persona-driven: include citation-chip contract vs plain-prose-only instruction.
    * Default true when omitted.
@@ -92,6 +96,10 @@ export function buildXchatSystemPrompt(input: BuildXchatSystemPromptInput): stri
   const session = input.sessionToolInstructions.trim();
   if (session) {
     parts.push(session);
+  }
+  const routing = typeof input.routingPolicyBlock === "string" ? input.routingPolicyBlock.trim() : "";
+  if (routing) {
+    parts.push(routing);
   }
   parts.push(citationsEnabled ? XCHAT_CITATION_MARKDOWN_CONTRACT : XCHAT_NO_CITATIONS_INSTRUCTION);
   parts.push(XCHAT_BETA_CLIENT_UI_INSTRUCTIONS);

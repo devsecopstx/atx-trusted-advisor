@@ -18,6 +18,7 @@ import {
 } from "@/lib/xai";
 import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
+import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
 import {
     logXchatAskDebug,
     logXchatAskFullPayload,
@@ -47,6 +48,7 @@ import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import { getLatestXchatResponseIdByUser, saveXChatLog } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
+import type { XChatXaiUsageSnapshot } from "@/modules/xchat/types";
 import {
     ensureSuperAgentDefaultTools,
     isAtxFunctionToolType,
@@ -60,8 +62,17 @@ import {
     type WorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
+import {
+    heavySynthesisIntent,
+    shouldOfferStrategyJobPreflight,
+    STRATEGY_JOB_PREFLIGHT_MARKDOWN
+} from "@/modules/xchat/xchat-ask-routing";
 import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
-import { buildSessionToolInstructions, buildXchatSystemPrompt } from "@/modules/xchat/xchat-prompt-build";
+import {
+    buildSessionToolInstructions,
+    buildXchatSystemPrompt,
+    XCHAT_SERVER_ROUTING_POLICY_BLOCK
+} from "@/modules/xchat/xchat-prompt-build";
 
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
@@ -273,8 +284,19 @@ export async function POST(request: Request) {
   const modelSelectionSource: ModelSelectionSource =
     personaModelRaw.length > 0 ? "persona" : "default";
 
+  let executionModel = effectiveModel;
+  let multiAgentDowngraded = false;
+  if (MULTI_AGENT_MODELS.has(effectiveModel)) {
+    const allowParallelism =
+      parsed.data.reasoningEffort != null || heavySynthesisIntent(message);
+    if (!allowParallelism) {
+      executionModel = getDefaultPersonaChatModelId();
+      multiAgentDowngraded = true;
+    }
+  }
+
   const parallelAgentConfigResult = resolveParallelAgentConfig({
-    model: effectiveModel,
+    model: executionModel,
     reasoningEffort: parsed.data.reasoningEffort
   });
   if (!parallelAgentConfigResult.ok) {
@@ -305,7 +327,7 @@ export async function POST(request: Request) {
     session.tenantId ?? "tenant:none",
     resolvedPersonaIdOverride ?? persona?._id?.toHexString() ?? persona?.name ?? "persona:none",
     message,
-    effectiveModel,
+    executionModel,
     scope
   );
   const correlationId = buildDeterministicId(
@@ -320,6 +342,61 @@ export async function POST(request: Request) {
   const userId = ObjectId.isValid(session.userId)
     ? new ObjectId(session.userId)
     : undefined;
+
+  if (shouldOfferStrategyJobPreflight(message)) {
+    const responseMarkdown = preprocessXchatMarkdown(STRATEGY_JOB_PREFLIGHT_MARKDOWN);
+    const preflightRequestId = buildDeterministicId(
+      "xpref",
+      session.userId,
+      session.tenantId ?? "tenant:none",
+      message.slice(0, 600)
+    );
+    const preflightCorrelationId = buildDeterministicId(
+      "xcorr",
+      preflightRequestId,
+      session.userId,
+      session.tenantId ?? "tenant:none"
+    );
+    const chatLogId = await saveXChatLog({
+      requestId: preflightRequestId,
+      correlationId: preflightCorrelationId,
+      userId,
+      tenantId: tenantId ?? undefined,
+      userEmail: session.email,
+      requestedBy: session.username,
+      personaId: persona?._id,
+      personaName: persona.name,
+      scope,
+      message,
+      response: responseMarkdown,
+      contextChunkIds: [],
+      model: "strategy_job_preflight"
+    });
+    return NextResponse.json(
+      {
+        data: {
+          response: responseMarkdown,
+          strategyJobOffer: true,
+          personaName: persona.name,
+          modelSelectionSource,
+          model: "strategy_job_preflight",
+          contextCount: 0,
+          contextSource: "none",
+          collectionSearchStatus: "skipped_no_collections",
+          collectionSearchNonReadyFileCount: 0,
+          logId: chatLogId.toHexString()
+        }
+      },
+      {
+        headers: buildLimiterHeaders({
+          remainingMinute: limiterRemainingMinute,
+          remainingDay: limiterRemainingDay,
+          dailyLimit: limiterDailyLimit
+        })
+      }
+    );
+  }
+
   /** RAG / file_search for ask: TEAM KB only (`teamCollection` + deploy team default). */
   const linkedCollectionIds = await resolveXchatTeamOnlyLinkedCollectionIds(persona);
   for (const collectionId of linkedCollectionIds) {
@@ -450,6 +527,7 @@ export async function POST(request: Request) {
       hostedSearch: hasHostedSearchTool,
       atxFunction: hasXfinanceTool
     }),
+    routingPolicyBlock: XCHAT_SERVER_ROUTING_POLICY_BLOCK,
     citationsEnabled: persona?.citationsEnabled !== false
   });
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
@@ -464,12 +542,13 @@ export async function POST(request: Request) {
   const userPrompt = `${userPromptBase}\n\n${personaKbAugmentation}`;
   let xaiResponse: { outputText: string; model: string };
   let toolCallLogs: ToolCallLog[] = [];
+  let xaiUsageSnapshot: XChatXaiUsageSnapshot | undefined;
 
   const wireTools = buildWireToolsForXaiResponses(xapiConfig.tools);
   logXchatAskPreRequestDebug({
     personaId: persona?._id?.toHexString(),
     personaName: persona?.name,
-    model: effectiveModel,
+    model: executionModel,
     toolChoice: xapiConfig.toolChoice,
     maxTurns: xapiConfig.maxTurns,
     wireTools
@@ -489,7 +568,7 @@ export async function POST(request: Request) {
         });
 
     const loopResult = await respondWithXaiToolLoop({
-      model: effectiveModel,
+      model: executionModel,
       systemPrompt,
       userPrompt,
       tools: xaiTools,
@@ -500,6 +579,7 @@ export async function POST(request: Request) {
       previousResponseId,
       storeMessages: useRemoteConversationHistory
     });
+    xaiUsageSnapshot = extractXaiResponsesUsage(loopResult.raw);
     xaiResponse = { outputText: loopResult.outputText, model: loopResult.model };
     toolCallLogs = loopResult.toolCalls;
     previousResponseId = loopResult.responseId;
@@ -544,7 +624,7 @@ export async function POST(request: Request) {
     contextSource,
     contextCount,
     tools: xapiConfig.tools.map((t) => t.type),
-    model: effectiveModel,
+    model: executionModel,
     responseLength: responseMarkdown.length,
     mode: xapiConfig.mode,
     scope,
@@ -559,7 +639,7 @@ export async function POST(request: Request) {
     userPrompt,
     ragContext,
     tools: xapiConfig.tools.map((t) => t.type),
-    model: effectiveModel,
+    model: executionModel,
     responseText: xaiResponse.outputText
   });
 
@@ -607,6 +687,7 @@ export async function POST(request: Request) {
     response: responseMarkdown,
     contextChunkIds,
     model: xaiResponse.model,
+    xaiUsage: xaiUsageSnapshot,
     xaiResponseId: previousResponseId,
     xapiMode: xapiConfig.mode,
     xapiToolChoice: xapiConfig.toolChoice,
@@ -646,7 +727,27 @@ export async function POST(request: Request) {
         logId: chatLogId.toHexString(),
         toolCalls: toolCallLogs.length > 0
           ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
-          : undefined
+          : undefined,
+        ...(multiAgentDowngraded
+          ? { multiAgentDowngraded: true as const, personaModelRequested: effectiveModel }
+          : {}),
+        ...(xaiUsageSnapshot
+          ? {
+              xaiUsage: {
+                inputTokens: xaiUsageSnapshot.inputTokens,
+                outputTokens: xaiUsageSnapshot.outputTokens,
+                totalTokens: xaiUsageSnapshot.totalTokens,
+                ...(xaiUsageSnapshot.reasoningTokens != null &&
+                xaiUsageSnapshot.reasoningTokens > 0
+                  ? { reasoningTokens: xaiUsageSnapshot.reasoningTokens }
+                  : {}),
+                ...(xaiUsageSnapshot.cachedPromptTokens != null &&
+                xaiUsageSnapshot.cachedPromptTokens > 0
+                  ? { cachedPromptTokens: xaiUsageSnapshot.cachedPromptTokens }
+                  : {})
+              }
+            }
+          : {})
       }
     },
     {

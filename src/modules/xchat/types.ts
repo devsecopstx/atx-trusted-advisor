@@ -224,6 +224,15 @@ export type XChatMessage = {
   content: string;
 };
 
+/** Snapshot of xAI `/v1/responses` `usage` when returned (admin cost analytics). */
+export type XChatXaiUsageSnapshot = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  reasoningTokens?: number;
+  cachedPromptTokens?: number;
+};
+
 /** One prompt/response turn in Mongo `xchat_logs` (TTL via retentionExpiresAt). user_history_agent syncs unsynced rows to the user xAI collection. */
 export type XChatSessionLog = {
   _id?: ObjectId;
@@ -242,6 +251,8 @@ export type XChatSessionLog = {
   response: string;
   contextChunkIds: ObjectId[];
   model: string;
+  /** Parsed from last xAI Responses payload when present. */
+  xaiUsage?: XChatXaiUsageSnapshot;
   /** xAI `/responses` id returned for this turn; used to continue remote conversation state safely. */
   xaiResponseId?: string;
   xapiMode?: PersonaXapiMode;

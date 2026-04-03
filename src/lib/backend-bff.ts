@@ -81,7 +81,7 @@ export const nextBffApi = {
   strategyJobs: {
     index: {
       pathTemplate: "/api/strategy-jobs",
-      methods: ["POST"]
+      methods: ["GET", "POST"]
     },
     byId: {
       pathTemplate: "/api/strategy-jobs/{jobId}",

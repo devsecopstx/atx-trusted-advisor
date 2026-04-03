@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 
@@ -10,13 +10,14 @@ import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
 import { XoptionsChooseContract } from "@/app/xoptions/xoptions-choose-contract";
 import {
-  StrategyChoicePanels,
-  strategyShortLabel,
-  type StrategyChoiceId
+    StrategyChoicePanels,
+    strategyShortLabel,
+    type StrategyChoiceId
 } from "@/app/xoptions/xoptions-strategy-choice-panels";
+import { XoptionsStrategyJobsSection } from "@/app/xoptions/xoptions-strategy-jobs-section";
 import {
-  DESK_OUTLOOK_LABELS,
-  DESK_RISK_DISPLAY_LABELS
+    DESK_OUTLOOK_LABELS,
+    DESK_RISK_DISPLAY_LABELS
 } from "@/modules/core-admin/desk-fields";
 import type { AccountOutlook } from "@/modules/core-admin/types";
 
@@ -490,6 +491,10 @@ export function XoptionsStrategyBuilderWorkspace() {
           </div>
         ) : null}
       </section>
+
+      <Suspense fallback={null}>
+        <XoptionsStrategyJobsSection />
+      </Suspense>
 
       <nav className="xoptions-stepper" aria-label="Strategy builder progress">
         {STEPS.map((s, i) => (

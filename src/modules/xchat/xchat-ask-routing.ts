@@ -1,6 +1,6 @@
 /**
  * Server-side routing helpers for POST /api/xchat/ask — multi-agent downgrade and NL → strategy job preflight.
- * Policy: {@link ../../atx-docs/xchat/context-routing-multi-agent-policy.md}
+ * Policy: atx-docs/xchat/context-routing-multi-agent-policy.md
  */
 
 /** When true, persona multi-agent model may run with parallelism + optional reasoningEffort. */

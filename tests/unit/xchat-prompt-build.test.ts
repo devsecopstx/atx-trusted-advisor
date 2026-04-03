@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
     buildSessionToolInstructions,
-    buildXchatSystemPrompt
+    buildXchatSystemPrompt,
+    XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
 
 describe("buildSessionToolInstructions", () => {
@@ -83,6 +84,24 @@ describe("buildXchatSystemPrompt", () => {
     expect(out).not.toContain("SNAP");
     expect(out).toContain("Citation chips");
     expect(out).toContain("Client UI (beta)");
+  });
+
+  it("inserts routing policy block between session tools and citation contract when provided", () => {
+    const out = buildXchatSystemPrompt({
+      personaSystem: "P",
+      fallbackPersonaSystem: "F",
+      ragContext: "",
+      recentHistoryBlock: undefined,
+      workspaceSnapshot: null,
+      sessionToolInstructions: "SESS",
+      routingPolicyBlock: XCHAT_SERVER_ROUTING_POLICY_BLOCK
+    });
+    const iSess = out.indexOf("SESS");
+    const iRoute = out.indexOf("Server routing policy");
+    const iCite = out.indexOf("Citation chips");
+    expect(iSess).toBeGreaterThan(-1);
+    expect(iRoute).toBeGreaterThan(iSess);
+    expect(iCite).toBeGreaterThan(iRoute);
   });
 
   it("uses no-citations instruction when citationsEnabled is false", () => {

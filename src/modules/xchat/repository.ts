@@ -133,6 +133,10 @@ async function createXchatLogIndexes(): Promise<void> {
     { tenantId: 1, syncedToXaiAt: 1, createdAt: 1 },
     { name: "idx_xchat_logs_tenant_pending_xai" }
   );
+  await chatLogCollection.createIndex(
+    { createdAt: -1, model: 1 },
+    { name: "idx_xchat_logs_created_model_admin" }
+  );
 }
 
 export async function listPersonas(): Promise<PersonaConfig[]> {

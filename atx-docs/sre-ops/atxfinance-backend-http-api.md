@@ -70,6 +70,7 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `
 
 | Method | Path | Purpose |
 |--------|------|---------|
+| GET | `/api/strategy-jobs` | Query `limit` 1–50 (default **20**), optional `emailAccountId` (must match normalized scope). **200** `{ "data": { "jobs": [...] } }` — newest first; each job summary matches `jobToDataMap` (includes `createdAt` / `updatedAt` epoch ms when present). |
 | POST | `/api/strategy-jobs` | **201** `{ "data", "meta" }` — starts slot collection (`status`: `collecting`). **200** idempotent replay. **429** rate limited. |
 | GET | `/api/strategy-jobs/{jobId}` | Optional query `emailAccountId` (must match job after normalization). **200** `{ "data" }` job state, `nextPrompt` / `nextChoices` for current slot, or **404**. |
 | POST | `/api/strategy-jobs/{jobId}/turns` | Body `{ "message": string }` or `{ "choice": number }` (1-based); optional `emailAccountId` (must match job). **200** `{ "data" }`; **400** `job_not_collecting` / `invalid_turn_payload`; **404** not found. When all slots filled, `status` becomes **`slots_complete`** and **`artifactStatus`** is set to **`pending`**; the LLM finalizer runs async (or sync for `global_admin` when **`STRATEGY_FINALIZER_SYNC_FOR_GLOBAL_ADMIN=true`**). |

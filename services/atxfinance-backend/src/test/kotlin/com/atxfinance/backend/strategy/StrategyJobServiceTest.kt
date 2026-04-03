@@ -134,4 +134,15 @@ class StrategyJobServiceTest {
         val out = service(mongo).postTurn(session, id.toHexString(), null, 2, null)
         assertEquals(PostTurnOutcome.NotFound, out)
     }
+
+    @Test
+    fun `listJobs delegates to mongo find with expected collection`() {
+        val mongo = mock(MongoTemplate::class.java)
+        val d = Document("_id", ObjectId())
+        `when`(mongo.find(any(Query::class.java), eq(Document::class.java), eq("strategy_jobs")))
+            .thenReturn(listOf(d))
+        val out = service(mongo).listJobs(session, null, 10)
+        assertEquals(1, out.size)
+        verify(mongo).find(any(Query::class.java), eq(Document::class.java), eq("strategy_jobs"))
+    }
 }

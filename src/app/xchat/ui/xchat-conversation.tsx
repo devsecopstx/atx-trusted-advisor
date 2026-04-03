@@ -11,12 +11,14 @@ import {
     useState
 } from "react";
 
+import Link from "next/link";
+
 import { SendIcon } from "@/app/admin/ui/crud-icons";
+import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
-import { XfHoverHint } from "@/app/ui/xf-hover-hint";
-import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
+import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
@@ -30,6 +32,8 @@ type Message = {
   timestamp: number;
   /** Mongo `xchat_logs` id after a successful `/api/xchat/ask` (used to sync rolled-off turns to xAI user history). */
   serverLogId?: string;
+  /** Server suggested handoff to `/xoptions?strategyJob=1` (strategy_job_preflight). */
+  strategyJobOffer?: boolean;
 };
 
 type HistoryItem = {
@@ -292,6 +296,15 @@ export function XchatConversation({
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
   const [lastTurnToolSummary, setLastTurnToolSummary] = useState<string | null>(null);
+  const [railXchatUsage, setRailXchatUsage] = useState<{
+    lastModel: string | null;
+    lastTurn: { input: number; output: number; total: number } | null;
+    sessionSum: { input: number; output: number; total: number };
+  }>({
+    lastModel: null,
+    lastTurn: null,
+    sessionSum: { input: 0, output: 0, total: 0 }
+  });
   const [visibleCollections, setVisibleCollections] = useState<VisibleCollection[]>([]);
   const [, setAssociatedCollectionCount] = useState(1);
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
@@ -676,6 +689,15 @@ export function XchatConversation({
           personaName?: string;
           logId?: string;
           toolCalls?: AskToolCallSummary[];
+          strategyJobOffer?: boolean;
+          model?: string;
+          xaiUsage?: {
+            inputTokens: number;
+            outputTokens: number;
+            totalTokens: number;
+            reasoningTokens?: number;
+            cachedPromptTokens?: number;
+          };
         };
         error?: string;
       };
@@ -701,6 +723,32 @@ export function XchatConversation({
       setActivePersonaName(resolvedName);
       setLastTurnToolSummary(formatLastTurnToolSummary(payload.data?.toolCalls));
 
+      const turnModel = payload.data?.model;
+      const turnUsage = payload.data?.xaiUsage;
+      setRailXchatUsage((prev) => {
+        const nextModel =
+          typeof turnModel === "string" && turnModel.length > 0 ? turnModel : prev.lastModel;
+        if (!turnUsage) {
+          return nextModel === prev.lastModel ? prev : { ...prev, lastModel: nextModel };
+        }
+        const input = Math.max(0, Math.floor(Number(turnUsage.inputTokens) || 0));
+        const output = Math.max(0, Math.floor(Number(turnUsage.outputTokens) || 0));
+        const totalRaw = Number(turnUsage.totalTokens);
+        const total =
+          Number.isFinite(totalRaw) && totalRaw > 0
+            ? Math.floor(totalRaw)
+            : input + output;
+        return {
+          lastModel: nextModel,
+          lastTurn: { input, output, total },
+          sessionSum: {
+            input: prev.sessionSum.input + input,
+            output: prev.sessionSum.output + output,
+            total: prev.sessionSum.total + total
+          }
+        };
+      });
+
       const logId = typeof payload.data?.logId === "string" ? payload.data.logId : undefined;
       const historyItemId = logId || `local-${Date.now()}`;
       setMessages((prev) => {
@@ -712,7 +760,8 @@ export function XchatConversation({
             content: payload.data?.response ?? "",
             persona: resolvedName,
             timestamp: Date.now(),
-            serverLogId: logId
+            serverLogId: logId,
+            strategyJobOffer: Boolean(payload.data?.strategyJobOffer)
           }
         ];
         const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
@@ -847,6 +896,56 @@ export function XchatConversation({
                         style={{ fontSize: "0.72rem", margin: "0.35rem 0 0" }}
                       >
                         {collectionsStatus}
+                      </p>
+                    ) : null}
+                    {railXchatUsage.lastModel ? (
+                      <p
+                        className="status-text"
+                        style={{ fontSize: "0.72rem", margin: "0.35rem 0 0", lineHeight: 1.35 }}
+                      >
+                        <span style={{ color: "var(--xf-text-muted)" }}>Model: </span>
+                        <span className="font-mono" style={{ color: "var(--xf-text-primary)" }}>
+                          {railXchatUsage.lastModel}
+                        </span>
+                      </p>
+                    ) : null}
+                    {railXchatUsage.lastTurn ? (
+                      <p
+                        className="status-text font-mono"
+                        style={{
+                          fontSize: "0.68rem",
+                          margin: "0.2rem 0 0",
+                          lineHeight: 1.35,
+                          color: "var(--xf-text-muted)"
+                        }}
+                      >
+                        Last turn: {railXchatUsage.lastTurn.input.toLocaleString("en-US")} in /{" "}
+                        {railXchatUsage.lastTurn.output.toLocaleString("en-US")} out /{" "}
+                        {railXchatUsage.lastTurn.total.toLocaleString("en-US")} total
+                      </p>
+                    ) : railXchatUsage.lastModel ? (
+                      <p
+                        className="status-text"
+                        style={{ fontSize: "0.68rem", margin: "0.2rem 0 0", opacity: 0.8 }}
+                      >
+                        Token counts appear after a model completion with usage.
+                      </p>
+                    ) : null}
+                    {railXchatUsage.sessionSum.total > 0 ||
+                    railXchatUsage.sessionSum.input > 0 ||
+                    railXchatUsage.sessionSum.output > 0 ? (
+                      <p
+                        className="status-text font-mono"
+                        style={{
+                          fontSize: "0.68rem",
+                          margin: "0.2rem 0 0",
+                          lineHeight: 1.35,
+                          color: "var(--xf-text-muted)"
+                        }}
+                      >
+                        Session sum: {railXchatUsage.sessionSum.input.toLocaleString("en-US")} in /{" "}
+                        {railXchatUsage.sessionSum.output.toLocaleString("en-US")} out /{" "}
+                        {railXchatUsage.sessionSum.total.toLocaleString("en-US")} total
                       </p>
                     ) : null}
                   </div>
@@ -1002,7 +1101,20 @@ export function XchatConversation({
                   </small>
                 ) : null}
                 {msg.role === "ai" ? (
-                  <XchatMarkdownBody content={msg.content} />
+                  <>
+                    <XchatMarkdownBody content={msg.content} />
+                    {msg.strategyJobOffer ? (
+                      <div className="xchat-strategy-job-cta" style={{ marginTop: "0.75rem" }}>
+                        <Link
+                          className="xchat-md-a font-semibold"
+                          href="/xoptions?strategyJob=1"
+                          prefetch={false}
+                        >
+                          Open guided strategy job on xOptions →
+                        </Link>
+                      </div>
+                    ) : null}
+                  </>
                 ) : (
                   <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
                 )}

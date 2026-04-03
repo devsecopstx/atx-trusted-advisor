@@ -638,7 +638,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/strategy-jobs",
-    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "POST", auth: "session", hasRequestBody: true }
+    ],
     tag: "strategy-jobs"
   },
   {

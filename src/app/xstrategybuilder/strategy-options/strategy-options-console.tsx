@@ -115,6 +115,13 @@ export function StrategyOptionsConsole({
         Same Yahoo + synthetic fallback contract as xfinance-strategy{" "}
         <code className="xsb-inline-code">GET /api/options</code>. Session required.
       </p>
+      <p className="hero-copy" style={{ marginBottom: "1rem", fontSize: "0.9rem" }}>
+        Need the <strong>slot + artifact</strong> orchestrator? Open{" "}
+        <Link className="xsb-inline-code" href="/xoptions?strategyJob=1" style={{ color: "var(--xf-gain-green)" }}>
+          xOptions — guided strategy job
+        </Link>{" "}
+        (Spring <code className="xsb-inline-code">/api/strategy-jobs</code> via BFF).
+      </p>
 
       <div className="xf-noise-overlay" style={{ padding: "1rem", borderRadius: "12px", marginBottom: "1rem" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "flex-end" }}>

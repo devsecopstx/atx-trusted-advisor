@@ -81,6 +81,10 @@ vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", () => ({
   formatWorkspaceServerSnapshotBlock: workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock
 }));
 
+vi.mock("@/lib/xai-default-persona-model", () => ({
+  getDefaultPersonaChatModelId: () => "grok-4-1-fast-reasoning"
+}));
+
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
 
 function buildPersona(overrides?: Record<string, unknown>) {
@@ -1135,5 +1139,44 @@ describe("xchat ask route collection retrieval", () => {
       })
     );
     expect(xaiMocks.respondWithXai).not.toHaveBeenCalled();
+  });
+
+  it("downgrades multi-agent persona to default chat model when the turn is simple and reasoningEffort is omitted", async () => {
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({ model: "grok-4.20-multi-agent" })
+    );
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "What is 2+2?" })
+      })
+    );
+    expect(response.status).toBe(200);
+    const toolLoopArg = xaiMocks.respondWithXaiToolLoop.mock.calls[0]?.[0] as {
+      model?: string;
+      parallelism?: unknown;
+    };
+    expect(toolLoopArg?.model).toBe("grok-4-1-fast-reasoning");
+    expect(toolLoopArg?.parallelism).toBeUndefined();
+  });
+
+  it("returns strategy job preflight without xAI for clear multi-leg / options-strategy intent", async () => {
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "I want to structure a covered call on AAPL for income"
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data?: { strategyJobOffer?: boolean } };
+    expect(payload.data?.strategyJobOffer).toBe(true);
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+    expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "strategy_job_preflight" })
+    );
   });
 });

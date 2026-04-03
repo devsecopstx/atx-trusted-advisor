@@ -22,7 +22,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/portfolios/{portfolioId}/recommendations", methods: ["GET", "POST"] },
   { pathTemplate: "/api/strategy-options", methods: ["GET"] },
   { pathTemplate: "/api/strategy-options/expirations", methods: ["GET"] },
-  { pathTemplate: "/api/strategy-jobs", methods: ["POST"] },
+  { pathTemplate: "/api/strategy-jobs", methods: ["GET", "POST"] },
   { pathTemplate: "/api/strategy-jobs/{jobId}", methods: ["GET"] },
   { pathTemplate: "/api/strategy-jobs/{jobId}/turns", methods: ["POST"] },
   { pathTemplate: "/api/strategy-jobs/{jobId}/artifact", methods: ["GET"] },
