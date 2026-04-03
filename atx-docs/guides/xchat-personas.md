@@ -12,7 +12,7 @@ This is the xChat/persona entrypoint. It summarizes operational behavior and lin
 
 ## xChat API surface
 
-- `POST /api/xchat/ask`
+- `POST /api/xchat/ask` — success `data` includes `logId`, `model`, collection search metadata, and optional **`xaiUsage`** (token counts) when xAI returns usage; see OpenAPI `XChatAskResponseData` and `/xchat` Persona rail **Status** for client display.
 - `POST /api/xchat/batch`
 - `GET /api/xchat/batch`
 - `GET /api/xchat/batch/:batchId`

@@ -193,6 +193,48 @@ describe("xchat ask route collection retrieval", () => {
     expect(saved.response).toBe(payload.data.response);
   });
 
+  it("echoes xaiUsage on 200 when Responses raw includes usage (client rail + logs)", async () => {
+    xaiMocks.respondWithXaiToolLoop.mockResolvedValueOnce({
+      outputText: "ok",
+      model: "grok-4-latest",
+      toolCalls: [],
+      turnsUsed: 1,
+      raw: {
+        usage: {
+          prompt_tokens: 100,
+          completion_tokens: 40,
+          total_tokens: 140
+        }
+      }
+    });
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "Usage echo test",
+          topK: 4
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      data: {
+        xaiUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+      };
+    };
+    expect(payload.data.xaiUsage).toEqual({
+      inputTokens: 100,
+      outputTokens: 40,
+      totalTokens: 140
+    });
+    const saved = repositoryMocks.saveXChatLog.mock.calls.at(-1)?.[0] as {
+      xaiUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+    };
+    expect(saved.xaiUsage).toEqual(payload.data.xaiUsage);
+  });
+
   it("uses xai collection snippets first when available", async () => {
     xaiMocks.searchDocumentsInCollections.mockResolvedValueOnce([
       { text: "Collection context snippet", documentName: "ops-handbook.md" }

@@ -6,6 +6,8 @@ Not user marketing copy — enough for deploy triage, support, and “what shipp
 
 ## Entries
 
+- **2.10.17** — **xChat / OpenAPI / analytics:** `POST /api/xchat/ask` response documents **`xaiUsage`**, **`logId`**, collection search status, **`strategyJobOffer`**, multi-agent downgrade fields (`current-state-overrides`). **Tool usage:** exported **`resolveXchatToolUsageOperation`** — maps **`atx_function`** (and legacy `atxfinance`) + `yahoo_finance` for admin `xchat_tool_usage.operation`. **Tests:** `xchat-tool-usage-operation` (unit), `xchat-ask-route` asserts **`xaiUsage`** echo + log persistence. **Docs:** `xai-api-standard.md` (Responses vs gRPC), `atxfinance-tool-stub.md` / **`AGENTS.md`** / **`api-endpoints.md`** — persona marker **`atx_function`** vs citation slug **`atxfinance`**.
+
 - **2.10.16** — **Roadmap / PLAN:** Renamed roadmap section **Phase 1** → **xChat Hardcore** (same scope: xChat → xStrategyBuilder multi-agent). **Product backlog:** new top priority **`100`** — *Phase 1 — xChat → xStrategyBuilder multi-agent (status)* (above **486n**); table order **100 → 486n → 500 → 600 → 700–703**. **Docs:** `atx-docs/PLAN.md` (docs index + cross-links). **App:** `package.json` semver only.
 
 - **2.10.15** — **Quality / docs (reviewer pass):** Integration tests **`app-import-broker-route`** for **`POST /api/import/broker`** (401, dry-run preview, 404 portfolio). **Docs:** `api-endpoints.md` + `app-user-import-activity.md` — **`POST /api/import/broker/clean`**. **PLAN:** remove **710** from open backlog table (shipped detail stays §710).

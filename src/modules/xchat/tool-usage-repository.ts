@@ -26,7 +26,14 @@ export type XchatToolUsageDoc = {
   source: XchatToolUsageSource;
 };
 
-function extractOperation(toolName: string, args: Record<string, unknown>): string | undefined {
+/**
+ * Maps xAI tool name + call args to an optional `operation` label for `xchat_tool_usage` analytics.
+ * Wire name for the workspace tool is `atx_function` (legacy tests may use `atxfinance`).
+ */
+export function resolveXchatToolUsageOperation(
+  toolName: string,
+  args: Record<string, unknown>
+): string | undefined {
   if (toolName === "yahoo_finance") {
     return "market_quote";
   }
@@ -81,7 +88,7 @@ function buildDocsFromToolCalls(input: {
     personaName: input.personaName,
     requestId: input.requestId,
     toolName: tc.name,
-    operation: extractOperation(tc.name, tc.args),
+    operation: resolveXchatToolUsageOperation(tc.name, tc.args),
     ok: !tc.error,
     errorMessage: tc.error,
     durationMs: tc.durationMs,

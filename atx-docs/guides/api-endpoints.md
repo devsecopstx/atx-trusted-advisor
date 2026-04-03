@@ -110,7 +110,7 @@ These are **not** OpenAPI JSON routes; listed for operator and support alignment
 
 ## xChat
 
-- `POST /api/xchat/ask`
+- `POST /api/xchat/ask` — JSON `data` includes `model`, `logId`, collection search status fields, and optional `xaiUsage` (token counts) when xAI returns a `usage` object; optional `strategyJobOffer`, `multiAgentDowngraded` / `personaModelRequested`. The `/xchat` Persona rail **Status** shows last model plus last-turn and session token sums from `xaiUsage` when present.
 - `POST /api/xchat/batch`
 - `GET /api/xchat/batch`
 - `GET /api/xchat/batch/:batchId`

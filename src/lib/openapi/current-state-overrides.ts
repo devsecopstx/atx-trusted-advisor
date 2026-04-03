@@ -348,7 +348,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
     requestBody: {
       required: true,
       description:
-        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback). Hosted RAG pre-search uses **TEAM KB collections only** (`persona.teamCollection` + deploy team default from `resolveTeamKbCollectionId`); persona `xaiCollection` is not merged into ask RAG. Local Mongo prompt-history injection is retired. Continuity now uses xAI hosted state (`store_messages` + `previous_response_id`) when `XCHAT_USE_REMOTE_HISTORY=true`. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes atxfinance, the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same TEAM id list wired into tools.",
+        "User message with optional persona selection. Non-admin users can only select published professional personas and cannot override model ids. Ask always runs through a single `/v1/responses` tool-loop execution path (no chat-completions fallback). Hosted RAG pre-search uses **TEAM KB collections only** (`persona.teamCollection` + deploy team default from `resolveTeamKbCollectionId`); persona `xaiCollection` is not merged into ask RAG. Local Mongo prompt-history injection is retired. Continuity now uses xAI hosted state (`store_messages` + `previous_response_id`) when `XCHAT_USE_REMOTE_HISTORY=true`. If persona model is unset, server uses `XAI_CHAT_MODEL` or falls back to `grok-4-1-fast-reasoning`. When the persona includes **`atx_function`** (workspace tool; UI citations may use slug `atxfinance`), the server loads portfolio/accounts/watchlist (desk riskProfile/outlook + symbols, capped positions preview) into the system prompt. User turn uses `appendXchatKbMetadata` with the same TEAM id list wired into tools. Successful JSON may include optional **`xaiUsage`** (token counts from the Responses API `usage` object) for client session stats and admin cost rollups.",
       content: {
         "application/json": {
           schema: refSchema("XChatAskRequest")
@@ -1008,9 +1008,32 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       durationMs: { type: "integer", minimum: 0 }
     }
   },
+  XChatAskXaiUsage: {
+    type: "object",
+    required: ["inputTokens", "outputTokens", "totalTokens"],
+    description:
+      "Token counts from xAI Responses API `usage` when present (same shape persisted on `xchat_logs.xaiUsage`). Omitted when the provider returns no usage block.",
+    properties: {
+      inputTokens: { type: "integer", minimum: 0 },
+      outputTokens: { type: "integer", minimum: 0 },
+      totalTokens: { type: "integer", minimum: 0 },
+      reasoningTokens: { type: "integer", minimum: 0 },
+      cachedPromptTokens: { type: "integer", minimum: 0 }
+    }
+  },
   XChatAskResponseData: {
     type: "object",
-    required: ["response", "model", "personaName", "contextCount", "contextSource"],
+    required: [
+      "response",
+      "model",
+      "personaName",
+      "modelSelectionSource",
+      "contextCount",
+      "contextSource",
+      "collectionSearchStatus",
+      "collectionSearchNonReadyFileCount",
+      "logId"
+    ],
     properties: {
       response: { type: "string" },
       model: { type: "string" },
@@ -1027,7 +1050,27 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       },
       contextCount: { type: "integer", minimum: 0 },
       contextSource: { type: "string", enum: ["none", "xai_collection"] },
-      toolCalls: { type: "array", items: refSchema("XChatToolCallSummary") }
+      collectionSearchStatus: {
+        type: "string",
+        enum: ["ready", "blocked_non_ready_files", "skipped_no_collections"],
+        description: "TEAM KB RAG readiness for this ask (linked collections only)."
+      },
+      collectionSearchNonReadyFileCount: { type: "integer", minimum: 0 },
+      logId: { type: "string", description: "Mongo `xchat_logs` document id for this turn (hex)." },
+      toolCalls: { type: "array", items: refSchema("XChatToolCallSummary") },
+      strategyJobOffer: {
+        type: "boolean",
+        description: "True when the server returned a one-turn strategy-job preflight instead of a full model pass."
+      },
+      multiAgentDowngraded: {
+        type: "boolean",
+        description: "Present when a multi-agent persona model was downgraded to the default fast model for this turn."
+      },
+      personaModelRequested: {
+        type: "string",
+        description: "When `multiAgentDowngraded` is true, the persona’s configured model id before downgrade."
+      },
+      xaiUsage: refSchema("XChatAskXaiUsage")
     }
   },
   XChatAskResponseEnvelope: {
