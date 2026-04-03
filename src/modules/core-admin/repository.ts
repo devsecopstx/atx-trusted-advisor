@@ -2473,19 +2473,23 @@ export async function updateWatchlistSymbolPrices(
   if (priceUpdates.length === 0) return;
 
   const db = await getDb();
-  const updates = priceUpdates.map((u) => ({
-    $set: {
-      "symbols.$[elem].lastPrice": u.lastPrice,
-      "symbols.$[elem].lastUpdatedAt": u.lastUpdatedAt,
-    },
-  }));
-
-  await db.collection<Watchlist>(collections.watchlists).updateOne(
-    { _id: watchlistId },
-    updates,
-    {
-      arrayFilters: priceUpdates.map((u) => ({ "elem.symbol": u.symbol })),
-    }
+  // One update per symbol: a single `updateOne` payload must not be an array (MongoDB treats arrays as
+  // pipeline updates, where `arrayFilters` are invalid). Multiple `elem.*` arrayFilters in one op are
+  // also invalid — each symbol gets its own `updateOne` with one `elem` filter.
+  await db.collection<Watchlist>(collections.watchlists).bulkWrite(
+    priceUpdates.map((u) => ({
+      updateOne: {
+        filter: { _id: watchlistId },
+        update: {
+          $set: {
+            "symbols.$[elem].lastPrice": u.lastPrice,
+            "symbols.$[elem].lastUpdatedAt": u.lastUpdatedAt,
+          },
+        },
+        arrayFilters: [{ "elem.symbol": u.symbol }],
+      },
+    })),
+    { ordered: true }
   );
 }
 
