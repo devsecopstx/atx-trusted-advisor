@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyPortfolioRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const sessionMocks = vi.hoisted(() => ({
@@ -17,9 +17,13 @@ const portfolioMocks = vi.hoisted(() => ({
   deletePortfolioForSessionUser: vi.fn()
 }));
 
-vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
-}));
+vi.mock("@/lib/backend-bff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
+  return {
+    ...actual,
+    proxyPortfolioRequestToBackend: bffMocks.proxyPortfolioRequestToBackend
+  };
+});
 
 vi.mock("@/lib/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth")>();
@@ -65,7 +69,7 @@ const portfolioId = "507f1f77bcf86cd799439033";
 describe("portfolios API BFF proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(null);
     sessionMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -94,7 +98,7 @@ describe("portfolios API BFF proxy", () => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request("http://test/api/portfolios/default");
     const response = await getDefaultPortfolio(req);
@@ -102,7 +106,7 @@ describe("portfolios API BFF proxy", () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { data: { name: string } };
     expect(payload.data.name).toBe("remote");
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
   });
 
@@ -111,13 +115,13 @@ describe("portfolios API BFF proxy", () => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request("http://test/api/portfolios/default", { method: "POST" });
     const response = await postDefaultPortfolio(req);
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
   });
 
@@ -126,7 +130,7 @@ describe("portfolios API BFF proxy", () => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request("http://test/api/portfolios/current");
     const response = await getCurrentPortfolio(req);
@@ -134,8 +138,8 @@ describe("portfolios API BFF proxy", () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { data: { from: string } };
     expect(payload.data.from).toBe("spring");
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledTimes(1);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledTimes(1);
   });
 
   it("DELETE /api/portfolios/:id returns backend body when proxy resolves non-null", async () => {
@@ -143,19 +147,19 @@ describe("portfolios API BFF proxy", () => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(`http://test/api/portfolios/${portfolioId}`, { method: "DELETE" });
     const response = await deletePortfolioById(req, { params: Promise.resolve({ portfolioId }) });
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
     expect(portfolioMocks.deletePortfolioForSessionUser).not.toHaveBeenCalled();
   });
 
   it("DELETE /api/portfolios/:id falls through to Next when proxy returns 405", async () => {
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(new Response(null, { status: 405 }));
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(new Response(null, { status: 405 }));
 
     const req = new Request(`http://test/api/portfolios/${portfolioId}`, { method: "DELETE" });
     const response = await deletePortfolioById(req, { params: Promise.resolve({ portfolioId }) });
@@ -163,7 +167,7 @@ describe("portfolios API BFF proxy", () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { ok: boolean };
     expect(payload.ok).toBe(true);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).toHaveBeenCalled();
     expect(portfolioMocks.deletePortfolioForSessionUser).toHaveBeenCalledWith({
       userId: "507f1f77bcf86cd799439011",
@@ -177,13 +181,13 @@ describe("portfolios API BFF proxy", () => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(`http://test/api/portfolios/${portfolioId}`);
     const response = await getPortfolioById(req, { params: Promise.resolve({ portfolioId }) });
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
   });
 
@@ -192,7 +196,7 @@ describe("portfolios API BFF proxy", () => {
     const response = await getDefaultPortfolio(req);
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).toHaveBeenCalled();
   });
 

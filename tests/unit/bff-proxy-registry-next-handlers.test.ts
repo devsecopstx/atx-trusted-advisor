@@ -24,8 +24,11 @@ function bffTemplatePathToRouteFileAbs(templatePath: string): string {
   return resolve(REPO_ROOT, "src", "app", "api", ...appSegments, "route.ts");
 }
 
+const PROXY_CALL_RE =
+  /await (proxyRequestToBackend|proxyPortfolioRequestToBackend|proxyAdminUsersRequestToBackend)\(/g;
+
 describe("BFF_PROXY_ROUTES ↔ Next route handlers", () => {
-  it("every registry path maps to a route.ts that calls proxyRequestToBackend at least once per registered method", () => {
+  it("every registry path maps to a route.ts that proxies to the backend at least once per registered method", () => {
     const routesByFile = new Map<string, BffProxyRoute[]>();
 
     for (const route of BFF_PROXY_ROUTES) {
@@ -41,8 +44,11 @@ describe("BFF_PROXY_ROUTES ↔ Next route handlers", () => {
       );
 
       const source = readFileSync(absFile, "utf8");
-      expect(source).toContain("proxyRequestToBackend");
-      const proxyCalls = (source.match(/await proxyRequestToBackend\(/g) ?? []).length;
+      expect(
+        /proxyRequestToBackend|proxyPortfolioRequestToBackend|proxyAdminUsersRequestToBackend/.test(source),
+        `${absFile}: expected a backend-bff proxy import/call`
+      ).toBe(true);
+      const proxyCalls = (source.match(PROXY_CALL_RE) ?? []).length;
       expect(
         proxyCalls,
         `${absFile}: need >= ${routes.length} proxy call(s) for ${routes.map((r) => r.method).join(",")}, found ${proxyCalls}`

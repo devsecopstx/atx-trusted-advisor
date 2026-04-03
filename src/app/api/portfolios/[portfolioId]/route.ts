@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
 import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import {
@@ -24,8 +24,8 @@ const patchPortfolioSchema = z
   .refine((o) => Object.keys(o).length > 0, { message: "At least one field is required" });
 
 export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
+  const proxied = await proxyPortfolioRequestToBackend(request.clone());
+  if (proxied && proxied.status !== 404) {
     return proxied;
   }
 
@@ -54,8 +54,8 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
+  const proxied = await proxyPortfolioRequestToBackend(request.clone());
+  if (proxied && proxied.status !== 404) {
     return proxied;
   }
 
@@ -103,9 +103,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
-  // Spring returns 405 when DELETE is not registered (older atxfinance-backend). Fall through to Next/Mongo.
-  if (proxied && proxied.status !== 405) {
+  const proxied = await proxyPortfolioRequestToBackend(request.clone());
+  // Spring may 404 when its Mongo view differs from Next; 405 when DELETE is unregistered — fall through to Next/Mongo.
+  if (proxied && proxied.status !== 404 && proxied.status !== 405) {
     return proxied;
   }
 

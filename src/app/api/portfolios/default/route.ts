@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import type { SessionUser } from "@/lib/auth";
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import {
@@ -52,7 +52,7 @@ async function defaultPortfolioSummaryOrError(session: SessionUser): Promise<Sum
 }
 
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPortfolioRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPortfolioRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

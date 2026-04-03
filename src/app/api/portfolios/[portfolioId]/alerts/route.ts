@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { requirePortfolioForSessionUser } from "@/lib/portfolio-access";
 import { adminListPortfolioAlerts } from "@/modules/core-admin/repository";
 import type { PortfolioAlert } from "@/modules/core-admin/types";
@@ -25,7 +25,7 @@ function serializeAlert(a: PortfolioAlert) {
 }
 
 export async function GET(_request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(_request);
+  const proxied = await proxyPortfolioRequestToBackend(_request);
   if (proxied) {
     return proxied;
   }

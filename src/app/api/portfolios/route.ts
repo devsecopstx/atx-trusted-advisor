@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import { adminCreatePortfolio } from "@/modules/core-admin/repository";
 
@@ -13,7 +13,7 @@ const postPortfolioSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPortfolioRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

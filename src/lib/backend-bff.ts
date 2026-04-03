@@ -387,3 +387,38 @@ export async function proxyAdminUsersRequestToBackend(request: Request): Promise
   }
   return proxyRequestToBackend(request);
 }
+
+/**
+ * App-facing `/api/portfolios*` (session user portfolios). Same rule as admin users: **loopback + dev** skips
+ * Spring so Next and the browser always agree on Mongo; Spring can still run for other routes.
+ *
+ * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_PORTFOLIOS=false`.
+ * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_PORTFOLIOS=true`.
+ */
+export function shouldProxyPortfolioRequestsToBackend(): boolean {
+  const origin = getAtxfinanceBackendOrigin();
+  if (!origin) {
+    return false;
+  }
+  const v = process.env.ATXFINANCE_BACKEND_PROXY_PORTFOLIOS?.trim().toLowerCase();
+  if (v === "0" || v === "false" || v === "no" || v === "off") {
+    return false;
+  }
+  if (v === "1" || v === "true" || v === "yes" || v === "on") {
+    return true;
+  }
+  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  const devLike = nodeEnv === "development" || nodeEnv === "test";
+  if (devLike && isLoopbackBackendOrigin(origin)) {
+    return false;
+  }
+  return true;
+}
+
+/** Portfolio BFF → Spring; returns `null` when proxy disabled (Next handler uses same Mongo as rest of app). */
+export async function proxyPortfolioRequestToBackend(request: Request): Promise<Response | null> {
+  if (!shouldProxyPortfolioRequestsToBackend()) {
+    return null;
+  }
+  return proxyRequestToBackend(request);
+}

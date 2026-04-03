@@ -9,7 +9,6 @@ describe("shouldProxyAdminUsersToBackend", () => {
     vi.unstubAllEnvs();
     process.env.ATXFINANCE_BACKEND_ORIGIN = original.ATXFINANCE_BACKEND_ORIGIN;
     process.env.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS = original.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS;
-    process.env.NODE_ENV = original.NODE_ENV;
   });
 
   beforeEach(() => {

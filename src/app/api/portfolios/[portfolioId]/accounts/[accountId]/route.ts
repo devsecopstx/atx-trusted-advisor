@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
 import { deletePortfolioAccountForUser, updatePortfolioAccountForUser } from "@/modules/core-admin/repository";
 import { accountOutlookValues, parseAccountOutlook } from "@/modules/core-admin/types";
@@ -36,7 +36,7 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ portfolioId: string; accountId: string }> }
 ) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPortfolioRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -84,7 +84,7 @@ export async function DELETE(
   request: Request,
   context: { params: Promise<{ portfolioId: string; accountId: string }> }
 ) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPortfolioRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
