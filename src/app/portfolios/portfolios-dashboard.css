@@ -288,6 +288,31 @@
   flex-wrap: nowrap;
 }
 
+.portfolios-workspace-header__market-cluster {
+  max-width: 100%;
+}
+
+.portfolios-workspace-header__market-status {
+  display: inline-block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.42rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 22%, transparent);
+  color: var(--xf-text-300);
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.portfolios-workspace-header__market-status--open {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 48%, transparent);
+  color: var(--xf-gain-green);
+  background: color-mix(in srgb, var(--xf-gain-green) 14%, transparent);
+}
+
 .portfolios-workspace-header__market-pill {
   font-size: 0.68rem;
   padding: 0.2rem 0.55rem;
@@ -336,9 +361,18 @@
 
 @media (min-width: 1024px) {
   .portfolios-workspace-grid {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr);
+    grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.4fr);
     gap: 1.25rem;
   }
+}
+
+/* Collapsible “Build Options Strategy” — hide default marker, match advanced disclosure */
+.portfolios-workspace-build-options summary {
+  list-style: none;
+}
+
+.portfolios-workspace-build-options summary::-webkit-details-marker {
+  display: none;
 }
 
 .portfolios-workspace-sidebar {

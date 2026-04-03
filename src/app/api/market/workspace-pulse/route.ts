@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { summarizeNearestExpiryOptionsHighlight } from "@/modules/find-options/options-hot-scan";
-import { resolveUsMarketDayContext } from "@/modules/scanner/tenant-market-calendar";
+import { resolveUsMarketDayContext } from "@/modules/scanner/us-market-day-context";
 import { lookupSymbols, type SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 

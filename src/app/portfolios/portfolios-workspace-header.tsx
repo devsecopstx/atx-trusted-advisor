@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { UploadIcon } from "@/app/admin/ui/crud-icons";
-import { AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
 import { AppUserHeaderSession } from "@/app/ui/app_user-header-session";
+import { AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
+import type { MarketDayContext } from "@/modules/scanner/us-market-day-context";
+import { resolveUsMarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
 
 export type PortfoliosWorkspaceHeaderSession = {
   email: string;
@@ -42,6 +44,7 @@ export function PortfoliosWorkspaceHeader({
   session
 }: Props) {
   const [indices, setIndices] = useState<PulseIndex[]>([]);
+  const [market, setMarket] = useState<MarketDayContext>(() => resolveUsMarketDayContext(new Date()));
   const [loading, setLoading] = useState(true);
 
   const importHref = defaultPortfolioId
@@ -55,13 +58,19 @@ export function PortfoliosWorkspaceHeader({
       try {
         const qs = topHoldingsKey ? `?holdings=${encodeURIComponent(topHoldingsKey)}` : "";
         const res = await fetch(`/api/market/workspace-pulse${qs}`, { credentials: "include" });
-        const body = (await res.json()) as { data?: { indices?: PulseIndex[] } };
-        if (!cancelled && body.data?.indices) {
-          setIndices(body.data.indices);
+        const body = (await res.json()) as {
+          data?: { indices?: PulseIndex[]; market?: MarketDayContext };
+        };
+        if (!cancelled) {
+          if (body.data?.indices) {
+            setIndices(body.data.indices);
+          }
+          setMarket(body.data?.market ?? resolveUsMarketDayContext(new Date()));
         }
       } catch {
         if (!cancelled) {
           setIndices([]);
+          setMarket(resolveUsMarketDayContext(new Date()));
         }
       } finally {
         if (!cancelled) {
@@ -78,6 +87,7 @@ export function PortfoliosWorkspaceHeader({
   }, [topHoldingsKey]);
 
   const spy = useMemo(() => indices.find((i) => i.symbol === "SPY") ?? indices[0], [indices]);
+  const sessionStatus = useMemo(() => usMarketSessionStatusLabel(market), [market]);
 
   return (
     <header className="portfolios-workspace-header xchat-header">
@@ -109,43 +119,56 @@ export function PortfoliosWorkspaceHeader({
       </div>
 
       <div className="portfolios-workspace-header__trailing xchat-header-trailing">
-        <span
-          className="portfolios-workspace-header__market-pill font-mono tabular-nums"
+        <div
+          className="portfolios-workspace-header__market-cluster flex flex-wrap items-center gap-2"
           aria-live="polite"
           aria-busy={loading}
         >
-          {spy ? (
-            <>
-              <span className="text-[var(--xf-text-100)]">{spy.symbol}</span>{" "}
-              {spy.price !== undefined && Number.isFinite(spy.price) ? (
-                <span className="text-[var(--xf-text-200)]">
-                  {spy.price.toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                    maximumFractionDigits: 2
-                  })}
+          <XfHoverHint hint={`${market.marketDate} · ${market.timezone} · ${sessionStatus.detail}`}>
+            <span
+              className={
+                sessionStatus.label === "Open"
+                  ? "portfolios-workspace-header__market-status portfolios-workspace-header__market-status--open"
+                  : "portfolios-workspace-header__market-status"
+              }
+            >
+              {sessionStatus.label}
+            </span>
+          </XfHoverHint>
+          <span className="portfolios-workspace-header__market-pill font-mono tabular-nums">
+            {spy ? (
+              <>
+                <span className="text-[var(--xf-text-100)]">{spy.symbol}</span>{" "}
+                {spy.price !== undefined && Number.isFinite(spy.price) ? (
+                  <span className="text-[var(--xf-text-200)]">
+                    {spy.price.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      maximumFractionDigits: 2
+                    })}
+                  </span>
+                ) : (
+                  <span className="text-[var(--xf-text-300)]">—</span>
+                )}{" "}
+                <span
+                  className={
+                    (spy.changePercent ?? 0) > 0
+                      ? "text-[var(--xf-gain-green)]"
+                      : (spy.changePercent ?? 0) < 0
+                        ? "text-red-300"
+                        : "text-[var(--xf-text-300)]"
+                  }
+                >
+                  {spy.changePercent !== undefined && spy.changePercent > 0 ? "▲ " : ""}
+                  {spy.changePercent !== undefined && spy.changePercent < 0 ? "▼ " : ""}
+                  {formatChgPct(spy.changePercent)}
                 </span>
-              ) : (
-                <span className="text-[var(--xf-text-300)]">—</span>
-              )}{" "}
-              <span
-                className={
-                  (spy.changePercent ?? 0) > 0
-                    ? "text-[var(--xf-gain-green)]"
-                    : (spy.changePercent ?? 0) < 0
-                      ? "text-red-300"
-                      : "text-[var(--xf-text-300)]"
-                }
-              >
-                {spy.changePercent !== undefined && spy.changePercent > 0 ? "▲ " : ""}
-                {spy.changePercent !== undefined && spy.changePercent < 0 ? "▼ " : ""}
-                {formatChgPct(spy.changePercent)}
-              </span>
-            </>
-          ) : (
-            <span className="text-[var(--xf-text-300)]">Markets —</span>
-          )}
-        </span>
+              </>
+            ) : (
+              <span className="text-[var(--xf-text-300)]">Markets —</span>
+            )}
+          </span>
+        </div>
 
         <Link
           className="portfolios-workspace-header__import-btn xchat-header-cta"

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { UploadIcon } from "@/app/admin/ui/crud-icons";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
 import type { NearestExpiryOptionsGlance } from "@/modules/find-options/options-hot-scan";
-import type { MarketDayContext } from "@/modules/scanner/tenant-market-calendar";
+import { type MarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
 
 export type PortfoliosHeroTopHolding = {
   symbol: string;
@@ -19,19 +19,6 @@ type PulseData = {
   news: { title: string; link: string; publisher?: string }[];
   optionsGlance: { symbol: string; highlight: NearestExpiryOptionsGlance | null }[];
 };
-
-function marketStatusLine(m: MarketDayContext): { label: string; detail: string } {
-  if (m.isHoliday) {
-    return { label: "Closed", detail: m.holidayName ?? "Market holiday" };
-  }
-  if (!m.isBusinessDay) {
-    return { label: "Closed", detail: "Weekend" };
-  }
-  if (m.marketWindowOpen) {
-    return { label: "Open", detail: "US regular session (ET)" };
-  }
-  return { label: "Closed", detail: "Outside 9:30–4:00 ET" };
-}
 
 function formatOi(n: number): string {
   if (n >= 1_000_000) {
@@ -98,7 +85,7 @@ export function PortfoliosHeroLeftColumn({
   }, [holdingsKey]);
 
   const m = pulse?.market ?? marketContext;
-  const status = marketStatusLine(m);
+  const status = usMarketSessionStatusLabel(m);
   const news = pulse?.news ?? [];
   const indices = pulse?.indices ?? [];
   const optionsGlance = pulse?.optionsGlance ?? [];
