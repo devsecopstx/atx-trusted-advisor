@@ -342,3 +342,48 @@ const defaultBff = createAtxfinanceBackendBff();
 export async function proxyRequestToBackend(request: Request): Promise<Response | null> {
   return defaultBff.proxyRequest(request);
 }
+
+function isLoopbackBackendOrigin(origin: string): boolean {
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * When `ATXFINANCE_BACKEND_ORIGIN` is set, `/api/admin/users*` may proxy to Spring.
+ *
+ * - **Remote Spring (non-loopback host):** proxy is **on** unless `ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=false`.
+ * - **Loopback (`localhost` / `127.0.0.1`) + `development` or `test`:** proxy is **off** by default so Manage Users
+ *   uses the same Mongo as Next auth (avoids an empty table when the JVM sees a different DB).
+ * - **Force local JVM:** set `ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=true`.
+ */
+export function shouldProxyAdminUsersToBackend(): boolean {
+  const origin = getAtxfinanceBackendOrigin();
+  if (!origin) {
+    return false;
+  }
+  const v = process.env.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS?.trim().toLowerCase();
+  if (v === "0" || v === "false" || v === "no" || v === "off") {
+    return false;
+  }
+  if (v === "1" || v === "true" || v === "yes" || v === "on") {
+    return true;
+  }
+  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  const devLike = nodeEnv === "development" || nodeEnv === "test";
+  if (devLike && isLoopbackBackendOrigin(origin)) {
+    return false;
+  }
+  return true;
+}
+
+/** Like {@link proxyRequestToBackend} for admin user routes; returns `null` when proxy is disabled. */
+export async function proxyAdminUsersRequestToBackend(request: Request): Promise<Response | null> {
+  if (!shouldProxyAdminUsersToBackend()) {
+    return null;
+  }
+  return proxyRequestToBackend(request);
+}

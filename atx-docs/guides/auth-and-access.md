@@ -87,7 +87,7 @@ Keep these aligned to avoid missing cookie context and callback failures:
 
 ## Common login error meanings
 
-- `email_link_required`: no email claim from X and no login-allowed role yet
+- `email_link_required`: no email claim from X, and OAuth identity did not match `ADMIN_SEED_X_USER_ID` (numeric id), `ADMIN_SEED_X_USERNAME` (handle), or a login-eligible role yet
 - `access_request_pending`: account exists but lacks login-allowed role
 - `bootstrap_failed`: post-auth bootstrap failed (membership/session persistence path)
 

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import { normalizeSubscriptionPlan, zSubscriptionPlan } from "@/lib/subscription-plan";
 import {
     createAuditEvent,
@@ -28,7 +28,7 @@ const createUserSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

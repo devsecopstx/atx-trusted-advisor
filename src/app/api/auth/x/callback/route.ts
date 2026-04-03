@@ -217,7 +217,6 @@ export async function GET(request: Request) {
     avatarUrl: userInfoJson.data.profile_image_url
   };
   const emailFromProvider = userInfoJson.data.email?.trim().toLowerCase();
-  const adminSeedXUserId = env.ADMIN_SEED_X_USER_ID?.trim();
   const seededAdmin =
     emailFromProvider && isSeedAdminEmail(emailFromProvider, env.ADMIN_SEED_EMAIL)
       ? await ensureSeededGlobalAdmin(emailFromProvider)
@@ -227,9 +226,13 @@ export async function GET(request: Request) {
   if (
     !user &&
     !emailFromProvider &&
-    adminSeedXUserId &&
-    adminSeedXUserId === xIdentity.xUserId &&
-    env.ADMIN_SEED_EMAIL
+    env.ADMIN_SEED_EMAIL &&
+    adminXSeedMatchesOAuthIdentity({
+      adminSeedXUserId: env.ADMIN_SEED_X_USER_ID,
+      adminSeedXUsername: env.ADMIN_SEED_X_USERNAME,
+      oauthXUserId: xIdentity.xUserId,
+      oauthUsername: xIdentity.username
+    })
   ) {
     const seeded = await ensureSeededGlobalAdmin(env.ADMIN_SEED_EMAIL);
     if (!seeded.user._id) {
@@ -421,5 +424,40 @@ function isSameUserId(
   right: { toHexString: () => string }
 ): boolean {
   return left.toHexString() === right.toHexString();
+}
+
+/** Normalize X handle for comparison (`@AtxBogart` → `atxbogart`). */
+function normalizeXHandle(raw: string): string {
+  return raw.trim().replace(/^@+/u, "").toLowerCase();
+}
+
+/**
+ * True when env seed identifies this X OAuth identity as the configured admin (no email on profile).
+ * Accepts numeric `data.id` match, explicit handle in `ADMIN_SEED_X_USERNAME`, or a handle mistakenly
+ * stored in `ADMIN_SEED_X_USER_ID` (common misconfig — X API id is never the @handle).
+ */
+function adminXSeedMatchesOAuthIdentity(input: {
+  adminSeedXUserId: string | undefined;
+  adminSeedXUsername: string | undefined;
+  oauthXUserId: string;
+  oauthUsername: string;
+}): boolean {
+  const idSeed = input.adminSeedXUserId?.trim();
+  if (idSeed && idSeed === input.oauthXUserId) {
+    return true;
+  }
+  const oauthHandle = normalizeXHandle(input.oauthUsername);
+  if (!oauthHandle) {
+    return false;
+  }
+  const fromUsernameEnv = input.adminSeedXUsername?.trim();
+  if (fromUsernameEnv && normalizeXHandle(fromUsernameEnv) === oauthHandle) {
+    return true;
+  }
+  // Handle stored in ADMIN_SEED_X_USER_ID by mistake (not the numeric X user id).
+  if (idSeed && normalizeXHandle(idSeed) === oauthHandle) {
+    return true;
+  }
+  return false;
 }
 

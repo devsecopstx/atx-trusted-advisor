@@ -104,7 +104,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 
 export async function DELETE(request: Request, context: RouteContext) {
   const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
+  // Spring returns 405 when DELETE is not registered (older atxfinance-backend). Fall through to Next/Mongo.
+  if (proxied && proxied.status !== 405) {
     return proxied;
   }
 

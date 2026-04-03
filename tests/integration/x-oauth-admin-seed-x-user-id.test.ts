@@ -174,4 +174,88 @@ describe("X OAuth without email + ADMIN_SEED_X_USER_ID", () => {
     expect(authMocks.setPendingXLinkCookie).not.toHaveBeenCalled();
     expect(authMocks.createSession).toHaveBeenCalledTimes(1);
   });
+
+  it("links seeded global admin when X omits email and ADMIN_SEED_X_USERNAME matches OAuth username", async () => {
+    envMocks.getEnv.mockReturnValue({
+      X_OAUTH_CLIENT_SECRET: "test-secret",
+      X_OAUTH_TOKEN_URL: "https://x.test/token",
+      X_OAUTH_USERINFO_URL: "https://x.test/me",
+      ADMIN_SEED_EMAIL: "admin@seed.test",
+      ADMIN_SEED_X_USER_ID: "",
+      ADMIN_SEED_X_USERNAME: "@Seed_Admin_X",
+      ADMIN_X_USERNAMES: "",
+      ALLOW_ANY_X_USER_LOGIN: "false",
+      NODE_ENV: "test"
+    });
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "999888777",
+            username: "seed_admin_x",
+            name: "Seed Admin"
+          }
+        })
+      }) as typeof fetch;
+
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+    expect(response.headers.get("location")).toContain("/admin");
+    expect(identityMocks.ensureSeededGlobalAdmin).toHaveBeenCalledWith("admin@seed.test");
+    expect(identityMocks.linkXAccountToUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        xUserId: "999888777",
+        username: "seed_admin_x"
+      })
+    );
+  });
+
+  it("accepts handle mistakenly stored in ADMIN_SEED_X_USER_ID when X omits email", async () => {
+    envMocks.getEnv.mockReturnValue({
+      X_OAUTH_CLIENT_SECRET: "test-secret",
+      X_OAUTH_TOKEN_URL: "https://x.test/token",
+      X_OAUTH_USERINFO_URL: "https://x.test/me",
+      ADMIN_SEED_EMAIL: "admin@seed.test",
+      ADMIN_SEED_X_USER_ID: "seed_admin_x",
+      ADMIN_SEED_X_USERNAME: "",
+      ADMIN_X_USERNAMES: "",
+      ALLOW_ANY_X_USER_LOGIN: "false",
+      NODE_ENV: "test"
+    });
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "111222333",
+            username: "seed_admin_x",
+            name: "Seed Admin"
+          }
+        })
+      }) as typeof fetch;
+
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+    expect(response.headers.get("location")).toContain("/admin");
+    expect(identityMocks.ensureSeededGlobalAdmin).toHaveBeenCalledWith("admin@seed.test");
+  });
 });

@@ -76,10 +76,13 @@ const envSchema = z.object({
     z.string().email().optional()
   ),
   /**
-   * When X userinfo omits `email`, OAuth still matches the seeded admin if this equals the X numeric user id.
-   * Set alongside `ADMIN_SEED_EMAIL`; `npm run seed:admin` can persist the same id on `core_users.xAccount`.
+   * When X userinfo omits `email`, OAuth matches the seeded admin if this equals the X **numeric** user id
+   * (`users/me` → `data.id`), or the same normalized handle as `ADMIN_SEED_X_USERNAME` / OAuth username.
+   * Set alongside `ADMIN_SEED_EMAIL`; `npm run seed:admin` can persist the id on `core_users.xAccount`.
    */
   ADMIN_SEED_X_USER_ID: optionalNonEmptyString,
+  /** Optional X handle for admin seed match when userinfo has no email (case-insensitive; `@` optional). */
+  ADMIN_SEED_X_USERNAME: optionalNonEmptyString,
   ADMIN_X_USERNAMES: z.string().optional(),
   ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
   /**

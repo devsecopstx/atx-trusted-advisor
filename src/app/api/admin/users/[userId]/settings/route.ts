@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import { getPersonaByIdCached } from "@/lib/server-request-cache";
 import { createAuditEvent } from "@/modules/audit/repository";
 import { getUserBootstrapCollectionByUserId } from "@/modules/core-admin/access-request-bootstrap";
@@ -59,7 +59,7 @@ type LinkedCollection = {
 };
 
 export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -96,7 +96,7 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
