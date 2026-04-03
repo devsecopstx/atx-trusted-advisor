@@ -80,6 +80,28 @@ export async function updateAppBrokerImportJob(
   );
 }
 
+/** Removes all staged broker import jobs for this user + portfolio (import “activity” history). */
+export async function deleteAppBrokerImportJobsForPortfolioUser(input: {
+  portfolioIdHex: string;
+  userId: string;
+  tenantId: string;
+}): Promise<number> {
+  if (!ObjectId.isValid(input.portfolioIdHex)) {
+    return 0;
+  }
+  const tenantOid = ObjectId.isValid(input.tenantId) ? new ObjectId(input.tenantId) : null;
+  if (!tenantOid) {
+    return 0;
+  }
+  const db = await getDb();
+  const res = await db.collection<AppBrokerImportJob>(APP_BROKER_IMPORT_JOBS_COLLECTION).deleteMany({
+    portfolioId: new ObjectId(input.portfolioIdHex),
+    userId: input.userId,
+    tenantId: tenantOid
+  });
+  return res.deletedCount ?? 0;
+}
+
 /**
  * True while an app-user broker import job for this portfolio is pending or running
  * (live quote fetches should be skipped so partial deletes + upserts are not priced mid-sync).

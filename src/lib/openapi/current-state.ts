@@ -116,6 +116,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "market"
   },
   {
+    path: "/api/market/workspace-pulse",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "market"
+  },
+  {
     path: "/api/recommendations",
     operations: [
       { method: "GET", auth: "session" },
@@ -536,6 +541,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/import/broker",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "portfolios"
+  },
+  {
+    path: "/api/import/broker/clean",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "portfolios"
   },

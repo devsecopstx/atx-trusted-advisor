@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { UploadIcon } from "@/app/admin/ui/crud-icons";
+import { DeleteIcon, UploadIcon } from "@/app/admin/ui/crud-icons";
+import { detectFidelityActivitiesCsv } from "@/modules/portfolio-import/fidelity-activities-csv";
+import { detectFidelityPortfolioHoldingsCsv } from "@/modules/portfolio-import/fidelity-holdings-csv";
 
 export type ImportActivityPortfolioOption = {
   id: string;
@@ -39,6 +41,8 @@ type BrokerApplyRow = {
 
 type ImportActivityClientProps = {
   portfolios: ImportActivityPortfolioOption[];
+  /** When present and matches a portfolio id, preselect that book (e.g. from /portfolio Activities). */
+  initialPortfolioId?: string;
 };
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -56,8 +60,12 @@ async function parseJson<T>(res: Response): Promise<T> {
   return body as T;
 }
 
-export function ImportActivityClient({ portfolios }: ImportActivityClientProps) {
-  const [portfolioId, setPortfolioId] = useState(portfolios[0]?.id ?? "");
+export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportActivityClientProps) {
+  const initialPick =
+    initialPortfolioId && portfolios.some((p) => p.id === initialPortfolioId)
+      ? initialPortfolioId
+      : (portfolios[0]?.id ?? "");
+  const [portfolioId, setPortfolioId] = useState(initialPick);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [brokerCsv, setBrokerCsv] = useState("");
   const [brokerKind, setBrokerKind] = useState<"merrill" | "fidelity">("merrill");
@@ -66,6 +74,7 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
   const [message, setMessage] = useState<string | null>(null);
   const [results, setResults] = useState<BrokerApplyRow[] | null>(null);
   const [taskOutput, setTaskOutput] = useState<string | null>(null);
+  const [cleanBusy, setCleanBusy] = useState(false);
 
   const loadAccounts = useCallback(async () => {
     if (!portfolioId) {
@@ -85,6 +94,19 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
   useEffect(() => {
     void loadAccounts();
   }, [loadAccounts]);
+
+  const fidelityDetectedFileKind = useMemo((): "activities" | "portfolio_holdings" | "legacy_positions" | null => {
+    if (brokerKind !== "fidelity" || !brokerCsv.trim()) {
+      return null;
+    }
+    if (detectFidelityActivitiesCsv(brokerCsv)) {
+      return "activities";
+    }
+    if (detectFidelityPortfolioHoldingsCsv(brokerCsv)) {
+      return "portfolio_holdings";
+    }
+    return "legacy_positions";
+  }, [brokerKind, brokerCsv]);
 
   const findAccountByExternalRef = (accountRef: string): AccountRow | undefined => {
     const ref = accountRef.trim();
@@ -212,19 +234,80 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
     }
   };
 
+  const runCleanFirstThenImport = async () => {
+    if (!portfolioId) {
+      setMessage("Select a portfolio.");
+      return;
+    }
+    const bookName = portfolios.find((p) => p.id === portfolioId)?.name ?? "this portfolio";
+    const warn1 = [
+      `Clean “${bookName}” before a fresh import?`,
+      "",
+      "This permanently deletes:",
+      "• Every stock, option, and cash position in ALL accounts in this portfolio",
+      "• All broker import job records (staged CSVs and results) for this portfolio",
+      "• Any pending sync-broker import tasks tied to this portfolio",
+      "",
+      "Your accounts, watchlists, and the portfolio itself are NOT removed.",
+      "",
+      "This cannot be undone."
+    ].join("\n");
+    if (!window.confirm(warn1)) {
+      return;
+    }
+    if (
+      !window.confirm(
+        "Final confirmation: delete all holdings and import activity for the selected portfolio now?"
+      )
+    ) {
+      return;
+    }
+    setCleanBusy(true);
+    setMessage(null);
+    try {
+      const payload = await parseJson<{
+        data: {
+          positionsDeleted: number;
+          importJobsDeleted: number;
+          syncTasksDeleted: number;
+        };
+      }>(
+        await fetch("/api/import/broker/clean", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ portfolioId })
+        })
+      );
+      const d = payload.data;
+      setBrokerPreview(null);
+      setResults(null);
+      setTaskOutput(null);
+      setMessage(
+        `Clean slate ready — removed ${d.positionsDeleted} position row(s), ${d.importJobsDeleted} import job(s), ${d.syncTasksDeleted} sync task(s). You can paste CSV and run Preview / Import.`
+      );
+      void loadAccounts();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Clean failed");
+    } finally {
+      setCleanBusy(false);
+    }
+  };
+
   return (
     <div className="grid w-full gap-2">
       <p className="text-sm text-[var(--xf-text-300)]">
-        Import Merrill Edge <strong>holdings</strong> or Fidelity <strong>Positions</strong> /{" "}
-        <strong>Accounts History</strong> CSV. Broker account numbers / refs in the file must match each account&apos;s{" "}
+        Import Merrill Edge <strong>holdings</strong> or Fidelity <strong>Portfolio holdings</strong> (multi-account positions
+        export), <strong>Accounts History</strong> (activities), or legacy single-account <strong>Positions</strong> CSV. The
+        parser picks the layout from the file header. Broker account numbers / refs in the file must match each account&apos;s{" "}
         <code className="font-mono text-xs">ext ref</code> on the{" "}
         <Link className="underline text-[var(--xf-text-100)]" href="/portfolio">
           Portfolio
         </Link>{" "}
-        workspace. Fidelity <strong>Accounts History</strong> uses the <code className="font-mono text-xs">Account Number</code>{" "}
-        column per row (no extra ref field). Activities are replayed into holdings: net long options import; net short option
-        legs are omitted until shorts are modeled. Runs as an immediate <code className="font-mono text-xs">sync-broker</code>{" "}
-        job; a short summary is shown when done.
+        workspace. For Fidelity, use <strong>Portfolio holdings first</strong> to load positions, then{" "}
+        <strong>Accounts History</strong> when you want activity replay. Activities are replayed into holdings: net long
+        options import; net short option legs are omitted until shorts are modeled. Runs as an immediate{" "}
+        <code className="font-mono text-xs">sync-broker</code> job; a short summary is shown when done.
       </p>
 
       {portfolios.length === 0 ? (
@@ -281,6 +364,31 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
         </div>
       ) : null}
 
+      {portfolioId ? (
+        <div
+          className="rounded-md border border-red-500/40 bg-red-950/25 p-3 text-sm text-[var(--xf-text-200)]"
+          role="region"
+          aria-label="Destructive clean before import"
+        >
+          <p className="m-0 font-semibold text-red-200/95">Clean first, then import</p>
+          <p className="mt-1.5 mb-2 text-xs leading-snug text-[var(--xf-text-300)]">
+            Use this when you want an empty book before loading a new broker file. It removes{" "}
+            <strong className="text-[var(--xf-text-100)]">all positions</strong> in every account in the selected
+            portfolio and clears <strong className="text-[var(--xf-text-100)]">broker import jobs</strong> (import
+            activity) for that book. Accounts are kept.
+          </p>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md border border-red-500/50 bg-red-900/40 px-3 py-2 text-sm font-medium text-red-100 hover:bg-red-900/55 disabled:pointer-events-none disabled:opacity-50"
+            disabled={busy || cleanBusy}
+            onClick={() => void runCleanFirstThenImport()}
+          >
+            <DeleteIcon className="crud-icon h-4 w-4" aria-hidden />
+            {cleanBusy ? "Cleaning…" : "Clean first, then import"}
+          </button>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-sm">
           <span>Broker</span>
@@ -294,7 +402,7 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
             disabled={busy}
           >
             <option value="merrill">Merrill Edge (holdings)</option>
-            <option value="fidelity">Fidelity (positions or activities)</option>
+            <option value="fidelity">Fidelity (portfolio holdings or activities)</option>
           </select>
         </label>
         <label className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
@@ -323,6 +431,35 @@ export function ImportActivityClient({ portfolios }: ImportActivityClientProps) 
           placeholder="Paste or load CSV…"
         />
       </label>
+
+      {brokerKind === "fidelity" ? (
+        <div
+          className="rounded-md border border-white/10 bg-black/15 p-3 text-xs leading-relaxed text-[var(--xf-text-200)]"
+          role="note"
+        >
+          <p className="m-0">
+            <strong className="text-[var(--xf-text-100)]">Fidelity workflow:</strong> export and import{" "}
+            <strong>Portfolio holdings</strong> (positions snapshot) first, then <strong>Accounts History</strong> when you
+            need trades replayed into holdings. The server chooses the parser from the CSV header (
+            <code className="font-mono">Account Number</code> + <code className="font-mono">Symbol</code> for positions vs{" "}
+            <code className="font-mono">Run Date</code> for activities).
+          </p>
+          {fidelityDetectedFileKind === "portfolio_holdings" ? (
+            <p className="mt-2 mb-0 text-[var(--xf-gain-green)]">
+              Detected: Portfolio holdings — account numbers in the file map to each account&apos;s ext ref.
+            </p>
+          ) : null}
+          {fidelityDetectedFileKind === "activities" ? (
+            <p className="mt-2 mb-0 text-[var(--xf-gain-green)]">Detected: Accounts History (activities).</p>
+          ) : null}
+          {fidelityDetectedFileKind === "legacy_positions" ? (
+            <p className="mt-2 mb-0 text-[var(--xf-text-300)]">
+              Detected: legacy Positions export (Symbol is the first column). If there is no account column, set a default
+              account ref for the book.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <button

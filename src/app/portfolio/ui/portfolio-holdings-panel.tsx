@@ -12,33 +12,43 @@ import { useSymbolQuotes } from "@/app/portfolio/ui/use-symbol-quotes";
 type PortfolioHoldingsPanelProps = {
   rows: PortfolioHoldingRow[];
   portfolioIdHex: string;
+  /** When set, only rows for this account are shown (e.g. selected account on /portfolio). */
+  filterAccountIdHex?: string;
 };
 
-export function PortfolioHoldingsPanel({ rows, portfolioIdHex }: PortfolioHoldingsPanelProps) {
+export function PortfolioHoldingsPanel({ rows, portfolioIdHex, filterAccountIdHex }: PortfolioHoldingsPanelProps) {
+  const visibleRows = useMemo(() => {
+    if (!filterAccountIdHex) return rows;
+    return rows.filter((r) => r.accountIdHex === filterAccountIdHex);
+  }, [rows, filterAccountIdHex]);
+
   const quoteSymbols = useMemo(() => {
     const s = new Set<string>();
-    for (const r of rows) {
+    for (const r of visibleRows) {
       if (r.positionType === "stock" || r.positionType === "option") {
         s.add(r.symbol.trim().toUpperCase());
       }
     }
     return [...s];
-  }, [rows]);
+  }, [visibleRows]);
 
   const { quotes, loading } = useSymbolQuotes(quoteSymbols, { portfolioIdHex });
+
+  const hint = filterAccountIdHex
+    ? "Cost basis and live marks for the selected account. Add or remove lots in the card below."
+    : "Cost basis book values; live marks where shown. Edit lots from each account page.";
 
   return (
     <section className="portfolio-panel portfolio-holdings-panel" aria-labelledby="portfolio-all-holdings-heading">
       <h2 className="portfolio-panel__title" id="portfolio-all-holdings-heading">
-        Holdings
+        {filterAccountIdHex ? "Holdings (selected account)" : "Holdings"}
       </h2>
-      <p className="portfolio-holdings-panel__hint">
-        Cost basis book values; live marks where shown. Edit lots from each account page.
-      </p>
-      {rows.length === 0 ? (
+      <p className="portfolio-holdings-panel__hint">{hint}</p>
+      {visibleRows.length === 0 ? (
         <p className="status-text">
-          No positions yet — open an account from Overview, use the <strong>Holdings</strong> tab, and add stock,
-          options, or cash there.
+          {filterAccountIdHex
+            ? "No positions for this account yet — use the form below to add stock, options, or cash."
+            : "No positions yet — open an account from Overview, use the Holdings tab, and add stock, options, or cash there."}
         </p>
       ) : (
         <div className="portfolio-table-wrap">
@@ -55,7 +65,7 @@ export function PortfolioHoldingsPanel({ rows, portfolioIdHex }: PortfolioHoldin
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => {
+              {visibleRows.map((r, i) => {
                 const sym = r.symbol.trim().toUpperCase();
                 const showQuote = r.positionType === "stock" || r.positionType === "option";
                 const q = showQuote ? quotes[sym] : null;

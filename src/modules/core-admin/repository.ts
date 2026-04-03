@@ -1528,6 +1528,61 @@ export async function deletePositionsForPortfolioAccount(input: {
   return n;
 }
 
+/** Removes every position lot for the portfolio (all accounts). Returns deleted count. */
+export async function deleteAllPositionsForPortfolio(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+}): Promise<number> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId)) {
+    return 0;
+  }
+  const db = await getDb();
+  const result = await db.collection<Position>(collections.positions).deleteMany(
+    withTenantScope(
+      {
+        ...userIdQuery(input.userId),
+        portfolioId: new ObjectId(input.portfolioId)
+      },
+      input.tenantId
+    )
+  );
+  const n = result.deletedCount ?? 0;
+  if (n > 0) {
+    await bumpPortfolioWorkspaceContentRev({
+      userId: input.userId,
+      portfolioId: input.portfolioId,
+      tenantId: input.tenantId
+    });
+  }
+  return n;
+}
+
+/**
+ * Deletes scheduled tasks bound to a portfolio and category (e.g. stuck `sync-broker` import tasks).
+ * Tenant scope matches list/read helpers.
+ */
+export async function deleteScheduledTasksForPortfolioCategory(input: {
+  portfolioId: string;
+  category: ScheduledTask["category"];
+  tenantId?: string;
+}): Promise<number> {
+  if (!ObjectId.isValid(input.portfolioId)) {
+    return 0;
+  }
+  const db = await getDb();
+  const filter = scheduledTaskTenantReadScope(
+    {
+      portfolioId: new ObjectId(input.portfolioId),
+      category: input.category
+    },
+    input.tenantId
+  );
+  const res = await db.collection<ScheduledTask>(collections.scheduledTasks).deleteMany(filter);
+  return res.deletedCount ?? 0;
+}
+
 export async function listPortfolioAccounts(input: {
   userId: string;
   portfolioId: string;

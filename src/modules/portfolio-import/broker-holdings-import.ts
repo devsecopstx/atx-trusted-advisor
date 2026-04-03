@@ -12,7 +12,13 @@ import {
 } from "@/modules/core-admin/repository";
 
 import { detectFidelityActivitiesCsv, parseFidelityActivitiesAccounts } from "./fidelity-activities-csv";
-import { parseFidelityHoldingsCsv, type FidelityHoldingsPosition } from "./fidelity-holdings-csv";
+import {
+    detectFidelityPortfolioHoldingsCsv,
+    fidelityOptionExpiredOnOrBeforeAsOf,
+    parseFidelityHoldingsCsv,
+    parseFidelityPortfolioHoldingsCsv,
+    type FidelityHoldingsPosition
+} from "./fidelity-holdings-csv";
 import { parseMerrillHoldingsCsv, type MerrillHoldingsPosition } from "./merrill-holdings-csv";
 
 function expirationUtcNoonFromYmd(ymd: string): Date | null {
@@ -110,12 +116,32 @@ export function parseBrokerHoldingsAccounts(
     };
   }
 
+  if (detectFidelityPortfolioHoldingsCsv(csv)) {
+    const pf = parseFidelityPortfolioHoldingsCsv(csv);
+    if (pf.parseError && pf.accounts.length === 0) {
+      return { accounts: [], parseError: pf.parseError };
+    }
+    if (pf.accounts.length === 0) {
+      return {
+        accounts: [],
+        parseError: pf.parseError ?? "No accounts parsed from Fidelity Portfolio positions CSV."
+      };
+    }
+    return {
+      accounts: pf.accounts.map((a) => ({
+        accountRef: a.accountRef,
+        label: a.label,
+        positions: a.positions
+      }))
+    };
+  }
+
   const ref = fidelityHoldingsDefaultAccountRef.trim();
   if (!ref) {
     return {
       accounts: [],
       parseError:
-        "Fidelity Positions export needs a default account ref (ext ref). For Accounts History, use a file with Run Date + Account Number columns — no default ref required."
+        "This Fidelity file is not recognized. Use Portfolio positions (Account Number + Symbol), Accounts History (Run Date + Account Number), or legacy Positions export with Symbol as the first column (requires default account ref)."
     };
   }
   const result = parseFidelityHoldingsCsv(csv, ref);
@@ -250,6 +276,10 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
         (p): p is BrokerHoldingsPosition & { type: "option" } => p.type === "option"
       );
       for (const op of optionRows) {
+        if (op.expiration && fidelityOptionExpiredOnOrBeforeAsOf(op.expiration, new Date())) {
+          skippedNonStock += 1;
+          continue;
+        }
         const exp = op.expiration ? expirationUtcNoonFromYmd(op.expiration) : null;
         const strike = op.strike;
         const ot = op.optionType;

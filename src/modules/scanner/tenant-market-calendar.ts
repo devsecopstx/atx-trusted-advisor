@@ -28,7 +28,7 @@ type TenantMarketCalendarSnapshot = {
   updatedAt: Date;
 };
 
-type MarketDayContext = {
+export type MarketDayContext = {
   marketDate: string;
   timezone: string;
   isBusinessDay: boolean;

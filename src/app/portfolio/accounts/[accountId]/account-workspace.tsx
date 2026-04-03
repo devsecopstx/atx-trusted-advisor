@@ -12,18 +12,12 @@ import {
     SaveIcon,
     XMarkIcon
 } from "@/app/admin/ui/crud-icons";
-import { AccountHoldingsLiveTable } from "@/app/portfolio/ui/account-holdings-live-table";
-import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
+import { AccountHoldingsCrudCard } from "@/app/portfolio/ui/account-holdings-crud-card";
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/broker-ui";
 import { DESK_OUTLOOK_CARD_OPTIONS } from "@/modules/core-admin/desk-fields";
 import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
-import {
-    accountTypeValues,
-    type AccountOutlook,
-    type AccountType,
-    type PositionType
-} from "@/modules/core-admin/types";
+import { accountTypeValues, type AccountOutlook, type AccountType } from "@/modules/core-admin/types";
 
 import type { SerializableAccount, SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 
@@ -70,8 +64,6 @@ export function AccountWorkspace({
   const [savePending, setSavePending] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [positions, setPositions] = useState(initialPositions);
-
   const [acctName, setAcctName] = useState(account.name);
   const [cashBalance, setCashBalance] = useState(String(account.cashBalance));
   const [extRef, setExtRef] = useState(account.extAccountId);
@@ -79,28 +71,7 @@ export function AccountWorkspace({
   const [outlook, setOutlook] = useState<AccountOutlook | null>(account.outlook);
   const [brokerType, setBrokerType] = useState<AccountType>(() => coerceAccountType(account.type));
 
-  const [holdingType, setHoldingType] = useState<PositionType>("stock");
-
-  const [stSym, setStSym] = useState("");
-  const [stShares, setStShares] = useState("");
-  const [stPx, setStPx] = useState("");
-
-  const [opSym, setOpSym] = useState("");
-  const [opYref, setOpYref] = useState("");
-  const [opCp, setOpCp] = useState<"call" | "put">("call");
-  const [opStrike, setOpStrike] = useState("");
-  const [opExp, setOpExp] = useState("");
-  const [opContracts, setOpContracts] = useState("");
-  const [opPrem, setOpPrem] = useState("");
-
-  const [caLabel, setCaLabel] = useState("");
-  const [caAmt, setCaAmt] = useState("");
-
   const [workspaceTab, setWorkspaceTab] = useState<"edit" | "holdings">("edit");
-
-  useEffect(() => {
-    setPositions(initialPositions);
-  }, [initialPositions]);
 
   useEffect(() => {
     setAcctName(account.name);
@@ -156,147 +127,6 @@ export function AccountWorkspace({
     } finally {
       setSavePending(false);
     }
-  }
-
-  async function addHolding(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (holdingType === "stock") {
-      const symbol = stSym.trim().toUpperCase();
-      const qty = Number.parseFloat(stShares);
-      const avgCost = Number.parseFloat(stPx);
-      if (!symbol || !Number.isFinite(qty) || qty <= 0) {
-        setError("Stock: symbol and positive shares required.");
-        return;
-      }
-      if (!Number.isFinite(avgCost) || avgCost < 0) {
-        setError("Stock: non-negative purchase price required.");
-        return;
-      }
-      const res = await fetch("/api/positions", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          portfolioId,
-          accountId: account._id,
-          symbol,
-          qty,
-          avgCost,
-          type: "stock"
-        })
-      });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        setError(body.error ?? "Could not save stock position");
-        return;
-      }
-      setStSym("");
-      setStShares("");
-      setStPx("");
-      startTransition(() => router.refresh());
-      return;
-    }
-
-    if (holdingType === "option") {
-      const symbol = opSym.trim().toUpperCase();
-      const yahooRef = opYref.trim();
-      const strike = Number.parseFloat(opStrike);
-      const qty = Number.parseFloat(opContracts);
-      const avgCost = Number.parseFloat(opPrem);
-      const expiration = opExp.trim();
-      if (!symbol || !yahooRef) {
-        setError("Option: underlying and yahoo_ref required.");
-        return;
-      }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(expiration)) {
-        setError("Option: expiration must be YYYY-MM-DD.");
-        return;
-      }
-      if (!Number.isFinite(strike) || strike <= 0 || !Number.isFinite(qty) || qty <= 0) {
-        setError("Option: positive strike and contracts required.");
-        return;
-      }
-      if (!Number.isFinite(avgCost) || avgCost < 0) {
-        setError("Option: non-negative premium per contract required.");
-        return;
-      }
-      const res = await fetch("/api/positions", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          portfolioId,
-          accountId: account._id,
-          type: "option",
-          ticker: symbol,
-          yahooRef,
-          optionType: opCp,
-          strike,
-          expiration,
-          contracts: qty,
-          premium: avgCost
-        })
-      });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        setError(body.error ?? "Could not save option position");
-        return;
-      }
-      setOpSym("");
-      setOpYref("");
-      setOpStrike("");
-      setOpExp("");
-      setOpContracts("");
-      setOpPrem("");
-      startTransition(() => router.refresh());
-      return;
-    }
-
-    const amount = Number.parseFloat(caAmt.replaceAll(/[$,\s]/g, ""));
-    if (!Number.isFinite(amount) || amount < 0) {
-      setError("Cash: non-negative amount required.");
-      return;
-    }
-    const label = caLabel.trim().toUpperCase() || "CASH";
-    const res = await fetch("/api/positions", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        portfolioId,
-        accountId: account._id,
-        type: "cash",
-        ticker: label,
-        amount,
-        shares: 1
-      })
-    });
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    if (!res.ok) {
-      setError(body.error ?? "Could not save cash position");
-      return;
-    }
-    setCaLabel("");
-    setCaAmt("");
-    startTransition(() => router.refresh());
-  }
-
-  async function removePosition(positionId: string) {
-    setError(null);
-    const qs = new URLSearchParams({ portfolioId, accountId: account._id });
-    const res = await fetch(
-      `/api/positions/${encodeURIComponent(positionId)}?${qs.toString()}`,
-      { method: "DELETE", credentials: "include" }
-    );
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(body.error ?? "Could not delete position");
-      return;
-    }
-    setPositions((prev) => prev.filter((p) => p._id !== positionId));
-    startTransition(() => router.refresh());
   }
 
   return (
@@ -602,182 +432,11 @@ export function AccountWorkspace({
         id="account-panel-holdings"
         aria-labelledby="account-tab-holdings"
       >
-      <section className="portfolio-edit-holdings-card xf-noise-overlay" aria-labelledby="edit-holdings-title">
-        <h2 id="edit-holdings-title" className="portfolio-edit-account-card__title portfolio-edit-account-card__title--section">
-          Holdings
-        </h2>
-        <h3 className="portfolio-edit-holdings-card__table-title">Current holdings table</h3>
-        <p className="portfolio-edit-holdings-card__table-hint">
-          Review and edit this account&apos;s positions directly from the table before adding new entries.
-        </p>
-        {positions.length === 0 ? (
-          <p className="portfolio-edit-holdings-card__empty">No positions yet — add stock, options, or cash below.</p>
-        ) : (
-          <div className="portfolio-edit-holdings-card__table-wrap">
-            <AccountHoldingsLiveTable
-              pending={pending}
-              portfolioIdHex={portfolioId}
-              positions={positions}
-              onRemove={removePosition}
-            />
-          </div>
-        )}
-
-        <div className="portfolio-edit-holdings-card__divider" aria-hidden />
-        <h3 className="portfolio-edit-holdings-card__subtitle">Add or update position</h3>
-        <form onSubmit={addHolding} className="stack-gap portfolio-edit-holdings-form">
-          <label className="portfolio-edit-holdings-field">
-            <span className="portfolio-edit-holdings-field__label">Instrument type</span>
-            <select
-              className="crud-input portfolio-edit-account-card__input"
-              value={holdingType}
-              onChange={(e) => setHoldingType(e.target.value as PositionType)}
-              aria-label="Holding type"
-            >
-              <option value="stock">stock</option>
-              <option value="option">option</option>
-              <option value="cash">cash</option>
-            </select>
-          </label>
-
-          {holdingType === "stock" ? (
-            <div
-              className="stack-gap"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(8rem, 1fr))",
-                gap: "0.75rem",
-                maxWidth: "36rem",
-                alignItems: "end"
-              }}
-            >
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Symbol</span>
-                <input className="crud-input" value={stSym} onChange={(e) => setStSym(e.target.value)} placeholder="TSLA" />
-              </label>
-              <div
-                className="stack-gap"
-                style={{
-                  gridColumn: "1 / -1",
-                  maxWidth: "28rem"
-                }}
-              >
-                <StockSymbolLiveField
-                  purchasePrice={stPx}
-                  symbolInput={stSym}
-                  onSuggestPurchasePrice={setStPx}
-                />
-              </div>
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Shares</span>
-                <input
-                  className="crud-input"
-                  type="number"
-                  min={0}
-                  step="any"
-                  value={stShares}
-                  onChange={(e) => setStShares(e.target.value)}
-                />
-              </label>
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Purchase price</span>
-                <input
-                  className="crud-input"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={stPx}
-                  onChange={(e) => setStPx(e.target.value)}
-                />
-              </label>
-              <button type="submit" className="cta cta-primary" disabled={pending}>
-                <SaveIcon className="crud-icon" />
-                Save
-              </button>
-            </div>
-          ) : null}
-
-          {holdingType === "option" ? (
-            <div
-              className="stack-gap"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(7.5rem, 1fr))",
-                gap: "0.75rem",
-                maxWidth: "48rem",
-                alignItems: "end"
-              }}
-            >
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Underlying</span>
-                <input className="crud-input" value={opSym} onChange={(e) => setOpSym(e.target.value)} />
-              </label>
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Yahoo ref</span>
-                <input className="crud-input font-mono text-xs" value={opYref} onChange={(e) => setOpYref(e.target.value)} />
-              </label>
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Call / put</span>
-                <select className="crud-input" value={opCp} onChange={(e) => setOpCp(e.target.value as "call" | "put")}>
-                  <option value="call">call</option>
-                  <option value="put">put</option>
-                </select>
-              </label>
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Strike</span>
-                <input className="crud-input" value={opStrike} onChange={(e) => setOpStrike(e.target.value)} />
-              </label>
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Expiration</span>
-                <input
-                  className="crud-input font-mono text-xs"
-                  placeholder="YYYY-MM-DD"
-                  value={opExp}
-                  onChange={(e) => setOpExp(e.target.value)}
-                />
-              </label>
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Contracts</span>
-                <input className="crud-input" value={opContracts} onChange={(e) => setOpContracts(e.target.value)} />
-              </label>
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Premium / contract</span>
-                <input className="crud-input" value={opPrem} onChange={(e) => setOpPrem(e.target.value)} />
-              </label>
-              <button type="submit" className="cta cta-primary" disabled={pending}>
-                <SaveIcon className="crud-icon" />
-                Save
-              </button>
-            </div>
-          ) : null}
-
-          {holdingType === "cash" ? (
-            <div
-              className="stack-gap"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(8rem, 1fr))",
-                gap: "0.75rem",
-                maxWidth: "28rem",
-                alignItems: "end"
-              }}
-            >
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Label (optional)</span>
-                <input className="crud-input" value={caLabel} onChange={(e) => setCaLabel(e.target.value)} placeholder="CASH" />
-              </label>
-              <label className="stack-gap" style={{ gap: "0.25rem", display: "flex", flexDirection: "column" }}>
-                <span style={{ color: "var(--xf-text-300)", fontSize: "0.8rem" }}>Amount (USD)</span>
-                <input className="crud-input" value={caAmt} onChange={(e) => setCaAmt(e.target.value)} />
-              </label>
-              <button type="submit" className="cta cta-primary" disabled={pending}>
-                <SaveIcon className="crud-icon" />
-                Save
-              </button>
-            </div>
-          ) : null}
-        </form>
-      </section>
+      <AccountHoldingsCrudCard
+        accountIdHex={account._id}
+        initialPositions={initialPositions}
+        portfolioIdHex={portfolioId}
+      />
       </div>
       ) : null}
 

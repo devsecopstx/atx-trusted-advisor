@@ -55,6 +55,26 @@ function parseUsDateMmDdYyyy(s: string): number {
   return Date.UTC(y, mo - 1, d);
 }
 
+/** MM/DD/YYYY → YYYY-MM-DD for calendar comparison with option expiration. */
+function runDateToIsoYmd(runCell: string): string | null {
+  const m = runCell.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) {
+    return null;
+  }
+  const mo = m[1]!.padStart(2, "0");
+  const d = m[2]!.padStart(2, "0");
+  const y = m[3]!;
+  return `${y}-${mo}-${d}`;
+}
+
+/**
+ * Option is treated as expired for this import when its expiration calendar day is on or before
+ * the latest Run Date in the account's activity rows (Fidelity "as of" export date).
+ */
+function optionExpiredForActivitiesImport(expirationYmd: string, latestRunIsoYmd: string): boolean {
+  return expirationYmd <= latestRunIsoYmd;
+}
+
 function stockSignedDelta(actionUpper: string, qty: number): number {
   if (!Number.isFinite(qty) || qty === 0) {
     return 0;
@@ -161,6 +181,7 @@ export function parseFidelityActivitiesAccounts(csv: string): {
   type RawRow = {
     sortKey: number;
     lineIndex: number;
+    runIsoYmd: string;
     accountNumber: string;
     accountName: string;
     action: string;
@@ -186,6 +207,10 @@ export function parseFidelityActivitiesAccounts(csv: string): {
       continue;
     }
     const ts = parseUsDateMmDdYyyy(runCell);
+    const runIsoYmd = runDateToIsoYmd(runCell);
+    if (!runIsoYmd) {
+      continue;
+    }
     const action = (row[iAction] ?? "").trim();
     const symbol = (row[iSymbol] ?? "").trim();
     const qty = parseNum(row[iQty] ?? "");
@@ -194,6 +219,7 @@ export function parseFidelityActivitiesAccounts(csv: string): {
     rawRows.push({
       sortKey: ts * 1_000_000 + i,
       lineIndex: i,
+      runIsoYmd,
       accountNumber: acctNum,
       accountName,
       action: action,
@@ -221,6 +247,13 @@ export function parseFidelityActivitiesAccounts(csv: string): {
 
   for (const [accountRef, rows] of byAccount) {
     rows.sort((a, b) => a.sortKey - b.sortKey || a.lineIndex - b.lineIndex);
+
+    let latestRunIsoYmd = rows[0]?.runIsoYmd ?? "";
+    for (const r of rows) {
+      if (r.runIsoYmd > latestRunIsoYmd) {
+        latestRunIsoYmd = r.runIsoYmd;
+      }
+    }
 
     const stockState = new Map<string, { shares: number; cost: number }>();
     const optNet = new Map<string, number>();
@@ -306,6 +339,9 @@ export function parseFidelityActivitiesAccounts(csv: string): {
       }
       const contracts = Math.round(net);
       if (contracts <= 0) {
+        continue;
+      }
+      if (latestRunIsoYmd && optionExpiredForActivitiesImport(meta.expiration, latestRunIsoYmd)) {
         continue;
       }
       const den = optPremDen.get(key) ?? 0;

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { HomeIcon } from "@/app/admin/ui/crud-icons";
+import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
+import { serializePositionsForUi } from "@/app/portfolio/lib/serialize-positions";
 import { PortfolioOverview } from "@/app/portfolio/ui/portfolio-overview";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
@@ -123,6 +125,20 @@ export default async function PortfolioPage() {
   const holdingsRows =
     portfolioIdHex && accounts.length > 0 ? buildPortfolioHoldingRows(accounts, allPositions) : [];
 
+  const positionsByAccount: Record<string, SerializablePosition[]> = {};
+  if (allPositions.length > 0) {
+    const byHex = new Map<string, Position[]>();
+    for (const p of allPositions) {
+      const hex = p.accountId.toHexString();
+      const list = byHex.get(hex);
+      if (list) list.push(p);
+      else byHex.set(hex, [p]);
+    }
+    for (const [hex, list] of byHex) {
+      positionsByAccount[hex] = serializePositionsForUi(list);
+    }
+  }
+
   const scoringTenantId =
     portfolio && !portfolioLoadError
       ? portfolio.tenantId?.toHexString() ?? session.tenantId
@@ -220,6 +236,7 @@ export default async function PortfolioPage() {
             metrics={metrics}
             portfolioDisplayName={portfolioDisplayName}
             portfolioIdHex={portfolioIdHex}
+            positionsByAccount={positionsByAccount}
             scoringFactors={scoringFactors}
           />
         ) : null}

@@ -27,4 +27,22 @@ describe("fidelity-activities-csv", () => {
     expect(stock?.type).toBe("stock");
     expect(stock?.shares).toBe(100);
   });
+
+  it("omits options expired on or before the latest Run Date in the export (e.g. EXPIRED PUT as of that day)", () => {
+    const csv = `
+Run Date,Account,Account Number,Action,Symbol,Description,Type,Exchange Quantity,Exchange Currency,Currency,Price,Quantity,Exchange Rate,Commission,Fees,Accrued Interest,Amount,Settlement Date
+04/01/2026,"ROTH IRA","269138837","YOU BOUGHT OPTION",-RDW260415C00010000,"","",,,USD,0.25,2,,,,,,
+04/03/2026,"ROTH IRA","269138837","EXPIRED PUT (RDW) APR 02 26",-RDW260402P00007500,"","",,,USD,0.10,3,,,,,,
+"The data and information in this spreadsheet is provided to you solely for your use"
+`;
+    const { accounts, parseError } = parseFidelityActivitiesAccounts(csv);
+    expect(parseError).toBeUndefined();
+    expect(accounts.length).toBe(1);
+    const pos = accounts[0]!.positions;
+    const longDated = pos.find((p) => p.type === "option" && p.expiration === "2026-04-15");
+    expect(longDated?.type).toBe("option");
+    expect(longDated?.contracts).toBe(2);
+    const expiredLeg = pos.find((p) => p.type === "option" && p.expiration === "2026-04-02");
+    expect(expiredLeg).toBeUndefined();
+  });
 });

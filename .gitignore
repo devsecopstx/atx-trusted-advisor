@@ -166,3 +166,4 @@ tests/integration/xchat-batch-*.test.ts
 # Gradle (Kotlin backend service)
 services/atxfinance-backend/.gradle/
 services/atxfinance-backend/build/
+exclude-test-data/

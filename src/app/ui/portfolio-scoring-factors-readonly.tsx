@@ -1,3 +1,5 @@
+"use client";
+
 import {
     SCORING_FORMULA_DESCRIPTION,
     type PortfolioScoringFactorApi

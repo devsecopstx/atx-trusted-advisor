@@ -14,7 +14,11 @@ import "@/app/portfolio/portfolio.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function ImportActivityPage() {
+type PageProps = {
+  searchParams?: Promise<{ portfolioId?: string | string[] }>;
+};
+
+export default async function ImportActivityPage({ searchParams }: PageProps) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/xchat?next=/import-activity");
@@ -34,6 +38,17 @@ export default async function ImportActivityPage() {
       name: p.name || "Portfolio"
     }))
     .filter((p) => p.id);
+
+  const sp = searchParams ? await searchParams : {};
+  const portfolioIdRaw = sp.portfolioId;
+  const portfolioIdParam =
+    typeof portfolioIdRaw === "string"
+      ? portfolioIdRaw
+      : Array.isArray(portfolioIdRaw)
+        ? portfolioIdRaw[0]
+        : undefined;
+  const initialPortfolioId =
+    portfolioIdParam && portfolios.some((p) => p.id === portfolioIdParam) ? portfolioIdParam : undefined;
 
   return (
     <div className="xchat-shell">
@@ -55,7 +70,11 @@ export default async function ImportActivityPage() {
             </header>
 
             <div className="surface-card xf-widget section-card p-3 md:p-4">
-              <ImportActivityClient portfolios={portfolios} />
+              <ImportActivityClient
+                key={initialPortfolioId ?? "default"}
+                initialPortfolioId={initialPortfolioId}
+                portfolios={portfolios}
+              />
             </div>
           </div>
         </AppUserCollapsibleRailLayout>

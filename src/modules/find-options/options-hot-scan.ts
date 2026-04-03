@@ -88,3 +88,66 @@ export async function scanUnderlyingForHotOptions(input: {
 
   return { symbol: sym, best, meetsHotCriteria };
 }
+
+export type NearestExpiryOptionsGlance = {
+  symbol: string;
+  contractType: "call" | "put";
+  strike: number;
+  impliedVolatilityPercent: number;
+  openInterest: number;
+};
+
+/**
+ * Single “at-a-glance” line for dashboards: highest IV×liquidity (log1p OI)) contract on the nearest expiration.
+ */
+export async function summarizeNearestExpiryOptionsHighlight(
+  symbol: string
+): Promise<NearestExpiryOptionsGlance | null> {
+  const sym = symbol.trim().toUpperCase();
+  const yf = getYahooFinance2();
+  try {
+    const result = (await yf.options(sym)) as {
+      options?: YahooOptionGroup[];
+    };
+    const group = result.options?.[0];
+    if (!group) {
+      return null;
+    }
+    let best: NearestExpiryOptionsGlance | null = null;
+    let bestScore = -1;
+    const scoreIvOi = (ivPct: number, oi: number) => ivPct * Math.log1p(Math.max(0, oi));
+
+    const consider = (c: YahooCallOrPut, contractType: "call" | "put") => {
+      const strike = typeof c.strike === "number" && Number.isFinite(c.strike) ? c.strike : 0;
+      if (strike <= 0) {
+        return;
+      }
+      const ivPct = impliedVolatilityPercent(c.impliedVolatility);
+      if (ivPct <= 0) {
+        return;
+      }
+      const oi = typeof c.openInterest === "number" && Number.isFinite(c.openInterest) ? c.openInterest : 0;
+      const s = scoreIvOi(ivPct, oi);
+      if (s > bestScore) {
+        bestScore = s;
+        best = {
+          symbol: sym,
+          contractType,
+          strike,
+          impliedVolatilityPercent: Math.round(ivPct * 10) / 10,
+          openInterest: oi
+        };
+      }
+    };
+
+    for (const c of group.calls ?? []) {
+      consider(c, "call");
+    }
+    for (const p of group.puts ?? []) {
+      consider(p, "put");
+    }
+    return best;
+  } catch {
+    return null;
+  }
+}

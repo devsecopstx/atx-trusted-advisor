@@ -5,16 +5,16 @@ import { useState } from "react";
 
 import { ActivityPulseIcon, FolderPortfolioIcon, ListRowsIcon } from "@/app/admin/ui/crud-icons";
 
-type TabId = "portfolios" | "holdings" | "activity";
+type TabId = "portfolios" | "holdings" | "activities";
 
 export function PortfolioManageTabs({
   portfoliosPanel,
   holdingsPanel,
-  activityPanel
+  activitiesPanel
 }: {
   portfoliosPanel: ReactNode;
   holdingsPanel: ReactNode;
-  activityPanel: ReactNode;
+  activitiesPanel: ReactNode;
 }) {
   const [tab, setTab] = useState<TabId>("portfolios");
 
@@ -39,16 +39,16 @@ export function PortfolioManageTabs({
         </button>
         <button
           type="button"
-          className={`portfolio-manage-tabs__btn${tab === "activity" ? " portfolio-manage-tabs__btn--active" : ""}`}
-          onClick={() => setTab("activity")}
+          className={`portfolio-manage-tabs__btn${tab === "activities" ? " portfolio-manage-tabs__btn--active" : ""}`}
+          onClick={() => setTab("activities")}
         >
           <ActivityPulseIcon className="crud-icon" />
-          Activity
+          Activities
         </button>
       </nav>
       {tab === "portfolios" ? <div className="portfolio-manage-tabs__panel">{portfoliosPanel}</div> : null}
       {tab === "holdings" ? <div className="portfolio-manage-tabs__panel">{holdingsPanel}</div> : null}
-      {tab === "activity" ? <div className="portfolio-manage-tabs__panel">{activityPanel}</div> : null}
+      {tab === "activities" ? <div className="portfolio-manage-tabs__panel">{activitiesPanel}</div> : null}
     </>
   );
 }

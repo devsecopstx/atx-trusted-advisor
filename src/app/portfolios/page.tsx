@@ -8,15 +8,18 @@ import { getSessionUser } from "@/lib/auth";
 import { getPortfolioTotalBookUsdForSessionUser } from "@/lib/portfolio-total-book-usd";
 import {
     listWorkspaceDashboardAccountSlices,
+    listWorkspaceTopStockHoldingsForHero,
     type WorkspaceDashboardAccountSlice
 } from "@/lib/workspace-dashboard-metrics";
 import { listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
 import type { Portfolio } from "@/modules/core-admin/types";
 import { portfolioKindChoiceLabel } from "@/modules/core-admin/types";
 import { canUserLogin } from "@/modules/identity/authorization";
+import { resolveUsMarketDayContext } from "@/modules/scanner/tenant-market-calendar";
 
 import { PortfoliosDashboardClient, type WorkspacePortfolioRow } from "./portfolios-dashboard-client";
 import { PortfoliosHeroCharts } from "./portfolios-hero-charts";
+import { PortfoliosHeroLeftColumn } from "./portfolios-hero-left-column";
 
 import "@/app/account/billing/billing-plans.css";
 import "@/app/portfolio/portfolio.css";
@@ -76,6 +79,14 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
     tenantId: session.tenantId
   });
 
+  const topHoldings = await listWorkspaceTopStockHoldingsForHero({
+    userId: session.userId,
+    tenantId: session.tenantId,
+    limit: 5
+  });
+
+  const marketContext = resolveUsMarketDayContext(new Date());
+
   const initialRows: WorkspacePortfolioRow[] = rows.map(({ portfolio: p, valueUsd }) => {
     const id = p._id?.toHexString() ?? "";
     const portfolioKind: WorkspacePortfolioRow["portfolioKind"] =
@@ -100,9 +111,12 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
       ? focusRaw
       : initialRows.find((r) => r.isDefault)?.id ?? initialRows[0]?.id ?? null;
 
+  const defaultPortfolioIdForImport =
+    initialRows.find((r) => r.isDefault)?.id ?? initialRows[0]?.id ?? null;
+
   return (
     <div className="xchat-shell">
-      <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolios" session={session} />
+      <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Your portfolios" session={session} />
 
       <div className="xchat-body portfolio-page-body">
         <AppUserCollapsibleRailLayout
@@ -111,24 +125,25 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
         >
           <div className="billing-page">
             <div className="portfolios-hero-band grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] lg:gap-6 lg:items-stretch">
-              <header className="billing-hero portfolios-hero-band__intro xf-noise-overlay surface-card xf-widget section-card min-w-0">
-                <p className="billing-hero__eyebrow">Workspace</p>
-                <h1 className="billing-hero__title">Portfolios</h1>
-                <p className="billing-hero__copy">
-                  Create and edit workspace portfolios (name, default, type). Custodian accounts, positions, and holdings
-                  live on <span className="text-[var(--xf-text-100)]">Portfolio</span> in the nav.
-                </p>
-                <p className="mt-3 text-sm">
-                  <Link
-                    className="inline-flex items-center rounded-md border border-[var(--xf-gain-green)]/50 bg-[var(--xf-gain-green)]/10 px-3 py-1.5 font-medium text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)]/20"
-                    href="/import-activity"
-                  >
-                    Import activities
-                  </Link>
-                  <span className="ml-2 text-[var(--xf-text-300)]">
-                    — Merrill / Fidelity holdings CSV into your accounts
-                  </span>
-                </p>
+              <header className="billing-hero portfolios-hero-band__intro surface-card xf-widget section-card min-w-0 p-0">
+                <div className="border-b border-white/10 px-3 py-2.5 md:px-4">
+                  <p className="billing-hero__eyebrow">Your books</p>
+                  <h1 className="billing-hero__title">Portfolios</h1>
+                  <p className="billing-hero__copy">
+                    Name and organize portfolios here. Accounts, cost basis, and CSV import tie to your{" "}
+                    <Link className="text-[var(--xf-gain-green)] underline-offset-2 hover:underline" href="/portfolio">
+                      Portfolio
+                    </Link>{" "}
+                    workspace.
+                  </p>
+                </div>
+                <div className="p-2 md:p-3">
+                  <PortfoliosHeroLeftColumn
+                    defaultPortfolioId={defaultPortfolioIdForImport}
+                    marketContext={marketContext}
+                    topHoldings={topHoldings}
+                  />
+                </div>
               </header>
               <div className="portfolios-hero-band__charts-col surface-card xf-widget section-card min-h-0 min-w-0 p-3 md:p-4">
                 <PortfoliosHeroCharts initialAccountSlices={accountSlices} initialRows={initialRows} />

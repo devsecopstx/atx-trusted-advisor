@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-workspace";
+import { serializePositionsForUi } from "@/app/portfolio/lib/serialize-positions";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
@@ -18,13 +19,7 @@ import {
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import {
-    formatPositionUsd,
-    normalizePositionType,
-    parseAccountOutlook,
-    type Account,
-    type Position
-} from "@/modules/core-admin/types";
+import { parseAccountOutlook, type Account, type Position } from "@/modules/core-admin/types";
 
 function serializeAccount(account: Account) {
   return {
@@ -37,43 +32,6 @@ function serializeAccount(account: Account) {
     riskProfile: account.riskProfile ?? null,
     outlook: parseAccountOutlook(account.outlook) ?? null
   };
-}
-
-function serializePositions(rows: Position[]) {
-  return rows.filter((p) => p._id).map((p) => {
-    const t = normalizePositionType(p.type);
-    const id = p._id!.toHexString();
-    if (t === "stock") {
-      return {
-        _id: id,
-        type: "stock" as const,
-        symbol: p.symbol,
-        shares: p.qty,
-        purchasePrice: p.avgCost
-      };
-    }
-    if (t === "cash") {
-      return {
-        _id: id,
-        type: "cash" as const,
-        label: p.symbol,
-        amount: p.avgCost,
-        amountFormatted: formatPositionUsd(p.avgCost)
-      };
-    }
-    const exp = p.expiration;
-    return {
-      _id: id,
-      type: "option" as const,
-      symbol: p.symbol,
-      yahooRef: p.yahooRef ?? "",
-      optionType: (p.optionType === "put" ? "put" : "call") as "call" | "put",
-      strike: p.strike ?? 0,
-      expiration: exp ? exp.toISOString().slice(0, 10) : "",
-      contracts: p.qty,
-      premiumPerContract: p.avgCost
-    };
-  });
 }
 
 export default async function PortfolioAccountPage({
@@ -219,7 +177,7 @@ export default async function PortfolioAccountPage({
           <AccountWorkspace
             portfolioId={portfolioIdHex}
             account={serializeAccount(account)}
-            initialPositions={serializePositions(positions)}
+            initialPositions={serializePositionsForUi(positions)}
             portfolioAccountCount={accounts.length}
           />
         </div>

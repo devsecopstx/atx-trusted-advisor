@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { PortfolioAccountActionsCell } from "@/app/portfolio/ui/portfolio-account-actions-cell";
 import { PortfolioAccountManageBar, type PortfolioAccountManageOption } from "@/app/portfolio/ui/portfolio-account-manage-bar";
@@ -23,7 +23,8 @@ export type PortfolioAccountTableRow = {
 
 type Props = {
   portfolioIdHex: string;
-  defaultAccountHex: string;
+  selectedAccountHex: string;
+  onSelectedAccountHexChange: (accountIdHex: string) => void;
   manageOptions: PortfolioAccountManageOption[];
   rows: PortfolioAccountTableRow[];
   totalAccounts: number;
@@ -31,19 +32,18 @@ type Props = {
 
 export function PortfolioAccountsSection({
   portfolioIdHex,
-  defaultAccountHex,
+  selectedAccountHex,
+  onSelectedAccountHexChange,
   manageOptions,
   rows,
   totalAccounts
 }: Props) {
-  const [userFocusId, setUserFocusId] = useState<string | null>(null);
-
   const focusAccountId = useMemo(() => {
-    if (userFocusId && manageOptions.some((a) => a.id === userFocusId)) {
-      return userFocusId;
+    if (selectedAccountHex && manageOptions.some((a) => a.id === selectedAccountHex)) {
+      return selectedAccountHex;
     }
-    return defaultAccountHex;
-  }, [userFocusId, defaultAccountHex, manageOptions]);
+    return manageOptions[0]?.id ?? "";
+  }, [selectedAccountHex, manageOptions]);
 
   return (
     <div className="portfolio-manage-table-card portfolio-panel">
@@ -56,7 +56,7 @@ export function PortfolioAccountsSection({
       <PortfolioAccountManageBar
         accounts={manageOptions}
         selectedAccountId={focusAccountId}
-        onSelectedAccountIdChange={setUserFocusId}
+        onSelectedAccountIdChange={onSelectedAccountHexChange}
       />
       <div className="portfolio-table-wrap">
         <table
@@ -128,7 +128,7 @@ export function PortfolioAccountsSection({
                     accountName={row.name}
                     totalAccounts={totalAccounts}
                     focusAccountId={focusAccountId}
-                    onFocusChange={setUserFocusId}
+                    onFocusChange={onSelectedAccountHexChange}
                   />
                 </td>
               </tr>
