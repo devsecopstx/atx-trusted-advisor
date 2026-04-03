@@ -6,7 +6,11 @@ import { fileURLToPath } from "node:url";
 import { MongoClient } from "mongodb";
 
 import { buildSuperAgentXapiTools, dedupeTrimmedIds } from "./lib/persona-xapi-tools.mjs";
-import { resolveAdminSeedDbName, resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
+import {
+    resolveAdminSeedDbName,
+    resolveMongoUri,
+    resolveSeedDbName
+} from "./lib/resolve-mongo-uri.mjs";
 import { loadSeedTenantContext, pickFirstNonEmpty } from "./lib/tenant-defaults-seed.mjs";
 
 const SEED_SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -238,6 +242,38 @@ function xPrelinkSetFields(now) {
 const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core";
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
 const DB_NAME = resolveAdminSeedDbName();
+
+/** Strip userinfo from mongodb URI for logs (never print passwords). */
+function redactMongoCredentialsForLog(uri) {
+  return String(uri).replace(/^(mongodb(?:\+srv)?:\/\/)[^/?#]+@/i, "$1");
+}
+
+function logSeedMongoTarget() {
+  const uri = resolveMongoUri();
+  const redacted = redactMongoCredentialsForLog(uri);
+  const baseDb = resolveSeedDbName();
+  const versionNote =
+    DB_NAME !== baseDb ? ` (versioned seed: base name would be ${baseDb})` : "";
+  const hasExplicitUri = Boolean(
+    (process.env.MONGODB_URI && process.env.MONGODB_URI.trim()) ||
+      (process.env.MONGODB_URI_B64 && process.env.MONGODB_URI_B64.trim())
+  );
+  const host = process.env.MONGODB_HOST?.trim() || "localhost";
+  const noAuth = process.env.MONGODB_NO_AUTH === "true" || process.env.MONGODB_NO_AUTH === "1";
+  const uriSource = hasExplicitUri
+    ? "MONGODB_URI or MONGODB_URI_B64 is set (connection string from env)."
+    : `no MONGODB_URI — built URI for ${host}:27017 with path segment ${baseDb}; auth ${
+        noAuth ? "off (MONGODB_NO_AUTH)" : "via MONGO_ROOT_USERNAME + MONGO_ROOT_PASSWORD"
+      }.`;
+
+  console.log(`[seed:admin] Mongo — DATABASE (collections written here): ${DB_NAME}${versionNote}`);
+  console.log(`[seed:admin] Mongo — CONNECT (redacted): ${redacted}`);
+  console.log(`[seed:admin] Mongo — URI source: ${uriSource}`);
+  console.log(
+    "[seed:admin] Mongo — Next + Spring must use this same database name in .env / Secret Manager (MONGODB_DB_NAME, or the DB in your Atlas URI path). If MONGODB_DB_NAME is unset, ATX_DEPLOY_TARGET=stage|deploy|prod → atxfinance-<target> (see src/lib/env.ts, scripts/lib/resolve-mongo-uri.mjs)."
+  );
+}
+
 const DEFAULT_PERSONA_NAME = "Super-Agent";
 /** Matches `id` / nameNormalized in `atx-docs/rag-collection/xpersonas/super-agent/super-agent.yaml`. */
 const DEFAULT_PERSONA_NAME_NORMALIZED = "super-agent";
@@ -368,12 +404,7 @@ async function ensureIndexes(db) {
 }
 
 async function seed() {
-  console.log(
-    `[seed:admin] Mongo database name: ${DB_NAME} — Next/Spring must use the same logical DB ` +
-      `(set MONGODB_DB_NAME or the database path in MONGODB_URI in Secret Manager / .env). ` +
-      `When MONGODB_DB_NAME is unset, ATX_DEPLOY_TARGET=stage|deploy|prod defaults the base to atxfinance-<target> (see src/lib/env.ts). ` +
-      `Optional versioned seed DB: ADMIN_SEED_DB_VERSION_SUFFIX=on.`
-  );
+  logSeedMongoTarget();
   const mongoUri = resolveMongoUri();
   const client = new MongoClient(mongoUri);
   await client.connect();
@@ -400,7 +431,7 @@ async function seed() {
 
     if (seedTenant.yamlLoaded) {
       console.log(
-        "[seed:admin] tenant_defaults.yaml present — unset seed keys were filled from repo defaults (.env overrides yaml)."
+        "[seed:admin] Config: tenant_defaults.yaml loaded — defaults apply for any seed key missing from .env (.env always wins when both define a key)."
       );
     }
     const m = seedTenant.merged;
