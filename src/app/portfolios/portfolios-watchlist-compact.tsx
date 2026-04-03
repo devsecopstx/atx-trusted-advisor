@@ -130,9 +130,7 @@ export function PortfoliosWatchlistCompact({ portfolioId }: Props) {
                 <th className="pb-1 pr-2 font-medium">Sym</th>
                 <th className="pb-1 pr-2 font-medium">Last</th>
                 <th className="pb-1 pr-2 font-medium">Chg</th>
-                <th className="pb-1 pr-2 font-medium">IV</th>
-                <th className="pb-1 pr-2 font-medium">Target</th>
-                <th className="pb-1 font-medium">Action</th>
+                <th className="pb-1 font-medium">Target</th>
               </tr>
             </thead>
             <tbody>
@@ -151,23 +149,7 @@ export function PortfoliosWatchlistCompact({ portfolioId }: Props) {
                     <td className="py-1 pr-2 font-semibold">{r.symbol}</td>
                     <td className="py-1 pr-2">{formatPx(last)}</td>
                     <td className={`py-1 pr-2 ${chgCls}`}>{formatChg(chg)}</td>
-                    <td className="py-1 pr-2 text-[var(--xf-text-300)]">—</td>
-                    <td className="py-1 pr-2">{formatPx(r.entryPrice)}</td>
-                    <td className="py-1">
-                      <Link
-                        className="text-[var(--xf-gain-green)] hover:underline"
-                        href={`/xoptions?symbol=${encodeURIComponent(r.symbol)}`}
-                      >
-                        Option
-                      </Link>
-                      {" · "}
-                      <Link
-                        className="text-[var(--xf-text-200)] hover:underline"
-                        href={`/xoptions/full-chain?symbol=${encodeURIComponent(r.symbol)}`}
-                      >
-                        Chain
-                      </Link>
-                    </td>
+                    <td className="py-1">{formatPx(r.entryPrice)}</td>
                   </tr>
                 );
               })}

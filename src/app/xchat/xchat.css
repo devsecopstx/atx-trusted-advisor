@@ -664,10 +664,19 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
 .xchat-main > .xchat-welcome-header,
 .xchat-main > .xchat-persona-bar,
 .xchat-main > .status-text,
-.xchat-main > .xchat-thread-collapsed-bar,
 .xchat-main > .xchat-guest-actions,
 .xchat-main > .xchat-composer-wrap {
   flex-shrink: 0;
+}
+
+/* Fills space between chrome and composer; thread scrolls inside */
+.xchat-thread-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .xchat-main-shell {
@@ -740,6 +749,14 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   color: var(--xf-text-100);
 }
 
+.xchat-rail-head__brand-zap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--xf-lightning-yellow);
+}
+
 .xchat-rail-toggle {
   display: inline-flex;
   align-items: center;
@@ -770,7 +787,7 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
 .xf-rail-sidebar-zap-icon {
   display: block;
   flex-shrink: 0;
-  color: #facc15;
+  color: var(--xf-lightning-yellow);
 }
 
 .xf-rail-sidebar-zap-icon--toggle {
@@ -1225,17 +1242,30 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
 }
 
 .xchat-messages {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
-  height: 50dvh;
-  max-height: 50dvh;
   overflow-y: auto;
-  resize: vertical;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   padding: 1rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.xchat-thread-area > .xchat-thread-collapsed-bar {
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+.xchat-messages-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1rem;
 }
 
 .xchat-msg {
@@ -2348,13 +2378,161 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   border-bottom-color: transparent;
 }
 
-.app-user-rail-stack__label {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--xf-text-400);
+.app-user-rail-stack__brand-zap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--xf-lightning-yellow);
   min-width: 0;
+}
+
+.app-user-rail-account-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.1rem 0 0.2rem;
+}
+
+.app-user-rail-account-panel__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.app-user-rail-account-panel__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.app-user-rail-account-panel__avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--xf-gain-green) 18%, var(--xf-bg-800));
+  color: var(--xf-gain-green);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.app-user-rail-account-panel__identity-text {
+  min-width: 0;
+}
+
+.app-user-rail-account-panel__name {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--xf-text-100);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-user-rail-account-panel__handle {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--xf-text-400);
+  line-height: 1.2;
+}
+
+.app-user-rail-account-panel__meta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  font-size: 0.65rem;
+  line-height: 1.3;
+}
+
+.app-user-rail-account-panel__meta-k {
+  color: var(--xf-text-400);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  font-size: 0.58rem;
+}
+
+.app-user-rail-account-panel__meta-v {
+  color: var(--xf-text-200);
+  word-break: break-word;
+}
+
+.app-user-rail-account-panel__code {
+  font-size: 0.58rem;
+  color: var(--xf-text-300);
+  word-break: break-all;
+}
+
+.app-user-rail-account-panel__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.15rem;
+}
+
+.app-user-rail-account-panel__appearance {
+  margin: 0;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  padding: 0.35rem 0.45rem;
+  background: color-mix(in srgb, var(--xf-bg-800) 55%, transparent);
+}
+
+.app-user-rail-account-panel__appearance-summary {
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--xf-text-200);
+  list-style: none;
+}
+
+.app-user-rail-account-panel__appearance-summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-user-rail-account-panel__appearance-body {
+  margin-top: 0.35rem;
+}
+
+.app-user-rail-account-panel__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+}
+
+.app-user-rail-account-panel__btn {
+  font-size: 0.72rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-800) 70%, transparent);
+  color: var(--xf-text-100);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.app-user-rail-account-panel__btn:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 40%, transparent);
+  color: var(--xf-gain-green);
+}
+
+.app-user-rail-account-panel__btn--logout {
+  color: color-mix(in srgb, var(--xf-text-100) 85%, transparent);
+}
+
+.app-user-rail-account-panel__btn--logout:hover {
+  color: var(--xf-text-100);
+  border-color: color-mix(in srgb, var(--xf-danger-400) 55%, transparent);
 }
 
 .app-user-rail-stack__body {

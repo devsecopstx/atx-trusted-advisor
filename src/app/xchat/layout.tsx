@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import "@/app/portfolios/portfolios-dashboard.css";
+
 import { GlobalFooter } from "../ui/global-footer";
 
 import "./xchat.css";

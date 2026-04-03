@@ -66,7 +66,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 | Doc | Purpose |
 |-----|---------|
-| [atx-multi-agent.md](./xchat/atx-multi-agent.md) | Multi-agent orchestration, Phase 1 locked decisions (see also [design loop diagram](./xchat/atx-multi-agent-design-loop.mmd)) |
+| [atx-multi-agent.md](./xchat/atx-multi-agent.md) | **xChat Hardcore** / Phase 1 multi-agent orchestration, locked decisions (see [PLAN.md](./PLAN.md) § xChat Hardcore; [design loop diagram](./xchat/atx-multi-agent-design-loop.mmd)) |
 | [atxfinance-tool-stub.md](./xchat/atxfinance-tool-stub.md) | Portfolio / watchlist tool contract |
 | [atxfinance-xchat-prompts.md](./xchat/atxfinance-xchat-prompts.md) | xChat prompts |
 | [context-routing-multi-agent-policy.md](./xchat/context-routing-multi-agent-policy.md) | Retrieval vs tools vs multi-agent |

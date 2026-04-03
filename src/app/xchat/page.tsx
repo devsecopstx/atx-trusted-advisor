@@ -3,7 +3,8 @@ import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
-import { isGoogleOAuthConfigured } from "@/lib/env";
+import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
+import { oauthAuthErrorMessages } from "@/lib/oauth-auth-error-messages";
 import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
@@ -54,12 +55,14 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     : null;
 
   let defaultBookLabels: { portfolioName: string; accountName: string } | null = null;
+  let workspacePortfolioId: string | null = null;
   let workspaceChangePersonaEnabled = true;
   let workspaceChatHistoryMax = 10;
   if (approved) {
     const book = await loadAppUserDefaultBook(session);
     if (book) {
       defaultBookLabels = { portfolioName: book.portfolioName, accountName: book.accountName };
+      workspacePortfolioId = book.portfolioId?.trim() ? book.portfolioId.trim() : null;
     }
     const wl = await getEffectiveWorkspaceLimitsForUser({
       tenantId: session.tenantId,
@@ -68,6 +71,15 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     workspaceChangePersonaEnabled = wl.changePersonaEnabled;
     workspaceChatHistoryMax = wl.chatHistoryMax;
   }
+
+  const mongoConnection = shouldShowAppUserDbLabel() ? getMongoConnectionLabel() : "";
+
+  const oauthLinkBannerMessage =
+    approved && authError && oauthAuthErrorMessages[authError]
+      ? oauthAuthErrorMessages[authError]
+      : null;
+  const googleLinkHrefForApproved =
+    approved && googleLoginHref ? googleLoginHref : null;
 
   return (
     <div className="xchat-shell">
@@ -78,8 +90,37 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       )}
 
       <div className="xchat-body">
+        {oauthLinkBannerMessage ? (
+          <p
+            className="xchat-oauth-inline-alert"
+            role="alert"
+            style={{
+              margin: "0 0 0.75rem",
+              padding: "0.6rem 0.75rem",
+              borderRadius: 8,
+              fontSize: "0.8rem",
+              lineHeight: 1.4,
+              background: "var(--xf-surface-800)",
+              border: "1px solid var(--xf-border-subtle)",
+              color: "var(--xf-text-secondary)"
+            }}
+          >
+            {oauthLinkBannerMessage}
+          </p>
+        ) : null}
         {approved ? (
           <XchatConversation
+            googleLinkHref={googleLinkHrefForApproved}
+            accountDetails={{
+              email: session.email,
+              username: session.username,
+              displayName: session.displayName,
+              xUserId: session.xUserId,
+              avatarUrl: session.avatarUrl,
+              mongoConnection,
+              isGlobalAdmin: isGlobalAdmin(session.roles)
+            }}
+            accountFeedbackPageLabel="xChat"
             defaultBookLabels={defaultBookLabels}
             defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
             includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
@@ -87,6 +128,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             welcomeName={appUserPrimaryDisplayName(session)}
             workspaceChangePersonaEnabled={workspaceChangePersonaEnabled}
             workspaceChatHistoryMax={workspaceChatHistoryMax}
+            workspacePortfolioId={workspacePortfolioId}
           />
         ) : (
           <XchatGuestReadonlyShell showAccessPanel={false}>

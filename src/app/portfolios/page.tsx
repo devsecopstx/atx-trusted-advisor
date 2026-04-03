@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
 
+import { GlobalFooter } from "@/app/ui/global-footer";
 import { getSessionUser } from "@/lib/auth";
-import {
-    getMongoConnectionLabel,
-    shouldShowAppUserDbLabel
-} from "@/lib/env";
+import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
 import { getPortfolioTotalBookUsdForSessionUser } from "@/lib/portfolio-total-book-usd";
 import {
     listWorkspaceDashboardAccountSlices,
@@ -14,7 +12,7 @@ import {
 import { listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
 import type { Portfolio } from "@/modules/core-admin/types";
 import { portfolioKindChoiceLabel } from "@/modules/core-admin/types";
-import { canUserLogin } from "@/modules/identity/authorization";
+import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
 import { PortfoliosWorkspaceClient } from "./portfolios-workspace-client";
 import type { WorkspacePortfolioRow } from "./portfolios-dashboard-client";
@@ -114,25 +112,30 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
   const totalBookUsd = initialRows.reduce((s, r) => s + Math.max(0, r.valueUsd), 0);
 
   const mongoConnection = shouldShowAppUserDbLabel() ? getMongoConnectionLabel() : "";
+  const admin = isGlobalAdmin(session.roles);
 
   return (
     <div className="xchat-shell">
       <PortfoliosWorkspaceClient
-        accountSlices={accountSlices}
-        defaultPortfolioId={defaultPortfolioIdForImport}
-        focusPortfolioId={focusPortfolioId}
-        headerSession={{
+        accountDetails={{
           email: session.email,
           username: session.username,
           displayName: session.displayName,
-          avatarUrl: session.avatarUrl,
           xUserId: session.xUserId,
-          mongoConnection
+          avatarUrl: session.avatarUrl,
+          mongoConnection,
+          isGlobalAdmin: admin
         }}
+        accountFeedbackPageLabel="Portfolio workspace"
+        accountSlices={accountSlices}
+        defaultPortfolioId={defaultPortfolioIdForImport}
+        focusPortfolioId={focusPortfolioId}
         initialRows={initialRows}
+        isGlobalAdmin={admin}
         topHoldings={topHoldings}
         totalBookUsd={totalBookUsd}
       />
+      <GlobalFooter />
     </div>
   );
 }

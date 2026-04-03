@@ -11,6 +11,7 @@ import {
   accessRequestPlanLabel,
   type AccessRequestPlanValue
 } from "@/lib/access-request-plans";
+import { oauthAuthErrorMessages } from "@/lib/oauth-auth-error-messages";
 
 type XchatGuestPanelProps = {
   userEmail?: string;
@@ -27,6 +28,7 @@ type XchatGuestPanelProps = {
 
 const DEFAULT_SIGNIN_HREF = "/api/auth/x/login?next=%2Fxchat";
 const AUTH_ERROR_COPY: Record<string, string> = {
+  ...oauthAuthErrorMessages,
   missing_oauth_context: "OAuth context is missing. Retry sign-in from this xChat page.",
   missing_oauth_callback_params: "OAuth callback is missing code/state. Retry sign-in.",
   missing_oauth_cookie_context:

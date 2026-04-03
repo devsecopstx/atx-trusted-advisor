@@ -6,6 +6,8 @@ Not user marketing copy — enough for deploy triage, support, and “what shipp
 
 ## Entries
 
+- **2.10.16** — **Roadmap / PLAN:** Renamed roadmap section **Phase 1** → **xChat Hardcore** (same scope: xChat → xStrategyBuilder multi-agent). **Product backlog:** new top priority **`100`** — *Phase 1 — xChat → xStrategyBuilder multi-agent (status)* (above **486n**); table order **100 → 486n → 500 → 600 → 700–703**. **Docs:** `atx-docs/PLAN.md` (docs index + cross-links). **App:** `package.json` semver only.
+
 - **2.10.15** — **Quality / docs (reviewer pass):** Integration tests **`app-import-broker-route`** for **`POST /api/import/broker`** (401, dry-run preview, 404 portfolio). **Docs:** `api-endpoints.md` + `app-user-import-activity.md` — **`POST /api/import/broker/clean`**. **PLAN:** remove **710** from open backlog table (shipped detail stays §710).
 
 - **2.10.14** — **App user broker import (PLAN 710):** **`/import-activity`** + **`/portfolios`** “Import activities” CTA; **`POST /api/import/broker`** (session, Merrill/Fidelity holdings CSV); staging **`app_broker_import_jobs`** + immediate **`sync-broker`** task via **`appBrokerImportJobId`** on **`admin_scheduled_tasks`** (`task-runner.ts`); ephemeral task deleted after run. **OpenAPI:** **`/api/import/broker`** + **`/api/admin/tenants/{tenantId}/portfolio-scoring-defaults`** inventory parity. **`surface-policy`** + **`proxy`** for **`/import-activity`** / **`/api/import/*`**. **Tests:** `app-broker-import-job`. **Docs:** `PLAN.md` §710, `api-endpoints.md`, `design-system/portfolio/app-user-import-activity.md`, `auth-and-access.md`.

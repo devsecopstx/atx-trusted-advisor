@@ -137,4 +137,85 @@ describe("Google OAuth canonical email user", () => {
     );
     expect(response.headers.get("location")).toContain("access_request_pending");
   });
+
+  it("redirects to /xchat when PKCE cookies are missing but a session exists (stale tab / double callback)", async () => {
+    authMocks.readOAuthFlowCookies.mockResolvedValue({ state: null, verifier: null });
+    authMocks.getSessionUser.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439099",
+      email: "signed@example.com",
+      roles: ["viewer"],
+      tenantId: "507f1f77bcf86cd799439088",
+      tenantRole: "tenant_admin",
+      xUserId: "x123",
+      username: "signed"
+    });
+    authMocks.consumeOAuthReturnPathCookie.mockResolvedValue(null);
+
+    const response = await googleCallback(
+      new Request("http://127.0.0.1:3000/api/auth/google/callback?code=abc&state=orphan")
+    );
+
+    expect(response.headers.get("location")).toBe("http://127.0.0.1:3000/xchat");
+  });
+
+  it("redirects to return path when PKCE cookies are missing, session exists, and return cookie is safe", async () => {
+    authMocks.readOAuthFlowCookies.mockResolvedValue({ state: null, verifier: "only-verifier" });
+    authMocks.getSessionUser.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439099",
+      email: "signed@example.com",
+      roles: ["viewer"],
+      tenantId: "507f1f77bcf86cd799439088",
+      tenantRole: "tenant_admin",
+      xUserId: "x123",
+      username: "signed"
+    });
+    authMocks.consumeOAuthReturnPathCookie.mockResolvedValue("/portfolio");
+
+    const response = await googleCallback(
+      new Request("http://127.0.0.1:3000/api/auth/google/callback?code=abc&state=orphan")
+    );
+
+    expect(response.headers.get("location")).toBe("http://127.0.0.1:3000/portfolio");
+  });
+
+  it("rejects Google link when signed-in email does not match Google verified email", async () => {
+    authMocks.getSessionUser.mockResolvedValue({
+      userId: "507f1f77bcf86cd799439099",
+      email: "signed@example.com",
+      roles: ["viewer"],
+      tenantId: "507f1f77bcf86cd799439088",
+      tenantRole: "tenant_admin",
+      xUserId: "x123",
+      username: "signed"
+    });
+
+    identityMocks.getCoreUserByEmail.mockResolvedValue(null);
+    identityMocks.getCoreUserByGoogleSub.mockResolvedValue(null);
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sub: "google-sub-other",
+          email: "other@example.com",
+          email_verified: true,
+          name: "Other User"
+        })
+      }) as typeof fetch;
+
+    const response = await googleCallback(
+      new Request("http://127.0.0.1:3000/api/auth/google/callback?code=abc&state=state-token")
+    );
+
+    expect(response.headers.get("location")).toContain("error=google_link_email_mismatch");
+    expect(identityMocks.linkGoogleAccountToUser).not.toHaveBeenCalled();
+  });
 });

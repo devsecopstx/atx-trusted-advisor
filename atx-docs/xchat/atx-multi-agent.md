@@ -60,4 +60,4 @@ Async jobs meet SLOs; **idempotency** via `Idempotency-Key` or deterministic has
 
 - **2026-03-23** — Consolidated docs + locked boundaries (server orchestrator, v1 artifact format, async SLOs, isolation, caps, BFF-only).
 - **2026-03-24** — Phase 1 xAI: TEAM_XAI + `XAI_TEAM_ID` only; legacy default/bootstrap collection work out of Phase 1 scope.
-- **2026-03-25** — Roadmap status (shipped vs outstanding) for this track lives in [`../PLAN.md`](../PLAN.md) § *Phase 1 — xChat → xStrategyBuilder multi-agent (status)*; design loop: [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).
+- **2026-03-25** — Roadmap status (shipped vs outstanding) for this track lives in [`../PLAN.md`](../PLAN.md) § **xChat Hardcore** (*Phase 1 — xChat → xStrategyBuilder multi-agent*); design loop: [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).

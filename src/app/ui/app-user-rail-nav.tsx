@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState, type ReactNode, type SVGProps } from "react";
 
+import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
+import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserWorkspaceAccountPicker } from "@/app/ui/app-user-workspace-account-picker";
 import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-portfolio-picker";
-import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 
@@ -50,34 +51,6 @@ function BookIcon(props: SVGProps<SVGSVGElement>) {
     <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
       <path
         d="M4 5a2 2 0 012-2h12v16H6a2 2 0 00-2 2V5zm0 0v14a2 2 0 012-2h12"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.75}
-      />
-    </svg>
-  );
-}
-
-function FindOptionsGlyph(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M5 18h12M5 14h12M5 10h12M6 6h12"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth={1.75}
-      />
-      <circle cx="8" cy="6" r="1.75" fill="currentColor" />
-    </svg>
-  );
-}
-
-function ChatIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M4 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H9l-5 4V6z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -149,16 +122,6 @@ function RailNavLink({ href, children, title }: { href: string; children: ReactN
   return link;
 }
 
-type AccountSublinkProps = {
-  href: string;
-  children: ReactNode;
-  title?: string;
-};
-
-function AccountSublink({ href, children, title }: AccountSublinkProps) {
-  return <RailNavLink href={href} title={title}>{children}</RailNavLink>;
-}
-
 export type AppUserRailNavProps = {
   isGlobalAdmin: boolean;
   /** When true, disclosure starts expanded. Default collapsed across product + xChat rails. */
@@ -194,6 +157,15 @@ export function AppUserResourcesRailSection({
           <RailNavLink href="/resources/about">About</RailNavLink>
           <RailNavLink href="/resources/decision-workflow">Decision workflow</RailNavLink>
           <RailNavLink href="/resources/secret-sauce">Secret sauce</RailNavLink>
+          <RailNavLink href="/resources/getting-started" title="Guide to investing with options">
+            Getting started
+          </RailNavLink>
+          <RailNavLink href="/resources/building-wheel" title="Building a wheel strategy">
+            Building a wheel
+          </RailNavLink>
+          <RailNavLink href="/resources/building-wheel/wheel-vs-iron-condor" title="Wheel vs iron condor">
+            Wheel vs Iron Condor
+          </RailNavLink>
           {showReferenceDocs
             ? isGlobalAdmin ? (
                 <RailNavLink href="/admin/api-docs">Reference docs</RailNavLink>
@@ -211,70 +183,22 @@ export function AppUserResourcesRailSection({
   );
 }
 
-export function AppUserOptionsRailSection({
-  railDisclosureDefaultOpen = false
+export function AppUserAccountRailSection({
+  railDisclosureDefaultOpen = false,
+  showSettingsLink = true,
+  accountDetails = null,
+  accountFeedbackPageLabel
 }: {
   railDisclosureDefaultOpen?: boolean;
+  showSettingsLink?: boolean;
+  accountDetails?: AppUserRailAccountPanelDetails | null;
+  accountFeedbackPageLabel?: string;
 }) {
-  return (
-    <section className="app-user-rail-section" aria-label="Options">
-      <RailDisclosure
-        defaultOpen={railDisclosureDefaultOpen}
-        icon={<FindOptionsGlyph className="app-user-rail-disclosure__glyph" />}
-        title="Options"
-      >
-        <nav className="app-user-rail-sublinks" aria-label="Options links">
-          <RailNavLink href="/resources/getting-started" title="Guide to investing with options">
-            Getting started
-          </RailNavLink>
-          <RailNavLink href="/resources/building-wheel" title="Building a wheel strategy">
-            Building a wheel
-          </RailNavLink>
-          <RailNavLink href="/resources/building-wheel/wheel-vs-iron-condor" title="Wheel vs iron condor">
-            Wheel vs Iron Condor
-          </RailNavLink>
-          <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
-            xOptions
-          </RailNavLink>
-        </nav>
-      </RailDisclosure>
-    </section>
-  );
-}
-
-export function AppUserXchatRailSection({ railDisclosureDefaultOpen = false }: { railDisclosureDefaultOpen?: boolean }) {
-  return (
-    <section className="app-user-rail-section" aria-label="xChat">
-      <RailDisclosure
-        defaultOpen={railDisclosureDefaultOpen}
-        icon={<ChatIcon className="app-user-rail-disclosure__glyph" />}
-        title="xChat"
-      >
-        <nav className="app-user-rail-sublinks" aria-label="xChat links">
-          <RailNavLink href="/xchat" title="Open xChat conversation workspace">
-            Open xChat
-          </RailNavLink>
-          <RailNavLink href="/xchat" title="Use xChat example prompts from the left rail">
-            Examples
-          </RailNavLink>
-          <RailNavLink href="/xchat" title="Use persona picker from xChat left rail">
-            Personas
-          </RailNavLink>
-          <RailNavLink href="/xchat" title="Review your recent prompt history in xChat">
-            Recent chats
-          </RailNavLink>
-        </nav>
-      </RailDisclosure>
-    </section>
-  );
-}
-
-export function AppUserAccountRailSection({
-  isGlobalAdmin,
-  railDisclosureDefaultOpen = false,
-  showSettingsLink = true
-}: AppUserRailNavProps) {
   if (!showSettingsLink) {
+    return null;
+  }
+
+  if (!accountDetails) {
     return null;
   }
 
@@ -285,19 +209,7 @@ export function AppUserAccountRailSection({
         icon={<PersonIcon className="app-user-rail-disclosure__glyph" />}
         title="Account"
       >
-        <nav className="app-user-rail-sublinks" aria-label="Account links">
-          {isGlobalAdmin ? (
-            <AccountSublink href="/admin/manage_account" title="Workspace and account settings">
-              Settings
-            </AccountSublink>
-          ) : (
-            <XfHoverHint hint="Workspace settings are available from Hub (admin)">
-              <span className="app-user-rail-sublink app-user-rail-sublink--muted" role="note" tabIndex={0}>
-                Settings
-              </span>
-            </XfHoverHint>
-          )}
-        </nav>
+        <AppUserRailAccountPanel details={accountDetails} feedbackPageLabel={accountFeedbackPageLabel} />
       </RailDisclosure>
     </section>
   );
@@ -307,33 +219,21 @@ export function AppUserAccountRailSection({
 export function AppUserManageWorkspaceRailSection({
   railDisclosureDefaultOpen = false,
   isGlobalAdmin = false,
-  workspacePortfolioId = null,
   railContext = null,
   defaultBookLabels = null
 }: {
   railDisclosureDefaultOpen?: boolean;
   isGlobalAdmin?: boolean;
-  /** Prefer explicit id when `railContext` is not passed (e.g. xChat rail). */
-  workspacePortfolioId?: string | null;
   /** When set (product shell), renders user name and portfolio/account pickers inside this group. */
   railContext?: AppUserPublicRailContext | null;
   /** xChat: resolved default portfolio + account labels; nested under this section, collapsed by default. */
   defaultBookLabels?: { portfolioName: string; accountName: string } | null;
 }) {
-  const rawPid =
-    workspacePortfolioId?.trim() ||
-    railContext?.book?.portfolioId?.trim() ||
-    "";
-  const portfolioQs =
-    rawPid.length > 0 ? `?portfolioId=${encodeURIComponent(rawPid)}` : "";
-  const watchlistHref = `/watchlist${portfolioQs}`;
-  const alertsHref = `/portfolio/alerts${portfolioQs}`;
-
   return (
     <section className="app-user-rail-section" aria-label="Manage workspace">
       <RailDisclosure
         defaultOpen={railDisclosureDefaultOpen}
-        icon={<RailSidebarZapIcon className="app-user-rail-disclosure__glyph" size="disclosure" />}
+        icon={<BookIcon className="app-user-rail-disclosure__glyph" />}
         title="Manage workspace"
       >
         <>
@@ -368,16 +268,16 @@ export function AppUserManageWorkspaceRailSection({
             <RailNavLink href="/portfolios" title="Portfolios — workspace, accounts, allocation">
               myPortfolios
             </RailNavLink>
-            <RailNavLink href={watchlistHref} title="Watchlist for the active workspace portfolio">
-              Watchlist
+            <RailNavLink href="/xchat" title="Open xChat">
+              xChat
             </RailNavLink>
-            <RailNavLink href={alertsHref} title="Alerts for the active workspace portfolio">
-              Alerts
+            <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
+              xOptions
             </RailNavLink>
             {isGlobalAdmin ? (
-             <RailNavLink href="/admin" title="Open Admin Hub (global admin only)">
-              Admin hub
-             </RailNavLink>
+              <RailNavLink href="/admin" title="Open Admin Hub (global admin only)">
+                Admin hub
+              </RailNavLink>
             ) : null}
           </nav>
           {defaultBookLabels ? (
@@ -413,14 +313,25 @@ export function AppUserManageWorkspaceRailSection({
   );
 }
 
-export function AppUserAccountPublicRail({ isGlobalAdmin, railContext }: AppUserAccountPublicRailProps) {
+export type AppUserAccountPublicRailExtendedProps = AppUserAccountPublicRailProps & {
+  accountDetails: AppUserRailAccountPanelDetails;
+  accountFeedbackPageLabel?: string;
+};
+
+export function AppUserAccountPublicRail({
+  isGlobalAdmin,
+  railContext,
+  accountDetails,
+  accountFeedbackPageLabel
+}: AppUserAccountPublicRailExtendedProps) {
   return (
     <aside className="app-user-public-rail xf-widget" aria-label="Account navigation">
       <AppUserManageWorkspaceRailSection isGlobalAdmin={isGlobalAdmin} railContext={railContext} />
-      <AppUserXchatRailSection />
-      <AppUserOptionsRailSection />
       <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
-      <AppUserAccountRailSection isGlobalAdmin={isGlobalAdmin} />
+      <AppUserAccountRailSection
+        accountDetails={accountDetails}
+        accountFeedbackPageLabel={accountFeedbackPageLabel}
+      />
     </aside>
   );
 }

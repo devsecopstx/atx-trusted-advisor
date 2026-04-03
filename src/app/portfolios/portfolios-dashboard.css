@@ -366,15 +366,6 @@
   }
 }
 
-/* Collapsible “Build Options Strategy” — hide default marker, match advanced disclosure */
-.portfolios-workspace-build-options summary {
-  list-style: none;
-}
-
-.portfolios-workspace-build-options summary::-webkit-details-marker {
-  display: none;
-}
-
 .portfolios-workspace-sidebar {
   display: flex;
   flex-direction: column;
@@ -425,31 +416,73 @@
   min-height: 0.5rem;
 }
 
-.portfolios-workspace-sidebar__disclosure-wrap .app-user-rail-disclosure {
-  margin-top: 0.25rem;
+.portfolios-workspace-sidebar__link--nested {
+  padding-left: 0.55rem;
+  font-size: 0.74rem;
 }
 
-.portfolios-workspace-sidebar__mini-muted {
-  margin: 0;
-  font-size: 0.68rem;
+.portfolios-workspace-sidebar__link--muted {
+  cursor: default;
+  color: var(--xf-text-400);
+}
+
+.portfolios-workspace-sidebar__accordion {
+  margin-top: 0.2rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: color-mix(in srgb, var(--xf-bg-800) 45%, transparent);
+  overflow: hidden;
+}
+
+.portfolios-workspace-sidebar__accordion-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.4rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--xf-text-300);
 }
 
-.portfolios-workspace-sidebar__news-list {
+.portfolios-workspace-sidebar__accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.portfolios-workspace-sidebar__accordion-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.2rem 0.35rem 0.45rem;
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+}
+
+.portfolios-workspace-sidebar__accordion-body--account {
+  padding: 0.35rem 0.3rem 0.5rem;
+  max-height: min(70vh, 28rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.portfolios-workspace-sidebar__accordion-meta {
   margin: 0;
-  padding: 0 0 0 1rem;
-  font-size: 0.65rem;
-  line-height: 1.35;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
 }
 
-.portfolios-workspace-sidebar__news-list a {
+.portfolios-workspace-sidebar__accordion-meta--mt {
+  margin-top: 0.35rem;
+}
+
+.portfolios-workspace-sidebar__accordion-static {
+  margin: 0;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.74rem;
   color: var(--xf-text-200);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.portfolios-workspace-sidebar__news-list a:hover {
-  color: var(--xf-gain-green);
+  line-height: 1.3;
 }
 
 .portfolio-allocation--compact .portfolios-portfolio-cards__allocation-bar,

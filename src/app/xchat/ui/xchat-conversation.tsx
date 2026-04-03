@@ -12,15 +12,11 @@ import {
 } from "react";
 
 import { SendIcon } from "@/app/admin/ui/crud-icons";
-import {
-    AppUserAccountRailSection,
-    AppUserManageWorkspaceRailSection,
-    AppUserOptionsRailSection,
-    AppUserResourcesRailSection,
-    RailDisclosure
-} from "@/app/ui/app-user-rail-nav";
+import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
+import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
@@ -147,6 +143,12 @@ function compactPersonaOptionLabel(name: string): string {
 }
 
 type XchatConversationProps = {
+  accountDetails: AppUserRailAccountPanelDetails;
+  /** When set (server: Google OAuth configured), account rail shows “Link Google” for X-first sessions. */
+  googleLinkHref?: string | null;
+  accountFeedbackPageLabel?: string;
+  /** Default workspace portfolio id (watchlist + broker import query). */
+  workspacePortfolioId?: string | null;
   /** Resolved default persona name for this session’s role (e.g. Super-Agent vs atx-trusted-advisor). */
   defaultPublishedPersonaName: string;
   /** Default portfolio + default (or first) custodian account — above persona picker in the left rail. */
@@ -264,6 +266,10 @@ const DEFAULT_VISIBLE_COLLECTIONS: VisibleCollection[] = (() => {
 })();
 
 export function XchatConversation({
+  accountDetails,
+  googleLinkHref = null,
+  accountFeedbackPageLabel,
+  workspacePortfolioId = null,
   defaultPublishedPersonaName,
   defaultBookLabels = null,
   includeSuperAgentInPersonaPicker = false,
@@ -750,10 +756,9 @@ export function XchatConversation({
       <aside className={`xchat-left-rail ${leftRailCollapsed ? "xchat-left-rail--collapsed" : ""}`}>
         <div className="xchat-rail-head">
           {!leftRailCollapsed ? (
-            <div className="xchat-rail-head__brand">
-              <span className="xchat-rail-head__team-label">Workspace</span>
-              <span className="xchat-rail-head__team-name">xChat</span>
-            </div>
+            <span className="xchat-rail-head__brand-zap" aria-hidden>
+              <RailSidebarZapIcon size="toggle" />
+            </span>
           ) : null}
           <XfHoverHint hint={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}>
             <button
@@ -769,10 +774,19 @@ export function XchatConversation({
         </div>
         {!leftRailCollapsed ? (
           <div className="xchat-rail-body">
-            <AppUserManageWorkspaceRailSection
+            <WorkspaceProductSidebar
+              accountDetails={accountDetails}
+              accountFeedbackPageLabel={accountFeedbackPageLabel}
               defaultBookLabels={defaultBookLabels}
+              defaultPortfolioId={workspacePortfolioId?.trim() ? workspacePortfolioId.trim() : null}
+              googleLinkHref={googleLinkHref}
               isGlobalAdmin={isGlobalAdminSession}
-              railDisclosureDefaultOpen={false}
+              showReferenceDocs
+              watchlistHref={
+                workspacePortfolioId?.trim()
+                  ? `/watchlist?portfolioId=${encodeURIComponent(workspacePortfolioId.trim())}`
+                  : "/watchlist"
+              }
             />
             <section className="app-user-rail-section" aria-label="Persona">
               <RailDisclosure
@@ -911,15 +925,6 @@ export function XchatConversation({
                 ) : null}
               </RailDisclosure>
             </section>
-            <AppUserOptionsRailSection railDisclosureDefaultOpen={false} />
-            <AppUserResourcesRailSection
-              isGlobalAdmin={isGlobalAdminSession}
-              railDisclosureDefaultOpen={false}
-            />
-            <AppUserAccountRailSection
-              isGlobalAdmin={isGlobalAdminSession}
-              railDisclosureDefaultOpen={false}
-            />
           </div>
         ) : null}
       </aside>
@@ -927,7 +932,7 @@ export function XchatConversation({
       <div className="xchat-main">
         <header className="xchat-welcome-header">
           <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
-          <p className="xchat-welcome-sub">Overview of xChat — portoflio, watchlist and advisor options-tools. See Examples on left.</p>
+          <p className="xchat-welcome-sub">Overview of xChat — portfolio, watchlist and advisor options-tools. See Examples on left.</p>
         </header>
 
       {!(threadUiCollapsed && messages.length > 0 && !loading) ? (
@@ -940,107 +945,109 @@ export function XchatConversation({
         </p>
       ) : null}
 
-      {threadUiCollapsed && messages.length > 0 && !loading ? (
-        <button
-          aria-expanded={false}
-          className="xchat-thread-collapsed-bar"
-          type="button"
-          onClick={() => {
-            setThreadUiCollapsed(false);
-            queueMicrotask(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }));
-          }}
-        >
-          <span aria-hidden className="xchat-thread-collapsed-bar__icon">
-            <XchatThreadExpandChevronIcon />
-          </span>
-          <span className="xchat-thread-collapsed-bar__meta">
-            <span className="xchat-thread-collapsed-bar__title">
-              {loading
-                ? "Assistant is replying…"
-                : `Conversation · ${threadUiSummary.userTurnCount} prompt${threadUiSummary.userTurnCount === 1 ? "" : "s"}`}
+      <div className="xchat-thread-area">
+        {threadUiCollapsed && messages.length > 0 && !loading ? (
+          <button
+            aria-expanded={false}
+            className="xchat-thread-collapsed-bar"
+            type="button"
+            onClick={() => {
+              setThreadUiCollapsed(false);
+              queueMicrotask(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }));
+            }}
+          >
+            <span aria-hidden className="xchat-thread-collapsed-bar__icon">
+              <XchatThreadExpandChevronIcon />
             </span>
-            {threadUiSummary.preview ? (
-              <span className="xchat-thread-collapsed-bar__preview">{threadUiSummary.preview}</span>
-            ) : null}
-          </span>
-          <span className="xchat-thread-collapsed-bar__action">Expand</span>
-        </button>
-      ) : (
-        <div className="xchat-messages">
-          {messages.length > 0 ? (
-            <button
-              aria-expanded
-              className="xchat-thread-minimize"
-              type="button"
-              onClick={() => setThreadUiCollapsed(true)}
-            >
-              <XchatThreadCollapseChevronIcon />
-              <span>Minimize thread</span>
-            </button>
-          ) : null}
-
-          {messages.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "3rem 0" }}>
-              <p className="status-text">
-                Start a conversation with <strong>{activePersonaName}</strong> (or choose another persona in the
-                sidebar).
-              </p>
-            </div>
-          ) : null}
-
-          {visibleThreadMessages.map((msg) => (
-            <div className={`xchat-msg xchat-msg-${msg.role}`} key={msg.id}>
-              {msg.role === "ai" && msg.persona ? (
-                <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>
-                  {msg.persona}
-                </small>
+            <span className="xchat-thread-collapsed-bar__meta">
+              <span className="xchat-thread-collapsed-bar__title">
+                {loading
+                  ? "Assistant is replying…"
+                  : `Conversation · ${threadUiSummary.userTurnCount} prompt${threadUiSummary.userTurnCount === 1 ? "" : "s"}`}
+              </span>
+              {threadUiSummary.preview ? (
+                <span className="xchat-thread-collapsed-bar__preview">{threadUiSummary.preview}</span>
               ) : null}
-              {msg.role === "ai" ? (
-                <XchatMarkdownBody content={msg.content} />
-              ) : (
-                <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
-              )}
-            </div>
-          ))}
+            </span>
+            <span className="xchat-thread-collapsed-bar__action">Expand</span>
+          </button>
+        ) : (
+          <div className="xchat-messages">
+            {messages.length > 0 ? (
+              <button
+                aria-expanded
+                className="xchat-thread-minimize"
+                type="button"
+                onClick={() => setThreadUiCollapsed(true)}
+              >
+                <XchatThreadCollapseChevronIcon />
+                <span>Minimize thread</span>
+              </button>
+            ) : null}
 
-          {loading ? (
-            <div
-              aria-busy="true"
-              aria-live="polite"
-              className="xchat-await"
-              role="status"
-            >
-              <div className="xchat-await__row">
-                <div className="xchat-typing" aria-hidden>
-                  <span className="xchat-typing-dot" />
-                  <span className="xchat-typing-dot" />
-                  <span className="xchat-typing-dot" />
+            {messages.length === 0 ? (
+              <div className="xchat-messages-empty">
+                <p className="status-text">
+                  Start a conversation with <strong>{activePersonaName}</strong> (or choose another persona in the
+                  sidebar).
+                </p>
+              </div>
+            ) : null}
+
+            {visibleThreadMessages.map((msg) => (
+              <div className={`xchat-msg xchat-msg-${msg.role}`} key={msg.id}>
+                {msg.role === "ai" && msg.persona ? (
+                  <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>
+                    {msg.persona}
+                  </small>
+                ) : null}
+                {msg.role === "ai" ? (
+                  <XchatMarkdownBody content={msg.content} />
+                ) : (
+                  <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
+                )}
+              </div>
+            ))}
+
+            {loading ? (
+              <div
+                aria-busy="true"
+                aria-live="polite"
+                className="xchat-await"
+                role="status"
+              >
+                <div className="xchat-await__row">
+                  <div className="xchat-typing" aria-hidden>
+                    <span className="xchat-typing-dot" />
+                    <span className="xchat-typing-dot" />
+                    <span className="xchat-typing-dot" />
+                  </div>
+                  <div className="xchat-await__copy">
+                    <span className="xchat-await__title">Advisor is working</span>
+                    <span className="xchat-await__hint">
+                      {askWaitSeconds >= 10
+                        ? "Still running — portfolio or market tools can take up to a minute."
+                        : askWaitSeconds >= 3
+                          ? "Your persona may be calling workspace or Yahoo tools…"
+                          : "Sending to xAI…"}
+                    </span>
+                    <span className="xchat-await__timer" aria-label={`Elapsed ${askWaitSeconds} seconds`}>
+                      {askWaitSeconds > 0 ? `${askWaitSeconds}s` : "…"}
+                    </span>
+                  </div>
                 </div>
-                <div className="xchat-await__copy">
-                  <span className="xchat-await__title">Advisor is working</span>
-                  <span className="xchat-await__hint">
-                    {askWaitSeconds >= 10
-                      ? "Still running — portfolio or market tools can take up to a minute."
-                      : askWaitSeconds >= 3
-                        ? "Your persona may be calling workspace or Yahoo tools…"
-                        : "Sending to xAI…"}
-                  </span>
-                  <span className="xchat-await__timer" aria-label={`Elapsed ${askWaitSeconds} seconds`}>
-                    {askWaitSeconds > 0 ? `${askWaitSeconds}s` : "…"}
-                  </span>
+                <div aria-hidden className="xchat-await__skeleton">
+                  <span className="xchat-await__sk-line xchat-await__sk-line--long" />
+                  <span className="xchat-await__sk-line xchat-await__sk-line--med" />
+                  <span className="xchat-await__sk-line xchat-await__sk-line--short" />
                 </div>
               </div>
-              <div aria-hidden className="xchat-await__skeleton">
-                <span className="xchat-await__sk-line xchat-await__sk-line--long" />
-                <span className="xchat-await__sk-line xchat-await__sk-line--med" />
-                <span className="xchat-await__sk-line xchat-await__sk-line--short" />
-              </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          <div ref={messagesEndRef} />
-        </div>
-      )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
 
         <div className="xchat-composer-wrap">
           <form className="xchat-composer" onSubmit={handleSend}>

@@ -19,6 +19,7 @@ import {
 import { googleLinkedId } from "@/lib/google-oauth-identity";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
+import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
 import {
     createAccessRequest,
@@ -233,6 +234,19 @@ export async function GET(request: Request) {
   }
 
   const emailNormalized = profile.email.trim().toLowerCase();
+
+  const linkingSession = await getSessionUser();
+  if (
+    linkingSession &&
+    !isXIdentityPlaceholderEmail(linkingSession.email) &&
+    linkingSession.email.trim().toLowerCase() !== emailNormalized
+  ) {
+    return redirectWithLoginAudit("google_link_email_mismatch", {
+      userId: linkingSession.userId,
+      email: emailNormalized
+    });
+  }
+
   const linkedId = googleLinkedId(profile.sub);
   const username = googleUsernameFromEmail(emailNormalized);
   const identity = {
