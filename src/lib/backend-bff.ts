@@ -90,6 +90,10 @@ export const nextBffApi = {
     turns: {
       pathTemplate: "/api/strategy-jobs/{jobId}/turns",
       methods: ["POST"]
+    },
+    artifact: {
+      pathTemplate: "/api/strategy-jobs/{jobId}/artifact",
+      methods: ["GET"]
     }
   },
   userFeedback: {

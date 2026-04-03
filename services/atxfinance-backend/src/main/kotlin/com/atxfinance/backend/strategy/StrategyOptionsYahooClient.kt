@@ -51,6 +51,22 @@ class StrategyOptionsYahooClient(
         }
     }
 
+    /** Spot quote for an equity underlying (uses options chain endpoint quote array). */
+    fun fetchUnderlyingQuote(underlying: String): Map<String, Any?>? {
+        val u = underlying.trim().uppercase()
+        if (u.isEmpty()) {
+            return null
+        }
+        val root = fetchOptionsJson(u, null) ?: return null
+        val q = firstResult(root)?.path("quote")?.get(0) ?: return null
+        return mapOf(
+            "symbol" to q.path("symbol").asText(u),
+            "regularMarketPrice" to q.path("regularMarketPrice").asDouble(0.0),
+            "currency" to q.path("currency").asText(""),
+            "regularMarketTime" to q.path("regularMarketTime").asLong(0L),
+        )
+    }
+
     companion object {
         fun expirationDatesFromYahoo(root: JsonNode): List<String> {
             val dates = root.path("optionChain").path("result").get(0)?.path("expirationDates") ?: return emptyList()

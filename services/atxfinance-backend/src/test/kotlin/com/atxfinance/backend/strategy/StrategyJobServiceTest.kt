@@ -34,6 +34,13 @@ class StrategyJobServiceTest {
         return p
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private fun finalizerProvider(coordinator: StrategyJobFinalizerCoordinator? = null): ObjectProvider<StrategyJobFinalizerCoordinator> {
+        val p = mock(ObjectProvider::class.java) as ObjectProvider<StrategyJobFinalizerCoordinator>
+        `when`(p.ifAvailable).thenReturn(coordinator)
+        return p
+    }
+
     private fun service(
         mongo: MongoTemplate,
         maxHourly: Int = 12,
@@ -45,7 +52,7 @@ class StrategyJobServiceTest {
             strategyMaxJobsHourly = maxHourly,
             strategySoftWarnJobsHourly = softWarn,
         )
-        return StrategyJobService(mongo, props, quotaProvider(quota))
+        return StrategyJobService(mongo, props, quotaProvider(quota), finalizerProvider())
     }
 
     @Test
@@ -60,7 +67,7 @@ class StrategyJobServiceTest {
     fun `createJob returns RateLimited when redis quota denies`() {
         val mongo = mock(MongoTemplate::class.java)
         val quota = mock(StrategyJobRedisQuota::class.java)
-        `when`(quota.tryReserveSlot(session.userId)).thenReturn(null)
+        `when`(quota.tryReserveSlot(session.tenantId, session.userId, "u@example.com")).thenReturn(null)
         val out = service(mongo, quota = quota).createJob(session, null, null)
         assertEquals(CreateJobOutcome.RateLimited, out)
     }
@@ -104,8 +111,27 @@ class StrategyJobServiceTest {
         doc["currentSlotKey"] = "outlook"
         doc["turns"] = emptyList<Document>()
         `when`(mongo.findById(id, Document::class.java, "strategy_jobs")).thenReturn(doc, doc)
-        val out = service(mongo).postTurn(session, id.toHexString(), null, 2)
+        val out = service(mongo).postTurn(session, id.toHexString(), null, 2, null)
         assertTrue(out is PostTurnOutcome.Ok)
         verify(mongo).updateFirst(any(Query::class.java), any(Update::class.java), eq("strategy_jobs"))
+    }
+
+    @Test
+    fun `postTurn returns NotFound when emailAccountId does not match job`() {
+        val mongo = mock(MongoTemplate::class.java)
+        val id = ObjectId()
+        val doc = Document()
+        doc["_id"] = id
+        doc["userId"] = session.userId
+        doc["tenantId"] = session.tenantId
+        doc["emailAccountId"] = "desk-a"
+        doc["correlationId"] = "corr"
+        doc["status"] = StrategyJobService.STATUS_COLLECTING
+        doc["slots"] = Document()
+        doc["currentSlotKey"] = "outlook"
+        doc["turns"] = emptyList<Document>()
+        `when`(mongo.findById(id, Document::class.java, "strategy_jobs")).thenReturn(doc)
+        val out = service(mongo).postTurn(session, id.toHexString(), null, 2, null)
+        assertEquals(PostTurnOutcome.NotFound, out)
     }
 }

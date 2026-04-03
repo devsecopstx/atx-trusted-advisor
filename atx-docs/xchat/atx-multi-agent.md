@@ -6,17 +6,22 @@
 
 ---
 
-## Locked decisions (Phase 1)
+## Locked decisions (non-negotiable — Phase 1 only)
+
+1. **Orchestrator** = **Spring + Redis** (server-only). **xStrategyBuilder** remains UI-only (renders artifacts / review — no orchestration state).
+2. **xAI collections** = **TEAM-only** via **`XAI_TEAM_ID`** (no per-user bootstrap, no legacy default merges). Chat-history collections stay under that team when productized.
+3. **Artifact** = **v1**: Markdown + fenced JSON block; **server-side validation**. **v2** strict JSON Schema is **deferred**.
+4. **Default mode** = **async**. SLO: **p50 ≤ 2.5s**, **p95 ≤ 7s** from **`slots_complete` → artifact**; if p95 > 7s → polling + push. **Sync** = premium / flag **later** (not Phase 1 default).
+5. **Routing** = **retrieval-first** + **selective tools**; **multi-agent** (`grok-4.20-multi-agent`) **only when explicitly needed**, **plan-limited** — clamp via **`clampMultiAgentParallelismForPlan`** on `POST /api/xchat/ask` ([`context-routing-multi-agent-policy.md`](./context-routing-multi-agent-policy.md)).
+6. **Caps** = **12** strategy job **creates** / hour (**Redis-backed** when `REDIS_URL` is set; else Mongo count), **soft warn at 8**. Hourly scope matches job isolation: **`tenantId` + `userId` + `emailAccountId`** (Spring `app.atxfinance.strategy-max-jobs-hourly` / `strategy-soft-warn-jobs-hourly`). xChat multi-agent caps: **`clampMultiAgentParallelismForPlan`** ([`src/modules/xchat/plan-limits.ts`](../../src/modules/xchat/plan-limits.ts)).
+7. **Isolation** = **`userId` + `emailAccountId`** (plus **`tenantId`** on rows and auth). BFF-only traffic: Next → Spring, same-origin cookies.
+
+### Quick reference table
 
 | Topic | Decision |
 |--------|-----------|
-| **Orchestrator** | **Server-only** — Spring + Redis. **xStrategyBuilder** = UI only. |
-| **Artifact v1** | Markdown + fenced JSON, validated server-side. Strict external JSON Schema → **v2**. |
-| **Latency** | Default **async**. Target p50 ≤ 2.5s, p95 ≤ 7s from last slot → artifact; if p95 > 7s → polling + push. **Sync** = premium + flag. |
-| **Isolation** | Jobs scoped **`userId` + `emailAccountId`**. No cross-tenant advisor reads. |
-| **Caps** | Hard **12** strategy jobs/user/hour (`STRATEGY_MAX_JOBS_HOURLY`); soft warn at **8**. |
 | **Traffic** | **BFF-only** — Next → Spring proxy, same-origin cookies. |
-| **xAI collections** | **TEAM_XAI** — **`XAI_TEAM_ID`** per tenant (team UUID or `collection_*` KB id). No separate legacy collection env / per-user bootstrap in Phase 1 tickets. Chat-history collections under the team only. |
+| **Config** | `STRATEGY_MAX_JOBS_HOURLY` env → `app.atxfinance.strategy-max-jobs-hourly` (default **12**); soft warn default **8**. |
 
 ---
 
@@ -24,7 +29,7 @@
 
 Multi-turn strategy flows need **state**, **one question per turn**, then a **final** model call with a filled template.
 
-1. **Persist** jobs in **Mongo**; **Redis** for hot session / rate limits — key by **`userId` + `emailAccountId`** (+ `jobId` / conversation as needed).
+1. **Persist** jobs in **Mongo**; **Redis** for hourly create cap — key by **`tenantId` + `userId` + `emailAccountId`** (normalized, same as Mongo count; + `jobId` / conversation keys as needed later).
 2. **Slots** (example): `outlook`, `risk`, `horizon`, `underlying`, `capital`, `step`.
 3. Each turn: load → if slots missing → **one** next question (numbered choices when possible) → parse → write → repeat.
 4. When complete → context bundle (retrieval, portfolio if tools allow, quotes) → async artifact per SLO.
@@ -58,6 +63,7 @@ Async jobs meet SLOs; **idempotency** via `Idempotency-Key` or deterministic has
 
 ## Changelog
 
+- **2026-04-03** — Non-negotiable Phase 1 list expanded (v2 schema deferred; `slots_complete`→artifact SLO anchor; routing + `clampMultiAgentParallelismForPlan`; Redis cap key aligned to `tenantId`+`userId`+`emailAccountId`; GET/turns enforce `emailAccountId` match).
 - **2026-03-23** — Consolidated docs + locked boundaries (server orchestrator, v1 artifact format, async SLOs, isolation, caps, BFF-only).
 - **2026-03-24** — Phase 1 xAI: TEAM_XAI + `XAI_TEAM_ID` only; legacy default/bootstrap collection work out of Phase 1 scope.
 - **2026-03-25** — Roadmap status (shipped vs outstanding) for this track lives in [`../PLAN.md`](../PLAN.md) § **xChat Hardcore** (*Phase 1 — xChat → xStrategyBuilder multi-agent*); design loop: [`atx-multi-agent-design-loop.mmd`](./atx-multi-agent-design-loop.mmd).

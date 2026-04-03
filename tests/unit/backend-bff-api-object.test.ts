@@ -25,6 +25,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { pathTemplate: "/api/strategy-jobs", methods: ["POST"] },
   { pathTemplate: "/api/strategy-jobs/{jobId}", methods: ["GET"] },
   { pathTemplate: "/api/strategy-jobs/{jobId}/turns", methods: ["POST"] },
+  { pathTemplate: "/api/strategy-jobs/{jobId}/artifact", methods: ["GET"] },
   { pathTemplate: "/api/user-feedback", methods: ["POST"] },
   { pathTemplate: "/api/admin/bootstrap-status", methods: ["GET"] },
   { pathTemplate: "/api/admin/audit", methods: ["GET"] },

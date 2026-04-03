@@ -7,6 +7,7 @@ import org.bson.types.ObjectId
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
+import org.springframework.data.domain.Sort
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
 import org.springframework.stereotype.Service
@@ -24,6 +25,7 @@ class StrategyJobService(
     private val mongoTemplate: MongoTemplate,
     private val props: AtxfinanceProperties,
     private val strategyJobRedisQuota: ObjectProvider<StrategyJobRedisQuota>,
+    private val finalizerCoordinator: ObjectProvider<StrategyJobFinalizerCoordinator>,
 ) {
 
     fun createJob(
@@ -56,7 +58,8 @@ class StrategyJobService(
         val softWarn: Boolean
         val jobsInLastHourAfterCreate: Int
         if (quota != null) {
-            val after = quota.tryReserveSlot(session.userId) ?: return CreateJobOutcome.RateLimited
+            val after = quota.tryReserveSlot(session.tenantId, session.userId, emailAccountId)
+                ?: return CreateJobOutcome.RateLimited
             val mongoCount = countJobsSince(session, emailAccountId, since)
             softWarn = mongoCount >= props.strategySoftWarnJobsHourly
             jobsInLastHourAfterCreate = maxOf(after, mongoCount + 1L).toInt()
@@ -91,7 +94,7 @@ class StrategyJobService(
         try {
             mongoTemplate.insert(doc, props.strategyJobsCollection)
         } catch (e: Exception) {
-            quota?.releaseSlot(session.userId)
+            quota?.releaseSlot(session.tenantId, session.userId, emailAccountId)
             throw e
         }
         return CreateJobOutcome.Created(
@@ -101,13 +104,30 @@ class StrategyJobService(
         )
     }
 
-    fun getJob(session: ResolvedSession, jobId: String): Document? {
+    fun listJobs(session: ResolvedSession, emailAccountIdRaw: String?, limitRaw: Int?): List<Document> {
+        val email = normalizeEmailAccountId(session, emailAccountIdRaw)
+        val limit = (limitRaw ?: 20).coerceIn(1, 50)
+        val q = Query.query(
+            Criteria.where("userId").`is`(session.userId)
+                .and("tenantId").`is`(session.tenantId)
+                .and("emailAccountId").`is`(email),
+        )
+            .with(Sort.by(Sort.Direction.DESC, "createdAt"))
+            .limit(limit)
+        return mongoTemplate.find(q, Document::class.java, props.strategyJobsCollection)
+    }
+
+    fun getJob(session: ResolvedSession, jobId: String, emailAccountIdRaw: String?): Document? {
         if (!ObjectId.isValid(jobId)) {
             return null
         }
         val doc = mongoTemplate.findById(ObjectId(jobId), Document::class.java, props.strategyJobsCollection)
             ?: return null
         if (doc.getString("userId") != session.userId || doc.getString("tenantId") != session.tenantId) {
+            return null
+        }
+        val expectedEmail = normalizeEmailAccountId(session, emailAccountIdRaw)
+        if (doc.getString("emailAccountId") != expectedEmail) {
             return null
         }
         return doc
@@ -118,6 +138,7 @@ class StrategyJobService(
         jobId: String,
         message: String?,
         choiceIndex: Int?,
+        emailAccountIdRaw: String?,
     ): PostTurnOutcome {
         if (!ObjectId.isValid(jobId)) {
             return PostTurnOutcome.NotFound
@@ -125,6 +146,10 @@ class StrategyJobService(
         val doc = mongoTemplate.findById(ObjectId(jobId), Document::class.java, props.strategyJobsCollection)
             ?: return PostTurnOutcome.NotFound
         if (doc.getString("userId") != session.userId || doc.getString("tenantId") != session.tenantId) {
+            return PostTurnOutcome.NotFound
+        }
+        val expectedEmail = normalizeEmailAccountId(session, emailAccountIdRaw)
+        if (doc.getString("emailAccountId") != expectedEmail) {
             return PostTurnOutcome.NotFound
         }
         if (doc.getString("status") != STATUS_COLLECTING) {
@@ -149,19 +174,26 @@ class StrategyJobService(
         val now = Date()
         val newStatus = if (nextKey == null) STATUS_SLOTS_COMPLETE else STATUS_COLLECTING
 
+        val update = Update()
+            .set("slots", slots)
+            .set("currentSlotKey", nextKey)
+            .set("status", newStatus)
+            .set("turns", turns)
+            .set("updatedAt", now)
+        if (newStatus == STATUS_SLOTS_COMPLETE) {
+            update.set("artifactStatus", "pending")
+        }
         mongoTemplate.updateFirst(
             Query.query(Criteria.where("_id").`is`(doc.getObjectId("_id"))),
-            Update()
-                .set("slots", slots)
-                .set("currentSlotKey", nextKey)
-                .set("status", newStatus)
-                .set("turns", turns)
-                .set("updatedAt", now),
+            update,
             props.strategyJobsCollection,
         )
 
         val updated = mongoTemplate.findById(doc.getObjectId("_id"), Document::class.java, props.strategyJobsCollection)
             ?: return PostTurnOutcome.NotFound
+        if (newStatus == STATUS_SLOTS_COMPLETE) {
+            finalizerCoordinator.ifAvailable?.onSlotsComplete(session, jobId)
+        }
         return PostTurnOutcome.Ok(updated)
     }
 

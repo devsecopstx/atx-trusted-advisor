@@ -5,6 +5,8 @@ import com.atxfinance.backend.config.RedisEnabledCondition
 import org.springframework.context.annotation.Conditional
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
@@ -22,9 +24,12 @@ class StrategyJobRedisQuota(
 ) {
     private val hourFmt = DateTimeFormatter.ofPattern("yyyyMMddHH").withZone(ZoneOffset.UTC)
 
-    /** @return jobs in current UTC hour after this reservation, or null if over limit (counter rolled back). */
-    fun tryReserveSlot(userId: String): Long? {
-        val key = redisKey(userId)
+    /**
+     * @return jobs in current UTC hour after this reservation, or null if over limit (counter rolled back).
+     * Key scope matches Mongo hourly count: tenant + user + normalized emailAccountId (Phase 1 isolation).
+     */
+    fun tryReserveSlot(tenantId: String, userId: String, emailAccountId: String): Long? {
+        val key = redisKey(tenantId, userId, emailAccountId)
         val n = redis.opsForValue().increment(key) ?: return null
         if (n == 1L) {
             redis.expire(key, Duration.ofHours(2))
@@ -36,13 +41,20 @@ class StrategyJobRedisQuota(
         return n
     }
 
-    fun releaseSlot(userId: String) {
-        val key = redisKey(userId)
+    fun releaseSlot(tenantId: String, userId: String, emailAccountId: String) {
+        val key = redisKey(tenantId, userId, emailAccountId)
         redis.opsForValue().decrement(key)
     }
 
-    private fun redisKey(userId: String): String {
+    private fun redisKey(tenantId: String, userId: String, emailAccountId: String): String {
         val hour = hourFmt.format(Instant.now())
-        return "xf:sj:hourly:${userId.trim()}:$hour"
+        val idem = sha256Hex16("${tenantId.trim()}\u0000${userId.trim()}\u0000${emailAccountId.trim()}")
+        return "xf:sj:hourly:${tenantId.trim()}:${userId.trim()}:$idem:$hour"
+    }
+
+    private fun sha256Hex16(s: String): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        val hex = md.digest(s.toByteArray(StandardCharsets.UTF_8)).joinToString("") { b -> "%02x".format(b) }
+        return hex.take(16)
     }
 }

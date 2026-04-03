@@ -6,5 +6,10 @@
   "search.exclude": {
     ".next": true,
     "coverage": true
+  },
+  "plugins": {
+    "redis-development": {
+      "enabled": true
+    }
   }
 }

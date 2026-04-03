@@ -37,6 +37,17 @@ data class AtxfinanceProperties(
     val strategyJobsCollection: String = "strategy_jobs",
     val strategyMaxJobsHourly: Int = 12,
     val strategySoftWarnJobsHourly: Int = 8,
+    /** xAI chat model for strategy job LLM finalizer (env `STRATEGY_FINALIZER_MODEL`). */
+    val strategyFinalizerModel: String = "grok-4-1-fast-reasoning",
+    /**
+     * When true and session is `global_admin`, run finalizer synchronously on the HTTP thread after the last slot turn
+     * (still returns 200 from `POST …/turns`; may exceed typical gateway timeouts for heavy models).
+     */
+    val strategyFinalizerSyncForGlobalAdmin: Boolean = false,
+    /** When true and session is `global_admin`, send `agent_count` + `reasoning` for multi-agent finalizer models. */
+    val strategyFinalizerMultiAgentForGlobalAdmin: Boolean = true,
+    /** Optional explicit team KB `collection_*` id when `XAI_TEAM_ID` is a team UUID (env `STRATEGY_TEAM_KB_COLLECTION_ID`). */
+    val strategyTeamKbCollectionId: String = "",
     @NestedConfigurationProperty
     val redis: RedisProps = RedisProps(),
 )

@@ -652,6 +652,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "strategy-jobs"
   },
   {
+    path: "/api/strategy-jobs/{jobId}/artifact",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "strategy-jobs"
+  },
+  {
     path: "/api/rag/files",
     operations: [
       { method: "GET", auth: "admin" },
@@ -729,7 +734,7 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "strategy-options":
     "Option expirations and chain (Yahoo + synthetic fallback) for xStrategyBuilder; aligned with xfinance-strategy GET /api/options.",
   "strategy-jobs":
-    "xChat Hardcore / Phase 1 multi-agent strategy orchestrator (Mongo + Spring): slot collection and job status. See atx-docs/xchat/atx-multi-agent.md.",
+    "xChat Hardcore / Phase 1 multi-agent strategy orchestrator (Mongo + Spring): slot collection, job status, and LLM finalizer artifact (Markdown + fenced JSON v1) after slots_complete. See atx-docs/xchat/atx-multi-agent.md.",
   rag: "Mongo-backed scoped RAG file list/upload; xAI collection inventory is GET /api/personas/collections.",
   xchat: "xChat sync and async ask/batch workflows."
 };
