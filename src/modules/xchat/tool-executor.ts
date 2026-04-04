@@ -31,12 +31,17 @@ import {
 } from "@/modules/xchat/tool-definitions";
 import {
     accountHealthFromWorkspacePreload,
+    loadWorkspaceSnapshotPreload,
     portfolioSummaryFromWorkspacePreload,
     positionsSnapshotFromWorkspacePreload,
+    type WorkspaceSnapshotContext,
     type WorkspaceSnapshotPreload
 } from "@/modules/xchat/workspace-snapshot-for-prompt";
 
-export type { WorkspaceSnapshotPreload } from "@/modules/xchat/workspace-snapshot-for-prompt";
+export type {
+    WorkspaceSnapshotContext,
+    WorkspaceSnapshotPreload
+} from "@/modules/xchat/workspace-snapshot-for-prompt";
 
 const MAX_OUTPUT_BYTES = 8 * 1024;
 /** Cap rows returned by positions_snapshot before JSON serialization (freshness; not cached). */
@@ -125,8 +130,16 @@ function parseTickerListFromArgs(args: Record<string, unknown>, max: number): st
 export type XfinanceToolExecutorContext = {
   userId: string;
   tenantId?: string;
-  /** Same-request workspace preload from `loadWorkspaceSnapshotPreload`; invalidated after watchlist mutations. */
+  /**
+   * Eager preload (tests, batch, or explicit opt-in). When this key is present (including `null`),
+   * lazy load is disabled.
+   */
   workspacePreload?: WorkspaceSnapshotPreload | null;
+  /**
+   * Ask route: load `WorkspaceSnapshotPreload` on first `PRELOAD_SHORT_CIRCUIT_OPS` tool call only
+   * (same request), then short-circuit like eager preload.
+   */
+  workspaceLazyLoad?: WorkspaceSnapshotContext;
 };
 
 type ExecutorContext = XfinanceToolExecutorContext;
@@ -505,8 +518,28 @@ function tryPreloadResult(
 }
 
 export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): ToolExecutor {
-  let preloadValid = Boolean(ctx.workspacePreload);
-  const preload = ctx.workspacePreload ?? null;
+  const lazyEnabled =
+    ctx.workspaceLazyLoad != null && ctx.workspacePreload === undefined;
+
+  let resolvedPreload: WorkspaceSnapshotPreload | null =
+    ctx.workspacePreload !== undefined ? (ctx.workspacePreload ?? null) : null;
+  let preloadValid = Boolean(resolvedPreload);
+  let lazyFetchStarted = false;
+
+  async function ensureLazyPreload(): Promise<void> {
+    if (!lazyEnabled || lazyFetchStarted) {
+      return;
+    }
+    lazyFetchStarted = true;
+    try {
+      const p = await loadWorkspaceSnapshotPreload(ctx.workspaceLazyLoad!);
+      resolvedPreload = p;
+      preloadValid = Boolean(p);
+    } catch {
+      resolvedPreload = null;
+      preloadValid = false;
+    }
+  }
 
   const invalidateWorkspacePreload = (): void => {
     preloadValid = false;
@@ -529,8 +562,12 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
       };
     }
 
-    if (preload && preloadValid) {
-      const fromPreload = tryPreloadResult(operation, preload, preloadValid);
+    if (PRELOAD_SHORT_CIRCUIT_OPS.has(operation)) {
+      await ensureLazyPreload();
+    }
+
+    if (resolvedPreload && preloadValid) {
+      const fromPreload = tryPreloadResult(operation, resolvedPreload, preloadValid);
       if (fromPreload !== null) {
         return { result: fromPreload };
       }

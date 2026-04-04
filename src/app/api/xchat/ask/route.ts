@@ -35,6 +35,7 @@ import type { SubscriptionPlan } from "@/modules/identity/types";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
+import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import {
     resolveXchatTeamOnlyLinkedCollectionIds,
     withLinkedCollectionTools
@@ -56,18 +57,12 @@ import {
     normalizePersonaXapiConfig,
     type PersonaXapiConfig
 } from "@/modules/xchat/types";
-import {
-    formatWorkspaceServerSnapshotBlock,
-    loadWorkspaceSnapshotPreload,
-    type WorkspaceSnapshotPreload
-} from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import {
     heavySynthesisIntent,
     shouldOfferStrategyJobPreflight,
     STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
-import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
 import {
     buildSessionToolInstructions,
@@ -474,25 +469,6 @@ export async function POST(request: Request) {
    */
   const hasHostedSearchTool = xapiConfig.tools.some((t) => t.type === "web_search" || t.type === "x_search");
 
-  let workspaceServerSnapshot: string | null = null;
-  let workspacePreload: WorkspaceSnapshotPreload | null = null;
-  if (hasXfinanceTool) {
-    try {
-      workspacePreload = await loadWorkspaceSnapshotPreload({
-        userId: session.userId,
-        tenantId: session.tenantId
-      });
-      workspaceServerSnapshot = workspacePreload
-        ? formatWorkspaceServerSnapshotBlock(workspacePreload)
-        : null;
-    } catch (error) {
-      console.warn("[xchat/ask] workspace server snapshot failed (non-fatal)", {
-        userId: session.userId,
-        message: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
-
   const useRemoteConversationHistory =
     isXchatRemoteHistoryEnabled() && persona?.keepXchatHistory !== false;
   let previousResponseId: string | undefined;
@@ -522,7 +498,7 @@ export async function POST(request: Request) {
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,
     recentHistoryBlock: null,
-    workspaceSnapshot: workspaceServerSnapshot,
+    workspaceSnapshot: null,
     sessionToolInstructions: buildSessionToolInstructions({
       hostedSearch: hasHostedSearchTool,
       atxFunction: hasXfinanceTool
@@ -560,7 +536,14 @@ export async function POST(request: Request) {
       ? createXfinanceToolExecutor({
           userId: session.userId,
           tenantId: session.tenantId,
-          workspacePreload: hasXfinanceTool ? workspacePreload : undefined
+          ...(hasXfinanceTool
+            ? {
+                workspaceLazyLoad: {
+                  userId: session.userId,
+                  tenantId: session.tenantId
+                }
+              }
+            : {})
         })
       : async () => ({
           result: "",

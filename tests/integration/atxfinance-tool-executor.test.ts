@@ -26,6 +26,15 @@ vi.mock("@/modules/xchat/tool-cache", () => ({
   deleteCachedToolResult: vi.fn()
 }));
 
+const workspaceLoadMocks = vi.hoisted(() => ({
+  loadWorkspaceSnapshotPreload: vi.fn()
+}));
+
+vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xchat/workspace-snapshot-for-prompt")>();
+  return { ...actual, loadWorkspaceSnapshotPreload: workspaceLoadMocks.loadWorkspaceSnapshotPreload };
+});
+
 import {
     ATXFINANCE_TOOL_DEFINITION,
     createXfinanceToolExecutor
@@ -37,6 +46,8 @@ describe("atxfinance tool executor", () => {
   const accountId = new ObjectId();
 
   beforeEach(() => {
+    workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockReset();
+    workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
     repositoryMocks.getDefaultPortfolio.mockResolvedValue({
       _id: portfolioId,
       name: "Default Portfolio",
@@ -554,5 +565,130 @@ describe("atxfinance tool executor", () => {
     repositoryMocks.listPortfolioAccounts.mockClear();
     await executor("atx_function", { operation: "portfolio_summary" });
     expect(repositoryMocks.listPortfolioAccounts).toHaveBeenCalled();
+  });
+
+  it("workspaceLazyLoad: loads snapshot once on first short-circuit op and reuses it", async () => {
+    const preload = {
+      promptJson: {
+        loadedAt: "2026-01-01T00:00:00.000Z",
+        workspaceContentRev: 0,
+        portfolio: {
+          id: portfolioId.toHexString(),
+          name: "LazyP",
+          isDefault: true,
+          totalPositionCount: 2
+        },
+        accounts: [
+          {
+            accountId: accountId.toHexString(),
+            name: "Default Account",
+            type: "fidelity",
+            extAccountId: "ext_account_xref",
+            isDefault: true,
+            cashBalance: 25_000,
+            positionCount: 2
+          }
+        ],
+        positionsPreview: [],
+        positionsPreviewTruncated: false,
+        positionsOmittedCount: 0,
+        watchlist: {
+          name: "WL",
+          riskProfile: null,
+          outlook: null,
+          symbols: [{ symbol: "TSLA", addedAt: "2026-01-02T00:00:00.000Z" }]
+        }
+      },
+      positionsFull: [
+        { symbol: "TSLA", qty: 10, avgCost: 200, accountId: accountId.toHexString() },
+        { symbol: "AMD", qty: 5, avgCost: 90, accountId: accountId.toHexString() }
+      ]
+    };
+    workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(preload);
+    const executor = createXfinanceToolExecutor({
+      ...ctx,
+      workspaceLazyLoad: { userId: ctx.userId, tenantId: ctx.tenantId }
+    });
+    const out1 = await executor("atx_function", { operation: "portfolio_summary" });
+    expect(workspaceLoadMocks.loadWorkspaceSnapshotPreload).toHaveBeenCalledTimes(1);
+    expect(workspaceLoadMocks.loadWorkspaceSnapshotPreload).toHaveBeenCalledWith({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId
+    });
+    expect(repositoryMocks.listPortfolioAccounts).not.toHaveBeenCalled();
+    const j1 = JSON.parse(out1.result) as { name: string };
+    expect(j1.name).toBe("LazyP");
+
+    workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockClear();
+    const out2 = await executor("atx_function", { operation: "portfolio_summary" });
+    expect(workspaceLoadMocks.loadWorkspaceSnapshotPreload).not.toHaveBeenCalled();
+    const j2 = JSON.parse(out2.result) as { name: string };
+    expect(j2.name).toBe("LazyP");
+  });
+
+  it("workspaceLazyLoad: does not load snapshot for market_quote before a short-circuit op", async () => {
+    marketDataMocks.getYahooMarketQuote.mockResolvedValueOnce({
+      symbol: "SPY",
+      price: 500,
+      source: "yahoo-finance2",
+      disclaimer: "market disclaimer"
+    });
+    const executor = createXfinanceToolExecutor({
+      ...ctx,
+      workspaceLazyLoad: { userId: ctx.userId, tenantId: ctx.tenantId }
+    });
+    await executor("atx_function", { operation: "market_quote", symbol: "SPY" });
+    expect(workspaceLoadMocks.loadWorkspaceSnapshotPreload).not.toHaveBeenCalled();
+  });
+
+  it("workspaceLazyLoad: invalidates after watchlist_add_symbols so next portfolio_summary hits Mongo", async () => {
+    const preload = {
+      promptJson: {
+        loadedAt: "2026-01-01T00:00:00.000Z",
+        workspaceContentRev: 0,
+        portfolio: {
+          id: portfolioId.toHexString(),
+          name: "LazyP",
+          isDefault: true,
+          totalPositionCount: 1
+        },
+        accounts: [
+          {
+            accountId: accountId.toHexString(),
+            name: "Default Account",
+            type: "fidelity",
+            extAccountId: "ext_account_xref",
+            isDefault: true,
+            cashBalance: 25_000,
+            positionCount: 1
+          }
+        ],
+        positionsPreview: [],
+        positionsPreviewTruncated: false,
+        positionsOmittedCount: 0,
+        watchlist: {
+          name: "WL",
+          riskProfile: null,
+          outlook: null,
+          symbols: [{ symbol: "TSLA", addedAt: "2026-01-02T00:00:00.000Z" }]
+        }
+      },
+      positionsFull: [{ symbol: "TSLA", qty: 10, avgCost: 200, accountId: accountId.toHexString() }]
+    };
+    workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(preload);
+    const executor = createXfinanceToolExecutor({
+      ...ctx,
+      workspaceLazyLoad: { userId: ctx.userId, tenantId: ctx.tenantId }
+    });
+    await executor("atx_function", { operation: "portfolio_summary" });
+    expect(workspaceLoadMocks.loadWorkspaceSnapshotPreload).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listPortfolioAccounts).not.toHaveBeenCalled();
+
+    await executor("atx_function", { operation: "watchlist_add_symbols", symbols: ["AMD"] });
+
+    repositoryMocks.listPortfolioAccounts.mockClear();
+    await executor("atx_function", { operation: "portfolio_summary" });
+    expect(repositoryMocks.listPortfolioAccounts).toHaveBeenCalled();
+    expect(workspaceLoadMocks.loadWorkspaceSnapshotPreload).toHaveBeenCalledTimes(1);
   });
 });

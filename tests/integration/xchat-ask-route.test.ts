@@ -86,6 +86,7 @@ vi.mock("@/lib/xai-default-persona-model", () => ({
 }));
 
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
+import * as toolExecutorModule from "@/modules/xchat/tool-executor";
 
 function buildPersona(overrides?: Record<string, unknown>) {
   return {
@@ -805,28 +806,8 @@ describe("xchat ask route collection retrieval", () => {
     expect(toolLoopArg?.systemPrompt ?? "").toContain("Hosted search (web_search / x_search):");
   });
 
-  it("injects server workspace snapshot before model when atx_function tool is active", async () => {
-    workspaceSnapshotMocks.loadWorkspaceSnapshotPreload.mockResolvedValueOnce({
-      promptJson: {
-        loadedAt: "2026-01-01T00:00:00.000Z",
-        workspaceContentRev: 0,
-        portfolio: {
-          id: "p1",
-          name: "Main",
-          isDefault: true,
-          totalPositionCount: 0
-        },
-        accounts: [],
-        positionsPreview: [],
-        positionsPreviewTruncated: false,
-        positionsOmittedCount: 0,
-        watchlist: { error: "no_watchlist" as const }
-      },
-      positionsFull: []
-    });
-    workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock.mockReturnValueOnce(
-      "Workspace snapshot (loaded server-side for this request; SNAPSHOT_TEST_MARKER"
-    );
+  it("does not preload workspace snapshot on ask when atx_function is active; wires lazy executor context", async () => {
+    const createSpy = vi.spyOn(toolExecutorModule, "createXfinanceToolExecutor");
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         xapi: {
@@ -848,26 +829,37 @@ describe("xchat ask route collection retrieval", () => {
       })
     );
 
-    const response = await postAsk(
-      new Request("http://test/api/xchat/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: "summarize my workspace"
+    try {
+      const response = await postAsk(
+        new Request("http://test/api/xchat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: "summarize my workspace"
+          })
         })
-      })
-    );
+      );
 
-    expect(response.status).toBe(200);
-    expect(workspaceSnapshotMocks.loadWorkspaceSnapshotPreload).toHaveBeenCalledWith({
-      userId: "507f1f77bcf86cd799439011",
-      tenantId: "507f1f77bcf86cd799439022"
-    });
-    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
-      expect.objectContaining({
-        systemPrompt: expect.stringContaining("SNAPSHOT_TEST_MARKER")
-      })
-    );
+      expect(response.status).toBe(200);
+      expect(workspaceSnapshotMocks.loadWorkspaceSnapshotPreload).not.toHaveBeenCalled();
+      const toolLoopArg = xaiMocks.respondWithXaiToolLoop.mock.calls[0]?.[0] as {
+        systemPrompt?: string;
+      };
+      expect(toolLoopArg?.systemPrompt ?? "").not.toContain("Workspace snapshot");
+      expect(toolLoopArg?.systemPrompt ?? "").toContain("atx_function");
+      const ctx = createSpy.mock.calls[0]?.[0];
+      expect(ctx).toMatchObject({
+        userId: "507f1f77bcf86cd799439011",
+        tenantId: "507f1f77bcf86cd799439022",
+        workspaceLazyLoad: {
+          userId: "507f1f77bcf86cd799439011",
+          tenantId: "507f1f77bcf86cd799439022"
+        }
+      });
+      expect(ctx?.workspacePreload).toBeUndefined();
+    } finally {
+      createSpy.mockRestore();
+    }
   });
 
   it("prefers request persona over assigned when sidebar persona differs for app_user", async () => {
