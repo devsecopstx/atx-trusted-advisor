@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     buildRateLimitHeaders,
     checkDistributedRateLimit,
@@ -27,10 +26,6 @@ const guestAccessRequestSchema = z.object({
 const ACCESS_REQUEST_PUBLIC_POLICY = getBffRouteRateLimitPolicy("access_requests_public_create");
 
 export async function POST(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
   const limit = await checkDistributedRateLimit({
     key: `access-requests:public:${extractClientRateLimitKey(request)}`,
     windowMs: ACCESS_REQUEST_PUBLIC_POLICY.windowMs,

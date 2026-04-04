@@ -21,6 +21,7 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 ## Access requests and feedback
 
 - `POST /api/access-requests`
+- `POST /api/access-requests/public`
 - `POST /api/user-feedback`
 
 ## Admin access requests
@@ -100,6 +101,11 @@ Admin portfolio routes include:
 
 - `GET /api/strategy-options/expirations`
 - `GET /api/strategy-options`
+
+## Billing / payments
+
+- `POST /api/billing/checkout-session`
+- `POST /api/webhooks/stripe` — Stripe webhook receiver (`checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`)
 
 ## Product pages and redirects (Next.js)
 

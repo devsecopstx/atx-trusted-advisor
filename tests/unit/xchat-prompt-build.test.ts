@@ -29,6 +29,12 @@ describe("buildSessionToolInstructions", () => {
     expect(s).toContain("NL (natural language)");
     expect(s).toContain("strategy jobs");
   });
+
+  it("requires full watchlist enumeration with target entry prices", () => {
+    const s = buildSessionToolInstructions({ hostedSearch: false, atxFunction: true });
+    expect(s).toContain("target entry price");
+    expect(s).toContain("enumerate **every symbol returned**");
+  });
 });
 
 describe("buildXchatSystemPrompt", () => {

@@ -792,11 +792,21 @@ export function XchatConversation({
     }
 
     try {
-      const askBody: { message: string; scope: string; threadId: string; personaId?: string } = {
+      const askBody: {
+        message: string;
+        scope: string;
+        threadId: string;
+        portfolioId?: string;
+        personaId?: string;
+      } = {
         message: prompt,
         scope: "global",
         threadId
       };
+      const normalizedWorkspacePortfolioId = workspacePortfolioId?.trim();
+      if (normalizedWorkspacePortfolioId) {
+        askBody.portfolioId = normalizedWorkspacePortfolioId;
+      }
       const effectivePersonaPick = selectedPersonaId.trim();
       if (effectivePersonaPick) {
         askBody.personaId = effectivePersonaPick;

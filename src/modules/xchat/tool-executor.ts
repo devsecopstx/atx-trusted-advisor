@@ -3,6 +3,7 @@ import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     ensurePortfolioWatchlistForUser,
     getDefaultPortfolio,
+    getPortfolioByIdForSessionUser,
     getPortfolioWatchlist,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
@@ -58,13 +59,15 @@ const PRELOAD_SHORT_CIRCUIT_OPS = new Set([
 ]);
 
 function watchlistSymbolToJson(s: WatchlistSymbol) {
+  const hasEntryPrice = s.entryPrice !== undefined;
   return {
     symbol: s.symbol,
     addedAt: s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt),
     ...(s.lineType !== undefined ? { lineType: s.lineType } : {}),
     ...(s.strategy !== undefined ? { strategy: s.strategy } : {}),
     ...(s.quantity !== undefined ? { quantity: s.quantity } : {}),
-    ...(s.entryPrice !== undefined ? { entryPrice: s.entryPrice } : {})
+    ...(hasEntryPrice ? { entryPrice: s.entryPrice } : {}),
+    ...(hasEntryPrice ? { targetEntryPrice: s.entryPrice } : {})
   };
 }
 
@@ -94,10 +97,19 @@ function watchlistSnapshotFromWorkspacePreload(p: WorkspaceSnapshotPreload): Rec
   if ("error" in wl) {
     return { error: "no_watchlist" as const };
   }
+  const symbols = wl.symbols.map((s) => {
+    if (s.entryPrice === undefined) {
+      return s;
+    }
+    return {
+      ...s,
+      targetEntryPrice: s.entryPrice
+    };
+  });
   return {
     name: wl.name,
-    symbolCount: wl.symbols.length,
-    symbols: wl.symbols
+    symbolCount: symbols.length,
+    symbols
   };
 }
 
@@ -130,6 +142,7 @@ function parseTickerListFromArgs(args: Record<string, unknown>, max: number): st
 export type XfinanceToolExecutorContext = {
   userId: string;
   tenantId?: string;
+  workspacePortfolioId?: string | null;
   /**
    * Eager preload (tests, batch, or explicit opt-in). When this key is present (including `null`),
    * lazy load is disabled.
@@ -147,6 +160,17 @@ type ExecutorContext = XfinanceToolExecutorContext;
 async function getDefaultPortfolioOrProvision(
   ctx: ExecutorContext
 ): Promise<Awaited<ReturnType<typeof getDefaultPortfolio>>> {
+  const requestedPortfolioId = ctx.workspacePortfolioId?.trim();
+  if (requestedPortfolioId) {
+    const selected = await getPortfolioByIdForSessionUser({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      portfolioId: requestedPortfolioId
+    });
+    if (selected?._id) {
+      return selected;
+    }
+  }
   const existing = await getDefaultPortfolio(ctx.userId, { tenantId: ctx.tenantId });
   if (existing?._id) {
     return existing;
@@ -179,7 +203,10 @@ function positionCountsByAccountId(
   return counts;
 }
 
-function buildOperations(invalidateWorkspacePreload: () => void): Record<string, OperationHandler> {
+function buildOperations(
+  invalidateWorkspacePreload: () => void,
+  cacheScopeKey: string
+): Record<string, OperationHandler> {
   return {
     portfolio_summary: async (_args, ctx) => {
       const portfolio = await getDefaultPortfolioOrProvision(ctx);
@@ -287,8 +314,8 @@ function buildOperations(invalidateWorkspacePreload: () => void): Record<string,
       }
       const updated = await mutatePortfolioWatchlistSymbols(mutateInput);
       invalidateWorkspacePreload();
-      deleteCachedToolResult(ctx.userId, "watchlist_snapshot");
-      deleteCachedToolResult(ctx.userId, "account_health");
+      deleteCachedToolResult(ctx.userId, "watchlist_snapshot", cacheScopeKey);
+      deleteCachedToolResult(ctx.userId, "account_health", cacheScopeKey);
       if (!updated) {
         return { error: "no_watchlist" };
       }
@@ -331,8 +358,8 @@ function buildOperations(invalidateWorkspacePreload: () => void): Record<string,
         removeSymbols: toRemove
       });
       invalidateWorkspacePreload();
-      deleteCachedToolResult(ctx.userId, "watchlist_snapshot");
-      deleteCachedToolResult(ctx.userId, "account_health");
+      deleteCachedToolResult(ctx.userId, "watchlist_snapshot", cacheScopeKey);
+      deleteCachedToolResult(ctx.userId, "account_health", cacheScopeKey);
       if (!updated) {
         return { error: "no_watchlist" };
       }
@@ -518,6 +545,7 @@ function tryPreloadResult(
 }
 
 export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): ToolExecutor {
+  const cacheScopeKey = ctx.workspacePortfolioId?.trim() || "default_portfolio";
   const lazyEnabled =
     ctx.workspaceLazyLoad != null && ctx.workspacePreload === undefined;
 
@@ -545,7 +573,7 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
     preloadValid = false;
   };
 
-  const operations = buildOperations(invalidateWorkspacePreload);
+  const operations = buildOperations(invalidateWorkspacePreload, cacheScopeKey);
 
   return async (name: string, args: Record<string, unknown>) => {
     const operation =
@@ -574,7 +602,7 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
     }
 
     if (CACHEABLE_OPERATIONS.has(operation)) {
-      const cached = getCachedToolResult(ctx.userId, operation);
+      const cached = getCachedToolResult(ctx.userId, operation, cacheScopeKey);
       if (cached) {
         return { result: cached };
       }
@@ -585,7 +613,7 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
     const output = truncateOutput(serialized);
 
     if (CACHEABLE_OPERATIONS.has(operation)) {
-      setCachedToolResult(ctx.userId, operation, output);
+      setCachedToolResult(ctx.userId, operation, output, undefined, cacheScopeKey);
     }
 
     return { result: output };

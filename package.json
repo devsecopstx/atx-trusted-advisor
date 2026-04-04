@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "2.10.19",
+  "version": "2.10.22",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -70,6 +70,8 @@
     "ops:secrets:sync-mongodb:prod": "bash scripts/ops/sync-mongodb-uri-secret-from-env.sh .env.prod",
     "ops:secrets:sync-stripe-publishable:staging": "bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.stage",
     "ops:secrets:sync-stripe-publishable:prod": "bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.prod",
+    "ops:secrets:sync-stripe-webhook:staging": "bash scripts/ops/sync-stripe-webhook-secret-from-env.sh .env.stage",
+    "ops:secrets:sync-stripe-webhook:prod": "bash scripts/ops/sync-stripe-webhook-secret-from-env.sh .env.prod",
     "ops:secrets:sync-desk-smtp:staging": "bash scripts/ops/sync-desk-smtp-secrets-from-env.sh .env.stage",
     "ops:secrets:sync-desk-smtp:prod": "bash scripts/ops/sync-desk-smtp-secrets-from-env.sh .env.prod",
     "ops:secrets:sync-google-oauth:staging": "bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.stage",

@@ -4,20 +4,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-payoff-chart";
 import { XoptionsReviewOrderSummaryBar } from "@/app/xoptions/xoptions-review-order-summary-bar";
+import type { StrategyChoiceId } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import {
-  addCalendarDaysUtc,
-  chainRowMoneynessClass,
-  closestStrikeToSpot,
-  filterStrikesBySpotBand,
-  formatImpliedVolatilityDisplay,
-  pickExpirationOnOrAfter,
-  sliceStrikesAroundSpot,
-  STRIKE_SPOT_BAND_PCT
+    addCalendarDaysUtc,
+    chainRowMoneynessClass,
+    closestStrikeToSpot,
+    filterStrikesBySpotBand,
+    formatImpliedVolatilityDisplay,
+    pickExpirationOnOrAfter,
+    sliceStrikesAroundSpot,
+    STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
 import {
-  buildXoptionsOrderReview,
-  formatXoptionsOrderReviewPlainText,
-  XOPTIONS_REVIEW_ORDER_FOOTNOTE
+    buildXoptionsOrderReview,
+    formatXoptionsOrderReviewPlainText,
+    XOPTIONS_REVIEW_ORDER_FOOTNOTE,
+    type XoptionsOpeningAction
 } from "@/lib/xoptions/xoptions-order-preview";
 
 type ChainLeg = {
@@ -98,9 +100,30 @@ export type XoptionsChooseContractProps = {
   lastPrice: number | null;
   /** Step 3 strategy label — included in Review order preview text. */
   strategyLabel?: string | null;
+  /** Step 3 strategy selection — used to align default side + opening action in review copy. */
+  strategyChoiceId?: StrategyChoiceId | null;
   /** Plain-text Review order for xChat handoff; `null` when preview unavailable. */
   onReviewOrderPlainTextChange?: (text: string | null) => void;
 };
+
+function strategyDefaults(input: StrategyChoiceId | null | undefined): {
+  side: "call" | "put";
+  openingAction: XoptionsOpeningAction;
+} | null {
+  switch (input) {
+    case "covered-call":
+    case "buy-write":
+      return { side: "call", openingAction: "sell_to_open" };
+    case "cash-secured-put":
+    case "short-put-spread":
+      return { side: "put", openingAction: "sell_to_open" };
+    case "long-call":
+    case "long-call-spread":
+      return { side: "call", openingAction: "buy_to_open" };
+    default:
+      return null;
+  }
+}
 
 function ChainSkeleton() {
   return (
@@ -140,6 +163,7 @@ export function XoptionsChooseContract({
   onWeeksChange,
   lastPrice,
   strategyLabel = null,
+  strategyChoiceId = null,
   onReviewOrderPlainTextChange
 }: XoptionsChooseContractProps) {
   const u = symbol.trim().toUpperCase();
@@ -156,6 +180,10 @@ export function XoptionsChooseContract({
   const [selectedStrike, setSelectedStrike] = useState<number | null>(null);
   const [limitPrice, setLimitPrice] = useState("");
   const [quantity, setQuantity] = useState("");
+  const strategyDefaultsResolved = useMemo(
+    () => strategyDefaults(strategyChoiceId),
+    [strategyChoiceId]
+  );
 
   const chainTableScrollRef = useRef<HTMLDivElement>(null);
   const sideRef = useRef(side);
@@ -170,6 +198,13 @@ export function XoptionsChooseContract({
     setShowAllStrikes(false);
     setError(null);
   }, [u]);
+
+  useEffect(() => {
+    if (!strategyDefaultsResolved) {
+      return;
+    }
+    setSide(strategyDefaultsResolved.side);
+  }, [strategyDefaultsResolved]);
 
   useEffect(() => {
     if (!u) {
@@ -361,6 +396,7 @@ export function XoptionsChooseContract({
       symbol: u,
       expirationYyyyMmDd: expiration,
       side,
+      openingAction: strategyDefaultsResolved?.openingAction ?? "buy_to_open",
       strike: selectedStrike,
       limitPrice: limitPrice.trim(),
       quantity: quantity.trim(),
@@ -368,7 +404,18 @@ export function XoptionsChooseContract({
       impliedVolatilityPercent: leg?.implied_volatility,
       strategyLabel
     });
-  }, [dataReady, chain, selectedStrike, expiration, side, limitPrice, quantity, u, strategyLabel]);
+  }, [
+    dataReady,
+    chain,
+    selectedStrike,
+    expiration,
+    side,
+    strategyDefaultsResolved,
+    limitPrice,
+    quantity,
+    u,
+    strategyLabel
+  ]);
 
   useEffect(() => {
     onReviewOrderPlainTextChange?.(

@@ -125,4 +125,43 @@ describe("buildXoptionsOrderReview", () => {
     expect(r.narrative).toContain("buying 1 TSLA put ");
     expect(r.narrative).toContain("Strategy context: Long put.");
   });
+
+  it("builds covered-call review copy as sell-to-open credit narrative", () => {
+    const r = buildXoptionsOrderReview({
+      symbol: "RDW",
+      expirationYyyyMmDd: "2026-04-10",
+      side: "call",
+      openingAction: "sell_to_open",
+      strike: 10,
+      limitPrice: "0.45",
+      quantity: "10",
+      spot: 9.2,
+      impliedVolatilityPercent: 52,
+      strategyLabel: "Sell covered calls"
+    });
+    expect(r.narrative).toContain("selling 10 RDW calls to open");
+    expect(r.narrative).toContain("maximum credit of $450.00");
+    expect(r.narrative).toContain("Potential earning: 4.5% of secured notional ($10,000.00).");
+    expect(r.narrative).toContain("If assigned, you may be obligated to sell 1,000 shares of RDW");
+    expect(r.narrative).toContain("Strategy context: Sell covered calls.");
+    expect(r.narrative).not.toContain("You are buying");
+    expect(r.narrative).not.toContain("maximum debit");
+  });
+
+  it("calculates potential earning percent for covered-call credit example", () => {
+    const r = buildXoptionsOrderReview({
+      symbol: "RDW",
+      expirationYyyyMmDd: "2026-04-10",
+      side: "call",
+      openingAction: "sell_to_open",
+      strike: 9.5,
+      limitPrice: "0.65",
+      quantity: "15",
+      spot: 9.2,
+      impliedVolatilityPercent: 42,
+      strategyLabel: "Sell covered calls"
+    });
+    expect(r.narrative).toContain("maximum credit of $975.00");
+    expect(r.narrative).toContain("Potential earning: 6.8% of secured notional ($14,250.00).");
+  });
 });

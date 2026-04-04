@@ -14,11 +14,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const holdingsRaw = searchParams.get("holdingsLimit");
   const hotRaw = searchParams.get("hotLimit");
+  const accountIdRaw = searchParams.get("accountId");
   const holdingsLimit = holdingsRaw ? parseInt(holdingsRaw, 10) : 12;
   const hotLimit = hotRaw ? parseInt(hotRaw, 10) : 3;
   const h = Number.isFinite(holdingsLimit) ? holdingsLimit : 12;
   const t = Number.isFinite(hotLimit) ? hotLimit : 3;
+  const accountId = accountIdRaw?.trim() ? accountIdRaw.trim() : null;
 
-  const payload = await getFindOptionsBootstrap(session, { holdingsLimit: h, hotLimit: t });
+  const payload = await getFindOptionsBootstrap(session, { holdingsLimit: h, hotLimit: t, accountId });
   return NextResponse.json({ data: payload });
 }

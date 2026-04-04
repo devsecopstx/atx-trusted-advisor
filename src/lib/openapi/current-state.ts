@@ -116,6 +116,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "billing"
   },
   {
+    path: "/api/webhooks/stripe",
+    operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
+    tag: "billing"
+  },
+  {
     path: "/api/market/symbol-quotes",
     operations: [{ method: "GET", auth: "session" }],
     tag: "market"

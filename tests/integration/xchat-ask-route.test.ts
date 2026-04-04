@@ -64,6 +64,10 @@ const workspaceSnapshotMocks = vi.hoisted(() => ({
   formatWorkspaceServerSnapshotBlock: vi.fn()
 }));
 
+const symbolLookupMocks = vi.hoisted(() => ({
+  lookupSymbols: vi.fn()
+}));
+
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/xai", () => xaiMocks);
 vi.mock("@/modules/xchat/ask-usage-limits", () => usageLimitMocks);
@@ -80,6 +84,9 @@ vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", () => ({
   loadWorkspaceSnapshotPreload: workspaceSnapshotMocks.loadWorkspaceSnapshotPreload,
   formatWorkspaceServerSnapshotBlock: workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock
+}));
+vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
+  lookupSymbols: symbolLookupMocks.lookupSymbols
 }));
 
 vi.mock("@/lib/xai-default-persona-model", () => ({
@@ -166,6 +173,7 @@ describe("xchat ask route collection retrieval", () => {
     });
     workspaceSnapshotMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
     workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock.mockReturnValue("");
+    symbolLookupMocks.lookupSymbols.mockResolvedValue(new Map());
   });
 
   it("preprocesses assistant markdown on the server before JSON and xchat_logs", async () => {
@@ -837,7 +845,8 @@ describe("xchat ask route collection retrieval", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            message: "summarize my workspace"
+            message: "summarize my workspace",
+            portfolioId: "507f1f77bcf86cd799439044"
           })
         })
       );
@@ -853,9 +862,11 @@ describe("xchat ask route collection retrieval", () => {
       expect(ctx).toMatchObject({
         userId: "507f1f77bcf86cd799439011",
         tenantId: "507f1f77bcf86cd799439022",
+        workspacePortfolioId: "507f1f77bcf86cd799439044",
         workspaceLazyLoad: {
           userId: "507f1f77bcf86cd799439011",
-          tenantId: "507f1f77bcf86cd799439022"
+          tenantId: "507f1f77bcf86cd799439022",
+          workspacePortfolioId: "507f1f77bcf86cd799439044"
         }
       });
       expect(ctx?.workspacePreload).toBeUndefined();
@@ -1275,5 +1286,89 @@ describe("xchat ask route collection retrieval", () => {
         )
       })
     );
+  });
+
+  it("re-detects strategy intent in a new thread after opt-out in a previous thread", async () => {
+    repositoryMocks.getLatestXchatLogByThread.mockResolvedValueOnce(null);
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          threadId: "thread_fresh_2",
+          message: "covered call ideas for RDW"
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data?: { strategyJobOffer?: boolean } };
+    expect(payload.data?.strategyJobOffer).toBe(true);
+    expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+  });
+
+  it("serves show-my-watchlist via direct atx_function snapshot and enumerates all symbols", async () => {
+    const createSpy = vi.spyOn(toolExecutorModule, "createXfinanceToolExecutor");
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
+      buildPersona({
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "atx_function" }]
+        }
+      })
+    );
+    createSpy.mockReturnValueOnce(
+      (async () => ({
+        result: JSON.stringify({
+          name: "Default Watchlist",
+          symbolCount: 2,
+          symbols: [
+            {
+              symbol: "TSLA",
+              addedAt: "2026-04-04T13:33:24.903Z"
+            },
+            {
+              symbol: "NVDA",
+              addedAt: "2026-04-04T13:51:00.000Z",
+              targetEntryPrice: 120.5
+            }
+          ]
+        })
+      })) as never
+    );
+    symbolLookupMocks.lookupSymbols.mockResolvedValueOnce(
+      new Map<string, { price?: number }>([
+        ["TSLA", { price: 251.23 }],
+        ["NVDA", { price: 120.5 }]
+      ])
+    );
+    try {
+      const response = await postAsk(
+        new Request("http://test/api/xchat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: "show my watchlist",
+            portfolioId: "507f1f77bcf86cd799439044"
+          })
+        })
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as { data?: { response?: string; model?: string } };
+      expect(payload.data?.model).toBe("watchlist_snapshot_direct");
+      expect(payload.data?.response ?? "").toContain("TSLA");
+      expect(payload.data?.response ?? "").toContain("NVDA");
+      expect(payload.data?.response ?? "").toContain("target entry: 25,123");
+      expect(payload.data?.response ?? "").toContain("target entry: 12,050");
+      expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspacePortfolioId: "507f1f77bcf86cd799439044"
+        })
+      );
+    } finally {
+      createSpy.mockRestore();
+    }
   });
 });

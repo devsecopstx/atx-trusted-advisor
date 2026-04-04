@@ -8,6 +8,7 @@ import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prom
 
 import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
+import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
 import { XoptionsChooseContract } from "@/app/xoptions/xoptions-choose-contract";
 import {
     StrategyChoicePanels,
@@ -58,6 +59,7 @@ type ContextPayload = {
     riskProfile: "conservative" | "balanced" | "growth" | null;
     outlook: AccountOutlook | null;
     optionsApproved: boolean;
+    cashBalance: number | null;
   };
   bookOutlook: AccountOutlook | null;
   bookRiskProfile: "conservative" | "balanced" | "growth" | null;
@@ -70,6 +72,8 @@ type HoldingRow = {
   shares: number;
   lastPrice: number | null;
 };
+
+type AtGlanceHoldingRow = HoldingRow & { isCash?: boolean };
 
 type HotRow = {
   symbol: string;
@@ -167,6 +171,12 @@ export function XoptionsStrategyBuilderWorkspace() {
   const onReviewOrderPlainTextChange = useCallback((t: string | null) => {
     setReviewOrderPlainText(t);
   }, []);
+  const accountIds = useMemo(() => ctx?.accounts.map((row) => row.id) ?? [], [ctx?.accounts]);
+  const selectedWorkspaceAccountId = useWorkspaceAccountSelection(
+    ctx?.portfolio?.id,
+    accountIds,
+    ctx?.account?.id ?? null
+  );
 
   const handleAskXchat = useCallback(() => {
     const t = reviewOrderPlainText?.trim();
@@ -180,9 +190,17 @@ export function XoptionsStrategyBuilderWorkspace() {
     router.push("/xchat");
   }, [reviewOrderPlainText, router]);
 
-  const loadWorkspace = useCallback(async () => {
+  const loadWorkspace = useCallback(async (accountId?: string | null) => {
     setCtxErr(null);
-    const res = await fetch("/api/app-user/find-options/bootstrap?holdingsLimit=12&hotLimit=3", {
+    const params = new URLSearchParams({
+      holdingsLimit: "12",
+      hotLimit: "3"
+    });
+    const normalizedAccountId = accountId?.trim();
+    if (normalizedAccountId) {
+      params.set("accountId", normalizedAccountId);
+    }
+    const res = await fetch(`/api/app-user/find-options/bootstrap?${params.toString()}`, {
       credentials: "include"
     });
     if (!res.ok) {
@@ -210,7 +228,11 @@ export function XoptionsStrategyBuilderWorkspace() {
         name: d.account?.name ?? "Account",
         riskProfile: d.account?.riskProfile ?? null,
         outlook: d.account?.outlook ?? null,
-        optionsApproved: Boolean(d.account?.optionsApproved)
+        optionsApproved: Boolean(d.account?.optionsApproved),
+        cashBalance:
+          typeof d.account?.cashBalance === "number" && Number.isFinite(d.account.cashBalance)
+            ? d.account.cashBalance
+            : null
       },
       bookOutlook: d.bookOutlook ?? null,
       bookRiskProfile: d.bookRiskProfile ?? null,
@@ -230,6 +252,19 @@ export function XoptionsStrategyBuilderWorkspace() {
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
+
+  useEffect(() => {
+    if (!ctx?.portfolio?.id) {
+      return;
+    }
+    if (!selectedWorkspaceAccountId) {
+      return;
+    }
+    if (ctx.account.id === selectedWorkspaceAccountId) {
+      return;
+    }
+    void loadWorkspace(selectedWorkspaceAccountId);
+  }, [ctx?.account.id, ctx?.portfolio?.id, loadWorkspace, selectedWorkspaceAccountId]);
 
   useEffect(() => {
     if (!ctx?.scoringFactors?.length) {
@@ -330,6 +365,20 @@ export function XoptionsStrategyBuilderWorkspace() {
   }, [ctx?.bookRiskProfile, riskOverride, workspaceDeskAccount?.riskProfile]);
 
   const effectiveFactors = useMemo(() => factorWeights, [factorWeights]);
+  const atGlanceHoldings = useMemo<AtGlanceHoldingRow[]>(() => {
+    const rows: AtGlanceHoldingRow[] = [...holdings];
+    const cash = ctx?.account?.cashBalance;
+    if (typeof cash === "number" && Number.isFinite(cash) && cash >= 0) {
+      rows.unshift({
+        symbol: "CASH",
+        marketValue: cash,
+        shares: 0,
+        lastPrice: 1,
+        isCash: true
+      });
+    }
+    return rows;
+  }, [ctx?.account?.cashBalance, holdings]);
 
   const weightSum = useMemo(
     () => effectiveFactors.reduce((s, f) => s + f.weight, 0),
@@ -619,24 +668,39 @@ export function XoptionsStrategyBuilderWorkspace() {
                 <p className="xoptions-at-a-glance__title">Holdings</p>
                 <p className="xoptions-at-a-glance__sub">By value</p>
                 <ul className="xoptions-at-a-glance__list">
-                  {holdings.length === 0 ? (
+                  {atGlanceHoldings.length === 0 ? (
                     <li className="xoptions-at-a-glance__sub">None.</li>
                   ) : (
-                    holdings.map((row) => (
+                    atGlanceHoldings.map((row) => (
                       <li key={row.symbol}>
-                        <button
-                          type="button"
-                          className="xoptions-symbol-row xoptions-symbol-row--compact"
-                          onClick={() => {
-                            setSymbol(row.symbol);
-                            setActiveStep(1);
-                          }}
-                        >
-                          <span className="xoptions-symbol-row__sym">{row.symbol}</span>
-                          <span className="xoptions-symbol-row__meta">
-                            {row.lastPrice != null ? `$${row.lastPrice.toFixed(2)}` : "—"} · ${row.marketValue.toFixed(0)}
+                        {row.isCash ? (
+                          <span className="xoptions-symbol-row xoptions-symbol-row--compact">
+                            <span className="xoptions-symbol-row__sym">{row.symbol}</span>
+                            <span className="xoptions-symbol-row__meta">
+                              ${row.marketValue.toLocaleString("en-US", {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0
+                              })}
+                            </span>
                           </span>
-                        </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="xoptions-symbol-row xoptions-symbol-row--compact"
+                            onClick={() => {
+                              setSymbol(row.symbol);
+                              setActiveStep(1);
+                            }}
+                          >
+                            <span className="xoptions-symbol-row__sym">{row.symbol}</span>
+                            <span className="xoptions-symbol-row__meta">
+                              {row.shares.toLocaleString()} sh · ${row.marketValue.toLocaleString("en-US", {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0
+                              })}
+                            </span>
+                          </button>
+                        )}
                       </li>
                     ))
                   )}
@@ -871,6 +935,7 @@ export function XoptionsStrategyBuilderWorkspace() {
                 weeks={weeks}
                 onWeeksChange={setWeeks}
                 lastPrice={snapshot?.lastPrice ?? null}
+                strategyChoiceId={strategyChoiceId}
                 strategyLabel={strategyChoiceId ? strategyShortLabel(strategyChoiceId) : null}
                 onReviewOrderPlainTextChange={onReviewOrderPlainTextChange}
               />

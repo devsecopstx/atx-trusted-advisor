@@ -5,7 +5,7 @@ import { getFindOptionsContext } from "@/modules/find-options/find-options-servi
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+export async function GET() {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;

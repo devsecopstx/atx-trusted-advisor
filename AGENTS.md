@@ -60,6 +60,7 @@ After merging and deploying to production (or staging first):
 - `AUTH_SECRET`
 - `SLACK_WEBHOOK_URL`
 - `ADMIN_SEED_EMAIL`
+- `STRIPE_WEBHOOK_SECRET`
 
 ## Quick Health Checks
 
@@ -92,11 +93,12 @@ npm run ops:secrets:verify:prod
 
 **Staging** `ops:secrets:verify:staging` also requires **`GOOGLE_CLIENT_ID`** and **`GOOGLE_CLIENT_SECRET`** (Sign in with Google). Sync them with `npm run ops:secrets:sync-google-oauth:staging` (see `atx-docs/guides/deploy-and-ops.md`). **Production** default verify (`ops:secrets:verify:prod`) does **not** require Google secrets — use **`npm run ops:secrets:verify:prod:with-google-oauth`** once Sign-in with Google is enabled in prod and both secrets exist in the prod project.
 
-Push **Redis**, **Stripe publishable**, and (when using Google login) **Google OAuth** keys from `.env.stage` / `.env.prod` into the matching GCP project’s Secret Manager (see `.cursor/rules/sre-gcp-deployment.md`):
+Push **Redis**, **Stripe publishable + webhook**, and (when using Google login) **Google OAuth** keys from `.env.stage` / `.env.prod` into the matching GCP project’s Secret Manager (see `.cursor/rules/sre-gcp-deployment.md`):
 
 ```bash
 npm run ops:secrets:sync-redis:staging
 npm run ops:secrets:sync-stripe-publishable:staging
+npm run ops:secrets:sync-stripe-webhook:staging
 npm run ops:secrets:sync-google-oauth:staging
 # production: …:prod variants
 ```

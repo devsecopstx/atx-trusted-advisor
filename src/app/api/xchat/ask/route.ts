@@ -32,6 +32,7 @@ import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
+import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
@@ -77,6 +78,7 @@ import {
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
   threadId: z.string().trim().min(1).max(128).optional(),
+  portfolioId: z.string().trim().regex(/^[a-f\d]{24}$/i).optional(),
   personaId: z.string().optional(),
   reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]).optional(),
   scope: z.string().min(1).max(128).optional(),
@@ -122,6 +124,60 @@ function isStayInChatReply(message: string): boolean {
   );
 }
 
+function isDirectWatchlistRequest(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (
+    normalized.includes("add ") ||
+    normalized.includes("remove ") ||
+    normalized.includes("delete ") ||
+    normalized.includes("watchlist add") ||
+    normalized.includes("watchlist remove")
+  ) {
+    return false;
+  }
+  return (
+    normalized === "show my watchlist" ||
+    normalized === "my watchlist" ||
+    normalized.includes("show watchlist") ||
+    normalized.includes("show my watchlist") ||
+    normalized.includes("list my watchlist") ||
+    normalized.includes("what is in my watchlist")
+  );
+}
+
+function formatWatchlistAddedAt(isoLike: string | undefined): string {
+  if (!isoLike) {
+    return "unknown time";
+  }
+  const date = new Date(isoLike);
+  if (Number.isNaN(date.getTime())) {
+    return isoLike;
+  }
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short"
+  });
+}
+
+function formatDerivedTargetEntryFromQuote(value: unknown): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return "not set";
+  }
+  const derived = Math.round(value * 100);
+  return derived.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
+}
+
 export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
@@ -156,6 +212,7 @@ export async function POST(request: Request) {
 
   const { message } = parsed.data;
   const threadId = parsed.data.threadId?.trim() || undefined;
+  const workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
   const isAdminSession = isGlobalAdmin(session.roles);
   let subscriptionPlan: SubscriptionPlan | undefined;
   let limiterRemainingMinute: number | undefined;
@@ -540,6 +597,119 @@ export async function POST(request: Request) {
 
   const hasXfinanceTool = xapiConfig.tools.some((t) => isAtxFunctionToolType(t.type));
   const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
+
+  if (hasXfinanceTool && isDirectWatchlistRequest(message)) {
+    const executor = createXfinanceToolExecutor({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      workspacePortfolioId,
+      workspaceLazyLoad: {
+        userId: session.userId,
+        tenantId: session.tenantId,
+        workspacePortfolioId
+      }
+    });
+    const watchlistCallStartedAt = Date.now();
+    const watchlistToolResult = await executor("atx_function", { operation: "watchlist_snapshot" });
+    const watchlistCallDurationMs = Math.max(0, Date.now() - watchlistCallStartedAt);
+    let responseMarkdown = "I could not load your watchlist right now.";
+    let watchlistError = watchlistToolResult.error;
+
+    try {
+      const parsed = JSON.parse(watchlistToolResult.result) as {
+        error?: string;
+        name?: string;
+        symbolCount?: number;
+        symbols?: Array<{
+          symbol?: string;
+          addedAt?: string;
+          lineType?: string;
+          strategy?: string;
+          targetEntryPrice?: number;
+          entryPrice?: number;
+        }>;
+      };
+      if (parsed.error === "no_watchlist") {
+        responseMarkdown =
+          "No default watchlist is available yet. Open Watchlist in the app to create or import symbols.";
+      } else {
+        const rows = Array.isArray(parsed.symbols) ? parsed.symbols : [];
+        const cleanRows = rows.filter((row) => typeof row.symbol === "string" && row.symbol.trim().length > 0);
+        if (cleanRows.length === 0) {
+          responseMarkdown = `${parsed.name ?? "Your watchlist"} has no symbols yet.`;
+        } else {
+          const quoteMap = await lookupSymbols(
+            cleanRows.map((row) => String(row.symbol).trim().toUpperCase())
+          );
+          const header = `Your ${parsed.name ?? "watchlist"} has ${cleanRows.length} symbol${
+            cleanRows.length === 1 ? "" : "s"
+          }:`;
+          const lines = cleanRows.map((row) => {
+            const symbol = row.symbol!.trim().toUpperCase();
+            const added = formatWatchlistAddedAt(row.addedAt);
+            const quote = quoteMap.get(symbol);
+            const targetEntry = formatDerivedTargetEntryFromQuote(quote?.price);
+            return `- ${symbol} (added ${added}, target entry: ${targetEntry})`;
+          });
+          responseMarkdown = `${header}\n${lines.join("\n")}`;
+        }
+      }
+    } catch {
+      watchlistError = watchlistError ?? "watchlist_parse_failed";
+    }
+
+    const output = preprocessXchatMarkdown(responseMarkdown);
+    const chatLogId = await saveXChatLog({
+      threadId,
+      requestId,
+      correlationId,
+      userId,
+      tenantId: tenantId ?? undefined,
+      userEmail: session.email,
+      requestedBy: session.username,
+      personaId: persona?._id,
+      personaName: persona.name,
+      scope,
+      message,
+      response: output,
+      contextChunkIds: [],
+      model: "watchlist_snapshot_direct",
+      strategyJobOptOut,
+      xapiToolCalls: [
+        {
+          name: "atx_function",
+          args: { operation: "watchlist_snapshot" },
+          resultHash: buildSha256Hex(watchlistToolResult.result),
+          durationMs: watchlistCallDurationMs,
+          ...(watchlistError ? { error: watchlistError } : {})
+        }
+      ]
+    });
+
+    return NextResponse.json(
+      {
+        data: {
+          response: output,
+          model: "watchlist_snapshot_direct",
+          personaName: persona.name,
+          modelSelectionSource,
+          contextCount: 0,
+          contextSource: "none",
+          collectionSearchStatus: "skipped_no_collections",
+          collectionSearchNonReadyFileCount: 0,
+          logId: chatLogId.toHexString(),
+          toolCalls: [{ name: "atx_function", durationMs: watchlistCallDurationMs }]
+        }
+      },
+      {
+        headers: buildLimiterHeaders({
+          remainingMinute: limiterRemainingMinute,
+          remainingDay: limiterRemainingDay,
+          dailyLimit: limiterDailyLimit
+        })
+      }
+    );
+  }
   /** Custom tools must run through `respondWithXaiToolLoop`; `chatWithXai` does not execute tool_calls. */
   const needsLocalToolLoop = hasXfinanceTool || hasYahooFinanceTool;
   /**
@@ -618,11 +788,13 @@ export async function POST(request: Request) {
       ? createXfinanceToolExecutor({
           userId: session.userId,
           tenantId: session.tenantId,
+          workspacePortfolioId,
           ...(hasXfinanceTool
             ? {
                 workspaceLazyLoad: {
                   userId: session.userId,
-                  tenantId: session.tenantId
+                  tenantId: session.tenantId,
+                  workspacePortfolioId
                 }
               }
             : {})

@@ -85,7 +85,7 @@ describe("GET /api/app-user/find-options/*", () => {
       ]
     });
 
-    const res = await getContext(new Request("http://localhost/api/app-user/find-options/context"));
+    const res = await getContext();
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
       data: {

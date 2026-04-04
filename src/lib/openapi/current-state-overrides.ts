@@ -993,6 +993,11 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         description:
           "Client thread key for per-conversation routing memory (for example, strategy-job opt-out persistence)."
       },
+      portfolioId: {
+        type: "string",
+        description:
+          "Optional 24-char hex workspace portfolio override. When provided and owned by the signed-in user, xChat tools/preload resolve watchlist and portfolio context from this portfolio instead of the default."
+      },
       personaId: {
         type: "string",
         description: "Optional persona selection. App users are restricted to published allowlisted personas."

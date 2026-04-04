@@ -50,6 +50,14 @@ npm run ops:secrets:sync-stripe-publishable:prod
 # or: bash scripts/ops/sync-stripe-publishable-secrets-from-env.sh .env.prod
 ```
 
+To push **Stripe webhook signing secret** (`STRIPE_WEBHOOK_SECRET`):
+
+```bash
+npm run ops:secrets:sync-stripe-webhook:staging
+npm run ops:secrets:sync-stripe-webhook:prod
+# or: bash scripts/ops/sync-stripe-webhook-secret-from-env.sh .env.prod
+```
+
 To push **Sign in with Google** OAuth client credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`):
 
 ```bash
@@ -97,6 +105,7 @@ Required runtime secrets (core list — always expected in Secret Manager for de
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe `pk_…` (mounted at runtime)
 - `STRIPE_PUBLIC_KEY` — alias for the same publishable key (often duplicate value)
 - `STRIPE_SECRET_KEY` — Stripe `sk_…` (server-only; Checkout)
+- `STRIPE_WEBHOOK_SECRET` — Stripe webhook signing secret for `/api/webhooks/stripe`
 
 **Staging additionally (Sign in with Google):**
 
@@ -126,6 +135,7 @@ Recommended checks before merge/deploy:
 | `ops:secrets:verify:prod:with-google-oauth` | Same as prod + requires Google secrets in SM (use when Sign-in with Google is enabled in prod) |
 | `ops:secrets:sync-google-oauth:staging` / `:prod` | Create/update Google OAuth secrets from `.env.stage` / `.env.prod` |
 | `ops:secrets:sync-stripe-publishable:*` | Stripe publishable keys → SM |
+| `ops:secrets:sync-stripe-webhook:*` | `STRIPE_WEBHOOK_SECRET` → SM |
 | `ops:secrets:sync-redis:*` | `REDIS_URL` → SM |
 | `ops:secrets:sync-mongodb:*` | `MONGODB_URI` → `MONGODB_URI_B64` secret |
 | `ops:deploy:cloud-run:staging` | Local deploy from `.env.stage` (`deploy-cloud-run-from-env.sh`) |

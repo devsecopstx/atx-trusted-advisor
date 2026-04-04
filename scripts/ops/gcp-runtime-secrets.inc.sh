@@ -20,6 +20,7 @@ GCP_RUNTIME_SECRETS_REQUIRED=(
   "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
   "STRIPE_PUBLIC_KEY"
   "STRIPE_SECRET_KEY"
+  "STRIPE_WEBHOOK_SECRET"
 )
 
 # Sign in with Google (`/api/auth/google/*`). Use verify-gcp-runtime-secrets.sh --with-google-oauth (staging npm script).

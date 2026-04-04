@@ -3,6 +3,7 @@ import { getXchatTenantDebugFromContext } from "@/lib/xchat-debug-context";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
+    getPortfolioByIdForSessionUser,
     getPortfolioWatchlist,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
@@ -22,6 +23,7 @@ import {
 export type WorkspaceSnapshotContext = {
   userId: string;
   tenantId?: string;
+  workspacePortfolioId?: string | null;
 };
 
 /** Keep prompt size bounded; full book via atxfinance positions_snapshot. */
@@ -106,6 +108,17 @@ export function normalizeWorkspaceContentRev(portfolio: { workspaceContentRev?: 
 }
 
 async function resolveDefaultPortfolio(ctx: WorkspaceSnapshotContext) {
+  const requestedPortfolioId = ctx.workspacePortfolioId?.trim();
+  if (requestedPortfolioId) {
+    const selected = await getPortfolioByIdForSessionUser({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      portfolioId: requestedPortfolioId
+    });
+    if (selected?._id) {
+      return selected;
+    }
+  }
   const existing = await getDefaultPortfolio(ctx.userId, { tenantId: ctx.tenantId });
   if (existing?._id) {
     return existing;
@@ -338,7 +351,14 @@ export function portfolioSummaryFromWorkspacePreload(p: WorkspaceSnapshotPreload
       : {
           name: wl.name,
           symbolCount: wl.symbols.length,
-          symbols: wl.symbols
+          symbols: wl.symbols.map((s) =>
+            s.entryPrice === undefined
+              ? s
+              : {
+                  ...s,
+                  targetEntryPrice: s.entryPrice
+                }
+          )
         };
 
   return {

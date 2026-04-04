@@ -26,7 +26,7 @@ Stripe Checkout charges the **Stripe Price** bound to `STRIPE_PRICE_*`. The **do
 | **`STRIPE_PUBLIC_KEY`** | **GCP Secret Manager** (required) — same sync script; may duplicate the `pk_…` value | Alias read by `getStripePublishableKey()` in `src/lib/stripe-config.ts`. |
 | **`STRIPE_PRICE_*`** | GitHub **Environment variables** (`staging` / `production`) | Price ids are identifiers, not credentials. |
 | **`STRIPE_SECRET_KEY`** | **GCP Secret Manager** (required for deploy preflight / verify) | Restricted key or standard secret key — **never** commit or put in Variables. |
-| **`STRIPE_WEBHOOK_SECRET`** | Secret Manager (when webhooks ship) | Signing secret for `POST /api/webhooks/stripe` (not implemented in the first slice). |
+| **`STRIPE_WEBHOOK_SECRET`** | Secret Manager | Signing secret for `POST /api/webhooks/stripe` (`checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`). |
 
 **Optional:** you may still set **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** / **`STRIPE_PUBLIC_KEY`** as GitHub **Variables** for local tooling; **Cloud Run deploy does not** read them for runtime — Secret Manager bindings supply those env vars.
 
@@ -47,7 +47,7 @@ Stripe Checkout charges the **Stripe Price** bound to `STRIPE_PRICE_*`. The **do
    - Premium+: **$299 / month** (UI/list matrix: `atx-limits.txt.tsv`; set `STRIPE_PRICE_PREMIUM_PLUS_MONTHLY`; `STRIPE_PRICE_PREMIUM_PLUS_YEARLY` is still read as a fallback until old Price ids are rotated)
 4. **Checkout:** Hosted Checkout is created by the API (`mode: subscription`). No extra Dashboard toggle required beyond valid prices.
 5. **Customer portal (optional):** Enable the Billing customer portal when you want self-serve cancel/update payment method.
-6. **Webhooks (next):** Add endpoint `https://<your-host>/api/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.*`, and verify with `STRIPE_WEBHOOK_SECRET`. Persist subscription tier on `core_users` (or equivalent) to drive plan limits.
+6. **Webhooks:** Add endpoint `https://<your-host>/api/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`; verify with `STRIPE_WEBHOOK_SECRET`. Current route updates `core_users.subscriptionPlan`.
 
 ## App env summary
 

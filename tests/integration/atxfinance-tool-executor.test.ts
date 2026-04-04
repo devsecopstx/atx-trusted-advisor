@@ -75,7 +75,7 @@ describe("atxfinance tool executor", () => {
     ]);
     repositoryMocks.getPortfolioWatchlist.mockResolvedValue({
       name: "DefaultWatchlist",
-      symbols: [{ symbol: "TSLA", addedAt: new Date() }]
+      symbols: [{ symbol: "TSLA", addedAt: new Date(), entryPrice: 240.5 }]
     });
     repositoryMocks.ensurePortfolioWatchlistForUser.mockImplementation(async (input: { userId: string }) => {
       return repositoryMocks.getPortfolioWatchlist({
@@ -201,12 +201,19 @@ describe("atxfinance tool executor", () => {
     });
   });
 
-  it("watchlist_snapshot returns symbols with addedAt", async () => {
+  it("watchlist_snapshot returns symbols with addedAt and target entry price", async () => {
     const executor = createXfinanceToolExecutor(ctx);
     const result = await executor("atxfinance", { operation: "watchlist_snapshot" });
     const data = JSON.parse(result.result);
     expect(data.name).toBe("DefaultWatchlist");
-    expect(data.symbols).toEqual([{ symbol: "TSLA", addedAt: expect.any(String) }]);
+    expect(data.symbols).toEqual([
+      {
+        symbol: "TSLA",
+        addedAt: expect.any(String),
+        entryPrice: 240.5,
+        targetEntryPrice: 240.5
+      }
+    ]);
     expect(data.symbolCount).toBe(1);
   });
 

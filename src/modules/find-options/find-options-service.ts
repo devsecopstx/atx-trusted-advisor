@@ -30,8 +30,16 @@ import { computeRsiFromCloses } from "./rsi";
 
 function resolveWorkspaceAccount(
   accounts: Account[],
-  book: AppUserDefaultBook | null
+  book: AppUserDefaultBook | null,
+  accountIdOverride?: string | null
 ): Account | undefined {
+  const override = accountIdOverride?.trim();
+  if (override) {
+    const overrideMatch = accounts.find((a) => a._id?.toHexString() === override);
+    if (overrideMatch) {
+      return overrideMatch;
+    }
+  }
   if (book?.accountId) {
     const match = accounts.find((a) => a._id?.toHexString() === book.accountId);
     if (match) {
@@ -63,6 +71,7 @@ export type FindOptionsContextPayload = {
     riskProfile: "conservative" | "balanced" | "growth" | null;
     outlook: AccountOutlook | null;
     optionsApproved: boolean;
+    cashBalance: number | null;
   };
   bookOutlook: AccountOutlook | null;
   bookRiskProfile: "conservative" | "balanced" | "growth" | null;
@@ -106,7 +115,10 @@ async function resolveDefaultPortfolio(session: SessionUser): Promise<Portfolio 
   return portfolio;
 }
 
-export async function getFindOptionsContext(session: SessionUser): Promise<FindOptionsContextPayload> {
+export async function getFindOptionsContext(
+  session: SessionUser,
+  input?: { accountId?: string | null }
+): Promise<FindOptionsContextPayload> {
   const portfolio = await resolveDefaultPortfolio(session);
   const book = await loadAppUserDefaultBook(session);
   const assumeAllApproved = getEnv().XOPTIONS_ASSUME_OPTIONS_APPROVED;
@@ -120,7 +132,8 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
         name: "Account",
         riskProfile: null,
         outlook: null,
-        optionsApproved: false
+        optionsApproved: false,
+        cashBalance: null
       },
       bookOutlook: null,
       bookRiskProfile: null,
@@ -133,7 +146,7 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
     portfolioId: portfolio._id.toHexString(),
     tenantId: session.tenantId
   });
-  const workspaceAccount = resolveWorkspaceAccount(accounts, book);
+  const workspaceAccount = resolveWorkspaceAccount(accounts, book, input?.accountId ?? null);
   const scoringTenantId = portfolio.tenantId?.toHexString() ?? session.tenantId;
   const tenantRow = await getTenantByHexIdCached(scoringTenantId);
   const { scoringFactors: rawSf } = scoringFactorsPayloadForAdminApi(
@@ -161,7 +174,11 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
       name: workspaceAccount?.name?.trim() || book?.accountName || "Account",
       riskProfile: workspaceAccount?.riskProfile ?? null,
       outlook: workspaceAccount?.outlook ?? null,
-      optionsApproved: optionsApprovedDefault
+      optionsApproved: optionsApprovedDefault,
+      cashBalance:
+        typeof workspaceAccount?.cashBalance === "number" && Number.isFinite(workspaceAccount.cashBalance)
+          ? workspaceAccount.cashBalance
+          : null
     },
     bookOutlook: parseAccountOutlook(workspaceAccount?.outlook ?? null),
     bookRiskProfile: workspaceAccount?.riskProfile ?? null,
@@ -223,6 +240,7 @@ async function topHoldingsFromWorkspacePreloadIfFresh(
   portfolio: Portfolio & { _id: NonNullable<Portfolio["_id"]> },
   preload: WorkspaceSnapshotPreload | null,
   book: AppUserDefaultBook | null,
+  accountIdOverride: string | null | undefined,
   limit: number
 ): Promise<TopHoldingRow[] | null> {
   if (!preload) {
@@ -237,9 +255,11 @@ async function topHoldingsFromWorkspacePreloadIfFresh(
   }
 
   const promptAccounts = preload.promptJson.accounts;
+  const overrideId = accountIdOverride?.trim();
   const bookId = book?.accountId?.trim();
-  const workspaceAccountId = bookId
-    ? promptAccounts.find((a) => a.accountId === bookId)?.accountId
+  const preferredId = overrideId && overrideId.length > 0 ? overrideId : bookId;
+  const workspaceAccountId = preferredId
+    ? promptAccounts.find((a) => a.accountId === preferredId)?.accountId
     : promptAccounts.find((a) => a.isDefault)?.accountId ?? promptAccounts[0]?.accountId;
 
   const allowed = new Set(
@@ -274,7 +294,8 @@ async function topHoldingsFromWorkspacePreloadIfFresh(
 
 export async function getTopStockHoldingsByValue(
   session: SessionUser,
-  limit: number
+  limit: number,
+  input?: { accountId?: string | null }
 ): Promise<{ holdings: TopHoldingRow[] }> {
   const portfolio = await resolveDefaultPortfolio(session);
   if (!portfolio?._id) {
@@ -291,6 +312,7 @@ export async function getTopStockHoldingsByValue(
     portfolio as Portfolio & { _id: NonNullable<Portfolio["_id"]> },
     preload,
     book,
+    input?.accountId ?? null,
     limit
   );
   if (fast !== null) {
@@ -302,7 +324,7 @@ export async function getTopStockHoldingsByValue(
     portfolioId,
     tenantId: session.tenantId
   });
-  const workspaceAccount = resolveWorkspaceAccount(accounts, book);
+  const workspaceAccount = resolveWorkspaceAccount(accounts, book, input?.accountId ?? null);
   const accountIds =
     workspaceAccount?._id != null
       ? [workspaceAccount._id]
@@ -400,15 +422,15 @@ export async function getHotWatchlistSymbols(
 /** One round-trip for xOptions workspace: context + top holdings + hot watchlist scan. */
 export async function getFindOptionsBootstrap(
   session: SessionUser,
-  input: { holdingsLimit: number; hotLimit: number }
+  input: { holdingsLimit: number; hotLimit: number; accountId?: string | null }
 ): Promise<{
   context: FindOptionsContextPayload;
   holdings: TopHoldingRow[];
   hot: { rows: HotWatchlistRow[]; scanned: number };
 }> {
   const [context, holdingsResult, hotResult] = await Promise.all([
-    getFindOptionsContext(session),
-    getTopStockHoldingsByValue(session, input.holdingsLimit),
+    getFindOptionsContext(session, { accountId: input.accountId ?? null }),
+    getTopStockHoldingsByValue(session, input.holdingsLimit, { accountId: input.accountId ?? null }),
     getHotWatchlistSymbols(session, input.hotLimit)
   ]);
   return {

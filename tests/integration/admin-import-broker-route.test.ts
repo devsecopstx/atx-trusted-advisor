@@ -9,6 +9,8 @@ const repositoryMocks = vi.hoisted(() => ({
   getPortfolioByIdForSessionUser: vi.fn(),
   listPortfolioAccounts: vi.fn(),
   deletePositionsForPortfolioAccount: vi.fn(),
+  listPortfolioPositionsByAccount: vi.fn(),
+  markPortfolioAccountBrokerImportLocked: vi.fn(),
   upsertPositionForAccount: vi.fn()
 }));
 
@@ -62,6 +64,8 @@ describe("POST /api/admin/import/broker", () => {
       }
     ]);
     repositoryMocks.deletePositionsForPortfolioAccount.mockResolvedValue(2);
+    repositoryMocks.listPortfolioPositionsByAccount.mockResolvedValue([]);
+    repositoryMocks.markPortfolioAccountBrokerImportLocked.mockResolvedValue(undefined);
     repositoryMocks.upsertPositionForAccount.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439055" },
       symbol: "TSLA",

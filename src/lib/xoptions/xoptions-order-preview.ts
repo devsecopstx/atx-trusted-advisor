@@ -112,6 +112,8 @@ export type XoptionsOrderReview = {
   strategyLabel?: string | null;
 };
 
+export type XoptionsOpeningAction = "buy_to_open" | "sell_to_open";
+
 /** Footnote under Review order narrative in the panel only — not sent to xChat / clipboard handoff. */
 export const XOPTIONS_REVIEW_ORDER_FOOTNOTE =
   "prices data source.yahoo - delayed 15 mins. Model P(OTM) uses IV from the chain when available; actual outcomes differ.";
@@ -144,6 +146,7 @@ export function buildXoptionsOrderReview(input: {
   symbol: string;
   expirationYyyyMmDd: string;
   side: "call" | "put";
+  openingAction?: XoptionsOpeningAction;
   strike: number;
   limitPrice: string;
   quantity: string;
@@ -155,10 +158,11 @@ export function buildXoptionsOrderReview(input: {
   const exp = formatExpirationShortLabel(input.expirationYyyyMmDd);
   const qty = parsePositiveInt(input.quantity);
   const prem = parseLimitPerShare(input.limitPrice);
+  const openingAction = input.openingAction ?? "buy_to_open";
   const premium = prem ?? 0;
   const contracts = qty;
   const shares = contracts * 100;
-  const maxDebit = contracts * 100 * premium;
+  const grossValue = contracts * 100 * premium;
   const be = breakevenPerShare(input.side, input.strike, premium);
   const prob =
     prem != null && prem >= 0
@@ -188,25 +192,52 @@ export function buildXoptionsOrderReview(input: {
       : " Estimated probability of expiring out of the money requires implied volatility from the chain.";
 
   let exerciseSentence: string;
-  if (input.side === "call") {
-    const totalBuy = input.strike * shares;
-    exerciseSentence = ` If you exercise, you have the right to buy ${shares.toLocaleString()} shares of ${sym} at $${input.strike.toFixed(2)} per share, for a total purchase price of ${usd(totalBuy)}.`;
-  } else {
+  if (openingAction === "buy_to_open") {
+    if (input.side === "call") {
+      const totalBuy = input.strike * shares;
+      exerciseSentence = ` If you exercise, you have the right to buy ${shares.toLocaleString()} shares of ${sym} at $${input.strike.toFixed(2)} per share, for a total purchase price of ${usd(totalBuy)}.`;
+    } else {
+      const totalSell = input.strike * shares;
+      exerciseSentence = ` If you exercise, you have the right to sell ${shares.toLocaleString()} shares of ${sym} at $${input.strike.toFixed(2)} per share, for total proceeds of ${usd(totalSell)}.`;
+    }
+  } else if (input.side === "call") {
     const totalSell = input.strike * shares;
-    exerciseSentence = ` If you exercise, you have the right to sell ${shares.toLocaleString()} shares of ${sym} at $${input.strike.toFixed(2)} per share, for total proceeds of ${usd(totalSell)}.`;
+    exerciseSentence = ` If assigned, you may be obligated to sell ${shares.toLocaleString()} shares of ${sym} at $${input.strike.toFixed(2)} per share, for total proceeds of ${usd(totalSell)}.`;
+  } else {
+    const totalBuy = input.strike * shares;
+    exerciseSentence = ` If assigned, you may be obligated to buy ${shares.toLocaleString()} shares of ${sym} at $${input.strike.toFixed(2)} per share, for a total purchase price of ${usd(totalBuy)}.`;
   }
 
   const strat = input.strategyLabel?.trim();
   const stratSuffix = strat ? ` Strategy context: ${strat}.` : "";
 
-  const narrative = `You are buying ${contracts} ${sym} ${optionNoun} to open with the strike price of $${input.strike.toFixed(2)} that expires ${exp}. At your limit of ${usd(premium)} per share, this order implies a maximum debit of ${usd(maxDebit)}.${probClause}${exerciseSentence}${stratSuffix}.`;
+  const openVerb = openingAction === "buy_to_open" ? "buying" : "selling";
+  const cashFlowPhrase =
+    openingAction === "buy_to_open"
+      ? `this order implies a maximum debit of ${usd(grossValue)}`
+      : `this order implies a maximum credit of ${usd(grossValue)}`;
+  const securedNotional =
+    openingAction === "sell_to_open" ? input.strike * shares : null;
+  const potentialEarningPct =
+    openingAction === "sell_to_open" && securedNotional && securedNotional > 0
+      ? (grossValue / securedNotional) * 100
+      : null;
+  const potentialEarningSentence =
+    potentialEarningPct != null
+      ? ` Potential earning: ${potentialEarningPct.toFixed(1)}% of secured notional (${usd(securedNotional ?? 0)}).`
+      : "";
+  const narrative = `You are ${openVerb} ${contracts} ${sym} ${optionNoun} to open with the strike price of $${input.strike.toFixed(2)} that expires ${exp}. At your limit of ${usd(premium)} per share, ${cashFlowPhrase}.${probClause}${exerciseSentence}${stratSuffix}.`;
+  const narrativeWithEarning =
+    potentialEarningSentence.length > 0
+      ? `${narrative}${potentialEarningSentence}`
+      : narrative;
 
   return {
     bidPerShareDisplay,
     breakevenDisplay,
     probabilityOtmDisplay,
     probabilityOtmPercent: prob,
-    narrative,
+    narrative: narrativeWithEarning,
     strategyLabel: input.strategyLabel ?? null
   };
 }

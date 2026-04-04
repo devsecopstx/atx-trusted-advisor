@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  clearToolCache,
-  getCachedToolResult,
-  getToolCacheSize,
-  setCachedToolResult
+    clearToolCache,
+    getCachedToolResult,
+    getToolCacheSize,
+    setCachedToolResult
 } from "@/modules/xchat/tool-cache";
 
 describe("tool output cache", () => {
@@ -33,6 +33,14 @@ describe("tool output cache", () => {
     setCachedToolResult("user_1", "watchlist_snapshot", "watchlist");
     expect(getCachedToolResult("user_1", "portfolio_summary")).toBe("portfolio");
     expect(getCachedToolResult("user_1", "watchlist_snapshot")).toBe("watchlist");
+  });
+
+  it("isolates by scope key (for selected workspace portfolio)", () => {
+    setCachedToolResult("user_1", "watchlist_snapshot", "wl_portfolio_a", undefined, "portfolio_a");
+    setCachedToolResult("user_1", "watchlist_snapshot", "wl_portfolio_b", undefined, "portfolio_b");
+    expect(getCachedToolResult("user_1", "watchlist_snapshot", "portfolio_a")).toBe("wl_portfolio_a");
+    expect(getCachedToolResult("user_1", "watchlist_snapshot", "portfolio_b")).toBe("wl_portfolio_b");
+    expect(getCachedToolResult("user_1", "watchlist_snapshot", "portfolio_c")).toBeNull();
   });
 
   it("expires after TTL", () => {

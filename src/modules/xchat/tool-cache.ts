@@ -8,8 +8,9 @@ type CacheEntry = {
 
 const cache = new Map<string, CacheEntry>();
 
-function buildKey(userId: string, operation: string): string {
-  return `${userId}:${operation}`;
+function buildKey(userId: string, operation: string, scopeKey?: string): string {
+  const scope = scopeKey?.trim() || "__default__";
+  return `${userId}:${operation}:${scope}`;
 }
 
 function evictExpired(): void {
@@ -23,9 +24,10 @@ function evictExpired(): void {
 
 export function getCachedToolResult(
   userId: string,
-  operation: string
+  operation: string,
+  scopeKey?: string
 ): string | null {
-  const key = buildKey(userId, operation);
+  const key = buildKey(userId, operation, scopeKey);
   const entry = cache.get(key);
   if (!entry) return null;
   if (Date.now() >= entry.expiresAt) {
@@ -39,7 +41,8 @@ export function setCachedToolResult(
   userId: string,
   operation: string,
   result: string,
-  ttlMs: number = DEFAULT_TTL_MS
+  ttlMs: number = DEFAULT_TTL_MS,
+  scopeKey?: string
 ): void {
   if (cache.size >= MAX_CACHE_SIZE) {
     evictExpired();
@@ -51,14 +54,14 @@ export function setCachedToolResult(
     }
   }
 
-  cache.set(buildKey(userId, operation), {
+  cache.set(buildKey(userId, operation, scopeKey), {
     result,
     expiresAt: Date.now() + ttlMs
   });
 }
 
-export function deleteCachedToolResult(userId: string, operation: string): void {
-  cache.delete(buildKey(userId, operation));
+export function deleteCachedToolResult(userId: string, operation: string, scopeKey?: string): void {
+  cache.delete(buildKey(userId, operation, scopeKey));
 }
 
 export function clearToolCache(): void {
