@@ -9,6 +9,10 @@ const bffMocks = vi.hoisted(() => ({
   proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
+const limitMocks = vi.hoisted(() => ({
+  checkDistributedRateLimit: vi.fn()
+}));
+
 vi.mock("@/lib/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth")>();
   return {
@@ -22,6 +26,14 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   return {
     ...actual,
     proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  };
+});
+
+vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/distributed-rate-limit")>();
+  return {
+    ...actual,
+    checkDistributedRateLimit: limitMocks.checkDistributedRateLimit
   };
 });
 
@@ -42,6 +54,13 @@ describe("strategy-jobs route", () => {
       email: "operator@test.local",
       username: "op1",
       roles: ["operator"]
+    });
+    limitMocks.checkDistributedRateLimit.mockResolvedValue({
+      allowed: true,
+      remaining: 9,
+      resetAtMs: Date.now() + 60_000,
+      retryAfterSeconds: 60,
+      source: "memory"
     });
   });
 
@@ -95,6 +114,23 @@ describe("strategy-jobs route", () => {
     const res = await postStrategyJobs(req);
     expect(res.status).toBe(200);
     expect(authMocks.requireSessionUser).toHaveBeenCalled();
+    expect(limitMocks.checkDistributedRateLimit).toHaveBeenCalled();
     expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+  });
+
+  it("POST returns 429 when create limiter blocks request", async () => {
+    limitMocks.checkDistributedRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetAtMs: Date.now() + 30_000,
+      retryAfterSeconds: 30,
+      source: "memory"
+    });
+    const req = new Request("http://test/api/strategy-jobs", { method: "POST" });
+    const res = await postStrategyJobs(req);
+    const payload = (await res.json()) as { error: string };
+    expect(res.status).toBe(429);
+    expect(payload.error).toBe("rate_limit_exceeded");
+    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
   });
 });

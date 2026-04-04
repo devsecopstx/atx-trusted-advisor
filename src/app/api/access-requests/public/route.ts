@@ -3,6 +3,11 @@ import { z } from "zod";
 
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import {
+    buildRateLimitHeaders,
+    checkDistributedRateLimit,
+    extractClientRateLimitKey
+} from "@/lib/distributed-rate-limit";
 import { buildAccessRequestNotification, sendSlackNotification } from "@/lib/slack";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
@@ -18,10 +23,28 @@ const guestAccessRequestSchema = z.object({
   requestedPlan: z.string().trim().optional()
 });
 
+const ACCESS_REQUEST_PUBLIC_WINDOW_MS = 60_000;
+const ACCESS_REQUEST_PUBLIC_MAX = 6;
+
 export async function POST(request: Request) {
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
     return proxied;
+  }
+  const limit = await checkDistributedRateLimit({
+    key: `access-requests:public:${extractClientRateLimitKey(request)}`,
+    windowMs: ACCESS_REQUEST_PUBLIC_WINDOW_MS,
+    max: ACCESS_REQUEST_PUBLIC_MAX
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limit_exceeded",
+        message: "Too many guest access requests. Please retry shortly.",
+        retryAfterSeconds: limit.retryAfterSeconds
+      },
+      { status: 429, headers: buildRateLimitHeaders(limit) }
+    );
   }
 
   let body: unknown;
