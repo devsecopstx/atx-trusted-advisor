@@ -67,6 +67,7 @@ import {
     shouldOfferStrategyJobPreflight,
     STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
+import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
 import {
     buildSessionToolInstructions,
@@ -84,7 +85,6 @@ const askSchema = z.object({
 
 const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
 const ASK_RATE_MAX = 20;
-const MULTI_AGENT_MODELS = new Set(["grok-4.20-multi-agent", "grok-4.20-multi-agent-0309"]);
 const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>([
   normalizeNameKey(XPERSONA_SUPER_AGENT_NAME)
 ]);
@@ -286,7 +286,7 @@ export async function POST(request: Request) {
 
   let executionModel = effectiveModel;
   let multiAgentDowngraded = false;
-  if (MULTI_AGENT_MODELS.has(effectiveModel)) {
+  if (MULTI_AGENT_PERSONA_MODEL_IDS.has(effectiveModel)) {
     const allowParallelism =
       parsed.data.reasoningEffort != null || heavySynthesisIntent(message);
     if (!allowParallelism) {
@@ -843,7 +843,7 @@ function resolveParallelAgentConfig(input: {
 }):
   | { ok: true; config?: ParallelAgentConfig }
   | { ok: false; error: string; code: string } {
-  if (!MULTI_AGENT_MODELS.has(input.model)) {
+  if (!MULTI_AGENT_PERSONA_MODEL_IDS.has(input.model)) {
     if (input.reasoningEffort) {
       return {
         ok: false,

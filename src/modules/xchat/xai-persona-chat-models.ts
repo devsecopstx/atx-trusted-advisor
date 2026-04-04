@@ -48,12 +48,12 @@ const OPTIONS: XaiPersonaChatModelOption[] = [
   },
   {
     id: "grok-4.20-multi-agent",
-    label: "Grok 4.20 multi-agent (xChat parallel)",
+    label: "Grok 4.20 multi-agent — not for daily xChat persona (strategy jobs / heavy synthesis only)",
     pricingPerMillionUsd: "$2.00 ($0.20) / $6.00 in·out + tool surcharges"
   },
   {
     id: "grok-4.20-multi-agent-0309",
-    label: "Grok 4.20 multi-agent 0309",
+    label: "Grok 4.20 multi-agent 0309 — same; do not use as default persona model",
     pricingPerMillionUsd: "$2.00 ($0.20) / $6.00 in·out + tool surcharges"
   }
 ];

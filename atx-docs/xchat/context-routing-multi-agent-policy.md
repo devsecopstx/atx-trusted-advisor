@@ -18,6 +18,12 @@ New work: **`XAI_TEAM_ID`** per tenant; TEAM append/retrieval; chat-history coll
 
 **Rule:** Multi-source context (team + Mongo RAG where enabled) does **not** by itself require parallel agents. Prefer **one model + merged retrieval + selective tools**.
 
+## Admin persona defaults (daily xChat — locked)
+
+Do **not** set **`grok-4.20-multi-agent`** / **`grok-4.20-multi-agent-0309`** as the persona **`model`** for normal product chat (watchlist, quotes, portfolio review, quick options ideas). Use **`grok-4-1-fast-reasoning`** (or rely on empty → server **`XAI_CHAT_MODEL`** / same fallback). Multi-agent is for **heavy synthesis** (server may still downgrade retrieval-first per ask) and for **strategy-job / xOptions orchestrator** finalizer paths on the **backend** — not as the default persona model on every ask.
+
+**Lock:** **xAPI mode** `responses`, **tool_choice** `auto`, **max_turns** `5`, **RAG** enabled. Admin UI documents this in **Tools & xAPI** on the persona editor.
+
 ## Effective xAI model
 
 `POST /api/xchat/ask` uses the **resolved persona’s** `model` field (Admin → Personas / Mongo). If it is empty, the server uses **`XAI_CHAT_MODEL`** (env / Cloud Run), else **`grok-4-1-fast-reasoning`**. There is **no** client `model` override on the ask payload — multi-agent parallelism follows the same persona model (e.g. `grok-4.20-multi-agent`) plus optional `reasoningEffort` in the body.

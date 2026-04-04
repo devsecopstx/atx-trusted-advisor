@@ -2673,6 +2673,68 @@ html[data-xf-ui="soft"] select optgroup {
   }
 }
 
+.persona-editor__general-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 640px) {
+  .persona-editor__general-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.persona-editor__checkbox-row {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 720px) {
+  .persona-editor__checkbox-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Admin — persona editor section tabs */
+.persona-editor__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0.85rem;
+}
+
+.persona-editor__tab {
+  border: 1px solid var(--xf-border-subtle, rgba(255, 255, 255, 0.14));
+  border-radius: var(--xf-radius-sm, 6px);
+  background: var(--xf-surface-800, rgba(255, 255, 255, 0.04));
+  color: var(--xf-text-200, #cbd5e1);
+  font-size: 0.8rem;
+  padding: 0.35rem 0.65rem;
+  cursor: pointer;
+}
+
+.persona-editor__tab:hover {
+  border-color: var(--xf-gain-green, #39ff14);
+  color: var(--xf-text-100, #f1f5f9);
+}
+
+.persona-editor__tab[aria-selected="true"] {
+  border-color: var(--xf-gain-green, #39ff14);
+  background: rgba(57, 255, 20, 0.08);
+  color: var(--xf-text-100, #f1f5f9);
+  font-weight: 600;
+}
+
+.persona-editor__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 0;
+}
+
 /* Selected row highlight */
 .crud-table tbody tr.row-selected {
   background: rgba(255, 255, 255, 0.06);

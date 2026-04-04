@@ -13,6 +13,7 @@ import {
 } from "@/app/admin/personas/ui/personas-onboarding";
 import { AddIcon, DeleteIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { isMultiAgentPersonaModelId } from "@/modules/xchat/multi-agent-persona-models";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 type PersonaEditorPageProps = {
@@ -54,6 +55,7 @@ const EMPTY_FORM: PersonaPayload = {
   overridePrompt: "",
   xaiCollectionId: "",
   xaiCollectionName: "",
+  /** Daily xChat default: fast single-pass (matches server fallback when env unset). */
   model: XAI_PERSONA_CHAT_MODEL_FALLBACK_ID,
   temperature: "0.2",
   enableRag: true,
@@ -66,11 +68,40 @@ const EMPTY_FORM: PersonaPayload = {
   keepXchatHistory: true
 };
 
-export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
-  const [form, setForm] = useState<PersonaPayload>(EMPTY_FORM);
+function initialPersonaFormForMode(
+  mode: "create" | "edit",
+  defaultChatModelId: string | undefined
+): PersonaPayload {
+  if (mode !== "create") {
+    return EMPTY_FORM;
+  }
+  const fromEnv = defaultChatModelId?.trim();
+  if (fromEnv && fromEnv.length > 0) {
+    return { ...EMPTY_FORM, model: fromEnv };
+  }
+  return EMPTY_FORM;
+}
+
+const PERSONA_EDITOR_TABS = [
+  { id: "general", label: "General" },
+  { id: "prompts", label: "Prompts" },
+  { id: "rag", label: "RAG & collections" },
+  { id: "xapi", label: "Tools & xAPI" }
+] as const;
+
+type PersonaEditorTabId = (typeof PERSONA_EDITOR_TABS)[number]["id"];
+
+export function PersonaEditorPage({
+  mode,
+  personaId,
+  defaultChatModelId
+}: PersonaEditorPageProps) {
+  const [form, setForm] = useState<PersonaPayload>(() =>
+    initialPersonaFormForMode(mode, defaultChatModelId)
+  );
   const [status, setStatus] = useState("Ready");
   const [loading, setLoading] = useState(mode === "edit");
-  const [showAdvanced, setShowAdvanced] = useState(mode === "edit");
+  const [editorTab, setEditorTab] = useState<PersonaEditorTabId>("general");
   const [collections, setCollections] = useState<CollectionRow[]>([]);
   const [collectionsStatus, setCollectionsStatus] = useState<string | null>(null);
   const [restrictCollectionScope, setRestrictCollectionScope] = useState(false);
@@ -308,357 +339,528 @@ export function PersonaEditorPage({ mode, personaId }: PersonaEditorPageProps) {
         <h3>{mode === "create" ? "Create Persona" : "Edit Persona"}</h3>
         <p className="status-text">{loading ? "Loading..." : status}</p>
         <form className="stack-form" onSubmit={onSubmit}>
-          <input
-            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-            placeholder="persona name"
-            required
-            value={form.name}
-          />
-          <textarea
-            onChange={(event) => setForm((current) => ({ ...current, systemPrompt: event.target.value }))}
-            placeholder="system prompt (sent as chat system message)"
-            required
-            rows={6}
-            value={form.systemPrompt}
-          />
-          <textarea
-            onChange={(event) =>
-              setForm((current) => ({ ...current, overridePrompt: event.target.value }))
-            }
-            placeholder="override prompt — prepended to each user message for xChat"
-            rows={4}
-            value={form.overridePrompt}
-          />
-          <label className="status-text">Linked collection id (RAG / KB scope for xChat)</label>
-          <label
-            className="status-text"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "-0.2rem" }}
-          >
-            <input
-              checked={restrictCollectionScope}
-              onChange={(event) => {
-                const checked = event.target.checked;
-                setRestrictCollectionScope(checked);
-                if (!checked) {
-                  applySelectedCollectionIds([]);
-                } else {
-                  const existingIds = extractCollectionIdsFromToolsJson(form.xapiToolsJson);
-                  if (existingIds.length > 0) {
-                    setSelectedCollectionIds(existingIds);
-                  }
-                }
-              }}
-              type="checkbox"
-            />
-            <span>Restrict access to a specific collection</span>
-          </label>
-          {restrictCollectionScope ? (
-            <>
-              <input
-                onChange={(event) => setCollectionFilter(event.target.value)}
-                placeholder="Search by collection name or id"
-                value={collectionFilter}
-              />
-              <div
-                className="stack-gap"
-                style={{
-                  maxHeight: "14rem",
-                  overflow: "auto",
-                  border: "1px solid rgba(255, 255, 255, 0.12)",
-                  borderRadius: 8,
-                  padding: "0.55rem 0.7rem"
-                }}
+          <div className="persona-editor__tabs" role="tablist" aria-label="Persona editor sections">
+            {PERSONA_EDITOR_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`persona-editor-tab-${tab.id}`}
+                aria-controls={`persona-editor-panel-${tab.id}`}
+                aria-selected={editorTab === tab.id}
+                className="persona-editor__tab"
+                onClick={() => setEditorTab(tab.id)}
               >
-                {visibleCollections.length > 0 ? (
-                  visibleCollections.map((row) => {
-                    const displayName = row.name?.trim() || "Unnamed collection";
-                    const selected = selectedCollectionIds.includes(row.id);
-                    return (
-                      <label
-                        key={row.id}
-                        className="status-text"
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1.1rem 1fr",
-                          alignItems: "start",
-                          gap: "0.5rem"
-                        }}
-                      >
-                        <input
-                          checked={selected}
-                          onChange={(event) => {
-                            const nextIds = event.target.checked
-                              ? [...selectedCollectionIds, row.id]
-                              : selectedCollectionIds.filter((id) => id !== row.id);
-                            applySelectedCollectionIds(nextIds);
-                          }}
-                          type="checkbox"
-                          value={row.id}
-                        />
-                        <span>
-                          {displayName}
-                          <br />
-                          <code>{row.id}</code>
-                        </span>
-                      </label>
-                    );
-                  })
-                ) : (
-                  <p className="status-text" style={{ margin: 0 }}>
-                    No collections match <code>{collectionFilter.trim()}</code>
-                  </p>
-                )}
-              </div>
-            </>
-          ) : null}
-          {collectionsStatus ? (
-            <p className="status-text status-error">{collectionsStatus}</p>
-          ) : collections.length > 0 ? (
-            <p className="status-text">
-              {restrictCollectionScope && selectedCollectionIds.length > 0 ? (
-                <>
-                  Selected:{" "}
-                  <code>{selectedCollectionIds.join(", ")}</code>
-                </>
-              ) : restrictCollectionScope ? (
-                "Choose one or more collections from the list."
-              ) : (
-                "Collection restriction disabled (persona can use default collection scope)."
-              )}
-            </p>
-          ) : (
-            <p className="status-text">No collections returned from xAI inventory.</p>
-          )}
-          <PersonaModelSelect
-            onChange={(modelId) => setForm((current) => ({ ...current, model: modelId }))}
-            required
-            value={form.model}
-          />
-          <input
-            onChange={(event) =>
-              setForm((current) => ({ ...current, defaultScope: event.target.value }))
-            }
-            placeholder="default scope"
-            required
-            value={form.defaultScope}
-          />
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-          <label className="status-text" htmlFor="persona-xapi-tools-json">
-            xAPI tools (JSON array) — supports hosted tools like web_search, x_search, code_interpreter,
-            collections_search, plus yahoo_finance and atx_function
-          </label>
-          <textarea
-            id="persona-xapi-tools-json"
-            onChange={(event) =>
-              setForm((current) => ({ ...current, xapiToolsJson: event.target.value }))
-            }
-            placeholder='[{"type":"web_search"}, …]'
-            rows={12}
-            spellCheck={false}
-            value={form.xapiToolsJson}
-          />
-
-          <fieldset
-            className="stack-gap"
-            style={{
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-              borderRadius: 8,
-              padding: "0.75rem 1rem",
-              marginTop: "0.35rem"
-            }}
+          <div
+            className="persona-editor__panel"
+            hidden={editorTab !== "general"}
+            id="persona-editor-panel-general"
+            role="tabpanel"
+            aria-labelledby="persona-editor-tab-general"
           >
-            <legend className="status-text" style={{ padding: "0 0.35rem" }}>
-              Tools guardrails
-            </legend>
-            <label className="status-text" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
               <input
-                checked={includeHostedSearchInTools}
-                onChange={(event) => {
-                  const checked = event.target.checked;
-                  setIncludeHostedSearchInTools(checked);
-                  if (checked) {
-                    setShowEmptyToolsGuard(false);
-                  }
-                }}
-                type="checkbox"
+                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Persona name"
+                required
+                value={form.name}
               />
-              <span>
-                On save, prepend <code>web_search</code> and <code>x_search</code> if they are missing (recommended).
-                Keep this off if you want strict admin-controlled tool ordering; enable only when you want automatic
-                hosted-search insertion.
-              </span>
-            </label>
-            <div
-              className="status-text"
-              role="note"
-              style={{
-                fontSize: "0.88rem",
-                borderLeft: "3px solid rgba(0, 200, 120, 0.45)",
-                paddingLeft: "0.65rem",
-                marginTop: "0.35rem"
-              }}
-            >
-              Prefer a non-empty tools array with <code>web_search</code>, <code>x_search</code>, and usually{" "}
-              <code>atx_function</code> (plus RAG / Yahoo as needed). Saving with no tools and merge off can break live
-              search expectations and trigger provider errors.
-            </div>
-            {showEmptyToolsGuard ? (
-              <div
-                className="status-text status-error"
-                role="alert"
-                style={{
-                  border: "1px solid rgba(220, 80, 80, 0.45)",
-                  borderRadius: 6,
-                  padding: "0.65rem 0.85rem",
-                  marginTop: "0.5rem"
-                }}
-              >
-                <strong>Empty tools configuration</strong>
-                <p style={{ margin: "0.45rem 0 0.35rem" }}>
-                  Parsed tools are empty and hosted-search merge is off. The model may skip live data, invent tool
-                  names, or return unreliable market context.
-                </p>
-                <ul style={{ margin: "0.25rem 0 0.5rem", paddingLeft: "1.1rem" }}>
-                  <li>Real-time web / X grounding may not run</li>
-                  <li>Bad tool JSON → xAI 422 errors</li>
-                  <li>Stale or hallucinated financial answers</li>
-                </ul>
-                <div className="tool-row" style={{ marginTop: "0.65rem", flexWrap: "wrap", gap: "0.5rem" }}>
-                  <button
-                    className="tiny-button"
-                    type="button"
-                    onClick={() => {
-                      setIncludeHostedSearchInTools(true);
-                      setShowEmptyToolsGuard(false);
-                      setStatus("Hosted search merge enabled — click Save again.");
-                    }}
-                  >
-                    Enable hosted search merge
-                  </button>
-                  <button
-                    className="cta cta-danger"
-                    type="button"
-                    onClick={() => void submitPersona(null, true)}
-                  >
-                    Save anyway (not recommended)
-                  </button>
+              <PersonaModelSelect
+                onChange={(modelId) => setForm((current) => ({ ...current, model: modelId }))}
+                required
+                value={form.model}
+              />
+              <p className="status-text" style={{ fontSize: "0.8rem", lineHeight: 1.45, margin: "-0.15rem 0 0" }}>
+                <strong>Daily xChat:</strong> keep a <strong>fast single-pass</strong> model (e.g.{" "}
+                <code>grok-4-1-fast-reasoning</code>) — same as create default. Server routing is already{" "}
+                <strong>retrieval-first → selective tools → multi-agent only when synthesis truly needs it</strong>.
+                Forcing <code>grok-4.20-multi-agent</code> on the persona spikes cost/latency for normal questions.
+              </p>
+              {isMultiAgentPersonaModelId(form.model) ? (
+                <div
+                  className="status-text status-warn"
+                  role="alert"
+                  style={{
+                    fontSize: "0.82rem",
+                    lineHeight: 1.45,
+                    borderLeft: "3px solid var(--xf-lightning-yellow, #eab308)",
+                    paddingLeft: "0.65rem",
+                    marginTop: "0.15rem"
+                  }}
+                >
+                  <strong>Not recommended for normal personas.</strong>{" "}
+                  <code>grok-4.20-multi-agent</code> is the parallel-agent engine for{" "}
+                  <strong>heavy synthesis</strong> and <strong>xStrategyBuilder / strategy-job finalizer</strong>{" "}
+                  (backend), not watchlist/quote/portfolio banter. xChat will often{" "}
+                  <strong>downgrade</strong> to the fast model on typical turns anyway; the rail shows the effective
+                  model. Prefer fast model here; policy:{" "}
+                  <code>atx-docs/xchat/context-routing-multi-agent-policy.md</code>.
+                </div>
+              ) : null}
+              <div className="persona-editor__general-grid">
+                <div>
+                  <label className="status-text" htmlFor="persona-default-scope">
+                    Default scope
+                  </label>
+                  <input
+                    id="persona-default-scope"
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, defaultScope: event.target.value }))
+                    }
+                    placeholder="global"
+                    required
+                    value={form.defaultScope}
+                  />
+                </div>
+                <div>
+                  <label className="status-text" htmlFor="persona-temperature">
+                    Temperature (0–1)
+                  </label>
+                  <input
+                    id="persona-temperature"
+                    max={1}
+                    min={0}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, temperature: event.target.value }))
+                    }
+                    step="0.1"
+                    type="number"
+                    value={form.temperature}
+                  />
                 </div>
               </div>
-            ) : null}
-          </fieldset>
+              <div>
+                <label className="status-text" htmlFor="persona-collection-display-name">
+                  Collection display name (optional)
+                </label>
+                <input
+                  id="persona-collection-display-name"
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, xaiCollectionName: event.target.value }))
+                  }
+                  placeholder="Friendly label for linked collection"
+                  value={form.xaiCollectionName}
+                />
+              </div>
+              <div className="persona-editor__checkbox-row">
+                <label className="status-text" style={{ display: "flex", gap: "0.45rem", alignItems: "flex-start" }}>
+                  <input
+                    checked={form.enableRag}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, enableRag: event.target.checked }))
+                    }
+                    type="checkbox"
+                  />
+                  <span>
+                    <strong>Enable RAG</strong> — pre-search team KB before the model responds.
+                  </span>
+                </label>
+                <label className="status-text" style={{ display: "flex", gap: "0.45rem", alignItems: "flex-start" }}>
+                  <input
+                    checked={form.citationsEnabled}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, citationsEnabled: event.target.checked }))
+                    }
+                    type="checkbox"
+                  />
+                  <span>
+                    <strong>Citation chips</strong> — [@citation:…] contract in system prompt.
+                  </span>
+                </label>
+                <label className="status-text" style={{ display: "flex", gap: "0.45rem", alignItems: "flex-start" }}>
+                  <input
+                    checked={form.keepXchatHistory}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, keepXchatHistory: event.target.checked }))
+                    }
+                    type="checkbox"
+                  />
+                  <span>
+                    <strong>Remote xChat history</strong> — <code>previous_response_id</code> when env enables it.
+                  </span>
+                </label>
+              </div>
+          </div>
 
-          <button className="tiny-button" onClick={() => setShowAdvanced((current) => !current)} type="button">
-            {showAdvanced ? "Hide optional fields" : "Show optional fields"}
-          </button>
-          {showAdvanced ? (
-            <>
-              <input
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, xaiCollectionName: event.target.value }))
-                }
-                placeholder="collection display name"
-                value={form.xaiCollectionName}
-              />
-              <input
-                max={1}
-                min={0}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, temperature: event.target.value }))
-                }
-                step="0.1"
-                type="number"
-                value={form.temperature}
-              />
-            </>
-          ) : null}
-          <label className="status-text" htmlFor="persona-xapi-mode">
-            xAPI mode
-          </label>
-          <select
-            id="persona-xapi-mode"
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                xapiMode: event.target.value as PersonaPayload["xapiMode"]
-              }))
-            }
-            value={form.xapiMode}
+          <div
+            className="persona-editor__panel"
+            hidden={editorTab !== "prompts"}
+            id="persona-editor-panel-prompts"
+            role="tabpanel"
+            aria-labelledby="persona-editor-tab-prompts"
           >
-            <option value="responses">responses</option>
-            <option value="chat_completions">chat_completions</option>
-          </select>
-          <label className="status-text" htmlFor="persona-xapi-tool-choice">
-            Tool choice (xAI)
-          </label>
-          <select
-            id="persona-xapi-tool-choice"
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                xapiToolChoice: event.target.value as PersonaPayload["xapiToolChoice"]
-              }))
-            }
-            value={form.xapiToolChoice}
+              <label className="status-text" htmlFor="persona-system-prompt">
+                System prompt (xAI instructions)
+              </label>
+              <textarea
+                id="persona-system-prompt"
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, systemPrompt: event.target.value }))
+                }
+                placeholder="System prompt (sent as chat system message)"
+                required
+                rows={5}
+                value={form.systemPrompt}
+              />
+              <label className="status-text" htmlFor="persona-override-prompt">
+                Override prompt (prepended to each user turn)
+              </label>
+              <textarea
+                id="persona-override-prompt"
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, overridePrompt: event.target.value }))
+                }
+                placeholder="Optional — prepended to each user message for xChat"
+                rows={3}
+                value={form.overridePrompt}
+              />
+          </div>
+
+          <div
+            className="persona-editor__panel"
+            hidden={editorTab !== "rag"}
+            id="persona-editor-panel-rag"
+            role="tabpanel"
+            aria-labelledby="persona-editor-tab-rag"
           >
-            <option value="auto">auto — model may call tools</option>
-            <option value="required">required — must call a tool</option>
-            <option value="none">none — no tools</option>
-          </select>
-          <label className="status-text" htmlFor="persona-xapi-max-turns">
-            Max tool turns
-          </label>
-          <input
-            id="persona-xapi-max-turns"
-            max={10}
-            min={1}
-            onChange={(event) => setForm((current) => ({ ...current, xapiMaxTurns: event.target.value }))}
-            step={1}
-            type="number"
-            value={form.xapiMaxTurns}
-          />
-          <label>
-            <input
-              checked={form.enableRag}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, enableRag: event.target.checked }))
-              }
-              type="checkbox"
-            />{" "}
-            Enable RAG
-          </label>
-          <small className="status-text">
-            Enable RAG means xchat can use collection/search context to ground answers before generating
-            the final response.
-          </small>
-          <label className="status-text" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
-            <input
-              checked={form.citationsEnabled}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, citationsEnabled: event.target.checked }))
-              }
-              type="checkbox"
-            />
-            <span>
-              <strong>Citation chips in xChat</strong> — when on, the system prompt includes the
-              [@citation:…] contract so the model can emit source chips. When off, the prompt tells the model to answer
-              in plain prose without citation markup.
-            </span>
-          </label>
-          <label className="status-text" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
-            <input
-              checked={form.keepXchatHistory}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, keepXchatHistory: event.target.checked }))
-              }
-              type="checkbox"
-            />
-            <span>
-              <strong>Keep xChat remote history</strong> — when the platform has{" "}
-              <code>XCHAT_USE_REMOTE_HISTORY=true</code>, this persona participates in xAI conversation continuity (
-              <code>previous_response_id</code> / <code>store_messages</code>). Turn off to isolate turns for this
-              persona (stateless per request for that path).
-            </span>
-          </label>
+              <label className="status-text">Linked collections (RAG / KB scope for xChat)</label>
+              <label
+                className="status-text"
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "-0.15rem" }}
+              >
+                <input
+                  checked={restrictCollectionScope}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setRestrictCollectionScope(checked);
+                    if (!checked) {
+                      applySelectedCollectionIds([]);
+                    } else {
+                      const existingIds = extractCollectionIdsFromToolsJson(form.xapiToolsJson);
+                      if (existingIds.length > 0) {
+                        setSelectedCollectionIds(existingIds);
+                      }
+                    }
+                  }}
+                  type="checkbox"
+                />
+                <span>Restrict access to specific collections</span>
+              </label>
+              {restrictCollectionScope ? (
+                <>
+                  <input
+                    onChange={(event) => setCollectionFilter(event.target.value)}
+                    placeholder="Search by collection name or id"
+                    value={collectionFilter}
+                  />
+                  <div
+                    className="stack-gap"
+                    style={{
+                      maxHeight: "14rem",
+                      overflow: "auto",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      borderRadius: 8,
+                      padding: "0.55rem 0.7rem"
+                    }}
+                  >
+                    {visibleCollections.length > 0 ? (
+                      visibleCollections.map((row) => {
+                        const displayName = row.name?.trim() || "Unnamed collection";
+                        const selected = selectedCollectionIds.includes(row.id);
+                        return (
+                          <label
+                            key={row.id}
+                            className="status-text"
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1.1rem 1fr",
+                              alignItems: "start",
+                              gap: "0.5rem"
+                            }}
+                          >
+                            <input
+                              checked={selected}
+                              onChange={(event) => {
+                                const nextIds = event.target.checked
+                                  ? [...selectedCollectionIds, row.id]
+                                  : selectedCollectionIds.filter((id) => id !== row.id);
+                                applySelectedCollectionIds(nextIds);
+                              }}
+                              type="checkbox"
+                              value={row.id}
+                            />
+                            <span>
+                              {displayName}
+                              <br />
+                              <code>{row.id}</code>
+                            </span>
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <p className="status-text" style={{ margin: 0 }}>
+                        No collections match <code>{collectionFilter.trim()}</code>
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : null}
+              {collectionsStatus ? (
+                <p className="status-text status-error">{collectionsStatus}</p>
+              ) : collections.length > 0 ? (
+                <p className="status-text">
+                  {restrictCollectionScope && selectedCollectionIds.length > 0 ? (
+                    <>
+                      Selected: <code>{selectedCollectionIds.join(", ")}</code>
+                    </>
+                  ) : restrictCollectionScope ? (
+                    "Choose one or more collections from the list."
+                  ) : (
+                    "Restriction off — persona uses default collection scope from tools / deploy defaults."
+                  )}
+                </p>
+              ) : (
+                <p className="status-text">No collections returned from xAI inventory.</p>
+              )}
+          </div>
+
+          <div
+            className="persona-editor__panel"
+            hidden={editorTab !== "xapi"}
+            id="persona-editor-panel-xapi"
+            role="tabpanel"
+            aria-labelledby="persona-editor-tab-xapi"
+          >
+              <div
+                className="status-text"
+                role="region"
+                aria-label="Recommended production defaults"
+                style={{
+                  fontSize: "0.8rem",
+                  lineHeight: 1.45,
+                  border: "1px solid rgba(57, 255, 20, 0.25)",
+                  borderRadius: 8,
+                  padding: "0.65rem 0.75rem",
+                  background: "rgba(57, 255, 20, 0.06)"
+                }}
+              >
+                <strong style={{ color: "var(--xf-text-100)" }}>Lock these for daily xChat</strong>
+                <table
+                  className="status-text"
+                  style={{
+                    width: "100%",
+                    marginTop: "0.45rem",
+                    borderCollapse: "collapse",
+                    fontSize: "0.78rem"
+                  }}
+                >
+                  <thead>
+                    <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
+                      <th style={{ padding: "0.25rem 0.4rem 0.35rem 0" }}>Setting</th>
+                      <th style={{ padding: "0.25rem 0.4rem" }}>Value</th>
+                      <th style={{ padding: "0.25rem 0 0.35rem 0.4rem" }}>When it changes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      <td style={{ padding: "0.35rem 0.4rem 0.35rem 0", verticalAlign: "top" }}>Persona model</td>
+                      <td style={{ padding: "0.35rem 0.4rem", verticalAlign: "top" }}>
+                        <code>grok-4-1-fast-reasoning</code> (or server default)
+                      </td>
+                      <td style={{ padding: "0.35rem 0 0.35rem 0.4rem", verticalAlign: "top" }}>
+                        Never multi-agent for normal personas
+                      </td>
+                    </tr>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      <td style={{ padding: "0.35rem 0.4rem 0.35rem 0", verticalAlign: "top" }}>Tool choice</td>
+                      <td style={{ padding: "0.35rem 0.4rem", verticalAlign: "top" }}>
+                        <code>auto</code>
+                      </td>
+                      <td style={{ padding: "0.35rem 0 0.35rem 0.4rem", verticalAlign: "top" }}>Keep</td>
+                    </tr>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      <td style={{ padding: "0.35rem 0.4rem 0.35rem 0", verticalAlign: "top" }}>xAPI mode / turns / RAG</td>
+                      <td style={{ padding: "0.35rem 0.4rem", verticalAlign: "top" }}>
+                        <code>responses</code> · <code>5</code> turns · RAG on
+                      </td>
+                      <td style={{ padding: "0.35rem 0 0.35rem 0.4rem", verticalAlign: "top" }}>Keep</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "0.35rem 0.4rem 0.2rem 0", verticalAlign: "top" }}>Multi-agent model</td>
+                      <td style={{ padding: "0.35rem 0.4rem", verticalAlign: "top" }}>
+                        <code>grok-4.20-multi-agent</code>
+                      </td>
+                      <td style={{ padding: "0.35rem 0 0.2rem 0.4rem", verticalAlign: "top" }}>
+                        Strategy-job / orchestrator finalizer (backend), not persona default
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <label className="status-text" htmlFor="persona-xapi-tools-json">
+                xAPI tools (JSON array) — <code>web_search</code>, <code>x_search</code>,{" "}
+                <code>code_interpreter</code>, <code>collections_search</code>, <code>yahoo_finance</code>,{" "}
+                <code>atx_function</code>
+              </label>
+              <textarea
+                id="persona-xapi-tools-json"
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, xapiToolsJson: event.target.value }))
+                }
+                placeholder='[{"type":"web_search"}, …]'
+                rows={10}
+                spellCheck={false}
+                value={form.xapiToolsJson}
+              />
+
+              <fieldset
+                className="stack-gap"
+                style={{
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                  borderRadius: 8,
+                  padding: "0.75rem 1rem",
+                  marginTop: "0.15rem"
+                }}
+              >
+                <legend className="status-text" style={{ padding: "0 0.35rem" }}>
+                  Tools guardrails
+                </legend>
+                <label className="status-text" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+                  <input
+                    checked={includeHostedSearchInTools}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setIncludeHostedSearchInTools(checked);
+                      if (checked) {
+                        setShowEmptyToolsGuard(false);
+                      }
+                    }}
+                    type="checkbox"
+                  />
+                  <span>
+                    On save, prepend <code>web_search</code> and <code>x_search</code> if missing (recommended).
+                  </span>
+                </label>
+                <div
+                  className="status-text"
+                  role="note"
+                  style={{
+                    fontSize: "0.85rem",
+                    borderLeft: "3px solid var(--xf-gain-green)",
+                    paddingLeft: "0.65rem",
+                    marginTop: "0.25rem",
+                    opacity: 0.95
+                  }}
+                >
+                  Prefer <code>web_search</code>, <code>x_search</code>, and usually <code>atx_function</code> when the
+                  persona needs live or workspace data.
+                </div>
+                {showEmptyToolsGuard ? (
+                  <div
+                    className="status-text status-error"
+                    role="alert"
+                    style={{
+                      border: "1px solid rgba(220, 80, 80, 0.45)",
+                      borderRadius: 6,
+                      padding: "0.65rem 0.85rem",
+                      marginTop: "0.5rem"
+                    }}
+                  >
+                    <strong>Empty tools configuration</strong>
+                    <p style={{ margin: "0.45rem 0 0.35rem" }}>
+                      Parsed tools are empty and hosted-search merge is off.
+                    </p>
+                    <div className="tool-row" style={{ marginTop: "0.65rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                      <button
+                        className="tiny-button"
+                        type="button"
+                        onClick={() => {
+                          setIncludeHostedSearchInTools(true);
+                          setShowEmptyToolsGuard(false);
+                          setStatus("Hosted search merge enabled — click Save again.");
+                        }}
+                      >
+                        Enable hosted search merge
+                      </button>
+                      <button
+                        className="cta cta-danger"
+                        type="button"
+                        onClick={() => void submitPersona(null, true)}
+                      >
+                        Save anyway (not recommended)
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </fieldset>
+
+              <div className="persona-editor__general-grid">
+                <div>
+                  <label className="status-text" htmlFor="persona-xapi-mode">
+                    xAPI mode
+                  </label>
+                  <select
+                    id="persona-xapi-mode"
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        xapiMode: event.target.value as PersonaPayload["xapiMode"]
+                      }))
+                    }
+                    value={form.xapiMode}
+                  >
+                    <option value="responses">responses</option>
+                    <option value="chat_completions">chat_completions</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="status-text" htmlFor="persona-xapi-max-turns">
+                    Max tool turns
+                  </label>
+                  <input
+                    id="persona-xapi-max-turns"
+                    max={10}
+                    min={1}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, xapiMaxTurns: event.target.value }))
+                    }
+                    step={1}
+                    type="number"
+                    value={form.xapiMaxTurns}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="status-text" htmlFor="persona-xapi-tool-choice">
+                  Tool choice (xAI Responses)
+                </label>
+                <select
+                  id="persona-xapi-tool-choice"
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      xapiToolChoice: event.target.value as PersonaPayload["xapiToolChoice"]
+                    }))
+                  }
+                  value={form.xapiToolChoice}
+                >
+                  <option value="auto">auto — model may call tools</option>
+                  <option value="required">required — must call a tool first</option>
+                  <option value="none">none — tool_choice none (usually no tool calls)</option>
+                </select>
+                <small className="status-text" style={{ display: "block", marginTop: "0.35rem", lineHeight: 1.4 }}>
+                  Does <strong>not</strong> change the text of user messages. It only sets the provider&apos;s{" "}
+                  <code>tool_choice</code>: <strong>auto</strong> allows tool calls; <strong>none</strong> discourages
+                  them (text-first); <strong>required</strong> forces a tool invocation. Prompt assembly (system +
+                  override + KB) is unchanged.
+                </small>
+              </div>
+          </div>
+
           <div className="tool-row">
             <button
               aria-label={mode === "create" ? "Create persona" : "Save persona changes"}
