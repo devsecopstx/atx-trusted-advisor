@@ -18,6 +18,7 @@ const xaiMocks = vi.hoisted(() => ({
 }));
 
 const repositoryMocks = vi.hoisted(() => ({
+  getLatestXchatLogByThread: vi.fn(),
   getLatestXchatResponseIdByUser: vi.fn(),
   getPersonaById: vi.fn(),
   resolveDefaultXchatPersonaForSession: vi.fn(),
@@ -147,6 +148,7 @@ describe("xchat ask route collection retrieval", () => {
     });
     teamKbMocks.resolveTeamKbCollectionId.mockResolvedValue("collection_team_default");
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue(buildPersona());
+    repositoryMocks.getLatestXchatLogByThread.mockResolvedValue(null);
     repositoryMocks.getLatestXchatResponseIdByUser.mockResolvedValue(null);
     repositoryMocks.getPersonaById.mockResolvedValue(buildPersona());
     repositoryMocks.listXChatHistoryByUser.mockResolvedValue([]);
@@ -1211,6 +1213,67 @@ describe("xchat ask route collection retrieval", () => {
     expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
     expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
       expect.objectContaining({ model: "strategy_job_preflight" })
+    );
+  });
+
+  it("respects per-thread stay-in-chat opt-out and does not re-offer strategy jobs", async () => {
+    repositoryMocks.getLatestXchatLogByThread
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ strategyJobOptOut: false })
+      .mockResolvedValueOnce({ strategyJobOptOut: true });
+
+    const threadId = "thread_optout_1";
+
+    const first = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          threadId,
+          message: "covered call ideas for RDW"
+        })
+      })
+    );
+    expect(first.status).toBe(200);
+    const firstPayload = (await first.json()) as { data?: { strategyJobOffer?: boolean } };
+    expect(firstPayload.data?.strategyJobOffer).toBe(true);
+
+    const second = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          threadId,
+          message: "stay in chat"
+        })
+      })
+    );
+    expect(second.status).toBe(200);
+    const secondPayload = (await second.json()) as {
+      data?: { response?: string; strategyJobOffer?: boolean };
+    };
+    expect(secondPayload.data?.strategyJobOffer).toBe(false);
+    expect(secondPayload.data?.response ?? "").toContain("Understood, staying in chat");
+
+    const third = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          threadId,
+          message: "covered call ideas for RDW"
+        })
+      })
+    );
+    expect(third.status).toBe(200);
+    const thirdPayload = (await third.json()) as { data?: { strategyJobOffer?: boolean } };
+    expect(thirdPayload.data?.strategyJobOffer).toBeFalsy();
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining(
+          "User has explicitly chosen to stay in normal chat mode. Do NOT offer or mention strategy jobs, xStrategyBuilder, or the Spring orchestrator again in this conversation. Answer directly using tools, RAG, and portfolio context only. Keep full conversation history."
+        )
+      })
     );
   });
 });

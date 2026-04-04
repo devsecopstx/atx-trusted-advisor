@@ -259,6 +259,8 @@ export type XChatXaiUsageSnapshot = {
 /** One prompt/response turn in Mongo `xchat_logs` (TTL via retentionExpiresAt). user_history_agent syncs unsynced rows to the user xAI collection. */
 export type XChatSessionLog = {
   _id?: ObjectId;
+  /** Client conversation thread key (per xChat thread/session). */
+  threadId?: string;
   requestId: string;
   correlationId: string;
   userId?: ObjectId;
@@ -300,6 +302,8 @@ export type XChatSessionLog = {
   /** Set when markdown turn was uploaded and linked to the user xAI collection (user_history source). */
   syncedToXaiAt?: Date;
   xaiTurnSyncError?: string;
+  /** User explicitly opted out of strategy-job handoff for this thread. */
+  strategyJobOptOut?: boolean;
   retentionExpiresAt?: Date;
   createdAt: Date;
 };

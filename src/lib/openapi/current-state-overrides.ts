@@ -986,6 +986,13 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["message"],
     properties: {
       message: { type: "string", minLength: 2, maxLength: 8000 },
+      threadId: {
+        type: "string",
+        minLength: 1,
+        maxLength: 128,
+        description:
+          "Client thread key for per-conversation routing memory (for example, strategy-job opt-out persistence)."
+      },
       personaId: {
         type: "string",
         description: "Optional persona selection. App users are restricted to published allowlisted personas."
@@ -1060,7 +1067,8 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       toolCalls: { type: "array", items: refSchema("XChatToolCallSummary") },
       strategyJobOffer: {
         type: "boolean",
-        description: "True when the server returned a one-turn strategy-job preflight instead of a full model pass."
+        description:
+          "True when the server returned a one-turn strategy-job preflight instead of a full model pass (suppressed after thread opt-out)."
       },
       multiAgentDowngraded: {
         type: "boolean",

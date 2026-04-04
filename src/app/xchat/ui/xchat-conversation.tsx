@@ -358,8 +358,15 @@ export function XchatConversation({
   /** After send, hide the transcript for a minimal view; user expands to read the thread. */
   /** Default collapsed when a thread exists; expanded while `loading` so replies stay visible (branding). */
   const [threadUiCollapsed, setThreadUiCollapsed] = useState(true);
+  const [threadId] = useState(() => {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return `thread_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  });
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const composerFormRef = useRef<HTMLFormElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
   const pendingComposerFromHandoffRef = useRef(false);
   const userPickedPersonaRef = useRef(false);
@@ -785,9 +792,10 @@ export function XchatConversation({
     }
 
     try {
-      const askBody: { message: string; scope: string; personaId?: string } = {
+      const askBody: { message: string; scope: string; threadId: string; personaId?: string } = {
         message: prompt,
-        scope: "global"
+        scope: "global",
+        threadId
       };
       const effectivePersonaPick = selectedPersonaId.trim();
       if (effectivePersonaPick) {
@@ -1222,6 +1230,40 @@ export function XchatConversation({
                     <XchatMarkdownBody content={msg.content} />
                     {msg.strategyJobOffer ? (
                       <div className="xchat-strategy-job-cta" style={{ marginTop: "0.75rem" }}>
+                        <div className="xchat-strategy-job-cta__actions">
+                          <button
+                            className="xchat-strategy-job-cta__button xchat-strategy-job-cta__button--primary"
+                            disabled={loading}
+                            onClick={() => {
+                              if (loading) {
+                                return;
+                              }
+                              setInput("launch strategy job");
+                              requestAnimationFrame(() => {
+                                composerFormRef.current?.requestSubmit();
+                              });
+                            }}
+                            type="button"
+                          >
+                            Launch strategy job
+                          </button>
+                          <button
+                            className="xchat-strategy-job-cta__button"
+                            disabled={loading}
+                            onClick={() => {
+                              if (loading) {
+                                return;
+                              }
+                              setInput("stay in chat");
+                              requestAnimationFrame(() => {
+                                composerFormRef.current?.requestSubmit();
+                              });
+                            }}
+                            type="button"
+                          >
+                            Stay in chat
+                          </button>
+                        </div>
                         <Link
                           className="xchat-strategy-job-cta__link font-semibold"
                           href="/xstrategybuilder"
@@ -1279,7 +1321,7 @@ export function XchatConversation({
       </div>
 
         <div className="xchat-composer-wrap">
-          <form className="xchat-composer" onSubmit={handleSend}>
+          <form className="xchat-composer" onSubmit={handleSend} ref={composerFormRef}>
             <div className="xchat-composer__row xchat-composer__row--input">
               <XfHoverHint
                 className="xchat-composer__input-grow"

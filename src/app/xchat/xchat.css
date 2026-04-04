@@ -1410,6 +1410,29 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 18%, transparent) inset;
 }
 
+.xchat-strategy-job-cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 0 0.45rem;
+}
+
+.xchat-strategy-job-cta__button {
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-400) 44%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 84%, transparent);
+  color: var(--xf-text-primary);
+  padding: 0.35rem 0.58rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.xchat-strategy-job-cta__button--primary {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 60%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 24%, transparent);
+}
+
 .xchat-strategy-job-cta__link:hover {
   border-color: color-mix(in srgb, var(--xf-lightning-yellow) 68%, transparent);
   background: color-mix(in srgb, var(--xf-gain-green) 28%, transparent);

@@ -118,6 +118,15 @@ async function createXchatLogIndexes(): Promise<void> {
     { name: "idx_xchat_logs_user_created_desc" }
   );
   await chatLogCollection.createIndex(
+    { userId: 1, threadId: 1, createdAt: -1, _id: -1 },
+    {
+      name: "idx_xchat_logs_user_thread_created_desc",
+      partialFilterExpression: {
+        threadId: { $exists: true, $type: "string", $gt: "" }
+      }
+    }
+  );
+  await chatLogCollection.createIndex(
     { tenantId: 1, userId: 1, createdAt: -1, _id: -1 },
     { name: "idx_xchat_logs_tenant_user_created_desc" }
   );
@@ -478,6 +487,34 @@ export async function getXchatSessionLogByIdForUser(input: {
   };
   const query = withTenantScopeForLogs(base, input.tenantId);
   return db.collection<XChatSessionLog>(collections.chatLogs).findOne(query);
+}
+
+export async function getLatestXchatLogByThread(input: {
+  userId: ObjectId;
+  threadId: string;
+  tenantId?: ObjectId | null;
+  personaId?: ObjectId;
+}): Promise<XChatSessionLog | null> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const threadId = input.threadId.trim();
+  if (!threadId) {
+    return null;
+  }
+  const query: Record<string, unknown> = {
+    userId: input.userId,
+    threadId
+  };
+  if (input.personaId) {
+    query.personaId = input.personaId;
+  }
+  const scopedQuery = withTenantScopeForLogs(query, input.tenantId);
+  return db
+    .collection<XChatSessionLog>(collections.chatLogs)
+    .find(scopedQuery)
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(1)
+    .next();
 }
 
 const pendingXaiSyncFilter: Record<string, unknown> = {

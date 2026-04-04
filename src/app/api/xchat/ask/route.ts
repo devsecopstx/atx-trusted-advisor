@@ -46,7 +46,11 @@ import {
     getPlanLimits
 } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
-import { getLatestXchatResponseIdByUser, saveXChatLog } from "@/modules/xchat/repository";
+import {
+    getLatestXchatLogByThread,
+    getLatestXchatResponseIdByUser,
+    saveXChatLog
+} from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
 import { fireAndForgetRecordXchatToolUsage } from "@/modules/xchat/tool-usage-repository";
 import type { XChatXaiUsageSnapshot } from "@/modules/xchat/types";
@@ -72,6 +76,7 @@ import {
 
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
+  threadId: z.string().trim().min(1).max(128).optional(),
   personaId: z.string().optional(),
   reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]).optional(),
   scope: z.string().min(1).max(128).optional(),
@@ -80,6 +85,8 @@ const askSchema = z.object({
 
 const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
 const ASK_RATE_MAX = 20;
+const STRATEGY_OPTOUT_SYSTEM_PROMPT_LINE =
+  "User has explicitly chosen to stay in normal chat mode. Do NOT offer or mention strategy jobs, xStrategyBuilder, or the Spring orchestrator again in this conversation. Answer directly using tools, RAG, and portfolio context only. Keep full conversation history.";
 const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>(
   XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS.map((k) => normalizeNameKey(k))
 );
@@ -101,6 +108,19 @@ type AskPersonaAccessResult =
       error: string;
       code: string;
     };
+
+function isStayInChatReply(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  return (
+    normalized === "stay in chat" ||
+    normalized.includes("stay in chat") ||
+    normalized === "stay here" ||
+    normalized.includes("continue in chat")
+  );
+}
 
 export async function POST(request: Request) {
   const session = await requireSessionUser();
@@ -135,6 +155,7 @@ export async function POST(request: Request) {
   }
 
   const { message } = parsed.data;
+  const threadId = parsed.data.threadId?.trim() || undefined;
   const isAdminSession = isGlobalAdmin(session.roles);
   let subscriptionPlan: SubscriptionPlan | undefined;
   let limiterRemainingMinute: number | undefined;
@@ -337,8 +358,64 @@ export async function POST(request: Request) {
   const userId = ObjectId.isValid(session.userId)
     ? new ObjectId(session.userId)
     : undefined;
+  let strategyJobOptOut = false;
+  if (threadId && userId) {
+    const latestThreadLog = await getLatestXchatLogByThread({
+      userId,
+      tenantId,
+      threadId
+    });
+    strategyJobOptOut = latestThreadLog?.strategyJobOptOut === true;
+  }
 
-  if (shouldOfferStrategyJobPreflight(message)) {
+  if (isStayInChatReply(message)) {
+    strategyJobOptOut = true;
+    const responseMarkdown = preprocessXchatMarkdown(
+      "Understood, staying in chat. I will continue in normal chat mode for this conversation."
+    );
+    const chatLogId = await saveXChatLog({
+      threadId,
+      requestId,
+      correlationId,
+      userId,
+      tenantId: tenantId ?? undefined,
+      userEmail: session.email,
+      requestedBy: session.username,
+      personaId: persona?._id,
+      personaName: persona.name,
+      scope,
+      message,
+      response: responseMarkdown,
+      contextChunkIds: [],
+      model: "strategy_job_opt_out",
+      strategyJobOptOut: true
+    });
+    return NextResponse.json(
+      {
+        data: {
+          response: responseMarkdown,
+          strategyJobOffer: false,
+          personaName: persona.name,
+          modelSelectionSource,
+          model: "strategy_job_opt_out",
+          contextCount: 0,
+          contextSource: "none",
+          collectionSearchStatus: "skipped_no_collections",
+          collectionSearchNonReadyFileCount: 0,
+          logId: chatLogId.toHexString()
+        }
+      },
+      {
+        headers: buildLimiterHeaders({
+          remainingMinute: limiterRemainingMinute,
+          remainingDay: limiterRemainingDay,
+          dailyLimit: limiterDailyLimit
+        })
+      }
+    );
+  }
+
+  if (!strategyJobOptOut && shouldOfferStrategyJobPreflight(message)) {
     const responseMarkdown = preprocessXchatMarkdown(STRATEGY_JOB_PREFLIGHT_MARKDOWN);
     const preflightRequestId = buildDeterministicId(
       "xpref",
@@ -353,6 +430,7 @@ export async function POST(request: Request) {
       session.tenantId ?? "tenant:none"
     );
     const chatLogId = await saveXChatLog({
+      threadId,
       requestId: preflightRequestId,
       correlationId: preflightCorrelationId,
       userId,
@@ -365,7 +443,8 @@ export async function POST(request: Request) {
       message,
       response: responseMarkdown,
       contextChunkIds: [],
-      model: "strategy_job_preflight"
+      model: "strategy_job_preflight",
+      strategyJobOptOut
     });
     return NextResponse.json(
       {
@@ -493,7 +572,7 @@ export async function POST(request: Request) {
       ? `xChat TEAM KB xAI collection ids (persona.teamCollection + deploy default; single team model — no per-user history collection): ${linkedCollectionIds.join(", ")}`
       : "xChat TEAM KB xAI collection ids: (none — set persona teamCollection and/or team KB / XAI_TEAM_ID so RAG can run)";
 
-  const systemPrompt = buildXchatSystemPrompt({
+  const builtSystemPrompt = buildXchatSystemPrompt({
     personaSystem: persona?.systemPrompt ?? "",
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,
@@ -506,6 +585,9 @@ export async function POST(request: Request) {
     routingPolicyBlock: XCHAT_SERVER_ROUTING_POLICY_BLOCK,
     citationsEnabled: persona?.citationsEnabled !== false
   });
+  const systemPrompt = strategyJobOptOut
+    ? `${STRATEGY_OPTOUT_SYSTEM_PROMPT_LINE}\n\n${builtSystemPrompt}`
+    : builtSystemPrompt;
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
   const userPromptBase = userPromptTemplate
     ? `${userPromptTemplate}\n\nUser message:\n${message}`
@@ -657,6 +739,7 @@ export async function POST(request: Request) {
   }
 
   const chatLogId = await saveXChatLog({
+    threadId,
     requestId,
     correlationId,
     userId,
@@ -686,6 +769,7 @@ export async function POST(request: Request) {
           error: tc.error
         }))
       : undefined,
+    strategyJobOptOut
   });
 
   fireAndForgetRecordXchatToolUsage({
