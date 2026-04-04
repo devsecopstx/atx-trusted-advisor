@@ -4,10 +4,14 @@ import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-pu
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
-import { listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
+import { adminListBrokerCatalog, listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
 import { canUserLogin } from "@/modules/identity/authorization";
 
-import { ImportActivityClient, type ImportActivityPortfolioOption } from "./import-activity-client";
+import {
+    ImportActivityClient,
+    type ImportActivityBrokerOption,
+    type ImportActivityPortfolioOption
+} from "./import-activity-client";
 
 import "@/app/account/billing/billing-plans.css";
 import "@/app/portfolio/portfolio.css";
@@ -38,6 +42,12 @@ export default async function ImportActivityPage({ searchParams }: PageProps) {
       name: p.name || "Portfolio"
     }))
     .filter((p) => p.id);
+  const brokerCatalog = await adminListBrokerCatalog();
+  const brokers: ImportActivityBrokerOption[] = brokerCatalog.map((broker) => ({
+    id: broker.type,
+    name: broker.name,
+    iconUrl: broker.iconUrl ?? ""
+  }));
 
   const sp = searchParams ? await searchParams : {};
   const portfolioIdRaw = sp.portfolioId;
@@ -71,6 +81,7 @@ export default async function ImportActivityPage({ searchParams }: PageProps) {
 
             <div className="surface-card xf-widget section-card p-3 md:p-4">
               <ImportActivityClient
+                brokers={brokers}
                 key={initialPortfolioId ?? "default"}
                 initialPortfolioId={initialPortfolioId}
                 portfolios={portfolios}

@@ -20,9 +20,17 @@ import {
 } from "@/modules/portfolio-import/app-broker-import-job";
 import { parseBrokerHoldingsAccounts, previewBrokerHoldingsAccounts } from "@/modules/portfolio-import/broker-holdings-import";
 
+const brokerSlugSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .regex(/^[a-z][a-z0-9_]*$/)
+  .transform((value) => value.toLowerCase());
+
 const bodySchema = z.object({
   portfolioId: z.string().trim().min(1),
-  broker: z.enum(["merrill", "fidelity"]),
+  broker: brokerSlugSchema,
   exportType: z.enum(["holdings"]),
   csv: z.string().min(1).max(APP_BROKER_IMPORT_MAX_CSV_CHARS),
   mappings: z.record(z.string(), z.string()).default({}),
@@ -64,6 +72,14 @@ export async function POST(request: Request) {
 
   const { portfolioId, broker, exportType, csv, mappings, fidelityHoldingsDefaultAccountRef, dryRun } =
     parsed.data;
+  if (broker !== "merrill" && broker !== "fidelity") {
+    return NextResponse.json(
+      {
+        error: `${broker} import is not available yet for app-user CSV ingest. Supported brokers: merrill, fidelity.`
+      },
+      { status: 400 }
+    );
+  }
   if (!isMappingsRecord(mappings)) {
     return NextResponse.json({ error: "mappings must be string-to-string" }, { status: 400 });
   }

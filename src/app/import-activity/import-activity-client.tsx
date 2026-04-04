@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteIcon, UploadIcon } from "@/app/admin/ui/crud-icons";
@@ -10,6 +9,12 @@ import { detectFidelityPortfolioHoldingsCsv } from "@/modules/portfolio-import/f
 export type ImportActivityPortfolioOption = {
   id: string;
   name: string;
+};
+
+export type ImportActivityBrokerOption = {
+  id: string;
+  name: string;
+  iconUrl: string;
 };
 
 type AccountRow = {
@@ -41,6 +46,7 @@ type BrokerApplyRow = {
 
 type ImportActivityClientProps = {
   portfolios: ImportActivityPortfolioOption[];
+  brokers: ImportActivityBrokerOption[];
   /** When present and matches a portfolio id, preselect that book (e.g. from /portfolio Activities). */
   initialPortfolioId?: string;
 };
@@ -60,7 +66,40 @@ async function parseJson<T>(res: Response): Promise<T> {
   return body as T;
 }
 
-export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportActivityClientProps) {
+const SUPPORTED_IMPORT_BROKERS = new Set(["merrill", "fidelity"]);
+const BROKER_IMPORT_PREFERRED_ORDER = ["fidelity", "merrill", "etrade", "ibkr"] as const;
+
+function orderBrokersForImport(brokers: ImportActivityBrokerOption[]): ImportActivityBrokerOption[] {
+  const rank = new Map<string, number>(
+    BROKER_IMPORT_PREFERRED_ORDER.map((id, index) => [id, index])
+  );
+  return [...brokers].sort((a, b) => {
+    const ra = rank.get(a.id) ?? Number.POSITIVE_INFINITY;
+    const rb = rank.get(b.id) ?? Number.POSITIVE_INFINITY;
+    if (ra !== rb) {
+      return ra - rb;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function resolveDefaultBrokerId(brokers: ImportActivityBrokerOption[]): string {
+  const ordered = orderBrokersForImport(brokers);
+  return ordered[0]?.id ?? "fidelity";
+}
+
+function brokerCapabilityBadges(brokerId: string): string[] {
+  switch (brokerId) {
+    case "merrill":
+      return ["Holdings"];
+    case "fidelity":
+      return ["Holdings", "Activities"];
+    default:
+      return ["Coming soon"];
+  }
+}
+
+export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }: ImportActivityClientProps) {
   const initialPick =
     initialPortfolioId && portfolios.some((p) => p.id === initialPortfolioId)
       ? initialPortfolioId
@@ -68,7 +107,7 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
   const [portfolioId, setPortfolioId] = useState(initialPick);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [brokerCsv, setBrokerCsv] = useState("");
-  const [brokerKind, setBrokerKind] = useState<"merrill" | "fidelity">("merrill");
+  const [brokerKind, setBrokerKind] = useState<string>(() => resolveDefaultBrokerId(brokers));
   const [brokerPreview, setBrokerPreview] = useState<BrokerPreviewAccount[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -95,6 +134,13 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
     void loadAccounts();
   }, [loadAccounts]);
 
+  useEffect(() => {
+    if (!brokers.some((broker) => broker.id === brokerKind)) {
+      setBrokerKind(resolveDefaultBrokerId(brokers));
+    }
+  }, [brokers, brokerKind]);
+  const orderedBrokers = useMemo(() => orderBrokersForImport(brokers), [brokers]);
+
   const fidelityDetectedFileKind = useMemo((): "activities" | "portfolio_holdings" | "legacy_positions" | null => {
     if (brokerKind !== "fidelity" || !brokerCsv.trim()) {
       return null;
@@ -107,6 +153,11 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
     }
     return "legacy_positions";
   }, [brokerKind, brokerCsv]);
+  const selectedBroker = useMemo(
+    () => brokers.find((broker) => broker.id === brokerKind) ?? null,
+    [brokers, brokerKind]
+  );
+  const brokerImportSupported = SUPPORTED_IMPORT_BROKERS.has(brokerKind);
 
   const findAccountByExternalRef = (accountRef: string): AccountRow | undefined => {
     const ref = accountRef.trim();
@@ -120,11 +171,17 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
 
   const runPreview = async () => {
     if (!portfolioId) {
-      setMessage("Select a portfolio.");
+      setMessage("Select a portfolio before running preview.");
       return;
     }
     if (!brokerCsv.trim()) {
-      setMessage("Choose or paste a broker CSV export.");
+      setMessage("Add a broker CSV file before running preview.");
+      return;
+    }
+    if (!brokerImportSupported) {
+      setMessage(
+        `${selectedBroker?.name ?? brokerKind} import is not available yet. Choose Merrill or Fidelity for now.`
+      );
       return;
     }
     setBusy(true);
@@ -150,15 +207,15 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
         })
       );
       if (!payload.accounts?.length) {
-        throw new Error("No broker accounts in preview.");
+        throw new Error("No broker accounts were detected in this file.");
       }
       setBrokerPreview(payload.accounts);
       setMessage(
-        `Preview: ${payload.accounts.length} broker account(s). Confirm each maps to a portfolio account below, then run import.`
+        `Preview complete: ${payload.accounts.length} broker account(s) detected. Confirm account mapping below, then run import.`
       );
     } catch (e) {
       setBrokerPreview(null);
-      setMessage(e instanceof Error ? e.message : "Preview failed");
+      setMessage(e instanceof Error ? e.message : "Preview failed. Review file format and try again.");
     } finally {
       setBusy(false);
     }
@@ -166,11 +223,17 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
 
   const runImport = async () => {
     if (!portfolioId) {
-      setMessage("Select a portfolio.");
+      setMessage("Select a portfolio before running import.");
       return;
     }
     if (!brokerCsv.trim()) {
-      setMessage("Choose or paste a broker CSV export.");
+      setMessage("Add a broker CSV file before running import.");
+      return;
+    }
+    if (!brokerImportSupported) {
+      setMessage(
+        `${selectedBroker?.name ?? brokerKind} import is not available yet. Choose Merrill or Fidelity for now.`
+      );
       return;
     }
     if (brokerPreview?.length) {
@@ -179,7 +242,7 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
         .map((row) => row.accountRef || "(blank)");
       if (missing.length > 0) {
         setMessage(
-          `Import blocked: ${missing.length} broker account ref(s) do not match any portfolio account ext ref. Missing: ${missing.join(", ")}`
+          `Import blocked: ${missing.length} broker account ref(s) do not match account external refs in this portfolio. Missing: ${missing.join(", ")}`
         );
         return;
       }
@@ -223,12 +286,12 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
       setTaskOutput(payload.data.taskOutput);
       setMessage(
         payload.data.status === "success"
-          ? "Import finished — positions updated for mapped accounts."
-          : "Import completed with errors — see summary below."
+          ? "Import complete. Positions were updated for mapped accounts."
+          : "Import completed with exceptions. Review the summary below."
       );
       void loadAccounts();
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Import failed");
+      setMessage(e instanceof Error ? e.message : "Import failed. Review input and retry.");
     } finally {
       setBusy(false);
     }
@@ -236,12 +299,12 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
 
   const runCleanFirstThenImport = async () => {
     if (!portfolioId) {
-      setMessage("Select a portfolio.");
+      setMessage("Select a portfolio before running clean.");
       return;
     }
     const bookName = portfolios.find((p) => p.id === portfolioId)?.name ?? "this portfolio";
     const warn1 = [
-      `Clean “${bookName}” before a fresh import?`,
+      `Clean "${bookName}" before a fresh import?`,
       "",
       "This permanently deletes:",
       "• Every stock, option, and cash position in ALL accounts in this portfolio",
@@ -250,14 +313,14 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
       "",
       "Your accounts, watchlists, and the portfolio itself are NOT removed.",
       "",
-      "This cannot be undone."
+      "This action cannot be undone."
     ].join("\n");
     if (!window.confirm(warn1)) {
       return;
     }
     if (
       !window.confirm(
-        "Final confirmation: delete all holdings and import activity for the selected portfolio now?"
+        "Final confirmation: delete all holdings and import activity for the selected portfolio now."
       )
     ) {
       return;
@@ -284,11 +347,11 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
       setResults(null);
       setTaskOutput(null);
       setMessage(
-        `Clean slate ready — removed ${d.positionsDeleted} position row(s), ${d.importJobsDeleted} import job(s), ${d.syncTasksDeleted} sync task(s). You can paste CSV and run Preview / Import.`
+        `Clean completed. Removed ${d.positionsDeleted} position row(s), ${d.importJobsDeleted} import job(s), and ${d.syncTasksDeleted} sync task(s). You can now upload CSV and run preview/import.`
       );
       void loadAccounts();
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Clean failed");
+      setMessage(e instanceof Error ? e.message : "Clean failed. Retry after confirming portfolio scope.");
     } finally {
       setCleanBusy(false);
     }
@@ -296,21 +359,32 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
 
   return (
     <div className="grid w-full gap-2">
-      <p className="text-sm text-[var(--xf-text-300)]">
-        Import Merrill Edge <strong>holdings</strong> or Fidelity <strong>Portfolio holdings</strong> (multi-account positions
-        export), <strong>Accounts History</strong> (activities), or legacy single-account <strong>Positions</strong> CSV. The
-        parser picks the layout from the file header. Broker account numbers / refs in the file must match each account&apos;s{" "}
-        <code className="font-mono text-xs">ext ref</code> on the{" "}
-        <Link className="underline text-[var(--xf-text-100)]" href="/portfolio">
-          Portfolio
-        </Link>{" "}
-        workspace. For Fidelity, use <strong>Portfolio holdings first</strong> to load positions, then{" "}
-        <strong>Accounts History</strong> to apply trades: each activity row is replayed <strong>on top of</strong> your
-        current app holdings (not a standalone replacement). Preview still reflects the file-only net; import merges with
-        what is already in the book. Net long options import; net short option legs are omitted until shorts are modeled.
-        Runs as an immediate{" "}
-        <code className="font-mono text-xs">sync-broker</code> job; a short summary is shown when done.
-      </p>
+      <section
+        className="mt-2 mb-0 text-xs leading-snug text-[var(--xf-text-300)]"
+        aria-label="Import workflow guidance"
+      >
+        <p className="m-0 font-semibold text-[var(--xf-text-100)]">Import broker holdings and activities</p>
+        <p className="mt-1.5 mb-2 text-xs leading-snug text-[var(--xf-text-300)]">
+          Upload CSV exports from your broker to refresh your workspace portfolio. This flow updates
+          portfolio-level risk context used by xOptions scanners and desk monitoring.
+        </p>
+        <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[var(--xf-text-300)]">
+          Supported files
+        </p>
+        <ul className="mt-1 mb-2 list-disc space-y-1 pl-5 text-xs text-[var(--xf-text-300)]">
+          <li>Portfolio holdings (multi-account positions export)</li>
+          <li>Accounts History (activity ledger)</li>
+          <li>Legacy single-account Positions CSV</li>
+        </ul>
+        <p className="m-0 text-xs leading-snug text-[var(--xf-text-300)]">
+          Account numbers in the broker file must exactly match each account&apos;s external ref in this portfolio.
+          Preview shows file impact only; import applies additive updates to current holdings.
+        </p>
+        <p className="mt-2 mb-0 text-xs leading-snug text-[var(--xf-text-300)]">
+          <strong className="text-[var(--xf-text-100)]">Options note:</strong> only net-long option legs are imported
+          right now; net-short legs are skipped until short modeling is enabled.
+        </p>
+      </section>
 
       {portfolios.length === 0 ? (
         <p className="text-sm text-[var(--xf-text-300)]">No portfolios yet — create one from Portfolios first.</p>
@@ -392,21 +466,64 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          <span>Broker</span>
-          <select
-            className="crud-input rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm"
-            value={brokerKind}
-            onChange={(e) => {
-              setBrokerKind(e.target.value as "merrill" | "fidelity");
-              setBrokerPreview(null);
-            }}
-            disabled={busy}
-          >
-            <option value="merrill">Merrill Edge (holdings)</option>
-            <option value="fidelity">Fidelity (portfolio holdings or activities)</option>
-          </select>
-        </label>
+        <fieldset className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
+          <legend className="text-sm">Broker</legend>
+          <div className="grid gap-1.5 grid-cols-2 md:grid-cols-4">
+            {orderedBrokers.map((broker) => {
+              const active = broker.id === brokerKind;
+              const supported = SUPPORTED_IMPORT_BROKERS.has(broker.id);
+              const capabilityBadges = brokerCapabilityBadges(broker.id);
+              return (
+                <button
+                  key={broker.id}
+                  type="button"
+                  className={`flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-left transition ${
+                    active
+                      ? "border-[var(--xf-gain-green)] bg-[color:color-mix(in_srgb,var(--xf-gain-green)_14%,transparent)]"
+                      : "border-white/10 bg-black/20 hover:border-white/20"
+                  }`}
+                  disabled={busy}
+                  onClick={() => {
+                    setBrokerKind(broker.id);
+                    setBrokerPreview(null);
+                  }}
+                  aria-pressed={active}
+                  aria-label={`Select broker ${broker.name}`}
+                >
+                  {broker.iconUrl.trim() ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- admin-managed broker icon URL/path
+                    <img
+                      alt=""
+                      className="h-4 w-4 rounded border border-white/10 object-contain"
+                      src={broker.iconUrl}
+                    />
+                  ) : (
+                    <span className="inline-flex h-4 w-4 items-center justify-center rounded border border-white/10 font-mono text-[8px] uppercase text-[var(--xf-text-300)]">
+                      {broker.id.slice(0, 2)}
+                    </span>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate text-[10px] font-semibold text-[var(--xf-text-100)]">{broker.name}</span>
+                    <span className="block truncate font-mono text-[9px] text-[var(--xf-text-300)]">
+                      {broker.id}
+                      {!supported ? " · coming soon" : ""}
+                    </span>
+                    <span className="mt-0.5 flex flex-wrap gap-0.5">
+                      {capabilityBadges.map((badge) => (
+                        <span
+                          key={`${broker.id}-${badge}`}
+                          className="inline-flex items-center rounded border border-white/10 bg-black/25 px-1 py-0 text-[8px] font-medium text-[var(--xf-text-300)]"
+                        >
+                          {badge}
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
         <label className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
           <span>CSV file</span>
           <input
@@ -433,6 +550,13 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
           placeholder="Paste or load CSV…"
         />
       </label>
+
+      {!brokerImportSupported ? (
+        <p className="text-xs text-[var(--xf-text-300)]">
+          {selectedBroker?.name ?? brokerKind} imports are not enabled yet for app-user CSV ingest. Current supported
+          brokers: Merrill and Fidelity.
+        </p>
+      ) : null}
 
       {brokerKind === "fidelity" ? (
         <div
@@ -470,7 +594,7 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
         <button
           type="button"
           className="inline-flex items-center gap-2 rounded-[var(--xf-radius-sm)] border border-[color:color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] px-3 py-2 text-sm font-semibold text-[var(--xf-text-100)] transition hover:bg-[color:color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] disabled:pointer-events-none disabled:opacity-50"
-          disabled={busy || !portfolioId}
+          disabled={busy || !portfolioId || !brokerImportSupported}
           onClick={() => void runPreview()}
         >
           <UploadIcon className="crud-icon h-4 w-4" /> Preview (dry run)
@@ -478,7 +602,7 @@ export function ImportActivityClient({ portfolios, initialPortfolioId }: ImportA
         <button
           type="button"
           className="inline-flex items-center gap-2 rounded-md bg-[var(--xf-gain-green)] px-3 py-2 text-sm font-medium text-black hover:opacity-90 disabled:opacity-50"
-          disabled={busy || !portfolioId || !brokerPreview?.length}
+          disabled={busy || !portfolioId || !brokerPreview?.length || !brokerImportSupported}
           onClick={() => void runImport()}
         >
           <UploadIcon className="crud-icon h-4 w-4" /> Run import now
