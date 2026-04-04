@@ -4,7 +4,11 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
-import { deletePortfolioAccountForUser, updatePortfolioAccountForUser } from "@/modules/core-admin/repository";
+import {
+    deletePortfolioAccountForUser,
+    listPortfolioAccounts,
+    updatePortfolioAccountForUser
+} from "@/modules/core-admin/repository";
 import {
     accountOutlookValues,
     accountTypeValues,
@@ -69,6 +73,26 @@ export async function PATCH(
     return NextResponse.json(
       { error: "Invalid request payload", details: parsed.error.flatten() },
       { status: 400 }
+    );
+  }
+
+  const existing = (
+    await listPortfolioAccounts({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      portfolioId
+    })
+  ).find((account) => account._id?.toHexString() === accountId);
+  if (!existing?._id) {
+    return NextResponse.json({ error: "Account not found" }, { status: 404 });
+  }
+  if (
+    existing.brokerImportLocked &&
+    (parsed.data.extAccountId !== undefined || parsed.data.type !== undefined)
+  ) {
+    return NextResponse.json(
+      { error: "Broker and account ref are locked after first import. Ask an admin to override." },
+      { status: 409 }
     );
   }
 

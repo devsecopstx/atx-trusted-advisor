@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
@@ -252,6 +253,42 @@ function historyItemsToTranscriptMessages(items: HistoryItem[]): Message[] {
   return out;
 }
 
+function shouldLaunchStrategyJobFromReply(input: string): boolean {
+  const t = input.trim().toLowerCase();
+  if (!t) {
+    return false;
+  }
+  if (t === "yes" || t === "y") {
+    return true;
+  }
+  if (t.includes("launch strategy job")) {
+    return true;
+  }
+  if (t.includes("start strategy job")) {
+    return true;
+  }
+  if (t.includes("open strategy job")) {
+    return true;
+  }
+  if (t.includes("proceed")) {
+    return true;
+  }
+  return false;
+}
+
+function hasPendingStrategyJobOffer(messages: Message[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg.role === "ai" && msg.strategyJobOffer) {
+      return true;
+    }
+    if (msg.role === "user") {
+      return false;
+    }
+  }
+  return false;
+}
+
 type VisibleCollection = {
   collectionId: string;
   collectionName?: string;
@@ -286,6 +323,7 @@ export function XchatConversation({
   workspaceChangePersonaEnabled = true,
   workspaceChatHistoryMax = 10
 }: XchatConversationProps) {
+  const router = useRouter();
   const uiPromptLimit = Math.max(1, Math.min(500, workspaceChatHistoryMax));
   const personaPickerLocked =
     !workspaceChangePersonaEnabled && !isGlobalAdminSession;
@@ -668,6 +706,83 @@ export function XchatConversation({
     });
     setInput("");
     setLoading(true);
+
+    if (hasPendingStrategyJobOffer(messages) && shouldLaunchStrategyJobFromReply(prompt)) {
+      try {
+        const response = await fetch("/api/strategy-jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          data?: { jobId?: string; correlationId?: string };
+          error?: string;
+          message?: string;
+        };
+        if (!response.ok || !payload.data?.jobId) {
+          setMessages((prev) => {
+            const added = [
+              ...prev,
+              {
+                id: `error-${Date.now()}`,
+                role: "error" as const,
+                content:
+                  payload.message ??
+                  payload.error ??
+                  `Could not launch strategy job (${response.status}).`,
+                timestamp: Date.now()
+              }
+            ];
+            const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
+            return next;
+          });
+          return;
+        }
+        const jobId = payload.data.jobId;
+        const correlationId =
+          typeof payload.data.correlationId === "string" ? payload.data.correlationId : null;
+        setMessages((prev) => {
+          const added = [
+            ...prev,
+            {
+              id: `ai-${Date.now()}`,
+              role: "ai" as const,
+              content: [
+                "Launching guided strategy workflow in xStrategyBuilder.",
+                correlationId ? `Correlation id: \`${correlationId}\`` : null,
+                "",
+                "_Not investment advice. Review suitability, assignment risk, and tax impact before execution._"
+              ]
+                .filter(Boolean)
+                .join("\n"),
+              persona: activePersonaName,
+              timestamp: Date.now()
+            }
+          ];
+          const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
+          return next;
+        });
+        router.push(`/xstrategybuilder?jobId=${encodeURIComponent(jobId)}&from=xchat`);
+        return;
+      } catch {
+        setMessages((prev) => {
+          const added = [
+            ...prev,
+            {
+              id: `error-${Date.now()}`,
+              role: "error" as const,
+              content: "Network error while launching strategy job. Check your connection.",
+              timestamp: Date.now()
+            }
+          ];
+          const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
+          return next;
+        });
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
 
     try {
       const askBody: { message: string; scope: string; personaId?: string } = {
@@ -1109,10 +1224,10 @@ export function XchatConversation({
                       <div className="xchat-strategy-job-cta" style={{ marginTop: "0.75rem" }}>
                         <Link
                           className="xchat-md-a font-semibold"
-                          href="/xoptions?strategyJob=1"
+                          href="/xstrategybuilder"
                           prefetch={false}
                         >
-                          Open guided strategy job on xOptions →
+                          Open guided strategy job on xStrategyBuilder →
                         </Link>
                       </div>
                     ) : null}

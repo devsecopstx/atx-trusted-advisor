@@ -68,8 +68,10 @@ export function shouldOfferStrategyJobPreflight(message: string): boolean {
 
 export const STRATEGY_JOB_PREFLIGHT_MARKDOWN = `### Guided strategy job
 
-You are asking for a **structured options workflow**. Use the **xOptions orchestrator** (Spring \`/api/strategy-jobs\` behind the BFF) to collect desk context and produce an auditable **Markdown + JSON** artifact after slots complete.
+You are asking for a **structured options workflow**. For compliance-safe planning, route this through the strategy orchestrator (Spring \`/api/strategy-jobs\` behind the BFF) to collect desk context and produce an auditable **Markdown + JSON** artifact after slots complete.
 
-**Next step:** open **[xOptions — guided strategy job](/xoptions?strategyJob=1)** and answer the short prompts. The page polls for the artifact while the finalizer runs.
+**Confirm handoff:** reply **"launch strategy job"** (or **"yes"**) and I will create the job and move you to **xStrategyBuilder**.
 
-If you only wanted a quick opinion **in chat**, reply **stay in chat** and ask again — we will keep the conversation here.`;
+If you only want a high-level educational answer **in chat**, reply **"stay in chat"** and I will continue here.
+
+_Not investment advice. Options involve substantial risk; review suitability, liquidity, assignment risk, and tax impact before execution._`;

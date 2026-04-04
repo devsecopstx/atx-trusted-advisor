@@ -1,9 +1,7 @@
 import { ObjectId } from "mongodb";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-workspace";
-import { serializePositionsForUi } from "@/app/portfolio/lib/serialize-positions";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
@@ -16,10 +14,9 @@ import {
     getPortfolioAccountByIdForSessionUser,
     getPortfolioByIdForSessionUser,
     listPortfolioAccounts,
-    listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
-import { parseAccountOutlook, type Account, type Position } from "@/modules/core-admin/types";
+import { parseAccountOutlook, type Account } from "@/modules/core-admin/types";
 
 function serializeAccount(account: Account) {
   return {
@@ -36,11 +33,9 @@ function serializeAccount(account: Account) {
 }
 
 export default async function PortfolioAccountPage({
-  params,
-  searchParams
+  params
 }: {
   params: Promise<{ accountId: string }>;
-  searchParams?: Promise<{ view?: string }>;
 }) {
   const session = await getSessionUser();
   if (!session) {
@@ -48,8 +43,6 @@ export default async function PortfolioAccountPage({
   }
 
   const { accountId } = await params;
-  const viewParam = searchParams ? await searchParams : {};
-  const initialWorkspaceView = viewParam.view === "holdings" ? "holdings" : "edit";
   if (!ObjectId.isValid(accountId)) {
     notFound();
   }
@@ -136,21 +129,6 @@ export default async function PortfolioAccountPage({
     notFound();
   }
 
-  let positions: Position[] = [];
-  try {
-    positions = await listPortfolioPositionsByAccount({
-      userId: session.userId,
-      tenantId: session.tenantId,
-      portfolioId: portfolioIdHex,
-      accountIds: [account._id]
-    });
-  } catch (error) {
-    const detail = caughtErrorMessage(error);
-    console.error(
-      `[portfolio/account] positions load failed userId=${session.userId} accountId=${accountId} detail=${detail}`
-    );
-  }
-
   return (
     <div className="xchat-shell">
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
@@ -158,40 +136,11 @@ export default async function PortfolioAccountPage({
       <div className="xchat-body portfolio-page-body">
         <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
         <div className="portfolio-account-page portfolio-account-page--edit">
-          <header className="portfolio-hero portfolio-hero--account-edit xf-noise-overlay">
-            <p className="portfolio-hero__eyebrow portfolio-hero__eyebrow--account-edit-trail" aria-label="Breadcrumb">
-              <Link className="portfolio-breadcrumb-link" href="/portfolio">
-                Portfolio
-              </Link>
-              <span className="portfolio-hero__crumb-sep" aria-hidden>
-                {" "}
-                →{" "}
-              </span>
-              <span className="portfolio-hero__crumb-portfolio-name">
-                {portfolio.name?.trim() || "Default portfolio"}
-              </span>
-              <span className="portfolio-hero__crumb-sep" aria-hidden>
-                {" "}
-                →{" "}
-              </span>
-              <span className="portfolio-hero__crumb-current">Edit account</span>
-            </p>
-            <h1 className="sr-only">Edit account</h1>
-            <p className="portfolio-hero__sub portfolio-hero__sub--account-edit">
-              Name, broker desk, initial balance, and outlook for options-income planning.{" "}
-              <Link className="portfolio-breadcrumb-link" href={`/portfolio/accounts/${encodeURIComponent(accountId)}?view=holdings`}>
-                Holdings
-              </Link>{" "}
-              for positions.
-            </p>
-          </header>
-
           <AccountWorkspace
             portfolioId={portfolioIdHex}
+            portfolioName={portfolio.name?.trim() || "Default portfolio"}
             account={serializeAccount(account)}
-            initialPositions={serializePositionsForUi(positions)}
             portfolioAccountCount={accounts.length}
-            initialWorkspaceView={initialWorkspaceView}
           />
         </div>
         </AppUserCollapsibleRailLayout>

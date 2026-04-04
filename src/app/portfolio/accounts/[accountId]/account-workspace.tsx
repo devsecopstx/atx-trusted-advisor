@@ -6,24 +6,20 @@ import { useEffect, useState, useTransition, type FormEvent } from "react";
 
 import { BackIcon, DeleteIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
 import { editAccountFormSchema } from "@/app/portfolio/lib/edit-account-schema";
-import { AccountHoldingsCrudCard } from "@/app/portfolio/ui/account-holdings-crud-card";
 import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_PICKER_ORDER } from "@/lib/broker-ui";
 import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
 import { accountTypeValues, type AccountOutlook, type AccountType } from "@/modules/core-admin/types";
 
-import type { SerializableAccount, SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
+import type { SerializableAccount } from "@/app/portfolio/accounts/serializable-account";
 
-export type { SerializableAccount, SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
-
-type WorkspaceView = "edit" | "holdings";
+export type { SerializableAccount } from "@/app/portfolio/accounts/serializable-account";
 
 type AccountWorkspaceProps = {
   portfolioId: string;
+  portfolioName: string;
   account: SerializableAccount;
-  initialPositions: SerializablePosition[];
   /** Total accounts in the workspace portfolio (enables delete when there is more than one). */
   portfolioAccountCount: number;
-  initialWorkspaceView: WorkspaceView;
 };
 
 function coerceAccountType(raw: string): AccountType {
@@ -46,13 +42,11 @@ function brokerPickerOptions(current: AccountType): AccountType[] {
 
 export function AccountWorkspace({
   portfolioId,
+  portfolioName,
   account,
-  initialPositions,
-  portfolioAccountCount,
-  initialWorkspaceView
+  portfolioAccountCount
 }: AccountWorkspaceProps) {
   const router = useRouter();
-  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(initialWorkspaceView);
   const [pending, startTransition] = useTransition();
   const [savePending, setSavePending] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
@@ -65,10 +59,6 @@ export function AccountWorkspace({
   );
   const [outlook, setOutlook] = useState<AccountOutlook>(account.outlook ?? "neutral");
   const [brokerType, setBrokerType] = useState<AccountType>(() => coerceAccountType(account.type));
-
-  useEffect(() => {
-    setWorkspaceView(initialWorkspaceView);
-  }, [initialWorkspaceView]);
 
   useEffect(() => {
     setAcctName(account.name);
@@ -87,9 +77,6 @@ export function AccountWorkspace({
   ]);
 
   const refLocked = account.brokerImportLocked;
-  const accountBasePath = `/portfolio/accounts/${encodeURIComponent(account._id)}`;
-  const holdingsHref = `${accountBasePath}?view=holdings`;
-  const editHref = accountBasePath;
 
   async function saveAccount(e: FormEvent) {
     e.preventDefault();
@@ -140,47 +127,31 @@ export function AccountWorkspace({
     }
   }
 
-  if (workspaceView === "holdings") {
-    return (
-      <div className="portfolio-workspace">
-        {error ? (
-          <p className="status-text status-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <p className="portfolio-account-view-switch">
-          <Link className="portfolio-breadcrumb-link" href={editHref}>
-            ← Edit account details
-          </Link>
-        </p>
-        <AccountHoldingsCrudCard
-          accountIdHex={account._id}
-          initialPositions={initialPositions}
-          portfolioIdHex={portfolioId}
-        />
-        <div className="cta-row">
-          <Link className="cta cta-secondary" href="/portfolio">
-            <BackIcon className="crud-icon" />
-            Back to portfolio
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="portfolio-workspace">
+      <header className="portfolio-hero portfolio-hero--account-edit xf-noise-overlay">
+        <p className="portfolio-hero__eyebrow portfolio-hero__eyebrow--account-edit-trail" aria-label="Breadcrumb">
+          <Link className="portfolio-breadcrumb-link" href="/portfolio">
+            PORTFOLIO
+          </Link>
+          <span className="portfolio-hero__crumb-sep" aria-hidden>
+            {" "}
+            →{" "}
+          </span>
+          <span className="portfolio-hero__crumb-portfolio-name">{portfolioName}</span>
+          <span className="portfolio-hero__crumb-sep" aria-hidden>
+            {" "}
+            →{" "}
+          </span>
+          <span className="portfolio-hero__crumb-current">Edit Account</span>
+        </p>
+      </header>
+
       {error ? (
         <p className="status-text status-error" role="alert">
           {error}
         </p>
       ) : null}
-
-      <p className="portfolio-account-view-switch">
-        <Link className="portfolio-breadcrumb-link" href={holdingsHref}>
-          Holdings →
-        </Link>
-      </p>
 
       <section className="portfolio-edit-account-card xf-noise-overlay" aria-labelledby="edit-account-card-title">
         <h2 id="edit-account-card-title" className="portfolio-edit-account-card__title portfolio-edit-account-card__title--section">
@@ -271,7 +242,7 @@ export function AccountWorkspace({
               />
             </div>
             <p id="acct-cash-hint" className="portfolio-edit-field__hint">
-              USD only — book-level cash (not live). Used for CSV import layout and tax-lot tracking.
+              USD only, book-level cash. Used for CSV import layout and tax-lot tracking.
             </p>
           </div>
 
@@ -281,7 +252,7 @@ export function AccountWorkspace({
             Outlook &amp; risk
           </h3>
           <p className="portfolio-edit-field__hint" style={{ marginTop: 0 }}>
-            Account-level overrides for options strategies, scanner filters, and desk alerts.
+            Account-level overrides used by xStrategyBuilder prefill, options-income scanner filters, and desk risk alerts.
           </p>
 
           <fieldset className="portfolio-edit-fieldset portfolio-edit-fieldset--segmented">
@@ -347,63 +318,61 @@ export function AccountWorkspace({
         </form>
       </section>
 
-      {portfolioAccountCount > 1 ? (
-        <section
-          className="portfolio-edit-account-card portfolio-edit-account-card--danger-zone xf-noise-overlay"
-          aria-labelledby="delete-account-title"
-        >
-          <h2 id="delete-account-title" className="portfolio-edit-account-card__title">
-            Remove account
-          </h2>
-          <p className="portfolio-edit-field__hint" style={{ marginTop: 0 }}>
-            Deletes this account and its positions. You must keep at least one account in the workspace portfolio.
-          </p>
-          <button
-            type="button"
-            className="portfolio-account-delete-btn"
-            disabled={deletePending}
-            onClick={() => {
-              if (
-                portfolioAccountCount <= 1 ||
-                !window.confirm(
-                  `Delete account "${account.name}"? This removes its positions and cannot be undone.`
-                )
-              ) {
-                return;
-              }
-              setDeletePending(true);
-              setError(null);
-              void (async () => {
-                try {
-                  const res = await fetch(
-                    `/api/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(account._id)}`,
-                    { method: "DELETE", credentials: "include" }
-                  );
-                  const body = (await res.json().catch(() => ({}))) as { error?: string };
-                  if (!res.ok) {
-                    setError(body.error ?? "Could not delete account.");
-                    return;
-                  }
-                  router.push("/portfolio");
-                  router.refresh();
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : "Delete failed.");
-                } finally {
-                  setDeletePending(false);
+      <section
+        className="portfolio-edit-account-card portfolio-edit-account-card--danger-zone xf-noise-overlay"
+        aria-labelledby="delete-account-title"
+      >
+        <h2 id="delete-account-title" className="portfolio-edit-account-card__title">
+          Remove account
+        </h2>
+        <p className="portfolio-edit-field__hint" style={{ marginTop: 0 }}>
+          Deletes this account and its positions. You must keep at least one account in the workspace portfolio.
+        </p>
+        <button
+          type="button"
+          className="portfolio-account-delete-btn"
+          disabled={deletePending || portfolioAccountCount <= 1}
+          onClick={() => {
+            if (
+              portfolioAccountCount <= 1 ||
+              !window.confirm(
+                `Delete account "${account.name}"? This removes its positions and cannot be undone.`
+              )
+            ) {
+              return;
+            }
+            setDeletePending(true);
+            setError(null);
+            void (async () => {
+              try {
+                const res = await fetch(
+                  `/api/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(account._id)}`,
+                  { method: "DELETE", credentials: "include" }
+                );
+                const body = (await res.json().catch(() => ({}))) as { error?: string };
+                if (!res.ok) {
+                  setError(body.error ?? "Could not delete account.");
+                  return;
                 }
-              })();
-            }}
-          >
-            <DeleteIcon className="crud-icon" aria-hidden />
-            {deletePending ? "Deleting…" : "Delete this account"}
-          </button>
-        </section>
-      ) : null}
+                router.push("/portfolio");
+                router.refresh();
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Delete failed.");
+              } finally {
+                setDeletePending(false);
+              }
+            })();
+          }}
+        >
+          <DeleteIcon className="crud-icon" aria-hidden />
+          {deletePending ? "Deleting…" : "Delete this account"}
+        </button>
+      </section>
 
       <div className="cta-row">
         <Link className="cta cta-secondary" href="/portfolio">
           <BackIcon className="crud-icon" />
-          Back to portfolio
+          ← Back to portfolio
         </Link>
       </div>
     </div>

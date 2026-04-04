@@ -47,3 +47,11 @@ export function isGlobalAdmin(roles: string[]): boolean {
 export function isAppUser(roles: string[]): boolean {
   return canUserLogin(roles) && !isGlobalAdmin(roles);
 }
+
+/** Strategy-job creation is advisor/operator only (viewer excluded; global_admin is not app-user strategy trigger). */
+export function canCreateStrategyJobFromApp(roles: string[]): boolean {
+  return roles.some((role) => {
+    const normalized = normalizeCoreRole(role);
+    return normalized === "advisor" || normalized === "operator";
+  });
+}

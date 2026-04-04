@@ -11,6 +11,7 @@ import { getLicensingPitchContact } from "@/lib/env";
 
 import { loadXsbInitialWorkspace } from "./load-initial-workspace";
 import { XstrategybuilderPublicPreview } from "./ui/xstrategybuilder-public-preview";
+import { XstrategybuilderStrategyJobHandoffCard } from "./ui/xstrategybuilder-strategy-job-handoff-card";
 
 import "../xchat/xchat.css";
 import "./xstrategybuilder.css";
@@ -104,11 +105,17 @@ function PitchContactLine() {
   );
 }
 
-export default async function XstrategyBuilderPage() {
+export default async function XstrategyBuilderPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ jobId?: string }>;
+}) {
   const session = await getSessionUser();
   if (!session) {
     redirect("/xchat");
   }
+  const query = searchParams ? await searchParams : {};
+  const initialJobId = query.jobId?.trim() ? query.jobId.trim() : null;
 
   const initialWorkspace = await loadXsbInitialWorkspace(session);
 
@@ -129,6 +136,7 @@ export default async function XstrategyBuilderPage() {
           </p>
 
           <XstrategybuilderPublicPreview initialWorkspace={initialWorkspace} />
+          <XstrategybuilderStrategyJobHandoffCard initialJobId={initialJobId} />
 
           <p className="xsb-disclaimer">
             Hypothetical and backtested results have inherent limitations; past or simulated performance does not
