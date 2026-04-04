@@ -7,9 +7,9 @@ import { MongoClient } from "mongodb";
 
 import { buildSuperAgentXapiTools, dedupeTrimmedIds } from "./lib/persona-xapi-tools.mjs";
 import {
-    resolveAdminSeedDbName,
-    resolveMongoUri,
-    resolveSeedDbName
+  resolveAdminSeedDbName,
+  resolveMongoUri,
+  resolveSeedDbName
 } from "./lib/resolve-mongo-uri.mjs";
 import { loadSeedTenantContext, pickFirstNonEmpty } from "./lib/tenant-defaults-seed.mjs";
 
@@ -274,9 +274,9 @@ function logSeedMongoTarget() {
   );
 }
 
-const DEFAULT_PERSONA_NAME = "Super-Agent";
-/** Matches `id` / nameNormalized in `atx-docs/rag-collection/xpersonas/super-agent/super-agent.yaml`. */
-const DEFAULT_PERSONA_NAME_NORMALIZED = "super-agent";
+const DEFAULT_PERSONA_NAME = "advisor";
+/** Matches `id` / nameNormalized in `atx-docs/rag-collection/xpersonas/advisor/advisor.yaml`. */
+const DEFAULT_PERSONA_NAME_NORMALIZED = "advisor";
 /** Product default for seeded admin (`core_users.subscriptionPlan`, access-request paper row). */
 const DEFAULT_SEED_SUBSCRIPTION_PLAN = "basic";
 const DEFAULT_PERSONA_SYSTEM_PROMPT = `You are The Architect, the elite administrative agent for atxFinance global admins. You have live xAI tools — call them; do not guess time-sensitive facts from memory.
@@ -512,7 +512,7 @@ async function seed() {
       .collection("xchat_personas")
       .findOne({ nameNormalized: DEFAULT_PERSONA_NAME_NORMALIZED });
     if (!persona?._id) {
-      throw new Error("Failed to create or fetch default Super-Agent persona");
+      throw new Error("Failed to create or fetch default advisor persona");
     }
 
     const email = ADMIN_EMAIL;
@@ -554,7 +554,7 @@ async function seed() {
         requestedRole: "global_admin",
         requestedPlan: DEFAULT_SEED_SUBSCRIPTION_PLAN,
         reason:
-          "Bootstrap global_admin via npm run seed:admin (ADMIN_SEED_EMAIL); approved paper trail — default plan basic, persona Super-Agent (atx-docs/rag-collection/xpersonas/super-agent/super-agent.yaml).",
+          "Bootstrap global_admin via npm run seed:admin (ADMIN_SEED_EMAIL); approved paper trail — default plan basic, persona advisor (atx-docs/rag-collection/xpersonas/advisor/advisor.yaml).",
         status: "approved",
         requestedAt: now,
         reviewedBy: seedUserIdHex,
@@ -716,7 +716,7 @@ async function seed() {
       .findOne({ nameNormalized: DEFAULT_PERSONA_NAME_NORMALIZED });
     if (!personaAfterDisk?._id) {
       throw new Error(
-        `[seed:admin] Super-Agent persona missing after seed:xpersonas — expected nameNormalized "${DEFAULT_PERSONA_NAME_NORMALIZED}" (see atx-docs/rag-collection/xpersonas/super-agent/super-agent.yaml).`
+        `[seed:admin] advisor persona missing after seed:xpersonas — expected nameNormalized "${DEFAULT_PERSONA_NAME_NORMALIZED}" (see atx-docs/rag-collection/xpersonas/advisor/advisor.yaml).`
       );
     }
 
@@ -764,7 +764,7 @@ async function seed() {
       mongo: {
         database: DB_NAME,
         accessRequestInserted,
-        note: "Upserted core_tenants, xchat_personas (Super-Agent), core_users (subscriptionPlan basic), core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS) from atx-docs/rag-collection/xpersonas and options_strategy_preferences from atx-rag-collection/options-strategy (unless SKIP_SEED_OPTIONS_STRATEGY_PREFS). See accessRequestInserted for admin_access_requests."
+        note: "Upserted core_tenants, xchat_personas (advisor), core_users (subscriptionPlan basic), core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS) from atx-docs/rag-collection/xpersonas and options_strategy_preferences from atx-rag-collection/options-strategy (unless SKIP_SEED_OPTIONS_STRATEGY_PREFS). See accessRequestInserted for admin_access_requests."
       }
     };
 
@@ -773,7 +773,7 @@ async function seed() {
         "",
         "======== seed:admin summary ==============================================",
         `Mongo database:              ${DB_NAME}`,
-        "Mongo writes:                tenant, Super-Agent (inline + seed:xpersonas from atx-docs/rag-collection/xpersonas), admin user (subscriptionPlan basic), membership, default portfolio/account/watchlist, admin_user_settings",
+        "Mongo writes:                tenant, advisor (inline + seed:xpersonas from atx-docs/rag-collection/xpersonas), admin user (subscriptionPlan basic), membership, default portfolio/account/watchlist, admin_user_settings",
         String(process.env.SKIP_SEED_XPERSONAS ?? "").match(/^(1|true|yes)$/i)
           ? "xPersonas from disk:       skipped (SKIP_SEED_XPERSONAS)"
           : "xPersonas from disk:       seed:xpersonas (atx-docs/rag-collection/xpersonas → xchat_personas) before summary JSON",

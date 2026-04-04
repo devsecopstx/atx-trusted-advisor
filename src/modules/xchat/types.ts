@@ -55,7 +55,7 @@ export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
   tools: []
 };
 
-/** Super-Agent default xAPI tools; `collections_search` is included when `XAI_TEAM_ID` resolves to a KB collection id (sync: `collection_*` on env). */
+/** Global-admin default persona (`advisor` / legacy `super-agent`) xAPI tools; `collections_search` is included when `XAI_TEAM_ID` resolves to a KB collection id (sync: `collection_*` on env). */
 export function getSuperAgentDefaultTools(): PersonaXapiToolDefinition[] {
   const cid = getTeamXaiKbCollectionIdSync();
   if (cid) {
@@ -77,11 +77,17 @@ export function getSuperAgentDefaultTools(): PersonaXapiToolDefinition[] {
   ];
 }
 
-/** Matches `nameNormalized` / display name lowercased for the seeded admin persona (see `scripts/seed-admin-user.mjs`). */
-export const SUPER_AGENT_NAME_NORMALIZED = "super-agent";
+/**
+ * Seeded global-admin default personas (`name` lowercased). Legacy `super-agent` included until DBs migrate.
+ * @see `scripts/seed-admin-user.mjs` — primary slug is `advisor`.
+ */
+export const DEFAULT_GLOBAL_ADMIN_PERSONA_NAME_KEYS = new Set(["advisor", "super-agent"]);
+
+/** @deprecated Use {@link DEFAULT_GLOBAL_ADMIN_PERSONA_NAME_KEYS} / `advisor`. */
+export const SUPER_AGENT_NAME_NORMALIZED = "advisor";
 
 /**
- * If Mongo `xapi.tools` was cleared or edited down, Super-Agent can lose `web_search` / `x_search` / collections.
+ * If Mongo `xapi.tools` was cleared or edited down, the global-admin default persona can lose `web_search` / `x_search` / collections.
  * Applied in `POST /api/xchat/ask` and xChat batch after `normalizePersonaXapiConfig` so live search + KB tools match product intent.
  */
 export function ensureSuperAgentDefaultTools(
@@ -89,7 +95,7 @@ export function ensureSuperAgentDefaultTools(
   personaDisplayName: string | undefined
 ): PersonaXapiConfig {
   const key = personaDisplayName?.trim().toLowerCase();
-  if (key !== SUPER_AGENT_NAME_NORMALIZED) {
+  if (!key || !DEFAULT_GLOBAL_ADMIN_PERSONA_NAME_KEYS.has(key)) {
     return config;
   }
   const have = new Set(config.tools.map((t) => t.type));

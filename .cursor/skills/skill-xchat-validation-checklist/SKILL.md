@@ -28,7 +28,7 @@ Verify xChat behavior, persona wiring, and retrieval/fallback outcomes with repr
 ## Validation Checklist
 
 1. Confirm baseline endpoints are healthy (`/api/health`, `/api/personas`).
-2. Validate xChat ask with **global_admin** (expects resolved **Super-Agent** — keep this persona **published**; **503** if missing).
+2. Validate xChat ask with **global_admin** (expects resolved **advisor** — keep this persona **published**; **503** if missing; legacy DBs may still have **super-agent**).
 3. Validate xChat ask with a **non-admin** session (expects resolved **atx-trusted-advisor** — keep **published** in prod; auto-created on first ask only if still absent).
 4. Validate context source behavior (`xai_collection`, `mongo_scope`, `none`).
 5. Validate provider failure path (`502` with retryable metadata).

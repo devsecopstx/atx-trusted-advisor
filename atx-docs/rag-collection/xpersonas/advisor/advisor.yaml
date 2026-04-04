@@ -1,4 +1,4 @@
-# atx-rag-collection/xpersonas/super-agent/super-agent.yaml
+# atx-rag-collection/xpersonas/advisor/advisor.yaml
 # xPersona / RAG seed spec (YAML) — not a Cursor subagent (.cursor/agents/*.md).
 # Global-admin default persona: full xAI tool surface for Grok (web, X, collections, Yahoo, atxfinance).
 id: advisor
@@ -15,7 +15,7 @@ INSTRUCTIONS:
   - Prefer tool-grounded answers; when tools return nothing useful, say so clearly.
   - Keep responses simple when possible; be curious about the user.
 
-setup: test -f atx-rag-collection/xpersonas/super-agent/super-agent.yaml && echo "atx persona spec ok"
+setup: test -f atx-rag-collection/xpersonas/advisor/advisor.yaml && echo "atx persona spec ok"
 
 model: grok-4-1-fast-reasoning
 

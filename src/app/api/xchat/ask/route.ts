@@ -34,7 +34,7 @@ import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-b
 import type { SubscriptionPlan } from "@/modules/identity/types";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
-import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
+import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import {
     resolveXchatTeamOnlyLinkedCollectionIds,
@@ -80,9 +80,9 @@ const askSchema = z.object({
 
 const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
 const ASK_RATE_MAX = 20;
-const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>([
-  normalizeNameKey(XPERSONA_SUPER_AGENT_NAME)
-]);
+const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>(
+  XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS.map((k) => normalizeNameKey(k))
+);
 
 type ModelSelectionSource = "default" | "persona";
 type RequestedReasoningEffort = "low" | "medium" | "high" | "xhigh";
@@ -202,7 +202,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Default xChat persona is unavailable. For admins, seed Super-Agent (`npm run seed:admin`). For app users, ensure the atx-trusted-advisor persona exists (Admin → Personas) or run `npm run seed:xpersonas`."
+          "Default xChat persona is unavailable. For admins, seed the advisor persona (`npm run seed:admin`). For app users, ensure the atx-trusted-advisor persona exists (Admin → Personas) or run `npm run seed:xpersonas`."
       },
       { status: 503 }
     );

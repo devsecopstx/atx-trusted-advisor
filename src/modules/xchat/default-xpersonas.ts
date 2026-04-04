@@ -1,6 +1,6 @@
 /**
  * Published default xChat personas (operators keep both in `published` status):
- * - Super-Agent → global_admin (seeded; see `scripts/seed-admin-user.mjs`), with at least one collection
+ * - advisor → global_admin default (seeded; see `atx-docs/rag-collection/xpersonas/advisor/advisor.yaml` + `scripts/seed-admin-user.mjs`)
  * - atx-trusted-advisor → all other signed-in roles, with at least one collection
  * Collection ids/names may change over time; operators update them in Admin → Personas or via `XAI_TEAM_ID` (collection id or team UUID).
  */
@@ -10,7 +10,14 @@ import type { PersonaConfig, PersonaXapiToolDefinition } from "@/modules/xchat/t
 import { DEFAULT_PERSONA_XAPI_CONFIG } from "@/modules/xchat/types";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
-export const XPERSONA_SUPER_AGENT_NAME = "Super-Agent";
+/** Display `name` for the seeded global_admin default persona (disk: `xpersonas/advisor/advisor.yaml`). */
+export const XPERSONA_DEFAULT_GLOBAL_ADMIN_NAME = "advisor";
+
+/**
+ * Lowercase persona name keys treated as global-admin defaults: hidden from app_user picker unless assigned;
+ * same keys used in ask-route gating. Includes legacy `super-agent` rows until migrated.
+ */
+export const XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS = ["advisor", "super-agent"] as const;
 
 export const XPERSONA_TRUSTED_ADVISOR_NAME = "atx-trusted-advisor";
 

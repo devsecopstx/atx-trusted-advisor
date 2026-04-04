@@ -4,7 +4,7 @@ import { getDb } from "@/lib/mongodb";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
     buildDefaultTrustedAdvisorPersonaPayload,
-    XPERSONA_SUPER_AGENT_NAME,
+    XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS,
     XPERSONA_TRUSTED_ADVISOR_NAME
 } from "@/modules/xchat/default-xpersonas";
 import type {
@@ -215,7 +215,7 @@ export async function ensureDefaultTrustedAdvisorPersonaExists(): Promise<Person
 }
 
 /**
- * Default persona when the client does not select one: **Super-Agent** for `global_admin` when seeded;
+ * Default persona when the client does not select one: **`advisor`** (seeded global_admin default; legacy **`super-agent`** still resolved if present),
  * for app roles: optional **platform default** (`xchat_platform_settings.defaultAppUserPersonaId`, published only),
  * else **atx-trusted-advisor** (created if missing).
  */
@@ -223,11 +223,11 @@ export async function resolveDefaultXchatPersonaForSession(
   roles: string[]
 ): Promise<PersonaConfig | null> {
   if (isGlobalAdmin(roles)) {
-    const superAgent = await getPersonaByNormalizedName(
-      normalizePersonaNameKey(XPERSONA_SUPER_AGENT_NAME)
-    );
-    if (superAgent) {
-      return superAgent;
+    for (const key of XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS) {
+      const row = await getPersonaByNormalizedName(key);
+      if (row) {
+        return row;
+      }
     }
   }
   if (!isGlobalAdmin(roles)) {

@@ -21,8 +21,12 @@ import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
-import { XPERSONA_SUPER_AGENT_NAME } from "@/modules/xchat/default-xpersonas";
+import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
+
+const GLOBAL_ADMIN_DEFAULT_PERSONA_PICKER_BLOCK = new Set(
+  XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS.map((k) => k.toLowerCase())
+);
 
 type Message = {
   id: string;
@@ -153,11 +157,11 @@ type XchatConversationProps = {
   accountFeedbackPageLabel?: string;
   /** Default workspace portfolio id (watchlist + broker import query). */
   workspacePortfolioId?: string | null;
-  /** Resolved default persona name for this session’s role (e.g. Super-Agent vs atx-trusted-advisor). */
+  /** Resolved default persona name for this session’s role (e.g. advisor vs atx-trusted-advisor). */
   defaultPublishedPersonaName: string;
   /** Default portfolio + default (or first) custodian account — above persona picker in the left rail. */
   defaultBookLabels?: { portfolioName: string; accountName: string } | null;
-  /** When false, Super-Agent is hidden from the picker (app_user cannot use it without admin assignment). */
+  /** When false, global-admin default personas (advisor / legacy super-agent) are hidden unless assigned. */
   includeSuperAgentInPersonaPicker?: boolean;
   /** Greeting label (display name, handle, or email local-part). */
   welcomeName: string;
@@ -545,9 +549,7 @@ export function XchatConversation({
           .filter((r) => r._id && r.name);
         const filtered = includeSuperAgentInPersonaPicker
           ? rows
-          : rows.filter(
-              (r) => r.name.trim().toLowerCase() !== XPERSONA_SUPER_AGENT_NAME.trim().toLowerCase()
-            );
+          : rows.filter((r) => !GLOBAL_ADMIN_DEFAULT_PERSONA_PICKER_BLOCK.has(r.name.trim().toLowerCase()));
         setPersonaPickerRows(filtered);
       } catch {
         if (active) {

@@ -13,8 +13,7 @@ import {
     getSuperAgentDefaultTools,
     mergeXchatHostedToolBaseline,
     normalizePersonaXapiConfig,
-    PERSONA_XAPI_TOOL_TYPES,
-    SUPER_AGENT_NAME_NORMALIZED
+    PERSONA_XAPI_TOOL_TYPES
 } from "@/modules/xchat/types";
 
 describe("persona tool validation", () => {
@@ -84,7 +83,6 @@ describe("persona tool validation", () => {
   });
 
   it("ensureSuperAgentDefaultTools restores hosted tools when Mongo xapi.tools was stripped", () => {
-    expect(SUPER_AGENT_NAME_NORMALIZED).toBe("super-agent");
     const stripped = normalizePersonaXapiConfig({
       mode: "responses",
       toolChoice: "auto",
@@ -95,10 +93,11 @@ describe("persona tool validation", () => {
       ...stripped,
       tools: [...stripped.tools, { type: "yahoo_finance" as const }]
     };
-    const restored = ensureSuperAgentDefaultTools(yahooOnly, "Super-Agent");
+    const restored = ensureSuperAgentDefaultTools(yahooOnly, "advisor");
     expect(restored.tools.map((t) => t.type).sort()).toEqual(
       [...getSuperAgentDefaultTools().map((t) => t.type)].sort()
     );
+    expect(ensureSuperAgentDefaultTools(yahooOnly, "super-agent")).toEqual(restored);
     expect(ensureSuperAgentDefaultTools(yahooOnly, "atx-trusted-advisor")).toEqual(yahooOnly);
   });
 

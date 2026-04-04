@@ -29,7 +29,7 @@ const PLANS: PlanTier[] = [
       { text: "xStrategyBuilder weekly range: entry-level" },
       { text: "Research articles / week: core context set" },
       { text: "Default xChat: published FinExpert persona" },
-      { text: "Admins use published Super-Agent" },
+      { text: "Admins use published advisor" },
       { text: "Web search + X search tools" },
       { text: "Basic portfolio view" },
       { text: "Community support" }

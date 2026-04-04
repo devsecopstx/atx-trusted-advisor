@@ -99,7 +99,7 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/xchat",
         title: "xChat",
         description:
-          "Same signed-in product xChat as app users (AppUserApprovedHeader shell), default persona atx-trusted-advisor—not the admin Super-Agent console."
+          "Same signed-in product xChat as app users (AppUserApprovedHeader shell), default persona atx-trusted-advisor—not the admin advisor console."
       },
       {
         href: "/admin/personas",

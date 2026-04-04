@@ -29,11 +29,11 @@ vi.mock("@/modules/xchat/repository", async (importOriginal) => {
   return { ...actual, ...personaMocks };
 });
 
-import { GET as listBatchJobsRoute } from "@/app/api/xchat/batch/route";
 import {
-  GET as getBatchDetailRoute,
-  POST as pollBatchDetailRoute
+    GET as getBatchDetailRoute,
+    POST as pollBatchDetailRoute
 } from "@/app/api/xchat/batch/[batchId]/route";
+import { GET as listBatchJobsRoute } from "@/app/api/xchat/batch/route";
 
 describe("xchat batch dashboard read model routes", () => {
   beforeEach(() => {
@@ -50,7 +50,7 @@ describe("xchat batch dashboard read model routes", () => {
     batchServiceMocks.listBatchJobs.mockResolvedValue([
       {
         xaiBatchId: "batch_1",
-        personaName: "Super-Agent",
+        personaName: "advisor",
         status: "in_progress",
         itemCount: 10,
         completedCount: 6,
@@ -75,7 +75,7 @@ describe("xchat batch dashboard read model routes", () => {
 
     batchServiceMocks.getBatchJobRecord.mockResolvedValue({
       xaiBatchId: "batch_1",
-      personaName: "Super-Agent",
+      personaName: "advisor",
       status: "in_progress",
       itemCount: 10,
       completedCount: 6,

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * One-off: set every `core_users.subscriptionPlan` to **basic**, every
- * `admin_user_settings.assignedPersonaId` to **Super-Agent**, and **platform** xChat default
+ * `admin_user_settings.assignedPersonaId` to the **global-admin default persona** (**advisor**; legacy **`super-agent`** still matched), and **platform** xChat default
  * (`xchat_platform_settings.defaultAppUserPersonaId` — Admin → Tenant preferences → Default xChat persona).
  *
  * Prerequisites:
- * - Super-Agent exists in `xchat_personas` (`nameNormalized: super-agent`).
+ * - Persona exists in `xchat_personas` (`nameNormalized: advisor`, or legacy `super-agent`).
  * - `status` must be **published**, **or** omitted (legacy `seed:admin` never set `status`); omitted rows
  *   are upgraded to **published** on `--apply` unless `--no-fix-persona-status`.
  * - Explicit **draft** / **archived** still blocks (publish in Admin → Personas first).
@@ -16,7 +16,7 @@
  *
  * Without `--apply`, prints the plan and exits without writing.
  *
- * @see `.cursor/agents/sre.md` § *Bulk reset users — Basic plan + Super-Agent*
+ * @see `.cursor/agents/sre.md` § *Bulk reset users — Basic plan + default admin persona*
  */
 
 import { MongoClient, ObjectId } from "mongodb";
@@ -24,7 +24,8 @@ import { readFileSync } from "node:fs";
 
 import { resolveMongoUri, resolveSeedDbName } from "../lib/resolve-mongo-uri.mjs";
 
-const SUPER_AGENT_NORMALIZED = "super-agent";
+/** Prefer `advisor` (current seed); fall back to legacy `super-agent` rows. */
+const DEFAULT_ADMIN_PERSONA_NORMALIZED_KEYS = ["advisor", "super-agent"];
 const TARGET_PLAN = "basic";
 
 const COLLECTIONS = {
@@ -126,24 +127,28 @@ async function main() {
   const db = client.db(dbName);
 
   try {
-    const persona = await db.collection(COLLECTIONS.personas).findOne({
-      nameNormalized: SUPER_AGENT_NORMALIZED
-    });
+    let persona = null;
+    for (const key of DEFAULT_ADMIN_PERSONA_NORMALIZED_KEYS) {
+      persona = await db.collection(COLLECTIONS.personas).findOne({ nameNormalized: key });
+      if (persona?._id) {
+        break;
+      }
+    }
     if (!persona?._id) {
       throw new Error(
-        `Super-Agent persona not found (nameNormalized "${SUPER_AGENT_NORMALIZED}"). Run seed:xpersonas or sync personas first.`
+        `Default admin persona not found (nameNormalized one of ${DEFAULT_ADMIN_PERSONA_NORMALIZED_KEYS.join(", ")}). Run seed:xpersonas or sync personas first.`
       );
     }
     const statusRaw = rawPersonaStatus(persona);
     const legacyMissingStatus = statusRaw === null;
     if (statusRaw !== null && statusRaw !== "published") {
       throw new Error(
-        `Super-Agent exists but status is "${statusRaw}", not "published". Publish in Admin → Personas before running this script.`
+        `Default admin persona exists but status is "${statusRaw}", not "published". Publish in Admin → Personas before running this script.`
       );
     }
     if (legacyMissingStatus) {
       console.error(
-        "[reset-users] Super-Agent has no `status` field (legacy seed). API treats that as draft for app users; on `--apply` we set status=published unless `--no-fix-persona-status`."
+        "[reset-users] Default admin persona has no `status` field (legacy seed). API treats that as draft for app users; on `--apply` we set status=published unless `--no-fix-persona-status`."
       );
     }
 
@@ -159,7 +164,7 @@ async function main() {
       dryRun: !apply,
       database: dbName,
       superAgentPersonaId: personaIdHex,
-      superAgentName: persona.name ?? "Super-Agent",
+      superAgentName: persona.name ?? "advisor",
       superAgentStatusInDb: statusRaw ?? "(missing — legacy seed)",
       legacyPersonaStatusMissing: legacyMissingStatus,
       onApplyWillSetPersonaPublished:
@@ -204,7 +209,7 @@ async function main() {
         }
       );
       console.error(
-        `[reset-users] Super-Agent persona updated: status=published (matched ${fixRes.matchedCount}, modified ${fixRes.modifiedCount}).`
+        `[reset-users] Default admin persona updated: status=published (matched ${fixRes.matchedCount}, modified ${fixRes.modifiedCount}).`
       );
     } else if (legacyMissingStatus && noFixPersonaStatus) {
       console.error(

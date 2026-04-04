@@ -980,7 +980,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalled();
   });
 
-  it("allows app_user assigned Super-Agent when persona is published", async () => {
+  it("allows app_user assigned advisor (global-admin default) when persona is published", async () => {
     authMocks.requireSessionUser.mockResolvedValueOnce({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -994,8 +994,8 @@ describe("xchat ask route collection retrieval", () => {
     repositoryMocks.getPersonaById.mockResolvedValueOnce(
       buildPersona({
         _id: new ObjectId("507f1f77bcf86cd799439099"),
-        name: "Super-Agent",
-        nameNormalized: "super-agent",
+        name: "advisor",
+        nameNormalized: "advisor",
         status: "published"
       })
     );

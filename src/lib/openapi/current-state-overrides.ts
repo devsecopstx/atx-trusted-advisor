@@ -370,7 +370,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
         headers: xchatLimiterHeaders(true)
       },
       "502": jsonResponse("xAI provider request failed.", "XaiProviderErrorResponse"),
-      "503": jsonResponse("Default admin persona (Super-Agent) missing from database.", "ErrorResponse")
+      "503": jsonResponse("Default admin persona (advisor) missing from database.", "ErrorResponse")
     }
   },
   "GET /api/xchat/history": {
@@ -1040,7 +1040,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       personaName: {
         type: "string",
         description:
-          "Resolved persona display name. Published defaults: Super-Agent (global_admin), atx-trusted-advisor (other roles)."
+          "Resolved persona display name. Published defaults: advisor (global_admin), atx-trusted-advisor (other roles)."
       },
       modelSelectionSource: {
         type: "string",
