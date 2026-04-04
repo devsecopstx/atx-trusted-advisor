@@ -18,7 +18,15 @@ import {
     type Portfolio
 } from "@/modules/core-admin/types";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
+import {
+    loadWorkspaceSnapshotPreload,
+    normalizeWorkspaceContentRev,
+    type WorkspaceSnapshotPreload
+} from "@/modules/xchat/workspace-snapshot-for-prompt";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+
+import { scanUnderlyingForHotOptions } from "./options-hot-scan";
+import { computeRsiFromCloses } from "./rsi";
 
 function resolveWorkspaceAccount(
   accounts: Account[],
@@ -32,9 +40,6 @@ function resolveWorkspaceAccount(
   }
   return accounts.find((a) => a.isDefault) ?? accounts[0];
 }
-
-import { scanUnderlyingForHotOptions } from "./options-hot-scan";
-import { computeRsiFromCloses } from "./rsi";
 
 export type FindOptionsAccountRow = {
   id: string;
@@ -131,10 +136,14 @@ export async function getFindOptionsContext(session: SessionUser): Promise<FindO
   const workspaceAccount = resolveWorkspaceAccount(accounts, book);
   const scoringTenantId = portfolio.tenantId?.toHexString() ?? session.tenantId;
   const tenantRow = await getTenantByHexIdCached(scoringTenantId);
-  const { scoringFactors } = scoringFactorsPayloadForAdminApi(
+  const { scoringFactors: rawSf } = scoringFactorsPayloadForAdminApi(
     portfolio.scoringFactors,
     tenantRow?.defaultPortfolioScoringFactors
   );
+  const scoringFactors =
+    rawSf.length > 0
+      ? rawSf
+      : scoringFactorsPayloadForAdminApi(undefined).scoringFactors;
   const accountRows = buildFindOptionsAccountRows(accounts, assumeAllApproved);
   const workspaceRow = workspaceAccount?._id
     ? accountRows.find((r) => r.id === workspaceAccount._id!.toHexString())
@@ -167,6 +176,102 @@ export type TopHoldingRow = {
   lastPrice: number | null;
 };
 
+function isStockLikePreloadRow(row: WorkspaceSnapshotPreload["positionsFull"][number]): boolean {
+  const t = row.positionType;
+  if (t === "option" || t === "cash") {
+    return false;
+  }
+  return true;
+}
+
+async function finalizeTopHoldingsFromAgg(
+  bySymbol: Map<string, { shares: number; costBasis: number }>,
+  limit: number
+): Promise<TopHoldingRow[]> {
+  const symbols = Array.from(bySymbol.keys());
+  if (symbols.length === 0) {
+    return [];
+  }
+
+  const quoteMap = await lookupSymbols(symbols);
+  const rows: TopHoldingRow[] = [];
+  for (const sym of symbols) {
+    const agg = bySymbol.get(sym)!;
+    const q = quoteMap.get(sym);
+    const lastPrice = typeof q?.price === "number" && Number.isFinite(q.price) ? q.price : null;
+    const mv =
+      lastPrice != null && lastPrice > 0
+        ? agg.shares * lastPrice
+        : agg.shares * (agg.costBasis / Math.max(agg.shares, 1e-9));
+    rows.push({
+      symbol: sym,
+      marketValue: Math.round(mv * 100) / 100,
+      shares: agg.shares,
+      lastPrice
+    });
+  }
+
+  rows.sort((a, b) => b.marketValue - a.marketValue);
+  return rows.slice(0, Math.max(1, Math.min(50, limit)));
+}
+
+/**
+ * When xChat workspace snapshot (Redis / in-process) matches this portfolio rev, reuse positions
+ * and skip `listPortfolioPositionsByAccount` (same payload as xChat `atx_function` preload).
+ */
+async function topHoldingsFromWorkspacePreloadIfFresh(
+  portfolio: Portfolio & { _id: NonNullable<Portfolio["_id"]> },
+  preload: WorkspaceSnapshotPreload | null,
+  book: AppUserDefaultBook | null,
+  limit: number
+): Promise<TopHoldingRow[] | null> {
+  if (!preload) {
+    return null;
+  }
+  const portfolioId = portfolio._id.toHexString();
+  if (preload.promptJson.portfolio.id !== portfolioId) {
+    return null;
+  }
+  if (preload.promptJson.workspaceContentRev !== normalizeWorkspaceContentRev(portfolio)) {
+    return null;
+  }
+
+  const promptAccounts = preload.promptJson.accounts;
+  const bookId = book?.accountId?.trim();
+  const workspaceAccountId = bookId
+    ? promptAccounts.find((a) => a.accountId === bookId)?.accountId
+    : promptAccounts.find((a) => a.isDefault)?.accountId ?? promptAccounts[0]?.accountId;
+
+  const allowed = new Set(
+    workspaceAccountId
+      ? [workspaceAccountId]
+      : promptAccounts.map((a) => a.accountId).filter((id) => id.length > 0)
+  );
+  if (allowed.size === 0) {
+    return null;
+  }
+
+  const bySymbol = new Map<string, { shares: number; costBasis: number }>();
+  for (const row of preload.positionsFull) {
+    if (!allowed.has(row.accountId)) {
+      continue;
+    }
+    if (!isStockLikePreloadRow(row)) {
+      continue;
+    }
+    const sym = row.symbol.trim().toUpperCase();
+    if (!sym || sym === "CASH" || sym === "USD") {
+      continue;
+    }
+    const prev = bySymbol.get(sym) ?? { shares: 0, costBasis: 0 };
+    prev.shares += row.qty;
+    prev.costBasis += row.qty * row.avgCost;
+    bySymbol.set(sym, prev);
+  }
+
+  return finalizeTopHoldingsFromAgg(bySymbol, limit);
+}
+
 export async function getTopStockHoldingsByValue(
   session: SessionUser,
   limit: number
@@ -177,12 +282,26 @@ export async function getTopStockHoldingsByValue(
   }
 
   const portfolioId = portfolio._id.toHexString();
+  const book = await loadAppUserDefaultBook(session);
+  const preload = await loadWorkspaceSnapshotPreload({
+    userId: session.userId,
+    tenantId: session.tenantId
+  });
+  const fast = await topHoldingsFromWorkspacePreloadIfFresh(
+    portfolio as Portfolio & { _id: NonNullable<Portfolio["_id"]> },
+    preload,
+    book,
+    limit
+  );
+  if (fast !== null) {
+    return { holdings: fast };
+  }
+
   const accounts = await listPortfolioAccounts({
     userId: session.userId,
     portfolioId,
     tenantId: session.tenantId
   });
-  const book = await loadAppUserDefaultBook(session);
   const workspaceAccount = resolveWorkspaceAccount(accounts, book);
   const accountIds =
     workspaceAccount?._id != null
@@ -214,31 +333,8 @@ export async function getTopStockHoldingsByValue(
     bySymbol.set(sym, prev);
   }
 
-  const symbols = Array.from(bySymbol.keys());
-  if (symbols.length === 0) {
-    return { holdings: [] };
-  }
-
-  const quoteMap = await lookupSymbols(symbols);
-  const rows: TopHoldingRow[] = [];
-  for (const sym of symbols) {
-    const agg = bySymbol.get(sym)!;
-    const q = quoteMap.get(sym);
-    const lastPrice = typeof q?.price === "number" && Number.isFinite(q.price) ? q.price : null;
-    const mv =
-      lastPrice != null && lastPrice > 0
-        ? agg.shares * lastPrice
-        : agg.shares * (agg.costBasis / Math.max(agg.shares, 1e-9));
-    rows.push({
-      symbol: sym,
-      marketValue: Math.round(mv * 100) / 100,
-      shares: agg.shares,
-      lastPrice
-    });
-  }
-
-  rows.sort((a, b) => b.marketValue - a.marketValue);
-  return { holdings: rows.slice(0, Math.max(1, Math.min(50, limit))) };
+  const holdings = await finalizeTopHoldingsFromAgg(bySymbol, limit);
+  return { holdings };
 }
 
 export type HotWatchlistRow = {
@@ -299,6 +395,27 @@ export async function getHotWatchlistSymbols(
 
   const cap = Math.max(1, Math.min(10, limit));
   return { rows: candidates.slice(0, cap), scanned };
+}
+
+/** One round-trip for xOptions workspace: context + top holdings + hot watchlist scan. */
+export async function getFindOptionsBootstrap(
+  session: SessionUser,
+  input: { holdingsLimit: number; hotLimit: number }
+): Promise<{
+  context: FindOptionsContextPayload;
+  holdings: TopHoldingRow[];
+  hot: { rows: HotWatchlistRow[]; scanned: number };
+}> {
+  const [context, holdingsResult, hotResult] = await Promise.all([
+    getFindOptionsContext(session),
+    getTopStockHoldingsByValue(session, input.holdingsLimit),
+    getHotWatchlistSymbols(session, input.hotLimit)
+  ]);
+  return {
+    context,
+    holdings: holdingsResult.holdings,
+    hot: { rows: hotResult.rows, scanned: hotResult.scanned }
+  };
 }
 
 export type SymbolSnapshotPayload = {

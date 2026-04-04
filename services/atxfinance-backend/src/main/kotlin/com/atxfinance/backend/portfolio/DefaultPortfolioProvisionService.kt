@@ -28,6 +28,8 @@ class DefaultPortfolioProvisionService(
     private val defaultAccountRef = "ext_account_xref"
     private val defaultWatchlistName = "DefaultWatchlist"
     private val defaultWatchlistSymbol = "TSLA"
+    private val defaultAccountRiskProfile = "balanced"
+    private val defaultAccountOutlook = "neutral"
 
     fun getDefaultPortfolioDoc(session: ResolvedSession): Document? {
         val q = org.springframework.data.mongodb.core.query.BasicQuery(PortfolioMongoFilter.defaultPortfolioFilter(session))
@@ -240,6 +242,8 @@ class DefaultPortfolioProvisionService(
                     .set("type", "fidelity")
                     .set("extAccountId", defaultAccountRef)
                     .set("cashBalance", props.defaultAccountCashBalance)
+                    .set("riskProfile", defaultAccountRiskProfile)
+                    .set("outlook", defaultAccountOutlook)
                     .set("isDefault", true)
                     .set("updatedAt", now)
                     .apply {
@@ -286,6 +290,42 @@ class DefaultPortfolioProvisionService(
         mongoTemplate.updateMulti(
             Query.query(cashFilter),
             Update().set("cashBalance", props.defaultAccountCashBalance).set("updatedAt", now),
+            props.accountsCollection,
+        )
+
+        val defaultAccountDeskBase =
+            PortfolioMongoFilter.withTenantScopeCriteria(
+                Criteria().andOperator(
+                    PortfolioMongoFilter.userIdCriteria(userId),
+                    Criteria.where("portfolioId").`is`(pid),
+                    Criteria.where("isDefault").`is`(true),
+                ),
+                session.tenantId,
+            )
+        mongoTemplate.updateMulti(
+            Query.query(
+                Criteria().andOperator(
+                    defaultAccountDeskBase,
+                    Criteria().orOperator(
+                        Criteria.where("riskProfile").exists(false),
+                        Criteria.where("riskProfile").`is`(null),
+                    ),
+                ),
+            ),
+            Update().set("riskProfile", defaultAccountRiskProfile).set("updatedAt", now),
+            props.accountsCollection,
+        )
+        mongoTemplate.updateMulti(
+            Query.query(
+                Criteria().andOperator(
+                    defaultAccountDeskBase,
+                    Criteria().orOperator(
+                        Criteria.where("outlook").exists(false),
+                        Criteria.where("outlook").`is`(null),
+                    ),
+                ),
+            ),
+            Update().set("outlook", defaultAccountOutlook).set("updatedAt", now),
             props.accountsCollection,
         )
 

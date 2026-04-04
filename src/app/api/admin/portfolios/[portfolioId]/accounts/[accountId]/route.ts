@@ -39,7 +39,7 @@ function serializeAccount(a: Account) {
 
 const patchSchema = z
   .object({
-    name: z.string().trim().min(1).max(200).optional(),
+    name: z.string().trim().min(1).max(80).optional(),
     cashBalance: z.number().finite().nonnegative().optional(),
     extAccountId: z.preprocess(
       (val) => {

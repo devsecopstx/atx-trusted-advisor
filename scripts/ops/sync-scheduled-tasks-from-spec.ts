@@ -7,6 +7,7 @@
  * - **Upsert key:** `tenantId` + `category` + no `portfolioId` (tenant-level tasks only).
  * - **Legacy:** rows with `category: daily_options_scanner` are rewritten to `options_scanner` on `--apply` (count shown in dry-run).
  * - **`--seed-if-empty`:** if the tenant has **zero** tenant-level tasks before sync, runs `npm run seed:admin` (requires `.env` / `--file` with `ADMIN_SEED_EMAIL`, etc.) then continues.
+ * - **`seed:admin`:** `scripts/seed-admin-user.mjs` runs this script with **`--apply --tenant=<seeded tenant>`** after options-strategy sync (unless **`SKIP_SEED_SCHEDULED_TASKS_SYNC=1`**).
  *
  * Usage:
  *   npm run ops:scheduled-tasks:sync -- --dry-run
@@ -36,10 +37,37 @@ import { resolveMongoUri } from "../lib/resolve-mongo-uri.mjs";
 import { resolveSyncTargetMongoDatabaseName } from "../lib/sync-target-mongo-db";
 
 const COLLECTION = "admin_scheduled_tasks";
+const ADMIN_DELIVERY_CHANNELS_COLLECTION = "admin_delivery_channels";
 const TENANTS = "core_tenants";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "../..");
+
+type DeliveryTarget = "in_app" | "slack";
+
+type SeededAdminDeliveryChannel = {
+  name: string;
+  deliveryTarget: DeliveryTarget;
+  /** Required for slack targets on create; value loaded from process.env[slackWebhookEnv]. */
+  slackWebhookEnv?: string;
+};
+
+const SEEDED_ADMIN_DELIVERY_CHANNELS: readonly SeededAdminDeliveryChannel[] = [
+  {
+    name: "trusted-advisor",
+    deliveryTarget: "slack",
+    slackWebhookEnv: "SCHEDULED_TASKS_SYNC_TRUSTED_ADVISOR_SLACK_WEBHOOK_URL"
+  },
+  {
+    name: "in-app-alert",
+    deliveryTarget: "in_app"
+  },
+  {
+    name: "atx-admin-channel",
+    deliveryTarget: "slack",
+    slackWebhookEnv: "SCHEDULED_TASKS_SYNC_ATX_ADMIN_CHANNEL_SLACK_WEBHOOK_URL"
+  }
+] as const;
 
 function describeCron(scheduleCron: string): string {
   try {
@@ -148,6 +176,93 @@ async function countTenantTasks(coll: Collection, tenantId: ObjectId): Promise<n
   return coll.countDocuments(tenantLevelFilter(tenantId));
 }
 
+function nonEmptyEnv(name: string | undefined): string | undefined {
+  if (!name) {
+    return undefined;
+  }
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
+async function syncAdminDeliveryChannelsFromSeedSpec(input: {
+  coll: Collection;
+  tenantId: ObjectId;
+  apply: boolean;
+  plan: string[];
+}): Promise<void> {
+  const now = new Date();
+  for (const def of SEEDED_ADMIN_DELIVERY_CHANNELS) {
+    const slackWebhookUrl = nonEmptyEnv(def.slackWebhookEnv);
+    const existing = await input.coll.findOne({
+      tenantId: input.tenantId,
+      name: def.name
+    });
+
+    if (!existing) {
+      if (def.deliveryTarget === "slack" && !slackWebhookUrl) {
+        input.plan.push(
+          `SKIP admin_delivery_channels ${def.name} (missing ${def.slackWebhookEnv} for slack create)`
+        );
+        continue;
+      }
+      input.plan.push(`CREATE admin_delivery_channels ${def.name} target=${def.deliveryTarget}`);
+      if (input.apply) {
+        await input.coll.insertOne({
+          tenantId: input.tenantId,
+          name: def.name,
+          deliveryTarget: def.deliveryTarget,
+          ...(def.deliveryTarget === "slack" ? { slackWebhookUrl } : {}),
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+      continue;
+    }
+
+    const existingTarget = String(existing.deliveryTarget ?? "").trim();
+    const targetDrift = existingTarget !== def.deliveryTarget;
+    const existingWebhook = String(existing.slackWebhookUrl ?? "").trim();
+    const webhookDrift =
+      def.deliveryTarget === "slack" && Boolean(slackWebhookUrl) && existingWebhook !== slackWebhookUrl;
+    if (!targetDrift && !webhookDrift) {
+      input.plan.push(`OK admin_delivery_channels ${def.name}`);
+      continue;
+    }
+    if (def.deliveryTarget === "slack" && targetDrift && !slackWebhookUrl) {
+      input.plan.push(
+        `SKIP UPDATE admin_delivery_channels ${def.name} (target->slack needs ${def.slackWebhookEnv})`
+      );
+      continue;
+    }
+
+    const updateLabel =
+      def.deliveryTarget === "slack" && webhookDrift
+        ? `UPDATE admin_delivery_channels ${def.name} target=${def.deliveryTarget} webhook=updated`
+        : `UPDATE admin_delivery_channels ${def.name} target=${def.deliveryTarget}`;
+    input.plan.push(updateLabel);
+    if (input.apply) {
+      const setDoc: Record<string, unknown> = {
+        deliveryTarget: def.deliveryTarget,
+        updatedAt: now
+      };
+      const unsetDoc: Record<string, "" | 1> = {};
+      if (def.deliveryTarget === "slack") {
+        if (slackWebhookUrl) {
+          setDoc.slackWebhookUrl = slackWebhookUrl;
+        }
+        unsetDoc.emailTo = "";
+      } else {
+        unsetDoc.slackWebhookUrl = "";
+        unsetDoc.emailTo = "";
+      }
+      await input.coll.updateOne(
+        { _id: existing._id },
+        { $set: setDoc, ...(Object.keys(unsetDoc).length > 0 ? { $unset: unsetDoc } : {}) }
+      );
+    }
+  }
+}
+
 function runSeedAdmin(envFile: string | null): void {
   const seedScript = join(REPO_ROOT, "scripts/seed-admin-user.mjs");
   if (envFile) {
@@ -179,6 +294,7 @@ async function main(): Promise<void> {
   await client.connect();
   const db = client.db(dbName);
   const coll = db.collection(COLLECTION);
+  const deliveryChannelsColl = db.collection(ADMIN_DELIVERY_CHANNELS_COLLECTION);
 
   const tenantId = await resolveTenantId(db, cli.tenantId);
   console.log(
@@ -200,6 +316,12 @@ async function main(): Promise<void> {
 
   const now = new Date();
   const plan: string[] = [];
+  await syncAdminDeliveryChannelsFromSeedSpec({
+    coll: deliveryChannelsColl,
+    tenantId,
+    apply: cli.apply,
+    plan
+  });
 
   for (const category of SCHEDULED_TASK_CATEGORIES) {
     const scheduleCron = SCHEDULED_TASK_CATEGORY_DEFAULT_CRON[category];

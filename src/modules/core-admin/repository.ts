@@ -96,6 +96,10 @@ const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 /** Ensured on every default watchlist read/provision (xChat + portfolio UX). */
 const DEFAULT_WATCHLIST_SYMBOL = "TSLA";
 
+/** Default custodian desk fields when provisioning the default account (OAuth / first book). */
+const DEFAULT_PROVISION_ACCOUNT_RISK_PROFILE = "balanced" as const;
+const DEFAULT_PROVISION_ACCOUNT_OUTLOOK: AccountOutlook = "neutral";
+
 function parseOptionalFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -3067,6 +3071,8 @@ export async function provisionDefaultPortfolioForUser(
     type: accountType,
     extAccountId,
     cashBalance: DEFAULT_ACCOUNT_CASH_BALANCE,
+    riskProfile: DEFAULT_PROVISION_ACCOUNT_RISK_PROFILE,
+    outlook: DEFAULT_PROVISION_ACCOUNT_OUTLOOK,
     isDefault: true,
     updatedAt: now,
     ...(tenantObjectId ? { tenantId: tenantObjectId } : {})
@@ -3145,6 +3151,37 @@ export async function provisionDefaultPortfolioForUser(
       updatedAt: now
     }
   });
+
+  const defaultAccountDeskScope = {
+    ...userAccountsForPortfolioSessionScopeFilter(
+      input.userId,
+      portfolio._id.toHexString(),
+      input.tenantId
+    ),
+    isDefault: true
+  };
+  await db.collection<Account>(collections.accounts).updateMany(
+    {
+      $and: [
+        defaultAccountDeskScope,
+        {
+          $or: [{ riskProfile: { $exists: false } }, { riskProfile: null }]
+        }
+      ]
+    } as Filter<Account>,
+    { $set: { riskProfile: DEFAULT_PROVISION_ACCOUNT_RISK_PROFILE, updatedAt: now } }
+  );
+  await db.collection<Account>(collections.accounts).updateMany(
+    {
+      $and: [
+        defaultAccountDeskScope,
+        {
+          $or: [{ outlook: { $exists: false } }, { outlook: null }]
+        }
+      ]
+    } as Filter<Account>,
+    { $set: { outlook: DEFAULT_PROVISION_ACCOUNT_OUTLOOK, updatedAt: now } }
+  );
 
   const watchlistLookupFilter = userWatchlistsForPortfolioSessionScopeFilter(
     input.userId,
@@ -3420,6 +3457,8 @@ export type UpdatePortfolioAccountInput = {
   type?: AccountType;
   riskProfile?: "conservative" | "balanced" | "growth" | null;
   outlook?: AccountOutlook | null;
+  /** When true (admin paths), `extAccountId` / `type` may be updated even if `brokerImportLocked`. */
+  bypassBrokerImportLock?: boolean;
 };
 
 /**
@@ -3445,18 +3484,20 @@ export async function updatePortfolioAccountForUser(
 
   const $set: Record<string, unknown> = { updatedAt: new Date() };
   if (typeof input.name === "string" && input.name.trim()) {
-    $set.name = input.name.trim();
+    $set.name = input.name.trim().slice(0, 80);
   }
   if (typeof input.cashBalance === "number" && Number.isFinite(input.cashBalance) && input.cashBalance >= 0) {
     $set.cashBalance = input.cashBalance;
   }
-  if (typeof input.extAccountId === "string") {
+  const refBrokerLocked = Boolean(existing.brokerImportLocked) && !input.bypassBrokerImportLock;
+  if (!refBrokerLocked && typeof input.extAccountId === "string") {
     const ref = input.extAccountId.trim();
     if (ref) {
       $set.extAccountId = ref;
     }
   }
   if (
+    !refBrokerLocked &&
     input.type !== undefined &&
     (accountTypeValues as readonly AccountType[]).includes(input.type)
   ) {
@@ -3499,6 +3540,30 @@ export async function updatePortfolioAccountForUser(
     tenantId: input.tenantId
   });
   return db.collection<Account>(collections.accounts).findOne(filter);
+}
+
+/**
+ * Marks an account as tied to a broker CSV import (locks ref + broker type for app-user PATCH).
+ */
+export async function markPortfolioAccountBrokerImportLocked(input: {
+  userId: string;
+  tenantId?: string;
+  portfolioId: string;
+  accountId: string;
+}): Promise<boolean> {
+  await ensurePortfolioIndexes();
+  if (!ObjectId.isValid(input.portfolioId) || !ObjectId.isValid(input.accountId)) {
+    return false;
+  }
+  const db = await getDb();
+  const filter = {
+    _id: new ObjectId(input.accountId),
+    ...userAccountsForPortfolioSessionScopeFilter(input.userId, input.portfolioId, input.tenantId)
+  };
+  const res = await db.collection<Account>(collections.accounts).updateOne(filter, {
+    $set: { brokerImportLocked: true, updatedAt: new Date() }
+  });
+  return res.matchedCount === 1;
 }
 
 export async function updatePortfolioForUser(input: {
@@ -3608,7 +3673,7 @@ export async function insertPortfolioAccountForUser(
   if (!tenantObjectId) {
     return null;
   }
-  const name = input.name.trim().slice(0, 200);
+  const name = input.name.trim().slice(0, 80);
   if (!name) {
     return null;
   }
@@ -4083,7 +4148,8 @@ export async function adminUpdatePortfolioAccount(input: {
     extAccountId: input.extAccountId,
     type: input.type,
     riskProfile: input.riskProfile,
-    outlook: input.outlook
+    outlook: input.outlook,
+    bypassBrokerImportLock: true
   });
   if (input.isDefault === undefined) {
     return base;

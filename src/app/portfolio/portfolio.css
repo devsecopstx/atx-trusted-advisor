@@ -1336,6 +1336,92 @@
   color: var(--xf-text-100);
 }
 
+.portfolio-hero__eyebrow--account-edit-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
+  line-height: 1.45;
+}
+
+.portfolio-hero__crumb-sep {
+  color: var(--xf-text-400);
+  font-weight: 500;
+}
+
+.portfolio-hero__crumb-portfolio-name {
+  font-weight: 600;
+  color: var(--xf-text-200);
+}
+
+.portfolio-hero__crumb-current {
+  font-weight: 600;
+  color: var(--xf-text-100);
+}
+
+.portfolio-hero__sub--account-edit {
+  margin-top: 0.65rem;
+}
+
+.portfolio-account-view-switch {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+}
+
+.portfolio-edit-account-section-divider {
+  height: 1px;
+  margin: 0.15rem 0 0.35rem;
+  border: 0;
+  background: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+.portfolio-edit-fieldset--segmented {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.portfolio-edit-fieldset--segmented .portfolio-edit-field__label {
+  margin-bottom: 0.35rem;
+}
+
+.portfolio-edit-segmented-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.portfolio-edit-segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--xf-radius-md);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 40%, transparent);
+  color: var(--xf-text-200);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.portfolio-edit-segment:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 35%, transparent);
+  color: var(--xf-text-100);
+}
+
+.portfolio-edit-segment--active {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  color: var(--xf-text-100);
+}
+
 .portfolio-edit-account-card,
 .portfolio-edit-holdings-card {
   position: relative;

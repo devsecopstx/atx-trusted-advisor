@@ -204,6 +204,39 @@ function runPostSeedOptionsStrategyFromDisk() {
   }
 }
 
+/**
+ * Ensures `admin_scheduled_tasks` tenant-level rows exist for `/admin/tasks` (same logic as
+ * `npm run ops:scheduled-tasks:sync -- --apply --tenant=…`).
+ */
+function runPostSeedScheduledTasksSync(tenantIdHex) {
+  const s = String(process.env.SKIP_SEED_SCHEDULED_TASKS_SYNC ?? "").toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") {
+    console.log(
+      "[seed:admin] SKIP_SEED_SCHEDULED_TASKS_SYNC set — skipping admin_scheduled_tasks sync from category spec"
+    );
+    return;
+  }
+  const script = join(SEED_SCRIPT_DIR, "ops/sync-scheduled-tasks-from-spec.ts");
+  console.log(
+    "[seed:admin] syncing admin_scheduled_tasks (default jobs for Admin → Tasks) from category spec…"
+  );
+  const r = spawnSync(
+    process.execPath,
+    ["--import", "tsx", script, "--apply", `--tenant=${tenantIdHex}`],
+    {
+      cwd: REPO_ROOT,
+      env: childEnvWithSeedParentMongoDb(),
+      stdio: "inherit"
+    }
+  );
+  if (r.status !== 0 && r.status != null) {
+    console.error(
+      "[seed:admin] scheduled-tasks sync failed — run `npm run ops:scheduled-tasks:sync -- --dry-run` or set SKIP_SEED_SCHEDULED_TASKS_SYNC=1"
+    );
+    process.exit(r.status ?? 1);
+  }
+}
+
 function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
 }
@@ -294,6 +327,15 @@ const DEFAULT_EXT_ACCOUNT_XREF = "ext_account_xref";
 const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
 const DEFAULT_WATCHLIST_SYMBOLS = ["TSLA"];
+/** Same weights/order as `DEFAULT_PORTFOLIO_SCORING_FACTORS` in `src/modules/core-admin/scoring-factors.ts`. */
+const DEFAULT_PORTFOLIO_SCORING_FACTORS_SEED = [
+  { id: "iv_rank", weight: 0.3 },
+  { id: "open_interest", weight: 0.2 },
+  { id: "volume", weight: 0.15 },
+  { id: "liquidity", weight: 0.1 },
+  { id: "portfolio_fit", weight: 0.15 },
+  { id: "strategy_alignment", weight: 0.1 }
+];
 const XAI_KB_COLLECTION_RE = /^collection_[A-Za-z0-9_-]+$/;
 const DEFAULT_COLLECTION_NAME = "Finance";
 
@@ -478,6 +520,7 @@ async function seed() {
         },
         $set: {
           isDefault: true,
+          defaultPortfolioScoringFactors: DEFAULT_PORTFOLIO_SCORING_FACTORS_SEED,
           updatedAt: now
         }
       },
@@ -622,6 +665,7 @@ async function seed() {
           name: DEFAULT_PORTFOLIO_NAME,
           isDefault: true,
           tenantPortfolioOrgKey: DEFAULT_TENANT_PORTFOLIO_ORG_KEY,
+          scoringFactors: DEFAULT_PORTFOLIO_SCORING_FACTORS_SEED,
           updatedAt: now
         }
       },
@@ -648,6 +692,8 @@ async function seed() {
           name: DEFAULT_ACCOUNT_NAME,
           type: DEFAULT_ACCOUNT_TYPE,
           extAccountId,
+          riskProfile: "balanced",
+          outlook: "neutral",
           isDefault: true,
           updatedAt: now
         }
@@ -721,6 +767,8 @@ async function seed() {
     strategySyncSummary = runPostSeedOptionsStrategyPreferencesFromDisk();
     runPostSeedOptionsStrategyFromDisk();
 
+    runPostSeedScheduledTasksSync(String(tenant._id));
+
     const personaAfterDisk = await db
       .collection("xchat_personas")
       .findOne({ nameNormalized: DEFAULT_PERSONA_NAME_NORMALIZED });
@@ -774,7 +822,7 @@ async function seed() {
       mongo: {
         database: DB_NAME,
         accessRequestInserted,
-        note: "Upserted core_tenants, xchat_personas (advisor), core_users (subscriptionPlan basic), core_tenant_memberships, tenant_portfolio + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS) from atx-docs/rag-collection/xpersonas and options_strategy_preferences from atx-rag-collection/options-strategy (unless SKIP_SEED_OPTIONS_STRATEGY_PREFS). See accessRequestInserted for admin_access_requests."
+        note: "Upserted core_tenants (incl. defaultPortfolioScoringFactors), xchat_personas (advisor), core_users (subscriptionPlan basic), core_tenant_memberships, tenant_portfolio (incl. scoringFactors) + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS), options_strategy_preferences / options_strategy, and admin_scheduled_tasks via ops/sync-scheduled-tasks-from-spec (unless SKIP_SEED_SCHEDULED_TASKS_SYNC). See accessRequestInserted for admin_access_requests."
       }
     };
 
@@ -783,13 +831,16 @@ async function seed() {
         "",
         "======== seed:admin summary ==============================================",
         `Mongo database:              ${DB_NAME}`,
-        "Mongo writes:                tenant, advisor (inline + seed:xpersonas from atx-docs/rag-collection/xpersonas), admin user (subscriptionPlan basic), membership, default portfolio/account/watchlist, admin_user_settings",
+        "Mongo writes:                tenant (+ portfolio scoring defaults), advisor (inline + seed:xpersonas from atx-docs/rag-collection/xpersonas), admin user (subscriptionPlan basic), membership, default portfolio (+ scoringFactors)/account/watchlist, admin_user_settings",
         String(process.env.SKIP_SEED_XPERSONAS ?? "").match(/^(1|true|yes)$/i)
           ? "xPersonas from disk:       skipped (SKIP_SEED_XPERSONAS)"
           : "xPersonas from disk:       seed:xpersonas (atx-docs/rag-collection/xpersonas → xchat_personas) before summary JSON",
         String(process.env.SKIP_SEED_OPTIONS_STRATEGY_PREFS ?? "").match(/^(1|true|yes)$/i)
           ? "Options strategy prefs:    skipped (SKIP_SEED_OPTIONS_STRATEGY_PREFS)"
           : "Options strategy prefs:    atx-rag-collection/options-strategy → options_strategy_preferences",
+        String(process.env.SKIP_SEED_SCHEDULED_TASKS_SYNC ?? "").match(/^(1|true|yes)$/i)
+          ? "Scheduled tasks:           skipped (SKIP_SEED_SCHEDULED_TASKS_SYNC)"
+          : "Scheduled tasks:           ops/sync-scheduled-tasks-from-spec --apply → admin_scheduled_tasks",
         `                             admin_access_requests: ${accessRequestInserted ? "inserted approved paper row" : "already present — skipped"}`,
         `ATX_INSTANCE_COLLECTION_ROOT (effective): ${seedTenant.atxInstanceCollectionRoot || "(none)"}`,
         `  .env override:             ${envAtxRootOverride || "(unset — computed from ATX_DEPLOY_TARGET / site_name / tenant_defaults)"}`,

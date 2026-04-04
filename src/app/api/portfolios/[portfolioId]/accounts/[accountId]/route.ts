@@ -26,7 +26,7 @@ const outlookPatchField = z.preprocess(
 
 const patchAccountSchema = z
   .object({
-    name: z.string().trim().min(1).max(200).optional(),
+    name: z.string().trim().min(1).max(80).optional(),
     cashBalance: z.number().finite().nonnegative().optional(),
     extAccountId: z.string().trim().min(1).max(200).optional(),
     type: z.enum(accountTypeValues).optional(),

@@ -377,6 +377,8 @@ describe("portfolio provisioning repository", () => {
 
     expect(accDoc?.cashBalance).toBe(DEFAULT_ACCOUNT_CASH_BALANCE);
     expect(accDoc?.isDefault).toBe(true);
+    expect(accDoc?.riskProfile).toBe("balanced");
+    expect(accDoc?.outlook).toBe("neutral");
     const rawSyms = wlDoc?.symbols;
     const flat =
       Array.isArray(rawSyms) &&
@@ -392,6 +394,29 @@ describe("portfolio provisioning repository", () => {
         return false;
       });
     expect(flat).toBe(true);
+  });
+
+  it("backfills balanced risk and neutral outlook on default account when fields were missing", async () => {
+    const fakeDb = buildFakeDb();
+    mockedGetDb.mockResolvedValue(fakeDb.db);
+
+    const { account } = await provisionDefaultPortfolioForUser({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
+    await fakeDb.db.collection("portfolio_accounts").updateOne(
+      { _id: account._id },
+      { $unset: { outlook: "", riskProfile: "" } }
+    );
+
+    await provisionDefaultPortfolioForUser({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022"
+    });
+
+    const accDoc = await fakeDb.db.collection("portfolio_accounts").findOne({ _id: account._id });
+    expect(accDoc?.riskProfile).toBe("balanced");
+    expect(accDoc?.outlook).toBe("neutral");
   });
 
   it("provisions defaults idempotently and keeps one watchlist per portfolio", async () => {
@@ -433,7 +458,14 @@ describe("portfolio provisioning repository", () => {
     );
     await fakeDb.db.collection("portfolio_accounts").updateOne(
       { _id: aid },
-      { $set: { name: "myaccount", updatedAt: new Date() } }
+      {
+        $set: {
+          name: "myaccount",
+          outlook: "bearish",
+          riskProfile: "growth",
+          updatedAt: new Date()
+        }
+      }
     );
     await fakeDb.db.collection("portfolio_watchlists").updateOne(
       { _id: wid },
@@ -451,6 +483,8 @@ describe("portfolio provisioning repository", () => {
 
     expect(pAfter?.name).toBe("myPortfolio");
     expect(aAfter?.name).toBe("myaccount");
+    expect(aAfter?.outlook).toBe("bearish");
+    expect(aAfter?.riskProfile).toBe("growth");
     expect(wAfter?.name).toBe("MyWatchlist");
     expect(again.portfolio.name).toBe("myPortfolio");
     expect(again.account.name).toBe("myaccount");

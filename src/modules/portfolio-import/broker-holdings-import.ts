@@ -12,6 +12,7 @@ import { ObjectId } from "mongodb";
 import {
     deletePositionsForPortfolioAccount,
     listPortfolioPositionsByAccount,
+    markPortfolioAccountBrokerImportLocked,
     PositionValidationError,
     upsertPositionForAccount
 } from "@/modules/core-admin/repository";
@@ -453,6 +454,15 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
         error: msg
       });
       continue;
+    }
+
+    if (imported > 0) {
+      await markPortfolioAccountBrokerImportLocked({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        portfolioId: input.portfolioId,
+        accountId
+      });
     }
 
     results.push({

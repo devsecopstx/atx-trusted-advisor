@@ -203,8 +203,12 @@ export type AdminDeliveryChannel = {
   updatedAt: Date;
 };
 
-export const accountTypeValues = ["merrill", "fidelity", "etrade", "ibkr"] as const;
+/** Custodian slug; `etrade` retained for legacy rows. */
+export const accountTypeValues = ["fidelity", "merrill", "ibkr", "schwab", "other", "etrade"] as const;
 export type AccountType = (typeof accountTypeValues)[number];
+
+/** Broker dropdown order (Fidelity, Merrill, IBKR, Schwab, Other). Omits legacy `etrade`. */
+export const accountTypePickerValues = ["fidelity", "merrill", "ibkr", "schwab", "other"] as const satisfies readonly AccountType[];
 
 /** Account / book market outlook (desk pick list). */
 export const accountOutlookValues = ["bullish", "neutral", "bearish"] as const;
@@ -361,6 +365,10 @@ export type Account = {
   riskProfile?: "conservative" | "balanced" | "growth" | null;
   /** Positioning outlook slug for this account (optional); see {@link accountOutlookValues}. */
   outlook?: AccountOutlook | null;
+  /**
+   * When true, broker CSV import has applied to this book; app users cannot change `extAccountId` or `type`.
+   */
+  brokerImportLocked?: boolean;
   /**
    * When set, xOptions uses this for per-account options-trading eligibility UI.
    * When omitted, server env default applies for that account.

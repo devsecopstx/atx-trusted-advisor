@@ -45,7 +45,7 @@ function serializeAccount(a: Account) {
 }
 
 const postSchema = z.object({
-  name: z.string().trim().min(1).max(200),
+  name: z.string().trim().min(1).max(80),
   type: z.enum(accountTypeValues).optional(),
   extAccountId: z.string().trim().min(1).max(200).optional(),
   cashBalance: z.number().finite().nonnegative().optional()

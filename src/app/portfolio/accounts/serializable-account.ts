@@ -7,6 +7,8 @@ export type SerializableAccount = {
   extAccountId: string;
   cashBalance: number;
   isDefault: boolean;
+  /** After broker CSV import, ref + broker cannot change (app user). */
+  brokerImportLocked: boolean;
   riskProfile: "conservative" | "balanced" | "growth" | null;
   outlook: AccountOutlook | null;
 };

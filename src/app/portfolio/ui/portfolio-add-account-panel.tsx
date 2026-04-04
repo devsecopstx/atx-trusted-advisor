@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { AddIcon } from "@/app/admin/ui/crud-icons";
-import { ACCOUNT_TYPE_LABELS } from "@/lib/broker-ui";
-import { accountTypeValues, type AccountType } from "@/modules/core-admin/types";
+import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_PICKER_ORDER } from "@/lib/broker-ui";
+import { type AccountType } from "@/modules/core-admin/types";
 
 type Props = {
   portfolioId: string;
@@ -102,7 +102,7 @@ export function PortfolioAddAccountPanel({ portfolioId }: Props) {
             onChange={(e) => setType(e.target.value as AccountType)}
             aria-label="Broker type"
           >
-            {accountTypeValues.map((t) => (
+            {ACCOUNT_TYPE_PICKER_ORDER.map((t) => (
               <option key={t} value={t}>
                 {ACCOUNT_TYPE_LABELS[t]}
               </option>

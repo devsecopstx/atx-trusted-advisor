@@ -29,15 +29,18 @@ function serializeAccount(account: Account) {
     extAccountId: account.extAccountId,
     cashBalance: account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
     isDefault: account.isDefault,
+    brokerImportLocked: Boolean(account.brokerImportLocked),
     riskProfile: account.riskProfile ?? null,
     outlook: parseAccountOutlook(account.outlook) ?? null
   };
 }
 
 export default async function PortfolioAccountPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ accountId: string }>;
+  searchParams?: Promise<{ view?: string }>;
 }) {
   const session = await getSessionUser();
   if (!session) {
@@ -45,6 +48,8 @@ export default async function PortfolioAccountPage({
   }
 
   const { accountId } = await params;
+  const viewParam = searchParams ? await searchParams : {};
+  const initialWorkspaceView = viewParam.view === "holdings" ? "holdings" : "edit";
   if (!ObjectId.isValid(accountId)) {
     notFound();
   }
@@ -154,23 +159,30 @@ export default async function PortfolioAccountPage({
         <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
         <div className="portfolio-account-page portfolio-account-page--edit">
           <header className="portfolio-hero portfolio-hero--account-edit xf-noise-overlay">
-            <p className="portfolio-hero__eyebrow">
+            <p className="portfolio-hero__eyebrow portfolio-hero__eyebrow--account-edit-trail" aria-label="Breadcrumb">
               <Link className="portfolio-breadcrumb-link" href="/portfolio">
                 Portfolio
               </Link>
-              <span aria-hidden> · </span>
-              <span>Edit account</span>
-            </p>
-            <p className="portfolio-hero__portfolio-readonly" title="This account belongs to this portfolio">
-              <span className="portfolio-hero__portfolio-readonly-label">Portfolio</span>
-              <span className="portfolio-hero__portfolio-readonly-name">
+              <span className="portfolio-hero__crumb-sep" aria-hidden>
+                {" "}
+                →{" "}
+              </span>
+              <span className="portfolio-hero__crumb-portfolio-name">
                 {portfolio.name?.trim() || "Default portfolio"}
               </span>
+              <span className="portfolio-hero__crumb-sep" aria-hidden>
+                {" "}
+                →{" "}
+              </span>
+              <span className="portfolio-hero__crumb-current">Edit account</span>
             </p>
-            <h1 className="portfolio-hero__title">Account</h1>
-            <p className="portfolio-hero__sub">
-              Use <strong>Edit account</strong> for name, cash, and desk fields; switch to <strong>Holdings</strong> to
-              review positions and add stock, options, or cash.
+            <h1 className="sr-only">Edit account</h1>
+            <p className="portfolio-hero__sub portfolio-hero__sub--account-edit">
+              Name, broker desk, initial balance, and outlook for options-income planning.{" "}
+              <Link className="portfolio-breadcrumb-link" href={`/portfolio/accounts/${encodeURIComponent(accountId)}?view=holdings`}>
+                Holdings
+              </Link>{" "}
+              for positions.
             </p>
           </header>
 
@@ -179,6 +191,7 @@ export default async function PortfolioAccountPage({
             account={serializeAccount(account)}
             initialPositions={serializePositionsForUi(positions)}
             portfolioAccountCount={accounts.length}
+            initialWorkspaceView={initialWorkspaceView}
           />
         </div>
         </AppUserCollapsibleRailLayout>

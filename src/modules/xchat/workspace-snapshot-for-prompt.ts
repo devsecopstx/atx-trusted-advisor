@@ -10,7 +10,8 @@ import {
 } from "@/modules/core-admin/repository";
 import type { ObjectId } from "mongodb";
 
-import type { Portfolio, WatchlistSymbol } from "@/modules/core-admin/types";
+import type { Portfolio, PositionType, WatchlistSymbol } from "@/modules/core-admin/types";
+import { normalizePositionType } from "@/modules/core-admin/types";
 import {
     buildWorkspaceSnapshotCacheKey,
     getWorkspaceSnapshotCacheTtlSeconds,
@@ -93,10 +94,13 @@ export type WorkspaceSnapshotPreload = {
     qty: number;
     avgCost: number;
     accountId: string;
+    /** stock | option | cash — omitted on legacy cached rows → treat as stock. */
+    positionType?: PositionType;
   }>;
 };
 
-function normalizeWorkspaceContentRev(portfolio: { workspaceContentRev?: number }): number {
+/** Exported for find-options / other readers that must match snapshot cache rev checks. */
+export function normalizeWorkspaceContentRev(portfolio: { workspaceContentRev?: number }): number {
   const r = portfolio.workspaceContentRev;
   return typeof r === "number" && Number.isFinite(r) && r >= 0 ? Math.floor(r) : 0;
 }
@@ -200,7 +204,8 @@ async function buildPreloadFromPortfolio(
     symbol: p.symbol,
     qty: p.qty,
     avgCost: p.avgCost,
-    accountId: p.accountId.toHexString()
+    accountId: p.accountId.toHexString(),
+    positionType: normalizePositionType(p.type)
   }));
 
   const elapsedMs = Math.round(performance.now() - t0);
@@ -395,7 +400,8 @@ export function positionsSnapshotFromWorkspacePreload(p: WorkspaceSnapshotPreloa
       positions: rows.map((r) => ({
         symbol: r.symbol,
         qty: r.qty,
-        avgCost: r.avgCost
+        avgCost: r.avgCost,
+        type: r.positionType ?? "stock"
       }))
     };
   });

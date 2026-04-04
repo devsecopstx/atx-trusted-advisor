@@ -19,7 +19,19 @@ import {
     DESK_OUTLOOK_LABELS,
     DESK_RISK_DISPLAY_LABELS
 } from "@/modules/core-admin/desk-fields";
+import {
+    DEFAULT_PORTFOLIO_SCORING_FACTORS,
+    SCORING_FACTOR_CATALOG
+} from "@/modules/core-admin/scoring-factors";
 import type { AccountOutlook } from "@/modules/core-admin/types";
+
+function buildDefaultFactorWeights(): { id: string; weight: number; label: string }[] {
+  return DEFAULT_PORTFOLIO_SCORING_FACTORS.map((f) => ({
+    id: f.id,
+    weight: f.weight,
+    label: SCORING_FACTOR_CATALOG[f.id].label
+  }));
+}
 
 type ScoringFactorRow = {
   id: string;
@@ -148,7 +160,7 @@ export function XoptionsStrategyBuilderWorkspace() {
 
   const [outlookOverride, setOutlookOverride] = useState<"" | AccountOutlook>("");
   const [riskOverride, setRiskOverride] = useState<"" | "conservative" | "balanced" | "growth">("");
-  const [factorWeights, setFactorWeights] = useState<{ id: string; weight: number; label: string }[] | null>(null);
+  const [factorWeights, setFactorWeights] = useState(buildDefaultFactorWeights);
 
   const router = useRouter();
 
@@ -168,15 +180,24 @@ export function XoptionsStrategyBuilderWorkspace() {
     router.push("/xchat");
   }, [reviewOrderPlainText, router]);
 
-  const loadContext = useCallback(async () => {
+  const loadWorkspace = useCallback(async () => {
     setCtxErr(null);
-    const res = await fetch("/api/app-user/find-options/context", { credentials: "include" });
+    const res = await fetch("/api/app-user/find-options/bootstrap?holdingsLimit=12&hotLimit=3", {
+      credentials: "include"
+    });
     if (!res.ok) {
       setCtxErr("Could not load portfolio context.");
       return;
     }
-    const json = (await res.json()) as { data: Partial<ContextPayload> };
-    const d = json.data;
+    const json = (await res.json()) as {
+      data?: {
+        context?: Partial<ContextPayload>;
+        holdings?: HoldingRow[];
+        hot?: { rows: HotRow[]; scanned: number };
+      };
+    };
+    const pack = json.data;
+    const d = pack?.context;
     if (!d || typeof d !== "object") {
       setCtxErr("Could not load portfolio context.");
       return;
@@ -195,31 +216,25 @@ export function XoptionsStrategyBuilderWorkspace() {
       bookRiskProfile: d.bookRiskProfile ?? null,
       scoringFactors: Array.isArray(d.scoringFactors) ? d.scoringFactors : []
     });
-  }, []);
-
-  const loadLists = useCallback(async () => {
-    const [h, w] = await Promise.all([
-      fetch("/api/app-user/find-options/top-holdings?limit=12", { credentials: "include" }),
-      fetch("/api/app-user/find-options/watchlist-hot?limit=3", { credentials: "include" })
-    ]);
-    if (h.ok) {
-      const j = (await h.json()) as { data: { holdings: HoldingRow[] } };
-      setHoldings(j.data?.holdings ?? []);
-    }
-    if (w.ok) {
-      const j = (await w.json()) as { data: { rows: HotRow[]; scanned: number } };
-      setHot(j.data?.rows ?? []);
-      setHotMeta({ scanned: j.data?.scanned ?? 0 });
+    setHoldings(Array.isArray(pack?.holdings) ? pack.holdings : []);
+    const hotPack = pack?.hot;
+    if (hotPack) {
+      setHot(Array.isArray(hotPack.rows) ? hotPack.rows : []);
+      setHotMeta({ scanned: typeof hotPack.scanned === "number" ? hotPack.scanned : 0 });
+    } else {
+      setHot([]);
+      setHotMeta(null);
     }
   }, []);
 
   useEffect(() => {
-    void loadContext();
-    void loadLists();
-  }, [loadContext, loadLists]);
+    void loadWorkspace();
+  }, [loadWorkspace]);
 
   useEffect(() => {
-    if (!ctx) return;
+    if (!ctx?.scoringFactors?.length) {
+      return;
+    }
     setFactorWeights(
       ctx.scoringFactors.map((f) => ({
         id: f.id,
@@ -314,7 +329,7 @@ export function XoptionsStrategyBuilderWorkspace() {
     return riskLabel(r);
   }, [ctx?.bookRiskProfile, riskOverride, workspaceDeskAccount?.riskProfile]);
 
-  const effectiveFactors = useMemo(() => factorWeights ?? [], [factorWeights]);
+  const effectiveFactors = useMemo(() => factorWeights, [factorWeights]);
 
   const weightSum = useMemo(
     () => effectiveFactors.reduce((s, f) => s + f.weight, 0),
@@ -367,12 +382,11 @@ export function XoptionsStrategyBuilderWorkspace() {
   }
 
   function updateFactorWeight(id: string, pct: number) {
-    setFactorWeights((prev) => {
-      const base = prev ?? [];
-      return base.map((row) =>
+    setFactorWeights((prev) =>
+      prev.map((row) =>
         row.id === id ? { ...row, weight: Math.min(1, Math.max(0, pct / 100)) } : row
-      );
-    });
+      )
+    );
   }
 
   function goStep(n: (typeof STEPS)[number]["n"]) {

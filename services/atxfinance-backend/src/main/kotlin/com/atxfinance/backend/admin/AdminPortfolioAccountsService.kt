@@ -25,7 +25,7 @@ class AdminPortfolioAccountsService(
     private val props: AtxfinanceProperties,
     private val auditEventService: AuditEventService,
 ) {
-    private val accountTypes = setOf("merrill", "fidelity", "etrade", "ibkr")
+    private val accountTypes = setOf("merrill", "fidelity", "etrade", "ibkr", "schwab", "other")
     private val riskProfiles = setOf("conservative", "balanced", "growth")
     private val outlookSlugs = setOf("growth", "income", "balanced", "aggressive")
 

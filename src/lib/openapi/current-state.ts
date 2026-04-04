@@ -71,6 +71,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "find-options"
   },
   {
+    path: "/api/app-user/find-options/bootstrap",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "find-options"
+  },
+  {
     path: "/api/app-user/find-options/symbol-snapshot",
     operations: [{ method: "GET", auth: "session" }],
     tag: "find-options"
