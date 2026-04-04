@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { UploadIcon } from "@/app/admin/ui/crud-icons";
 import { AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
@@ -14,7 +13,6 @@ type PulseIndex = { symbol: string; price?: number; changePercent?: number };
 
 type Props = {
   totalBookUsd: number;
-  defaultPortfolioId: string | null;
   topHoldingsKey: string;
 };
 
@@ -26,18 +24,10 @@ function formatChgPct(p: number | undefined): string {
   return `${sign}${p.toFixed(2)}%`;
 }
 
-export function PortfoliosWorkspaceHeader({
-  totalBookUsd,
-  defaultPortfolioId,
-  topHoldingsKey
-}: Props) {
+export function PortfoliosWorkspaceHeader({ totalBookUsd, topHoldingsKey }: Props) {
   const [indices, setIndices] = useState<PulseIndex[]>([]);
   const [market, setMarket] = useState<MarketDayContext>(() => resolveUsMarketDayContext(new Date()));
   const [loading, setLoading] = useState(true);
-
-  const importHref = defaultPortfolioId
-    ? `/import-activity?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
-    : "/import-activity";
 
   useEffect(() => {
     let cancelled = false;
@@ -157,14 +147,6 @@ export function PortfoliosWorkspaceHeader({
             )}
           </span>
         </div>
-
-        <Link
-          className="portfolios-workspace-header__import-btn xchat-header-cta"
-          href={importHref}
-        >
-          <UploadIcon className="crud-icon h-4 w-4 shrink-0" aria-hidden />
-          Import Broker
-        </Link>
       </div>
     </header>
   );

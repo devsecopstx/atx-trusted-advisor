@@ -322,15 +322,6 @@
   white-space: nowrap;
 }
 
-.portfolios-workspace-header__import-btn {
-  white-space: nowrap;
-  font-size: 0.72rem;
-  padding: 0.35rem 0.65rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
 @media (max-width: 900px) {
   .portfolios-workspace-header {
     flex-wrap: wrap;

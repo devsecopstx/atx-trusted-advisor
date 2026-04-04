@@ -1,7 +1,7 @@
 "use client";
 
-import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
+import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
 
 import { PortfoliosAccountsFooter } from "./portfolios-accounts-footer";
@@ -44,11 +44,7 @@ export function PortfoliosWorkspaceClient({
 
   return (
     <>
-      <PortfoliosWorkspaceHeader
-        defaultPortfolioId={defaultPortfolioId}
-        topHoldingsKey={holdingsKey}
-        totalBookUsd={totalBookUsd}
-      />
+      <PortfoliosWorkspaceHeader topHoldingsKey={holdingsKey} totalBookUsd={totalBookUsd} />
 
       <div className="xchat-body portfolio-page-body">
         <AppUserCollapsibleRailLayout
