@@ -55,7 +55,22 @@ export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
   tools: []
 };
 
-/** Global-admin default persona (`advisor` / legacy `super-agent`) xAPI tools; `collections_search` is included when `XAI_TEAM_ID` resolves to a KB collection id (sync: `collection_*` on env). */
+/**
+ * Global-admin **advisor** preset: `atx_function` + `yahoo_finance` + optional `file_search` (single team KB id when `XAI_TEAM_ID` is a literal `collection_*`).
+ */
+export function getAdvisorDefaultTools(): PersonaXapiToolDefinition[] {
+  const cid = getTeamXaiKbCollectionIdSync();
+  if (cid) {
+    return [
+      { type: "atx_function" },
+      { type: "yahoo_finance" },
+      { type: "file_search", collection_ids: [cid] }
+    ];
+  }
+  return [{ type: "atx_function" }, { type: "yahoo_finance" }];
+}
+
+/** Legacy **super-agent** row: full research + `collections_search` when env resolves a KB collection id. */
 export function getSuperAgentDefaultTools(): PersonaXapiToolDefinition[] {
   const cid = getTeamXaiKbCollectionIdSync();
   if (cid) {
@@ -87,8 +102,9 @@ export const DEFAULT_GLOBAL_ADMIN_PERSONA_NAME_KEYS = new Set(["advisor", "super
 export const SUPER_AGENT_NAME_NORMALIZED = "advisor";
 
 /**
- * If Mongo `xapi.tools` was cleared or edited down, the global-admin default persona can lose `web_search` / `x_search` / collections.
- * Applied in `POST /api/xchat/ask` and xChat batch after `normalizePersonaXapiConfig` so live search + KB tools match product intent.
+ * If Mongo `xapi.tools` was cleared or edited down, restore the **baseline** tool set for global-admin defaults:
+ * **`advisor`** → {@link getAdvisorDefaultTools}; legacy **`super-agent`** → {@link getSuperAgentDefaultTools}.
+ * Applied in `POST /api/xchat/ask` and xChat batch after `normalizePersonaXapiConfig`.
  */
 export function ensureSuperAgentDefaultTools(
   config: PersonaXapiConfig,
@@ -98,9 +114,10 @@ export function ensureSuperAgentDefaultTools(
   if (!key || !DEFAULT_GLOBAL_ADMIN_PERSONA_NAME_KEYS.has(key)) {
     return config;
   }
+  const baseline = key === "super-agent" ? getSuperAgentDefaultTools() : getAdvisorDefaultTools();
   const have = new Set(config.tools.map((t) => t.type));
   const merged: PersonaXapiToolDefinition[] = [...config.tools];
-  for (const def of getSuperAgentDefaultTools()) {
+  for (const def of baseline) {
     if (!have.has(def.type)) {
       merged.push({ ...def });
       have.add(def.type);

@@ -88,6 +88,10 @@ class StrategyJobService(
         doc["turns"] = emptyList<Document>()
         doc["createdAt"] = now
         doc["updatedAt"] = now
+        val ttlDays = props.strategyJobsTtlDays
+        if (ttlDays > 0) {
+            doc["expiresAt"] = Date(now.time + ttlDays * 86_400_000L)
+        }
         if (!idempotencyKey.isNullOrBlank()) {
             doc["idempotencyKey"] = idempotencyKey.trim()
         }

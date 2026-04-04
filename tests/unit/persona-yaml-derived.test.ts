@@ -31,4 +31,32 @@ describe("buildYamlDerived default xapi tools", () => {
       { type: "code_interpreter" }
     ]);
   });
+
+  it("uses advisor lean tool preset when xapi is omitted and name is advisor", () => {
+    const derived = buildYamlDerived(
+      {
+        name: "advisor",
+        system_prompt: "You are the global admin advisor with lean tools for xChat validation.",
+        model: "grok-4-1-fast-reasoning",
+        enable_rag: true,
+        default_scope: "global",
+        temperature: 0.2
+      },
+      {
+        collectionId: "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236",
+        collectionDisplayName: "team-default"
+      }
+    );
+
+    expect(derived.xapi.tools).toEqual([
+      { type: "atx_function" },
+      { type: "yahoo_finance" },
+      {
+        type: "file_search",
+        collection_ids: ["collection_b75e188e-e7e6-4aa8-8e01-23caf0946236"]
+      }
+    ]);
+    expect(derived.xapi.toolChoice).toBe("auto");
+    expect(derived.xapi.mode).toBe("responses");
+  });
 });

@@ -336,6 +336,11 @@ async function createPortfolioIndexes(): Promise<void> {
         name: "uniq_default_account_per_portfolio"
       }
     ),
+    /** Workspace snapshot: {@link listPortfolioAccounts} sort `isDefault` desc, `createdAt` asc. */
+    db.collection<Account>(collections.accounts).createIndex(
+      { portfolioId: 1, userId: 1, isDefault: -1, createdAt: 1 },
+      { name: "idx_accounts_snapshot_portfolio_user_default_created" }
+    ),
     db.collection<Watchlist>(collections.watchlists).createIndex(
       { tenantId: 1, portfolioId: 1 },
       {
@@ -343,11 +348,21 @@ async function createPortfolioIndexes(): Promise<void> {
         name: "uniq_watchlist_per_portfolio"
       }
     ),
+    /** Workspace snapshot: {@link getPortfolioWatchlist} findOne by portfolio + owner. */
+    db.collection<Watchlist>(collections.watchlists).createIndex(
+      { portfolioId: 1, userId: 1 },
+      { name: "idx_watchlists_snapshot_portfolio_user" }
+    ),
     db.collection<Position>(collections.positions).createIndex(
       { tenantId: 1, portfolioId: 1, accountId: 1, symbol: 1 },
       {
         name: "idx_positions_tenant_portfolio_account_symbol"
       }
+    ),
+    /** xChat / atx_function workspace snapshot: {@link listPortfolioPositionsByAccount} (sort `createdAt`). */
+    db.collection<Position>(collections.positions).createIndex(
+      { portfolioId: 1, accountId: 1, userId: 1, tenantId: 1, createdAt: 1 },
+      { name: "idx_positions_snapshot_portfolio_account_user_tenant_created" }
     ),
     db.collection<Position>(collections.positions).createIndex(
       { tenantId: 1, portfolioId: 1, accountId: 1, yahooRef: 1 },

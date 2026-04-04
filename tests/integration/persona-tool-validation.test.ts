@@ -10,6 +10,7 @@ import {
 } from "@/modules/xchat/persona-validation";
 import {
     ensureSuperAgentDefaultTools,
+    getAdvisorDefaultTools,
     getSuperAgentDefaultTools,
     mergeXchatHostedToolBaseline,
     normalizePersonaXapiConfig,
@@ -67,7 +68,7 @@ describe("persona tool validation", () => {
     ]);
   });
 
-  it("getSuperAgentDefaultTools follows admin default ordering with collection tool", () => {
+  it("getSuperAgentDefaultTools follows legacy super-agent ordering with collections_search", () => {
     const tools = getSuperAgentDefaultTools();
     expect(tools).toHaveLength(6);
     expect(tools.map((t) => t.type)).toEqual([
@@ -82,7 +83,21 @@ describe("persona tool validation", () => {
     expect(collectionsSearch).toHaveProperty("collection_ids");
   });
 
-  it("ensureSuperAgentDefaultTools restores hosted tools when Mongo xapi.tools was stripped", () => {
+  it("getAdvisorDefaultTools uses file_search with one collection id when env resolves team KB", () => {
+    const tools = getAdvisorDefaultTools();
+    expect(tools.map((t) => t.type)).toEqual([
+      "atx_function",
+      "yahoo_finance",
+      "file_search"
+    ]);
+    const fs = tools.find((t) => t.type === "file_search");
+    expect(fs && "collection_ids" in fs && Array.isArray(fs.collection_ids)).toBe(true);
+    if (fs && "collection_ids" in fs && Array.isArray(fs.collection_ids)) {
+      expect(fs.collection_ids).toHaveLength(1);
+    }
+  });
+
+  it("ensureSuperAgentDefaultTools restores advisor baseline vs super-agent baseline", () => {
     const stripped = normalizePersonaXapiConfig({
       mode: "responses",
       toolChoice: "auto",
@@ -93,11 +108,14 @@ describe("persona tool validation", () => {
       ...stripped,
       tools: [...stripped.tools, { type: "yahoo_finance" as const }]
     };
-    const restored = ensureSuperAgentDefaultTools(yahooOnly, "advisor");
-    expect(restored.tools.map((t) => t.type).sort()).toEqual(
+    const restoredAdvisor = ensureSuperAgentDefaultTools(yahooOnly, "advisor");
+    expect(restoredAdvisor.tools.map((t) => t.type).sort()).toEqual(
+      [...getAdvisorDefaultTools().map((t) => t.type)].sort()
+    );
+    const restoredLegacy = ensureSuperAgentDefaultTools(yahooOnly, "super-agent");
+    expect(restoredLegacy.tools.map((t) => t.type).sort()).toEqual(
       [...getSuperAgentDefaultTools().map((t) => t.type)].sort()
     );
-    expect(ensureSuperAgentDefaultTools(yahooOnly, "super-agent")).toEqual(restored);
     expect(ensureSuperAgentDefaultTools(yahooOnly, "atx-trusted-advisor")).toEqual(yahooOnly);
   });
 

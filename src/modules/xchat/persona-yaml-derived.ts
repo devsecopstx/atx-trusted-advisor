@@ -57,8 +57,23 @@ function buildSeedPersonaTools(collectionId: string): PersonaXapiToolDefinition[
   ];
 }
 
+/** Global-admin **advisor** disk default: `atx_function` + `yahoo_finance` + `file_search` with one collection id when sync resolves it. */
+function buildAdvisorSeedPersonaTools(collectionId: string): PersonaXapiToolDefinition[] {
+  const cid = collectionId.trim();
+  if (cid) {
+    return [
+      { type: "atx_function" },
+      { type: "yahoo_finance" },
+      { type: "file_search", collection_ids: [cid] }
+    ];
+  }
+  return [{ type: "atx_function" }, { type: "yahoo_finance" }];
+}
+
 function buildXapiFromYamlDoc(raw: Record<string, unknown>, collectionId: string): PersonaXapiConfig {
-  const defaultTools = buildSeedPersonaTools(collectionId);
+  const nameNorm = String(raw.name ?? "").trim().toLowerCase();
+  const defaultTools =
+    nameNorm === "advisor" ? buildAdvisorSeedPersonaTools(collectionId) : buildSeedPersonaTools(collectionId);
   const x = raw.xapi;
   if (x && typeof x === "object" && x !== null && !Array.isArray(x)) {
     const o = x as Record<string, unknown>;

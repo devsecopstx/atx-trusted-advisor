@@ -35,6 +35,11 @@ data class AtxfinanceProperties(
     val maxWatchlistSymbolsPerPatch: Int = 20,
     /** Phase 1 multi-agent strategy job rows (orchestrator). */
     val strategyJobsCollection: String = "strategy_jobs",
+    /**
+     * Days after job creation when the document may be removed by a TTL index on `expiresAt`.
+     * **0** disables TTL index creation and omits `expiresAt` on new inserts.
+     */
+    val strategyJobsTtlDays: Int = 90,
     val strategyMaxJobsHourly: Int = 12,
     val strategySoftWarnJobsHourly: Int = 8,
     /** xAI chat model for strategy job LLM finalizer (env `STRATEGY_FINALIZER_MODEL`). */

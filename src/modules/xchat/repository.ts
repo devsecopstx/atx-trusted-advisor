@@ -133,9 +133,15 @@ async function createXchatLogIndexes(): Promise<void> {
     { tenantId: 1, syncedToXaiAt: 1, createdAt: 1 },
     { name: "idx_xchat_logs_tenant_pending_xai" }
   );
+  /** Hot path: `getLatestXchatResponseIdByUser` — only rows with a non-empty `xaiResponseId`. */
   await chatLogCollection.createIndex(
-    { createdAt: -1, model: 1 },
-    { name: "idx_xchat_logs_created_model_admin" }
+    { userId: 1, createdAt: -1, _id: -1 },
+    {
+      name: "idx_xchat_logs_user_created_xai_response_partial",
+      partialFilterExpression: {
+        xaiResponseId: { $exists: true, $type: "string", $gt: "" }
+      }
+    }
   );
 }
 

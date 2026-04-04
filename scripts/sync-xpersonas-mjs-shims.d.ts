@@ -2,6 +2,9 @@ declare module "./lib/persona-xapi-tools.mjs" {
   export function buildSuperAgentXapiTools(
     collectionIds: string | string[] | undefined
   ): Array<Record<string, unknown>>;
+  export function buildAdvisorXapiTools(
+    collectionIds: string | string[] | undefined
+  ): Array<Record<string, unknown>>;
 }
 
 declare module "./lib/resolve-mongo-uri.mjs" {

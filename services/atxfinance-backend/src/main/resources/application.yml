@@ -50,6 +50,7 @@ app:
     core-users-collection: ${CORE_USERS_COLLECTION:core_users}
     tenant-portfolio-org-key: ${TENANT_PORTFOLIO_ORG_KEY:org-atx-finance}
     strategy-jobs-collection: ${STRATEGY_JOBS_COLLECTION:strategy_jobs}
+    strategy-jobs-ttl-days: ${STRATEGY_JOBS_TTL_DAYS:90}
     strategy-max-jobs-hourly: ${STRATEGY_MAX_JOBS_HOURLY:12}
     strategy-soft-warn-jobs-hourly: ${STRATEGY_SOFT_WARN_JOBS_HOURLY:8}
     strategy-finalizer-model: ${STRATEGY_FINALIZER_MODEL:grok-4-1-fast-reasoning}

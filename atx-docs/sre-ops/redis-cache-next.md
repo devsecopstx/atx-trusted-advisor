@@ -20,6 +20,7 @@
 | `REDIS_URL` | No | Full connection URL. Examples: `redis://default:PASSWORD@host:14617` or `rediss://default:PASSWORD@host:14617` (Redis Cloud often requires TLS). |
 | `REDIS_TLS` | No | Set to **`false`**, **`0`**, **`off`**, or **`no`** to treat a `rediss://` URL as **plain** `redis://` (fixes TLS parse errors when the port is not actually TLS). |
 | `REDIS_QUOTE_CACHE_TTL_SECONDS` | No | **Only** Yahoo batch quote cache TTL in seconds (clamped **5–3600**, default **30**). Does **not** affect connection or TLS. |
+| `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS` | No | xChat **full workspace snapshot** JSON TTL (clamped **30–900**, default **120**). Keys: `buildWorkspaceSnapshotCacheKey` in `src/modules/xchat/workspace-snapshot-cache.ts`. Invalidated via `workspaceContentRev` bump on book writes. See [mongo-indexing-guide.md](./mongo-indexing-guide.md) §7.5. |
 
 ## Troubleshooting: `packet length too long` / `tls_get_more_records`
 
@@ -50,6 +51,13 @@ Grant the Cloud Run runtime service account **Secret Manager Secret Accessor** o
 - **Key prefix:** `xf:yahoo:batch:v1:<sha256-prefix>` (symbols uppercased, sorted, deduped).
 - **TTL:** `REDIS_QUOTE_CACHE_TTL_SECONDS` or 30s default.
 - **Invalidation:** Expiry only (no cross-instance purge).
+
+## Workspace snapshot (xChat)
+
+- **Purpose:** Cache serialized workspace preload (accounts, positions preview, watchlist) for **`loadWorkspaceSnapshotPreload`**.
+- **Keys:** `xf:wsnap:v1:<tenant|_>:<userId>:<portfolioHex>:<workspaceContentRev>` — rev bump on portfolio write invalidates without Redis deletes.
+- **Env:** `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS` (30–900; try **30–60** when Redis/TLS is healthy and Mongo snapshot cost matters).
+- **Docs:** [mongo-indexing-guide.md](./mongo-indexing-guide.md) §7.5.
 
 ## GitHub
 

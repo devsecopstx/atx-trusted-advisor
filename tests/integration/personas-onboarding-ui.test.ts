@@ -23,7 +23,7 @@ import {
     personaToolsIncludeHostedSearch,
     type XaiCollectionInventoryOption
 } from "@/app/admin/personas/ui/personas-onboarding";
-import { getSuperAgentDefaultTools } from "@/modules/xchat/types";
+import { getAdvisorDefaultTools } from "@/modules/xchat/types";
 
 describe("xpersona onboarding ui helpers", () => {
   it("uses requested default system prompt in create form", () => {
@@ -31,8 +31,8 @@ describe("xpersona onboarding ui helpers", () => {
     expect(DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT).toContain("You are The Architect");
   });
 
-  it("defaults create form xapi tools to the full standard preset (all on)", () => {
-    expect(parsePersonaXapiToolsJson(EMPTY_CREATE_FORM.xapiToolsJson)).toEqual(getSuperAgentDefaultTools());
+  it("defaults create form xapi tools to the advisor lean preset", () => {
+    expect(parsePersonaXapiToolsJson(EMPTY_CREATE_FORM.xapiToolsJson)).toEqual(getAdvisorDefaultTools());
   });
 
   it("detects hosted search markers in persona tools", () => {

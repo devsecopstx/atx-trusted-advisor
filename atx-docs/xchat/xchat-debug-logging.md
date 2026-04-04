@@ -31,6 +31,8 @@ Exported as `XCHAT_DEBUG_LOG_TYPES` in `src/lib/xchat-debug.ts`.
 
 **Workspace snapshot (optional, same prefix):** when env **or** tenant xChat debug is on, `[workspace-snapshot-for-prompt.ts](../../src/modules/xchat/workspace-snapshot-for-prompt.ts)` logs `console.info("[xchat/debug]", { type: "workspace_snapshot_load", … })` (cache vs mongo, `elapsedMs`, masked portfolio id) and `{ type: "workspace_snapshot_build", … }` after a Mongo build. These `type` strings are **not** in `XCHAT_DEBUG_LOG_TYPES` yet; filter on `workspace_snapshot_` in JSON if needed.
 
+**Monitoring / SLO hints:** After index or Redis changes, compare `workspace_snapshot_load.elapsedMs` before vs after on the same portfolio. Aim **&lt;50 ms** when `source === "cache"`; use **`mongo`** rows to validate cold paths. See **`atx-docs/sre-ops/mongo-indexing-guide.md`** §8.
+
 ## Enabling
 
 1. **Local:** `.env` → `ENABLE_XCHAT_DEBUG=true` (see `.env.example`). **Restart `next dev`** after changing env — Next only reads `.env` at process start.

@@ -1,7 +1,12 @@
 /**
- * Optional Redis + in-process fallback for serialized workspace snapshot payloads
- * (xChat system prompt). Keys include portfolio id + workspaceContentRev so Mongo bumps
- * naturally miss stale entries.
+ * Optional Redis + in-process fallback for the **full** workspace snapshot JSON (xChat / `atx_function`).
+ *
+ * **Key (see `buildWorkspaceSnapshotCacheKey`):** `xf:wsnap:v1:<tenant|_>:<userId>:<portfolioIdHex>:<workspaceContentRev>`
+ * — same *idea* as `workspace:${portfolioId}:${rev}`, plus tenant + user for safe isolation.
+ *
+ * **Invalidation:** `bumpPortfolioWorkspaceContentRev` increments rev on book writes → natural cache miss (Mongo write-through; Redis is not authoritative).
+ *
+ * **TTL:** `REDIS_WORKSPACE_SNAPSHOT_TTL_SECONDS` (30–900s, default 120). Use 30–60 on hot paths after Redis/TLS is stable.
  */
 import { getRedisClient } from "@/lib/redis-client";
 

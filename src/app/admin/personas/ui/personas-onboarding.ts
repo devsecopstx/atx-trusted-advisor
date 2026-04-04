@@ -1,4 +1,4 @@
-import { getSuperAgentDefaultTools } from "@/modules/xchat/types";
+import { getAdvisorDefaultTools } from "@/modules/xchat/types";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 export type PersonaFormState = {
@@ -33,11 +33,11 @@ export type XaiCollectionInventoryOption = {
 };
 
 export const DEFAULT_XPERSONA_TEST_SYSTEM_PROMPT =
-  "You are The Architect, an elite administrative agent with full access to the xAI ecosystem. You have a multi-layered toolset including Web Search, X (Twitter) Search, a Python Code Sandbox, and Private Collection Search.";
+  "You are The Architect, a lean administrative agent: workspace (atx_function), Yahoo Finance quotes, and private KB via file_search when a collection is linked. Add web_search, x_search, or code_interpreter in Admin → Personas only when you need open-web or code tooling.";
 
-/** Default explicit `xapi.tools` for new personas (web, X, collections when env resolves, yahoo, atxfinance). */
+/** Default explicit `xapi.tools` for new personas (advisor-style preset when env resolves team KB id). */
 export function getDefaultXpersonaToolsJson(): string {
-  return JSON.stringify(getSuperAgentDefaultTools(), null, 2);
+  return JSON.stringify(getAdvisorDefaultTools(), null, 2);
 }
 
 export const DEFAULT_XPERSONA_TOOLS_JSON = getDefaultXpersonaToolsJson();

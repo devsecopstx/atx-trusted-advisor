@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { MongoClient } from "mongodb";
 
-import { buildSuperAgentXapiTools, dedupeTrimmedIds } from "./lib/persona-xapi-tools.mjs";
+import { buildAdvisorXapiTools, dedupeTrimmedIds } from "./lib/persona-xapi-tools.mjs";
 import {
   resolveAdminSeedDbName,
   resolveMongoUri,
@@ -279,16 +279,14 @@ const DEFAULT_PERSONA_NAME = "advisor";
 const DEFAULT_PERSONA_NAME_NORMALIZED = "advisor";
 /** Product default for seeded admin (`core_users.subscriptionPlan`, access-request paper row). */
 const DEFAULT_SEED_SUBSCRIPTION_PLAN = "basic";
-const DEFAULT_PERSONA_SYSTEM_PROMPT = `You are The Architect, the elite administrative agent for atxFinance global admins. You have live xAI tools — call them; do not guess time-sensitive facts from memory.
+const DEFAULT_PERSONA_SYSTEM_PROMPT = `You are The Architect, the lean administrative agent for atxFinance global admins — workspace + markets + your KB, without open-web noise unless an operator adds research tools to this persona.
 
 Tool discipline (use the API tool channel; do not fake tool calls in plain text):
-- web_search — Current events, weather, breaking news, sports, and anything that needs the live public web. If the user asks what conditions are "right now" or "today" (e.g. weather in a city), you MUST run web_search and answer from tool results.
-- x_search — Search X (Twitter) for posts, handles, and social/market chatter.
-- collections_search — Query the configured xAI RAG collections for private docs and uploaded knowledge.
+- atx_function — Signed-in user's portfolio, watchlist, positions, and workspace data when relevant.
 - yahoo_finance — Quotes and market data for tickers.
-- atxfinance — This signed-in user's portfolio, watchlist, positions, and workspace data when relevant.
+- file_search — Private docs in the linked xAI collection (one collection). Use for policy, runbooks, and uploaded knowledge.
 
-Prefer tool-grounded answers over unsupported claims. When tools return nothing useful, say so clearly.`;
+Prefer tool-grounded answers over unsupported claims. When tools return nothing useful, say so clearly. For breaking news, social sentiment, or live web research, ask the user to switch to a persona that includes web_search / x_search or have an operator enable those tools.`;
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
 /** Default `portfolio_accounts.extAccountId` — matches `provisionDefaultPortfolioForUser` / Spring provision. */
@@ -388,6 +386,18 @@ async function ensureIndexes(db) {
         name: "uniq_watchlist_per_portfolio"
       }
     ),
+    db.collection("portfolio_positions").createIndex(
+      { portfolioId: 1, accountId: 1, userId: 1, tenantId: 1, createdAt: 1 },
+      { name: "idx_positions_snapshot_portfolio_account_user_tenant_created" }
+    ),
+    db.collection("portfolio_accounts").createIndex(
+      { portfolioId: 1, userId: 1, isDefault: -1, createdAt: 1 },
+      { name: "idx_accounts_snapshot_portfolio_user_default_created" }
+    ),
+    db.collection("portfolio_watchlists").createIndex(
+      { portfolioId: 1, userId: 1 },
+      { name: "idx_watchlists_snapshot_portfolio_user" }
+    ),
     db.collection("admin_access_requests").createIndex(
       { userId: 1, requestedRole: 1 },
       {
@@ -456,7 +466,7 @@ async function seed() {
     ragFileCandidates = ragIngest.ragFileCandidates ?? 0;
 
     const collectionsSearchIds = dedupeTrimmedIds(strategyCollectionIds);
-    const superAgentTools = buildSuperAgentXapiTools(collectionsSearchIds);
+    const advisorTools = buildAdvisorXapiTools(collectionsSearchIds);
 
     await db.collection("core_tenants").updateOne(
       { slug: DEFAULT_TENANT_SLUG },
@@ -501,7 +511,7 @@ async function seed() {
             mode: "responses",
             toolChoice: "auto",
             maxTurns: 5,
-            tools: superAgentTools
+            tools: advisorTools
           },
           updatedAt: now
         }

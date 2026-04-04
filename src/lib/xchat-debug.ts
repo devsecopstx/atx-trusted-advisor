@@ -6,8 +6,9 @@
  * **Taxonomy (for Cloud Logging filters):**
  * - **`[xchat/debug]`** — opt-in JSON lines (`ENABLE_XCHAT_DEBUG=true`). Fields
  *   `type`: `xchat_ask` | `xchat_ask_full` | `xchat_ask_pre_request` |
- *   `xchat_ask_provider_error` | `xchat_batch` | `xchat_history_list` | `xchat_history_stats`. See
- *   `atx-docs/xchat/xchat-debug-logging.md`.
+ *   `xchat_ask_provider_error` | `xchat_batch` | `xchat_history_list` | `xchat_history_stats`.
+ *   Workspace snapshot (same prefix, not in `XCHAT_DEBUG_LOG_TYPES`): `workspace_snapshot_load` | `workspace_snapshot_build`.
+ *   See `atx-docs/xchat/xchat-debug-logging.md` and `atx-docs/sre-ops/mongo-indexing-guide.md` §8.
  * - **`[xchat/ask]`** — operational `console.warn` / `console.error` on RAG or
  *   provider failures (always on; no full prompts).
  * - **`[xchat/batch]`** — operational errors on batch submit/poll (always on).
