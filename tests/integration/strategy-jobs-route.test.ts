@@ -68,8 +68,26 @@ describe("strategy-jobs route", () => {
     const req = new Request("http://test/api/strategy-jobs");
     const res = await getStrategyJobs(req);
     expect(res.status).toBe(200);
+    expect(limitMocks.checkDistributedRateLimit).toHaveBeenCalled();
     expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireSessionUser).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 429 when list limiter blocks request", async () => {
+    limitMocks.checkDistributedRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetAtMs: Date.now() + 20_000,
+      retryAfterSeconds: 20,
+      source: "memory"
+    });
+    const req = new Request("http://test/api/strategy-jobs");
+    const res = await getStrategyJobs(req);
+    const payload = (await res.json()) as { error: string };
+    expect(res.status).toBe(429);
+    expect(payload.error).toBe("rate_limit_exceeded");
+    expect(authMocks.requireSessionUser).not.toHaveBeenCalled();
+    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
   });
 
   it("POST returns auth response when session is missing", async () => {
@@ -115,6 +133,20 @@ describe("strategy-jobs route", () => {
     expect(res.status).toBe(200);
     expect(authMocks.requireSessionUser).toHaveBeenCalled();
     expect(limitMocks.checkDistributedRateLimit).toHaveBeenCalled();
+    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+  });
+
+  it("POST allows global_admin and proxies to backend", async () => {
+    authMocks.requireSessionUser.mockResolvedValueOnce({
+      userId: "507f1f77bcf86cd799439011",
+      tenantId: "507f1f77bcf86cd799439022",
+      email: "admin@test.local",
+      username: "admin1",
+      roles: ["global_admin"]
+    });
+    const req = new Request("http://test/api/strategy-jobs", { method: "POST" });
+    const res = await postStrategyJobs(req);
+    expect(res.status).toBe(200);
     expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
   });
 

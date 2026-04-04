@@ -27,30 +27,86 @@ export function preferFridayExpirations(yyyyMmDd: string[]): string[] {
   return fridays.length > 0 ? fridays : sorted;
 }
 
+/** Fallback expiration grid when provider dates are unavailable. */
+export function buildUpcomingFridayExpirations(
+  input: { fromDate?: Date; count?: number } = {}
+): string[] {
+  const count = Math.max(1, Math.min(16, input.count ?? 8));
+  const now = input.fromDate ?? new Date();
+  const startUtc = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0, 0)
+  );
+  const out: string[] = [];
+  const cursor = new Date(startUtc);
+  while (out.length < count) {
+    const weekday = cursor.getUTCDay();
+    const isFriday = weekday === 5;
+    if (isFriday) {
+      const y = cursor.getUTCFullYear();
+      const m = String(cursor.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(cursor.getUTCDate()).padStart(2, "0");
+      out.push(`${y}-${m}-${d}`);
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return out;
+}
+
+function normalizeExpirationDateToken(raw: Date | string): string | null {
+  const parsed = raw instanceof Date ? raw : new Date(raw);
+  if (!Number.isFinite(parsed.getTime())) {
+    return null;
+  }
+  const y = parsed.getUTCFullYear();
+  const m = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function isLikelyNoOptionsDataError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("not found") ||
+    normalized.includes("no data") ||
+    normalized.includes("no options") ||
+    normalized.includes("option chain") ||
+    normalized.includes("404")
+  );
+}
+
 /** GET query: `underlying` (required). */
 export async function getStrategyOptionExpirations(requestUrl: string): Promise<NextResponse> {
+  const { searchParams } = new URL(requestUrl);
+  const underlyingResult = parseUnderlying(searchParams.get("underlying"));
+  if (!underlyingResult.ok) {
+    return NextResponse.json({ error: underlyingResult.error }, { status: underlyingResult.status });
+  }
+  const underlying = underlyingResult.value;
   try {
-    const { searchParams } = new URL(requestUrl);
-    const underlyingResult = parseUnderlying(searchParams.get("underlying"));
-    if (!underlyingResult.ok) {
-      return NextResponse.json({ error: underlyingResult.error }, { status: underlyingResult.status });
-    }
-    const underlying = underlyingResult.value;
-
     const result = await getYahooFinance2().options(underlying);
     const dates = (result as { expirationDates?: (Date | string)[] }).expirationDates ?? [];
-    const raw = dates.map((d) => {
-      const x = d instanceof Date ? d : new Date(d);
-      const y = x.getUTCFullYear();
-      const m = String(x.getUTCMonth() + 1).padStart(2, "0");
-      const day = String(x.getUTCDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    });
-    const expirationDates = preferFridayExpirations(raw);
+    const raw = dates
+      .map(normalizeExpirationDateToken)
+      .filter((value): value is string => value !== null);
+    const expirationDates =
+      raw.length > 0 ? preferFridayExpirations(raw) : buildUpcomingFridayExpirations({ count: 8 });
 
     return NextResponse.json({ underlying, expirationDates });
   } catch (error) {
-    console.error("[strategy-options/expirations] fetch failed:", error);
-    return NextResponse.json({ error: "Failed to fetch expiration dates" }, { status: 500 });
+    if (isLikelyNoOptionsDataError(error)) {
+      console.warn("[strategy-options/expirations] no options data", {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return NextResponse.json({
+        underlying,
+        expirationDates: buildUpcomingFridayExpirations({ count: 8 })
+      });
+    }
+    console.error("[strategy-options/expirations] provider fetch failed; using fallback expirations:", error);
+    return NextResponse.json({
+      underlying,
+      expirationDates: buildUpcomingFridayExpirations({ count: 8 })
+    });
   }
 }

@@ -75,4 +75,18 @@ describe("GET /api/strategy-options/expirations", () => {
     expect(data.underlying).toBe("TSLA");
     expect(data.expirationDates).toEqual(["2026-03-20", "2026-03-27"]);
   });
+
+  it("returns 200 with fallback future expirations when provider has no options data", async () => {
+    mockOptions.mockRejectedValueOnce(new Error("No options found for underlying"));
+
+    const res = await getExpirations(
+      new Request("http://test/api/strategy-options/expirations?underlying=RDW")
+    );
+    const data = (await res.json()) as { underlying: string; expirationDates: string[] };
+
+    expect(res.status).toBe(200);
+    expect(data.underlying).toBe("RDW");
+    expect(data.expirationDates.length).toBeGreaterThan(0);
+    expect(data.expirationDates.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))).toBe(true);
+  });
 });

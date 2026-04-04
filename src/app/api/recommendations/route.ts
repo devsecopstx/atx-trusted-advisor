@@ -3,6 +3,12 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import {
+    buildRateLimitHeaders,
+    checkDistributedRateLimit,
+    extractClientRateLimitKey,
+    getBffRouteRateLimitPolicy
+} from "@/lib/distributed-rate-limit";
 import { publishRecommendationEvent } from "@/lib/pubsub/recommendations-publish";
 import { recommendationToJson } from "@/lib/recommendations-json";
 import { canUserLogin } from "@/modules/identity/authorization";
@@ -19,8 +25,25 @@ const createBodySchema = z.object({
   payload: z.record(z.string(), z.unknown()).optional(),
   status: z.enum(recommendationStatusValues).optional()
 });
+const RECOMMENDATIONS_LIST_POLICY = getBffRouteRateLimitPolicy("recommendations_list");
+const RECOMMENDATIONS_CREATE_POLICY = getBffRouteRateLimitPolicy("recommendations_create");
 
 export async function GET(request: Request) {
+  const listLimit = await checkDistributedRateLimit({
+    key: `recommendations:list:${extractClientRateLimitKey(request)}`,
+    windowMs: RECOMMENDATIONS_LIST_POLICY.windowMs,
+    max: RECOMMENDATIONS_LIST_POLICY.max
+  });
+  if (!listLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limit_exceeded",
+        message: "Recommendations list rate limit exceeded. Please retry shortly.",
+        retryAfterSeconds: listLimit.retryAfterSeconds
+      },
+      { status: 429, headers: buildRateLimitHeaders(listLimit) }
+    );
+  }
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
     return proxied;
@@ -46,6 +69,21 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const createLimit = await checkDistributedRateLimit({
+    key: `recommendations:create:${extractClientRateLimitKey(request)}`,
+    windowMs: RECOMMENDATIONS_CREATE_POLICY.windowMs,
+    max: RECOMMENDATIONS_CREATE_POLICY.max
+  });
+  if (!createLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limit_exceeded",
+        message: "Recommendations create rate limit exceeded. Please retry shortly.",
+        retryAfterSeconds: createLimit.retryAfterSeconds
+      },
+      { status: 429, headers: buildRateLimitHeaders(createLimit) }
+    );
+  }
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
     return proxied;

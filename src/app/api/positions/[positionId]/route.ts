@@ -2,13 +2,37 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import {
+    buildRateLimitHeaders,
+    checkDistributedRateLimit,
+    extractClientRateLimitKey,
+    getBffRouteRateLimitPolicy
+} from "@/lib/distributed-rate-limit";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
 import { deletePositionForAccount } from "@/modules/core-admin/repository";
+
+const POSITIONS_DELETE_POLICY = getBffRouteRateLimitPolicy("positions_delete");
 
 export async function DELETE(
   request: Request,
   context: { params: Promise<{ positionId: string }> }
 ) {
+  const { positionId } = await context.params;
+  const limit = await checkDistributedRateLimit({
+    key: `positions:delete:${positionId}:${extractClientRateLimitKey(request)}`,
+    windowMs: POSITIONS_DELETE_POLICY.windowMs,
+    max: POSITIONS_DELETE_POLICY.max
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limit_exceeded",
+        message: "Positions delete rate limit exceeded. Please retry shortly.",
+        retryAfterSeconds: limit.retryAfterSeconds
+      },
+      { status: 429, headers: buildRateLimitHeaders(limit) }
+    );
+  }
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
     return proxied;
@@ -19,7 +43,6 @@ export async function DELETE(
     return session;
   }
 
-  const { positionId } = await context.params;
   const url = new URL(request.url);
   const portfolioId = url.searchParams.get("portfolioId")?.trim() ?? "";
   const accountId = url.searchParams.get("accountId")?.trim() ?? "";

@@ -8,12 +8,67 @@ type DistributedRateLimitInput = {
   max: number;
 };
 
+export type RouteRateLimitClass = "strict" | "standard" | "light";
+
+type RouteRateLimitPolicy = {
+  windowMs: number;
+  max: number;
+};
+
 export type DistributedRateLimitResult = {
   allowed: boolean;
   remaining: number;
   resetAtMs: number;
   retryAfterSeconds: number;
   source: "redis" | "memory";
+};
+
+const ROUTE_RATE_LIMIT_POLICIES: Record<RouteRateLimitClass, RouteRateLimitPolicy> = {
+  strict: {
+    windowMs: 60_000,
+    max: 6
+  },
+  standard: {
+    windowMs: 60_000,
+    max: 20
+  },
+  light: {
+    windowMs: 60_000,
+    max: 60
+  }
+};
+
+export type BffRouteRateLimitPolicyKey =
+  | "strategy_jobs_list"
+  | "strategy_jobs_create"
+  | "strategy_jobs_read"
+  | "strategy_jobs_artifact"
+  | "strategy_jobs_turns"
+  | "access_requests_public_create"
+  | "recommendations_list"
+  | "recommendations_create"
+  | "recommendations_read"
+  | "positions_list"
+  | "positions_create"
+  | "positions_delete"
+  | "admin_audit_list"
+  | "admin_login_audit_list";
+
+const BFF_ROUTE_POLICY_CLASS_MAP: Record<BffRouteRateLimitPolicyKey, RouteRateLimitClass> = {
+  strategy_jobs_list: "standard",
+  strategy_jobs_create: "strict",
+  strategy_jobs_read: "standard",
+  strategy_jobs_artifact: "standard",
+  strategy_jobs_turns: "strict",
+  access_requests_public_create: "strict",
+  recommendations_list: "standard",
+  recommendations_create: "strict",
+  recommendations_read: "standard",
+  positions_list: "standard",
+  positions_create: "strict",
+  positions_delete: "strict",
+  admin_audit_list: "strict",
+  admin_login_audit_list: "strict"
 };
 
 function clampPositiveInt(value: number, fallback: number): number {
@@ -87,6 +142,16 @@ export async function checkDistributedRateLimit(
     resetAtMs: fallback.resetAtMs,
     source: "memory"
   });
+}
+
+export function getRouteRateLimitPolicy(policyClass: RouteRateLimitClass): RouteRateLimitPolicy {
+  return ROUTE_RATE_LIMIT_POLICIES[policyClass];
+}
+
+export function getBffRouteRateLimitPolicy(
+  routeKey: BffRouteRateLimitPolicyKey
+): RouteRateLimitPolicy {
+  return getRouteRateLimitPolicy(BFF_ROUTE_POLICY_CLASS_MAP[routeKey]);
 }
 
 export function buildRateLimitHeaders(result: DistributedRateLimitResult): Headers {

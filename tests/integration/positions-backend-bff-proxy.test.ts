@@ -16,9 +16,22 @@ const repositoryMocks = vi.hoisted(() => ({
   deletePositionForAccount: vi.fn()
 }));
 
+const limitMocks = vi.hoisted(() => ({
+  checkDistributedRateLimit: vi.fn(),
+  extractClientRateLimitKey: vi.fn<(request: Request) => string>()
+}));
+
 vi.mock("@/lib/backend-bff", () => ({
   proxyRequestToBackend: bffMocks.proxyRequestToBackend
 }));
+vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/distributed-rate-limit")>();
+  return {
+    ...actual,
+    checkDistributedRateLimit: limitMocks.checkDistributedRateLimit,
+    extractClientRateLimitKey: limitMocks.extractClientRateLimitKey
+  };
+});
 
 vi.mock("@/lib/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth")>();
@@ -49,6 +62,14 @@ describe("positions API BFF proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    limitMocks.extractClientRateLimitKey.mockReturnValue("127.0.0.1");
+    limitMocks.checkDistributedRateLimit.mockResolvedValue({
+      allowed: true,
+      remaining: 19,
+      resetAtMs: Date.now() + 60_000,
+      retryAfterSeconds: 60,
+      source: "memory"
+    });
     sessionMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -184,5 +205,25 @@ describe("positions API BFF proxy", () => {
     );
     const response = await getPositions(req);
     expect(response.status).toBe(401);
+  });
+
+  it("DELETE /api/positions/:id returns 429 when limiter blocks request", async () => {
+    limitMocks.checkDistributedRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetAtMs: Date.now() + 15_000,
+      retryAfterSeconds: 15,
+      source: "memory"
+    });
+    const req = new Request(
+      `http://test/api/positions/${positionId}?portfolioId=${portfolioId}&accountId=${accountId}`,
+      { method: "DELETE" }
+    );
+    const response = await deletePosition(req, {
+      params: Promise.resolve({ positionId })
+    });
+    expect(response.status).toBe(429);
+    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
   });
 });

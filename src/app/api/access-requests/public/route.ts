@@ -6,7 +6,8 @@ import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     buildRateLimitHeaders,
     checkDistributedRateLimit,
-    extractClientRateLimitKey
+    extractClientRateLimitKey,
+    getBffRouteRateLimitPolicy
 } from "@/lib/distributed-rate-limit";
 import { buildAccessRequestNotification, sendSlackNotification } from "@/lib/slack";
 import { createAuditEvent } from "@/modules/audit/repository";
@@ -23,8 +24,7 @@ const guestAccessRequestSchema = z.object({
   requestedPlan: z.string().trim().optional()
 });
 
-const ACCESS_REQUEST_PUBLIC_WINDOW_MS = 60_000;
-const ACCESS_REQUEST_PUBLIC_MAX = 6;
+const ACCESS_REQUEST_PUBLIC_POLICY = getBffRouteRateLimitPolicy("access_requests_public_create");
 
 export async function POST(request: Request) {
   const proxied = await proxyRequestToBackend(request);
@@ -33,8 +33,8 @@ export async function POST(request: Request) {
   }
   const limit = await checkDistributedRateLimit({
     key: `access-requests:public:${extractClientRateLimitKey(request)}`,
-    windowMs: ACCESS_REQUEST_PUBLIC_WINDOW_MS,
-    max: ACCESS_REQUEST_PUBLIC_MAX
+    windowMs: ACCESS_REQUEST_PUBLIC_POLICY.windowMs,
+    max: ACCESS_REQUEST_PUBLIC_POLICY.max
   });
   if (!limit.allowed) {
     return NextResponse.json(

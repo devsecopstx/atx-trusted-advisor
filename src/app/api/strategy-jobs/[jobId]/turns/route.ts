@@ -4,20 +4,20 @@ import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     buildRateLimitHeaders,
     checkDistributedRateLimit,
-    extractClientRateLimitKey
+    extractClientRateLimitKey,
+    getBffRouteRateLimitPolicy
 } from "@/lib/distributed-rate-limit";
 
 type RouteContext = { params: Promise<{ jobId: string }> };
 
-const STRATEGY_JOB_TURNS_WINDOW_MS = 60_000;
-const STRATEGY_JOB_TURNS_MAX = 24;
+const STRATEGY_JOB_TURNS_POLICY = getBffRouteRateLimitPolicy("strategy_jobs_turns");
 
 export async function POST(request: Request, context: RouteContext) {
   const { jobId } = await context.params;
   const limit = await checkDistributedRateLimit({
     key: `strategy-jobs:turns:${jobId}:${extractClientRateLimitKey(request)}`,
-    windowMs: STRATEGY_JOB_TURNS_WINDOW_MS,
-    max: STRATEGY_JOB_TURNS_MAX
+    windowMs: STRATEGY_JOB_TURNS_POLICY.windowMs,
+    max: STRATEGY_JOB_TURNS_POLICY.max
   });
   if (!limit.allowed) {
     return NextResponse.json(

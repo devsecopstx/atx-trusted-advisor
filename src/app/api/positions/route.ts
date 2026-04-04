@@ -3,6 +3,12 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import {
+    buildRateLimitHeaders,
+    checkDistributedRateLimit,
+    extractClientRateLimitKey,
+    getBffRouteRateLimitPolicy
+} from "@/lib/distributed-rate-limit";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
 import {
     listPortfolioPositionsByAccount,
@@ -95,8 +101,25 @@ type NormalizedPositionUpsert = {
   strike?: number;
   expiration?: Date;
 };
+const POSITIONS_LIST_POLICY = getBffRouteRateLimitPolicy("positions_list");
+const POSITIONS_CREATE_POLICY = getBffRouteRateLimitPolicy("positions_create");
 
 export async function GET(request: Request) {
+  const limit = await checkDistributedRateLimit({
+    key: `positions:list:${extractClientRateLimitKey(request)}`,
+    windowMs: POSITIONS_LIST_POLICY.windowMs,
+    max: POSITIONS_LIST_POLICY.max
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limit_exceeded",
+        message: "Positions list rate limit exceeded. Please retry shortly.",
+        retryAfterSeconds: limit.retryAfterSeconds
+      },
+      { status: 429, headers: buildRateLimitHeaders(limit) }
+    );
+  }
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
     return proxied;
@@ -134,6 +157,21 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limit = await checkDistributedRateLimit({
+    key: `positions:create:${extractClientRateLimitKey(request)}`,
+    windowMs: POSITIONS_CREATE_POLICY.windowMs,
+    max: POSITIONS_CREATE_POLICY.max
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limit_exceeded",
+        message: "Positions create rate limit exceeded. Please retry shortly.",
+        retryAfterSeconds: limit.retryAfterSeconds
+      },
+      { status: 429, headers: buildRateLimitHeaders(limit) }
+    );
+  }
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
     return proxied;

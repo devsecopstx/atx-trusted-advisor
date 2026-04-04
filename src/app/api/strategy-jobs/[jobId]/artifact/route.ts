@@ -1,15 +1,37 @@
 import { NextResponse } from "next/server";
 
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import {
+    buildRateLimitHeaders,
+    checkDistributedRateLimit,
+    extractClientRateLimitKey,
+    getBffRouteRateLimitPolicy
+} from "@/lib/distributed-rate-limit";
 
 type RouteContext = { params: Promise<{ jobId: string }> };
+const STRATEGY_JOB_ARTIFACT_POLICY = getBffRouteRateLimitPolicy("strategy_jobs_artifact");
 
 export async function GET(request: Request, context: RouteContext) {
+  const { jobId } = await context.params;
+  const limit = await checkDistributedRateLimit({
+    key: `strategy-jobs:artifact:${jobId}:${extractClientRateLimitKey(request)}`,
+    windowMs: STRATEGY_JOB_ARTIFACT_POLICY.windowMs,
+    max: STRATEGY_JOB_ARTIFACT_POLICY.max
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limit_exceeded",
+        message: "Strategy artifact rate limit exceeded. Please retry shortly.",
+        retryAfterSeconds: limit.retryAfterSeconds
+      },
+      { status: 429, headers: buildRateLimitHeaders(limit) }
+    );
+  }
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
-  await context.params;
   return NextResponse.json(
     {
       error: "service_unavailable",

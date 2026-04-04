@@ -3,6 +3,12 @@ import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
+import {
+    buildRateLimitHeaders,
+    checkDistributedRateLimit,
+    extractClientRateLimitKey,
+    getBffRouteRateLimitPolicy
+} from "@/lib/distributed-rate-limit";
 import { listAuditEvents } from "@/modules/audit/repository";
 import type { AuditEvent } from "@/modules/audit/types";
 
@@ -26,8 +32,24 @@ const auditQuerySchema = z.object({
   to: z.string().datetime().optional(),
   limit: z.coerce.number().int().min(1).max(500).default(200)
 });
+const ADMIN_AUDIT_LIST_POLICY = getBffRouteRateLimitPolicy("admin_audit_list");
 
 export async function GET(request: Request) {
+  const limit = await checkDistributedRateLimit({
+    key: `admin:audit:list:${extractClientRateLimitKey(request)}`,
+    windowMs: ADMIN_AUDIT_LIST_POLICY.windowMs,
+    max: ADMIN_AUDIT_LIST_POLICY.max
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limit_exceeded",
+        message: "Admin audit rate limit exceeded. Please retry shortly.",
+        retryAfterSeconds: limit.retryAfterSeconds
+      },
+      { status: 429, headers: buildRateLimitHeaders(limit) }
+    );
+  }
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
     return proxied;

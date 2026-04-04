@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    buildUpcomingFridayExpirations,
     isUtcFridayYyyyMmDd,
     preferFridayExpirations
 } from "@/modules/strategy-options/expirations";
@@ -26,5 +27,15 @@ describe("preferFridayExpirations", () => {
   it("falls back to all dates when no Friday in list", () => {
     const raw = ["2026-03-17", "2026-03-18"];
     expect(preferFridayExpirations(raw)).toEqual(["2026-03-17", "2026-03-18"]);
+  });
+});
+
+describe("buildUpcomingFridayExpirations", () => {
+  it("builds future friday grid from provided date", () => {
+    const rows = buildUpcomingFridayExpirations({
+      fromDate: new Date("2026-03-18T10:00:00.000Z"),
+      count: 4
+    });
+    expect(rows).toEqual(["2026-03-20", "2026-03-27", "2026-04-03", "2026-04-10"]);
   });
 });

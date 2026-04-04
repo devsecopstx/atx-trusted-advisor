@@ -2,13 +2,33 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
-import { buildRateLimitHeaders, checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
+import {
+    buildRateLimitHeaders,
+    checkDistributedRateLimit,
+    extractClientRateLimitKey,
+    getBffRouteRateLimitPolicy
+} from "@/lib/distributed-rate-limit";
 import { canCreateStrategyJobFromApp } from "@/modules/identity/authorization";
 
-const STRATEGY_JOB_CREATE_WINDOW_MS = 60_000;
-const STRATEGY_JOB_CREATE_MAX = 10;
+const STRATEGY_JOBS_LIST_POLICY = getBffRouteRateLimitPolicy("strategy_jobs_list");
+const STRATEGY_JOB_CREATE_POLICY = getBffRouteRateLimitPolicy("strategy_jobs_create");
 
 export async function GET(request: Request) {
+  const limit = await checkDistributedRateLimit({
+    key: `strategy-jobs:list:${extractClientRateLimitKey(request)}`,
+    windowMs: STRATEGY_JOBS_LIST_POLICY.windowMs,
+    max: STRATEGY_JOBS_LIST_POLICY.max
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        error: "rate_limit_exceeded",
+        message: "Strategy jobs list rate limit exceeded. Please retry shortly.",
+        retryAfterSeconds: limit.retryAfterSeconds
+      },
+      { status: 429, headers: buildRateLimitHeaders(limit) }
+    );
+  }
   const proxied = await proxyRequestToBackend(request);
   if (proxied) {
     return proxied;
@@ -31,15 +51,15 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: "forbidden",
-        message: "Strategy job creation is limited to advisor/operator roles."
+        message: "Strategy job creation is limited to global_admin, advisor, or operator roles."
       },
       { status: 403 }
     );
   }
   const limit = await checkDistributedRateLimit({
     key: `strategy-jobs:create:${session.tenantId}:${session.userId}`,
-    windowMs: STRATEGY_JOB_CREATE_WINDOW_MS,
-    max: STRATEGY_JOB_CREATE_MAX
+    windowMs: STRATEGY_JOB_CREATE_POLICY.windowMs,
+    max: STRATEGY_JOB_CREATE_POLICY.max
   });
   if (!limit.allowed) {
     return NextResponse.json(

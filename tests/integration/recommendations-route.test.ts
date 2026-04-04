@@ -20,9 +20,22 @@ const bffMocks = vi.hoisted(() => ({
   proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
+const limitMocks = vi.hoisted(() => ({
+  checkDistributedRateLimit: vi.fn(),
+  extractClientRateLimitKey: vi.fn<(request: Request) => string>()
+}));
+
 vi.mock("@/lib/backend-bff", () => ({
   proxyRequestToBackend: bffMocks.proxyRequestToBackend
 }));
+vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/distributed-rate-limit")>();
+  return {
+    ...actual,
+    checkDistributedRateLimit: limitMocks.checkDistributedRateLimit,
+    extractClientRateLimitKey: limitMocks.extractClientRateLimitKey
+  };
+});
 
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/modules/recommendations/repository", () => repoMocks);
@@ -63,6 +76,14 @@ describe("/api/recommendations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    limitMocks.extractClientRateLimitKey.mockReturnValue("127.0.0.1");
+    limitMocks.checkDistributedRateLimit.mockResolvedValue({
+      allowed: true,
+      remaining: 19,
+      resetAtMs: Date.now() + 60_000,
+      retryAfterSeconds: 60,
+      source: "memory"
+    });
     authMocks.requireSessionUser.mockResolvedValue(viewerSession);
     publishMocks.publishRecommendationEvent.mockResolvedValue(undefined);
   });
@@ -99,6 +120,21 @@ describe("/api/recommendations", () => {
     });
   });
 
+  it("GET returns 429 when list limiter blocks", async () => {
+    limitMocks.checkDistributedRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetAtMs: Date.now() + 30_000,
+      retryAfterSeconds: 30,
+      source: "memory"
+    });
+    const res = await listRecommendations(new Request("http://test/api/recommendations"));
+    const payload = (await res.json()) as { error: string };
+    expect(res.status).toBe(429);
+    expect(payload.error).toBe("rate_limit_exceeded");
+    expect(authMocks.requireSessionUser).not.toHaveBeenCalled();
+  });
+
   it("POST creates and publishes event", async () => {
     const base = sampleRecommendation();
     const doc = { ...base, title: "New idea", scopeTags: ["RKLB"] };
@@ -130,6 +166,25 @@ describe("/api/recommendations", () => {
     );
   });
 
+  it("POST returns 429 when create limiter blocks", async () => {
+    limitMocks.checkDistributedRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetAtMs: Date.now() + 30_000,
+      retryAfterSeconds: 30,
+      source: "memory"
+    });
+    const res = await postRecommendation(
+      new Request("http://127.0.0.1/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "blocked" })
+      })
+    );
+    expect(res.status).toBe(429);
+    expect(authMocks.requireSessionUser).not.toHaveBeenCalled();
+  });
+
   it("POST returns 400 for empty title", async () => {
     const res = await postRecommendation(
       new Request("http://127.0.0.1/api/recommendations", {
@@ -159,5 +214,20 @@ describe("/api/recommendations", () => {
     expect(res.status).toBe(200);
     const json = (await res.json()) as { data: { title: string } };
     expect(json.data.title).toBe("Buy TSLA dips");
+  });
+
+  it("GET by id returns 429 when read limiter blocks", async () => {
+    limitMocks.checkDistributedRateLimit.mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetAtMs: Date.now() + 20_000,
+      retryAfterSeconds: 20,
+      source: "memory"
+    });
+    const res = await getById(new Request("http://127.0.0.1/api/recommendations/x"), {
+      params: Promise.resolve({ recommendationId: new ObjectId().toHexString() })
+    });
+    expect(res.status).toBe(429);
+    expect(authMocks.requireSessionUser).not.toHaveBeenCalled();
   });
 });
