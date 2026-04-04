@@ -41,6 +41,7 @@
     "verify:xai-hello": "node --env-file=.env scripts/verify-xai-hello.mjs",
     "verify:xai-seed-rag": "node --env-file=.env scripts/verify-xai-seed-rag.mjs",
     "mongo:up": "bash scripts/dev/mongo-up.sh",
+    "mongo:docker-recreate": "bash scripts/dev/mongo-docker-recreate.sh",
     "mongo:down": "docker compose --env-file .env stop mongodb",
     "mongo:reset": "bash scripts/dev/mongo-reset-and-seed.sh",
     "local:bootstrap": "npm run mongo:up && npm run seed:admin",

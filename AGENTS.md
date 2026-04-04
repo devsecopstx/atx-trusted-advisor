@@ -8,11 +8,13 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 
 ## Standard Local Flow
 
-1. `cp .env.example .env` — set `ADMIN_SEED_EMAIL`; if you use **Sign in with X** and X does not return an email, also set **`ADMIN_SEED_X_USER_ID`** (your X numeric user id) so seed + OAuth can attach `xAccount` to the admin row. Leave `MONGODB_URI` unset for local Docker Mongo (auth defaults match `docker-compose.yml`).
+1. `cp .env.example .env` — set `ADMIN_SEED_EMAIL`; if you use **Sign in with X** and X does not return an email, also set **`ADMIN_SEED_X_USER_ID`** (your X numeric user id) so seed + OAuth can attach `xAccount` to the admin row. For Docker Mongo with auth, set **`MONGODB_URI`** to `mongodb://admin:<password>@127.0.0.1:27017/<db>?authSource=admin` (password defaults to **`localdev`** in `docker-compose.yml` when `MONGO_ROOT_PASSWORD` is empty).
 2. `npm install`
-3. `npm run mongo:up` — MongoDB service only, waits for healthy — **or** `docker compose up -d` for Mongo + backend container
+3. `npm run mongo:up` — MongoDB service only, waits for healthy — **or** `docker compose --env-file .env up -d` for Mongo + backend container
 4. `npm run seed:admin` — **or** `npm run local:bootstrap` to run step 3 + seed in one shot
 5. `npm run dev`
+
+**Docker Mongo `Authentication failed` (mongosh / Next.js):** (1) Init runs only on an **empty** data volume — run **`npm run mongo:docker-recreate`** to wipe the Compose volume and re-init with **`admin`/`localdev`**. (2) If recreate **passes** but **host** `mongosh` still fails, **another `mongod` is usually bound to host TCP 27017** (common: Homebrew Mongo). Docker’s Mongo is then on a different published port or unreachable; stop the other service (`brew services stop mongodb-community`) or change **`mongodb` `ports`** in `docker-compose.yml` to e.g. **`27018:27017`** and use **`27018` in `MONGODB_URI`**. Avoid **`export MONGO_ROOT_PASSWORD=`** (empty) before `docker compose up` — it overrides `.env`.
 
 **Seed defaults (`ADMIN_SEED_EMAIL`):** `core_users.subscriptionPlan` is **`basic`**; bootstrap `admin_access_requests` uses **`requestedPlan: basic`** when the paper row is first inserted; default xChat persona is **Super-Agent** from **`atx-docs/rag-collection/xpersonas/super-agent/super-agent.yaml`**. Re-running **`seed:admin`** sets **`subscriptionPlan`** back to **`basic`** for that email.
 

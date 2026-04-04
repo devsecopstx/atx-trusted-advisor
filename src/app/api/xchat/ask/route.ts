@@ -398,7 +398,7 @@ export async function POST(request: Request) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
   const xapiConfig = mergeXchatHostedToolBaseline(
-    withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds)
+    withLinkedCollectionTools(baseXapiConfig, linkedCollectionIds, "replace")
   );
 
   let contextSource: "none" | "xai_collection" = "none";

@@ -66,8 +66,8 @@ export function countPersonaLinkedCollections(
 }
 
 /**
- * Persona-declared ids only: `xaiCollection`, `teamCollection`, and tool `collection_ids` (TEAM/persona KB — no per-user bootstrap merge).
- * Use for `POST /api/xchat/ask`, batch, and multi-source gather (same union as `withLinkedCollectionTools`).
+ * Persona-declared ids only: `xaiCollection`, `teamCollection`, and tool `collection_ids` (admin/UI union).
+ * Runtime xChat ask/batch/multi-source RAG uses `resolveXchatTeamOnlyLinkedCollectionIds` + `withLinkedCollectionTools(..., "replace")`.
  */
 export function resolveXchatLinkedCollectionIds(input: {
   persona: PersonaLinkedIdSource | null | undefined;
@@ -75,10 +75,14 @@ export function resolveXchatLinkedCollectionIds(input: {
   return getPersonaLinkedCollectionIds(input.persona);
 }
 
+/** Cap team KB collections wired to file_search / pre-search (persona `teamCollection` + deploy default). */
+export const MAX_XCHAT_TEAM_KB_COLLECTION_IDS = 2;
+
 /**
- * xChat ask RAG + file_search wiring: **team KB only** — `persona.teamCollection` plus deployed
- * team default (`resolveTeamKbCollectionId`). Excludes persona `xaiCollection` and ad-hoc tool ids
- * so retrieval stays in the single TEAM xAI collection model.
+ * xChat RAG + file_search wiring: **team KB only** — `persona.teamCollection` plus deployed
+ * team default (`resolveTeamKbCollectionId` / `XAI_TEAM_ID`). Excludes persona `xaiCollection` and
+ * tool-declared collection lists so retrieval stays within the TEAM model (max
+ * {@link MAX_XCHAT_TEAM_KB_COLLECTION_IDS} ids).
  */
 export async function resolveXchatTeamOnlyLinkedCollectionIds(
   persona: PersonaLinkedIdSource | null | undefined
@@ -92,12 +96,17 @@ export async function resolveXchatTeamOnlyLinkedCollectionIds(
   if (envTeam?.trim()) {
     ids.push(envTeam.trim());
   }
-  return Array.from(new Set(ids));
+  const unique = Array.from(new Set(ids));
+  return unique.slice(0, MAX_XCHAT_TEAM_KB_COLLECTION_IDS);
 }
+
+/** How `withLinkedCollectionTools` applies ids to `file_search` / `collections_search` tools. */
+export type LinkedCollectionWireMode = "merge" | "replace";
 
 export function withLinkedCollectionTools(
   config: PersonaXapiConfig,
-  linkedCollectionIds: string[]
+  linkedCollectionIds: string[],
+  wireMode: LinkedCollectionWireMode = "merge"
 ): PersonaXapiConfig {
   if (linkedCollectionIds.length === 0) {
     return config;
@@ -110,7 +119,9 @@ export function withLinkedCollectionTools(
     : addCollectionToolInPreferredOrder(config.tools, linkedCollectionIds);
   return {
     ...config,
-    tools: toolsWithCollection.map((tool) => mergeCollectionIdsIntoTool(tool, linkedCollectionIds))
+    tools: toolsWithCollection.map((tool) =>
+      applyLinkedCollectionIdsToTool(tool, linkedCollectionIds, wireMode)
+    )
   };
 }
 
@@ -129,9 +140,10 @@ function addCollectionToolInPreferredOrder(
   return [...tools.slice(0, atxIndex + 1), collectionTool, ...tools.slice(atxIndex + 1)];
 }
 
-function mergeCollectionIdsIntoTool(
+function applyLinkedCollectionIdsToTool(
   tool: PersonaXapiToolDefinition,
-  linkedCollectionIds: string[]
+  linkedCollectionIds: string[],
+  wireMode: LinkedCollectionWireMode
 ): PersonaXapiToolDefinition {
   if (tool.type === "file_search") {
     const source = (tool.source ?? {}) as Record<string, unknown>;
@@ -141,11 +153,15 @@ function mergeCollectionIdsIntoTool(
           .map((id) => id.trim())
           .filter((id) => id.length > 0)
       : [];
+    const collection_ids =
+      wireMode === "replace"
+        ? [...linkedCollectionIds]
+        : Array.from(new Set([...existingIds, ...linkedCollectionIds]));
     return {
       ...tool,
       source: {
         ...source,
-        collection_ids: Array.from(new Set([...existingIds, ...linkedCollectionIds]))
+        collection_ids
       }
     };
   }
@@ -157,9 +173,13 @@ function mergeCollectionIdsIntoTool(
           .map((id) => id.trim())
           .filter((id) => id.length > 0)
       : [];
+    const collection_ids =
+      wireMode === "replace"
+        ? [...linkedCollectionIds]
+        : Array.from(new Set([...existingIds, ...linkedCollectionIds]));
     return {
       ...tool,
-      collection_ids: Array.from(new Set([...existingIds, ...linkedCollectionIds]))
+      collection_ids
     };
   }
 

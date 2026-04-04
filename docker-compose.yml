@@ -6,14 +6,17 @@ services:
     env_file:
       - .env
     ports:
+      # If something else (e.g. Homebrew mongod) already uses host 27017, use "27018:27017" and point MONGODB_URI at :27018.
       - "27017:27017"
     environment:
       # One app DB per deployment; default base matches src/lib/env.ts (optional ATX_DEPLOY_TARGET suffix is app-level, not compose)
       MONGO_INITDB_DATABASE: ${MONGODB_DB_NAME:-atxfinance}
       # Local root user: MONGO_ROOT_USERNAME for parity with resolve-mongo-uri / getMongoUri. Default admin.
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
-      # Use provided password or fallback to the requested default
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-}
+      # Non-empty password required for Mongo to create the root SCRAM user on first data dir init.
+      # If Compose sees an empty MONGO_ROOT_PASSWORD (unset, empty shell, or `MONGO_ROOT_PASSWORD=` in .env),
+      # `${...:-}` would skip creation — `mongosh -u admin -p …` then always fails. Default `localdev` for local Docker.
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-localdev}
     volumes:
       - atxfinance_mongo_data:/data/db
     healthcheck:
@@ -34,9 +37,12 @@ services:
     env_file:
       - .env
     environment:
-      # If MONGODB_URI is set (plain or base64), Spring MongoUriEnvPostProcessor resolves it.
-      # Otherwise, use local Mongo with credentials and db name.
-      SPRING_DATA_MONGODB_URI: "mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGODB_DB_NAME:-atxfinance}?authSource=admin"
+      # `.env` often sets MONGODB_URI=localhost for Next.js on the host. Inside this container
+      # localhost is wrong — MongoUriEnvPostProcessor would override the URI below. Clear it so
+      # Spring uses SPRING_DATA_MONGODB_URI (hostname `mongodb`, Docker network).
+      MONGODB_URI: ""
+      # If you need a custom DB name, set MONGODB_DB_NAME in .env (must match Mongo init / Next.js).
+      SPRING_DATA_MONGODB_URI: "mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-localdev}@mongodb:27017/${MONGODB_DB_NAME:-atxfinance}?authSource=admin"
     ports:
       - "8080:8080"
 

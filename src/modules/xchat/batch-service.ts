@@ -17,7 +17,7 @@ import { personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { logXchatBatchDebug } from "@/lib/xchat-debug";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import {
-    resolveXchatLinkedCollectionIds,
+    resolveXchatTeamOnlyLinkedCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import {
@@ -113,11 +113,9 @@ export async function submitBatchJob(
     normalizePersonaXapiConfig(input.persona.xapi),
     input.persona.name
   );
-  const linkedCollectionIds = resolveXchatLinkedCollectionIds({
-    persona: input.persona
-  });
+  const linkedCollectionIds = await resolveXchatTeamOnlyLinkedCollectionIds(input.persona);
   const xapiConfigMerged = mergeXchatHostedToolBaseline(
-    withLinkedCollectionTools(xapiConfig, linkedCollectionIds)
+    withLinkedCollectionTools(xapiConfig, linkedCollectionIds, "replace")
   );
   const batchTools = personaXapiToolsToXaiRequestTools(xapiConfigMerged.tools);
   const hasAtxFunctionPersonaTool = xapiConfigMerged.tools.some((t) =>

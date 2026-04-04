@@ -433,7 +433,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(verifierMocks.verifyXaiCollectionNonBlocking).not.toHaveBeenCalled();
   });
 
-  it("merges persona-declared collection ids into file_search tools for xAI", async () => {
+  it("replaces file_search vector stores with team KB ids only (drops persona-declared extras)", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         xapi: {
@@ -450,7 +450,7 @@ describe("xchat ask route collection retrieval", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: "merge linked collection ids into tool"
+          message: "team kb only file_search wiring"
         })
       })
     );
@@ -462,7 +462,7 @@ describe("xchat ask route collection retrieval", () => {
           {
             type: "file_search",
             name: "file_search",
-            vector_store_ids: expect.arrayContaining(["collection_team_default", "collection_extra"])
+            vector_store_ids: ["collection_team_default"]
           }
         ])
       })
@@ -503,7 +503,7 @@ describe("xchat ask route collection retrieval", () => {
           {
             type: "file_search",
             name: "file_search",
-            vector_store_ids: expect.arrayContaining(["collection_team_default", "collection_extra"])
+            vector_store_ids: ["collection_team_default"]
           },
           { type: "web_search", name: "web_search" },
           { type: "x_search", name: "x_search" }
