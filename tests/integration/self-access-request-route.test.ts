@@ -51,7 +51,7 @@ describe("POST /api/access-requests (self-service)", () => {
     repositoryMocks.getPendingAccessRequestByUserAndRole.mockResolvedValue(null);
     repositoryMocks.createAccessRequest.mockResolvedValue({
       _id: new ObjectId(),
-      requestedRole: "viewer",
+      requestedRole: "operator",
       status: "pending",
       reason: "I need access",
       requestedAt: new Date()
@@ -74,11 +74,11 @@ describe("POST /api/access-requests (self-service)", () => {
     expect(response.status).toBe(201);
     const payload = (await response.json()) as { ok: boolean; data: { requestedRole: string; status: string } };
     expect(payload.ok).toBe(true);
-    expect(payload.data.requestedRole).toBe("viewer");
+    expect(payload.data.requestedRole).toBe("operator");
     expect(payload.data.status).toBe("pending");
   });
 
-  it("defaults requestedRole to viewer", async () => {
+  it("defaults requestedRole to operator", async () => {
     await POST(
       new Request("http://test/api/access-requests", {
         method: "POST",
@@ -87,7 +87,7 @@ describe("POST /api/access-requests (self-service)", () => {
       })
     );
     expect(repositoryMocks.createAccessRequest).toHaveBeenCalledWith(
-      expect.objectContaining({ requestedRole: "viewer" })
+      expect.objectContaining({ requestedRole: "operator" })
     );
   });
 
@@ -203,7 +203,7 @@ describe("POST /api/access-requests (self-service)", () => {
       })
     );
     expect(slackMocks.buildAccessRequestNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "viewer@atxfinance.ai", requestedRole: "viewer" })
+      expect.objectContaining({ email: "viewer@atxfinance.ai", requestedRole: "operator" })
     );
   });
 

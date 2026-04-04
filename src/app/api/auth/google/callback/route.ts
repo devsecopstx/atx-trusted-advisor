@@ -19,8 +19,8 @@ import {
 import { googleLinkedId } from "@/lib/google-oauth-identity";
 import { getEffectiveHostname, getPublicOriginFromRequest } from "@/lib/http-origin";
 import { finalizeOAuthSessionAndRedirect } from "@/lib/oauth-complete-session";
-import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { isSeedAdminEmail } from "@/lib/seed-admin-email";
+import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import {
     createAccessRequest,
     getPendingAccessRequestByUserAndRole
@@ -59,13 +59,13 @@ function googleUsernameFromEmail(email: string): string {
   return safe || "google_user";
 }
 
-async function ensurePendingViewerAccessRequestAfterGoogleOAuth(user: CoreUser): Promise<void> {
+async function ensurePendingOperatorAccessRequestAfterGoogleOAuth(user: CoreUser): Promise<void> {
   const oid = user._id;
   if (!oid) {
     return;
   }
   const userId = oid.toHexString();
-  const requestedRole = "viewer" as const;
+  const requestedRole = "operator" as const;
   const existingPending = await getPendingAccessRequestByUserAndRole({
     userId,
     requestedRole
@@ -312,7 +312,7 @@ export async function GET(request: Request) {
   const shouldAllowFallbackLogin = Boolean(user._id) && !hasLoginRole && allowAnyLogin;
 
   if (!hasLoginRole && !shouldAllowFallbackLogin) {
-    await ensurePendingViewerAccessRequestAfterGoogleOAuth(user);
+    await ensurePendingOperatorAccessRequestAfterGoogleOAuth(user);
     return redirectWithLoginAudit("access_request_pending", {
       userId: user._id.toHexString(),
       xUserId: identity.xUserId,

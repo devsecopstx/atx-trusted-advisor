@@ -70,6 +70,7 @@ type ApprovedUser = {
   userId: string;
   name: string;
   email: string;
+  role: "global_admin" | "advisor" | "operator" | "viewer";
   subscriptionPlan: SubscriptionPlan;
   approvedAt?: string;
   latestAuditEvent?: {
@@ -106,6 +107,13 @@ type ApiUser = {
   updatedAt: string;
 };
 
+const ROLE_SELECT_OPTIONS: ReadonlyArray<ApprovedUser["role"]> = [
+  "global_admin",
+  "advisor",
+  "operator",
+  "viewer"
+];
+
 const DEFAULT_SETTINGS: UserAdminSettingsPayload = {
   assignedPersonaId: "",
   finraLicenseUploadUrl: "",
@@ -126,8 +134,10 @@ export function UserSettingsConsole() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [approvedUsers, setApprovedUsers] = useState<ApprovedUser[]>([]);
   const [emailEdits, setEmailEdits] = useState<Record<string, string>>({});
+  const [roleEdits, setRoleEdits] = useState<Record<string, ApprovedUser["role"]>>({});
   const [planEdits, setPlanEdits] = useState<Record<string, ApprovedUser["subscriptionPlan"]>>({});
   const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRole, setNewUserRole] = useState<ApprovedUser["role"]>("operator");
   const [newUserPlan, setNewUserPlan] = useState<ApprovedUser["subscriptionPlan"]>("basic");
 
   const [settingsForm, setSettingsForm] = useState<UserAdminSettingsPayload>(DEFAULT_SETTINGS);
@@ -153,6 +163,13 @@ export function UserSettingsConsole() {
         const next = { ...previous };
         for (const user of normalizedUsers) {
           next[user.userId] = previous[user.userId] ?? user.email ?? "";
+        }
+        return next;
+      });
+      setRoleEdits((previous) => {
+        const next = { ...previous };
+        for (const user of normalizedUsers) {
+          next[user.userId] = previous[user.userId] ?? user.role;
         }
         return next;
       });
@@ -268,6 +285,7 @@ export function UserSettingsConsole() {
       setStatus("Email is required.");
       return;
     }
+    const role = roleEdits[userId] ?? "operator";
     const subscriptionPlan = planEdits[userId] ?? "basic";
     setStatus(`Saving user changes for ${userId}...`);
     try {
@@ -275,7 +293,7 @@ export function UserSettingsConsole() {
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, subscriptionPlan })
+          body: JSON.stringify({ email, role, subscriptionPlan })
         })
       );
       const settingsPayload = await parseJson<{ data: UserAdminSettingsPayload }>(
@@ -312,10 +330,16 @@ export function UserSettingsConsole() {
         await fetch("/api/admin/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, subscriptionPlan: newUserPlan, status: "active" })
+          body: JSON.stringify({
+            email,
+            role: newUserRole,
+            subscriptionPlan: newUserPlan,
+            status: "active"
+          })
         })
       );
       setNewUserEmail("");
+      setNewUserRole("operator");
       setNewUserPlan("basic");
       await refreshApprovedUsers();
       setStatus("User created");
@@ -423,6 +447,17 @@ export function UserSettingsConsole() {
             value={newUserEmail}
           />
           <select
+            onChange={(event) => setNewUserRole(event.target.value as ApprovedUser["role"])}
+            value={newUserRole}
+            aria-label="Default role for new user"
+          >
+            {ROLE_SELECT_OPTIONS.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+          <select
             onChange={(event) => setNewUserPlan(event.target.value as ApprovedUser["subscriptionPlan"])}
             value={newUserPlan}
             aria-label="Subscription plan for new user"
@@ -443,6 +478,7 @@ export function UserSettingsConsole() {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Role</th>
                 <th>Plan</th>
                 <th>xPersona</th>
                 <th>Audit</th>
@@ -463,6 +499,25 @@ export function UserSettingsConsole() {
                       type="email"
                       value={emailEdits[user.userId] ?? ""}
                     />
+                  </td>
+                  <td>
+                    <select
+                      disabled={editingUserId !== user.userId}
+                      onChange={(event) =>
+                        setRoleEdits((previous) => ({
+                          ...previous,
+                          [user.userId]: event.target.value as ApprovedUser["role"]
+                        }))
+                      }
+                      value={roleEdits[user.userId] ?? user.role}
+                      aria-label={`Role for ${user.email}`}
+                    >
+                      {ROLE_SELECT_OPTIONS.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td>
                     <select
@@ -878,10 +933,12 @@ export function UserSettingsConsole() {
 }
 
 function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
+  const role = user.roles[0] ?? "operator";
   return {
     userId: user._id,
     name: user.xAccount?.displayName ?? user.xAccount?.username ?? user.email,
     email: user.email,
+    role,
     subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
     approvedAt: user.updatedAt,
     latestAuditEvent: user.latestAuditEvent ?? null

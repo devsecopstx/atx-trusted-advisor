@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  const requestedRole = "viewer" as const;
+  const requestedRole = "operator" as const;
 
   const user = await ensureCoreUserByEmail({ email });
   if (!user._id) {

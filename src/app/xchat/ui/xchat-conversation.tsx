@@ -1223,7 +1223,7 @@ export function XchatConversation({
                     {msg.strategyJobOffer ? (
                       <div className="xchat-strategy-job-cta" style={{ marginTop: "0.75rem" }}>
                         <Link
-                          className="xchat-md-a font-semibold"
+                          className="xchat-strategy-job-cta__link font-semibold"
                           href="/xstrategybuilder"
                           prefetch={false}
                         >

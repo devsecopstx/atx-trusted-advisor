@@ -136,7 +136,7 @@ describe("access request approval login flow", () => {
     coreAdminMocks.createAccessRequest.mockImplementation(async () => ({
       _id: { toHexString: () => "507f1f77bcf86cd799439055" },
       userId: state.userId,
-      requestedRole: "viewer",
+      requestedRole: "operator",
       reason: "Auto-created from unapproved X login attempt",
       status: "pending",
       requestedAt: new Date()
@@ -596,11 +596,11 @@ describe("access request approval login flow", () => {
     expect(authMocks.setPendingXLinkCookie).toHaveBeenCalledTimes(1);
     expect(coreAdminMocks.getPendingAccessRequestByUserAndRole).toHaveBeenCalledWith({
       userId: state.userId,
-      requestedRole: "viewer"
+      requestedRole: "operator"
     });
     expect(coreAdminMocks.createAccessRequest).toHaveBeenCalledWith({
       userId: state.userId,
-      requestedRole: "viewer",
+      requestedRole: "operator",
       reason:
         "Auto-created: X login without email on profile — user on link-email step (email_link_required)"
     });

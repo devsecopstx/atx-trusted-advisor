@@ -1397,6 +1397,30 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   opacity: 0.92;
 }
 
+.xchat-strategy-job-cta__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.62rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 60%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 20%, transparent);
+  color: color-mix(in srgb, #ffffff 92%, var(--xf-gain-green) 8%);
+  text-decoration: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-gain-green) 18%, transparent) inset;
+}
+
+.xchat-strategy-job-cta__link:hover {
+  border-color: color-mix(in srgb, var(--xf-lightning-yellow) 68%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 28%, transparent);
+  color: #ffffff;
+}
+
+.xchat-strategy-job-cta__link:focus-visible {
+  outline: 2px solid var(--xf-lightning-yellow);
+  outline-offset: 2px;
+}
+
 .xchat-markdown .xchat-md-code-inline {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.84em;

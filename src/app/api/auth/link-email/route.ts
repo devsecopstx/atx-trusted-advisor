@@ -152,7 +152,7 @@ export async function POST(request: Request) {
   if (!hasLoginRole) {
     const userId = linkedUser._id?.toHexString();
     if (userId) {
-      const requestedRole = "viewer";
+      const requestedRole = "operator";
       const existingPending = await getPendingAccessRequestByUserAndRole({
         userId,
         requestedRole

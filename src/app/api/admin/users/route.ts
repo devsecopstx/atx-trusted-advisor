@@ -22,7 +22,7 @@ const listUsersQuerySchema = z.object({
 
 const createUserSchema = z.object({
   email: z.string().trim().email(),
-  role: z.enum(["global_admin", "advisor", "operator", "viewer"]).default("viewer"),
+  role: z.enum(["global_admin", "advisor", "operator", "viewer"]).default("operator"),
   subscriptionPlan: zSubscriptionPlan.default("basic"),
   status: z.enum(["active", "suspended"]).default("active")
 });

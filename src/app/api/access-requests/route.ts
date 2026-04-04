@@ -13,7 +13,7 @@ import {
 } from "@/modules/core-admin/repository";
 
 const selfRequestSchema = z.object({
-  requestedRole: z.enum(["advisor", "operator", "viewer"]).optional().default("viewer"),
+  requestedRole: z.enum(["advisor", "operator", "viewer"]).optional().default("operator"),
   reason: z.string().min(3).max(500)
 });
 

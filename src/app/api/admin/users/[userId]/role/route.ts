@@ -54,14 +54,14 @@ export async function PATCH(request: Request, context: RouteContext) {
       username: session.username
     },
     details: {
-      role: updated.roles[0] ?? "viewer"
+        role: updated.roles[0] ?? "operator"
     }
   });
 
   return NextResponse.json({
     data: {
       userId: updated._id?.toHexString(),
-      role: updated.roles[0] ?? "viewer"
+      role: updated.roles[0] ?? "operator"
     }
   });
 }

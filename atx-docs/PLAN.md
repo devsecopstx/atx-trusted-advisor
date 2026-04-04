@@ -47,6 +47,8 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 
 **Shipped:** xChat now detects strategy intent, returns a compliance-heavy preflight prompt, confirms handoff (`"launch strategy job"` / `"yes"`), creates a strategy job through `POST /api/strategy-jobs` (BFF), and routes to `/xstrategybuilder` with the active `jobId`. xStrategyBuilder provides a thin handoff card (active jobs + status + view artifact). Backend create gate enforces **advisor/operator** only.
 
+**Ops/support note:** Default app-user role for xOptions/strategy-job paths is now **operator** (not viewer): Admin → Manage Users new-user default role, self/public access-request defaults, and OAuth/link-email auto-created pending access requests all target `operator`.
+
 **Tests:** `tests/integration/xchat-ask-route.test.ts` (strategy preflight path) and `tests/integration/strategy-jobs-route.test.ts` (advisor/operator gate + proxy behavior).
 
 - Assistant rendering: Markdown/GFM, code fences, small pre-cleanup, prose aligned with dark UI.

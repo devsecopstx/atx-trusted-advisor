@@ -121,6 +121,26 @@ describe("admin users CRUD routes", () => {
     expect(identityMocks.createCoreUser).toHaveBeenCalledTimes(1);
   });
 
+  it("defaults new admin-created user role to operator", async () => {
+    await postUser(
+      new Request("http://test/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "new@atxfinance.ai",
+          subscriptionPlan: "basic",
+          status: "active"
+        })
+      })
+    );
+    expect(identityMocks.createCoreUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "new@atxfinance.ai",
+        role: "operator"
+      })
+    );
+  });
+
   it("gets user by id", async () => {
     const response = await getUser(new Request("http://test"), {
       params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })

@@ -47,13 +47,13 @@ type XUserResponse = {
   };
 };
 
-async function ensurePendingViewerAccessRequestAfterOAuth(user: CoreUser): Promise<void> {
+async function ensurePendingOperatorAccessRequestAfterOAuth(user: CoreUser): Promise<void> {
   const oid = user._id;
   if (!oid) {
     return;
   }
   const userId = oid.toHexString();
-  const requestedRole = "viewer" as const;
+  const requestedRole = "operator" as const;
   const existingPending = await getPendingAccessRequestByUserAndRole({
     userId,
     requestedRole
@@ -305,7 +305,7 @@ export async function GET(request: Request) {
     user._id &&
     !canUserLogin(user.roles)
   ) {
-    await ensurePendingViewerAccessRequestAfterOAuth(user);
+    await ensurePendingOperatorAccessRequestAfterOAuth(user);
     await setPendingXLinkCookie(xIdentity);
     return redirectWithLoginAudit("email_link_required", {
       userId: user._id.toHexString(),
@@ -322,7 +322,7 @@ export async function GET(request: Request) {
 
   if (!user?._id || !hasLoginRole) {
     if (user?._id) {
-      await ensurePendingViewerAccessRequestAfterOAuth(user);
+      await ensurePendingOperatorAccessRequestAfterOAuth(user);
     }
 
     if (!shouldAllowFallbackLogin) {
