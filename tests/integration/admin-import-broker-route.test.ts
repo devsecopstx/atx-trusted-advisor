@@ -15,6 +15,14 @@ const repositoryMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/lib/backend-bff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
+  return {
+    ...actual,
+    // Keep this integration suite hermetic (no live Spring proxy from env).
+    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+  };
+});
 
 vi.mock("@/modules/core-admin/repository", async () => {
   const actual = await vi.importActual<typeof import("@/modules/core-admin/repository")>(

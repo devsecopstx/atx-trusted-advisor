@@ -12,6 +12,14 @@ const slackMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => authMocks);
 vi.mock("@/lib/slack", () => slackMocks);
+vi.mock("@/lib/backend-bff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
+  return {
+    ...actual,
+    // Keep this suite hermetic: never proxy to live backend from env.
+    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+  };
+});
 
 import { POST as postUserFeedback } from "@/app/api/user-feedback/route";
 

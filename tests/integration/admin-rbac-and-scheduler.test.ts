@@ -16,11 +16,19 @@ const runnerMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/lib/backend-bff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
+  return {
+    ...actual,
+    // Keep scheduler/admin task tests hermetic (no backend proxy from shell env).
+    proxyAdminScheduledTasksRequestToBackend: vi.fn().mockResolvedValue(null)
+  };
+});
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/modules/core-admin/task-runner", () => runnerMocks);
 
-import { GET as getTasks } from "@/app/api/admin/tasks/route";
 import { POST as postSchedulerTick } from "@/app/api/admin/scheduler/tick/route";
+import { GET as getTasks } from "@/app/api/admin/tasks/route";
 
 describe("admin RBAC and scheduler semantics", () => {
   beforeEach(() => {
