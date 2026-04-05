@@ -6,6 +6,8 @@ Not user marketing copy — enough for deploy triage, support, and “what shipp
 
 ## Entries
 
+- **3.0.7** — **BFF / favicon:** `/api/strategy-options` and `/api/strategy-options/expirations` fall back to Next Yahoo handlers when the Spring proxy returns a **non-OK** response (fixes staging when JVM route lags). **`/favicon.ico`** rewrite to **`/branding/aTx.png`** (stops 404 on default browser favicon fetch). **Tests:** `bff-proxy-registry-next-handlers` allowlist includes `proxyStrategyOptionsRequestToBackend` and `proxyAdminAccessRequestsRequestToBackend`.
+
 - **3.0.6** — **Portfolios + xOptions UX:** `/portfolios` compact watchlist uses **`GET /api/app-user/find-options/watchlist-hot?limit=5`** (top IV/OI from watchlist symbols) with a **View & manage** link to the full watchlist. **xOptions step 3** strategy cards are shorter (single summary line + **Requires** cash/stock/cash+stock); **Learn more** links removed. **xOptions step 4** — payoff P/L chart is **off by default**; workspace sidebar **xOptions → Payoff preview** toggle (`localStorage`) shows the chart; when off, **Position review** renders **below the option chain** (full-width main column) instead of the right aside. Prefs: `xf_xoptions_show_payoff_preview_v1`.
 
 - **3.0.3** — Left-rail icon contrast hardening: increased section icon contrast for the shared app-user rail and portfolio workspace rail so section glyphs remain visible on deep-dark sidebar backgrounds (including xOptions workspace rails).
