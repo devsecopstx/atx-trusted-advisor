@@ -466,6 +466,80 @@ export async function proxyAdminScheduledTasksRequestToBackend(
 }
 
 /**
+ * `/api/strategy-options*` (chain + expirations) — allows xOptions to stay Next-local when
+ * backend strategy endpoints are unavailable or intentionally split.
+ *
+ * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_STRATEGY_OPTIONS=false`.
+ * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_STRATEGY_OPTIONS=true`.
+ */
+export function shouldProxyStrategyOptionsToBackend(): boolean {
+  const origin = getAtxfinanceBackendOrigin();
+  if (!origin) {
+    return false;
+  }
+  const v = process.env.ATXFINANCE_BACKEND_PROXY_STRATEGY_OPTIONS?.trim().toLowerCase();
+  if (v === "0" || v === "false" || v === "no" || v === "off") {
+    return false;
+  }
+  if (v === "1" || v === "true" || v === "yes" || v === "on") {
+    return true;
+  }
+  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  const devLike = nodeEnv === "development" || nodeEnv === "test";
+  if (devLike && isLoopbackBackendOrigin(origin)) {
+    return false;
+  }
+  return true;
+}
+
+/** Strategy-options BFF → Spring; returns `null` when proxy disabled. */
+export async function proxyStrategyOptionsRequestToBackend(
+  request: Request
+): Promise<Response | null> {
+  if (!shouldProxyStrategyOptionsToBackend()) {
+    return null;
+  }
+  return proxyRequestToBackend(request);
+}
+
+/**
+ * `/api/admin/access-requests*` — allows staging/prod parity control when public guest registration is
+ * intentionally handled Next-local.
+ *
+ * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS=false`.
+ * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS=true`.
+ */
+export function shouldProxyAdminAccessRequestsToBackend(): boolean {
+  const origin = getAtxfinanceBackendOrigin();
+  if (!origin) {
+    return false;
+  }
+  const v = process.env.ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS?.trim().toLowerCase();
+  if (v === "0" || v === "false" || v === "no" || v === "off") {
+    return false;
+  }
+  if (v === "1" || v === "true" || v === "yes" || v === "on") {
+    return true;
+  }
+  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  const devLike = nodeEnv === "development" || nodeEnv === "test";
+  if (devLike && isLoopbackBackendOrigin(origin)) {
+    return false;
+  }
+  return true;
+}
+
+/** Admin access-requests BFF → Spring; returns `null` when proxy disabled. */
+export async function proxyAdminAccessRequestsRequestToBackend(
+  request: Request
+): Promise<Response | null> {
+  if (!shouldProxyAdminAccessRequestsToBackend()) {
+    return null;
+  }
+  return proxyRequestToBackend(request);
+}
+
+/**
  * Tenant-level `/api/admin/delivery-channels*` (not portfolio-nested). Same loopback + dev/test rule as scheduled
  * tasks so Admin → Delivery channels uses Next Mongo.
  *

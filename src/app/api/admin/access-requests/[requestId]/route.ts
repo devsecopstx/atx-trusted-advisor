@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminAccessRequestsRequestToBackend } from "@/lib/backend-bff";
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { createAuditEvent, listAuditEventsForEntity } from "@/modules/audit/repository";
 import { enqueueAccessRequestBootstrap } from "@/modules/core-admin/access-request-bootstrap";
@@ -40,7 +40,7 @@ type RouteContext = {
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminAccessRequestsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -48,7 +48,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminAccessRequestsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -80,7 +80,7 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminAccessRequestsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -262,7 +262,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminAccessRequestsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

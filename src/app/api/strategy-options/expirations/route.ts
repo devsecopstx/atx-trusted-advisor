@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyStrategyOptionsRequestToBackend } from "@/lib/backend-bff";
 import { getStrategyOptionExpirations } from "@/modules/strategy-options/expirations";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  * Query: `underlying` (required).
  */
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyStrategyOptionsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { parseAccessRequestPlanInput } from "@/lib/access-request-plans";
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminAccessRequestsRequestToBackend } from "@/lib/backend-bff";
 import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import {
     createAuditEvent,
@@ -53,7 +53,7 @@ const accessRequestQuerySchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminAccessRequestsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -99,7 +99,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminAccessRequestsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
