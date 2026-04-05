@@ -275,6 +275,24 @@ function xPrelinkSetFields(now) {
 const DEFAULT_TENANT_SLUG = process.env.DEFAULT_TENANT_SLUG ?? "atxfinance-core";
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? "atxFinance Core";
 const DB_NAME = resolveAdminSeedDbName();
+const ADMIN_DELIVERY_CHANNELS_COLLECTION = "admin_delivery_channels";
+
+const SEEDED_ADMIN_DELIVERY_CHANNELS = [
+  {
+    name: "trusted-advisor",
+    deliveryTarget: "slack",
+    slackWebhookEnv: "SCHEDULED_TASKS_SYNC_TRUSTED_ADVISOR_SLACK_WEBHOOK_URL"
+  },
+  {
+    name: "in-app-alert",
+    deliveryTarget: "in_app"
+  },
+  {
+    name: "atx-admin-channel",
+    deliveryTarget: "slack",
+    slackWebhookEnv: "SCHEDULED_TASKS_SYNC_ATX_ADMIN_CHANNEL_SLACK_WEBHOOK_URL"
+  }
+];
 
 /** Strip userinfo from mongodb URI for logs (never print passwords). */
 function redactMongoCredentialsForLog(uri) {
@@ -305,6 +323,79 @@ function logSeedMongoTarget() {
   console.log(
     "[seed:admin] Mongo — Next + Spring must use this same database name in .env / Secret Manager (MONGODB_DB_NAME, or the DB in your Atlas URI path). If MONGODB_DB_NAME is unset, ATX_DEPLOY_TARGET=stage|deploy|prod → atxfinance-<target> (see src/lib/env.ts, scripts/lib/resolve-mongo-uri.mjs)."
   );
+}
+
+function readNonEmptyEnv(name) {
+  if (!name) {
+    return "";
+  }
+  return String(process.env[name] ?? "").trim();
+}
+
+/** Ensures default admin delivery channels exist for scheduled task routing. */
+async function upsertSeedAdminDeliveryChannels(db, tenantId, now) {
+  const coll = db.collection(ADMIN_DELIVERY_CHANNELS_COLLECTION);
+  for (const def of SEEDED_ADMIN_DELIVERY_CHANNELS) {
+    const slackWebhookUrl = readNonEmptyEnv(def.slackWebhookEnv);
+    const existing = await coll.findOne({ tenantId, name: def.name });
+
+    if (!existing) {
+      if (def.deliveryTarget === "slack" && !slackWebhookUrl) {
+        console.log(
+          `[seed:admin] admin delivery channel ${def.name}: skipped (missing ${def.slackWebhookEnv})`
+        );
+        continue;
+      }
+      await coll.insertOne({
+        tenantId,
+        name: def.name,
+        deliveryTarget: def.deliveryTarget,
+        ...(def.deliveryTarget === "slack" ? { slackWebhookUrl } : {}),
+        createdAt: now,
+        updatedAt: now
+      });
+      console.log(
+        `[seed:admin] admin delivery channel ${def.name}: created (${def.deliveryTarget})`
+      );
+      continue;
+    }
+
+    const existingTarget = String(existing.deliveryTarget ?? "").trim();
+    const targetDrift = existingTarget !== def.deliveryTarget;
+    const existingWebhook = String(existing.slackWebhookUrl ?? "").trim();
+    const webhookDrift =
+      def.deliveryTarget === "slack" && Boolean(slackWebhookUrl) && existingWebhook !== slackWebhookUrl;
+
+    if (!targetDrift && !webhookDrift) {
+      console.log(`[seed:admin] admin delivery channel ${def.name}: ok`);
+      continue;
+    }
+    if (def.deliveryTarget === "slack" && targetDrift && !slackWebhookUrl) {
+      console.log(
+        `[seed:admin] admin delivery channel ${def.name}: skipped target update (missing ${def.slackWebhookEnv})`
+      );
+      continue;
+    }
+
+    const $set = { deliveryTarget: def.deliveryTarget, updatedAt: now };
+    const $unset = {};
+    if (def.deliveryTarget === "slack") {
+      if (slackWebhookUrl) {
+        $set.slackWebhookUrl = slackWebhookUrl;
+      }
+      $unset.emailTo = "";
+    } else {
+      $unset.slackWebhookUrl = "";
+      $unset.emailTo = "";
+    }
+    await coll.updateOne(
+      { _id: existing._id },
+      { $set, ...(Object.keys($unset).length > 0 ? { $unset } : {}) }
+    );
+    console.log(
+      `[seed:admin] admin delivery channel ${def.name}: updated (${def.deliveryTarget})`
+    );
+  }
 }
 
 const DEFAULT_PERSONA_NAME = "advisor";
@@ -767,6 +858,7 @@ async function seed() {
     strategySyncSummary = runPostSeedOptionsStrategyPreferencesFromDisk();
     runPostSeedOptionsStrategyFromDisk();
 
+    await upsertSeedAdminDeliveryChannels(db, tenant._id, now);
     runPostSeedScheduledTasksSync(String(tenant._id));
 
     const personaAfterDisk = await db
