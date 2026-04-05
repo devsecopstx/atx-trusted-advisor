@@ -62,6 +62,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Tests (Vitest)
+        env:
+          ATXFINANCE_BACKEND_ORIGIN: ""
         run: npm run test
 
   deploy-production-manual:

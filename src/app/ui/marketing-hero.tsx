@@ -11,7 +11,7 @@ function AtxFinanceIcon() {
       aria-hidden
       className="mh-product-icon app-hero-icon-img"
       height={48}
-      src="/branding/app-hero-icon-transparent.png"
+      src="/branding/xstrategybuilder-topnav-icon-transparent.png"
       width={48}
     />
   );

@@ -159,7 +159,7 @@ export function XoptionsStrategyBuilderWorkspace() {
   const [symbol, setSymbol] = useState("");
   const [snapshot, setSnapshot] = useState<SnapshotPayload | null>(null);
   const [snapLoading, setSnapLoading] = useState(false);
-  const [weeks, setWeeks] = useState<number | null>(null);
+  const [weeks, setWeeks] = useState<number | null>(14);
   const [activeStep, setActiveStep] = useState<(typeof STEPS)[number]["n"]>(1);
   /** Highest step the user may open (1–4); advances on Next, never ahead of symbol readiness. */
   const [unlockedStep, setUnlockedStep] = useState(1);

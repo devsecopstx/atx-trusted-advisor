@@ -7,15 +7,17 @@ import { XoptionsReviewOrderSummaryBar } from "@/app/xoptions/xoptions-review-or
 import type { StrategyChoiceId } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import {
-    addCalendarDaysUtc,
     chainRowMoneynessClass,
     closestStrikeToSpot,
     filterStrikesBySpotBand,
     formatImpliedVolatilityDisplay,
-    pickExpirationOnOrAfter,
     sliceStrikesAroundSpot,
     STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
+import {
+    resolveXoptionsExpirationForHorizon,
+    XOPTIONS_DEFAULT_EXPIRATION_HORIZON_DAYS
+} from "@/lib/xoptions/xoptions-expiration-default";
 import {
     buildXoptionsOrderReview,
     formatXoptionsOrderReviewPlainText,
@@ -53,7 +55,6 @@ const WEEK_CHIPS: { label: string; days: number }[] = [
   { label: "2 wk", days: 14 },
   { label: "4 wk", days: 28 }
 ];
-
 function legOi(leg: ChainLeg): number {
   if (!leg) return 0;
   const oi = leg.open_interest;
@@ -75,18 +76,6 @@ function formatExpirationLabel(yyyyMmDd: string): string {
   } catch {
     return yyyyMmDd;
   }
-}
-
-function defaultExpirationForHorizon(dates: string[], weeks: number): string {
-  if (dates.length === 0) return "";
-  const sorted = [...new Set(dates)].sort(
-    (a, b) => new Date(a).getTime() - new Date(b).getTime()
-  );
-  if (weeks > 0) {
-    const t = addCalendarDaysUtc(new Date(), weeks);
-    return pickExpirationOnOrAfter(sorted, t) ?? sorted[sorted.length - 1] ?? "";
-  }
-  return pickExpirationOnOrAfter(sorted, new Date()) ?? sorted[0] ?? "";
 }
 
 function breakevenLong(side: "call" | "put", strike: number, premiumPerShare: number): number {
@@ -254,7 +243,15 @@ export function XoptionsChooseContract({
         const dates = json.expirationDates ?? [];
         if (cancelled) return;
         setExpirations(dates);
-        setExpiration((prev) => (prev && dates.includes(prev) ? prev : ""));
+        setExpiration((prev) => {
+          if (prev && dates.includes(prev)) {
+            return prev;
+          }
+          return resolveXoptionsExpirationForHorizon(
+            dates,
+            XOPTIONS_DEFAULT_EXPIRATION_HORIZON_DAYS
+          );
+        });
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Expirations failed.");
@@ -335,7 +332,7 @@ export function XoptionsChooseContract({
     (days: number) => {
       onWeeksChange(days);
       if (expirations.length === 0) return;
-      const next = defaultExpirationForHorizon(expirations, days);
+      const next = resolveXoptionsExpirationForHorizon(expirations, days);
       if (next) setExpiration(next);
     },
     [expirations, onWeeksChange]

@@ -27,6 +27,7 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 
 ### Deferred product TODOs
 
+- Shipped in app 3.0.1: xOptions Step 4 now auto-selects expiration dates using a default **2-week (14d)** horizon (mobile-safe first load), and browser favicon now matches the left-rail swirl mark (`/branding/aTx.png`) for dark-tab visibility.
 - Shipped in app 3.0.0: Account rail **Install App** prompt (manifest + service worker + iOS Add to Home Screen fallback steps).
 - `/login` deprecated (redirect → `/xchat`); fold plan tiers into guest panel or access-request flow.
 - Watchlist quote freshness: background refresh cadence + last-updated + stale badge on `/watchlist` and related tables.

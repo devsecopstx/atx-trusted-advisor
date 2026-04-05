@@ -262,7 +262,7 @@ export default function Hero({
                   alt="aTx app hero icon"
                   className="app-hero-icon-img h-20 w-20"
                   height={80}
-                  src="/branding/app-hero-icon-transparent.png"
+                  src="/branding/xstrategybuilder-topnav-icon-transparent.png"
                   width={80}
                 />
               </div>

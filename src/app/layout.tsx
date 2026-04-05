@@ -24,8 +24,8 @@ export const metadata: Metadata = {
     title: "aTx Finance"
   },
   icons: {
-    icon: "/branding/app-hero-icon-transparent.png",
-    shortcut: "/branding/app-hero-icon-transparent.png",
+    icon: "/branding/aTx.png",
+    shortcut: "/branding/aTx.png",
     apple: "/pwa/icon-192.png"
   }
 };

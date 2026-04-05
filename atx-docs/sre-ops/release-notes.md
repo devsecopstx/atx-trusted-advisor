@@ -6,6 +6,8 @@ Not user marketing copy — enough for deploy triage, support, and “what shipp
 
 ## Entries
 
+- **3.0.1** — xOptions mobile load hardening + icon parity: Step 4 now defaults expiration selection to a **2-week (14d)** horizon so expiration/chain loading works without manual date pick on first mobile pass; browser favicon now uses the same left-rail swirl mark (`/branding/aTx.png`) for dark-background visibility; added unit coverage for expiration-default selection and root layout icon metadata.
+
 - **3.0.0** — Sidebar and xOptions workflow lock-in plus PWA installability: xOptions now uses the unified workspace left-rail (same top-level groups as xChat), **Portfolio workspace** exposes **Watchlist** and **Alerts** as top-level links, review-order exposes Yahoo option chain id, selected option contracts can be added to watchlist with rich metadata (`call_contract`/`put_contract`, strike/expiration/id in strategy), Hardcore strategy jobs visibility is user-toggleable via the xOptions rail checkbox, and Account includes browser-native **Install App / Add to Home Screen** prompt flow (manifest + service worker + iOS fallback instructions + install analytics events) with rail-link typography aligned to the grouped account items.
 
 - **2.10.24** — **Redis timeout hardening for test/runtime stability:** Added bounded Redis connect timeout handling (`REDIS_CONNECT_TIMEOUT_MS`, default 750ms; clamp 100–10000) in `getRedisClient()` so distributed rate-limit paths fail fast and fall back instead of stalling request handlers when Redis is saturated or mismatched TLS/plain. Added unit coverage for timeout parsing/clamping and updated `.env.example` with the new optional setting.
