@@ -7,9 +7,9 @@ import { MongoClient } from "mongodb";
 
 import { buildAdvisorXapiTools, dedupeTrimmedIds } from "./lib/persona-xapi-tools.mjs";
 import {
-  resolveAdminSeedDbName,
-  resolveMongoUri,
-  resolveSeedDbName
+    resolveAdminSeedDbName,
+    resolveMongoUri,
+    resolveSeedDbName
 } from "./lib/resolve-mongo-uri.mjs";
 import { loadSeedTenantContext, pickFirstNonEmpty } from "./lib/tenant-defaults-seed.mjs";
 
