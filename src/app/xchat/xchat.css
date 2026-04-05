@@ -2230,7 +2230,7 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
 
 .app-user-rail-disclosure__icon {
   display: inline-flex;
-  color: var(--xf-text-300);
+  color: var(--xf-text-200);
   flex-shrink: 0;
 }
 
@@ -2238,6 +2238,10 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   width: 1.15rem;
   height: 1.15rem;
   display: block;
+}
+
+.app-user-rail-disclosure__trigger:hover .app-user-rail-disclosure__icon {
+  color: var(--xf-text-100);
 }
 
 .app-user-rail-disclosure__glyph--zap {

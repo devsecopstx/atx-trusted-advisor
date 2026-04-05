@@ -3,7 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore, type ReactNode, type SVGProps } from "react";
+import {
+    useEffect,
+    useState,
+    useSyncExternalStore,
+    type ReactNode,
+    type SVGProps,
+    type SyntheticEvent
+} from "react";
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
@@ -16,6 +23,17 @@ import {
     setXoptionsStrategyBuilderVisible,
     subscribeXoptionsStrategyBuilderVisibility
 } from "@/lib/xoptions-strategy-builder-visibility";
+import {
+    isPayoffPreviewEnabled,
+    isShowGreeksCalcLogicEnabled,
+    isShowStrategySizingEnabled,
+    isTaxEducationEnabled,
+    setPayoffPreviewEnabled,
+    setShowGreeksCalcLogicEnabled,
+    setShowStrategySizingEnabled,
+    setTaxEducationEnabled,
+    subscribeXoptionsEducationPrefs
+} from "@/lib/xoptions/xoptions-education-preferences";
 
 function pathKeyFromHref(href: string): string {
   const beforeHash = href.split("#")[0] ?? href;
@@ -187,6 +205,36 @@ function RailSectionChevron() {
   );
 }
 
+/**
+ * Native `<details>` does not support React's `defaultOpen` (unknown DOM prop). Sync initial
+ * open state from the route with controlled `open` + `onToggle`.
+ */
+function RouteSyncedDetails({
+  className,
+  routeMatch,
+  children
+}: {
+  className?: string;
+  routeMatch: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(routeMatch);
+  useEffect(() => {
+    setOpen(routeMatch);
+  }, [routeMatch]);
+  return (
+    <details
+      className={className}
+      open={open}
+      onToggle={(e: SyntheticEvent<HTMLDetailsElement>) => {
+        setOpen(e.currentTarget.open);
+      }}
+    >
+      {children}
+    </details>
+  );
+}
+
 function SidebarAccordionSummary({
   label,
   icon
@@ -237,6 +285,26 @@ export function WorkspaceProductSidebar({
     isXoptionsStrategyBuilderVisible,
     () => false
   );
+  const taxEducationEnabled = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    isTaxEducationEnabled,
+    () => false
+  );
+  const showGreeksCalcLogic = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    isShowGreeksCalcLogicEnabled,
+    () => false
+  );
+  const showStrategySizing = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    isShowStrategySizingEnabled,
+    () => false
+  );
+  const payoffPreviewEnabled = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    isPayoffPreviewEnabled,
+    () => false
+  );
   const importHref =
     defaultPortfolioId !== null
       ? `/import-activity?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
@@ -246,7 +314,10 @@ export function WorkspaceProductSidebar({
       ? `/portfolio/alerts?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
       : "/portfolio/alerts";
   const fallbackXchatSection = (
-    <details className="portfolios-workspace-sidebar__accordion">
+    <RouteSyncedDetails
+      className="portfolios-workspace-sidebar__accordion"
+      routeMatch={pathname.startsWith("/xchat")}
+    >
       <summary className="portfolios-workspace-sidebar__accordion-summary">
         <SidebarAccordionSummary
           icon={<RailSidebarZapIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--zap" size="disclosure" />}
@@ -267,12 +338,20 @@ export function WorkspaceProductSidebar({
           Chat history
         </SidebarLink>
       </div>
-    </details>
+    </RouteSyncedDetails>
   );
 
   return (
     <nav className="portfolios-workspace-sidebar" aria-label="Workspace">
-      <details className="portfolios-workspace-sidebar__accordion">
+      <RouteSyncedDetails
+        className="portfolios-workspace-sidebar__accordion"
+        routeMatch={
+          pathname.startsWith("/portfolios") ||
+          pathname.startsWith("/portfolio") ||
+          pathname.startsWith("/watchlist") ||
+          pathname.startsWith("/import-activity")
+        }
+      >
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
             icon={
@@ -309,11 +388,14 @@ export function WorkspaceProductSidebar({
             <span>Alerts</span>
           </SidebarLink>
         </div>
-      </details>
+      </RouteSyncedDetails>
 
       {xchatSection ?? fallbackXchatSection}
 
-      <details className="portfolios-workspace-sidebar__accordion">
+      <RouteSyncedDetails
+        className="portfolios-workspace-sidebar__accordion"
+        routeMatch={pathname.startsWith("/xoptions")}
+      >
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
             icon={
@@ -334,21 +416,80 @@ export function WorkspaceProductSidebar({
             <span className="portfolios-workspace-sidebar__emph">Open xOptions</span>
           </SidebarLink>
           {showXoptionsToggle ? (
-            <div className="xchat-sidebar-privacy-row">
-              <span className="xchat-sidebar-privacy-row__label">xStrategybuilder</span>
-              <label className="xchat-sidebar-privacy-row__control" aria-label="Show hardcore strategy jobs">
-                <input
-                  checked={xoptionsStrategyBuilderVisible}
-                  onChange={(e) => setXoptionsStrategyBuilderVisible(e.target.checked)}
-                  type="checkbox"
-                />
-              </label>
-            </div>
+            <>
+              <div className="xchat-sidebar-privacy-row">
+                <span className="xchat-sidebar-privacy-row__label" title="Cash or share sizing on Choose strategy">
+                  Show sizing
+                </span>
+                <label className="xchat-sidebar-privacy-row__control" aria-label="Show start sizing on choose strategy">
+                  <input
+                    checked={showStrategySizing}
+                    onChange={(e) => setShowStrategySizingEnabled(e.target.checked)}
+                    type="checkbox"
+                  />
+                </label>
+              </div>
+              <div className="xchat-sidebar-privacy-row">
+                <span
+                  className="xchat-sidebar-privacy-row__label"
+                  title="P/L chart below the chain; off hides chart and shows position review under the chain"
+                >
+                  Payoff preview
+                </span>
+                <label className="xchat-sidebar-privacy-row__control" aria-label="Show payoff preview chart">
+                  <input
+                    checked={payoffPreviewEnabled}
+                    onChange={(e) => setPayoffPreviewEnabled(e.target.checked)}
+                    type="checkbox"
+                  />
+                </label>
+              </div>
+              <div className="xchat-sidebar-privacy-row">
+                <span className="xchat-sidebar-privacy-row__label" title="Educational tax blurbs in the builder">
+                  Tax education
+                </span>
+                <label className="xchat-sidebar-privacy-row__control" aria-label="Show tax education panels">
+                  <input
+                    checked={taxEducationEnabled}
+                    onChange={(e) => setTaxEducationEnabled(e.target.checked)}
+                    type="checkbox"
+                  />
+                </label>
+              </div>
+              <div className="xchat-sidebar-privacy-row">
+                <span
+                  className="xchat-sidebar-privacy-row__label"
+                  title="Black–Scholes formulas next to the option chain"
+                >
+                  Show Greeks calc logic
+                </span>
+                <label className="xchat-sidebar-privacy-row__control" aria-label="Show Greeks calculation logic">
+                  <input
+                    checked={showGreeksCalcLogic}
+                    onChange={(e) => setShowGreeksCalcLogicEnabled(e.target.checked)}
+                    type="checkbox"
+                  />
+                </label>
+              </div>
+              <div className="xchat-sidebar-privacy-row">
+                <span className="xchat-sidebar-privacy-row__label">xStrategybuilder</span>
+                <label className="xchat-sidebar-privacy-row__control" aria-label="Show hardcore strategy jobs">
+                  <input
+                    checked={xoptionsStrategyBuilderVisible}
+                    onChange={(e) => setXoptionsStrategyBuilderVisible(e.target.checked)}
+                    type="checkbox"
+                  />
+                </label>
+              </div>
+            </>
           ) : null}
         </div>
-      </details>
+      </RouteSyncedDetails>
 
-      <details className="portfolios-workspace-sidebar__accordion">
+      <RouteSyncedDetails
+        className="portfolios-workspace-sidebar__accordion"
+        routeMatch={pathname.startsWith("/resources")}
+      >
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
             icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph" />}
@@ -396,7 +537,7 @@ export function WorkspaceProductSidebar({
             Broker import
           </SidebarLink>
         </div>
-      </details>
+      </RouteSyncedDetails>
 
       {isGlobalAdmin ? (
         <SidebarLink href="/admin" title="Admin Hub">
@@ -408,7 +549,10 @@ export function WorkspaceProductSidebar({
       <div className="portfolios-workspace-sidebar__spacer" />
 
       {accountDetails ? (
-        <details className="portfolios-workspace-sidebar__accordion">
+        <RouteSyncedDetails
+          className="portfolios-workspace-sidebar__accordion"
+          routeMatch={pathname.startsWith("/account") || pathname.startsWith("/legal")}
+        >
           <summary className="portfolios-workspace-sidebar__accordion-summary">
             <SidebarAccordionSummary
               icon={<AccountSummaryIcon avatarUrl={accountDetails.avatarUrl} />}
@@ -422,7 +566,7 @@ export function WorkspaceProductSidebar({
               googleLinkHref={googleLinkHref}
             />
           </div>
-        </details>
+        </RouteSyncedDetails>
       ) : null}
     </nav>
   );

@@ -27,6 +27,9 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 
 ### Deferred product TODOs
 
+- Shipped in app **3.0.6:** portfolios compact watchlist shows top five IV/OI scan rows (`watchlist-hot`) plus watchlist manage link; xOptions step 3 strategy cards show **Requires** (cash vs stock) and dropped verbose bullets / Learn more; xOptions step 4 payoff chart is optional via sidebar **Payoff preview** (default off), with position review reflow under the chain when the chart is hidden.
+- Shipped in app 3.0.3: increased dark-rail icon contrast for shared app-user + portfolio workspace sidebars so section glyphs remain readable in xOptions/xChat left-rail surfaces.
+- Shipped in app 3.0.2: BFF proxy controls now include dedicated route toggles for admin access requests and xOptions strategy-options APIs (`ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS`, `ATXFINANCE_BACKEND_PROXY_STRATEGY_OPTIONS`), plus deploy-script env pass-through and `ops:db:probe` for fast staging/prod Mongo parity checks before paid deploys.
 - Shipped in app 3.0.1: xOptions Step 4 now auto-selects expiration dates using a default **2-week (14d)** horizon (mobile-safe first load), and browser favicon now matches the left-rail swirl mark (`/branding/aTx.png`) for dark-tab visibility.
 - Shipped in app 3.0.0: Account rail **Install App** prompt (manifest + service worker + iOS Add to Home Screen fallback steps).
 - `/login` deprecated (redirect → `/xchat`); fold plan tiers into guest panel or access-request flow.

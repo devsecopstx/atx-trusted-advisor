@@ -3,6 +3,8 @@
  * Uses standard equity option multiplier: 1 contract = 100 shares.
  */
 
+import { z } from "zod";
+
 export function formatExpirationShortLabel(yyyyMmDd: string): string {
   try {
     const d = new Date(`${yyyyMmDd.slice(0, 10)}T12:00:00.000Z`);
@@ -95,12 +97,156 @@ export function estimateOtmProbabilityPercent(input: {
   return Math.min(100, Math.max(0, Math.round(pOtm * 100)));
 }
 
-function breakevenPerShare(side: "call" | "put", strike: number, premiumPerShare: number): number {
+/**
+ * Risk-neutral estimate of probability the position finishes profitable at expiry
+ * (call: S_T &gt; breakeven; put: S_T &lt; breakeven), using the same IV and tenor as other chain metrics.
+ */
+export function estimateProbabilityProfitAtExpiryPercent(input: {
+  side: "call" | "put";
+  spot: number;
+  strike: number;
+  premiumPerShare: number;
+  ivPercent: number | null | undefined;
+  expirationYyyyMmDd: string;
+  riskFreeRate?: number;
+}): number | null {
+  const { side, spot, strike, premiumPerShare, ivPercent, expirationYyyyMmDd } = input;
+  if (ivPercent == null || !Number.isFinite(ivPercent) || ivPercent <= 0) {
+    return null;
+  }
+  if (!Number.isFinite(spot) || spot <= 0 || !Number.isFinite(strike) || strike <= 0) {
+    return null;
+  }
+  if (!Number.isFinite(premiumPerShare) || premiumPerShare < 0) {
+    return null;
+  }
+  const sigma = ivPercent / 100;
+  const T = Math.max(daysToExpirationUtc(expirationYyyyMmDd), 1) / 365;
+  const r = input.riskFreeRate ?? 0.05;
+  const be = side === "call" ? strike + premiumPerShare : Math.max(0, strike - premiumPerShare);
+  if (be <= 0) {
+    return null;
+  }
+  const d2 = (Math.log(spot / be) + (r - 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+  if (side === "call") {
+    return Math.min(100, Math.max(0, Math.round(normalCdf(d2) * 100)));
+  }
+  return Math.min(100, Math.max(0, Math.round((1 - normalCdf(d2)) * 100)));
+}
+
+/** Breakeven stock price at expiration (per share), before fees. */
+export function breakevenPerShare(side: "call" | "put", strike: number, premiumPerShare: number): number {
   if (side === "call") {
     return strike + premiumPerShare;
   }
   return Math.max(0, strike - premiumPerShare);
 }
+
+/** Sample notional for “portfolio delta impact” copy (HNWI review). */
+export const SAMPLE_PORTFOLIO_USD = 250_000;
+
+/**
+ * Annualized yield on premium / secured notional for short premium (sell-to-open).
+ * Returns null for long premium or invalid inputs.
+ */
+export function computeAnnualizedPremiumYieldPercent(input: {
+  openingAction: "buy_to_open" | "sell_to_open";
+  grossPremiumUsd: number;
+  securedNotionalUsd: number | null;
+  expirationYyyyMmDd: string;
+}): number | null {
+  if (input.openingAction !== "sell_to_open") {
+    return null;
+  }
+  if (
+    !Number.isFinite(input.grossPremiumUsd) ||
+    input.grossPremiumUsd <= 0 ||
+    input.securedNotionalUsd == null ||
+    !Number.isFinite(input.securedNotionalUsd) ||
+    input.securedNotionalUsd <= 0
+  ) {
+    return null;
+  }
+  const dte = daysToExpirationUtc(input.expirationYyyyMmDd);
+  const periodReturn = input.grossPremiumUsd / input.securedNotionalUsd;
+  const annualized = periodReturn * (365 / Math.max(dte, 1));
+  return Math.min(999, Math.max(0, annualized * 100));
+}
+
+/** Approximate dollar delta: net share delta × spot. */
+export function computeDollarDeltaApproxUsd(netDeltaShares: number | null, spot: number): number | null {
+  if (netDeltaShares == null || !Number.isFinite(netDeltaShares) || !Number.isFinite(spot) || spot <= 0) {
+    return null;
+  }
+  return netDeltaShares * spot;
+}
+
+/**
+ * One-line copy: option leg vs a $250k sleeve in the same stock (illustrative).
+ */
+export function computeSamplePortfolioDeltaLine(
+  netDeltaShares: number | null,
+  spot: number,
+  symbol: string
+): string | null {
+  if (netDeltaShares == null || !Number.isFinite(spot) || spot <= 0) {
+    return null;
+  }
+  const sleeveShares = SAMPLE_PORTFOLIO_USD / spot;
+  if (!Number.isFinite(sleeveShares) || sleeveShares <= 0) {
+    return null;
+  }
+  const pct = (netDeltaShares / sleeveShares) * 100;
+  const sym = symbol.trim().toUpperCase();
+  return `Leg delta ≈ ${pct >= 0 ? "" : "−"}${Math.abs(pct).toFixed(2)}% of a $${(SAMPLE_PORTFOLIO_USD / 1e3).toFixed(0)}k ${sym} sleeve (illustrative).`;
+}
+
+/**
+ * Max structured gain label for payoff (short call: premium + intrinsic cap to strike; long call: uncapped).
+ */
+export function computeCappedUpsideDisplay(input: {
+  openingAction: "buy_to_open" | "sell_to_open";
+  side: "call" | "put";
+  strike: number;
+  spot: number;
+  premiumPerShare: number;
+  contracts: number;
+}): string | null {
+  const m = input.contracts * 100;
+  if (input.openingAction === "sell_to_open" && input.side === "call") {
+    const maxPerShare = input.premiumPerShare + Math.max(0, input.strike - input.spot);
+    return `Capped upside ${usd(maxPerShare * m)} (at or above strike, model)`;
+  }
+  if (input.openingAction === "sell_to_open" && input.side === "put") {
+    return `Max gain ${usd(input.premiumPerShare * m)} (premium if expires OTM)`;
+  }
+  if (input.openingAction === "buy_to_open" && input.side === "call") {
+    return "Uncapped upside (calls; before fees)";
+  }
+  if (input.openingAction === "buy_to_open" && input.side === "put") {
+    const maxPut = Math.max(0, input.strike - input.premiumPerShare) * m;
+    return `Max gain ${usd(maxPut)} (if ${input.strike.toFixed(2)} strike, stock → $0)`;
+  }
+  return null;
+}
+
+export const xoptionsOrderReviewInputSchema = z.object({
+  symbol: z.string().min(1),
+  expirationYyyyMmDd: z.string().min(8),
+  side: z.enum(["call", "put"]),
+  openingAction: z.enum(["buy_to_open", "sell_to_open"]).optional(),
+  strike: z.number().finite().positive(),
+  limitPrice: z.string(),
+  quantity: z.string(),
+  spot: z.number().finite().positive(),
+  impliedVolatilityPercent: z.number().finite().nonnegative().nullable().optional(),
+  strategyLabel: z.string().nullable().optional(),
+  legDelta: z.number().finite().nullable().optional()
+});
+
+export type XoptionsOrderReviewInput = z.infer<typeof xoptionsOrderReviewInputSchema>;
+
+export type XoptionsOpeningAction = "buy_to_open" | "sell_to_open";
 
 export type XoptionsOrderReview = {
   bidPerShareDisplay: string;
@@ -108,11 +254,30 @@ export type XoptionsOrderReview = {
   probabilityOtmDisplay: string;
   /** 0–100 when IV allows model; drives semi-circular gauge. */
   probabilityOtmPercent: number | null;
+  /** Est. P(profit at expiry) under risk-neutral measure; 0–100 when IV allows. */
+  probabilityProfitPercent: number | null;
+  probabilityProfitDisplay: string;
+  maxLossDisplay: string;
+  /** Debit / defined-risk line in USD when applicable. */
+  maxLossUsd: number | null;
+  /** Approximate portfolio delta impact of this leg (per-share delta × contracts × 100). */
+  netDeltaApprox: number | null;
+  expectedValueNote: string;
+  /** Short label for grid (“Not modeled”). */
+  expectedValueDisplay: string;
   narrative: string;
   strategyLabel?: string | null;
+  /** One-line strategy description for review header. */
+  strategyOneLiner: string;
+  /** Premium / secured notional, annualized (short premium only). */
+  annualizedPremiumYieldPercent: number | null;
+  /** Collateral or debit line for risk context. */
+  capitalAtRiskDisplay: string;
+  /** Approximate $ delta (shares × spot). */
+  dollarDeltaApproxUsd: number | null;
+  samplePortfolioDeltaLine: string | null;
+  cappedUpsideDisplay: string | null;
 };
-
-export type XoptionsOpeningAction = "buy_to_open" | "sell_to_open";
 
 /** Footnote under Review order narrative in the panel only — not sent to xChat / clipboard handoff. */
 export const XOPTIONS_REVIEW_ORDER_FOOTNOTE =
@@ -125,11 +290,25 @@ export function formatXoptionsOrderReviewPlainText(
 ): string {
   const includeFootnote = options?.includeFootnote ?? true;
   const lines = [
-    "xOptions — Review order",
+    "xOptions — Position review",
     "",
-    `Limit (bid): ${review.bidPerShareDisplay}`,
-    `Breakeven (BE): ${review.breakevenDisplay}`,
-    `Probability of being OTM: ${review.probabilityOtmDisplay}`,
+    `Limit: ${review.bidPerShareDisplay}`,
+    `Breakeven: ${review.breakevenDisplay}`,
+    `P(OTM): ${review.probabilityOtmDisplay}`,
+    `POP (est.): ${review.probabilityProfitDisplay}`,
+    `Expected value: ${review.expectedValueDisplay}`,
+    `Max loss: ${review.maxLossDisplay}`,
+    `Capital at risk: ${review.capitalAtRiskDisplay}`,
+    review.annualizedPremiumYieldPercent != null
+      ? `Annualized premium yield (model): ${review.annualizedPremiumYieldPercent.toFixed(1)}%`
+      : "Annualized premium yield (model): —",
+    review.samplePortfolioDeltaLine ?? "Portfolio delta (sample): —",
+    review.dollarDeltaApproxUsd != null
+      ? `Delta $ (approx.): ${usd(review.dollarDeltaApproxUsd)}`
+      : "Delta $ (approx.): —",
+    review.netDeltaApprox != null
+      ? `Net delta (shares): ${review.netDeltaApprox.toFixed(2)}`
+      : "Net delta (shares): —",
     "",
     review.narrative.trim()
   ];
@@ -140,20 +319,12 @@ export function formatXoptionsOrderReviewPlainText(
 }
 
 /**
- * Structured review: limit (bid), BE, estimated P(OTM), and long-option narrative.
+ * Structured review: limit (bid), BE, estimated P(OTM), and narrative. Validates input with Zod.
  */
-export function buildXoptionsOrderReview(input: {
-  symbol: string;
-  expirationYyyyMmDd: string;
-  side: "call" | "put";
-  openingAction?: XoptionsOpeningAction;
-  strike: number;
-  limitPrice: string;
-  quantity: string;
-  spot: number;
-  impliedVolatilityPercent?: number | null;
-  strategyLabel?: string | null;
-}): XoptionsOrderReview {
+export function buildXoptionsOrderReview(
+  raw: z.input<typeof xoptionsOrderReviewInputSchema>
+): XoptionsOrderReview {
+  const input = xoptionsOrderReviewInputSchema.parse(raw);
   const sym = input.symbol.trim().toUpperCase();
   const exp = formatExpirationShortLabel(input.expirationYyyyMmDd);
   const qty = parsePositiveInt(input.quantity);
@@ -175,9 +346,34 @@ export function buildXoptionsOrderReview(input: {
         })
       : null;
 
+  const probProfit =
+    prem != null && prem >= 0
+      ? estimateProbabilityProfitAtExpiryPercent({
+          side: input.side,
+          spot: input.spot,
+          strike: input.strike,
+          premiumPerShare: premium,
+          ivPercent: input.impliedVolatilityPercent,
+          expirationYyyyMmDd: input.expirationYyyyMmDd
+        })
+      : null;
+
+  const legDelta = input.legDelta;
+  const netDeltaApprox =
+    legDelta != null && Number.isFinite(legDelta) ? legDelta * contracts * 100 : null;
+
+  let maxLossDisplay: string;
+  const maxLossUsd = openingAction === "buy_to_open" ? grossValue : null;
+  if (openingAction === "buy_to_open") {
+    maxLossDisplay = usd(grossValue);
+  } else {
+    maxLossDisplay = "Not a fixed debit (short premium)";
+  }
+
   const bidPerShareDisplay = prem != null ? usd(prem) : "—";
   const breakevenDisplay = usd(be);
   const probabilityOtmDisplay = prob != null ? `${prob}%` : "—";
+  const probabilityProfitDisplay = probProfit != null ? `${probProfit}%` : "—";
 
   const optWordPlural = input.side === "call" ? "calls" : "puts";
   const optWordSingular = input.side === "call" ? "call" : "put";
@@ -232,12 +428,55 @@ export function buildXoptionsOrderReview(input: {
       ? `${narrative}${potentialEarningSentence}`
       : narrative;
 
+  const capitalAtRiskDisplay =
+    openingAction === "buy_to_open"
+      ? usd(grossValue)
+      : securedNotional != null && securedNotional > 0
+        ? usd(securedNotional)
+        : "—";
+
+  const annualizedPremiumYieldPercent = computeAnnualizedPremiumYieldPercent({
+    openingAction,
+    grossPremiumUsd: grossValue,
+    securedNotionalUsd: securedNotional,
+    expirationYyyyMmDd: input.expirationYyyyMmDd
+  });
+
+  const dollarDeltaApproxUsd = computeDollarDeltaApproxUsd(netDeltaApprox, input.spot);
+  const samplePortfolioDeltaLine = computeSamplePortfolioDeltaLine(netDeltaApprox, input.spot, sym);
+
+  const cappedUpsideDisplay = computeCappedUpsideDisplay({
+    openingAction,
+    side: input.side,
+    strike: input.strike,
+    spot: input.spot,
+    premiumPerShare: premium,
+    contracts
+  });
+
+  const stratTitle = strat && strat.length > 0 ? strat : `${sym} ${optionNoun}`;
+  const strategyOneLiner = `${stratTitle}: ${openingAction === "sell_to_open" ? "Collect" : "Pay"} ${usd(premium)}/sh · ${contracts} lot · exp ${exp}.`;
+
   return {
     bidPerShareDisplay,
     breakevenDisplay,
     probabilityOtmDisplay,
     probabilityOtmPercent: prob,
+    probabilityProfitPercent: probProfit,
+    probabilityProfitDisplay,
+    maxLossDisplay,
+    maxLossUsd,
+    netDeltaApprox,
+    expectedValueNote:
+      "Expected mark-to-market P/L and expected value at expiry are not modeled here. Use xChat for scenario analysis.",
+    expectedValueDisplay: "Not modeled",
     narrative: narrativeWithEarning,
-    strategyLabel: input.strategyLabel ?? null
+    strategyLabel: input.strategyLabel ?? null,
+    strategyOneLiner,
+    annualizedPremiumYieldPercent,
+    capitalAtRiskDisplay,
+    dollarDeltaApproxUsd,
+    samplePortfolioDeltaLine,
+    cappedUpsideDisplay
   };
 }

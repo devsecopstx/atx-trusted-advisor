@@ -741,6 +741,12 @@ html[data-xf-ui="soft"] .xoptions-at-a-glance--header {
   flex-shrink: 0;
   font-size: 0.65rem;
   color: var(--xf-text-400);
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.xoptions-scoring-drop[open] .xoptions-scoring-drop__chev {
+  transform: rotate(180deg);
 }
 
 .xoptions-scoring-drop__body {
@@ -1267,6 +1273,51 @@ button.xoptions-chain-cta.cta.cta-secondary:disabled {
   color: var(--xf-text-400);
 }
 
+.xoptions-chain-table--compact th,
+.xoptions-chain-table--compact td {
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+  line-height: 1.15;
+}
+
+.xoptions-position-review__title {
+  letter-spacing: 0.12em;
+}
+
+.xoptions-position-review__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem 0.6rem;
+}
+
+.xoptions-position-review__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.xoptions-position-review__metric-label {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-500);
+}
+
+.xoptions-position-review__metric-value {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--xf-text-200);
+}
+
+.xoptions-position-review__metric--capital {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .xoptions-chain-spread--ok {
   color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
 }
@@ -1286,7 +1337,57 @@ button.xoptions-chain-cta.cta.cta-secondary:disabled {
   color: var(--xf-text-400);
 }
 
-/* ── Step 3: strategy choice (accordions + cards + P/L sketches) ── */
+/* ── Step 3: strategy choice (compact cards + optional sizing) ── */
+.xoptions-strategy-capital {
+  margin-bottom: 0.35rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+}
+
+.xoptions-strategy-capital__label {
+  margin: 0 0 0.35rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xoptions-strategy-capital__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.xoptions-strategy-capital__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-width: 14rem;
+}
+
+.xoptions-strategy-capital__field-label {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: var(--xf-text-400);
+}
+
+.xoptions-strategy-capital__input {
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+.xoptions-strategy-capital__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.5625rem;
+  line-height: 1.35;
+  color: var(--xf-text-500);
+}
+
 .xoptions-strategy-panels {
   display: flex;
   flex-direction: column;
@@ -1352,12 +1453,12 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
 
 .xoptions-strategy-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.35rem;
   align-items: stretch;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 640px) {
   .xoptions-strategy-grid {
     grid-template-columns: 1fr;
   }
@@ -1382,7 +1483,7 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
   display: block;
   width: 100%;
   margin: 0;
-  padding: 0.45rem 0.5rem 0.35rem;
+  padding: 0.22rem 0.28rem 0.18rem;
   border: none;
   background: transparent;
   color: inherit;
@@ -1402,13 +1503,13 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.35rem;
-  margin: 0 0 0.35rem;
+  gap: 0.2rem;
+  margin: 0 0 0.18rem;
 }
 
 .xoptions-strategy-card__title {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 0.625rem;
   font-weight: 700;
   color: var(--xf-text-100);
   line-height: 1.2;
@@ -1416,132 +1517,51 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
 
 .xoptions-strategy-card__tier {
   flex-shrink: 0;
-  font-size: 0.625rem;
+  font-size: 0.5rem;
   font-weight: 500;
   color: var(--xf-text-400);
 }
 
-.xoptions-strategy-card__lead {
-  margin: 0 0 0.35rem;
-  font-size: 0.6875rem;
-  line-height: 1.35;
-  color: var(--xf-text-300);
+.xoptions-strategy-card__req {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.35rem;
+  margin: 0 0 0.14rem;
+  font-size: 0.5rem;
+  line-height: 1.25;
 }
 
-.xoptions-strategy-card__subhead {
-  margin: 0.35rem 0 0.2rem;
-  font-size: 0.5625rem;
+.xoptions-strategy-card__req-k {
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--xf-text-400);
 }
 
-.xoptions-strategy-card__bullets {
+.xoptions-strategy-card__req-val {
+  font-weight: 700;
+  font-size: 0.5625rem;
+  color: var(--xf-text-200);
+}
+
+.xoptions-strategy-card__req-val--cash {
+  color: color-mix(in srgb, var(--xf-lightning-yellow) 82%, var(--xf-text-100));
+}
+
+.xoptions-strategy-card__req-val--stock {
+  color: color-mix(in srgb, var(--xf-gain-green) 75%, var(--xf-text-100));
+}
+
+.xoptions-strategy-card__req-val--both {
+  color: color-mix(in srgb, var(--xf-gain-green) 45%, var(--xf-lightning-yellow) 55%);
+}
+
+.xoptions-strategy-card__lead {
   margin: 0;
-  padding-left: 1rem;
-  font-size: 0.625rem;
-  line-height: 1.35;
-  color: var(--xf-text-300);
-}
-
-.xoptions-strategy-card__bullets li + li {
-  margin-top: 0.12rem;
-}
-
-.xoptions-strategy-card__bullets--nested {
-  margin-top: 0.15rem;
-  padding-left: 1.1rem;
-  color: var(--xf-text-400);
-}
-
-.xoptions-strategy-card__chart {
-  margin-top: 0.4rem;
-  border-radius: var(--xf-radius-sm);
-  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
-  background: color-mix(in srgb, var(--xf-bg-900) 40%, transparent);
-  padding: 0.25rem;
-}
-
-.xoptions-pl-chart {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 4.5rem;
-}
-
-.xoptions-pl-chart__axis {
-  stroke: color-mix(in srgb, var(--xf-text-400) 55%, transparent);
-  stroke-width: 0.8;
-}
-
-.xoptions-pl-chart__loss {
-  stroke: var(--xf-danger-400);
-}
-
-.xoptions-pl-chart__gain {
-  stroke: var(--xf-gain-green);
-}
-
-.xoptions-pl-chart__strike {
-  fill: var(--xf-text-100);
-}
-
-.xoptions-pl-chart__be {
-  fill: var(--xf-bg-900);
-  stroke: var(--xf-text-100);
-  stroke-width: 0.6;
-}
-
-.xoptions-strategy-card__foot {
-  margin-top: auto;
-  padding: 0.35rem 0.5rem 0.45rem;
-  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
-  text-align: right;
-}
-
-.xoptions-strategy-card__learn {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
-  text-decoration: none;
-}
-
-.xoptions-strategy-card__learn:hover {
-  color: var(--xf-gain-green);
-  text-decoration: underline;
-}
-
-.xoptions-strategy-legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-  margin-top: 0.25rem;
-  padding: 0.35rem 0.15rem 0;
   font-size: 0.5625rem;
   line-height: 1.3;
-  color: var(--xf-text-400);
-}
-
-.xoptions-strategy-legend__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-}
-
-.xoptions-strategy-legend__item--muted {
-  color: color-mix(in srgb, var(--xf-text-400) 85%, transparent);
-}
-
-.xoptions-strategy-legend__diamond {
-  font-size: 0.5rem;
-  color: var(--xf-text-100);
-}
-
-.xoptions-strategy-legend__dot {
-  font-size: 0.45rem;
-  color: var(--xf-text-100);
+  color: var(--xf-text-300);
 }
 
 /* ── Step 4: choose contract (controls + filtered chain + payoff) ── */
@@ -1765,10 +1785,35 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
   align-items: start;
 }
 
+.xoptions-contract__grid--no-payoff {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 @media (max-width: 960px) {
   .xoptions-contract__grid {
     grid-template-columns: 1fr;
   }
+}
+
+.xoptions-contract__chain-and-greek-help {
+  display: grid;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .xoptions-contract__chain-and-greek-help:not(.xoptions-contract__chain-and-greek-help--table-only) {
+    grid-template-columns: minmax(13rem, 19rem) minmax(0, 1fr);
+  }
+}
+
+.xoptions-contract__chain-and-greek-help--table-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.xoptions-contract__greek-help-col {
+  max-height: min(22rem, 50vh);
+  overflow: auto;
 }
 
 .xoptions-contract__table-scroll {
@@ -1785,6 +1830,20 @@ html[data-xf-ui="soft"] .xoptions-strategy-acc {
 .xoptions-contract__chain-wrap,
 .xoptions-contract__payoff {
   min-height: 12rem;
+}
+
+.xoptions-payoff-card {
+  margin: 0;
+}
+
+.xoptions-payoff-card__chev {
+  display: inline-block;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.xoptions-payoff-card[open] .xoptions-payoff-card__chev {
+  transform: rotate(180deg);
 }
 
 .xoptions-contract__panel-inner {
@@ -2072,4 +2131,176 @@ html[data-xf-ui="soft"] .xoptions-contract-overlay__card {
 
 .xoptions-stats-ratio__put {
   background: color-mix(in srgb, var(--xf-chart-loss) 72%, transparent);
+}
+
+/* Step 4: main chain + sticky review */
+.xoptions-contract__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 24rem);
+  gap: 1rem;
+  align-items: start;
+}
+
+.xoptions-contract__split--no-aside {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.xoptions-contract__split-main {
+  min-width: 0;
+}
+
+.xoptions-contract__review-below {
+  padding: 0.35rem;
+  border-radius: var(--xf-radius-md);
+  background: color-mix(in srgb, var(--xf-xoptions-surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-xoptions-accent) 24%, transparent);
+  max-height: min(92vh, 56rem);
+  overflow: auto;
+}
+
+.xoptions-contract__split-aside {
+  position: sticky;
+  top: 0.65rem;
+  align-self: start;
+  max-height: min(92vh, 56rem);
+  overflow: auto;
+  padding: 0.35rem;
+  border-radius: var(--xf-radius-md);
+  background: color-mix(in srgb, var(--xf-xoptions-surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-xoptions-accent) 24%, transparent);
+}
+
+@media (max-width: 1023px) {
+  .xoptions-contract__split {
+    grid-template-columns: 1fr;
+  }
+
+  .xoptions-contract__split-aside {
+    position: static;
+    max-height: none;
+  }
+}
+
+.xoptions-contract-payoff__svg--lg {
+  width: 100%;
+  height: auto;
+  min-height: 12rem;
+}
+
+.xoptions-contract-payoff__toggle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--xf-xoptions-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+  color: var(--xf-text-300);
+  cursor: pointer;
+}
+
+.xoptions-contract-payoff__toggle:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--xf-xoptions-accent) 55%, transparent);
+  color: var(--xf-text-200);
+}
+
+.xoptions-contract-payoff__toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.xoptions-contract-payoff__toggle--on {
+  border-color: color-mix(in srgb, var(--xf-xoptions-accent) 65%, transparent);
+  color: color-mix(in srgb, var(--xf-xoptions-accent) 92%, var(--xf-text-100));
+  background: color-mix(in srgb, var(--xf-xoptions-accent) 12%, transparent);
+}
+
+.xoptions-contract-payoff__be-line {
+  stroke: color-mix(in srgb, var(--xf-xoptions-accent) 55%, transparent);
+  stroke-width: 0.35;
+  stroke-dasharray: 1.2 1;
+  opacity: 0.85;
+}
+
+.xoptions-review-order__bar--extended {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.65rem;
+}
+
+.xoptions-review-order__metric--full {
+  grid-column: 1 / -1;
+}
+
+.xoptions-review-order__ev-note {
+  grid-column: 1 / -1;
+}
+
+.xoptions-review-order__risk-meter-track {
+  position: relative;
+  height: 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  overflow: hidden;
+}
+
+.xoptions-review-order__risk-meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--xf-gain-green) 65%, transparent),
+    color-mix(in srgb, var(--xf-warning-400) 75%, transparent),
+    color-mix(in srgb, var(--xf-danger-400) 80%, transparent)
+  );
+}
+
+.xoptions-review-order__risk-meter-label {
+  font-size: 0.65rem;
+  font-family: ui-monospace, monospace;
+  color: var(--xf-text-400);
+}
+
+.xoptions-glance-disclosure {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+  padding: 0.35rem 0.5rem;
+}
+
+.xoptions-glance-disclosure > summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--xf-text-300);
+  list-style: none;
+}
+
+.xoptions-glance-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .xoptions-glance-disclosure > summary {
+    display: none;
+  }
+
+  .xoptions-glance-disclosure {
+    border: none;
+    padding: 0;
+    background: transparent;
+  }
+}
+
+@media print {
+  .xoptions-print-hide,
+  .xchat-shell header,
+  .xoptions-stepper,
+  .xoptions-next-btn {
+    display: none !important;
+  }
+
+  .xoptions-print-root {
+    border: 1px solid color-mix(in srgb, var(--xf-text-100) 20%, transparent);
+    padding: 1rem;
+  }
 }

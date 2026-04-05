@@ -30,6 +30,10 @@
   --xf-shadow-soft: 0 10px 36px rgba(2, 6, 14, 0.5);
   --xf-shadow-card: 0 8px 24px rgba(4, 10, 24, 0.55);
   --xf-blur-glass: blur(14px);
+  /** xOptions strategy builder — institutional violet accent (use instead of raw hex in app CSS) */
+  --xf-xoptions-surface: #0f0f11;
+  --xf-xoptions-accent: #8b5cf6;
+  --xf-xoptions-accent-muted: color-mix(in srgb, var(--xf-xoptions-accent) 55%, var(--xf-text-300));
 }
 
 *,

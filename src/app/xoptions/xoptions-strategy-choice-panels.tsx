@@ -1,8 +1,11 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useSyncExternalStore } from "react";
 
-import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
+import {
+    isShowStrategySizingEnabled,
+    subscribeXoptionsEducationPrefs
+} from "@/lib/xoptions/xoptions-education-preferences";
 
 export type StrategyChoiceId =
   | "long-call"
@@ -12,290 +15,117 @@ export type StrategyChoiceId =
   | "long-call-spread"
   | "short-put-spread";
 
+export type StrategyCapitalMode = "cash" | "stock";
+
+export type StrategyStartBasis =
+  | { mode: "cash"; usd: number }
+  | { mode: "stock"; shares: number };
+
+export function parseStrategyStartBasis(mode: StrategyCapitalMode, raw: string): StrategyStartBasis | null {
+  const t = raw.trim().replace(/,/g, "");
+  if (!t) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (mode === "cash") return { mode: "cash", usd: n };
+  return { mode: "stock", shares: Math.floor(n) };
+}
+
+/** What you need to open the position (capital vs long stock). */
+export type StrategyStartRequirementKind = "cash" | "stock" | "both";
+
 export type StrategyCardModel = {
   id: StrategyChoiceId;
   title: string;
   tier: string;
+  requiresKind: StrategyStartRequirementKind;
+  /** Short label shown after “Requires” (e.g. cash collateral, long shares). */
+  requiresLabel: string;
+  /** One line — outlook and shape only. */
   summary: string;
-  bullets: string[];
-  expirationBullets: string[];
 };
 
 export const SINGLE_LEG_STRATEGIES: StrategyCardModel[] = [
   {
     id: "long-call",
     title: "Buy calls",
-    tier: "Tier 1",
-    summary: "Profit when the stock rises; risk capped at premium paid.",
-    bullets: ["Bullish", "Max loss = premium", "Unlimited upside above breakeven"],
-    expirationBullets: ["Profit if spot finishes above breakeven", "Lose premium if spot finishes below strike"]
+    tier: "T1",
+    requiresKind: "cash",
+    requiresLabel: "Cash (premium)",
+    summary: "Bullish; risk capped at premium."
   },
   {
     id: "covered-call",
-    title: "Sell covered calls",
-    tier: "Tier 1",
-    summary: "Income on shares you own; upside capped at the strike.",
-    bullets: ["Flat to mildly bullish", "Premium income", "Stock called away above strike"],
-    expirationBullets: ["Max gain near the strike if assigned", "Stock risk below breakeven"]
+    title: "Covered call",
+    tier: "T1",
+    requiresKind: "stock",
+    requiresLabel: "Stock (long shares)",
+    summary: "Premium income; upside capped at strike."
   },
   {
     id: "cash-secured-put",
-    title: "Sell cash-secured puts",
-    tier: "Tier 1",
-    summary: "Collect premium while targeting a lower entry.",
-    bullets: ["Neutral to bullish", "Income from premium", "May be assigned shares if ITM"],
-    expirationBullets: ["Keep premium if OTM at expiry", "Losses if spot falls well below strike"]
+    title: "Cash-secured put",
+    tier: "T1",
+    requiresKind: "cash",
+    requiresLabel: "Cash (collateral)",
+    summary: "Premium income; may be assigned if ITM."
   }
 ];
 
 export const MULTI_LEG_STRATEGIES: StrategyCardModel[] = [
   {
     id: "buy-write",
-    title: "Buy write",
-    tier: "Tier 1",
-    summary:
-      "This strategy seeks to generate income through the simultaneous purchase of shares and selling a call.",
-    bullets: [
-      "Benefits from rising prices up to the strike price and/or prices staying flat.",
-      "Losses occur when the stock falls below the breakeven price."
-    ],
-    expirationBullets: [
-      "Max profit occurs when the stock price rises up to the strike price.",
-      "Losses occur when the stock price falls below the breakeven price."
-    ]
+    title: "Buy-write",
+    tier: "T1",
+    requiresKind: "both",
+    requiresLabel: "Cash + stock",
+    summary: "Buy shares + sell call; income on the bundle."
   },
   {
     id: "long-call-spread",
     title: "Long call spread",
-    tier: "Tier 2",
-    summary: "This strategy seeks to benefit from a rising stock price within a predefined range.",
-    bullets: [
-      "Benefits from rising prices.",
-      "Losses occur when premium received for closing is less than net premium paid."
-    ],
-    expirationBullets: [
-      "Max profit occurs when the stock price rises above the highest strike.",
-      "Max loss occurs when the stock price falls below the lowest strike."
-    ]
+    tier: "T2",
+    requiresKind: "cash",
+    requiresLabel: "Cash (net debit)",
+    summary: "Bullish; capped risk and reward."
   },
   {
     id: "short-put-spread",
     title: "Short put spread",
-    tier: "Tier 2",
-    summary:
-      "This strategy seeks to generate income from a rising or flat stock price but limits risk.",
-    bullets: [
-      "Benefits from rising and/or flat prices.",
-      "Losses occur when premium paid for closing is greater than the net premium received."
-    ],
-    expirationBullets: [
-      "Max profit occurs when the stock price rises above the highest strike.",
-      "Max loss occurs when the stock price falls below the lowest strike."
-    ]
+    tier: "T2",
+    requiresKind: "cash",
+    requiresLabel: "Cash (margin)",
+    summary: "Credit spread; bullish/neutral, defined risk."
   }
 ];
 
-function strikeDiamond(cx: number, cy: number) {
-  const s = 2.8;
-  return `${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`;
-}
-
-function PlLongCall() {
-  return (
-    <svg className="xoptions-pl-chart" viewBox="0 0 100 52" aria-hidden>
-      <title>Long call payoff sketch</title>
-      <line className="xoptions-pl-chart__axis" x1="4" y1="44" x2="96" y2="44" />
-      <line className="xoptions-pl-chart__axis" x1="4" y1="8" x2="4" y2="44" />
-      <polyline
-        className="xoptions-pl-chart__loss"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points="8,44 44,44"
-      />
-      <polyline
-        className="xoptions-pl-chart__gain"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points="44,44 92,10"
-      />
-      <circle className="xoptions-pl-chart__strike" cx="44" cy="44" r="2.2" />
-      <circle className="xoptions-pl-chart__be" cx="52" cy="44" r="2" />
-    </svg>
-  );
-}
-
-function PlCoveredCall() {
-  return (
-    <svg className="xoptions-pl-chart" viewBox="0 0 100 52" aria-hidden>
-      <title>Covered call payoff sketch</title>
-      <line className="xoptions-pl-chart__axis" x1="4" y1="44" x2="96" y2="44" />
-      <line className="xoptions-pl-chart__axis" x1="4" y1="8" x2="4" y2="44" />
-      <polyline
-        className="xoptions-pl-chart__loss"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        points="8,46 36,28"
-      />
-      <polyline
-        className="xoptions-pl-chart__gain"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        points="36,28 72,18 92,18"
-      />
-      <circle className="xoptions-pl-chart__strike" cx="72" cy="18" r="2.2" />
-      <circle className="xoptions-pl-chart__be" cx="44" cy="28" r="2" />
-    </svg>
-  );
-}
-
-function PlBuyWrite() {
-  return (
-    <svg className="xoptions-pl-chart" viewBox="0 0 100 52" aria-hidden>
-      <title>Buy write payoff sketch</title>
-      <line className="xoptions-pl-chart__axis" x1="4" y1="44" x2="96" y2="44" />
-      <line className="xoptions-pl-chart__axis" x1="4" y1="8" x2="4" y2="44" />
-      <polyline
-        className="xoptions-pl-chart__loss"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        points="8,46 36,28"
-      />
-      <polyline
-        className="xoptions-pl-chart__gain"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        points="36,28 72,18 92,18"
-      />
-      <polygon className="xoptions-pl-chart__strike" points={strikeDiamond(72, 44)} />
-      <circle className="xoptions-pl-chart__be" cx="44" cy="28" r="2" />
-    </svg>
-  );
-}
-
-function PlLongCallSpread() {
-  return (
-    <svg className="xoptions-pl-chart" viewBox="0 0 100 52" aria-hidden>
-      <title>Long call spread payoff sketch</title>
-      <line className="xoptions-pl-chart__axis" x1="4" y1="44" x2="96" y2="44" />
-      <line className="xoptions-pl-chart__axis" x1="4" y1="8" x2="4" y2="44" />
-      <polyline
-        className="xoptions-pl-chart__loss"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points="8,40 30,40"
-      />
-      <polyline
-        className="xoptions-pl-chart__gain"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points="30,40 52,26 68,26 92,26"
-      />
-      <polygon className="xoptions-pl-chart__strike" points={strikeDiamond(30, 44)} />
-      <polygon className="xoptions-pl-chart__strike" points={strikeDiamond(68, 44)} />
-      <circle className="xoptions-pl-chart__be" cx="40" cy="34" r="2" />
-    </svg>
-  );
-}
-
-function PlShortPutSpread() {
-  return (
-    <svg className="xoptions-pl-chart" viewBox="0 0 100 52" aria-hidden>
-      <title>Short put spread payoff sketch</title>
-      <line className="xoptions-pl-chart__axis" x1="4" y1="44" x2="96" y2="44" />
-      <line className="xoptions-pl-chart__axis" x1="4" y1="8" x2="4" y2="44" />
-      <polyline
-        className="xoptions-pl-chart__loss"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points="8,40 28,40"
-      />
-      <polyline
-        className="xoptions-pl-chart__gain"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points="28,40 50,26 70,26 92,26"
-      />
-      <polygon className="xoptions-pl-chart__strike" points={strikeDiamond(28, 44)} />
-      <polygon className="xoptions-pl-chart__strike" points={strikeDiamond(70, 44)} />
-      <circle className="xoptions-pl-chart__be" cx="38" cy="34" r="2" />
-    </svg>
-  );
-}
-
-function PlCashSecuredPut() {
-  return (
-    <svg className="xoptions-pl-chart" viewBox="0 0 100 52" aria-hidden>
-      <title>Cash-secured put payoff sketch</title>
-      <line className="xoptions-pl-chart__axis" x1="4" y1="44" x2="96" y2="44" />
-      <line className="xoptions-pl-chart__axis" x1="4" y1="8" x2="4" y2="44" />
-      <polyline
-        className="xoptions-pl-chart__loss"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        points="8,46 40,24"
-      />
-      <polyline
-        className="xoptions-pl-chart__gain"
-        fill="none"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        points="40,24 88,20"
-      />
-      <circle className="xoptions-pl-chart__strike" cx="40" cy="24" r="2.2" />
-      <circle className="xoptions-pl-chart__be" cx="48" cy="24" r="2" />
-    </svg>
-  );
-}
-
-function PlForStrategy(id: StrategyChoiceId) {
-  switch (id) {
-    case "long-call":
-      return <PlLongCall />;
-    case "covered-call":
-      return <PlCoveredCall />;
-    case "cash-secured-put":
-      return <PlCashSecuredPut />;
-    case "buy-write":
-      return <PlBuyWrite />;
-    case "long-call-spread":
-      return <PlLongCallSpread />;
-    case "short-put-spread":
-      return <PlShortPutSpread />;
-    default: {
-      const _exhaustive: never = id;
-      return _exhaustive;
-    }
-  }
-}
-
 type StrategyCardProps = {
   model: StrategyCardModel;
-  symbol: string;
   selected: boolean;
   onSelect: () => void;
 };
 
-function StrategyCard({ model, symbol, selected, onSelect }: StrategyCardProps) {
-  const q = symbol.trim()
-    ? `symbol=${encodeURIComponent(symbol.trim())}&strategy=${encodeURIComponent(model.id)}`
-    : `strategy=${encodeURIComponent(model.id)}`;
+function requirementClass(kind: StrategyStartRequirementKind): string {
+  switch (kind) {
+    case "cash":
+      return "xoptions-strategy-card__req-val--cash";
+    case "stock":
+      return "xoptions-strategy-card__req-val--stock";
+    case "both":
+      return "xoptions-strategy-card__req-val--both";
+    default: {
+      const _x: never = kind;
+      return _x;
+    }
+  }
+}
+
+function StrategyCard({ model, selected, onSelect }: StrategyCardProps) {
+  const reqHint =
+    model.requiresKind === "cash"
+      ? "Starts with cash"
+      : model.requiresKind === "stock"
+        ? "Starts with stock"
+        : "Starts with cash and stock";
 
   return (
     <article className={`xoptions-strategy-card ${selected ? "xoptions-strategy-card--selected" : ""}`}>
@@ -304,48 +134,100 @@ function StrategyCard({ model, symbol, selected, onSelect }: StrategyCardProps) 
         className="xoptions-strategy-card__main"
         onClick={onSelect}
         aria-pressed={selected}
-        aria-label={`Select ${model.title}`}
+        aria-label={`Select ${model.title}. Requires ${model.requiresLabel}. ${model.summary}`}
       >
         <header className="xoptions-strategy-card__head">
           <h3 className="xoptions-strategy-card__title">{model.title}</h3>
           <span className="xoptions-strategy-card__tier">{model.tier}</span>
         </header>
+        <p className="xoptions-strategy-card__req" title={reqHint}>
+          <span className="xoptions-strategy-card__req-k">Requires</span>
+          <span className={`xoptions-strategy-card__req-val ${requirementClass(model.requiresKind)}`}>
+            {model.requiresLabel}
+          </span>
+        </p>
         <p className="xoptions-strategy-card__lead">{model.summary}</p>
-        <ul className="xoptions-strategy-card__bullets">
-          {model.bullets.map((b) => (
-            <li key={b}>{b}</li>
-          ))}
-        </ul>
-        <p className="xoptions-strategy-card__subhead">At expiration</p>
-        <ul className="xoptions-strategy-card__bullets xoptions-strategy-card__bullets--nested">
-          {model.expirationBullets.map((b) => (
-            <li key={b}>{b}</li>
-          ))}
-        </ul>
-        <div className="xoptions-strategy-card__chart">{PlForStrategy(model.id)}</div>
       </button>
-      <footer className="xoptions-strategy-card__foot">
-        <Link
-          className="xoptions-strategy-card__learn inline-flex items-center gap-1"
-          href={`/xstrategybuilder/strategy-options?${q}`}
-        >
-          Learn more
-          <ExternalLinkIcon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-        </Link>
-      </footer>
     </article>
   );
 }
 
 type StrategyChoicePanelsProps = {
-  symbol: string;
   selectedId: StrategyChoiceId | null;
   onSelectStrategy: (id: StrategyChoiceId) => void;
+  capitalMode: StrategyCapitalMode;
+  capitalInput: string;
+  onCapitalModeChange: (mode: StrategyCapitalMode) => void;
+  onCapitalInputChange: (value: string) => void;
 };
 
-export function StrategyChoicePanels({ symbol, selectedId, onSelectStrategy }: StrategyChoicePanelsProps) {
+export function StrategyChoicePanels({
+  selectedId,
+  onSelectStrategy,
+  capitalMode,
+  capitalInput,
+  onCapitalModeChange,
+  onCapitalInputChange
+}: StrategyChoicePanelsProps) {
+  const showSizing = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    isShowStrategySizingEnabled,
+    () => false
+  );
+
+  useEffect(() => {
+    if (!showSizing) {
+      onCapitalInputChange("");
+      onCapitalModeChange("cash");
+    }
+  }, [showSizing, onCapitalInputChange, onCapitalModeChange]);
+
   return (
     <div className="xoptions-strategy-panels">
+      {showSizing ? (
+        <div className="xoptions-strategy-capital">
+          <p className="xoptions-strategy-capital__label">Start sizing (optional)</p>
+          <div className="xoptions-strategy-capital__row" role="group" aria-label="Size by cash or shares">
+            <button
+              type="button"
+              className={`xoptions-choice ${capitalMode === "cash" ? "xoptions-choice--active" : ""}`}
+              onClick={() => onCapitalModeChange("cash")}
+              aria-pressed={capitalMode === "cash"}
+            >
+              Cash
+            </button>
+            <button
+              type="button"
+              className={`xoptions-choice ${capitalMode === "stock" ? "xoptions-choice--active" : ""}`}
+              onClick={() => onCapitalModeChange("stock")}
+              aria-pressed={capitalMode === "stock"}
+            >
+              Stock (shares)
+            </button>
+          </div>
+          <label className="xoptions-strategy-capital__field" htmlFor="xo-strategy-capital-input">
+            <span className="xoptions-strategy-capital__field-label">
+              {capitalMode === "cash" ? "Amount (USD)" : "Shares"}
+            </span>
+            <input
+              id="xo-strategy-capital-input"
+              type="text"
+              inputMode="decimal"
+              className="crud-input xoptions-strategy-capital__input font-mono"
+              placeholder={capitalMode === "cash" ? "e.g. 5000" : "e.g. 200"}
+              value={capitalInput}
+              onChange={(e) => onCapitalInputChange(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <p className="xoptions-strategy-capital__hint">
+            {capitalMode === "cash"
+              ? "Used as a rough budget hint on the contract step."
+              : "Prefills contract quantity from share count (100 shares ≈ 1 contract)."}
+          </p>
+        </div>
+      ) : null}
+
       <details className="xoptions-strategy-acc" open>
         <summary className="xoptions-strategy-acc__summary">
           <span className="xoptions-strategy-acc__label">Single-leg strategy</span>
@@ -358,7 +240,6 @@ export function StrategyChoicePanels({ symbol, selectedId, onSelectStrategy }: S
             <StrategyCard
               key={m.id}
               model={m}
-              symbol={symbol}
               selected={selectedId === m.id}
               onSelect={() => onSelectStrategy(m.id)}
             />
@@ -378,30 +259,12 @@ export function StrategyChoicePanels({ symbol, selectedId, onSelectStrategy }: S
             <StrategyCard
               key={m.id}
               model={m}
-              symbol={symbol}
               selected={selectedId === m.id}
               onSelect={() => onSelectStrategy(m.id)}
             />
           ))}
         </div>
       </details>
-
-      <div className="xoptions-strategy-legend" role="note">
-        <span className="xoptions-strategy-legend__item">
-          <span className="xoptions-strategy-legend__diamond" aria-hidden>
-            ◇
-          </span>{" "}
-          Strike
-        </span>
-        <span className="xoptions-strategy-legend__item">
-          <span className="xoptions-strategy-legend__dot" aria-hidden>
-            ●
-          </span>{" "}
-          Breakeven
-        </span>
-        <span className="xoptions-strategy-legend__item xoptions-strategy-legend__item--muted">x: stock price</span>
-        <span className="xoptions-strategy-legend__item xoptions-strategy-legend__item--muted">y: P/L</span>
-      </div>
     </div>
   );
 }

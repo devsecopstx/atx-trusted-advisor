@@ -24,8 +24,12 @@ function bffTemplatePathToRouteFileAbs(templatePath: string): string {
   return resolve(REPO_ROOT, "src", "app", "api", ...appSegments, "route.ts");
 }
 
-const PROXY_CALL_RE =
-  /await (proxyRequestToBackend|proxyPortfolioRequestToBackend|proxyAdminUsersRequestToBackend|proxyAdminScheduledTasksRequestToBackend|proxyAdminDeliveryChannelsRequestToBackend|proxyPersonasRequestToBackend)\(/g;
+/** Keep in sync with `proxy*RequestToBackend` exports in `src/lib/backend-bff.ts`. */
+const BFF_PROXY_FN_PATTERN =
+  "proxyRequestToBackend|proxyPortfolioRequestToBackend|proxyAdminUsersRequestToBackend|proxyAdminScheduledTasksRequestToBackend|proxyStrategyOptionsRequestToBackend|proxyAdminAccessRequestsRequestToBackend|proxyAdminDeliveryChannelsRequestToBackend|proxyPersonasRequestToBackend";
+
+const PROXY_IMPORT_OR_REF_RE = new RegExp(BFF_PROXY_FN_PATTERN);
+const PROXY_CALL_RE = new RegExp(`await (${BFF_PROXY_FN_PATTERN})\\(`, "g");
 
 describe("BFF_PROXY_ROUTES ↔ Next route handlers", () => {
   it("every registry path maps to a route.ts that proxies to the backend at least once per registered method", () => {
@@ -45,7 +49,7 @@ describe("BFF_PROXY_ROUTES ↔ Next route handlers", () => {
 
       const source = readFileSync(absFile, "utf8");
       expect(
-        /proxyRequestToBackend|proxyPortfolioRequestToBackend|proxyAdminUsersRequestToBackend|proxyAdminScheduledTasksRequestToBackend|proxyAdminDeliveryChannelsRequestToBackend|proxyPersonasRequestToBackend/.test(source),
+        PROXY_IMPORT_OR_REF_RE.test(source),
         `${absFile}: expected a backend-bff proxy import/call`
       ).toBe(true);
       const proxyCalls = (source.match(PROXY_CALL_RE) ?? []).length;

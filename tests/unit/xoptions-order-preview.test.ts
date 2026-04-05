@@ -1,13 +1,50 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    breakevenPerShare,
     buildXoptionsOrderReview,
+    computeAnnualizedPremiumYieldPercent,
+    computeCappedUpsideDisplay,
     estimateOtmProbabilityPercent,
     formatExpirationShortLabel,
     formatXoptionsOrderReviewPlainText,
     normalCdf,
     XOPTIONS_REVIEW_ORDER_FOOTNOTE
 } from "@/lib/xoptions/xoptions-order-preview";
+
+describe("breakevenPerShare", () => {
+  it("matches long-call breakeven strike + premium", () => {
+    expect(breakevenPerShare("call", 24, 1.94)).toBeCloseTo(25.94, 5);
+  });
+});
+
+describe("computeCappedUpsideDisplay", () => {
+  it("returns capped upside for short call (covered-style)", () => {
+    const s = computeCappedUpsideDisplay({
+      openingAction: "sell_to_open",
+      side: "call",
+      strike: 24,
+      spot: 22,
+      premiumPerShare: 1.94,
+      contracts: 1
+    });
+    expect(s).toContain("Capped upside");
+    expect(s).toContain("$");
+  });
+});
+
+describe("computeAnnualizedPremiumYieldPercent", () => {
+  it("annualizes short-premium yield vs secured notional", () => {
+    const y = computeAnnualizedPremiumYieldPercent({
+      openingAction: "sell_to_open",
+      grossPremiumUsd: 450,
+      securedNotionalUsd: 10_000,
+      expirationYyyyMmDd: "2026-04-10"
+    });
+    expect(y).not.toBeNull();
+    expect(y!).toBeGreaterThan(0);
+  });
+});
 
 describe("formatExpirationShortLabel", () => {
   it("formats YYYY-MM-DD", () => {
@@ -87,8 +124,10 @@ describe("buildXoptionsOrderReview", () => {
       strategyLabel: null
     });
     const plain = formatXoptionsOrderReviewPlainText(r);
-    expect(plain).toContain("xOptions — Review order");
-    expect(plain).toContain("Limit (bid):");
+    expect(plain).toContain("xOptions — Position review");
+    expect(plain).toContain("Limit:");
+    expect(plain).toContain("Breakeven:");
+    expect(plain).toContain("POP (est.):");
     expect(plain).toContain(r.narrative.trim());
     expect(plain).toContain(XOPTIONS_REVIEW_ORDER_FOOTNOTE);
   });

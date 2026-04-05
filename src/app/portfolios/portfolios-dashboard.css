@@ -390,7 +390,14 @@
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
-  opacity: 0.9;
+  opacity: 0.95;
+  color: var(--xf-text-200);
+}
+
+.portfolios-workspace-sidebar__glyph svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .portfolios-workspace-sidebar__glyph-img {
@@ -400,6 +407,15 @@
   object-fit: contain;
   display: block;
   flex-shrink: 0;
+}
+
+/* PNG marks (portfolio / xOptions) are authored for light surfaces — invert on deep dark rail */
+html:not([data-xf-ui="soft"]) .portfolios-workspace-sidebar__glyph-img {
+  filter: invert(1) brightness(1.08);
+}
+
+html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph-img {
+  filter: none;
 }
 
 .portfolios-workspace-sidebar__glyph--hero,
@@ -470,8 +486,27 @@
 
 .portfolios-workspace-sidebar__summary-icon {
   display: inline-flex;
-  color: var(--xf-text-300);
+  align-items: center;
+  justify-content: center;
+  color: var(--xf-text-200);
   flex-shrink: 0;
+  max-width: 1.5rem;
+  max-height: 1.5rem;
+}
+
+.portfolios-workspace-sidebar__accordion-summary:hover .portfolios-workspace-sidebar__summary-icon,
+.portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__summary-icon {
+  color: var(--xf-text-100);
+}
+
+.portfolios-workspace-sidebar__accordion-summary:hover .portfolios-workspace-sidebar__glyph:not(.portfolios-workspace-sidebar__glyph--zap),
+.portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__glyph:not(.portfolios-workspace-sidebar__glyph--zap) {
+  color: var(--xf-text-100);
+}
+
+.portfolios-workspace-sidebar__summary-icon img {
+  max-width: 1.35rem;
+  max-height: 1.35rem;
 }
 
 .portfolios-workspace-sidebar__summary-avatar {

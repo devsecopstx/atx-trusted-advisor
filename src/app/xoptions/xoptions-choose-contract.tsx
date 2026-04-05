@@ -1,11 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-payoff-chart";
-import { XoptionsReviewOrderSummaryBar } from "@/app/xoptions/xoptions-review-order-summary-bar";
-import type { StrategyChoiceId } from "@/app/xoptions/xoptions-strategy-choice-panels";
+import { XoptionsGreekCalcExplainer } from "@/app/xoptions/xoptions-greek-calc-explainer";
+import { XoptionsPositionReview } from "@/app/xoptions/xoptions-position-review";
+import { type StrategyChoiceId, type StrategyStartBasis } from "@/app/xoptions/xoptions-strategy-choice-panels";
+import { XoptionsTaxLimitHint } from "@/app/xoptions/xoptions-tax-education-panels";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
+import {
+    getCachedOptionChain,
+    makeOptionChainCacheKey,
+    setCachedOptionChain
+} from "@/lib/xoptions/xoptions-chain-cache";
 import {
     chainRowMoneynessClass,
     closestStrikeToSpot,
@@ -15,21 +22,30 @@ import {
     STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
 import {
-    resolveXoptionsExpirationForHorizon,
-    XOPTIONS_DEFAULT_EXPIRATION_HORIZON_DAYS
-} from "@/lib/xoptions/xoptions-expiration-default";
+    isPayoffPreviewEnabled,
+    isShowGreeksCalcLogicEnabled,
+    isTaxEducationEnabled,
+    subscribeXoptionsEducationPrefs
+} from "@/lib/xoptions/xoptions-education-preferences";
+import { resolveXoptionsExpirationForHorizon } from "@/lib/xoptions/xoptions-expiration-default";
 import {
     buildXoptionsOrderReview,
     formatXoptionsOrderReviewPlainText,
-    XOPTIONS_REVIEW_ORDER_FOOTNOTE,
     type XoptionsOpeningAction
 } from "@/lib/xoptions/xoptions-order-preview";
 
 type ChainLeg = {
   last_quote: { bid: number; ask: number };
   open_interest?: number;
+  volume?: number;
   /** Percentage, e.g. 35.5 = 35.5% */
   implied_volatility?: number;
+  greeks?: {
+    delta: number;
+    gamma: number;
+    theta_per_day: number;
+    vega_per_one_percent_iv: number;
+  };
 } | null;
 
 type ChainRow = {
@@ -98,6 +114,12 @@ export type XoptionsChooseContractProps = {
   onYahooOptionSymbolChange?: (symbol: string | null) => void;
   /** Structured selected option metadata for downstream actions (watchlist, filters, etc.). */
   onSelectedOptionMetaChange?: (meta: XoptionsSelectedOptionMeta | null) => void;
+  /** Total portfolio value (holdings + cash) for risk context; optional. */
+  portfolioApproxValue?: number | null;
+  /** Underlying shares held in workspace account, if any. */
+  holdingSharesForSymbol?: number | null;
+  /** Step 3 cash or share sizing — stock mode prefills contract quantity when empty. */
+  strategyStartBasis?: StrategyStartBasis | null;
 };
 
 export type XoptionsSelectedOptionMeta = {
@@ -171,6 +193,13 @@ function PayoffSkeleton() {
   );
 }
 
+function formatGreek(n: number | undefined, digits: number): string {
+  if (n == null || !Number.isFinite(n)) {
+    return "—";
+  }
+  return n.toFixed(digits);
+}
+
 export function XoptionsChooseContract({
   symbol,
   weeks,
@@ -180,7 +209,10 @@ export function XoptionsChooseContract({
   strategyChoiceId = null,
   onReviewOrderPlainTextChange,
   onYahooOptionSymbolChange,
-  onSelectedOptionMetaChange
+  onSelectedOptionMetaChange,
+  portfolioApproxValue = null,
+  holdingSharesForSymbol = null,
+  strategyStartBasis = null
 }: XoptionsChooseContractProps) {
   const u = symbol.trim().toUpperCase();
 
@@ -205,6 +237,22 @@ export function XoptionsChooseContract({
   const sideRef = useRef(side);
   sideRef.current = side;
 
+  const showGreeksCalcLogic = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    isShowGreeksCalcLogicEnabled,
+    () => false
+  );
+  const taxEducationEnabled = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    isTaxEducationEnabled,
+    () => false
+  );
+  const payoffPreviewEnabled = useSyncExternalStore(
+    subscribeXoptionsEducationPrefs,
+    isPayoffPreviewEnabled,
+    () => false
+  );
+
   useEffect(() => {
     setExpiration("");
     setSelectedStrike(null);
@@ -214,6 +262,18 @@ export function XoptionsChooseContract({
     setShowAllStrikes(false);
     setError(null);
   }, [u]);
+
+  useEffect(() => {
+    if (!strategyStartBasis || strategyStartBasis.mode !== "stock") {
+      return;
+    }
+    const sh = strategyStartBasis.shares;
+    if (!Number.isFinite(sh) || sh < 1) {
+      return;
+    }
+    const contracts = Math.max(1, Math.floor(sh / 100));
+    setQuantity((q) => (q.trim() === "" ? String(contracts) : q));
+  }, [strategyStartBasis, u]);
 
   useEffect(() => {
     if (!strategyDefaultsResolved) {
@@ -243,15 +303,7 @@ export function XoptionsChooseContract({
         const dates = json.expirationDates ?? [];
         if (cancelled) return;
         setExpirations(dates);
-        setExpiration((prev) => {
-          if (prev && dates.includes(prev)) {
-            return prev;
-          }
-          return resolveXoptionsExpirationForHorizon(
-            dates,
-            XOPTIONS_DEFAULT_EXPIRATION_HORIZON_DAYS
-          );
-        });
+        setExpiration((prev) => (prev && dates.includes(prev) ? prev : ""));
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Expirations failed.");
@@ -272,7 +324,39 @@ export function XoptionsChooseContract({
       return;
     }
     let cancelled = false;
+
+    const applyPayload = (payload: ChainPayload) => {
+      setChain(payload);
+      const rows = filterChainRows(payload.optionChain);
+      const spot = payload.stockPrice;
+      const s = sideRef.current;
+      const strikeList = rows
+        .filter((r) => {
+          const leg = s === "call" ? r.call : r.put;
+          return leg != null;
+        })
+        .map((r) => r.strike);
+      const atm = closestStrikeToSpot(strikeList, spot);
+      if (atm != null) {
+        setSelectedStrike(atm);
+        setQuantity("1");
+      } else {
+        setSelectedStrike(null);
+        setLimitPrice("");
+        setQuantity("");
+      }
+    };
+
     void (async () => {
+      const cacheKey = makeOptionChainCacheKey(u, expiration);
+      const cached = getCachedOptionChain(cacheKey);
+      if (cached && !cancelled) {
+        applyPayload(cached as ChainPayload);
+        setLoadingChain(false);
+        setError(null);
+        return;
+      }
+
       setChain(null);
       setLoadingChain(true);
       setError(null);
@@ -294,25 +378,8 @@ export function XoptionsChooseContract({
           throw new Error(payload.error ?? "Could not load option chain.");
         }
         if (!cancelled) {
-          setChain(payload);
-          const rows = filterChainRows(payload.optionChain);
-          const spot = payload.stockPrice;
-          const s = sideRef.current;
-          const strikeList = rows
-            .filter((r) => {
-              const leg = s === "call" ? r.call : r.put;
-              return leg != null;
-            })
-            .map((r) => r.strike);
-          const atm = closestStrikeToSpot(strikeList, spot);
-          if (atm != null) {
-            setSelectedStrike(atm);
-            setQuantity("1");
-          } else {
-            setSelectedStrike(null);
-            setLimitPrice("");
-            setQuantity("");
-          }
+          setCachedOptionChain(cacheKey, payload);
+          applyPayload(payload);
         }
       } catch (e) {
         if (!cancelled) {
@@ -331,11 +398,23 @@ export function XoptionsChooseContract({
   const applyWeekHorizon = useCallback(
     (days: number) => {
       onWeeksChange(days);
-      if (expirations.length === 0) return;
+      if (expirations.length === 0) {
+        return;
+      }
       const next = resolveXoptionsExpirationForHorizon(expirations, days);
-      if (next) setExpiration(next);
+      if (next) {
+        setExpiration(next);
+      }
     },
     [expirations, onWeeksChange]
+  );
+
+  const onExpirationSelectChange = useCallback(
+    (value: string) => {
+      setExpiration(value);
+      onWeeksChange(null);
+    },
+    [onWeeksChange]
   );
 
   const baseRows = useMemo(
@@ -426,7 +505,8 @@ export function XoptionsChooseContract({
       quantity: quantity.trim(),
       spot: chain.stockPrice,
       impliedVolatilityPercent: leg?.implied_volatility,
-      strategyLabel
+      strategyLabel,
+      legDelta: leg?.greeks?.delta ?? null
     });
   }, [
     dataReady,
@@ -440,6 +520,14 @@ export function XoptionsChooseContract({
     u,
     strategyLabel
   ]);
+
+  const riskScorePercent = useMemo(() => {
+    const cap = orderReview?.maxLossUsd;
+    if (cap == null || portfolioApproxValue == null || portfolioApproxValue <= 0) {
+      return null;
+    }
+    return Math.min(100, (cap / portfolioApproxValue) * 100);
+  }, [orderReview?.maxLossUsd, portfolioApproxValue]);
   const yahooOptionSymbol = useMemo(() => {
     if (!chain || !expiration || selectedStrike == null || !u) {
       return null;
@@ -515,7 +603,7 @@ export function XoptionsChooseContract({
   const overlayChecklist = (
     <ul className="xoptions-contract-overlay__list">
       <li className={expiration ? "xoptions-contract-overlay__li--done" : ""}>
-        Select an expiration date
+        Pick a horizon chip or an expiration date (chain loads after this)
       </li>
       <li className={selectedStrike != null ? "xoptions-contract-overlay__li--done" : ""}>
         Select a strike price
@@ -546,8 +634,8 @@ export function XoptionsChooseContract({
         </div>
         <p className="xoptions-hint mt-1 text-xs">
           {weeks == null
-            ? "Optional: pick a horizon to suggest an expiration in the dropdown."
-            : `~${weeks}d horizon — adjust expiration below.`}
+            ? "Choose a horizon chip or an expiration below — the chain loads only after you pick one."
+            : `~${weeks}d horizon — adjust expiration below if needed.`}
         </p>
       </div>
 
@@ -571,9 +659,9 @@ export function XoptionsChooseContract({
               className="crud-input xoptions-contract__input mt-0.5 w-full font-mono text-sm"
               value={expiration}
               disabled={loadingExp || expirations.length === 0}
-              onChange={(e) => setExpiration(e.target.value)}
+              onChange={(e) => onExpirationSelectChange(e.target.value)}
             >
-              <option value="">{loadingExp ? "Loading…" : "Select"}</option>
+              <option value="">{loadingExp ? "Loading…" : "Choose expiration to load chain"}</option>
               {expirations.map((d) => (
                 <option key={d} value={d}>
                   {formatExpirationLabel(d)}
@@ -634,6 +722,7 @@ export function XoptionsChooseContract({
               onChange={(e) => setLimitPrice(e.target.value)}
               aria-label="Limit price per share"
             />
+            {taxEducationEnabled ? <XoptionsTaxLimitHint /> : null}
             <a className="xoptions-contract__help" href="/xstrategybuilder/strategy-options">
               How to pick a limit price
             </a>
@@ -653,6 +742,17 @@ export function XoptionsChooseContract({
               onChange={(e) => setQuantity(e.target.value.replace(/[^\d]/g, ""))}
               aria-label="Contracts quantity"
             />
+            {strategyStartBasis?.mode === "cash" ? (
+              <p className="xoptions-hint mt-1 text-[0.65rem] text-[var(--xf-text-400)]">
+                Rough budget from step 3:{" "}
+                {new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  maximumFractionDigits: 0
+                }).format(strategyStartBasis.usd)}
+                . Adjust contracts to match risk.
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -693,7 +793,13 @@ export function XoptionsChooseContract({
       ) : null}
 
       {u ? (
-        <div className="xoptions-contract__grid">
+        <div
+          className={`xoptions-contract__split${!payoffPreviewEnabled ? " xoptions-contract__split--no-aside" : ""}`}
+        >
+          <div className="xoptions-contract__split-main">
+            <div
+              className={`xoptions-contract__grid${!payoffPreviewEnabled ? " xoptions-contract__grid--no-payoff" : ""}`}
+            >
           <div className="xoptions-contract__chain-wrap relative min-w-0">
             <div
               className={`xoptions-contract__panel-inner ${chainPanelLocked ? "xoptions-contract__panel-inner--locked" : ""}`}
@@ -704,16 +810,56 @@ export function XoptionsChooseContract({
                     Option chain · {side === "call" ? "Calls" : "Puts"} · spot{" "}
                     <span className="font-mono">{chain.stockPrice.toFixed(2)}</span>
                   </p>
-                  <div ref={chainTableScrollRef} className="xoptions-contract__table-scroll">
-                    <table className="xoptions-chain-table w-full min-w-[22rem] border-collapse text-left text-[0.6875rem]">
+                  <div
+                    className={
+                      showGreeksCalcLogic
+                        ? "xoptions-contract__chain-and-greek-help"
+                        : "xoptions-contract__chain-and-greek-help xoptions-contract__chain-and-greek-help--table-only"
+                    }
+                  >
+                    {showGreeksCalcLogic ? (
+                      <div className="xoptions-contract__greek-help-col min-w-0 max-lg:order-2">
+                        <XoptionsGreekCalcExplainer />
+                      </div>
+                    ) : null}
+                    <div ref={chainTableScrollRef} className="xoptions-contract__table-scroll min-w-0">
+                    <table className="xoptions-chain-table xoptions-chain-table--compact w-full min-w-[48rem] border-collapse text-left text-[0.6rem]">
                       <thead>
                         <tr className="xoptions-chain-table__head">
                           <th className="py-1 pr-1 font-semibold w-8" />
-                          <th className="py-1 pr-2 font-semibold">Strike</th>
-                          <th className="py-1 pr-2 font-semibold">Bid</th>
-                          <th className="py-1 pr-2 font-semibold">BE</th>
-                          <th className="py-1 pr-2 font-semibold">IV%</th>
-                          <th className="py-1 pl-2 font-semibold text-right">OI</th>
+                          <th className="py-1 pr-1 font-semibold" title="Strike price">
+                            Strike
+                          </th>
+                          <th className="py-1 pr-1 font-semibold" title="Best bid per share">
+                            Bid
+                          </th>
+                          <th className="py-1 pr-1 font-semibold" title="Best ask per share">
+                            Ask
+                          </th>
+                          <th className="py-1 pr-1 font-semibold" title="Breakeven at expiration using bid/ask mid">
+                            BE
+                          </th>
+                          <th className="py-1 pr-1 font-semibold" title="Implied volatility (annualized)">
+                            IV%
+                          </th>
+                          <th className="py-1 pr-1 font-semibold text-right" title="Contract volume">
+                            Vol
+                          </th>
+                          <th className="py-1 pr-1 font-semibold text-right" title="Open interest">
+                            OI
+                          </th>
+                          <th className="py-1 pr-1 font-semibold" title="Delta per share">
+                            Δ
+                          </th>
+                          <th className="py-1 pr-1 font-semibold" title="Gamma per share">
+                            Γ
+                          </th>
+                          <th className="py-1 pr-1 font-semibold" title="Theta per day per share (model)">
+                            Θ/day
+                          </th>
+                          <th className="py-1 pr-1 font-semibold" title="Vega per 1 percentage-point IV move">
+                            Vega
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -728,7 +874,7 @@ export function XoptionsChooseContract({
                                 className="xoptions-chain-table__row"
                                 data-xo-strike={row.strike}
                               >
-                                <td colSpan={6} className="py-0.5 xoptions-chain-table__empty">
+                                <td colSpan={12} className="py-0.5 xoptions-chain-table__empty">
                                   {row.strike} — no quote
                                 </td>
                               </tr>
@@ -740,6 +886,11 @@ export function XoptionsChooseContract({
                           const be = breakevenLong(side, row.strike, mid);
                           const selected = selectedStrike === row.strike;
                           const ivDisplay = formatImpliedVolatilityDisplay(leg.implied_volatility);
+                          const vol =
+                            typeof leg.volume === "number" && Number.isFinite(leg.volume)
+                              ? leg.volume
+                              : 0;
+                          const g = leg.greeks;
                           return (
                             <tr
                               key={row.strike}
@@ -756,8 +907,8 @@ export function XoptionsChooseContract({
                                   aria-label={`Strike ${row.strike}`}
                                 />
                               </td>
-                              <td className="py-0.5 pr-2 font-mono xoptions-chain-table__strike">{row.strike}</td>
-                              <td className="py-0.5 pr-2">
+                              <td className="py-0.5 pr-1 font-mono xoptions-chain-table__strike">{row.strike}</td>
+                              <td className="py-0.5 pr-1">
                                 <button
                                   type="button"
                                   className="xoptions-contract__bid font-mono"
@@ -769,16 +920,25 @@ export function XoptionsChooseContract({
                                   ${bid.toFixed(2)}
                                 </button>
                               </td>
-                              <td className="py-0.5 pr-2 font-mono">${be.toFixed(2)}</td>
-                              <td className="py-0.5 pr-2 font-mono">{ivDisplay}</td>
-                              <td className="py-0.5 pl-2 font-mono text-right tabular-nums">
+                              <td className="py-0.5 pr-1 font-mono">${ask.toFixed(2)}</td>
+                              <td className="py-0.5 pr-1 font-mono">${be.toFixed(2)}</td>
+                              <td className="py-0.5 pr-1 font-mono">{ivDisplay}</td>
+                              <td className="py-0.5 pr-1 font-mono text-right tabular-nums">
+                                {vol.toLocaleString()}
+                              </td>
+                              <td className="py-0.5 pr-1 font-mono text-right tabular-nums">
                                 {legOi(leg).toLocaleString()}
                               </td>
+                              <td className="py-0.5 pr-1 font-mono tabular-nums">{formatGreek(g?.delta, 3)}</td>
+                              <td className="py-0.5 pr-1 font-mono tabular-nums">{formatGreek(g?.gamma, 4)}</td>
+                              <td className="py-0.5 pr-1 font-mono tabular-nums">{formatGreek(g?.theta_per_day, 3)}</td>
+                              <td className="py-0.5 pr-1 font-mono tabular-nums">{formatGreek(g?.vega_per_one_percent_iv, 3)}</td>
                             </tr>
                           );
                         })}
                       </tbody>
                     </table>
+                  </div>
                   </div>
                   {truncated ? (
                     <p className="xoptions-chain-scanner__warn mt-1 text-xs">
@@ -822,91 +982,111 @@ export function XoptionsChooseContract({
             ) : null}
           </div>
 
-          <div className="xoptions-contract__payoff relative min-w-0">
-            <div
-              className={`xoptions-contract__panel-inner ${payoffPanelLocked ? "xoptions-contract__panel-inner--locked" : ""}`}
-            >
-              {chain && selectedRow && dataReady ? (
-                <>
-                  <p className="xoptions-mid-three__label mb-1">Payoff at expiration</p>
-                  <XoptionsContractPayoffChart
-                    side={side}
-                    strike={selectedRow.strike}
-                    premium={premiumNum}
-                    spot={chain.stockPrice}
-                  />
-                </>
-              ) : (
-                <>
-                  <PayoffSkeleton />
-                  <a
-                    className="xoptions-text-link mt-2 inline-block"
-                    href="/xstrategybuilder/strategy-options"
+          {payoffPreviewEnabled ? (
+            <div className="xoptions-contract__payoff relative min-w-0">
+              <details className="xoptions-payoff-card rounded-[var(--xf-radius-sm)] border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_3%,transparent)]">
+                <summary className="xoptions-payoff-card__summary flex w-full cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 font-semibold text-[var(--xf-text-200)] outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-[var(--xf-gain-green)]">
+                  <span>Payoff preview</span>
+                  <span className="xoptions-payoff-card__chev text-[var(--xf-text-400)]" aria-hidden>
+                    ▾
+                  </span>
+                </summary>
+                <div className="xoptions-payoff-card__body relative border-t border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] p-2 pt-3">
+                  <div
+                    className={`xoptions-contract__panel-inner ${payoffPanelLocked ? "xoptions-contract__panel-inner--locked" : ""}`}
                   >
-                    How to read the graph
-                  </a>
-                </>
-              )}
-            </div>
-            {payoffPanelLocked ? (
-              <div
-                className="xoptions-contract-overlay xoptions-contract-overlay--card"
-                role="status"
-                aria-live="polite"
-              >
-                <div className="xoptions-contract-overlay__card">
-                  {loadingChain && expiration ? (
-                    <p className="xoptions-contract-overlay__loading m-0 text-sm text-[var(--xf-text-300)]">
-                      Loading chain…
-                    </p>
-                  ) : (
-                    overlayChecklist
-                  )}
+                    {chain && selectedRow && dataReady ? (
+                      <XoptionsContractPayoffChart
+                        side={side}
+                        strike={selectedRow.strike}
+                        premium={premiumNum}
+                        spot={chain.stockPrice}
+                        ivPercent={
+                          (side === "call"
+                            ? selectedRow.call?.implied_volatility
+                            : selectedRow.put?.implied_volatility) ?? null
+                        }
+                        expirationYyyyMmDd={expiration}
+                        openingAction={strategyDefaultsResolved?.openingAction ?? "buy_to_open"}
+                        cappedUpsideLabel={orderReview?.cappedUpsideDisplay ?? null}
+                      />
+                    ) : (
+                      <>
+                        <PayoffSkeleton />
+                        <a
+                          className="xoptions-text-link mt-2 inline-block"
+                          href="/xstrategybuilder/strategy-options"
+                        >
+                          How to read the graph
+                        </a>
+                      </>
+                    )}
+                  </div>
+                  {payoffPanelLocked ? (
+                    <div
+                      className="xoptions-contract-overlay xoptions-contract-overlay--card"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <div className="xoptions-contract-overlay__card">
+                        {loadingChain && expiration ? (
+                          <p className="xoptions-contract-overlay__loading m-0 text-sm text-[var(--xf-text-300)]">
+                            Loading chain…
+                          </p>
+                        ) : (
+                          overlayChecklist
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
+              </details>
+            </div>
+          ) : null}
+        </div>
+            {orderReview && !payoffPreviewEnabled ? (
+              <div
+                className="xoptions-contract__review-below mt-3 min-w-0"
+                aria-label="Position review"
+              >
+                <XoptionsPositionReview
+                  orderReview={orderReview}
+                  underlying={u}
+                  strategyChoiceId={strategyChoiceId}
+                  strategyLabel={strategyLabel}
+                  openingAction={strategyDefaultsResolved?.openingAction ?? "buy_to_open"}
+                  riskScorePercent={riskScorePercent}
+                  portfolioApproxValue={portfolioApproxValue}
+                  taxEducationEnabled={taxEducationEnabled}
+                  holdingSharesForSymbol={holdingSharesForSymbol}
+                  yahooOptionSymbol={yahooOptionSymbol}
+                />
               </div>
             ) : null}
-          </div>
+            </div>
+          {orderReview && payoffPreviewEnabled ? (
+            <aside className="xoptions-contract__split-aside" aria-label="Position review">
+              <XoptionsPositionReview
+                orderReview={orderReview}
+                underlying={u}
+                strategyChoiceId={strategyChoiceId}
+                strategyLabel={strategyLabel}
+                openingAction={strategyDefaultsResolved?.openingAction ?? "buy_to_open"}
+                riskScorePercent={riskScorePercent}
+                portfolioApproxValue={portfolioApproxValue}
+                taxEducationEnabled={taxEducationEnabled}
+                holdingSharesForSymbol={holdingSharesForSymbol}
+                yahooOptionSymbol={yahooOptionSymbol}
+              />
+            </aside>
+          ) : null}
         </div>
       ) : (
         <p className="xoptions-hint text-sm">Enter a symbol in step 1.</p>
       )}
 
-      {u && orderReview ? (
-        <div
-          className="xoptions-review-order mt-4 rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_3%,transparent)] p-3"
-          aria-labelledby="xo-review-order-title"
-          data-order-text-preview
-        >
-          <h3 id="xo-review-order-title" className="xoptions-mid-three__label mb-3">
-            Review order
-          </h3>
-          <div className="mb-3">
-            <XoptionsReviewOrderSummaryBar
-              bidDisplay={orderReview.bidPerShareDisplay}
-              beDisplay={orderReview.breakevenDisplay}
-              probDisplay={orderReview.probabilityOtmDisplay}
-              probPercent={orderReview.probabilityOtmPercent}
-            />
-          </div>
-          <div className="xoptions-review-order__info">
-            <p className="xoptions-review-order__narrative m-0 text-[0.75rem] leading-relaxed text-[var(--xf-text-200)]">
-              {orderReview.narrative}
-            </p>
-            {yahooOptionSymbol ? (
-              <p className="xoptions-review-order__footnote mt-2 mb-0 text-[0.65rem] text-[var(--xf-text-300)]">
-                Yahoo option chain id: <span className="font-mono">{yahooOptionSymbol}</span>
-              </p>
-            ) : null}
-            <p className="xoptions-review-order__footnote mt-2 mb-0 text-[0.625rem] text-[var(--xf-text-500)]">
-              {XOPTIONS_REVIEW_ORDER_FOOTNOTE}
-            </p>
-          </div>
-        </div>
-      ) : null}
-
-      <p className="xoptions-contract__disclaimer mt-3 text-xs text-[var(--xf-text-400)]">
-        * Payoff chart BE uses bid/ask mid; Review order BE and debit use your limit price. Not
-        financial advice. {EDUCATIONAL_ONLY_SHORT}
+      <p className="xoptions-contract__disclaimer mt-3 text-[0.65rem] leading-snug text-[var(--xf-text-500)]">
+        Payoff BE uses model mid; review uses your limit. {EDUCATIONAL_ONLY_SHORT}
       </p>
     </section>
   );

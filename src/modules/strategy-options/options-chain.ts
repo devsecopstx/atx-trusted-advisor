@@ -5,6 +5,7 @@
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 import { NextResponse } from "next/server";
 
+import { europeanOptionGreeks } from "@/lib/xoptions/xoptions-bs-greeks";
 import {
     parseStrike,
     parseUnderlying,
@@ -30,6 +31,13 @@ export type OptionContractData = {
   open_interest: number;
   implied_volatility: number;
   rationale: string;
+  /** Black–Scholes greeks per share; multiplier ×100 per contract. */
+  greeks?: {
+    delta: number;
+    gamma: number;
+    theta_per_day: number;
+    vega_per_one_percent_iv: number;
+  };
   /** Risk-neutral P(stock > strike at expiration); calls only. 0–1. */
   probability_called_away?: number;
   /** Risk-neutral P(stock > strike at expiration) = expire OTM; puts only. 0–1. */
@@ -301,6 +309,7 @@ function generateSyntheticOptions(
       open_interest: openInterest,
       implied_volatility: Math.round(iv * 1000) / 10, // As percentage (e.g., 35.5%)
       rationale,
+      greeks: optionGreeksPayload(stockPrice, strikePrice, daysToExp, iv, contractType),
       probability_called_away: probCalledAway,
       probability_expire_otm: probExpireOtm,
       dataSource: "synthetic",
@@ -405,6 +414,33 @@ function findExpirationGroup(options: YahooOptionGroup[], expTarget: string): Ya
   return closest;
 }
 
+function optionGreeksPayload(
+  stockPrice: number,
+  strikePrice: number,
+  daysToExp: number,
+  ivDecimal: number,
+  contractType: "call" | "put"
+): OptionContractData["greeks"] | undefined {
+  const T = Math.max(daysToExp / 365, 1e-9);
+  const g = europeanOptionGreeks({
+    spot: stockPrice,
+    strike: strikePrice,
+    T,
+    sigma: ivDecimal,
+    riskFreeRate: 0.05,
+    side: contractType === "call" ? "call" : "put"
+  });
+  if (!g) {
+    return undefined;
+  }
+  return {
+    delta: g.delta,
+    gamma: g.gamma,
+    theta_per_day: g.thetaPerDay,
+    vega_per_one_percent_iv: g.vegaPerOnePercentIv
+  };
+}
+
 // Try to fetch live options from Yahoo Finance; returns null on failure or empty data
 // Always fetches full chain first so we pick from Yahoo's actual expiration dates (avoids
 // Yahoo's "date" param returning "nearest" which can be wrong, e.g. Jan 30 when user asked Feb 6).
@@ -492,6 +528,7 @@ async function fetchFromYahooOptions(
         open_interest: c.openInterest ?? 0,
         implied_volatility: Math.round((iv <= 2 ? iv * 100 : iv) * 10) / 10,
         rationale,
+        greeks: optionGreeksPayload(stockPrice, strikePrice, daysToExp, iv, contractType),
         probability_called_away: probCalledAway,
         probability_expire_otm: probExpireOtm,
         dataSource: "yahoo",

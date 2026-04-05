@@ -347,6 +347,15 @@ export async function proxyRequestToBackend(request: Request): Promise<Response 
   return defaultBff.proxyRequest(request);
 }
 
+/** Cancel body of a proxied response when falling back to Next-local handling (avoid connection leaks). */
+export function releaseUnusedProxyResponse(res: Response): void {
+  try {
+    void res.body?.cancel?.();
+  } catch {
+    /* ignore */
+  }
+}
+
 function isLoopbackBackendOrigin(origin: string): boolean {
   try {
     const host = new URL(origin).hostname.toLowerCase();

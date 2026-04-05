@@ -7,6 +7,11 @@ const sessionMocks = vi.hoisted(() => ({
 
 const mockOptions = vi.hoisted(() => vi.fn());
 
+/** Mock the strategy-options entrypoint (spreading `actual` keeps internal `proxyRequestToBackend` closures otherwise). */
+const proxyStrategyOptionsRequestToBackendMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(null as Response | null)
+);
+
 vi.mock("@/lib/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth")>();
   return {
@@ -19,8 +24,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
   return {
     ...actual,
-    // Keep expirations tests hermetic regardless of ATXFINANCE_BACKEND_ORIGIN in shell env.
-    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+    proxyStrategyOptionsRequestToBackend: proxyStrategyOptionsRequestToBackendMock
   };
 });
 
@@ -35,6 +39,9 @@ import { GET as getExpirations } from "@/app/api/strategy-options/expirations/ro
 describe("GET /api/strategy-options/expirations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    proxyStrategyOptionsRequestToBackendMock.mockReset();
+    proxyStrategyOptionsRequestToBackendMock.mockResolvedValue(null);
     sessionMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -97,5 +104,24 @@ describe("GET /api/strategy-options/expirations", () => {
     expect(data.underlying).toBe("RDW");
     expect(data.expirationDates.length).toBeGreaterThan(0);
     expect(data.expirationDates.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))).toBe(true);
+  });
+
+  it("falls back to Yahoo when BFF proxy to Spring returns a non-OK status", async () => {
+    proxyStrategyOptionsRequestToBackendMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "Not Found" }), { status: 404 })
+    );
+    mockOptions.mockResolvedValueOnce({
+      expirationDates: [new Date("2026-04-17T00:00:00.000Z")]
+    });
+
+    const res = await getExpirations(
+      new Request("http://test/api/strategy-options/expirations?underlying=TSLA")
+    );
+    const data = (await res.json()) as { underlying: string; expirationDates: string[] };
+
+    expect(res.status).toBe(200);
+    expect(data.underlying).toBe("TSLA");
+    expect(data.expirationDates).toContain("2026-04-17");
+    expect(proxyStrategyOptionsRequestToBackendMock).toHaveBeenCalled();
   });
 });

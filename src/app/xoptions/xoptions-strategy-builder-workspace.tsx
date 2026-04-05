@@ -6,15 +6,19 @@ import { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalSto
 
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 
-import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
+import { outlookIconClassForSlug, OutlookIconFor } from "@/app/ui/outlook-icons";
 import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
 import {
     XoptionsChooseContract,
     type XoptionsSelectedOptionMeta
 } from "@/app/xoptions/xoptions-choose-contract";
+import { XoptionsDisclaimerModal } from "@/app/xoptions/xoptions-disclaimer-modal";
+import { XoptionsErrorBoundary } from "@/app/xoptions/xoptions-error-boundary";
 import {
+    parseStrategyStartBasis,
     StrategyChoicePanels,
     strategyShortLabel,
+    type StrategyCapitalMode,
     type StrategyChoiceId
 } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import { XoptionsStrategyJobsSection } from "@/app/xoptions/xoptions-strategy-jobs-section";
@@ -22,6 +26,7 @@ import {
     isXoptionsStrategyBuilderVisible,
     subscribeXoptionsStrategyBuilderVisibility
 } from "@/lib/xoptions-strategy-builder-visibility";
+import { trackXoptionsEvent } from "@/lib/xoptions/xoptions-analytics";
 import {
     DESK_OUTLOOK_LABELS,
     DESK_RISK_DISPLAY_LABELS
@@ -159,7 +164,9 @@ export function XoptionsStrategyBuilderWorkspace() {
   const [symbol, setSymbol] = useState("");
   const [snapshot, setSnapshot] = useState<SnapshotPayload | null>(null);
   const [snapLoading, setSnapLoading] = useState(false);
-  const [weeks, setWeeks] = useState<number | null>(14);
+  const [weeks, setWeeks] = useState<number | null>(null);
+  const [strategyCapitalMode, setStrategyCapitalMode] = useState<StrategyCapitalMode>("cash");
+  const [strategyCapitalInput, setStrategyCapitalInput] = useState("");
   const [activeStep, setActiveStep] = useState<(typeof STEPS)[number]["n"]>(1);
   /** Highest step the user may open (1–4); advances on Next, never ahead of symbol readiness. */
   const [unlockedStep, setUnlockedStep] = useState(1);
@@ -169,6 +176,8 @@ export function XoptionsStrategyBuilderWorkspace() {
   const [selectedOptionMeta, setSelectedOptionMeta] = useState<XoptionsSelectedOptionMeta | null>(null);
   const [watchlistAddBusy, setWatchlistAddBusy] = useState(false);
   const [watchlistAddStatus, setWatchlistAddStatus] = useState<string | null>(null);
+  const [watchlistNotes, setWatchlistNotes] = useState("");
+  const [glanceWide, setGlanceWide] = useState(false);
 
   const [outlookOverride, setOutlookOverride] = useState<"" | AccountOutlook>("");
   const [riskOverride, setRiskOverride] = useState<"" | "conservative" | "balanced" | "growth">("");
@@ -191,6 +200,21 @@ export function XoptionsStrategyBuilderWorkspace() {
     setSelectedOptionMeta(meta);
   }, []);
   const accountIds = useMemo(() => ctx?.accounts.map((row) => row.id) ?? [], [ctx?.accounts]);
+  const strategyStartBasis = useMemo(
+    () => parseStrategyStartBasis(strategyCapitalMode, strategyCapitalInput),
+    [strategyCapitalMode, strategyCapitalInput]
+  );
+  const strategyStepSummarySizing = useMemo(() => {
+    if (!strategyStartBasis) return null;
+    if (strategyStartBasis.mode === "cash") {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0
+      }).format(strategyStartBasis.usd);
+    }
+    return `${strategyStartBasis.shares.toLocaleString()} sh`;
+  }, [strategyStartBasis]);
   const selectedWorkspaceAccountId = useWorkspaceAccountSelection(
     ctx?.portfolio?.id,
     accountIds,
@@ -200,14 +224,18 @@ export function XoptionsStrategyBuilderWorkspace() {
   const handleAskXchat = useCallback(() => {
     const t = reviewOrderPlainText?.trim();
     if (!t) return;
+    const followUp =
+      "\n\nGenerate three alternative scenarios for my risk tolerance and income goals using this structure. Label them conservative, base, and aggressive.";
+    const full = `${t}${followUp}`;
     try {
-      sessionStorage.setItem(XCHAT_PENDING_PROMPT_STORAGE_KEY, t);
+      sessionStorage.setItem(XCHAT_PENDING_PROMPT_STORAGE_KEY, full);
     } catch {
       // ignore quota / private mode
     }
-    void navigator.clipboard.writeText(t).catch(() => {});
+    void navigator.clipboard.writeText(full).catch(() => {});
+    trackXoptionsEvent("xoptions_xchat_open", { symbol: symbol.trim().toUpperCase() || null });
     router.push("/xchat");
-  }, [reviewOrderPlainText, router]);
+  }, [reviewOrderPlainText, router, symbol]);
 
   const handleAddOptionToWatchlist = useCallback(async () => {
     const portfolioId = ctx?.portfolio?.id;
@@ -220,9 +248,14 @@ export function XoptionsStrategyBuilderWorkspace() {
     try {
       const strategyLabelPart = strategyChoiceId ? strategyShortLabel(strategyChoiceId) : "Options";
       const lineType = selectedOptionMeta?.side === "put" ? "put_contract" : "call_contract";
+      const notes = watchlistNotes.trim();
+      const limitEl = document.getElementById("xo-contract-limit") as HTMLInputElement | null;
+      const limitNum = parseFloat(limitEl?.value?.trim() ?? "");
+      const entryPrice =
+        Number.isFinite(limitNum) && limitNum >= 0 ? Number(limitNum.toFixed(4)) : null;
       const strategyMeta = selectedOptionMeta
-        ? `${strategyLabelPart} · ${selectedOptionMeta.underlying} ${selectedOptionMeta.expiration} ${selectedOptionMeta.side.toUpperCase()} ${selectedOptionMeta.strike.toFixed(2)} · ${selectedOptionMeta.yahooSymbol}`
-        : `${strategyLabelPart} · ${symbol.trim().toUpperCase()}`;
+        ? `${strategyLabelPart} · ${selectedOptionMeta.underlying} ${selectedOptionMeta.expiration} ${selectedOptionMeta.side.toUpperCase()} ${selectedOptionMeta.strike.toFixed(2)} · ${selectedOptionMeta.yahooSymbol}${notes ? ` · Notes: ${notes}` : ""}`
+        : `${strategyLabelPart} · ${symbol.trim().toUpperCase()}${notes ? ` · Notes: ${notes}` : ""}`;
       const response = await fetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/watchlist`, {
         method: "PATCH",
         credentials: "include",
@@ -232,7 +265,8 @@ export function XoptionsStrategyBuilderWorkspace() {
             {
               symbol: optionSymbol,
               lineType,
-              strategy: strategyMeta
+              strategy: strategyMeta,
+              ...(entryPrice != null ? { entryPrice } : {})
             }
           ],
           dedupe: true
@@ -243,12 +277,16 @@ export function XoptionsStrategyBuilderWorkspace() {
         throw new Error(payload.error ?? "Could not add to watchlist");
       }
       setWatchlistAddStatus("Added to watchlist");
+      trackXoptionsEvent("xoptions_watchlist_add", {
+        symbol: optionSymbol,
+        hasNotes: notes.length > 0
+      });
     } catch (error) {
       setWatchlistAddStatus(error instanceof Error ? error.message : "Could not add to watchlist");
     } finally {
       setWatchlistAddBusy(false);
     }
-  }, [ctx?.portfolio?.id, yahooOptionSymbol, strategyChoiceId, selectedOptionMeta, symbol]);
+  }, [ctx?.portfolio?.id, yahooOptionSymbol, strategyChoiceId, selectedOptionMeta, symbol, watchlistNotes]);
 
   const loadWorkspace = useCallback(async (accountId?: string | null) => {
     setCtxErr(null);
@@ -312,6 +350,14 @@ export function XoptionsStrategyBuilderWorkspace() {
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const fn = () => setGlanceWide(mq.matches);
+    fn();
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
 
   useEffect(() => {
     if (!ctx?.portfolio?.id) {
@@ -447,6 +493,49 @@ export function XoptionsStrategyBuilderWorkspace() {
   const weightOk = Math.abs(weightSum - 1) < 0.02;
 
   const symbolUpper = symbol.trim().toUpperCase();
+
+  const portfolioApproxValue = useMemo(
+    () => atGlanceHoldings.reduce((s, h) => s + (Number.isFinite(h.marketValue) ? h.marketValue : 0), 0),
+    [atGlanceHoldings]
+  );
+
+  const holdingSharesForSymbol = useMemo(() => {
+    const row = holdings.find((h) => h.symbol === symbolUpper);
+    return row != null && Number.isFinite(row.shares) ? row.shares : null;
+  }, [holdings, symbolUpper]);
+
+  const handleSaveScenario = useCallback(() => {
+    const t = reviewOrderPlainText?.trim();
+    if (!t) {
+      return;
+    }
+    const name = window.prompt("Scenario name");
+    if (!name?.trim()) {
+      return;
+    }
+    try {
+      const key = "xf_xoptions_scenarios_v1";
+      const raw = localStorage.getItem(key);
+      const prev = raw ? (JSON.parse(raw) as unknown) : [];
+      const arr = Array.isArray(prev) ? prev : [];
+      arr.push({
+        name: name.trim(),
+        text: t,
+        savedAt: new Date().toISOString(),
+        symbol: symbolUpper
+      });
+      localStorage.setItem(key, JSON.stringify(arr.slice(-20)));
+      trackXoptionsEvent("xoptions_scenario_save", { symbol: symbolUpper });
+    } catch {
+      /* ignore */
+    }
+  }, [reviewOrderPlainText, symbolUpper]);
+
+  const handlePrintSummary = useCallback(() => {
+    trackXoptionsEvent("xoptions_export_print", { symbol: symbolUpper });
+    window.print();
+  }, [symbolUpper]);
+
   const quoteLastPrice = useMemo((): number | null => {
     if (snapshot?.symbol !== symbolUpper || snapshot.lastPrice == null) {
       return null;
@@ -518,7 +607,9 @@ export function XoptionsStrategyBuilderWorkspace() {
   }
 
   return (
-    <div className="xoptions-workspace space-y-4 max-w-6xl">
+    <>
+      <XoptionsDisclaimerModal />
+      <div className="xoptions-workspace xoptions-print-root space-y-4 max-w-[min(100%,88rem)] px-0" id="xoptions-print-root">
       <div>
         <p className="xoptions-page-kicker">Options analysis &amp; research</p>
         <h1 className="xoptions-workspace__h1 mt-1 text-xl font-semibold tracking-tight md:text-2xl">
@@ -663,8 +754,10 @@ export function XoptionsStrategyBuilderWorkspace() {
         </div>
 
         <aside className="xoptions-symbol-glance-row__glance min-w-0" aria-label="At a glance">
-          <div className="xoptions-at-a-glance xoptions-at-a-glance--symbol-column">
-            <p className="xoptions-at-a-glance__head">At a glance</p>
+          <details className="xoptions-glance-disclosure" open={glanceWide}>
+            <summary className="lg:hidden">At a glance · holdings &amp; hot list</summary>
+            <div className="xoptions-at-a-glance xoptions-at-a-glance--symbol-column pt-2 lg:pt-0">
+            <p className="xoptions-at-a-glance__head hidden lg:block">At a glance</p>
             <div className="xoptions-at-a-glance__grid">
               <div className="min-w-0">
                 <p className="xoptions-at-a-glance__title">Holdings</p>
@@ -739,6 +832,7 @@ export function XoptionsStrategyBuilderWorkspace() {
               </div>
             </div>
           </div>
+          </details>
         </aside>
       </section>
 
@@ -799,22 +893,56 @@ export function XoptionsStrategyBuilderWorkspace() {
                     {workspaceDeskAccount?.name ?? ctx?.account?.name ?? "—"}
                   </span>
                 </p>
-                <details className="xoptions-scoring-drop mt-2" aria-label="Scoring factors">
-                  <summary className="xoptions-scoring-drop__summary">
-                    <span className="xoptions-scoring-drop__summary-text">
-                      <span className="xoptions-workspace-preferences__title">Scoring factors</span>
-                      <span className="xoptions-workspace-preferences__sub">
-                        Optional weighting overrides for this workspace
+                <p className="xoptions-step-context-card__line mt-2 text-xs">
+                  <span className="text-[var(--xf-text-400)]">Desk</span>{" "}
+                  <span className="inline-flex flex-wrap items-center gap-1.5 font-semibold text-[var(--xf-text-200)]">
+                    {outlookIconSlug ? (
+                      <span
+                        className={`inline-flex shrink-0 items-center ${outlookIconClassForSlug(outlookIconSlug)}`}
+                        aria-hidden
+                      >
+                        <OutlookIconFor className="h-4 w-4" outlook={outlookIconSlug} />
                       </span>
+                    ) : null}
+                    <span>{effectiveOutlook || "—"}</span>
+                    <span className="text-[var(--xf-text-500)]" aria-hidden>
+                      ·
                     </span>
-                    <span className="xoptions-scoring-drop__chev" aria-hidden>
-                      ▾
+                    <span>{ctx ? effectiveRisk : "—"}</span>
+                  </span>
+                </p>
+                <p className="xoptions-hint mt-2 text-xs text-[var(--xf-text-400)]">
+                  Expand below to adjust scoring weights, outlook override, and risk. You can continue with the
+                  defaults shown here.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="xoptions-next-btn" onClick={() => advanceFrom(2)}>
+                  Next
+                </button>
+              </div>
+
+              <details className="xoptions-scoring-drop" aria-label="Scoring factors and desk overrides">
+                <summary className="xoptions-scoring-drop__summary">
+                  <span className="xoptions-scoring-drop__summary-text">
+                    <span className="xoptions-workspace-preferences__title">
+                      Scoring factors &amp; outlook / risk
                     </span>
-                  </summary>
-                  <div className="xoptions-scoring-drop__body">
+                    <span className="xoptions-workspace-preferences__sub">
+                      Optional — weights, outlook override, and risk profile
+                    </span>
+                  </span>
+                  <span className="xoptions-scoring-drop__chev" aria-hidden>
+                    ▾
+                  </span>
+                </summary>
+                <div className="xoptions-scoring-drop__body space-y-4">
+                  <div>
+                    <p className="xoptions-workspace__label mb-2">Scoring factors</p>
                     <ul className="xoptions-scoring-drop__factors">
                       {effectiveFactors.length === 0 ? (
-                        <li className="xoptions-hint text-xs list-none">No factors — portfolio defaults apply.</li>
+                        <li className="xoptions-hint list-none text-xs">No factors — portfolio defaults apply.</li>
                       ) : (
                         effectiveFactors.map((f) => (
                           <li key={f.id} className="xoptions-scoring-drop__factor-row">
@@ -841,96 +969,96 @@ export function XoptionsStrategyBuilderWorkspace() {
                       Reset weights to portfolio
                     </button>
                   </div>
-                </details>
-              </div>
-              <div className="xoptions-top-option-header__desk xoptions-step__desk-card p-2">
-                <p className="xoptions-top-option-header__desk-line line-clamp-2 inline-flex flex-wrap items-center gap-1.5">
-                  <span className="xoptions-inline-muted shrink-0">Outlook </span>
-                  {outlookIconSlug ? (
-                    <span
-                      className={`inline-flex shrink-0 items-center ${outlookIconClassForSlug(outlookIconSlug)}`}
-                      aria-hidden
-                    >
-                      <OutlookIconFor className="h-4 w-4" outlook={outlookIconSlug} />
-                    </span>
-                  ) : null}
-                  <span>{effectiveOutlook || "—"}</span>
-                </p>
-                <p className="xoptions-top-option-header__desk-line">
-                  <span className="xoptions-inline-muted">Risk </span>
-                  {ctx ? effectiveRisk : "—"}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                <div className="min-w-0">
-                  <label className="xoptions-workspace__label block" htmlFor="xo-outlook">
-                    Outlook override
-                  </label>
-                  <div className="mt-1 flex max-w-full items-center gap-2">
-                    {outlookIconSlug ? (
-                      <span
-                        className={`inline-flex shrink-0 ${outlookIconClassForSlug(outlookIconSlug)}`}
-                        aria-hidden
+
+                  <div className="xoptions-top-option-header__desk xoptions-step__desk-card p-2">
+                    <p className="xoptions-top-option-header__desk-line line-clamp-2 inline-flex flex-wrap items-center gap-1.5">
+                      <span className="xoptions-inline-muted shrink-0">Outlook </span>
+                      {outlookIconSlug ? (
+                        <span
+                          className={`inline-flex shrink-0 items-center ${outlookIconClassForSlug(outlookIconSlug)}`}
+                          aria-hidden
+                        >
+                          <OutlookIconFor className="h-4 w-4" outlook={outlookIconSlug} />
+                        </span>
+                      ) : null}
+                      <span>{effectiveOutlook || "—"}</span>
+                    </p>
+                    <p className="xoptions-top-option-header__desk-line">
+                      <span className="xoptions-inline-muted">Risk </span>
+                      {ctx ? effectiveRisk : "—"}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                    <div className="min-w-0">
+                      <label className="xoptions-workspace__label block" htmlFor="xo-outlook">
+                        Outlook override
+                      </label>
+                      <div className="mt-1 flex max-w-full items-center gap-2">
+                        {outlookIconSlug ? (
+                          <span
+                            className={`inline-flex shrink-0 ${outlookIconClassForSlug(outlookIconSlug)}`}
+                            aria-hidden
+                          >
+                            <OutlookIconFor className="h-5 w-5" outlook={outlookIconSlug} />
+                          </span>
+                        ) : (
+                          <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />
+                        )}
+                        <select
+                          id="xo-outlook"
+                          className="crud-input min-w-0 flex-1"
+                          value={outlookOverride}
+                          onChange={(e) =>
+                            setOutlookOverride(
+                              e.target.value === "" ? "" : (e.target.value as AccountOutlook)
+                            )
+                          }
+                        >
+                          <option value="">
+                            Use account / book (
+                            {mergedOutlookLabels(workspaceDeskAccount?.outlook, ctx?.bookOutlook) || "—"})
+                          </option>
+                          <option value="bullish">{DESK_OUTLOOK_LABELS.bullish}</option>
+                          <option value="neutral">{DESK_OUTLOOK_LABELS.neutral}</option>
+                          <option value="bearish">{DESK_OUTLOOK_LABELS.bearish}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <label className="xoptions-workspace__label block" htmlFor="xo-risk">
+                        Risk
+                      </label>
+                      <select
+                        id="xo-risk"
+                        className="crud-input mt-1 w-full min-w-0"
+                        value={riskOverride}
+                        onChange={(e) =>
+                          setRiskOverride(
+                            e.target.value === ""
+                              ? ""
+                              : (e.target.value as "conservative" | "balanced" | "growth")
+                          )
+                        }
                       >
-                        <OutlookIconFor className="h-5 w-5" outlook={outlookIconSlug} />
-                      </span>
-                    ) : (
-                      <span className="inline-flex h-5 w-5 shrink-0" aria-hidden />
-                    )}
-                    <select
-                      id="xo-outlook"
-                      className="crud-input min-w-0 flex-1"
-                      value={outlookOverride}
-                      onChange={(e) =>
-                        setOutlookOverride(
-                          e.target.value === "" ? "" : (e.target.value as AccountOutlook)
-                        )
-                      }
-                    >
-                      <option value="">
-                        Use account / book (
-                        {mergedOutlookLabels(workspaceDeskAccount?.outlook, ctx?.bookOutlook) || "—"})
-                      </option>
-                      <option value="bullish">{DESK_OUTLOOK_LABELS.bullish}</option>
-                      <option value="neutral">{DESK_OUTLOOK_LABELS.neutral}</option>
-                      <option value="bearish">{DESK_OUTLOOK_LABELS.bearish}</option>
-                    </select>
+                        <option value="">
+                          Use portfolio / account (
+                          {riskLabel(workspaceDeskAccount?.riskProfile ?? ctx?.bookRiskProfile ?? null)})
+                        </option>
+                        <option value="conservative">Conservative</option>
+                        <option value="balanced">Balanced</option>
+                        <option value="growth">{DESK_RISK_DISPLAY_LABELS.growth}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" className="xoptions-text-link text-sm" onClick={resetDeskToPortfolio}>
+                      Reset desk to portfolio
+                    </button>
                   </div>
                 </div>
-                <div className="min-w-0">
-                  <label className="xoptions-workspace__label block" htmlFor="xo-risk">
-                    Risk
-                  </label>
-                  <select
-                    id="xo-risk"
-                    className="crud-input mt-1 w-full min-w-0"
-                    value={riskOverride}
-                    onChange={(e) =>
-                      setRiskOverride(
-                        e.target.value === ""
-                          ? ""
-                          : (e.target.value as "conservative" | "balanced" | "growth")
-                      )
-                    }
-                  >
-                    <option value="">
-                      Use portfolio / account (
-                      {riskLabel(workspaceDeskAccount?.riskProfile ?? ctx?.bookRiskProfile ?? null)})
-                    </option>
-                    <option value="conservative">Conservative</option>
-                    <option value="balanced">Balanced</option>
-                    <option value="growth">{DESK_RISK_DISPLAY_LABELS.growth}</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" className="xoptions-next-btn" onClick={() => advanceFrom(2)}>
-                  Next
-                </button>
-                <button type="button" className="xoptions-text-link text-sm" onClick={resetDeskToPortfolio}>
-                  Reset desk to portfolio
-                </button>
-              </div>
+              </details>
             </div>
           ) : null}
         </section>
@@ -950,6 +1078,7 @@ export function XoptionsStrategyBuilderWorkspace() {
               <span className="xoptions-step__summary">
                 {[
                   weeks != null ? `~${weeks}d` : null,
+                  strategyStepSummarySizing,
                   strategyShortLabel(strategyChoiceId)
                 ]
                   .filter(Boolean)
@@ -960,9 +1089,12 @@ export function XoptionsStrategyBuilderWorkspace() {
           {activeStep === 3 && canGoStep2 ? (
             <div className="xoptions-step__body space-y-4">
               <StrategyChoicePanels
-                symbol={symbol}
                 selectedId={strategyChoiceId}
                 onSelectStrategy={setStrategyChoiceId}
+                capitalMode={strategyCapitalMode}
+                capitalInput={strategyCapitalInput}
+                onCapitalModeChange={setStrategyCapitalMode}
+                onCapitalInputChange={setStrategyCapitalInput}
               />
               <p className="xoptions-hint text-xs text-[var(--xf-text-400)]">
                 Set target horizon and contract details in the next step.
@@ -988,6 +1120,7 @@ export function XoptionsStrategyBuilderWorkspace() {
           </button>
           {activeStep === 4 && canGoStep2 ? (
             <div className="xoptions-step__body space-y-4">
+              <XoptionsErrorBoundary>
               <XoptionsChooseContract
                 symbol={symbol}
                 weeks={weeks}
@@ -998,7 +1131,24 @@ export function XoptionsStrategyBuilderWorkspace() {
                 strategyChoiceId={strategyChoiceId}
                 strategyLabel={strategyChoiceId ? strategyShortLabel(strategyChoiceId) : null}
                 onReviewOrderPlainTextChange={onReviewOrderPlainTextChange}
+                portfolioApproxValue={portfolioApproxValue}
+                holdingSharesForSymbol={holdingSharesForSymbol}
+                strategyStartBasis={strategyStartBasis}
               />
+              </XoptionsErrorBoundary>
+              <div className="max-w-xl">
+                <label className="mb-1 block text-[0.65rem] font-bold uppercase tracking-[0.08em] text-[var(--xf-text-400)]" htmlFor="xo-watchlist-notes">
+                  Watchlist notes (optional)
+                </label>
+                <textarea
+                  id="xo-watchlist-notes"
+                  className="crud-input min-h-[4rem] w-full font-mono text-sm"
+                  placeholder="Limit context, catalyst, roll plan"
+                  value={watchlistNotes}
+                  onChange={(e) => setWatchlistNotes(e.target.value)}
+                  aria-label="Notes appended when adding contract to watchlist"
+                />
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -1029,6 +1179,17 @@ export function XoptionsStrategyBuilderWorkspace() {
                 >
                   Ask xChat
                 </button>
+                <button
+                  type="button"
+                  className="cta cta-secondary xoptions-chain-cta"
+                  disabled={!reviewOrderPlainText?.trim()}
+                  onClick={handleSaveScenario}
+                >
+                  Save scenario
+                </button>
+                <button type="button" className="cta cta-secondary xoptions-chain-cta" onClick={handlePrintSummary}>
+                  Print / PDF
+                </button>
               </div>
               {yahooOptionSymbol ? (
                 <p className="xoptions-hint text-xs text-[var(--xf-text-400)]">
@@ -1048,6 +1209,11 @@ export function XoptionsStrategyBuilderWorkspace() {
           ) : null}
         </section>
       </div>
+      <footer className="xoptions-legal-footer mt-6 border-t border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] pt-4 text-[0.7rem] leading-relaxed text-[var(--xf-text-400)]">
+        Not financial, tax, or legal advice. Options involve substantial risk of loss. Past performance is not
+        indicative of future results. Consult your advisor. Data may be delayed.
+      </footer>
     </div>
+    </>
   );
 }
