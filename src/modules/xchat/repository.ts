@@ -623,6 +623,17 @@ export async function listXChatHistoryByUser(input: {
   }));
 }
 
+export async function deleteXChatHistoryByUser(input: {
+  userId: ObjectId;
+  tenantId?: ObjectId | null;
+}): Promise<number> {
+  await ensureXchatLogIndexes();
+  const db = await getDb();
+  const scopedQuery = withTenantScopeForLogs({ userId: input.userId }, input.tenantId);
+  const result = await db.collection<XChatSessionLog>(collections.chatLogs).deleteMany(scopedQuery);
+  return result.deletedCount ?? 0;
+}
+
 export async function getXChatHistoryStatsByUser(input: {
   userId: ObjectId;
   tenantId?: ObjectId | null;

@@ -9,13 +9,29 @@ import {
     getBffRouteRateLimitPolicy
 } from "@/lib/distributed-rate-limit";
 import { canCreateStrategyJobFromApp } from "@/modules/identity/authorization";
+import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 const STRATEGY_JOBS_LIST_POLICY = getBffRouteRateLimitPolicy("strategy_jobs_list");
 const STRATEGY_JOB_CREATE_POLICY = getBffRouteRateLimitPolicy("strategy_jobs_create");
 
 export async function GET(request: Request) {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+  const entitlements = await resolveXoptionsEntitlements(session);
+  if (!entitlements.hardcoreStrategyJobs) {
+    return NextResponse.json(
+      {
+        error: "plan_upgrade_required",
+        message: "Hardcore strategy jobs are available on Premium+."
+      },
+      { status: 403 }
+    );
+  }
+
   const limit = await checkDistributedRateLimit({
-    key: `strategy-jobs:list:${extractClientRateLimitKey(request)}`,
+    key: `strategy-jobs:list:${session.tenantId}:${session.userId}:${extractClientRateLimitKey(request)}`,
     windowMs: STRATEGY_JOBS_LIST_POLICY.windowMs,
     max: STRATEGY_JOBS_LIST_POLICY.max
   });
@@ -46,6 +62,16 @@ export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
+  }
+  const entitlements = await resolveXoptionsEntitlements(session);
+  if (!entitlements.hardcoreStrategyJobs) {
+    return NextResponse.json(
+      {
+        error: "plan_upgrade_required",
+        message: "Hardcore strategy jobs are available on Premium+."
+      },
+      { status: 403 }
+    );
   }
   if (!canCreateStrategyJobFromApp(session.roles)) {
     return NextResponse.json(

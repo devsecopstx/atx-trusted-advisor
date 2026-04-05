@@ -29,6 +29,28 @@
   color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
 }
 
+.xoptions-workspace-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.85rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+}
+
+.xoptions-workspace-topbar__line,
+.xoptions-workspace-topbar__glance {
+  margin: 0;
+}
+
+html[data-xf-ui="soft"] .xoptions-workspace-topbar {
+  border-color: color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
 /* Landing: single symbol field (workspace account drives at-a-glance via API) */
 .xoptions-symbol-hero {
   padding: 0.75rem 0 0.25rem;
@@ -388,6 +410,18 @@ html[data-xf-ui="soft"] .xoptions-steps {
   border-radius: var(--xf-radius-sm);
   border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
   background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+}
+
+.xoptions-step-context-card {
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, transparent);
+  padding: 0.5rem 0.6rem;
+}
+
+.xoptions-step-context-card__line {
+  margin: 0;
+  line-height: 1.35;
 }
 
 .xoptions-next-btn {
@@ -872,6 +906,61 @@ html[data-xf-ui="soft"] .xoptions-at-a-glance--header {
 html[data-xf-ui="soft"] .xoptions-panel {
   border-color: color-mix(in srgb, var(--xf-text-100) 20%, transparent);
   background: color-mix(in srgb, var(--xf-text-100) 7%, transparent);
+}
+
+/* Strategy jobs collapse toggle */
+.xoptions-strategy-jobs-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2rem;
+  padding: 0.28rem 0.5rem;
+  border-radius: var(--xf-radius-sm);
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  color: var(--xf-text-100);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.xoptions-strategy-jobs-toggle:hover {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 42%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+  color: var(--xf-gain-green);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--xf-gain-green) 16%, transparent);
+}
+
+.xoptions-strategy-jobs-toggle:focus-visible {
+  outline: 1px solid var(--xf-gain-green);
+  outline-offset: 2px;
+}
+
+.xoptions-strategy-jobs-toggle__chev {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: var(--xf-text-400);
+  transition: transform 120ms ease;
+}
+
+.xoptions-strategy-jobs-toggle__chev--open {
+  transform: rotate(90deg);
+}
+
+.xoptions-strategy-jobs-toggle__title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--xf-gain-green) 88%, var(--xf-text-100));
+}
+
+html[data-xf-ui="soft"] .xoptions-strategy-jobs-toggle {
+  border-color: color-mix(in srgb, var(--xf-text-100) 20%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
 }
 
 /* Week horizon + symbol pickers — must stay visible in deep + soft */

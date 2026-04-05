@@ -1135,7 +1135,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
           referencedFileCount: { type: "integer", minimum: 0 },
           lastPromptAt: { type: "string", format: "date-time", nullable: true },
           collectionId: { type: "string", nullable: true },
-          historyMode: { type: "string", enum: ["mongo", "xai_remote"] }
+          historyMode: { type: "string", enum: ["mongo", "ephemeral"] }
         }
       }
     }
@@ -1195,7 +1195,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       keepXchatHistory: {
         type: "boolean",
         description:
-          "When false, persona skips xAI remote conversation continuity when XCHAT_USE_REMOTE_HISTORY is enabled."
+          "Reserved legacy flag; remote xAI conversation continuity is disabled in MVP privacy mode."
       },
       xapi: refSchema("PersonaXapiConfig"),
       status: refSchema("PersonaStatus"),

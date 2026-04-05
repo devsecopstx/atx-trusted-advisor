@@ -57,12 +57,17 @@ type HistoryStats = {
   activeDays: number;
   referencedFileCount: number;
   lastPromptAt?: string;
-  historyMode?: "mongo" | "xai_remote";
+  historyMode?: "mongo" | "ephemeral";
 };
 
 type AskToolCallSummary = {
   name: string;
   durationMs: number;
+};
+
+type XchatPrivacyPrefs = {
+  keepLastTenMessages: boolean;
+  consentedAt: string | null;
 };
 
 function formatLastTurnToolSummary(calls: AskToolCallSummary[] | undefined): string {
@@ -229,6 +234,20 @@ function trimTranscriptToRecentResponses(
   return msgs.slice(startIdx);
 }
 
+function buildAskRecentMessages(messages: Message[], maxItems = 10): Array<{
+  role: "user" | "assistant";
+  content: string;
+}> {
+  return messages
+    .filter((m) => m.role === "user" || m.role === "ai" || m.role === "error")
+    .map((m) => ({
+      role: m.role === "user" ? "user" : "assistant",
+      content: m.content.trim()
+    }))
+    .filter((m) => m.content.length > 0)
+    .slice(-maxItems);
+}
+
 function historyItemsToTranscriptMessages(items: HistoryItem[]): Message[] {
   const chronological = [...items].reverse();
   const out: Message[] = [];
@@ -274,6 +293,19 @@ function shouldLaunchStrategyJobFromReply(input: string): boolean {
     return true;
   }
   return false;
+}
+
+function shouldStayInChatFromReply(input: string): boolean {
+  const t = input.trim().toLowerCase();
+  if (!t) {
+    return false;
+  }
+  return (
+    t === "stay in chat" ||
+    t.includes("stay in chat") ||
+    t === "stay here" ||
+    t.includes("continue in chat")
+  );
 }
 
 function hasPendingStrategyJobOffer(messages: Message[]): boolean {
@@ -328,6 +360,7 @@ export function XchatConversation({
   const personaPickerLocked =
     !workspaceChangePersonaEnabled && !isGlobalAdminSession;
   const [messages, setMessages] = useState<Message[]>([]);
+  const [strategyJobOptOut, setStrategyJobOptOut] = useState(false);
   const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
   const [historyStats, setHistoryStats] = useState<HistoryStats | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -355,6 +388,12 @@ export function XchatConversation({
   const [personaListError, setPersonaListError] = useState<string | null>(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
   const [suggestedPersonaId, setSuggestedPersonaId] = useState<string | null>(null);
+  const [privacyPrefs, setPrivacyPrefs] = useState<XchatPrivacyPrefs | null>(null);
+  const [privacyPrefsLoading, setPrivacyPrefsLoading] = useState(true);
+  const [privacyPrefsSaving, setPrivacyPrefsSaving] = useState(false);
+  const [privacyPrefsError, setPrivacyPrefsError] = useState<string | null>(null);
+  const [historyDeleteBusy, setHistoryDeleteBusy] = useState(false);
+  const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
   /** After send, hide the transcript for a minimal view; user expands to read the thread. */
   /** Default collapsed when a thread exists; expanded while `loading` so replies stay visible (branding). */
   const [threadUiCollapsed, setThreadUiCollapsed] = useState(true);
@@ -384,8 +423,8 @@ export function XchatConversation({
     () => trimTranscriptToRecentResponses(messages, XCHAT_UI_RESPONSE_LIMIT),
     [messages]
   );
-  const historyMode = historyStats?.historyMode ?? "mongo";
-  const isRemoteHistoryMode = historyMode === "xai_remote";
+  const historyMode = historyStats?.historyMode ?? (privacyPrefs?.keepLastTenMessages ? "mongo" : "ephemeral");
+  const isEphemeralHistoryMode = historyMode === "ephemeral";
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -423,6 +462,53 @@ export function XchatConversation({
       // ignore quota / private mode
     }
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadPrivacyPrefs() {
+      setPrivacyPrefsLoading(true);
+      setPrivacyPrefsError(null);
+      try {
+        const response = await fetch("/api/xchat/preferences", { credentials: "include" });
+        const payload = (await response.json().catch(() => ({}))) as {
+          data?: XchatPrivacyPrefs;
+          error?: string;
+        };
+        if (!response.ok) {
+          throw new Error(payload.error ?? `Preferences request failed (${response.status})`);
+        }
+        if (!active) {
+          return;
+        }
+        const next: XchatPrivacyPrefs = {
+          keepLastTenMessages: payload.data?.keepLastTenMessages === true,
+          consentedAt: payload.data?.consentedAt ?? null
+        };
+        setPrivacyPrefs(next);
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        setPrivacyPrefs({
+          keepLastTenMessages: false,
+          consentedAt: null
+        });
+        setPrivacyPrefsError(error instanceof Error ? error.message : "Failed to load privacy settings");
+      } finally {
+        if (active) {
+          setPrivacyPrefsLoading(false);
+        }
+      }
+    }
+    void loadPrivacyPrefs();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setHistoryLoaded(false);
+  }, [privacyPrefs?.keepLastTenMessages]);
 
   useEffect(() => {
     if (!pendingComposerFromHandoffRef.current) {
@@ -476,20 +562,16 @@ export function XchatConversation({
     if (threadHydrateStartedRef.current) {
       return;
     }
+    if (privacyPrefsLoading) {
+      return;
+    }
     threadHydrateStartedRef.current = true;
     let active = true;
     async function hydrateThreadFromHistory() {
+      if (!privacyPrefs?.keepLastTenMessages) {
+        return;
+      }
       try {
-        const statsRes = await fetch("/api/xchat/history/stats");
-        const statsPayload = (await statsRes.json().catch(() => ({}))) as {
-          data?: HistoryStats;
-        };
-        if (!statsRes.ok || !active) {
-          return;
-        }
-        if ((statsPayload.data?.historyMode ?? "mongo") === "xai_remote") {
-          return;
-        }
         const res = await fetch(`/api/xchat/history?limit=${uiPromptLimit}`);
         const payload = (await res.json().catch(() => ({}))) as {
           data?: { items?: HistoryItem[] };
@@ -511,7 +593,7 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, [uiPromptLimit]);
+  }, [privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, uiPromptLimit]);
 
   useEffect(() => {
     let active = true;
@@ -630,6 +712,9 @@ export function XchatConversation({
     if (historyLoaded) {
       return;
     }
+    if (privacyPrefsLoading) {
+      return;
+    }
     let active = true;
     async function loadHistory() {
       setHistoryLoading(true);
@@ -648,7 +733,7 @@ export function XchatConversation({
         }
         const resolvedHistoryMode = statsPayload.data?.historyMode ?? "mongo";
         setHistoryStats(statsPayload.data ?? null);
-        if (resolvedHistoryMode === "xai_remote") {
+        if (resolvedHistoryMode === "ephemeral" || !privacyPrefs?.keepLastTenMessages) {
           setSavedHistory([]);
           setHistoryLoaded(true);
           return;
@@ -689,7 +774,70 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, [historyLoaded, uiPromptLimit]);
+  }, [historyLoaded, privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, uiPromptLimit]);
+
+  const setKeepLastTenMessages = useCallback(
+    async (enabled: boolean) => {
+      setPrivacyPrefsSaving(true);
+      setPrivacyPrefsError(null);
+      try {
+        const response = await fetch("/api/xchat/preferences", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ keepLastTenMessages: enabled })
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          data?: XchatPrivacyPrefs;
+          error?: string;
+        };
+        if (!response.ok) {
+          throw new Error(payload.error ?? `Preferences update failed (${response.status})`);
+        }
+        setPrivacyPrefs({
+          keepLastTenMessages: payload.data?.keepLastTenMessages === true,
+          consentedAt: payload.data?.consentedAt ?? null
+        });
+      } catch (error) {
+        setPrivacyPrefsError(error instanceof Error ? error.message : "Failed to update privacy setting");
+      } finally {
+        setPrivacyPrefsSaving(false);
+      }
+    },
+    []
+  );
+
+  const deleteChatHistoryNow = useCallback(async () => {
+    setHistoryDeleteBusy(true);
+    setHistoryDeleteError(null);
+    try {
+      const response = await fetch("/api/xchat/history", {
+        method: "DELETE",
+        credentials: "include"
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Delete failed (${response.status})`);
+      }
+      setSavedHistory([]);
+      setMessages([]);
+      setStrategyJobOptOut(false);
+      setHistoryStats((prev) =>
+        prev
+          ? {
+              ...prev,
+              totalPrompts: 0,
+              activeDays: 0,
+              lastPromptAt: undefined
+            }
+          : prev
+      );
+    } catch (error) {
+      setHistoryDeleteError(error instanceof Error ? error.message : "Failed to delete chat history");
+    } finally {
+      setHistoryDeleteBusy(false);
+    }
+  }, []);
 
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -705,6 +853,10 @@ export function XchatConversation({
       content: prompt,
       timestamp: Date.now()
     };
+    const nextStrategyOptOut = strategyJobOptOut || shouldStayInChatFromReply(prompt);
+    if (nextStrategyOptOut !== strategyJobOptOut) {
+      setStrategyJobOptOut(nextStrategyOptOut);
+    }
 
     setMessages((prev) => {
       const added = [...prev, userMsg];
@@ -796,12 +948,16 @@ export function XchatConversation({
         message: string;
         scope: string;
         threadId: string;
+        strategyJobOptOut: boolean;
+        recentMessages: Array<{ role: "user" | "assistant"; content: string }>;
         portfolioId?: string;
         personaId?: string;
       } = {
         message: prompt,
         scope: "global",
-        threadId
+        threadId,
+        strategyJobOptOut: nextStrategyOptOut,
+        recentMessages: buildAskRecentMessages(messages, 10)
       };
       const normalizedWorkspacePortfolioId = workspacePortfolioId?.trim();
       if (normalizedWorkspacePortfolioId) {
@@ -1118,21 +1274,48 @@ export function XchatConversation({
                 </div>
               </RailDisclosure>
             </section>
-            <section className="app-user-rail-section" aria-label="Recent chats">
+            <section className="app-user-rail-section" aria-label="xChat">
               <RailDisclosure
                 defaultOpen={false}
                 icon={<RecentChatsRailGlyph className="app-user-rail-disclosure__glyph" />}
-                title={isRemoteHistoryMode ? "Recent chats (local archive)" : "Recent chats"}
+                title="xChat"
               >
-                {isRemoteHistoryMode ? (
-                  <p className="status-text">Remote continuity is active; local Mongo history is hidden.</p>
+                <div className="xchat-sidebar-privacy-row">
+                  <span className="xchat-sidebar-privacy-row__label">Keep your last 10 messages?</span>
+                  <label className="xchat-sidebar-privacy-row__control" aria-label="Keep your last 10 messages">
+                    <input
+                      checked={privacyPrefs?.keepLastTenMessages === true}
+                      disabled={privacyPrefsLoading || privacyPrefsSaving}
+                      onChange={(e) => {
+                        void setKeepLastTenMessages(e.target.checked);
+                      }}
+                      type="checkbox"
+                    />
+                  </label>
+                </div>
+                <details className="xchat-sidebar-privacy-note">
+                  <summary className="xchat-sidebar-privacy-note__summary">Privacy details</summary>
+                  <div className="xchat-sidebar-privacy-note__body">
+                    <p>
+                      We can optionally store only your most recent 10 chat messages (encrypted in our database) so conversations continue across sessions and devices.
+                    </p>
+                    <p>Default = nothing is saved.</p>
+                    <p>Stored messages are automatically deleted after 60 days or when you delete the chat.</p>
+                    <p>You control this at any time in chat settings.</p>
+                    <p>This helps us respect your privacy while giving you continuity if you want it.</p>
+                  </div>
+                </details>
+                {privacyPrefsError ? <p className="status-text status-error">{privacyPrefsError}</p> : null}
+                <p className="status-text">Store only if user consents (clear checkbox + one-line explanation at first chat).</p>
+                {isEphemeralHistoryMode ? (
+                  <p className="status-text">Recent chats are available once you enable “Keep your last 10 messages?”.</p>
                 ) : null}
-                {!isRemoteHistoryMode && historyLoading ? <p className="status-text">Loading history...</p> : null}
-                {!isRemoteHistoryMode && historyError ? <p className="status-text status-error">{historyError}</p> : null}
-                {!isRemoteHistoryMode && !historyLoading && !historyError && savedHistory.length === 0 ? (
+                {!isEphemeralHistoryMode && historyLoading ? <p className="status-text">Loading history...</p> : null}
+                {!isEphemeralHistoryMode && historyError ? <p className="status-text status-error">{historyError}</p> : null}
+                {!isEphemeralHistoryMode && !historyLoading && !historyError && savedHistory.length === 0 ? (
                   <p className="status-text">No past chat history yet.</p>
                 ) : null}
-                {!isRemoteHistoryMode && !historyLoading && !historyError && savedHistory.length > 0 ? (
+                {!isEphemeralHistoryMode && !historyLoading && !historyError && savedHistory.length > 0 ? (
                   <ul className="xchat-rail-history-list">
                     {savedHistory.map((item) => (
                       <li className="xchat-rail-history-item" key={item.id}>
@@ -1152,7 +1335,18 @@ export function XchatConversation({
                     ))}
                   </ul>
                 ) : null}
-                {historyStats ? (
+                <button
+                  className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
+                  disabled={historyDeleteBusy}
+                  onClick={() => {
+                    void deleteChatHistoryNow();
+                  }}
+                  type="button"
+                >
+                  {historyDeleteBusy ? "Deleting chat history…" : "Delete chat history now"}
+                </button>
+                {historyDeleteError ? <p className="status-text status-error">{historyDeleteError}</p> : null}
+                {!isEphemeralHistoryMode && historyStats ? (
                   <p className="status-text" style={{ fontSize: "0.72rem" }}>
                     {historyStats.totalPrompts} prompts · {historyStats.activeDays} active days
                   </p>
@@ -1168,16 +1362,6 @@ export function XchatConversation({
           <h1 className="xchat-welcome-title">Welcome, {welcomeName}!</h1>
           <p className="xchat-welcome-sub">Overview of xChat — portfolio, watchlist and advisor options-tools. See Examples on left.</p>
         </header>
-
-      {!(threadUiCollapsed && messages.length > 0 && !loading) ? (
-        <p className="status-text" style={{ fontSize: "0.75rem", margin: "0.15rem 0 0.5rem", opacity: 0.9 }}>
-          Thread shows your last <strong>{uiPromptLimit}</strong> prompts. Each send is stored server-side in
-          {" "}
-          Mongo; continuity uses <strong>{isRemoteHistoryMode ? "xAI remote conversation state" : "recent saved turns"}</strong>.
-          Persona choice locks after your first
-          successful reply in this thread (unless your admin assigned one).
-        </p>
-      ) : null}
 
       <div className="xchat-thread-area">
         {threadUiCollapsed && messages.length > 0 && !loading ? (

@@ -13,6 +13,10 @@ const limitMocks = vi.hoisted(() => ({
   checkDistributedRateLimit: vi.fn()
 }));
 
+const entitlementsMocks = vi.hoisted(() => ({
+  resolveXoptionsEntitlements: vi.fn()
+}));
+
 vi.mock("@/lib/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth")>();
   return {
@@ -34,6 +38,14 @@ vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
   return {
     ...actual,
     checkDistributedRateLimit: limitMocks.checkDistributedRateLimit
+  };
+});
+
+vi.mock("@/modules/xoptions/entitlements", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/xoptions/entitlements")>();
+  return {
+    ...actual,
+    resolveXoptionsEntitlements: entitlementsMocks.resolveXoptionsEntitlements
   };
 });
 
@@ -62,15 +74,36 @@ describe("strategy-jobs route", () => {
       retryAfterSeconds: 60,
       source: "memory"
     });
+    entitlementsMocks.resolveXoptionsEntitlements.mockResolvedValue({
+      subscriptionPlan: "premium_plus",
+      fullChainAnalytics: true,
+      hardcoreStrategyJobs: true
+    });
   });
 
-  it("GET proxies without advisor/operator gate", async () => {
+  it("GET requires session and proxies when entitled", async () => {
     const req = new Request("http://test/api/strategy-jobs");
     const res = await getStrategyJobs(req);
     expect(res.status).toBe(200);
+    expect(authMocks.requireSessionUser).toHaveBeenCalled();
+    expect(entitlementsMocks.resolveXoptionsEntitlements).toHaveBeenCalled();
     expect(limitMocks.checkDistributedRateLimit).toHaveBeenCalled();
     expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
-    expect(authMocks.requireSessionUser).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 403 when user is not Premium+", async () => {
+    entitlementsMocks.resolveXoptionsEntitlements.mockResolvedValueOnce({
+      subscriptionPlan: "premium",
+      fullChainAnalytics: true,
+      hardcoreStrategyJobs: false
+    });
+    const req = new Request("http://test/api/strategy-jobs");
+    const res = await getStrategyJobs(req);
+    const payload = (await res.json()) as { error: string };
+    expect(res.status).toBe(403);
+    expect(payload.error).toBe("plan_upgrade_required");
+    expect(limitMocks.checkDistributedRateLimit).not.toHaveBeenCalled();
+    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
   });
 
   it("GET returns 429 when list limiter blocks request", async () => {
@@ -86,7 +119,7 @@ describe("strategy-jobs route", () => {
     const payload = (await res.json()) as { error: string };
     expect(res.status).toBe(429);
     expect(payload.error).toBe("rate_limit_exceeded");
-    expect(authMocks.requireSessionUser).not.toHaveBeenCalled();
+    expect(authMocks.requireSessionUser).toHaveBeenCalled();
     expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
   });
 
@@ -113,6 +146,21 @@ describe("strategy-jobs route", () => {
     const payload = (await res.json()) as { error: string };
     expect(res.status).toBe(403);
     expect(payload.error).toBe("forbidden");
+    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 403 when user is not Premium+", async () => {
+    entitlementsMocks.resolveXoptionsEntitlements.mockResolvedValueOnce({
+      subscriptionPlan: "basic",
+      fullChainAnalytics: false,
+      hardcoreStrategyJobs: false
+    });
+    const req = new Request("http://test/api/strategy-jobs", { method: "POST" });
+    const res = await postStrategyJobs(req);
+    const payload = (await res.json()) as { error: string };
+    expect(res.status).toBe(403);
+    expect(payload.error).toBe("plan_upgrade_required");
+    expect(limitMocks.checkDistributedRateLimit).not.toHaveBeenCalled();
     expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
   });
 

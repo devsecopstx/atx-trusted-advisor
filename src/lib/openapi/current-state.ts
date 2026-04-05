@@ -694,12 +694,23 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/xchat/history",
-    operations: [{ method: "GET", auth: "session" }],
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "DELETE", auth: "session" }
+    ],
     tag: "xchat"
   },
   {
     path: "/api/xchat/history/stats",
     operations: [{ method: "GET", auth: "session" }],
+    tag: "xchat"
+  },
+  {
+    path: "/api/xchat/preferences",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "PUT", auth: "session", hasRequestBody: true }
+    ],
     tag: "xchat"
   },
   {

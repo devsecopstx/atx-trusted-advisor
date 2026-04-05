@@ -1,6 +1,7 @@
 import type { XChatHistoryItem } from "@/modules/xchat/types";
 
 const DEFAULT_MAX_CHARS = 6_000;
+const DEFAULT_MAX_MESSAGES = 10;
 
 /**
  * Formats prior Mongo `xchat_logs` turns (same user + tenant) for the ask system prompt.
@@ -36,6 +37,40 @@ export function buildRecentXchatHistoryPromptBlock(
     used += chunk.length + 1;
   }
 
+  return lines.join("\n\n");
+}
+
+export type XchatRecentThreadMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export function buildRecentThreadMessagesPromptBlock(
+  messages: XchatRecentThreadMessage[],
+  options?: { maxChars?: number; maxMessages?: number }
+): string | null {
+  if (messages.length === 0) {
+    return null;
+  }
+  const maxChars = options?.maxChars ?? DEFAULT_MAX_CHARS;
+  const maxMessages = options?.maxMessages ?? DEFAULT_MAX_MESSAGES;
+  const capped = messages.slice(-maxMessages);
+  const lines: string[] = [
+    "Recent thread messages (same signed-in user and active conversation thread; preserve continuity):"
+  ];
+  let used = lines.join("\n").length + 32;
+  for (let i = 0; i < capped.length; i += 1) {
+    const row = capped[i]!;
+    const role = row.role === "assistant" ? "Assistant" : "User";
+    const content = truncateForPrompt(row.content, 1_600);
+    const chunk = `${role}: ${content}`;
+    if (used + chunk.length > maxChars) {
+      lines.push("… (older thread context omitted to stay within context budget)");
+      break;
+    }
+    lines.push(chunk);
+    used += chunk.length + 1;
+  }
   return lines.join("\n\n");
 }
 

@@ -119,7 +119,7 @@ GitHub environment secrets should remain OIDC-only:
 
 **GitHub environment variables (non-secret):**
 
-- `ATXFINANCE_BACKEND_ORIGIN` — optional BFF target for Spring backend. Set this in both `staging` and `production` environments when you want Next API routes to proxy to Spring; leave unset for Next-only mode.
+- `ATXFINANCE_BACKEND_ORIGIN` — required for both `staging` and `production` deploy preflight. Must be backend HTTPS origin (no `:8080` on public hostnames).
 
 ## Deploy preflight
 
@@ -129,6 +129,8 @@ Recommended checks before merge/deploy:
 2. `NODE_ENV=production npm run build` (matches CI / release gate; plain `npm run build` is fine for a quick compile check)
 3. `npm run ops:secrets:verify:staging` (includes Google OAuth for staging)
 4. `npm run ops:secrets:verify:prod`
+
+`ops:secrets:verify:*` now also validates that `ATXFINANCE_BACKEND_ORIGIN` is present in your shell environment when using the staging/prod helper scripts.
 
 ### npm scripts quick reference (ops)
 

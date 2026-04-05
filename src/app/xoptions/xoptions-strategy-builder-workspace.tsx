@@ -6,7 +6,6 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 
-import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
 import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
 import { XoptionsChooseContract } from "@/app/xoptions/xoptions-choose-contract";
@@ -104,8 +103,6 @@ const STEPS = [
   { n: 3 as const, title: "Choose strategy" },
   { n: 4 as const, title: "Choose contract" }
 ];
-
-const OPTIONS_APPLY_URL = (process.env.NEXT_PUBLIC_XOPTIONS_OPTIONS_APPLY_URL ?? "").trim();
 
 /** Written when the user enters a symbol; read on `/portfolios` for "Resume". */
 const PORTFOLIOS_LAST_XOPTIONS_SYMBOL_KEY = "xf_portfolios_last_xoptions_symbol_v1";
@@ -466,93 +463,33 @@ export function XoptionsStrategyBuilderWorkspace() {
         </h1>
       </div>
 
-      <section className="xoptions-workspace-meta" aria-label="Workspace">
-        <div className="xoptions-workspace-meta__row">
-          <div className="xoptions-workspace-meta__primary min-w-0">
-            <p className="xoptions-workspace-meta__line text-sm">
-              <span className="text-[var(--xf-text-400)]">Portfolio</span>{" "}
-              <span className="font-semibold text-[var(--xf-text-200)]">{ctx?.portfolio?.name ?? "—"}</span>
-              <span className="mx-2 text-[var(--xf-text-500)]" aria-hidden>
-                ·
-              </span>
-              <span className="text-[var(--xf-text-400)]">Account</span>{" "}
-              <span className="font-semibold text-[var(--xf-text-200)]">
-                {workspaceDeskAccount?.name ?? ctx?.account?.name ?? "—"}
-              </span>
-            </p>
-          </div>
-          <div className="xoptions-workspace-meta__preferences min-w-0">
-            <details
-              id="xoptions-preferences"
-              className="xoptions-workspace-preferences xoptions-scoring-drop"
-              aria-labelledby="xoptions-preferences-label"
-            >
-              <summary className="xoptions-scoring-drop__summary" id="xoptions-preferences-label">
-                <span className="xoptions-scoring-drop__summary-text">
-                  <span className="xoptions-workspace-preferences__title">Preferences</span>
-                  <span className="xoptions-workspace-preferences__sub">
-                    Scoring weights — optional overrides
-                  </span>
-                </span>
-                <span className="xoptions-scoring-drop__chev" aria-hidden>
-                  ▾
-                </span>
-              </summary>
-              <div className="xoptions-scoring-drop__body">
-                <ul className="xoptions-scoring-drop__factors">
-                  {effectiveFactors.length === 0 ? (
-                    <li className="xoptions-hint text-xs list-none">No factors — portfolio defaults apply.</li>
-                  ) : (
-                    effectiveFactors.map((f) => (
-                      <li key={f.id} className="xoptions-scoring-drop__factor-row">
-                        <span className="xoptions-scoring-drop__factor-label">{f.label}</span>
-                        <input
-                          type="number"
-                          className="crud-input xoptions-scoring-drop__factor-input font-mono"
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={Math.round(f.weight * 1000) / 10}
-                          onChange={(e) => updateFactorWeight(f.id, Number(e.target.value))}
-                          aria-label={`Weight percent for ${f.label}`}
-                        />
-                        <span className="xoptions-inline-muted">%</span>
-                      </li>
-                    ))
-                  )}
-                </ul>
-                <p className={`text-xs ${weightOk ? "xoptions-hint" : "xoptions-warning"}`}>
-                  Sum {(weightSum * 100).toFixed(1)}% (target 100%)
-                </p>
-                <button type="button" className="xoptions-text-link text-xs" onClick={resetWeightsToPortfolio}>
-                  Reset weights to portfolio
-                </button>
-              </div>
-            </details>
-          </div>
-        </div>
-        {workspaceDeskAccount && !workspaceDeskAccount.optionsApproved ? (
-          <div className="xoptions-account-bar__notice mt-2" role="status">
-            <span className="xoptions-account-bar__notice-icon" aria-hidden>
-              ⓘ
-            </span>
-            <span className="xoptions-account-bar__notice-text">
-              This account does not have options trading enabled in xFinance. Research and chain tools still work; to
-              trade, enable options with your custodian.
-            </span>
-            {OPTIONS_APPLY_URL ? (
-              <a
-                href={OPTIONS_APPLY_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="xoptions-account-bar__apply inline-flex items-center gap-1"
-              >
-                Apply here
-                <ExternalLinkIcon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-              </a>
-            ) : null}
-          </div>
-        ) : null}
+      <section className="xoptions-workspace-topbar" aria-label="Selected workspace">
+        <p className="xoptions-workspace-topbar__line text-sm">
+          <span className="text-[var(--xf-text-400)]">Portfolio</span>{" "}
+          <span className="font-semibold text-[var(--xf-text-200)]">{ctx?.portfolio?.name ?? "—"}</span>
+          <span className="mx-2 text-[var(--xf-text-500)]" aria-hidden>
+            ·
+          </span>
+          <span className="text-[var(--xf-text-400)]">Account</span>{" "}
+          <span className="font-semibold text-[var(--xf-text-200)]">
+            {workspaceDeskAccount?.name ?? ctx?.account?.name ?? "—"}
+          </span>
+        </p>
+        <p className="xoptions-workspace-topbar__glance text-xs text-[var(--xf-text-400)]">
+          At a glance: {holdings.length} holdings
+          {typeof ctx?.account?.cashBalance === "number" && Number.isFinite(ctx.account.cashBalance) ? (
+            <>
+              {" "}
+              · Cash $
+              {ctx.account.cashBalance.toLocaleString("en-US", {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              })}
+            </>
+          ) : null}
+          {" "}
+          · {hot.length} hot symbols
+        </p>
       </section>
 
       <Suspense fallback={null}>
@@ -785,6 +722,62 @@ export function XoptionsStrategyBuilderWorkspace() {
           </button>
           {activeStep === 2 && canGoStep2 ? (
             <div className="xoptions-step__body space-y-4">
+              <div className="xoptions-step-context-card">
+                <p className="xoptions-step-context-card__line text-xs">
+                  <span className="text-[var(--xf-text-400)]">Portfolio</span>{" "}
+                  <span className="font-semibold text-[var(--xf-text-200)]">{ctx?.portfolio?.name ?? "—"}</span>
+                  <span className="mx-2 text-[var(--xf-text-500)]" aria-hidden>
+                    ·
+                  </span>
+                  <span className="text-[var(--xf-text-400)]">Account</span>{" "}
+                  <span className="font-semibold text-[var(--xf-text-200)]">
+                    {workspaceDeskAccount?.name ?? ctx?.account?.name ?? "—"}
+                  </span>
+                </p>
+                <details className="xoptions-scoring-drop mt-2" aria-label="Scoring factors">
+                  <summary className="xoptions-scoring-drop__summary">
+                    <span className="xoptions-scoring-drop__summary-text">
+                      <span className="xoptions-workspace-preferences__title">Scoring factors</span>
+                      <span className="xoptions-workspace-preferences__sub">
+                        Optional weighting overrides for this workspace
+                      </span>
+                    </span>
+                    <span className="xoptions-scoring-drop__chev" aria-hidden>
+                      ▾
+                    </span>
+                  </summary>
+                  <div className="xoptions-scoring-drop__body">
+                    <ul className="xoptions-scoring-drop__factors">
+                      {effectiveFactors.length === 0 ? (
+                        <li className="xoptions-hint text-xs list-none">No factors — portfolio defaults apply.</li>
+                      ) : (
+                        effectiveFactors.map((f) => (
+                          <li key={f.id} className="xoptions-scoring-drop__factor-row">
+                            <span className="xoptions-scoring-drop__factor-label">{f.label}</span>
+                            <input
+                              type="number"
+                              className="crud-input xoptions-scoring-drop__factor-input font-mono"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={Math.round(f.weight * 1000) / 10}
+                              onChange={(e) => updateFactorWeight(f.id, Number(e.target.value))}
+                              aria-label={`Weight percent for ${f.label}`}
+                            />
+                            <span className="xoptions-inline-muted">%</span>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                    <p className={`text-xs ${weightOk ? "xoptions-hint" : "xoptions-warning"}`}>
+                      Sum {(weightSum * 100).toFixed(1)}% (target 100%)
+                    </p>
+                    <button type="button" className="xoptions-text-link text-xs" onClick={resetWeightsToPortfolio}>
+                      Reset weights to portfolio
+                    </button>
+                  </div>
+                </details>
+              </div>
               <div className="xoptions-top-option-header__desk xoptions-step__desk-card p-2">
                 <p className="xoptions-top-option-header__desk-line line-clamp-2 inline-flex flex-wrap items-center gap-1.5">
                   <span className="xoptions-inline-muted shrink-0">Outlook </span>

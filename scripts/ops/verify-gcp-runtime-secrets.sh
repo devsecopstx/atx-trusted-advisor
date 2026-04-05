@@ -10,11 +10,12 @@ EXPECT_NON_EMPTY="true"
 REQUIRE_NON_EMPTY_SLACK_WEBHOOK="false"
 WITH_GOOGLE_OAUTH="false"
 WITH_DESK_SMTP="false"
+REQUIRE_BACKEND_ORIGIN="false"
 
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/ops/verify-gcp-runtime-secrets.sh [--project <gcp-project-id>] [--expect-non-empty true|false] [--require-non-empty-slack-webhook true|false] [--with-google-oauth] [--with-desk-smtp]
+  bash scripts/ops/verify-gcp-runtime-secrets.sh [--project <gcp-project-id>] [--expect-non-empty true|false] [--require-non-empty-slack-webhook true|false] [--with-google-oauth] [--with-desk-smtp] [--require-backend-origin]
 
   If --project is omitted, uses GOOGLE_PROJECT_ID, GOOGLE_CLOUD_PROJECT, or GCP_PROJECT_ID (e.g. after
   'set -a && source .env.stage && set +a'). Staging default in docs: GOOGLE_PROJECT_ID=fintech-advisor-staging.
@@ -22,6 +23,9 @@ Usage:
   --with-google-oauth   Also require GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (Sign in with Google).
                         npm run ops:secrets:verify:staging passes this flag.
   --with-desk-smtp      Also require SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, DESK_EMAIL_FROM (portfolio desk email).
+  --require-backend-origin
+                        Require non-empty ATXFINANCE_BACKEND_ORIGIN in the current environment and validate format
+                        (https://... for non-local hosts; no :8080 on public hosts).
 
 Checks that required runtime secrets exist in GCP Secret Manager and (optionally)
 that their latest secret versions are non-empty.
@@ -52,6 +56,10 @@ while [[ $# -gt 0 ]]; do
       WITH_DESK_SMTP="true"
       shift
       ;;
+    --require-backend-origin)
+      REQUIRE_BACKEND_ORIGIN="true"
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -79,7 +87,31 @@ if [[ "$WITH_GOOGLE_OAUTH" == "true" ]]; then
   REQUIRED_SECRETS+=("${GCP_RUNTIME_SECRETS_GOOGLE_OAUTH[@]}")
 fi
 
-echo "[verify-secrets] project=$PROJECT expect_non_empty=$EXPECT_NON_EMPTY require_non_empty_slack_webhook=$REQUIRE_NON_EMPTY_SLACK_WEBHOOK with_google_oauth=$WITH_GOOGLE_OAUTH with_desk_smtp=$WITH_DESK_SMTP"
+echo "[verify-secrets] project=$PROJECT expect_non_empty=$EXPECT_NON_EMPTY require_non_empty_slack_webhook=$REQUIRE_NON_EMPTY_SLACK_WEBHOOK with_google_oauth=$WITH_GOOGLE_OAUTH with_desk_smtp=$WITH_DESK_SMTP require_backend_origin=$REQUIRE_BACKEND_ORIGIN"
+
+if [[ "$REQUIRE_BACKEND_ORIGIN" == "true" ]]; then
+  BACKEND_ORIGIN="${ATXFINANCE_BACKEND_ORIGIN:-}"
+  if [[ -z "${BACKEND_ORIGIN//[[:space:]]/}" ]]; then
+    echo "[verify-secrets] missing required env var: ATXFINANCE_BACKEND_ORIGIN" >&2
+    exit 1
+  fi
+  if [[ ! "$BACKEND_ORIGIN" =~ ^https?:// ]]; then
+    echo "[verify-secrets] invalid ATXFINANCE_BACKEND_ORIGIN (must start with http:// or https://): ${BACKEND_ORIGIN}" >&2
+    exit 1
+  fi
+  host="$(printf '%s' "$BACKEND_ORIGIN" | sed -E 's#^https?://([^/:]+).*$#\1#')"
+  if [[ "$host" != "localhost" && "$host" != "127.0.0.1" && "$host" != "::1" ]]; then
+    if [[ "$BACKEND_ORIGIN" != https://* ]]; then
+      echo "[verify-secrets] non-local ATXFINANCE_BACKEND_ORIGIN must use https:// (got ${BACKEND_ORIGIN})" >&2
+      exit 1
+    fi
+    if [[ "$BACKEND_ORIGIN" =~ :8080([/]|$) ]]; then
+      echo "[verify-secrets] non-local ATXFINANCE_BACKEND_ORIGIN must not include :8080 (got ${BACKEND_ORIGIN})" >&2
+      exit 1
+    fi
+  fi
+  echo "[verify-secrets] backend origin set: ${BACKEND_ORIGIN}"
+fi
 
 if [[ "$WITH_DESK_SMTP" == "true" ]]; then
   REQUIRED_SECRETS+=("${GCP_RUNTIME_SECRETS_DESK_SMTP[@]}")

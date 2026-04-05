@@ -85,6 +85,7 @@ jobs:
           CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
           CLOUD_RUN_SERVICE_PROD: ${{ vars.CLOUD_RUN_SERVICE_PROD }}
           PROD_BASE_URL: ${{ vars.PROD_BASE_URL }}
+          ATXFINANCE_BACKEND_ORIGIN: ${{ vars.ATXFINANCE_BACKEND_ORIGIN }}
           GCP_ARTIFACT_PROJECT_ID: ${{ vars.GCP_ARTIFACT_PROJECT_ID || '' }}
           ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY || env.ARTIFACT_REGISTRY_REPOSITORY }}
           EXPECTED_GITHUB_REPOSITORY: ${{ vars.EXPECTED_GITHUB_REPOSITORY }}
@@ -93,12 +94,20 @@ jobs:
           GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
         run: |
           set -euo pipefail
-          for key in GCP_PROJECT_ID_PROD CLOUD_RUN_REGION CLOUD_RUN_SERVICE_PROD PROD_BASE_URL GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
+          for key in GCP_PROJECT_ID_PROD CLOUD_RUN_REGION CLOUD_RUN_SERVICE_PROD PROD_BASE_URL ATXFINANCE_BACKEND_ORIGIN GCP_WORKLOAD_IDENTITY_PROVIDER GCP_SERVICE_ACCOUNT_EMAIL; do
             if [ -z "${!key:-}" ]; then
               echo "::error::Missing required deploy config: ${key}"
               exit 1
             fi
           done
+          if [[ "${ATXFINANCE_BACKEND_ORIGIN}" != https://* ]]; then
+            echo "::error::ATXFINANCE_BACKEND_ORIGIN must use https:// for production deploys (got ${ATXFINANCE_BACKEND_ORIGIN})"
+            exit 1
+          fi
+          if [[ "${ATXFINANCE_BACKEND_ORIGIN}" =~ :8080([/]|$) ]]; then
+            echo "::error::ATXFINANCE_BACKEND_ORIGIN must not include :8080 on public hosts (got ${ATXFINANCE_BACKEND_ORIGIN})"
+            exit 1
+          fi
           if [ -z "${GCP_ARTIFACT_PROJECT_ID:-}" ]; then
             echo "ARTIFACT_PROJECT_ID=${GCP_PROJECT_ID_PROD}" >> "$GITHUB_ENV"
           else
@@ -255,7 +264,7 @@ jobs:
           ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
           ENABLE_XCHAT_DEBUG: ${{ vars.ENABLE_XCHAT_DEBUG || 'false' }}
           XAI_CHAT_MODEL: ${{ vars.XAI_CHAT_MODEL || 'grok-4-1-fast-reasoning' }}
-          ATXFINANCE_BACKEND_ORIGIN: ${{ vars.ATXFINANCE_BACKEND_ORIGIN || '' }}
+          ATXFINANCE_BACKEND_ORIGIN: ${{ vars.ATXFINANCE_BACKEND_ORIGIN }}
           STRIPE_PRICE_BASIC_MONTHLY: ${{ vars.STRIPE_PRICE_BASIC_MONTHLY || '' }}
           STRIPE_PRICE_PREMIUM_MONTHLY: ${{ vars.STRIPE_PRICE_PREMIUM_MONTHLY || '' }}
           STRIPE_PRICE_PREMIUM_PLUS_MONTHLY: ${{ vars.STRIPE_PRICE_PREMIUM_PLUS_MONTHLY || '' }}
@@ -283,9 +292,7 @@ jobs:
             echo "::notice::Desk SMTP secrets not all present in ${PROJECT} — portfolio email channels skipped (sync: scripts/ops/sync-desk-smtp-secrets-from-env.sh)"
           fi
           ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=deploy,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL}"
-          if [ -n "${ATXFINANCE_BACKEND_ORIGIN}" ]; then
-            ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
-          fi
+          ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
           for pair in "STRIPE_PRICE_BASIC_MONTHLY:${STRIPE_PRICE_BASIC_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_MONTHLY:${STRIPE_PRICE_PREMIUM_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:${STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}" "SMTP_SECURE:${SMTP_SECURE:-}"; do
             k="${pair%%:*}"
             v="${pair#*:}"

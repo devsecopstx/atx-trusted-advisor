@@ -982,6 +982,65 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   text-overflow: ellipsis;
 }
 
+.xchat-sidebar-privacy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin: 0 0 0.35rem;
+}
+
+.xchat-sidebar-privacy-row__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--xf-text-100);
+}
+
+.xchat-sidebar-privacy-row__control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xchat-sidebar-privacy-row__control input {
+  accent-color: var(--xf-gain-green);
+}
+
+.xchat-sidebar-privacy-note {
+  margin: 0 0 0.45rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 4%, transparent);
+  overflow: hidden;
+}
+
+.xchat-sidebar-privacy-note__summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--xf-text-300);
+}
+
+.xchat-sidebar-privacy-note__summary::-webkit-details-marker {
+  display: none;
+}
+
+.xchat-sidebar-privacy-note__body {
+  border-top: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  padding: 0.45rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.xchat-sidebar-privacy-note__body p {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--xf-text-300);
+}
+
 .xchat-rail-avatar {
   display: none;
 }
@@ -1007,6 +1066,7 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   line-height: 1.4;
   color: var(--xf-text-400);
 }
+
 
 .xchat-persona-bar {
   display: flex;

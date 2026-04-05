@@ -42,6 +42,10 @@ const ragReadinessMocks = vi.hoisted(() => ({
   getScopeReadinessSummary: vi.fn()
 }));
 
+const prefsMocks = vi.hoisted(() => ({
+  getXchatUserPreferences: vi.fn()
+}));
+
 const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
@@ -79,6 +83,7 @@ vi.mock("@/modules/xchat/team-xai-collection", () => teamKbMocks);
 vi.mock("@/modules/xchat/xai-collection-verifier", () => verifierMocks);
 vi.mock("@/modules/core-admin/repository", () => coreAdminRepositoryMocks);
 vi.mock("@/modules/xchat/rag-file-readiness", () => ragReadinessMocks);
+vi.mock("@/modules/xchat/user-preferences-repository", () => prefsMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/xchat/workspace-snapshot-for-prompt", () => ({
@@ -171,6 +176,9 @@ describe("xchat ask route collection retrieval", () => {
       blocked: false,
       nonReadyFiles: []
     });
+    prefsMocks.getXchatUserPreferences.mockResolvedValue({
+      keepLastTenMessages: true
+    });
     workspaceSnapshotMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
     workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock.mockReturnValue("");
     symbolLookupMocks.lookupSymbols.mockResolvedValue(new Map());
@@ -244,6 +252,29 @@ describe("xchat ask route collection retrieval", () => {
       xaiUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
     };
     expect(saved.xaiUsage).toEqual(payload.data.xaiUsage);
+  });
+
+  it("does not persist xchat_logs when keep-last-10 is not enabled", async () => {
+    prefsMocks.getXchatUserPreferences.mockResolvedValueOnce({
+      keepLastTenMessages: false
+    });
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "ephemeral continuity",
+          recentMessages: [{ role: "user", content: "prior prompt" }]
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.saveXChatLog).not.toHaveBeenCalled();
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining("Recent thread messages")
+      })
+    );
   });
 
   it("uses xai collection snippets first when available", async () => {

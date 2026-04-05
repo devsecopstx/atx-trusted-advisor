@@ -21,9 +21,10 @@
 #   CLOUD_RUN_REGION
 #   CLOUD_RUN_SERVICE_STAGING or CLOUD_RUN_SERVICE_PROD (by target)
 #   STAGING_BASE_URL or PROD_BASE_URL (by target) — used for X_OAUTH_CALLBACK_URL; no trailing slash
+#   ATXFINANCE_BACKEND_ORIGIN (backend HTTPS origin; no :8080 on public hosts)
 #
 # Optional (same names as GitHub vars / workflow):
-#   ALLOW_ANY_X_USER_LOGIN, ENABLE_XCHAT_DEBUG, XAI_CHAT_MODEL, ATXFINANCE_BACKEND_ORIGIN,
+#   ALLOW_ANY_X_USER_LOGIN, ENABLE_XCHAT_DEBUG, XAI_CHAT_MODEL,
 #   AUTH_CALLBACK_USE_SPRING, STRIPE_PRICE_BASIC_MONTHLY, STRIPE_PRICE_PREMIUM_MONTHLY,
 #   STRIPE_PRICE_PREMIUM_PLUS_MONTHLY, STRIPE_PRICE_PREMIUM_PLUS_YEARLY (legacy fallback)
 #
@@ -164,6 +165,26 @@ ENABLE_XCHAT_DEBUG="${ENABLE_XCHAT_DEBUG:-false}"
 XAI_CHAT_MODEL="${XAI_CHAT_MODEL:-grok-4-1-fast-reasoning}"
 ATXFINANCE_BACKEND_ORIGIN="${ATXFINANCE_BACKEND_ORIGIN:-}"
 AUTH_CALLBACK_USE_SPRING="${AUTH_CALLBACK_USE_SPRING:-false}"
+
+if [[ -z "${ATXFINANCE_BACKEND_ORIGIN//[[:space:]]/}" ]]; then
+  echo "deploy-cloud-run-from-env: set ATXFINANCE_BACKEND_ORIGIN in ${ENV_ABS} (required for staging/production deploy preflight)" >&2
+  exit 1
+fi
+if [[ ! "${ATXFINANCE_BACKEND_ORIGIN}" =~ ^https?:// ]]; then
+  echo "deploy-cloud-run-from-env: ATXFINANCE_BACKEND_ORIGIN must start with http:// or https:// (got ${ATXFINANCE_BACKEND_ORIGIN})" >&2
+  exit 1
+fi
+BACKEND_HOST="$(printf '%s' "${ATXFINANCE_BACKEND_ORIGIN}" | sed -E 's#^https?://([^/:]+).*$#\1#')"
+if [[ "${BACKEND_HOST}" != "localhost" && "${BACKEND_HOST}" != "127.0.0.1" && "${BACKEND_HOST}" != "::1" ]]; then
+  if [[ "${ATXFINANCE_BACKEND_ORIGIN}" != https://* ]]; then
+    echo "deploy-cloud-run-from-env: non-local ATXFINANCE_BACKEND_ORIGIN must use https:// (got ${ATXFINANCE_BACKEND_ORIGIN})" >&2
+    exit 1
+  fi
+  if [[ "${ATXFINANCE_BACKEND_ORIGIN}" =~ :8080([/]|$) ]]; then
+    echo "deploy-cloud-run-from-env: non-local ATXFINANCE_BACKEND_ORIGIN must not include :8080 (got ${ATXFINANCE_BACKEND_ORIGIN})" >&2
+    exit 1
+  fi
+fi
 
 echo "deploy-cloud-run-from-env: target=${TARGET} project=${PROJECT} service=${SVC} region=${REGION}"
 echo "deploy-cloud-run-from-env: base_url=${BASE_URL} env_file=${ENV_ABS}"

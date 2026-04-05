@@ -44,6 +44,16 @@ vi.mock("@/lib/auth", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/backend-bff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
+  return {
+    ...actual,
+    // Keep this suite hermetic across envs (e.g., ATXFINANCE_BACKEND_ORIGIN set in shell).
+    proxyRequestToBackend: vi.fn().mockResolvedValue(null),
+    proxyPortfolioRequestToBackend: vi.fn().mockResolvedValue(null)
+  };
+});
+
 vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/distributed-rate-limit")>();
   return {

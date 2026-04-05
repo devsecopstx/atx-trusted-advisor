@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/auth";
 import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
 import { getXChatHistoryStatsByUser } from "@/modules/xchat/repository";
-import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
+import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
 
 export async function GET() {
   const session = await requireSessionUser();
@@ -21,11 +21,12 @@ export async function GET() {
     ? new ObjectId(session.tenantId)
     : null;
 
-  const [stats, persona] = await Promise.all([
+  const [stats, persona, prefs] = await Promise.all([
     getXChatHistoryStatsByUser({ userId, tenantId }),
-    loadDefaultXchatPersonaForSessionDeduped(session.roles)
+    loadDefaultXchatPersonaForSessionDeduped(session.roles),
+    getXchatUserPreferences({ userId, tenantId })
   ]);
-  const historyMode = isXchatRemoteHistoryEnabled() ? "xai_remote" : "mongo";
+  const historyMode = prefs?.keepLastTenMessages ? "mongo" : "ephemeral";
 
   return NextResponse.json({
     data: {

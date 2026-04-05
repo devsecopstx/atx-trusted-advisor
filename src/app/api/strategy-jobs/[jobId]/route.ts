@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import {
     buildRateLimitHeaders,
@@ -7,14 +8,29 @@ import {
     extractClientRateLimitKey,
     getBffRouteRateLimitPolicy
 } from "@/lib/distributed-rate-limit";
+import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 type RouteContext = { params: Promise<{ jobId: string }> };
 const STRATEGY_JOB_READ_POLICY = getBffRouteRateLimitPolicy("strategy_jobs_read");
 
 export async function GET(request: Request, context: RouteContext) {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+  const entitlements = await resolveXoptionsEntitlements(session);
+  if (!entitlements.hardcoreStrategyJobs) {
+    return NextResponse.json(
+      {
+        error: "plan_upgrade_required",
+        message: "Hardcore strategy jobs are available on Premium+."
+      },
+      { status: 403 }
+    );
+  }
   const { jobId } = await context.params;
   const limit = await checkDistributedRateLimit({
-    key: `strategy-jobs:read:${jobId}:${extractClientRateLimitKey(request)}`,
+    key: `strategy-jobs:read:${session.tenantId}:${session.userId}:${jobId}:${extractClientRateLimitKey(request)}`,
     windowMs: STRATEGY_JOB_READ_POLICY.windowMs,
     max: STRATEGY_JOB_READ_POLICY.max
   });

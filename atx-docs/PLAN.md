@@ -15,7 +15,7 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 | **485a** | **Google-link duplicate-user admin merge tooling**           | Remaining work from Google-linking slice: add admin/support merge flow for legacy duplicate `core_users` rows with audit trail and safety checks.                                                                                                                        |
 | **486n** | **Auth: email + password**                                   | Register / login / reset without X or Google; hash + rate limits + audit; SMTP/transactional email for reset. UI on guest panel and/or `/login`/`/register` (today `/login` → `/xchat` — align when this ships).                                                                                                                                                                                                                               |
 | **900**  | **Automated trades w/ verify**                               | Ship only after **ETRADE** and **IBKR** execution/custodian path; until then alerts / manual execution only.                                                                                                                                                                                                                                                                                                                                   |
-| **701**  | **xChat — user file attachments**                            | Allow app_user to **attach** a file from the composer; **persist in Mongo** (metadata + storage ref / GridFS or object store per existing patterns), cap size/types; thread attachment to `xchat_logs` (or successor). **Later:** treat as **attachments** under the per-user **xChat history** handoff — align with [Phase: `user_history_agent](#phase-xchat-chat_history-xai-collection-user_history_agent)` (sync path + retrieval scope). |
+| **701**  | **xChat — privacy-first history policy (locked for MVP)**    | App user only: **default ephemeral** continuity (send recent 5–10 messages in each ask) with optional opt-in toggle **“Keep last 10 messages.”** Persist only when user consents, encrypt in transit/at rest, rolling cap = 10, TTL = 60 days, and immediate hard-delete on user delete action. Remove/disable xChat history sync/write into any xAI/team collection for MVP; keep persona/team RAG grounding unchanged. |
 | **702**  | **xChat — paste screenshots (clipboard)**                    | Support **paste from desktop** (clipboard `image/*`) into the chat composer; same persistence + safety pipeline as **701** (virus scan policy TBD, max dimensions/bytes, strip EXIF if required).                                                                                                                                                                                                                                              |
 | **703**  | **xChat — voice input (short prompts)**                      | **Voice capture** for brief utterances (e.g. *“add NVDA to my watchlist”*): browser **Web Speech API** and/or STT provider; **intent routing** into existing NL / tool paths (`watchlist` mutations, etc.) with explicit **confirm-before-mutate** for destructive or multi-symbol actions.                                                                                                                                                    |
 | **705**  | **xChat — iPhone install CTA in Profile menu (PWA prompt)**  | Add profile menu item under **Settings/Account**: **“Install aTx Finance XChat as App”** (icon: 📱 or app icon), subtext **“Get full-screen experience on your iPhone — no App Store needed”**. Tap opens a simple modal titled **Install aTx Finance XChat** with steps: **1. Tap Share in Safari** → **2. Tap Add to Home Screen** → **3. Tap Add**. Include final line: **“Your chats, portfolio tools, and options strategies will now open like a native app.”** |
@@ -51,7 +51,7 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 
 **Next / outstanding (tracked here or below):** Observability hardening (correlation/job/persona/model), audit/doc parity, and strict JSON Schema artifact v2 under [Deferred (larger lifts)](#deferred-larger-lifts).
 
-**Open question:** [Phase: user_history_agent](#phase-xchat-chat_history-xai-collection-user_history_agent) vs TEAM-only `XAI_TEAM_ID` — reconcile before per-user collection writes.
+**Open question:** Attachment ingestion policy for 701/702 while keeping ephemeral-by-default privacy posture.
 
 ---
 
@@ -60,18 +60,6 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 **Goal:** Drop `userBootstrapCollectionId` and per-user bootstrap where policy is TEAM-only; anchor on `XAI_TEAM_ID` for team KB.
 
 **Remaining:** Linked-collection resolution uses team + persona only; docs match `context-routing-multi-agent-policy.md` + `xchat-tools-guide.md`.
-
----
-
-## Phase: xChat chat_history → XAI collection (`user_history_agent`)
-
-**Goal:** Scheduled sync `xchat_logs` → user xAI collection for retrieval.
-
-**Remaining:** Align with TEAM-only policy; task runner + admin category; tests with mocked xAI append.
-
-**Product tie-in (backlog):** User-uploaded files and pasted images (**[701](#product-backlog)** / **[702](#product-backlog)**) should land in a consistent **attachment** model so the same job can index or copy blobs into the user’s **history** folder/collection alongside text turns (schema + retention policy to be specified with this phase).
-
-**Audit:** Inference lineage on `xchat_logs`, tamper-evident chain, optional `admin_audit_events` per run — [audit-lineage-and-controls.md](./sre-ops/audit-lineage-and-controls.md).
 
 ---
 

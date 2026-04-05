@@ -7,7 +7,10 @@ import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { logXchatHistoryListDebug } from "@/lib/xchat-debug";
 import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
-import { listXChatHistoryByUser } from "@/modules/xchat/repository";
+import {
+    deleteXChatHistoryByUser,
+    listXChatHistoryByUser
+} from "@/modules/xchat/repository";
 
 const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -89,5 +92,33 @@ export async function GET(request: Request) {
       hasMore
     }
   });
+  });
+}
+
+export async function DELETE() {
+  const session = await requireSessionUser();
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  if (!ObjectId.isValid(session.userId)) {
+    return NextResponse.json({ error: "Invalid session user id" }, { status: 400 });
+  }
+
+  const userId = new ObjectId(session.userId);
+  const tenantId = ObjectId.isValid(session.tenantId)
+    ? new ObjectId(session.tenantId)
+    : null;
+
+  const deletedCount = await deleteXChatHistoryByUser({
+    userId,
+    tenantId
+  });
+
+  return NextResponse.json({
+    data: {
+      ok: true,
+      deletedCount
+    }
   });
 }

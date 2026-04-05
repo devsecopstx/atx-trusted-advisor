@@ -1,11 +1,9 @@
-import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
-import { normalizeSubscriptionPlan, type SubscriptionPlan } from "@/lib/subscription-plan";
-import { isGlobalAdmin } from "@/modules/identity/authorization";
-import { getCoreUserById } from "@/modules/identity/repository";
+import type { SubscriptionPlan } from "@/lib/subscription-plan";
+import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +11,8 @@ export type XoptionsEntitlementsPayload = {
   subscriptionPlan: SubscriptionPlan;
   /** Premium+ workspace: chart + option statistics tabs (global_admin always true). */
   fullChainAnalytics: boolean;
+  /** Hardcore strategy jobs are Premium+ only. */
+  hardcoreStrategyJobs: boolean;
 };
 
 export async function GET(request: Request) {
@@ -26,18 +26,6 @@ export async function GET(request: Request) {
     return session;
   }
 
-  let subscriptionPlan: SubscriptionPlan = "basic";
-  if (ObjectId.isValid(session.userId)) {
-    const user = await getCoreUserById(new ObjectId(session.userId));
-    subscriptionPlan = normalizeSubscriptionPlan(user?.subscriptionPlan);
-  }
-
-  const fullChainAnalytics =
-    isGlobalAdmin(session.roles) || subscriptionPlan === "premium" || subscriptionPlan === "premium_plus";
-
-  const payload: XoptionsEntitlementsPayload = {
-    subscriptionPlan,
-    fullChainAnalytics
-  };
+  const payload: XoptionsEntitlementsPayload = await resolveXoptionsEntitlements(session);
   return NextResponse.json({ data: payload });
 }

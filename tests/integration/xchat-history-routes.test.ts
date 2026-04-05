@@ -7,12 +7,17 @@ const authMocks = vi.hoisted(() => ({
 
 const repositoryMocks = vi.hoisted(() => ({
   listXChatHistoryByUser: vi.fn(),
+  deleteXChatHistoryByUser: vi.fn(),
   getXChatHistoryStatsByUser: vi.fn(),
   resolveDefaultXchatPersonaForSession: vi.fn()
 }));
 
 const identityMocks = vi.hoisted(() => ({
   getTenantByHexId: vi.fn()
+}));
+
+const prefsMocks = vi.hoisted(() => ({
+  getXchatUserPreferences: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -23,8 +28,9 @@ vi.mock("@/modules/xchat/repository", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/modules/xchat/repository")>();
   return { ...actual, ...repositoryMocks };
 });
+vi.mock("@/modules/xchat/user-preferences-repository", () => prefsMocks);
 
-import { GET as getHistory } from "@/app/api/xchat/history/route";
+import { DELETE as deleteHistory, GET as getHistory } from "@/app/api/xchat/history/route";
 import { GET as getHistoryStats } from "@/app/api/xchat/history/stats/route";
 
 describe("xchat history routes", () => {
@@ -57,8 +63,12 @@ describe("xchat history routes", () => {
       referencedFileCount: 7,
       lastPromptAt: new Date("2026-03-20T12:00:00.000Z")
     });
+    repositoryMocks.deleteXChatHistoryByUser.mockResolvedValue(3);
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue({
       xaiCollection: { collectionId: "collection_b75e188e-e7e6-4aa8-8e01-23caf0946236" }
+    });
+    prefsMocks.getXchatUserPreferences.mockResolvedValue({
+      keepLastTenMessages: true
     });
   });
 
@@ -86,6 +96,16 @@ describe("xchat history routes", () => {
     expect(payload.data.totalPrompts).toBe(19);
     expect(payload.data.collectionId).toContain("collection_b75e188e");
     expect(payload.data.historyMode).toBe("mongo");
+  });
+
+  it("returns ephemeral mode when keep-last-10 is disabled", async () => {
+    prefsMocks.getXchatUserPreferences.mockResolvedValueOnce({
+      keepLastTenMessages: false
+    });
+    const response = await getHistoryStats();
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data: { historyMode: string } };
+    expect(payload.data.historyMode).toBe("ephemeral");
   });
 
   it("returns auth response when unauthenticated", async () => {
@@ -122,5 +142,14 @@ describe("xchat history routes", () => {
       )
     );
     expect(response.status).toBe(400);
+  });
+
+  it("deletes history for current user", async () => {
+    const response = await deleteHistory();
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data: { ok: boolean; deletedCount: number } };
+    expect(payload.data.ok).toBe(true);
+    expect(payload.data.deletedCount).toBe(3);
+    expect(repositoryMocks.deleteXChatHistoryByUser).toHaveBeenCalled();
   });
 });

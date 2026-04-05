@@ -49,7 +49,6 @@ import {
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     getLatestXchatLogByThread,
-    getLatestXchatResponseIdByUser,
     saveXChatLog
 } from "@/modules/xchat/repository";
 import { createXfinanceToolExecutor } from "@/modules/xchat/tool-executor";
@@ -62,22 +61,36 @@ import {
     normalizePersonaXapiConfig,
     type PersonaXapiConfig
 } from "@/modules/xchat/types";
+import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import {
     heavySynthesisIntent,
     shouldOfferStrategyJobPreflight,
     STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
-import { isXchatRemoteHistoryEnabled } from "@/modules/xchat/xchat-platform-settings";
 import {
     buildSessionToolInstructions,
     buildXchatSystemPrompt,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
+import {
+    buildRecentThreadMessagesPromptBlock,
+    type XchatRecentThreadMessage
+} from "@/modules/xchat/xchat-recent-history-prompt";
 
 const askSchema = z.object({
   message: z.string().min(2).max(8_000),
   threadId: z.string().trim().min(1).max(128).optional(),
+  strategyJobOptOut: z.boolean().optional(),
+  recentMessages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().trim().min(1).max(8_000)
+      })
+    )
+    .max(10)
+    .optional(),
   portfolioId: z.string().trim().regex(/^[a-f\d]{24}$/i).optional(),
   personaId: z.string().optional(),
   reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]).optional(),
@@ -87,6 +100,7 @@ const askSchema = z.object({
 
 const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
 const ASK_RATE_MAX = 20;
+const XCHAT_OPT_IN_RETENTION_DAYS = 60;
 const STRATEGY_OPTOUT_SYSTEM_PROMPT_LINE =
   "User has explicitly chosen to stay in normal chat mode. Do NOT offer or mention strategy jobs, xStrategyBuilder, or the Spring orchestrator again in this conversation. Answer directly using tools, RAG, and portfolio context only. Keep full conversation history.";
 const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>(
@@ -415,8 +429,19 @@ export async function POST(request: Request) {
   const userId = ObjectId.isValid(session.userId)
     ? new ObjectId(session.userId)
     : undefined;
-  let strategyJobOptOut = false;
-  if (threadId && userId) {
+  const userPrefs = userId
+    ? await getXchatUserPreferences({
+        userId,
+        tenantId
+      })
+    : null;
+  const shouldPersistHistory = userPrefs?.keepLastTenMessages === true;
+  const retentionExpiresAt = shouldPersistHistory
+    ? new Date(Date.now() + XCHAT_OPT_IN_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+    : undefined;
+
+  let strategyJobOptOut = parsed.data.strategyJobOptOut === true;
+  if (!strategyJobOptOut && threadId && userId && shouldPersistHistory) {
     const latestThreadLog = await getLatestXchatLogByThread({
       userId,
       tenantId,
@@ -430,23 +455,26 @@ export async function POST(request: Request) {
     const responseMarkdown = preprocessXchatMarkdown(
       "Understood, staying in chat. I will continue in normal chat mode for this conversation."
     );
-    const chatLogId = await saveXChatLog({
-      threadId,
-      requestId,
-      correlationId,
-      userId,
-      tenantId: tenantId ?? undefined,
-      userEmail: session.email,
-      requestedBy: session.username,
-      personaId: persona?._id,
-      personaName: persona.name,
-      scope,
-      message,
-      response: responseMarkdown,
-      contextChunkIds: [],
-      model: "strategy_job_opt_out",
-      strategyJobOptOut: true
-    });
+    const chatLogId = shouldPersistHistory
+      ? await saveXChatLog({
+          threadId,
+          requestId,
+          correlationId,
+          userId,
+          tenantId: tenantId ?? undefined,
+          userEmail: session.email,
+          requestedBy: session.username,
+          personaId: persona?._id,
+          personaName: persona.name,
+          scope,
+          message,
+          response: responseMarkdown,
+          contextChunkIds: [],
+          model: "strategy_job_opt_out",
+          strategyJobOptOut: true,
+          retentionExpiresAt
+        })
+      : null;
     return NextResponse.json(
       {
         data: {
@@ -459,7 +487,7 @@ export async function POST(request: Request) {
           contextSource: "none",
           collectionSearchStatus: "skipped_no_collections",
           collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId.toHexString()
+          logId: chatLogId?.toHexString()
         }
       },
       {
@@ -486,23 +514,26 @@ export async function POST(request: Request) {
       session.userId,
       session.tenantId ?? "tenant:none"
     );
-    const chatLogId = await saveXChatLog({
-      threadId,
-      requestId: preflightRequestId,
-      correlationId: preflightCorrelationId,
-      userId,
-      tenantId: tenantId ?? undefined,
-      userEmail: session.email,
-      requestedBy: session.username,
-      personaId: persona?._id,
-      personaName: persona.name,
-      scope,
-      message,
-      response: responseMarkdown,
-      contextChunkIds: [],
-      model: "strategy_job_preflight",
-      strategyJobOptOut
-    });
+    const chatLogId = shouldPersistHistory
+      ? await saveXChatLog({
+          threadId,
+          requestId: preflightRequestId,
+          correlationId: preflightCorrelationId,
+          userId,
+          tenantId: tenantId ?? undefined,
+          userEmail: session.email,
+          requestedBy: session.username,
+          personaId: persona?._id,
+          personaName: persona.name,
+          scope,
+          message,
+          response: responseMarkdown,
+          contextChunkIds: [],
+          model: "strategy_job_preflight",
+          strategyJobOptOut,
+          retentionExpiresAt
+        })
+      : null;
     return NextResponse.json(
       {
         data: {
@@ -515,7 +546,7 @@ export async function POST(request: Request) {
           contextSource: "none",
           collectionSearchStatus: "skipped_no_collections",
           collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId.toHexString()
+          logId: chatLogId?.toHexString()
         }
       },
       {
@@ -659,32 +690,35 @@ export async function POST(request: Request) {
     }
 
     const output = preprocessXchatMarkdown(responseMarkdown);
-    const chatLogId = await saveXChatLog({
-      threadId,
-      requestId,
-      correlationId,
-      userId,
-      tenantId: tenantId ?? undefined,
-      userEmail: session.email,
-      requestedBy: session.username,
-      personaId: persona?._id,
-      personaName: persona.name,
-      scope,
-      message,
-      response: output,
-      contextChunkIds: [],
-      model: "watchlist_snapshot_direct",
-      strategyJobOptOut,
-      xapiToolCalls: [
-        {
-          name: "atx_function",
-          args: { operation: "watchlist_snapshot" },
-          resultHash: buildSha256Hex(watchlistToolResult.result),
-          durationMs: watchlistCallDurationMs,
-          ...(watchlistError ? { error: watchlistError } : {})
-        }
-      ]
-    });
+    const chatLogId = shouldPersistHistory
+      ? await saveXChatLog({
+          threadId,
+          requestId,
+          correlationId,
+          userId,
+          tenantId: tenantId ?? undefined,
+          userEmail: session.email,
+          requestedBy: session.username,
+          personaId: persona?._id,
+          personaName: persona.name,
+          scope,
+          message,
+          response: output,
+          contextChunkIds: [],
+          model: "watchlist_snapshot_direct",
+          strategyJobOptOut,
+          retentionExpiresAt,
+          xapiToolCalls: [
+            {
+              name: "atx_function",
+              args: { operation: "watchlist_snapshot" },
+              resultHash: buildSha256Hex(watchlistToolResult.result),
+              durationMs: watchlistCallDurationMs,
+              ...(watchlistError ? { error: watchlistError } : {})
+            }
+          ]
+        })
+      : null;
 
     return NextResponse.json(
       {
@@ -697,7 +731,7 @@ export async function POST(request: Request) {
           contextSource: "none",
           collectionSearchStatus: "skipped_no_collections",
           collectionSearchNonReadyFileCount: 0,
-          logId: chatLogId.toHexString(),
+          logId: chatLogId?.toHexString(),
           toolCalls: [{ name: "atx_function", durationMs: watchlistCallDurationMs }]
         }
       },
@@ -718,35 +752,32 @@ export async function POST(request: Request) {
    */
   const hasHostedSearchTool = xapiConfig.tools.some((t) => t.type === "web_search" || t.type === "x_search");
 
-  const useRemoteConversationHistory =
-    isXchatRemoteHistoryEnabled() && persona?.keepXchatHistory !== false;
+  const useRemoteConversationHistory = false;
   let previousResponseId: string | undefined;
-  if (useRemoteConversationHistory && userId) {
-    try {
-      const latest = await getLatestXchatResponseIdByUser({
-        userId,
-        tenantId,
-        personaId: persona?._id
-      });
-      previousResponseId = latest ?? undefined;
-    } catch (error) {
-      console.warn("[xchat/ask] remote history lookup failed (non-fatal)", {
-        userId: session.userId,
-        message: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
 
   const teamKbMetaLine =
     linkedCollectionIds.length > 0
       ? `xChat TEAM KB xAI collection ids (persona.teamCollection + deploy default; single team model — no per-user history collection): ${linkedCollectionIds.join(", ")}`
       : "xChat TEAM KB xAI collection ids: (none — set persona teamCollection and/or team KB / XAI_TEAM_ID so RAG can run)";
 
+  const recentThreadMessages: XchatRecentThreadMessage[] = (
+    parsed.data.recentMessages ?? []
+  )
+    .map((row) => ({
+      role: row.role,
+      content: row.content.trim()
+    }))
+    .filter((row) => row.content.length > 0)
+    .slice(-10);
+  const recentHistoryBlock = buildRecentThreadMessagesPromptBlock(recentThreadMessages, {
+    maxMessages: 10
+  });
+
   const builtSystemPrompt = buildXchatSystemPrompt({
     personaSystem: persona?.systemPrompt ?? "",
     fallbackPersonaSystem: "You are xchat, an operations-focused assistant for atxfinance core admins.",
     ragContext,
-    recentHistoryBlock: null,
+    recentHistoryBlock,
     workspaceSnapshot: null,
     sessionToolInstructions: buildSessionToolInstructions({
       hostedSearch: hasHostedSearchTool,
@@ -897,9 +928,10 @@ export async function POST(request: Request) {
         personaId: persona?._id?.toHexString(),
         model: xaiResponse.model,
         scope,
-        note: useRemoteConversationHistory
-          ? "Turn stored in xchat_logs + xAI hosted conversation state (`store_messages`/`previous_response_id`)."
-          : "Turn stored in xchat_logs; optional xAI user-collection sync is off unless XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION=true."
+        historyPolicy: shouldPersistHistory ? "opt_in_keep_last_10" : "ephemeral_only",
+        note: shouldPersistHistory
+          ? "Turn stored in xchat_logs with rolling last-10 policy and 60-day TTL."
+          : "No xchat_logs persistence; continuity comes from recent thread messages in the request."
       }
     });
   } catch (auditError) {
@@ -910,39 +942,42 @@ export async function POST(request: Request) {
     });
   }
 
-  const chatLogId = await saveXChatLog({
-    threadId,
-    requestId,
-    correlationId,
-    userId,
-    tenantId: tenantId ?? undefined,
-    userEmail: session.email,
-    requestedBy: session.username,
-    personaId: persona?._id,
-    personaName: persona.name,
-    scope,
-    message,
-    response: responseMarkdown,
-    contextChunkIds,
-    model: xaiResponse.model,
-    xaiUsage: xaiUsageSnapshot,
-    xaiResponseId: previousResponseId,
-    xapiMode: xapiConfig.mode,
-    xapiToolChoice: xapiConfig.toolChoice,
-    xapiMaxTurns: xapiConfig.maxTurns,
-    xapiToolCount: xapiConfig.tools.length,
-    collectionContextReferences,
-    xapiToolCalls: toolCallLogs.length > 0
-      ? toolCallLogs.map((tc) => ({
-          name: tc.name,
-          args: tc.args,
-          resultHash: buildSha256Hex(tc.result),
-          durationMs: tc.durationMs,
-          error: tc.error
-        }))
-      : undefined,
-    strategyJobOptOut
-  });
+  const chatLogId = shouldPersistHistory
+    ? await saveXChatLog({
+        threadId,
+        requestId,
+        correlationId,
+        userId,
+        tenantId: tenantId ?? undefined,
+        userEmail: session.email,
+        requestedBy: session.username,
+        personaId: persona?._id,
+        personaName: persona.name,
+        scope,
+        message,
+        response: responseMarkdown,
+        contextChunkIds,
+        model: xaiResponse.model,
+        xaiUsage: xaiUsageSnapshot,
+        xaiResponseId: previousResponseId,
+        xapiMode: xapiConfig.mode,
+        xapiToolChoice: xapiConfig.toolChoice,
+        xapiMaxTurns: xapiConfig.maxTurns,
+        xapiToolCount: xapiConfig.tools.length,
+        collectionContextReferences,
+        xapiToolCalls: toolCallLogs.length > 0
+          ? toolCallLogs.map((tc) => ({
+              name: tc.name,
+              args: tc.args,
+              resultHash: buildSha256Hex(tc.result),
+              durationMs: tc.durationMs,
+              error: tc.error
+            }))
+          : undefined,
+        strategyJobOptOut,
+        retentionExpiresAt
+      })
+    : null;
 
   fireAndForgetRecordXchatToolUsage({
     userId: session.userId,
@@ -963,7 +998,7 @@ export async function POST(request: Request) {
         contextSource,
         collectionSearchStatus,
         collectionSearchNonReadyFileCount,
-        logId: chatLogId.toHexString(),
+        logId: chatLogId?.toHexString(),
         toolCalls: toolCallLogs.length > 0
           ? toolCallLogs.map((tc) => ({ name: tc.name, durationMs: tc.durationMs }))
           : undefined,
