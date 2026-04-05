@@ -8,8 +8,10 @@ import {
     addCalendarDaysUtc,
     chainRowMoneynessClass,
     closestStrikeToSpot,
+    filterOptionChainRowsByLiquidity,
     formatImpliedVolatilityDisplay,
     horizonShortLabel,
+    legHasQuotableLastQuote,
     pickExpirationOnOrAfter,
     spreadMetrics,
     spreadQuality
@@ -51,14 +53,6 @@ type ExpirationsPayload = { underlying: string; expirationDates: string[]; error
 
 function legOi(leg: ChainLeg): number {
   return openInterest(leg);
-}
-
-function filterChainRows(rows: ChainRow[]): { rows: ChainRow[]; usedOiFilter: boolean } {
-  const filtered = rows.filter((r) => legOi(r.call) > 0 || legOi(r.put) > 0);
-  if (filtered.length > 0) {
-    return { rows: filtered, usedOiFilter: true };
-  }
-  return { rows, usedOiFilter: false };
 }
 
 type XoptionsChainScannerProps = {
@@ -167,11 +161,11 @@ export function XoptionsChainScanner({
       "",
       "side,strike,bid,ask,mid,spread,spread_pct_mid,iv_pct,oi"
     ];
-    const { rows } = filterChainRows(chain.optionChain);
+    const { rows } = filterOptionChainRowsByLiquidity(chain.optionChain);
     for (const r of rows) {
       for (const side of ["call", "put"] as const) {
         const leg = r[side];
-        if (!leg) {
+        if (!leg || !legHasQuotableLastQuote(leg)) {
           continue;
         }
         const bid = leg.last_quote.bid;
@@ -204,8 +198,8 @@ export function XoptionsChainScanner({
 
   const canLoad = symbol.trim().length > 0 && weeks !== null;
   const filtered = chain
-    ? filterChainRows(chain.optionChain)
-    : { rows: [] as ChainRow[], usedOiFilter: false };
+    ? filterOptionChainRowsByLiquidity(chain.optionChain)
+    : { rows: [] as ChainRow[], usedLiquidityFilter: false };
   const displayRows = filtered.rows.slice(0, CHAIN_DISPLAY_MAX);
   const truncated =
     chain !== null && filtered.rows.length > CHAIN_DISPLAY_MAX;
@@ -275,9 +269,9 @@ export function XoptionsChainScanner({
               Source: <em>{chain.dataSource}</em>
               {chain.note ? <span className="xoptions-chain-scanner__note"> · {chain.note}</span> : null}
             </p>
-            {!filtered.usedOiFilter && chain.optionChain.length > 0 ? (
+            {!filtered.usedLiquidityFilter && chain.optionChain.length > 0 ? (
               <p className="xoptions-chain-scanner__warn">
-                No strikes with OI &gt; 0 — showing full chain.
+                No strikes with OI or bid/ask — showing full chain.
               </p>
             ) : null}
             {truncated ? (
@@ -364,7 +358,7 @@ function ChainRowCall({
   atmStrike: number | null;
 }) {
   const leg = row.call;
-  if (!leg) {
+  if (!leg || !legHasQuotableLastQuote(leg)) {
     return (
       <tr className="xoptions-chain-table__row">
         <td className="py-0.5 font-mono">{row.strike}</td>
@@ -389,7 +383,7 @@ function ChainRowPut({
   atmStrike: number | null;
 }) {
   const leg = row.put;
-  if (!leg) {
+  if (!leg || !legHasQuotableLastQuote(leg)) {
     return (
       <tr className="xoptions-chain-table__row">
         <td className="py-0.5 font-mono">{row.strike}</td>

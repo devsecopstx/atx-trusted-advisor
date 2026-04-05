@@ -61,12 +61,23 @@ export function setShowStrategySizingEnabled(enabled: boolean): void {
 }
 
 /** P/L payoff chart under the chain (step 4). Default off — enable from workspace sidebar on /xoptions. */
-export function isPayoffPreviewEnabled(): boolean {
+function readPayoffPreviewFlag(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
   return window.localStorage.getItem(KEY_PAYOFF_PREVIEW) === "1";
 }
+
+export function isPayoffPreviewEnabled(): boolean {
+  return readPayoffPreviewFlag();
+}
+
+/**
+ * Pass this to `useSyncExternalStore` as getSnapshot (not `isPayoffPreviewEnabled`).
+ * Some production bundles have treated a re-exported function name as non-callable at that callsite;
+ * a `const` arrow keeps a stable function value for the hook.
+ */
+export const getPayoffPreviewSyncSnapshot = (): boolean => readPayoffPreviewFlag();
 
 export function setPayoffPreviewEnabled(enabled: boolean): void {
   if (typeof window === "undefined") {

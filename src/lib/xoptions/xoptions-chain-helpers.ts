@@ -173,6 +173,60 @@ export function chainRowMoneynessClass(
   return itm ? "xoptions-contract-row--itm" : "";
 }
 
+/** Minimal leg shape for chain-row liquidity filtering (xOptions UI + scanner). */
+export type OptionChainLegLike = {
+  last_quote: { bid: number; ask: number };
+  open_interest?: number;
+} | null;
+
+export function legOpenInterestChain(leg: OptionChainLegLike): number {
+  if (!leg) {
+    return 0;
+  }
+  const oi = leg.open_interest;
+  return typeof oi === "number" && Number.isFinite(oi) ? oi : 0;
+}
+
+/**
+ * Keep a strike row if either leg has OI &gt; 0 **or** a non-zero bid/ask.
+ * OI-only filtering hid most strikes for illiquid names (0 OI but valid quotes on Yahoo).
+ */
+export function legHasLiquiditySignal(leg: OptionChainLegLike): boolean {
+  if (!leg) {
+    return false;
+  }
+  if (legOpenInterestChain(leg) > 0) {
+    return true;
+  }
+  const b = leg.last_quote?.bid;
+  const a = leg.last_quote?.ask;
+  return (
+    (typeof b === "number" && Number.isFinite(b) && b > 0) ||
+    (typeof a === "number" && Number.isFinite(a) && a > 0)
+  );
+}
+
+/** True when bid/ask are present and finite (table/CSV need this; OI-only legs can lack quotes). */
+export function legHasQuotableLastQuote(leg: OptionChainLegLike): boolean {
+  if (!leg?.last_quote) {
+    return false;
+  }
+  const { bid, ask } = leg.last_quote;
+  return Number.isFinite(bid) && Number.isFinite(ask);
+}
+
+export function filterOptionChainRowsByLiquidity<
+  T extends { strike: number; call: OptionChainLegLike; put: OptionChainLegLike }
+>(rows: T[]): { rows: T[]; usedLiquidityFilter: boolean } {
+  const filtered = rows.filter(
+    (r) => legHasLiquiditySignal(r.call) || legHasLiquiditySignal(r.put)
+  );
+  if (filtered.length > 0) {
+    return { rows: filtered, usedLiquidityFilter: true };
+  }
+  return { rows, usedLiquidityFilter: false };
+}
+
 /** Implied vol from chain API is already a percentage (e.g. 35.5 = 35.5%). */
 export function formatImpliedVolatilityDisplay(iv: number | null | undefined): string {
   if (iv == null || !Number.isFinite(iv)) {

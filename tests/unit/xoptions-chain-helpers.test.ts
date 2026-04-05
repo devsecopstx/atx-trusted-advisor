@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
     chainRowMoneynessClass,
     closestStrikeToSpot,
+    filterOptionChainRowsByLiquidity,
     filterStrikesBySpotBand,
     formatImpliedVolatilityDisplay,
+    legHasLiquiditySignal,
+    legHasQuotableLastQuote,
     sliceStrikesAroundSpot
 } from "@/lib/xoptions/xoptions-chain-helpers";
 
@@ -53,6 +56,81 @@ describe("formatImpliedVolatilityDisplay", () => {
   it("formats percent with two decimals", () => {
     expect(formatImpliedVolatilityDisplay(35.5)).toBe("35.50%");
     expect(formatImpliedVolatilityDisplay(null)).toBe("—");
+  });
+});
+
+describe("filterOptionChainRowsByLiquidity", () => {
+  const mkLeg = (openInterest: number, bid: number, ask: number) => ({
+    last_quote: { bid, ask },
+    open_interest: openInterest,
+    implied_volatility: 10
+  });
+
+  it("keeps strikes with quoted bid/ask even when OI is 0 (illiquid names)", () => {
+    const rows = [
+      { strike: 9, call: mkLeg(0, 0.05, 0.06), put: mkLeg(0, 0.04, 0.05) },
+      { strike: 10, call: mkLeg(7840, 0.06, 0.06), put: mkLeg(0, 0, 0) },
+      { strike: 11, call: mkLeg(0, 0.02, 0.03), put: mkLeg(0, 0.01, 0.02) }
+    ];
+    const { rows: out, usedLiquidityFilter } = filterOptionChainRowsByLiquidity(rows);
+    expect(usedLiquidityFilter).toBe(true);
+    expect(out).toHaveLength(3);
+  });
+
+  it("returns full chain when no row has OI or non-zero bid/ask", () => {
+    const rows = [
+      {
+        strike: 10,
+        call: { last_quote: { bid: 0, ask: 0 }, open_interest: 0, implied_volatility: 10 },
+        put: { last_quote: { bid: 0, ask: 0 }, open_interest: 0, implied_volatility: 10 }
+      }
+    ];
+    const { rows: out, usedLiquidityFilter } = filterOptionChainRowsByLiquidity(rows);
+    expect(usedLiquidityFilter).toBe(false);
+    expect(out).toEqual(rows);
+  });
+});
+
+describe("legHasQuotableLastQuote", () => {
+  it("requires finite bid and ask", () => {
+    expect(
+      legHasQuotableLastQuote({
+        last_quote: { bid: 1, ask: 2 },
+        open_interest: 0
+      })
+    ).toBe(true);
+    expect(
+      legHasQuotableLastQuote({
+        last_quote: { bid: NaN, ask: 1 },
+        open_interest: 100
+      })
+    ).toBe(false);
+    expect(legHasQuotableLastQuote({ open_interest: 100 } as never)).toBe(false);
+    expect(legHasQuotableLastQuote(null)).toBe(false);
+  });
+});
+
+describe("legHasLiquiditySignal", () => {
+  it("is true for OI or positive bid/ask", () => {
+    expect(
+      legHasLiquiditySignal({
+        last_quote: { bid: 0, ask: 0 },
+        open_interest: 100
+      })
+    ).toBe(true);
+    expect(
+      legHasLiquiditySignal({
+        last_quote: { bid: 0.05, ask: 0.06 },
+        open_interest: 0
+      })
+    ).toBe(true);
+    expect(
+      legHasLiquiditySignal({
+        last_quote: { bid: 0, ask: 0 },
+        open_interest: 0
+      })
+    ).toBe(false);
+    expect(legHasLiquiditySignal(null)).toBe(false);
   });
 });
 

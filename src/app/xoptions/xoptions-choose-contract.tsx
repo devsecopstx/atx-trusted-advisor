@@ -16,13 +16,15 @@ import {
 import {
     chainRowMoneynessClass,
     closestStrikeToSpot,
+    filterOptionChainRowsByLiquidity,
     filterStrikesBySpotBand,
     formatImpliedVolatilityDisplay,
+    legHasQuotableLastQuote,
     sliceStrikesAroundSpot,
     STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
 import {
-    isPayoffPreviewEnabled,
+    getPayoffPreviewSyncSnapshot,
     isShowGreeksCalcLogicEnabled,
     isTaxEducationEnabled,
     subscribeXoptionsEducationPrefs
@@ -75,11 +77,6 @@ function legOi(leg: ChainLeg): number {
   if (!leg) return 0;
   const oi = leg.open_interest;
   return typeof oi === "number" && Number.isFinite(oi) ? oi : 0;
-}
-
-function filterChainRows(rows: ChainRow[]): ChainRow[] {
-  const filtered = rows.filter((r) => legOi(r.call) > 0 || legOi(r.put) > 0);
-  return filtered.length > 0 ? filtered : rows;
 }
 
 const CHAIN_TABLE_MAX = 80;
@@ -249,7 +246,7 @@ export function XoptionsChooseContract({
   );
   const payoffPreviewEnabled = useSyncExternalStore(
     subscribeXoptionsEducationPrefs,
-    isPayoffPreviewEnabled,
+    getPayoffPreviewSyncSnapshot,
     () => false
   );
 
@@ -327,13 +324,13 @@ export function XoptionsChooseContract({
 
     const applyPayload = (payload: ChainPayload) => {
       setChain(payload);
-      const rows = filterChainRows(payload.optionChain);
+      const rows = filterOptionChainRowsByLiquidity(payload.optionChain).rows;
       const spot = payload.stockPrice;
       const s = sideRef.current;
       const strikeList = rows
         .filter((r) => {
           const leg = s === "call" ? r.call : r.put;
-          return leg != null;
+          return leg != null && legHasQuotableLastQuote(leg);
         })
         .map((r) => r.strike);
       const atm = closestStrikeToSpot(strikeList, spot);
@@ -418,7 +415,7 @@ export function XoptionsChooseContract({
   );
 
   const baseRows = useMemo(
-    () => (chain ? filterChainRows(chain.optionChain) : []),
+    () => (chain ? filterOptionChainRowsByLiquidity(chain.optionChain).rows : []),
     [chain]
   );
 
@@ -867,7 +864,7 @@ export function XoptionsChooseContract({
                           const leg = side === "call" ? row.call : row.put;
                           const spot = chain.stockPrice;
                           const moneynessClass = chainRowMoneynessClass(row.strike, spot, side, atmStrike);
-                          if (!leg) {
+                          if (!leg || !legHasQuotableLastQuote(leg)) {
                             return (
                               <tr
                                 key={row.strike}

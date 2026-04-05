@@ -24,7 +24,7 @@ import {
     subscribeXoptionsStrategyBuilderVisibility
 } from "@/lib/xoptions-strategy-builder-visibility";
 import {
-    isPayoffPreviewEnabled,
+    getPayoffPreviewSyncSnapshot,
     isShowGreeksCalcLogicEnabled,
     isShowStrategySizingEnabled,
     isTaxEducationEnabled,
@@ -302,7 +302,7 @@ export function WorkspaceProductSidebar({
   );
   const payoffPreviewEnabled = useSyncExternalStore(
     subscribeXoptionsEducationPrefs,
-    isPayoffPreviewEnabled,
+    getPayoffPreviewSyncSnapshot,
     () => false
   );
   const importHref =
