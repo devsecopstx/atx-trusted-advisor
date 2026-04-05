@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
       }
     ];
   },
+  /** Browsers request `/favicon.ico` by default; map to the same mark as `metadata.icons` (`/branding/aTx.png`). */
+  async rewrites() {
+    return [{ source: "/favicon.ico", destination: "/branding/aTx.png" }];
+  },
   async redirects() {
     return [
       {
