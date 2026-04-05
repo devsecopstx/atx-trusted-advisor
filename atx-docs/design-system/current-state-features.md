@@ -4,7 +4,7 @@ Last updated: 2026-04-03
 
 Scope: Kotlin/Spring Boot service that acts as a scheduler/worker and thin HTTP API for portfolio, admin, strategy jobs, and RAG-support operations. Built and deployed from the monorepo (`services/atxfinance-backend`).
 
-**Roadmap & gaps (consolidated index):** [`.cursor/plans/release-checklist.md`](../../.cursor/plans/release-checklist.md) — priorities, BFF/auth deferred work, OptionsStrategyEngine (**245n** shipped; see [`strategy-engine.md`](./xStrategyBuilder/strategy-engine.md)), audit lineage, Stripe follow-ons, branding/UI deferrals. **Outstanding-only backlog + reviewer ops hooks:** [`atx-docs/PLAN.md`](../PLAN.md) (align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md) — Secret Manager / deploy docs when SMTP or BFF changes).
+**Roadmap & gaps (consolidated index):** [`atx-docs/PLAN.md`](../PLAN.md) — priorities, BFF/auth deferred work, OptionsStrategyEngine (**245n** shipped; see [`strategy-engine.md`](./xStrategyBuilder/strategy-engine.md)), audit lineage, Stripe follow-ons, branding/UI deferrals. **Outstanding-only backlog + reviewer ops hooks:** [`atx-docs/PLAN.md`](../PLAN.md) (align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md) — Secret Manager / deploy docs when SMTP or BFF changes).
 
 **Charts (Next.js):** ApexCharts for xStrategyBuilder / xOptions — [charts-apex.md](./charts-apex.md). **Watchlist price alerts (Next scanner):** thresholds + cooldown documented in `PLAN.md` shipped **240n** (`src/modules/watchlist/price-alert-service.ts`).
 
@@ -172,6 +172,6 @@ When **`SMTP_HOST`**, **`SMTP_USER`**, **`SMTP_PASS`**, and **`DESK_EMAIL_FROM`*
 References
 - Service README: `services/atxfinance-backend/README.md`
 - SRE/API details: `atx-docs/sre-ops/atxfinance-backend-http-api.md`
-- Consolidated release / gap index: `.cursor/plans/release-checklist.md`
+- Consolidated release / gap index: `atx-docs/PLAN.md`
 - Deploy, verify, desk SMTP on BFF: `atx-docs/guides/deploy-and-ops.md`
 - Portfolio & admin data contracts in `src/main/kotlin/com/atxfinance/backend` (packages noted above)

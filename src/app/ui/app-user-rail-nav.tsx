@@ -123,30 +123,6 @@ function RailNavLink({ href, children, title }: { href: string; children: ReactN
   return link;
 }
 
-function TopLevelRailLink({
-  href,
-  children,
-  title
-}: {
-  href: string;
-  children: ReactNode;
-  title?: string;
-}) {
-  const pathname = usePathname() ?? "";
-  const active = sublinkActive(pathname, href);
-  const cls = `app-user-rail-top-link${active ? " app-user-rail-top-link--active" : ""}`;
-  const link = (
-    <Link className={cls} href={href}>
-      {children}
-    </Link>
-  );
-  const t = title?.trim();
-  if (t) {
-    return <XfHoverHint hint={t}>{link}</XfHoverHint>;
-  }
-  return link;
-}
-
 export type AppUserRailNavProps = {
   isGlobalAdmin: boolean;
   /** When true, disclosure starts expanded. Default collapsed across product + xChat rails. */
