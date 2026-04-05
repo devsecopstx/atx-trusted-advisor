@@ -25,6 +25,11 @@ const repositoryMocks = vi.hoisted(() => ({
   deletePortfolioAccountForUser: vi.fn()
 }));
 
+const rateLimitMocks = vi.hoisted(() => ({
+  checkDistributedRateLimit: vi.fn(),
+  extractClientRateLimitKey: vi.fn()
+}));
+
 vi.mock("@/lib/api-auth", () => authMocks);
 
 vi.mock("@/lib/server-request-cache", () => ({
@@ -36,6 +41,15 @@ vi.mock("@/lib/auth", async (importOriginal) => {
   return {
     ...actual,
     requireSessionUser: sessionMocks.requireSessionUser
+  };
+});
+
+vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/distributed-rate-limit")>();
+  return {
+    ...actual,
+    checkDistributedRateLimit: rateLimitMocks.checkDistributedRateLimit,
+    extractClientRateLimitKey: rateLimitMocks.extractClientRateLimitKey
   };
 });
 
@@ -83,6 +97,15 @@ import { SCORING_FACTOR_IDS } from "@/modules/core-admin/scoring-factors";
 
 describe("portfolio API routes", () => {
   beforeEach(() => {
+    rateLimitMocks.extractClientRateLimitKey.mockReturnValue("test-client");
+    rateLimitMocks.checkDistributedRateLimit.mockResolvedValue({
+      allowed: true,
+      remaining: 999,
+      resetAtMs: Date.now() + 60_000,
+      retryAfterSeconds: 60,
+      source: "memory"
+    });
+
     sessionMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",

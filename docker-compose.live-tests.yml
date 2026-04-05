@@ -1,0 +1,49 @@
+services:
+  mongodb-live-tests:
+    image: mongo:8
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: atxfinance_live_tests
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: localdev
+    ports:
+      - "27018:27017"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "mongodb://admin:localdev@127.0.0.1:27017/admin?authSource=admin",
+          "--eval",
+          "db.adminCommand('ping')"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  atxfinance-backend-live-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    depends_on:
+      mongodb-live-tests:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: ""
+      SPRING_DATA_MONGODB_URI: mongodb://admin:localdev@mongodb-live-tests:27017/atxfinance_live_tests?authSource=admin
+    ports:
+      - "18080:8080"
+
+  redis-live-tests:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxclients", "1000"]
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
