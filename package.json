@@ -78,6 +78,7 @@
     "ops:secrets:sync-desk-smtp:prod": "bash scripts/ops/sync-desk-smtp-secrets-from-env.sh .env.prod",
     "ops:secrets:sync-google-oauth:staging": "bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.stage",
     "ops:secrets:sync-google-oauth:prod": "bash scripts/ops/sync-google-oauth-secrets-from-env.sh .env.prod",
+    "ops:db:probe": "node scripts/ops/probe-mongodb-from-env.mjs",
     "ops:deploy:cloud-run:staging": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging",
     "ops:deploy:cloud-run:staging:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging --with-ci-gate",
     "ops:deploy:cloud-run:production": "bash scripts/ops/deploy-cloud-run-from-env.sh --production",
