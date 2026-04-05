@@ -758,7 +758,7 @@ export function XchatConversation({
                 "Launching guided strategy workflow in xStrategyBuilder.",
                 correlationId ? `Correlation id: \`${correlationId}\`` : null,
                 "",
-                "_Not investment advice. Review suitability, assignment risk, and tax impact before execution._"
+                "_Educational conversations only. Not personalized investment advice. Review suitability, assignment risk, and tax impact before execution._"
               ]
                 .filter(Boolean)
                 .join("\n"),

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
+import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import {
     addCalendarDaysUtc,
     chainRowMoneynessClass,
@@ -345,7 +346,7 @@ export function XoptionsChainScanner({
 
           <p className="xoptions-chain-scanner__disclaimer">
             For informational purposes only. Options trading involves substantial risk of loss and is
-            not suitable for all investors. Quotes may be delayed; not financial advice.
+            not suitable for all investors. Quotes may be delayed. {EDUCATIONAL_ONLY_SHORT}
           </p>
         </div>
       ) : null}

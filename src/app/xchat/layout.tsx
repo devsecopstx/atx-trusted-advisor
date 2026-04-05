@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import "@/app/portfolios/portfolios-dashboard.css";
+import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
+import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 
 import { GlobalFooter } from "../ui/global-footer";
 
@@ -11,7 +13,8 @@ import "./xchat.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "xChat"
+  title: "xChat",
+  description: `xChat for market education and research workflows. ${EDUCATIONAL_ONLY_SHORT}`
 };
 
 type XchatLayoutProps = {
@@ -21,6 +24,7 @@ type XchatLayoutProps = {
 export default function XchatLayout({ children }: XchatLayoutProps) {
   return (
     <div className="xchat-layout-root">
+      <EducationalDisclaimerBanner />
       {children}
       <GlobalFooter />
     </div>

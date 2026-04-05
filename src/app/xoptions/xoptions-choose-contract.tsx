@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { XoptionsContractPayoffChart } from "@/app/xoptions/xoptions-contract-payoff-chart";
 import { XoptionsReviewOrderSummaryBar } from "@/app/xoptions/xoptions-review-order-summary-bar";
 import type { StrategyChoiceId } from "@/app/xoptions/xoptions-strategy-choice-panels";
+import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import {
     addCalendarDaysUtc,
     chainRowMoneynessClass,
@@ -852,7 +853,7 @@ export function XoptionsChooseContract({
 
       <p className="xoptions-contract__disclaimer mt-3 text-xs text-[var(--xf-text-400)]">
         * Payoff chart BE uses bid/ask mid; Review order BE and debit use your limit price. Not
-        financial advice.
+        financial advice. {EDUCATIONAL_ONLY_SHORT}
       </p>
     </section>
   );

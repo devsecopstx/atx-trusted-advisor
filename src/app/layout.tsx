@@ -1,4 +1,5 @@
 import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
+import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
@@ -14,7 +15,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "aTx Trusted Advisory",
   description:
-    "aTx⚡Finance — Powered by xAI. No Atoms Moved. Just Gains Earned. Options workspace, xChat, and portfolio tools.",
+    `aTx⚡Finance — Powered by xAI. No Atoms Moved. Just Gains Earned. Options workspace, xChat, and portfolio tools. ${EDUCATIONAL_ONLY_SHORT}`,
   icons: {
     icon: "/branding/app-hero-icon-transparent.png",
     shortcut: "/branding/app-hero-icon-transparent.png",

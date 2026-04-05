@@ -255,6 +255,7 @@ jobs:
           ALLOW_ANY_X_USER_LOGIN: ${{ vars.ALLOW_ANY_X_USER_LOGIN || 'false' }}
           ENABLE_XCHAT_DEBUG: ${{ vars.ENABLE_XCHAT_DEBUG || 'false' }}
           XAI_CHAT_MODEL: ${{ vars.XAI_CHAT_MODEL || 'grok-4-1-fast-reasoning' }}
+          ATXFINANCE_BACKEND_ORIGIN: ${{ vars.ATXFINANCE_BACKEND_ORIGIN || '' }}
           STRIPE_PRICE_BASIC_MONTHLY: ${{ vars.STRIPE_PRICE_BASIC_MONTHLY || '' }}
           STRIPE_PRICE_PREMIUM_MONTHLY: ${{ vars.STRIPE_PRICE_PREMIUM_MONTHLY || '' }}
           STRIPE_PRICE_PREMIUM_PLUS_MONTHLY: ${{ vars.STRIPE_PRICE_PREMIUM_PLUS_MONTHLY || '' }}
@@ -282,6 +283,9 @@ jobs:
             echo "::notice::Desk SMTP secrets not all present in ${PROJECT} — portfolio email channels skipped (sync: scripts/ops/sync-desk-smtp-secrets-from-env.sh)"
           fi
           ENV_VARS="NODE_ENV=production,ATX_DEPLOY_TARGET=deploy,X_OAUTH_CALLBACK_URL=${{ vars.PROD_BASE_URL }}/api/auth/x/callback,ALLOW_ANY_X_USER_LOGIN=${ALLOW_ANY_X_USER_LOGIN},ENABLE_XCHAT_DEBUG=${ENABLE_XCHAT_DEBUG},XAI_CHAT_MODEL=${XAI_CHAT_MODEL}"
+          if [ -n "${ATXFINANCE_BACKEND_ORIGIN}" ]; then
+            ENV_VARS="${ENV_VARS},ATXFINANCE_BACKEND_ORIGIN=${ATXFINANCE_BACKEND_ORIGIN}"
+          fi
           for pair in "STRIPE_PRICE_BASIC_MONTHLY:${STRIPE_PRICE_BASIC_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_MONTHLY:${STRIPE_PRICE_PREMIUM_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:${STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:-}" "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}" "SMTP_SECURE:${SMTP_SECURE:-}"; do
             k="${pair%%:*}"
             v="${pair#*:}"

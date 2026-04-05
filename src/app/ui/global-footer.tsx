@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { APP_VERSION_LABEL } from "@/lib/app-version";
+import { EDUCATIONAL_ONLY_FULL } from "@/lib/legal-disclaimers";
 
 const LEGAL_LINKS: { href: string; label: string }[] = [
   { href: "/legal/imprint", label: "Imprint" },
@@ -18,11 +19,7 @@ type GlobalFooterProps = {
 
 export function GlobalFooter({ subline }: GlobalFooterProps) {
   const year = new Date().getFullYear();
-  const effectiveSubline = subline ?? (
-    <>
-      ATX Trusted Advisory LLC, provides decision insights, information and illustrative examples only. It is not investment, tax, or financial advice. The content is for approved users and does not constitute a licensed professional service. All decisions remain the sole responsibility of the user. Consult a qualified, licensed advisor before acting.
-    </>
-  );
+  const effectiveSubline = subline ?? <>{EDUCATIONAL_ONLY_FULL}</>;
 
   return (
     <footer className="app-footer">

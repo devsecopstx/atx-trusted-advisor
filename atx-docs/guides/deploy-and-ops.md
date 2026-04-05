@@ -117,6 +117,10 @@ GitHub environment secrets should remain OIDC-only:
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`
 - `GCP_SERVICE_ACCOUNT_EMAIL`
 
+**GitHub environment variables (non-secret):**
+
+- `ATXFINANCE_BACKEND_ORIGIN` — optional BFF target for Spring backend. Set this in both `staging` and `production` environments when you want Next API routes to proxy to Spring; leave unset for Next-only mode.
+
 ## Deploy preflight
 
 Recommended checks before merge/deploy:
@@ -164,6 +168,13 @@ For cloud agents:
 - do not start local Docker Mongo
 - use Atlas `MONGODB_URI` in environment
 - run `npm ci`, then validation gates
+
+## App-store metadata compliance
+
+For App Store / Play listing text, keep safety wording aligned with in-app metadata and footer:
+
+- **Required phrase:** `Educational conversations only. Not personalized investment advice.`
+- Ensure this appears in listing description/subtitle fields where policy copy is captured.
 
 ## Operator status shortcuts
 
