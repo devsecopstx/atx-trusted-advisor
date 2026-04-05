@@ -15,6 +15,15 @@ vi.mock("@/lib/auth", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/backend-bff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
+  return {
+    ...actual,
+    // Keep expirations tests hermetic regardless of ATXFINANCE_BACKEND_ORIGIN in shell env.
+    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+  };
+});
+
 vi.mock("@/modules/yahoo/yahoo-finance-service", () => ({
   getYahooFinance2: () => ({
     options: mockOptions

@@ -23,6 +23,15 @@ vi.mock("@/lib/auth", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/backend-bff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
+  return {
+    ...actual,
+    // Keep this suite hermetic: do not proxy watchlist calls to a live Spring backend.
+    proxyPortfolioRequestToBackend: vi.fn().mockResolvedValue(null)
+  };
+});
+
 vi.mock("@/modules/core-admin/repository", async () => {
   const actual = await vi.importActual<typeof import("@/modules/core-admin/repository")>(
     "@/modules/core-admin/repository"

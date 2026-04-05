@@ -18,6 +18,15 @@ vi.mock("@/lib/auth", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/backend-bff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
+  return {
+    ...actual,
+    // Keep strategy-options tests hermetic regardless of ATXFINANCE_BACKEND_ORIGIN in shell env.
+    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+  };
+});
+
 vi.mock("yahoo-finance2", () => ({
   default: vi.fn().mockImplementation(() => ({
     options: mockOptions,

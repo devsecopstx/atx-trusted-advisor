@@ -26,6 +26,7 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 - Types: `npm run typecheck`
 - Tests: `npm run test`
 - Integration-only: `npm run test:integration` (optional; `npm run test` already includes `tests/integration/**`)
+- Live integration (optional): `npm run test:integration:live` (spins isolated Docker Compose stack: Mongo + atxfinance-backend + Redis; contract checks under `tests/live`; keeps default test suite hermetic)
 - Build: `npm run build`
 - CI gate: `npm run ci:gate`
 - Release gate: `npm run ci:gate && npm run build`

@@ -11,6 +11,14 @@ const readinessMocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/xchat/rag-file-readiness", () => readinessMocks);
+vi.mock("@/lib/backend-bff", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
+  return {
+    ...actual,
+    // Keep this suite hermetic: never proxy to backend in integration tests.
+    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+  };
+});
 
 import { GET as getReadiness } from "@/app/api/rag/files/[fileId]/readiness/route";
 

@@ -25,6 +25,8 @@
     "test": "vitest run",
     "test:ci": "mkdir -p test-results && vitest run --reporter=default --reporter=junit --outputFile.junit=test-results/vitest-junit.xml",
     "test:integration": "vitest run tests/integration",
+    "test:integration:live": "RUN_INTEGRATION_LIVE=true node scripts/dev/run-live-integration-tests.mjs",
+    "test:integration:live:down": "docker compose -p atxfinance-live-tests -f docker-compose.live-tests.yml down -v",
     "typecheck": "tsc --noEmit",
     "seed:admin": "node --env-file=.env scripts/seed-admin-user.mjs",
     "seed:admin:full": "npm run seed:admin",
