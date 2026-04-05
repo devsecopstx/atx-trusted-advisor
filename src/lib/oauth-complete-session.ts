@@ -6,6 +6,7 @@ import {
     isSafeOAuthReturnPath
 } from "@/lib/auth";
 import type { ClientLoginMeta } from "@/lib/client-request-meta";
+import { subscriberLandingPathForPlan } from "@/lib/default-landing-path";
 import { getEnv, isAllowAnyXUserLoginEnabled } from "@/lib/env";
 import { resolveOrCreateUserBootstrapCollection } from "@/modules/core-admin/access-request-bootstrap";
 import { provisionDefaultPortfolioForUser } from "@/modules/core-admin/repository";
@@ -194,7 +195,9 @@ export async function finalizeOAuthSessionAndRedirect(options: {
     });
 
     const returnPath = await consumeOAuthReturnPathCookie();
-    const fallback = isGlobalAdmin(finalSessionRoles) ? "/admin" : "/xchat";
+    const fallback = isGlobalAdmin(finalSessionRoles)
+      ? "/admin"
+      : subscriberLandingPathForPlan(user.subscriptionPlan);
     const target = returnPath && isSafeOAuthReturnPath(returnPath) ? returnPath : fallback;
     return NextResponse.redirect(new URL(target, origin));
   } catch (error) {

@@ -2,19 +2,26 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 
 import { OutlookIconFor, outlookIconClassForSlug } from "@/app/ui/outlook-icons";
 import { useWorkspaceAccountSelection } from "@/app/ui/use-workspace-account-selection";
-import { XoptionsChooseContract } from "@/app/xoptions/xoptions-choose-contract";
+import {
+    XoptionsChooseContract,
+    type XoptionsSelectedOptionMeta
+} from "@/app/xoptions/xoptions-choose-contract";
 import {
     StrategyChoicePanels,
     strategyShortLabel,
     type StrategyChoiceId
 } from "@/app/xoptions/xoptions-strategy-choice-panels";
 import { XoptionsStrategyJobsSection } from "@/app/xoptions/xoptions-strategy-jobs-section";
+import {
+    isXoptionsStrategyBuilderVisible,
+    subscribeXoptionsStrategyBuilderVisibility
+} from "@/lib/xoptions-strategy-builder-visibility";
 import {
     DESK_OUTLOOK_LABELS,
     DESK_RISK_DISPLAY_LABELS
@@ -158,15 +165,30 @@ export function XoptionsStrategyBuilderWorkspace() {
   const [unlockedStep, setUnlockedStep] = useState(1);
   const [strategyChoiceId, setStrategyChoiceId] = useState<StrategyChoiceId | null>(null);
   const [reviewOrderPlainText, setReviewOrderPlainText] = useState<string | null>(null);
+  const [yahooOptionSymbol, setYahooOptionSymbol] = useState<string | null>(null);
+  const [selectedOptionMeta, setSelectedOptionMeta] = useState<XoptionsSelectedOptionMeta | null>(null);
+  const [watchlistAddBusy, setWatchlistAddBusy] = useState(false);
+  const [watchlistAddStatus, setWatchlistAddStatus] = useState<string | null>(null);
 
   const [outlookOverride, setOutlookOverride] = useState<"" | AccountOutlook>("");
   const [riskOverride, setRiskOverride] = useState<"" | "conservative" | "balanced" | "growth">("");
   const [factorWeights, setFactorWeights] = useState(buildDefaultFactorWeights);
 
   const router = useRouter();
+  const showStrategyBuilderJobs = useSyncExternalStore(
+    subscribeXoptionsStrategyBuilderVisibility,
+    isXoptionsStrategyBuilderVisible,
+    () => false
+  );
 
   const onReviewOrderPlainTextChange = useCallback((t: string | null) => {
     setReviewOrderPlainText(t);
+  }, []);
+  const onYahooOptionSymbolChange = useCallback((s: string | null) => {
+    setYahooOptionSymbol(s);
+  }, []);
+  const onSelectedOptionMetaChange = useCallback((meta: XoptionsSelectedOptionMeta | null) => {
+    setSelectedOptionMeta(meta);
   }, []);
   const accountIds = useMemo(() => ctx?.accounts.map((row) => row.id) ?? [], [ctx?.accounts]);
   const selectedWorkspaceAccountId = useWorkspaceAccountSelection(
@@ -186,6 +208,47 @@ export function XoptionsStrategyBuilderWorkspace() {
     void navigator.clipboard.writeText(t).catch(() => {});
     router.push("/xchat");
   }, [reviewOrderPlainText, router]);
+
+  const handleAddOptionToWatchlist = useCallback(async () => {
+    const portfolioId = ctx?.portfolio?.id;
+    const optionSymbol = yahooOptionSymbol?.trim();
+    if (!portfolioId || !optionSymbol) {
+      return;
+    }
+    setWatchlistAddBusy(true);
+    setWatchlistAddStatus(null);
+    try {
+      const strategyLabelPart = strategyChoiceId ? strategyShortLabel(strategyChoiceId) : "Options";
+      const lineType = selectedOptionMeta?.side === "put" ? "put_contract" : "call_contract";
+      const strategyMeta = selectedOptionMeta
+        ? `${strategyLabelPart} · ${selectedOptionMeta.underlying} ${selectedOptionMeta.expiration} ${selectedOptionMeta.side.toUpperCase()} ${selectedOptionMeta.strike.toFixed(2)} · ${selectedOptionMeta.yahooSymbol}`
+        : `${strategyLabelPart} · ${symbol.trim().toUpperCase()}`;
+      const response = await fetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/watchlist`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          addEntries: [
+            {
+              symbol: optionSymbol,
+              lineType,
+              strategy: strategyMeta
+            }
+          ],
+          dedupe: true
+        })
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Could not add to watchlist");
+      }
+      setWatchlistAddStatus("Added to watchlist");
+    } catch (error) {
+      setWatchlistAddStatus(error instanceof Error ? error.message : "Could not add to watchlist");
+    } finally {
+      setWatchlistAddBusy(false);
+    }
+  }, [ctx?.portfolio?.id, yahooOptionSymbol, strategyChoiceId, selectedOptionMeta, symbol]);
 
   const loadWorkspace = useCallback(async (accountId?: string | null) => {
     setCtxErr(null);
@@ -492,9 +555,11 @@ export function XoptionsStrategyBuilderWorkspace() {
         </p>
       </section>
 
-      <Suspense fallback={null}>
-        <XoptionsStrategyJobsSection />
-      </Suspense>
+      {showStrategyBuilderJobs ? (
+        <Suspense fallback={null}>
+          <XoptionsStrategyJobsSection />
+        </Suspense>
+      ) : null}
 
       <nav className="xoptions-stepper" aria-label="Strategy builder progress">
         {STEPS.map((s, i) => (
@@ -928,11 +993,21 @@ export function XoptionsStrategyBuilderWorkspace() {
                 weeks={weeks}
                 onWeeksChange={setWeeks}
                 lastPrice={snapshot?.lastPrice ?? null}
+                onYahooOptionSymbolChange={onYahooOptionSymbolChange}
+                onSelectedOptionMetaChange={onSelectedOptionMetaChange}
                 strategyChoiceId={strategyChoiceId}
                 strategyLabel={strategyChoiceId ? strategyShortLabel(strategyChoiceId) : null}
                 onReviewOrderPlainTextChange={onReviewOrderPlainTextChange}
               />
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="cta cta-secondary xoptions-chain-cta"
+                  disabled={watchlistAddBusy || !ctx?.portfolio?.id || !yahooOptionSymbol?.trim()}
+                  onClick={() => void handleAddOptionToWatchlist()}
+                >
+                  {watchlistAddBusy ? "Adding..." : "Add to watchlist"}
+                </button>
                 <Link
                   className="cta cta-primary xoptions-chain-cta"
                   href={
@@ -955,6 +1030,20 @@ export function XoptionsStrategyBuilderWorkspace() {
                   Ask xChat
                 </button>
               </div>
+              {yahooOptionSymbol ? (
+                <p className="xoptions-hint text-xs text-[var(--xf-text-400)]">
+                  Yahoo option chain id:{" "}
+                  <span className="font-mono text-[var(--xf-text-200)]">{yahooOptionSymbol}</span>
+                </p>
+              ) : null}
+              {watchlistAddStatus ? (
+                <p
+                  className={`xoptions-hint text-xs ${watchlistAddStatus === "Added to watchlist" ? "text-[var(--xf-gain-green)]" : "text-red-300"}`}
+                  role="status"
+                >
+                  {watchlistAddStatus}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </section>

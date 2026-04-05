@@ -105,7 +105,31 @@ export type XoptionsChooseContractProps = {
   strategyChoiceId?: StrategyChoiceId | null;
   /** Plain-text Review order for xChat handoff; `null` when preview unavailable. */
   onReviewOrderPlainTextChange?: (text: string | null) => void;
+  /** Yahoo option contract symbol for selected leg (e.g. TSLA260130C00170000). */
+  onYahooOptionSymbolChange?: (symbol: string | null) => void;
+  /** Structured selected option metadata for downstream actions (watchlist, filters, etc.). */
+  onSelectedOptionMetaChange?: (meta: XoptionsSelectedOptionMeta | null) => void;
 };
+
+export type XoptionsSelectedOptionMeta = {
+  underlying: string;
+  expiration: string;
+  strike: number;
+  side: "call" | "put";
+  yahooSymbol: string;
+};
+
+function toYahooOptionSymbol(
+  underlying: string,
+  expirationYyyyMmDd: string,
+  contractType: "call" | "put",
+  strikePrice: number
+): string {
+  const expDate = expirationYyyyMmDd.replace(/-/g, "").slice(2);
+  const typeChar = contractType === "call" ? "C" : "P";
+  const strikeStr = String(Math.round(strikePrice * 1000)).padStart(8, "0");
+  return `${underlying}${expDate}${typeChar}${strikeStr}`;
+}
 
 function strategyDefaults(input: StrategyChoiceId | null | undefined): {
   side: "call" | "put";
@@ -165,7 +189,9 @@ export function XoptionsChooseContract({
   lastPrice,
   strategyLabel = null,
   strategyChoiceId = null,
-  onReviewOrderPlainTextChange
+  onReviewOrderPlainTextChange,
+  onYahooOptionSymbolChange,
+  onSelectedOptionMetaChange
 }: XoptionsChooseContractProps) {
   const u = symbol.trim().toUpperCase();
 
@@ -417,12 +443,37 @@ export function XoptionsChooseContract({
     u,
     strategyLabel
   ]);
+  const yahooOptionSymbol = useMemo(() => {
+    if (!chain || !expiration || selectedStrike == null || !u) {
+      return null;
+    }
+    return toYahooOptionSymbol(u, expiration, side, selectedStrike);
+  }, [chain, expiration, selectedStrike, side, u]);
+  const selectedOptionMeta = useMemo<XoptionsSelectedOptionMeta | null>(() => {
+    if (!yahooOptionSymbol || !expiration || selectedStrike == null || !u) {
+      return null;
+    }
+    return {
+      underlying: u,
+      expiration,
+      strike: selectedStrike,
+      side,
+      yahooSymbol: yahooOptionSymbol
+    };
+  }, [yahooOptionSymbol, expiration, selectedStrike, side, u]);
 
   useEffect(() => {
     onReviewOrderPlainTextChange?.(
       orderReview ? formatXoptionsOrderReviewPlainText(orderReview, { includeFootnote: false }) : null
     );
   }, [orderReview, onReviewOrderPlainTextChange]);
+
+  useEffect(() => {
+    onYahooOptionSymbolChange?.(yahooOptionSymbol);
+  }, [onYahooOptionSymbolChange, yahooOptionSymbol]);
+  useEffect(() => {
+    onSelectedOptionMetaChange?.(selectedOptionMeta);
+  }, [onSelectedOptionMetaChange, selectedOptionMeta]);
 
   /** Chain table is interactive once an expiration is chosen and quotes loaded. */
   const chainDataVisible = Boolean(expiration && chain && !loadingChain);
@@ -844,6 +895,11 @@ export function XoptionsChooseContract({
             <p className="xoptions-review-order__narrative m-0 text-[0.75rem] leading-relaxed text-[var(--xf-text-200)]">
               {orderReview.narrative}
             </p>
+            {yahooOptionSymbol ? (
+              <p className="xoptions-review-order__footnote mt-2 mb-0 text-[0.65rem] text-[var(--xf-text-300)]">
+                Yahoo option chain id: <span className="font-mono">{yahooOptionSymbol}</span>
+              </p>
+            ) : null}
             <p className="xoptions-review-order__footnote mt-2 mb-0 text-[0.625rem] text-[var(--xf-text-500)]">
               {XOPTIONS_REVIEW_ORDER_FOOTNOTE}
             </p>

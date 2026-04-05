@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { MongoServerError, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 
@@ -40,6 +40,8 @@ export async function getXchatUserPreferences(input: {
   const query: Record<string, unknown> = { userId: input.userId };
   if (input.tenantId) {
     query.$or = [{ tenantId: input.tenantId }, { tenantId: { $exists: false } }];
+  } else {
+    query.$or = [{ tenantId: null }, { tenantId: { $exists: false } }];
   }
   return db
     .collection<XchatUserPreferences>(COLLECTION)
@@ -56,13 +58,8 @@ export async function upsertXchatUserPreferences(input: {
 }): Promise<XchatUserPreferences> {
   await ensureIndexes();
   const db = await getDb();
+  const collection = db.collection<XchatUserPreferences>(COLLECTION);
   const now = new Date();
-  const query: Record<string, unknown> = { userId: input.userId };
-  if (input.tenantId) {
-    query.tenantId = input.tenantId;
-  } else {
-    query.tenantId = { $exists: false };
-  }
   const setFields: Record<string, unknown> = {
     userId: input.userId,
     keepLastTenMessages: input.keepLastTenMessages,
@@ -74,16 +71,63 @@ export async function upsertXchatUserPreferences(input: {
   if (input.keepLastTenMessages) {
     setFields.consentedAt = now;
   }
-  await db.collection<XchatUserPreferences>(COLLECTION).updateOne(
-    query,
-    {
-      $set: setFields,
-      ...(input.keepLastTenMessages ? { $setOnInsert: { consentedAt: now } } : {})
-    },
-    { upsert: true }
-  );
+  if (input.tenantId) {
+    const query: Record<string, unknown> = { userId: input.userId, tenantId: input.tenantId };
+    await collection.updateOne(
+      query,
+      {
+        $set: setFields
+      },
+      { upsert: true }
+    );
+    const updated = await collection.findOne(query);
+    if (!updated) {
+      throw new Error("Failed to upsert xChat user preferences");
+    }
+    return updated;
+  }
 
-  const updated = await db.collection<XchatUserPreferences>(COLLECTION).findOne(query);
+  const noTenantQuery: Record<string, unknown> = {
+    userId: input.userId,
+    $or: [{ tenantId: null }, { tenantId: { $exists: false } }]
+  };
+  const existing = await collection.find(noTenantQuery).sort({ updatedAt: -1, _id: -1 }).limit(1).next();
+
+  if (existing?._id) {
+    await collection.updateOne(
+      { _id: existing._id },
+      {
+        $set: setFields
+      }
+    );
+  } else {
+    const insertDoc: XchatUserPreferences = {
+      userId: input.userId,
+      keepLastTenMessages: input.keepLastTenMessages,
+      updatedAt: now,
+      ...(input.keepLastTenMessages ? { consentedAt: now } : {})
+    };
+    try {
+      await collection.insertOne(insertDoc);
+    } catch (error) {
+      // Concurrent first-write race: another request inserted the same user/no-tenant row.
+      if (!(error instanceof MongoServerError) || error.code !== 11000) {
+        throw error;
+      }
+      const raceWinner = await collection.find(noTenantQuery).sort({ updatedAt: -1, _id: -1 }).limit(1).next();
+      if (!raceWinner?._id) {
+        throw error;
+      }
+      await collection.updateOne(
+        { _id: raceWinner._id },
+        {
+          $set: setFields
+        }
+      );
+    }
+  }
+
+  const updated = await collection.find(noTenantQuery).sort({ updatedAt: -1, _id: -1 }).limit(1).next();
   if (!updated) {
     throw new Error("Failed to upsert xChat user preferences");
   }

@@ -2,6 +2,7 @@
 
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
+import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
 
 import { PortfoliosAccountsFooter } from "./portfolios-accounts-footer";
@@ -20,6 +21,7 @@ type Props = {
   accountSlices: WorkspaceDashboardAccountSlice[];
   topHoldings: PortfoliosHeroTopHolding[];
   defaultPortfolioId: string | null;
+  workspaceBook: AppUserDefaultBook | null;
   totalBookUsd: number;
   isGlobalAdmin: boolean;
   accountDetails: AppUserRailAccountPanelDetails | null;
@@ -32,6 +34,7 @@ export function PortfoliosWorkspaceClient({
   accountSlices,
   topHoldings,
   defaultPortfolioId,
+  workspaceBook,
   totalBookUsd,
   isGlobalAdmin,
   accountDetails,
@@ -55,6 +58,7 @@ export function PortfoliosWorkspaceClient({
               accountFeedbackPageLabel={accountFeedbackPageLabel}
               defaultPortfolioId={defaultPortfolioId}
               isGlobalAdmin={isGlobalAdmin}
+              workspaceBook={workspaceBook}
             />
           }
         >

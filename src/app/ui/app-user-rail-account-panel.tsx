@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -8,6 +7,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { SendIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
 import { GoogleGIcon } from "@/app/ui/oauth-provider-icons";
 import { XfThemePreferenceMenu } from "@/app/ui/public-theme-picker";
+import { PwaInstallAccountPrompt } from "@/app/ui/pwa-install-account-prompt";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { USER_FEEDBACK_OPEN_EVENT } from "@/lib/user-feedback-open-event";
 
@@ -117,26 +117,17 @@ export function AppUserRailAccountPanel({
     return () => window.removeEventListener(USER_FEEDBACK_OPEN_EVENT, onOpenFeedback);
   }, []);
 
-  const { email, username, displayName, xUserId, avatarUrl, mongoConnection, isGlobalAdmin } = details;
+  const { email, username, displayName, xUserId, mongoConnection, isGlobalAdmin } = details;
+  const mongoHref =
+    mongoConnection && mongoConnection.includes("://")
+      ? mongoConnection
+      : mongoConnection
+        ? `mongodb://${mongoConnection}`
+        : null;
 
   return (
     <div className="app-user-rail-account-panel">
       <div className="app-user-rail-account-panel__identity">
-        {avatarUrl ? (
-          <Image
-            alt=""
-            aria-hidden
-            className="app-user-rail-account-panel__avatar"
-            height={36}
-            src={avatarUrl}
-            unoptimized
-            width={36}
-          />
-        ) : (
-          <span className="app-user-rail-account-panel__avatar app-user-rail-account-panel__avatar-fallback">
-            {(displayName ?? username).slice(0, 1).toUpperCase()}
-          </span>
-        )}
         <div className="app-user-rail-account-panel__identity-text">
           <p className="app-user-rail-account-panel__name">{displayName ?? username}</p>
           <p className="app-user-rail-account-panel__handle">@{username}</p>
@@ -151,11 +142,15 @@ export function AppUserRailAccountPanel({
         <span className="app-user-rail-account-panel__meta-k">X user id</span>
         <span className="app-user-rail-account-panel__meta-v font-mono text-[0.65rem]">{xUserId}</span>
       </p>
-      {mongoConnection ? (
-        <p className="app-user-rail-account-panel__meta">
-          <span className="app-user-rail-account-panel__meta-k">Mongo (beta)</span>
-          <code className="app-user-rail-account-panel__code">{mongoConnection}</code>
-        </p>
+      {mongoConnection && mongoHref ? (
+        <details className="app-user-rail-account-panel__db">
+          <summary className="app-user-rail-account-panel__db-summary">
+            <span className="app-user-rail-account-panel__meta-k">Database</span>
+          </summary>
+          <a className="app-user-rail-account-panel__code app-user-rail-account-panel__code-link" href={mongoHref}>
+            {mongoConnection}
+          </a>
+        </details>
       ) : null}
 
       <nav className="app-user-rail-account-panel__nav" aria-label="Account shortcuts">
@@ -176,18 +171,13 @@ export function AppUserRailAccountPanel({
             </Link>
           </XfHoverHint>
         ) : null}
-        <Link className="app-user-rail-sublink" href="/watchlist">
-          Watchlist
-        </Link>
-        <Link className="app-user-rail-sublink" href="/portfolio/alerts">
-          Alerts
-        </Link>
         <Link className="app-user-rail-sublink" href="/account/billing">
           Plans &amp; billing
         </Link>
         <Link className="app-user-rail-sublink" href="/legal/terms">
           Legal
         </Link>
+        <PwaInstallAccountPrompt />
       </nav>
 
       <details className="app-user-rail-account-panel__appearance">

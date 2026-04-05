@@ -23,7 +23,9 @@ export default async function XoptionsPage() {
     <div className="xchat-shell">
       <AppUserApprovedHeader current="xoptions" feedbackPageLabel="xOptions" session={session} />
       <div className="xchat-body px-4 py-6 md:px-8">
-        <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
+        <AppUserCollapsibleRailLayout
+          rail={<AppUserAccountPublicRailForSession railVariant="workspace-product" session={session} />}
+        >
           <XoptionsStrategyBuilderWorkspace />
         </AppUserCollapsibleRailLayout>
       </div>

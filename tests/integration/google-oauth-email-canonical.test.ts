@@ -25,6 +25,7 @@ const identityMocks = vi.hoisted(() => ({
   ensureCoreUserByEmail: vi.fn(),
   ensureSeededGlobalAdmin: vi.fn(),
   getCoreUserByEmail: vi.fn(),
+  getCoreUserById: vi.fn(),
   getCoreUserByGoogleSub: vi.fn(),
   linkGoogleAccountToUser: vi.fn(),
   unlinkGoogleIdentityFromUser: vi.fn()
@@ -78,6 +79,10 @@ describe("Google OAuth canonical email user", () => {
       roles: [],
       status: "active" as const
     }));
+    identityMocks.getCoreUserById.mockResolvedValue({
+      _id: { toHexString: () => regId },
+      subscriptionPlan: "basic"
+    });
   });
 
   it("moves google sub to the email registration row when sub was on a different user (pending roles)", async () => {

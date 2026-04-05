@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth";
 import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { extractClientLoginMeta } from "@/lib/client-request-meta";
+import { resolveSessionLandingPath } from "@/lib/default-landing-path";
 import {
     getAtxfinanceBackendOrigin,
     getEnv,
@@ -25,7 +26,7 @@ import {
     createAccessRequest,
     getPendingAccessRequestByUserAndRole
 } from "@/modules/core-admin/repository";
-import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { canUserLogin } from "@/modules/identity/authorization";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
     ensureCoreUserByEmail,
@@ -176,7 +177,7 @@ export async function GET(request: Request) {
     const existingSession = await getSessionUser();
     if (existingSession) {
       const returnPath = await consumeOAuthReturnPathCookie();
-      const fallback = isGlobalAdmin(existingSession.roles) ? "/admin" : "/xchat";
+      const fallback = await resolveSessionLandingPath(existingSession);
       const target =
         returnPath && isSafeOAuthReturnPath(returnPath) ? returnPath : fallback;
       return NextResponse.redirect(new URL(target, origin));

@@ -1,6 +1,6 @@
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
-import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
+import { loadAppUserDefaultBook, type AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
 import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
@@ -14,13 +14,24 @@ import { XchatGuestPanel } from "./ui/xchat-guest-panel";
 import { XchatGuestReadonlyShell } from "./ui/xchat-guest-readonly-shell";
 
 type XchatPageProps = {
-  searchParams: Promise<{ error?: string; details?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    details?: string;
+    rail?: string;
+    item?: string;
+  }>;
 };
 
 export default async function XchatPage({ searchParams }: XchatPageProps) {
   const params = await searchParams;
   const authError = typeof params.error === "string" ? params.error : undefined;
   const authDetails = typeof params.details === "string" ? params.details : undefined;
+  const rail = typeof params.rail === "string" ? params.rail : "";
+  const item = typeof params.item === "string" ? params.item : "";
+  const initialXchatItem =
+    rail === "xchat" && (item === "composer" || item === "persona" || item === "examples" || item === "history")
+      ? item
+      : null;
   const pendingXHandle =
     authError === "email_link_required"
       ? (await readPendingXLinkCookie())?.username
@@ -54,14 +65,14 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     ? await loadDefaultXchatPersonaForSessionDeduped(session.roles)
     : null;
 
-  let defaultBookLabels: { portfolioName: string; accountName: string } | null = null;
+  let workspaceBook: AppUserDefaultBook | null = null;
   let workspacePortfolioId: string | null = null;
   let workspaceChangePersonaEnabled = true;
   let workspaceChatHistoryMax = 10;
   if (approved) {
     const book = await loadAppUserDefaultBook(session);
     if (book) {
-      defaultBookLabels = { portfolioName: book.portfolioName, accountName: book.accountName };
+      workspaceBook = book;
       workspacePortfolioId = book.portfolioId?.trim() ? book.portfolioId.trim() : null;
     }
     const wl = await getEffectiveWorkspaceLimitsForUser({
@@ -121,13 +132,14 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
               isGlobalAdmin: isGlobalAdmin(session.roles)
             }}
             accountFeedbackPageLabel="xChat"
-            defaultBookLabels={defaultBookLabels}
             defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
             includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
             isGlobalAdmin={isGlobalAdmin(session.roles)}
+            initialXchatItem={initialXchatItem}
             welcomeName={appUserPrimaryDisplayName(session)}
             workspaceChangePersonaEnabled={workspaceChangePersonaEnabled}
             workspaceChatHistoryMax={workspaceChatHistoryMax}
+            workspaceBook={workspaceBook}
             workspacePortfolioId={workspacePortfolioId}
           />
         ) : (

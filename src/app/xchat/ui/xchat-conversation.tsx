@@ -11,6 +11,7 @@ import {
     useState
 } from "react";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -21,6 +22,7 @@ import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
+import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
@@ -165,8 +167,8 @@ type XchatConversationProps = {
   workspacePortfolioId?: string | null;
   /** Resolved default persona name for this session’s role (e.g. advisor vs atx-trusted-advisor). */
   defaultPublishedPersonaName: string;
-  /** Default portfolio + default (or first) custodian account — above persona picker in the left rail. */
-  defaultBookLabels?: { portfolioName: string; accountName: string } | null;
+  /** Active workspace book for shared portfolio/account pickers in sidebar. */
+  workspaceBook?: AppUserDefaultBook | null;
   /** When false, global-admin default personas (advisor / legacy super-agent) are hidden unless assigned. */
   includeSuperAgentInPersonaPicker?: boolean;
   /** Greeting label (display name, handle, or email local-part). */
@@ -177,6 +179,8 @@ type XchatConversationProps = {
   workspaceChangePersonaEnabled?: boolean;
   /** Tenant workspace limit: max recent prompts in thread + history fetch. */
   workspaceChatHistoryMax?: number;
+  /** Optional deep-link target from non-xChat pages. */
+  initialXchatItem?: "composer" | "persona" | "examples" | "history" | null;
 };
 
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
@@ -240,7 +244,7 @@ function buildAskRecentMessages(messages: Message[], maxItems = 10): Array<{
 }> {
   return messages
     .filter((m) => m.role === "user" || m.role === "ai" || m.role === "error")
-    .map((m) => ({
+    .map((m): { role: "user" | "assistant"; content: string } => ({
       role: m.role === "user" ? "user" : "assistant",
       content: m.content.trim()
     }))
@@ -348,12 +352,13 @@ export function XchatConversation({
   accountFeedbackPageLabel,
   workspacePortfolioId = null,
   defaultPublishedPersonaName,
-  defaultBookLabels = null,
+  workspaceBook = null,
   includeSuperAgentInPersonaPicker = false,
   welcomeName,
   isGlobalAdmin: isGlobalAdminSession = false,
   workspaceChangePersonaEnabled = true,
-  workspaceChatHistoryMax = 10
+  workspaceChatHistoryMax = 10,
+  initialXchatItem = null
 }: XchatConversationProps) {
   const router = useRouter();
   const uiPromptLimit = Math.max(1, Math.min(500, workspaceChatHistoryMax));
@@ -776,6 +781,25 @@ export function XchatConversation({
     };
   }, [historyLoaded, privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, uiPromptLimit]);
 
+  useEffect(() => {
+    if (!initialXchatItem) {
+      return;
+    }
+    setLeftRailCollapsed(false);
+    if (initialXchatItem !== "composer") {
+      return;
+    }
+    queueMicrotask(() => {
+      const el = composerRef.current;
+      if (!el) {
+        return;
+      }
+      el.focus();
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+    });
+  }, [initialXchatItem]);
+
   const setKeepLastTenMessages = useCallback(
     async (enabled: boolean) => {
       setPrivacyPrefsSaving(true);
@@ -1097,7 +1121,14 @@ export function XchatConversation({
         <div className="xchat-rail-head">
           {!leftRailCollapsed ? (
             <span className="xchat-rail-head__brand-zap" aria-hidden>
-              <RailSidebarZapIcon size="toggle" />
+              <Image
+                alt=""
+                aria-hidden
+                className="xchat-rail-head__brand-mark"
+                height={24}
+                src="/branding/aTx.png"
+                width={24}
+              />
             </span>
           ) : null}
           <XfHoverHint hint={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}>
@@ -1108,7 +1139,18 @@ export function XchatConversation({
               type="button"
               onClick={() => setLeftRailCollapsed((prev) => !prev)}
             >
-              {leftRailCollapsed ? <RailSidebarZapIcon size="toggle" /> : <XchatRailCollapseIcon />}
+              {leftRailCollapsed ? (
+                <Image
+                  alt=""
+                  aria-hidden
+                  className="xchat-rail-head__brand-mark"
+                  height={24}
+                  src="/branding/aTx.png"
+                  width={24}
+                />
+              ) : (
+                <XchatRailCollapseIcon />
+              )}
             </button>
           </XfHoverHint>
         </div>
@@ -1117,242 +1159,280 @@ export function XchatConversation({
             <WorkspaceProductSidebar
               accountDetails={accountDetails}
               accountFeedbackPageLabel={accountFeedbackPageLabel}
-              defaultBookLabels={defaultBookLabels}
               defaultPortfolioId={workspacePortfolioId?.trim() ? workspacePortfolioId.trim() : null}
               googleLinkHref={googleLinkHref}
               isGlobalAdmin={isGlobalAdminSession}
               showReferenceDocs
+              workspaceBook={workspaceBook}
               watchlistHref={
                 workspacePortfolioId?.trim()
                   ? `/watchlist?portfolioId=${encodeURIComponent(workspacePortfolioId.trim())}`
                   : "/watchlist"
               }
-            />
-            <section className="app-user-rail-section" aria-label="Persona">
-              <RailDisclosure
-                defaultOpen={false}
-                icon={<PersonaRailGlyph className="app-user-rail-disclosure__glyph" />}
-                title="Persona"
-              >
-                <div className="xchat-rail-persona-panel">
-                  <div className="xchat-rail-persona-block" aria-label="Active persona and last turn tools">
-                    <h3 className="xchat-rail-title xchat-rail-title--caps">Active persona</h3>
-                    <div className="xchat-rail-active-persona">
-                      <p className="status-text xchat-rail-active-persona-name" style={{ margin: "0 0 0.25rem" }}>
-                        <strong>{activePersonaName}</strong>
-                      </p>
-                      <XfHoverHint
-                        hint={
-                          lastTurnToolSummary ?? "Tool names and durations from the last completed ask"
-                        }
-                      >
-                        <p
-                          className="status-text xchat-rail-last-turn-tools"
-                          role="note"
-                          style={{ fontSize: "0.72rem", lineHeight: 1.35, margin: 0 }}
-                          tabIndex={0}
-                        >
-                          {lastTurnToolSummary ? (
-                            lastTurnToolSummary
-                          ) : (
-                            <span style={{ opacity: 0.8 }}>Send a message to see tool stats</span>
-                          )}
-                        </p>
-                      </XfHoverHint>
-                    </div>
-                  </div>
-
-                  <div className="xchat-rail-persona-block" aria-label="Knowledge collections and scope status">
-                    <h3 className="xchat-rail-title xchat-rail-title--caps">Status</h3>
-                    <p
-                      className="status-text"
-                      style={{ fontSize: "0.72rem", margin: "0 0 0.35rem", lineHeight: 1.35 }}
-                    >
-                      Collection list loaded for ask:{" "}
-                      {visibleCollections.length > 0
-                        ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
-                        : "—"}
-                    </p>
-                    {collectionsScopeDegraded ? (
-                      <p
-                        className="status-text status-warn"
-                        style={{ fontSize: "0.72rem", margin: 0, lineHeight: 1.35 }}
-                      >
-                        Default Finance scope only — server collection list unavailable (404 or network).
-                      </p>
-                    ) : null}
-                    {collectionsStatus ? (
-                      <p
-                        className="status-text status-error"
-                        style={{ fontSize: "0.72rem", margin: "0.35rem 0 0" }}
-                      >
-                        {collectionsStatus}
-                      </p>
-                    ) : null}
-                    {railXchatUsage.lastModel ? (
-                      <p
-                        className="status-text"
-                        style={{ fontSize: "0.72rem", margin: "0.35rem 0 0", lineHeight: 1.35 }}
-                      >
-                        <span style={{ color: "var(--xf-text-muted)" }}>Model: </span>
-                        <span className="font-mono" style={{ color: "var(--xf-text-primary)" }}>
-                          {railXchatUsage.lastModel}
-                        </span>
-                      </p>
-                    ) : null}
-                    {railXchatUsage.lastTurn ? (
-                      <p
-                        className="status-text font-mono"
-                        style={{
-                          fontSize: "0.68rem",
-                          margin: "0.2rem 0 0",
-                          lineHeight: 1.35,
-                          color: "var(--xf-text-muted)"
-                        }}
-                      >
-                        Last turn: {railXchatUsage.lastTurn.input.toLocaleString("en-US")} in /{" "}
-                        {railXchatUsage.lastTurn.output.toLocaleString("en-US")} out /{" "}
-                        {railXchatUsage.lastTurn.total.toLocaleString("en-US")} total
-                      </p>
-                    ) : railXchatUsage.lastModel ? (
-                      <p
-                        className="status-text"
-                        style={{ fontSize: "0.68rem", margin: "0.2rem 0 0", opacity: 0.8 }}
-                      >
-                        Token counts appear after a model completion with usage.
-                      </p>
-                    ) : null}
-                    {railXchatUsage.sessionSum.total > 0 ||
-                    railXchatUsage.sessionSum.input > 0 ||
-                    railXchatUsage.sessionSum.output > 0 ? (
-                      <p
-                        className="status-text font-mono"
-                        style={{
-                          fontSize: "0.68rem",
-                          margin: "0.2rem 0 0",
-                          lineHeight: 1.35,
-                          color: "var(--xf-text-muted)"
-                        }}
-                      >
-                        Session sum: {railXchatUsage.sessionSum.input.toLocaleString("en-US")} in /{" "}
-                        {railXchatUsage.sessionSum.output.toLocaleString("en-US")} out /{" "}
-                        {railXchatUsage.sessionSum.total.toLocaleString("en-US")} total
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </RailDisclosure>
-            </section>
-            <section className="app-user-rail-section" aria-label="Examples">
-              <RailDisclosure
-                defaultOpen={false}
-                icon={<ExamplesRailGlyph className="app-user-rail-disclosure__glyph" />}
-                title="Examples"
-              >
-                <div className="xchat-rail-link-list">
-                  {normalizedExamples.map((prompt, i) => (
-                    <XfHoverHint key={`rail-example-${i}`} hint={prompt}>
-                      <button
-                        className="app-user-rail-sublink xchat-rail-link"
-                        type="button"
-                        onClick={() => {
-                          setInput(prompt);
-                          queueMicrotask(() => {
-                            const el = composerRef.current;
-                            if (el) {
-                              el.focus();
-                              el.style.height = "auto";
-                              el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-                            }
-                          });
-                        }}
-                      >
-                        <span className="xchat-rail-link__text">{prompt}</span>
-                      </button>
-                    </XfHoverHint>
-                  ))}
-                </div>
-              </RailDisclosure>
-            </section>
+              xchatSection={(
             <section className="app-user-rail-section" aria-label="xChat">
               <RailDisclosure
-                defaultOpen={false}
-                icon={<RecentChatsRailGlyph className="app-user-rail-disclosure__glyph" />}
+                defaultOpen={initialXchatItem !== null}
+                icon={<RailSidebarZapIcon className="app-user-rail-disclosure__glyph app-user-rail-disclosure__glyph--zap" size="disclosure" />}
                 title="xChat"
               >
-                <div className="xchat-sidebar-privacy-row">
-                  <span className="xchat-sidebar-privacy-row__label">Keep your last 10 messages?</span>
-                  <label className="xchat-sidebar-privacy-row__control" aria-label="Keep your last 10 messages">
-                    <input
-                      checked={privacyPrefs?.keepLastTenMessages === true}
-                      disabled={privacyPrefsLoading || privacyPrefsSaving}
-                      onChange={(e) => {
-                        void setKeepLastTenMessages(e.target.checked);
-                      }}
-                      type="checkbox"
-                    />
-                  </label>
-                </div>
-                <details className="xchat-sidebar-privacy-note">
-                  <summary className="xchat-sidebar-privacy-note__summary">Privacy details</summary>
-                  <div className="xchat-sidebar-privacy-note__body">
-                    <p>
-                      We can optionally store only your most recent 10 chat messages (encrypted in our database) so conversations continue across sessions and devices.
-                    </p>
-                    <p>Default = nothing is saved.</p>
-                    <p>Stored messages are automatically deleted after 60 days or when you delete the chat.</p>
-                    <p>You control this at any time in chat settings.</p>
-                    <p>This helps us respect your privacy while giving you continuity if you want it.</p>
-                  </div>
-                </details>
-                {privacyPrefsError ? <p className="status-text status-error">{privacyPrefsError}</p> : null}
-                <p className="status-text">Store only if user consents (clear checkbox + one-line explanation at first chat).</p>
-                {isEphemeralHistoryMode ? (
-                  <p className="status-text">Recent chats are available once you enable “Keep your last 10 messages?”.</p>
-                ) : null}
-                {!isEphemeralHistoryMode && historyLoading ? <p className="status-text">Loading history...</p> : null}
-                {!isEphemeralHistoryMode && historyError ? <p className="status-text status-error">{historyError}</p> : null}
-                {!isEphemeralHistoryMode && !historyLoading && !historyError && savedHistory.length === 0 ? (
-                  <p className="status-text">No past chat history yet.</p>
-                ) : null}
-                {!isEphemeralHistoryMode && !historyLoading && !historyError && savedHistory.length > 0 ? (
-                  <ul className="xchat-rail-history-list">
-                    {savedHistory.map((item) => (
-                      <li className="xchat-rail-history-item" key={item.id}>
-                        <XfHoverHint hint={item.message}>
-                          <button
-                            className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
-                            type="button"
-                            onClick={() => {
-                              setInput(item.message);
-                              queueMicrotask(() => composerRef.current?.focus());
+                <div className="xchat-rail-subsection">
+                  <RailDisclosure
+                    defaultOpen={initialXchatItem === "persona"}
+                    icon={<PersonaRailGlyph className="app-user-rail-disclosure__glyph" />}
+                    title="Persona"
+                  >
+                    <div className="xchat-rail-persona-panel">
+                      <div className="xchat-rail-persona-block" aria-label="Active persona and last turn tools">
+                        <h3 className="xchat-rail-title xchat-rail-title--caps">Active persona</h3>
+                        <div className="xchat-rail-active-persona">
+                          <p className="status-text xchat-rail-active-persona-name" style={{ margin: "0 0 0.25rem" }}>
+                            <strong>{activePersonaName}</strong>
+                          </p>
+                          <XfHoverHint
+                            hint={
+                              lastTurnToolSummary ?? "Tool names and durations from the last completed ask"
+                            }
+                          >
+                            <p
+                              className="status-text xchat-rail-last-turn-tools"
+                              role="note"
+                              style={{ fontSize: "0.72rem", lineHeight: 1.35, margin: 0 }}
+                              tabIndex={0}
+                            >
+                              {lastTurnToolSummary ? (
+                                lastTurnToolSummary
+                              ) : (
+                                <span style={{ opacity: 0.8 }}>Send a message to see tool stats</span>
+                              )}
+                            </p>
+                          </XfHoverHint>
+                        </div>
+                      </div>
+
+                      <div className="xchat-rail-persona-block" aria-label="Knowledge collections and scope status">
+                        <h3 className="xchat-rail-title xchat-rail-title--caps">Status</h3>
+                        <p
+                          className="status-text"
+                          style={{ fontSize: "0.72rem", margin: "0 0 0.35rem", lineHeight: 1.35 }}
+                        >
+                          Collection list loaded for ask:{" "}
+                          {visibleCollections.length > 0
+                            ? visibleCollections.map((entry) => entry.collectionName ?? entry.collectionId).join(", ")
+                            : "—"}
+                        </p>
+                        {collectionsScopeDegraded ? (
+                          <p
+                            className="status-text status-warn"
+                            style={{ fontSize: "0.72rem", margin: 0, lineHeight: 1.35 }}
+                          >
+                            Default Finance scope only — server collection list unavailable (404 or network).
+                          </p>
+                        ) : null}
+                        {collectionsStatus ? (
+                          <p
+                            className="status-text status-error"
+                            style={{ fontSize: "0.72rem", margin: "0.35rem 0 0" }}
+                          >
+                            {collectionsStatus}
+                          </p>
+                        ) : null}
+                        {railXchatUsage.lastModel ? (
+                          <p
+                            className="status-text"
+                            style={{ fontSize: "0.72rem", margin: "0.35rem 0 0", lineHeight: 1.35 }}
+                          >
+                            <span style={{ color: "var(--xf-text-muted)" }}>Model: </span>
+                            <span className="font-mono" style={{ color: "var(--xf-text-primary)" }}>
+                              {railXchatUsage.lastModel}
+                            </span>
+                          </p>
+                        ) : null}
+                        {railXchatUsage.lastTurn ? (
+                          <p
+                            className="status-text font-mono"
+                            style={{
+                              fontSize: "0.68rem",
+                              margin: "0.2rem 0 0",
+                              lineHeight: 1.35,
+                              color: "var(--xf-text-muted)"
                             }}
                           >
-                            <span className="xchat-rail-link__text">{item.message}</span>
+                            Last turn: {railXchatUsage.lastTurn.input.toLocaleString("en-US")} in /{" "}
+                            {railXchatUsage.lastTurn.output.toLocaleString("en-US")} out /{" "}
+                            {railXchatUsage.lastTurn.total.toLocaleString("en-US")} total
+                          </p>
+                        ) : railXchatUsage.lastModel ? (
+                          <p
+                            className="status-text"
+                            style={{ fontSize: "0.68rem", margin: "0.2rem 0 0", opacity: 0.8 }}
+                          >
+                            Token counts appear after a model completion with usage.
+                          </p>
+                        ) : null}
+                        {railXchatUsage.sessionSum.total > 0 ||
+                        railXchatUsage.sessionSum.input > 0 ||
+                        railXchatUsage.sessionSum.output > 0 ? (
+                          <p
+                            className="status-text font-mono"
+                            style={{
+                              fontSize: "0.68rem",
+                              margin: "0.2rem 0 0",
+                              lineHeight: 1.35,
+                              color: "var(--xf-text-muted)"
+                            }}
+                          >
+                            Session sum: {railXchatUsage.sessionSum.input.toLocaleString("en-US")} in /{" "}
+                            {railXchatUsage.sessionSum.output.toLocaleString("en-US")} out /{" "}
+                            {railXchatUsage.sessionSum.total.toLocaleString("en-US")} total
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </RailDisclosure>
+                </div>
+
+                <div className="xchat-rail-subsection">
+                  <RailDisclosure
+                    defaultOpen={initialXchatItem === "composer"}
+                    icon={<RailSidebarZapIcon className="app-user-rail-disclosure__glyph app-user-rail-disclosure__glyph--zap" size="disclosure" />}
+                    title="Composer"
+                  >
+                    <button
+                      className="app-user-rail-sublink xchat-rail-link"
+                      type="button"
+                      onClick={() => {
+                        queueMicrotask(() => {
+                          const el = composerRef.current;
+                          if (el) {
+                            el.focus();
+                            el.style.height = "auto";
+                            el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+                          }
+                        });
+                      }}
+                    >
+                      Focus composer
+                    </button>
+                    <p className="status-text">Shortcuts: Enter send · Shift+Enter newline</p>
+                  </RailDisclosure>
+                </div>
+
+                <div className="xchat-rail-subsection">
+                  <RailDisclosure
+                    defaultOpen={initialXchatItem === "examples"}
+                    icon={<ExamplesRailGlyph className="app-user-rail-disclosure__glyph" />}
+                    title="Examples"
+                  >
+                    <div className="xchat-rail-link-list">
+                      {normalizedExamples.map((prompt, i) => (
+                        <XfHoverHint key={`rail-example-${i}`} hint={prompt}>
+                          <button
+                            className="app-user-rail-sublink xchat-rail-link"
+                            type="button"
+                            onClick={() => {
+                              setInput(prompt);
+                              queueMicrotask(() => {
+                                const el = composerRef.current;
+                                if (el) {
+                                  el.focus();
+                                  el.style.height = "auto";
+                                  el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+                                }
+                              });
+                            }}
+                          >
+                            <span className="xchat-rail-link__text">{prompt}</span>
                           </button>
                         </XfHoverHint>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                <button
-                  className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
-                  disabled={historyDeleteBusy}
-                  onClick={() => {
-                    void deleteChatHistoryNow();
-                  }}
-                  type="button"
-                >
-                  {historyDeleteBusy ? "Deleting chat history…" : "Delete chat history now"}
-                </button>
-                {historyDeleteError ? <p className="status-text status-error">{historyDeleteError}</p> : null}
-                {!isEphemeralHistoryMode && historyStats ? (
-                  <p className="status-text" style={{ fontSize: "0.72rem" }}>
-                    {historyStats.totalPrompts} prompts · {historyStats.activeDays} active days
-                  </p>
-                ) : null}
+                      ))}
+                    </div>
+                  </RailDisclosure>
+                </div>
+
+                <div className="xchat-rail-subsection">
+                  <RailDisclosure
+                    defaultOpen={initialXchatItem === "history"}
+                    icon={<RecentChatsRailGlyph className="app-user-rail-disclosure__glyph" />}
+                    title="Chat history"
+                  >
+                    <div className="xchat-sidebar-privacy-row">
+                      <span className="xchat-sidebar-privacy-row__label">Keep your last 10 messages?</span>
+                      <label className="xchat-sidebar-privacy-row__control" aria-label="Keep your last 10 messages">
+                        <input
+                          checked={privacyPrefs?.keepLastTenMessages === true}
+                          disabled={privacyPrefsLoading || privacyPrefsSaving}
+                          onChange={(e) => {
+                            void setKeepLastTenMessages(e.target.checked);
+                          }}
+                          type="checkbox"
+                        />
+                      </label>
+                    </div>
+                    <details className="xchat-sidebar-privacy-note">
+                      <summary className="xchat-sidebar-privacy-note__summary">Privacy details</summary>
+                      <div className="xchat-sidebar-privacy-note__body">
+                        <p>
+                          We can optionally store only your most recent 10 chat messages (encrypted in our database) so conversations continue across sessions and devices.
+                        </p>
+                        <p>Default = nothing is saved.</p>
+                        <p>Stored messages are automatically deleted after 60 days or when you delete the chat.</p>
+                        <p>You control this at any time in chat settings.</p>
+                        <p>This helps us respect your privacy while giving you continuity if you want it.</p>
+                      </div>
+                    </details>
+                    {privacyPrefsError ? <p className="status-text status-error">{privacyPrefsError}</p> : null}
+                    <p className="status-text">Store only if user consents (clear checkbox + one-line explanation at first chat).</p>
+                    {isEphemeralHistoryMode ? (
+                      <p className="status-text">Recent chats are available once you enable “Keep your last 10 messages?”.</p>
+                    ) : null}
+                    {!isEphemeralHistoryMode && historyLoading ? <p className="status-text">Loading history...</p> : null}
+                    {!isEphemeralHistoryMode && historyError ? <p className="status-text status-error">{historyError}</p> : null}
+                    {!isEphemeralHistoryMode && !historyLoading && !historyError && savedHistory.length === 0 ? (
+                      <p className="status-text">No past chat history yet.</p>
+                    ) : null}
+                    {!isEphemeralHistoryMode && !historyLoading && !historyError && savedHistory.length > 0 ? (
+                      <ul className="xchat-rail-history-list">
+                        {savedHistory.map((item) => (
+                          <li className="xchat-rail-history-item" key={item.id}>
+                            <XfHoverHint hint={item.message}>
+                              <button
+                                className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
+                                type="button"
+                                onClick={() => {
+                                  setInput(item.message);
+                                  queueMicrotask(() => composerRef.current?.focus());
+                                }}
+                              >
+                                <span className="xchat-rail-link__text">{item.message}</span>
+                              </button>
+                            </XfHoverHint>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <button
+                      className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
+                      disabled={historyDeleteBusy}
+                      onClick={() => {
+                        void deleteChatHistoryNow();
+                      }}
+                      type="button"
+                    >
+                      {historyDeleteBusy ? "Deleting chat history…" : "Delete chat history now"}
+                    </button>
+                    {historyDeleteError ? <p className="status-text status-error">{historyDeleteError}</p> : null}
+                    {!isEphemeralHistoryMode && historyStats ? (
+                      <p className="status-text" style={{ fontSize: "0.72rem" }}>
+                        {historyStats.totalPrompts} prompts · {historyStats.activeDays} active days
+                      </p>
+                    ) : null}
+                  </RailDisclosure>
+                </div>
               </RailDisclosure>
             </section>
+              )}
+            />
           </div>
         ) : null}
       </aside>
@@ -1514,7 +1594,7 @@ export function XchatConversation({
         )}
       </div>
 
-        <div className="xchat-composer-wrap">
+        <div className="xchat-composer-wrap" id="xchat-composer">
           <form className="xchat-composer" onSubmit={handleSend} ref={composerFormRef}>
             <div className="xchat-composer__row xchat-composer__row--input">
               <XfHoverHint

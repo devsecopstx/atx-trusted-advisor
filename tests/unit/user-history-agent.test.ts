@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const bootstrapMocks = vi.hoisted(() => ({
   buildXchatTurnMarkdownPayload: vi.fn(),
@@ -17,16 +17,18 @@ const repoMocks = vi.hoisted(() => ({
 
 vi.mock("@/modules/xchat/repository", () => repoMocks);
 
+const settingsMocks = vi.hoisted(() => ({
+  isXchatUserHistoryXaiCollectionEnabled: vi.fn()
+}));
+
+vi.mock("@/modules/xchat/xchat-platform-settings", () => settingsMocks);
+
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
 
 describe("runUserHistoryAgent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION = "true";
-  });
-
-  afterEach(() => {
-    delete process.env.XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION;
+    settingsMocks.isXchatUserHistoryXaiCollectionEnabled.mockReturnValue(true);
   });
 
   it("returns success with zero pending", async () => {
@@ -45,7 +47,7 @@ describe("runUserHistoryAgent", () => {
   });
 
   it("skips entirely when per-user xAI sync env is disabled", async () => {
-    delete process.env.XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION;
+    settingsMocks.isXchatUserHistoryXaiCollectionEnabled.mockReturnValue(false);
     const task = {
       _id: new ObjectId(),
       tenantId: new ObjectId(),

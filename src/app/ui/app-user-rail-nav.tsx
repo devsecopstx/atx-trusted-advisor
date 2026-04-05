@@ -8,6 +8,7 @@ import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-acco
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserWorkspaceAccountPicker } from "@/app/ui/app-user-workspace-account-picker";
 import { AppUserWorkspacePortfolioPicker } from "@/app/ui/app-user-workspace-portfolio-picker";
+import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 
@@ -122,6 +123,30 @@ function RailNavLink({ href, children, title }: { href: string; children: ReactN
   return link;
 }
 
+function TopLevelRailLink({
+  href,
+  children,
+  title
+}: {
+  href: string;
+  children: ReactNode;
+  title?: string;
+}) {
+  const pathname = usePathname() ?? "";
+  const active = sublinkActive(pathname, href);
+  const cls = `app-user-rail-top-link${active ? " app-user-rail-top-link--active" : ""}`;
+  const link = (
+    <Link className={cls} href={href}>
+      {children}
+    </Link>
+  );
+  const t = title?.trim();
+  if (t) {
+    return <XfHoverHint hint={t}>{link}</XfHoverHint>;
+  }
+  return link;
+}
+
 export type AppUserRailNavProps = {
   isGlobalAdmin: boolean;
   /** When true, disclosure starts expanded. Default collapsed across product + xChat rails. */
@@ -220,7 +245,8 @@ export function AppUserManageWorkspaceRailSection({
   railDisclosureDefaultOpen = false,
   isGlobalAdmin = false,
   railContext = null,
-  defaultBookLabels = null
+  defaultBookLabels = null,
+  includeProductLinks = false
 }: {
   railDisclosureDefaultOpen?: boolean;
   isGlobalAdmin?: boolean;
@@ -228,13 +254,15 @@ export function AppUserManageWorkspaceRailSection({
   railContext?: AppUserPublicRailContext | null;
   /** xChat: resolved default portfolio + account labels; nested under this section, collapsed by default. */
   defaultBookLabels?: { portfolioName: string; accountName: string } | null;
+  /** When true, show xChat/xOptions under Manage Workspace. */
+  includeProductLinks?: boolean;
 }) {
   return (
-    <section className="app-user-rail-section" aria-label="Manage workspace">
+    <section className="app-user-rail-section" aria-label="Manage Workspace">
       <RailDisclosure
         defaultOpen={railDisclosureDefaultOpen}
-        icon={<BookIcon className="app-user-rail-disclosure__glyph" />}
-        title="Manage workspace"
+        icon={<RailSidebarZapIcon className="app-user-rail-disclosure__glyph app-user-rail-disclosure__glyph--zap" size="disclosure" />}
+        title="Manage Workspace"
       >
         <>
           {railContext ? (
@@ -268,12 +296,16 @@ export function AppUserManageWorkspaceRailSection({
             <RailNavLink href="/portfolios" title="Portfolios — workspace, accounts, allocation">
               myPortfolios
             </RailNavLink>
-            <RailNavLink href="/xchat" title="Open xChat">
-              xChat
-            </RailNavLink>
-            <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
-              xOptions
-            </RailNavLink>
+            {includeProductLinks ? (
+              <RailNavLink href="/xchat" title="Open xChat">
+                xChat
+              </RailNavLink>
+            ) : null}
+            {includeProductLinks ? (
+              <RailNavLink href="/xoptions" title="xOptions — symbol, desk context, chain">
+                xOptions
+              </RailNavLink>
+            ) : null}
             {isGlobalAdmin ? (
               <RailNavLink href="/admin" title="Open Admin Hub (global admin only)">
                 Admin hub
@@ -326,7 +358,11 @@ export function AppUserAccountPublicRail({
 }: AppUserAccountPublicRailExtendedProps) {
   return (
     <aside className="app-user-public-rail xf-widget" aria-label="Account navigation">
-      <AppUserManageWorkspaceRailSection isGlobalAdmin={isGlobalAdmin} railContext={railContext} />
+      <AppUserManageWorkspaceRailSection
+        includeProductLinks
+        isGlobalAdmin={isGlobalAdmin}
+        railContext={railContext}
+      />
       <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
       <AppUserAccountRailSection
         accountDetails={accountDetails}

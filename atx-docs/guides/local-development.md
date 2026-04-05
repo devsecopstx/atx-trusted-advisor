@@ -82,6 +82,16 @@ The product header, Hub top bar, and xChat guest header include a **moon** contr
 - **DOM:** `html[data-xf-ui]` is `soft` or `deep`; boot script in `src/app/layout.tsx` runs before paint.
 - **Code:** `src/lib/xf-ui-theme.ts`, `src/app/ui/public-theme-picker.tsx`, `.cursor/agents/branding.md`.
 
+## 7) PWA install prompt (QA)
+
+- Manifest: `public/manifest.webmanifest` with standalone display and PWA icons.
+- Service worker: `public/sw.js` (registered by `src/app/ui/pwa-bootstrap-client.tsx` in root layout).
+- Account rail manual trigger: **Account -> Install App** (`src/app/ui/pwa-install-account-prompt.tsx`).
+- iOS fallback: manual **Add to Home Screen** steps appear in-app when native install prompt is unavailable.
+- Local persistence keys:
+  - `xf_pwa_install_dismissed_v1`
+  - `xf_pwa_install_installed_v1`
+
 ## Deep links
 
 - Bootstrap and operator runbook: [AGENTS.md](../../AGENTS.md)

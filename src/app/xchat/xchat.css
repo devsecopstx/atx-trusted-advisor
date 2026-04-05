@@ -757,6 +757,13 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   color: var(--xf-lightning-yellow);
 }
 
+.xchat-rail-head__brand-mark,
+.app-user-rail-stack__brand-mark {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: block;
+}
+
 .xchat-rail-toggle {
   display: inline-flex;
   align-items: center;
@@ -936,6 +943,18 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.xchat-rail-subsection {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--xf-xchat-rail-border);
+}
+
+.xchat-rail-subsection:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .xchat-rail-history-item {
@@ -2221,6 +2240,10 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   display: block;
 }
 
+.app-user-rail-disclosure__glyph--zap {
+  color: var(--xf-lightning-yellow);
+}
+
 .app-user-rail-disclosure__title {
   min-width: 0;
 }
@@ -2307,6 +2330,36 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.app-user-rail-top-links {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+.app-user-rail-top-link {
+  display: block;
+  border-radius: 10px;
+  border: 1px solid var(--xf-xchat-rail-border);
+  background: var(--xf-xchat-rail-surface);
+  color: var(--xf-text-100);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.5rem 0.58rem;
+}
+
+.app-user-rail-top-link:hover {
+  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 24%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 7%, var(--xf-xchat-rail-surface));
+}
+
+.app-user-rail-top-link--active {
+  color: var(--xf-gain-green);
+  border-color: color-mix(in srgb, var(--xf-gain-green) 32%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, var(--xf-xchat-rail-surface));
 }
 
 .app-user-rail-section--workspace {
@@ -2490,7 +2543,6 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--xf-lightning-yellow);
   min-width: 0;
 }
 
@@ -2575,11 +2627,105 @@ html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
   word-break: break-all;
 }
 
+.app-user-rail-account-panel__db {
+  margin: 0;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  padding: 0.35rem 0.45rem;
+  background: color-mix(in srgb, var(--xf-bg-800) 55%, transparent);
+}
+
+.app-user-rail-account-panel__db-summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.app-user-rail-account-panel__db-summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-user-rail-account-panel__code-link {
+  display: block;
+  margin-top: 0.4rem;
+  text-decoration: none;
+}
+
+.app-user-rail-account-panel__code-link:hover {
+  color: var(--xf-gain-green);
+}
+
 .app-user-rail-account-panel__nav {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
   margin-top: 0.15rem;
+}
+
+.app-user-pwa-install__trigger {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  appearance: none;
+}
+
+.app-user-pwa-install__trigger:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.app-user-pwa-install {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.app-user-pwa-install__nudge {
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--xf-gain-green) 32%, transparent);
+  background: color-mix(in srgb, var(--xf-gain-green) 7%, transparent);
+  padding: 0.42rem 0.5rem;
+}
+
+.app-user-pwa-install__nudge-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+}
+
+.app-user-pwa-install__nudge-copy {
+  margin: 0.2rem 0 0;
+  font-size: 0.64rem;
+  color: var(--xf-text-300);
+}
+
+.app-user-pwa-install__nudge-copy--muted {
+  color: var(--xf-text-400);
+}
+
+.app-user-pwa-install__nudge-actions {
+  margin-top: 0.34rem;
+  display: flex;
+  gap: 0.28rem;
+}
+
+.app-user-pwa-install__btn {
+  flex: 1 1 0;
+  margin-top: 0;
+}
+
+.app-user-pwa-install__btn--muted {
+  border-color: color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+}
+
+.app-user-pwa-install__ios-steps {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+  color: var(--xf-text-200);
 }
 
 .app-user-rail-account-panel__appearance {

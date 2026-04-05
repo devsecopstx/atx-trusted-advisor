@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
+import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
 import { getPortfolioTotalBookUsdForSessionUser } from "@/lib/portfolio-total-book-usd";
@@ -14,12 +15,12 @@ import type { Portfolio } from "@/modules/core-admin/types";
 import { portfolioKindChoiceLabel } from "@/modules/core-admin/types";
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 
-import { PortfoliosWorkspaceClient } from "./portfolios-workspace-client";
 import type { WorkspacePortfolioRow } from "./portfolios-dashboard-client";
+import { PortfoliosWorkspaceClient } from "./portfolios-workspace-client";
 
-import "@/app/xchat/xchat.css";
 import "@/app/account/billing/billing-plans.css";
 import "@/app/portfolio/portfolio.css";
+import "@/app/xchat/xchat.css";
 import "./portfolios-dashboard.css";
 
 export const dynamic = "force-dynamic";
@@ -106,8 +107,12 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
       ? focusRaw
       : initialRows.find((r) => r.isDefault)?.id ?? initialRows[0]?.id ?? null;
 
+  const workspaceBook = await loadAppUserDefaultBook(session);
   const defaultPortfolioIdForImport =
-    initialRows.find((r) => r.isDefault)?.id ?? initialRows[0]?.id ?? null;
+    workspaceBook?.portfolioId ??
+    initialRows.find((r) => r.isDefault)?.id ??
+    initialRows[0]?.id ??
+    null;
 
   const totalBookUsd = initialRows.reduce((s, r) => s + Math.max(0, r.valueUsd), 0);
 
@@ -134,6 +139,7 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
         isGlobalAdmin={admin}
         topHoldings={topHoldings}
         totalBookUsd={totalBookUsd}
+        workspaceBook={workspaceBook}
       />
       <GlobalFooter />
     </div>

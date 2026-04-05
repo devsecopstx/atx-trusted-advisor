@@ -344,49 +344,25 @@ describe("xchat ask route collection retrieval", () => {
     );
   });
 
-  it("uses xAI remote history continuation when enabled", async () => {
-    const prev = process.env.XCHAT_USE_REMOTE_HISTORY;
-    process.env.XCHAT_USE_REMOTE_HISTORY = "true";
-    repositoryMocks.getLatestXchatResponseIdByUser.mockResolvedValueOnce("resp_prev_001");
-    xaiMocks.respondWithXaiToolLoop.mockResolvedValueOnce({
-      outputText: "remote history answer",
-      model: "grok-4-latest",
-      responseId: "resp_new_001",
-      toolCalls: [],
-      turnsUsed: 1,
-      raw: {}
-    });
-    try {
-      const response = await postAsk(
-        new Request("http://test/api/xchat/ask", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: "continue prior remote thread"
-          })
+  it("uses local prompt continuity (remote history continuation disabled)", async () => {
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "continue prior local thread"
         })
-      );
-      expect(response.status).toBe(200);
-      expect(repositoryMocks.listXChatHistoryByUser).not.toHaveBeenCalled();
-      expect(repositoryMocks.getLatestXchatResponseIdByUser).toHaveBeenCalled();
-      expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
-        expect.objectContaining({
-          previousResponseId: "resp_prev_001",
-          storeMessages: true
-        })
-      );
-      expect(repositoryMocks.saveXChatLog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          xaiResponseId: "resp_new_001"
-        })
-      );
-    } finally {
-      if (prev === undefined) {
-        delete process.env.XCHAT_USE_REMOTE_HISTORY;
-      } else {
-        process.env.XCHAT_USE_REMOTE_HISTORY = prev;
-      }
-    }
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.listXChatHistoryByUser).not.toHaveBeenCalled();
+    expect(repositoryMocks.getLatestXchatResponseIdByUser).not.toHaveBeenCalled();
+    expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        previousResponseId: expect.any(String),
+        storeMessages: true
+      })
+    );
   });
 
   it("uses no RAG context when TEAM collection search returns empty (no mongo fallback)", async () => {

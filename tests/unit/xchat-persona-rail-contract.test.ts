@@ -7,8 +7,8 @@ describe("xChat persona left-rail contract", () => {
   const viewPath = path.join(process.cwd(), "src/app/xchat/ui/xchat-conversation.tsx");
   const source = readFileSync(viewPath, "utf8");
 
-  it("keeps Persona grouped in a rail disclosure matching other rail sections", () => {
-    expect(source).toContain('section className="app-user-rail-section" aria-label="Persona"');
+  it("keeps Persona grouped under the xChat rail disclosure", () => {
+    expect(source).toContain('section className="app-user-rail-section" aria-label="xChat"');
     expect(source).toContain('title="Persona"');
     expect(source).toContain("RailDisclosure");
   });

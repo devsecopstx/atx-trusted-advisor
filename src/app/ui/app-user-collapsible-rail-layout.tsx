@@ -1,9 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
-import { AppUserRailCollapseIcon, AppUserRailExpandIcon } from "@/app/ui/app-user-rail-toggle-icons";
-import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
+import { AppUserRailCollapseIcon } from "@/app/ui/app-user-rail-toggle-icons";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 const STORAGE_KEY = "xf-app-user-rail-collapsed";
@@ -82,7 +82,14 @@ export function AppUserCollapsibleRailLayout({
         <div className="app-user-rail-stack__head">
           {!isCollapsed ? (
             <span className="app-user-rail-stack__brand-zap" aria-hidden>
-              <RailSidebarZapIcon size="toggle" />
+              <Image
+                alt=""
+                aria-hidden
+                className="app-user-rail-stack__brand-mark"
+                height={24}
+                src="/branding/aTx.png"
+                width={24}
+              />
             </span>
           ) : null}
           {allowCollapse ? (
@@ -94,7 +101,18 @@ export function AppUserCollapsibleRailLayout({
                 type="button"
                 onClick={toggle}
               >
-                {isCollapsed ? <AppUserRailExpandIcon /> : <AppUserRailCollapseIcon />}
+                {isCollapsed ? (
+                  <Image
+                    alt=""
+                    aria-hidden
+                    className="app-user-rail-stack__brand-mark"
+                    height={24}
+                    src="/branding/aTx.png"
+                    width={24}
+                  />
+                ) : (
+                  <AppUserRailCollapseIcon />
+                )}
               </button>
             </XfHoverHint>
           ) : null}

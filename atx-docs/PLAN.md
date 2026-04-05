@@ -18,7 +18,6 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 | **701**  | **xChat — privacy-first history policy (locked for MVP)**    | App user only: **default ephemeral** continuity (send recent 5–10 messages in each ask) with optional opt-in toggle **“Keep last 10 messages.”** Persist only when user consents, encrypt in transit/at rest, rolling cap = 10, TTL = 60 days, and immediate hard-delete on user delete action. Remove/disable xChat history sync/write into any xAI/team collection for MVP; keep persona/team RAG grounding unchanged. |
 | **702**  | **xChat — paste screenshots (clipboard)**                    | Support **paste from desktop** (clipboard `image/*`) into the chat composer; same persistence + safety pipeline as **701** (virus scan policy TBD, max dimensions/bytes, strip EXIF if required).                                                                                                                                                                                                                                              |
 | **703**  | **xChat — voice input (short prompts)**                      | **Voice capture** for brief utterances (e.g. *“add NVDA to my watchlist”*): browser **Web Speech API** and/or STT provider; **intent routing** into existing NL / tool paths (`watchlist` mutations, etc.) with explicit **confirm-before-mutate** for destructive or multi-symbol actions.                                                                                                                                                    |
-| **705**  | **xChat — iPhone install CTA in Profile menu (PWA prompt)**  | Add profile menu item under **Settings/Account**: **“Install aTx Finance XChat as App”** (icon: 📱 or app icon), subtext **“Get full-screen experience on your iPhone — no App Store needed”**. Tap opens a simple modal titled **Install aTx Finance XChat** with steps: **1. Tap Share in Safari** → **2. Tap Add to Home Screen** → **3. Tap Add**. Include final line: **“Your chats, portfolio tools, and options strategies will now open like a native app.”** |
 | **704**  | **Billing — accept xMoney via xAI API (exploratory)**       | **Lower priority (after 702).** Evaluate whether xAI billing surfaces can support xMoney settlement; if not, integrate xMoney as a separate provider behind checkout/webhook abstraction. Define plan mapping parity with Stripe, webhook lifecycle contract, and failover/rollback posture before implementation.                                                                                                                                    |
 
 
@@ -28,6 +27,7 @@ Living backlog for atx app, xChat, admin, and BFF. Shipped slices are recorded i
 
 ### Deferred product TODOs
 
+- Shipped in app 3.0.0: Account rail **Install App** prompt (manifest + service worker + iOS Add to Home Screen fallback steps).
 - `/login` deprecated (redirect → `/xchat`); fold plan tiers into guest panel or access-request flow.
 - Watchlist quote freshness: background refresh cadence + last-updated + stale badge on `/watchlist` and related tables.
 

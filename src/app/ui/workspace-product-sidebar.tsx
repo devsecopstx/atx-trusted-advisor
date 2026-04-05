@@ -1,12 +1,21 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode, SVGProps } from "react";
+import { useSyncExternalStore, type ReactNode, type SVGProps } from "react";
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
+import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
+import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+import {
+    isXoptionsStrategyBuilderVisible,
+    setXoptionsStrategyBuilderVisible,
+    subscribeXoptionsStrategyBuilderVisibility
+} from "@/lib/xoptions-strategy-builder-visibility";
 
 function pathKeyFromHref(href: string): string {
   const beforeHash = href.split("#")[0] ?? href;
@@ -52,47 +61,6 @@ function SidebarLink({
   );
 }
 
-function GridIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-      />
-    </svg>
-  );
-}
-
-function ChatBubbleIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M4 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H9l-5 4V6z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-      />
-    </svg>
-  );
-}
-
-function WalletIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M4 7a3 3 0 013-3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a3 3 0 01-3-3V7z"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-      />
-      <path d="M4 10h16" stroke="currentColor" strokeWidth={1.5} />
-    </svg>
-  );
-}
-
 function StarIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
@@ -106,18 +74,83 @@ function StarIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function OptionsGlyph(props: SVGProps<SVGSVGElement>) {
+function BellIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
       <path
-        d="M5 18h12M5 14h12M5 10h12M6 6h12"
+        d="M12 5a4 4 0 00-4 4v2.8c0 .9-.3 1.8-.9 2.5L6 16h12l-1.1-1.7a4.2 4.2 0 01-.9-2.5V9a4 4 0 00-4-4z"
         stroke="currentColor"
         strokeLinecap="round"
-        strokeWidth={1.75}
+        strokeLinejoin="round"
+        strokeWidth={1.5}
       />
-      <circle cx="8" cy="6" r="1.75" fill="currentColor" />
+      <path d="M10 19a2 2 0 004 0" stroke="currentColor" strokeLinecap="round" strokeWidth={1.5} />
     </svg>
   );
+}
+
+function BookIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M4 5a2 2 0 012-2h12v16H6a2 2 0 00-2 2V5zm0 0v14a2 2 0 012-2h12"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+    </svg>
+  );
+}
+
+function ResourcesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M4 6.5c2.2-1 4.7-1 7 0v11c-2.3-1-4.8-1-7 0v-11zm16 0c-2.2-1-4.7-1-7 0v11c2.3-1 4.8-1 7 0v-11z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.65}
+      />
+      <path d="M12 6.5v11" stroke="currentColor" strokeWidth={1.65} />
+    </svg>
+  );
+}
+
+function PersonIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
+      <path
+        d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+    </svg>
+  );
+}
+
+function AccountSummaryIcon({
+  avatarUrl
+}: {
+  avatarUrl?: string;
+}) {
+  if (avatarUrl?.trim()) {
+    return (
+      <Image
+        alt=""
+        aria-hidden
+        className="portfolios-workspace-sidebar__summary-avatar"
+        height={20}
+        src={avatarUrl}
+        unoptimized
+        width={20}
+      />
+    );
+  }
+  return <PersonIcon className="portfolios-workspace-sidebar__glyph" />;
 }
 
 function AdminHubIcon(props: SVGProps<SVGSVGElement>) {
@@ -147,6 +180,45 @@ function UploadGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function RailSectionChevron() {
+  return (
+    <svg
+      aria-hidden
+      className="portfolios-workspace-sidebar__chevron"
+      fill="none"
+      height={18}
+      viewBox="0 0 24 24"
+      width={18}
+    >
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
+function SidebarAccordionSummary({
+  label,
+  icon
+}: {
+  label: string;
+  icon?: ReactNode;
+}) {
+  return (
+    <>
+      <span className="portfolios-workspace-sidebar__summary-main">
+        {icon ? <span className="portfolios-workspace-sidebar__summary-icon">{icon}</span> : null}
+        <span className="portfolios-workspace-sidebar__summary-label">{label}</span>
+      </span>
+      <RailSectionChevron />
+    </>
+  );
+}
+
 export type WorkspaceProductSidebarProps = {
   defaultPortfolioId: string | null;
   isGlobalAdmin: boolean;
@@ -156,8 +228,9 @@ export type WorkspaceProductSidebarProps = {
   /** Optional “Link Google” in account panel (e.g. xChat when Google OAuth is configured). */
   googleLinkHref?: string | null;
   accountFeedbackPageLabel?: string;
-  defaultBookLabels?: { portfolioName: string; accountName: string } | null;
+  workspaceBook?: AppUserDefaultBook | null;
   showReferenceDocs?: boolean;
+  xchatSection?: ReactNode;
 };
 
 export function WorkspaceProductSidebar({
@@ -167,75 +240,135 @@ export function WorkspaceProductSidebar({
   accountDetails,
   googleLinkHref = null,
   accountFeedbackPageLabel,
-  defaultBookLabels = null,
-  showReferenceDocs = true
+  workspaceBook = null,
+  showReferenceDocs = true,
+  xchatSection
 }: WorkspaceProductSidebarProps) {
+  const pathname = usePathname() ?? "";
+  const showXoptionsToggle = pathname.startsWith("/xoptions");
+  const xoptionsStrategyBuilderVisible = useSyncExternalStore(
+    subscribeXoptionsStrategyBuilderVisibility,
+    isXoptionsStrategyBuilderVisible,
+    () => false
+  );
   const importHref =
     defaultPortfolioId !== null
       ? `/import-activity?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
       : "/import-activity";
+  const alertsHref =
+    defaultPortfolioId !== null
+      ? `/portfolio/alerts?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
+      : "/portfolio/alerts";
+  const fallbackXchatSection = (
+    <details className="portfolios-workspace-sidebar__accordion">
+      <summary className="portfolios-workspace-sidebar__accordion-summary">
+        <SidebarAccordionSummary
+          icon={<RailSidebarZapIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--zap" size="disclosure" />}
+          label="xChat"
+        />
+      </summary>
+      <div className="portfolios-workspace-sidebar__accordion-body">
+        <SidebarLink href="/xchat?rail=xchat&item=composer#xchat-composer" nested title="Open xChat composer">
+          Composer
+        </SidebarLink>
+        <SidebarLink href="/xchat?rail=xchat&item=persona" nested title="Open xChat persona panel">
+          Persona
+        </SidebarLink>
+        <SidebarLink href="/xchat?rail=xchat&item=examples" nested title="Open xChat examples panel">
+          Examples
+        </SidebarLink>
+        <SidebarLink href="/xchat?rail=xchat&item=history" nested title="Open xChat history panel">
+          Chat history
+        </SidebarLink>
+      </div>
+    </details>
+  );
 
   return (
     <nav className="portfolios-workspace-sidebar" aria-label="Workspace">
-      <SidebarLink href="/portfolios" title="Books overview">
-        <GridIcon className="portfolios-workspace-sidebar__glyph" />
-        <span>Portfolios</span>
-      </SidebarLink>
-      <SidebarLink href="/xchat" title="Open xChat">
-        <ChatBubbleIcon className="portfolios-workspace-sidebar__glyph" />
-        <span>xChat</span>
-      </SidebarLink>
-      <SidebarLink href="/portfolio" title="Accounts and positions">
-        <WalletIcon className="portfolios-workspace-sidebar__glyph" />
-        <span>Accounts</span>
-      </SidebarLink>
-      <SidebarLink
-        href={watchlistHref}
-        title={
-          watchlistHref.includes("#portfolios-watchlist")
-            ? "Watchlist table on portfolios"
-            : "Full watchlist"
-        }
-      >
-        <StarIcon className="portfolios-workspace-sidebar__glyph" />
-        <span>Watchlist</span>
-      </SidebarLink>
-      <SidebarLink href="/xoptions" title="xOptions — strategy builder and chains">
-        <OptionsGlyph className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--emph" />
-        <span className="portfolios-workspace-sidebar__emph">xOptions</span>
-      </SidebarLink>
-      {isGlobalAdmin ? (
-        <SidebarLink href="/admin" title="Admin Hub">
-          <AdminHubIcon className="portfolios-workspace-sidebar__glyph" />
-          <span>Admin hub</span>
-        </SidebarLink>
-      ) : null}
+      <details className="portfolios-workspace-sidebar__accordion">
+        <summary className="portfolios-workspace-sidebar__accordion-summary">
+          <SidebarAccordionSummary
+            icon={
+              <Image
+                alt=""
+                aria-hidden
+                className="portfolios-workspace-sidebar__glyph-img portfolios-workspace-sidebar__glyph-img--hero"
+                height={18}
+                src="/branding/portfolios.png"
+                width={18}
+              />
+            }
+            label="Portfolio workspace"
+          />
+        </summary>
+        <div className="portfolios-workspace-sidebar__accordion-body">
+          <WorkspacePortfolioAccountPickerCard book={workspaceBook} />
+          <SidebarLink href="/portfolios" nested title="Books overview">
+            myPortfolios
+          </SidebarLink>
+          <SidebarLink
+            href={watchlistHref}
+            title={
+              watchlistHref.includes("#portfolios-watchlist")
+                ? "Watchlist table on portfolios"
+                : "Full watchlist"
+            }
+          >
+            <StarIcon className="portfolios-workspace-sidebar__glyph" />
+            <span>Watchlist</span>
+          </SidebarLink>
+          <SidebarLink href={alertsHref} title="Portfolio alerts">
+            <BellIcon className="portfolios-workspace-sidebar__glyph" />
+            <span>Alerts</span>
+          </SidebarLink>
+        </div>
+      </details>
 
-      <div className="portfolios-workspace-sidebar__spacer" />
-
-      <SidebarLink href={importHref} title="Merrill / Fidelity broker import">
-        <UploadGlyph className="portfolios-workspace-sidebar__glyph" />
-        <span>Broker import</span>
-      </SidebarLink>
-
-      {defaultBookLabels ? (
-        <details className="portfolios-workspace-sidebar__accordion">
-          <summary className="portfolios-workspace-sidebar__accordion-summary">Default book</summary>
-          <div className="portfolios-workspace-sidebar__accordion-body">
-            <p className="portfolios-workspace-sidebar__accordion-meta">Portfolio</p>
-            <SidebarLink href="/portfolio" nested title="Open portfolio">
-              <span>{defaultBookLabels.portfolioName}</span>
-            </SidebarLink>
-            <p className="portfolios-workspace-sidebar__accordion-meta portfolios-workspace-sidebar__accordion-meta--mt">
-              Account
-            </p>
-            <p className="portfolios-workspace-sidebar__accordion-static">{defaultBookLabels.accountName}</p>
-          </div>
-        </details>
-      ) : null}
+      {xchatSection ?? fallbackXchatSection}
 
       <details className="portfolios-workspace-sidebar__accordion">
-        <summary className="portfolios-workspace-sidebar__accordion-summary">Resources</summary>
+        <summary className="portfolios-workspace-sidebar__accordion-summary">
+          <SidebarAccordionSummary
+            icon={
+              <Image
+                alt=""
+                aria-hidden
+                className="portfolios-workspace-sidebar__glyph-img portfolios-workspace-sidebar__glyph-img--hero"
+                height={18}
+                src="/branding/xstrategybuilder-app-icon-64.png"
+                width={18}
+              />
+            }
+            label="xOptions"
+          />
+        </summary>
+        <div className="portfolios-workspace-sidebar__accordion-body">
+          <SidebarLink href="/xoptions" nested title="xOptions — strategy builder and chains">
+            <span className="portfolios-workspace-sidebar__emph">Open xOptions</span>
+          </SidebarLink>
+          {showXoptionsToggle ? (
+            <div className="xchat-sidebar-privacy-row">
+              <span className="xchat-sidebar-privacy-row__label">xStrategybuilder</span>
+              <label className="xchat-sidebar-privacy-row__control" aria-label="Show hardcore strategy jobs">
+                <input
+                  checked={xoptionsStrategyBuilderVisible}
+                  onChange={(e) => setXoptionsStrategyBuilderVisible(e.target.checked)}
+                  type="checkbox"
+                />
+              </label>
+            </div>
+          ) : null}
+        </div>
+      </details>
+
+      <details className="portfolios-workspace-sidebar__accordion">
+        <summary className="portfolios-workspace-sidebar__accordion-summary">
+          <SidebarAccordionSummary
+            icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph" />}
+            label="Resources"
+          />
+        </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
           <SidebarLink href="/resources/about" nested>
             About
@@ -272,12 +405,30 @@ export function WorkspaceProductSidebar({
               </XfHoverHint>
             )
           ) : null}
+          <SidebarLink href={importHref} nested title="Merrill / Fidelity broker import">
+            <UploadGlyph className="portfolios-workspace-sidebar__glyph" />
+            Broker import
+          </SidebarLink>
         </div>
       </details>
 
+      {isGlobalAdmin ? (
+        <SidebarLink href="/admin" title="Admin Hub">
+          <AdminHubIcon className="portfolios-workspace-sidebar__glyph" />
+          <span>Admin hub</span>
+        </SidebarLink>
+      ) : null}
+
+      <div className="portfolios-workspace-sidebar__spacer" />
+
       {accountDetails ? (
         <details className="portfolios-workspace-sidebar__accordion">
-          <summary className="portfolios-workspace-sidebar__accordion-summary">Account</summary>
+          <summary className="portfolios-workspace-sidebar__accordion-summary">
+            <SidebarAccordionSummary
+              icon={<AccountSummaryIcon avatarUrl={accountDetails.avatarUrl} />}
+              label="Account"
+            />
+          </summary>
           <div className="portfolios-workspace-sidebar__accordion-body portfolios-workspace-sidebar__accordion-body--account">
             <AppUserRailAccountPanel
               details={accountDetails}
