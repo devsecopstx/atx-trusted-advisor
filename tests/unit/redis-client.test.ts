@@ -9,6 +9,7 @@ import { createClient } from "redis";
 import {
     checkRedisHealth,
     getRedisClient,
+    getRedisConnectTimeoutMs,
     getRedisConnectionUrl,
     getRedisQuoteCacheTtlSeconds,
     isLikelyRedisTlsPlainMismatch,
@@ -20,6 +21,7 @@ describe("redis-client", () => {
   beforeEach(async () => {
     delete process.env.REDIS_URL;
     delete process.env.REDIS_TLS;
+    delete process.env.REDIS_CONNECT_TIMEOUT_MS;
     delete process.env.REDIS_QUOTE_CACHE_TTL_SECONDS;
     await resetRedisClientForTests();
   });
@@ -27,6 +29,7 @@ describe("redis-client", () => {
   afterEach(async () => {
     delete process.env.REDIS_URL;
     delete process.env.REDIS_TLS;
+    delete process.env.REDIS_CONNECT_TIMEOUT_MS;
     delete process.env.REDIS_QUOTE_CACHE_TTL_SECONDS;
     await resetRedisClientForTests();
     vi.clearAllMocks();
@@ -69,10 +72,20 @@ describe("redis-client", () => {
     const c = await getRedisClient();
     expect(c).toBe(good);
     expect(createClient).toHaveBeenCalledTimes(2);
-    expect(createClient).toHaveBeenNthCalledWith(1, { url: process.env.REDIS_URL });
-    expect(createClient).toHaveBeenNthCalledWith(2, {
-      url: "redis://default:secret@example.com:14617"
-    });
+    expect(createClient).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        url: process.env.REDIS_URL,
+        socket: expect.objectContaining({ connectTimeout: 750 })
+      })
+    );
+    expect(createClient).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        url: "redis://default:secret@example.com:14617",
+        socket: expect.objectContaining({ connectTimeout: 750 })
+      })
+    );
   });
 
   it("getRedisConnectionUrl accepts redis:// and rediss://", () => {
@@ -96,6 +109,16 @@ describe("redis-client", () => {
     expect(getRedisQuoteCacheTtlSeconds()).toBe(5);
     process.env.REDIS_QUOTE_CACHE_TTL_SECONDS = "99999";
     expect(getRedisQuoteCacheTtlSeconds()).toBe(3600);
+  });
+
+  it("getRedisConnectTimeoutMs clamps and defaults", () => {
+    expect(getRedisConnectTimeoutMs()).toBe(750);
+    process.env.REDIS_CONNECT_TIMEOUT_MS = "1200";
+    expect(getRedisConnectTimeoutMs()).toBe(1200);
+    process.env.REDIS_CONNECT_TIMEOUT_MS = "10";
+    expect(getRedisConnectTimeoutMs()).toBe(100);
+    process.env.REDIS_CONNECT_TIMEOUT_MS = "99999";
+    expect(getRedisConnectTimeoutMs()).toBe(10_000);
   });
 
   it("checkRedisHealth skips when URL missing", async () => {

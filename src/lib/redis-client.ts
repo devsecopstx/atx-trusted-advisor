@@ -70,6 +70,22 @@ export function getRedisQuoteCacheTtlSeconds(): number {
   return Math.min(3600, Math.max(5, Math.floor(n)));
 }
 
+/**
+ * Redis connect timeout (ms). Keeps route-level rate-limit calls from stalling request handlers
+ * when Redis is saturated/unreachable. Clamped 100–10000; default 750.
+ */
+export function getRedisConnectTimeoutMs(): number {
+  const raw = process.env.REDIS_CONNECT_TIMEOUT_MS?.trim();
+  if (!raw) {
+    return 750;
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    return 750;
+  }
+  return Math.min(10_000, Math.max(100, Math.floor(n)));
+}
+
 export async function getRedisClient(): Promise<AtxRedisClient | null> {
   const url = getRedisConnectionUrl();
   if (!url) {
@@ -88,7 +104,12 @@ export async function getRedisClient(): Promise<AtxRedisClient | null> {
   let lastError: unknown;
   for (let i = 0; i < attempts.length; i++) {
     const attemptUrl = attempts[i]!;
-    const c = createClient({ url: attemptUrl });
+    const c = createClient({
+      url: attemptUrl,
+      socket: {
+        connectTimeout: getRedisConnectTimeoutMs()
+      }
+    });
     try {
       await c.connect();
       // Attach only after connect — a failed rediss:// attempt can emit async TLS errors on the
