@@ -6,6 +6,8 @@ Not user marketing copy — enough for deploy triage, support, and “what shipp
 
 ## Entries
 
+- **3.0.21** — Semver bump for deploy / image tagging; no intended functional delta vs **3.0.20**.
+
 - **3.0.20** — **xOptions expirations:** **`GET /api/strategy-options/expirations`** is **Next Yahoo only** (no Spring BFF proxy). Production previously proxied to JVM when **`ATXFINANCE_BACKEND_ORIGIN`** was set, which could **hang** the expiration dropdown (no fetch timeout); local dev skipped the proxy on loopback. **`bff-proxy-routes`** / **`nextBffApi`** updated. **Tests:** **`strategy-options-expirations-route`**. **Docs:** **`atx-docs/guides/api-endpoints.md`**.
 
 - **3.0.19** — Semver bump for deploy / image tagging; no intended functional delta vs **3.0.18**.
