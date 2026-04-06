@@ -76,6 +76,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 | [xchat-debug-logging.md](./xchat/xchat-debug-logging.md) | Debug logging |
 | [xchat-future-tool-loop.md](./xchat/xchat-future-tool-loop.md) | Future tool-loop notes |
 | [xchat-tools-guide.md](./xchat/xchat-tools-guide.md) | Tools & prompts |
+| [xchat-history-storage.md](./xchat/xchat-history-storage.md) | Where xChat history lives (Mongo vs xAI); deprecated `ATXFINANCE_COLLECTION_ID` |
 | [xchat-nl-collect-inputs.md](./xchat/xchat-nl-collect-inputs.md) | **NL** (natural-language) slot collection before options/strategy flows; xChat system copy |
 | [xdesign-review-admin-console-ux.md](./xchat/xdesign-review-admin-console-ux.md) | Admin console UX review |
 | [xdesign-review-legacy-prompts-inventory.md](./xchat/xdesign-review-legacy-prompts-inventory.md) | Legacy prompts inventory |

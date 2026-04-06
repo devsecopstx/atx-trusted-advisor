@@ -86,8 +86,9 @@ const envSchema = z.object({
   ADMIN_X_USERNAMES: z.string().optional(),
   ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
   /**
-   * Same prefix seed uses for `{root}-rag` and `{root}-xoption-<env>`. When set, per-user xChat history
-   * collections are named `{root}-chat-{userId}` so they group with instance RAG in xAI.
+   * Same prefix seed uses for `{root}-rag` and `{root}-xoption-<env>`. Optional naming for instance-scoped
+   * xAI resources (`{root}-chat-{userId}`) if per-user history collections are ever re-enabled — **not** the
+   * primary chat store; Mongo `xchat_logs` is. Unrelated to deprecated **`ATXFINANCE_COLLECTION_ID`** (never in schema).
    */
   ATX_INSTANCE_COLLECTION_ROOT: optionalNonEmptyString,
   /** Optional overrides for `/xstrategybuilder` licensing line (see `LICENSING_PITCH_CONTACT_DEFAULTS`). */

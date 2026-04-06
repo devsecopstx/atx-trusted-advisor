@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
-import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
+import { getStrategyJobsBffUnavailableMessage, proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import {
     buildRateLimitHeaders,
     checkDistributedRateLimit,
@@ -51,7 +51,7 @@ export async function GET(request: Request, context: RouteContext) {
   return NextResponse.json(
     {
       error: "service_unavailable",
-      message: "Strategy orchestrator requires ATXFINANCE_BACKEND_ORIGIN (Spring BFF)."
+      message: getStrategyJobsBffUnavailableMessage()
     },
     { status: 503 }
   );

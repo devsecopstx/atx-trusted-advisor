@@ -6,6 +6,10 @@ Not user marketing copy — enough for deploy triage, support, and “what shipp
 
 ## Entries
 
+- **3.0.23** — **Strategy jobs BFF diagnostics:** **`getStrategyJobsBffUnavailableMessage()`** in **`backend-bff`** — **`/api/strategy-jobs*`** **503** JSON explains **missing `ATXFINANCE_BACKEND_ORIGIN`** vs **proxy off on loopback dev** (set **`ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=true`** for local JVM). **Tests:** **`backend-bff`**. **Docs:** **`.env.example`**, **`AGENTS.md`**, **`atx-docs/sre-ops/atxfinance-backend-http-api.md`** (Next BFF note under strategy jobs).
+
+- **3.0.22** — **xChat watchlist listing (USD):** Direct **“show my watchlist”** replies (`watchlist_snapshot_direct`) render **Spot** and **Target entry** as **`$…`** (Yahoo spot + **100×** notional aligned to the Watchlist table) and **omit per-symbol added timestamps**. Workspace preload + **`watchlist_snapshot`** tool JSON add **`spotPriceDisplay`** and **`targetEntryNotional100xUsdDisplay`** (shared formatters in **`watchlist-prompt-format`**). **`xchat-prompt-build`** session copy documents the fields for LLM-driven lists. **Tests:** **`watchlist-prompt-format`**, **`workspace-snapshot-for-prompt`**, **`atxfinance-tool-executor`**, **`xchat-ask-route`**, **`xchat-prompt-build`**. **Docs:** **`atx-docs/xchat/atxfinance-tool-stub.md`**, **`atx-docs/xchat/xchat-tools-guide.md`**, **`atx-docs/guides/api-endpoints.md`**, **`AGENTS.md`**.
+
 - **3.0.21** — Semver bump for deploy / image tagging; no intended functional delta vs **3.0.20**.
 
 - **3.0.20** — **xOptions expirations:** **`GET /api/strategy-options/expirations`** is **Next Yahoo only** (no Spring BFF proxy). Production previously proxied to JVM when **`ATXFINANCE_BACKEND_ORIGIN`** was set, which could **hang** the expiration dropdown (no fetch timeout); local dev skipped the proxy on loopback. **`bff-proxy-routes`** / **`nextBffApi`** updated. **Tests:** **`strategy-options-expirations-route`**. **Docs:** **`atx-docs/guides/api-endpoints.md`**.

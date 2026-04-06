@@ -64,13 +64,19 @@ export async function upsertXchatPlatformSettings(input: {
   return next;
 }
 
+/**
+ * Per-user xAI “chat history” collections (upload Mongo `xchat_logs` → xAI) — **off**.
+ * Canonical history stays in **Mongo** (`xchat_logs`). Do not use legacy env **`ATXFINANCE_COLLECTION_ID`**
+ * (never wired in `env.ts`). Optional **`XCHAT_SYNC_TURNS_TO_USER_XAI_COLLECTION`** in `.env.example` is
+ * not honored until this function is changed deliberately with tests + product sign-off.
+ */
 export function isXchatUserHistoryXaiCollectionEnabled(): boolean {
   return false;
 }
 
 /**
- * When enabled, xChat ask uses xAI hosted conversation state (`store_messages` + `previous_response_id`)
- * for turn-to-turn continuity instead of injecting prior Mongo turns into prompts.
+ * xAI hosted continuity (`store_messages` + `previous_response_id`) — **off** until implemented here.
+ * When `false`, ask route behavior follows current Mongo / prompt injection paths (see `POST /api/xchat/ask`).
  */
 export function isXchatRemoteHistoryEnabled(): boolean {
   return false;

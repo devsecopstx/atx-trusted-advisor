@@ -103,3 +103,27 @@ describe("proxyRequestToBackend (default BFF, env)", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("getStrategyJobsBffUnavailableMessage", () => {
+  const savedOrigin = process.env.ATXFINANCE_BACKEND_ORIGIN;
+
+  afterEach(() => {
+    if (savedOrigin === undefined) {
+      delete process.env.ATXFINANCE_BACKEND_ORIGIN;
+    } else {
+      process.env.ATXFINANCE_BACKEND_ORIGIN = savedOrigin;
+    }
+  });
+
+  it("when origin unset, points at ATXFINANCE_BACKEND_ORIGIN", async () => {
+    delete process.env.ATXFINANCE_BACKEND_ORIGIN;
+    const { getStrategyJobsBffUnavailableMessage } = await import("@/lib/backend-bff");
+    expect(getStrategyJobsBffUnavailableMessage()).toContain("ATXFINANCE_BACKEND_ORIGIN");
+  });
+
+  it("when origin set, points at ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", async () => {
+    process.env.ATXFINANCE_BACKEND_ORIGIN = "http://127.0.0.1:8080";
+    const { getStrategyJobsBffUnavailableMessage } = await import("@/lib/backend-bff");
+    expect(getStrategyJobsBffUnavailableMessage()).toContain("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS");
+  });
+});

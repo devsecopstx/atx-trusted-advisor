@@ -415,6 +415,16 @@ export async function proxyPortfolioRequestToBackend(request: Request): Promise<
 }
 
 /**
+ * User-facing hint when `/api/strategy-jobs*` cannot reach Spring (orchestrator is JVM-only; Next has no Mongo fallback).
+ */
+export function getStrategyJobsBffUnavailableMessage(): string {
+  if (!getAtxfinanceBackendOrigin()) {
+    return "Strategy orchestrator runs in atxfinance-backend (Spring). Set ATXFINANCE_BACKEND_ORIGIN to the JVM base URL (e.g. http://127.0.0.1:8080).";
+  }
+  return "Strategy jobs proxy is off. For Spring on localhost, set ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=true so Next forwards /api/strategy-jobs to the JVM (see .env.example).";
+}
+
+/**
  * `/api/admin/tasks*`, `/api/admin/task-runs`, `/api/admin/scheduler/tick`.
  *
  * - **No origin:** never proxy.
