@@ -20,6 +20,7 @@ import {
     WATCHLIST_UPSERT_DEFAULT_OUTLOOK,
     WATCHLIST_UPSERT_DEFAULT_RISK_PROFILE
 } from "@/modules/watchlist/default-upsert-fields";
+import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { getYahooMarketQuote } from "@/modules/xchat/market-data";
 import {
     deleteCachedToolResult,
@@ -30,6 +31,11 @@ import {
     ATXFINANCE_TOOL_DEFINITION,
     YAHOO_FINANCE_TOOL_DEFINITION
 } from "@/modules/xchat/tool-definitions";
+import {
+    formatWatchlistAddedAtUtc,
+    formatWatchlistTargetEntryNotional100xFromQuotePrice,
+    formatWatchlistTargetEntryStored
+} from "@/modules/xchat/watchlist-prompt-format";
 import {
     accountHealthFromWorkspacePreload,
     loadWorkspaceSnapshotPreload,
@@ -58,16 +64,20 @@ const PRELOAD_SHORT_CIRCUIT_OPS = new Set([
   "watchlist_snapshot"
 ]);
 
-function watchlistSymbolToJson(s: WatchlistSymbol) {
+function watchlistSymbolToJson(s: WatchlistSymbol, quotePrice?: number) {
   const hasEntryPrice = s.entryPrice !== undefined;
+  const addedAtIso = s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt);
   return {
     symbol: s.symbol,
-    addedAt: s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt),
+    addedAt: addedAtIso,
+    addedAtDisplay: formatWatchlistAddedAtUtc(addedAtIso),
     ...(s.lineType !== undefined ? { lineType: s.lineType } : {}),
     ...(s.strategy !== undefined ? { strategy: s.strategy } : {}),
     ...(s.quantity !== undefined ? { quantity: s.quantity } : {}),
     ...(hasEntryPrice ? { entryPrice: s.entryPrice } : {}),
-    ...(hasEntryPrice ? { targetEntryPrice: s.entryPrice } : {})
+    ...(hasEntryPrice ? { targetEntryPrice: s.entryPrice } : {}),
+    targetEntryDisplay: formatWatchlistTargetEntryStored(s.entryPrice),
+    targetEntryNotional100xDisplay: formatWatchlistTargetEntryNotional100xFromQuotePrice(quotePrice)
   };
 }
 
@@ -85,10 +95,12 @@ async function loadWatchlistSummary(ctx: ExecutorContext, portfolioId: string): 
     return { error: "no_watchlist" };
   }
   const symbols = watchlist.symbols ?? [];
+  const fetchedQuotes = symbols.length > 0 ? await lookupSymbols(symbols.map((x) => x.symbol)) : null;
+  const quoteMap = fetchedQuotes instanceof Map ? fetchedQuotes : new Map();
   return {
     name: watchlist.name,
     symbolCount: symbols.length,
-    symbols: symbols.map(watchlistSymbolToJson)
+    symbols: symbols.map((s) => watchlistSymbolToJson(s, quoteMap.get(s.symbol)?.price))
   };
 }
 
@@ -97,15 +109,10 @@ function watchlistSnapshotFromWorkspacePreload(p: WorkspaceSnapshotPreload): Rec
   if ("error" in wl) {
     return { error: "no_watchlist" as const };
   }
-  const symbols = wl.symbols.map((s) => {
-    if (s.entryPrice === undefined) {
-      return s;
-    }
-    return {
-      ...s,
-      targetEntryPrice: s.entryPrice
-    };
-  });
+  const symbols = wl.symbols.map((s) => ({
+    ...s,
+    ...(s.entryPrice !== undefined ? { targetEntryPrice: s.entryPrice } : {})
+  }));
   return {
     name: wl.name,
     symbolCount: symbols.length,

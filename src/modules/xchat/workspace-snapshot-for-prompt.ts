@@ -13,6 +13,12 @@ import type { ObjectId } from "mongodb";
 
 import type { Portfolio, PositionType, WatchlistSymbol } from "@/modules/core-admin/types";
 import { normalizePositionType } from "@/modules/core-admin/types";
+import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
+import {
+    formatWatchlistAddedAtUtc,
+    formatWatchlistTargetEntryNotional100xFromQuotePrice,
+    formatWatchlistTargetEntryStored
+} from "@/modules/xchat/watchlist-prompt-format";
 import {
     buildWorkspaceSnapshotCacheKey,
     getWorkspaceSnapshotCacheTtlSeconds,
@@ -40,14 +46,22 @@ function positionCountsByAccountId(
   return counts;
 }
 
-function watchlistSymbolToPromptJson(s: WatchlistSymbol) {
+function watchlistSymbolToPromptJson(s: WatchlistSymbol, quotePrice?: number) {
+  const addedAtIso = s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt);
+  const hasEntry = s.entryPrice !== undefined;
   return {
     symbol: s.symbol,
-    addedAt: s.addedAt instanceof Date ? s.addedAt.toISOString() : String(s.addedAt),
+    addedAt: addedAtIso,
+    /** Prefer this (and targetEntryDisplay) when listing watchlist for users — matches direct watchlist replies. */
+    addedAtDisplay: formatWatchlistAddedAtUtc(addedAtIso),
     ...(s.lineType !== undefined ? { lineType: s.lineType } : {}),
     ...(s.strategy !== undefined ? { strategy: s.strategy } : {}),
     ...(s.quantity !== undefined ? { quantity: s.quantity } : {}),
-    ...(s.entryPrice !== undefined ? { entryPrice: s.entryPrice } : {})
+    ...(hasEntry ? { entryPrice: s.entryPrice, targetEntryPrice: s.entryPrice } : {}),
+    /** Desk / CSV "entry price" (USD). */
+    targetEntryDisplay: formatWatchlistTargetEntryStored(s.entryPrice),
+    /** Same as Watchlist UI "Target entry" column: 100× live quote (Yahoo), whole dollars. */
+    targetEntryNotional100xDisplay: formatWatchlistTargetEntryNotional100xFromQuotePrice(quotePrice)
   };
 }
 
@@ -173,6 +187,11 @@ async function buildPreloadFromPortfolio(
     tenantId: ctx.tenantId
   });
 
+  const wlSymbols = watchlist?.symbols ?? [];
+  const fetchedQuotes =
+    wlSymbols.length > 0 ? await lookupSymbols(wlSymbols.map((x) => x.symbol)) : null;
+  const quoteMap = fetchedQuotes instanceof Map ? fetchedQuotes : new Map();
+
   const loadedAt = new Date().toISOString();
   const promptJson: WorkspaceSnapshotPromptJson = {
     loadedAt,
@@ -208,7 +227,9 @@ async function buildPreloadFromPortfolio(
           name: watchlist.name,
           riskProfile: watchlist.riskProfile ?? null,
           outlook: watchlist.outlook ?? null,
-          symbols: (watchlist.symbols ?? []).map(watchlistSymbolToPromptJson)
+          symbols: wlSymbols.map((s) =>
+            watchlistSymbolToPromptJson(s, quoteMap.get(s.symbol)?.price)
+          )
         }
       : { error: "no_watchlist" as const }
   };

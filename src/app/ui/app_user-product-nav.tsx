@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { LucideBookOpenIcon, LucideHouseIcon } from "@/app/ui/lucide-product-icons";
+import { LucideHouseIcon, LucideMonitorIcon } from "@/app/ui/lucide-product-icons";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 /** Which product icon is active; use `null` on secondary surfaces (e.g. `/account/billing`) so none are highlighted. */
@@ -58,7 +58,7 @@ const NAV: NavDef[] = [
     href: "/portfolios",
     icon: (
       <IconWrap>
-        <LucideBookOpenIcon />
+        <LucideMonitorIcon />
       </IconWrap>
     )
   },
@@ -77,7 +77,7 @@ const NAV: NavDef[] = [
 ];
 
 /**
- * Product row: xChat, xOptions (Lucide-style house SVG), Portfolio (book-open) → **`/portfolios`**, Watchlist.
+ * Product row: xChat, xOptions (Lucide-style house SVG), Portfolio (monitor / desk) → **`/portfolios`**, Watchlist.
  * No billing or Hub icon — billing is Account menu / `/account/billing`; admins reach **`/admin`** from bookmarks or admin shell nav.
  * Legacy **`/xstrategybuilder`** redirects to **`/xoptions`**.
  */

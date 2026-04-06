@@ -42,6 +42,8 @@ flowchart TD
 - unset / `false`: no cross-turn continuity is injected.
 - Mongo logs are still written for audit/debug/UI rails; they are not injected into ask prompts.
 
+**Workspace portfolio scope (ask):** optional JSON **`portfolioId`** (24-char hex, user-owned) on `POST /api/xchat/ask` and optional **`/xchat?portfolioId=`** on the page load — both feed `workspacePortfolioId` into `loadWorkspaceSnapshotPreload` / `createXfinanceToolExecutor` so watchlist and positions match **`/watchlist?portfolioId=`**. Watchlist symbol JSON includes **`targetEntryNotional100xDisplay`** (Watchlist UI **Target entry**: 100× Yahoo) and desk **`targetEntryDisplay`** / **`entryPrice`**.
+
 ---
 
 ## Tool routing (ask)

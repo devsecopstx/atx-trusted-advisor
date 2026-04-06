@@ -1,6 +1,12 @@
+import { ObjectId } from "mongodb";
+
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
-import { loadAppUserDefaultBook, type AppUserDefaultBook } from "@/lib/app-user-default-book";
+import {
+    loadAppUserDefaultBook,
+    loadAppUserDefaultBookForPortfolioId,
+    type AppUserDefaultBook
+} from "@/lib/app-user-default-book";
 import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
 import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
@@ -21,6 +27,8 @@ type XchatPageProps = {
     item?: string;
     /** Post-login / OAuth return path (e.g. `/watchlist?portfolioId=…`). */
     next?: string;
+    /** Align xChat workspace + ask payload with `/watchlist?portfolioId=` when present. */
+    portfolioId?: string | string[];
   }>;
 };
 
@@ -40,6 +48,14 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     authError === "email_link_required"
       ? (await readPendingXLinkCookie())?.username
       : undefined;
+
+  const rawPortfolioParam = params.portfolioId;
+  const requestedPortfolioId =
+    typeof rawPortfolioParam === "string"
+      ? rawPortfolioParam.trim()
+      : Array.isArray(rawPortfolioParam)
+        ? rawPortfolioParam[0]?.trim() ?? ""
+        : "";
 
   const googleLoginHrefGuest = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent(oauthReturnPath ?? "/xchat")}`
@@ -76,10 +92,21 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
 
   let workspaceBook: AppUserDefaultBook | null = null;
   let workspacePortfolioId: string | null = null;
+  /** True when `?portfolioId=` resolved to an owned portfolio — cookie is synced client-side so rail matches. */
+  let syncWorkspacePortfolioCookie = false;
   let workspaceChangePersonaEnabled = true;
   let workspaceChatHistoryMax = 10;
   if (approved) {
-    const book = await loadAppUserDefaultBook(session);
+    let book: AppUserDefaultBook | null = null;
+    if (requestedPortfolioId && ObjectId.isValid(requestedPortfolioId)) {
+      book = await loadAppUserDefaultBookForPortfolioId(session, requestedPortfolioId);
+      if (book) {
+        syncWorkspacePortfolioCookie = true;
+      }
+    }
+    if (!book) {
+      book = await loadAppUserDefaultBook(session);
+    }
     if (book) {
       workspaceBook = book;
       workspacePortfolioId = book.portfolioId?.trim() ? book.portfolioId.trim() : null;
@@ -153,6 +180,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             workspaceChatHistoryMax={workspaceChatHistoryMax}
             workspaceBook={workspaceBook}
             workspacePortfolioId={workspacePortfolioId}
+            syncWorkspacePortfolioCookie={syncWorkspacePortfolioCookie}
           />
         ) : (
           <XchatGuestReadonlyShell showAccessPanel={false}>

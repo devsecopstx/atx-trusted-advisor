@@ -12,17 +12,19 @@ import {
 } from "react";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { SendIcon } from "@/app/admin/ui/crud-icons";
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
+import { LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
+import { XchatStrategyJobPreflightCards } from "@/app/xchat/ui/xchat-strategy-job-preflight";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
@@ -165,6 +167,8 @@ type XchatConversationProps = {
   accountFeedbackPageLabel?: string;
   /** Default workspace portfolio id (watchlist + broker import query). */
   workspacePortfolioId?: string | null;
+  /** When true (server resolved `?portfolioId=`), POST once to sync HttpOnly workspace cookie with rail. */
+  syncWorkspacePortfolioCookie?: boolean;
   /** Resolved default persona name for this session’s role (e.g. advisor vs atx-trusted-advisor). */
   defaultPublishedPersonaName: string;
   /** Active workspace book for shared portfolio/account pickers in sidebar. */
@@ -325,6 +329,23 @@ function hasPendingStrategyJobOffer(messages: Message[]): boolean {
   return false;
 }
 
+/** Heuristic: longer or multi-structure prompts get a visual nudge toward the structured job path. */
+function computeEmphasizeStrategyJobPrimary(fullThread: Message[], aiMsgId: string): boolean {
+  const fullIdx = fullThread.findIndex((m) => m.id === aiMsgId);
+  if (fullIdx <= 0) {
+    return false;
+  }
+  const prev = fullThread[fullIdx - 1];
+  if (prev.role !== "user") {
+    return false;
+  }
+  const c = prev.content;
+  return (
+    c.length > 480 ||
+    /\b(multi-?leg|iron condor|calendar spread|diagonal|butterfly|straddle|strangle)\b/i.test(c)
+  );
+}
+
 type VisibleCollection = {
   collectionId: string;
   collectionName?: string;
@@ -351,6 +372,7 @@ export function XchatConversation({
   googleLinkHref = null,
   accountFeedbackPageLabel,
   workspacePortfolioId = null,
+  syncWorkspacePortfolioCookie = false,
   defaultPublishedPersonaName,
   workspaceBook = null,
   includeSuperAgentInPersonaPicker = false,
@@ -416,6 +438,7 @@ export function XchatConversation({
   const userPickedPersonaRef = useRef(false);
   /** Seconds since current ask started (UI only; resets when loading ends). */
   const [askWaitSeconds, setAskWaitSeconds] = useState(0);
+  const [strategyJobLaunchBusy, setStrategyJobLaunchBusy] = useState(false);
 
   const threadUiSummary = useMemo(() => {
     const userMsgs = messages.filter((m) => m.role === "user");
@@ -436,6 +459,22 @@ export function XchatConversation({
       setThreadUiCollapsed(false);
     }
   }, [messages.length]);
+
+  useEffect(() => {
+    if (!syncWorkspacePortfolioCookie) {
+      return;
+    }
+    const id = workspacePortfolioId?.trim();
+    if (!id) {
+      return;
+    }
+    void fetch("/api/user/workspace-portfolio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ portfolioId: id }),
+      credentials: "include"
+    });
+  }, [syncWorkspacePortfolioCookie, workspacePortfolioId]);
 
   const personaSelectRows = useMemo(() => personaPickerRows, [personaPickerRows]);
 
@@ -891,6 +930,7 @@ export function XchatConversation({
     setLoading(true);
 
     if (hasPendingStrategyJobOffer(messages) && shouldLaunchStrategyJobFromReply(prompt)) {
+      setStrategyJobLaunchBusy(true);
       try {
         const response = await fetch("/api/strategy-jobs", {
           method: "POST",
@@ -912,7 +952,7 @@ export function XchatConversation({
                 content:
                   payload.message ??
                   payload.error ??
-                  `Could not launch strategy job (${response.status}).`,
+                  `We couldn't start the structured job right now (${response.status}). Try again in a moment.`,
                 timestamp: Date.now()
               }
             ];
@@ -922,8 +962,7 @@ export function XchatConversation({
           return;
         }
         const jobId = payload.data.jobId;
-        const correlationId =
-          typeof payload.data.correlationId === "string" ? payload.data.correlationId : null;
+        writeStrategyHandoffFromXchat(jobId, [...messages, userMsg]);
         setMessages((prev) => {
           const added = [
             ...prev,
@@ -931,13 +970,10 @@ export function XchatConversation({
               id: `ai-${Date.now()}`,
               role: "ai" as const,
               content: [
-                "Launching guided strategy workflow in xStrategyBuilder.",
-                correlationId ? `Correlation id: \`${correlationId}\`` : null,
+                "Opening your structured strategy job in xStrategyBuilder.",
                 "",
                 "_Educational conversations only. Not personalized investment advice. Review suitability, assignment risk, and tax impact before execution._"
-              ]
-                .filter(Boolean)
-                .join("\n"),
+              ].join("\n"),
               persona: activePersonaName,
               timestamp: Date.now()
             }
@@ -954,7 +990,7 @@ export function XchatConversation({
             {
               id: `error-${Date.now()}`,
               role: "error" as const,
-              content: "Network error while launching strategy job. Check your connection.",
+              content: "Network error while starting the structured job. Check your connection and try again.",
               timestamp: Date.now()
             }
           ];
@@ -963,6 +999,7 @@ export function XchatConversation({
         });
         return;
       } finally {
+        setStrategyJobLaunchBusy(false);
         setLoading(false);
       }
     }
@@ -1243,7 +1280,7 @@ export function XchatConversation({
                             style={{ fontSize: "0.72rem", margin: "0.35rem 0 0", lineHeight: 1.35 }}
                           >
                             <span style={{ color: "var(--xf-text-muted)" }}>Model: </span>
-                            <span className="font-mono" style={{ color: "var(--xf-text-primary)" }}>
+                            <span className="font-mono" style={{ color: "var(--xf-text-100)" }}>
                               {railXchatUsage.lastModel}
                             </span>
                           </p>
@@ -1295,7 +1332,9 @@ export function XchatConversation({
                 <div className="xchat-rail-subsection">
                   <RailDisclosure
                     defaultOpen={initialXchatItem === "composer"}
-                    icon={<RailSidebarZapIcon className="app-user-rail-disclosure__glyph app-user-rail-disclosure__glyph--zap" size="disclosure" />}
+                    icon={
+                      <LucideSquarePenIcon className="app-user-rail-disclosure__glyph app-user-rail-disclosure__glyph--composer" />
+                    }
                     title="Composer"
                   >
                     <button
@@ -1500,54 +1539,33 @@ export function XchatConversation({
                   </small>
                 ) : null}
                 {msg.role === "ai" ? (
-                  <>
+                  msg.strategyJobOffer ? (
+                    <XchatStrategyJobPreflightCards
+                      emphasizePrimary={computeEmphasizeStrategyJobPrimary(messages, msg.id)}
+                      launchBusy={strategyJobLaunchBusy}
+                      loading={loading}
+                      onLaunch={() => {
+                        if (loading || strategyJobLaunchBusy) {
+                          return;
+                        }
+                        setInput("launch strategy job");
+                        requestAnimationFrame(() => {
+                          composerFormRef.current?.requestSubmit();
+                        });
+                      }}
+                      onStayInChat={() => {
+                        if (loading || strategyJobLaunchBusy) {
+                          return;
+                        }
+                        setInput("stay in chat");
+                        requestAnimationFrame(() => {
+                          composerFormRef.current?.requestSubmit();
+                        });
+                      }}
+                    />
+                  ) : (
                     <XchatMarkdownBody content={msg.content} />
-                    {msg.strategyJobOffer ? (
-                      <div className="xchat-strategy-job-cta" style={{ marginTop: "0.75rem" }}>
-                        <div className="xchat-strategy-job-cta__actions">
-                          <button
-                            className="xchat-strategy-job-cta__button xchat-strategy-job-cta__button--primary"
-                            disabled={loading}
-                            onClick={() => {
-                              if (loading) {
-                                return;
-                              }
-                              setInput("launch strategy job");
-                              requestAnimationFrame(() => {
-                                composerFormRef.current?.requestSubmit();
-                              });
-                            }}
-                            type="button"
-                          >
-                            Launch strategy job
-                          </button>
-                          <button
-                            className="xchat-strategy-job-cta__button"
-                            disabled={loading}
-                            onClick={() => {
-                              if (loading) {
-                                return;
-                              }
-                              setInput("stay in chat");
-                              requestAnimationFrame(() => {
-                                composerFormRef.current?.requestSubmit();
-                              });
-                            }}
-                            type="button"
-                          >
-                            Stay in chat
-                          </button>
-                        </div>
-                        <Link
-                          className="xchat-strategy-job-cta__link font-semibold"
-                          href="/xstrategybuilder"
-                          prefetch={false}
-                        >
-                          Open guided strategy job on xStrategyBuilder →
-                        </Link>
-                      </div>
-                    ) : null}
-                  </>
+                  )
                 ) : (
                   <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
                 )}

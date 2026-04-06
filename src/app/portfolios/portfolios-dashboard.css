@@ -432,6 +432,28 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph-img {
   color: var(--xf-lightning-yellow);
 }
 
+/* xChat Composer — compose/edit mark; soft shell uses institutional violet */
+.portfolios-workspace-sidebar__glyph--composer {
+  color: var(--xf-text-200);
+}
+
+html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph--composer {
+  color: var(--xf-xoptions-accent);
+}
+
+.portfolios-workspace-sidebar__link--active .portfolios-workspace-sidebar__glyph--composer {
+  color: var(--xf-gain-green);
+}
+
+/* Portfolio workspace — monitor / desk; soft shell uses violet (distinct from Resources book-columns) */
+.portfolios-workspace-sidebar__glyph--portfolio-workspace {
+  color: var(--xf-text-200);
+}
+
+html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph--portfolio-workspace {
+  color: var(--xf-xoptions-accent);
+}
+
 .portfolios-workspace-sidebar__emph {
   font-weight: 600;
   color: var(--xf-gain-green);
@@ -499,9 +521,29 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph-img {
   color: var(--xf-text-100);
 }
 
-.portfolios-workspace-sidebar__accordion-summary:hover .portfolios-workspace-sidebar__glyph:not(.portfolios-workspace-sidebar__glyph--zap),
-.portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__glyph:not(.portfolios-workspace-sidebar__glyph--zap) {
+.portfolios-workspace-sidebar__accordion-summary:hover
+  .portfolios-workspace-sidebar__glyph:not(.portfolios-workspace-sidebar__glyph--zap):not(
+    .portfolios-workspace-sidebar__glyph--composer
+  ):not(.portfolios-workspace-sidebar__glyph--portfolio-workspace),
+.portfolios-workspace-sidebar__accordion[open]
+  .portfolios-workspace-sidebar__glyph:not(.portfolios-workspace-sidebar__glyph--zap):not(
+    .portfolios-workspace-sidebar__glyph--composer
+  ):not(.portfolios-workspace-sidebar__glyph--portfolio-workspace) {
   color: var(--xf-text-100);
+}
+
+.portfolios-workspace-sidebar__accordion-summary:hover .portfolios-workspace-sidebar__glyph--composer,
+.portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__glyph--composer,
+.portfolios-workspace-sidebar__accordion-summary:hover .portfolios-workspace-sidebar__glyph--portfolio-workspace,
+.portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__glyph--portfolio-workspace {
+  color: var(--xf-text-100);
+}
+
+html[data-xf-ui="soft"] .portfolios-workspace-sidebar__accordion-summary:hover .portfolios-workspace-sidebar__glyph--composer,
+html[data-xf-ui="soft"] .portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__glyph--composer,
+html[data-xf-ui="soft"] .portfolios-workspace-sidebar__accordion-summary:hover .portfolios-workspace-sidebar__glyph--portfolio-workspace,
+html[data-xf-ui="soft"] .portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__glyph--portfolio-workspace {
+  color: var(--xf-xoptions-accent);
 }
 
 .portfolios-workspace-sidebar__summary-icon img {

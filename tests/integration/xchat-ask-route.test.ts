@@ -1333,22 +1333,18 @@ describe("xchat ask route collection retrieval", () => {
           symbols: [
             {
               symbol: "TSLA",
-              addedAt: "2026-04-04T13:33:24.903Z"
+              addedAt: "2026-04-04T13:33:24.903Z",
+              targetEntryNotional100xDisplay: "24,500"
             },
             {
               symbol: "NVDA",
               addedAt: "2026-04-04T13:51:00.000Z",
+              targetEntryNotional100xDisplay: "48,800",
               targetEntryPrice: 120.5
             }
           ]
         })
       })) as never
-    );
-    symbolLookupMocks.lookupSymbols.mockResolvedValueOnce(
-      new Map<string, { price?: number }>([
-        ["TSLA", { price: 251.23 }],
-        ["NVDA", { price: 120.5 }]
-      ])
     );
     try {
       const response = await postAsk(
@@ -1366,8 +1362,9 @@ describe("xchat ask route collection retrieval", () => {
       expect(payload.data?.model).toBe("watchlist_snapshot_direct");
       expect(payload.data?.response ?? "").toContain("TSLA");
       expect(payload.data?.response ?? "").toContain("NVDA");
-      expect(payload.data?.response ?? "").toContain("target entry: 25,123");
-      expect(payload.data?.response ?? "").toContain("target entry: 12,050");
+      expect(payload.data?.response ?? "").toContain("target entry: 24,500");
+      expect(payload.data?.response ?? "").toContain("target entry: 48,800");
+      expect(payload.data?.response ?? "").toContain("desk entry $120.50");
       expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({

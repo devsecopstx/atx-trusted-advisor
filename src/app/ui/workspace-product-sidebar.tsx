@@ -14,7 +14,7 @@ import {
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
-import { LucideBookOpenIcon, LucideHouseIcon } from "@/app/ui/lucide-product-icons";
+import { LucideHouseIcon, LucideMonitorIcon, LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
@@ -327,7 +327,8 @@ export function WorkspaceProductSidebar({
       </summary>
       <div className="portfolios-workspace-sidebar__accordion-body">
         <SidebarLink href="/xchat?rail=xchat&item=composer#xchat-composer" nested title="Open xChat composer">
-          Composer
+          <LucideSquarePenIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--composer" />
+          <span>Composer</span>
         </SidebarLink>
         <SidebarLink href="/xchat?rail=xchat&item=persona" nested title="Open xChat persona panel">
           Persona
@@ -356,7 +357,7 @@ export function WorkspaceProductSidebar({
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
             icon={
-              <LucideBookOpenIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero" />
+              <LucideMonitorIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero portfolios-workspace-sidebar__glyph--portfolio-workspace" />
             }
             label="Portfolio workspace"
           />

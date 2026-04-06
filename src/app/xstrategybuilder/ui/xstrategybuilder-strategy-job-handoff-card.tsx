@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
+import {
+    clearStrategyHandoffStorage,
+    readStrategyHandoffForJob,
+    type XchatStrategyHandoffStored
+} from "@/lib/xchat-strategy-job-handoff";
 
 type StrategyJobRow = {
   jobId: string;
@@ -63,6 +68,8 @@ export function XstrategybuilderStrategyJobHandoffCard({ initialJobId = null }: 
     errorCode?: string | null;
     errorMessage?: string | null;
   } | null>(null);
+  const [xchatHandoff, setXchatHandoff] = useState<XchatStrategyHandoffStored | null>(null);
+  const [handoffCopyState, setHandoffCopyState] = useState<"idle" | "copied" | "error">("idle");
 
   const selectedJob = useMemo(
     () => jobs.find((job) => job.jobId === selectedJobId) ?? null,
@@ -106,6 +113,14 @@ export function XstrategybuilderStrategyJobHandoffCard({ initialJobId = null }: 
     setArtifactError(null);
   }, [selectedJobId]);
 
+  useEffect(() => {
+    if (!initialJobId) {
+      setXchatHandoff(null);
+      return;
+    }
+    setXchatHandoff(readStrategyHandoffForJob(initialJobId));
+  }, [initialJobId]);
+
   async function viewArtifact() {
     if (!selectedJobId) {
       return;
@@ -135,15 +150,72 @@ export function XstrategybuilderStrategyJobHandoffCard({ initialJobId = null }: 
     }
   }
 
+  async function copyHandoffTranscript() {
+    if (!xchatHandoff?.transcript) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(xchatHandoff.transcript);
+      setHandoffCopyState("copied");
+      window.setTimeout(() => setHandoffCopyState("idle"), 2000);
+    } catch {
+      setHandoffCopyState("error");
+    }
+  }
+
   return (
     <section className="xsb-panel" aria-label="xChat strategy job handoff">
       <div>
         <p className="xsb-friendly-section-label">xChat strategy handoff</p>
         <p className="xsb-friendly-hint xsb-friendly-hint--tight">
-          Compliance workflow: xChat captures intent, strategy jobs collect required slots, and artifacts remain
-          auditable before execution review.
+          When you start from xChat, your intent is captured here; the guided job collects the slots your desk needs,
+          with an auditable artifact before execution review.
         </p>
       </div>
+
+      {xchatHandoff ? (
+        <div
+          className="xsb-handoff-context"
+          style={{
+            marginTop: "0.75rem",
+            padding: "0.65rem 0.75rem",
+            borderRadius: "10px",
+            border: "1px solid color-mix(in srgb, var(--xf-xoptions-accent) 35%, transparent)",
+            background: "color-mix(in srgb, var(--xf-xoptions-accent) 10%, var(--xf-surface-700))"
+          }}
+        >
+          <p className="xsb-friendly-section-label" style={{ marginBottom: "0.35rem" }}>
+            Conversation context from xChat
+          </p>
+          <p className="xsb-friendly-hint xsb-friendly-hint--tight" style={{ marginBottom: "0.5rem" }}>
+            Copy this into your desk notes or the job turns if you want the model to see the same framing.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+            <button
+              className="xsb-btn xsb-btn-primary"
+              type="button"
+              onClick={() => void copyHandoffTranscript()}
+            >
+              {handoffCopyState === "copied" ? "Copied" : "Copy transcript"}
+            </button>
+            <button
+              className="xsb-btn"
+              type="button"
+              onClick={() => {
+                clearStrategyHandoffStorage();
+                setXchatHandoff(null);
+              }}
+            >
+              Dismiss
+            </button>
+            {handoffCopyState === "error" ? (
+              <span className="xsb-friendly-hint" style={{ color: "var(--xf-danger-400)" }}>
+                Clipboard unavailable — select text manually.
+              </span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {jobsError ? (
         <p className="xsb-friendly-hint" style={{ color: "var(--xf-danger-400)" }}>

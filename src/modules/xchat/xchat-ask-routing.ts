@@ -66,12 +66,11 @@ export function shouldOfferStrategyJobPreflight(message: string): boolean {
   return terms.some((t) => m.includes(t));
 }
 
-export const STRATEGY_JOB_PREFLIGHT_MARKDOWN = `### Guided strategy job
+/** Stored on the assistant turn for clients that render plain text; the chat UI uses a dedicated card layout instead. */
+export const STRATEGY_JOB_PREFLIGHT_MARKDOWN = `### Structured options planning
 
-You are asking for a **structured options workflow**. For compliance-safe planning, route this through the strategy orchestrator (Spring \`/api/strategy-jobs\` behind the BFF) to collect desk context and produce an auditable **Markdown + JSON** artifact after slots complete.
+You are asking for a **structured options-income workflow**. The product can collect desk context in a guided flow, produce a **written summary** (Markdown + JSON) for your records, and hand off to **xStrategyBuilder** when you are ready.
 
-**Confirm handoff:** reply **"launch strategy job"** (or **"yes"**) and I will create the job and move you to **xStrategyBuilder**.
-
-If you only want a high-level educational answer **in chat**, reply **"stay in chat"** and I will continue here.
+Reply **"launch strategy job"** (or **"yes"**) to start that workflow, or **"stay in chat"** to keep a high-level, educational conversation here without the formal package.
 
 _Not investment advice. Options involve substantial risk; review suitability, liquidity, assignment risk, and tax impact before execution._`;

@@ -2,24 +2,11 @@
 
 import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { useXfUiSoft } from "@/lib/use-xf-ui-soft";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
-
-function subscribeXfUi(callback: () => void) {
-  const el = document.documentElement;
-  const obs = new MutationObserver(callback);
-  obs.observe(el, { attributes: true, attributeFilter: ["data-xf-ui"] });
-  return () => obs.disconnect();
-}
-
-function getXfUiSoftSnapshot() {
-  return document.documentElement.getAttribute("data-xf-ui") === "soft";
-}
-
-function useXfUiSoft(): boolean {
-  return useSyncExternalStore(subscribeXfUi, getXfUiSoftSnapshot, () => false);
-}
 
 type Candle = { t: string; o: number; h: number; l: number; c: number; v: number };
 

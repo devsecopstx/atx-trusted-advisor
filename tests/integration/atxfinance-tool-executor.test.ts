@@ -26,6 +26,15 @@ vi.mock("@/modules/xchat/tool-cache", () => ({
   deleteCachedToolResult: vi.fn()
 }));
 
+const yahooLookupMocks = vi.hoisted(() => ({
+  lookupSymbols: vi.fn()
+}));
+
+vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
+  lookupSymbols: yahooLookupMocks.lookupSymbols,
+  LOOKUP_ROUTE: "yahoo-finance2"
+}));
+
 const workspaceLoadMocks = vi.hoisted(() => ({
   loadWorkspaceSnapshotPreload: vi.fn()
 }));
@@ -39,6 +48,23 @@ import {
     ATXFINANCE_TOOL_DEFINITION,
     createXfinanceToolExecutor
 } from "@/modules/xchat/tool-executor";
+import {
+    formatWatchlistAddedAtUtc,
+    formatWatchlistTargetEntryNotional100xFromQuotePrice,
+    formatWatchlistTargetEntryStored
+} from "@/modules/xchat/watchlist-prompt-format";
+
+function wlSymbolFixture(symbol: string, addedAtIso: string, entryPrice?: number) {
+  const hasEntry = entryPrice !== undefined;
+  return {
+    symbol,
+    addedAt: addedAtIso,
+    addedAtDisplay: formatWatchlistAddedAtUtc(addedAtIso),
+    ...(hasEntry ? { entryPrice, targetEntryPrice: entryPrice } : {}),
+    targetEntryDisplay: formatWatchlistTargetEntryStored(entryPrice),
+    targetEntryNotional100xDisplay: formatWatchlistTargetEntryNotional100xFromQuotePrice(250.12)
+  };
+}
 
 describe("atxfinance tool executor", () => {
   const ctx = { userId: "user_123", tenantId: "tenant_456" };
@@ -46,6 +72,13 @@ describe("atxfinance tool executor", () => {
   const accountId = new ObjectId();
 
   beforeEach(() => {
+    yahooLookupMocks.lookupSymbols.mockImplementation(async (symbols: string[]) => {
+      const m = new Map<string, { symbol: string; price: number; source: string }>();
+      for (const s of symbols) {
+        m.set(s, { symbol: s, price: 250.12, source: "yahoo-finance2" });
+      }
+      return m;
+    });
     workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockReset();
     workspaceLoadMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
     repositoryMocks.getDefaultPortfolio.mockResolvedValue({
@@ -167,7 +200,13 @@ describe("atxfinance tool executor", () => {
     expect(data.watchlist).toMatchObject({
       name: "DefaultWatchlist",
       symbolCount: 1,
-      symbols: [{ symbol: "TSLA", addedAt: expect.any(String) }]
+      symbols: [
+        {
+          symbol: "TSLA",
+          addedAt: expect.any(String),
+          targetEntryNotional100xDisplay: "25,012"
+        }
+      ]
     });
     expect(result.error).toBeUndefined();
   });
@@ -210,8 +249,11 @@ describe("atxfinance tool executor", () => {
       {
         symbol: "TSLA",
         addedAt: expect.any(String),
+        addedAtDisplay: expect.any(String),
         entryPrice: 240.5,
-        targetEntryPrice: 240.5
+        targetEntryPrice: 240.5,
+        targetEntryDisplay: "$240.50",
+        targetEntryNotional100xDisplay: "25,012"
       }
     ]);
     expect(data.symbolCount).toBe(1);
@@ -500,7 +542,7 @@ describe("atxfinance tool executor", () => {
           name: "DefaultWatchlist",
           riskProfile: null,
           outlook: null,
-          symbols: [{ symbol: "NVDA", addedAt: "2026-01-02T00:00:00.000Z" }]
+          symbols: [wlSymbolFixture("NVDA", "2026-01-02T00:00:00.000Z")]
         }
       },
       positionsFull: [
@@ -555,7 +597,7 @@ describe("atxfinance tool executor", () => {
           name: "WL",
           riskProfile: null,
           outlook: null,
-          symbols: [{ symbol: "TSLA", addedAt: "2026-01-02T00:00:00.000Z" }]
+          symbols: [wlSymbolFixture("TSLA", "2026-01-02T00:00:00.000Z")]
         }
       },
       positionsFull: [{ symbol: "TSLA", qty: 10, avgCost: 200, accountId: accountId.toHexString() }]
@@ -603,7 +645,7 @@ describe("atxfinance tool executor", () => {
           name: "WL",
           riskProfile: null,
           outlook: null,
-          symbols: [{ symbol: "TSLA", addedAt: "2026-01-02T00:00:00.000Z" }]
+          symbols: [wlSymbolFixture("TSLA", "2026-01-02T00:00:00.000Z")]
         }
       },
       positionsFull: [
@@ -677,7 +719,7 @@ describe("atxfinance tool executor", () => {
           name: "WL",
           riskProfile: null,
           outlook: null,
-          symbols: [{ symbol: "TSLA", addedAt: "2026-01-02T00:00:00.000Z" }]
+          symbols: [wlSymbolFixture("TSLA", "2026-01-02T00:00:00.000Z")]
         }
       },
       positionsFull: [{ symbol: "TSLA", qty: 10, avgCost: 200, accountId: accountId.toHexString() }]

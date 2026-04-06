@@ -13,6 +13,16 @@ const wsCacheMocks = vi.hoisted(() => ({
   writeWorkspaceSnapshotCache: vi.fn()
 }));
 
+const lookupSymbolsMock = vi.hoisted(() =>
+  vi.fn(async (symbols: string[]) => {
+    const m = new Map<string, { symbol: string; price: number; source: string }>();
+    for (const s of symbols) {
+      m.set(s, { symbol: s, price: 250.5, source: "yahoo-finance2" });
+    }
+    return m;
+  })
+);
+
 vi.mock("@/modules/core-admin/repository", () => repo);
 vi.mock("@/modules/xchat/workspace-snapshot-cache", () => ({
   buildWorkspaceSnapshotCacheKey: (input: {
@@ -25,6 +35,11 @@ vi.mock("@/modules/xchat/workspace-snapshot-cache", () => ({
   getWorkspaceSnapshotCacheTtlSeconds: () => 120,
   readWorkspaceSnapshotCache: wsCacheMocks.readWorkspaceSnapshotCache,
   writeWorkspaceSnapshotCache: wsCacheMocks.writeWorkspaceSnapshotCache
+}));
+
+vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
+  lookupSymbols: lookupSymbolsMock,
+  LOOKUP_ROUTE: "yahoo-finance2"
 }));
 
 import { buildWorkspaceServerSnapshotBlock } from "@/modules/xchat/workspace-snapshot-for-prompt";
@@ -82,6 +97,9 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
     expect(r).toContain("```json");
     expect(r).toContain('"name":"Main"');
     expect(r).toContain('"symbol":"TSLA"');
+    expect(r).toContain('"addedAtDisplay"');
+    expect(r).toContain('"targetEntryDisplay":"not set"');
+    expect(r).toContain('"targetEntryNotional100xDisplay":"25,050"');
     expect(r).toContain('"cashBalance":100');
     expect(r).toContain('"workspaceContentRev":0');
     expect(r).toContain('"accountId":"507f1f77bcf86cd799439002"');

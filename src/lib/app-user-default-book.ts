@@ -71,23 +71,12 @@ export async function resolveActiveWorkspacePortfolioId(session: SessionUser): P
   return resolveChosenPortfolioId(workspacePortfolios, fromCookie);
 }
 
-/** Loads the active workspace book: cookie-selected portfolio when valid, else Mongo default (or first). */
-export async function loadAppUserDefaultBook(session: SessionUser): Promise<AppUserDefaultBook | null> {
-  const portfolioRows = await listPortfoliosForSessionUser({
-    userId: session.userId,
-    tenantId: session.tenantId
-  });
-  if (portfolioRows.length === 0) {
-    return null;
-  }
-
-  const workspacePortfolios = portfolioRefs(portfolioRows);
-  const cookieStore = await cookies();
-  const fromCookie = cookieStore.get(WORKSPACE_PORTFOLIO_COOKIE_NAME)?.value;
-  const chosenId = resolveChosenPortfolioId(workspacePortfolios, fromCookie);
-
-  const portfolio = portfolioRows.find((p) => p._id?.toHexString() === chosenId);
-  if (!portfolio?._id) {
+async function buildDefaultBookForPortfolioRow(
+  session: SessionUser,
+  portfolio: Portfolio,
+  workspacePortfolios: AppUserWorkspacePortfolioRef[]
+): Promise<AppUserDefaultBook | null> {
+  if (!portfolio._id) {
     return null;
   }
 
@@ -123,4 +112,57 @@ export async function loadAppUserDefaultBook(session: SessionUser): Promise<AppU
     accounts: accountRefs,
     workspacePortfolios
   };
+}
+
+/** Loads the active workspace book: cookie-selected portfolio when valid, else Mongo default (or first). */
+export async function loadAppUserDefaultBook(session: SessionUser): Promise<AppUserDefaultBook | null> {
+  const portfolioRows = await listPortfoliosForSessionUser({
+    userId: session.userId,
+    tenantId: session.tenantId
+  });
+  if (portfolioRows.length === 0) {
+    return null;
+  }
+
+  const workspacePortfolios = portfolioRefs(portfolioRows);
+  const cookieStore = await cookies();
+  const fromCookie = cookieStore.get(WORKSPACE_PORTFOLIO_COOKIE_NAME)?.value;
+  const chosenId = resolveChosenPortfolioId(workspacePortfolios, fromCookie);
+
+  const portfolio = portfolioRows.find((p) => p._id?.toHexString() === chosenId);
+  if (!portfolio?._id) {
+    return null;
+  }
+
+  return buildDefaultBookForPortfolioRow(session, portfolio, workspacePortfolios);
+}
+
+/**
+ * Same shape as `loadAppUserDefaultBook` but pinned to an owned portfolio id (e.g. `?portfolioId=` on xChat/watchlist).
+ * Returns null when the id is invalid or not in the user's workspace list.
+ */
+export async function loadAppUserDefaultBookForPortfolioId(
+  session: SessionUser,
+  portfolioIdHex: string
+): Promise<AppUserDefaultBook | null> {
+  const trimmed = portfolioIdHex.trim();
+  if (!trimmed || !ObjectId.isValid(trimmed)) {
+    return null;
+  }
+
+  const portfolioRows = await listPortfoliosForSessionUser({
+    userId: session.userId,
+    tenantId: session.tenantId
+  });
+  if (portfolioRows.length === 0) {
+    return null;
+  }
+
+  const workspacePortfolios = portfolioRefs(portfolioRows);
+  const portfolio = portfolioRows.find((p) => p._id?.toHexString() === trimmed);
+  if (!portfolio?._id) {
+    return null;
+  }
+
+  return buildDefaultBookForPortfolioRow(session, portfolio, workspacePortfolios);
 }

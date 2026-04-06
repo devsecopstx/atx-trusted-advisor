@@ -32,7 +32,6 @@ import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
 import { isTenantXchatDebugPreferenceEnabled } from "@/modules/identity/tenant-branding-preferences";
 import type { SubscriptionPlan } from "@/modules/identity/types";
-import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import { enforceDistributedAskUsageLimit } from "@/modules/xchat/ask-usage-limits";
 import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
@@ -62,6 +61,11 @@ import {
     type PersonaXapiConfig
 } from "@/modules/xchat/types";
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
+import {
+    formatWatchlistAddedAtUtc,
+    formatWatchlistTargetEntryNotional100xFromQuotePrice,
+    formatWatchlistTargetEntryStored
+} from "@/modules/xchat/watchlist-prompt-format";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import {
     heavySynthesisIntent,
@@ -160,36 +164,6 @@ function isDirectWatchlistRequest(message: string): boolean {
     normalized.includes("list my watchlist") ||
     normalized.includes("what is in my watchlist")
   );
-}
-
-function formatWatchlistAddedAt(isoLike: string | undefined): string {
-  if (!isoLike) {
-    return "unknown time";
-  }
-  const date = new Date(isoLike);
-  if (Number.isNaN(date.getTime())) {
-    return isoLike;
-  }
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short"
-  });
-}
-
-function formatDerivedTargetEntryFromQuote(value: unknown): string {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
-    return "not set";
-  }
-  const derived = Math.round(value * 100);
-  return derived.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  });
 }
 
 export async function POST(request: Request) {
@@ -658,6 +632,8 @@ export async function POST(request: Request) {
           strategy?: string;
           targetEntryPrice?: number;
           entryPrice?: number;
+          /** 100× live quote notional — same as Watchlist page "Target entry" column. */
+          targetEntryNotional100xDisplay?: string;
         }>;
       };
       if (parsed.error === "no_watchlist") {
@@ -669,18 +645,25 @@ export async function POST(request: Request) {
         if (cleanRows.length === 0) {
           responseMarkdown = `${parsed.name ?? "Your watchlist"} has no symbols yet.`;
         } else {
-          const quoteMap = await lookupSymbols(
-            cleanRows.map((row) => String(row.symbol).trim().toUpperCase())
-          );
           const header = `Your ${parsed.name ?? "watchlist"} has ${cleanRows.length} symbol${
             cleanRows.length === 1 ? "" : "s"
           }:`;
           const lines = cleanRows.map((row) => {
             const symbol = row.symbol!.trim().toUpperCase();
-            const added = formatWatchlistAddedAt(row.addedAt);
-            const quote = quoteMap.get(symbol);
-            const targetEntry = formatDerivedTargetEntryFromQuote(quote?.price);
-            return `- ${symbol} (added ${added}, target entry: ${targetEntry})`;
+            const added = formatWatchlistAddedAtUtc(row.addedAt);
+            const targetCol =
+              typeof row.targetEntryNotional100xDisplay === "string"
+                ? row.targetEntryNotional100xDisplay
+                : formatWatchlistTargetEntryNotional100xFromQuotePrice(undefined);
+            const stored =
+              row.targetEntryPrice !== undefined
+                ? row.targetEntryPrice
+                : row.entryPrice !== undefined
+                  ? row.entryPrice
+                  : undefined;
+            const desk = formatWatchlistTargetEntryStored(stored);
+            const deskSuffix = desk !== "not set" ? `; desk entry ${desk}` : "";
+            return `- ${symbol} (added ${added}, target entry: ${targetCol}${deskSuffix})`;
           });
           responseMarkdown = `${header}\n${lines.join("\n")}`;
         }
