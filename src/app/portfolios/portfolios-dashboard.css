@@ -409,7 +409,7 @@
   flex-shrink: 0;
 }
 
-/* PNG marks (portfolio / xOptions) are authored for light surfaces — invert on deep dark rail */
+/* Legacy PNG rail marks (if reintroduced) — invert on deep dark rail; SVG glyphs use currentColor */
 html:not([data-xf-ui="soft"]) .portfolios-workspace-sidebar__glyph-img {
   filter: invert(1) brightness(1.08);
 }

@@ -2,8 +2,9 @@
 
 import { useForm, ValidationError } from "@formspree/react";
 import { motion, useReducedMotion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
+
+import { LucideHouseIcon } from "@/app/ui/lucide-product-icons";
 
 const pageVariants = {
   hidden: { opacity: 0 },
@@ -258,12 +259,9 @@ export default function Hero({
           <motion.div initial="hidden" animate="visible" variants={pageVariants}>
             <motion.div variants={bulletItemVariants} className="mb-8">
               <div className="mb-5 flex justify-center">
-                <Image
-                  alt="aTx app hero icon"
-                  className="app-hero-icon-img h-20 w-20"
-                  height={80}
-                  src="/branding/xstrategybuilder-topnav-icon-transparent.png"
-                  width={80}
+                <LucideHouseIcon
+                  aria-hidden
+                  className="h-20 w-20 shrink-0 text-slate-300"
                 />
               </div>
               <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-emerald-500/90 font-semibold mb-3">

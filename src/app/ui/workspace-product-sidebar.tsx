@@ -14,6 +14,7 @@ import {
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
+import { LucideBookOpenIcon, LucideHouseIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
@@ -355,14 +356,7 @@ export function WorkspaceProductSidebar({
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
             icon={
-              <Image
-                alt=""
-                aria-hidden
-                className="portfolios-workspace-sidebar__glyph-img portfolios-workspace-sidebar__glyph-img--hero"
-                height={18}
-                src="/branding/portfolios.png"
-                width={18}
-              />
+              <LucideBookOpenIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero" />
             }
             label="Portfolio workspace"
           />
@@ -399,14 +393,7 @@ export function WorkspaceProductSidebar({
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
             icon={
-              <Image
-                alt=""
-                aria-hidden
-                className="portfolios-workspace-sidebar__glyph-img portfolios-workspace-sidebar__glyph-img--hero"
-                height={18}
-                src="/branding/xstrategybuilder-app-icon-64.png"
-                width={18}
-              />
+              <LucideHouseIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero" />
             }
             label="xOptions"
           />

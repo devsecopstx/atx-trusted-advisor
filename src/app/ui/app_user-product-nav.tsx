@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { LucideBookOpenIcon, LucideHouseIcon } from "@/app/ui/lucide-product-icons";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 /** Which product icon is active; use `null` on secondary surfaces (e.g. `/account/billing`) so none are highlighted. */
@@ -48,13 +48,7 @@ const NAV: NavDef[] = [
     href: "/xoptions",
     icon: (
       <IconWrap>
-        <Image
-          alt="xOptions"
-          className="xchat-header-icon-link__glyph-img xstrategybuilder-nav-icon-img"
-          height={30}
-          src="/branding/xstrategybuilder-topnav-icon-transparent.png"
-          width={30}
-        />
+        <LucideHouseIcon />
       </IconWrap>
     )
   },
@@ -64,16 +58,7 @@ const NAV: NavDef[] = [
     href: "/portfolios",
     icon: (
       <IconWrap>
-        <svg viewBox="0 0 20 20" fill="none">
-          <path d="M3 15.5h14" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
-          <path
-            d="M4.5 12.5l3.5-4 3 2.5L15.5 5.5"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.5"
-          />
-        </svg>
+        <LucideBookOpenIcon />
       </IconWrap>
     )
   },
@@ -92,7 +77,7 @@ const NAV: NavDef[] = [
 ];
 
 /**
- * Product row: xChat, **xOptions** (legacy xStrategyBuilder PNG glyph), Portfolio → **`/portfolios`**, Watchlist.
+ * Product row: xChat, xOptions (Lucide-style house SVG), Portfolio (book-open) → **`/portfolios`**, Watchlist.
  * No billing or Hub icon — billing is Account menu / `/account/billing`; admins reach **`/admin`** from bookmarks or admin shell nav.
  * Legacy **`/xstrategybuilder`** redirects to **`/xoptions`**.
  */

@@ -1,18 +1,15 @@
-import Image from "next/image";
 import Link from "next/link";
+
+import { LucideHouseIcon } from "@/app/ui/lucide-product-icons";
 
 import { AtxFinanceLogo } from "./atxfinance-logo";
 import { USER_PRODUCT_DESCRIPTOR_LINE } from "./product-brand-constants";
 
 function AtxFinanceIcon() {
   return (
-    <Image
-      alt=""
+    <LucideHouseIcon
       aria-hidden
-      className="mh-product-icon app-hero-icon-img"
-      height={48}
-      src="/branding/xstrategybuilder-topnav-icon-transparent.png"
-      width={48}
+      className="mh-product-icon text-[var(--xf-text-300)]"
     />
   );
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import { useForm, ValidationError } from "@formspree/react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { AtxFinanceLogo } from "@/app/ui/atxfinance-logo";
 import { GlobalFooter } from "@/app/ui/global-footer";
+import { LucideHouseIcon } from "@/app/ui/lucide-product-icons";
 import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 
 export const DEFAULT_POST_LOGIN = "/xchat";
@@ -122,12 +122,9 @@ export function HomeLanding({
       <div className="relative z-10 mx-auto flex max-w-3xl flex-col gap-10 px-6 py-16 sm:py-24">
         <header className="flex flex-col items-center gap-5 text-center">
           <div className="flex justify-center">
-            <Image
-              alt="aTx app hero icon"
-              className="app-hero-icon-img h-20 w-20"
-              height={80}
-              src="/branding/xstrategybuilder-topnav-icon-transparent.png"
-              width={80}
+            <LucideHouseIcon
+              aria-hidden
+              className="h-20 w-20 shrink-0 text-[var(--xf-text-200)]"
             />
           </div>
           <div className="flex justify-center">

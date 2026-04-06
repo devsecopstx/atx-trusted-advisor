@@ -436,14 +436,6 @@ a.xchat-profile-menu__item--link {
   display: block;
 }
 
-html:not([data-xf-ui="soft"]) .xstrategybuilder-nav-icon-img {
-  filter: invert(1) brightness(1.08);
-}
-
-html[data-xf-ui="soft"] .xstrategybuilder-nav-icon-img {
-  filter: none;
-}
-
 .xchat-header-cta {
   padding: 0.35rem 0.75rem;
   border-radius: 8px;
