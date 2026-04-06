@@ -1,3 +1,4 @@
+import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import type { SessionUser } from "@/lib/auth";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { listPortfolioAccounts } from "@/modules/core-admin/repository";
@@ -112,7 +113,7 @@ export async function buildPortfolioSummaryPayload(
       return {
         _id: account._id?.toHexString(),
         name: account.name ?? "Account",
-        accountRef: account.extAccountId ?? "",
+        accountRef: maskAccountXrefForDisplay(account.extAccountId ?? ""),
         brokerType: account.type ?? "fidelity",
         balance: account.cashBalance ?? DEFAULT_COALESCE_CASH,
         isDefault: account.isDefault === true,

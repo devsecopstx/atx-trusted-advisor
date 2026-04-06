@@ -1,3 +1,4 @@
+import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import { isXchatDebugEnvEnabled } from "@/lib/env";
 import { getXchatTenantDebugFromContext } from "@/lib/xchat-debug-context";
 import {
@@ -16,7 +17,9 @@ import { normalizePositionType } from "@/modules/core-admin/types";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
 import {
     formatWatchlistAddedAtUtc,
+    formatWatchlistSpotPriceUsd,
     formatWatchlistTargetEntryNotional100xFromQuotePrice,
+    formatWatchlistTargetEntryNotional100xUsd,
     formatWatchlistTargetEntryStored
 } from "@/modules/xchat/watchlist-prompt-format";
 import {
@@ -54,6 +57,8 @@ function watchlistSymbolToPromptJson(s: WatchlistSymbol, quotePrice?: number) {
     addedAt: addedAtIso,
     /** Prefer this (and targetEntryDisplay) when listing watchlist for users — matches direct watchlist replies. */
     addedAtDisplay: formatWatchlistAddedAtUtc(addedAtIso),
+    spotPriceDisplay: formatWatchlistSpotPriceUsd(quotePrice),
+    targetEntryNotional100xUsdDisplay: formatWatchlistTargetEntryNotional100xUsd(quotePrice),
     ...(s.lineType !== undefined ? { lineType: s.lineType } : {}),
     ...(s.strategy !== undefined ? { strategy: s.strategy } : {}),
     ...(s.quantity !== undefined ? { quantity: s.quantity } : {}),
@@ -206,7 +211,7 @@ async function buildPreloadFromPortfolio(
       accountId: a._id ? a._id.toHexString() : "",
       name: a.name,
       type: a.type,
-      extAccountId: a.extAccountId,
+      extAccountId: maskAccountXrefForDisplay(a.extAccountId),
       isDefault: a.isDefault,
       cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
       positionCount: a._id ? (counts.get(a._id.toHexString()) ?? 0) : 0
@@ -390,7 +395,7 @@ export function portfolioSummaryFromWorkspacePreload(p: WorkspaceSnapshotPreload
     accounts: j.accounts.map((a) => ({
       name: a.name,
       type: a.type,
-      extAccountId: a.extAccountId,
+      extAccountId: maskAccountXrefForDisplay(a.extAccountId),
       isDefault: a.isDefault,
       cashBalance: a.cashBalance,
       positionCount: a.positionCount
@@ -407,7 +412,7 @@ export function accountHealthFromWorkspacePreload(p: WorkspaceSnapshotPreload): 
     accounts: p.promptJson.accounts.map((a) => ({
       name: a.name,
       type: a.type,
-      extAccountId: a.extAccountId,
+      extAccountId: maskAccountXrefForDisplay(a.extAccountId),
       isDefault: a.isDefault,
       cashBalance: a.cashBalance
     })),

@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
 import { BackIcon, DeleteIcon, SaveIcon, XMarkIcon } from "@/app/admin/ui/crud-icons";
-import { editAccountFormSchema } from "@/app/portfolio/lib/edit-account-schema";
+import {
+    editAccountFormSchema,
+    editAccountFormSchemaWithoutExtRef
+} from "@/app/portfolio/lib/edit-account-schema";
 import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_PICKER_ORDER } from "@/lib/broker-ui";
 import { RISK_LEVEL_OPTIONS } from "@/modules/core-admin/portfolio-preference-labels";
 import { accountTypeValues, type AccountOutlook, type AccountType } from "@/modules/core-admin/types";
@@ -53,7 +56,8 @@ export function AccountWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [acctName, setAcctName] = useState(account.name);
   const [cashBalance, setCashBalance] = useState(String(account.cashBalance));
-  const [extRef, setExtRef] = useState(account.extAccountId);
+  /** Plaintext ref only while the user is setting it for the first time (never hydrated from server when ref exists). */
+  const [extRefDraft, setExtRefDraft] = useState("");
   const [riskProfile, setRiskProfile] = useState<NonNullable<SerializableAccount["riskProfile"]>>(
     account.riskProfile ?? "balanced"
   );
@@ -63,28 +67,74 @@ export function AccountWorkspace({
   useEffect(() => {
     setAcctName(account.name);
     setCashBalance(String(account.cashBalance));
-    setExtRef(account.extAccountId);
+    setExtRefDraft("");
     setRiskProfile(account.riskProfile ?? "balanced");
     setOutlook(account.outlook ?? "neutral");
     setBrokerType(coerceAccountType(account.type));
   }, [
     account.name,
     account.cashBalance,
-    account.extAccountId,
+    account.hasExtAccountRef,
     account.riskProfile,
     account.outlook,
     account.type
   ]);
 
-  const refLocked = account.brokerImportLocked;
+  const brokerLocked = account.brokerImportLocked;
+  const refSaved = account.hasExtAccountRef;
+  const canEditRefAndBroker = !brokerLocked && !refSaved;
 
   async function saveAccount(e: FormEvent) {
     e.preventDefault();
     setError(null);
     const cash = Number(cashBalance);
-    const parsed = editAccountFormSchema.safeParse({
+
+    if (canEditRefAndBroker) {
+      const parsed = editAccountFormSchema.safeParse({
+        name: acctName,
+        extAccountId: extRefDraft,
+        type: brokerType,
+        cashBalance: cash,
+        outlook,
+        riskProfile
+      });
+      if (!parsed.success) {
+        setError(parsed.error.issues[0]?.message ?? "Check the form and try again.");
+        return;
+      }
+      setSavePending(true);
+      try {
+        const body: Record<string, unknown> = {
+          name: parsed.data.name,
+          cashBalance: parsed.data.cashBalance,
+          riskProfile: parsed.data.riskProfile,
+          outlook: parsed.data.outlook,
+          extAccountId: parsed.data.extAccountId,
+          type: parsed.data.type
+        };
+        const res = await fetch(
+          `/api/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(account._id)}`,
+          {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          }
+        );
+        const resBody = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          setError(resBody.error ?? "Could not update account");
+          return;
+        }
+        startTransition(() => router.refresh());
+      } finally {
+        setSavePending(false);
+      }
+      return;
+    }
+
+    const parsed = editAccountFormSchemaWithoutExtRef.safeParse({
       name: acctName,
-      extAccountId: extRef,
       type: brokerType,
       cashBalance: cash,
       outlook,
@@ -103,8 +153,7 @@ export function AccountWorkspace({
         riskProfile: parsed.data.riskProfile,
         outlook: parsed.data.outlook
       };
-      if (!refLocked) {
-        body.extAccountId = parsed.data.extAccountId;
+      if (!brokerLocked) {
         body.type = parsed.data.type;
       }
       const res = await fetch(
@@ -178,25 +227,43 @@ export function AccountWorkspace({
           </div>
 
           <div className="portfolio-edit-field">
-            <label className="portfolio-edit-field__label" htmlFor="acct-ext-ref">
+            <span className="portfolio-edit-field__label" id="acct-ext-ref-lbl">
               Account ref
-            </label>
-            <input
-              id="acct-ext-ref"
-              className="crud-input portfolio-edit-account-card__input font-mono text-xs"
-              value={extRef}
-              onChange={(e) => setExtRef(e.target.value)}
-              readOnly={refLocked}
-              disabled={refLocked}
-              required={!refLocked}
-              autoComplete="off"
-              aria-readonly={refLocked}
-            />
-            <p className="portfolio-edit-field__hint">
-              {refLocked
-                ? "Broker import is linked to this ref — it cannot be changed here."
-                : "Broker-specific identifier (set before your first CSV import)."}
-            </p>
+            </span>
+            {canEditRefAndBroker ? (
+              <>
+                <input
+                  id="acct-ext-ref"
+                  className="crud-input portfolio-edit-account-card__input font-mono text-xs"
+                  value={extRefDraft}
+                  onChange={(e) => setExtRefDraft(e.target.value)}
+                  required
+                  autoComplete="off"
+                  aria-labelledby="acct-ext-ref-lbl"
+                  aria-describedby="acct-ext-ref-hint"
+                />
+                <p id="acct-ext-ref-hint" className="portfolio-edit-field__hint">
+                  Broker account identifier. Set once — after you save, only the last four digits are shown and the full
+                  ref cannot be changed here.
+                </p>
+              </>
+            ) : (
+              <>
+                <div
+                  id="acct-ext-ref"
+                  className="crud-input portfolio-edit-account-card__input font-mono text-xs portfolio-edit-account-card__xref-masked"
+                  aria-labelledby="acct-ext-ref-lbl"
+                  aria-describedby="acct-ext-ref-hint-locked"
+                >
+                  {account.extAccountRefMasked}
+                </div>
+                <p id="acct-ext-ref-hint-locked" className="portfolio-edit-field__hint">
+                  {brokerLocked
+                    ? "Broker import is linked to this ref — it cannot be changed here."
+                    : "Stored broker ref (last four shown). Contact support if you need to change it."}
+                </p>
+              </>
+            )}
           </div>
 
           <div className="portfolio-edit-field">
@@ -208,7 +275,7 @@ export function AccountWorkspace({
               className="crud-input portfolio-edit-account-card__input"
               value={brokerType}
               onChange={(e) => setBrokerType(e.target.value as AccountType)}
-              disabled={refLocked}
+              disabled={brokerLocked}
               aria-label="Broker custodian"
             >
               {brokerPickerOptions(brokerType).map((t) => (
@@ -218,7 +285,7 @@ export function AccountWorkspace({
               ))}
             </select>
             <p className="portfolio-edit-field__hint">
-              {refLocked
+              {brokerLocked
                 ? "Locked after broker import (CSV labeling)."
                 : "Drives CSV import labeling. Choose before import."}
             </p>

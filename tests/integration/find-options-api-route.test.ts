@@ -50,7 +50,7 @@ describe("GET /api/app-user/find-options/*", () => {
         {
           id: "a1",
           name: "Primary",
-          extAccountId: "Z06276930",
+          extAccountId: "••••6930",
           isDefault: true,
           optionsApproved: false,
           riskProfile: "balanced",
@@ -88,7 +88,7 @@ describe("GET /api/app-user/find-options/*", () => {
       };
     };
     expect(json.data.portfolio.name).toBe("Book");
-    expect(json.data.accounts[0]?.extAccountId).toBe("Z06276930");
+    expect(json.data.accounts[0]?.extAccountId).toBe("••••6930");
     expect(json.data.account.optionsApproved).toBe(false);
     expect(json.data.scoringFactors[0]?.id).toBe("iv_rank");
     expect(serviceMocks.getFindOptionsContext).toHaveBeenCalledTimes(1);

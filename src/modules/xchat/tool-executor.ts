@@ -1,3 +1,4 @@
+import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import type { ToolExecutor } from "@/lib/xai";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
@@ -33,7 +34,9 @@ import {
 } from "@/modules/xchat/tool-definitions";
 import {
     formatWatchlistAddedAtUtc,
+    formatWatchlistSpotPriceUsd,
     formatWatchlistTargetEntryNotional100xFromQuotePrice,
+    formatWatchlistTargetEntryNotional100xUsd,
     formatWatchlistTargetEntryStored
 } from "@/modules/xchat/watchlist-prompt-format";
 import {
@@ -71,6 +74,8 @@ function watchlistSymbolToJson(s: WatchlistSymbol, quotePrice?: number) {
     symbol: s.symbol,
     addedAt: addedAtIso,
     addedAtDisplay: formatWatchlistAddedAtUtc(addedAtIso),
+    spotPriceDisplay: formatWatchlistSpotPriceUsd(quotePrice),
+    targetEntryNotional100xUsdDisplay: formatWatchlistTargetEntryNotional100xUsd(quotePrice),
     ...(s.lineType !== undefined ? { lineType: s.lineType } : {}),
     ...(s.strategy !== undefined ? { strategy: s.strategy } : {}),
     ...(s.quantity !== undefined ? { quantity: s.quantity } : {}),
@@ -251,7 +256,7 @@ function buildOperations(
         accounts: accounts.map((a) => ({
           name: a.name,
           type: a.type,
-          extAccountId: a.extAccountId,
+          extAccountId: maskAccountXrefForDisplay(a.extAccountId),
           isDefault: a.isDefault,
           cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
           positionCount: a._id ? (counts.get(a._id.toHexString()) ?? 0) : 0
@@ -399,7 +404,7 @@ function buildOperations(
         accounts: accounts.map((a) => ({
           name: a.name,
           type: a.type,
-          extAccountId: a.extAccountId,
+          extAccountId: maskAccountXrefForDisplay(a.extAccountId),
           isDefault: a.isDefault,
           cashBalance: a.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE
         })),

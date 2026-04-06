@@ -100,9 +100,12 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
     expect(r).toContain('"addedAtDisplay"');
     expect(r).toContain('"targetEntryDisplay":"not set"');
     expect(r).toContain('"targetEntryNotional100xDisplay":"25,050"');
+    expect(r).toContain('"spotPriceDisplay":"$250.50"');
+    expect(r).toContain('"targetEntryNotional100xUsdDisplay":"$25,050"');
     expect(r).toContain('"cashBalance":100');
     expect(r).toContain('"workspaceContentRev":0');
     expect(r).toContain('"accountId":"507f1f77bcf86cd799439002"');
+    expect(r).toContain('"extAccountId":"••••"');
     expect(wsCacheMocks.writeWorkspaceSnapshotCache).toHaveBeenCalled();
   });
 });

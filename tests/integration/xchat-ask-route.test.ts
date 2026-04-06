@@ -1333,12 +1333,14 @@ describe("xchat ask route collection retrieval", () => {
           symbols: [
             {
               symbol: "TSLA",
-              addedAt: "2026-04-04T13:33:24.903Z",
+              spotPriceDisplay: "$245.00",
+              targetEntryNotional100xUsdDisplay: "$24,500",
               targetEntryNotional100xDisplay: "24,500"
             },
             {
               symbol: "NVDA",
-              addedAt: "2026-04-04T13:51:00.000Z",
+              spotPriceDisplay: "$488.00",
+              targetEntryNotional100xUsdDisplay: "$48,800",
               targetEntryNotional100xDisplay: "48,800",
               targetEntryPrice: 120.5
             }
@@ -1360,11 +1362,14 @@ describe("xchat ask route collection retrieval", () => {
       expect(response.status).toBe(200);
       const payload = (await response.json()) as { data?: { response?: string; model?: string } };
       expect(payload.data?.model).toBe("watchlist_snapshot_direct");
-      expect(payload.data?.response ?? "").toContain("TSLA");
-      expect(payload.data?.response ?? "").toContain("NVDA");
-      expect(payload.data?.response ?? "").toContain("target entry: 24,500");
-      expect(payload.data?.response ?? "").toContain("target entry: 48,800");
-      expect(payload.data?.response ?? "").toContain("desk entry $120.50");
+      const text = payload.data?.response ?? "";
+      expect(text).toContain("TSLA");
+      expect(text).toContain("NVDA");
+      expect(text).toContain("Spot: $245.00");
+      expect(text).toContain("Target entry: $24,500");
+      expect(text).toContain("Spot: $488.00");
+      expect(text).toContain("Target entry: $48,800");
+      expect(text).not.toMatch(/added /i);
       expect(xaiMocks.respondWithXaiToolLoop).not.toHaveBeenCalled();
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({

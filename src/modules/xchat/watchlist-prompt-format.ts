@@ -46,3 +46,50 @@ export function formatWatchlistTargetEntryNotional100xFromQuotePrice(price: unkn
   const v = Math.round(100 * price);
   return v.toLocaleString("en-US", { maximumFractionDigits: 0, minimumFractionDigits: 0 });
 }
+
+/** Live Yahoo last / quote — USD for “show my watchlist” and tool JSON. */
+export function formatWatchlistSpotPriceUsd(price: unknown): string {
+  if (typeof price !== "number" || !Number.isFinite(price)) {
+    return "—";
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(price);
+}
+
+/**
+ * Watchlist UI “Target entry” column as currency: round(100 × spot) whole USD
+ * (same basis as {@link formatWatchlistTargetEntryNotional100xFromQuotePrice}).
+ */
+export function formatWatchlistTargetEntryNotional100xUsd(price: unknown): string {
+  if (typeof price !== "number" || !Number.isFinite(price)) {
+    return "—";
+  }
+  const v = Math.round(100 * price);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(v);
+}
+
+/** Legacy plain notional string (e.g. `"24,500"`) → `$24,500` for older cached tool payloads. */
+export function formatWatchlistNotionalPlainDisplayAsUsd(display: string | undefined): string {
+  if (!display || display === "—") {
+    return "—";
+  }
+  const n = Number(String(display).replace(/,/g, ""));
+  if (!Number.isFinite(n)) {
+    return "—";
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(n);
+}

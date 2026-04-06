@@ -30,9 +30,10 @@ describe("buildSessionToolInstructions", () => {
     expect(s).toContain("strategy jobs");
   });
 
-  it("requires full watchlist enumeration with notional + desk entry fields", () => {
+  it("requires full watchlist enumeration with spot, notional USD, and desk entry fields", () => {
     const s = buildSessionToolInstructions({ hostedSearch: false, atxFunction: true });
-    expect(s).toContain("targetEntryNotional100xDisplay");
+    expect(s).toContain("spotPriceDisplay");
+    expect(s).toContain("targetEntryNotional100xUsdDisplay");
     expect(s).toContain("targetEntryDisplay");
     expect(s).toContain("enumerate **every symbol returned**");
   });

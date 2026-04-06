@@ -5,6 +5,7 @@ import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-w
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
@@ -20,11 +21,14 @@ import {
 import { parseAccountOutlook, type Account } from "@/modules/core-admin/types";
 
 function serializeAccount(account: Account) {
+  const rawRef = (account.extAccountId ?? "").trim();
+  const hasExtAccountRef = rawRef.length > 0;
   return {
     _id: account._id!.toHexString(),
     name: account.name,
     type: account.type,
-    extAccountId: account.extAccountId,
+    extAccountRefMasked: maskAccountXrefForDisplay(rawRef),
+    hasExtAccountRef,
     cashBalance: account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE,
     isDefault: account.isDefault,
     brokerImportLocked: Boolean(account.brokerImportLocked),

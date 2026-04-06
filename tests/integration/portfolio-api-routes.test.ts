@@ -475,6 +475,25 @@ describe("portfolio API routes", () => {
     );
   });
 
+  it("returns 409 when app user attempts to change a saved account ref", async () => {
+    repositoryMocks.updatePortfolioAccountForUser.mockClear();
+    const response = await patchPortfolioAccount(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extAccountId: "different-ref" })
+      }),
+      {
+        params: Promise.resolve({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }
+    );
+    expect(response.status).toBe(409);
+    expect(repositoryMocks.updatePortfolioAccountForUser).not.toHaveBeenCalled();
+  });
+
   it("patches desk fields riskProfile and outlook for an owned account", async () => {
     const response = await patchPortfolioAccount(
       new Request("http://test", {

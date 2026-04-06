@@ -41,7 +41,7 @@ describe("buildFindOptionsAccountRows / resolveAccountOptionsApproved", () => {
     expect(rows[0]).toMatchObject({
       id: id.toHexString(),
       name: "Cash Management",
-      extAccountId: "Z06276930",
+      extAccountId: "••••6930",
       isDefault: true,
       optionsApproved: false,
       outlook: "bullish",

@@ -50,9 +50,13 @@ import {
 } from "@/modules/xchat/tool-executor";
 import {
     formatWatchlistAddedAtUtc,
+    formatWatchlistSpotPriceUsd,
     formatWatchlistTargetEntryNotional100xFromQuotePrice,
+    formatWatchlistTargetEntryNotional100xUsd,
     formatWatchlistTargetEntryStored
 } from "@/modules/xchat/watchlist-prompt-format";
+
+const WL_QUOTE_FIXTURE = 250.12;
 
 function wlSymbolFixture(symbol: string, addedAtIso: string, entryPrice?: number) {
   const hasEntry = entryPrice !== undefined;
@@ -60,9 +64,11 @@ function wlSymbolFixture(symbol: string, addedAtIso: string, entryPrice?: number
     symbol,
     addedAt: addedAtIso,
     addedAtDisplay: formatWatchlistAddedAtUtc(addedAtIso),
+    spotPriceDisplay: formatWatchlistSpotPriceUsd(WL_QUOTE_FIXTURE),
+    targetEntryNotional100xUsdDisplay: formatWatchlistTargetEntryNotional100xUsd(WL_QUOTE_FIXTURE),
     ...(hasEntry ? { entryPrice, targetEntryPrice: entryPrice } : {}),
     targetEntryDisplay: formatWatchlistTargetEntryStored(entryPrice),
-    targetEntryNotional100xDisplay: formatWatchlistTargetEntryNotional100xFromQuotePrice(250.12)
+    targetEntryNotional100xDisplay: formatWatchlistTargetEntryNotional100xFromQuotePrice(WL_QUOTE_FIXTURE)
   };
 }
 
@@ -204,6 +210,8 @@ describe("atxfinance tool executor", () => {
         {
           symbol: "TSLA",
           addedAt: expect.any(String),
+          spotPriceDisplay: "$250.12",
+          targetEntryNotional100xUsdDisplay: "$25,012",
           targetEntryNotional100xDisplay: "25,012"
         }
       ]
@@ -240,7 +248,7 @@ describe("atxfinance tool executor", () => {
     });
   });
 
-  it("watchlist_snapshot returns symbols with addedAt and target entry price", async () => {
+  it("watchlist_snapshot returns symbols with spot, notional USD, and desk entry price", async () => {
     const executor = createXfinanceToolExecutor(ctx);
     const result = await executor("atxfinance", { operation: "watchlist_snapshot" });
     const data = JSON.parse(result.result);
@@ -250,6 +258,8 @@ describe("atxfinance tool executor", () => {
         symbol: "TSLA",
         addedAt: expect.any(String),
         addedAtDisplay: expect.any(String),
+        spotPriceDisplay: "$250.12",
+        targetEntryNotional100xUsdDisplay: "$25,012",
         entryPrice: 240.5,
         targetEntryPrice: 240.5,
         targetEntryDisplay: "$240.50",

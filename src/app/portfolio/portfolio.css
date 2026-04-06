@@ -1470,6 +1470,14 @@
   border-radius: var(--xf-radius-sm);
 }
 
+.portfolio-edit-account-card__xref-masked {
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+  user-select: none;
+  color: var(--xf-text-200);
+}
+
 .portfolio-edit-account-card__note {
   margin: 0;
   font-size: 0.8rem;

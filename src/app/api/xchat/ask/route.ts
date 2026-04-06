@@ -61,11 +61,7 @@ import {
     type PersonaXapiConfig
 } from "@/modules/xchat/types";
 import { getXchatUserPreferences } from "@/modules/xchat/user-preferences-repository";
-import {
-    formatWatchlistAddedAtUtc,
-    formatWatchlistTargetEntryNotional100xFromQuotePrice,
-    formatWatchlistTargetEntryStored
-} from "@/modules/xchat/watchlist-prompt-format";
+import { formatWatchlistNotionalPlainDisplayAsUsd } from "@/modules/xchat/watchlist-prompt-format";
 import { verifyXaiCollectionNonBlocking } from "@/modules/xchat/xai-collection-verifier";
 import {
     heavySynthesisIntent,
@@ -632,8 +628,11 @@ export async function POST(request: Request) {
           strategy?: string;
           targetEntryPrice?: number;
           entryPrice?: number;
+          spotPriceDisplay?: string;
           /** 100× live quote notional — same as Watchlist page "Target entry" column. */
           targetEntryNotional100xDisplay?: string;
+          /** Same basis as notional column, USD currency string. */
+          targetEntryNotional100xUsdDisplay?: string;
         }>;
       };
       if (parsed.error === "no_watchlist") {
@@ -650,20 +649,22 @@ export async function POST(request: Request) {
           }:`;
           const lines = cleanRows.map((row) => {
             const symbol = row.symbol!.trim().toUpperCase();
-            const added = formatWatchlistAddedAtUtc(row.addedAt);
-            const targetCol =
-              typeof row.targetEntryNotional100xDisplay === "string"
-                ? row.targetEntryNotional100xDisplay
-                : formatWatchlistTargetEntryNotional100xFromQuotePrice(undefined);
-            const stored =
-              row.targetEntryPrice !== undefined
-                ? row.targetEntryPrice
-                : row.entryPrice !== undefined
-                  ? row.entryPrice
-                  : undefined;
-            const desk = formatWatchlistTargetEntryStored(stored);
-            const deskSuffix = desk !== "not set" ? `; desk entry ${desk}` : "";
-            return `- ${symbol} (added ${added}, target entry: ${targetCol}${deskSuffix})`;
+            const spot =
+              typeof row.spotPriceDisplay === "string" && row.spotPriceDisplay.trim().length > 0
+                ? row.spotPriceDisplay.trim()
+                : "—";
+            let targetUsd: string;
+            if (
+              typeof row.targetEntryNotional100xUsdDisplay === "string" &&
+              row.targetEntryNotional100xUsdDisplay !== "—"
+            ) {
+              targetUsd = row.targetEntryNotional100xUsdDisplay;
+            } else if (typeof row.targetEntryNotional100xDisplay === "string") {
+              targetUsd = formatWatchlistNotionalPlainDisplayAsUsd(row.targetEntryNotional100xDisplay);
+            } else {
+              targetUsd = "—";
+            }
+            return `- ${symbol} — Spot: ${spot} · Target entry: ${targetUsd}`;
           });
           responseMarkdown = `${header}\n${lines.join("\n")}`;
         }

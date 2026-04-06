@@ -1,3 +1,4 @@
+import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import { loadAppUserDefaultBook, type AppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { getEnv } from "@/lib/env";
@@ -96,7 +97,7 @@ export function buildFindOptionsAccountRows(
     .map((a) => ({
       id: a._id.toHexString(),
       name: a.name?.trim() || "Account",
-      extAccountId: a.extAccountId?.trim() || "—",
+      extAccountId: maskAccountXrefForDisplay(a.extAccountId?.trim() || ""),
       isDefault: Boolean(a.isDefault),
       optionsApproved: resolveAccountOptionsApproved(a, assumeAllApproved),
       riskProfile: a.riskProfile ?? null,

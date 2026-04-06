@@ -4,7 +4,10 @@ export type SerializableAccount = {
   _id: string;
   name: string;
   type: string;
-  extAccountId: string;
+  /** Masked broker ref (last 4 only). Full value is never sent to the client once set. */
+  extAccountRefMasked: string;
+  /** True when a non-empty ref exists in the database. */
+  hasExtAccountRef: boolean;
   cashBalance: number;
   isDefault: boolean;
   /** After broker CSV import, ref + broker cannot change (app user). */

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteIcon, UploadIcon } from "@/app/admin/ui/crud-icons";
+import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import { detectFidelityActivitiesCsv } from "@/modules/portfolio-import/fidelity-activities-csv";
 import { detectFidelityPortfolioHoldingsCsv } from "@/modules/portfolio-import/fidelity-holdings-csv";
 
@@ -425,7 +426,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 accounts.map((a) => (
                   <tr key={a._id ?? a.name} className="border-b border-white/5">
                     <td className="p-2">{a.name}</td>
-                    <td className="p-2 font-mono">{(a.extAccountId || "").trim() || "—"}</td>
+                    <td className="p-2 font-mono">{maskAccountXrefForDisplay((a.extAccountId || "").trim())}</td>
                   </tr>
                 ))
               ) : (

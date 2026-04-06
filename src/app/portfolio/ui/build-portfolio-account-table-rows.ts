@@ -1,4 +1,5 @@
 import type { PortfolioAccountTableRow } from "@/app/portfolio/ui/portfolio-accounts-section";
+import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import { brokerIconUrlForType, formatBrokerTypeLabel } from "@/lib/broker-ui";
 import {
     formatUsdWhole,
@@ -47,7 +48,7 @@ export function buildPortfolioAccountTableRows(
       deskLine,
       brokerTypeLabel: formatBrokerTypeLabel(row.brokerType),
       brokerIconUrl: brokerIconUrlForType(row.brokerType),
-      extAccountId: row.extAccountId || "",
+      extAccountId: maskAccountXrefForDisplay(row.extAccountId || ""),
       positionsLabel: posLabel,
       costBasisFormatted: formatUsdWhole(costBasis),
       riskDotClassName: riskDotClass(acct)

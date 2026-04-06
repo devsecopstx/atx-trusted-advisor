@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
     formatWatchlistAddedAtUtc,
+    formatWatchlistNotionalPlainDisplayAsUsd,
+    formatWatchlistSpotPriceUsd,
     formatWatchlistTargetEntryNotional100xFromQuotePrice,
+    formatWatchlistTargetEntryNotional100xUsd,
     formatWatchlistTargetEntryStored
 } from "@/modules/xchat/watchlist-prompt-format";
 
@@ -21,5 +24,17 @@ describe("watchlist-prompt-format", () => {
   it("formats 100× quote notional like watchlist Target entry column", () => {
     expect(formatWatchlistTargetEntryNotional100xFromQuotePrice(undefined)).toBe("—");
     expect(formatWatchlistTargetEntryNotional100xFromQuotePrice(250.12)).toBe("25,012");
+  });
+
+  it("formats spot and notional as USD for chat lines", () => {
+    expect(formatWatchlistSpotPriceUsd(undefined)).toBe("—");
+    expect(formatWatchlistSpotPriceUsd(245.5)).toBe("$245.50");
+    expect(formatWatchlistTargetEntryNotional100xUsd(undefined)).toBe("—");
+    expect(formatWatchlistTargetEntryNotional100xUsd(245.5)).toBe("$24,550");
+  });
+
+  it("converts legacy plain notional display to USD", () => {
+    expect(formatWatchlistNotionalPlainDisplayAsUsd("24,500")).toBe("$24,500");
+    expect(formatWatchlistNotionalPlainDisplayAsUsd("—")).toBe("—");
   });
 });
