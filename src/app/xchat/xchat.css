@@ -2147,6 +2147,71 @@ a.xchat-profile-menu__item--link {
   color: var(--xf-text-400);
 }
 
+/* Soft / light shell — composer chrome (borders + surfaces tuned for pale backgrounds) */
+html[data-xf-ui="soft"] .xchat-composer-wrap {
+  border-top-color: color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+}
+
+html[data-xf-ui="soft"] .xchat-composer {
+  border-color: color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, var(--xf-surface-700));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__persona-label {
+  color: var(--xf-text-400);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__persona-select,
+html[data-xf-ui="soft"] .xchat-composer__persona-select--inline {
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 3%, var(--xf-bg-900));
+  color: var(--xf-text-100);
+  color-scheme: light;
+}
+
+html[data-xf-ui="soft"] .xchat-composer__field {
+  color: var(--xf-text-100);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__field::placeholder {
+  color: var(--xf-text-400);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__icon-btn {
+  color: var(--xf-text-300);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__icon-btn--beta:disabled {
+  color: var(--xf-text-400);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__auto {
+  border-color: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+  color: var(--xf-text-300);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__voice {
+  border-color: color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 8%, transparent);
+  color: var(--xf-text-300);
+}
+
+html[data-xf-ui="soft"] .xchat-composer__send {
+  color: var(--xf-text-100);
+}
+
+html[data-xf-ui="soft"] .xchat-composer-hint {
+  background: color-mix(in srgb, var(--xf-text-100) 7%, transparent);
+  border-color: color-mix(in srgb, var(--xf-text-100) 12%, transparent);
+  color: var(--xf-text-300);
+}
+
+html[data-xf-ui="soft"] .xchat-composer-hint__pill {
+  color: var(--xf-text-400);
+}
+
 @media (max-width: 1200px) {
   .xchat-main-shell {
     grid-template-columns: minmax(66px, 260px) minmax(0, 1fr);

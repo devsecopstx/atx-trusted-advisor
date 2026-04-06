@@ -16,8 +16,8 @@ describe("legal default content", () => {
   });
 
   it("includes release-safe sections for imprint, security, and vulnerability pages", () => {
-    expect(source).toContain("Service provider");
-    expect(source).toContain("Regulatory and professional use");
+    expect(source).toContain("Service Provider");
+    expect(source).toContain("Scope of Publication");
     expect(source).toContain("Security program");
     expect(source).toContain("Shared responsibility");
     expect(source).toContain("Responsible disclosure expectations");

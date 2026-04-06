@@ -1,5 +1,10 @@
 # xOptions — Find options (`/xoptions`)
 
+## Shell theme & layout CSS
+
+- **Soft / light shell** (`html[data-xf-ui="soft"]`): Page background uses **`--xf-xoptions-surface`** (mapped to **`--xf-bg-900`** in `globals.css`); workspace UI chrome is tuned in **`src/app/xoptions/xoptions.css`** (panels, chain CTA, ATM row contrast). The symbol OHLC/volume charts (`xoptions-symbol-chart-panel.tsx`) switch Apex **light vs dark** grid/labels when the user toggles Appearance.
+- **Left rail:** `src/app/xoptions/layout.tsx` imports **`portfolios-dashboard.css`** alongside **`xchat.css`** so **`WorkspaceProductSidebar`** Lucide rail icons use **`portfolios-workspace-sidebar__glyph`** sizing (same requirement as **`xchat/layout.tsx`**).
+
 ## UX flow
 
 The strategy builder is a **gated, four-step** flow (mirrors common broker research patterns):

@@ -5,6 +5,8 @@ import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-ban
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 
+/** Workspace rail (`WorkspaceProductSidebar`) — same glyph/sidebar rules as xChat layout */
+import "@/app/portfolios/portfolios-dashboard.css";
 import "../xchat/xchat.css";
 import "./xoptions.css";
 

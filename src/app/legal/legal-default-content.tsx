@@ -5,44 +5,50 @@
 
 const EFFECTIVE_NOTE = "Effective as of March 22, 2026. This summary is provided for transparency; it is not legal advice.";
 
-const LEGAL_ENTITY = "aTx⚡Finance";
+/** Operating name used in Imprint (plain text; wordmark may use ⚡ elsewhere). */
+const ATX_FINANCE_OPERATING_NAME = "aTx Finance";
 /** User-facing product name in in-app legal stubs (matches chrome / marketing). */
 const PRODUCT_PUBLIC_NAME = "aTx Trusted Advisory";
-const LEGAL_CONTACT_NOTE =
-  "Use the contact path in your onboarding, account, or access-request workflow for legal notices and operational requests.";
 const VULNERABILITY_TIPS =
   "Include clear reproduction steps, impact level, affected route(s), and proof-of-concept details where possible. Do not include private keys or credentials in reports.";
 
 export function LegalImprintContent() {
   return (
     <div className="legal-prose">
-      <p className="legal-stub-lead">{EFFECTIVE_NOTE}</p>
-      <h2>Service provider</h2>
-      <p>
-        {LEGAL_ENTITY} operates the {PRODUCT_PUBLIC_NAME} platform and associated product surfaces, including
-        xChat, portfolio workflows, and related admin interfaces.
+      <p className="legal-stub-lead">
+        <strong>Effective as of March 22, 2026</strong>
+        <br />
+        This summary is provided for transparency only. It is not legal, financial, tax, or investment advice.
       </p>
-      <h2>Scope of publication</h2>
+      <h2>Service Provider</h2>
       <p>
-        This imprint applies to information published within the {PRODUCT_PUBLIC_NAME} web application and
-        official product domains used for access, onboarding, and support.
+        {ATX_FINANCE_OPERATING_NAME} operates the {PRODUCT_PUBLIC_NAME} platform and associated product surfaces,
+        including xChat, portfolio workflows, and related admin interfaces.
       </p>
-      <h2>Contact and legal notices</h2>
-      <p>{LEGAL_CONTACT_NOTE}</p>
-      <h2>Regulatory and professional use</h2>
+      <h2>Scope of Publication</h2>
       <p>
-        {PRODUCT_PUBLIC_NAME} is designed for approved professionals and authorized users. Availability and
-        product scope may differ by role, jurisdiction, and operator policy.
+        This Imprint applies to all information and services published within the {PRODUCT_PUBLIC_NAME} web application
+        and its official product domains used for access, onboarding, and support.
       </p>
-      <h2>Content responsibility</h2>
+      <h2>Contact and Legal Notices</h2>
       <p>
-        We prepare platform information with reasonable care, but cannot guarantee all content is complete,
-        current, or suitable for every jurisdiction without local legal review.
+        Use the designated contact path in your onboarding, account settings, or support workflow for all legal notices
+        and operational requests.
       </p>
-      <h2>Intellectual property notice</h2>
+      <h2>Intended Use &amp; Regulatory Notice</h2>
       <p>
-        Names, marks, software components, and product materials within the Service are protected by
-        applicable intellectual property laws and contractual rights.
+        {PRODUCT_PUBLIC_NAME} is designed exclusively for approved professionals and authorized users. Availability,
+        features, and product scope may vary by role, jurisdiction, and operator policy.
+      </p>
+      <h2>Content Responsibility</h2>
+      <p>
+        We prepare platform information with reasonable care. However, we cannot guarantee that all content is complete,
+        current, or suitable for every jurisdiction without independent local professional review.
+      </p>
+      <h2>Intellectual Property Notice</h2>
+      <p>
+        All names, marks, software components, designs, and other product materials within the Service are protected by
+        applicable intellectual property laws and contractual rights. Unauthorized use is strictly prohibited.
       </p>
     </div>
   );

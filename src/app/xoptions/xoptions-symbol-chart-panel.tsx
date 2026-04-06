@@ -2,13 +2,29 @@
 
 import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
+
+function subscribeXfUi(callback: () => void) {
+  const el = document.documentElement;
+  const obs = new MutationObserver(callback);
+  obs.observe(el, { attributes: true, attributeFilter: ["data-xf-ui"] });
+  return () => obs.disconnect();
+}
+
+function getXfUiSoftSnapshot() {
+  return document.documentElement.getAttribute("data-xf-ui") === "soft";
+}
+
+function useXfUiSoft(): boolean {
+  return useSyncExternalStore(subscribeXfUi, getXfUiSoftSnapshot, () => false);
+}
 
 type Candle = { t: string; o: number; h: number; l: number; c: number; v: number };
 
 export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; enabled: boolean }) {
+  const xfSoft = useXfUiSoft();
   const [candles, setCandles] = useState<Candle[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,8 +84,11 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
     [candles]
   );
 
-  const chartOptions = useMemo<ApexOptions>(
-    () => ({
+  const chartOptions = useMemo<ApexOptions>(() => {
+    const label = xfSoft ? "#64748b" : "#94a3b8";
+    const grid = xfSoft ? "rgba(100, 116, 139, 0.22)" : "rgba(148, 163, 184, 0.22)";
+    const mode = xfSoft ? "light" : "dark";
+    return {
       chart: {
         type: "candlestick",
         background: "transparent",
@@ -77,7 +96,7 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
         zoom: { enabled: true },
         fontFamily: "ui-monospace, monospace"
       },
-      theme: { mode: "dark" },
+      theme: { mode },
       plotOptions: {
         candlestick: {
           colors: {
@@ -87,27 +106,30 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
         }
       },
       grid: {
-        borderColor: "rgba(148, 163, 184, 0.22)"
+        borderColor: grid
       },
       xaxis: {
         type: "datetime",
-        labels: { style: { colors: "#94a3b8" } }
+        labels: { style: { colors: label } }
       },
       yaxis: {
         tooltip: { enabled: true },
         labels: {
           formatter: (v: number) => v.toFixed(2),
-          style: { colors: "#94a3b8" }
+          style: { colors: label }
         },
         opposite: true
       },
-      tooltip: { theme: "dark" }
-    }),
-    []
-  );
+      tooltip: { theme: mode }
+    };
+  }, [xfSoft]);
 
-  const volOptions = useMemo<ApexOptions>(
-    () => ({
+  const volOptions = useMemo<ApexOptions>(() => {
+    const label = xfSoft ? "#64748b" : "#94a3b8";
+    const grid = xfSoft ? "rgba(100, 116, 139, 0.16)" : "rgba(148, 163, 184, 0.15)";
+    const mode = xfSoft ? "light" : "dark";
+    const barColor = xfSoft ? "rgba(139, 92, 246, 0.55)" : "rgba(59, 130, 246, 0.65)";
+    return {
       chart: {
         type: "bar",
         background: "transparent",
@@ -115,8 +137,8 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
         toolbar: { show: false },
         fontFamily: "ui-monospace, monospace"
       },
-      colors: ["rgba(59, 130, 246, 0.65)"],
-      theme: { mode: "dark" },
+      colors: [barColor],
+      theme: { mode },
       plotOptions: {
         bar: {
           columnWidth: "75%"
@@ -124,12 +146,12 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
       },
       dataLabels: { enabled: false },
       grid: {
-        borderColor: "rgba(148, 163, 184, 0.15)",
+        borderColor: grid,
         padding: { left: 8, right: 8 }
       },
       xaxis: {
         type: "datetime",
-        labels: { show: true, style: { colors: "#94a3b8", fontSize: "10px" } }
+        labels: { show: true, style: { colors: label, fontSize: "10px" } }
       },
       yaxis: {
         labels: {
@@ -139,14 +161,13 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
             if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
             return String(Math.round(v));
           },
-          style: { colors: "#94a3b8" }
+          style: { colors: label }
         },
         opposite: true
       },
-      tooltip: { theme: "dark" }
-    }),
-    []
-  );
+      tooltip: { theme: mode }
+    };
+  }, [xfSoft]);
 
   if (!enabled) {
     return null;

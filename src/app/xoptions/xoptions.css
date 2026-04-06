@@ -1130,6 +1130,11 @@ a.xoptions-chain-cta.cta.cta-primary:hover {
 
 html[data-xf-ui="soft"] a.xoptions-chain-cta.cta.cta-primary {
   box-shadow: 0 0 18px color-mix(in srgb, var(--xf-gain-green) 18%, transparent);
+  color: var(--xf-text-100);
+}
+
+html[data-xf-ui="soft"] a.xoptions-chain-cta.cta.cta-primary:hover {
+  color: var(--xf-text-100);
 }
 
 button.xoptions-chain-cta.cta.cta-secondary {
@@ -1989,6 +1994,11 @@ html[data-xf-ui="soft"] .xoptions-contract-overlay__card {
   color: var(--xf-bg-900);
 }
 
+html[data-xf-ui="soft"] .xoptions-contract-row--atm td,
+html[data-xf-ui="soft"] .xoptions-contract-row--atm .xoptions-contract__bid {
+  color: var(--xf-text-100);
+}
+
 .xoptions-contract-row--itm {
   background: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
 }
@@ -2018,6 +2028,10 @@ html[data-xf-ui="soft"] .xoptions-contract-overlay__card {
   border-radius: 2px;
   background: color-mix(in srgb, var(--xf-text-100) 96%, var(--xf-bg-900) 4%);
   border: 1px solid color-mix(in srgb, var(--xf-bg-900) 22%, transparent);
+}
+
+html[data-xf-ui="soft"] .xoptions-contract__atm-swatch {
+  border-color: color-mix(in srgb, var(--xf-text-100) 22%, transparent);
 }
 
 .xoptions-contract__itm-swatch {

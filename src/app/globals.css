@@ -18,6 +18,8 @@ html[data-xf-ui="soft"] {
   --xf-purple-400: #334155;
   --xf-purple-500: #475569;
   color-scheme: light;
+  /** xOptions page shell — follow softened app canvas (see :root --xf-xoptions-surface in brand kit) */
+  --xf-xoptions-surface: var(--xf-bg-900);
 }
 
 /* Theme-aware raster icon treatment: dark shell uses lightened mark; soft shell uses original dark mark. */
