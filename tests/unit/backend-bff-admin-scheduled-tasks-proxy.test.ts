@@ -9,11 +9,13 @@ describe("shouldProxyAdminScheduledTasksToBackend", () => {
     vi.unstubAllEnvs();
     process.env.ATXFINANCE_BACKEND_ORIGIN = original.ATXFINANCE_BACKEND_ORIGIN;
     process.env.ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS = original.ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS;
+    process.env.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS = original.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS;
   });
 
   beforeEach(() => {
     delete process.env.ATXFINANCE_BACKEND_ORIGIN;
     delete process.env.ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS;
+    delete process.env.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS;
     vi.stubEnv("NODE_ENV", "development");
   });
 
@@ -43,5 +45,20 @@ describe("shouldProxyAdminScheduledTasksToBackend", () => {
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
     vi.stubEnv("ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS", "false");
     expect(shouldProxyAdminScheduledTasksToBackend()).toBe(false);
+  });
+
+  it("when SCHEDULED_TASKS unset, follows ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=false on remote", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
+    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "false");
+    expect(shouldProxyAdminScheduledTasksToBackend()).toBe(false);
+  });
+
+  it("explicit ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS=true overrides ADMIN_USERS=false", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
+    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "false");
+    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS", "true");
+    expect(shouldProxyAdminScheduledTasksToBackend()).toBe(true);
   });
 });

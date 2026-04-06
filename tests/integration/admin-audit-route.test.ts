@@ -10,7 +10,7 @@ const auditMocks = vi.hoisted(() => ({
 }));
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyAdminUsersRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const limitMocks = vi.hoisted(() => ({
@@ -21,7 +21,7 @@ const limitMocks = vi.hoisted(() => ({
 vi.mock("@/lib/api-auth", () => authMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyAdminUsersRequestToBackend: bffMocks.proxyAdminUsersRequestToBackend
 }));
 vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/distributed-rate-limit")>();
@@ -37,7 +37,7 @@ import { GET as getAuditEvents } from "@/app/api/admin/audit/route";
 describe("admin audit route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValue(null);
     limitMocks.extractClientRateLimitKey.mockReturnValue("127.0.0.1");
     limitMocks.checkDistributedRateLimit.mockResolvedValue({
       allowed: true,
@@ -97,7 +97,7 @@ describe("admin audit route", () => {
   });
 
   it("short-circuits to BFF response without listing from Next repository", async () => {
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(
       new NextResponse(JSON.stringify({ data: [{ action: "proxied" }] }), { status: 200 })
     );
 

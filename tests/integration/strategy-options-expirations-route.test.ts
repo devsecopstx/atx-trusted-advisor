@@ -7,7 +7,7 @@ const sessionMocks = vi.hoisted(() => ({
 
 const mockOptions = vi.hoisted(() => vi.fn());
 
-/** Mock the strategy-options entrypoint (spreading `actual` keeps internal `proxyRequestToBackend` closures otherwise). */
+/** Mock the strategy-options entrypoint (spreading `actual` keeps internal BFF closures stable). */
 const proxyStrategyOptionsRequestToBackendMock = vi.hoisted(() =>
   vi.fn().mockResolvedValue(null as Response | null)
 );

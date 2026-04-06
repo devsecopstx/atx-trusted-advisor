@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { shouldProxyAdminUsersToBackend } from "@/lib/backend-bff";
+import {
+    shouldProxyAdminUsersToBackend,
+    shouldProxyPortfolioRequestsToBackend
+} from "@/lib/backend-bff";
 
 describe("shouldProxyAdminUsersToBackend", () => {
   const original = { ...process.env };
@@ -45,5 +48,17 @@ describe("shouldProxyAdminUsersToBackend", () => {
     expect(shouldProxyAdminUsersToBackend()).toBe(false);
     vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "0");
     expect(shouldProxyAdminUsersToBackend()).toBe(false);
+  });
+
+  it("shouldProxyPortfolioRequestsToBackend matches shouldProxyAdminUsersToBackend (shared ATXFINANCE_BACKEND_PROXY_ADMIN_USERS gate)", () => {
+    expect(shouldProxyPortfolioRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");
+    expect(shouldProxyPortfolioRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
+    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "true");
+    expect(shouldProxyPortfolioRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
+    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "false");
+    expect(shouldProxyPortfolioRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
   });
 });

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { requireAdminSession } from "@/lib/api-auth";
+import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import { createAuditEvent } from "@/modules/audit/repository";
 import {
     deleteDeployNoteConfigById,
@@ -52,7 +52,7 @@ const updateSchema = z
   );
 
 export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) return proxied;
 
   const session = await requireAdminSession();
@@ -70,7 +70,7 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) return proxied;
 
   const session = await requireAdminSession();
@@ -126,7 +126,7 @@ export async function PUT(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) return proxied;
 
   const session = await requireAdminSession();

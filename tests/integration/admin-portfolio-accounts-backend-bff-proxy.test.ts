@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyAdminUsersRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const authMocks = vi.hoisted(() => ({
@@ -20,7 +20,7 @@ const getCoreUsersByIdsMock = vi.hoisted(() =>
 );
 
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyAdminUsersRequestToBackend: bffMocks.proxyAdminUsersRequestToBackend
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
@@ -56,7 +56,7 @@ describe("admin portfolio accounts API BFF proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCoreUsersByIdsMock.mockResolvedValue(new Map());
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValue(null);
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -76,12 +76,12 @@ describe("admin portfolio accounts API BFF proxy", () => {
     repoMocks.adminListAccountsForPortfolio.mockResolvedValue([]);
   });
 
-  it("GET …/accounts returns the backend response when proxyRequestToBackend resolves non-null", async () => {
+  it("GET …/accounts returns the backend response when proxyAdminUsersRequestToBackend resolves non-null", async () => {
     const proxied = new Response(JSON.stringify({ data: { accountCount: 0, accounts: [] } }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/accounts`);
     const response = await getAdminAccounts(req, { params: Promise.resolve({ portfolioId }) });
@@ -89,17 +89,17 @@ describe("admin portfolio accounts API BFF proxy", () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { data: { accountCount: number } };
     expect(payload.data.accountCount).toBe(0);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
     expect(repoMocks.adminGetPortfolioById).not.toHaveBeenCalled();
   });
 
-  it("POST …/accounts returns the backend response when proxyRequestToBackend resolves non-null", async () => {
+  it("POST …/accounts returns the backend response when proxyAdminUsersRequestToBackend resolves non-null", async () => {
     const proxied = new Response(JSON.stringify({ data: { _id: accountId, name: "New" } }), {
       status: 201,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/accounts`, {
       method: "POST",
@@ -109,16 +109,16 @@ describe("admin portfolio accounts API BFF proxy", () => {
     const response = await postAdminAccount(req, { params: Promise.resolve({ portfolioId }) });
 
     expect(response.status).toBe(201);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
   });
 
-  it("PATCH …/accounts/:id returns the backend response when proxyRequestToBackend resolves non-null", async () => {
+  it("PATCH …/accounts/:id returns the backend response when proxyAdminUsersRequestToBackend resolves non-null", async () => {
     const proxied = new Response(JSON.stringify({ data: { _id: accountId, name: "Renamed" } }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/accounts/${accountId}`, {
       method: "PATCH",
@@ -130,16 +130,16 @@ describe("admin portfolio accounts API BFF proxy", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
   });
 
-  it("DELETE …/accounts/:id returns the backend response when proxyRequestToBackend resolves non-null", async () => {
+  it("DELETE …/accounts/:id returns the backend response when proxyAdminUsersRequestToBackend resolves non-null", async () => {
     const proxied = new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/accounts/${accountId}`, {
       method: "DELETE"
@@ -149,7 +149,7 @@ describe("admin portfolio accounts API BFF proxy", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
   });
 
@@ -158,7 +158,7 @@ describe("admin portfolio accounts API BFF proxy", () => {
     const response = await getAdminAccounts(req, { params: Promise.resolve({ portfolioId }) });
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).toHaveBeenCalled();
     expect(repoMocks.adminGetPortfolioById).toHaveBeenCalled();
     expect(repoMocks.adminListAccountsForPortfolio).toHaveBeenCalled();

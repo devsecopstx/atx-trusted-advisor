@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import { getEnv } from "@/lib/env";
 import { getDb } from "@/lib/mongodb";
 
@@ -12,7 +12,7 @@ const expectedIndexNames = {
 } as const;
 
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

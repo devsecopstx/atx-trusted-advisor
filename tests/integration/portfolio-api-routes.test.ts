@@ -49,7 +49,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   return {
     ...actual,
     // Keep this suite hermetic across envs (e.g., ATXFINANCE_BACKEND_ORIGIN set in shell).
-    proxyRequestToBackend: vi.fn().mockResolvedValue(null),
+    proxyAdminUsersRequestToBackend: vi.fn().mockResolvedValue(null),
     proxyPortfolioRequestToBackend: vi.fn().mockResolvedValue(null)
   };
 });

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyPortfolioRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const limitMocks = vi.hoisted(() => ({
@@ -13,7 +13,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
   return {
     ...actual,
-    proxyRequestToBackend: bffMocks.proxyRequestToBackend
+    proxyPortfolioRequestToBackend: bffMocks.proxyPortfolioRequestToBackend
   };
 });
 
@@ -33,7 +33,7 @@ describe("POST /api/access-requests/public rate limit", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(null);
     limitMocks.extractClientRateLimitKey.mockReturnValue("127.0.0.1");
     process.env = { ...prevEnv };
   });
@@ -80,6 +80,6 @@ describe("POST /api/access-requests/public rate limit", () => {
     );
     expect(response.status).not.toBe(404);
     expect(response.status).toBe(429);
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
   });
 });

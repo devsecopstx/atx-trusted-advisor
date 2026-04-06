@@ -6,7 +6,7 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyAdminUsersRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const tenantLimitsMocks = vi.hoisted(() => ({
@@ -26,7 +26,7 @@ vi.mock("@/lib/server-request-cache", () => ({
   getTenantByHexIdCached: vi.fn().mockResolvedValue(null)
 }));
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyAdminUsersRequestToBackend: bffMocks.proxyAdminUsersRequestToBackend
 }));
 vi.mock("@/lib/tenant-workspace-limits", () => tenantLimitsMocks);
 vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
@@ -58,7 +58,7 @@ const tenantId = "507f1f77bcf86cd799439022";
 describe("workspace limit enforcement on admin portfolio routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValue(null);
     authMocks.requireAdminSession.mockResolvedValue({
       userId,
       tenantId,

@@ -5,7 +5,7 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyPortfolioRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const limitMocks = vi.hoisted(() => ({
@@ -29,7 +29,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
   return {
     ...actual,
-    proxyRequestToBackend: bffMocks.proxyRequestToBackend
+    proxyPortfolioRequestToBackend: bffMocks.proxyPortfolioRequestToBackend
   };
 });
 
@@ -75,7 +75,7 @@ describe("strategy-job turns route", () => {
       retryAfterSeconds: 60,
       source: "memory"
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValue(
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(
       new Response(JSON.stringify({ data: { ok: true } }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
@@ -90,7 +90,7 @@ describe("strategy-job turns route", () => {
     });
     expect(res.status).toBe(200);
     expect(limitMocks.checkDistributedRateLimit).toHaveBeenCalled();
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
   });
 
   it("POST returns 429 when limiter blocks", async () => {
@@ -106,7 +106,7 @@ describe("strategy-job turns route", () => {
       params: Promise.resolve({ jobId: "job_123" })
     });
     expect(res.status).toBe(429);
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
   });
 
   it("POST returns 403 when user is not Premium+", async () => {
@@ -123,6 +123,6 @@ describe("strategy-job turns route", () => {
     expect(res.status).toBe(403);
     expect(payload.error).toBe("plan_upgrade_required");
     expect(limitMocks.checkDistributedRateLimit).not.toHaveBeenCalled();
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
   });
 });

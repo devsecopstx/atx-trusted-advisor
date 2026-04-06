@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import {
     adminCreateRecommendationForPortfolio,
     adminListRecommendationsForPortfolio
@@ -42,7 +42,7 @@ const postSchema = z.object({
 });
 
 export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -63,7 +63,7 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function POST(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

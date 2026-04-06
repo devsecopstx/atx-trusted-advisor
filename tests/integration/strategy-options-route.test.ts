@@ -23,7 +23,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   return {
     ...actual,
     // Keep strategy-options tests hermetic regardless of ATXFINANCE_BACKEND_ORIGIN in shell env.
-    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+    proxyStrategyOptionsRequestToBackend: vi.fn().mockResolvedValue(null)
   };
 });
 

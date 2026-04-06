@@ -17,7 +17,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   return {
     ...actual,
     // Keep this suite hermetic: never proxy to live backend from env.
-    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+    proxyPortfolioRequestToBackend: vi.fn().mockResolvedValue(null)
   };
 });
 

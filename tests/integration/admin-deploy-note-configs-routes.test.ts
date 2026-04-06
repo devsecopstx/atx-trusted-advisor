@@ -23,7 +23,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   return {
     ...actual,
     // Keep this integration suite hermetic (no live Spring proxy from env).
-    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+    proxyAdminUsersRequestToBackend: vi.fn().mockResolvedValue(null)
   };
 });
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);

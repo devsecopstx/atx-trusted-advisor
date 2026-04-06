@@ -4,10 +4,6 @@ const authMocks = vi.hoisted(() => ({
   requireSessionUser: vi.fn()
 }));
 
-const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
-}));
-
 const serviceMocks = vi.hoisted(() => ({
   getFindOptionsContext: vi.fn(),
   getTopStockHoldingsByValue: vi.fn(),
@@ -16,9 +12,6 @@ const serviceMocks = vi.hoisted(() => ({
   getSymbolSnapshot: vi.fn()
 }));
 
-vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
-}));
 vi.mock("@/lib/auth", () => ({
   requireSessionUser: authMocks.requireSessionUser
 }));
@@ -31,7 +24,6 @@ import { GET as getSnapshot } from "@/app/api/app-user/find-options/symbol-snaps
 describe("GET /api/app-user/find-options/*", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { buildAccessRequestNotification, sendSlackNotification } from "@/lib/slack";
 import { isXIdentityPlaceholderEmail } from "@/lib/x-identity-email";
 import { createAuditEvent } from "@/modules/audit/repository";
@@ -19,7 +19,7 @@ const selfRequestSchema = z.object({
 
 /** Signed-in self-service: prefer this URL for viewer/operator/advisor requests (`global_admin` is admin-only). */
 export async function POST(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPortfolioRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

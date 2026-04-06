@@ -6,7 +6,7 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyPortfolioRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const limitMocks = vi.hoisted(() => ({
@@ -29,7 +29,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
   return {
     ...actual,
-    proxyRequestToBackend: bffMocks.proxyRequestToBackend
+    proxyPortfolioRequestToBackend: bffMocks.proxyPortfolioRequestToBackend
   };
 });
 
@@ -54,7 +54,7 @@ import { GET as getStrategyJobs, POST as postStrategyJobs } from "@/app/api/stra
 describe("strategy-jobs route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(
       new Response(JSON.stringify({ data: { jobs: [] } }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
@@ -88,7 +88,7 @@ describe("strategy-jobs route", () => {
     expect(authMocks.requireSessionUser).toHaveBeenCalled();
     expect(entitlementsMocks.resolveXoptionsEntitlements).toHaveBeenCalled();
     expect(limitMocks.checkDistributedRateLimit).toHaveBeenCalled();
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
   });
 
   it("GET returns 403 when user is not Premium+", async () => {
@@ -103,7 +103,7 @@ describe("strategy-jobs route", () => {
     expect(res.status).toBe(403);
     expect(payload.error).toBe("plan_upgrade_required");
     expect(limitMocks.checkDistributedRateLimit).not.toHaveBeenCalled();
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
   });
 
   it("GET returns 429 when list limiter blocks request", async () => {
@@ -120,7 +120,7 @@ describe("strategy-jobs route", () => {
     expect(res.status).toBe(429);
     expect(payload.error).toBe("rate_limit_exceeded");
     expect(authMocks.requireSessionUser).toHaveBeenCalled();
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
   });
 
   it("POST returns auth response when session is missing", async () => {
@@ -130,7 +130,7 @@ describe("strategy-jobs route", () => {
     const req = new Request("http://test/api/strategy-jobs", { method: "POST" });
     const res = await postStrategyJobs(req);
     expect(res.status).toBe(401);
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
   });
 
   it("POST blocks viewer role", async () => {
@@ -146,7 +146,7 @@ describe("strategy-jobs route", () => {
     const payload = (await res.json()) as { error: string };
     expect(res.status).toBe(403);
     expect(payload.error).toBe("forbidden");
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
   });
 
   it("POST returns 403 when user is not Premium+", async () => {
@@ -161,11 +161,11 @@ describe("strategy-jobs route", () => {
     expect(res.status).toBe(403);
     expect(payload.error).toBe("plan_upgrade_required");
     expect(limitMocks.checkDistributedRateLimit).not.toHaveBeenCalled();
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
   });
 
   it("POST allows advisor/operator and proxies to backend", async () => {
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           data: {
@@ -181,7 +181,7 @@ describe("strategy-jobs route", () => {
     expect(res.status).toBe(200);
     expect(authMocks.requireSessionUser).toHaveBeenCalled();
     expect(limitMocks.checkDistributedRateLimit).toHaveBeenCalled();
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
   });
 
   it("POST allows global_admin and proxies to backend", async () => {
@@ -195,7 +195,7 @@ describe("strategy-jobs route", () => {
     const req = new Request("http://test/api/strategy-jobs", { method: "POST" });
     const res = await postStrategyJobs(req);
     expect(res.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
   });
 
   it("POST returns 429 when create limiter blocks request", async () => {
@@ -211,6 +211,6 @@ describe("strategy-jobs route", () => {
     const payload = (await res.json()) as { error: string };
     expect(res.status).toBe(429);
     expect(payload.error).toBe("rate_limit_exceeded");
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
   });
 });

@@ -402,33 +402,15 @@ export async function proxyAdminUsersRequestToBackend(request: Request): Promise
 }
 
 /**
- * App-facing `/api/portfolios*` (session user portfolios). Same rule as admin users: **loopback + dev** skips
- * Spring so Next and the browser always agree on Mongo; Spring can still run for other routes.
- *
- * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_PORTFOLIOS=false`.
- * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_PORTFOLIOS=true`.
+ * App-user session data plane (portfolios, positions, recommendations, strategy-jobs, self access-request,
+ * user-feedback): same gate as {@link shouldProxyAdminUsersToBackend} — **`ATXFINANCE_BACKEND_PROXY_ADMIN_USERS`**
+ * (loopback + dev skips Spring by default). No portfolio-only env var.
  */
 export function shouldProxyPortfolioRequestsToBackend(): boolean {
-  const origin = getAtxfinanceBackendOrigin();
-  if (!origin) {
-    return false;
-  }
-  const v = process.env.ATXFINANCE_BACKEND_PROXY_PORTFOLIOS?.trim().toLowerCase();
-  if (v === "0" || v === "false" || v === "no" || v === "off") {
-    return false;
-  }
-  if (v === "1" || v === "true" || v === "yes" || v === "on") {
-    return true;
-  }
-  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
-  const devLike = nodeEnv === "development" || nodeEnv === "test";
-  if (devLike && isLoopbackBackendOrigin(origin)) {
-    return false;
-  }
-  return true;
+  return shouldProxyAdminUsersToBackend();
 }
 
-/** Portfolio BFF → Spring; returns `null` when proxy disabled (Next handler uses same Mongo as rest of app). */
+/** Spring BFF for {@link shouldProxyPortfolioRequestsToBackend} routes; `null` → Next Mongo handlers. */
 export async function proxyPortfolioRequestToBackend(request: Request): Promise<Response | null> {
   if (!shouldProxyPortfolioRequestsToBackend()) {
     return null;
@@ -437,12 +419,12 @@ export async function proxyPortfolioRequestToBackend(request: Request): Promise<
 }
 
 /**
- * `/api/admin/tasks*`, `/api/admin/task-runs`, `/api/admin/scheduler/tick` — same rule as admin users: **loopback +
- * dev/test** skips Spring so Admin → Tasks reads the same Mongo as Next (empty list when JVM uses another DB or
- * session differs).
+ * `/api/admin/tasks*`, `/api/admin/task-runs`, `/api/admin/scheduler/tick`.
  *
- * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS=false`.
- * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS=true`.
+ * - **No origin:** never proxy.
+ * - **Explicit** `ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS` (`true`/`false`/…): wins.
+ * - **Unset:** follows {@link shouldProxyAdminUsersToBackend} so Admin → Tasks stays aligned with Manage Users
+ *   (avoids tasks on Spring while other admin routes use Next, or the reverse).
  */
 export function shouldProxyAdminScheduledTasksToBackend(): boolean {
   const origin = getAtxfinanceBackendOrigin();
@@ -456,12 +438,7 @@ export function shouldProxyAdminScheduledTasksToBackend(): boolean {
   if (v === "1" || v === "true" || v === "yes" || v === "on") {
     return true;
   }
-  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
-  const devLike = nodeEnv === "development" || nodeEnv === "test";
-  if (devLike && isLoopbackBackendOrigin(origin)) {
-    return false;
-  }
-  return true;
+  return shouldProxyAdminUsersToBackend();
 }
 
 /** Admin scheduled-task BFF → Spring; returns `null` when proxy disabled. */
@@ -512,11 +489,8 @@ export async function proxyStrategyOptionsRequestToBackend(
 }
 
 /**
- * `/api/admin/access-requests*` — allows staging/prod parity control when public guest registration is
- * intentionally handled Next-local.
- *
- * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS=false`.
- * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS=true`.
+ * `/api/admin/access-requests*`. No origin → never proxy. Explicit
+ * `ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS` wins; **unset** → {@link shouldProxyAdminUsersToBackend}.
  */
 export function shouldProxyAdminAccessRequestsToBackend(): boolean {
   const origin = getAtxfinanceBackendOrigin();
@@ -530,12 +504,7 @@ export function shouldProxyAdminAccessRequestsToBackend(): boolean {
   if (v === "1" || v === "true" || v === "yes" || v === "on") {
     return true;
   }
-  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
-  const devLike = nodeEnv === "development" || nodeEnv === "test";
-  if (devLike && isLoopbackBackendOrigin(origin)) {
-    return false;
-  }
-  return true;
+  return shouldProxyAdminUsersToBackend();
 }
 
 /** Admin access-requests BFF → Spring; returns `null` when proxy disabled. */
@@ -549,11 +518,8 @@ export async function proxyAdminAccessRequestsRequestToBackend(
 }
 
 /**
- * Tenant-level `/api/admin/delivery-channels*` (not portfolio-nested). Same loopback + dev/test rule as scheduled
- * tasks so Admin → Delivery channels uses Next Mongo.
- *
- * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS=false`.
- * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS=true`.
+ * Tenant-level `/api/admin/delivery-channels*` (portfolio-nested uses the same helper). No origin → never proxy.
+ * Explicit `ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS` wins; **unset** → {@link shouldProxyAdminUsersToBackend}.
  */
 export function shouldProxyAdminDeliveryChannelsToBackend(): boolean {
   const origin = getAtxfinanceBackendOrigin();
@@ -567,12 +533,7 @@ export function shouldProxyAdminDeliveryChannelsToBackend(): boolean {
   if (v === "1" || v === "true" || v === "yes" || v === "on") {
     return true;
   }
-  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
-  const devLike = nodeEnv === "development" || nodeEnv === "test";
-  if (devLike && isLoopbackBackendOrigin(origin)) {
-    return false;
-  }
-  return true;
+  return shouldProxyAdminUsersToBackend();
 }
 
 /** Tenant admin delivery-channels BFF → Spring; returns `null` when proxy disabled. */

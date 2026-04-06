@@ -6,7 +6,7 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyAdminUsersRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const repoMocks = vi.hoisted(() => ({
@@ -23,7 +23,7 @@ vi.mock("@/lib/server-request-cache", () => ({
   getTenantByHexIdCached: vi.fn().mockResolvedValue(null)
 }));
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyAdminUsersRequestToBackend: bffMocks.proxyAdminUsersRequestToBackend
 }));
 vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/modules/core-admin/repository")>();
@@ -67,7 +67,7 @@ function mockListRow() {
 describe("GET /api/admin/portfolios", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValue(null);
     authMocks.requireAdminSession.mockResolvedValue({
       userId,
       tenantId,
@@ -126,7 +126,7 @@ describe("GET /api/admin/portfolios", () => {
 describe("POST /api/admin/portfolios", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValue(null);
     authMocks.requireAdminSession.mockResolvedValue({
       userId,
       tenantId,

@@ -16,7 +16,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   return {
     ...actual,
     // Keep this suite hermetic: never proxy to backend in integration tests.
-    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+    proxyAdminUsersRequestToBackend: vi.fn().mockResolvedValue(null)
   };
 });
 

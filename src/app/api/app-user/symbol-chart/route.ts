@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
 import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +14,8 @@ export type SymbolChartCandle = {
   v: number;
 };
 
+/** Next-local Yahoo chart — no Spring route; do not BFF-proxy (would 404 on JVM). */
 export async function GET(request: Request) {
-  const proxied = await proxyRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;

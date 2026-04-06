@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>(),
+  proxyPortfolioRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>(),
   proxyPersonasRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 const authMocks = vi.hoisted(() => ({
@@ -19,7 +19,7 @@ const auditMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend,
+  proxyPortfolioRequestToBackend: bffMocks.proxyPortfolioRequestToBackend,
   proxyPersonasRequestToBackend: bffMocks.proxyPersonasRequestToBackend
 }));
 vi.mock("@/lib/auth", () => ({
@@ -48,7 +48,7 @@ import { GET as getPersonas, POST as postPersona } from "@/app/api/personas/rout
 describe("personas + access-requests BFF proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(null);
     bffMocks.proxyPersonasRequestToBackend.mockResolvedValue(null);
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
@@ -90,7 +90,7 @@ describe("personas + access-requests BFF proxy", () => {
       status: 201,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request("http://test/api/access-requests", {
       method: "POST",
@@ -100,7 +100,7 @@ describe("personas + access-requests BFF proxy", () => {
     const response = await postAccessRequest(req);
 
     expect(response.status).toBe(201);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
   });
 
   it("GET /api/personas returns backend response when proxy resolves non-null", async () => {

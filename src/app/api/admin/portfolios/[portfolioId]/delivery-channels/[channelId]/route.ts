@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminDeliveryChannelsRequestToBackend } from "@/lib/backend-bff";
 import {
     adminDeletePortfolioDeliveryChannel,
     adminUpdatePortfolioDeliveryChannel
@@ -44,7 +44,7 @@ const patchSchema = z
   );
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminDeliveryChannelsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
@@ -88,7 +88,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminDeliveryChannelsRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

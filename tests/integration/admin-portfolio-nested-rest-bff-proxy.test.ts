@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyAdminUsersRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>(),
+  proxyAdminDeliveryChannelsRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const authMocks = vi.hoisted(() => ({
@@ -9,7 +10,8 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyAdminUsersRequestToBackend: bffMocks.proxyAdminUsersRequestToBackend,
+  proxyAdminDeliveryChannelsRequestToBackend: bffMocks.proxyAdminDeliveryChannelsRequestToBackend
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
@@ -24,7 +26,8 @@ const childId = "507f1f77bcf86cd799439044";
 describe("admin portfolio nested REST BFF proxy (recommendations, alerts, channels)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyAdminDeliveryChannelsRequestToBackend.mockResolvedValue(null);
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -38,51 +41,53 @@ describe("admin portfolio nested REST BFF proxy (recommendations, alerts, channe
 
   it("proxies GET …/recommendations", async () => {
     const proxied = new Response(JSON.stringify({ data: [] }), { status: 200 });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(proxied);
     const req = new Request(`http://t/api/admin/portfolios/${portfolioId}/recommendations`);
     const res = await getReco(req, { params: Promise.resolve({ portfolioId }) });
     expect(res.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
   });
 
   it("proxies POST …/recommendations", async () => {
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 201 }));
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 201 }));
     const req = new Request(`http://t/api/admin/portfolios/${portfolioId}/recommendations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ symbol: "TSLA", action: "hold" })
     });
     await postReco(req, { params: Promise.resolve({ portfolioId }) });
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
   });
 
   it("proxies PATCH …/recommendations/:id", async () => {
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 200 }));
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 200 }));
     const req = new Request(
       `http://t/api/admin/portfolios/${portfolioId}/recommendations/${childId}`,
       { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "dismissed" }) }
     );
     await patchReco(req, { params: Promise.resolve({ portfolioId, recommendationId: childId }) });
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
   });
 
   it("proxies DELETE …/recommendations/:id", async () => {
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     const req = new Request(`http://t/api/admin/portfolios/${portfolioId}/recommendations/${childId}`, {
       method: "DELETE"
     });
     await deleteReco(req, { params: Promise.resolve({ portfolioId, recommendationId: childId }) });
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
   });
 
   it("proxies GET …/alerts and POST …/delivery-channels", async () => {
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ data: [] }), { status: 200 }));
     const g1 = new Request(`http://t/api/admin/portfolios/${portfolioId}/alerts`);
     await getAlerts(g1, { params: Promise.resolve({ portfolioId }) });
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenLastCalledWith(g1);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenLastCalledWith(g1);
 
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(new Response(JSON.stringify({ data: {} }), { status: 201 }));
+    bffMocks.proxyAdminDeliveryChannelsRequestToBackend.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: {} }), { status: 201 })
+    );
     const g2 = new Request(`http://t/api/admin/portfolios/${portfolioId}/delivery-channels`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -93,6 +98,6 @@ describe("admin portfolio nested REST BFF proxy (recommendations, alerts, channe
       })
     });
     await postChannels(g2, { params: Promise.resolve({ portfolioId }) });
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenLastCalledWith(g2);
+    expect(bffMocks.proxyAdminDeliveryChannelsRequestToBackend).toHaveBeenLastCalledWith(g2);
   });
 });

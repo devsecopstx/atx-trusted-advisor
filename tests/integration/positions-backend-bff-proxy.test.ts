@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyPortfolioRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const sessionMocks = vi.hoisted(() => ({
@@ -22,7 +22,7 @@ const limitMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyPortfolioRequestToBackend: bffMocks.proxyPortfolioRequestToBackend
 }));
 vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/distributed-rate-limit")>();
@@ -61,7 +61,7 @@ const positionId = "507f1f77bcf86cd799439055";
 describe("positions API BFF proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(null);
     limitMocks.extractClientRateLimitKey.mockReturnValue("127.0.0.1");
     limitMocks.checkDistributedRateLimit.mockResolvedValue({
       allowed: true,
@@ -103,12 +103,12 @@ describe("positions API BFF proxy", () => {
     repositoryMocks.deletePositionForAccount.mockResolvedValue(true);
   });
 
-  it("GET /api/positions returns the backend response when proxyRequestToBackend resolves non-null", async () => {
+  it("GET /api/positions returns the backend response when proxyPortfolioRequestToBackend resolves non-null", async () => {
     const proxied = new Response(JSON.stringify({ data: [{ symbol: "MSFT" }] }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(
       `http://test/api/positions?portfolioId=${portfolioId}&accountId=${accountId}`
@@ -118,18 +118,18 @@ describe("positions API BFF proxy", () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { data: Array<{ symbol: string }> };
     expect(payload.data[0]?.symbol).toBe("MSFT");
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledTimes(1);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledTimes(1);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
     expect(repositoryMocks.listPortfolioPositionsByAccount).not.toHaveBeenCalled();
   });
 
-  it("POST /api/positions returns the backend response when proxyRequestToBackend resolves non-null", async () => {
+  it("POST /api/positions returns the backend response when proxyPortfolioRequestToBackend resolves non-null", async () => {
     const proxied = new Response(JSON.stringify({ data: { symbol: "NVDA", qty: 2 } }), {
       status: 201,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request("http://test/api/positions", {
       method: "POST",
@@ -147,17 +147,17 @@ describe("positions API BFF proxy", () => {
     expect(response.status).toBe(201);
     const payload = (await response.json()) as { data: { symbol: string } };
     expect(payload.data.symbol).toBe("NVDA");
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
     expect(repositoryMocks.upsertPositionForAccount).not.toHaveBeenCalled();
   });
 
-  it("DELETE /api/positions/:id returns the backend response when proxyRequestToBackend resolves non-null", async () => {
+  it("DELETE /api/positions/:id returns the backend response when proxyPortfolioRequestToBackend resolves non-null", async () => {
     const proxied = new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(
       `http://test/api/positions/${positionId}?portfolioId=${portfolioId}&accountId=${accountId}`,
@@ -170,7 +170,7 @@ describe("positions API BFF proxy", () => {
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { ok: boolean };
     expect(payload.ok).toBe(true);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
     expect(repositoryMocks.deletePositionForAccount).not.toHaveBeenCalled();
   });
@@ -191,7 +191,7 @@ describe("positions API BFF proxy", () => {
     const response = await getPositions(req);
 
     expect(response.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyPortfolioRequestToBackend).toHaveBeenCalledWith(req);
     expect(sessionMocks.requireSessionUser).toHaveBeenCalled();
     expect(repositoryMocks.listPortfolioPositionsByAccount).toHaveBeenCalled();
   });
@@ -223,7 +223,7 @@ describe("positions API BFF proxy", () => {
       params: Promise.resolve({ positionId })
     });
     expect(response.status).toBe(429);
-    expect(bffMocks.proxyRequestToBackend).not.toHaveBeenCalled();
+    expect(bffMocks.proxyPortfolioRequestToBackend).not.toHaveBeenCalled();
     expect(sessionMocks.requireSessionUser).not.toHaveBeenCalled();
   });
 });

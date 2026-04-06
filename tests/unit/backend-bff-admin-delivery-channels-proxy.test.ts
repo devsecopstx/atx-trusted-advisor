@@ -9,11 +9,13 @@ describe("shouldProxyAdminDeliveryChannelsToBackend", () => {
     vi.unstubAllEnvs();
     process.env.ATXFINANCE_BACKEND_ORIGIN = original.ATXFINANCE_BACKEND_ORIGIN;
     process.env.ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS = original.ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS;
+    process.env.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS = original.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS;
   });
 
   beforeEach(() => {
     delete process.env.ATXFINANCE_BACKEND_ORIGIN;
     delete process.env.ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS;
+    delete process.env.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS;
     vi.stubEnv("NODE_ENV", "development");
   });
 
@@ -36,5 +38,12 @@ describe("shouldProxyAdminDeliveryChannelsToBackend", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
     expect(shouldProxyAdminDeliveryChannelsToBackend()).toBe(true);
+  });
+
+  it("when DELIVERY_CHANNELS unset, follows ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=false on remote", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
+    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "false");
+    expect(shouldProxyAdminDeliveryChannelsToBackend()).toBe(false);
   });
 });

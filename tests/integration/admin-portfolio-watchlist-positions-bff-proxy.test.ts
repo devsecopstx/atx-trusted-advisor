@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyAdminUsersRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const authMocks = vi.hoisted(() => ({
@@ -9,7 +9,7 @@ const authMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyAdminUsersRequestToBackend: bffMocks.proxyAdminUsersRequestToBackend
 }));
 
 vi.mock("@/lib/api-auth", () => authMocks);
@@ -26,7 +26,7 @@ const accountId = "507f1f77bcf86cd799439044";
 describe("admin portfolio watchlist + positions BFF proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValue(null);
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -43,13 +43,13 @@ describe("admin portfolio watchlist + positions BFF proxy", () => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`);
     const res = await getAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
 
     expect(res.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
   });
 
@@ -58,7 +58,7 @@ describe("admin portfolio watchlist + positions BFF proxy", () => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(`http://test/api/admin/portfolios/${portfolioId}/watchlist`, {
       method: "PATCH",
@@ -68,7 +68,7 @@ describe("admin portfolio watchlist + positions BFF proxy", () => {
     const res = await patchAdminWatchlist(req, { params: Promise.resolve({ portfolioId }) });
 
     expect(res.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
   });
 
@@ -77,7 +77,7 @@ describe("admin portfolio watchlist + positions BFF proxy", () => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(
       `http://test/api/admin/portfolios/${portfolioId}/accounts/${accountId}/positions`
@@ -87,7 +87,7 @@ describe("admin portfolio watchlist + positions BFF proxy", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
   });
 
@@ -96,7 +96,7 @@ describe("admin portfolio watchlist + positions BFF proxy", () => {
       status: 201,
       headers: { "Content-Type": "application/json" }
     });
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(proxied);
+    bffMocks.proxyAdminUsersRequestToBackend.mockResolvedValueOnce(proxied);
 
     const req = new Request(
       `http://test/api/admin/portfolios/${portfolioId}/accounts/${accountId}/positions`,
@@ -111,7 +111,7 @@ describe("admin portfolio watchlist + positions BFF proxy", () => {
     });
 
     expect(res.status).toBe(201);
-    expect(bffMocks.proxyRequestToBackend).toHaveBeenCalledWith(req);
+    expect(bffMocks.proxyAdminUsersRequestToBackend).toHaveBeenCalledWith(req);
     expect(authMocks.requireAdminSession).not.toHaveBeenCalled();
   });
 });

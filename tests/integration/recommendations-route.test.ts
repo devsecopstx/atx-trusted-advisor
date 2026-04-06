@@ -17,7 +17,7 @@ const publishMocks = vi.hoisted(() => ({
 }));
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyPortfolioRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 const limitMocks = vi.hoisted(() => ({
@@ -26,7 +26,7 @@ const limitMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyPortfolioRequestToBackend: bffMocks.proxyPortfolioRequestToBackend
 }));
 vi.mock("@/lib/distributed-rate-limit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/distributed-rate-limit")>();
@@ -75,7 +75,7 @@ function sampleRecommendation(overrides: Partial<{ userId: string }> = {}) {
 describe("/api/recommendations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(null);
     limitMocks.extractClientRateLimitKey.mockReturnValue("127.0.0.1");
     limitMocks.checkDistributedRateLimit.mockResolvedValue({
       allowed: true,

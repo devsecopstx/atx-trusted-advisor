@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/lib/api-auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import {
     buildRateLimitHeaders,
     checkDistributedRateLimit,
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       { status: 429, headers: buildRateLimitHeaders(limit) }
     );
   }
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyAdminUsersRequestToBackend(request);
   if (proxied) {
     return proxied;
   }

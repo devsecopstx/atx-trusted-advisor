@@ -21,7 +21,7 @@ const slackMocks = vi.hoisted(() => ({
 }));
 
 const bffMocks = vi.hoisted(() => ({
-  proxyRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
+  proxyPortfolioRequestToBackend: vi.fn<(request: Request) => Promise<Response | null>>()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);
@@ -29,7 +29,7 @@ vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/lib/slack", () => slackMocks);
 vi.mock("@/lib/backend-bff", () => ({
-  proxyRequestToBackend: bffMocks.proxyRequestToBackend
+  proxyPortfolioRequestToBackend: bffMocks.proxyPortfolioRequestToBackend
 }));
 
 import { POST } from "@/app/api/access-requests/route";
@@ -46,7 +46,7 @@ describe("POST /api/access-requests (self-service)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    bffMocks.proxyRequestToBackend.mockResolvedValue(null);
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValue(null);
     authMocks.requireSessionUser.mockResolvedValue(session);
     repositoryMocks.getPendingAccessRequestByUserAndRole.mockResolvedValue(null);
     repositoryMocks.createAccessRequest.mockResolvedValue({
@@ -208,7 +208,7 @@ describe("POST /api/access-requests (self-service)", () => {
   });
 
   it("when BFF returns a response, skips Next repo audit/Slack (JVM owns side effects)", async () => {
-    bffMocks.proxyRequestToBackend.mockResolvedValueOnce(
+    bffMocks.proxyPortfolioRequestToBackend.mockResolvedValueOnce(
       new Response(JSON.stringify({ ok: true, data: { status: "pending" } }), { status: 201 })
     );
     const response = await POST(

@@ -17,7 +17,7 @@ vi.mock("@/lib/backend-bff", async (importOriginal) => {
   return {
     ...actual,
     // Keep this suite hermetic: avoid live backend proxy calls from env bleed.
-    proxyRequestToBackend: vi.fn().mockResolvedValue(null)
+    proxyAdminUsersRequestToBackend: vi.fn().mockResolvedValue(null)
   };
 });
 vi.mock("@/modules/core-admin/repository", () => ({

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
-import { proxyRequestToBackend } from "@/lib/backend-bff";
+import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import {
     buildRateLimitHeaders,
     checkDistributedRateLimit,
@@ -48,7 +48,7 @@ export async function POST(request: Request, context: RouteContext) {
       }
     );
   }
-  const proxied = await proxyRequestToBackend(request);
+  const proxied = await proxyPortfolioRequestToBackend(request);
   if (proxied) {
     return proxied;
   }
