@@ -28,19 +28,22 @@ export default async function WatchlistPage({
 }: {
   searchParams: Promise<{ portfolioId?: string | string[] }>;
 }) {
-  const session = await getSessionUser();
-  if (!session) {
-    redirect("/login?next=/watchlist");
-  }
-
-  if (!canUserLogin(session.roles)) {
-    redirect("/xchat");
-  }
-
   const sp = await searchParams;
   const rawPid = sp.portfolioId;
   const requested =
     typeof rawPid === "string" ? rawPid.trim() : Array.isArray(rawPid) ? rawPid[0]?.trim() ?? "" : "";
+
+  const watchlistReturnPath = (): string =>
+    requested && ObjectId.isValid(requested) ? `/watchlist?portfolioId=${requested}` : "/watchlist";
+
+  const session = await getSessionUser();
+  if (!session) {
+    redirect(`/login?next=${encodeURIComponent(watchlistReturnPath())}`);
+  }
+
+  if (!canUserLogin(session.roles)) {
+    redirect(`/xchat?next=${encodeURIComponent(watchlistReturnPath())}`);
+  }
 
   let portfolio: Awaited<ReturnType<typeof getDefaultPortfolio>> = null;
   let workspaceError: string | null = null;

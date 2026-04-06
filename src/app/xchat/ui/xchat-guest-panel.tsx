@@ -7,9 +7,9 @@ import { LinkEmailForm } from "@/app/login/ui/link-email-form";
 import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import {
-  ACCESS_REQUEST_PLAN_OPTIONS,
-  accessRequestPlanLabel,
-  type AccessRequestPlanValue
+    ACCESS_REQUEST_PLAN_OPTIONS,
+    accessRequestPlanLabel,
+    type AccessRequestPlanValue
 } from "@/lib/access-request-plans";
 import { oauthAuthErrorMessages } from "@/lib/oauth-auth-error-messages";
 
@@ -22,6 +22,8 @@ type XchatGuestPanelProps = {
   content?: ReactNode;
   /** When set (server: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`), show Sign in with Google beside X. */
   googleLoginHref?: string | null;
+  /** X OAuth start URL including `next` (e.g. deep link back to `/watchlist?portfolioId=…`). */
+  xOAuthLoginHref?: string;
   registerDefaultPlan?: AccessRequestPlanValue;
   openRegisterByDefault?: boolean;
 };
@@ -81,6 +83,7 @@ export function XchatGuestPanel({
   pendingXHandle,
   content,
   googleLoginHref = null,
+  xOAuthLoginHref = DEFAULT_SIGNIN_HREF,
   registerDefaultPlan = "basic",
   openRegisterByDefault = false
 }: XchatGuestPanelProps) {
@@ -215,7 +218,7 @@ export function XchatGuestPanel({
                 Google unavailable
               </button>
             )}
-            <a className="cta cta-secondary login-oauth-x xchat-guest-actions__cta" href={DEFAULT_SIGNIN_HREF}>
+            <a className="cta cta-secondary login-oauth-x xchat-guest-actions__cta" href={xOAuthLoginHref}>
               <XLogoIcon size={20} />
               X
             </a>

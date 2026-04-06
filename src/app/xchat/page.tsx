@@ -2,7 +2,7 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { loadAppUserDefaultBook, type AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
-import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
+import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
 import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
 import { oauthAuthErrorMessages } from "@/lib/oauth-auth-error-messages";
 import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
@@ -19,6 +19,8 @@ type XchatPageProps = {
     details?: string;
     rail?: string;
     item?: string;
+    /** Post-login / OAuth return path (e.g. `/watchlist?portfolioId=…`). */
+    next?: string;
   }>;
 };
 
@@ -26,6 +28,8 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
   const params = await searchParams;
   const authError = typeof params.error === "string" ? params.error : undefined;
   const authDetails = typeof params.details === "string" ? params.details : undefined;
+  const nextRaw = typeof params.next === "string" ? params.next.trim() : "";
+  const oauthReturnPath = nextRaw && isSafeOAuthReturnPath(nextRaw) ? nextRaw : null;
   const rail = typeof params.rail === "string" ? params.rail : "";
   const item = typeof params.item === "string" ? params.item : "";
   const initialXchatItem =
@@ -37,9 +41,13 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       ? (await readPendingXLinkCookie())?.username
       : undefined;
 
-  const googleLoginHref = isGoogleOAuthConfigured()
-    ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
+  const googleLoginHrefGuest = isGoogleOAuthConfigured()
+    ? `/api/auth/google/login?next=${encodeURIComponent(oauthReturnPath ?? "/xchat")}`
     : null;
+  const xOAuthLoginHref =
+    oauthReturnPath != null
+      ? `/api/auth/x/login?next=${encodeURIComponent(oauthReturnPath)}`
+      : "/api/auth/x/login?next=%2Fxchat";
 
   const session = await getSessionUser();
   if (!session) {
@@ -51,8 +59,9 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             <XchatGuestPanel
               authDetails={authDetails}
               authError={authError}
-              googleLoginHref={googleLoginHref}
+              googleLoginHref={googleLoginHrefGuest}
               pendingXHandle={pendingXHandle}
+              xOAuthLoginHref={xOAuthLoginHref}
             />
           </XchatGuestReadonlyShell>
         </div>
@@ -89,8 +98,11 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
     approved && authError && oauthAuthErrorMessages[authError]
       ? oauthAuthErrorMessages[authError]
       : null;
+  const googleLoginHrefApproved = isGoogleOAuthConfigured()
+    ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
+    : null;
   const googleLinkHrefForApproved =
-    approved && googleLoginHref ? googleLoginHref : null;
+    approved && googleLoginHrefApproved ? googleLoginHrefApproved : null;
 
   return (
     <div className="xchat-shell">
@@ -147,10 +159,11 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             <XchatGuestPanel
               authDetails={authDetails}
               authError={authError}
-              googleLoginHref={googleLoginHref}
+              googleLoginHref={googleLoginHrefGuest}
               pendingApproval
               pendingXHandle={pendingXHandle}
               userEmail={session.email}
+              xOAuthLoginHref={xOAuthLoginHref}
             />
           </XchatGuestReadonlyShell>
         )}
