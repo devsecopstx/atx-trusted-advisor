@@ -80,6 +80,8 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 
 ## Portfolio, positions, watchlist
 
+**Mongo `ObjectId` hex (24 chars):** Next.js handlers normalize likely hex to **lowercase** before comparing to `toHexString()` or setting cookies (`src/lib/mongo-object-id-hex.ts`), so mixed-case query params and JSON bodies behave the same as bookmarks or pasted links. **BFF proxy:** Routes that call `proxyPortfolioRequestToBackend` (or related helpers) **before** the Next handler may forward the **original** request URL to Spring; JVM `ObjectId` parsing is case-insensitive for hex, but product deep links should still use lowercase for consistency.
+
 - `GET /api/portfolios/default`
 - `GET /api/portfolios/:portfolioId/accounts`
 - `PATCH /api/portfolios/:portfolioId/accounts/:accountId`

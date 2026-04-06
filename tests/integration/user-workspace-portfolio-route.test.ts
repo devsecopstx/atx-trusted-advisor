@@ -88,6 +88,18 @@ describe("POST /api/user/workspace-portfolio", () => {
     expect(res.cookies.get("xf_workspace_portfolio_id")?.value).toBe("507f1f77bcf86cd799439044");
   });
 
+  it("accepts uppercase hex portfolioId and sets lowercase cookie", async () => {
+    const res = await postWorkspacePortfolio(
+      new Request("http://localhost/api/user/workspace-portfolio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ portfolioId: "507F1F77BCF86CD799439044" })
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(res.cookies.get("xf_workspace_portfolio_id")?.value).toBe("507f1f77bcf86cd799439044");
+  });
+
   it("returns 404 when portfolio is not in the user list", async () => {
     const res = await postWorkspacePortfolio(
       new Request("http://localhost/api/user/workspace-portfolio", {
