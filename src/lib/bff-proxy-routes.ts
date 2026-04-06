@@ -14,6 +14,9 @@
  * **`/api/app-user/*`:** Next-only (find-options bootstrap, xOptions entitlements, symbol-chart). Do not call
  * `proxyRequestToBackend` there — Kotlin has no matching controllers; proxying returns JVM 404 before local logic runs.
  *
+ * **`GET /api/strategy-options/expirations`:** Next-only Yahoo (`expirations/route.ts`) — not listed below; Spring still
+ * exposes the route for direct JVM clients, but the app does not proxy so prod matches local latency and avoids hangs.
+ *
  * Deferred vertical slice: xChat streaming routes — see `atx-docs/sre-ops/api-consolidation-spring-backend.md`.
  */
 export type BffProxyHttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -47,7 +50,6 @@ export const BFF_PROXY_ROUTES: readonly BffProxyRoute[] = [
   { method: "GET", path: "/api/portfolios/{portfolioId}/recommendations" },
   { method: "POST", path: "/api/portfolios/{portfolioId}/recommendations" },
   { method: "GET", path: "/api/strategy-options" },
-  { method: "GET", path: "/api/strategy-options/expirations" },
   { method: "GET", path: "/api/strategy-jobs" },
   { method: "POST", path: "/api/strategy-jobs" },
   { method: "GET", path: "/api/strategy-jobs/{jobId}" },

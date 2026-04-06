@@ -72,10 +72,6 @@ export const nextBffApi = {
     chain: {
       pathTemplate: "/api/strategy-options",
       methods: ["GET"]
-    },
-    expirations: {
-      pathTemplate: "/api/strategy-options/expirations",
-      methods: ["GET"]
     }
   },
   strategyJobs: {

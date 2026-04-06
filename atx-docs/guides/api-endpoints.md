@@ -101,8 +101,8 @@ Admin portfolio routes include:
 
 ## xStrategyBuilder / strategy options
 
-- `GET /api/strategy-options/expirations`
-- `GET /api/strategy-options`
+- `GET /api/strategy-options/expirations` — session; **Next Yahoo only** (not BFF-proxied to Spring; matches local dev and avoids prod stalls when the JVM path is slow).
+- `GET /api/strategy-options` — may BFF-proxy to Spring when enabled; sparse-chain fallback to Yahoo.
 
 ## Billing / payments
 
