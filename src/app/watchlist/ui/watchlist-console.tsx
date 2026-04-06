@@ -17,6 +17,7 @@ import {
     XMarkIcon
 } from "@/app/admin/ui/crud-icons";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
+import { readFetchJsonBody } from "@/lib/read-fetch-json-body";
 import {
     MAX_WATCHLIST_SYMBOLS,
     MAX_WATCHLIST_SYMBOLS_PER_PATCH
@@ -383,9 +384,14 @@ export function WatchlistConsole({
     setError(null);
     try {
       const res = await fetch(`${watchlistBaseUrl}?quotes=1`, { credentials: "include" });
-      const json = (await res.json()) as { data?: WatchlistApiData; error?: string };
+      const { json } = await readFetchJsonBody<{ data?: WatchlistApiData; error?: string }>(res);
       if (!res.ok) {
-        throw new Error(json.error ?? "Failed to load watchlist");
+        throw new Error(
+          json.error ??
+            (res.status === 429
+              ? "Too many requests. Please wait a moment and retry."
+              : "Failed to load watchlist")
+        );
       }
       if (!json.data) {
         throw new Error("Invalid response");
@@ -411,9 +417,12 @@ export function WatchlistConsole({
       credentials: "include",
       body: JSON.stringify(body)
     });
-    const json = (await res.json()) as { data?: WatchlistApiData; error?: string };
+    const { json } = await readFetchJsonBody<{ data?: WatchlistApiData; error?: string }>(res);
     if (!res.ok) {
-      throw new Error(json.error ?? "Update failed");
+      throw new Error(
+        json.error ??
+          (res.status === 429 ? "Too many requests. Please wait a moment and retry." : "Update failed")
+      );
     }
     if (json.data) {
       setListName(json.data.name ?? "Default");
@@ -612,9 +621,14 @@ export function WatchlistConsole({
             credentials: "include",
             body: JSON.stringify({ addEntries: batch })
           });
-          const json = (await res.json()) as { data?: WatchlistApiData; error?: string };
+          const { json } = await readFetchJsonBody<{ data?: WatchlistApiData; error?: string }>(res);
           if (!res.ok) {
-            throw new Error(json.error ?? "Update failed");
+            throw new Error(
+              json.error ??
+                (res.status === 429
+                  ? "Too many requests. Please wait a moment and retry."
+                  : "Update failed")
+            );
           }
           if (json.data) {
             setListName(json.data.name ?? "Default");

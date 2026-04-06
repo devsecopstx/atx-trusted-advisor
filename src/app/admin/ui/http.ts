@@ -1,17 +1,49 @@
 "use client";
 
+type ErrorPayload = {
+  error?: string;
+  message?: string;
+  code?: string;
+  details?: {
+    formErrors?: string[];
+    fieldErrors?: Record<string, string[] | undefined>;
+  };
+};
+
+function parseErrorPayload(rawText: string, trimmed: string): ErrorPayload {
+  if (!trimmed.startsWith("{")) {
+    return {};
+  }
+  try {
+    return JSON.parse(rawText) as ErrorPayload;
+  } catch {
+    return {};
+  }
+}
+
 export async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const payload = (await response.json().catch(() => ({}))) as {
-      error?: string;
-      code?: string;
-      details?: {
-        formErrors?: string[];
-        fieldErrors?: Record<string, string[] | undefined>;
-      };
-    };
+    const rawText = await response.text();
+    const trimmed = rawText.trim();
+    const payload = parseErrorPayload(rawText, trimmed);
     const detailText = formatErrorDetails(payload.details);
-    const baseMessage = payload.error ?? `Request failed (${response.status})`;
+
+    if (response.status === 429) {
+      const baseMessage =
+        payload.error ??
+        payload.message ??
+        "Too many requests. Please wait a moment and retry.";
+      const codeSuffix = payload.code ? ` [${payload.code}]` : "";
+      const messageSuffix = detailText ? ` - ${detailText}` : "";
+      throw new Error(`${baseMessage}${codeSuffix}${messageSuffix}`);
+    }
+
+    const baseMessage =
+      payload.error ??
+      payload.message ??
+      (!trimmed.startsWith("{") && trimmed
+        ? trimmed.slice(0, 300)
+        : `Request failed (${response.status})`);
     const codeSuffix = payload.code ? ` [${payload.code}]` : "";
     const messageSuffix = detailText ? ` - ${detailText}` : "";
     throw new Error(`${baseMessage}${codeSuffix}${messageSuffix}`);

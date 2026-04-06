@@ -192,7 +192,10 @@ export function TasksConsole() {
 
   const refreshAll = useCallback(async () => {
     setStatus("Syncing...");
-    await Promise.all([refreshTasks(), refreshRuns(), refreshDeliveryChannels()]);
+    // Sequential fetches avoid tripping strict per-route / edge burst limits (vs 3 parallel).
+    await refreshTasks();
+    await refreshRuns();
+    await refreshDeliveryChannels();
     setStatus("Synced");
   }, [refreshTasks, refreshRuns, refreshDeliveryChannels]);
 

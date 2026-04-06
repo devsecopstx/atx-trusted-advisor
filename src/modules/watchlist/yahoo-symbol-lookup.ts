@@ -1,6 +1,6 @@
-import { getYahooFinance2 } from "@/modules/yahoo/yahoo-finance-service";
+import { getYahooBatchQuotes } from "@/modules/watchlist/yahoo-batch-quotes";
+import type { MarketQuoteSnapshot } from "@/modules/xchat/market-data";
 
-const TICKER_LOGOS_CDN = "https://cdn.tickerlogos.com";
 const LOOKUP_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type CacheEntry = {
@@ -27,23 +27,6 @@ export type SymbolLookupResult = {
   source: typeof LOOKUP_ROUTE;
 };
 
-function toTickerLogoUrl(website: string | undefined): string | undefined {
-  if (!website) {
-    return undefined;
-  }
-  try {
-    const hostname = new URL(
-      website.startsWith("http://") || website.startsWith("https://") ? website : `https://${website}`
-    ).hostname.replace(/^www\./, "");
-    if (!hostname) {
-      return undefined;
-    }
-    return `${TICKER_LOGOS_CDN}/${hostname}`;
-  } catch {
-    return undefined;
-  }
-}
-
 function normalizeSymbol(value: string): string {
   return value.trim().toUpperCase();
 }
@@ -67,35 +50,25 @@ function setCached(symbol: string, data: SymbolLookupResult): void {
   });
 }
 
-async function fetchSymbolLookup(symbol: string): Promise<SymbolLookupResult> {
-  const yf = getYahooFinance2();
-  const quote = (await yf.quote(symbol)) as Record<string, unknown>;
-  const summary = (await yf.quoteSummary(symbol, {
-    modules: ["summaryProfile"]
-  })) as Record<string, unknown>;
-  const summaryProfile = (summary["summaryProfile"] as Record<string, unknown> | undefined) ?? undefined;
-  const companyOverview =
-    (summaryProfile?.["longBusinessSummary"] as string | undefined) ??
-    undefined;
-  const website = (summaryProfile?.["website"] as string | undefined) ?? undefined;
-  const logoUrl = toTickerLogoUrl(website);
-
+function snapshotToLookup(symbol: string, snap: MarketQuoteSnapshot): SymbolLookupResult {
   return {
     symbol,
-    companyName: (quote["longName"] as string | undefined) ?? (quote["shortName"] as string | undefined),
-    companyOverview,
-    logoUrl,
-    price: quote["regularMarketPrice"] as number | undefined,
-    change: quote["regularMarketChange"] as number | undefined,
-    changePercent: quote["regularMarketChangePercent"] as number | undefined,
-    volume: quote["regularMarketVolume"] as number | undefined,
-    low: quote["regularMarketDayLow"] as number | undefined,
-    high: quote["regularMarketDayHigh"] as number | undefined,
-    currency: quote["currency"] as string | undefined,
+    price: snap.price,
+    change: snap.change,
+    changePercent: snap.changePercent,
+    volume: snap.volume,
+    low: snap.dayLow,
+    high: snap.dayHigh,
+    currency: snap.currency,
     source: LOOKUP_ROUTE
   };
 }
 
+/**
+ * Resolves live quote fields using **one** Yahoo batch call (+ Redis cache in `getYahooBatchQuotes`)
+ * instead of 2×N parallel `quote`+`quoteSummary` calls — reduces server-side Yahoo rate limiting.
+ * Rich fields (`companyOverview`, `logoUrl`) are omitted unless served from the in-memory cache.
+ */
 export async function lookupSymbols(symbols: string[]): Promise<Map<string, SymbolLookupResult>> {
   const normalizedSymbols = Array.from(
     new Set(
@@ -106,22 +79,29 @@ export async function lookupSymbols(symbols: string[]): Promise<Map<string, Symb
   );
   const result = new Map<string, SymbolLookupResult>();
 
-  await Promise.all(
-    normalizedSymbols.map(async (symbol) => {
-      const cached = getCached(symbol);
-      if (cached) {
-        result.set(symbol, cached);
-        return;
+  const needBatch: string[] = [];
+  for (const symbol of normalizedSymbols) {
+    const cached = getCached(symbol);
+    if (cached) {
+      result.set(symbol, cached);
+    } else {
+      needBatch.push(symbol);
+    }
+  }
+
+  if (needBatch.length > 0) {
+    const snapshots = await getYahooBatchQuotes(needBatch);
+    const bySymbol = new Map(snapshots.map((s) => [s.symbol.toUpperCase(), s]));
+    for (const symbol of needBatch) {
+      const snap = bySymbol.get(symbol);
+      if (!snap) {
+        continue;
       }
-      try {
-        const lookup = await fetchSymbolLookup(symbol);
-        setCached(symbol, lookup);
-        result.set(symbol, lookup);
-      } catch {
-        // Keep partial watchlist UX healthy even if one symbol lookup fails.
-      }
-    })
-  );
+      const lookup = snapshotToLookup(symbol, snap);
+      setCached(symbol, lookup);
+      result.set(symbol, lookup);
+    }
+  }
 
   return result;
 }
