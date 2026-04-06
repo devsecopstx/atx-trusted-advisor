@@ -2,9 +2,10 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 import type { SessionUser } from "@/lib/auth";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import {
-  getPortfolioByIdForSessionUser,
-  listPortfolioAccounts
+    getPortfolioByIdForSessionUser,
+    listPortfolioAccounts
 } from "@/modules/core-admin/repository";
 
 /**
@@ -16,12 +17,14 @@ export async function requireAccountInPortfolio(
   portfolioId: string,
   accountId: string
 ): Promise<NextResponse | null> {
+  const portfolioIdNorm = normalizeMongoObjectIdParam(portfolioId);
+  const accountIdNorm = normalizeMongoObjectIdParam(accountId);
   const accounts = await listPortfolioAccounts({
     userId: session.userId,
-    portfolioId,
+    portfolioId: portfolioIdNorm,
     tenantId: session.tenantId
   });
-  const match = accounts.some((a) => a._id?.toHexString() === accountId);
+  const match = accounts.some((a) => a._id?.toHexString() === accountIdNorm);
   if (!match) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
@@ -36,13 +39,14 @@ export async function requirePortfolioForSessionUser(
   session: SessionUser,
   portfolioId: string
 ): Promise<NextResponse | null> {
-  if (!ObjectId.isValid(portfolioId)) {
+  const pid = normalizeMongoObjectIdParam(portfolioId);
+  if (!ObjectId.isValid(pid)) {
     return NextResponse.json({ error: "Invalid portfolio id" }, { status: 400 });
   }
   const portfolio = await getPortfolioByIdForSessionUser({
     userId: session.userId,
     tenantId: session.tenantId,
-    portfolioId
+    portfolioId: pid
   });
   if (!portfolio?._id) {
     return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });

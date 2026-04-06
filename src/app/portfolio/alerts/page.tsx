@@ -9,6 +9,7 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import {
     adminListPortfolioAlerts,
     getPortfolioByIdForSessionUser,
@@ -39,8 +40,9 @@ export default async function PortfolioAlertsPage({
 
   const sp = await searchParams;
   const rawPid = sp.portfolioId;
-  const requested =
+  const requestedRaw =
     typeof rawPid === "string" ? rawPid.trim() : Array.isArray(rawPid) ? rawPid[0]?.trim() ?? "" : "";
+  const requested = requestedRaw ? normalizeMongoObjectIdParam(requestedRaw) : "";
 
   let portfolioId: string | null = null;
   let portfolioName = "Portfolio";

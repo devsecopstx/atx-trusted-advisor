@@ -4,6 +4,7 @@ import { GlobalFooter } from "@/app/ui/global-footer";
 import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
+import { canonicalMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { getPortfolioTotalBookUsdForSessionUser } from "@/lib/portfolio-total-book-usd";
 import {
     listWorkspaceDashboardAccountSlices,
@@ -47,6 +48,7 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
 
   const sp = searchParams ? await searchParams : {};
   const focusRaw = singleParam(sp.focus)?.trim() ?? "";
+  const focusCandidate = focusRaw ? canonicalMongoObjectIdHex(focusRaw) : "";
 
   const portfolios = await listPortfoliosForSessionUser({
     userId: session.userId,
@@ -103,8 +105,8 @@ export default async function PortfoliosPage({ searchParams }: PageProps) {
 
   const ids = new Set(initialRows.map((r) => r.id));
   const focusPortfolioId =
-    focusRaw && ids.has(focusRaw)
-      ? focusRaw
+    focusCandidate && ids.has(focusCandidate)
+      ? focusCandidate
       : initialRows.find((r) => r.isDefault)?.id ?? initialRows[0]?.id ?? null;
 
   const workspaceBook = await loadAppUserDefaultBook(session);

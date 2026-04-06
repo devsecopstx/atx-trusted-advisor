@@ -9,6 +9,7 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import {
     getDefaultPortfolio,
     getPortfolioByIdForSessionUser,
@@ -30,8 +31,9 @@ export default async function WatchlistPage({
 }) {
   const sp = await searchParams;
   const rawPid = sp.portfolioId;
-  const requested =
+  const requestedRaw =
     typeof rawPid === "string" ? rawPid.trim() : Array.isArray(rawPid) ? rawPid[0]?.trim() ?? "" : "";
+  const requested = requestedRaw ? normalizeMongoObjectIdParam(requestedRaw) : "";
 
   const watchlistReturnPath = (): string =>
     requested && ObjectId.isValid(requested) ? `/watchlist?portfolioId=${requested}` : "/watchlist";

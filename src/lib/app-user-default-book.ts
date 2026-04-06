@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { cookies } from "next/headers";
 
 import type { SessionUser } from "@/lib/auth";
+import { canonicalMongoObjectIdHex, isLikelyMongoObjectIdHex, normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { WORKSPACE_PORTFOLIO_COOKIE_NAME } from "@/lib/workspace-portfolio-cookie";
 import { listPortfolioAccounts, listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
 import type { Portfolio } from "@/modules/core-admin/types";
@@ -49,8 +50,10 @@ export function resolveChosenPortfolioId(
   }
   const idSet = new Set(workspacePortfolios.map((p) => p.id));
   const trimmed = cookieRaw?.trim() ?? "";
-  if (trimmed && ObjectId.isValid(trimmed) && idSet.has(trimmed)) {
-    return trimmed;
+  const candidate =
+    trimmed && isLikelyMongoObjectIdHex(trimmed) ? canonicalMongoObjectIdHex(trimmed) : trimmed;
+  if (candidate && ObjectId.isValid(candidate) && idSet.has(candidate)) {
+    return candidate;
   }
   const def = workspacePortfolios.find((p) => p.isDefault);
   return def?.id ?? workspacePortfolios[0]!.id;
@@ -145,7 +148,7 @@ export async function loadAppUserDefaultBookForPortfolioId(
   session: SessionUser,
   portfolioIdHex: string
 ): Promise<AppUserDefaultBook | null> {
-  const trimmed = portfolioIdHex.trim();
+  const trimmed = normalizeMongoObjectIdParam(portfolioIdHex);
   if (!trimmed || !ObjectId.isValid(trimmed)) {
     return null;
   }

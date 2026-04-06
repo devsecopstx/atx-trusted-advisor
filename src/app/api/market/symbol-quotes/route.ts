@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { getPortfolioByIdForSessionUser } from "@/modules/core-admin/repository";
 import { hasActiveAppBrokerImportForPortfolio } from "@/modules/portfolio-import/app-broker-import-job";
 import { lookupSymbols, type SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: {} as Record<string, SymbolLookupResult | null> });
   }
 
-  const portfolioIdParam = searchParams.get("portfolioId")?.trim() ?? "";
+  const portfolioIdParam = normalizeMongoObjectIdParam(searchParams.get("portfolioId") ?? "");
   if (portfolioIdParam) {
     const book = await getPortfolioByIdForSessionUser({
       userId: session.userId,

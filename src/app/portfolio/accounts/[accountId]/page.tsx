@@ -8,6 +8,7 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
@@ -42,8 +43,9 @@ export default async function PortfolioAccountPage({
     redirect("/login?next=/portfolio");
   }
 
-  const { accountId } = await params;
-  if (!ObjectId.isValid(accountId)) {
+  const { accountId: accountIdParam } = await params;
+  const accountId = normalizeMongoObjectIdParam(accountIdParam);
+  if (!accountId || !ObjectId.isValid(accountId)) {
     notFound();
   }
 

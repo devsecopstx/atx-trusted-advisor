@@ -9,6 +9,7 @@ import {
     extractClientRateLimitKey,
     getBffRouteRateLimitPolicy
 } from "@/lib/distributed-rate-limit";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { requireAccountInPortfolio } from "@/lib/portfolio-access";
 import {
     listPortfolioPositionsByAccount,
@@ -131,8 +132,8 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const portfolioId = url.searchParams.get("portfolioId")?.trim() ?? "";
-  const accountId = url.searchParams.get("accountId")?.trim() ?? "";
+  const portfolioId = normalizeMongoObjectIdParam(url.searchParams.get("portfolioId") ?? "");
+  const accountId = normalizeMongoObjectIdParam(url.searchParams.get("accountId") ?? "");
 
   if (!portfolioId || !accountId) {
     return NextResponse.json(

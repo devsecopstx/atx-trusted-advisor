@@ -4,6 +4,7 @@ import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-pu
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { adminListBrokerCatalog, listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
 import { canUserLogin } from "@/modules/identity/authorization";
 
@@ -57,8 +58,11 @@ export default async function ImportActivityPage({ searchParams }: PageProps) {
       : Array.isArray(portfolioIdRaw)
         ? portfolioIdRaw[0]
         : undefined;
+  const portfolioIdNormalized = portfolioIdParam ? normalizeMongoObjectIdParam(portfolioIdParam) : "";
   const initialPortfolioId =
-    portfolioIdParam && portfolios.some((p) => p.id === portfolioIdParam) ? portfolioIdParam : undefined;
+    portfolioIdNormalized && portfolios.some((p) => p.id === portfolioIdNormalized)
+      ? portfolioIdNormalized
+      : undefined;
 
   return (
     <div className="xchat-shell">

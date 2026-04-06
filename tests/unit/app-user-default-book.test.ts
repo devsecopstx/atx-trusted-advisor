@@ -13,7 +13,7 @@ vi.mock("next/headers", () => ({
   }))
 }));
 
-import { loadAppUserDefaultBookForPortfolioId } from "@/lib/app-user-default-book";
+import { loadAppUserDefaultBookForPortfolioId, resolveChosenPortfolioId } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 
 const session: SessionUser = {
@@ -25,6 +25,17 @@ const session: SessionUser = {
   xUserId: "x1",
   username: "user1"
 };
+
+describe("resolveChosenPortfolioId", () => {
+  it("matches workspace cookie when hex is uppercase", () => {
+    const id = "507f1f77bcf86cd7994390aa";
+    const chosen = resolveChosenPortfolioId(
+      [{ id, name: "P", isDefault: true }],
+      id.toUpperCase()
+    );
+    expect(chosen).toBe(id);
+  });
+});
 
 describe("loadAppUserDefaultBookForPortfolioId", () => {
   beforeEach(() => {
@@ -78,5 +89,21 @@ describe("loadAppUserDefaultBookForPortfolioId", () => {
       portfolioId: pid.toHexString(),
       tenantId: session.tenantId
     });
+  });
+
+  it("resolves owned portfolio when id hex uses uppercase (URL/case drift)", async () => {
+    const pid = new ObjectId("507f1f77bcf86cd7994390aa");
+    repo.listPortfoliosForSessionUser.mockResolvedValue([
+      {
+        _id: pid,
+        name: "Pinned",
+        isDefault: false
+      }
+    ]);
+    repo.listPortfolioAccounts.mockResolvedValue([]);
+    const upper = pid.toHexString().toUpperCase();
+    const r = await loadAppUserDefaultBookForPortfolioId(session, upper);
+    expect(r).not.toBeNull();
+    expect(r?.portfolioId).toBe(pid.toHexString());
   });
 });

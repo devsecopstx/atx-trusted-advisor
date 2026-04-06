@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { EditIcon, ListRowsIcon } from "@/app/admin/ui/crud-icons";
+import { canonicalMongoObjectIdHex, isLikelyMongoObjectIdHex } from "@/lib/mongo-object-id-hex";
 import { formatUsd2 } from "@/lib/portfolio-overview-metrics";
 import { portfolioKindChoiceLabel } from "@/modules/core-admin/types";
 
@@ -31,12 +32,39 @@ export function PortfoliosDashboardClient({ focusPortfolioId, initialRows }: Pro
   const [rows, setRows] = useState(initialRows);
   const [creating, setCreating] = useState(false);
 
+  const normalizedFocusId =
+    focusPortfolioId && isLikelyMongoObjectIdHex(focusPortfolioId)
+      ? canonicalMongoObjectIdHex(focusPortfolioId)
+      : focusPortfolioId;
+
   const [selectedId, setSelectedId] = useState<string | null>(() => {
-    if (focusPortfolioId && initialRows.some((r) => r.id === focusPortfolioId)) {
-      return focusPortfolioId;
+    if (normalizedFocusId && initialRows.some((r) => r.id === normalizedFocusId)) {
+      return normalizedFocusId;
     }
     return initialRows.find((r) => r.isDefault)?.id ?? initialRows[0]?.id ?? null;
   });
+
+  /** Canonicalize `?focus=` in the address bar (mixed-case hex breaks server-side Set lookup). */
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      const u = new URL(window.location.href);
+      const raw = u.searchParams.get("focus")?.trim() ?? "";
+      if (!raw || !isLikelyMongoObjectIdHex(raw)) {
+        return;
+      }
+      const c = canonicalMongoObjectIdHex(raw);
+      if (c === raw) {
+        return;
+      }
+      u.searchParams.set("focus", c);
+      router.replace(`${u.pathname}${u.search}`, { scroll: false });
+    } catch {
+      // ignore
+    }
+  }, [router]);
 
   useEffect(() => {
     setRows(initialRows);
@@ -46,12 +74,12 @@ export function PortfoliosDashboardClient({ focusPortfolioId, initialRows }: Pro
     }
     if (!creating) {
       const fid =
-        focusPortfolioId && initialRows.some((r) => r.id === focusPortfolioId)
-          ? focusPortfolioId
+        normalizedFocusId && initialRows.some((r) => r.id === normalizedFocusId)
+          ? normalizedFocusId
           : initialRows.find((r) => r.isDefault)?.id ?? initialRows[0].id;
       setSelectedId(fid);
     }
-  }, [initialRows, focusPortfolioId, creating]);
+  }, [initialRows, normalizedFocusId, creating]);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<string>("investments");
   const [isDefault, setIsDefault] = useState(false);

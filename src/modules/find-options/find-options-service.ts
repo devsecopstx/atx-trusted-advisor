@@ -1,6 +1,7 @@
 import { loadAppUserDefaultBook, type AppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { getEnv } from "@/lib/env";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     ensurePortfolioWatchlistForUser,
@@ -35,7 +36,8 @@ function resolveWorkspaceAccount(
 ): Account | undefined {
   const override = accountIdOverride?.trim();
   if (override) {
-    const overrideMatch = accounts.find((a) => a._id?.toHexString() === override);
+    const overrideNorm = normalizeMongoObjectIdParam(override);
+    const overrideMatch = accounts.find((a) => a._id?.toHexString() === overrideNorm);
     if (overrideMatch) {
       return overrideMatch;
     }

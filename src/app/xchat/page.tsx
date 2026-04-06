@@ -10,6 +10,7 @@ import {
 import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
 import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
+import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { oauthAuthErrorMessages } from "@/lib/oauth-auth-error-messages";
 import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
@@ -50,12 +51,15 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       : undefined;
 
   const rawPortfolioParam = params.portfolioId;
-  const requestedPortfolioId =
+  const requestedPortfolioIdRaw =
     typeof rawPortfolioParam === "string"
       ? rawPortfolioParam.trim()
       : Array.isArray(rawPortfolioParam)
         ? rawPortfolioParam[0]?.trim() ?? ""
         : "";
+  const requestedPortfolioId = requestedPortfolioIdRaw
+    ? normalizeMongoObjectIdParam(requestedPortfolioIdRaw)
+    : "";
 
   const googleLoginHrefGuest = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent(oauthReturnPath ?? "/xchat")}`
