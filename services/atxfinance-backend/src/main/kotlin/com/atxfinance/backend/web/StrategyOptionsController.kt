@@ -265,6 +265,10 @@ class StrategyOptionsController(
             bid > 0 && ask > 0 -> (bid + ask) / 2
             else -> max(bid, ask)
         }
+        // Align with Next `mapContract` (options-chain.ts): when Yahoo has last trade but no NBBO,
+        // use premium for both legs so xOptions liquidity filter keeps the row (staging BFF path).
+        val quoteBid = if (bid > 0) bid else premium
+        val quoteAsk = if (ask > 0) ask else premium
         val iv = n.path("impliedVolatility").asDouble(0.0)
         val vol = n.path("volume").asLong(0L).toInt()
         val oi = n.path("openInterest").asLong(0L).toInt()
@@ -287,7 +291,7 @@ class StrategyOptionsController(
             "contract_type" to type,
             "premium" to premium,
             "totalPremium" to (premium * 100),
-            "last_quote" to mapOf("bid" to bid, "ask" to ask),
+            "last_quote" to mapOf("bid" to quoteBid, "ask" to quoteAsk),
             "volume" to vol,
             "open_interest" to oi,
             "implied_volatility" to (iv * 100),
