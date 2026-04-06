@@ -50,6 +50,27 @@ internal object PortfolioMongoFilter {
             Criteria.where("userId").`is`(userId)
         }
 
+    /** User-global watchlist read (mirrors Next `userWatchlistSessionScopeFilter`). */
+    fun watchlistReadCriteriaForUser(userId: String, tenantHex: String?): Criteria {
+        val uid = userIdCriteria(userId)
+        val oid = tenantObjectId(tenantHex ?: return uid) ?: return uid
+        return Criteria().andOperator(
+            uid,
+            Criteria().orOperator(
+                Criteria.where("tenantId").`is`(oid),
+                Criteria.where("tenantId").`is`(null),
+                Criteria.where("tenantId").exists(false),
+            ),
+        )
+    }
+
+    fun watchlistSessionReadCriteria(session: ResolvedSession): Criteria =
+        watchlistReadCriteriaForUser(session.userId, session.tenantId)
+
+    /** Upsert filter for canonical user watchlist (no `portfolioId`). */
+    fun watchlistStrictUpsertCriteriaForUser(userId: String, tenantHex: String?): Criteria =
+        strictWriteTenantCriteria(userIdCriteria(userId), tenantHex)
+
     /** Default portfolio lookup: tenant may be missing on legacy docs (TS `getDefaultPortfolio`). */
     fun defaultPortfolioFilter(session: ResolvedSession): Document {
         val uid = userIdField(session.userId)

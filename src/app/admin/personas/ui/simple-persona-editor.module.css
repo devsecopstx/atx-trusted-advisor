@@ -1,0 +1,97 @@
+.formSection {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.compactGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.collectionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.collectionItem {
+  padding: 0.6rem;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.collectionItem:hover {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.collectionItem.selected {
+  border: 3px solid var(--xf-gain-green);
+  background: rgba(34, 197, 94, 0.15);
+  box-shadow: 0 0 0 1px var(--xf-gain-green);
+}
+
+.collectionItem.selected:hover {
+  border: 3px solid var(--xf-gain-green);
+  background: rgba(34, 197, 94, 0.2);
+  box-shadow: 0 0 0 1px var(--xf-gain-green);
+}
+
+.sectionHeader {
+  margin-bottom: 1rem;
+  color: var(--xf-text-100);
+  font-weight: bold;
+}
+
+.statusText {
+  color: var(--xf-text-200);
+}
+
+.checkboxRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin-top: 0.5rem;
+}
+
+.toolRow {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .compactGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .collectionsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .toolRow {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

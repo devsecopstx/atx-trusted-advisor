@@ -232,34 +232,25 @@ class PortfolioNestedResourceService(
         if (!ObjectId.isValid(portfolioId)) {
             return null
         }
-        var wl = loadWatchlistRaw(session, portfolioId)
-        if (wl != null) {
-            return normalizeWatchlistDoc(wl)
-        }
         val portfolio = portfolioCrud.findPortfolioForSessionUser(portfolioId, session) ?: return null
         if (portfolio.getObjectId("_id") == null) {
             return null
+        }
+        var wl = loadWatchlistRaw(session)
+        if (wl != null) {
+            return normalizeWatchlistDoc(wl)
         }
         runCatching {
             provisionService.provision(session, listOf(defaultWatchlistSymbol))
         }.onFailure {
             return null
         }
-        wl = loadWatchlistRaw(session, portfolioId) ?: return null
+        wl = loadWatchlistRaw(session) ?: return null
         return normalizeWatchlistDoc(wl)
     }
 
-    private fun loadWatchlistRaw(session: ResolvedSession, portfolioId: String): Document? {
-        val pid = ObjectId(portfolioId)
-        val q = Query.query(
-            PortfolioMongoFilter.withTenantScopeCriteria(
-                Criteria().andOperator(
-                    PortfolioMongoFilter.userIdCriteria(session.userId),
-                    Criteria.where("portfolioId").`is`(pid),
-                ),
-                session.tenantId,
-            ),
-        )
+    private fun loadWatchlistRaw(session: ResolvedSession): Document? {
+        val q = Query.query(PortfolioMongoFilter.watchlistSessionReadCriteria(session))
         return mongoTemplate.findOne(q, Document::class.java, props.watchlistsCollection)
     }
 
@@ -282,16 +273,16 @@ class PortfolioNestedResourceService(
         if (!ObjectId.isValid(portfolioId)) {
             return null
         }
-        val pid = ObjectId(portfolioId)
-        val filter = PortfolioMongoFilter.withTenantScopeCriteria(
-            Criteria().andOperator(
-                PortfolioMongoFilter.userIdCriteria(session.userId),
-                Criteria.where("portfolioId").`is`(pid),
-            ),
-            session.tenantId,
-        )
-        val doc = mongoTemplate.findOne(Query.query(filter), Document::class.java, props.watchlistsCollection)
-            ?: return null
+        if (portfolioCrud.findPortfolioForSessionUser(portfolioId, session) == null) {
+            return null
+        }
+        val doc =
+            mongoTemplate.findOne(
+                Query.query(PortfolioMongoFilter.watchlistSessionReadCriteria(session)),
+                Document::class.java,
+                props.watchlistsCollection,
+            )
+                ?: return null
         val now = Date()
         var symbols = WatchlistSymbolCodec.normalizeDocumentSymbols(doc["symbols"], emptyList())
             .toMutableList()

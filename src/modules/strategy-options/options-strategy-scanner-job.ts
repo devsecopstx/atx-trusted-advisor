@@ -5,9 +5,11 @@ import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-nam
 import {
     adminListOptionsStrategyFilterRows,
     adminListOptionsStrategyPreferenceSummaries,
-    adminListOptionsStrategySummaries
+    adminListOptionsStrategySummaries,
+    getDefaultPortfolio
 } from "@/modules/core-admin/repository";
 import type { Position, Watchlist } from "@/modules/core-admin/types";
+import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 import {
     resolveUsMarketDayContext,
@@ -106,8 +108,32 @@ async function loadTenantWatchlists(scope: Record<string, unknown>): Promise<Wat
   return db
     .collection<Watchlist>(WATCHLIST_COLLECTION)
     .find(scope)
-    .limit(120)
+    .limit(500)
     .toArray();
+}
+
+async function defaultPortfolioIdsForWatchlistOwners(
+  watchlists: Watchlist[],
+  tenantId?: ObjectId
+): Promise<Map<string, ObjectId>> {
+  const tenantHex = tenantId?.toHexString();
+  const keys = new Set<string>();
+  for (const w of watchlists) {
+    const k = normalizeMongoUserIdHex(w.userId);
+    if (k) {
+      keys.add(k);
+    }
+  }
+  const out = new Map<string, ObjectId>();
+  await Promise.all(
+    [...keys].map(async (uid) => {
+      const p = await getDefaultPortfolio(uid, tenantHex ? { tenantId: tenantHex } : undefined);
+      if (p?._id) {
+        out.set(uid, p._id);
+      }
+    })
+  );
+  return out;
 }
 
 async function countOptionPositionsAndUnderlyings(
@@ -163,7 +189,8 @@ export async function buildMergedOptionScanTargets(input: {
   const wlLimit = Number.isFinite(maxWl) && maxWl > 0 ? maxWl : 50;
   const posLimit = Number.isFinite(maxPosCap) && maxPosCap > 0 ? maxPosCap : 60;
   const posTargets = positionsToOptionScanTargets(optionRows.slice(0, 220));
-  const wlTargets = watchlistsToOptionScanTargets(watchlists, wlLimit);
+  const defaultByUser = await defaultPortfolioIdsForWatchlistOwners(watchlists, tenantId);
+  const wlTargets = watchlistsToOptionScanTargets(watchlists, wlLimit, defaultByUser);
   const merged = mergeOptionScanTargets(posTargets, wlTargets).slice(0, posLimit + wlLimit);
   return {
     merged,
@@ -272,7 +299,9 @@ export async function executeOptionsExpirationRollJob(input: {
       fromPositions: 0,
       fromWatchlist: 0,
       chainBatches: 0,
-      rankedSignals: []
+      rankedSignals: [],
+      watchlistRowsAdded: 0,
+      watchlistRowsUpdated: 0
     };
 
     await updateTenantMarketCalendarSnapshot({
@@ -422,7 +451,9 @@ export async function executeOptionsStrategyScannerJob(
       fromPositions: 0,
       fromWatchlist: 0,
       chainBatches: 0,
-      rankedSignals: []
+      rankedSignals: [],
+      watchlistRowsAdded: 0,
+      watchlistRowsUpdated: 0
     };
 
     await updateTenantMarketCalendarSnapshot({
@@ -439,7 +470,7 @@ export async function executeOptionsStrategyScannerJob(
 
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
     const rankTop = formatRankTop(recPass.rankedSignals);
-    const recSummary = `scan_targets=${merged.length} prefs_after=${scanTargets.length} prefs_active=${prefsActive} chain_batches=${recPass.chainBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_from_pos=${recPass.fromPositions} rec_from_wl=${recPass.fromWatchlist} rec_stored=${recPass.stored} rec_updated=${recPass.updated} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated} alert_dedupe=${recPass.alertsSuppressedDeduped} hold_dismiss=${recPass.alertsDismissedOnHold} skipped_bad=${recPass.skippedBadRow}`;
+    const recSummary = `scan_targets=${merged.length} prefs_after=${scanTargets.length} prefs_active=${prefsActive} chain_batches=${recPass.chainBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_from_pos=${recPass.fromPositions} rec_from_wl=${recPass.fromWatchlist} rec_stored=${recPass.stored} rec_updated=${recPass.updated} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated} alert_dedupe=${recPass.alertsSuppressedDeduped} hold_dismiss=${recPass.alertsDismissedOnHold} skipped_bad=${recPass.skippedBadRow} wl_rows_added=${recPass.watchlistRowsAdded} wl_rows_updated=${recPass.watchlistRowsUpdated}`;
     return {
       status: "success",
       output: `${OPTIONS_STRATEGY_SCANNER_SERVICE_ID}: task_category=${taskCategoryTag} skipped=false market=open portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} strategy_filter_rows=${strategyFilterRows.length} option_positions=${optionPositions} unique_underlyings=${uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
@@ -474,7 +505,9 @@ export async function executeOptionsStrategyScannerJob(
         prefsFilterActive: prefsActive,
         rankTopPreview: rankTop || null,
         chainBatches: recPass.chainBatches,
-        durationSeconds
+        durationSeconds,
+        watchlistRowsAdded: recPass.watchlistRowsAdded,
+        watchlistRowsUpdated: recPass.watchlistRowsUpdated
       }
     };
   } catch (error) {

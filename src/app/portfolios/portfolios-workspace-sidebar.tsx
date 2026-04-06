@@ -20,6 +20,11 @@ export function PortfoliosWorkspaceSidebar({
   accountDetails,
   accountFeedbackPageLabel
 }: PortfoliosWorkspaceSidebarProps) {
+  const watchlistHref =
+    defaultPortfolioId !== null
+      ? `/watchlist?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
+      : "/watchlist";
+
   return (
     <WorkspaceProductSidebar
       accountDetails={accountDetails}
@@ -28,7 +33,7 @@ export function PortfoliosWorkspaceSidebar({
       isGlobalAdmin={isGlobalAdmin}
       showReferenceDocs
       workspaceBook={workspaceBook}
-      watchlistHref="/portfolios#portfolios-watchlist"
+      watchlistHref={watchlistHref}
     />
   );
 }

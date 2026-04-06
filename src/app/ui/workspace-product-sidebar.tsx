@@ -257,7 +257,7 @@ function SidebarAccordionSummary({
 export type WorkspaceProductSidebarProps = {
   defaultPortfolioId: string | null;
   isGlobalAdmin: boolean;
-  /** e.g. `/portfolios#portfolios-watchlist` on books page, or `/watchlist?portfolioId=` elsewhere */
+  /** Full watchlist console: `/watchlist?portfolioId=` when the workspace book is known, else `/watchlist`. */
   watchlistHref: string;
   accountDetails: AppUserRailAccountPanelDetails | null;
   /** Optional “Link Google” in account panel (e.g. xChat when Google OAuth is configured). */
@@ -369,11 +369,7 @@ export function WorkspaceProductSidebar({
           </SidebarLink>
           <SidebarLink
             href={watchlistHref}
-            title={
-              watchlistHref.includes("#portfolios-watchlist")
-                ? "Watchlist table on portfolios"
-                : "Full watchlist"
-            }
+            title="Watchlist — symbols, import/export, desk fields"
           >
             <StarIcon className="portfolios-workspace-sidebar__glyph" />
             <span>Watchlist</span>

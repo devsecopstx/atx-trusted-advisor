@@ -110,6 +110,11 @@ jobs:
             echo "::error::ATXFINANCE_BACKEND_ORIGIN must not include :8080 on public hosts (got ${ATXFINANCE_BACKEND_ORIGIN})"
             exit 1
           fi
+          norm() { printf '%s' "$1" | sed 's:/*$::' | tr '[:upper:]' '[:lower:]'; }
+          if [ "$(norm "${ATXFINANCE_BACKEND_ORIGIN}")" = "$(norm "${PROD_BASE_URL}")" ]; then
+            echo "::error::ATXFINANCE_BACKEND_ORIGIN must be the Spring backend Cloud Run URL, not PROD_BASE_URL (${PROD_BASE_URL}). Use atxfinance-backend-prod *.run.app."
+            exit 1
+          fi
           if [ -z "${GCP_ARTIFACT_PROJECT_ID:-}" ]; then
             echo "ARTIFACT_PROJECT_ID=${GCP_PROJECT_ID_PROD}" >> "$GITHUB_ENV"
           else

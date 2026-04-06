@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.0.23",
+  "version": "3.1.0",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -53,6 +53,8 @@
     "migrate:tenant-portfolio": "node --env-file=.env scripts/migrate-portfolio-portfolios-to-tenant-portfolios.mjs",
     "migrate:persona-name-normalized": "node --env-file=.env scripts/backfill-persona-name-normalized.mjs",
     "migrate:persona-tools": "node --env-file=.env scripts/backfill-persona-tools.mjs",
+    "migrate:merge-user-watchlists": "node --env-file=.env scripts/ops/merge-user-watchlists.mjs",
+    "migrate:merge-user-watchlists:apply": "node --env-file=.env scripts/ops/merge-user-watchlists.mjs --apply",
     "status:deploy": "bash scripts/ops/print-deploy-status.sh",
     "ops:rotate:oauth": "bash scripts/ops/rotate-oauth-secrets.sh",
     "ops:secrets:verify": "bash scripts/ops/verify-gcp-runtime-secrets.sh --project \"${GOOGLE_PROJECT_ID:-${GCP_PROJECT_ID:?set GOOGLE_PROJECT_ID or GCP_PROJECT_ID}}\"",
@@ -81,8 +83,14 @@
     "ops:db:probe": "node scripts/ops/probe-mongodb-from-env.mjs",
     "ops:deploy:cloud-run:staging": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging",
     "ops:deploy:cloud-run:staging:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --staging --with-ci-gate",
+    "ops:deploy:full:staging": "bash scripts/ops/deploy-full-stage.sh",
+    "ops:deploy:full:staging:ci": "bash scripts/ops/deploy-full-stage.sh --with-ci-gate",
+    "ops:deploy:full:production": "bash scripts/ops/deploy-full-production.sh",
+    "ops:deploy:full:production:ci": "bash scripts/ops/deploy-full-production.sh --with-ci-gate",
     "ops:deploy:cloud-run:production": "bash scripts/ops/deploy-cloud-run-from-env.sh --production",
     "ops:deploy:cloud-run:production:ci": "bash scripts/ops/deploy-cloud-run-from-env.sh --production --with-ci-gate",
+    "ops:deploy:atxfinance-backend:production": "bash scripts/ops/deploy-atxfinance-backend-production.sh",
+    "ops:validate:prod-stack-health": "bash scripts/ops/validate-prod-stack-health.sh .env.prod",
     "ops:users:reset-basic-super-agent": "node scripts/ops/reset-all-users-basic-super-agent.mjs",
     "ops:scheduled-tasks:sync": "node --env-file=.env --import tsx scripts/ops/sync-scheduled-tasks-from-spec.ts"
   },

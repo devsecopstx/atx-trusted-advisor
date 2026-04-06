@@ -5,7 +5,7 @@ import {
     ensurePortfolioWatchlistForUser,
     getDefaultPortfolio,
     getPortfolioByIdForSessionUser,
-    getPortfolioWatchlist,
+    getUserWatchlist,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     listScheduledTasks,
@@ -90,12 +90,22 @@ type WatchlistSummaryPayload =
   | { error: "no_watchlist" }
   | { name: string; symbolCount: number; symbols: ReturnType<typeof watchlistSymbolToJson>[] };
 
-async function loadWatchlistSummary(ctx: ExecutorContext, portfolioId: string): Promise<WatchlistSummaryPayload> {
-  const watchlist = await getPortfolioWatchlist({
+async function loadWatchlistSummary(ctx: ExecutorContext): Promise<WatchlistSummaryPayload> {
+  let watchlist = await getUserWatchlist({
     userId: ctx.userId,
-    portfolioId,
     tenantId: ctx.tenantId
   });
+  if (!watchlist) {
+    const portfolio = await getDefaultPortfolioOrProvision(ctx);
+    if (portfolio?._id) {
+      await ensurePortfolioWatchlistForUser({
+        userId: ctx.userId,
+        portfolioId: portfolio._id.toHexString(),
+        tenantId: ctx.tenantId
+      });
+      watchlist = await getUserWatchlist({ userId: ctx.userId, tenantId: ctx.tenantId });
+    }
+  }
   if (!watchlist) {
     return { error: "no_watchlist" };
   }
@@ -246,7 +256,7 @@ function buildOperations(
             })
           : [];
       const counts = positionCountsByAccountId(positions);
-      const watchlist = await loadWatchlistSummary(ctx, portfolioId);
+      const watchlist = await loadWatchlistSummary(ctx);
 
       return {
         name: portfolio.name,
@@ -266,12 +276,7 @@ function buildOperations(
     },
 
     watchlist_snapshot: async (_args, ctx) => {
-      const portfolio = await getDefaultPortfolioOrProvision(ctx);
-      if (!portfolio?._id) {
-        return { error: "no_default_portfolio" };
-      }
-
-      return loadWatchlistSummary(ctx, portfolio._id.toHexString());
+      return loadWatchlistSummary(ctx);
     },
 
     watchlist_add_symbols: async (args, ctx) => {
@@ -613,8 +618,11 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
       }
     }
 
+    const toolCacheScopeKey =
+      operation === "watchlist_snapshot" ? "user_watchlist_global" : cacheScopeKey;
+
     if (CACHEABLE_OPERATIONS.has(operation)) {
-      const cached = getCachedToolResult(ctx.userId, operation, cacheScopeKey);
+      const cached = getCachedToolResult(ctx.userId, operation, toolCacheScopeKey);
       if (cached) {
         return { result: cached };
       }
@@ -625,7 +633,7 @@ export function createXfinanceToolExecutor(ctx: XfinanceToolExecutorContext): To
     const output = truncateOutput(serialized);
 
     if (CACHEABLE_OPERATIONS.has(operation)) {
-      setCachedToolResult(ctx.userId, operation, output, undefined, cacheScopeKey);
+      setCachedToolResult(ctx.userId, operation, output, undefined, toolCacheScopeKey);
     }
 
     return { result: output };

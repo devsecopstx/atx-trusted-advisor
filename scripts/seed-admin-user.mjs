@@ -462,6 +462,17 @@ const DEFAULT_SEED_ADMIN_USER_SETTINGS = {
 };
 
 async function ensureIndexes(db) {
+  const wlColl = db.collection("portfolio_watchlists");
+  try {
+    await wlColl.dropIndex("uniq_watchlist_per_portfolio");
+  } catch {
+    /* noop */
+  }
+  try {
+    await wlColl.dropIndex("idx_watchlists_snapshot_portfolio_user");
+  } catch {
+    /* noop */
+  }
   await Promise.all([
     db.collection("core_users").createIndex({ email: 1 }, { unique: true, name: "uniq_core_user_email" }),
     db.collection("core_users").createIndex(
@@ -512,13 +523,14 @@ async function ensureIndexes(db) {
         name: "uniq_default_account_per_portfolio"
       }
     ),
-    db.collection("portfolio_watchlists").createIndex(
-      { tenantId: 1, portfolioId: 1 },
+    wlColl.createIndex(
+      { tenantId: 1, userId: 1 },
       {
         unique: true,
-        name: "uniq_watchlist_per_portfolio"
+        name: "uniq_watchlist_per_user"
       }
     ),
+    wlColl.createIndex({ userId: 1, tenantId: 1 }, { name: "idx_watchlists_user_tenant" }),
     db.collection("portfolio_positions").createIndex(
       { portfolioId: 1, accountId: 1, userId: 1, tenantId: 1, createdAt: 1 },
       { name: "idx_positions_snapshot_portfolio_account_user_tenant_created" }
@@ -526,10 +538,6 @@ async function ensureIndexes(db) {
     db.collection("portfolio_accounts").createIndex(
       { portfolioId: 1, userId: 1, isDefault: -1, createdAt: 1 },
       { name: "idx_accounts_snapshot_portfolio_user_default_created" }
-    ),
-    db.collection("portfolio_watchlists").createIndex(
-      { portfolioId: 1, userId: 1 },
-      { name: "idx_watchlists_snapshot_portfolio_user" }
     ),
     db.collection("admin_access_requests").createIndex(
       { userId: 1, requestedRole: 1 },
@@ -633,10 +641,6 @@ async function seed() {
         $set: {
           systemPrompt: DEFAULT_PERSONA_SYSTEM_PROMPT,
           overridePrompt: "",
-          xaiCollection: {
-            ...(teamKbCollectionId ? { collectionId: teamKbCollectionId } : {}),
-            collectionName: DEFAULT_COLLECTION_NAME
-          },
           model: "grok-4-1-fast-reasoning",
           temperature: 0.2,
           enableRag: true,

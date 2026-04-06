@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     shouldProxyAdminUsersToBackend,
+    shouldProxyAppUserPortfolioWatchlistToBackend,
     shouldProxyPortfolioRequestsToBackend
 } from "@/lib/backend-bff";
 
@@ -11,12 +12,10 @@ describe("shouldProxyAdminUsersToBackend", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     process.env.ATXFINANCE_BACKEND_ORIGIN = original.ATXFINANCE_BACKEND_ORIGIN;
-    process.env.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS = original.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS;
   });
 
   beforeEach(() => {
     delete process.env.ATXFINANCE_BACKEND_ORIGIN;
-    delete process.env.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS;
     vi.stubEnv("NODE_ENV", "development");
   });
 
@@ -24,41 +23,41 @@ describe("shouldProxyAdminUsersToBackend", () => {
     expect(shouldProxyAdminUsersToBackend()).toBe(false);
   });
 
-  it("returns false for loopback origin in development when flag unset (Manage Users → Next Mongo)", () => {
+  it("returns false for loopback origin in development (Manage Users → Next Mongo)", () => {
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");
     expect(shouldProxyAdminUsersToBackend()).toBe(false);
   });
 
-  it("returns true for loopback when ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=true", () => {
+  it("returns true for loopback when NODE_ENV is production", () => {
+    vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");
-    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "true");
     expect(shouldProxyAdminUsersToBackend()).toBe(true);
   });
 
-  it("returns true for non-loopback origin when flag unset", () => {
+  it("returns true for non-loopback origin when NODE_ENV is production", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
     expect(shouldProxyAdminUsersToBackend()).toBe(true);
   });
 
-  it("returns false when proxy is explicitly off", () => {
+  it("returns true for non-loopback origin in development", () => {
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "false");
-    expect(shouldProxyAdminUsersToBackend()).toBe(false);
-    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "0");
-    expect(shouldProxyAdminUsersToBackend()).toBe(false);
+    expect(shouldProxyAdminUsersToBackend()).toBe(true);
   });
 
-  it("shouldProxyPortfolioRequestsToBackend matches shouldProxyAdminUsersToBackend (shared ATXFINANCE_BACKEND_PROXY_ADMIN_USERS gate)", () => {
+  it("shouldProxyPortfolioRequestsToBackend matches shouldProxyAdminUsersToBackend", () => {
     expect(shouldProxyPortfolioRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "http://127.0.0.1:8080");
     expect(shouldProxyPortfolioRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
-    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "true");
-    expect(shouldProxyPortfolioRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
-    vi.stubEnv("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", "false");
     expect(shouldProxyPortfolioRequestsToBackend()).toBe(shouldProxyAdminUsersToBackend());
+  });
+
+  it("shouldProxyAppUserPortfolioWatchlistToBackend is always false (watchlist stays on Next)", () => {
+    expect(shouldProxyAppUserPortfolioWatchlistToBackend()).toBe(false);
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://backend.example.internal:8080");
+    expect(shouldProxyAppUserPortfolioWatchlistToBackend()).toBe(false);
   });
 });

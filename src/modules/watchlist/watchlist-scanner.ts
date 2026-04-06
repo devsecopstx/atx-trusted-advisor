@@ -1,10 +1,15 @@
-import { getAllWatchlists, updateWatchlistSymbolPrices } from "@/modules/core-admin/repository";
+import {
+    getAllWatchlists,
+    getDefaultPortfolio,
+    updateWatchlistSymbolPrices
+} from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
+import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 import {
-  evaluateSignificantPriceMoves,
-  type PersistedPriceAlertRow,
-  persistPriceMoveAlerts,
+    evaluateSignificantPriceMoves,
+    type PersistedPriceAlertRow,
+    persistPriceMoveAlerts,
 } from "./price-alert-service";
 import { getYahooBatchQuotes } from "./yahoo-batch-quotes";
 
@@ -65,7 +70,17 @@ export async function runWatchlistPriceScanner(
         updatedCount += updates.length;
 
         const moves = evaluateSignificantPriceMoves(symbols, updates);
-        const persist = await persistPriceMoveAlerts(wl.portfolioId.toHexString(), moves);
+        const uid = normalizeMongoUserIdHex(wl.userId);
+        const tenantHex = wl.tenantId?.toHexString();
+        const defaultPf =
+          uid != null
+            ? await getDefaultPortfolio(uid, tenantHex ? { tenantId: tenantHex } : undefined)
+            : null;
+        const alertPortfolioId = defaultPf?._id?.toHexString();
+        const persist =
+          alertPortfolioId != null
+            ? await persistPriceMoveAlerts(alertPortfolioId, moves)
+            : { created: 0, recorded: [] as PersistedPriceAlertRow[], skippedCooldown: 0 };
         alertCount += persist.created;
         alertsSkippedCooldown += persist.skippedCooldown;
         if (persist.recorded.length > 0) {

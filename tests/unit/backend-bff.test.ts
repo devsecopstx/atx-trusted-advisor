@@ -104,6 +104,39 @@ describe("proxyRequestToBackend (default BFF, env)", () => {
   });
 });
 
+describe("proxyPortfolioRequestToBackend (watchlist bypass)", () => {
+  const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+
+  beforeEach(() => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://kotlin-backend.example.run.app");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("does not forward app-user portfolio watchlist (GET)", async () => {
+    const { proxyPortfolioRequestToBackend } = await import("@/lib/backend-bff");
+    const req = new Request(
+      "http://next.local/api/portfolios/507f1f77bcf86cd799439011/watchlist?quotes=1"
+    );
+    await expect(proxyPortfolioRequestToBackend(req)).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("still forwards portfolio root GET", async () => {
+    const { proxyPortfolioRequestToBackend } = await import("@/lib/backend-bff");
+    const req = new Request("http://next.local/api/portfolios/507f1f77bcf86cd799439011");
+    await proxyPortfolioRequestToBackend(req);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/api/portfolios/507f1f77bcf86cd799439011");
+  });
+});
+
 describe("getStrategyJobsBffUnavailableMessage", () => {
   const savedOrigin = process.env.ATXFINANCE_BACKEND_ORIGIN;
 
@@ -121,9 +154,9 @@ describe("getStrategyJobsBffUnavailableMessage", () => {
     expect(getStrategyJobsBffUnavailableMessage()).toContain("ATXFINANCE_BACKEND_ORIGIN");
   });
 
-  it("when origin set, points at ATXFINANCE_BACKEND_PROXY_ADMIN_USERS", async () => {
+  it("when origin set on loopback, hints loopback/dev BFF skip", async () => {
     process.env.ATXFINANCE_BACKEND_ORIGIN = "http://127.0.0.1:8080";
     const { getStrategyJobsBffUnavailableMessage } = await import("@/lib/backend-bff");
-    expect(getStrategyJobsBffUnavailableMessage()).toContain("ATXFINANCE_BACKEND_PROXY_ADMIN_USERS");
+    expect(getStrategyJobsBffUnavailableMessage()).toMatch(/BFF|development|localhost/i);
   });
 });

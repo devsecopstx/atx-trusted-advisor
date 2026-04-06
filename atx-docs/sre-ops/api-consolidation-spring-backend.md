@@ -51,7 +51,9 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 
 **Proxied today:** `GET /api/admin/bootstrap-status`, `GET /api/admin/audit` (read-only); **`/api/admin/access-requests`** (CRUD + review) — see `./atxfinance-backend-http-api.md`.
 
-**Proxied with Spring parity:** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), tenant **tasks / scheduler**, **admin portfolio** tree (root CRUD, accounts, watchlist, positions collection GET/POST, recommendations, alerts, delivery-channels). Enable via **`ATXFINANCE_BACKEND_ORIGIN`** (PR 3 + PR 4 + subsequent admin-portfolio slices — same origin).
+**Proxied with Spring parity (Next BFF):** deploy-note-configs, import/broker (`POST /api/admin/import/broker` from **`portfolio-console.tsx`**), **admin portfolio** tree (root CRUD, accounts, watchlist, positions collection GET/POST, recommendations, alerts). **`ATXFINANCE_BACKEND_ORIGIN`** must be the JVM base URL, not the Next app host (PR 3 + PR 4 + subsequent admin-portfolio slices — same origin).
+
+**Next-only HTTP (no BFF proxy):** tenant **`/api/admin/tasks*`**, **`/api/admin/task-runs`**, **`/api/admin/scheduler/tick`**, **`/api/admin/delivery-channels*`** (tenant + portfolio-nested), app-user **`GET`/`PATCH /api/user/watchlist`**, and app-user **`GET`/`PATCH /api/portfolios/{portfolioId}/watchlist`** — always served from Next + Mongo (Yahoo `?quotes=1`; **one watchlist per user**, portfolio path is ownership shim). Spring JVM **`…/watchlist`** paths mirror the same Mongo semantics (session user + tenant, not path `portfolioId` on the document).
 
 ## PR 3 & PR 4 — real migration slices (not “code-only” PRs)
 
@@ -59,7 +61,7 @@ These are **vertical migration tracks**: same Mongo collections and contracts as
 
 ### PR 3 — Admin tasks + scheduler (migration)
 
-**Product scope:** `GET`/`POST /api/admin/tasks`, `POST /api/admin/tasks/{taskId}/run`, `GET /api/admin/task-runs`, `POST /api/admin/scheduler/tick` — Spring `AdminScheduledTasksController` + `AdminScheduledTasksService`, Next proxies when `ATXFINANCE_BACKEND_ORIGIN` is set (`src/lib/backend-bff.ts`, `src/lib/bff-proxy-routes.ts`).
+**Product scope:** `GET`/`POST /api/admin/tasks`, `POST /api/admin/tasks/{taskId}/run`, `GET /api/admin/task-runs`, `POST /api/admin/scheduler/tick` — Spring `AdminScheduledTasksController` + `AdminScheduledTasksService` for JVM/direct callers; **Next does not BFF-proxy** these (always `src/app/api/admin/tasks/*`, `task-runs`, `scheduler/tick`). Registry entries remain for parity smoke tests.
 
 **Data migration:** **No destructive backfill.** JVM reads/writes the same collections as Next: **`admin_scheduled_tasks`**, **`admin_task_runs`**. Existing documents remain valid.
 
@@ -70,7 +72,7 @@ These are **vertical migration tracks**: same Mongo collections and contracts as
    `bash scripts/ops/set-atxfinance-backend-origin.sh staging https://<your-backend>-run.app`  
    Requires `gcloud` auth and defaults: project `fintech-advisor-staging`, service `xfinance-core-staging`, region `us-central1` (override with `GCP_PROJECT_ID`, `CLOUD_RUN_SERVICE_STAGING`, `CLOUD_RUN_REGION`).
 3. **Soak staging:** exercise **Admin → Tasks** (list/create, run, task runs, scheduler tick) and spot-check another BFF surface (e.g. portfolios) if you already rely on the same origin. Monitor Cloud Run logs and latency.
-4. **Production:** repeat after soak; set origin on prod Cloud Run (`bash scripts/ops/set-atxfinance-backend-origin.sh prod https://…`) or mirror the same `gcloud run services update … --update-env-vars`.
+4. **Production:** repeat after soak; set origin on prod Cloud Run (`bash scripts/ops/set-atxfinance-backend-origin.sh prod https://…`) or mirror the same `gcloud run services update … --update-env-vars`. **Operator layout:** see **`./gcp-prod-two-service-model.md`** (`xfinance-core-prod` + `atxfinance-backend-prod`).
 5. **Rollback:** remove **`ATXFINANCE_BACKEND_ORIGIN`** — Next route handlers execute the Mongo again (fallback paths remain in `src/app/api/admin/tasks/*`, `task-runs`, `scheduler/tick`). Example:  
    `gcloud run services update xfinance-core-staging --project fintech-advisor-staging --region us-central1 --remove-env-vars ATXFINANCE_BACKEND_ORIGIN`
 

@@ -310,8 +310,21 @@ export class PositionValidationError extends Error {
   }
 }
 
+async function dropLegacyWatchlistIndexesIfPresent(): Promise<void> {
+  const db = await getDb();
+  const wl = db.collection(collections.watchlists);
+  for (const name of ["uniq_watchlist_per_portfolio", "idx_watchlists_snapshot_portfolio_user"] as const) {
+    try {
+      await wl.dropIndex(name);
+    } catch {
+      // Index missing or already dropped
+    }
+  }
+}
+
 async function createPortfolioIndexes(): Promise<void> {
   const db = await getDb();
+  await dropLegacyWatchlistIndexesIfPresent();
   const indexes: Promise<string>[] = [
     db.collection<Portfolio>(collections.portfolios).createIndex(
       { tenantId: 1, userId: 1, isDefault: 1 },
@@ -345,17 +358,17 @@ async function createPortfolioIndexes(): Promise<void> {
       { portfolioId: 1, userId: 1, isDefault: -1, createdAt: 1 },
       { name: "idx_accounts_snapshot_portfolio_user_default_created" }
     ),
+    /** One watchlist per user per tenant (legacy rows may omit `tenantId`). */
     db.collection<Watchlist>(collections.watchlists).createIndex(
-      { tenantId: 1, portfolioId: 1 },
+      { tenantId: 1, userId: 1 },
       {
         unique: true,
-        name: "uniq_watchlist_per_portfolio"
+        name: "uniq_watchlist_per_user"
       }
     ),
-    /** Workspace snapshot: {@link getPortfolioWatchlist} findOne by portfolio + owner. */
     db.collection<Watchlist>(collections.watchlists).createIndex(
-      { portfolioId: 1, userId: 1 },
-      { name: "idx_watchlists_snapshot_portfolio_user" }
+      { userId: 1, tenantId: 1 },
+      { name: "idx_watchlists_user_tenant" }
     ),
     db.collection<Position>(collections.positions).createIndex(
       { tenantId: 1, portfolioId: 1, accountId: 1, symbol: 1 },
@@ -1334,6 +1347,11 @@ function userWatchlistsForPortfolioSessionScopeFilter(
   return userAccountsForPortfolioSessionScopeFilter(userId, portfolioId.toHexString(), tenantId);
 }
 
+/** Canonical user watchlist (one per user + tenant); matches legacy null/missing `tenantId` rows. */
+function userWatchlistSessionScopeFilter(userId: string, tenantId?: string): Record<string, unknown> {
+  return userAccountsInSessionScopeFilter(userId, tenantId);
+}
+
 function defaultPortfolioMarkerFilter(
   userId: string,
   tenantId?: string
@@ -1479,6 +1497,25 @@ export async function bumpPortfolioWorkspaceContentRev(input: {
       $inc: { workspaceContentRev: 1 },
       $set: { updatedAt: new Date() }
     }
+  );
+}
+
+/** Bumps workspace rev on every owned portfolio so xChat cache misses after user-global watchlist edits. */
+export async function bumpWorkspaceContentRevForAllUserPortfolios(input: {
+  userId: string;
+  tenantId?: string;
+}): Promise<void> {
+  const rows = await listPortfoliosForSessionUser(input);
+  await Promise.all(
+    rows.map((p) =>
+      p._id
+        ? bumpPortfolioWorkspaceContentRev({
+            userId: input.userId,
+            portfolioId: p._id.toHexString(),
+            tenantId: input.tenantId
+          })
+        : Promise.resolve()
+    )
   );
 }
 
@@ -2596,6 +2633,52 @@ export async function updateWatchlistSymbolPrices(
   );
 }
 
+/** Canonical watchlist for the user (tenant-scoped); one document per user after migration. */
+export async function getUserWatchlist(input: {
+  userId: string;
+  tenantId?: string;
+}): Promise<Watchlist | null> {
+  await ensurePortfolioIndexes();
+  const db = await getDb();
+  const doc = await db
+    .collection<Watchlist>(collections.watchlists)
+    .findOne(userWatchlistSessionScopeFilter(input.userId, input.tenantId));
+  if (!doc) {
+    return null;
+  }
+  const symbols = normalizeWatchlistDocumentSymbols(doc.symbols, [DEFAULT_WATCHLIST_SYMBOL]);
+  return { ...doc, symbols };
+}
+
+/** Ensures a user-global watchlist exists (via default portfolio provision when needed). */
+export async function ensureUserWatchlistForSessionUser(input: {
+  userId: string;
+  tenantId?: string;
+}): Promise<Watchlist | null> {
+  const existing = await getUserWatchlist(input);
+  if (existing) {
+    return existing;
+  }
+  try {
+    await provisionDefaultPortfolioForUser({
+      userId: input.userId,
+      tenantId: input.tenantId,
+      watchlistSymbols: ["TSLA"]
+    });
+  } catch (error) {
+    const detail = caughtErrorMessage(error);
+    console.error(
+      `[watchlist] ensureUserWatchlistForSessionUser provision failed userId=${input.userId} detail=${detail}`
+    );
+    return null;
+  }
+  return getUserWatchlist(input);
+}
+
+/**
+ * When the session user owns `portfolioId`, returns the same document as {@link getUserWatchlist}
+ * (compatibility shim for portfolio-scoped URLs).
+ */
 export async function getPortfolioWatchlist(input: {
   userId: string;
   portfolioId: string;
@@ -2605,19 +2688,15 @@ export async function getPortfolioWatchlist(input: {
   if (!ObjectId.isValid(input.portfolioId)) {
     return null;
   }
-  const db = await getDb();
-  const doc = await db.collection<Watchlist>(collections.watchlists).findOne(
-    withTenantScope(
-      {
-        ...userIdQuery(input.userId),
-        portfolioId: new ObjectId(input.portfolioId)
-      },
-      input.tenantId
-    )
-  );
-  if (!doc) return null;
-  const symbols = normalizeWatchlistDocumentSymbols(doc.symbols, [DEFAULT_WATCHLIST_SYMBOL]);
-  return { ...doc, symbols };
+  const owned = await getPortfolioByIdForSessionUser({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    portfolioId: input.portfolioId
+  });
+  if (!owned?._id) {
+    return null;
+  }
+  return getUserWatchlist({ userId: input.userId, tenantId: input.tenantId });
 }
 
 /**
@@ -2673,6 +2752,8 @@ export type MutatePortfolioWatchlistInput = {
   /** Clears field in Mongo when `null`. */
   outlook?: AccountOutlook | null;
 };
+
+export type MutateUserWatchlistInput = Omit<MutatePortfolioWatchlistInput, "portfolioId">;
 
 function mergeImportEntryIntoSymbol(
   base: WatchlistSymbol,
@@ -2732,13 +2813,8 @@ function mergeImportEntryIntoSymbol(
   return next;
 }
 
-export async function mutatePortfolioWatchlistSymbols(
-  input: MutatePortfolioWatchlistInput
-): Promise<Watchlist | null> {
+export async function mutateUserWatchlistSymbols(input: MutateUserWatchlistInput): Promise<Watchlist | null> {
   await ensurePortfolioIndexes();
-  if (!ObjectId.isValid(input.portfolioId)) {
-    return null;
-  }
   const trimmedName =
     input.name === undefined ? undefined : input.name.trim().slice(0, 128);
   const hasNameUpdate = trimmedName !== undefined && trimmedName.length > 0;
@@ -2751,22 +2827,11 @@ export async function mutatePortfolioWatchlistSymbols(
     input.riskProfile !== undefined ||
     input.outlook !== undefined;
   if (!hasMutation) {
-    return getPortfolioWatchlist({
-      userId: input.userId,
-      portfolioId: input.portfolioId,
-      tenantId: input.tenantId
-    });
+    return getUserWatchlist({ userId: input.userId, tenantId: input.tenantId });
   }
 
   const db = await getDb();
-  const portfolioOid = new ObjectId(input.portfolioId);
-  const filter = withTenantScope(
-    {
-      ...userIdQuery(input.userId),
-      portfolioId: portfolioOid
-    },
-    input.tenantId
-  );
+  const filter = userWatchlistSessionScopeFilter(input.userId, input.tenantId);
   const doc = await db.collection<Watchlist>(collections.watchlists).findOne(filter);
   if (!doc?._id) {
     return null;
@@ -2860,18 +2925,40 @@ export async function mutatePortfolioWatchlistSymbols(
     update.$unset = unsetDoc;
   }
 
-  await db.collection<Watchlist>(collections.watchlists).updateOne(filter, update);
+  await db.collection<Watchlist>(collections.watchlists).updateOne({ _id: doc._id }, update);
 
-  await bumpPortfolioWorkspaceContentRev({
+  await bumpWorkspaceContentRevForAllUserPortfolios({
     userId: input.userId,
-    portfolioId: input.portfolioId,
     tenantId: input.tenantId
   });
 
-  return getPortfolioWatchlist({
+  return getUserWatchlist({ userId: input.userId, tenantId: input.tenantId });
+}
+
+export async function mutatePortfolioWatchlistSymbols(
+  input: MutatePortfolioWatchlistInput
+): Promise<Watchlist | null> {
+  if (!ObjectId.isValid(input.portfolioId)) {
+    return null;
+  }
+  const owned = await getPortfolioByIdForSessionUser({
     userId: input.userId,
-    portfolioId: input.portfolioId,
-    tenantId: input.tenantId
+    tenantId: input.tenantId,
+    portfolioId: input.portfolioId
+  });
+  if (!owned?._id) {
+    return null;
+  }
+  return mutateUserWatchlistSymbols({
+    userId: input.userId,
+    tenantId: input.tenantId,
+    name: input.name,
+    addSymbols: input.addSymbols,
+    addEntries: input.addEntries,
+    removeSymbols: input.removeSymbols,
+    dedupe: input.dedupe,
+    riskProfile: input.riskProfile,
+    outlook: input.outlook
   });
 }
 
@@ -2889,11 +2976,7 @@ export async function adminEnsurePortfolioWatchlist(portfolioId: string): Promis
   }
   const ownerId = portfolioOwnerUserIdString(portfolio.userId);
   const tenantId = portfolioTenantIdString(portfolio);
-  const existing = await getPortfolioWatchlist({
-    userId: ownerId,
-    portfolioId,
-    tenantId
-  });
+  const existing = await getUserWatchlist({ userId: ownerId, tenantId });
   if (existing) {
     return existing;
   }
@@ -2910,8 +2993,7 @@ export async function adminEnsurePortfolioWatchlist(portfolioId: string): Promis
   };
   const watchlistInsertFilter = strictWriteTenantFilter(
     {
-      userId: ownerId,
-      portfolioId: portfolio._id
+      userId: ownerId
     },
     tenantId
   );
@@ -2920,23 +3002,14 @@ export async function adminEnsurePortfolioWatchlist(portfolioId: string): Promis
     {
       $setOnInsert: {
         userId: ownerId,
-        portfolioId: portfolio._id,
         createdAt: now
       },
       $set: watchlistSetFields
     },
     { upsert: true }
   );
-  await bumpPortfolioWorkspaceContentRev({
-    userId: ownerId,
-    portfolioId,
-    tenantId
-  });
-  return getPortfolioWatchlist({
-    userId: ownerId,
-    portfolioId,
-    tenantId
-  });
+  await bumpWorkspaceContentRevForAllUserPortfolios({ userId: ownerId, tenantId });
+  return getUserWatchlist({ userId: ownerId, tenantId });
 }
 
 export async function provisionDefaultPortfolioForUser(
@@ -3047,8 +3120,7 @@ export async function provisionDefaultPortfolioForUser(
     );
     await db.collection<Watchlist>(collections.watchlists).updateMany(
       {
-        ...userIdQuery(input.userId),
-        portfolioId: portfolio._id,
+        ...userWatchlistSessionScopeFilter(input.userId, input.tenantId),
         $or: [{ tenantId: { $exists: false } }, { tenantId: { $type: "null" } }]
       } as Filter<Watchlist>,
       { $set: { tenantId: tenantObjectId, updatedAt: now } }
@@ -3183,11 +3255,7 @@ export async function provisionDefaultPortfolioForUser(
     { $set: { outlook: DEFAULT_PROVISION_ACCOUNT_OUTLOOK, updatedAt: now } }
   );
 
-  const watchlistLookupFilter = userWatchlistsForPortfolioSessionScopeFilter(
-    input.userId,
-    portfolio._id,
-    input.tenantId
-  );
+  const watchlistLookupFilter = userWatchlistSessionScopeFilter(input.userId, input.tenantId);
   const existingWatchlist = await db
     .collection<Watchlist>(collections.watchlists)
     .findOne(watchlistLookupFilter);
@@ -3228,8 +3296,7 @@ export async function provisionDefaultPortfolioForUser(
   } else {
     const watchlistInsertFilter = strictWriteTenantFilter(
       {
-        userId: input.userId,
-        portfolioId: portfolio._id
+        userId: input.userId
       },
       input.tenantId
     );
@@ -3238,7 +3305,6 @@ export async function provisionDefaultPortfolioForUser(
       {
         $setOnInsert: {
           userId: input.userId,
-          portfolioId: portfolio._id,
           createdAt: now
         },
         $set: watchlistSetForInsert
@@ -3988,16 +4054,28 @@ export async function adminDeletePortfolio(portfolioId: string): Promise<boolean
   }
   const db = await getDb();
   const pid = portfolio._id;
-  const uid = userIdQuery(portfolioOwnerUserIdString(portfolio.userId));
+  const ownerHex = portfolioOwnerUserIdString(portfolio.userId);
+  const tenantStr = portfolioTenantIdString(portfolio);
+  const uid = userIdQuery(ownerHex);
   const baseFilter: Record<string, unknown> = { portfolioId: pid, ...uid };
   await db.collection<Position>(collections.positions).deleteMany(baseFilter);
   await db.collection<Recommendation>(collections.recommendations).deleteMany(baseFilter);
   await db.collection<PortfolioAlert>(collections.portfolioAlerts).deleteMany(baseFilter);
   await db.collection<PortfolioDeliveryChannel>(collections.portfolioDeliveryChannels).deleteMany(baseFilter);
   await db.collection<Account>(collections.accounts).deleteMany(baseFilter);
-  await db.collection<Watchlist>(collections.watchlists).deleteMany(baseFilter);
   const res = await db.collection<Portfolio>(collections.portfolios).deleteOne({ _id: pid });
-  return (res.deletedCount ?? 0) === 1;
+  const deleted = (res.deletedCount ?? 0) === 1;
+  if (deleted) {
+    const remaining = await db.collection<Portfolio>(collections.portfolios).countDocuments(
+      userPortfoliosInSessionScopeFilter(ownerHex, tenantStr || undefined)
+    );
+    if (remaining === 0) {
+      await db
+        .collection<Watchlist>(collections.watchlists)
+        .deleteMany(userWatchlistSessionScopeFilter(ownerHex, tenantStr || undefined));
+    }
+  }
+  return deleted;
 }
 
 /** Deletes every portfolio owned by `userId` (hex), including nested accounts/positions/etc. */

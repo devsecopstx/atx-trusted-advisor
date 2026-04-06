@@ -5,7 +5,7 @@ import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
     getPortfolioByIdForSessionUser,
-    getPortfolioWatchlist,
+    getUserWatchlist,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
@@ -186,9 +186,8 @@ async function buildPreloadFromPortfolio(
       : [];
   const counts = positionCountsByAccountId(positions);
 
-  const watchlist = await getPortfolioWatchlist({
+  const watchlist = await getUserWatchlist({
     userId: ctx.userId,
-    portfolioId,
     tenantId: ctx.tenantId
   });
 

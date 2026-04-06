@@ -1,33 +1,29 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdminPortfolioForApi } from "@/lib/admin-portfolio-access";
-import { requireAdminSession } from "@/lib/api-auth";
-import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
+import { requireSessionUser } from "@/lib/auth";
 import {
-    adminEnsurePortfolioWatchlist,
-    getPortfolioWatchlist,
-    mutatePortfolioWatchlistSymbols
+    ensureUserWatchlistForSessionUser,
+    mutateUserWatchlistSymbols
 } from "@/modules/core-admin/repository";
 import {
     accountOutlookValues,
-    parseAccountOutlook,
-    type Portfolio,
     type Watchlist,
     type WatchlistSymbol
 } from "@/modules/core-admin/types";
-import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
-
-type RouteContext = {
-  params: Promise<{ portfolioId: string }>;
-};
+import {
+    LOOKUP_ROUTE,
+    lookupSymbols,
+    type SymbolLookupResult
+} from "@/modules/watchlist/yahoo-symbol-lookup";
 
 const watchlistAddEntrySchema = z.object({
   symbol: z.string().trim().min(1).max(32),
   lineType: z.union([z.string().trim().max(128), z.null()]).optional(),
   strategy: z.union([z.string().trim().max(512), z.null()]).optional(),
   quantity: z.union([z.number().finite(), z.null()]).optional(),
-  entryPrice: z.union([z.number().finite(), z.null()]).optional()
+  entryPrice: z.union([z.number().finite(), z.null()]).optional(),
+  priceAlertMinAbsMovePercent: z.union([z.number().min(0.1).max(100), z.null()]).optional()
 });
 
 const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);
@@ -35,6 +31,7 @@ const deskOutlookEnum = z.enum(accountOutlookValues);
 
 const patchBodySchema = z
   .object({
+    name: z.string().trim().min(1).max(128).optional(),
     addSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
     addEntries: z.array(watchlistAddEntrySchema).max(20).optional(),
     removeSymbols: z.array(z.string().trim().min(1).max(32)).max(20).optional(),
@@ -44,6 +41,7 @@ const patchBodySchema = z
   })
   .refine(
     (data) =>
+      data.name !== undefined ||
       Boolean(data.addSymbols?.length) ||
       Boolean(data.addEntries?.length) ||
       Boolean(data.removeSymbols?.length) ||
@@ -52,7 +50,7 @@ const patchBodySchema = z
       data.outlook !== undefined,
     {
       message:
-        "Provide addSymbols, addEntries, removeSymbols, dedupe: true, riskProfile, or outlook"
+        "Provide name, addSymbols, addEntries, removeSymbols, dedupe: true, riskProfile, or outlook"
     }
   );
 
@@ -64,84 +62,89 @@ function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
     ...(item.strategy !== undefined ? { strategy: item.strategy } : {}),
     ...(item.quantity !== undefined ? { quantity: item.quantity } : {}),
     ...(item.entryPrice !== undefined ? { entryPrice: item.entryPrice } : {}),
+    ...(item.priceAlertMinAbsMovePercent !== undefined
+      ? { priceAlertMinAbsMovePercent: item.priceAlertMinAbsMovePercent }
+      : {}),
     ...(item.lastPrice !== undefined ? { lastPrice: item.lastPrice } : {}),
     ...(item.lastUpdatedAt ? { lastUpdatedAt: item.lastUpdatedAt.toISOString() } : {})
   };
 }
 
-function portfolioTenantIdStringFromPortfolio(p: Portfolio): string | undefined {
-  if (!p._id) return undefined;
-  return p.tenantId?.toHexString();
+function toIsoSymbolRows(watchlist: Watchlist) {
+  return (watchlist.symbols ?? []).map(watchlistSymbolToJsonRow);
 }
 
-function serializeWatchlistPayload(watchlist: Watchlist, portfolioIdForApi: string) {
+async function buildJsonPayload(
+  watchlist: Watchlist,
+  quotes: boolean
+): Promise<Record<string, unknown>> {
+  const symbols = toIsoSymbolRows(watchlist);
+  const symbolsDetailed = symbols;
+
+  let symbolsWithQuotes:
+    | Array<{
+        symbol: string;
+        addedAt: string;
+        lineType?: string;
+        strategy?: string;
+        quantity?: number;
+        entryPrice?: number;
+        priceAlertMinAbsMovePercent?: number;
+        lastPrice?: number;
+        lastUpdatedAt?: string;
+        quote: SymbolLookupResult | null;
+      }>
+    | undefined;
+
+  const rawSymbols = watchlist.symbols ?? [];
+  if (quotes) {
+    const map = await lookupSymbols(rawSymbols.map((s) => s.symbol));
+    symbolsWithQuotes = rawSymbols.map((s) => ({
+      ...watchlistSymbolToJsonRow(s),
+      quote: map.get(s.symbol) ?? null
+    }));
+  }
+
   return {
     data: {
-      _id: watchlist._id?.toHexString(),
-      userId: watchlist.userId,
-      portfolioId: portfolioIdForApi,
-      name: watchlist.name,
-      isDefault: watchlist.isDefault,
-      riskProfile: watchlist.riskProfile ?? null,
-      outlook: parseAccountOutlook(watchlist.outlook),
-      symbols: (watchlist.symbols ?? []).map(watchlistSymbolToJsonRow),
-      createdAt: watchlist.createdAt.toISOString(),
-      updatedAt: watchlist.updatedAt.toISOString()
+      ...watchlist,
+      symbols,
+      symbolsDetailed,
+      ...(symbolsWithQuotes ? { symbolsWithQuotes } : {})
+    },
+    metadata: {
+      lookupRoute: LOOKUP_ROUTE,
+      symbolLookupEnabled: quotes,
+      scope: "user"
     }
   };
 }
 
-export async function GET(request: Request, context: RouteContext) {
-  const proxied = await proxyAdminUsersRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
-  const session = await requireAdminSession();
+export async function GET(request: Request) {
+  const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }
 
-  const { portfolioId } = await context.params;
-  const portfolio = await requireAdminPortfolioForApi(portfolioId, session);
-  if (portfolio instanceof NextResponse) {
-    return portfolio;
-  }
-
-  const ownerUserId = normalizeMongoUserIdHex(portfolio.userId) ?? "";
-  let watchlist = await getPortfolioWatchlist({
-    userId: ownerUserId,
-    portfolioId,
-    tenantId: portfolioTenantIdStringFromPortfolio(portfolio)
+  const quotes = new URL(request.url).searchParams.get("quotes") === "1";
+  const watchlist = await ensureUserWatchlistForSessionUser({
+    userId: session.userId,
+    tenantId: session.tenantId
   });
-  if (!watchlist) {
-    watchlist = await adminEnsurePortfolioWatchlist(portfolioId);
-  }
   if (!watchlist) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
 
-  return NextResponse.json(serializeWatchlistPayload(watchlist, portfolioId));
+  const payload = await buildJsonPayload(watchlist, quotes);
+  return NextResponse.json(payload);
 }
 
-export async function PATCH(request: Request, context: RouteContext) {
-  const proxied = await proxyAdminUsersRequestToBackend(request);
-  if (proxied) {
-    return proxied;
-  }
-
-  const session = await requireAdminSession();
+export async function PATCH(request: Request) {
+  const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
   }
 
-  const { portfolioId } = await context.params;
-  const portfolio = await requireAdminPortfolioForApi(portfolioId, session);
-  if (portfolio instanceof NextResponse) {
-    return portfolio;
-  }
-
-  const tenantId = portfolioTenantIdStringFromPortfolio(portfolio);
   let json: unknown;
   try {
     json = await request.json();
@@ -157,23 +160,18 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  const ownerUserId = normalizeMongoUserIdHex(portfolio.userId) ?? "";
-  let ensured = await getPortfolioWatchlist({
-    userId: ownerUserId,
-    portfolioId,
-    tenantId
+  const ensured = await ensureUserWatchlistForSessionUser({
+    userId: session.userId,
+    tenantId: session.tenantId
   });
-  if (!ensured) {
-    ensured = await adminEnsurePortfolioWatchlist(portfolioId);
-  }
   if (!ensured) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
 
-  const updated = await mutatePortfolioWatchlistSymbols({
-    userId: ownerUserId,
-    portfolioId,
-    tenantId,
+  const updated = await mutateUserWatchlistSymbols({
+    userId: session.userId,
+    tenantId: session.tenantId,
+    name: parsed.data.name,
     addSymbols: parsed.data.addSymbols,
     addEntries: parsed.data.addEntries,
     removeSymbols: parsed.data.removeSymbols,
@@ -186,5 +184,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
 
-  return NextResponse.json(serializeWatchlistPayload(updated, portfolioId));
+  const quotes = new URL(request.url).searchParams.get("quotes") === "1";
+  const payload = await buildJsonPayload(updated, quotes);
+  return NextResponse.json(payload);
 }

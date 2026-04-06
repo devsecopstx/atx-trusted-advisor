@@ -273,11 +273,40 @@ export type AtxfinanceBackendBff = {
   proxyRequest(request: Request): Promise<Response | null>;
 };
 
+function normalizeBffOrigin(origin: string): string {
+  return origin.trim().replace(/\/+$/, "").toLowerCase();
+}
+
+/** Set after first warn — avoid log spam when every request would self-proxy. */
+let bffSelfOriginWarned = false;
+
+/**
+ * When `ATXFINANCE_BACKEND_ORIGIN` equals the incoming request's public origin, proxying would make Next
+ * `fetch` itself (429, empty/wrong data). Refuse and let handlers fall back to Next + Mongo where supported.
+ */
+export function isBackendOriginSameAsRequestOrigin(request: Request, backendOrigin: string): boolean {
+  try {
+    return normalizeBffOrigin(new URL(request.url).origin) === normalizeBffOrigin(backendOrigin);
+  } catch {
+    return false;
+  }
+}
+
 async function proxyRequestWithOrigin(
   request: Request,
   base: string | undefined
 ): Promise<Response | null> {
   if (!base) {
+    return null;
+  }
+  if (isBackendOriginSameAsRequestOrigin(request, base)) {
+    if (!bffSelfOriginWarned) {
+      bffSelfOriginWarned = true;
+      console.warn(
+        "[bff] ATXFINANCE_BACKEND_ORIGIN matches this app host — refusing self-proxy. " +
+          "Use the Spring Cloud Run HTTPS URL (second service), not the Next app URL (e.g. not the same as PROD_BASE_URL)."
+      );
+    }
     return null;
   }
   const u = new URL(request.url);
@@ -361,29 +390,28 @@ function isLoopbackBackendOrigin(origin: string): boolean {
   }
 }
 
+function isDevLikeNodeEnv(): boolean {
+  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  return nodeEnv === "development" || nodeEnv === "test";
+}
+
 /**
- * When `ATXFINANCE_BACKEND_ORIGIN` is set, `/api/admin/users*` may proxy to Spring.
+ * Spring BFF gate for admin users, app-user portfolios, strategy-options, admin access-requests, etc.
  *
- * - **Remote Spring (non-loopback host):** proxy is **on** unless `ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=false`.
- * - **Loopback (`localhost` / `127.0.0.1`) + `development` or `test`:** proxy is **off** by default so Manage Users
- *   uses the same Mongo as Next auth (avoids an empty table when the JVM sees a different DB).
- * - **Force local JVM:** set `ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=true`.
+ * - **`ATXFINANCE_BACKEND_ORIGIN` unset:** never proxy (Next + Mongo).
+ * - **Loopback origin + `NODE_ENV` `development` or `test`:** never proxy (local Next uses the same Mongo as auth).
+ * - **Otherwise:** proxy when origin is set (staging/prod JVM URL — must not be the Next app’s own public URL).
+ *
+ * No separate `ATXFINANCE_BACKEND_PROXY_*` env vars — disable BFF by unsetting **`ATXFINANCE_BACKEND_ORIGIN`** or using
+ * loopback + dev above. For local JVM on `127.0.0.1:8080`, run a **production** Next build/serve or use a non-loopback
+ * host in `ORIGIN` (e.g. LAN IP) if you need BFF from `next dev`.
  */
 export function shouldProxyAdminUsersToBackend(): boolean {
   const origin = getAtxfinanceBackendOrigin();
   if (!origin) {
     return false;
   }
-  const v = process.env.ATXFINANCE_BACKEND_PROXY_ADMIN_USERS?.trim().toLowerCase();
-  if (v === "0" || v === "false" || v === "no" || v === "off") {
-    return false;
-  }
-  if (v === "1" || v === "true" || v === "yes" || v === "on") {
-    return true;
-  }
-  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
-  const devLike = nodeEnv === "development" || nodeEnv === "test";
-  if (devLike && isLoopbackBackendOrigin(origin)) {
+  if (isDevLikeNodeEnv() && isLoopbackBackendOrigin(origin)) {
     return false;
   }
   return true;
@@ -399,16 +427,33 @@ export async function proxyAdminUsersRequestToBackend(request: Request): Promise
 
 /**
  * App-user session data plane (portfolios, positions, recommendations, strategy-jobs, self access-request,
- * user-feedback): same gate as {@link shouldProxyAdminUsersToBackend} — **`ATXFINANCE_BACKEND_PROXY_ADMIN_USERS`**
- * (loopback + dev skips Spring by default). No portfolio-only env var.
+ * user-feedback): same gate as {@link shouldProxyAdminUsersToBackend}.
  */
 export function shouldProxyPortfolioRequestsToBackend(): boolean {
   return shouldProxyAdminUsersToBackend();
 }
 
+/**
+ * App-user **`GET`/`PATCH /api/portfolios/{portfolioId}/watchlist`** — **always Next + Mongo**.
+ *
+ * Spring exposes parity HTTP, but the BFF does not forward: Kotlin path omitted Yahoo quotes and could 404 when
+ * session/tenant/portfolio resolution differed from Next (`ensurePortfolioWatchlistForUser`). Same pattern as
+ * admin scheduled tasks staying on Next.
+ */
+export function shouldProxyAppUserPortfolioWatchlistToBackend(): boolean {
+  return false;
+}
+
+function isAppUserPortfolioWatchlistPath(pathname: string): boolean {
+  return /^\/api\/portfolios\/[^/]+\/watchlist\/?$/.test(pathname);
+}
+
 /** Spring BFF for {@link shouldProxyPortfolioRequestsToBackend} routes; `null` → Next Mongo handlers. */
 export async function proxyPortfolioRequestToBackend(request: Request): Promise<Response | null> {
   if (!shouldProxyPortfolioRequestsToBackend()) {
+    return null;
+  }
+  if (!shouldProxyAppUserPortfolioWatchlistToBackend() && isAppUserPortfolioWatchlistPath(new URL(request.url).pathname)) {
     return null;
   }
   return proxyRequestToBackend(request);
@@ -421,30 +466,17 @@ export function getStrategyJobsBffUnavailableMessage(): string {
   if (!getAtxfinanceBackendOrigin()) {
     return "Strategy orchestrator runs in atxfinance-backend (Spring). Set ATXFINANCE_BACKEND_ORIGIN to the JVM base URL (e.g. http://127.0.0.1:8080).";
   }
-  return "Strategy jobs proxy is off. For Spring on localhost, set ATXFINANCE_BACKEND_PROXY_ADMIN_USERS=true so Next forwards /api/strategy-jobs to the JVM (see .env.example).";
+  return "Strategy jobs BFF is off: with ATXFINANCE_BACKEND_ORIGIN on localhost/127.0.0.1, Next skips proxy in development/test so local Mongo matches auth. Use a production Next run, a non-loopback ORIGIN, or a remote backend URL to hit Spring from this app.";
 }
 
 /**
  * `/api/admin/tasks*`, `/api/admin/task-runs`, `/api/admin/scheduler/tick`.
  *
- * - **No origin:** never proxy.
- * - **Explicit** `ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS` (`true`/`false`/…): wins.
- * - **Unset:** follows {@link shouldProxyAdminUsersToBackend} so Admin → Tasks stays aligned with Manage Users
- *   (avoids tasks on Spring while other admin routes use Next, or the reverse).
+ * **Always Next + Mongo** — the BFF never forwards these to Spring (same DB as `seed:admin` / `ops:scheduled-tasks:sync`).
+ * Spring still exposes parity HTTP for JVM-native callers; see `atx-docs/sre-ops/api-consolidation-spring-backend.md`.
  */
 export function shouldProxyAdminScheduledTasksToBackend(): boolean {
-  const origin = getAtxfinanceBackendOrigin();
-  if (!origin) {
-    return false;
-  }
-  const v = process.env.ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS?.trim().toLowerCase();
-  if (v === "0" || v === "false" || v === "no" || v === "off") {
-    return false;
-  }
-  if (v === "1" || v === "true" || v === "yes" || v === "on") {
-    return true;
-  }
-  return shouldProxyAdminUsersToBackend();
+  return false;
 }
 
 /** Admin scheduled-task BFF → Spring; returns `null` when proxy disabled. */
@@ -458,30 +490,10 @@ export async function proxyAdminScheduledTasksRequestToBackend(
 }
 
 /**
- * `/api/strategy-options*` (chain + expirations) — allows xOptions to stay Next-local when
- * backend strategy endpoints are unavailable or intentionally split.
- *
- * - **Remote Spring:** proxy on unless `ATXFINANCE_BACKEND_PROXY_STRATEGY_OPTIONS=false`.
- * - **Loopback + development|test:** proxy **off** unless `ATXFINANCE_BACKEND_PROXY_STRATEGY_OPTIONS=true`.
+ * `/api/strategy-options*` — same BFF gate as {@link shouldProxyAdminUsersToBackend}.
  */
 export function shouldProxyStrategyOptionsToBackend(): boolean {
-  const origin = getAtxfinanceBackendOrigin();
-  if (!origin) {
-    return false;
-  }
-  const v = process.env.ATXFINANCE_BACKEND_PROXY_STRATEGY_OPTIONS?.trim().toLowerCase();
-  if (v === "0" || v === "false" || v === "no" || v === "off") {
-    return false;
-  }
-  if (v === "1" || v === "true" || v === "yes" || v === "on") {
-    return true;
-  }
-  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
-  const devLike = nodeEnv === "development" || nodeEnv === "test";
-  if (devLike && isLoopbackBackendOrigin(origin)) {
-    return false;
-  }
-  return true;
+  return shouldProxyAdminUsersToBackend();
 }
 
 /** Strategy-options BFF → Spring; returns `null` when proxy disabled. */
@@ -495,21 +507,9 @@ export async function proxyStrategyOptionsRequestToBackend(
 }
 
 /**
- * `/api/admin/access-requests*`. No origin → never proxy. Explicit
- * `ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS` wins; **unset** → {@link shouldProxyAdminUsersToBackend}.
+ * `/api/admin/access-requests*` — same BFF gate as {@link shouldProxyAdminUsersToBackend}.
  */
 export function shouldProxyAdminAccessRequestsToBackend(): boolean {
-  const origin = getAtxfinanceBackendOrigin();
-  if (!origin) {
-    return false;
-  }
-  const v = process.env.ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS?.trim().toLowerCase();
-  if (v === "0" || v === "false" || v === "no" || v === "off") {
-    return false;
-  }
-  if (v === "1" || v === "true" || v === "yes" || v === "on") {
-    return true;
-  }
   return shouldProxyAdminUsersToBackend();
 }
 
@@ -524,22 +524,10 @@ export async function proxyAdminAccessRequestsRequestToBackend(
 }
 
 /**
- * Tenant-level `/api/admin/delivery-channels*` (portfolio-nested uses the same helper). No origin → never proxy.
- * Explicit `ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS` wins; **unset** → {@link shouldProxyAdminUsersToBackend}.
+ * `/api/admin/delivery-channels*` (tenant + portfolio-nested). **Always Next + Mongo** — BFF never forwards to Spring.
  */
 export function shouldProxyAdminDeliveryChannelsToBackend(): boolean {
-  const origin = getAtxfinanceBackendOrigin();
-  if (!origin) {
-    return false;
-  }
-  const v = process.env.ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS?.trim().toLowerCase();
-  if (v === "0" || v === "false" || v === "no" || v === "off") {
-    return false;
-  }
-  if (v === "1" || v === "true" || v === "yes" || v === "on") {
-    return true;
-  }
-  return shouldProxyAdminUsersToBackend();
+  return false;
 }
 
 /** Tenant admin delivery-channels BFF → Spring; returns `null` when proxy disabled. */
@@ -553,19 +541,10 @@ export async function proxyAdminDeliveryChannelsRequestToBackend(
 }
 
 /**
- * `/api/personas*` — **opt-in** proxy to Spring.
- *
- * Default is **off** so Admin Hub persona list / CRUD / seed / xAI sync use the same Mongo as Next. When origin is set,
- * Spring would otherwise answer with a different DB (empty list, broken tenant default + user assignment). Set
- * `ATXFINANCE_BACKEND_PROXY_PERSONAS=true` only when the JVM is wired to the same persona store.
+ * `/api/personas*` — **always Next + Mongo** (BFF never proxies personas; avoids JVM/Next persona store drift).
  */
 export function shouldProxyPersonasRequestsToBackend(): boolean {
-  const origin = getAtxfinanceBackendOrigin();
-  if (!origin) {
-    return false;
-  }
-  const v = process.env.ATXFINANCE_BACKEND_PROXY_PERSONAS?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes" || v === "on";
+  return false;
 }
 
 /** Personas BFF → Spring; returns `null` unless {@link shouldProxyPersonasRequestsToBackend} is true. */

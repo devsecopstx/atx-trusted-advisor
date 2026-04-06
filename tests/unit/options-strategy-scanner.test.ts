@@ -60,7 +60,8 @@ vi.mock("@/lib/mongodb", () => ({
 vi.mock("@/modules/core-admin/repository", () => ({
   adminListOptionsStrategySummaries: repoMocks.listStrategies,
   adminListOptionsStrategyPreferenceSummaries: repoMocks.listPrefs,
-  adminListOptionsStrategyFilterRows: repoMocks.listFilterRows
+  adminListOptionsStrategyFilterRows: repoMocks.listFilterRows,
+  getDefaultPortfolio: vi.fn().mockResolvedValue(null)
 }));
 
 import { processOptionRecommendationsPass } from "@/modules/strategy-options/options-scanner-engine";
@@ -79,7 +80,9 @@ const emptyRecPass = {
   fromPositions: 0,
   fromWatchlist: 0,
   chainBatches: 0,
-  rankedSignals: []
+  rankedSignals: [],
+  watchlistRowsAdded: 0,
+  watchlistRowsUpdated: 0
 };
 
 describe("runOptionsStrategyScanner", () => {
@@ -153,7 +156,9 @@ describe("runOptionsStrategyScanner", () => {
       prefsFilterActive: false,
       rankTopPreview: null,
       chainBatches: 0,
-      durationSeconds: expect.any(Number)
+      durationSeconds: expect.any(Number),
+      watchlistRowsAdded: 0,
+      watchlistRowsUpdated: 0
     });
     expect(calendarMocks.updateTenantMarketCalendarSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({

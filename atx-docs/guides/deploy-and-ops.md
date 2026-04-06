@@ -9,6 +9,7 @@ This is the deploy/ops entrypoint for staging and production workflows.
 - `atx-docs/sre-ops/secret-rotation.md` (key/secret lifecycle runbook)
 - `atx-docs/sre-ops/auth-oauth-spring-dual-run.md` (OAuth cutover/rollback considerations)
 - `atx-docs/sre-ops/api-consolidation-spring-backend.md` (BFF migration impact on deploy posture)
+- `atx-docs/sre-ops/gcp-prod-two-service-model.md` (**prod** Next `xfinance-core-prod` + Spring `atxfinance-backend-prod`, GitHub vars, domain, retire duplicate services)
 - `.cursor/agents/sre.md` (manual deploy, Stripe/Google hotfixes, release notes on version bump)
 
 ## Promotion model
@@ -18,7 +19,7 @@ This is the deploy/ops entrypoint for staging and production workflows.
 - **Production** Cloud Run: manual **`workflow_dispatch`** via **Deploy Cloud Run Production** (separate workflow).
 - Health checks and rollback paths apply after every deploy; see **Rollback options** below.
 
-**Local bypass (no GitHub Actions):** from repo root, with `gcloud` auth and `.env.stage` / `.env.prod` containing project, region, service name, and public base URL — `bash scripts/ops/deploy-cloud-run-from-env.sh --staging` (or `npm run ops:deploy:cloud-run:staging`). See `.cursor/rules/sre-gcp-deployment.md` § *Local deploy to Cloud Run*.
+**GCP CLI deploy (canonical if you skip GitHub):** from repo root, with `gcloud` auth and **`.env.stage`** / **`.env.prod`** (project, region, **`CLOUD_RUN_SERVICE_*`**, **`STAGING_BASE_URL`** / **`PROD_BASE_URL`**, **`ATXFINANCE_BACKEND_ORIGIN`** = Spring `https://…run.app`) — **`npm run ops:deploy:cloud-run:staging`** / **`npm run ops:deploy:cloud-run:production`** (`scripts/ops/deploy-cloud-run-from-env.sh`). Optional **`--with-ci-gate`** variants. See **`atx-docs/sre-ops/gcp-prod-two-service-model.md`** and `.cursor/rules/sre-gcp-deployment.md` § *Local deploy to Cloud Run*.
 
 ## Runtime secret model
 

@@ -85,7 +85,9 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `GET /api/portfolios/default`
 - `GET /api/portfolios/:portfolioId/accounts`
 - `PATCH /api/portfolios/:portfolioId/accounts/:accountId`
-- `GET /api/portfolios/:portfolioId/watchlist`
+- `GET /api/user/watchlist` — canonical **user-global** watchlist (session); optional `?quotes=1`
+- `PATCH /api/user/watchlist` — same store as portfolio-scoped routes below
+- `GET /api/portfolios/:portfolioId/watchlist` — shim: requires owned `portfolioId`, reads/writes user watchlist
 - `PATCH /api/portfolios/:portfolioId/watchlist`
 - `GET /api/positions?portfolioId=&accountId=`
 - `POST /api/positions`

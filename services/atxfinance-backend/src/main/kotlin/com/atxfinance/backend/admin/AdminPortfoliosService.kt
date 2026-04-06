@@ -277,10 +277,22 @@ class AdminPortfoliosService(
         mongoTemplate.remove(Query.query(pf), "portfolio_alerts")
         mongoTemplate.remove(Query.query(pf), "portfolio_delivery_channels")
         mongoTemplate.remove(Query.query(pf), props.accountsCollection)
-        mongoTemplate.remove(Query.query(pf), props.watchlistsCollection)
         val res = mongoTemplate.remove(Query.query(Criteria.where("_id").`is`(pid)), props.portfoliosCollection)
         val ok = res.deletedCount == 1L
         if (ok) {
+            val tenantHex = portfolioTenantIdHex(portfolio)
+            val countCrit =
+                PortfolioMongoFilter.withTenantScopeCriteria(
+                    PortfolioMongoFilter.userIdCriteria(ownerId),
+                    tenantHex,
+                )
+            val remaining = mongoTemplate.count(Query.query(countCrit), props.portfoliosCollection)
+            if (remaining == 0L) {
+                mongoTemplate.remove(
+                    Query.query(PortfolioMongoFilter.watchlistReadCriteriaForUser(ownerId, tenantHex)),
+                    props.watchlistsCollection,
+                )
+            }
             auditEventService.insertEvent(
                 AdminPortfolioAudit.ENTITY_TYPE,
                 portfolioId,

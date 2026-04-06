@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 
 import type { Position, PositionOptionType, Watchlist, WatchlistSymbol } from "@/modules/core-admin/types";
+import { normalizeMongoUserIdHex } from "@/modules/identity/repository";
 
 export type OptionSide = "long" | "short";
 
@@ -10,6 +11,8 @@ export type OptionScanTarget = {
   dedupKey: string;
   source: "position" | "watchlist";
   portfolioId: ObjectId;
+  /** Owner user id (hex) when `source === "watchlist"` — for user-global watchlist writes. */
+  watchlistOwnerUserId?: string;
   accountId?: ObjectId;
   underlying: string;
   expYmd: string;
@@ -62,6 +65,29 @@ export function parseOccOptionSymbol(raw: string): {
     optionType: cp === "P" ? "put" : "call",
     strike: strikeInt / 1000
   };
+}
+
+/** Inverse of {@link parseOccOptionSymbol} for Yahoo-style compact OCC tickers. */
+export function buildCompactOccOptionSymbol(input: {
+  underlying: string;
+  expYmd: string;
+  strike: number;
+  optionType: PositionOptionType;
+}): string | null {
+  const u = input.underlying.trim().toUpperCase();
+  const m = input.expYmd.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m || !u) {
+    return null;
+  }
+  const yy = (Number(m[1]) % 100).toString().padStart(2, "0");
+  const yymmdd = `${yy}${m[2]}${m[3]}`;
+  const strikeInt = Math.round(input.strike * 1000);
+  if (!Number.isFinite(strikeInt) || strikeInt < 0) {
+    return null;
+  }
+  const strikeStr = strikeInt.toString().padStart(8, "0");
+  const cp = input.optionType === "put" ? "P" : "C";
+  return `${u}${yymmdd}${cp}${strikeStr}`;
 }
 
 function expirationYmdFromDate(exp: Date | null | undefined): string | null {
@@ -120,11 +146,20 @@ function watchlistRowEligible(row: WatchlistSymbol): boolean {
   return false;
 }
 
-/** Build scan targets from watchlists (option / strategy rows with parseable OCC symbols). */
-export function watchlistsToOptionScanTargets(watchlists: Watchlist[], limit: number): OptionScanTarget[] {
+/** Build scan targets from user watchlists; `defaultPortfolioByUserId` maps owner user id → default book for recs/alerts. */
+export function watchlistsToOptionScanTargets(
+  watchlists: Watchlist[],
+  limit: number,
+  defaultPortfolioByUserId: Map<string, ObjectId>
+): OptionScanTarget[] {
   const out: OptionScanTarget[] = [];
   for (const w of watchlists) {
-    if (!w.portfolioId || !w._id) {
+    if (!w._id) {
+      continue;
+    }
+    const userKey = normalizeMongoUserIdHex(w.userId) ?? "";
+    const portfolioId = userKey ? defaultPortfolioByUserId.get(userKey) : undefined;
+    if (!portfolioId) {
       continue;
     }
     for (const row of w.symbols ?? []) {
@@ -145,7 +180,8 @@ export function watchlistsToOptionScanTargets(watchlists: Watchlist[], limit: nu
       out.push({
         dedupKey,
         source: "watchlist",
-        portfolioId: w.portfolioId,
+        portfolioId,
+        watchlistOwnerUserId: userKey,
         underlying: parsed.underlying,
         expYmd: parsed.expYmd,
         strike: parsed.strike,

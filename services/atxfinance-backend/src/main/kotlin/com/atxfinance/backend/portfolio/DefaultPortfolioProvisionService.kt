@@ -329,13 +329,7 @@ class DefaultPortfolioProvisionService(
             props.accountsCollection,
         )
 
-        val wlLookup = PortfolioMongoFilter.withTenantScopeCriteria(
-            Criteria().andOperator(
-                PortfolioMongoFilter.userIdCriteria(userId),
-                Criteria.where("portfolioId").`is`(pid),
-            ),
-            session.tenantId,
-        )
+        val wlLookup = PortfolioMongoFilter.watchlistReadCriteriaForUser(userId, session.tenantId)
         val existingWl = mongoTemplate.findOne(
             Query.query(wlLookup),
             Document::class.java,
@@ -372,18 +366,11 @@ class DefaultPortfolioProvisionService(
                 )
             }
         } else {
-            val wlUpsert = PortfolioMongoFilter.strictWriteTenantCriteria(
-                Criteria().andOperator(
-                    PortfolioMongoFilter.userIdCriteria(userId),
-                    Criteria.where("portfolioId").`is`(pid),
-                ),
-                session.tenantId,
-            )
+            val wlUpsert = PortfolioMongoFilter.watchlistStrictUpsertCriteriaForUser(userId, session.tenantId)
             mongoTemplate.upsert(
                 Query.query(wlUpsert),
                 Update()
                     .setOnInsert("userId", userId)
-                    .setOnInsert("portfolioId", pid)
                     .setOnInsert("createdAt", now)
                     .set("name", defaultWatchlistName)
                     .set("symbols", mergedSymbols)

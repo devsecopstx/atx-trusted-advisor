@@ -38,11 +38,11 @@ class AdminPortfolioWatchlistService(
         val pid = portfolio.getObjectId("_id") ?: return null
         val ownerId = portfolioUserIdString(portfolio) ?: return null
         val tenantHex = portfolioTenantIdHex(portfolio)
-        var wl = loadWatchlist(ownerId, tenantHex, pid)
+        var wl = loadWatchlist(ownerId, tenantHex)
         if (wl == null) {
-            wl = ensureWatchlistDoc(portfolio, ownerId, tenantHex, pid) ?: return null
+            wl = ensureWatchlistDoc(portfolio, ownerId, tenantHex) ?: return null
         }
-        return mapOf("data" to serializeWatchlist(wl))
+        return mapOf("data" to serializeWatchlist(wl, portfolioId))
     }
 
     fun patchWatchlist(
@@ -87,9 +87,9 @@ class AdminPortfolioWatchlistService(
             )
         }
 
-        var wl = loadWatchlist(ownerId, tenantHex, pid)
+        var wl = loadWatchlist(ownerId, tenantHex)
         if (wl == null) {
-            wl = ensureWatchlistDoc(portfolio, ownerId, tenantHex, pid) ?: return PatchResult.NotFoundWatchlist
+            wl = ensureWatchlistDoc(portfolio, ownerId, tenantHex) ?: return PatchResult.NotFoundWatchlist
         }
         val id = wl.getObjectId("_id") ?: return PatchResult.NotFoundWatchlist
 
@@ -205,7 +205,7 @@ class AdminPortfolioWatchlistService(
             session,
             details,
         )
-        return PatchResult.Ok(mapOf("data" to serializeWatchlist(reloaded)))
+        return PatchResult.Ok(mapOf("data" to serializeWatchlist(reloaded, portfolioId)))
     }
 
     sealed class PatchResult {
@@ -215,16 +215,8 @@ class AdminPortfolioWatchlistService(
         data object NotFoundWatchlist : PatchResult()
     }
 
-    private fun loadWatchlist(ownerId: String, tenantHex: String?, portfolioId: ObjectId): Document? {
-        val q = Query.query(
-            PortfolioMongoFilter.withTenantScopeCriteria(
-                Criteria().andOperator(
-                    PortfolioMongoFilter.userIdCriteria(ownerId),
-                    Criteria.where("portfolioId").`is`(portfolioId),
-                ),
-                tenantHex,
-            ),
-        )
+    private fun loadWatchlist(ownerId: String, tenantHex: String?): Document? {
+        val q = Query.query(PortfolioMongoFilter.watchlistReadCriteriaForUser(ownerId, tenantHex))
         val raw = mongoTemplate.findOne(q, Document::class.java, props.watchlistsCollection) ?: return null
         return normalizeWatchlistDoc(raw)
     }
@@ -240,24 +232,15 @@ class AdminPortfolioWatchlistService(
         portfolio: Document,
         ownerId: String,
         tenantHex: String?,
-        pid: ObjectId,
     ): Document? {
         val now = Date()
         val tenantOid = tenantHex?.let { PortfolioMongoFilter.tenantObjectId(it) }
         val symbols = WatchlistSymbolCodec.normalizeDocumentSymbols(emptyList<Any?>(), listOf(defaultSymbol))
 
-        val filter =
-            PortfolioMongoFilter.strictWriteTenantCriteria(
-                Criteria().andOperator(
-                    PortfolioMongoFilter.userIdCriteria(ownerId),
-                    Criteria.where("portfolioId").`is`(pid),
-                ),
-                tenantHex,
-            )
+        val filter = PortfolioMongoFilter.watchlistStrictUpsertCriteriaForUser(ownerId, tenantHex)
         val upsert =
             Update()
                 .setOnInsert("userId", ownerId)
-                .setOnInsert("portfolioId", pid)
                 .setOnInsert("createdAt", now)
                 .set("name", defaultWatchlistName)
                 .set("symbols", symbols)
@@ -266,10 +249,10 @@ class AdminPortfolioWatchlistService(
         tenantOid?.let { upsert.setOnInsert("tenantId", it) }
 
         mongoTemplate.upsert(Query.query(filter), upsert, props.watchlistsCollection)
-        return loadWatchlist(ownerId, tenantHex, pid)
+        return loadWatchlist(ownerId, tenantHex)
     }
 
-    private fun serializeWatchlist(watchlist: Document): Map<String, Any?> {
+    private fun serializeWatchlist(watchlist: Document, portfolioIdForApi: String): Map<String, Any?> {
         val symbolsRaw = watchlist["symbols"] as? List<*> ?: emptyList<Any?>()
         val symbolRows =
             symbolsRaw.mapNotNull { it as? Document }.map { d ->
@@ -288,7 +271,7 @@ class AdminPortfolioWatchlistService(
         return mapOf(
             "_id" to watchlist.getObjectId("_id")?.toHexString(),
             "userId" to BsonJson.value(watchlist["userId"]),
-            "portfolioId" to (watchlist.getObjectId("portfolioId")?.toHexString() ?: ""),
+            "portfolioId" to portfolioIdForApi,
             "name" to (watchlist.getString("name") ?: defaultWatchlistName),
             "isDefault" to (watchlist["isDefault"] as? Boolean ?: false),
             "riskProfile" to watchlist["riskProfile"],

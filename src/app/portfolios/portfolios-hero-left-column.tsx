@@ -94,6 +94,10 @@ export function PortfoliosHeroLeftColumn({
     ? `/import-activity?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
     : "/import-activity";
 
+  const watchlistHref = defaultPortfolioId
+    ? `/watchlist?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
+    : "/watchlist";
+
   const primarySymbol = topHoldings[0]?.symbol;
 
   return (
@@ -226,7 +230,7 @@ export function PortfoliosHeroLeftColumn({
           <Link className="portfolios-hero-left__mini-link" href="/portfolio">
             Portfolio workspace
           </Link>
-          <Link className="portfolios-hero-left__mini-link" href="/watchlist">
+          <Link className="portfolios-hero-left__mini-link" href={watchlistHref}>
             Watchlist
           </Link>
         </div>

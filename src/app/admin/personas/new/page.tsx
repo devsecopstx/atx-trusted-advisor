@@ -4,7 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-import { PersonaEditorPage } from "../ui/persona-editor-page";
+import { SimplePersonaEditor } from "../ui/simple-persona-editor";
 
 export default async function AdminCreatePersonaPage() {
   const session = await getSessionUser();
@@ -24,7 +24,7 @@ export default async function AdminCreatePersonaPage() {
         <h1 className="hero-title">Create xPersona</h1>
         <p className="hero-copy">Create a persona in a dedicated onboarding step.</p>
       </section>
-      <PersonaEditorPage defaultChatModelId={defaultChatModelId} mode="create" />
+      <SimplePersonaEditor defaultChatModelId={defaultChatModelId} mode="create" />
     </div>
   );
 }

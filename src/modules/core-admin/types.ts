@@ -410,7 +410,8 @@ export type Watchlist = {
   _id?: ObjectId;
   tenantId?: ObjectId;
   userId: string;
-  portfolioId: ObjectId;
+  /** @deprecated Legacy anchor; canonical watchlist is one per user — prefer {@link getUserWatchlist} / user-scoped APIs. */
+  portfolioId?: ObjectId;
   name: string;
   symbols: WatchlistSymbol[];
   isDefault: boolean;

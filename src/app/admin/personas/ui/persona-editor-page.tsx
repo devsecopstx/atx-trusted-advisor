@@ -434,6 +434,35 @@ export function PersonaEditorPage({
                 </div>
               </div>
               <div>
+                <label className="status-text" htmlFor="persona-collection-id">
+                  Linked collection ID
+                </label>
+                <select
+                  id="persona-collection-id"
+                  onChange={(event) => {
+                    const selectedId = event.target.value;
+                    const selectedCollection = collections.find(c => c.id === selectedId);
+                    setForm((current) => ({
+                      ...current,
+                      xaiCollectionId: selectedId,
+                      xaiCollectionName: selectedCollection?.name || ""
+                    }));
+                  }}
+                  value={form.xaiCollectionId}
+                  style={{ maxWidth: "100%" }}
+                >
+                  <option value="">No collection linked</option>
+                  {collections.map((collection) => (
+                    <option key={collection.id} value={collection.id}>
+                      {collection.name || "Unnamed collection"} ({collection.id})
+                    </option>
+                  ))}
+                </select>
+                <small className="status-text" style={{ display: "block", marginTop: "0.25rem", opacity: 0.8 }}>
+                  Select a collection to link to this persona. The display name will be auto-filled.
+                </small>
+              </div>
+              <div>
                 <label className="status-text" htmlFor="persona-collection-display-name">
                   Collection display name (optional)
                 </label>

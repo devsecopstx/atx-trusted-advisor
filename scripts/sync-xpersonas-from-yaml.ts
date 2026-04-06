@@ -365,18 +365,11 @@ async function main(): Promise<void> {
       }
       summary.docsValidated += 1;
 
-      const displayNameOverride =
-        typeof doc.xai_collection_name === "string" ? doc.xai_collection_name.trim() : "";
-      const targetDisplayName = displayNameOverride || defaultXaiCollectionName;
-      const found = findCollectionByDisplayName(collectionList, targetDisplayName);
-      if (mgmtKey && !found.id) {
-        console.warn(
-          `[seed:xpersonas] no xAI collection named "${targetDisplayName}" — ${loaded.rel} will sync without collectionId`
-        );
-      }
+      // Note: Admin seed and persona sync should not associate collections with personas.
+      // Collections should be linked by admins in the admin console post persona creation.
       const colRef = {
-        collectionId: found.id,
-        collectionDisplayName: found.name || targetDisplayName
+        collectionId: "",
+        collectionDisplayName: ""
       };
       const derived = buildYamlDerived(doc, colRef);
       const status = await syncOneViaApi(baseUrl, cookie, index, derived, mode, loaded.rel);
@@ -424,19 +417,11 @@ async function main(): Promise<void> {
       const name = String(doc.name).trim();
       const nameNormalized = name.toLowerCase();
 
-      const displayNameOverride =
-        typeof doc.xai_collection_name === "string" ? doc.xai_collection_name.trim() : "";
-      const targetDisplayName = displayNameOverride || defaultXaiCollectionName;
-      const found = findCollectionByDisplayName(collectionList, targetDisplayName);
-      if (mgmtKey && !found.id) {
-        console.warn(
-          `[seed:xpersonas] no xAI collection named "${targetDisplayName}" — ${loaded.rel} will sync without collectionId`
-        );
-      }
-
+      // Note: Admin seed and persona sync should not associate collections with personas.
+      // Collections should be linked by admins in the admin console post persona creation.
       const colRef = {
-        collectionId: found.id,
-        collectionDisplayName: found.name || targetDisplayName
+        collectionId: "",
+        collectionDisplayName: ""
       };
       const derived = buildYamlDerived(doc, colRef);
 

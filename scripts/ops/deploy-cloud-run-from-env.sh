@@ -150,7 +150,7 @@ if [[ -z "${SVC//[[:space:]]/}" ]]; then
   exit 1
 fi
 if [[ "${SVC}" == *".run.app"* ]] || [[ "${SVC}" == http://* ]] || [[ "${SVC}" == https://* ]]; then
-  echo "deploy-cloud-run-from-env: CLOUD_RUN_SERVICE_* must be the Cloud Run service name (e.g. fintech-advisor-prod), not a *.run.app URL." >&2
+  echo "deploy-cloud-run-from-env: CLOUD_RUN_SERVICE_* must be the Cloud Run service name (e.g. xfinance-core-prod), not a *.run.app URL." >&2
   exit 1
 fi
 if [[ -z "${BASE_URL//[[:space:]]/}" ]]; then
@@ -184,6 +184,12 @@ if [[ "${BACKEND_HOST}" != "localhost" && "${BACKEND_HOST}" != "127.0.0.1" && "$
     echo "deploy-cloud-run-from-env: non-local ATXFINANCE_BACKEND_ORIGIN must not include :8080 (got ${ATXFINANCE_BACKEND_ORIGIN})" >&2
     exit 1
   fi
+fi
+
+norm_origin() { printf '%s' "$1" | sed 's:/*$::' | tr '[:upper:]' '[:lower:]'; }
+if [ "$(norm_origin "${ATXFINANCE_BACKEND_ORIGIN}")" = "$(norm_origin "${BASE_URL}")" ]; then
+  echo "deploy-cloud-run-from-env: ATXFINANCE_BACKEND_ORIGIN must be the Spring backend URL, not the Next public base URL (${BASE_URL})." >&2
+  exit 1
 fi
 
 echo "deploy-cloud-run-from-env: target=${TARGET} project=${PROJECT} service=${SVC} region=${REGION}"
@@ -250,11 +256,7 @@ for pair in \
   "STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:${STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:-}" \
   "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}" \
   "SMTP_SECURE:${SMTP_SECURE:-}" \
-  "ATXFINANCE_BACKEND_PROXY_ADMIN_USERS:${ATXFINANCE_BACKEND_PROXY_ADMIN_USERS:-}" \
-  "ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS:${ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS:-}" \
-  "ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS:${ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS:-}" \
-  "ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS:${ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS:-}" \
-  "ATXFINANCE_BACKEND_PROXY_STRATEGY_OPTIONS:${ATXFINANCE_BACKEND_PROXY_STRATEGY_OPTIONS:-}"; do
+  ; do
   k="${pair%%:*}"
   v="${pair#*:}"
   if [[ -n "${v//[[:space:]]/}" ]]; then

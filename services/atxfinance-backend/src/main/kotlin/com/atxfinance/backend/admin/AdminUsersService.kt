@@ -260,9 +260,10 @@ class AdminUsersService(
             mongoTemplate.remove(Query.query(pf), props.portfolioAlertsCollection)
             mongoTemplate.remove(Query.query(pf), props.portfolioDeliveryChannelsCollection)
             mongoTemplate.remove(Query.query(pf), props.accountsCollection)
-            mongoTemplate.remove(Query.query(pf), props.watchlistsCollection)
             mongoTemplate.remove(Query.query(Criteria.where("_id").`is`(pid)), props.portfoliosCollection)
         }
+
+        mongoTemplate.remove(Query.query(uidCrit), props.watchlistsCollection)
 
         mongoTemplate.remove(Query.query(Criteria.where("userId").`is`(oid)), props.coreTenantMembershipsCollection)
         mongoTemplate.remove(

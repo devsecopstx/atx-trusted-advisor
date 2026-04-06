@@ -13,6 +13,17 @@ const DEFAULT_WATCHLIST_NAME = "Default Watchlist";
 const DEFAULT_ACCOUNT_TYPE = "fidelity";
 
 async function ensurePortfolioIndexes(db) {
+  const wl = db.collection("portfolio_watchlists");
+  try {
+    await wl.dropIndex("uniq_watchlist_per_portfolio");
+  } catch {
+    /* noop */
+  }
+  try {
+    await wl.dropIndex("idx_watchlists_snapshot_portfolio_user");
+  } catch {
+    /* noop */
+  }
   await Promise.all([
     db.collection(TENANT_PORTFOLIO_COLLECTION).createIndex(
       { tenantId: 1, userId: 1, isDefault: 1 },
@@ -41,13 +52,14 @@ async function ensurePortfolioIndexes(db) {
         name: "uniq_default_account_per_portfolio"
       }
     ),
-    db.collection("portfolio_watchlists").createIndex(
-      { tenantId: 1, portfolioId: 1 },
+    wl.createIndex(
+      { tenantId: 1, userId: 1 },
       {
         unique: true,
-        name: "uniq_watchlist_per_portfolio"
+        name: "uniq_watchlist_per_user"
       }
-    )
+    ),
+    wl.createIndex({ userId: 1, tenantId: 1 }, { name: "idx_watchlists_user_tenant" })
   ]);
 }
 

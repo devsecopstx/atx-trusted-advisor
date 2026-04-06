@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const repo = vi.hoisted(() => ({
   getDefaultPortfolio: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
+  getUserWatchlist: vi.fn(),
   listPortfolioAccounts: vi.fn(),
   listPortfolioPositionsByAccount: vi.fn(),
   provisionDefaultPortfolioForUser: vi.fn()
@@ -49,6 +50,16 @@ describe("buildWorkspaceServerSnapshotBlock", () => {
     vi.clearAllMocks();
     wsCacheMocks.readWorkspaceSnapshotCache.mockResolvedValue(null);
     wsCacheMocks.writeWorkspaceSnapshotCache.mockResolvedValue(undefined);
+    repo.getUserWatchlist.mockImplementation(async (input) => {
+      const pf = await repo.getDefaultPortfolio();
+      const id = pf && "_id" in pf && pf._id ? (pf._id as { toHexString: () => string }).toHexString() : "";
+      if (!id) return null;
+      return repo.getPortfolioWatchlist({
+        userId: input.userId,
+        portfolioId: id,
+        tenantId: input.tenantId
+      });
+    });
   });
 
   it("returns null when no portfolio and provision fails", async () => {

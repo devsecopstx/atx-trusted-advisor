@@ -9,6 +9,7 @@ const repositoryMocks = vi.hoisted(() => ({
   listPortfolioAccounts: vi.fn(),
   listPortfolioPositionsByAccount: vi.fn(),
   getPortfolioWatchlist: vi.fn(),
+  getUserWatchlist: vi.fn(),
   mutatePortfolioWatchlistSymbols: vi.fn(),
   listScheduledTasks: vi.fn(),
   listTaskRuns: vi.fn()
@@ -116,6 +117,14 @@ describe("atxfinance tool executor", () => {
       name: "DefaultWatchlist",
       symbols: [{ symbol: "TSLA", addedAt: new Date(), entryPrice: 240.5 }]
     });
+    repositoryMocks.getUserWatchlist.mockImplementation(
+      async (input: { userId: string; tenantId?: string }) =>
+        repositoryMocks.getPortfolioWatchlist({
+          userId: input.userId,
+          portfolioId: portfolioId.toHexString(),
+          tenantId: input.tenantId
+        })
+    );
     repositoryMocks.ensurePortfolioWatchlistForUser.mockImplementation(async (input: { userId: string }) => {
       return repositoryMocks.getPortfolioWatchlist({
         userId: input.userId,
@@ -220,7 +229,8 @@ describe("atxfinance tool executor", () => {
   });
 
   it("portfolio_summary includes watchlist error when no watchlist document", async () => {
-    repositoryMocks.getPortfolioWatchlist.mockResolvedValueOnce(null);
+    repositoryMocks.getUserWatchlist.mockResolvedValue(null);
+    repositoryMocks.ensurePortfolioWatchlistForUser.mockResolvedValue(null);
     const executor = createXfinanceToolExecutor(ctx);
     const result = await executor("atxfinance", { operation: "portfolio_summary" });
     const data = JSON.parse(result.result);
@@ -362,7 +372,8 @@ describe("atxfinance tool executor", () => {
   });
 
   it("returns error when no watchlist exists", async () => {
-    repositoryMocks.getPortfolioWatchlist.mockResolvedValueOnce(null);
+    repositoryMocks.getUserWatchlist.mockResolvedValue(null);
+    repositoryMocks.ensurePortfolioWatchlistForUser.mockResolvedValue(null);
     const executor = createXfinanceToolExecutor(ctx);
     const result = await executor("atxfinance", { operation: "watchlist_snapshot" });
     const data = JSON.parse(result.result);

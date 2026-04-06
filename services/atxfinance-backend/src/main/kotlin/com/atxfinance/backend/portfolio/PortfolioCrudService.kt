@@ -114,8 +114,13 @@ class PortfolioCrudService(
         mongoTemplate.remove(Query.query(pf), props.portfolioAlertsCollection)
         mongoTemplate.remove(Query.query(pf), props.portfolioDeliveryChannelsCollection)
         mongoTemplate.remove(Query.query(pf), props.accountsCollection)
-        mongoTemplate.remove(Query.query(pf), props.watchlistsCollection)
         mongoTemplate.remove(Query.query(Criteria.where("_id").`is`(pid)), props.portfoliosCollection)
+        if (countPortfoliosForSessionUser(session) == 0L) {
+            mongoTemplate.remove(
+                Query.query(PortfolioMongoFilter.watchlistSessionReadCriteria(session)),
+                props.watchlistsCollection,
+            )
+        }
     }
 
     private fun parseOutlook(raw: Any?): String? {

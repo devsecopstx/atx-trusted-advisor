@@ -7,14 +7,20 @@ import {
     adminCreateRecommendationForPortfolio,
     adminListPortfolioAlerts,
     adminUpdatePortfolioAlert,
-    adminUpdateRecommendationForPortfolio
+    adminUpdateRecommendationForPortfolio,
+    getUserWatchlist,
+    mutateUserWatchlistSymbols,
+    updateWatchlistSymbolPrices
 } from "@/modules/core-admin/repository";
-import type { PortfolioAlert, PositionOptionType } from "@/modules/core-admin/types";
+import type { PortfolioAlert, PositionOptionType, WatchlistSymbolImportEntry } from "@/modules/core-admin/types";
 import { quoteUnderlyingForScanner } from "@/modules/scanner/scanner-yahoo-quote";
 import { fetchYahooOptionChainForScanner } from "@/modules/scanner/yahoo-option-chain-scanner";
 import type { OptionContractData } from "@/modules/strategy-options/options-chain";
 import type { OptionScanTarget, OptionSide } from "@/modules/strategy-options/options-scanner-targets";
-import { contractKeyForTarget } from "@/modules/strategy-options/options-scanner-targets";
+import {
+    buildCompactOccOptionSymbol,
+    contractKeyForTarget
+} from "@/modules/strategy-options/options-scanner-targets";
 
 const REC_COLL = "portfolio_recommendations";
 
@@ -46,7 +52,58 @@ export type OptionsScannerPassResult = {
   chainBatches: number;
   /** Desk rule/Grok confidence, highest first (trimmed for task output / audit). */
   rankedSignals: ScannerRankedSignal[];
+  /** User-global watchlist symbol rows merged via {@link mutateUserWatchlistSymbols}. */
+  watchlistRowsAdded: number;
+  /** `lastPrice` / `lastUpdatedAt` patches applied to user watchlists. */
+  watchlistRowsUpdated: number;
 };
+
+function watchlistScannerSideEffectEnv(): { minConfidence: number; maxAppend: number } {
+  const minConf = Number.parseInt(
+    process.env.OPTIONS_SCANNER_WATCHLIST_APPEND_MIN_CONFIDENCE ?? "75",
+    10
+  );
+  const maxAppend = Number.parseInt(process.env.OPTIONS_SCANNER_WATCHLIST_MAX_APPEND_PER_RUN ?? "8", 10);
+  return {
+    minConfidence: Number.isFinite(minConf) && minConf >= 0 && minConf <= 100 ? minConf : 75,
+    maxAppend: Number.isFinite(maxAppend) && maxAppend >= 0 ? maxAppend : 8
+  };
+}
+
+async function flushWatchlistScannerSideEffects(
+  metaByUser: Map<string, Array<{ symbol: string; lastPrice: number; lastUpdatedAt: Date }>>,
+  appendByUser: Map<string, WatchlistSymbolImportEntry[]>,
+  tenantId?: ObjectId
+): Promise<{ rowsAdded: number; rowsUpdated: number }> {
+  const tenantHex = tenantId?.toHexString();
+  let rowsUpdated = 0;
+  let rowsAdded = 0;
+  for (const [uid, prices] of metaByUser) {
+    if (prices.length === 0) {
+      continue;
+    }
+    const wl = await getUserWatchlist({ userId: uid, tenantId: tenantHex });
+    if (!wl?._id) {
+      continue;
+    }
+    await updateWatchlistSymbolPrices(wl._id, prices);
+    rowsUpdated += prices.length;
+  }
+  for (const [uid, entries] of appendByUser) {
+    if (entries.length === 0) {
+      continue;
+    }
+    const updated = await mutateUserWatchlistSymbols({
+      userId: uid,
+      tenantId: tenantHex,
+      addEntries: entries
+    });
+    if (updated) {
+      rowsAdded += entries.length;
+    }
+  }
+  return { rowsAdded, rowsUpdated };
+}
 
 function scannerEnv() {
   const grok =
@@ -363,6 +420,15 @@ export async function processOptionRecommendationsPass(input: {
   tenantId?: ObjectId;
 }): Promise<OptionsScannerPassResult> {
   const env = scannerEnv();
+  const wlFxEnv = watchlistScannerSideEffectEnv();
+  const metaByUser = new Map<
+    string,
+    Array<{ symbol: string; lastPrice: number; lastUpdatedAt: Date }>
+  >();
+  const appendByUser = new Map<string, WatchlistSymbolImportEntry[]>();
+  const appendedOcc = new Map<string, Set<string>>();
+  let watchlistAppendBudget = wlFxEnv.maxAppend;
+
   const result: OptionsScannerPassResult = {
     examined: 0,
     stored: 0,
@@ -376,7 +442,9 @@ export async function processOptionRecommendationsPass(input: {
     fromPositions: 0,
     fromWatchlist: 0,
     chainBatches: 0,
-    rankedSignals: []
+    rankedSignals: [],
+    watchlistRowsAdded: 0,
+    watchlistRowsUpdated: 0
   };
   const rankedBuffer: ScannerRankedSignal[] = [];
 
@@ -463,6 +531,26 @@ export async function processOptionRecommendationsPass(input: {
         contract.last_quote.bid > 0 && contract.last_quote.ask > 0
           ? (contract.last_quote.bid + contract.last_quote.ask) / 2
           : contract.premium;
+      const wlOwner = tgt.watchlistOwnerUserId?.trim();
+      if (wlOwner && mark > 0 && Number.isFinite(mark)) {
+        const occSym = buildCompactOccOptionSymbol({
+          underlying,
+          expYmd: displayExp,
+          strike,
+          optionType: ot
+        });
+        if (occSym) {
+          const list = metaByUser.get(wlOwner) ?? [];
+          const row = { symbol: occSym, lastPrice: mark, lastUpdatedAt: new Date() };
+          const hit = list.findIndex((x) => x.symbol === occSym);
+          if (hit >= 0) {
+            list[hit] = row;
+          } else {
+            list.push(row);
+          }
+          metaByUser.set(wlOwner, list);
+        }
+      }
       const avgCost = tgt.avgCost;
       const fp = `${displayExp}:${strike}:${ot}:${side}:${tgt.source}`;
       const dte = daysToExpirationFromYmd(displayExp);
@@ -607,8 +695,43 @@ export async function processOptionRecommendationsPass(input: {
           invalidateAlerts(portfolioId);
         }
       }
+
+      if (
+        exit &&
+        tgt.source === "watchlist" &&
+        wlOwner &&
+        finalConf >= wlFxEnv.minConfidence &&
+        watchlistAppendBudget > 0
+      ) {
+        const occSym = buildCompactOccOptionSymbol({
+          underlying,
+          expYmd: displayExp,
+          strike,
+          optionType: ot
+        });
+        if (occSym) {
+          const seen = appendedOcc.get(wlOwner) ?? new Set<string>();
+          if (!seen.has(occSym)) {
+            seen.add(occSym);
+            appendedOcc.set(wlOwner, seen);
+            const arr = appendByUser.get(wlOwner) ?? [];
+            arr.push({
+              symbol: occSym,
+              lineType: "Option",
+              strategy: `[options-scanner] SELL ${finalConf}% — review`,
+              quantity: tgt.qty
+            });
+            appendByUser.set(wlOwner, arr);
+            watchlistAppendBudget -= 1;
+          }
+        }
+      }
     }
   }
+
+  const flushed = await flushWatchlistScannerSideEffects(metaByUser, appendByUser, input.tenantId);
+  result.watchlistRowsAdded = flushed.rowsAdded;
+  result.watchlistRowsUpdated = flushed.rowsUpdated;
 
   result.rankedSignals = rankedBuffer.sort((a, b) => b.confidence - a.confidence).slice(0, 12);
 
