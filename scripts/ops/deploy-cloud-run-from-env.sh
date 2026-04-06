@@ -250,6 +250,7 @@ for pair in \
   "STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:${STRIPE_PRICE_PREMIUM_PLUS_MONTHLY:-}" \
   "STRIPE_PRICE_PREMIUM_PLUS_YEARLY:${STRIPE_PRICE_PREMIUM_PLUS_YEARLY:-}" \
   "SMTP_SECURE:${SMTP_SECURE:-}" \
+  "ATXFINANCE_BACKEND_PROXY_ADMIN_USERS:${ATXFINANCE_BACKEND_PROXY_ADMIN_USERS:-}" \
   "ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS:${ATXFINANCE_BACKEND_PROXY_SCHEDULED_TASKS:-}" \
   "ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS:${ATXFINANCE_BACKEND_PROXY_DELIVERY_CHANNELS:-}" \
   "ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS:${ATXFINANCE_BACKEND_PROXY_ACCESS_REQUESTS:-}" \
@@ -261,15 +262,8 @@ for pair in \
   fi
 done
 
-gcloud run deploy "${SVC}" \
-  --source . \
-  --clear-base-image \
-  --region "${REGION}" \
-  --platform managed \
-  --allow-unauthenticated \
-  --set-env-vars "${ENV_VARS}" \
-  --set-secrets "${SECRETS}" \
-  --quiet
+# Single line avoids line-continuation edge cases that can split flags (e.g. "nticated: command not found").
+gcloud run deploy "${SVC}" --source . --clear-base-image --region "${REGION}" --platform managed --allow-unauthenticated --set-env-vars "${ENV_VARS}" --set-secrets "${SECRETS}" --quiet
 
 if [[ "${NO_HEALTH}" != "true" ]]; then
   bash "${ROOT_DIR}/scripts/ops/health-check-with-fallback.sh" \
