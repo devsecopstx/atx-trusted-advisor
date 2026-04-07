@@ -21,6 +21,8 @@ This is the deploy/ops entrypoint for staging and production workflows.
 
 **GCP CLI deploy (canonical if you skip GitHub):** from repo root, with `gcloud` auth and **`.env.stage`** / **`.env.prod`** (project, region, **`CLOUD_RUN_SERVICE_*`**, **`STAGING_BASE_URL`** / **`PROD_BASE_URL`**, **`ATXFINANCE_BACKEND_ORIGIN`** = Spring `https://…run.app`) — **`npm run ops:deploy:cloud-run:staging`** / **`npm run ops:deploy:cloud-run:production`** (`scripts/ops/deploy-cloud-run-from-env.sh`). Optional **`--with-ci-gate`** variants. See **`atx-docs/sre-ops/gcp-prod-two-service-model.md`** and `.cursor/rules/sre-gcp-deployment.md` § *Local deploy to Cloud Run*.
 
+**Full stack (backend + Next) from CLI:** **`npm run ops:deploy:full:staging`** / **`npm run ops:deploy:full:production`** runs, in order: (1) **`deploy-atxfinance-backend-*.sh`** (Spring image → Cloud Run), (2) writes **`ATXFINANCE_BACKEND_ORIGIN`** in **`.env.stage`** / **`.env.prod`** to the backend’s current **`status.url`**, (3) **`deploy-cloud-run-from-env.sh`** for the Next service. Use when both services should ship from one checkout and the BFF origin must match the new backend URL. **Release-note discipline:** tag **Next** vs **Spring** vs **Full** vs **Secrets** per **`atx-docs/sre-ops/release-notes.md`** § *Deploy targets* so ops can track what rolled.
+
 ## Runtime secret model
 
 Single source of truth for runtime app secrets is **GCP Secret Manager** in the project that matches your `.env.stage` / `.env.prod` **`GOOGLE_PROJECT_ID`** (or `GCP_PROJECT_ID`).

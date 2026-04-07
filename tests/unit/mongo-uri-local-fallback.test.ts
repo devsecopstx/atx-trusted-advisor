@@ -59,7 +59,7 @@ describe("getMongoUriFromB64 local fallback", () => {
     expect(uri).toContain(`${encodeURIComponent("secret")}@`);
   });
 
-  it("defaults DB to atxfinance-<ATX_DEPLOY_TARGET> when MONGODB_DB_NAME is unset", async () => {
+  it("does not append ATX_DEPLOY_TARGET to DB when MONGODB_DB_NAME is unset (single MONGODB_URI contract)", async () => {
     delete process.env.MONGODB_DB_NAME;
     process.env.ATX_DEPLOY_TARGET = "stage";
     vi.resetModules();
@@ -68,7 +68,7 @@ describe("getMongoUriFromB64 local fallback", () => {
     delete process.env.MONGODB_URI_B64;
     delete process.env.MONGODB_URI_B4;
     const uri = getMongoUriFromB64();
-    expect(uri).toContain("localhost:27017/atxfinance-stage");
+    expect(uri).toContain("localhost:27017/atxfinance");
   });
 
   it("uses no-auth URI for non-local host when MONGO_ROOT_PASSWORD unset", async () => {

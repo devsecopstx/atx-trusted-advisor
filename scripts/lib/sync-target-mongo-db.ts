@@ -20,5 +20,5 @@ export function resolveSyncTargetMongoDatabaseName(): string {
 export function formatSyncTargetMongoDatabaseLogSuffix(): string {
   return process.env.SEED_PARENT_MONGODB_DB_NAME?.trim()
     ? " (from SEED_PARENT_MONGODB_DB_NAME — seed:admin)"
-    : " (same as Next.js getDb(): MONGODB_DB_NAME, else DB path in MONGODB_URI, else deploy-target / atxfinance)";
+    : " (same as Next.js getDb(): MONGODB_DB_NAME, else DB path in MONGODB_URI, else atxfinance)";
 }

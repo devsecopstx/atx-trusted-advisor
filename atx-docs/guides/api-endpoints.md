@@ -101,6 +101,18 @@ Admin portfolio routes include:
 - `POST /api/import/broker` — app-user Merrill/Fidelity **holdings** CSV (session); dry-run preview or apply via staged `app_broker_import_jobs` + immediate `sync-broker` task (`/import-activity` UI). **`mappings`** = broker account key → core account id; keys may be a **subset** of accounts parsed from the CSV (omit rows to skip import); at least one mapping required when the file contains accounts. Keys align with parser: **`accountRef || label || "default"`**
 - `POST /api/import/broker/clean` — app-user **destructive** reset: deletes all positions for the portfolio, `app_broker_import_jobs` rows for that user/book, and portfolio-bound `sync-broker` scheduled tasks (session + portfolio must belong to user)
 
+## IBKR (Client Portal — gated)
+
+Requires **`IBKR_ENABLED`** + optional **`IBKR_CLIENT_PORTAL_BASE_URL`**. Routes are no-ops / 404 when disabled.
+
+- `GET /api/integrations/ibkr/status` — session; flags (gateway configured, consent, sealed cookie present, whether session body POST is allowed).
+- `POST /api/integrations/ibkr/consent` — session; JSON `{ accepted: boolean }`; persists `ibkr_user_consents` (no IBKR secrets).
+- `POST /api/integrations/ibkr/session` — session; JSON `{ clientPortalCookie }` when **`IBKR_ALLOW_SESSION_COOKIE_BODY`** or **`NODE_ENV=development`**; seals value into httpOnly **`xf_ibkr_cp_session`** (uses **`AUTH_SECRET`**).
+- `DELETE /api/integrations/ibkr/session` — clears httpOnly session cookie.
+- `GET /api/integrations/ibkr/accounts` — session; **`GET …/v1/api/portfolio/accounts`** on the Client Portal gateway with resolved cookie (per-user sealed cookie, or operator-only **`IBKR_USE_ENV_SESSION_COOKIE`** + **`IBKR_CLIENT_PORTAL_SESSION_COOKIE`**).
+
+UI: **`/account/integrations/ibkr`**.
+
 ## xStrategyBuilder / strategy options
 
 - `GET /api/strategy-options/expirations` — session; **Next Yahoo only** (not BFF-proxied to Spring; matches local dev and avoids prod stalls when the JVM path is slow).

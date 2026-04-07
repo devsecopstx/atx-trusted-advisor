@@ -209,36 +209,18 @@ export function parseMongoConnectionString(raw: string): string {
 }
 
 /**
- * Base logical MongoDB name before deploy-target suffix. When `MONGODB_DB_NAME` is unset, Cloud Run and
- * local tooling may set `ATX_DEPLOY_TARGET` (`stage` | `deploy` | `prod`) so the default becomes
- * `atxfinance-<target>`. Explicit `MONGODB_DB_NAME` or the DB path inside `MONGODB_URI` always wins.
+ * Default Mongo database name when building a local fallback URI (no `MONGODB_URI`) or when the URI has no
+ * `/dbname` path. Stage/prod: put the real database in **`MONGODB_URI`** (same secret for Next + Spring);
+ * optional **`MONGODB_DB_NAME`** overrides the path segment for apps that need it. **`ATX_DEPLOY_TARGET`**
+ * does not change the DB name (avoids Next/Spring drift).
  */
 export const MONGODB_DB_NAME = "atxfinance";
-
-export type AtxDeployTargetToken = "stage" | "deploy" | "prod";
-
-function normalizeDeployTargetToken(raw: string | undefined): AtxDeployTargetToken | undefined {
-  if (raw === undefined || raw === null) {
-    return undefined;
-  }
-  const t = String(raw).trim().toLowerCase();
-  if (t === "stage" || t === "deploy" || t === "prod") {
-    return t;
-  }
-  return undefined;
-}
 
 /** Effective DB name for local URI fallback and `getDb()` when not embedded in `MONGODB_URI`. */
 export function resolveDefaultMongoDatabaseName(): string {
   const explicit = process.env.MONGODB_DB_NAME?.trim();
   if (explicit) {
     return explicit;
-  }
-  const target =
-    normalizeDeployTargetToken(process.env.ATX_DEPLOY_TARGET) ??
-    normalizeDeployTargetToken(process.env.DEPLOY_TARGET);
-  if (target) {
-    return `${MONGODB_DB_NAME}-${target}`;
   }
   return MONGODB_DB_NAME;
 }
@@ -461,6 +443,39 @@ export function getMongoConnectionLabel(): string {
   const resolvedDbName =
     dbFromPath && dbFromPath.length > 0 ? decodeURIComponent(dbFromPath) : resolveEffectiveMongoDatabaseName();
   return `${hosts}/${resolvedDbName}`;
+}
+
+/** Masks `user:pass@` in a Mongo URI for admin UI and safe logs (passwords may contain `@` only if percent-encoded). */
+export function redactMongoUriCredentials(uri: string): string {
+  const t = uri.trim();
+  const schemeSep = t.indexOf("://");
+  const at = t.indexOf("@");
+  if (schemeSep > 0 && at > schemeSep) {
+    return `${t.slice(0, schemeSep + 3)}***:***@${t.slice(at + 1)}`;
+  }
+  return t;
+}
+
+export type MongoEnvVarDiagnostics = {
+  mongodbUriEnvPresent: boolean;
+  mongodbUriB64LegacyEnvPresent: boolean;
+  /** Raw `process.env.MONGODB_URI` shape before `parseMongoConnectionString` (Cloud Run injects plain or base64). */
+  mongodbUriValueShape: "mongodb_scheme" | "base64_payload" | "empty";
+};
+
+export function getMongoEnvVarDiagnostics(): MongoEnvVarDiagnostics {
+  const rawUri = process.env.MONGODB_URI?.trim() ?? "";
+  const rawB64 = process.env.MONGODB_URI_B64?.trim() ?? "";
+  let mongodbUriValueShape: MongoEnvVarDiagnostics["mongodbUriValueShape"] = "empty";
+  if (rawUri.length > 0) {
+    mongodbUriValueShape =
+      rawUri.startsWith("mongodb://") || rawUri.startsWith("mongodb+srv://") ? "mongodb_scheme" : "base64_payload";
+  }
+  return {
+    mongodbUriEnvPresent: rawUri.length > 0,
+    mongodbUriB64LegacyEnvPresent: rawB64.length > 0,
+    mongodbUriValueShape
+  };
 }
 
 /** Default xAI API base URL when XAI_BASE_URL env is unset. Aligned with tenant_defaults.yaml. */

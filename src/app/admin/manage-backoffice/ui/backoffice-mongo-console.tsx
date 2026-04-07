@@ -49,8 +49,33 @@ export function BackofficeMongoConsole() {
   const [xaiCollectionName, setXaiCollectionName] = useState("");
   const [includeRolesInPatch, setIncludeRolesInPatch] = useState(false);
   const [dbConnectionInfo, setDbConnectionInfo] = useState<{
-    connectionString: string;
     connectionLabel: string;
+    connectionStringRedacted: string;
+    effectiveDatabaseName: string;
+    nextEnv: {
+      mongodbUriEnvPresent: boolean;
+      mongodbUriB64LegacyEnvPresent: boolean;
+      mongodbUriValueShape: "mongodb_scheme" | "base64_payload" | "empty";
+    };
+    atxfinanceBackendOrigin: string | null;
+    backendMongo: {
+      checked: boolean;
+      origin: string | null;
+      skippedReason?: string;
+      fingerprintMatch?: boolean;
+      snapshot?: {
+        ok: boolean;
+        fingerprint: string | null;
+        mongoStatus?: string;
+        env?: {
+          MONGODB_URI_present?: boolean;
+          MONGODB_URI_B64_present?: boolean;
+          SPRING_DATA_MONGODB_URI_present?: boolean;
+        };
+        error?: string;
+      };
+    };
+    cliHint: string;
   } | null>(null);
 
   const applySnapshotToForm = useCallback((u: SerializedUser) => {
@@ -197,13 +222,18 @@ export function BackofficeMongoConsole() {
       </article>
 
       <article className="surface-card xf-widget section-card">
-        <h3>Database connection</h3>
+        <h3>Database connection (Next + Spring)</h3>
+        <p className="muted-copy text-sm">
+          This process (<strong>Next</strong>) and <strong>atxfinance-backend</strong> should use the same logical Mongo
+          target (<code className="text-xs">host(s)/database</code>). Env vars below are presence-only — credentials are
+          never shown.
+        </p>
         <div className="stack-form">
           {dbConnectionInfo ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div>
                 <label className="field-label">
-                  <span>Connection label</span>
+                  <span>Next — effective fingerprint</span>
                 </label>
                 <code className="block p-2 bg-[var(--xf-surface-900)] rounded border text-sm font-mono">
                   {dbConnectionInfo.connectionLabel}
@@ -211,11 +241,112 @@ export function BackofficeMongoConsole() {
               </div>
               <div>
                 <label className="field-label">
-                  <span>Full connection string</span>
+                  <span>Next — resolved database name</span>
+                </label>
+                <code className="block p-2 bg-[var(--xf-surface-900)] rounded border text-sm font-mono">
+                  {dbConnectionInfo.effectiveDatabaseName}
+                </code>
+              </div>
+              <div>
+                <label className="field-label">
+                  <span>Next — connection string (redacted)</span>
                 </label>
                 <code className="block p-2 bg-[var(--xf-surface-900)] rounded border text-sm font-mono break-all">
-                  {dbConnectionInfo.connectionString}
+                  {dbConnectionInfo.connectionStringRedacted}
                 </code>
+              </div>
+              <div>
+                <label className="field-label">
+                  <span>Next — env vars</span>
+                </label>
+                <ul className="muted-copy list-none space-y-1 font-mono text-xs">
+                  <li>
+                    <code>MONGODB_URI</code> set:{" "}
+                    <strong>{dbConnectionInfo.nextEnv.mongodbUriEnvPresent ? "yes" : "no"}</strong>
+                  </li>
+                  <li>
+                    <code>MONGODB_URI_B64</code> (legacy) set:{" "}
+                    <strong>{dbConnectionInfo.nextEnv.mongodbUriB64LegacyEnvPresent ? "yes" : "no"}</strong>
+                  </li>
+                  <li>
+                    Raw <code>MONGODB_URI</code> shape: <strong>{dbConnectionInfo.nextEnv.mongodbUriValueShape}</strong>{" "}
+                    (plain URI vs base64 payload before decode)
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <label className="field-label">
+                  <span>Spring backend</span>
+                </label>
+                {dbConnectionInfo.atxfinanceBackendOrigin ? (
+                  <p className="muted-copy text-xs font-mono break-all mb-2">
+                    <code>ATXFINANCE_BACKEND_ORIGIN</code>={dbConnectionInfo.atxfinanceBackendOrigin}
+                  </p>
+                ) : (
+                  <p className="muted-copy text-xs">ATXFINANCE_BACKEND_ORIGIN unset — no BFF Spring compare.</p>
+                )}
+                {dbConnectionInfo.backendMongo.skippedReason ? (
+                  <p className="muted-copy text-sm">{dbConnectionInfo.backendMongo.skippedReason}</p>
+                ) : null}
+                {dbConnectionInfo.backendMongo.checked && dbConnectionInfo.backendMongo.snapshot ? (
+                  <div className="space-y-2">
+                    {typeof dbConnectionInfo.backendMongo.fingerprintMatch === "boolean" ? (
+                      <p
+                        className={
+                          dbConnectionInfo.backendMongo.fingerprintMatch
+                            ? "text-sm text-[var(--xf-gain-green)]"
+                            : "text-sm text-amber-400"
+                        }
+                      >
+                        Fingerprint vs Next:{" "}
+                        <strong>{dbConnectionInfo.backendMongo.fingerprintMatch ? "match" : "mismatch"}</strong>
+                      </p>
+                    ) : (
+                      <p className="muted-copy text-sm">Could not compare fingerprints (backend did not report host/db).</p>
+                    )}
+                    <code className="block p-2 bg-[var(--xf-surface-900)] rounded border text-sm font-mono break-all">
+                      {dbConnectionInfo.backendMongo.snapshot.fingerprint ?? "(no host/db from /api/backend/health)"}
+                    </code>
+                    <p className="muted-copy text-xs">
+                      Mongo ping: {dbConnectionInfo.backendMongo.snapshot.mongoStatus ?? "—"}
+                      {dbConnectionInfo.backendMongo.snapshot.error
+                        ? ` — ${dbConnectionInfo.backendMongo.snapshot.error}`
+                        : ""}
+                    </p>
+                    {dbConnectionInfo.backendMongo.snapshot.env ? (
+                      <ul className="muted-copy list-none space-y-1 font-mono text-xs">
+                        <li>
+                          <code>MONGODB_URI</code> set:{" "}
+                          <strong>
+                            {dbConnectionInfo.backendMongo.snapshot.env.MONGODB_URI_present ? "yes" : "no"}
+                          </strong>
+                        </li>
+                        <li>
+                          <code>MONGODB_URI_B64</code> set:{" "}
+                          <strong>
+                            {dbConnectionInfo.backendMongo.snapshot.env.MONGODB_URI_B64_present ? "yes" : "no"}
+                          </strong>
+                        </li>
+                        <li>
+                          <code>SPRING_DATA_MONGODB_URI</code> set:{" "}
+                          <strong>
+                            {dbConnectionInfo.backendMongo.snapshot.env.SPRING_DATA_MONGODB_URI_present
+                              ? "yes"
+                              : "no"}
+                          </strong>
+                        </li>
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              <div>
+                <label className="field-label">
+                  <span>CLI / Console</span>
+                </label>
+                <p className="muted-copy text-xs font-mono break-words whitespace-pre-wrap">
+                  {dbConnectionInfo.cliHint}
+                </p>
               </div>
             </div>
           ) : (

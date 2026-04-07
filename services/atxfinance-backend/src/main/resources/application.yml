@@ -15,7 +15,9 @@ spring:
       max-request-size: 7MB
   data:
     mongodb:
-      database: ${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfinance}}
+      # Omit spring.data.mongodb.database here: a default (e.g. atxfinance) overrides the DB name embedded in
+      # mongodb+srv://…/your_db and desyncs Spring from Next.js getDb(). DB name comes from MONGODB_URI path,
+      # or from the localhost fallback URI below (still honors MONGODB_DB_NAME / SPRING_DATA_MONGODB_DATABASE).
       uri: ${MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/${SPRING_DATA_MONGODB_DATABASE:${MONGODB_DB_NAME:atxfinance}}}}
 
 management:

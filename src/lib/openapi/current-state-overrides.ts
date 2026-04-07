@@ -566,6 +566,17 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
+  "GET /api/admin/system/db-connection": {
+    summary: "Sanitized Mongo diagnostics for Next + optional Spring backend",
+    description:
+      "global_admin only. Returns redacted URI, `MONGODB_URI` / legacy `MONGODB_URI_B64` presence, effective DB name, and when `ATXFINANCE_BACKEND_ORIGIN` is set compares host/database fingerprint to Spring `GET /api/backend/health`. Audited as `db_connection_viewed`.",
+    responses: {
+      "200": jsonResponse("Mongo diagnostics envelope (no credentials).", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "500": jsonResponse("Failed to read Mongo configuration.", "ErrorResponse")
+    }
+  },
   "GET /api/admin/users": {
     summary: "List users",
     parameters: [

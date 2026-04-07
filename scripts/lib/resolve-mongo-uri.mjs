@@ -15,21 +15,10 @@ import { fileURLToPath } from "node:url";
  * TS disk→Mongo sync scripts use that default; `seed:admin` post-steps set **`SEED_PARENT_MONGODB_DB_NAME`** to this
  * admin DB so child processes match the main seed transaction — see `scripts/lib/sync-target-mongo-db.ts`.
  *
- * When `MONGODB_DB_NAME` is unset, `ATX_DEPLOY_TARGET` or `DEPLOY_TARGET` may be `stage`, `deploy`, or `prod`
- * (case-insensitive) to default to `atxfinance-<target>` — aligned with `resolveDefaultMongoDatabaseName()` in `src/lib/env.ts`.
+ * When `MONGODB_DB_NAME` is unset, default base is `atxfinance` (local fallback URI only). **`ATX_DEPLOY_TARGET`**
+ * does not append `-stage` / `-prod` to the DB name — use one **`MONGODB_URI`** with the DB in the path for stage/prod.
  */
 const DEFAULT_DB_BASE = "atxfinance";
-
-function normalizeDeployTargetToken(raw) {
-  if (raw === undefined || raw === null) {
-    return undefined;
-  }
-  const t = String(raw).trim().toLowerCase();
-  if (t === "stage" || t === "deploy" || t === "prod") {
-    return t;
-  }
-  return undefined;
-}
 
 export function parseMongoConnectionString(raw) {
   const t = raw.trim();
@@ -60,12 +49,6 @@ export function resolveSeedDbName() {
   const explicit = process.env.MONGODB_DB_NAME?.trim();
   if (explicit) {
     return explicit;
-  }
-  const target =
-    normalizeDeployTargetToken(process.env.ATX_DEPLOY_TARGET) ??
-    normalizeDeployTargetToken(process.env.DEPLOY_TARGET);
-  if (target) {
-    return `${DEFAULT_DB_BASE}-${target}`;
   }
   return DEFAULT_DB_BASE;
 }

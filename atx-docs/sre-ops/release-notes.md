@@ -4,7 +4,42 @@ Short, **newest-first** bullets tied to **`package.json`** semver. Append **one 
 
 Not user marketing copy — enough for deploy triage, support, and “what shipped in this image.”
 
+## Deploy targets (for ops tracking)
+
+Production has **two** Cloud Run images plus **Secret Manager** (and sometimes **GitHub environment variables**). Each release bullet should tag what must roll for the change to take effect.
+
+| Tag | What it is | Typical npm / script |
+|-----|------------|----------------------|
+| **Next** | Next.js **core app** (`src/`, root `Dockerfile` / `gcloud run deploy --source .`) | `npm run ops:deploy:cloud-run:production` or GitHub **Deploy Cloud Run Production** (Next service only) |
+| **Spring** | JVM **atxfinance-backend** (`services/atxfinance-backend/`) | `npm run ops:deploy:atxfinance-backend:production` |
+| **Full** | Backend **then** Next in one flow (updates **`ATXFINANCE_BACKEND_ORIGIN`** in `.env.prod` from the live backend URL, then deploys Next) | `npm run ops:deploy:full:production` (staging: `ops:deploy:full:staging`) |
+| **Secrets** | GCP Secret Manager versions only (no new image) | e.g. `ops:secrets:sync-mongodb:prod`, `sync-redis`, Stripe, etc. |
+| **GitHub env** | Non-secret vars on the GitHub **production** environment (e.g. `ATXFINANCE_BACKEND_ORIGIN`, `PROD_BASE_URL`) | Manual / Actions inputs — not replaced by `ops:deploy:full:*` in CI |
+
+**When to use which**
+
+- **Next only** — UI, API routes under this repo’s Next app, middleware, most `src/` changes.
+- **Spring only** — Kotlin/Spring changes only; Next unchanged. Ensure prod **`ATXFINANCE_BACKEND_ORIGIN`** already points at the backend URL you deployed.
+- **Full** — Any release where **both** services should ship from the same machine/commit **and** you want `.env.prod`’s BFF origin refreshed to match the new backend revision (safest when backend URL or backend contract changed).
+- **Secrets only** — Rotated keys, new `MONGODB_URI`, Redis, Stripe webhook, etc.; often **no** image until the next deploy (Cloud Run `:latest` secret bindings pick up on **new revision** — roll Next and/or backend if needed).
+
+**Suggested one-line suffix for each semver bullet**
+
+Append a short **Deploy:** clause so ops can scan the log:
+
+```text
+**Deploy:** Next
+**Deploy:** Spring
+**Deploy:** Next + Spring (recommend `ops:deploy:full:production` if bumping both from one checkout)
+**Deploy:** Full (`ops:deploy:full:production`)
+**Deploy:** Secrets only (`ops:secrets:sync-…:prod`); then roll Next and/or Spring if bindings require a new revision
+```
+
 ## Entries
+
+- **3.2.1** — **IBKR Phase 2:** Mongo **`ibkr_user_consents`**; **`GET/POST /api/integrations/ibkr/status|consent`**, **`POST/DELETE session`** (AES-GCM sealed CP cookie `xf_ibkr_cp_session`), **`GET accounts`** → Client Portal **`/v1/api/portfolio/accounts`**. Config: **`IBKR_ALLOW_SESSION_COOKIE_BODY`**, **`IBKR_USE_ENV_SESSION_COOKIE`**, **`IBKR_CLIENT_PORTAL_SESSION_COOKIE`**. UI **`/account/integrations/ibkr`**. Proxy + OpenAPI **`integrations`** tag. **Existing** Merrill/Fidelity import unchanged. **Deploy:** Next only.
+
+- **3.2.0** — **IBKR Phase 1 (isolated scaffold):** New module **`src/modules/ibkr-integration`** — optional **`IBKR_*`** env (`parseIbkrIntegrationConfig`, not **`getEnv()`**), domain types (`IbkrAccount`, positions/orders/executions/automation rule placeholders), sliding-window **rate limiter**, **retry** helper with backoff+jitter, Phase-1 **stub client** (`apiReachable: false`). Design doc **`atx-docs/design-system/ibkr-automation.md`** updated (stack + Client Portal default + Phase 1 status). **`.env.example`** IBKR section. **Tests:** `ibkr-integration-*`. **No** CSV import, routes, or BFF changes — existing broker flows unchanged. **Deploy:** Next only.
 
 - **3.1.2** — **Watchlist desk columns + import/portfolio UX:** **`GET`/`PATCH /api/portfolios/{portfolioId}/watchlist`** — optional **`chainGlance=1`** (with **`quotes=1`**) attaches nearest-expiry **`chainGlance`** `{ contractType, strike, impliedVolatilityPercent, openInterest }` per symbol (batched Yahoo options). **`/watchlist`** UI loads with **`quotes=1&chainGlance=1`**; preview table columns **Icon | Sym | Spot | IV | OI | Leg**. **`/portfolios`** — **Watchlist & Alerts** (watchlist + alerts links); compact table same columns. **Legacy left rail** **Resources** → **Broker import** (deep link with workspace `portfolioId` when known). **App-user broker import** (`/import-activity`): **Import** checkbox per preview row; **`mappings`** may omit rows (partial import); **`validateBrokerImportMappings`** requires ≥1 selected row; dry-run preview shows **masked** broker + stored refs (**last four**). **PATCH `/api/portfolios/.../accounts/...`:** **`extAccountId`** updatable when **`brokerImportLocked`** is false; provisioning placeholders (`fidelity-default-account`, `atx-` + 12 hex) treated as unset in account UI; optional **replace ref** field when a real ref exists. **Tests:** `app-broker-import-job` (partial mappings), `account-xref-display`, `portfolio-api-routes` (account PATCH), watchlist integration mocks as before. **Docs:** `app-user-import-activity.md`, `api-endpoints.md`, `AGENTS.md` (watchlist query note).
 

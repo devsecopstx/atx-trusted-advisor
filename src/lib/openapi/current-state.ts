@@ -106,6 +106,29 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "user-feedback"
   },
   {
+    path: "/api/integrations/ibkr/status",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "integrations"
+  },
+  {
+    path: "/api/integrations/ibkr/consent",
+    operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
+    tag: "integrations"
+  },
+  {
+    path: "/api/integrations/ibkr/session",
+    operations: [
+      { method: "POST", auth: "session", hasRequestBody: true },
+      { method: "DELETE", auth: "session" }
+    ],
+    tag: "integrations"
+  },
+  {
+    path: "/api/integrations/ibkr/accounts",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "integrations"
+  },
+  {
     path: "/api/user/workspace-portfolio",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "user"

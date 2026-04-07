@@ -14,15 +14,7 @@ fi
 if [ -z "${MONGODB_URI:-}" ] && [ -n "${SPRING_DATA_MONGODB_URI:-}" ]; then
   export MONGODB_URI="${SPRING_DATA_MONGODB_URI}"
 fi
-# Align with Next/seed: when MONGODB_DB_NAME unset, derive atxfinance-<target> from ATX_DEPLOY_TARGET.
-if [ -z "${MONGODB_DB_NAME:-}" ] && [ -n "${ATX_DEPLOY_TARGET:-}" ]; then
-  _atx_dt="$(printf '%s' "${ATX_DEPLOY_TARGET}" | tr '[:upper:]' '[:lower:]')"
-  case "${_atx_dt}" in
-    stage|deploy|prod)
-      export MONGODB_DB_NAME="atxfinance-${_atx_dt}"
-      ;;
-  esac
-fi
+# Optional: set MONGODB_DB_NAME only when you need to override the DB segment inside MONGODB_URI (local edge cases).
 if [ -z "${SPRING_DATA_MONGODB_DATABASE:-}" ] && [ -n "${MONGODB_DB_NAME:-}" ]; then
   export SPRING_DATA_MONGODB_DATABASE="${MONGODB_DB_NAME}"
 fi

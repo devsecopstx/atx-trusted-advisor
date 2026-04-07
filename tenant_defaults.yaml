@@ -109,7 +109,7 @@ initial_seed:
       public: true
       sensitive: false
 
-    # Illustrative: Cloud Run sets ATX_DEPLOY_TARGET (stage | deploy | prod); default DB becomes atxfinance-<target> when MONGODB_DB_NAME unset.
+    # Illustrative: Cloud Run may set ATX_DEPLOY_TARGET (stage | deploy | prod) for RAG/tenant defaults; Mongo DB name comes from MONGODB_URI path (not from this key).
     - key: atx_deploy_target
       value: "prod"
       type: string

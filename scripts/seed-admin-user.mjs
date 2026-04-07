@@ -321,7 +321,7 @@ function logSeedMongoTarget() {
   console.log(`[seed:admin] Mongo — CONNECT (redacted): ${redacted}`);
   console.log(`[seed:admin] Mongo — URI source: ${uriSource}`);
   console.log(
-    "[seed:admin] Mongo — Next + Spring must use this same database name in .env / Secret Manager (MONGODB_DB_NAME, or the DB in your Atlas URI path). If MONGODB_DB_NAME is unset, ATX_DEPLOY_TARGET=stage|deploy|prod → atxfinance-<target> (see src/lib/env.ts, scripts/lib/resolve-mongo-uri.mjs)."
+    "[seed:admin] Mongo — Next + Spring: one MONGODB_URI (DB in path) in .env / Secret Manager MONGODB_URI_B64; optional MONGODB_DB_NAME override. ATX_DEPLOY_TARGET does not change the DB name (see src/lib/env.ts)."
   );
 }
 

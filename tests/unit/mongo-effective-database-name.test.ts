@@ -65,11 +65,11 @@ describe("resolveEffectiveMongoDatabaseName (admin + app_user getDb parity)", ()
     expect(resolveEffectiveMongoDatabaseName()).toBe(resolveDefaultMongoDatabaseName());
   });
 
-  it("uses atxfinance-<target> when URI unset and ATX_DEPLOY_TARGET set", async () => {
+  it("uses base atxfinance when URI unset and ATX_DEPLOY_TARGET set (no deploy suffix on DB name)", async () => {
     delete process.env.MONGODB_URI;
     process.env.ATX_DEPLOY_TARGET = "stage";
     const { resolveEffectiveMongoDatabaseName } = await import("@/lib/env");
-    expect(resolveEffectiveMongoDatabaseName()).toBe("atxfinance-stage");
+    expect(resolveEffectiveMongoDatabaseName()).toBe("atxfinance");
   });
 
   it("resolveSyncTargetMongoDatabaseName matches Next getDb() (ops scripts + UI parity)", async () => {
