@@ -74,7 +74,12 @@ function SidebarLink({
     .filter(Boolean)
     .join(" ");
   return (
-    <Link className={cls} href={href} title={title}>
+    <Link
+      className={cls}
+      href={href}
+      title={title}
+      suppressHydrationWarning={true}
+    >
       {children}
     </Link>
   );
@@ -230,6 +235,7 @@ function RouteSyncedDetails({
       onToggle={(e: SyntheticEvent<HTMLDetailsElement>) => {
         setOpen(e.currentTarget.open);
       }}
+      suppressHydrationWarning={true}
     >
       {children}
     </details>

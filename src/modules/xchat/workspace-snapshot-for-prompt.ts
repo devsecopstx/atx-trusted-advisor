@@ -12,6 +12,67 @@ import {
 } from "@/modules/core-admin/repository";
 import type { ObjectId } from "mongodb";
 
+/**
+ * Creates a horizontal bar chart showing percentage allocation per position
+ * Uses Unicode blocks (█) for bars, professional and rounded
+ */
+function createPortfolioAllocationChart(positions: Array<{ symbol: string; qty: number; avgCost: number }>, cashBalance: number): string {
+  if (positions.length === 0 && cashBalance === 0) {
+    return "No positions or cash to display";
+  }
+
+  // Calculate position values
+  const positionValues = positions.map(pos => ({
+    symbol: pos.symbol,
+    value: Math.abs(pos.qty * pos.avgCost),
+    qty: pos.qty,
+    avgCost: pos.avgCost
+  }));
+
+  // Add cash as a "position"
+  if (cashBalance > 0) {
+    positionValues.push({
+      symbol: "CASH",
+      value: cashBalance,
+      qty: 1,
+      avgCost: cashBalance
+    });
+  }
+
+  // Calculate total portfolio value
+  const totalValue = positionValues.reduce((sum, pos) => sum + pos.value, 0);
+
+  if (totalValue === 0) {
+    return "Portfolio has no value to display";
+  }
+
+  // Sort by value descending and calculate percentages
+  const sortedPositions = positionValues
+    .map(pos => ({
+      ...pos,
+      percentage: (pos.value / totalValue) * 100
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  // Create bar chart
+  const maxBarWidth = 20; // Maximum bar length
+  let chart = "```\nPortfolio Allocation:\n\n";
+
+  for (const pos of sortedPositions) {
+    const barLength = Math.max(1, Math.round((pos.percentage / 100) * maxBarWidth));
+    const bar = "█".repeat(barLength);
+    const percentage = pos.percentage.toFixed(1);
+    const symbol = pos.symbol.padEnd(8);
+    const value = pos.value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+    chart += `${symbol} ${percentage}% ${bar} ${value}\n`;
+  }
+
+  chart += `\nTotal Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}\n\`\`\``;
+
+  return chart;
+}
+
 import type { Portfolio, PositionType, WatchlistSymbol } from "@/modules/core-admin/types";
 import { normalizePositionType } from "@/modules/core-admin/types";
 import { lookupSymbols } from "@/modules/watchlist/yahoo-symbol-lookup";
@@ -386,11 +447,21 @@ export function portfolioSummaryFromWorkspacePreload(p: WorkspaceSnapshotPreload
           )
         };
 
+  // Calculate total portfolio value and create allocation chart
+  const totalCashBalance = j.accounts.reduce((sum: number, account) => sum + account.cashBalance, 0);
+  const totalPositionValue = j.positionsPreview.reduce((sum: number, pos) => sum + Math.abs(pos.qty * pos.avgCost), 0);
+  const totalPortfolioValue = totalCashBalance + totalPositionValue;
+
+  // Create allocation chart using the same function
+  const allocationChart = createPortfolioAllocationChart(j.positionsPreview, totalCashBalance);
+
   return {
     name: j.portfolio.name,
     isDefault: j.portfolio.isDefault,
     accountCount: j.accounts.length,
     totalPositionCount: j.portfolio.totalPositionCount,
+    totalValue: totalPortfolioValue,
+    allocationChart,
     accounts: j.accounts.map((a) => ({
       name: a.name,
       type: a.type,

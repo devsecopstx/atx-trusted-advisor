@@ -57,6 +57,67 @@ const MAX_OUTPUT_BYTES = 8 * 1024;
 /** Cap rows returned by positions_snapshot before JSON serialization (freshness; not cached). */
 const MAX_POSITIONS_RETURNED = 200;
 const CACHEABLE_OPERATIONS = new Set(["watchlist_snapshot", "account_health"]);
+
+/**
+ * Creates a horizontal bar chart showing percentage allocation per position
+ * Uses Unicode blocks (█) for bars, professional and rounded
+ */
+function createPortfolioAllocationChart(positions: Array<{ symbol: string; qty: number; avgCost: number }>, cashBalance: number): string {
+  if (positions.length === 0 && cashBalance === 0) {
+    return "No positions or cash to display";
+  }
+
+  // Calculate position values
+  const positionValues = positions.map(pos => ({
+    symbol: pos.symbol,
+    value: Math.abs(pos.qty * pos.avgCost),
+    qty: pos.qty,
+    avgCost: pos.avgCost
+  }));
+
+  // Add cash as a "position"
+  if (cashBalance > 0) {
+    positionValues.push({
+      symbol: "CASH",
+      value: cashBalance,
+      qty: 1,
+      avgCost: cashBalance
+    });
+  }
+
+  // Calculate total portfolio value
+  const totalValue = positionValues.reduce((sum, pos) => sum + pos.value, 0);
+
+  if (totalValue === 0) {
+    return "Portfolio has no value to display";
+  }
+
+  // Sort by value descending and calculate percentages
+  const sortedPositions = positionValues
+    .map(pos => ({
+      ...pos,
+      percentage: (pos.value / totalValue) * 100
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  // Create bar chart
+  const maxBarWidth = 20; // Maximum bar length
+  let chart = "```\nPortfolio Allocation:\n\n";
+
+  for (const pos of sortedPositions) {
+    const barLength = Math.max(1, Math.round((pos.percentage / 100) * maxBarWidth));
+    const bar = "█".repeat(barLength);
+    const percentage = pos.percentage.toFixed(1);
+    const symbol = pos.symbol.padEnd(8);
+    const value = pos.value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+    chart += `${symbol} ${percentage}% ${bar} ${value}\n`;
+  }
+
+  chart += `\nTotal Value: ${totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}\n\`\`\``;
+
+  return chart;
+}
 /** Matches PATCH `/api/portfolios/:id/watchlist` batch size. */
 const MAX_WATCHLIST_MUTATE_PER_CALL = 20;
 
@@ -258,11 +319,25 @@ function buildOperations(
       const counts = positionCountsByAccountId(positions);
       const watchlist = await loadWatchlistSummary(ctx);
 
+      // Calculate total portfolio value for allocation chart
+      const totalCashBalance = accounts.reduce((sum, account) =>
+        sum + (account.cashBalance ?? DEFAULT_ACCOUNT_CASH_BALANCE), 0
+      );
+      const totalPositionValue = positions.reduce((sum, pos) =>
+        sum + Math.abs(pos.qty * pos.avgCost), 0
+      );
+      const totalPortfolioValue = totalCashBalance + totalPositionValue;
+
+      // Create allocation chart
+      const allocationChart = createPortfolioAllocationChart(positions, totalCashBalance);
+
       return {
         name: portfolio.name,
         isDefault: portfolio.isDefault,
         accountCount: accounts.length,
         totalPositionCount: positions.length,
+        totalValue: totalPortfolioValue,
+        allocationChart,
         accounts: accounts.map((a) => ({
           name: a.name,
           type: a.type,
