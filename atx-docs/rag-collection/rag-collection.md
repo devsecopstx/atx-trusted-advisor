@@ -35,7 +35,7 @@ Legacy repo folders **`personas-trusted-family`**, **`xchat-example-prompts`**, 
 
 **Rule (default):** For most segments, each ingestible file lives at **`…/<segment>/<stem>/<stem>.<ext>`** — **directory name equals filename stem** (e.g. `wheel/wheel.md`, `example-prompts/example-prompts/example-prompts.md`, `Fidelity-WiretoyourFidelity-account/Fidelity-WiretoyourFidelity-account.pdf`).
 
-**xpersonas:** Subfolders are **short buckets** (e.g. `trusted/`, `legal/`, `super-agent/`). Each bucket holds **exactly one** persona **`stem/stem.yaml`** where **folder name equals file stem** (same convention as other RAG segments). This folder is **YAML-only** so Grok-facing persona specs stay consistent with `seed:xpersonas` and admin governance.
+**xpersonas:** Each subfolder holds **exactly one** persona `*.yaml`. Many personas use **`folder/folder.yaml`** (folder name equals file stem), e.g. `advisor/advisor.yaml`, `exam-coach/exam-coach.yaml`, `trusted-advisor/trusted-advisor.yaml`. Others use a **suffix stem** under a short bucket, e.g. `legal/legal-advisor.yaml`. This segment is **YAML-only** so Grok-facing persona specs stay consistent with `seed:xpersonas` and admin governance.
 
 Segment-level **`README.md`** files are for humans; ingest skips lowercase `readme.md` by name.
 
@@ -49,15 +49,15 @@ Segment-level **`README.md`** files are for humans; ingest skips lowercase `read
 
 | Path | Notes |
 | --- | --- |
-| `trusted/atx-trusted-advisor.yaml` | Persona spec |
+| `advisor/advisor.yaml` | Persona spec (global-admin default **Advisor** seed) |
+| `trusted-advisor/trusted-advisor.yaml` | Persona spec (app-user **trusted-advisor** stack) |
+| `exam-coach/exam-coach.yaml` | Persona spec |
+| `finance-xoptions/finance-xoptions.yaml` | Persona spec |
 | `legal/legal-advisor.yaml` | Persona spec |
 | `marriage-planner/marriage-planner-advisor.yaml` | Persona spec |
 | `medical/medical-advisor.yaml` | Persona spec |
 | `options-trader/options-trader-advisor.yaml` | Persona spec |
 | `tax-expert/atx-tax-expert-advisor.yaml` | Persona spec |
-| `exam-coach/exam-coach.yaml` | Persona spec |
-| `super-agent/super-agent.yaml` | Persona spec (global-admin **Super-Agent**) |
-| `finance-xoptions/finance-xoptions.yaml` | Persona spec |
 
 ### finance-reference-docs
 
@@ -101,12 +101,12 @@ These **YAML** specs are **xPersona / RAG seeds** only. They are **not** Cursor 
 
 | Key | Notes |
 | --- | --- |
-| Top comment | First line: `# atx-rag-collection/xpersonas/<bucket>/<file>.yaml` (exact repo path) |
+| Top comment | First line: `# atx-rag-collection/xpersonas/<bucket>/<file>.yaml` — **logical RAG path tag** (matches ingest-relative naming), not the on-disk folder alias |
 | `id` / `name` | Stable persona slug for Mongo / product (may differ from folder name) |
 | `description` | Block scalar; product-facing summary |
 | `icon` / `color` | Optional on agents; **required** here for admin/UI parity |
 | `INSTRUCTIONS` | Bullet list for operator / ingest hints |
-| `setup` | Shell one-liner; `test -f` the **actual** yaml path under `xpersonas/` |
+| `setup` | Shell one-liner; `test -f` must use the **filesystem** path from repo root, e.g. `atx-docs/rag-collection/xpersonas/<bucket>/<file>.yaml` (some older specs still use the legacy `atx-rag-collection/...` spelling — prefer `atx-docs/rag-collection/...` for a real `test -f`) |
 | `model` | Default chat model id (e.g. `grok-4-1-fast-reasoning`); app may override via env |
 | `system_prompt` | Block scalar; runtime persona body |
 | `xai_collection_name` | Optional. xAI **display name** to match (case-insensitive) for `xchat_personas.xaiCollection.collectionId`. Default: **`atx-trusted-advisor-{dev|stage|prod}-xpersonas`** (same deploy slug as `resolveTrustedAdvisorDeploySlug` / RAG ingest). |
@@ -124,7 +124,7 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 ### Mongo sync (`seed:xpersonas`)
 
 - **Command:** `npm run seed:xpersonas` (`scripts/sync-xpersonas-from-yaml.ts`, `node --env-file=.env --import tsx`).
-- **`seed:admin`:** After core Mongo upserts (tenant, user, portfolio, **`admin_user_settings`**), runs the same sync (unless **`SKIP_SEED_XPERSONAS`**), then re-reads **Super-Agent** by **`nameNormalized` `super-agent`** for the summary payload and to backfill **`assignedPersonaId`** if still empty — so **`/admin/personas`** stays aligned with disk YAML without a second command.
+- **`seed:admin`:** After core Mongo upserts (tenant, user, portfolio, **`admin_user_settings`**), runs the same sync (unless **`SKIP_SEED_XPERSONAS`**), then re-reads the global-admin default persona (**Advisor**, **`nameNormalized` `advisor`**) for the summary payload and to backfill **`assignedPersonaId`** if still empty — so **`/admin/personas`** stays aligned with disk YAML without a second command. Legacy DBs may still reference **`super-agent`**; operators migrate via normal persona sync and admin settings.
 - **Ordering:** For `file_search` against **`…-xpersonas`**, run **`npm run seed:admin:rag-sync`** (or opt-in RAG ingest on **`seed:admin`**) before or after Mongo sync as you prefer. Standalone **`npm run seed:xpersonas`** without xAI upload is supported for Mongo-only dev.
 - **`SEED_XPERSONAS_MODE`:** **`merge`** (default) fills missing `xaiCollection.collectionId` and appends `xapi.tools` by `type` without overwriting prompts or existing tool payloads. **`replace`** overwrites prompts, scalars, and `xapi`; keeps `status` / `version` / `publishedAt`; sets `xaiCollection` only when a collection id resolves.
 - **Flags:** **`SKIP_SEED_XPERSONAS`**, production **`replace`** + **`SEED_XPERSONAS_STRICT=1`** — see **`DEVELOPMENT.md`** (RAG / seed notes).
@@ -141,7 +141,7 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 
 ## Tests and automation
 
-- **`seed:admin`** walks **`atx-rag-collection/`** when xAI keys are set; see **`scripts/lib/seed-xai-rag-ingest.mjs`**. Layout tests: **`tests/unit/atx-rag-collection-layout.test.ts`**.
+- **`seed:admin`** RAG ingest walks **`atx-docs/rag-collection/`** first, then legacy **`atx-rag-collection/`**, when xAI keys are set; see **`scripts/lib/seed-xai-rag-ingest.mjs`**. Layout tests: **`tests/unit/atx-rag-collection-layout.test.ts`**.
 
 ---
 
