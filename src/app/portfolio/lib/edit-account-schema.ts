@@ -13,7 +13,7 @@ export const editAccountFormSchema = z.object({
   riskProfile: deskRiskEnum
 });
 
-/** When the account ref is already stored, the client does not send `extAccountId` (read-only + masked in UI). */
+/** Saves name/cash/desk/broker without `extAccountId` unless the user opts in via “replace ref” (unlocked accounts). */
 export const editAccountFormSchemaWithoutExtRef = z.object({
   name: z.string().trim().min(1, "Account name is required.").max(80, "Use at most 80 characters."),
   type: z.enum(accountTypeValues),

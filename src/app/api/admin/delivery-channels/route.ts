@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminDeliveryChannelsRequestToBackend } from "@/lib/backend-bff";
 import { isSlackIncomingWebhookUrl } from "@/lib/post-slack-incoming-webhook";
 import { createAuditEvent } from "@/modules/audit/repository";
@@ -58,7 +58,12 @@ export async function GET(request: Request) {
     return session;
   }
 
-  const channels = await listAdminDeliveryChannels({ tenantId: session.tenantId });
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
+  const channels = await listAdminDeliveryChannels({ tenantId: tenantIdHex });
   return NextResponse.json({ data: channels.map(serializeAdminDeliveryChannel) });
 }
 
@@ -71,6 +76,11 @@ export async function POST(request: Request) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
+  }
+
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
   }
 
   const json = await request.json();
@@ -88,7 +98,7 @@ export async function POST(request: Request) {
     slackWebhookUrl:
       parsed.data.deliveryTarget === "slack" ? parsed.data.slackWebhookUrl?.trim() : undefined,
     emailTo: parsed.data.deliveryTarget === "email" ? parsed.data.emailTo?.trim() : undefined,
-    tenantId: session.tenantId
+    tenantId: tenantIdHex
   });
 
   if (created._id) {

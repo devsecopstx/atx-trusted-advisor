@@ -22,6 +22,8 @@ export type SymbolHotScanResult = {
   best: HotOptionContractSnapshot | null;
   /** True if any contract in the scanned group meets IV &gt; ivMinPct and OI &gt; minOi. */
   meetsHotCriteria: boolean;
+  /** Underlying regular market price from Yahoo quote (same request pass as options scan). */
+  underlyingSpot: number | null;
 };
 
 type YahooCallOrPut = {
@@ -48,6 +50,15 @@ export async function scanUnderlyingForHotOptions(input: {
   const yf = getYahooFinance2();
   let best: HotOptionContractSnapshot | null = null;
   let meetsHotCriteria = false;
+  let underlyingSpot: number | null = null;
+
+  try {
+    const q = (await yf.quote(sym)) as { regularMarketPrice?: number };
+    const px = q?.regularMarketPrice;
+    underlyingSpot = typeof px === "number" && Number.isFinite(px) ? px : null;
+  } catch {
+    underlyingSpot = null;
+  }
 
   try {
     const result = (await yf.options(sym)) as {
@@ -55,7 +66,7 @@ export async function scanUnderlyingForHotOptions(input: {
     };
     const group = result.options?.[0];
     if (!group) {
-      return { symbol: sym, best: null, meetsHotCriteria: false };
+      return { symbol: sym, best: null, meetsHotCriteria: false, underlyingSpot };
     }
 
     const consider = (c: YahooCallOrPut, contractType: "call" | "put") => {
@@ -83,10 +94,10 @@ export async function scanUnderlyingForHotOptions(input: {
       consider(p, "put");
     }
   } catch {
-    return { symbol: sym, best: null, meetsHotCriteria: false };
+    return { symbol: sym, best: null, meetsHotCriteria: false, underlyingSpot };
   }
 
-  return { symbol: sym, best, meetsHotCriteria };
+  return { symbol: sym, best, meetsHotCriteria, underlyingSpot };
 }
 
 export type NearestExpiryOptionsGlance = {

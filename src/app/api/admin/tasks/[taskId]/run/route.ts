@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
 import { getScheduledTaskById } from "@/modules/core-admin/repository";
 import { executeScheduledTask } from "@/modules/core-admin/task-runner";
@@ -20,9 +20,14 @@ export async function POST(request: Request, context: RouteContext) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const { taskId } = await context.params;
   const task = await getScheduledTaskById(taskId, {
-    tenantId: session.tenantId
+    tenantId: tenantIdHex
   });
   if (!task?._id) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });

@@ -2076,6 +2076,48 @@
   color: var(--xf-text-400);
 }
 
+/**
+ * Soft/light shell (`data-xf-ui="soft"`): global text tokens flip to dark ink on light canvases, but
+ * alert rows still used near-black surface gradients → unreadable. Lift row surfaces + tune borders/noise.
+ */
+html[data-xf-ui="soft"] .portfolio-alerts-row {
+  /* Match soft shell card lift (see `html[data-xf-ui="soft"]` rail / globals). */
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, #ffffff 92%, var(--xf-surface-700)),
+    color-mix(in srgb, #ffffff 96%, var(--xf-bg-900))
+  );
+  border-color: color-mix(in srgb, var(--xf-text-100) 16%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+html[data-xf-ui="soft"] .portfolio-alerts-row--info {
+  border-color: color-mix(in srgb, var(--xf-blue-400) 55%, var(--xf-text-100));
+}
+
+html[data-xf-ui="soft"] .portfolio-alerts-row--warn {
+  border-color: color-mix(in srgb, var(--xf-warning-400) 60%, var(--xf-text-100));
+}
+
+html[data-xf-ui="soft"] .portfolio-alerts-row--critical {
+  border-color: color-mix(in srgb, var(--xf-danger-400) 65%, var(--xf-text-100));
+}
+
+/* Light cards: swap white noise for ink specks so texture stays visible */
+html[data-xf-ui="soft"] .portfolio-alerts-row.xf-noise-overlay::before {
+  background-image: radial-gradient(color-mix(in srgb, var(--xf-text-100) 14%, transparent) 0.5px, transparent 0.5px);
+  opacity: 0.5;
+}
+
+html[data-xf-ui="soft"] .portfolio-alerts-badge {
+  border-color: color-mix(in srgb, var(--xf-text-100) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+}
+
+html[data-xf-ui="soft"] .portfolio-alerts-badge--sym {
+  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+}
+
 @media (min-width: 1100px) {
   .portfolio-account-page--edit {
     width: min(1080px, 100%);

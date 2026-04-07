@@ -40,20 +40,20 @@ This starts Mongo + backend first, then frontend.
 For each new instance, run:
 
 - `npm run seed:admin` (default full bootstrap; same as `npm run seed:admin:full`)
-- `npm run seed:admin:db` (DB-only onboarding: skips xAI ingest + xAI verify network checks)
+- `npm run seed:admin:db` (DB-only onboarding: forces no xAI RAG upload + skips post-seed xAI verify network checks)
 
 What it does:
 
 - upserts admin + tenant bootstrap; sets **`core_users.subscriptionPlan`** to **`basic`** for `ADMIN_SEED_EMAIL` (each run normalizes that row)
 - inserts an approved bootstrap **`admin_access_requests`** row with **`requestedPlan: basic`** when none exists for that user + `global_admin`
 - runs xPersona sync from `atx-docs/rag-collection/xpersonas` (legacy `atx-rag-collection/xpersonas` still supported) unless `SKIP_SEED_XPERSONAS=1`; default admin persona is **Super-Agent** (`nameNormalized` **`super-agent`**, canonical spec `super-agent/super-agent.yaml` in that tree)
-- uploads RAG sources to xAI (when keys are present) unless `SKIP_SEED_XAI_RAG_INGEST=1`
-- runs strict xAI seeded RAG collection verification unless `SKIP_XAI_POST_SEED_RAG_VERIFY=1`
+- does **not** upload finance-ref / example-prompts / segment files to xAI team collections by default — use `npm run seed:admin:rag-sync` or `SEED_ADMIN_XAI_RAG_INGEST=1 npm run seed:admin` when you want that
+- runs strict xAI seeded RAG collection verification only when RAG ingest ran in the same `seed:admin` invocation; otherwise skip (or run `npm run verify:xai-seed-rag` after `seed:admin:rag-sync`). Override with `SKIP_XAI_POST_SEED_RAG_VERIFY=1` when ingest ran
 - runs xAI hello verification unless `SKIP_XAI_POST_SEED_VERIFY=1`
 
 `seed:admin:db` keeps Mongo onboarding behavior (admin user, approved access request, default account/watchlist, xPersona load, Super-Agent assignment) and forces:
 
-- `SKIP_SEED_XAI_RAG_INGEST=1`
+- `SKIP_SEED_XAI_RAG_INGEST=1` (and clears `SEED_ADMIN_XAI_RAG_INGEST`)
 - `SKIP_XAI_POST_SEED_RAG_VERIFY=1`
 - `SKIP_XAI_POST_SEED_VERIFY=1`
 
@@ -65,7 +65,7 @@ Use these when you need targeted re-sync without full bootstrap:
 - options strategy preferences: `npm run seed:options-strategy-prefs`
 - seeded RAG collections verification only: `npm run verify:xai-seed-rag`
 
-RAG upload path used by `seed:admin`:
+RAG upload path used by `seed:admin:rag-sync` (or `SEED_ADMIN_XAI_RAG_INGEST=1` with `seed:admin`):
 
 - `atx-docs/rag-collection/*` (legacy `atx-rag-collection/*` still resolved) via `scripts/lib/seed-xai-rag-ingest.mjs`
 

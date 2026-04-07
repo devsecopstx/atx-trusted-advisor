@@ -28,7 +28,12 @@ import {
 } from "@/modules/watchlist/parse-watchlist-csv";
 import type { SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
 
-import { WatchlistSymbolShape } from "./watchlist-symbol-shape";
+type WatchlistChainGlance = {
+  contractType: "call" | "put";
+  strike: number;
+  impliedVolatilityPercent: number;
+  openInterest: number;
+};
 
 type WatchlistRow = {
   symbol: string;
@@ -41,6 +46,8 @@ type WatchlistRow = {
   /** From price scanner job (`lastPrice` / `lastUpdatedAt` on symbol row). */
   lastPrice?: number;
   lastUpdatedAt?: string;
+  /** Nearest-expiry chain highlight when API is called with chainGlance=1. */
+  chainGlance?: WatchlistChainGlance | null;
 };
 
 type WatchlistApiData = {
@@ -187,6 +194,56 @@ function applyWatchlistSort(
   return out;
 }
 
+function formatSpotCell(row: WatchlistRow): string {
+  const px = row.quote?.price;
+  if (typeof px === "number" && Number.isFinite(px)) {
+    return px.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  }
+  return "—";
+}
+
+function formatOiCell(n: number): string {
+  if (n >= 1_000_000) {
+    return `${(n / 1_000_000).toFixed(1)}M`;
+  }
+  if (n >= 1000) {
+    return `${(n / 1000).toFixed(1)}k`;
+  }
+  return String(Math.round(n));
+}
+
+function formatIvCell(row: WatchlistRow): string {
+  const iv = row.chainGlance?.impliedVolatilityPercent;
+  if (iv == null || !Number.isFinite(iv)) {
+    return "—";
+  }
+  return `${iv.toFixed(1)}%`;
+}
+
+function formatLegCell(row: WatchlistRow): string {
+  const g = row.chainGlance;
+  if (!g) {
+    return "—";
+  }
+  return `${g.contractType} ${g.strike.toFixed(2)}`;
+}
+
+function WatchlistIconBadge({ logoUrl, symbol }: { logoUrl?: string | null; symbol: string }) {
+  if (logoUrl) {
+    return (
+      <div className="xf-watchlist-icon-badge xf-watchlist-icon-badge--img">
+        {/* eslint-disable-next-line @next/next/no-img-element -- remote CDN; matches compact watchlist */}
+        <img alt="" height={28} src={logoUrl} width={28} />
+      </div>
+    );
+  }
+  return (
+    <div aria-hidden className="xf-watchlist-icon-badge">
+      {symbol.slice(0, 2).toUpperCase()}
+    </div>
+  );
+}
+
 function formatLastUpdateCell(row: WatchlistRow): string {
   if (row.lastUpdatedAt) {
     try {
@@ -331,6 +388,7 @@ export function WatchlistConsole({
   footerMode = "app_user"
 }: WatchlistConsoleProps) {
   const watchlistBaseUrl = `${watchlistApiPrefix}/${encodeURIComponent(portfolioId)}/watchlist`;
+  const watchlistFetchQuery = "quotes=1&chainGlance=1";
   const [listName, setListName] = useState("Default");
   const [rows, setRows] = useState<WatchlistRow[]>([]);
   const [editMode, setEditMode] = useState(false);
@@ -383,7 +441,7 @@ export function WatchlistConsole({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${watchlistBaseUrl}?quotes=1`, { credentials: "include" });
+      const res = await fetch(`${watchlistBaseUrl}?${watchlistFetchQuery}`, { credentials: "include" });
       const { json } = await readFetchJsonBody<{ data?: WatchlistApiData; error?: string }>(res);
       if (!res.ok) {
         throw new Error(
@@ -404,14 +462,14 @@ export function WatchlistConsole({
     } finally {
       setLoading(false);
     }
-  }, [watchlistBaseUrl]);
+  }, [watchlistBaseUrl, watchlistFetchQuery]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const executePatch = useCallback(async (body: Record<string, unknown>) => {
-    const res = await fetch(`${watchlistBaseUrl}?quotes=1`, {
+    const res = await fetch(`${watchlistBaseUrl}?${watchlistFetchQuery}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -428,7 +486,7 @@ export function WatchlistConsole({
       setListName(json.data.name ?? "Default");
       setRows(buildRows(json.data));
     }
-  }, [watchlistBaseUrl]);
+  }, [watchlistBaseUrl, watchlistFetchQuery]);
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {
@@ -615,7 +673,7 @@ export function WatchlistConsole({
       setError(null);
       try {
         for (const batch of chunkSymbols(workload, MAX_WATCHLIST_SYMBOLS_PER_PATCH)) {
-          const res = await fetch(`${watchlistBaseUrl}?quotes=1`, {
+          const res = await fetch(`${watchlistBaseUrl}?${watchlistFetchQuery}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -653,7 +711,7 @@ export function WatchlistConsole({
         setMutating(false);
       }
     },
-    [editMode, rows, watchlistBaseUrl]
+    [editMode, rows, watchlistBaseUrl, watchlistFetchQuery]
   );
 
   const displayRows = editMode ? draftRows : rows;
@@ -834,6 +892,7 @@ export function WatchlistConsole({
                 <table className="xf-watchlist-table">
                   <thead>
                     <tr>
+                      <th scope="col">Icon</th>
                       <th
                         aria-sort={
                           sort.column === "instrument"
@@ -849,12 +908,16 @@ export function WatchlistConsole({
                           type="button"
                           onClick={() => toggleWatchlistSort("instrument")}
                         >
-                          Instrument
+                          Sym
                           <span aria-hidden className="xf-watchlist-sort-indicator">
                             {sort.column === "instrument" ? (sort.dir === "asc" ? " ↑" : " ↓") : ""}
                           </span>
                         </button>
                       </th>
+                      <th scope="col">Spot</th>
+                      <th scope="col">IV</th>
+                      <th scope="col">OI</th>
+                      <th scope="col">Leg</th>
                       <th
                         aria-sort={
                           sort.column === "targetEntry"
@@ -885,14 +948,30 @@ export function WatchlistConsole({
                   <tbody>
                     {sortedDisplayRows.map((row) => (
                       <tr key={row.symbol}>
-                        <td>
-                          <WatchlistSymbolShape
-                            quote={row.quote}
-                            removeBusy={removingSymbol === row.symbol}
-                            symbol={row.symbol}
-                            onRemoveFromWatchlist={() => void onRemoveSymbol(row.symbol)}
-                          />
+                        <td className="xf-watchlist-table-icon-cell">
+                          <WatchlistIconBadge logoUrl={row.quote?.logoUrl} symbol={row.symbol} />
                         </td>
+                        <td>
+                          <div className="xf-watchlist-sym-cell">
+                            <span className="xf-watchlist-sym-cell__label">{row.symbol}</span>
+                            <a
+                              className="xf-watchlist-sym-cell__ext"
+                              href={`https://finance.yahoo.com/quote/${encodeURIComponent(row.symbol)}`}
+                              rel="noreferrer"
+                              target="_blank"
+                              title={`${row.symbol} on Yahoo Finance`}
+                            >
+                              <ExternalLinkIcon className="crud-icon" aria-hidden />
+                              <span className="sr-only">Yahoo Finance ({row.symbol})</span>
+                            </a>
+                          </div>
+                        </td>
+                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatSpotCell(row)}</td>
+                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatIvCell(row)}</td>
+                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
+                          {row.chainGlance != null ? formatOiCell(row.chainGlance.openInterest) : "—"}
+                        </td>
+                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatLegCell(row)}</td>
                         <td className="xf-watchlist-table-mono">
                           {editMode ? (
                             <div className="xf-watchlist-edit-stack">

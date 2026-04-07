@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteIcon, UploadIcon } from "@/app/admin/ui/crud-icons";
 import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
+import { brokerExportRefMatchesStoredExt } from "@/lib/broker-account-ref-match";
 import { detectFidelityActivitiesCsv } from "@/modules/portfolio-import/fidelity-activities-csv";
 import { detectFidelityPortfolioHoldingsCsv } from "@/modules/portfolio-import/fidelity-holdings-csv";
 
@@ -35,6 +36,11 @@ type BrokerPreviewAccount = {
   cashCount: number;
   sampleTickers: string[];
 };
+
+/** Must match `parseBrokerHoldingsAccounts` / `applyBrokerHoldingsToMappedAccounts` mapping keys. */
+function brokerImportPreviewRowKey(row: BrokerPreviewAccount): string {
+  return row.accountRef || row.label || "default";
+}
 
 type BrokerApplyRow = {
   accountRef: string;
@@ -110,6 +116,8 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   const [brokerCsv, setBrokerCsv] = useState("");
   const [brokerKind, setBrokerKind] = useState<string>(() => resolveDefaultBrokerId(brokers));
   const [brokerPreview, setBrokerPreview] = useState<BrokerPreviewAccount[] | null>(null);
+  /** Per preview row: whether to include this broker account when running import (default all true after preview). */
+  const [importRowSelected, setImportRowSelected] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [results, setResults] = useState<BrokerApplyRow[] | null>(null);
@@ -160,13 +168,22 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   );
   const brokerImportSupported = SUPPORTED_IMPORT_BROKERS.has(brokerKind);
 
+  const someImportRowSelected = useMemo(() => {
+    if (!brokerPreview?.length) {
+      return false;
+    }
+    return brokerPreview.some((row) => importRowSelected[brokerImportPreviewRowKey(row)] === true);
+  }, [brokerPreview, importRowSelected]);
+
   const findAccountByExternalRef = (accountRef: string): AccountRow | undefined => {
     const ref = accountRef.trim();
     if (!ref) {
       return undefined;
     }
     return accounts.find(
-      (a) => (a.extAccountId || "").trim() === ref && (a.type ?? "") === brokerKind
+      (a) =>
+        brokerExportRefMatchesStoredExt(ref, (a.extAccountId || "").trim()) &&
+        (a.type ?? "") === brokerKind
     );
   };
 
@@ -211,11 +228,15 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         throw new Error("No broker accounts were detected in this file.");
       }
       setBrokerPreview(payload.accounts);
+      setImportRowSelected(
+        Object.fromEntries(payload.accounts.map((row) => [brokerImportPreviewRowKey(row), true]))
+      );
       setMessage(
-        `Preview complete: ${payload.accounts.length} broker account(s) detected. Confirm account mapping below, then run import.`
+        `Preview complete: ${payload.accounts.length} broker account(s) detected. Toggle Import for each row, then run import.`
       );
     } catch (e) {
       setBrokerPreview(null);
+      setImportRowSelected({});
       setMessage(e instanceof Error ? e.message : "Preview failed. Review file format and try again.");
     } finally {
       setBusy(false);
@@ -238,12 +259,17 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       return;
     }
     if (brokerPreview?.length) {
-      const missing = brokerPreview
+      const enabledRows = brokerPreview.filter((row) => importRowSelected[brokerImportPreviewRowKey(row)] === true);
+      if (enabledRows.length === 0) {
+        setMessage("Turn on Import for at least one account row in the preview table, or run preview again.");
+        return;
+      }
+      const missing = enabledRows
         .filter((row) => !findAccountByExternalRef(row.accountRef)?._id)
         .map((row) => row.accountRef || "(blank)");
       if (missing.length > 0) {
         setMessage(
-          `Import blocked: ${missing.length} broker account ref(s) do not match account external refs in this portfolio. Missing: ${missing.join(", ")}`
+          `Import blocked: ${missing.length} selected broker account ref(s) do not match account external refs in this portfolio. Missing: ${missing.join(", ")}`
         );
         return;
       }
@@ -252,8 +278,12 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       brokerPreview?.length
         ? Object.fromEntries(
             brokerPreview.flatMap((row) => {
+              if (importRowSelected[brokerImportPreviewRowKey(row)] !== true) {
+                return [];
+              }
+              const key = brokerImportPreviewRowKey(row);
               const matched = findAccountByExternalRef(row.accountRef)?._id;
-              return matched ? [[row.accountRef, matched] as const] : [];
+              return matched ? [[key, matched] as const] : [];
             })
           )
         : {};
@@ -345,6 +375,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       );
       const d = payload.data;
       setBrokerPreview(null);
+      setImportRowSelected({});
       setResults(null);
       setTaskOutput(null);
       setMessage(
@@ -379,7 +410,8 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         </ul>
         <p className="m-0 text-xs leading-snug text-[var(--xf-text-300)]">
           Account numbers in the broker file must exactly match each account&apos;s external ref in this portfolio.
-          Preview shows file impact only; import applies additive updates to current holdings.
+          After preview, use the <strong className="text-[var(--xf-text-100)]">Import</strong> checkboxes to choose which
+          broker accounts to load; only selected rows are written. Preview shows file impact only.
         </p>
         <p className="mt-2 mb-0 text-xs leading-snug text-[var(--xf-text-300)]">
           <strong className="text-[var(--xf-text-100)]">Options note:</strong> only net-long option legs are imported
@@ -398,6 +430,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
             onChange={(e) => {
               setPortfolioId(e.target.value);
               setBrokerPreview(null);
+              setImportRowSelected({});
               setResults(null);
               setTaskOutput(null);
             }}
@@ -487,6 +520,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                   onClick={() => {
                     setBrokerKind(broker.id);
                     setBrokerPreview(null);
+                    setImportRowSelected({});
                   }}
                   aria-pressed={active}
                   aria-label={`Select broker ${broker.name}`}
@@ -603,7 +637,9 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         <button
           type="button"
           className="inline-flex items-center gap-2 rounded-md bg-[var(--xf-gain-green)] px-3 py-2 text-sm font-medium text-black hover:opacity-90 disabled:opacity-50"
-          disabled={busy || !portfolioId || !brokerPreview?.length || !brokerImportSupported}
+          disabled={
+            busy || !portfolioId || !brokerPreview?.length || !brokerImportSupported || !someImportRowSelected
+          }
           onClick={() => void runImport()}
         >
           <UploadIcon className="crud-icon h-4 w-4" /> Run import now
@@ -617,6 +653,9 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
           <table className="w-full text-left text-xs">
             <thead className="border-b border-white/10 text-[var(--xf-text-300)]">
               <tr>
+                <th className="p-2 w-16 text-center" scope="col">
+                  Import
+                </th>
                 <th className="p-2">Broker ref</th>
                 <th className="p-2">Stocks</th>
                 <th className="p-2">Sample</th>
@@ -624,14 +663,42 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
               </tr>
             </thead>
             <tbody>
-              {brokerPreview.map((row) => {
+              {brokerPreview.map((row, idx) => {
                 const m = findAccountByExternalRef(row.accountRef);
+                const rowKey = brokerImportPreviewRowKey(row);
                 return (
-                  <tr key={row.accountRef} className="border-b border-white/5">
-                    <td className="p-2 font-mono">{row.accountRef}</td>
+                  <tr key={`${rowKey}-${idx}`} className="border-b border-white/5">
+                    <td className="p-2 text-center align-middle">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-[var(--xf-gain-green)]"
+                        checked={importRowSelected[rowKey] === true}
+                        onChange={(e) => {
+                          setImportRowSelected((prev) => ({ ...prev, [rowKey]: e.target.checked }));
+                        }}
+                        aria-label={`Include broker account ${row.label || row.accountRef || "row"} in import`}
+                      />
+                    </td>
+                    <td
+                      className="p-2 font-mono"
+                      title="Matching uses the full broker account id from your file; preview shows last four digits only."
+                    >
+                      {maskAccountXrefForDisplay(row.accountRef)}
+                    </td>
                     <td className="p-2">{row.stockCount}</td>
                     <td className="p-2 font-mono">{row.sampleTickers.join(", ")}</td>
-                    <td className="p-2">{m?.name ?? "— no match —"}</td>
+                    <td className="p-2">
+                      {m ? (
+                        <>
+                          {m.name}
+                          <span className="ml-1 font-mono text-[var(--xf-text-400)]">
+                            {maskAccountXrefForDisplay(m.extAccountId)}
+                          </span>
+                        </>
+                      ) : (
+                        "— no match —"
+                      )}
+                    </td>
                   </tr>
                 );
               })}

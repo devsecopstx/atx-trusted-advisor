@@ -131,6 +131,8 @@ export type AppUserRailNavProps = {
   showReferenceDocs?: boolean;
   /** Hide account settings row (used by guest/read-only shells). */
   showSettingsLink?: boolean;
+  /** Active workspace portfolio for import-activity deep link; omit for `/import-activity` only. */
+  workspacePortfolioId?: string | null;
 };
 
 export type AppUserPublicRailContext = {
@@ -145,8 +147,13 @@ export type AppUserAccountPublicRailProps = AppUserRailNavProps & {
 export function AppUserResourcesRailSection({
   isGlobalAdmin,
   railDisclosureDefaultOpen = false,
-  showReferenceDocs = true
+  showReferenceDocs = true,
+  workspacePortfolioId = null
 }: AppUserRailNavProps) {
+  const pid = workspacePortfolioId?.trim() ?? "";
+  const importHref =
+    pid.length > 0 ? `/import-activity?portfolioId=${encodeURIComponent(pid)}` : "/import-activity";
+
   return (
     <section className="app-user-rail-section" aria-label="Resources">
       <RailDisclosure
@@ -166,6 +173,9 @@ export function AppUserResourcesRailSection({
           </RailNavLink>
           <RailNavLink href="/resources/building-wheel/wheel-vs-iron-condor" title="Wheel vs iron condor">
             Wheel vs Iron Condor
+          </RailNavLink>
+          <RailNavLink href={importHref} title="Upload broker CSV exports (Merrill, Fidelity, …)">
+            Broker import
           </RailNavLink>
           {showReferenceDocs
             ? isGlobalAdmin ? (
@@ -339,7 +349,10 @@ export function AppUserAccountPublicRail({
         isGlobalAdmin={isGlobalAdmin}
         railContext={railContext}
       />
-      <AppUserResourcesRailSection isGlobalAdmin={isGlobalAdmin} />
+      <AppUserResourcesRailSection
+        isGlobalAdmin={isGlobalAdmin}
+        workspacePortfolioId={railContext.book?.portfolioId ?? null}
+      />
       <AppUserAccountRailSection
         accountDetails={accountDetails}
         accountFeedbackPageLabel={accountFeedbackPageLabel}

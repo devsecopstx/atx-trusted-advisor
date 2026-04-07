@@ -84,11 +84,11 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 
 - `GET /api/portfolios/default`
 - `GET /api/portfolios/:portfolioId/accounts`
-- `PATCH /api/portfolios/:portfolioId/accounts/:accountId`
+- `PATCH /api/portfolios/:portfolioId/accounts/:accountId` — name, cash, desk fields, custodian **`type`**; **`extAccountId`** may be updated when **`brokerImportLocked`** is false (still **409** if import-locked and body touches ref or type)
 - `GET /api/user/watchlist` — canonical **user-global** watchlist (session); optional `?quotes=1`
 - `PATCH /api/user/watchlist` — same store as portfolio-scoped routes below
-- `GET /api/portfolios/:portfolioId/watchlist` — shim: requires owned `portfolioId`, reads/writes user watchlist
-- `PATCH /api/portfolios/:portfolioId/watchlist`
+- `GET /api/portfolios/:portfolioId/watchlist` — shim: requires owned `portfolioId`, reads/writes user watchlist. Query **`quotes=1`** adds per-symbol quotes; add **`chainGlance=1`** (only with **`quotes=1`**) to attach **`chainGlance`** `{ contractType, strike, impliedVolatilityPercent, openInterest }` per row from nearest-expiry options (Yahoo)
+- `PATCH /api/portfolios/:portfolioId/watchlist` — same query params as GET when re-fetching payload after patch
 - `GET /api/positions?portfolioId=&accountId=`
 - `POST /api/positions`
 - `DELETE /api/positions/:positionId?portfolioId=&accountId=`
@@ -98,7 +98,7 @@ Admin portfolio routes include:
 - `PATCH /api/admin/portfolios/:portfolioId`
 - `GET|PATCH /api/admin/portfolios/:portfolioId/watchlist`
 - `POST /api/admin/import/broker`
-- `POST /api/import/broker` — app-user Merrill/Fidelity **holdings** CSV (session); dry-run preview or apply via staged `app_broker_import_jobs` + immediate `sync-broker` task (`/import-activity` UI)
+- `POST /api/import/broker` — app-user Merrill/Fidelity **holdings** CSV (session); dry-run preview or apply via staged `app_broker_import_jobs` + immediate `sync-broker` task (`/import-activity` UI). **`mappings`** = broker account key → core account id; keys may be a **subset** of accounts parsed from the CSV (omit rows to skip import); at least one mapping required when the file contains accounts. Keys align with parser: **`accountRef || label || "default"`**
 - `POST /api/import/broker/clean` — app-user **destructive** reset: deletes all positions for the portfolio, `app_broker_import_jobs` rows for that user/book, and portfolio-bound `sync-broker` scheduled tasks (session + portfolio must belong to user)
 
 ## xStrategyBuilder / strategy options

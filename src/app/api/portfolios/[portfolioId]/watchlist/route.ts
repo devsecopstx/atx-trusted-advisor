@@ -12,6 +12,7 @@ import {
     type Watchlist,
     type WatchlistSymbol
 } from "@/modules/core-admin/types";
+import { summarizeNearestExpiryOptionsHighlight } from "@/modules/find-options/options-hot-scan";
 import {
     LOOKUP_ROUTE,
     lookupSymbols,
@@ -82,9 +83,12 @@ function toIsoSymbolRows(watchlist: Watchlist) {
   return (watchlist.symbols ?? []).map(watchlistSymbolToJsonRow);
 }
 
+const CHAIN_GLANCE_BATCH = 4;
+
 async function buildJsonPayload(
   watchlist: Watchlist,
-  quotes: boolean
+  quotes: boolean,
+  chainGlance: boolean
 ): Promise<Record<string, unknown>> {
   const symbols = toIsoSymbolRows(watchlist);
   const symbolsDetailed = symbols;
@@ -101,16 +105,60 @@ async function buildJsonPayload(
         lastPrice?: number;
         lastUpdatedAt?: string;
         quote: SymbolLookupResult | null;
+        chainGlance?: {
+          contractType: "call" | "put";
+          strike: number;
+          impliedVolatilityPercent: number;
+          openInterest: number;
+        } | null;
       }>
     | undefined;
 
   const rawSymbols = watchlist.symbols ?? [];
   if (quotes) {
     const map = await lookupSymbols(rawSymbols.map((s) => s.symbol));
-    symbolsWithQuotes = rawSymbols.map((s) => ({
-      ...watchlistSymbolToJsonRow(s),
-      quote: map.get(s.symbol) ?? null
-    }));
+    const glanceBySymbol = new Map<
+      string,
+      | {
+          contractType: "call" | "put";
+          strike: number;
+          impliedVolatilityPercent: number;
+          openInterest: number;
+        }
+      | null
+    >();
+    if (chainGlance && rawSymbols.length > 0) {
+      const keys = rawSymbols.map((s) => s.symbol.trim().toUpperCase()).filter(Boolean);
+      for (let i = 0; i < keys.length; i += CHAIN_GLANCE_BATCH) {
+        const batch = keys.slice(i, i + CHAIN_GLANCE_BATCH);
+        const results = await Promise.all(batch.map((sym) => summarizeNearestExpiryOptionsHighlight(sym)));
+        batch.forEach((sym, j) => {
+          const g = results[j];
+          glanceBySymbol.set(
+            sym,
+            g
+              ? {
+                  contractType: g.contractType,
+                  strike: g.strike,
+                  impliedVolatilityPercent: g.impliedVolatilityPercent,
+                  openInterest: g.openInterest
+                }
+              : null
+          );
+        });
+      }
+    }
+    symbolsWithQuotes = rawSymbols.map((s) => {
+      const key = s.symbol.trim().toUpperCase();
+      const base = {
+        ...watchlistSymbolToJsonRow(s),
+        quote: map.get(s.symbol) ?? null
+      };
+      if (chainGlance) {
+        return { ...base, chainGlance: glanceBySymbol.get(key) ?? null };
+      }
+      return base;
+    });
   }
 
   return {
@@ -140,6 +188,7 @@ export async function GET(request: Request, context: RouteContext) {
 
   const { portfolioId } = await context.params;
   const quotes = new URL(request.url).searchParams.get("quotes") === "1";
+  const chainGlance = new URL(request.url).searchParams.get("chainGlance") === "1";
   const watchlist = await ensurePortfolioWatchlistForUser({
     userId: session.userId,
     portfolioId,
@@ -149,7 +198,7 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
   }
 
-  const payload = await buildJsonPayload(watchlist, quotes);
+  const payload = await buildJsonPayload(watchlist, quotes, quotes && chainGlance);
   return NextResponse.json(payload);
 }
 
@@ -207,6 +256,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const quotes = new URL(request.url).searchParams.get("quotes") === "1";
-  const payload = await buildJsonPayload(updated, quotes);
+  const chainGlance = new URL(request.url).searchParams.get("chainGlance") === "1";
+  const payload = await buildJsonPayload(updated, quotes, quotes && chainGlance);
   return NextResponse.json(payload);
 }

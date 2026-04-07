@@ -312,8 +312,7 @@ export async function applyBrokerHoldingsToMappedAccounts(input: {
         label,
         imported: 0,
         skippedNonStock: acc.positions.length,
-        deletedPrior: 0,
-        error: "No app account selected for this broker account key"
+        deletedPrior: 0
       });
       continue;
     }

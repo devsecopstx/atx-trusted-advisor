@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/**
+ * Manual disk → xAI team KB upload (trusted-advisor segment collections + file ingest).
+ * Not run by `npm run seed:admin` unless `SEED_ADMIN_XAI_RAG_INGEST=1`.
+ */
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

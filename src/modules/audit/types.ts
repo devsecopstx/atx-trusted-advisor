@@ -8,7 +8,8 @@ export type AuditEntityType =
   | "admin_delivery_channel"
   | "admin_portfolio"
   | "xchat_session"
-  | "core_scanner";
+  | "core_scanner"
+  | "system";
 
 export type AuditActor = {
   userId: string;

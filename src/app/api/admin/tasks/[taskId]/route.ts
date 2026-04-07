@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
 import {
@@ -72,6 +72,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const { taskId } = await context.params;
 
   let json: unknown;
@@ -89,7 +94,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  const allowed = await requireTenantLevelTask(taskId, session.tenantId);
+  const allowed = await requireTenantLevelTask(taskId, tenantIdHex);
   if (!allowed) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
@@ -115,7 +120,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     deliveryChannelTarget = await resolveDeliveryChannelTargetForPatch(
       parsed.data.deliveryChannelTarget,
-      session.tenantId
+      tenantIdHex
     );
   } catch (e) {
     if (e instanceof DeliveryChannelTargetError) {
@@ -126,7 +131,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const updated = await updateScheduledTask({
     taskId,
-    tenantId: session.tenantId,
+    tenantId: tenantIdHex,
     name: parsed.data.name,
     category: parsed.data.category,
     scheduleCron: normalizedSchedule.scheduleCron,
@@ -155,16 +160,21 @@ export async function DELETE(_request: Request, context: RouteContext) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const { taskId } = await context.params;
 
-  const allowed = await requireTenantLevelTask(taskId, session.tenantId);
+  const allowed = await requireTenantLevelTask(taskId, tenantIdHex);
   if (!allowed) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
   const ok = await deleteScheduledTask({
     taskId,
-    tenantId: session.tenantId
+    tenantId: tenantIdHex
   });
   if (!ok) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });

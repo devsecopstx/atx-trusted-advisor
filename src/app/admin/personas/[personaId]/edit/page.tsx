@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
-import { SimplePersonaEditor } from "../../ui/simple-persona-editor";
+import { EditPersonaEditorClient } from "./edit-persona-editor-client";
 
 type RouteContext = {
   params: Promise<{ personaId: string }>;
@@ -26,7 +26,7 @@ export default async function AdminEditPersonaPage({ params }: RouteContext) {
         <h1 className="hero-title">Edit xPersona</h1>
         <p className="hero-copy">Edit a persona in a dedicated page for complex settings.</p>
       </section>
-      <SimplePersonaEditor mode="edit" personaId={personaId} />
+      <EditPersonaEditorClient personaId={personaId} />
     </div>
   );
 }

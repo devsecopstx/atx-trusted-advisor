@@ -124,6 +124,7 @@ describe("GET /api/app-user/find-options/*", () => {
       rows: [
         {
           symbol: "NVDA",
+          spot: 450,
           impliedVolatilityPercent: 80,
           openInterest: 5000,
           strike: 100,

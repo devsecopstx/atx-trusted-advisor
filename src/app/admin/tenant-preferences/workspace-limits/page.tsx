@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { TenantWorkspaceLimitsPanel } from "@/app/admin/tenant-preferences/ui/tenant-workspace-limits-panel";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,11 @@ export default async function AdminTenantWorkspaceLimitsPage() {
   }
   if (!isGlobalAdmin(session.roles)) {
     redirect("/xchat");
+  }
+
+  const resolvedTenantId = await resolveTenantIdHexForGlobalAdminConsole(session.tenantId);
+  if (!resolvedTenantId) {
+    redirect("/admin?error=no-tenant");
   }
 
   return (
@@ -27,7 +33,7 @@ export default async function AdminTenantWorkspaceLimitsPage() {
           <strong>Save</strong>.
         </p>
       </header>
-      <TenantWorkspaceLimitsPanel tenantId={session.tenantId} />
+      <TenantWorkspaceLimitsPanel tenantId={resolvedTenantId} />
     </div>
   );
 }

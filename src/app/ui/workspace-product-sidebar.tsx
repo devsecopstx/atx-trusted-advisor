@@ -85,34 +85,6 @@ function SidebarLink({
   );
 }
 
-function StarIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M12 3l2.1 4.26L18 8l-3.5 3.4.83 4.86L12 14.9 8.67 16.26 9.5 11.4 6 8l3.9-.74L12 3z"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth={1.4}
-      />
-    </svg>
-  );
-}
-
-function BellIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M12 5a4 4 0 00-4 4v2.8c0 .9-.3 1.8-.9 2.5L6 16h12l-1.1-1.7a4.2 4.2 0 01-.9-2.5V9a4 4 0 00-4-4z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-      />
-      <path d="M10 19a2 2 0 004 0" stroke="currentColor" strokeLinecap="round" strokeWidth={1.5} />
-    </svg>
-  );
-}
-
 function ResourcesIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
@@ -263,8 +235,6 @@ function SidebarAccordionSummary({
 export type WorkspaceProductSidebarProps = {
   defaultPortfolioId: string | null;
   isGlobalAdmin: boolean;
-  /** Full watchlist console: `/watchlist?portfolioId=` when the workspace book is known, else `/watchlist`. */
-  watchlistHref: string;
   accountDetails: AppUserRailAccountPanelDetails | null;
   /** Optional “Link Google” in account panel (e.g. xChat when Google OAuth is configured). */
   googleLinkHref?: string | null;
@@ -277,7 +247,6 @@ export type WorkspaceProductSidebarProps = {
 export function WorkspaceProductSidebar({
   defaultPortfolioId,
   isGlobalAdmin,
-  watchlistHref,
   accountDetails,
   googleLinkHref = null,
   accountFeedbackPageLabel,
@@ -316,10 +285,6 @@ export function WorkspaceProductSidebar({
     defaultPortfolioId !== null
       ? `/import-activity?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
       : "/import-activity";
-  const alertsHref =
-    defaultPortfolioId !== null
-      ? `/portfolio/alerts?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
-      : "/portfolio/alerts";
   const fallbackXchatSection = (
     <RouteSyncedDetails
       className="portfolios-workspace-sidebar__accordion"
@@ -356,7 +321,6 @@ export function WorkspaceProductSidebar({
         routeMatch={
           pathname.startsWith("/portfolios") ||
           pathname.startsWith("/portfolio") ||
-          pathname.startsWith("/watchlist") ||
           pathname.startsWith("/import-activity")
         }
       >
@@ -372,17 +336,6 @@ export function WorkspaceProductSidebar({
           <WorkspacePortfolioAccountPickerCard book={workspaceBook} />
           <SidebarLink href="/portfolios" nested title="Books overview">
             myPortfolios
-          </SidebarLink>
-          <SidebarLink
-            href={watchlistHref}
-            title="Watchlist — symbols, import/export, desk fields"
-          >
-            <StarIcon className="portfolios-workspace-sidebar__glyph" />
-            <span>Watchlist</span>
-          </SidebarLink>
-          <SidebarLink href={alertsHref} title="Portfolio alerts">
-            <BellIcon className="portfolios-workspace-sidebar__glyph" />
-            <span>Alerts</span>
           </SidebarLink>
         </div>
       </RouteSyncedDetails>

@@ -364,6 +364,8 @@ export async function getTopStockHoldingsByValue(
 
 export type HotWatchlistRow = {
   symbol: string;
+  /** Underlying spot when Yahoo quote resolves. */
+  spot: number | null;
   impliedVolatilityPercent: number;
   openInterest: number;
   strike: number;
@@ -404,6 +406,7 @@ export async function getHotWatchlistSymbols(
     if (r.meetsHotCriteria && r.best) {
       candidates.push({
         symbol: r.symbol,
+        spot: r.underlyingSpot,
         impliedVolatilityPercent: r.best.impliedVolatilityPercent,
         openInterest: r.best.openInterest,
         strike: r.best.strike,

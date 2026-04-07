@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ADMIN_BROKER_IMPORT_DESCRIPTION } from "@/app/admin/lib/broker-import-description";
 import { UploadIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
+import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
+import { brokerExportRefMatchesStoredExt } from "@/lib/broker-account-ref-match";
 
 type PortfolioOption = {
   _id: string;
@@ -105,7 +107,7 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
     if (!ref) {
       return undefined;
     }
-    return accounts.find((a) => (a.extAccountId || "").trim() === ref);
+    return accounts.find((a) => brokerExportRefMatchesStoredExt(ref, (a.extAccountId || "").trim()));
   };
 
   const runBrokerPreview = async () => {
@@ -356,7 +358,12 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
             <tbody>
               {brokerPreview.map((row) => (
                 <tr key={row.accountRef}>
-                  <td className="font-mono text-xs">{row.accountRef || "—"}</td>
+                  <td
+                    className="font-mono text-xs"
+                    title="Matching uses the full broker account id from the file; preview shows last four digits only."
+                  >
+                    {row.accountRef ? maskAccountXrefForDisplay(row.accountRef) : "—"}
+                  </td>
                   <td>{row.label}</td>
                   <td>{row.positionCount}</td>
                   <td>
@@ -372,7 +379,9 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
                       return (
                         <span className="status-text">
                           {matched.name}{" "}
-                          <code className="font-mono text-xs">({matched.extAccountId || "—"})</code>
+                          <code className="font-mono text-xs">
+                            ({maskAccountXrefForDisplay(matched.extAccountId || "")})
+                          </code>
                         </span>
                       );
                     })()}

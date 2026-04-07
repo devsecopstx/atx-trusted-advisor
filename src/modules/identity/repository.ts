@@ -2,8 +2,8 @@ import { ObjectId } from "mongodb";
 
 import { googleLinkedId, isGoogleLegacyXUserId } from "@/lib/google-oauth-identity";
 import { getDb } from "@/lib/mongodb";
-import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import { purgeEphemeralCoreUserScaffolding } from "@/modules/core-admin/repository";
+import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import {
     appendLoginAuditRecord,
     type LoginAuditProvider
@@ -934,6 +934,44 @@ export async function getTenantByHexId(tenantIdHex: string): Promise<Tenant | nu
   await ensureIdentityIndexes();
   const db = await getDb();
   return db.collection<Tenant>(collections.tenants).findOne({ _id: new ObjectId(tenantIdHex) });
+}
+
+/** Matches `DEFAULT_TENANT_SLUG` in `scripts/seed-admin-user.mjs`. */
+const SEED_DEFAULT_TENANT_SLUG = "atxfinance-core";
+
+/**
+ * Resolves which `core_tenants._id` the admin console should use for tenant-scoped rows.
+ *
+ * After switching `MONGODB_URI` / `MONGODB_DB_NAME` or re-seeding a fresh database, the session cookie can still
+ * hold a **previous** tenant ObjectId that no longer exists → workspace limits 404, empty tasks/delivery channels.
+ * For `global_admin` routes we fall back to the seeded default tenant (or any default / first tenant).
+ */
+export async function resolveTenantIdHexForGlobalAdminConsole(
+  sessionTenantIdHex: string | undefined
+): Promise<string | null> {
+  const trimmed = String(sessionTenantIdHex ?? "").trim();
+  if (trimmed && ObjectId.isValid(trimmed)) {
+    const hit = await getTenantByHexId(trimmed);
+    if (hit?._id) {
+      return hit._id.toHexString();
+    }
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const bySlug = await db
+    .collection<Tenant>(collections.tenants)
+    .findOne({ slug: SEED_DEFAULT_TENANT_SLUG });
+  if (bySlug?._id) {
+    return bySlug._id.toHexString();
+  }
+  const byDefault = await db
+    .collection<Tenant>(collections.tenants)
+    .findOne({ isDefault: true }, { sort: { _id: 1 } });
+  if (byDefault?._id) {
+    return byDefault._id.toHexString();
+  }
+  const any = await db.collection<Tenant>(collections.tenants).findOne({}, { sort: { _id: 1 } });
+  return any?._id?.toHexString() ?? null;
 }
 
 export async function updateTenantWorkspaceLimits(

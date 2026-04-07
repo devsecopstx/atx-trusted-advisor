@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { serializeScheduledTaskForJson } from "@/lib/admin-scheduled-task-serialize";
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
 import { scheduledTaskCategorySchema } from "@/lib/scheduled-task-category-schema";
 import {
@@ -43,8 +43,13 @@ export async function GET(request: Request) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const tasks = await listScheduledTasks({
-    tenantId: session.tenantId
+    tenantId: tenantIdHex
   });
   return NextResponse.json({ data: tasks.map(serializeScheduledTaskForJson) });
 }
@@ -58,6 +63,11 @@ export async function POST(request: Request) {
   const session = await requireAdminSession();
   if (session instanceof NextResponse) {
     return session;
+  }
+
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
   }
 
   const json = await request.json();
@@ -82,7 +92,7 @@ export async function POST(request: Request) {
   try {
     deliveryChannelTarget = await resolveDeliveryChannelTargetForCreate(
       parsed.data.deliveryChannelTarget,
-      session.tenantId
+      tenantIdHex
     );
   } catch (e) {
     if (e instanceof DeliveryChannelTargetError) {
@@ -100,7 +110,7 @@ export async function POST(request: Request) {
     scheduleCron: normalizedSchedule.scheduleCron,
     scheduleRRule: normalizedSchedule.scheduleRRule,
     scheduleDescription: normalizedSchedule.scheduleDescription,
-    tenantId: session.tenantId,
+    tenantId: tenantIdHex,
     ...(deliveryChannelTarget ? { deliveryChannelTarget } : {})
   });
   return NextResponse.json({ data: serializeScheduledTaskForJson(created) }, { status: 201 });

@@ -43,11 +43,6 @@ export async function AppUserAccountPublicRailForSession({
         isGlobalAdmin={admin}
         showReferenceDocs
         workspaceBook={book}
-        watchlistHref={
-          workspacePortfolioId
-            ? `/watchlist?portfolioId=${encodeURIComponent(workspacePortfolioId)}`
-            : "/watchlist"
-        }
       />
     );
   }

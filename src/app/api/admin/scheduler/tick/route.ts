@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
 import { listDueScheduledTasks } from "@/modules/core-admin/repository";
 import { executeScheduledTask } from "@/modules/core-admin/task-runner";
@@ -16,8 +16,13 @@ export async function POST(request: Request) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const dueTasks = await listDueScheduledTasks(new Date(), {
-    tenantId: session.tenantId
+    tenantId: tenantIdHex
   });
   const results = await Promise.all(
     dueTasks.map(async (task) =>

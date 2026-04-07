@@ -11,7 +11,7 @@ XAI_MANAGEMENT_BASE_URL: "https://management-api.x.ai/v1"
 
 app:
   name: "atx-fintech-backend"
-  environment: stage         # can be overridden by ENV
+  environment: prod        # can be overridden by ENV
   version: "1.0.0"
   # Instance xAI namespace (seed): `atx-<tier>-<site_slug>` from ATX_DEPLOY_TARGET / app.environment / settings.atx_deploy_target
   # plus ATX_INSTANCE_SITE_SLUG / settings.site_name. Drives display names: team KB `{root}-rag`, strategy root files `{root}-xoption-<env>`
@@ -111,7 +111,7 @@ initial_seed:
 
     # Illustrative: Cloud Run sets ATX_DEPLOY_TARGET (stage | deploy | prod); default DB becomes atxfinance-<target> when MONGODB_DB_NAME unset.
     - key: atx_deploy_target
-      value: "stage"
+      value: "prod"
       type: string
       public: true
       sensitive: false

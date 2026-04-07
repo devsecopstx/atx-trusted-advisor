@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminDeliveryChannelsRequestToBackend } from "@/lib/backend-bff";
 import { sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
 import { postSlackIncomingWebhook } from "@/lib/post-slack-incoming-webhook";
@@ -25,13 +25,18 @@ export async function POST(request: Request, context: RouteContext) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const { channelId } = await context.params;
-  const channel = await getAdminDeliveryChannelById(channelId, { tenantId: session.tenantId });
+  const channel = await getAdminDeliveryChannelById(channelId, { tenantId: tenantIdHex });
   if (!channel) {
     return NextResponse.json({ error: "Delivery channel not found" }, { status: 404 });
   }
 
-  const testMessage = buildDeliveryChannelTestMessage(session.tenantId);
+  const testMessage = buildDeliveryChannelTestMessage(tenantIdHex);
 
   if (channel.deliveryTarget === "in_app") {
     return NextResponse.json({

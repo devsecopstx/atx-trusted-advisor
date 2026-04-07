@@ -1,5 +1,6 @@
 import { type Filter, MongoServerError, ObjectId } from "mongodb";
 
+import { FIDELITY_DEFAULT_PROVISION_ACCOUNT_REF } from "@/lib/account-xref-display";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { getDb } from "@/lib/mongodb";
 import {
@@ -89,7 +90,7 @@ const OPTIONS_STRATEGY_DESCRIPTION_MAX_LEN = 512_000;
 
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_ACCOUNT_NAME = "defaultaccount";
-const DEFAULT_ACCOUNT_REF = "fidelity-default-account";
+const DEFAULT_ACCOUNT_REF = FIDELITY_DEFAULT_PROVISION_ACCOUNT_REF;
 /** Default paper cash for provision + read-time coalesce when Mongo field is missing. */
 export const DEFAULT_ACCOUNT_CASH_BALANCE = 25_000;
 const DEFAULT_WATCHLIST_NAME = "DefaultWatchlist";

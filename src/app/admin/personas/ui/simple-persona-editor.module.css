@@ -19,38 +19,130 @@
   margin-bottom: 0.75rem;
 }
 
-.collectionsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+.collectionToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
 }
 
-.collectionItem {
-  padding: 0.6rem;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+.collectionToolbarField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: min(100%, 14rem);
+  flex: 1 1 12rem;
+}
+
+.collectionToolbarField label {
+  font-size: 0.8rem;
+  color: var(--xf-text-200);
+}
+
+.collectionSearchInput,
+.collectionQuickSelect {
+  width: 100%;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--xf-border-subtle, rgba(255, 255, 255, 0.18));
+  background: var(--xf-surface-800, rgba(0, 0, 0, 0.35));
+  color: var(--xf-text-100);
+}
+
+.collectionQuickSelect {
   cursor: pointer;
-  background: transparent;
-  transition: all 0.2s ease;
-  position: relative;
 }
 
-.collectionItem:hover {
-  border-color: rgba(34, 197, 94, 0.5);
-  background: rgba(34, 197, 94, 0.05);
+.collectionTableWrap {
+  border: 1px solid var(--xf-border-subtle, rgba(255, 255, 255, 0.15));
+  border-radius: 8px;
+  overflow: auto;
+  max-height: min(50vh, 22rem);
+  background: var(--xf-surface-900, rgba(0, 0, 0, 0.25));
 }
 
-.collectionItem.selected {
-  border: 3px solid var(--xf-gain-green);
-  background: rgba(34, 197, 94, 0.15);
-  box-shadow: 0 0 0 1px var(--xf-gain-green);
+.collectionTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
 }
 
-.collectionItem.selected:hover {
-  border: 3px solid var(--xf-gain-green);
-  background: rgba(34, 197, 94, 0.2);
-  box-shadow: 0 0 0 1px var(--xf-gain-green);
+.collectionTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  padding: 0.55rem 0.65rem;
+  background: var(--xf-surface-800, #141414);
+  color: var(--xf-text-100);
+  border-bottom: 1px solid var(--xf-border-subtle, rgba(255, 255, 255, 0.12));
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.collectionTable tbody td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--xf-border-subtle, rgba(255, 255, 255, 0.08));
+  vertical-align: middle;
+  color: var(--xf-text-200);
+}
+
+.collectionTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.collectionTable tbody tr:hover td {
+  background: var(--xf-surface-700, rgba(255, 255, 255, 0.04));
+}
+
+.collectionRowSelected td {
+  background: rgba(57, 255, 20, 0.1);
+  box-shadow: inset 3px 0 0 0 var(--xf-gain-green);
+}
+
+.collectionRowSelected:hover td {
+  background: rgba(57, 255, 20, 0.16);
+}
+
+.collectionCheckCell {
+  width: 2.5rem;
+  text-align: center;
+}
+
+.collectionCheckCell input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--xf-gain-green);
+  cursor: pointer;
+}
+
+.collectionNameCell {
+  font-weight: 600;
+  color: var(--xf-text-100);
+  max-width: 12rem;
+}
+
+.collectionIdCell {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+  max-width: min(28rem, 50vw);
+  color: var(--xf-text-200);
+}
+
+.collectionDocsCell {
+  white-space: nowrap;
+  text-align: right;
+  width: 4rem;
+}
+
+.collectionHint {
+  font-size: 0.8rem;
+  color: var(--xf-text-200);
+  margin-top: 0.5rem;
+  line-height: 1.4;
 }
 
 .sectionHeader {
@@ -83,10 +175,6 @@
   }
 
   .compactGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .collectionsGrid {
     grid-template-columns: 1fr;
   }
 

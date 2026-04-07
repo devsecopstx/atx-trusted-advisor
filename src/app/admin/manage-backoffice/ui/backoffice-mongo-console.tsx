@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { parseJson } from "@/app/admin/ui/http";
 import {
@@ -48,6 +48,10 @@ export function BackofficeMongoConsole() {
   const [xaiCollectionId, setXaiCollectionId] = useState("");
   const [xaiCollectionName, setXaiCollectionName] = useState("");
   const [includeRolesInPatch, setIncludeRolesInPatch] = useState(false);
+  const [dbConnectionInfo, setDbConnectionInfo] = useState<{
+    connectionString: string;
+    connectionLabel: string;
+  } | null>(null);
 
   const applySnapshotToForm = useCallback((u: SerializedUser) => {
     setPatchUserId(u._id ?? "");
@@ -61,6 +65,22 @@ export function BackofficeMongoConsole() {
     setXaiCollectionId("");
     setXaiCollectionName("");
     setIncludeRolesInPatch(false);
+  }, []);
+
+  useEffect(() => {
+    const loadDbConnectionInfo = async () => {
+      try {
+        const response = await fetch("/api/admin/system/db-connection");
+        if (response.ok) {
+          const data = await response.json();
+          setDbConnectionInfo(data);
+        }
+      } catch (error) {
+        console.warn("Failed to load database connection info:", error);
+      }
+    };
+
+    void loadDbConnectionInfo();
   }, []);
 
   const runLookup = async () => {
@@ -174,6 +194,34 @@ export function BackofficeMongoConsole() {
           allowlisted field updates. Every lookup and patch is written to the audit trail. Only{" "}
           <strong>global_admin</strong> can use this surface.
         </p>
+      </article>
+
+      <article className="surface-card xf-widget section-card">
+        <h3>Database connection</h3>
+        <div className="stack-form">
+          {dbConnectionInfo ? (
+            <div className="space-y-2">
+              <div>
+                <label className="field-label">
+                  <span>Connection label</span>
+                </label>
+                <code className="block p-2 bg-[var(--xf-surface-900)] rounded border text-sm font-mono">
+                  {dbConnectionInfo.connectionLabel}
+                </code>
+              </div>
+              <div>
+                <label className="field-label">
+                  <span>Full connection string</span>
+                </label>
+                <code className="block p-2 bg-[var(--xf-surface-900)] rounded border text-sm font-mono break-all">
+                  {dbConnectionInfo.connectionString}
+                </code>
+              </div>
+            </div>
+          ) : (
+            <p className="muted-copy text-sm">Loading database connection information...</p>
+          )}
+        </div>
       </article>
 
       <article className="surface-card xf-widget section-card">

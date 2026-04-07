@@ -97,6 +97,9 @@ export function PortfoliosHeroLeftColumn({
   const watchlistHref = defaultPortfolioId
     ? `/watchlist?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
     : "/watchlist";
+  const alertsHref = defaultPortfolioId
+    ? `/portfolio/alerts?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
+    : "/portfolio/alerts";
 
   const primarySymbol = topHoldings[0]?.symbol;
 
@@ -226,12 +229,16 @@ export function PortfoliosHeroLeftColumn({
           <UploadIcon className="crud-icon h-4 w-4" aria-hidden />
           Import broker activity
         </Link>
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+        <p className="portfolios-hero-left__muted portfolios-hero-left__row-label mt-2">Watchlist &amp; Alerts</p>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
           <Link className="portfolios-hero-left__mini-link" href="/portfolio">
             Portfolio workspace
           </Link>
           <Link className="portfolios-hero-left__mini-link" href={watchlistHref}>
             Watchlist
+          </Link>
+          <Link className="portfolios-hero-left__mini-link" href={alertsHref}>
+            Alerts
           </Link>
         </div>
       </section>

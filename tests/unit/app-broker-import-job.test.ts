@@ -42,10 +42,24 @@ describe("app-broker-import-job", () => {
     expect(err).toMatch(/not in this portfolio/);
   });
 
-  it("validateBrokerImportMappings rejects missing mapping", () => {
+  it("validateBrokerImportMappings rejects when no broker account is selected", () => {
     const parsed: ParsedBrokerAccount[] = [{ accountRef: "X", label: "L", positions: [] }];
     const err = validateBrokerImportMappings(parsed, {}, [mockAccount(OID_A, "merrill", "X")], "merrill");
-    expect(err).toMatch(/Missing mapping/);
+    expect(err).toMatch(/at least one/i);
+  });
+
+  it("validateBrokerImportMappings allows omitting rows (partial import)", () => {
+    const parsed: ParsedBrokerAccount[] = [
+      { accountRef: "X", label: "L1", positions: [] },
+      { accountRef: "Y", label: "L2", positions: [] }
+    ];
+    const err = validateBrokerImportMappings(
+      parsed,
+      { X: OID_A },
+      [mockAccount(OID_A, "merrill", "X"), mockAccount(OID_B, "merrill", "Y")],
+      "merrill"
+    );
+    expect(err).toBeNull();
   });
 
   it("validateBrokerImportMappings accepts matching broker type and ext ref", () => {
@@ -79,6 +93,17 @@ describe("app-broker-import-job", () => {
       "merrill"
     );
     expect(err).toMatch(/Account ref mismatch/);
+  });
+
+  it("validateBrokerImportMappings accepts last-4 broker ref vs full extAccountId", () => {
+    const parsed: ParsedBrokerAccount[] = [{ accountRef: "5678", label: "L", positions: [] }];
+    const err = validateBrokerImportMappings(
+      parsed,
+      { "5678": OID_A },
+      [mockAccount(OID_A, "merrill", "12345678")],
+      "merrill"
+    );
+    expect(err).toBeNull();
   });
 
   it("validateBrokerImportMappings rejects when same id maps but second parsed row expects different ext", () => {

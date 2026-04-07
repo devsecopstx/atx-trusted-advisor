@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminDeliveryChannelsRequestToBackend } from "@/lib/backend-bff";
 import { isSlackIncomingWebhookUrl } from "@/lib/post-slack-incoming-webhook";
 import { createAuditEvent } from "@/modules/audit/repository";
@@ -109,8 +109,13 @@ export async function GET(request: Request, context: RouteContext) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const { channelId } = await context.params;
-  const row = await getAdminDeliveryChannelById(channelId, { tenantId: session.tenantId });
+  const row = await getAdminDeliveryChannelById(channelId, { tenantId: tenantIdHex });
   if (!row) {
     return NextResponse.json({ error: "Delivery channel not found" }, { status: 404 });
   }
@@ -129,8 +134,13 @@ export async function PATCH(request: Request, context: RouteContext) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const { channelId } = await context.params;
-  const existing = await getAdminDeliveryChannelById(channelId, { tenantId: session.tenantId });
+  const existing = await getAdminDeliveryChannelById(channelId, { tenantId: tenantIdHex });
   if (!existing) {
     return NextResponse.json({ error: "Delivery channel not found" }, { status: 404 });
   }
@@ -180,7 +190,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const updated = await updateAdminDeliveryChannelById({
     channelId,
-    tenantId: session.tenantId,
+    tenantId: tenantIdHex,
     patch: patchForRepo
   });
   if (!updated) {
@@ -215,13 +225,18 @@ export async function DELETE(request: Request, context: RouteContext) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const { channelId } = await context.params;
-  const existing = await getAdminDeliveryChannelById(channelId, { tenantId: session.tenantId });
+  const existing = await getAdminDeliveryChannelById(channelId, { tenantId: tenantIdHex });
   if (!existing) {
     return NextResponse.json({ error: "Delivery channel not found" }, { status: 404 });
   }
 
-  const deleted = await deleteAdminDeliveryChannelById(channelId, { tenantId: session.tenantId });
+  const deleted = await deleteAdminDeliveryChannelById(channelId, { tenantId: tenantIdHex });
   if (!deleted) {
     return NextResponse.json({ error: "Delivery channel not found" }, { status: 404 });
   }

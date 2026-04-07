@@ -58,6 +58,8 @@ export function AccountWorkspace({
   const [cashBalance, setCashBalance] = useState(String(account.cashBalance));
   /** Plaintext ref only while the user is setting it for the first time (never hydrated from server when ref exists). */
   const [extRefDraft, setExtRefDraft] = useState("");
+  /** When a real ref is already stored and broker is not import-locked, optional full replacement. */
+  const [refReplaceDraft, setRefReplaceDraft] = useState("");
   const [riskProfile, setRiskProfile] = useState<NonNullable<SerializableAccount["riskProfile"]>>(
     account.riskProfile ?? "balanced"
   );
@@ -68,6 +70,7 @@ export function AccountWorkspace({
     setAcctName(account.name);
     setCashBalance(String(account.cashBalance));
     setExtRefDraft("");
+    setRefReplaceDraft("");
     setRiskProfile(account.riskProfile ?? "balanced");
     setOutlook(account.outlook ?? "neutral");
     setBrokerType(coerceAccountType(account.type));
@@ -145,6 +148,12 @@ export function AccountWorkspace({
       return;
     }
 
+    const replaceRef = refReplaceDraft.trim();
+    if (replaceRef.length > 200) {
+      setError("New account ref is too long (max 200 characters).");
+      return;
+    }
+
     setSavePending(true);
     try {
       const body: Record<string, unknown> = {
@@ -155,6 +164,9 @@ export function AccountWorkspace({
       };
       if (!brokerLocked) {
         body.type = parsed.data.type;
+      }
+      if (replaceRef) {
+        body.extAccountId = replaceRef;
       }
       const res = await fetch(
         `/api/portfolios/${encodeURIComponent(portfolioId)}/accounts/${encodeURIComponent(account._id)}`,
@@ -260,8 +272,28 @@ export function AccountWorkspace({
                 <p id="acct-ext-ref-hint-locked" className="portfolio-edit-field__hint">
                   {brokerLocked
                     ? "Broker import is linked to this ref — it cannot be changed here."
-                    : "Stored broker ref (last four shown). Contact support if you need to change it."}
+                    : "Stored broker ref (last four shown). Use the field below only when replacing the full broker account id."}
                 </p>
+                {!brokerLocked && refSaved ? (
+                  <>
+                    <label className="sr-only" htmlFor="acct-ext-ref-replace">
+                      Replace account ref (optional)
+                    </label>
+                    <input
+                      id="acct-ext-ref-replace"
+                      className="crud-input portfolio-edit-account-card__input font-mono text-xs mt-2"
+                      value={refReplaceDraft}
+                      onChange={(e) => setRefReplaceDraft(e.target.value)}
+                      autoComplete="off"
+                      placeholder="New account ref (optional)"
+                      maxLength={200}
+                      aria-describedby="acct-ext-ref-replace-hint"
+                    />
+                    <p id="acct-ext-ref-replace-hint" className="portfolio-edit-field__hint">
+                      Leave blank to keep the current ref. Saving overwrites the stored value when you enter text here.
+                    </p>
+                  </>
+                ) : null}
               </>
             )}
           </div>

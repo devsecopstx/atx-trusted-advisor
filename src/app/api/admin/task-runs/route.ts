@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminSession } from "@/lib/api-auth";
+import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminScheduledTasksRequestToBackend } from "@/lib/backend-bff";
 import { listTaskRuns } from "@/modules/core-admin/repository";
 
@@ -15,8 +15,13 @@ export async function GET(request: Request) {
     return session;
   }
 
+  const tenantIdHex = await requireAdminTenantIdHex(session);
+  if (tenantIdHex instanceof NextResponse) {
+    return tenantIdHex;
+  }
+
   const runs = await listTaskRuns({
-    tenantId: session.tenantId
+    tenantId: tenantIdHex
   });
   return NextResponse.json({ data: runs });
 }

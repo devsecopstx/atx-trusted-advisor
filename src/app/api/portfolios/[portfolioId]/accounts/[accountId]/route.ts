@@ -96,17 +96,6 @@ export async function PATCH(
     );
   }
 
-  const existingRef = (existing.extAccountId ?? "").trim();
-  if (existingRef.length > 0 && parsed.data.extAccountId !== undefined) {
-    const nextRef = parsed.data.extAccountId.trim();
-    if (nextRef !== existingRef) {
-      return NextResponse.json(
-        { error: "Account ref cannot be changed after it is saved. Contact support if you need an update." },
-        { status: 409 }
-      );
-    }
-  }
-
   const updated = await updatePortfolioAccountForUser({
     userId: session.userId,
     tenantId: session.tenantId,

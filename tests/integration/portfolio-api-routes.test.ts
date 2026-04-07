@@ -475,13 +475,64 @@ describe("portfolio API routes", () => {
     );
   });
 
-  it("returns 409 when app user attempts to change a saved account ref", async () => {
+  it("allows app user to change a saved account ref when broker import is not locked", async () => {
     repositoryMocks.updatePortfolioAccountForUser.mockClear();
+    repositoryMocks.updatePortfolioAccountForUser.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      userId: "507f1f77bcf86cd799439011",
+      portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+      name: "defaultaccount",
+      type: "fidelity",
+      extAccountId: "different-ref",
+      cashBalance: 25_000,
+      isDefault: true,
+      createdAt: new Date("2025-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2025-01-02T00:00:00.000Z")
+    });
     const response = await patchPortfolioAccount(
       new Request("http://test", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ extAccountId: "different-ref" })
+      }),
+      {
+        params: Promise.resolve({
+          portfolioId: "507f1f77bcf86cd799439033",
+          accountId: "507f1f77bcf86cd799439099"
+        })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(repositoryMocks.updatePortfolioAccountForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extAccountId: "different-ref"
+      })
+    );
+  });
+
+  it("returns 409 when app user attempts to change ref or broker on a broker-import-locked account", async () => {
+    repositoryMocks.updatePortfolioAccountForUser.mockClear();
+    const lockedRow = [
+      {
+        _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+        userId: "507f1f77bcf86cd799439011",
+        portfolioId: { toHexString: () => "507f1f77bcf86cd799439033" },
+        name: "defaultaccount",
+        type: "fidelity",
+        extAccountId: "ext_account_xref",
+        brokerImportLocked: true,
+        cashBalance: 25_000,
+        isDefault: true,
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2025-01-01T00:00:00.000Z")
+      }
+    ];
+    repositoryMocks.listPortfolioAccounts.mockResolvedValue(lockedRow);
+    const response = await patchPortfolioAccount(
+      new Request("http://test", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extAccountId: "new-ref" })
       }),
       {
         params: Promise.resolve({

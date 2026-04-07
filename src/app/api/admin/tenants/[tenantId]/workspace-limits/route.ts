@@ -5,6 +5,7 @@ import { requireGlobalAdminSession } from "@/lib/api-auth";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     resolvedWorkspaceLimitsForTenant,
+    resolveTenantIdHexForGlobalAdminConsole,
     updateTenantBrandingPreferencesOneTime,
     updateTenantWorkspaceLimits,
     updateTenantXchatDebugEnabled
@@ -30,6 +31,21 @@ const patchSchema = z.object({
   tenantPreferences: z.record(z.string(), z.unknown()).optional()
 });
 
+async function loadTenantForWorkspaceLimitsRoute(urlTenantId: string, sessionTenantId: string) {
+  const url = urlTenantId.trim();
+  let tenant = await getTenantByHexIdCached(url);
+  if (tenant?._id) {
+    return tenant;
+  }
+  if (url === sessionTenantId.trim()) {
+    const resolved = await resolveTenantIdHexForGlobalAdminConsole(sessionTenantId);
+    if (resolved) {
+      tenant = await getTenantByHexIdCached(resolved);
+    }
+  }
+  return tenant?._id ? tenant : null;
+}
+
 export async function GET(_request: Request, context: RouteContext) {
   const session = await requireGlobalAdminSession();
   if (session instanceof NextResponse) {
@@ -37,7 +53,7 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const { tenantId } = await context.params;
-  const tenant = await getTenantByHexIdCached(tenantId);
+  const tenant = await loadTenantForWorkspaceLimitsRoute(tenantId, session.tenantId);
   if (!tenant?._id) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
@@ -65,10 +81,12 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const { tenantId } = await context.params;
-  const tenant = await getTenantByHexIdCached(tenantId);
+  const tenant = await loadTenantForWorkspaceLimitsRoute(tenantId, session.tenantId);
   if (!tenant?._id) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
+
+  const effectiveTenantHex = tenant._id.toHexString();
 
   let body: unknown;
   try {
@@ -113,14 +131,14 @@ export async function PATCH(request: Request, context: RouteContext) {
       : undefined;
 
   const limitsUpdated = await updateTenantWorkspaceLimits(
-    tenantId.trim(),
+    effectiveTenantHex,
     wlParsed.value,
     planOverridesPatch
   );
   if (!limitsUpdated?._id) {
     return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
   }
-  const brandingUpdate = await updateTenantBrandingPreferencesOneTime(tenantId.trim(), tpParsed.value);
+  const brandingUpdate = await updateTenantBrandingPreferencesOneTime(effectiveTenantHex, tpParsed.value);
   if (brandingUpdate.conflictKeys.length > 0) {
     return NextResponse.json(
       {
@@ -135,7 +153,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   if (xchatDebugToggle !== undefined) {
-    const afterDebug = await updateTenantXchatDebugEnabled(tenantId.trim(), xchatDebugToggle);
+    const afterDebug = await updateTenantXchatDebugEnabled(effectiveTenantHex, xchatDebugToggle);
     if (afterDebug?._id) {
       updated = afterDebug;
     }

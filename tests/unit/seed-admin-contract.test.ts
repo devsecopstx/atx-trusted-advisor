@@ -22,4 +22,10 @@ describe("seed-admin-user.mjs contract", () => {
     expect(src).toContain("runPostSeedXpersonasFromDisk()");
     expect(src).toContain("atx-docs/rag-collection/xpersonas");
   });
+
+  it("xAI team RAG upload is opt-in (SEED_ADMIN_XAI_RAG_INGEST), not default seed:admin behavior", () => {
+    expect(src).toContain("function shouldRunSeedXaiRagIngest()");
+    expect(src).toContain("SEED_ADMIN_XAI_RAG_INGEST");
+    expect(src).toContain("didRunXaiRagIngest");
+  });
 });

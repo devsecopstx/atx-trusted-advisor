@@ -87,7 +87,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 ## Options (RAG + seed)
 
-**Canonical tree (physical):** **[`atx-docs/rag-collection/options-strategy/`](./rag-collection/options-strategy/README.md)** — Markdown narratives ingested with **`npm run seed:admin`** into the xAI trusted-advisor **`…-options-strategy`** segment (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). There is no separate `atx-docs/atx-options/` tree; use this RAG segment + **options-coreskills** below.
+**Canonical tree (physical):** **[`atx-docs/rag-collection/options-strategy/`](./rag-collection/options-strategy/README.md)** — Markdown narratives sync to Mongo with **`seed:admin`** / **`seed:options-strategy-*`**; upload to the xAI trusted-advisor **`…-options-strategy`** segment uses **`npm run seed:admin:rag-sync`** or **`SEED_ADMIN_XAI_RAG_INGEST=1`** (see **`scripts/lib/seed-xai-rag-ingest.mjs`**). There is no separate `atx-docs/atx-options/` tree; use this RAG segment + **options-coreskills** below.
 
 **Reviewer / agent quick index:** **[`options-coreskills.md`](./rag-collection/options-strategy/options-coreskills/options-coreskills.md)** — **`xfinance-strategy-*` id**, narrative path, **risk** & **outlook**, links to **`.cursor/skills/skill-*/SKILL.md`**.
 

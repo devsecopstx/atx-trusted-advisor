@@ -7,6 +7,8 @@ import styles from "./simple-persona-editor.module.css";
 import { AddIcon, DeleteIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
 import { isMultiAgentPersonaModelId } from "@/modules/xchat/multi-agent-persona-models";
+import { collectionIdsDeclaredOnPersona } from "@/modules/xchat/persona-linked-collections";
+import type { PersonaXapiConfig } from "@/modules/xchat/types";
 import { XAI_PERSONA_CHAT_MODEL_FALLBACK_ID } from "@/modules/xchat/xai-persona-chat-models";
 
 type SimplePersonaEditorProps = {
@@ -35,6 +37,13 @@ type CollectionRow = {
   name?: string;
   stats: { documentCount: number | null; createdAt: string | null; updatedAt: string | null };
 };
+
+/** Values listed in the model &lt;select&gt;; personas may still carry other xAI ids from API. */
+const PERSONA_MODEL_SELECT_IDS = new Set<string>([
+  "grok-4-1-fast-reasoning",
+  "grok-4-1",
+  "grok-4.20-multi-agent"
+]);
 
 const EMPTY_FORM: PersonaPayload = {
   name: "",
@@ -75,6 +84,8 @@ export function SimplePersonaEditor({
   const [status, setStatus] = useState("Ready");
   const [loading, setLoading] = useState(mode === "edit");
   const [collections, setCollections] = useState<CollectionRow[]>([]);
+  const [collectionFilter, setCollectionFilter] = useState("");
+  const [collectionQuickPick, setCollectionQuickPick] = useState("");
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
   const [showToolsPreview, setShowToolsPreview] = useState(false);
   const [includeHostedSearch, setIncludeHostedSearch] = useState(false);
@@ -104,6 +115,18 @@ export function SimplePersonaEditor({
     return tools;
   }, [selectedCollectionIds, includeHostedSearch]);
 
+  const filteredCollections = useMemo(() => {
+    const q = collectionFilter.trim().toLowerCase();
+    if (!q) {
+      return collections;
+    }
+    return collections.filter((row) => {
+      const name = (row.name ?? "").toLowerCase();
+      const id = row.id.toLowerCase();
+      return name.includes(q) || id.includes(q);
+    });
+  }, [collections, collectionFilter]);
+
   useEffect(() => {
     void (async () => {
       try {
@@ -129,18 +152,14 @@ export function SimplePersonaEditor({
             systemPrompt: string;
             overridePrompt: string;
             xaiCollection: { collectionId: string; collectionName?: string };
+            teamCollection?: { collectionId: string; collectionName?: string };
             model: string;
             temperature: number;
             enableRag: boolean;
             defaultScope: string;
             citationsEnabled?: boolean;
             keepXchatHistory?: boolean;
-            xapi: {
-              mode: "responses" | "chat_completions";
-              toolChoice: "auto" | "required" | "none";
-              maxTurns: number;
-              tools: Array<{ type: string; [key: string]: unknown }>;
-            };
+            xapi: PersonaXapiConfig;
           };
         }>(await fetch(`/api/personas/${personaId}`));
         setForm({
@@ -156,7 +175,14 @@ export function SimplePersonaEditor({
           citationsEnabled: payload.data.citationsEnabled !== false,
           keepXchatHistory: payload.data.keepXchatHistory !== false,
         });
-        setSelectedCollectionIds(payload.data.xaiCollection.collectionId ? [payload.data.xaiCollection.collectionId] : []);
+        const linkedIds = collectionIdsDeclaredOnPersona(
+          {
+            xaiCollection: payload.data.xaiCollection,
+            teamCollection: payload.data.teamCollection
+          },
+          payload.data.xapi
+        );
+        setSelectedCollectionIds(linkedIds);
 
         // Check if hosted search tools are present
         const loadedTools = payload.data.xapi?.tools || [];
@@ -259,15 +285,14 @@ export function SimplePersonaEditor({
   }
 
   function toggleCollection(collectionId: string) {
-    setSelectedCollectionIds(prev => {
+    setSelectedCollectionIds((prev) => {
       const newIds = prev.includes(collectionId)
-        ? prev.filter(id => id !== collectionId)
+        ? prev.filter((id) => id !== collectionId)
         : [...prev, collectionId];
 
-      // Update form with first selected collection
       const firstId = newIds[0] || "";
-      const firstCollection = collections.find(c => c.id === firstId);
-      setForm(current => ({
+      const firstCollection = collections.find((c) => c.id === firstId);
+      setForm((current) => ({
         ...current,
         xaiCollectionId: firstId,
         xaiCollectionName: firstCollection?.name || ""
@@ -275,6 +300,27 @@ export function SimplePersonaEditor({
 
       return newIds;
     });
+  }
+
+  function appendCollectionFromQuickPick(collectionId: string) {
+    if (!collectionId) {
+      return;
+    }
+    setSelectedCollectionIds((prev) => {
+      if (prev.includes(collectionId)) {
+        return prev;
+      }
+      const newIds = [...prev, collectionId];
+      const firstId = newIds[0] || "";
+      const firstCollection = collections.find((c) => c.id === firstId);
+      setForm((current) => ({
+        ...current,
+        xaiCollectionId: firstId,
+        xaiCollectionName: firstCollection?.name || ""
+      }));
+      return newIds;
+    });
+    setCollectionQuickPick("");
   }
 
   async function onDelete() {
@@ -332,6 +378,9 @@ export function SimplePersonaEditor({
                   value={form.model}
                   style={{ fontSize: "0.9rem", padding: "0.5rem" }}
                 >
+                  {form.model.trim() && !PERSONA_MODEL_SELECT_IDS.has(form.model.trim()) ? (
+                    <option value={form.model}>{form.model} (from persona)</option>
+                  ) : null}
                   <option value="grok-4-1-fast-reasoning">Grok 4.1 Fast</option>
                   <option value="grok-4-1">Grok 4.1</option>
                   <option value="grok-4.20-multi-agent">Multi-Agent</option>
@@ -350,6 +399,7 @@ export function SimplePersonaEditor({
                     setForm((current) => ({ ...current, temperature: event.target.value }))
                   }
                   step="0.1"
+                  suppressHydrationWarning
                   type="number"
                   value={form.temperature}
                   style={{ fontSize: "0.9rem", padding: "0.5rem" }}
@@ -442,8 +492,10 @@ export function SimplePersonaEditor({
             <h4 className={styles.sectionHeader} style={{ marginBottom: "0.5rem" }}>
               Collections
             </h4>
-            <p className={styles.statusText} style={{ fontSize: "0.85rem", marginBottom: "0.75rem", opacity: 0.8 }}>
-              Select collections for RAG search
+            <p className={styles.collectionHint}>
+              Choose which xAI collections feed <strong>collections_search</strong>. The{" "}
+              <strong>first</strong> selected row is the primary binding (<code>xaiCollection</code> /
+              file_search scope). Use checkboxes or the row; add extras with the dropdown.
             </p>
 
             {collections.length === 0 ? (
@@ -451,35 +503,106 @@ export function SimplePersonaEditor({
                 No collections available. Create collections in xAI first.
               </p>
             ) : (
-              <div className={styles.collectionsGrid}>
-                {collections.map((collection) => {
-                  const isSelected = selectedCollectionIds.includes(collection.id);
-                  return (
-                    <div
-                      key={collection.id}
-                      className={`${styles.collectionItem} ${isSelected ? styles.selected : ''}`}
-                      onClick={() => toggleCollection(collection.id)}
+              <>
+                <div className={styles.collectionToolbar}>
+                  <div className={styles.collectionToolbarField}>
+                    <label htmlFor="persona-collection-filter">Filter by name or id</label>
+                    <input
+                      id="persona-collection-filter"
+                      className={styles.collectionSearchInput}
+                      type="search"
+                      autoComplete="off"
+                      placeholder="Type to filter…"
+                      value={collectionFilter}
+                      onChange={(e) => setCollectionFilter(e.target.value)}
+                    />
+                  </div>
+                  <div className={styles.collectionToolbarField}>
+                    <label htmlFor="persona-collection-quick-pick">Add from list</label>
+                    <select
+                      id="persona-collection-quick-pick"
+                      className={styles.collectionQuickSelect}
+                      aria-label="Add a collection to the RAG selection"
+                      value={collectionQuickPick}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v) {
+                          appendCollectionFromQuickPick(v);
+                        }
+                      }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}} // Handled by onClick
-                          style={{ pointerEvents: "none" }}
-                        />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div className="status-text" style={{ fontWeight: "bold", fontSize: "0.9rem" }}>
-                            {collection.name || "Unnamed"}
-                          </div>
-                          <div className="status-text" style={{ fontSize: "0.75rem", opacity: 0.7 }}>
-                            {collection.stats.documentCount || 0} docs
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      <option value="">— Select a collection to add —</option>
+                      {collections.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {(c.name?.trim() || "Unnamed")} · {c.id}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.collectionTableWrap} role="region" aria-label="xAI collections list">
+                  <table className={styles.collectionTable}>
+                    <thead>
+                      <tr>
+                        <th className={styles.collectionCheckCell} scope="col">
+                          On
+                        </th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Collection id</th>
+                        <th className={styles.collectionDocsCell} scope="col">
+                          Docs
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCollections.length === 0 ? (
+                        <tr>
+                          <td colSpan={4}>
+                            <span className="status-text" style={{ opacity: 0.75 }}>
+                              No collections match this filter.
+                            </span>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCollections.map((collection) => {
+                          const isSelected = selectedCollectionIds.includes(collection.id);
+                          const docCount =
+                            collection.stats.documentCount == null
+                              ? "—"
+                              : String(collection.stats.documentCount);
+                          return (
+                            <tr
+                              key={collection.id}
+                              className={isSelected ? styles.collectionRowSelected : undefined}
+                              onClick={() => toggleCollection(collection.id)}
+                            >
+                              <td
+                                className={styles.collectionCheckCell}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleCollection(collection.id)}
+                                  aria-label={`Use collection ${collection.name || collection.id} for RAG`}
+                                />
+                              </td>
+                              <td className={styles.collectionNameCell}>
+                                {collection.name?.trim() || "Unnamed collection"}
+                              </td>
+                              <td className={styles.collectionIdCell} title={collection.id}>
+                                {collection.id}
+                              </td>
+                              <td className={styles.collectionDocsCell}>{docCount}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
 
             {selectedCollectionIds.length > 0 && (

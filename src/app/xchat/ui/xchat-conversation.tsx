@@ -1201,11 +1201,6 @@ export function XchatConversation({
               isGlobalAdmin={isGlobalAdminSession}
               showReferenceDocs
               workspaceBook={workspaceBook}
-              watchlistHref={
-                workspacePortfolioId?.trim()
-                  ? `/watchlist?portfolioId=${encodeURIComponent(workspacePortfolioId.trim())}`
-                  : "/watchlist"
-              }
               xchatSection={(
             <section className="app-user-rail-section" aria-label="xChat">
               <RailDisclosure

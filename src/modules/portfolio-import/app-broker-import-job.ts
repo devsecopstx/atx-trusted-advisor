@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 
+import { brokerExportRefMatchesStoredExt } from "@/lib/broker-account-ref-match";
 import { getDb } from "@/lib/mongodb";
 import { listPortfolioAccounts } from "@/modules/core-admin/repository";
 import type { Account, ScheduledTask } from "@/modules/core-admin/types";
@@ -133,7 +134,8 @@ export async function hasActiveAppBrokerImportForPortfolio(input: {
 
 /**
  * Validates broker CSV → portfolio account mapping: accounts must belong to the book,
- * custodian `type` must match the import broker, and `extAccountId` must match the broker row ref.
+ * custodian `type` must match the import broker, and `extAccountId` must match the broker row ref
+ * (exact, same digits ignoring punctuation, or last-4 vs full account number).
  */
 export function validateBrokerImportMappings(
   parsedAccounts: ParsedBrokerAccount[],
@@ -161,12 +163,14 @@ export function validateBrokerImportMappings(
     }
   }
 
+  let anySelected = false;
   for (const acc of parsedAccounts) {
     const key = acc.accountRef || acc.label || "default";
     const mappedId = mappings[key]?.trim();
     if (!mappedId) {
-      return `Missing mapping for broker account key "${key}"`;
+      continue;
     }
+    anySelected = true;
     const target = byId.get(mappedId);
     if (!target) {
       continue;
@@ -176,9 +180,13 @@ export function validateBrokerImportMappings(
       return `Broker row "${key}" has no account reference; cannot match portfolio ext ref`;
     }
     const ext = (target.extAccountId ?? "").trim();
-    if (ext !== expected) {
-      return `Account ref mismatch for "${key}": portfolio ext ref "${ext || "—"}" must equal broker ref "${expected}"`;
+    if (!brokerExportRefMatchesStoredExt(expected, ext)) {
+      return `Account ref mismatch for "${key}": portfolio ext ref "${ext || "—"}" must match broker ref "${expected}" (full number or same last 4)`;
     }
+  }
+
+  if (parsedAccounts.length > 0 && !anySelected) {
+    return "Select at least one broker account to import (enable a row in the preview table)";
   }
 
   return null;

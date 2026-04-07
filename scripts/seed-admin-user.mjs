@@ -429,9 +429,19 @@ const DEFAULT_PORTFOLIO_SCORING_FACTORS_SEED = [
 ];
 const XAI_KB_COLLECTION_RE = /^collection_[A-Za-z0-9_-]+$/;
 
-function shouldSkipSeedXaiRagIngest() {
-  const s = String(process.env.SKIP_SEED_XAI_RAG_INGEST ?? "").toLowerCase();
-  return s === "1" || s === "true" || s === "yes";
+/**
+ * xAI team KB upload (finance-ref, example-prompts, xpersonas segment files, options-strategy, etc.)
+ * is **opt-in** for `npm run seed:admin` — it does not run by default.
+ * Set `SEED_ADMIN_XAI_RAG_INGEST=1` to run the same flow as `npm run seed:admin:rag-sync` inline.
+ * `SKIP_SEED_XAI_RAG_INGEST=1` always disables (e.g. CI or explicit “never”).
+ */
+function shouldRunSeedXaiRagIngest() {
+  const skip = String(process.env.SKIP_SEED_XAI_RAG_INGEST ?? "").toLowerCase();
+  if (skip === "1" || skip === "true" || skip === "yes") {
+    return false;
+  }
+  const run = String(process.env.SEED_ADMIN_XAI_RAG_INGEST ?? "").toLowerCase();
+  return run === "1" || run === "true" || run === "yes";
 }
 
 /** Team UUID for strategy-template collections; empty when `XAI_TEAM_ID` is a literal `collection_*` id. */
@@ -575,6 +585,7 @@ async function seed() {
   let ragFileCandidates = 0;
   let xpersonasSyncSummary = { created: 0, updated: 0, noop: 0, skipped: false };
   let strategySyncSummary = { upserted: 0, skipped: false };
+  let didRunXaiRagIngest = false;
 
   try {
     await ensureIndexes(db);
@@ -587,7 +598,8 @@ async function seed() {
     const m = seedTenant.merged;
     let teamKbCollectionId = "";
 
-    if (!shouldSkipSeedXaiRagIngest()) {
+    if (shouldRunSeedXaiRagIngest()) {
+      didRunXaiRagIngest = true;
       ragIngest = runSeedAdminRagSync() ?? ragIngest;
       strategyCollectionIds = ragIngest.strategyCollectionIds ?? [];
       teamKbCollectionId = ragIngest.tenantTrustedAdvisorRootCollectionId || "";
@@ -595,7 +607,17 @@ async function seed() {
         `[seed:admin] xAI RAG ingest done (files uploaded: ${ragIngest.ragUploaded}; tenant collections: ${strategyCollectionIds.length})`
       );
     } else {
-      console.log("[seed:admin] SKIP_SEED_XAI_RAG_INGEST set — skipping atx-rag-collection / strategy-template upload");
+      const skip = String(process.env.SKIP_SEED_XAI_RAG_INGEST ?? "").toLowerCase();
+      if (skip === "1" || skip === "true" || skip === "yes") {
+        console.log(
+          "[seed:admin] SKIP_SEED_XAI_RAG_INGEST set — skipping disk → xAI trusted-advisor team collection upload"
+        );
+      } else {
+        console.log(
+          "[seed:admin] xAI RAG ingest skipped by default (no team KB upload / collection create). " +
+            "To upload repo RAG files to xAI: `npm run seed:admin:rag-sync` or `SEED_ADMIN_XAI_RAG_INGEST=1 npm run seed:admin`."
+        );
+      }
     }
 
     const xaiTeamIdUsed = (m.xaiTeamId || "").trim();
@@ -917,7 +939,7 @@ async function seed() {
       mongo: {
         database: DB_NAME,
         accessRequestInserted,
-        note: "Upserted core_tenants (incl. defaultPortfolioScoringFactors), xchat_personas (advisor), core_users (subscriptionPlan basic), core_tenant_memberships, tenant_portfolio (incl. scoringFactors) + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS), options_strategy_preferences / options_strategy, and admin_scheduled_tasks via ops/sync-scheduled-tasks-from-spec (unless SKIP_SEED_SCHEDULED_TASKS_SYNC). See accessRequestInserted for admin_access_requests."
+        note: "Upserted core_tenants (incl. defaultPortfolioScoringFactors), xchat_personas (advisor), core_users (subscriptionPlan basic), core_tenant_memberships, tenant_portfolio (incl. scoringFactors) + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS), options_strategy_preferences / options_strategy, and admin_scheduled_tasks via ops/sync-scheduled-tasks-from-spec (unless SKIP_SEED_SCHEDULED_TASKS_SYNC). xAI team RAG upload is opt-in (SEED_ADMIN_XAI_RAG_INGEST or seed:admin:rag-sync). See accessRequestInserted for admin_access_requests."
       }
     };
 
@@ -943,17 +965,19 @@ async function seed() {
         `Team UUID for strategies:   ${teamUuidForStrategy || "(n/a — literal collection_* id or no team)"}`,
         `Trusted advisor root id:     ${teamKbCollectionId || "(none)"}`,
         `Team RAG display name:     ${seedTenant.ragKbDisplayName || "(legacy — not used for ingest)"}`,
-        shouldSkipSeedXaiRagIngest()
+        didRunXaiRagIngest
           ? [
-              "xAI RAG ingest:            skipped (SKIP_SEED_XAI_RAG_INGEST)",
-              `collections_search ids:    ${collectionsSearchIds.length} (${collectionsSearchIds.join(", ") || "—"})`
-            ].join("\n")
-          : [
               `xAI RAG files:              ${ragIngest.ragUploaded} uploaded / ${ragFileCandidates} file candidates (walked dirs)`,
               `xAI tenant collections:     ${strategyCollectionsDetail.length} buckets, ${strategyFilesUploaded} docs linked total`,
               ...strategyCollectionsDetail.map(
                 (s) => `    • ${s.displayName} → ${s.collectionId} (${s.filesUploaded} docs)`
               ),
+              `collections_search ids:    ${collectionsSearchIds.length} (${collectionsSearchIds.join(", ") || "—"})`
+            ].join("\n")
+          : [
+              String(process.env.SKIP_SEED_XAI_RAG_INGEST ?? "").match(/^(1|true|yes)$/i)
+                ? "xAI RAG ingest:            skipped (SKIP_SEED_XAI_RAG_INGEST)"
+                : "xAI RAG ingest:            skipped (default — set SEED_ADMIN_XAI_RAG_INGEST=1 or run seed:admin:rag-sync)",
               `collections_search ids:    ${collectionsSearchIds.length} (${collectionsSearchIds.join(", ") || "—"})`
             ].join("\n"),
         "=========================================================================",
@@ -981,7 +1005,13 @@ async function seed() {
     }
   });
   console.log(`[seed:admin] wrote concise report to ${ADMIN_LOG_PATH}`);
-  runPostSeedXaiRagVerify();
+  if (didRunXaiRagIngest) {
+    runPostSeedXaiRagVerify();
+  } else {
+    console.log(
+      "[seed:admin] skipping xAI RAG post-seed verify (no RAG ingest). After `npm run seed:admin:rag-sync`, run `npm run verify:xai-seed-rag` if needed."
+    );
+  }
   runPostSeedXaiHelloVerify();
 }
 

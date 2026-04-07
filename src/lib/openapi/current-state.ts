@@ -186,6 +186,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/admin/system/db-connection",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-system"
+  },
+  {
     path: "/api/admin/task-runs",
     operations: [{ method: "GET", auth: "admin" }],
     tag: "admin-tasks"

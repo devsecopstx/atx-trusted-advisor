@@ -249,8 +249,9 @@ function dedupeIds(ids) {
 }
 
 /**
- * Creates instance-scoped xAI collections `atx-trusted-advisor-<dev|stage|prod>` plus segment buckets and uploads
+ * Creates team-scoped xAI collections `atx-trusted-advisor-<dev|stage|prod>` plus segment buckets and uploads
  * `atx-rag-collection/{finance-reference-docs,xpersonas,example-prompts,options-strategy}` (legacy folder names still resolved as fallbacks).
+ * Invoked by **`npm run seed:admin:rag-sync`** or by **`npm run seed:admin`** only when **`SEED_ADMIN_XAI_RAG_INGEST=1`** — not default bootstrap.
  *
  * @param {{
  *   repoRoot: string;
