@@ -25,8 +25,10 @@ coverage
 # Vitest JUnit output (CI / local parity with GitHub test results)
 test-results/
 
-# Lighthouse CI local HTML/JSON (see `.lighthouseci/config.cjs`)
-.lighthouseci/reports/
+# Lighthouse CI — ignore all local output; keep only `.lighthouseci/config.cjs` tracked.
+# See `.lighthouseci/config.cjs` (upload.outputDir → reports/).
+.lighthouseci/*
+!.lighthouseci/config.cjs
 
 # nyc test coverage
 .nyc_output
