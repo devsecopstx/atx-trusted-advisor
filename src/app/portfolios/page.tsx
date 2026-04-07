@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
+import { ProductGuestShell } from "@/app/ui/product-guest-shell";
 import { getSessionUser } from "@/lib/auth";
 import { canUserLogin } from "@/modules/identity/authorization";
 
@@ -16,7 +16,11 @@ import "./portfolios-dashboard.css";
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  searchParams?: Promise<{ focus?: string | string[] }>;
+  searchParams?: Promise<{
+    focus?: string | string[];
+    error?: string | string[];
+    details?: string | string[];
+  }>;
 };
 
 function singleParam(v: string | string[] | undefined): string | undefined {
@@ -28,14 +32,27 @@ function singleParam(v: string | string[] | undefined): string | undefined {
 
 export default async function PortfoliosPage({ searchParams }: PageProps) {
   const session = await getSessionUser();
-  if (!session) {
-    redirect("/xchat?next=/portfolios");
-  }
-  if (!canUserLogin(session.roles)) {
-    redirect("/xchat");
+  const sp = searchParams ? await searchParams : {};
+  const authError = singleParam(sp.error)?.trim();
+  const authDetails = singleParam(sp.details)?.trim();
+
+  if (!session || !canUserLogin(session.roles)) {
+    return (
+      <ProductGuestShell
+        authDetails={authDetails}
+        authError={authError}
+        blurb={
+          <p className="text-sm leading-relaxed text-[var(--xf-text-300)]">
+            Sign in to open the Portfolios workspace (books, allocation, and desk shortcuts) at this URL — same sign-in
+            flow as xChat, without leaving /portfolios.
+          </p>
+        }
+        nextPath="/portfolios"
+        session={session}
+      />
+    );
   }
 
-  const sp = searchParams ? await searchParams : {};
   const focusRaw = singleParam(sp.focus)?.trim() ?? "";
 
   return (

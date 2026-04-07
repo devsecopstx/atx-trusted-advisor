@@ -28,6 +28,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Shipped stack, features, CI
 
 ### Deferred product TODOs
 
+- Shipped in app **3.3.4:** Next 16 **proxy-only** edge (`src/proxy.ts`; removed `middleware.ts`); TypeScript — **`tsconfig` excludes `.next/dev`**, **`next-env.d.ts` → `.next/types/routes.d.ts`**; admin delivery-channel response shaping in **`serialize-delivery-channel.ts`** (typed-route compliance). Docs: **`AGENTS.md`**, **`auth-and-access.md`**, release notes **3.3.4**.
 - Shipped in app **3.0.16:** soft-theme polish for xChat composer + xOptions (page surface token, chain/CTA/chart readability); **`/xoptions`** layout loads **`portfolios-dashboard.css`** with workspace rail so sidebar Lucide glyphs stay 1rem-class sized.
 - Shipped in app **3.0.6:** portfolios compact watchlist shows top five IV/OI scan rows (`watchlist-hot`) plus watchlist manage link; xOptions step 3 strategy cards show **Requires** (cash vs stock) and dropped verbose bullets / Learn more; xOptions step 4 payoff chart is optional via sidebar **Payoff preview** (default off), with position review reflow under the chain when the chart is hidden.
 - Shipped in app 3.0.3: increased dark-rail icon contrast for shared app-user + portfolio workspace sidebars so section glyphs remain readable in xOptions/xChat left-rail surfaces.

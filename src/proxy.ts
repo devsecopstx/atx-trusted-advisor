@@ -40,6 +40,21 @@ function isProtectedPath(pathname: string): boolean {
   return protectedPathPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
+/**
+ * App-router pages that render a **guest shell at the same URL** (no session cookie) — do not redirect to /xchat.
+ * APIs under these areas stay protected (401) when unauthenticated.
+ */
+function allowsGuestHtmlRender(pathname: string): boolean {
+  if (pathname === "/portfolio" || pathname === "/portfolios" || pathname === "/xoptions") {
+    return true;
+  }
+  return (
+    pathname.startsWith("/portfolio/") ||
+    pathname.startsWith("/portfolios/") ||
+    pathname.startsWith("/xoptions/")
+  );
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (!isProtectedPath(pathname)) {
@@ -55,6 +70,10 @@ export function proxy(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (allowsGuestHtmlRender(pathname)) {
+    return NextResponse.next();
+  }
+
   return NextResponse.redirect(new URL("/xchat", request.url));
 }
 
@@ -68,6 +87,7 @@ export const config = {
     "/api/recommendations/:path*",
     "/api/strategy-jobs/:path*",
     "/api/app-user/:path*",
+    "/portfolio",
     "/portfolio/:path*",
     "/portfolios",
     "/portfolios/:path*",

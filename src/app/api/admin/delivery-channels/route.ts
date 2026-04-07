@@ -9,7 +9,7 @@ import {
     createAdminDeliveryChannel,
     listAdminDeliveryChannels
 } from "@/modules/core-admin/repository";
-import type { AdminDeliveryChannel } from "@/modules/core-admin/types";
+import { serializeAdminDeliveryChannel } from "@/modules/core-admin/serialize-delivery-channel";
 
 const createSchema = z
   .object({
@@ -119,16 +119,4 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ data: serializeAdminDeliveryChannel(created) }, { status: 201 });
-}
-
-export function serializeAdminDeliveryChannel(ch: AdminDeliveryChannel) {
-  return {
-    _id: ch._id?.toHexString(),
-    name: ch.name,
-    deliveryTarget: ch.deliveryTarget,
-    slackWebhookUrl: ch.slackWebhookUrl ?? "",
-    emailTo: ch.emailTo ?? "",
-    createdAt: ch.createdAt.toISOString(),
-    updatedAt: ch.updatedAt.toISOString()
-  };
 }

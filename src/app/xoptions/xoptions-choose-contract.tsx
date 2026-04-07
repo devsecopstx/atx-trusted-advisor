@@ -14,12 +14,14 @@ import {
     setCachedOptionChain
 } from "@/lib/xoptions/xoptions-chain-cache";
 import {
+    chainHeatMixPercent,
     chainRowMoneynessClass,
     closestStrikeToSpot,
     filterOptionChainRowsByLiquidity,
     filterStrikesBySpotBand,
     formatImpliedVolatilityDisplay,
     legHasQuotableLastQuote,
+    maxVolumeAndOpenInterestForSide,
     sliceStrikesAroundSpot,
     STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
@@ -197,6 +199,15 @@ function formatGreek(n: number | undefined, digits: number): string {
   return n.toFixed(digits);
 }
 
+function ChainSortHint() {
+  return (
+    <span className="xoptions-chain-table__sort-hint" aria-hidden="true">
+      <span className="xoptions-chain-table__sort-hint-up">↑</span>
+      <span className="xoptions-chain-table__sort-hint-down">↓</span>
+    </span>
+  );
+}
+
 export function XoptionsChooseContract({
   symbol,
   weeks,
@@ -222,6 +233,8 @@ export function XoptionsChooseContract({
 
   const [side, setSide] = useState<"call" | "put">("call");
   const [showAllStrikes, setShowAllStrikes] = useState(false);
+  /** Mobile-only: show Δ/Γ/Θ/Vega columns (desktop always shows). */
+  const [mobileGreeksOpen, setMobileGreeksOpen] = useState(false);
   const [selectedStrike, setSelectedStrike] = useState<number | null>(null);
   const [limitPrice, setLimitPrice] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -464,6 +477,13 @@ export function XoptionsChooseContract({
       chain.stockPrice
     );
   }, [chain, tableRowsForDisplay]);
+
+  const heatMaxes = useMemo(() => {
+    if (!chain) {
+      return { maxVol: 0, maxOi: 0 };
+    }
+    return maxVolumeAndOpenInterestForSide(tableRowsForDisplay, side);
+  }, [chain, tableRowsForDisplay, side]);
 
   const truncated = showAllStrikes && baseRows.length > CHAIN_TABLE_MAX;
 
@@ -819,44 +839,100 @@ export function XoptionsChooseContract({
                         <XoptionsGreekCalcExplainer />
                       </div>
                     ) : null}
+                    <div className="mb-1 flex justify-end lg:hidden">
+                      <button
+                        type="button"
+                        className="rounded-md border border-[color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] px-2 py-1 text-[0.65rem] font-medium text-[var(--xf-text-300)] hover:border-[color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] hover:text-[var(--xf-text-200)]"
+                        onClick={() => setMobileGreeksOpen((v) => !v)}
+                        aria-expanded={mobileGreeksOpen}
+                      >
+                        {mobileGreeksOpen ? "Hide Greeks" : "Show Greeks"}
+                      </button>
+                    </div>
                     <div ref={chainTableScrollRef} className="xoptions-contract__table-scroll min-w-0">
-                    <table className="xoptions-chain-table xoptions-chain-table--compact w-full min-w-[48rem] border-collapse text-left text-[0.6rem]">
+                    <table
+                      className={`xoptions-chain-table xoptions-chain-table--compact xoptions-chain-table--contract-chooser w-full min-w-[56rem] border-collapse text-left text-[0.62rem] ${mobileGreeksOpen ? "xoptions-chain-table--greeks-mobile-open" : ""}`}
+                    >
                       <thead>
                         <tr className="xoptions-chain-table__head">
-                          <th className="py-1 pr-1 font-semibold w-8" />
-                          <th className="py-1 pr-1 font-semibold" title="Strike price">
-                            Strike
+                          <th className="xoptions-chain-table__th-pad w-8" scope="col" />
+                          <th className="xoptions-chain-table__th-pad" scope="col" title="Strike price">
+                            <span className="xoptions-chain-table__th-label">
+                              Strike <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold" title="Best bid per share">
-                            Bid
+                          <th className="xoptions-chain-table__th-pad" scope="col" title="Best bid per share">
+                            <span className="xoptions-chain-table__th-label">
+                              Bid <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold" title="Best ask per share">
-                            Ask
+                          <th className="xoptions-chain-table__th-pad" scope="col" title="Best ask per share">
+                            <span className="xoptions-chain-table__th-label">
+                              Ask <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold" title="Breakeven at expiration using bid/ask mid">
-                            BE
+                          <th className="xoptions-chain-table__th-pad" scope="col" title="Midpoint (bid + ask) / 2">
+                            <span className="xoptions-chain-table__th-label">
+                              Mid <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold" title="Implied volatility (annualized)">
-                            IV%
+                          <th className="xoptions-chain-table__th-pad" scope="col" title="Breakeven at expiration using bid/ask mid">
+                            <span className="xoptions-chain-table__th-label">
+                              BE <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold text-right" title="Contract volume">
-                            Vol
+                          <th className="xoptions-chain-table__th-pad" scope="col" title="Implied volatility (annualized)">
+                            <span className="xoptions-chain-table__th-label">
+                              IV% <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold text-right" title="Open interest">
-                            OI
+                          <th className="xoptions-chain-table__th-pad text-right" scope="col" title="Contract volume (today)">
+                            <span className="xoptions-chain-table__th-label xoptions-chain-table__th-label--end">
+                              Vol <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold" title="Delta per share">
-                            Δ
+                          <th className="xoptions-chain-table__th-pad text-right" scope="col" title="Open interest">
+                            <span className="xoptions-chain-table__th-label xoptions-chain-table__th-label--end">
+                              OI <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold" title="Gamma per share">
-                            Γ
+                          <th
+                            className="xoptions-chain-table__th-pad xoptions-chain-table__col-greek"
+                            scope="col"
+                            title="Delta: how much the option price changes per $1 move in the stock."
+                          >
+                            <span className="xoptions-chain-table__th-label">
+                              Δ <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold" title="Theta per day per share (model)">
-                            Θ/day
+                          <th
+                            className="xoptions-chain-table__th-pad xoptions-chain-table__col-greek"
+                            scope="col"
+                            title="Gamma: how fast delta changes as the stock moves."
+                          >
+                            <span className="xoptions-chain-table__th-label">
+                              Γ <ChainSortHint />
+                            </span>
                           </th>
-                          <th className="py-1 pr-1 font-semibold" title="Vega per 1 percentage-point IV move">
-                            Vega
+                          <th
+                            className="xoptions-chain-table__th-pad xoptions-chain-table__col-greek"
+                            scope="col"
+                            title="Theta: estimated daily time decay in dollars per share."
+                          >
+                            <span className="xoptions-chain-table__th-label">
+                              Θ/day <ChainSortHint />
+                            </span>
                           </th>
+                          <th
+                            className="xoptions-chain-table__th-pad xoptions-chain-table__col-greek"
+                            scope="col"
+                            title="Vega: sensitivity per one percentage-point change in implied volatility."
+                          >
+                            <span className="xoptions-chain-table__th-label">
+                              Vega <ChainSortHint />
+                            </span>
+                          </th>
+                          <th className="xoptions-chain-table__th-pad w-16 text-right" scope="col" aria-label="Row action" />
                         </tr>
                       </thead>
                       <tbody>
@@ -871,7 +947,7 @@ export function XoptionsChooseContract({
                                 className="xoptions-chain-table__row"
                                 data-xo-strike={row.strike}
                               >
-                                <td colSpan={12} className="py-0.5 xoptions-chain-table__empty">
+                                <td colSpan={14} className="xoptions-chain-table__td-pad xoptions-chain-table__empty">
                                   {row.strike} — no quote
                                 </td>
                               </tr>
@@ -880,6 +956,7 @@ export function XoptionsChooseContract({
                           const bid = leg.last_quote.bid;
                           const ask = leg.last_quote.ask;
                           const mid = (bid + ask) / 2;
+                          const spreadAbs = ask - bid;
                           const be = breakevenLong(side, row.strike, mid);
                           const selected = selectedStrike === row.strike;
                           const ivDisplay = formatImpliedVolatilityDisplay(leg.implied_volatility);
@@ -887,14 +964,27 @@ export function XoptionsChooseContract({
                             typeof leg.volume === "number" && Number.isFinite(leg.volume)
                               ? leg.volume
                               : 0;
+                          const oiVal = legOi(leg);
                           const g = leg.greeks;
+                          const volMix = chainHeatMixPercent(vol, heatMaxes.maxVol);
+                          const oiMix = chainHeatMixPercent(oiVal, heatMaxes.maxOi);
+                          const isAtm = atmStrike != null && Math.abs(row.strike - atmStrike) < 1e-6;
+                          const volCellStyle =
+                            volMix > 0
+                              ? { background: `color-mix(in srgb, var(--xf-gain-green) ${volMix}%, transparent)` }
+                              : undefined;
+                          const oiCellStyle =
+                            oiMix > 0
+                              ? { background: `color-mix(in srgb, var(--xf-gain-green) ${oiMix}%, transparent)` }
+                              : undefined;
                           return (
                             <tr
                               key={row.strike}
                               data-xo-strike={row.strike}
-                              className={`xoptions-chain-table__row ${moneynessClass} ${selected ? "xoptions-contract-row--selected" : ""}`}
+                              className={`xoptions-chain-table__row xoptions-chain-table__row--interactive ${moneynessClass} ${selected ? "xoptions-contract-row--selected" : ""}`}
+                              onClick={() => selectRow(row.strike)}
                             >
-                              <td className="py-0.5 pr-1">
+                              <td className="xoptions-chain-table__td-pad align-middle">
                                 <input
                                   type="radio"
                                   name="xo-contract-strike-row"
@@ -904,32 +994,80 @@ export function XoptionsChooseContract({
                                   aria-label={`Strike ${row.strike}`}
                                 />
                               </td>
-                              <td className="py-0.5 pr-1 font-mono xoptions-chain-table__strike">{row.strike}</td>
-                              <td className="py-0.5 pr-1">
-                                <button
-                                  type="button"
-                                  className="xoptions-contract__bid font-mono"
-                                  onClick={() => {
-                                    setSelectedStrike(row.strike);
-                                    syncLimitFromBid(row.strike);
-                                  }}
-                                >
-                                  ${bid.toFixed(2)}
-                                </button>
+                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__strike-cell align-middle">
+                                <span className="xoptions-chain-table__strike-val font-mono tabular-nums">
+                                  {row.strike}
+                                </span>
+                                {isAtm ? (
+                                  <span className="xoptions-chain-table__atm-badge">ATM</span>
+                                ) : null}
                               </td>
-                              <td className="py-0.5 pr-1 font-mono">${ask.toFixed(2)}</td>
-                              <td className="py-0.5 pr-1 font-mono">${be.toFixed(2)}</td>
-                              <td className="py-0.5 pr-1 font-mono">{ivDisplay}</td>
-                              <td className="py-0.5 pr-1 font-mono text-right tabular-nums">
+                              <td className="xoptions-chain-table__td-pad align-middle">
+                                <div className="flex flex-col gap-0.5">
+                                  <button
+                                    type="button"
+                                    className="xoptions-contract__bid xoptions-contract__bid--emphasis font-mono tabular-nums text-left"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedStrike(row.strike);
+                                      syncLimitFromBid(row.strike);
+                                    }}
+                                  >
+                                    ${bid.toFixed(2)}
+                                  </button>
+                                  <span className="xoptions-chain-table__spread-hint font-mono tabular-nums">
+                                    {spreadAbs.toFixed(2)} spread
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="xoptions-chain-table__td-pad xoptions-contract__ask-cell font-mono tabular-nums align-middle">
+                                ${ask.toFixed(2)}
+                              </td>
+                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__mid-cell font-mono tabular-nums align-middle">
+                                ${mid.toFixed(2)}
+                              </td>
+                              <td className="xoptions-chain-table__td-pad font-mono tabular-nums align-middle">
+                                ${be.toFixed(2)}
+                              </td>
+                              <td className="xoptions-chain-table__td-pad font-mono tabular-nums align-middle">
+                                {ivDisplay}
+                              </td>
+                              <td
+                                className="xoptions-chain-table__td-pad xoptions-chain-table__heat-cell font-mono tabular-nums text-right align-middle"
+                                style={volCellStyle}
+                              >
                                 {vol.toLocaleString()}
                               </td>
-                              <td className="py-0.5 pr-1 font-mono text-right tabular-nums">
-                                {legOi(leg).toLocaleString()}
+                              <td
+                                className="xoptions-chain-table__td-pad xoptions-chain-table__heat-cell font-mono tabular-nums text-right align-middle"
+                                style={oiCellStyle}
+                              >
+                                {oiVal.toLocaleString()}
                               </td>
-                              <td className="py-0.5 pr-1 font-mono tabular-nums">{formatGreek(g?.delta, 3)}</td>
-                              <td className="py-0.5 pr-1 font-mono tabular-nums">{formatGreek(g?.gamma, 4)}</td>
-                              <td className="py-0.5 pr-1 font-mono tabular-nums">{formatGreek(g?.theta_per_day, 3)}</td>
-                              <td className="py-0.5 pr-1 font-mono tabular-nums">{formatGreek(g?.vega_per_one_percent_iv, 3)}</td>
+                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle">
+                                {formatGreek(g?.delta, 3)}
+                              </td>
+                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle">
+                                {formatGreek(g?.gamma, 4)}
+                              </td>
+                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle">
+                                {formatGreek(g?.theta_per_day, 3)}
+                              </td>
+                              <td className="xoptions-chain-table__td-pad xoptions-chain-table__col-greek font-mono tabular-nums align-middle">
+                                {formatGreek(g?.vega_per_one_percent_iv, 3)}
+                              </td>
+                              <td className="xoptions-chain-table__select-cell xoptions-chain-table__td-pad text-right align-middle">
+                                <button
+                                  type="button"
+                                  className="xoptions-chain-table__select-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    selectRow(row.strike);
+                                  }}
+                                >
+                                  Select
+                                </button>
+                              </td>
                             </tr>
                           );
                         })}

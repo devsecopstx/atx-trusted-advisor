@@ -177,6 +177,7 @@ export function chainRowMoneynessClass(
 export type OptionChainLegLike = {
   last_quote: { bid: number; ask: number };
   open_interest?: number;
+  volume?: number;
 } | null;
 
 export function legOpenInterestChain(leg: OptionChainLegLike): number {
@@ -233,4 +234,44 @@ export function formatImpliedVolatilityDisplay(iv: number | null | undefined): s
     return "—";
   }
   return `${iv.toFixed(2)}%`;
+}
+
+/**
+ * Max volume and open interest among quotable legs for the visible chain (used for Vol/OI heatmap).
+ */
+export function maxVolumeAndOpenInterestForSide<
+  T extends { call: OptionChainLegLike; put: OptionChainLegLike }
+>(rows: T[], side: "call" | "put"): { maxVol: number; maxOi: number } {
+  let maxVol = 0;
+  let maxOi = 0;
+  for (const r of rows) {
+    const leg = side === "call" ? r.call : r.put;
+    if (!leg || !legHasQuotableLastQuote(leg)) {
+      continue;
+    }
+    const v = typeof leg.volume === "number" && Number.isFinite(leg.volume) ? leg.volume : 0;
+    const oi = legOpenInterestChain(leg);
+    if (v > maxVol) {
+      maxVol = v;
+    }
+    if (oi > maxOi) {
+      maxOi = oi;
+    }
+  }
+  return { maxVol, maxOi };
+}
+
+/**
+ * Linear heat for CSS `color-mix`: 0 when `max` is 0 or `value` invalid; else `value/max` capped at 1, scaled to `maxMixPercent`.
+ */
+export function chainHeatMixPercent(
+  value: number,
+  max: number,
+  maxMixPercent: number = 26
+): number {
+  if (max <= 0 || !Number.isFinite(value) || value <= 0) {
+    return 0;
+  }
+  const t = Math.min(1, value / max);
+  return Math.round(t * maxMixPercent);
 }

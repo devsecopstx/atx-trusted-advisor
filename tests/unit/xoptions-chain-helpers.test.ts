@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    chainHeatMixPercent,
     chainRowMoneynessClass,
     closestStrikeToSpot,
     filterOptionChainRowsByLiquidity,
@@ -8,6 +9,7 @@ import {
     formatImpliedVolatilityDisplay,
     legHasLiquiditySignal,
     legHasQuotableLastQuote,
+    maxVolumeAndOpenInterestForSide,
     sliceStrikesAroundSpot
 } from "@/lib/xoptions/xoptions-chain-helpers";
 
@@ -56,6 +58,45 @@ describe("formatImpliedVolatilityDisplay", () => {
   it("formats percent with two decimals", () => {
     expect(formatImpliedVolatilityDisplay(35.5)).toBe("35.50%");
     expect(formatImpliedVolatilityDisplay(null)).toBe("—");
+  });
+});
+
+describe("chainHeatMixPercent", () => {
+  it("returns 0 for invalid max or value", () => {
+    expect(chainHeatMixPercent(10, 0)).toBe(0);
+    expect(chainHeatMixPercent(-1, 100)).toBe(0);
+    expect(chainHeatMixPercent(NaN, 100)).toBe(0);
+  });
+
+  it("scales linearly and caps at maxMixPercent", () => {
+    expect(chainHeatMixPercent(50, 100, 20)).toBe(10);
+    expect(chainHeatMixPercent(100, 100, 20)).toBe(20);
+    expect(chainHeatMixPercent(200, 100, 20)).toBe(20);
+  });
+});
+
+describe("maxVolumeAndOpenInterestForSide", () => {
+  const q = (vol: number, oi: number, bid = 1, ask = 2) => ({
+    last_quote: { bid, ask },
+    volume: vol,
+    open_interest: oi,
+    implied_volatility: 30
+  });
+
+  it("returns max vol and OI for the active side among quotable legs", () => {
+    const rows = [
+      { strike: 100, call: q(500, 1000), put: q(10, 20) },
+      { strike: 105, call: q(2000, 300), put: q(5, 5) }
+    ];
+    expect(maxVolumeAndOpenInterestForSide(rows, "call")).toEqual({ maxVol: 2000, maxOi: 1000 });
+    expect(maxVolumeAndOpenInterestForSide(rows, "put")).toEqual({ maxVol: 10, maxOi: 20 });
+  });
+
+  it("ignores rows without quotable bid/ask", () => {
+    const rows = [
+      { strike: 100, call: { last_quote: { bid: NaN, ask: 1 }, volume: 999, open_interest: 1 }, put: q(1, 1) }
+    ];
+    expect(maxVolumeAndOpenInterestForSide(rows, "call")).toEqual({ maxVol: 0, maxOi: 0 });
   });
 });
 

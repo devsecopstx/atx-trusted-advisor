@@ -10,9 +10,8 @@ import {
     getAdminDeliveryChannelById,
     updateAdminDeliveryChannelById
 } from "@/modules/core-admin/repository";
+import { serializeAdminDeliveryChannel } from "@/modules/core-admin/serialize-delivery-channel";
 import type { AdminDeliveryChannel } from "@/modules/core-admin/types";
-
-import { serializeAdminDeliveryChannel } from "../route";
 
 type RouteContext = {
   params: Promise<{ channelId: string }>;

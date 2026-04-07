@@ -6,7 +6,7 @@ This is the auth/access entrypoint. Use this page for incident triage, then jump
 
 - `src/modules/identity/authorization.ts` (login/role gate behavior)
 - `src/modules/surface-policy.ts` (admin_console vs app_user path policy)
-- `src/proxy.ts` (protected route redirect behavior)
+- `src/proxy.ts` (edge auth: guest-capable **HTML** for `/xoptions`, `/portfolio`, `/portfolios`; other protected pages redirect unauthenticated users to `/xchat`; matched **API** paths → 401 without session)
 - `atx-docs/sre-ops/auth-oauth-spring-dual-run.md` (OAuth dual-run/cutover operations)
 - `atx-docs/sre-ops/x-oauth-atx-callbacks.md` (callback host/config checklist)
 
