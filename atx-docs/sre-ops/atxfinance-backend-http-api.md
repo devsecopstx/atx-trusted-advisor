@@ -88,6 +88,8 @@ Session cookie + **`viewer`+** roles (`canUserLogin`). Isolation: **`userId` + `
 
 ## Admin (global_admin session)
 
+**Next-only admin routes (not implemented on this JVM service):** Options-strategy catalog and Mongo-backed preferences — `GET|POST /api/admin/options-strategy`, `GET|PATCH|DELETE /api/admin/options-strategy/{strategyId}`, `GET /api/admin/options-strategy-preferences`, `GET|PATCH /api/admin/options-strategy-preferences/{preferenceId}`. Documented under the core app OpenAPI tag **`admin-options-strategy`** and [`guides/api-endpoints.md`](../guides/api-endpoints.md).
+
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/api/admin/bootstrap-status` | **200** bootstrap/index/seed snapshot. Uses env **`ADMIN_SEED_EMAIL`** (same as Next). |

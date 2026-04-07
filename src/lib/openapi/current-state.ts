@@ -322,7 +322,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   {
     path: "/api/admin/options-strategy-preferences",
     operations: [{ method: "GET", auth: "admin" }],
-    tag: "admin-system"
+    tag: "admin-options-strategy"
   },
   {
     path: "/api/admin/options-strategy-preferences/{preferenceId}",
@@ -330,7 +330,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
       { method: "GET", auth: "admin" },
       { method: "PATCH", auth: "admin", hasRequestBody: true }
     ],
-    tag: "admin-system"
+    tag: "admin-options-strategy"
   },
   {
     path: "/api/admin/options-strategy",
@@ -338,7 +338,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
       { method: "GET", auth: "admin" },
       { method: "POST", auth: "admin", hasRequestBody: true }
     ],
-    tag: "admin-system"
+    tag: "admin-options-strategy"
   },
   {
     path: "/api/admin/options-strategy/{strategyId}",
@@ -347,7 +347,7 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
       { method: "PATCH", auth: "admin", hasRequestBody: true },
       { method: "DELETE", auth: "admin" }
     ],
-    tag: "admin-system"
+    tag: "admin-options-strategy"
   },
   {
     path: "/api/admin/portfolios",
@@ -812,17 +812,24 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "user-feedback": "Authenticated app_user feedback submission (Slack integration when configured).",
   "admin-audit": "Admin audit and activity timeline endpoints.",
   "admin-system": "Admin system-level diagnostics and scheduled task controls.",
+  "admin-options-strategy":
+    "Global admin CRUD for tenant options-strategy catalog and Mongo-backed `options_strategy_preferences` (markdown seed from `atx-docs/rag-collection/options-strategy` via `npm run seed:options-strategy-prefs`). Next-authoritative — not proxied to Spring.",
   "admin-tasks": "Admin task catalog and task-run controls.",
   "admin-users": "Admin management of user records, roles, plans, and settings.",
   "admin-xchat": "Platform xChat defaults (e.g. default published persona for app users).",
   personas: "Persona and collection lifecycle APIs.",
   portfolios:
-    "Default portfolio, account, watchlist, and app-user broker holdings import (`POST /api/import/broker`) for signed-in users.",
+    "Default portfolio, accounts, watchlist, portfolio-scoped recommendations and alerts (`/api/portfolios/{portfolioId}/alerts`), and app-user broker holdings import (`POST /api/import/broker`). BFF may proxy some portfolio paths to Spring when enabled.",
   positions: "Position capture and persistence APIs.",
+  "find-options":
+    "xOptions / strategy-builder session APIs: bootstrap and context for `/xoptions` (top holdings, hot watchlist, symbol snapshot, chart data). Next-authoritative unless a route explicitly BFF-proxies.",
+  xoptions: "xOptions product entitlements and deck usage signals (session).",
+  market:
+    "Lightweight market reads for product shells (e.g. batch symbol quotes, workspace pulse / options highlight summaries).",
   "strategy-options":
-    "Option expirations and chain (Yahoo + synthetic fallback) for xStrategyBuilder; aligned with xfinance-strategy GET /api/options.",
+    "Option expirations (`GET` — Next Yahoo handler only, not BFF) and full chain (`GET` — may proxy to Spring when `ATXFINANCE_BACKEND_ORIGIN` is set; sparse or non-JSON Spring responses fall back to Next Yahoo in `strategy-options/route.ts`). Used by `/xoptions` contract grid.",
   "strategy-jobs":
-    "xChat Hardcore / Phase 1 multi-agent strategy orchestrator (Mongo + Spring): slot collection, job status, and LLM finalizer artifact (Markdown + fenced JSON v1) after slots_complete. See atx-docs/xchat/atx-multi-agent.md.",
+    "Hardcore multi-slot strategy jobs: Spring `StrategyJobService` (Mongo `strategy_jobs`) behind Next BFF (`src/app/api/strategy-jobs/*`). Slot turns through `slots_complete`, then async LLM artifact (Markdown + fenced JSON v1). Rate limits, idempotency, TTL: see `atxfinance-backend-http-api.md` and `atx-docs/xchat/atx-multi-agent.md`.",
   rag: "Mongo-backed scoped RAG file list/upload; xAI collection inventory is GET /api/personas/collections.",
   xchat: "xChat sync and async ask/batch workflows."
 };

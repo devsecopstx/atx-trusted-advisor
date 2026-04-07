@@ -120,10 +120,59 @@ All IBKR JSON responses set response header **`X-Correlation-Id`** (UUID) for su
 
 UI: **`/account/integrations/ibkr`** (read-only snapshot uses **`snapshot`**).
 
-## xStrategyBuilder / strategy options
+## xOptions — find-options (app_user session)
 
-- `GET /api/strategy-options/expirations` — session; **Next Yahoo only** (not BFF-proxied to Spring; matches local dev and avoids prod stalls when the JVM path is slow).
-- `GET /api/strategy-options` — may BFF-proxy to Spring when enabled; sparse-chain fallback to Yahoo.
+Used by **`/xoptions`** for holdings-aware bootstrap and symbol context (see `atx-docs/xchat/xoptions-strategy-builder.md`).
+
+- `GET /api/app-user/find-options/bootstrap` — workspace snapshot + top holdings + hot watchlist + scoring context in one call
+- `GET /api/app-user/find-options/context` — narrow context payload for the builder
+- `GET /api/app-user/find-options/symbol-snapshot` — single-symbol snapshot for the stepped flow
+- `GET /api/app-user/find-options/top-holdings` — top stock holdings by value
+- `GET /api/app-user/find-options/watchlist-hot` — “hot” watchlist symbols for the flow
+- `GET /api/app-user/symbol-chart` — chart series for the symbol panel
+- `GET /api/app-user/xoptions/entitlements` — xOptions entitlements / deck usage signals
+
+## Market (lightweight quotes / pulse)
+
+- `GET /api/market/symbol-quotes` — batch-style symbol quotes for product shells
+- `GET /api/market/workspace-pulse` — workspace-oriented pulse (e.g. nearest-expiry options highlight summary)
+
+## xStrategyBuilder / strategy-options (chain + expirations)
+
+- `GET /api/strategy-options/expirations` — session; **Next Yahoo only** (handler stays on Next so local dev and prod avoid JVM stalls on expirations).
+- `GET /api/strategy-options` — session; may **BFF-proxy** to Spring when **`ATXFINANCE_BACKEND_ORIGIN`** is set and the BFF gate allows; if Spring returns a sparse chain or non-JSON **200**, Next falls back to its Yahoo handler (`src/app/api/strategy-options/route.ts`). Spring contract: `atx-docs/sre-ops/atxfinance-backend-http-api.md` § Strategy options.
+
+## Strategy jobs (hardcore orchestrator, Spring + Next BFF)
+
+Browsers call these on the **Next** origin; Next forwards to Kotlin when the backend BFF is active. **503** when the JVM service is required but unreachable (e.g. unset origin or loopback dev). Full semantics: `atx-docs/sre-ops/atxfinance-backend-http-api.md` § Strategy jobs · `atx-docs/xchat/atx-multi-agent.md`.
+
+- `GET /api/strategy-jobs` — list jobs for the session scope
+- `POST /api/strategy-jobs` — create job (slot collection); rate limits + optional idempotency
+- `GET /api/strategy-jobs/:jobId` — job state, next prompt / choices
+- `POST /api/strategy-jobs/:jobId/turns` — free-text or choice turn; ends in **`slots_complete`** then async artifact finalizer
+- `GET /api/strategy-jobs/:jobId/artifact` — poll Markdown + JSON artifact when ready
+
+## Admin — options-strategy catalog & preferences (Next only)
+
+**Not** implemented on Spring HTTP — Mongo-backed admin CRUD on the Next app. Disk seed: `atx-docs/rag-collection/options-strategy/**` → **`npm run seed:options-strategy-prefs`** → collection **`options_strategy_preferences`**.
+
+- `GET /api/admin/options-strategy`
+- `POST /api/admin/options-strategy`
+- `GET /api/admin/options-strategy/:strategyId`
+- `PATCH /api/admin/options-strategy/:strategyId`
+- `DELETE /api/admin/options-strategy/:strategyId`
+- `GET /api/admin/options-strategy-preferences`
+- `GET /api/admin/options-strategy-preferences/:preferenceId`
+- `PATCH /api/admin/options-strategy-preferences/:preferenceId`
+
+## Portfolio alerts (app_user + admin)
+
+- `GET /api/portfolios/:portfolioId/alerts` — session; list alerts for an owned portfolio (may BFF to Spring)
+- `DELETE /api/portfolios/:portfolioId/alerts` — session; bulk clear (may BFF)
+- `GET /api/admin/portfolios/:portfolioId/alerts` — global admin
+- `POST /api/admin/portfolios/:portfolioId/alerts` — global admin
+- `PATCH /api/admin/portfolios/:portfolioId/alerts/:alertId` — global admin
+- `DELETE /api/admin/portfolios/:portfolioId/alerts/:alertId` — global admin
 
 ## Billing / payments
 
