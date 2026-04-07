@@ -176,8 +176,9 @@ Browsers call these on the **Next** origin; Next forwards to Kotlin when the bac
 
 ## Billing / payments
 
-- `POST /api/billing/checkout-session`
-- `POST /api/webhooks/stripe` — Stripe webhook receiver (`checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`)
+- `POST /api/billing/checkout-session` — starts Stripe Checkout (subscription); reuses `core_users.stripeCustomerId` when present
+- `POST /api/billing/portal-session` — session user only; returns Stripe Customer Portal URL when `stripeCustomerId` is set (after first successful checkout webhook)
+- `POST /api/webhooks/stripe` — Stripe webhook receiver (`checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`); updates `subscriptionPlan` and merges `stripeCustomerId`
 
 ## Product pages and redirects (Next.js)
 

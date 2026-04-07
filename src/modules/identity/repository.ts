@@ -429,17 +429,24 @@ export async function updateCoreUserEmail(input: {
 export async function updateCoreUserSubscriptionPlan(input: {
   userId: ObjectId;
   subscriptionPlan: NonNullable<CoreUser["subscriptionPlan"]>;
+  /** When set (non-empty), persisted on `core_users` for Stripe Customer Portal. */
+  stripeCustomerId?: string;
 }): Promise<CoreUser> {
   await ensureIdentityIndexes();
   const db = await getDb();
   const now = new Date();
+  const setDoc: Partial<CoreUser> & { updatedAt: Date } = {
+    subscriptionPlan: input.subscriptionPlan,
+    updatedAt: now
+  };
+  const trimmedCustomer = input.stripeCustomerId?.trim();
+  if (trimmedCustomer) {
+    setDoc.stripeCustomerId = trimmedCustomer;
+  }
   await db.collection<CoreUser>(collections.users).updateOne(
     { _id: input.userId },
     {
-      $set: {
-        subscriptionPlan: input.subscriptionPlan,
-        updatedAt: now
-      }
+      $set: setDoc
     }
   );
   const user = await db.collection<CoreUser>(collections.users).findOne({ _id: input.userId });

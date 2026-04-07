@@ -46,8 +46,8 @@ Stripe Checkout charges the **Stripe Price** bound to `STRIPE_PRICE_*`. The **do
    - Premium: **$99 / month**
    - Premium+: **$299 / month** (UI/list matrix: `atx-limits.txt.tsv`; set `STRIPE_PRICE_PREMIUM_PLUS_MONTHLY`; `STRIPE_PRICE_PREMIUM_PLUS_YEARLY` is still read as a fallback until old Price ids are rotated)
 4. **Checkout:** Hosted Checkout is created by the API (`mode: subscription`). No extra Dashboard toggle required beyond valid prices.
-5. **Customer portal (optional):** Enable the Billing customer portal when you want self-serve cancel/update payment method.
-6. **Webhooks:** Add endpoint `https://<your-host>/api/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`; verify with `STRIPE_WEBHOOK_SECRET`. Current route updates `core_users.subscriptionPlan`.
+5. **Customer portal:** In Stripe Dashboard → **Settings → Billing → Customer portal**, enable the portal (products, subscription cancel, payment method update). After a user completes Checkout, `checkout.session.completed` persists **`core_users.stripeCustomerId`**; **`/account/billing`** then shows **Manage subscription & payment method**, which calls **`POST /api/billing/portal-session`** (same `STRIPE_SECRET_KEY` as Checkout). Return URL is `/account/billing`.
+6. **Webhooks:** Add endpoint `https://<your-host>/api/webhooks/stripe` for `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`; verify with `STRIPE_WEBHOOK_SECRET`. Handlers update `core_users.subscriptionPlan` and merge **`stripeCustomerId`** when Stripe sends a customer id on the event object.
 
 ## App env summary
 

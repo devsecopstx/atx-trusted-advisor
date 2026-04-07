@@ -21,7 +21,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 | Doc | Purpose |
 |-----|---------|
-| [PLAN.md](./PLAN.md) | Canonical backlog: admin/BFF, multi-agent chunks, RAG seed, NL/xOptions, Stripe, deferred work |
+| [PLAN.md](./PLAN.md) | Canonical backlog: admin/BFF, multi-agent chunks, RAG seed, NL/xOptions, deferred work |
 
 ---
 
@@ -42,7 +42,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 | Doc | Purpose |
 |-----|---------|
-| [PLAN.md — Stripe & billing](./PLAN.md#stripe-billing) | **Stripe** / billing still open; shipped billing UI lives in app releases; this section tracks portal/webhook/gating follow-ons |
+| [PLAN.md — Stripe billing (shipped)](./PLAN.md#stripe-billing) | **Stripe** Checkout, webhooks, Customer Portal deep link, `core_users.stripeCustomerId`, plan limits via `getPlanLimits()` — closed for MVP; optional UX meters stay in [current-state-features gaps](./design-system/current-state-features.md) |
 
 ---
 

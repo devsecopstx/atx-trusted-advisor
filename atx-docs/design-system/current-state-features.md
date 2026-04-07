@@ -82,7 +82,7 @@ Path prefixes for the shared product chrome are defined in **`APP_USER_PRODUCT_P
 - **Portfolio alerts (desk)** — UI **`/portfolio/alerts`**; app_user **`GET` / `DELETE /api/portfolios/{portfolioId}/alerts`** (may BFF to Spring); global admin **`/api/admin/portfolios/{portfolioId}/alerts`** (+ `{alertId}` **PATCH** / **DELETE**). OpenAPI under **`portfolios`** / **`admin-portfolios`**.
 - **xOptions** — strategy builder UI at **`/xoptions`** (step 4 **Choose contract**: heatmapped Vol/OI, Mid + spread hint, ATM pill, mobile Greeks toggle). Data plane is split across **find-options** (Next session APIs for bootstrap/context/holdings/watchlist/symbol snapshot), **strategy-options** (chain + expirations), and optional **Spring BFF** — see **Options stack** below.
 - **xCoach** — learning surface (route present; detail in app).
-- **Billing** — Stripe webhook + plan field on users; portal / tier polish in `PLAN.md`.
+- **Billing** — Stripe Checkout (`/account/billing`), webhooks → `subscriptionPlan` + **`stripeCustomerId`**, Customer Portal via `POST /api/billing/portal-session`; tier caps via `getPlanLimits()` (xChat, etc.). Ops: `stripe-billing-setup.md`.
 - **IBKR (Client Portal, gated `IBKR_ENABLED`)** — consent (`ibkr_user_consents`), sealed httpOnly CP session + issued-at cookie; **`GET /api/integrations/ibkr/*`** including **`…/accounts/{id}/snapshot`** (summary, positions, orders, trades); account allowlist vs **`portfolio/accounts`**; **`[ibkr/audit]`** logs with **`correlationId`** matching response **`X-Correlation-Id`**; UI **`/account/integrations/ibkr`**. No in-app broker OAuth yet; no live order POST (see `ibkr-automation.md`).
 - **Strategy jobs (hardcore)** — Next BFF to Spring: `POST/GET /api/strategy-jobs`, turns through **`slots_complete`**; Redis hourly cap when **`REDIS_URL`** set; contract in `atxfinance-backend-http-api.md` + smoke parity needles.
 
@@ -201,7 +201,7 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 | **Admin `PATCH/DELETE …/positions/{id}`** — Next until BFF registry + Kotlin parity | `PLAN.md` |
 | **Pub/Sub consumer** on Spring | This doc §2 · `PLAN.md` / release notes |
 | **IBKR** — no broker OAuth/token refresh in-app; no order placement | `ibkr-automation.md` |
-| **Stripe** — customer portal / `getPlanLimits()` polish | `PLAN.md` |
+| **Plan limits UI** — usage meter / soft-limit banner on xChat from `getPlanLimits()` | `PLAN.md` (deferred) · branding TODO in `AGENTS.md` |
 | **xChat** — privacy-first history, paste, voice, xMoney billing | `PLAN.md` priorities **701–704** |
 | **OptionsStrategyEngine** — extend scoring / desk notification providers | `PLAN.md` · `reviewer.md` §245 |
 | **Lighthouse / perf in default CI** | **`npm run ci:gate`** does **not** run Lighthouse; hot-path PRs attach local LHCI or manual Lighthouse per **`reviewer.md`**; optional repo **`.lighthouseci/`** config for local regression |

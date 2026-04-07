@@ -84,7 +84,8 @@ describe("POST /api/webhooks/stripe", () => {
             atx_user_id: "507f1f77bcf86cd799439011",
             atx_plan_id: "premium_monthly"
           },
-          client_reference_id: "507f1f77bcf86cd799439011"
+          client_reference_id: "507f1f77bcf86cd799439011",
+          customer: "cus_test_portal_1"
         }
       }
     });
@@ -98,7 +99,8 @@ describe("POST /api/webhooks/stripe", () => {
     expect(res.status).toBe(200);
     expect(identityMocks.updateCoreUserSubscriptionPlan).toHaveBeenCalledWith(
       expect.objectContaining({
-        subscriptionPlan: "premium"
+        subscriptionPlan: "premium",
+        stripeCustomerId: "cus_test_portal_1"
       })
     );
   });

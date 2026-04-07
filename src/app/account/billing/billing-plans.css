@@ -125,6 +125,15 @@ html[data-xf-ui="soft"] .billing-hero__copy {
   padding: 0.1rem 0.3rem;
 }
 
+.billing-portal-row {
+  margin-bottom: 1.25rem;
+}
+
+.billing-portal-cta__status {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+}
+
 .billing-grid {
   display: grid;
   gap: 1rem;

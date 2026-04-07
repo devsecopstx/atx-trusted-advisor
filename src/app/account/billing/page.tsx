@@ -1,4 +1,7 @@
+import { ObjectId } from "mongodb";
+
 import { BillingPlanGrid } from "@/app/account/billing/billing-plan-grid";
+import { AtxBillingPortalButton } from "@/app/account/ui/atx-billing-portal";
 import { BillingFeedbackLink } from "@/app/account/ui/billing-feedback-link";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
@@ -14,6 +17,7 @@ import { isGoogleOAuthConfigured } from "@/lib/env";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { getStripePublishableKey, isStripeCheckoutConfiguredForTenant } from "@/lib/stripe-config";
 import { canUserLogin } from "@/modules/identity/authorization";
+import { getCoreUserById } from "@/modules/identity/repository";
 import { normalizePlanOverridesFromUnknown } from "@/modules/identity/tenant-workspace-limits";
 
 import "./billing-plans.css";
@@ -68,6 +72,12 @@ export default async function AccountBillingPage({
       })
     : null;
 
+  const coreUser =
+    approved && session?.userId && ObjectId.isValid(session.userId)
+      ? await getCoreUserById(new ObjectId(session.userId))
+      : null;
+  const hasStripeCustomer = Boolean(coreUser?.stripeCustomerId?.trim());
+
   return (
     <div className="xchat-shell">
       {approved && session ? (
@@ -111,6 +121,12 @@ export default async function AccountBillingPage({
                   <strong>Note:</strong> Add{" "}
                   <code className="font-mono text-xs">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> (GCP Secret Manager, synced
                   from your env file) for future in-app Elements; server checkout still works.
+                </div>
+              ) : null}
+
+              {hasStripeCustomer ? (
+                <div className="billing-portal-row">
+                  <AtxBillingPortalButton checkoutReady={checkoutReady} hasStripeCustomer />
                 </div>
               ) : null}
 

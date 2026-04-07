@@ -172,6 +172,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "billing"
   },
   {
+    path: "/api/billing/portal-session",
+    operations: [{ method: "POST", auth: "session" }],
+    tag: "billing"
+  },
+  {
     path: "/api/webhooks/stripe",
     operations: [{ method: "POST", auth: "public", hasRequestBody: true }],
     tag: "billing"
@@ -805,7 +810,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   health: "Health and runtime diagnostics endpoints.",
   auth: "Authentication and session management flows.",
   "access-requests": "User-submitted access and onboarding requests.",
-  billing: "Stripe Checkout session creation for ATX subscription plans (app_user session).",
+  billing:
+    "Stripe Checkout (`POST /api/billing/checkout-session`), Customer Portal session (`POST /api/billing/portal-session` when `core_users.stripeCustomerId` is set), and webhook receiver (`POST /api/webhooks/stripe`).",
   recommendations:
     "App_user-scoped recommendations; optional Pub/Sub events for downstream agent workers (see DEVELOPMENT.md).",
   "admin-access-requests": "Global admin APIs for listing, creating, reviewing, and deleting access requests.",

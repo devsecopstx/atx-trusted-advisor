@@ -55,13 +55,35 @@ function resolveUserIdFromMetadata(
   return id && id.length > 0 ? id : null;
 }
 
-async function applyPlanForUser(userIdHex: string, subscriptionPlan: SubscriptionPlan): Promise<boolean> {
+function stripeCustomerIdFromRef(
+  customer: string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined
+): string | undefined {
+  if (!customer) {
+    return undefined;
+  }
+  if (typeof customer === "string") {
+    const id = customer.trim();
+    return id.length > 0 ? id : undefined;
+  }
+  if (typeof customer === "object" && customer !== null && "id" in customer) {
+    const id = String((customer as { id?: string }).id ?? "").trim();
+    return id.length > 0 ? id : undefined;
+  }
+  return undefined;
+}
+
+async function applyPlanForUser(
+  userIdHex: string,
+  subscriptionPlan: SubscriptionPlan,
+  stripeCustomerId?: string
+): Promise<boolean> {
   if (!ObjectId.isValid(userIdHex)) {
     return false;
   }
   await updateCoreUserSubscriptionPlan({
     userId: new ObjectId(userIdHex),
-    subscriptionPlan
+    subscriptionPlan,
+    ...(stripeCustomerId ? { stripeCustomerId } : {})
   });
   return true;
 }
@@ -130,7 +152,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ received: true, ignored: "unmapped_plan" });
       }
 
-      const updated = await applyPlanForUser(userId, plan);
+      const stripeCustomerId = stripeCustomerIdFromRef(session.customer);
+      const updated = await applyPlanForUser(userId, plan, stripeCustomerId);
       console.info("[webhooks/stripe] handled checkout.session.completed", {
         id: event.id,
         userId: maskUserId(userId),
@@ -164,7 +187,8 @@ export async function POST(request: Request) {
           "basic";
       }
 
-      const updated = await applyPlanForUser(userId, plan);
+      const stripeCustomerId = stripeCustomerIdFromRef(subscription.customer);
+      const updated = await applyPlanForUser(userId, plan, stripeCustomerId);
       console.info("[webhooks/stripe] handled customer.subscription.updated", {
         id: event.id,
         userId: maskUserId(userId),
@@ -184,7 +208,8 @@ export async function POST(request: Request) {
         });
         return NextResponse.json({ received: true, ignored: "missing_user_id" });
       }
-      const updated = await applyPlanForUser(userId, "basic");
+      const stripeCustomerId = stripeCustomerIdFromRef(subscription.customer);
+      const updated = await applyPlanForUser(userId, "basic", stripeCustomerId);
       console.info("[webhooks/stripe] handled customer.subscription.deleted", {
         id: event.id,
         userId: maskUserId(userId),

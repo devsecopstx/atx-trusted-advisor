@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -5,6 +6,7 @@ import { z } from "zod";
 import { requireSessionUser } from "@/lib/auth";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { getStripeSecretKey, resolveAppOrigin, resolveStripePriceIdForCheckout } from "@/lib/stripe-config";
+import { getCoreUserById } from "@/modules/identity/repository";
 import { normalizePlanOverridesFromUnknown } from "@/modules/identity/tenant-workspace-limits";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +60,11 @@ export async function POST(request: Request) {
   const origin = resolveAppOrigin();
   const stripe = new Stripe(secret);
 
+  const coreUser = ObjectId.isValid(session.userId)
+    ? await getCoreUserById(new ObjectId(session.userId))
+    : null;
+  const existingStripeCustomer = coreUser?.stripeCustomerId?.trim();
+
   try {
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -75,7 +82,11 @@ export async function POST(request: Request) {
           atx_user_id: session.userId
         }
       },
-      ...(session.email ? { customer_email: session.email } : {})
+      ...(existingStripeCustomer
+        ? { customer: existingStripeCustomer }
+        : session.email
+          ? { customer_email: session.email }
+          : {})
     });
 
     if (!checkoutSession.url) {

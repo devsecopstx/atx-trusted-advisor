@@ -4,8 +4,8 @@ import type { SubscriptionPlan } from "@/lib/subscription-plan";
 import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 import type {
-  TenantPlanWorkspaceOverrides,
-  TenantWorkspaceLimits
+    TenantPlanWorkspaceOverrides,
+    TenantWorkspaceLimits
 } from "@/modules/identity/tenant-workspace-limits";
 
 export type CoreUserRole = "global_admin" | "advisor" | "operator" | "viewer";
@@ -16,6 +16,8 @@ export type CoreUser = {
   email: string;
   roles: CoreUserRole[];
   subscriptionPlan?: SubscriptionPlan;
+  /** Set when the user completes Stripe Checkout (webhook); used for Billing Portal deep link. */
+  stripeCustomerId?: string;
   xaiCollectionId?: string;
   xaiCollectionName?: string;
   status: "active" | "suspended";
