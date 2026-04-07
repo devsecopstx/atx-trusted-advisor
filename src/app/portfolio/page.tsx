@@ -2,11 +2,12 @@ import { Suspense } from "react";
 
 import { PortfolioPageBody } from "@/app/portfolio/portfolio-page-body";
 import { PortfolioPageBodySkeleton } from "@/app/portfolio/ui/portfolio-page-body-skeleton";
-import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
 import { getSessionUser } from "@/lib/auth";
+import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 
 export const dynamic = "force-dynamic";
 
@@ -37,12 +38,17 @@ export default async function PortfolioPage({ searchParams }: PageProps) {
     );
   }
 
+  const workspaceRailProps = await getWorkspaceProductSidebarPropsForSession(session, "Portfolio");
+
   return (
     <div className="xchat-shell">
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
 
       <div className="xchat-body portfolio-page-body">
-        <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
+        <AppUserCollapsibleRailLayout
+          mainClassName="app-user-shell-with-rail--padded"
+          rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
+        >
           <Suspense fallback={<PortfolioPageBodySkeleton />}>
             <PortfolioPageBody session={session} />
           </Suspense>

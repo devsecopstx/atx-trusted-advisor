@@ -23,6 +23,7 @@ function serializeAlert(a: PortfolioAlert) {
     portfolioName: a.portfolioName ?? null,
     accountId: a.accountId?.toHexString() ?? null,
     accountName: a.accountName ?? null,
+    metadata: a.metadata ?? null,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString()
   };
@@ -33,7 +34,8 @@ const postSchema = z.object({
   body: z.string().trim().max(4000).optional(),
   severity: z.enum(["info", "warning", "critical"]),
   status: z.enum(["active", "acknowledged", "dismissed"]).optional(),
-  symbol: z.string().trim().max(32).optional()
+  symbol: z.string().trim().max(32).optional(),
+  metadata: z.unknown().optional()
 });
 
 export async function GET(request: Request, context: RouteContext) {
@@ -95,7 +97,8 @@ export async function POST(request: Request, context: RouteContext) {
     body: parsed.data.body,
     severity: parsed.data.severity,
     status: parsed.data.status,
-    symbol: parsed.data.symbol
+    symbol: parsed.data.symbol,
+    metadata: parsed.data.metadata as PortfolioAlert["metadata"] | undefined
   });
   if (!created?._id) {
     return NextResponse.json({ error: "Could not create alert" }, { status: 400 });

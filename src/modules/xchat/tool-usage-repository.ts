@@ -1,3 +1,5 @@
+import { ObjectId } from "mongodb";
+
 import { getDb } from "@/lib/mongodb";
 import type { ToolCallLog } from "@/lib/xai";
 import { ensureXchatLogIndexes } from "@/modules/xchat/repository";
@@ -15,6 +17,8 @@ export type XchatToolUsageSource = "local_executor" | "hosted_placeholder";
 export type XchatToolUsageDoc = {
   ts: Date;
   userId: string;
+  /** Aligns with `core_tenants._id` (BSON ObjectId). */
+  tenantId?: ObjectId;
   personaId?: string;
   personaName?: string;
   requestId?: string;
@@ -61,6 +65,7 @@ async function ensureToolUsageIndexes(): Promise<void> {
   await col.createIndex({ ts: -1 });
   await col.createIndex({ userId: 1, ts: -1 });
   await col.createIndex({ toolName: 1, ts: -1 });
+  await col.createIndex({ tenantId: 1, ts: -1 }, { sparse: true });
 }
 
 export async function ensureXchatToolUsageIndexes(): Promise<void> {
@@ -75,6 +80,7 @@ export async function ensureXchatToolUsageIndexes(): Promise<void> {
 
 function buildDocsFromToolCalls(input: {
   userId: string;
+  tenantId?: ObjectId;
   personaId?: string;
   personaName?: string;
   requestId?: string;
@@ -84,6 +90,7 @@ function buildDocsFromToolCalls(input: {
   return input.toolCalls.map((tc) => ({
     ts,
     userId: input.userId,
+    ...(input.tenantId ? { tenantId: input.tenantId } : {}),
     personaId: input.personaId,
     personaName: input.personaName,
     requestId: input.requestId,
@@ -101,6 +108,7 @@ function buildDocsFromToolCalls(input: {
  */
 export async function recordXchatToolUsageFromAsk(input: {
   userId: string;
+  tenantId?: ObjectId;
   personaId?: string;
   personaName?: string;
   requestId?: string;
@@ -118,6 +126,7 @@ export async function recordXchatToolUsageFromAsk(input: {
 /** Non-blocking wrapper — never throws to caller. */
 export function fireAndForgetRecordXchatToolUsage(input: {
   userId: string;
+  tenantId?: ObjectId;
   personaId?: string;
   personaName?: string;
   requestId?: string;

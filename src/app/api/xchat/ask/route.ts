@@ -965,6 +965,7 @@ export async function POST(request: Request) {
 
   fireAndForgetRecordXchatToolUsage({
     userId: session.userId,
+    tenantId: tenantId ?? undefined,
     personaId: persona?._id?.toHexString(),
     personaName: persona?.name,
     requestId,

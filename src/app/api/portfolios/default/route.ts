@@ -4,6 +4,7 @@ import type { SessionUser } from "@/lib/auth";
 import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import { requireTenantHexForPortfolioDataPlane } from "@/lib/portfolio-access";
 import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import {
     getDefaultPortfolio,
@@ -61,6 +62,10 @@ export async function GET(request: Request) {
   if (session instanceof NextResponse) {
     return session;
   }
+  const tenantDenied = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDenied) {
+    return tenantDenied;
+  }
 
   const result = await defaultPortfolioSummaryOrError(session);
   if (result instanceof NextResponse) {
@@ -78,6 +83,10 @@ export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
+  }
+  const tenantDeniedPost = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDeniedPost) {
+    return tenantDeniedPost;
   }
 
   try {

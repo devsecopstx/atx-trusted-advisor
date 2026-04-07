@@ -2,6 +2,8 @@ import { ObjectId } from "mongodb";
 
 import type { SubscriptionPlan } from "@/lib/subscription-plan";
 
+import type { PortfolioAlertScannerMetadataV1 } from "@/lib/portfolio-alert-scan-metadata";
+
 import type { PortfolioScoringFactor } from "./scoring-factors";
 
 export const accessRequestStatusValues = [
@@ -462,6 +464,10 @@ export type PortfolioAlert = {
   severity: "info" | "warning" | "critical";
   status: "active" | "acknowledged" | "dismissed";
   symbol?: string;
+  /**
+   * Structured provenance for scanners / digest jobs (`options_scanner` v1 — see `portfolio-alert-scan-metadata.ts`).
+   */
+  metadata?: PortfolioAlertScannerMetadataV1;
   createdAt: Date;
   updatedAt: Date;
 };

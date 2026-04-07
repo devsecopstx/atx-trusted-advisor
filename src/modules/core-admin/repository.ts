@@ -2,7 +2,16 @@ import { type Filter, MongoServerError, ObjectId } from "mongodb";
 
 import { FIDELITY_DEFAULT_PROVISION_ACCOUNT_REF } from "@/lib/account-xref-display";
 import { caughtErrorMessage } from "@/lib/caught-error";
+import {
+    mongoPortfolioFamilyUserPortfolioScope,
+    mongoPortfolioFamilyUserScope,
+    mongoScheduledTaskTenantReadScope,
+    mongoTenantExactScope,
+    mongoUserIdQuery,
+    parseTenantObjectId
+} from "@/lib/mongo-tenant-scope";
 import { getDb } from "@/lib/mongodb";
+import { portfolioAlertScannerMetadataV1Schema } from "@/lib/portfolio-alert-scan-metadata";
 import {
     computeNextRunAtFromSchedule,
     resolveScheduleDescription
@@ -191,58 +200,37 @@ type TenantScopedOptions = {
   tenantId?: string;
 };
 
-function toTenantObjectId(tenantId?: string): ObjectId | undefined {
-  if (!tenantId || !ObjectId.isValid(tenantId)) {
-    return undefined;
-  }
-  return new ObjectId(tenantId);
-}
+const toTenantObjectId = parseTenantObjectId;
+
+/** @deprecated use mongoUserIdQuery — local alias for this module’s large call surface */
+const userIdQuery = mongoUserIdQuery;
 
 /**
- * Session `userId` is a hex string; older rows may store `userId` as BSON ObjectId.
- * Use this on reads and non-upsert writes so both match.
+ * Exact `tenantId` on documents (settings, delivery channels, positions, …).
+ * Default: invalid/missing tenant hex → fail closed. Use `allowMissingTenantKey` only for upserts that
+ * intentionally match legacy `{ userId }`-only rows (see `upsertUserAdminSettings`).
  */
-function userIdQuery(userId: string): { userId: string | { $in: (string | ObjectId)[] } } {
-  if (ObjectId.isValid(userId)) {
-    return { userId: { $in: [userId, new ObjectId(userId)] } };
-  }
-  return { userId };
-}
-
 function withTenantScope(
   query: Record<string, unknown>,
-  tenantId?: string
+  tenantId?: string,
+  whenTenantMissing: "deny" | "allowMissingTenantKey" = "deny"
 ): Record<string, unknown> {
-  const tenantObjectId = toTenantObjectId(tenantId);
-  if (!tenantObjectId) {
-    return query;
-  }
-  return {
-    ...query,
-    tenantId: tenantObjectId
-  };
+  return mongoTenantExactScope(
+    query,
+    tenantId,
+    whenTenantMissing === "allowMissingTenantKey" ? "allowMissingTenantKey" : "deny"
+  );
 }
 
 /**
  * `admin_scheduled_tasks` reads (and id-scoped writes): match the session tenant **or** legacy rows with no
- * `tenantId` (created before tenant was always persisted). Mirrors default-portfolio null-tenant handling.
+ * `tenantId` (created before tenant was always persisted). Invalid session tenant → no matches.
  */
 function scheduledTaskTenantReadScope(
   base: Record<string, unknown>,
   tenantId?: string
 ): Record<string, unknown> {
-  const tenantOid = toTenantObjectId(tenantId);
-  if (!tenantOid) {
-    return base;
-  }
-  return {
-    $and: [
-      base,
-      {
-        $or: [{ tenantId: tenantOid }, { tenantId: null }, { tenantId: { $exists: false } }]
-      }
-    ]
-  };
+  return mongoScheduledTaskTenantReadScope(base, tenantId, "denyIfTenantMissing");
 }
 
 /**
@@ -1036,7 +1024,7 @@ export async function upsertUserAdminSettings(
 
   const tenantId = toTenantObjectId(options?.tenantId);
   await db.collection<UserAdminSettings>(collections.userSettings).updateOne(
-    withTenantScope({ userId }, options?.tenantId),
+    withTenantScope({ userId }, options?.tenantId, "allowMissingTenantKey"),
     {
       $set: {
         tenantId,
@@ -1271,85 +1259,48 @@ export async function deleteAdminDeliveryChannelById(
 
 /**
  * Session-scoped portfolios for a user (includes legacy rows with null / missing tenantId when a tenant is in session).
- * Matches the read side of {@link getDefaultPortfolio} so xChat and tools resolve the same book an admin can retarget.
+ * `allowLegacyUserScope`: OAuth/bootstrap + admin ops when portfolio has no tenant id.
  */
 function userPortfoliosInSessionScopeFilter(
   userId: string,
-  tenantId?: string
+  tenantId?: string,
+  whenTenantMissing: "denyIfTenantMissing" | "allowLegacyUserScope" = "denyIfTenantMissing"
 ): Record<string, unknown> {
-  const tenantObjectId = toTenantObjectId(tenantId);
-  const base = userIdQuery(userId);
-  if (!tenantObjectId) {
-    return base;
-  }
-  return {
-    ...base,
-    $or: [
-      { tenantId: tenantObjectId },
-      { tenantId: { $type: "null" } },
-      { tenantId: { $exists: false } }
-    ]
-  };
+  return mongoPortfolioFamilyUserScope(userId, tenantId, whenTenantMissing);
 }
 
-/**
- * Same tenant scope as {@link userPortfoliosInSessionScopeFilter} but for `portfolio_accounts` rows.
- * Keeps list/get/count consistent when legacy docs predate `tenantId` backfill.
- */
 function userAccountsForPortfolioSessionScopeFilter(
   userId: string,
   portfolioId: string,
-  tenantId?: string
+  tenantId?: string,
+  whenTenantMissing: "denyIfTenantMissing" | "allowLegacyUserScope" = "denyIfTenantMissing"
 ): Record<string, unknown> {
-  const tenantObjectId = toTenantObjectId(tenantId);
-  const base = {
-    ...userIdQuery(userId),
-    portfolioId: new ObjectId(portfolioId)
-  };
-  if (!tenantObjectId) {
-    return base;
-  }
-  return {
-    ...base,
-    $or: [
-      { tenantId: tenantObjectId },
-      { tenantId: { $type: "null" } },
-      { tenantId: { $exists: false } }
-    ]
-  };
+  return mongoPortfolioFamilyUserPortfolioScope(userId, portfolioId, tenantId, whenTenantMissing);
 }
 
-/**
- * Session-scoped filter for `portfolio_accounts` by owning user (any portfolio), mirroring
- * {@link userPortfoliosInSessionScopeFilter} tenant legacy rules.
- */
-function userAccountsInSessionScopeFilter(userId: string, tenantId?: string): Record<string, unknown> {
-  const tenantObjectId = toTenantObjectId(tenantId);
-  const base = userIdQuery(userId);
-  if (!tenantObjectId) {
-    return base;
-  }
-  return {
-    ...base,
-    $or: [
-      { tenantId: tenantObjectId },
-      { tenantId: { $type: "null" } },
-      { tenantId: { $exists: false } }
-    ]
-  };
+function userAccountsInSessionScopeFilter(
+  userId: string,
+  tenantId?: string,
+  whenTenantMissing: "denyIfTenantMissing" | "allowLegacyUserScope" = "denyIfTenantMissing"
+): Record<string, unknown> {
+  return mongoPortfolioFamilyUserScope(userId, tenantId, whenTenantMissing);
 }
 
-/** Canonical user watchlist (one per user + tenant); matches legacy null/missing `tenantId` rows. */
-function userWatchlistSessionScopeFilter(userId: string, tenantId?: string): Record<string, unknown> {
-  return userAccountsInSessionScopeFilter(userId, tenantId);
+function userWatchlistSessionScopeFilter(
+  userId: string,
+  tenantId?: string,
+  whenTenantMissing: "denyIfTenantMissing" | "allowLegacyUserScope" = "denyIfTenantMissing"
+): Record<string, unknown> {
+  return userAccountsInSessionScopeFilter(userId, tenantId, whenTenantMissing);
 }
 
 function defaultPortfolioMarkerFilter(
   userId: string,
-  tenantId?: string
+  tenantId?: string,
+  whenTenantMissing: "denyIfTenantMissing" | "allowLegacyUserScope" = "denyIfTenantMissing"
 ): Record<string, unknown> {
   return {
-    ...userPortfoliosInSessionScopeFilter(userId, tenantId),
+    ...userPortfoliosInSessionScopeFilter(userId, tenantId, whenTenantMissing),
     isDefault: true
   };
 }
@@ -1383,8 +1334,16 @@ export async function ensureDefaultPortfolioInvariantForUser(
   await ensurePortfolioIndexes();
   const db = await getDb();
   const coll = db.collection<Portfolio>(collections.portfolios);
-  const markerFilter = defaultPortfolioMarkerFilter(userId, options?.tenantId);
-  const scopeFilter = userPortfoliosInSessionScopeFilter(userId, options?.tenantId);
+  const markerFilter = defaultPortfolioMarkerFilter(
+    userId,
+    options?.tenantId,
+    "allowLegacyUserScope"
+  );
+  const scopeFilter = userPortfoliosInSessionScopeFilter(
+    userId,
+    options?.tenantId,
+    "allowLegacyUserScope"
+  );
 
   const defaultCount = await coll.countDocuments(markerFilter);
   if (defaultCount === 1) {
@@ -1970,6 +1929,8 @@ export async function adminCreatePortfolioAlert(input: {
    * Options scanner passes `watchlist` | `position`.
    */
   accountContext?: "watchlist" | "position";
+  /** Validated v1 scanner payload; invalid shapes are dropped. */
+  metadata?: PortfolioAlert["metadata"];
 }): Promise<PortfolioAlert | null> {
   await ensurePortfolioIndexes();
   const ctx = await portfolioScopedWriteContext(input.portfolioId);
@@ -2012,6 +1973,12 @@ export async function adminCreatePortfolioAlert(input: {
     createdAt: now,
     updatedAt: now
   };
+  if (input.metadata !== undefined) {
+    const parsed = portfolioAlertScannerMetadataV1Schema.safeParse(input.metadata);
+    if (parsed.success) {
+      doc.metadata = parsed.data;
+    }
+  }
   const db = await getDb();
   const res = await db.collection<PortfolioAlert>(collections.portfolioAlerts).insertOne(doc);
   return db.collection<PortfolioAlert>(collections.portfolioAlerts).findOne({ _id: res.insertedId });
@@ -3089,7 +3056,11 @@ export async function provisionDefaultPortfolioForUser(
     );
   }
 
-  const portfolioLookupFilter = defaultPortfolioMarkerFilter(input.userId, input.tenantId);
+  const portfolioLookupFilter = defaultPortfolioMarkerFilter(
+    input.userId,
+    input.tenantId,
+    "allowLegacyUserScope"
+  );
   let portfolio = await db
     .collection<Portfolio>(collections.portfolios)
     .findOne(portfolioLookupFilter);
@@ -3166,7 +3137,11 @@ export async function provisionDefaultPortfolioForUser(
     );
     await db.collection<Watchlist>(collections.watchlists).updateMany(
       {
-        ...userWatchlistSessionScopeFilter(input.userId, input.tenantId),
+        ...userWatchlistSessionScopeFilter(
+          input.userId,
+          input.tenantId,
+          "allowLegacyUserScope"
+        ),
         $or: [{ tenantId: { $exists: false } }, { tenantId: { $type: "null" } }]
       } as Filter<Watchlist>,
       { $set: { tenantId: tenantObjectId, updatedAt: now } }
@@ -3178,7 +3153,8 @@ export async function provisionDefaultPortfolioForUser(
     ...userAccountsForPortfolioSessionScopeFilter(
       input.userId,
       portfolio._id.toHexString(),
-      input.tenantId
+      input.tenantId,
+      "allowLegacyUserScope"
     ),
     isDefault: true
   };
@@ -3256,7 +3232,8 @@ export async function provisionDefaultPortfolioForUser(
       userAccountsForPortfolioSessionScopeFilter(
         input.userId,
         portfolio._id.toHexString(),
-        input.tenantId
+        input.tenantId,
+        "allowLegacyUserScope"
       ),
       {
         $or: [{ cashBalance: { $exists: false } }, { cashBalance: { $type: "null" } }]
@@ -3301,7 +3278,11 @@ export async function provisionDefaultPortfolioForUser(
     { $set: { outlook: DEFAULT_PROVISION_ACCOUNT_OUTLOOK, updatedAt: now } }
   );
 
-  const watchlistLookupFilter = userWatchlistSessionScopeFilter(input.userId, input.tenantId);
+  const watchlistLookupFilter = userWatchlistSessionScopeFilter(
+    input.userId,
+    input.tenantId,
+    "allowLegacyUserScope"
+  );
   const existingWatchlist = await db
     .collection<Watchlist>(collections.watchlists)
     .findOne(watchlistLookupFilter);
@@ -4114,12 +4095,14 @@ export async function adminDeletePortfolio(portfolioId: string): Promise<boolean
   const deleted = (res.deletedCount ?? 0) === 1;
   if (deleted) {
     const remaining = await db.collection<Portfolio>(collections.portfolios).countDocuments(
-      userPortfoliosInSessionScopeFilter(ownerHex, tenantStr || undefined)
+      userPortfoliosInSessionScopeFilter(ownerHex, tenantStr || undefined, "allowLegacyUserScope")
     );
     if (remaining === 0) {
       await db
         .collection<Watchlist>(collections.watchlists)
-        .deleteMany(userWatchlistSessionScopeFilter(ownerHex, tenantStr || undefined));
+        .deleteMany(
+          userWatchlistSessionScopeFilter(ownerHex, tenantStr || undefined, "allowLegacyUserScope")
+        );
     }
   }
   return deleted;
@@ -4262,6 +4245,7 @@ export async function adminUpdatePortfolioAccount(input: {
     return null;
   }
   const tenantId = portfolioTenantIdString(portfolio);
+  const portfolioTenantScopeMode = tenantId ? "denyIfTenantMissing" : "allowLegacyUserScope";
   const ownerId = portfolioOwnerUserIdString(portfolio.userId);
   const base = await updatePortfolioAccountForUser({
     userId: ownerId,
@@ -4283,7 +4267,12 @@ export async function adminUpdatePortfolioAccount(input: {
   const aid = new ObjectId(input.accountId);
   const filter = {
     _id: aid,
-    ...userAccountsForPortfolioSessionScopeFilter(ownerId, input.portfolioId, tenantId)
+    ...userAccountsForPortfolioSessionScopeFilter(
+      ownerId,
+      input.portfolioId,
+      tenantId,
+      portfolioTenantScopeMode
+    )
   };
   const existing = await db.collection<Account>(collections.accounts).findOne(filter);
   if (!existing?._id) {
@@ -4293,7 +4282,12 @@ export async function adminUpdatePortfolioAccount(input: {
   if (input.isDefault === true) {
     await db.collection<Account>(collections.accounts).updateMany(
       {
-        ...userAccountsForPortfolioSessionScopeFilter(ownerId, input.portfolioId, tenantId),
+        ...userAccountsForPortfolioSessionScopeFilter(
+          ownerId,
+          input.portfolioId,
+          tenantId,
+          portfolioTenantScopeMode
+        ),
         isDefault: true,
         _id: { $ne: aid }
       },

@@ -75,6 +75,8 @@ export type BatchJobRecord = {
 
 export type BatchItemRecord = {
   _id?: ObjectId;
+  /** Denormalized from parent job for tenant-scoped queries (24-char hex string). */
+  tenantId?: string;
   batchJobId: ObjectId;
   xaiBatchId: string;
   itemId: string;
@@ -294,6 +296,7 @@ export async function submitBatchJob(
   });
 
   const itemDocs: BatchItemRecord[] = input.items.map((item) => ({
+    ...(input.tenantId ? { tenantId: input.tenantId } : {}),
     batchJobId: jobInsert.insertedId,
     xaiBatchId: batchJob.id,
     itemId: item.itemId,

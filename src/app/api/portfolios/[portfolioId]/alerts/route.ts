@@ -22,6 +22,7 @@ function serializeAlert(a: PortfolioAlert) {
     portfolioName: a.portfolioName ?? null,
     accountId: a.accountId?.toHexString() ?? null,
     accountName: a.accountName ?? null,
+    metadata: a.metadata ?? null,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString()
   };

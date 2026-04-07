@@ -1,5 +1,6 @@
 import { MongoServerError, ObjectId } from "mongodb";
 
+import { mongoXchatLogsTenantScope, type XchatLogTenantScopeMode } from "@/lib/mongo-tenant-scope";
 import { getDb } from "@/lib/mongodb";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import {
@@ -463,7 +464,7 @@ export async function getLatestXchatResponseIdByUser(input: {
   if (input.personaId) {
     query.personaId = input.personaId;
   }
-  const scopedQuery = withTenantScopeForLogs(query, input.tenantId);
+  const scopedQuery = mongoXchatLogsTenantScope(query, input.tenantId, "userTenant");
   const row = await db
     .collection<XChatSessionLog>(collections.chatLogs)
     .find(scopedQuery, { projection: { xaiResponseId: 1 } })
@@ -485,7 +486,7 @@ export async function getXchatSessionLogByIdForUser(input: {
     _id: input.logId,
     userId: input.userId
   };
-  const query = withTenantScopeForLogs(base, input.tenantId);
+  const query = mongoXchatLogsTenantScope(base, input.tenantId, "userTenant");
   return db.collection<XChatSessionLog>(collections.chatLogs).findOne(query);
 }
 
@@ -508,7 +509,7 @@ export async function getLatestXchatLogByThread(input: {
   if (input.personaId) {
     query.personaId = input.personaId;
   }
-  const scopedQuery = withTenantScopeForLogs(query, input.tenantId);
+  const scopedQuery = mongoXchatLogsTenantScope(query, input.tenantId, "userTenant");
   return db
     .collection<XChatSessionLog>(collections.chatLogs)
     .find(scopedQuery)
@@ -530,11 +531,14 @@ const pendingXaiSyncFilter: Record<string, unknown> = {
 
 export async function listXchatLogsPendingXaiSync(input: {
   tenantId?: ObjectId | null;
+  /** Worker: when true, scan pending rows across all tenants (scheduled `user_history_agent`). */
+  allTenants?: boolean;
   limit: number;
 }): Promise<XChatSessionLog[]> {
   await ensureXchatLogIndexes();
   const db = await getDb();
-  const query = withTenantScopeForLogs({ ...pendingXaiSyncFilter }, input.tenantId);
+  const mode: XchatLogTenantScopeMode = input.allTenants ? "allTenants" : "userTenant";
+  const query = mongoXchatLogsTenantScope({ ...pendingXaiSyncFilter }, input.tenantId, mode);
   return db
     .collection<XChatSessionLog>(collections.chatLogs)
     .find(query)
@@ -603,7 +607,7 @@ export async function listXChatHistoryByUser(input: {
       query.createdAt = { $lt: input.before };
     }
   }
-  const scopedQuery = withTenantScopeForLogs(query, input.tenantId);
+  const scopedQuery = mongoXchatLogsTenantScope(query, input.tenantId, "userTenant");
   const logs = await db
     .collection<XChatSessionLog>(collections.chatLogs)
     .find(scopedQuery)
@@ -629,7 +633,7 @@ export async function deleteXChatHistoryByUser(input: {
 }): Promise<number> {
   await ensureXchatLogIndexes();
   const db = await getDb();
-  const scopedQuery = withTenantScopeForLogs({ userId: input.userId }, input.tenantId);
+  const scopedQuery = mongoXchatLogsTenantScope({ userId: input.userId }, input.tenantId, "userTenant");
   const result = await db.collection<XChatSessionLog>(collections.chatLogs).deleteMany(scopedQuery);
   return result.deletedCount ?? 0;
 }
@@ -640,7 +644,7 @@ export async function getXChatHistoryStatsByUser(input: {
 }): Promise<XChatHistoryStats> {
   await ensureXchatLogIndexes();
   const db = await getDb();
-  const match = withTenantScopeForLogs({ userId: input.userId }, input.tenantId);
+  const match = mongoXchatLogsTenantScope({ userId: input.userId }, input.tenantId, "userTenant");
 
   const totals = await db
     .collection<XChatSessionLog>(collections.chatLogs)
@@ -873,23 +877,3 @@ function isDuplicateKeyError(error: unknown): boolean {
   return error instanceof MongoServerError && error.code === 11000;
 }
 
-function withTenantScopeForLogs(
-  query: Record<string, unknown>,
-  tenantId?: ObjectId | null
-): Record<string, unknown> {
-  if (!tenantId) {
-    return query;
-  }
-  const tenantScope: Record<string, unknown> = {
-    $or: [{ tenantId }, { tenantId: { $exists: false } }]
-  };
-  if ("$or" in query || "$and" in query) {
-    return {
-      $and: [query, tenantScope]
-    };
-  }
-  return {
-    ...query,
-    ...tenantScope
-  };
-}

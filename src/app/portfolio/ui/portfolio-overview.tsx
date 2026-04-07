@@ -20,6 +20,7 @@ type PortfolioOverviewProps = {
   positionsByAccount: Record<string, SerializablePosition[]>;
   scoringFactors: PortfolioScoringFactorApi[];
   deskPrefetch?: PortfolioDeskPrefetchStrip | null;
+  portfolioStockSymbolsUpper: readonly string[];
 };
 
 export function PortfolioOverview({
@@ -31,7 +32,8 @@ export function PortfolioOverview({
   holdingsRows,
   positionsByAccount,
   scoringFactors,
-  deskPrefetch = null
+  deskPrefetch = null,
+  portfolioStockSymbolsUpper
 }: PortfolioOverviewProps) {
   const defaultAccountHex =
     metrics.byAccount.find((r) => r.isDefault)?.accountIdHex ?? metrics.byAccount[0]?.accountIdHex ?? "";
@@ -60,6 +62,7 @@ export function PortfolioOverview({
       rows={tableRows}
       scoringFactors={scoringFactors}
       totalAccounts={accounts.length}
+      portfolioStockSymbolsUpper={portfolioStockSymbolsUpper}
     />
   );
 }

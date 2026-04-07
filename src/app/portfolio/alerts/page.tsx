@@ -7,9 +7,9 @@ import {
   PortfolioAlertsInteractive,
   type PortfolioAlertRowVm
 } from "@/app/portfolio/alerts/portfolio-alerts-interactive";
-import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
@@ -21,6 +21,8 @@ import {
   provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin } from "@/modules/identity/authorization";
+
+import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 
@@ -134,6 +136,8 @@ export default async function PortfolioAlertsPage({
     }
   }
 
+  const workspaceRailProps = await getWorkspaceProductSidebarPropsForSession(session, "Alerts");
+
   return (
     <div className="xchat-shell">
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Alerts" session={session} />
@@ -141,7 +145,7 @@ export default async function PortfolioAlertsPage({
       <div className="xchat-body portfolio-page-body" style={{ padding: 0 }}>
         <AppUserCollapsibleRailLayout
           mainClassName="app-user-shell-with-rail--padded"
-          rail={<AppUserAccountPublicRailForSession session={session} />}
+          rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
         >
           {workspaceError || !portfolioId ? (
             <div

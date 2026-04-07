@@ -3,6 +3,9 @@ import type { ReactNode } from "react";
 
 import { GlobalFooter } from "@/app/ui/global-footer";
 
+import "@/app/portfolios/portfolios-dashboard.css";
+
+import "@/app/watchlist/watchlist.css";
 import "../xchat/xchat.css";
 import "./portfolio.css";
 

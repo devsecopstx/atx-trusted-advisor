@@ -24,7 +24,7 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
-import type { Account, Position } from "@/modules/core-admin/types";
+import { normalizePositionType, type Account, type Position } from "@/modules/core-admin/types";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 
 type Props = {
@@ -176,6 +176,18 @@ export async function PortfolioPageBody({ session }: Props) {
         ).scoringFactors
       : [];
 
+  const portfolioStockSymbolsUpper: string[] =
+    portfolioIdHex && allPositions.length > 0
+      ? Array.from(
+          new Set(
+            allPositions
+              .filter((p) => normalizePositionType(p.type) === "stock")
+              .map((p) => p.symbol.trim().toUpperCase())
+              .filter((s) => s.length > 0)
+          )
+        )
+      : [];
+
   return (
     <>
       {portfolioLoadError ? (
@@ -256,6 +268,7 @@ export async function PortfolioPageBody({ session }: Props) {
           metrics={metrics}
           portfolioDisplayName={portfolioDisplayName}
           portfolioIdHex={portfolioIdHex}
+          portfolioStockSymbolsUpper={portfolioStockSymbolsUpper}
           positionsByAccount={positionsByAccount}
           scoringFactors={scoringFactors}
         />

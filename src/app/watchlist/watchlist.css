@@ -296,7 +296,7 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
   display: grid;
   grid-template-columns:
     3rem minmax(4.5rem, 1.1fr) minmax(4rem, 0.9fr) minmax(3rem, 0.65fr) minmax(3rem, 0.65fr)
-    minmax(3.5rem, 0.75fr) minmax(8rem, 1.15fr) minmax(5rem, 0.9fr) minmax(3.25rem, 0.55fr) 2.75rem;
+    minmax(3.5rem, 0.75fr) minmax(8rem, 1.15fr) minmax(5rem, 0.9fr) minmax(3.25rem, 0.55fr) minmax(5.25rem, 1fr);
   width: 100%;
   box-sizing: border-box;
   align-items: start;
@@ -364,6 +364,13 @@ button.xf-watchlist-sort-btn:hover {
 
 .xf-watchlist-table tbody tr:hover td {
   background: rgba(255, 255, 255, 0.02);
+}
+
+.xf-watchlist-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .xf-watchlist-table-mono {

@@ -37,9 +37,18 @@ type Props = {
   portfolioId: string | null;
   /** Server-prefetched desk context (Mongo watchlist + alerts + optional IBKR); hot IV/OI rows still load client-side. */
   deskHints?: PortfoliosWorkspaceDeskHints | null;
+  /** Increment to re-fetch hot IV/OI rows after watchlist mutations elsewhere on the page. */
+  refreshKey?: number;
+  /** When set, “View & manage watchlist” stays on the current desk (e.g. portfolio inline tab). */
+  onOpenFullWatchlist?: () => void;
 };
 
-export function PortfoliosWatchlistCompact({ portfolioId, deskHints = null }: Props) {
+export function PortfoliosWatchlistCompact({
+  portfolioId,
+  deskHints = null,
+  refreshKey = 0,
+  onOpenFullWatchlist
+}: Props) {
   const [rows, setRows] = useState<HotRow[]>([]);
   const [scanned, setScanned] = useState(0);
   const [err, setErr] = useState<string | null>(null);
@@ -90,7 +99,7 @@ export function PortfoliosWatchlistCompact({ portfolioId, deskHints = null }: Pr
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const watchlistHref =
     portfolioId !== null
@@ -128,14 +137,26 @@ export function PortfoliosWatchlistCompact({ portfolioId, deskHints = null }: Pr
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-          <Link
-            className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-[var(--xf-bg-800)] px-2 py-1 text-xs font-medium text-[var(--xf-text-100)] hover:bg-[var(--xf-bg-700)]"
-            href={watchlistHref}
-            title="Open full watchlist: details, import/export, add and remove rows"
-          >
-            View &amp; manage watchlist
-            <ExternalLinkIcon className="h-3 w-3 opacity-80" aria-hidden />
-          </Link>
+          {onOpenFullWatchlist ? (
+            <button
+              className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-[var(--xf-bg-800)] px-2 py-1 text-xs font-medium text-[var(--xf-text-100)] hover:bg-[var(--xf-bg-700)]"
+              type="button"
+              title="Open full watchlist inline: details, import/export, add and remove rows"
+              onClick={onOpenFullWatchlist}
+            >
+              View &amp; manage watchlist
+              <ExternalLinkIcon className="h-3 w-3 opacity-80" aria-hidden />
+            </button>
+          ) : (
+            <Link
+              className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-[var(--xf-bg-800)] px-2 py-1 text-xs font-medium text-[var(--xf-text-100)] hover:bg-[var(--xf-bg-700)]"
+              href={watchlistHref}
+              title="Open full watchlist: details, import/export, add and remove rows"
+            >
+              View &amp; manage watchlist
+              <ExternalLinkIcon className="h-3 w-3 opacity-80" aria-hidden />
+            </Link>
+          )}
           <Link
             className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-[var(--xf-bg-800)] px-2 py-1 text-xs font-medium text-[var(--xf-text-100)] hover:bg-[var(--xf-bg-700)]"
             href={alertsHref}
@@ -172,9 +193,19 @@ export function PortfoliosWatchlistCompact({ portfolioId, deskHints = null }: Pr
       ) : rows.length === 0 ? (
         <p className="text-xs leading-relaxed text-[var(--xf-text-400)]">
           No symbols met the IV/OI scan yet, or your watchlist is empty.{" "}
-          <Link className="text-[var(--xf-gain-green)] underline hover:no-underline" href={watchlistHref}>
-            Open watchlist
-          </Link>{" "}
+          {onOpenFullWatchlist ? (
+            <button
+              className="text-[var(--xf-gain-green)] underline hover:no-underline"
+              type="button"
+              onClick={onOpenFullWatchlist}
+            >
+              Open watchlist
+            </button>
+          ) : (
+            <Link className="text-[var(--xf-gain-green)] underline hover:no-underline" href={watchlistHref}>
+              Open watchlist
+            </Link>
+          )}{" "}
           to add tickers.
         </p>
       ) : (

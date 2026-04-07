@@ -254,6 +254,10 @@ type WatchlistRowTrProps = {
   onRemoveSymbol: (symbol: string) => void;
   rowClassName?: string;
   rowStyle?: CSSProperties;
+  enableAddToHoldings?: boolean;
+  symbolInPortfolioStocks?: boolean;
+  addHoldingsBusy?: boolean;
+  onAddToHoldings?: (row: WatchlistRow) => void;
 };
 
 const WatchlistRowTr = memo(function WatchlistRowTr({
@@ -264,7 +268,11 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
   updateDraftRow,
   onRemoveSymbol,
   rowClassName,
-  rowStyle
+  rowStyle,
+  enableAddToHoldings = false,
+  symbolInPortfolioStocks = false,
+  addHoldingsBusy = false,
+  onAddToHoldings
 }: WatchlistRowTrProps) {
   return (
     <tr className={rowClassName} style={rowStyle}>
@@ -346,15 +354,38 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
       <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatLastUpdateCell(row)}</td>
       <td className="xf-watchlist-table-mono">—</td>
       <td>
-        <button
-          aria-label={`Remove ${row.symbol}`}
-          className="xf-watchlist-action-icon"
-          disabled={(mutating && !editMode) || removingThisSymbol}
-          type="button"
-          onClick={() => void onRemoveSymbol(row.symbol)}
-        >
-          <DeleteIcon className="crud-icon" />
-        </button>
+        <div className="xf-watchlist-actions-row">
+          {enableAddToHoldings ? (
+            <button
+              aria-label={`Add ${row.symbol} to holdings`}
+              className="xf-watchlist-action-icon"
+              disabled={
+                editMode ||
+                symbolInPortfolioStocks ||
+                addHoldingsBusy ||
+                (mutating && !editMode)
+              }
+              title={
+                symbolInPortfolioStocks
+                  ? "Already in this book as a stock position"
+                  : "Add to selected account as stock"
+              }
+              type="button"
+              onClick={() => onAddToHoldings?.(row)}
+            >
+              <AddIcon className="crud-icon" />
+            </button>
+          ) : null}
+          <button
+            aria-label={`Remove ${row.symbol}`}
+            className="xf-watchlist-action-icon"
+            disabled={(mutating && !editMode) || removingThisSymbol}
+            type="button"
+            onClick={() => void onRemoveSymbol(row.symbol)}
+          >
+            <DeleteIcon className="crud-icon" />
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -511,13 +542,28 @@ export type WatchlistConsoleProps = {
   watchlistApiPrefix?: string;
   /** `admin` — footer links to Hub; `app_user` — portfolio + optional Hub link. */
   footerMode?: "app_user" | "admin";
+  /** Inline in portfolio desk: hide standalone footer CTAs. */
+  variant?: "page" | "embedded";
+  /** When set with `portfolioStockSymbolsUpper`, shows per-row “Add to holdings” for symbols not in this set. */
+  addToHoldingsAccountIdHex?: string | null;
+  /** Uppercased tickers that already have a stock position anywhere in this portfolio. */
+  portfolioStockSymbolsUpper?: readonly string[];
+  /** Fired after watchlist rows change (PATCH/import/remove) so compact IV/OI rail can reload. */
+  onWatchlistMutated?: () => void;
+  /** Fired after a stock is added via “Add to holdings” (parent usually `router.refresh()`). */
+  onBookMutated?: () => void;
 };
 
 export function WatchlistConsole({
   portfolioId,
   isAdmin,
   watchlistApiPrefix = "/api/portfolios",
-  footerMode = "app_user"
+  footerMode = "app_user",
+  variant = "page",
+  addToHoldingsAccountIdHex = null,
+  portfolioStockSymbolsUpper = [],
+  onWatchlistMutated,
+  onBookMutated
 }: WatchlistConsoleProps) {
   const watchlistBaseUrl = `${watchlistApiPrefix}/${encodeURIComponent(portfolioId)}/watchlist`;
   const watchlistFetchQuery = "quotes=1&chainGlance=1";
@@ -531,6 +577,7 @@ export function WatchlistConsole({
   const [error, setError] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
   const [removingSymbol, setRemovingSymbol] = useState<string | null>(null);
+  const [addingHoldingsSymbol, setAddingHoldingsSymbol] = useState<string | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [listNavCollapsed, setListNavCollapsed] = useState(true);
   const [sort, setSort] = useState<{ column: WatchlistSortColumn; dir: "asc" | "desc" }>({
@@ -539,6 +586,16 @@ export function WatchlistConsole({
   });
   const [, startTransition] = useTransition();
   const tableScrollParentRef = useRef<HTMLDivElement>(null);
+
+  const portfolioStockSet = useMemo(
+    () =>
+      new Set(
+        portfolioStockSymbolsUpper.map((s) => s.trim().toUpperCase()).filter((s) => s.length > 0)
+      ),
+    [portfolioStockSymbolsUpper]
+  );
+  const enableAddToHoldingsUi =
+    variant === "embedded" && Boolean(addToHoldingsAccountIdHex?.trim());
 
   const toggleWatchlistSort = useCallback((column: WatchlistSortColumn) => {
     setSort((prev) =>
@@ -632,6 +689,7 @@ export function WatchlistConsole({
       setError(null);
       try {
         await executePatch(body);
+        onWatchlistMutated?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Update failed");
       } finally {
@@ -639,7 +697,69 @@ export function WatchlistConsole({
         setRemovingSymbol(null);
       }
     },
-    [executePatch]
+    [executePatch, onWatchlistMutated]
+  );
+
+  const addSymbolToHoldings = useCallback(
+    async (row: WatchlistRow) => {
+      const accountId = addToHoldingsAccountIdHex?.trim();
+      if (!accountId) {
+        return;
+      }
+      const symbol = row.symbol.trim().toUpperCase();
+      if (!symbol) {
+        return;
+      }
+      let qty = 1;
+      if (row.quantity !== undefined && Number.isFinite(row.quantity) && row.quantity > 0) {
+        qty = row.quantity;
+      }
+      let avgCost: number | undefined;
+      if (row.entryPrice !== undefined && Number.isFinite(row.entryPrice) && row.entryPrice >= 0) {
+        avgCost = row.entryPrice;
+      } else if (row.quote?.price != null && Number.isFinite(row.quote.price) && row.quote.price >= 0) {
+        avgCost = row.quote.price;
+      }
+      if (avgCost === undefined) {
+        const raw = window.prompt(`Average cost per share for ${symbol} (USD):`);
+        if (raw == null) {
+          return;
+        }
+        const n = Number.parseFloat(raw.trim());
+        if (!Number.isFinite(n) || n < 0) {
+          window.alert("Enter a non-negative number for average cost.");
+          return;
+        }
+        avgCost = n;
+      }
+      setAddingHoldingsSymbol(symbol);
+      setError(null);
+      try {
+        const res = await fetch("/api/positions", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            portfolioId,
+            accountId,
+            symbol,
+            qty,
+            avgCost,
+            type: "stock"
+          })
+        });
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          throw new Error(body.error ?? "Could not add holding");
+        }
+        onBookMutated?.();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Add to holdings failed");
+      } finally {
+        setAddingHoldingsSymbol(null);
+      }
+    },
+    [addToHoldingsAccountIdHex, onBookMutated, portfolioId]
   );
 
   const enterEdit = useCallback(() => {
@@ -697,6 +817,7 @@ export function WatchlistConsole({
       if (nameChanged && !nameSent) {
         await executePatch({ name: trimmed });
       }
+      onWatchlistMutated?.();
       setEditMode(false);
       editBaselineRef.current = null;
     } catch (e) {
@@ -705,7 +826,7 @@ export function WatchlistConsole({
       setMutating(false);
       setRemovingSymbol(null);
     }
-  }, [draftName, draftRows, executePatch]);
+  }, [draftName, draftRows, executePatch, onWatchlistMutated]);
 
   const updateDraftRow = useCallback(
     (
@@ -845,13 +966,14 @@ export function WatchlistConsole({
           );
         }
         window.alert(parts.join(" "));
+        onWatchlistMutated?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Import failed");
       } finally {
         setMutating(false);
       }
     },
-    [editMode, rows, watchlistBaseUrl, watchlistFetchQuery, startTransition]
+    [editMode, rows, watchlistBaseUrl, watchlistFetchQuery, startTransition, onWatchlistMutated]
   );
 
   const displayRows = editMode ? draftRows : rows;
@@ -1106,10 +1228,13 @@ export function WatchlistConsole({
                     >
                       {rowVirtualizer.getVirtualItems().map((vr) => {
                         const row = sortedDisplayRows[vr.index]!;
+                        const symU = row.symbol.trim().toUpperCase();
                         return (
                           <WatchlistRowTr
                             key={row.symbol}
+                            addHoldingsBusy={addingHoldingsSymbol === symU}
                             editMode={editMode}
+                            enableAddToHoldings={enableAddToHoldingsUi}
                             mutating={mutating}
                             removingThisSymbol={removingSymbol === row.symbol}
                             row={row}
@@ -1123,7 +1248,9 @@ export function WatchlistConsole({
                               height: `${vr.size}px`,
                               transform: `translateY(${vr.start}px)`
                             }}
+                            symbolInPortfolioStocks={portfolioStockSet.has(symU)}
                             updateDraftRow={updateDraftRow}
+                            onAddToHoldings={(r) => void addSymbolToHoldings(r)}
                             onRemoveSymbol={onRemoveSymbol}
                           />
                         );
@@ -1131,17 +1258,24 @@ export function WatchlistConsole({
                     </tbody>
                   ) : (
                     <tbody>
-                      {sortedDisplayRows.map((row) => (
-                        <WatchlistRowTr
-                          key={row.symbol}
-                          editMode={editMode}
-                          mutating={mutating}
-                          removingThisSymbol={removingSymbol === row.symbol}
-                          row={row}
-                          updateDraftRow={updateDraftRow}
-                          onRemoveSymbol={onRemoveSymbol}
-                        />
-                      ))}
+                      {sortedDisplayRows.map((row) => {
+                        const symU = row.symbol.trim().toUpperCase();
+                        return (
+                          <WatchlistRowTr
+                            key={row.symbol}
+                            addHoldingsBusy={addingHoldingsSymbol === symU}
+                            editMode={editMode}
+                            enableAddToHoldings={enableAddToHoldingsUi}
+                            mutating={mutating}
+                            removingThisSymbol={removingSymbol === row.symbol}
+                            row={row}
+                            symbolInPortfolioStocks={portfolioStockSet.has(symU)}
+                            updateDraftRow={updateDraftRow}
+                            onAddToHoldings={(r) => void addSymbolToHoldings(r)}
+                            onRemoveSymbol={onRemoveSymbol}
+                          />
+                        );
+                      })}
                     </tbody>
                   )}
                 </table>
@@ -1149,33 +1283,38 @@ export function WatchlistConsole({
             ) : null}
           </div>
 
-          <div className="cta-row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
-            {footerMode === "admin" ? (
-              <>
-                <Link className="cta cta-secondary" href="/admin/portfolios">
-                  <BackIcon className="crud-icon" />
-                  Portfolios
-                </Link>
-                <Link className="cta cta-secondary" href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`}>
-                  <EditIcon className="crud-icon" />
-                  Manage accounts
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link className="cta cta-secondary" href="/portfolio">
-                  <BackIcon className="crud-icon" />
-                  Back to portfolio
-                </Link>
-                {isAdmin ? (
-                  <Link className="cta cta-primary" href="/admin/portfolios">
-                    <ExternalLinkIcon className="crud-icon" />
-                    Open in Hub
+          {variant === "page" ? (
+            <div className="cta-row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
+              {footerMode === "admin" ? (
+                <>
+                  <Link className="cta cta-secondary" href="/admin/portfolios">
+                    <BackIcon className="crud-icon" />
+                    Portfolios
                   </Link>
-                ) : null}
-              </>
-            )}
-          </div>
+                  <Link
+                    className="cta cta-secondary"
+                    href={`/admin/portfolios/${encodeURIComponent(portfolioId)}/accounts`}
+                  >
+                    <EditIcon className="crud-icon" />
+                    Manage accounts
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link className="cta cta-secondary" href="/portfolio">
+                    <BackIcon className="crud-icon" />
+                    Back to portfolio
+                  </Link>
+                  {isAdmin ? (
+                    <Link className="cta cta-primary" href="/admin/portfolios">
+                      <ExternalLinkIcon className="crud-icon" />
+                      Open in Hub
+                    </Link>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

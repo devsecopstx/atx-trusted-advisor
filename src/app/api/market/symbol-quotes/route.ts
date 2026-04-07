@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { requireTenantHexForPortfolioDataPlane } from "@/lib/portfolio-access";
 import { getPortfolioByIdForSessionUser } from "@/modules/core-admin/repository";
 import { hasActiveAppBrokerImportForPortfolio } from "@/modules/portfolio-import/app-broker-import-job";
 import { lookupSymbols, type SymbolLookupResult } from "@/modules/watchlist/yahoo-symbol-lookup";
@@ -24,6 +25,10 @@ export async function GET(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
+  }
+  const tenantDenied = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDenied) {
+    return tenantDenied;
   }
 
   const { searchParams } = new URL(request.url);

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { requireTenantHexForPortfolioDataPlane } from "@/lib/portfolio-access";
 import { WORKSPACE_PORTFOLIO_COOKIE_NAME } from "@/lib/workspace-portfolio-cookie";
 import { listPortfoliosForSessionUser } from "@/modules/core-admin/repository";
 
@@ -17,6 +18,10 @@ export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
+  }
+  const tenantDenied = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDenied) {
+    return tenantDenied;
   }
 
   let json: unknown;

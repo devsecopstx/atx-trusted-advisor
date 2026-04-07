@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
 import { proxyPortfolioRequestToBackend } from "@/lib/backend-bff";
+import { requireTenantHexForPortfolioDataPlane } from "@/lib/portfolio-access";
 import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import { adminCreatePortfolio } from "@/modules/core-admin/repository";
 
@@ -21,6 +22,10 @@ export async function POST(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
+  }
+  const tenantDenied = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDenied) {
+    return tenantDenied;
   }
 
   let payload: unknown;

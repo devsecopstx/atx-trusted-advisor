@@ -108,6 +108,7 @@ export async function runUserHistoryAgent(
   const tenantOid = task.tenantId ?? undefined;
   const pending = await listXchatLogsPendingXaiSync({
     tenantId: tenantOid ?? null,
+    allTenants: tenantOid === undefined,
     limit
   });
 

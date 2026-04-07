@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useMemo, useRef } from "react";
 
 import { PortfolioAccountActionsCell } from "@/app/portfolio/ui/portfolio-account-actions-cell";
-import { PortfolioAccountManageBar, type PortfolioAccountManageOption } from "@/app/portfolio/ui/portfolio-account-manage-bar";
+import type { PortfolioAccountManageOption } from "@/app/portfolio/ui/portfolio-account-manage-bar";
 import { PortfolioAddAccountPanel } from "@/app/portfolio/ui/portfolio-add-account-panel";
 
 export type PortfolioAccountTableRow = {
@@ -130,11 +130,6 @@ export function PortfolioAccountsSection({
         </h2>
       </div>
       <PortfolioAddAccountPanel portfolioId={portfolioIdHex} />
-      <PortfolioAccountManageBar
-        accounts={manageOptions}
-        selectedAccountId={focusAccountId}
-        onSelectedAccountIdChange={onSelectedAccountHexChange}
-      />
       <div
         ref={tableScrollRef}
         className="portfolio-table-wrap"

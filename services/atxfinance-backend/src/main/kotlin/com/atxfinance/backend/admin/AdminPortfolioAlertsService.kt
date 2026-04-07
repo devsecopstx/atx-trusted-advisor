@@ -63,6 +63,11 @@ class AdminPortfolioAlertsService(
         doc["severity"] = severity
         doc["status"] = status
         symbol?.let { doc["symbol"] = it }
+        @Suppress("UNCHECKED_CAST")
+        val meta = body["metadata"] as? Map<String, Any?>
+        if (meta != null && meta.isNotEmpty()) {
+            doc["metadata"] = Document(meta)
+        }
         doc["createdAt"] = now
         doc["updatedAt"] = now
         mongoTemplate.insert(doc, props.portfolioAlertsCollection)
@@ -207,6 +212,7 @@ class AdminPortfolioAlertsService(
             "status" to doc.getString("status"),
             "symbol" to doc.getString("symbol"),
             "portfolioId" to doc.getObjectId("portfolioId")?.toHexString(),
+            "metadata" to doc["metadata"]?.let { BsonJson.value(it) },
             "createdAt" to BsonJson.value(doc["createdAt"]).toString(),
             "updatedAt" to BsonJson.value(doc["updatedAt"]).toString(),
         )

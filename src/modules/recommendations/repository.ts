@@ -1,41 +1,14 @@
 import { type Filter, ObjectId } from "mongodb";
 
+import {
+    mongoAppUserRecommendationsScope,
+    mongoUserIdQuery,
+    parseTenantObjectId
+} from "@/lib/mongo-tenant-scope";
 import { getDb } from "@/lib/mongodb";
 import type { Recommendation, RecommendationSource, RecommendationStatus } from "@/modules/recommendations/types";
 
 export const RECOMMENDATIONS_COLLECTION = "app_user_recommendations";
-
-function toTenantObjectId(tenantId?: string): ObjectId | undefined {
-  if (!tenantId || !ObjectId.isValid(tenantId)) {
-    return undefined;
-  }
-  return new ObjectId(tenantId);
-}
-
-function userIdQuery(userId: string): { userId: string | { $in: (string | ObjectId)[] } } {
-  if (ObjectId.isValid(userId)) {
-    return { userId: { $in: [userId, new ObjectId(userId)] } };
-  }
-  return { userId };
-}
-
-function withTenantScope(
-  query: Record<string, unknown>,
-  tenantId?: string
-): Record<string, unknown> {
-  const tenantObjectId = toTenantObjectId(tenantId);
-  if (!tenantObjectId) {
-    return query;
-  }
-  return {
-    ...query,
-    $or: [
-      { tenantId: tenantObjectId },
-      { tenantId: { $exists: false } },
-      { tenantId: { $type: "null" } }
-    ]
-  };
-}
 
 let ensureIndexesPromise: Promise<void> | null = null;
 
@@ -69,7 +42,7 @@ export async function createRecommendation(
   await ensureRecommendationIndexes();
   const db = await getDb();
   const now = new Date();
-  const tenantObjectId = toTenantObjectId(input.tenantId);
+  const tenantObjectId = parseTenantObjectId(input.tenantId);
   const scopeTags = (input.scopeTags ?? [])
     .map((t) => t.trim().slice(0, 128))
     .filter(Boolean)
@@ -104,9 +77,9 @@ export async function listRecommendationsForUser(options: {
   await ensureRecommendationIndexes();
   const db = await getDb();
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
-  const filter = withTenantScope(
+  const filter = mongoAppUserRecommendationsScope(
     {
-      ...userIdQuery(options.userId)
+      ...mongoUserIdQuery(options.userId)
     },
     options.tenantId
   ) as Filter<Recommendation>;
@@ -129,10 +102,10 @@ export async function getRecommendationForUser(options: {
   }
   await ensureRecommendationIndexes();
   const db = await getDb();
-  const filter = withTenantScope(
+  const filter = mongoAppUserRecommendationsScope(
     {
       _id: new ObjectId(options.id),
-      ...userIdQuery(options.userId)
+      ...mongoUserIdQuery(options.userId)
     },
     options.tenantId
   ) as Filter<Recommendation>;

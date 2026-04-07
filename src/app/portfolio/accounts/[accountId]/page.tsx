@@ -3,9 +3,9 @@ import { notFound, redirect } from "next/navigation";
 
 import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-workspace";
 import { serializePositionsForUi } from "@/app/portfolio/lib/serialize-positions";
-import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
+import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import {
     isProvisioningPortfolioAccountRef,
     maskAccountXrefForDisplay
@@ -24,6 +24,7 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { parseAccountOutlook, type Account } from "@/modules/core-admin/types";
+import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 
 function serializeAccount(account: Account) {
   const rawRef = (account.extAccountId ?? "").trim();
@@ -156,12 +157,17 @@ export default async function PortfolioAccountPage({
     );
   }
 
+  const workspaceRailProps = await getWorkspaceProductSidebarPropsForSession(session, "Portfolio");
+
   return (
     <div className="xchat-shell">
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
 
       <div className="xchat-body portfolio-page-body">
-        <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
+        <AppUserCollapsibleRailLayout
+          mainClassName="app-user-shell-with-rail--padded"
+          rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
+        >
         <div className="portfolio-account-page portfolio-account-page--edit">
           <AccountWorkspace
             portfolioId={portfolioIdHex}

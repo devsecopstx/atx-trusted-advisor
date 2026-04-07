@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireApprovedAppUserSession } from "@/lib/api-auth";
+import { requireTenantHexForPortfolioDataPlane } from "@/lib/portfolio-access";
 import {
     bumpPortfolioWorkspaceContentRev,
     deleteAllPositionsForPortfolio,
@@ -23,6 +24,10 @@ export async function POST(request: Request) {
   const session = await requireApprovedAppUserSession();
   if (session instanceof NextResponse) {
     return session;
+  }
+  const tenantDenied = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDenied) {
+    return tenantDenied;
   }
 
   let raw: unknown;

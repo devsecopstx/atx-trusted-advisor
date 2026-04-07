@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireSessionUser } from "@/lib/auth";
+import { requireSessionAndAppTenantObjectId } from "@/lib/require-app-user-tenant";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { logXchatHistoryListDebug } from "@/lib/xchat-debug";
 import { runWithXchatTenantDebugAsync } from "@/lib/xchat-debug-context";
@@ -19,14 +19,13 @@ const historyQuerySchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const session = await requireSessionUser();
-  if (session instanceof NextResponse) {
-    return session;
+  const auth = await requireSessionAndAppTenantObjectId();
+  if (auth instanceof NextResponse) {
+    return auth;
   }
+  const { session, tenantOid } = auth;
 
-  const tenantForDebug = ObjectId.isValid(session.tenantId)
-    ? await getTenantByHexIdCached(session.tenantId)
-    : null;
+  const tenantForDebug = await getTenantByHexIdCached(session.tenantId);
   const tenantDebugFlag = isTenantXchatDebugPreferenceEnabled(tenantForDebug);
 
   return runWithXchatTenantDebugAsync(tenantDebugFlag, async () => {
@@ -56,14 +55,11 @@ export async function GET(request: Request) {
   }
 
   const userId = new ObjectId(session.userId);
-  const tenantId = ObjectId.isValid(session.tenantId)
-    ? new ObjectId(session.tenantId)
-    : null;
 
   const take = parsed.data.limit;
   const rows = await listXChatHistoryByUser({
     userId,
-    tenantId,
+    tenantId: tenantOid,
     limit: take + 1,
     before: parsed.data.cursor ? new Date(parsed.data.cursor) : undefined,
     beforeId: cursorIdRaw ? new ObjectId(cursorIdRaw) : undefined
@@ -96,23 +92,21 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE() {
-  const session = await requireSessionUser();
-  if (session instanceof NextResponse) {
-    return session;
+  const auth = await requireSessionAndAppTenantObjectId();
+  if (auth instanceof NextResponse) {
+    return auth;
   }
+  const { session, tenantOid } = auth;
 
   if (!ObjectId.isValid(session.userId)) {
     return NextResponse.json({ error: "Invalid session user id" }, { status: 400 });
   }
 
   const userId = new ObjectId(session.userId);
-  const tenantId = ObjectId.isValid(session.tenantId)
-    ? new ObjectId(session.tenantId)
-    : null;
 
   const deletedCount = await deleteXChatHistoryByUser({
     userId,
-    tenantId
+    tenantId: tenantOid
   });
 
   return NextResponse.json({

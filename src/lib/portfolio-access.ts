@@ -3,10 +3,29 @@ import { NextResponse } from "next/server";
 
 import type { SessionUser } from "@/lib/auth";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { parseTenantObjectId } from "@/lib/mongo-tenant-scope";
 import {
     getPortfolioByIdForSessionUser,
     listPortfolioAccounts
 } from "@/modules/core-admin/repository";
+
+function tenantScopeRequiredResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      error: "Tenant scope is required for this resource",
+      code: "TENANT_SCOPE_REQUIRED"
+    },
+    { status: 403 }
+  );
+}
+
+/** Sync guard for portfolio/positions data-plane routes (valid BSON tenant on session). */
+export function requireTenantHexForPortfolioDataPlane(session: SessionUser): NextResponse | null {
+  if (!parseTenantObjectId(session.tenantId)) {
+    return tenantScopeRequiredResponse();
+  }
+  return null;
+}
 
 /**
  * Ensures the account exists under the user's portfolio (tenant-scoped).
@@ -17,6 +36,10 @@ export async function requireAccountInPortfolio(
   portfolioId: string,
   accountId: string
 ): Promise<NextResponse | null> {
+  const tenantDenied = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDenied) {
+    return tenantDenied;
+  }
   const portfolioIdNorm = normalizeMongoObjectIdParam(portfolioId);
   const accountIdNorm = normalizeMongoObjectIdParam(accountId);
   const accounts = await listPortfolioAccounts({
@@ -39,6 +62,10 @@ export async function requirePortfolioForSessionUser(
   session: SessionUser,
   portfolioId: string
 ): Promise<NextResponse | null> {
+  const tenantDenied = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDenied) {
+    return tenantDenied;
+  }
   const pid = normalizeMongoObjectIdParam(portfolioId);
   if (!ObjectId.isValid(pid)) {
     return NextResponse.json({ error: "Invalid portfolio id" }, { status: 400 });

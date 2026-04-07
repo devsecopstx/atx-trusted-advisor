@@ -1,12 +1,12 @@
 import { ObjectId } from "mongodb";
 
+import { getDb } from "@/lib/mongodb";
 import {
-  DEFAULT_OPTION_SCANNER_THRESHOLDS,
-  thresholdsAppliedRecord,
-  type OptionScannerRuleThresholds
+    DEFAULT_OPTION_SCANNER_THRESHOLDS,
+    thresholdsAppliedRecord,
+    type OptionScannerRuleThresholds
 } from "@/lib/option-scanner-thresholds";
 import { buildOptionsScannerAlertMetadata } from "@/lib/portfolio-alert-scan-metadata";
-import { getDb } from "@/lib/mongodb";
 import { chatWithXai } from "@/lib/xai";
 import {
     adminCreatePortfolioAlert,
@@ -22,15 +22,15 @@ import type { PortfolioAlert, PositionOptionType, WatchlistSymbolImportEntry } f
 import { quoteUnderlyingForScanner } from "@/modules/scanner/scanner-yahoo-quote";
 import { fetchYahooOptionChainForScanner } from "@/modules/scanner/yahoo-option-chain-scanner";
 import type { OptionContractData } from "@/modules/strategy-options/options-chain";
+import {
+    defaultOptionScannerPortfolioContext,
+    loadOptionScannerPortfolioContexts
+} from "@/modules/strategy-options/options-scanner-portfolio-context";
 import type { OptionScanTarget, OptionSide } from "@/modules/strategy-options/options-scanner-targets";
 import {
     buildCompactOccOptionSymbol,
     contractKeyForTarget
 } from "@/modules/strategy-options/options-scanner-targets";
-import {
-  defaultOptionScannerPortfolioContext,
-  loadOptionScannerPortfolioContexts
-} from "@/modules/strategy-options/options-scanner-portfolio-context";
 
 const REC_COLL = "portfolio_recommendations";
 
@@ -577,16 +577,22 @@ export async function processOptionRecommendationsPass(input: {
       const dte = daysToExpirationFromYmd(displayExp);
       const iv = contract.implied_volatility;
 
-      const rule = decideOptionActionFromRules({
-        dte,
-        mark,
-        avgCost,
-        openInterest: contract.open_interest,
-        volume: contract.volume,
-        side,
-        impliedVolPercent: iv,
-        optionType: ot
-      });
+      const portfolioId = tgt.portfolioId.toHexString();
+      const bookCtx = ctxByPortfolio.get(portfolioId) ?? defaultOptionScannerPortfolioContext();
+
+      const rule = decideOptionActionFromRules(
+        {
+          dte,
+          mark,
+          avgCost,
+          openInterest: contract.open_interest,
+          volume: contract.volume,
+          side,
+          impliedVolPercent: iv,
+          optionType: ot
+        },
+        bookCtx.thresholds
+      );
 
       const ambiguousPnl =
         rule.pnlPct !== null && Math.abs(rule.pnlPct) >= 35 && Math.abs(rule.pnlPct) <= 95;
@@ -654,7 +660,6 @@ export async function processOptionRecommendationsPass(input: {
         closeKind
       });
 
-      const portfolioId = tgt.portfolioId.toHexString();
       const existing = await findTodayScannerRec(tgt.portfolioId, fp);
       const recAction = mapExitToRecommendationAction(exit, side);
 
@@ -703,6 +708,26 @@ export async function processOptionRecommendationsPass(input: {
             ? `Option scanner: BUY_TO_CLOSE ${underlying} ${displayExp} ${strike}${ot === "call" ? "C" : "P"}`
             : `Option scanner: SELL_TO_CLOSE ${underlying} ${displayExp} ${strike}${ot === "call" ? "C" : "P"}`;
         const body = `[afp:${contractKey}]\n[close:${closeKind}]\n\n${finalRationale}`.slice(0, 4000);
+        const scanMeta = buildOptionsScannerAlertMetadata({
+          contractKey,
+          closeKind,
+          fingerprint: fp,
+          underlying,
+          metrics: {
+            dte,
+            mark,
+            pnlPct: rule.pnlPct,
+            ivPct: iv,
+            openInterest: contract.open_interest,
+            volume: contract.volume,
+            finalConfidence: finalConf,
+            grokUsed: Boolean(grokOut)
+          },
+          thresholdsApplied: thresholdsAppliedRecord(bookCtx.thresholds),
+          scoringFactors: bookCtx.scoringFactors,
+          maxAlertsPerRun: env.maxAlertsPerRun,
+          dedupeKey: `${portfolioId}:${contractKey}:${closeKind}`
+        });
         const al = await adminCreatePortfolioAlert({
           portfolioId,
           title,
@@ -710,7 +735,8 @@ export async function processOptionRecommendationsPass(input: {
           severity: "warning",
           symbol: underlying.slice(0, 32),
           accountId: tgt.accountId?.toHexString(),
-          accountContext: tgt.source === "watchlist" ? "watchlist" : "position"
+          accountContext: tgt.source === "watchlist" ? "watchlist" : "position",
+          metadata: scanMeta ?? undefined
         });
         if (al) {
           result.alertsCreated += 1;

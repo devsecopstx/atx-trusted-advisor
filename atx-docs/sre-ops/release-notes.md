@@ -37,6 +37,7 @@ Append a short **Deploy:** clause so ops can scan the log:
 
 ## Entries
 
+- **3.3.11** — **Portfolio workspace rail + alerts + scanner metadata:** `/portfolio` (and alerts / account edit) use `WorkspaceProductSidebar` via serializable server props (same nav as xChat / Portfolios). Portfolio alerts: impact summary, filters, severity + quant snippet, suggested actions preview, optional `metadata` on `portfolio_alerts` for options-scanner (scoring weights, thresholds, digest/snooze hooks). **Deploy:** Next only.
 - **3.3.10** — **Watchlist price scanner parity:** Tenant-scoped watchlists (same as `price_scanner`), US desk-window skip with `watchlist_price_scanner: skipped — …` + `tenant_market_calendar` row, and run output aligned with other core scanners (`watchlists=`, `items_updated=`, `symbols_quoted=`, `alerts_created=`, `duration_s=`, …). Admin Tasks UI copy + `extractSummaryForDiff` keys. **Deploy:** Next only.
 
 - **3.3.9** — **Mongo CLI / seed DB name parity:** `resolveSeedDbName()` matches Next `getDb()` (URI path segment when `MONGODB_DB_NAME` unset); reviewer + SRE agent docs; probe script header; avoids seed vs app database drift (e.g. empty `/admin/tasks`). **Deploy:** Next only (scripts + docs; no Spring change required).

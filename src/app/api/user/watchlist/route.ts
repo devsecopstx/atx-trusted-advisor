@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireSessionUser } from "@/lib/auth";
+import { requireTenantHexForPortfolioDataPlane } from "@/lib/portfolio-access";
 import {
     ensureUserWatchlistForSessionUser,
     mutateUserWatchlistSymbols
@@ -125,6 +126,10 @@ export async function GET(request: Request) {
   if (session instanceof NextResponse) {
     return session;
   }
+  const tenantDenied = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDenied) {
+    return tenantDenied;
+  }
 
   const quotes = new URL(request.url).searchParams.get("quotes") === "1";
   const watchlist = await ensureUserWatchlistForSessionUser({
@@ -143,6 +148,10 @@ export async function PATCH(request: Request) {
   const session = await requireSessionUser();
   if (session instanceof NextResponse) {
     return session;
+  }
+  const tenantDeniedPatch = requireTenantHexForPortfolioDataPlane(session);
+  if (tenantDeniedPatch) {
+    return tenantDeniedPatch;
   }
 
   let json: unknown;
