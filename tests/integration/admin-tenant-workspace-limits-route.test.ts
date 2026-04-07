@@ -8,6 +8,7 @@ const authMocks = vi.hoisted(() => ({
 
 const identityRepoMocks = vi.hoisted(() => ({
   getTenantByHexId: vi.fn(),
+  resolveTenantIdHexForGlobalAdminConsole: vi.fn(),
   updateTenantWorkspaceLimits: vi.fn(),
   updateTenantBrandingPreferencesOneTime: vi.fn(),
   updateTenantXchatDebugEnabled: vi.fn()
@@ -23,6 +24,7 @@ vi.mock("@/modules/identity/repository", async (importOriginal) => {
   return {
     ...actual,
     getTenantByHexId: identityRepoMocks.getTenantByHexId,
+    resolveTenantIdHexForGlobalAdminConsole: identityRepoMocks.resolveTenantIdHexForGlobalAdminConsole,
     updateTenantWorkspaceLimits: identityRepoMocks.updateTenantWorkspaceLimits,
     updateTenantBrandingPreferencesOneTime: identityRepoMocks.updateTenantBrandingPreferencesOneTime,
     updateTenantXchatDebugEnabled: identityRepoMocks.updateTenantXchatDebugEnabled
@@ -60,6 +62,7 @@ function baseTenant(
 describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    identityRepoMocks.resolveTenantIdHexForGlobalAdminConsole.mockResolvedValue(null);
     authMocks.requireGlobalAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: TENANT_HEX,

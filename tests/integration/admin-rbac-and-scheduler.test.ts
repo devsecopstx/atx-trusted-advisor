@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
-  requireAdminSession: vi.fn()
+  requireAdminSession: vi.fn(),
+  requireAdminTenantIdHex: vi.fn()
 }));
 
 const repositoryMocks = vi.hoisted(() => ({
@@ -15,7 +16,14 @@ const runnerMocks = vi.hoisted(() => ({
   executeScheduledTask: vi.fn()
 }));
 
-vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/lib/api-auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api-auth")>();
+  return {
+    ...actual,
+    requireAdminSession: authMocks.requireAdminSession,
+    requireAdminTenantIdHex: authMocks.requireAdminTenantIdHex
+  };
+});
 vi.mock("@/lib/backend-bff", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/backend-bff")>();
   return {
@@ -39,6 +47,7 @@ describe("admin RBAC and scheduler semantics", () => {
       tenantId: "507f1f77bcf86cd799439022",
       roles: ["global_admin"]
     });
+    authMocks.requireAdminTenantIdHex.mockResolvedValue("507f1f77bcf86cd799439022");
     repositoryMocks.listScheduledTasks.mockResolvedValue([]);
     repositoryMocks.listDueScheduledTasks.mockResolvedValue([]);
     runnerMocks.executeScheduledTask.mockResolvedValue({

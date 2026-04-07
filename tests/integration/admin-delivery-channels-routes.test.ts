@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
-  requireAdminSession: vi.fn()
+  requireAdminSession: vi.fn(),
+  requireAdminTenantIdHex: vi.fn()
 }));
 
 const repositoryMocks = vi.hoisted(() => ({
@@ -24,7 +25,14 @@ const auditMocks = vi.hoisted(() => ({
   createAuditEvent: vi.fn()
 }));
 
-vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/lib/api-auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api-auth")>();
+  return {
+    ...actual,
+    requireAdminSession: authMocks.requireAdminSession,
+    requireAdminTenantIdHex: authMocks.requireAdminTenantIdHex
+  };
+});
 vi.mock("@/modules/core-admin/repository", () => repositoryMocks);
 vi.mock("@/lib/post-slack-incoming-webhook", () => slackMocks);
 vi.mock("@/lib/desk-smtp", () => deskMocks);
@@ -46,6 +54,7 @@ describe("admin delivery-channels routes", () => {
       email: "admin@atxfinance.ai",
       username: "admin"
     });
+    authMocks.requireAdminTenantIdHex.mockResolvedValue(tenantId);
     repositoryMocks.listAdminDeliveryChannels.mockResolvedValue([]);
     repositoryMocks.createAdminDeliveryChannel.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439099" },
