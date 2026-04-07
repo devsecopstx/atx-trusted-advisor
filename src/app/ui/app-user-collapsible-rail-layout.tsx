@@ -8,6 +8,8 @@ import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 
 const STORAGE_KEY = "xf-app-user-rail-collapsed";
 
+export type AppUserRailChromeMode = "default" | "workspace-product";
+
 type AppUserCollapsibleRailLayoutProps = {
   rail: ReactNode;
   children: ReactNode;
@@ -21,6 +23,11 @@ type AppUserCollapsibleRailLayoutProps = {
    * collapses again so the main content has focus on entry.
    */
   preferCollapsed?: boolean;
+  /**
+   * `workspace-product` — workspace product sidebar owns width, icon strip, and footer toggle;
+   * the outer shell does not hide the rail body.
+   */
+  railChrome?: AppUserRailChromeMode;
 };
 
 function readStoredCollapsed(): boolean {
@@ -34,16 +41,30 @@ function readStoredCollapsed(): boolean {
   }
 }
 
-export function AppUserCollapsibleRailLayout({
+function AppUserWorkspaceProductRailLayout({
+  rail,
+  children,
+  mainClassName
+}: Pick<AppUserCollapsibleRailLayoutProps, "rail" | "children" | "mainClassName">) {
+  return (
+    <div className="app-user-shell-with-rail app-user-shell-with-rail--workspace-product">
+      <div className="app-user-rail-stack app-user-rail-stack--workspace-product">
+        <div className="app-user-rail-stack__body app-user-rail-stack__body--workspace-product">{rail}</div>
+      </div>
+      <div className={mainClassName ? `app-user-shell-main ${mainClassName}` : "app-user-shell-main"}>{children}</div>
+    </div>
+  );
+}
+
+function AppUserLegacyCollapsibleRailLayout({
   rail,
   children,
   mainClassName,
   allowCollapse = true,
   preferCollapsed = false
-}: AppUserCollapsibleRailLayoutProps) {
+}: Omit<AppUserCollapsibleRailLayoutProps, "railChrome">) {
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const isCollapsed = allowCollapse && collapsed;
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -72,6 +93,8 @@ export function AppUserCollapsibleRailLayout({
       return next;
     });
   }, [allowCollapse]);
+
+  const isCollapsed = allowCollapse && collapsed;
 
   return (
     <div
@@ -121,5 +144,29 @@ export function AppUserCollapsibleRailLayout({
       </div>
       <div className={mainClassName ? `app-user-shell-main ${mainClassName}` : "app-user-shell-main"}>{children}</div>
     </div>
+  );
+}
+
+export function AppUserCollapsibleRailLayout({
+  rail,
+  children,
+  mainClassName,
+  allowCollapse = true,
+  preferCollapsed = false,
+  railChrome = "default"
+}: AppUserCollapsibleRailLayoutProps) {
+  if (railChrome === "workspace-product") {
+    return <AppUserWorkspaceProductRailLayout mainClassName={mainClassName} rail={rail}>{children}</AppUserWorkspaceProductRailLayout>;
+  }
+
+  return (
+    <AppUserLegacyCollapsibleRailLayout
+      allowCollapse={allowCollapse}
+      mainClassName={mainClassName}
+      preferCollapsed={preferCollapsed}
+      rail={rail}
+    >
+      {children}
+    </AppUserLegacyCollapsibleRailLayout>
   );
 }

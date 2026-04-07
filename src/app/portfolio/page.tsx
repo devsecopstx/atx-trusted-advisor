@@ -4,8 +4,8 @@ import { PortfolioPageBody } from "@/app/portfolio/portfolio-page-body";
 import { PortfolioPageBodySkeleton } from "@/app/portfolio/ui/portfolio-page-body-skeleton";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
-import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
+import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { getSessionUser } from "@/lib/auth";
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 
@@ -48,6 +48,7 @@ export default async function PortfolioPage({ searchParams }: PageProps) {
         <AppUserCollapsibleRailLayout
           mainClassName="app-user-shell-with-rail--padded"
           rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
+          railChrome="workspace-product"
         >
           <Suspense fallback={<PortfolioPageBodySkeleton />}>
             <PortfolioPageBody session={session} />

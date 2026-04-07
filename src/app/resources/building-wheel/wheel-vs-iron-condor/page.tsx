@@ -110,6 +110,13 @@ export default async function WheelVsIronCondorPage() {
   const googleLoginHref = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
     : null;
+  const workspaceProductRail = session
+    ? await AppUserAccountPublicRailForSession({
+        session,
+        feedbackPageLabel: "Resources · Wheel vs Iron Condor",
+        railVariant: "workspace-product"
+      })
+    : null;
   const shellContent = (
     <>
       <article className="resources-doc-shell" aria-label="Wheel vs Iron Condor comparison">
@@ -165,11 +172,11 @@ export default async function WheelVsIronCondorPage() {
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
         {approved && session ? (
-          <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
+          <AppUserCollapsibleRailLayout rail={workspaceProductRail} railChrome="workspace-product">
             {shellContent}
           </AppUserCollapsibleRailLayout>
         ) : (
-          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref}>
+          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref} rail={workspaceProductRail ?? undefined}>
             {shellContent}
           </XchatGuestReadonlyShell>
         )}

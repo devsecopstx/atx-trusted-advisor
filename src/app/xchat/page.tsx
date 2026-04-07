@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
 import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
@@ -85,6 +86,14 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
 
   const approved = canUserLogin(session.roles);
 
+  const pendingWorkspaceRail = !approved
+    ? await AppUserAccountPublicRailForSession({
+        feedbackPageLabel: "xChat",
+        railVariant: "workspace-product",
+        session
+      })
+    : null;
+
   const oauthLinkBannerMessage =
     approved && authError && oauthAuthErrorMessages[authError]
       ? oauthAuthErrorMessages[authError]
@@ -125,7 +134,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
             />
           </Suspense>
         ) : (
-          <XchatGuestReadonlyShell showAccessPanel={false}>
+          <XchatGuestReadonlyShell rail={pendingWorkspaceRail ?? undefined} showAccessPanel={false}>
             <XchatGuestPanel
               authDetails={authDetails}
               authError={authError}

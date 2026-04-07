@@ -72,6 +72,7 @@ export function PortfoliosWorkspaceClient({
               workspaceBook={workspaceBook}
             />
           }
+          railChrome="workspace-product"
         >
           <div className="portfolios-workspace-main billing-page min-w-0">
             <div className="portfolios-workspace-grid">

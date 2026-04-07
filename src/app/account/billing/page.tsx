@@ -60,6 +60,14 @@ export default async function AccountBillingPage({
           }
         : null;
 
+  const workspaceProductRail = session
+    ? await AppUserAccountPublicRailForSession({
+        session,
+        feedbackPageLabel: "Billing",
+        railVariant: "workspace-product"
+      })
+    : null;
+
   return (
     <div className="xchat-shell">
       {approved && session ? (
@@ -72,7 +80,8 @@ export default async function AccountBillingPage({
         {approved && session ? (
           <AppUserCollapsibleRailLayout
             mainClassName="app-user-shell-with-rail--padded"
-            rail={<AppUserAccountPublicRailForSession session={session} />}
+            rail={workspaceProductRail}
+            railChrome="workspace-product"
           >
             <div className="billing-page">
               <header className="billing-hero xf-noise-overlay surface-card xf-widget section-card">
@@ -121,6 +130,7 @@ export default async function AccountBillingPage({
           <XchatGuestReadonlyShell
             googleLoginHref={googleLoginHref}
             openRegisterByDefault={openRegisterByDefault}
+            rail={workspaceProductRail ?? undefined}
             registerDefaultPlan={guestRegisterDefaultPlan}
           >
             <div className="billing-page">

@@ -53,6 +53,13 @@ export default async function ResourcesDecisionWorkflowPage() {
   const googleLoginHref = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
     : null;
+  const workspaceProductRail = session
+    ? await AppUserAccountPublicRailForSession({
+        session,
+        feedbackPageLabel: "Resources · Decision Workflow",
+        railVariant: "workspace-product"
+      })
+    : null;
   const article = (
     <article className="resources-doc-shell" aria-label="Decision workflow resources">
       <header className="resources-doc-hero">
@@ -102,12 +109,12 @@ export default async function ResourcesDecisionWorkflowPage() {
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
         {approved && session ? (
-          <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
+          <AppUserCollapsibleRailLayout rail={workspaceProductRail} railChrome="workspace-product">
             {article}
             <GlobalFooter />
           </AppUserCollapsibleRailLayout>
         ) : (
-          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref}>
+          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref} rail={workspaceProductRail ?? undefined}>
             {article}
             <GlobalFooter />
           </XchatGuestReadonlyShell>

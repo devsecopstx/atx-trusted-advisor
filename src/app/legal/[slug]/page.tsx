@@ -60,6 +60,13 @@ export default async function LegalSlugPage({ params }: PageProps) {
   const googleLoginHref = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
     : null;
+  const workspaceProductRail = session
+    ? await AppUserAccountPublicRailForSession({
+        session,
+        feedbackPageLabel: `Legal · ${TITLES[key]}`,
+        railVariant: "workspace-product"
+      })
+    : null;
   const legalDoc = (
     <article className="legal-stub-page" aria-label={`${TITLES[key]} agreement`}>
       <p className="legal-stub-back">
@@ -75,7 +82,7 @@ export default async function LegalSlugPage({ params }: PageProps) {
       <div className="xchat-shell">
         <AppUserApprovedHeader current="xchat" feedbackPageLabel={`Legal · ${TITLES[key]}`} session={session} />
         <div className="xchat-body" style={{ padding: "1rem" }}>
-          <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
+          <AppUserCollapsibleRailLayout rail={workspaceProductRail} railChrome="workspace-product">
             {legalDoc}
             <GlobalFooter />
           </AppUserCollapsibleRailLayout>
@@ -88,7 +95,7 @@ export default async function LegalSlugPage({ params }: PageProps) {
     <div className="xchat-shell">
       <XchatGuestHeader />
       <div className="xchat-body" style={{ padding: "1rem" }}>
-        <XchatGuestReadonlyShell googleLoginHref={googleLoginHref}>
+        <XchatGuestReadonlyShell googleLoginHref={googleLoginHref} rail={workspaceProductRail ?? undefined}>
           {legalDoc}
           <GlobalFooter />
         </XchatGuestReadonlyShell>

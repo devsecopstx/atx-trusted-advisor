@@ -46,6 +46,7 @@ export default async function XoptionsPage({ searchParams }: PageProps) {
       <div className="xchat-body px-4 py-6 md:px-8">
         <AppUserCollapsibleRailLayout
           rail={<AppUserAccountPublicRailForSession railVariant="workspace-product" session={session} />}
+          railChrome="workspace-product"
         >
           <XoptionsStrategyBuilderMount />
         </AppUserCollapsibleRailLayout>

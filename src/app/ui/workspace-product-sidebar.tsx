@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+    useCallback,
     useEffect,
     useState,
     useSyncExternalStore,
@@ -35,6 +36,48 @@ import {
     setTaxEducationEnabled,
     subscribeXoptionsEducationPrefs
 } from "@/lib/xoptions/xoptions-education-preferences";
+
+const RAIL_EXPANDED_STORAGE_KEY = "xf-workspace-product-rail-expanded";
+
+/** Fired after localStorage preference writes so `useSyncExternalStore` subscribers re-read. */
+export const WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE = "xf-workspace-product-rail-prefs-change";
+
+function subscribeRailExpandedPrefs(cb: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const onChange = () => cb();
+  window.addEventListener(WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function getRailExpandedSnapshot(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return localStorage.getItem(RAIL_EXPANDED_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Expand the workspace product rail and persist (e.g. xChat `?rail=` deep links). */
+export function expandWorkspaceProductRail(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    localStorage.setItem(RAIL_EXPANDED_STORAGE_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+  window.dispatchEvent(new Event(WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE));
+}
 
 function pathKeyFromHref(href: string): string {
   const beforeHash = href.split("#")[0] ?? href;
@@ -114,27 +157,6 @@ function PersonIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function AccountSummaryIcon({
-  avatarUrl
-}: {
-  avatarUrl?: string;
-}) {
-  if (avatarUrl?.trim()) {
-    return (
-      <Image
-        alt=""
-        aria-hidden
-        className="portfolios-workspace-sidebar__summary-avatar"
-        height={20}
-        src={avatarUrl}
-        unoptimized
-        width={20}
-      />
-    );
-  }
-  return <PersonIcon className="portfolios-workspace-sidebar__glyph" />;
-}
-
 function AdminHubIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
@@ -183,10 +205,6 @@ function RailSectionChevron() {
   );
 }
 
-/**
- * Native `<details>` does not support React's `defaultOpen` (unknown DOM prop). Sync initial
- * open state from the route with controlled `open` + `onToggle`.
- */
 function RouteSyncedDetails({
   className,
   routeMatch,
@@ -232,16 +250,64 @@ function SidebarAccordionSummary({
   );
 }
 
+function ChevronsExpandIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden className={className} fill="none" viewBox="0 0 24 24">
+      <path
+        d="M13 17l5-5-5-5M6 17l5-5-5-5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
+function ChevronsCollapseIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden className={className} fill="none" viewBox="0 0 24 24">
+      <path
+        d="M11 17l-5-5 5-5M18 17l-5-5 5-5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
+function subscribeMaxWidth980(cb: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const mq = window.matchMedia("(max-width: 980px)");
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+
+function getMaxWidth980Snapshot(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 980px)").matches;
+}
+
 export type WorkspaceProductSidebarProps = {
   defaultPortfolioId: string | null;
   isGlobalAdmin: boolean;
   accountDetails: AppUserRailAccountPanelDetails | null;
-  /** Optional “Link Google” in account panel (e.g. xChat when Google OAuth is configured). */
   googleLinkHref?: string | null;
   accountFeedbackPageLabel?: string;
   workspaceBook?: AppUserDefaultBook | null;
   showReferenceDocs?: boolean;
   xchatSection?: ReactNode;
+};
+
+type CollapsedIconItem = {
+  key: string;
+  href: string;
+  label: string;
+  icon: ReactNode;
+  isActive: boolean;
 };
 
 export function WorkspaceProductSidebar({
@@ -255,6 +321,29 @@ export function WorkspaceProductSidebar({
   xchatSection
 }: WorkspaceProductSidebarProps) {
   const pathname = usePathname() ?? "";
+  const narrowViewport = useSyncExternalStore(subscribeMaxWidth980, getMaxWidth980Snapshot, () => false);
+
+  const expanded = useSyncExternalStore(
+    subscribeRailExpandedPrefs,
+    getRailExpandedSnapshot,
+    () => false
+  );
+
+  const persistExpanded = useCallback((next: boolean) => {
+    try {
+      localStorage.setItem(RAIL_EXPANDED_STORAGE_KEY, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(WORKSPACE_PRODUCT_RAIL_PREFS_CHANGE));
+    }
+  }, []);
+
+  /** Full labels + accordions; on narrow viewports the stacked layout stays expanded (toggle hidden). */
+  const showExpandedUi = narrowViewport || expanded;
+  const showCollapseToggle = !narrowViewport;
+
   const showXoptionsToggle = pathname.startsWith("/xoptions");
   const xoptionsStrategyBuilderVisible = useSyncExternalStore(
     subscribeXoptionsStrategyBuilderVisibility,
@@ -285,6 +374,12 @@ export function WorkspaceProductSidebar({
     defaultPortfolioId !== null
       ? `/import-activity?portfolioId=${encodeURIComponent(defaultPortfolioId)}`
       : "/import-activity";
+
+  const portfolioRouteMatch =
+    pathname.startsWith("/portfolios") ||
+    pathname.startsWith("/portfolio") ||
+    pathname.startsWith("/import-activity");
+
   const fallbackXchatSection = (
     <RouteSyncedDetails
       className="portfolios-workspace-sidebar__accordion"
@@ -314,15 +409,54 @@ export function WorkspaceProductSidebar({
     </RouteSyncedDetails>
   );
 
-  return (
+  const collapsedIcons: CollapsedIconItem[] = [
+    {
+      key: "portfolio",
+      href: "/portfolios",
+      label: "Portfolio workspace",
+      isActive: portfolioRouteMatch,
+      icon: <LucideMonitorIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
+    },
+    {
+      key: "xchat",
+      href: "/xchat",
+      label: "xChat",
+      isActive: pathname.startsWith("/xchat"),
+      icon: <RailSidebarZapIcon className="text-[var(--xf-lightning-yellow)]" size="disclosure" />
+    },
+    {
+      key: "xoptions",
+      href: "/xoptions",
+      label: "xOptions",
+      isActive: pathname.startsWith("/xoptions"),
+      icon: <LucideHouseIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
+    },
+    {
+      key: "resources",
+      href: "/resources/about",
+      label: "Resources",
+      isActive: pathname.startsWith("/resources"),
+      icon: <ResourcesIcon className="h-4 w-4 text-[var(--xf-text-200)]" />
+    }
+  ];
+
+  if (isGlobalAdmin) {
+    collapsedIcons.push({
+      key: "admin",
+      href: "/admin",
+      label: "Admin hub",
+      isActive: pathname.startsWith("/admin"),
+      icon: <AdminHubIcon className="h-4 w-4 text-[var(--xf-text-200)]" />
+    });
+  }
+
+  const railWidthPx = narrowViewport ? undefined : showExpandedUi ? 260 : 64;
+
+  const expandedNav = (
     <nav className="portfolios-workspace-sidebar" aria-label="Workspace">
       <RouteSyncedDetails
         className="portfolios-workspace-sidebar__accordion"
-        routeMatch={
-          pathname.startsWith("/portfolios") ||
-          pathname.startsWith("/portfolio") ||
-          pathname.startsWith("/import-activity")
-        }
+        routeMatch={portfolioRouteMatch}
       >
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
@@ -342,15 +476,10 @@ export function WorkspaceProductSidebar({
 
       {xchatSection ?? fallbackXchatSection}
 
-      <RouteSyncedDetails
-        className="portfolios-workspace-sidebar__accordion"
-        routeMatch={pathname.startsWith("/xoptions")}
-      >
+      <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/xoptions")}>
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
-            icon={
-              <LucideHouseIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero" />
-            }
+            icon={<LucideHouseIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero" />}
             label="xOptions"
           />
         </summary>
@@ -429,15 +558,9 @@ export function WorkspaceProductSidebar({
         </div>
       </RouteSyncedDetails>
 
-      <RouteSyncedDetails
-        className="portfolios-workspace-sidebar__accordion"
-        routeMatch={pathname.startsWith("/resources")}
-      >
+      <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/resources")}>
         <summary className="portfolios-workspace-sidebar__accordion-summary">
-          <SidebarAccordionSummary
-            icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph" />}
-            label="Resources"
-          />
+          <SidebarAccordionSummary icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph" />} label="Resources" />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
           <SidebarLink href="/resources/about" nested>
@@ -497,10 +620,7 @@ export function WorkspaceProductSidebar({
           routeMatch={pathname.startsWith("/account") || pathname.startsWith("/legal")}
         >
           <summary className="portfolios-workspace-sidebar__accordion-summary">
-            <SidebarAccordionSummary
-              icon={<AccountSummaryIcon avatarUrl={accountDetails.avatarUrl} />}
-              label="Account"
-            />
+            <SidebarAccordionSummary icon={<PersonIcon className="portfolios-workspace-sidebar__glyph" />} label="Account" />
           </summary>
           <div className="portfolios-workspace-sidebar__accordion-body portfolios-workspace-sidebar__accordion-body--account">
             <AppUserRailAccountPanel
@@ -512,5 +632,83 @@ export function WorkspaceProductSidebar({
         </RouteSyncedDetails>
       ) : null}
     </nav>
+  );
+
+  return (
+    <div
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-bg)] shadow-sm backdrop-blur-sm transition-[width] duration-200 ease-out dark:shadow-md"
+      style={{
+        width: railWidthPx === undefined ? "100%" : `${railWidthPx}px`,
+        boxSizing: "border-box"
+      }}
+      suppressHydrationWarning={true}
+    >
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-1">
+        {showExpandedUi ? (
+          expandedNav
+        ) : (
+          <nav aria-label="Workspace" className="flex flex-col items-center gap-0.5 px-1 pt-1">
+            {collapsedIcons.map((item) => (
+              <XfHoverHint hint={item.label} key={item.key}>
+                <Link
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-transparent transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] ${
+                    item.isActive
+                      ? "bg-[color-mix(in_srgb,var(--xf-gain-green)_14%,transparent)] text-[var(--xf-gain-green)]"
+                      : "text-[var(--xf-text-200)]"
+                  }`}
+                  href={item.href}
+                  title={item.label}
+                >
+                  {item.icon}
+                </Link>
+              </XfHoverHint>
+            ))}
+          </nav>
+        )}
+      </div>
+
+      <footer
+        className={`flex shrink-0 border-t border-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] bg-[color-mix(in_srgb,var(--xf-xchat-rail-bg)_92%,transparent)] ${
+          showExpandedUi
+            ? showCollapseToggle
+              ? "flex-row items-center justify-between gap-2 px-2.5 py-2"
+              : "flex-row items-center justify-end gap-2 px-2.5 py-2"
+            : "flex-col items-center gap-2 py-2.5"
+        }`}
+      >
+        {showCollapseToggle ? (
+          <XfHoverHint hint={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}>
+            <button
+              aria-expanded={showExpandedUi}
+              aria-label={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-toggle-bg)] text-[var(--xf-xchat-rail-toggle-color)] transition-[border-color,background-color,color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] hover:text-[var(--xf-gain-green)]"
+              type="button"
+              onClick={() => persistExpanded(!expanded)}
+            >
+              {showExpandedUi ? (
+                <ChevronsCollapseIcon className="h-5 w-5" />
+              ) : (
+                <ChevronsExpandIcon className="h-5 w-5" />
+              )}
+            </button>
+          </XfHoverHint>
+        ) : null}
+
+        <XfHoverHint hint="Account">
+          <Link
+            aria-label="Account"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] transition-[border-color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_40%,transparent)]"
+            href="/account"
+            title="Account"
+          >
+            {accountDetails?.avatarUrl?.trim() ? (
+              <Image alt="" aria-hidden className="h-full w-full object-cover" height={40} src={accountDetails.avatarUrl} unoptimized width={40} />
+            ) : (
+              <PersonIcon className="h-5 w-5 text-[var(--xf-text-300)]" />
+            )}
+          </Link>
+        </XfHoverHint>
+      </footer>
+    </div>
   );
 }

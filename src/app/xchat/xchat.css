@@ -732,13 +732,10 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(76px, 300px) minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0.85rem;
   padding: 0.65rem 0.85rem 0;
-}
-
-.xchat-main-shell--rail-collapsed {
-  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .xchat-left-rail {
@@ -757,14 +754,15 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   max-height: none;
 }
 
-.xchat-left-rail--collapsed {
-  width: fit-content;
-  min-width: 2.75rem;
-}
-
-.xchat-left-rail--collapsed .xchat-rail-head {
-  justify-content: center;
-  border-bottom-color: transparent;
+/** Workspace product sidebar supplies its own chrome (Grok-style rail). */
+.xchat-left-rail--workspace-product {
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .xchat-rail-head {
@@ -878,6 +876,15 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   padding: 0.55rem;
   display: grid;
   gap: 0.6rem;
+}
+
+.xchat-rail-body--workspace-surface {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .xchat-rail-section {
@@ -2465,7 +2472,7 @@ html[data-xf-ui="soft"] .xchat-composer-hint__pill {
 
 @media (max-width: 1200px) {
   .xchat-main-shell {
-    grid-template-columns: minmax(66px, 260px) minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 0.65rem;
     padding-inline: 0.6rem;
   }
@@ -2826,6 +2833,33 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
 
 .app-user-shell-with-rail--rail-collapsed {
   grid-template-columns: auto minmax(0, 1fr);
+}
+
+.app-user-shell-with-rail--workspace-product {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.app-user-rail-stack--workspace-product {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.app-user-rail-stack__body--workspace-product {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (max-width: 980px) {
+  .app-user-shell-with-rail--workspace-product {
+    grid-template-columns: 1fr;
+  }
 }
 
 .app-user-rail-stack {

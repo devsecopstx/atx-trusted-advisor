@@ -81,6 +81,7 @@ export default async function ImportActivityPage({ searchParams }: PageProps) {
               session={session}
             />
           }
+          railChrome="workspace-product"
         >
           <div className="billing-page import-activity-page w-full min-w-0">
             <header className="billing-hero surface-card xf-widget section-card mb-3 px-4 py-3 xf-noise-overlay md:px-5 md:py-4 dark:ring-1 dark:ring-[color:color-mix(in_srgb,var(--xf-text-100)_14%,transparent)]">

@@ -14,6 +14,7 @@ import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
@@ -24,7 +25,6 @@ import {
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { parseAccountOutlook, type Account } from "@/modules/core-admin/types";
-import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
 
 function serializeAccount(account: Account) {
   const rawRef = (account.extAccountId ?? "").trim();
@@ -167,6 +167,7 @@ export default async function PortfolioAccountPage({
         <AppUserCollapsibleRailLayout
           mainClassName="app-user-shell-with-rail--padded"
           rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
+          railChrome="workspace-product"
         >
         <div className="portfolio-account-page portfolio-account-page--edit">
           <AccountWorkspace

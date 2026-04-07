@@ -27,6 +27,13 @@ export default async function ResourcesAboutPage() {
   const googleLoginHref = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
     : null;
+  const workspaceProductRail = session
+    ? await AppUserAccountPublicRailForSession({
+        session,
+        feedbackPageLabel: "Resources · About",
+        railVariant: "workspace-product"
+      })
+    : null;
   const article = (
     <article className="resources-doc-shell" aria-label="About aTx Trusted Advisory">
       <header className="resources-doc-hero">
@@ -73,12 +80,12 @@ export default async function ResourcesAboutPage() {
 
       <div className="xchat-body" style={{ padding: "1rem" }}>
         {approved && session ? (
-          <AppUserCollapsibleRailLayout rail={<AppUserAccountPublicRailForSession session={session} />}>
+          <AppUserCollapsibleRailLayout rail={workspaceProductRail} railChrome="workspace-product">
             {article}
             <GlobalFooter />
           </AppUserCollapsibleRailLayout>
         ) : (
-          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref}>
+          <XchatGuestReadonlyShell googleLoginHref={googleLoginHref} rail={workspaceProductRail ?? undefined}>
             {article}
             <GlobalFooter />
           </XchatGuestReadonlyShell>

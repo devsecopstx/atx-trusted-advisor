@@ -146,6 +146,7 @@ export default async function PortfolioAlertsPage({
         <AppUserCollapsibleRailLayout
           mainClassName="app-user-shell-with-rail--padded"
           rail={<WorkspaceProductSidebar {...workspaceRailProps} />}
+          railChrome="workspace-product"
         >
           {workspaceError || !portfolioId ? (
             <div

@@ -13,14 +13,13 @@ import {
 } from "react";
 
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
 import { LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
-import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
+import { expandWorkspaceProductRail, WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type { HistoryItem, HistoryStats, Message } from "@/app/xchat/ui/xchat-conversation-types";
@@ -62,15 +61,6 @@ function formatLastTurnToolSummary(calls: AskToolCallSummary[] | undefined): str
   const totalMs = calls.reduce((sum, c) => sum + c.durationMs, 0);
   const uniqNames = [...new Set(calls.map((c) => c.name))];
   return `${calls.length} call${calls.length === 1 ? "" : "s"} · ${totalMs}ms · ${uniqNames.join(", ")}`;
-}
-
-function XchatRailCollapseIcon() {
-  return (
-    <svg aria-hidden className="xchat-rail-toggle__glyph" fill="none" viewBox="0 0 24 24">
-      <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-      <path d="M21 6l-6 6 6 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    </svg>
-  );
 }
 
 function ExamplesRailGlyph(props: SVGProps<SVGSVGElement>) {
@@ -374,7 +364,6 @@ export function XchatConversation({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [leftRailCollapsed, setLeftRailCollapsed] = useState(true);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
@@ -871,7 +860,7 @@ export function XchatConversation({
     if (!initialXchatItem) {
       return;
     }
-    setLeftRailCollapsed(false);
+    expandWorkspaceProductRail();
     if (initialXchatItem !== "composer") {
       return;
     }
@@ -1200,46 +1189,9 @@ export function XchatConversation({
   }
 
   return (
-    <div className={`xchat-main-shell${leftRailCollapsed ? " xchat-main-shell--rail-collapsed" : ""}`}>
-      <aside className={`xchat-left-rail ${leftRailCollapsed ? "xchat-left-rail--collapsed" : ""}`}>
-        <div className="xchat-rail-head">
-          {!leftRailCollapsed ? (
-            <span className="xchat-rail-head__brand-zap" aria-hidden>
-              <Image
-                alt=""
-                aria-hidden
-                className="xchat-rail-head__brand-mark"
-                height={24}
-                src="/branding/aTx.png"
-                width={24}
-              />
-            </span>
-          ) : null}
-          <XfHoverHint hint={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}>
-            <button
-              aria-expanded={!leftRailCollapsed}
-              aria-label={leftRailCollapsed ? "Open sidebar" : "Collapse sidebar"}
-              className="xchat-rail-toggle"
-              type="button"
-              onClick={() => setLeftRailCollapsed((prev) => !prev)}
-            >
-              {leftRailCollapsed ? (
-                <Image
-                  alt=""
-                  aria-hidden
-                  className="xchat-rail-head__brand-mark"
-                  height={24}
-                  src="/branding/aTx.png"
-                  width={24}
-                />
-              ) : (
-                <XchatRailCollapseIcon />
-              )}
-            </button>
-          </XfHoverHint>
-        </div>
-        {!leftRailCollapsed ? (
-          <div className="xchat-rail-body">
+    <div className="xchat-main-shell">
+      <aside className="xchat-left-rail xchat-left-rail--workspace-product">
+        <div className="xchat-rail-body xchat-rail-body--workspace-surface">
             <WorkspaceProductSidebar
               accountDetails={accountDetails}
               accountFeedbackPageLabel={accountFeedbackPageLabel}
@@ -1563,8 +1515,7 @@ export function XchatConversation({
             </section>
               )}
             />
-          </div>
-        ) : null}
+        </div>
       </aside>
 
       <div className="xchat-main">
