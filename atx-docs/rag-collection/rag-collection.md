@@ -22,7 +22,7 @@
 
 | Segment | xAI collection suffix (after `atx-trusted-advisor-<dev|stage|prod>-`) | Role |
 | --- | --- | --- |
-| **`xpersonas/`** | `xpersonas` | xPersona seed specs — **exactly one `*.yaml` per subfolder** (Mongo via **`npm run seed:xpersonas`** / **`seed:admin`**; no `.md` in this segment). Upload to xAI: **`npm run seed:admin:rag-sync`** or **`SEED_ADMIN_XAI_RAG_INGEST=1`** with **`seed:admin`** — **`scripts/lib/seed-xai-rag-ingest.mjs`**; **`SKIP_SEED_XAI_RAG_INGEST`** forces skip. |
+| **`xpersonas/`** | `xpersonas` | xPersona seed specs — **exactly one `*.yaml` per subfolder** (Mongo via **`npm run seed:xpersonas`** / **`seed:admin`**; no `.md` in this segment). **`seed:admin` does not upload** YAML to xAI; team KB is out-of-band if needed (**`scripts/lib/seed-xai-rag-ingest.mjs`** is library-only). |
 | **`finance-reference-docs/`** | *(same folder name)* | Reference PDFs (disclosures, licensing). |
 | **`example-prompts/`** | `example-prompts` | Example user prompts / scenario copy for UX and KB samples. |
 | **`options-strategy/`** | `options-strategy` | Strategy Markdown (`xfinance-strategy-*` frontmatter) + hub index — see **[`options-strategy/README.md`](./options-strategy/README.md)**. |
@@ -125,7 +125,7 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 
 - **Command:** `npm run seed:xpersonas` (`scripts/sync-xpersonas-from-yaml.ts`, `node --env-file=.env --import tsx`).
 - **`seed:admin`:** After core Mongo upserts (tenant, user, portfolio, **`admin_user_settings`**), runs the same sync (unless **`SKIP_SEED_XPERSONAS`**), then re-reads the global-admin default persona (**Advisor**, **`nameNormalized` `advisor`**) for the summary payload and to backfill **`assignedPersonaId`** if still empty — so **`/admin/personas`** stays aligned with disk YAML without a second command. Legacy DBs may still reference **`super-agent`**; operators migrate via normal persona sync and admin settings.
-- **Ordering:** For `file_search` against **`…-xpersonas`**, run **`npm run seed:admin:rag-sync`** (or opt-in RAG ingest on **`seed:admin`**) before or after Mongo sync as you prefer. Standalone **`npm run seed:xpersonas`** without xAI upload is supported for Mongo-only dev.
+- **Ordering:** For `file_search` against **`…-xpersonas`**, populate xAI team collections **outside** `seed:admin`. Run **`npm run seed:xpersonas`** / **`seed:admin`** for Mongo; xAI upload is a separate step if your deployment requires it.
 - **`SEED_XPERSONAS_MODE`:** **`merge`** (default) fills missing `xaiCollection.collectionId` and appends `xapi.tools` by `type` without overwriting prompts or existing tool payloads. **`replace`** overwrites prompts, scalars, and `xapi`; keeps `status` / `version` / `publishedAt`; sets `xaiCollection` only when a collection id resolves.
 - **Flags:** **`SKIP_SEED_XPERSONAS`**, production **`replace`** + **`SEED_XPERSONAS_STRICT=1`** — see **`DEVELOPMENT.md`** (RAG / seed notes).
 
@@ -141,7 +141,7 @@ Cursor agents may include **`worktree:`**; persona specs omit it.
 
 ## Tests and automation
 
-- **`seed:admin`** RAG ingest walks **`atx-docs/rag-collection/`** first, then legacy **`atx-rag-collection/`**, when xAI keys are set; see **`scripts/lib/seed-xai-rag-ingest.mjs`**. Layout tests: **`tests/unit/atx-rag-collection-layout.test.ts`**.
+- **`seed:admin`** loads disk specs into **Mongo** from **`atx-docs/rag-collection/`** (legacy **`atx-rag-collection/`** still supported for options-strategy sync paths). Team xAI upload is **not** part of seed; see **`scripts/lib/seed-xai-rag-ingest.mjs`** for optional library use. Layout tests: **`tests/unit/atx-rag-collection-layout.test.ts`**.
 
 ---
 

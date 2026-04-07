@@ -3,7 +3,7 @@
  * Probe Mongo connectivity + key collection counts using a supplied env file.
  *
  * - Supports plain or base64 `MONGODB_URI` (via `resolveMongoUri()`).
- * - Resolves DB name from `MONGODB_DB_NAME` or deploy-target defaults.
+ * - Resolves DB name like Next `getDb()` / `seed:admin`: `MONGODB_DB_NAME`, else path segment in `MONGODB_URI`, else `atxfinance` (`resolveSeedDbName()`); override with `--db=`.
  * - Prints redacted URI host + counts for quick staging/prod validation.
  *
  * Usage:

@@ -434,7 +434,7 @@ export function shouldProxyPortfolioRequestsToBackend(): boolean {
 }
 
 /**
- * App-user **`GET`/`PATCH /api/portfolios/{portfolioId}/watchlist`** — **always Next + Mongo**.
+ * App-user **`GET`/`PATCH /api/portfolios/{portfolioId}/watchlist`** and **`GET`/`DELETE …/alerts`** — **always Next + Mongo**.
  *
  * Spring exposes parity HTTP, but the BFF does not forward: Kotlin path omitted Yahoo quotes and could 404 when
  * session/tenant/portfolio resolution differed from Next (`ensurePortfolioWatchlistForUser`). Same pattern as
@@ -448,12 +448,20 @@ function isAppUserPortfolioWatchlistPath(pathname: string): boolean {
   return /^\/api\/portfolios\/[^/]+\/watchlist\/?$/.test(pathname);
 }
 
+function isAppUserPortfolioAlertsPath(pathname: string): boolean {
+  return /^\/api\/portfolios\/[^/]+\/alerts\/?$/.test(pathname);
+}
+
 /** Spring BFF for {@link shouldProxyPortfolioRequestsToBackend} routes; `null` → Next Mongo handlers. */
 export async function proxyPortfolioRequestToBackend(request: Request): Promise<Response | null> {
   if (!shouldProxyPortfolioRequestsToBackend()) {
     return null;
   }
   if (!shouldProxyAppUserPortfolioWatchlistToBackend() && isAppUserPortfolioWatchlistPath(new URL(request.url).pathname)) {
+    return null;
+  }
+  /** Alerts list + bulk delete stay on Next (Mongo); Spring parity not required for app-user bulk clear / CSV flow. */
+  if (isAppUserPortfolioAlertsPath(new URL(request.url).pathname)) {
     return null;
   }
   return proxyRequestToBackend(request);

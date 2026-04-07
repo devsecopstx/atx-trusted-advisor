@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { notFound, redirect } from "next/navigation";
 
 import { AccountWorkspace } from "@/app/portfolio/accounts/[accountId]/account-workspace";
+import { serializePositionsForUi } from "@/app/portfolio/lib/serialize-positions";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
@@ -19,6 +20,7 @@ import {
     getPortfolioAccountByIdForSessionUser,
     getPortfolioByIdForSessionUser,
     listPortfolioAccounts,
+    listPortfolioPositionsByAccount,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { parseAccountOutlook, type Account } from "@/modules/core-admin/types";
@@ -138,6 +140,22 @@ export default async function PortfolioAccountPage({
     notFound();
   }
 
+  let initialPositions: ReturnType<typeof serializePositionsForUi> = [];
+  try {
+    const rows = await listPortfolioPositionsByAccount({
+      userId: session.userId,
+      tenantId: session.tenantId,
+      portfolioId: portfolioIdHex,
+      accountIds: [account._id]
+    });
+    initialPositions = serializePositionsForUi(rows);
+  } catch (error) {
+    const detail = caughtErrorMessage(error);
+    console.error(
+      `[portfolio/account] positions load failed userId=${session.userId} portfolioId=${portfolioIdHex} accountId=${accountId} detail=${detail}`
+    );
+  }
+
   return (
     <div className="xchat-shell">
       <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
@@ -150,6 +168,7 @@ export default async function PortfolioAccountPage({
             portfolioName={portfolio.name?.trim() || "Default portfolio"}
             account={serializeAccount(account)}
             portfolioAccountCount={accounts.length}
+            initialPositions={initialPositions}
           />
         </div>
         </AppUserCollapsibleRailLayout>

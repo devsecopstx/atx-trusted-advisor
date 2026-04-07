@@ -1,103 +1,118 @@
-# Scheduled scanners — Phase 3 plan (shared platform + tenant jobs)
+# Scheduled scanners — Phase 3 plan (foundation + roll vertical)
 
-**Status:** **3a–3c implemented in app `2.9.0`** — Mongo `scanner_option_chain_cache` + `scanner_circuit_state`, options scanner + income/roll jobs wired; new categories in `scheduled-task-category-schema.ts`, `task-runner.ts`, Kotlin `ALLOWED_CATEGORIES`. Builds on Phase 2 (`options-scannerp2.md`, `options-scanner-engine.ts`) and `schedule-tasks-admin.md`.
+**Intent:** One shared platform for option-chain workloads (cache + circuit breaker), a **single user-visible output shape** (no greek dumps in the primary row), and **one vertical in active scope**: **`options_expiration_roll_manager`**. Other scanner stubs stay in `/atx-docs/design-system/scheduled-task/` but are **out of Phase 3 delivery** until reprioritized.
 
-**Goals**
+**Code anchors:** `src/modules/scanner/` (cache, circuit, env), `fetchYahooOptionChainForScanner`, `task-runner.ts`, `src/lib/scheduled-task-category-schema.ts`, Kotlin `ALLOWED_CATEGORIES` in `AdminScheduledTasksService.kt`. Admin contract: [schedule-tasks-admin.md](./schedule-tasks-admin.md). Options scanner backlog: [options-scanner.md](./options-scanner.md). Roll job stub header: [options-expiration-roll-manager.md](./options-expiration-roll-manager.md).
 
-1. **15-minute option chain cache** — reusable across any job that calls Yahoo option chains (options scanner, expiration/roll manager, income projector legs, etc.); single TTL policy, tenant-safe keys, observability hooks.
-2. **Circuit breaker** — reusable per **tenant** + **upstream** (e.g. Yahoo batch failures); pause further calls for a cooldown, emit structured logs / optional Slack; integrate with `admin_task_runs` output.
-3. **New tenant-level scheduled jobs** — each future scanner is a **category** executed by Next (`task-runner.ts`) or stubbed in Kotlin when BFF runs the tick; **created/edited/run** only via **`/admin/tasks`** (`global_admin`, tenant-scoped rows in `admin_scheduled_tasks`).
-4. **Shared components** — one small **scanner runtime** package (conceptually under `src/modules/scanner/` or `src/modules/scheduled-jobs/`) so corporate events, rebalance, risk, tax-loss, etc. do not reimplement cache/breaker/retry.
+**Note:** Mongo **`scanner_option_chain_cache`** + **`scanner_circuit_state`** and wiring into the options scanner landed in app **≥2.9.0**. This doc is the **target contract** for output/scoring and the **trimmed phase plan**; close any gaps (freshness, breaker visibility, Yahoo storm avoidance) against **3a**, then align **3c** behavior and UI-facing rows with the sections below.
 
 ---
 
-## Admin & configuration (unchanged contract, extended catalog)
+## 1. Scanner output format — one position, one glance
+
+Primary row (what the user sees first). **No 12-line greeks dump** in the main surface; deep greeks live in **expandable “details”** or **admin / task logs**.
+
+| Column | Content |
+|--------|---------|
+| **Action** | e.g. Sell, Buy, Roll, Hold (product vocabulary TBD per job) |
+| **Contract** | Human-readable leg, e.g. `AAPL 225C May 16` |
+| **DTE** | Days to expiration (integer) |
+| **Portfolio score** | `0–100` (weighted model below) |
+| **Rationale** | **Max 3 bullets** — short sentences only |
+
+**Example (covered call on existing holding):**
+
+- **Sell** | **AAPL 225C May 16 (DTE 38)** | **Score 87**
+  - DTE 38 lands in prime theta-decay window (21–45 days) → targets 1.8–2.5% monthly credit on capital at risk.
+  - Portfolio fit high: reduces concentration in tech, delta 0.28 keeps assignment risk under 30%, IV rank 62% favors sellers.
+  - Tax note: premium treated as short-term gain; pairs well with qualified dividends (consult your CPA).
+
+**Principle:** User sees **what to do**, **why DTE matters**, and **how it scores against their book** (concentration, net delta, cash-flow goal, liquidity minimums). Everything else is secondary.
+
+---
+
+## 2. Scoring factors — transparent, weighted (HNWI-tuned defaults)
+
+| Factor | Weight | Meaning |
+|--------|--------|---------|
+| **Income / theta efficiency** | **35%** | DTE sweet spot **21–45** (theta-decay window aligned with monthly credit targets) |
+| **Risk-adjusted edge** | **30%** | Delta, IV rank, POP / ROI-style edge (job-specific sub-metrics) |
+| **Portfolio synergy** | **25%** | Concentration relief, book-level greeks, cash-flow alignment |
+| **Liquidity & assignment realism** | **10%** | OI/volume / assignability — conservative defaults |
+
+**Default guardrails (conservative HNWI — overridable per account):**
+
+- Covered / short premium: **delta ≤ 0.30** (where applicable)
+- **Credit ≥ ~1.5% monthly** (policy text; implement as configured thresholds)
+- **Liquidity floor** — e.g. **over $500k notional** equivalent where the chain supports it (tune per product)
+
+User/account overrides apply on top of tenant defaults; document overrides in admin or prefs — **no new job-template collection** in Phase 3.
+
+---
+
+## 3. Admin & configuration (unchanged mechanics)
 
 | Mechanism | Location / notes |
 |-----------|------------------|
-| **Task definitions** | Mongo `admin_scheduled_tasks` — tenant-scoped; no portfolio-bound tasks in UI. |
-| **CRUD + Run now** | `/admin/tasks`, `POST/PATCH/DELETE /api/admin/tasks`, `POST /api/admin/tasks/{id}/run`. |
-| **Execution** | `executeScheduledTask` → `runScheduledCategory` → per-category handler (`task-runner.ts`). |
-| **Category allowlist** | `src/lib/scheduled-task-category-schema.ts` + Kotlin allowlist when BFF enabled — **new categories must be added in both** for parity. |
-| **Pre-defined jobs** | Product can ship **default cron presets** per category (env or seed JSON); admins **enable/disable** and adjust cron — no new surface required beyond extending category list + docs. |
-
-Phase 3 **does not** add a separate “job template” collection unless product later requires it; **pre-defined** means documented defaults + optional seed rows for new tenants.
+| **Task rows** | Mongo `admin_scheduled_tasks` — tenant-scoped; **`/admin/tasks`** only. |
+| **Execution** | `executeScheduledTask` → `runScheduledCategory` → handler (`task-runner.ts`). |
+| **Category allowlist** | Zod **`SCHEDULED_TASK_CATEGORIES`** + Kotlin **`ALLOWED_CATEGORIES`** — **must stay in sync**. |
+| **Default crons** | **`SCHEDULED_TASK_CATEGORY_DEFAULT_CRON`** in `scheduled-task-category-schema.ts` + **this doc** — no extra UI for “templates.” |
+| **Explicitly out of scope** | Separate **job-template** collection — **not** in Phase 3. |
 
 ---
 
-## Shared reusable components (implementation outline)
+## 4. Phase 3a — platform (non-negotiable foundation)
 
-### A. Option chain cache (15-minute TTL)
+**Do this first and keep it tight.** Everything downstream assumes it.
 
-| Aspect | Proposal |
-|--------|----------|
-| **Scope** | In-process LRU + **Mongo** (or Redis if already available for tenant) for multi-instance Cloud Run — **decision in 3a**: start in-process + Mongo `scanner_option_chain_cache` (or namespaced keys in existing cache) so all workers see shared TTL. |
-| **Key** | `{ tenantId?, underlying, expirationYmd, chainFingerprint }` — align with `fetchYahooOptionChainForExpiration` inputs. |
-| **TTL** | 900s (15m), configurable `OPTIONS_CHAIN_CACHE_TTL_SEC`. |
-| **API** | `getCachedOptionChain` / `setCachedOptionChain` — used by options scanner, expiration/roll manager, income projector when it needs legs. |
-| **Invalidation** | Manual via admin only if needed; normal path is TTL expiry. |
+1. **Mongo-backed ~15m option chain cache** with **tenant-safe keys** (shared across instances — same idea as `scanner_option_chain_cache` + TTL env e.g. `OPTIONS_CHAIN_CACHE_TTL_SEC`).
+2. **Circuit breaker** — **per tenant + global** policy, **~15m cooldown**, state visible in **`admin_task_runs.output`** (and structured logs) when open / half-open.
+3. **Wire the existing options scanner** to **cache + breaker immediately** — no duplicate Yahoo fan-out when tasks align; **15m freshness** as the single TTL story.
 
-### B. Circuit breaker (tenant + provider)
-
-| Aspect | Proposal |
-|--------|----------|
-| **Trigger** | Rolling window failure rate (e.g. last N Yahoo calls per tenant) OR consecutive failures ≥ threshold. |
-| **Open state** | Stop new outbound Yahoo requests for **tenantId** (or global if no tenant) for **15 minutes** (align with cache; configurable `SCANNER_CIRCUIT_COOLDOWN_SEC`). |
-| **Half-open** | Probe with single request after cooldown; close on success. |
-| **Storage** | Mongo `scanner_circuit_state` or in-memory + Mongo for multi-instance consistency (prefer Mongo for Cloud Run). |
-| **Output** | `admin_task_runs.output` includes `circuit_open=true` / `suppressed_calls=N`; optional Slack via existing `scheduled-task-slack-notify`. |
-
-### C. Scanner job shell (wrapper)
-
-Shared helper for all **Phase 3 scanners**:
-
-- Resolve **tenant** + **market calendar** (reuse `resolveUsMarketDayContext` where relevant).
-- Acquire **budget** (max symbols, max API calls per run — env).
-- Call **cache** → **Yahoo** on miss → **set cache**.
-- Record **breaker** state; never throw away whole run — partial success summaries (pattern from options scanner).
+**Goal:** Zero duplicate Yahoo storms, reliable freshness, predictable failure mode when upstream is bad.
 
 ---
 
-## Scanner catalog (Phase 3 job specs)
+## 5. Phase 3b — category plumbing (minimal)
 
-Each row links the **design stub**; implementation order is suggested by dependency on **chain cache** and **portfolio data**.
+1. Add **new category strings** to **Zod** schema + **Kotlin** allowlist (parity).
+2. **Stub handlers** in `task-runner.ts`: return **`success` + short delay / no-op summary** until real logic ships (no fake chain data).
+3. **Document default cron presets** only (schema + this doc / `schedule-tasks-admin.md` as needed) — **no new admin UI surface** for templates.
 
-| Job (stub) | Doc | Suggested `category` id (TBD in schema) | Depends on cache / breaker | Notes |
-|------------|-----|----------------------------------------|----------------------------|--------|
-| **Corporate Events & News** | [corporate-events-news-scanner.md](./corporate-events-news-scanner.md) | `corporate_events_scanner` | Breaker (Yahoo quotes/news) | Earnings/ex-div/news; watchlist + holdings only. |
-| **Income & Cash-Flow Projector** | [income-cash-flow-projector.md](./income-cash-flow-projector.md) | `income_cash_flow_projector` | Cache + breaker for option legs | Dividends + premium projection; daily post-market. |
-| **Options Expiration & Roll Manager** | [options-expiration-roll-manager.md](./options-expiration-roll-manager.md) | `options_expiration_roll_manager` | **Heavy** cache + breaker | Close to current options scanner; shares chain fetch. |
-| **Rebalance Scanner** | [rebalance-scanner.md](./rebalance-scanner.md) | `rebalance` (exists — replace stub) | Breaker for quotes | Allocation drift; may use only equity quotes first. |
-| **Risk & Concentration Monitor** | [risk-concentration-montitor.md](./risk-concentration-montitor.md) | `risk_concentration_scanner` | Breaker for quotes | Filename typo **montitor** retained until rename. |
-| **Tax-Loss Harvest Scanner** | [tax-loss-harvest-scanner.md](./tax-loss-harvest-scanner.md) | `tax_loss_harvest_scanner` | Breaker | Taxable accounts + wash-sale rules. |
-
-**Options scanner (existing)** continues to consume cache/breaker first as the reference implementation; **options-expiration-roll-manager** should share the most code with it.
+**That’s all for 3b.** No job-template collection.
 
 ---
 
-## Phased delivery
+## 6. Phase 3c — single vertical (priority order)
 
-| Phase | Deliverable |
-|-------|-------------|
-| **3a — Platform** | Mongo-backed **chain cache** module + **circuit breaker** module + unit tests; wire **options scanner** to both (feature-flagged). |
-| **3b — Categories** | Add new category strings to Zod + Kotlin allowlist; **stub handlers** in `task-runner.ts` (success string + delay) for each new id until logic ships; document default crons. |
-| **3c — Verticals** | Implement scanners in priority order: **expiration/roll** (chain-heavy) → **corporate events** → **risk** → **rebalance** (enhance) → **tax-loss** → **income projector** (most cross-cutting). |
+**Only active product vertical for Phase 3c:**
 
----
+### `options_expiration_roll_manager` (highest immediate value)
 
-## Success criteria (Phase 3 exit)
+- **Inputs:** Shared **chain cache** (3a); tenant positions (options legs).
+- **Flags:** Every position **≤ 7 DTE** or **> 45 DTE** (stale / roll window vs too far — tune constants in code + env).
+- **Ranking:** **3–5 roll candidates** per flagged leg using the **same DTE + portfolio scoring model** as §1–2 (not a separate black box).
+- **Output shape:** Matches **§1** — e.g.  
+  `Roll AAPL 225C to Jun 20 (DTE 73) — Score 91 — better credit + tax deferral.`  
+  (Implement as structured fields + display string; rationale ≤ 3 bullets.)
 
-- [x] Single **chain cache** + **circuit breaker** used by at least **two** job types (options scanner + income projector / roll manager).
-- [ ] **No duplicate Yahoo storm** when hourly tasks align — cache hit rate visible in logs/metrics (operational follow-up).
-- [x] Breaker **opens** under tests — `tests/unit/scanner-circuit-breaker-mongo.test.ts` (mock Mongo); half-open recovery remains optional.
-- [x] New categories **admin-manageable** (list/create/run) with **documented** default schedules (`SCHEDULED_TASK_CATEGORY_DEFAULT_CRON`).
-- [x] Linked stub docs updated with **Phase 3 shipped** lines + pointers to **`task-runner`** / **`phase3-scanner-jobs`**.
+**Cut for now:** Corporate events, income projector, rebalance enhancements, risk/concentration, tax-loss harvest — **not** part of Phase 3c. Revisit when roll + output contract are stable.
 
 ---
 
-## References
+## 7. Success criteria (exit for this revision)
 
-- Admin tasks: [schedule-tasks-admin.md](./schedule-tasks-admin.md)
-- Options Phase 2: [options-scannerp2.md](./options-scannerp2.md)
-- Task runner: `src/modules/core-admin/task-runner.ts`
-- Category schema: `src/lib/scheduled-task-category-schema.ts`
+- [ ] **3a:** Options scanner path uses **cache + breaker**; task output shows **circuit** / **suppressed calls** when relevant; **no thundering herd** on Yahoo for the same underlying|expiry within TTL.
+- [ ] **§1–2:** At least **one** user-facing or admin summary path emits the **one-glance row** + **≤3 bullet** rationale + **0–100** score from the **weighted factors** (roll manager and/or options scanner — specify in PR).
+- [ ] **3b:** Any **new** category id is in **Zod + Kotlin** and has a **stub** until implemented.
+- [ ] **3c:** **`options_expiration_roll_manager`** implements **≤ 7 DTE** and **> 45 DTE** flags, **3–5** ranked roll candidates, output aligned with §1–2.
+
+---
+
+## 8. References
+
+- `src/modules/core-admin/task-runner.ts`
+- `src/lib/scheduled-task-category-schema.ts`
+- `src/modules/scanner/scanner-platform-env.ts`, `scanner-collection-names.ts`
+- Backend: `services/atxfinance-backend/.../AdminScheduledTasksService.kt` (`ALLOWED_CATEGORIES`)

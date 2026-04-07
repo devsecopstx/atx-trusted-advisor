@@ -3,6 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FolderPortfolioIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
+import {
+  PortfolioAlertsInteractive,
+  type PortfolioAlertRowVm
+} from "@/app/portfolio/alerts/portfolio-alerts-interactive";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
@@ -11,19 +15,14 @@ import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import {
-    adminListPortfolioAlerts,
-    getPortfolioByIdForSessionUser,
-    provisionDefaultPortfolioForUser
+  adminListPortfolioAlerts,
+  getPortfolioByIdForSessionUser,
+  listPortfolioAccounts,
+  provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin } from "@/modules/identity/authorization";
 
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
-
-function severityClass(sev: string): string {
-  if (sev === "critical") return "portfolio-alerts-row--critical";
-  if (sev === "warning") return "portfolio-alerts-row--warn";
-  return "portfolio-alerts-row--info";
-}
 
 export default async function PortfolioAlertsPage({
   searchParams
@@ -94,10 +93,40 @@ export default async function PortfolioAlertsPage({
     workspaceError = "Could not load a workspace portfolio. Use Sync from Portfolio or open Portfolio.";
   }
 
-  let alerts: Awaited<ReturnType<typeof adminListPortfolioAlerts>> = [];
+  const portfoliosHubHref =
+    portfolioId && !workspaceError
+      ? `/portfolios?portfolioId=${encodeURIComponent(portfolioId)}`
+      : "/portfolios";
+
+  let alertRows: PortfolioAlertRowVm[] = [];
   if (portfolioId && !workspaceError) {
     try {
-      alerts = await adminListPortfolioAlerts(portfolioId);
+      const loaded = await adminListPortfolioAlerts(portfolioId);
+      const accounts = await listPortfolioAccounts({
+        userId: session.userId,
+        portfolioId,
+        tenantId: session.tenantId
+      });
+      const typeByAccountId: Record<string, string> = {};
+      for (const ac of accounts) {
+        if (ac._id) {
+          typeByAccountId[ac._id.toHexString()] = ac.type;
+        }
+      }
+      alertRows = loaded.map((a) => ({
+        id: a._id!.toHexString(),
+        title: a.title,
+        body: a.body ?? null,
+        severity: a.severity,
+        status: a.status,
+        symbol: a.symbol ?? null,
+        portfolioName: a.portfolioName ?? null,
+        accountId: a.accountId?.toHexString() ?? null,
+        accountName: a.accountName ?? null,
+        accountType: a.accountId ? typeByAccountId[a.accountId.toHexString()] ?? null : null,
+        createdAt: a.createdAt.toISOString(),
+        updatedAt: a.updatedAt.toISOString()
+      }));
     } catch (error) {
       const detail = caughtErrorMessage(error);
       console.error(`[portfolio/alerts] list failed portfolioId=${portfolioId} detail=${detail}`);
@@ -147,42 +176,23 @@ export default async function PortfolioAlertsPage({
           ) : (
             <section className="portfolio-alerts-console surface-card xf-widget section-card">
               <header className="portfolio-alerts-console__head">
+                <div className="portfolio-alerts-console__toolbar">
+                  <Link className="portfolio-alerts-console__back" href={portfoliosHubHref}>
+                    <FolderPortfolioIcon className="crud-icon" aria-hidden />
+                    Portfolios
+                  </Link>
+                </div>
                 <h1 className="portfolio-alerts-console__title">Portfolio alerts</h1>
                 <p className="portfolio-alerts-console__meta">
                   Book: <strong>{portfolioName}</strong>
                 </p>
                 <p className="portfolio-alerts-console__hint status-text">
-                  Price and desk alerts for this portfolio. Admins can create and route alerts from Admin Hub →
-                  portfolio tools.
+                  Live price movements, options scanner signals, and risk <strong>alerts</strong> for this book. These flag{" "}
+                  <strong>actionable</strong> rolls, closes, and income risks in{" "}
+                  <span className="portfolio-alerts-realtime-text">real time</span>.
                 </p>
               </header>
-              {alerts.length === 0 ? (
-                <p className="status-text portfolio-alerts-console__empty">No alerts for this portfolio yet.</p>
-              ) : (
-                <ul className="portfolio-alerts-list">
-                  {alerts.map((a) => (
-                    <li
-                      key={a._id!.toHexString()}
-                      className={`portfolio-alerts-row xf-noise-overlay ${severityClass(a.severity)}`}
-                    >
-                      <div className="portfolio-alerts-row__top">
-                        <span className="portfolio-alerts-row__title">{a.title}</span>
-                        <span className="portfolio-alerts-row__badges">
-                          <span className="portfolio-alerts-badge">{a.severity}</span>
-                          <span className="portfolio-alerts-badge portfolio-alerts-badge--muted">{a.status}</span>
-                          {a.symbol ? (
-                            <span className="portfolio-alerts-badge portfolio-alerts-badge--sym">{a.symbol}</span>
-                          ) : null}
-                        </span>
-                      </div>
-                      {a.body ? <p className="portfolio-alerts-row__body">{a.body}</p> : null}
-                      <p className="portfolio-alerts-row__time">
-                        Updated {a.updatedAt.toLocaleString()} · Created {a.createdAt.toLocaleString()}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <PortfolioAlertsInteractive portfolioId={portfolioId} portfolioName={portfolioName} rows={alertRows} />
             </section>
           )}
         </AppUserCollapsibleRailLayout>

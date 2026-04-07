@@ -24,7 +24,7 @@ Short-form strategy narratives (Markdown + frontmatter) plus links to **executab
 | **Agent skills** | [`.cursor/skills/skill-*/SKILL.md`](../../../../.cursor/skills/skill-wheel-strategy/SKILL.md) (example) | Full playbooks for Cursor — strikes, rolls, assignment, checks. |
 | **This index** | [`options-coreskills.md`](./options-coreskills.md) | Strategy ↔ narrative ↔ **risk** ↔ **outlook** ↔ automation id ↔ Cursor skill. |
 
-**xAI ingest:** `npm run seed:admin:rag-sync` (or `SEED_ADMIN_XAI_RAG_INGEST=1` with `seed:admin`) uploads this tree into the trusted-advisor **`options-strategy`** segment via **`scripts/lib/seed-xai-rag-ingest.mjs`**. Mongo strategy rows: `seed:admin` / `seed:options-strategy-*`. **Doc entry:** [`atx-docs/README.md`](../../../README.md) § *Options (RAG + seed)*.
+**Mongo:** `seed:admin` / `seed:options-strategy-*` sync this tree into **`options_strategy`** (and prefs). **xAI:** `seed:admin` does **not** upload; use **`scripts/lib/seed-xai-rag-ingest.mjs`** only from a custom script if you need the trusted-advisor **`options-strategy`** segment in xAI. **Doc entry:** [`atx-docs/README.md`](../../../README.md) § *Options (RAG + seed)*.
 
 ---
 

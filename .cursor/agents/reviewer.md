@@ -83,6 +83,11 @@ Cross-team implementation plan — use the matching agent files (`.cursor/agents
 - **Phase 3 scanner jobs:** Shipped (app **≥2.9.0**) — categories, `task-runner.ts` executors, Kotlin allowlist parity, template catalog — [atx-docs/design-system/scheduled-task/scanners-phase3-plan.md](../../atx-docs/design-system/scheduled-task/scanners-phase3-plan.md). Not listed as open backlog in [atx-docs/PLAN.md](../../atx-docs/PLAN.md); optional ops follow-up (cache-hit metrics) remains in that plan’s success criteria.
 - **Future (TBD):** app users may create an **options-scanner** (or related) job from an **xChat** prompt — not shipped until explicitly scoped; do not reintroduce per-portfolio `/admin/portfolios/.../tasks` without product sign-off.
 
+## Mongo seed & CLI scripts (review gate)
+
+- **Single effective DB:** New or changed scripts that open Mongo must use **`resolveSeedDbName()`** + **`resolveMongoUri()`** from **`scripts/lib/resolve-mongo-uri.mjs`** (same resolution order as Next **`getDb()`** / **`resolveEffectiveMongoDatabaseName`**). TS disk→Mongo syncs must use **`resolveSyncTargetMongoDatabaseName()`** from **`scripts/lib/sync-target-mongo-db.ts`** (honours **`SEED_PARENT_MONGODB_DB_NAME`** when spawned from **`seed:admin`**). Block hard-coded **`client.db("atxfinance")`** (or any fixed name) unless the script documents an intentional override.
+- **Regression test:** **`tests/unit/resolve-seed-db-name.test.ts`** covers URI-path vs env precedence; extend if resolution rules change.
+
 ## Parallel worktree
 
 - Hint: `/worktrees/reviewer` — see `.cursor/worktrees.json`.

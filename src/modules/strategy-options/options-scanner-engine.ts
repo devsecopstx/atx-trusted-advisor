@@ -1,5 +1,11 @@
 import { ObjectId } from "mongodb";
 
+import {
+  DEFAULT_OPTION_SCANNER_THRESHOLDS,
+  thresholdsAppliedRecord,
+  type OptionScannerRuleThresholds
+} from "@/lib/option-scanner-thresholds";
+import { buildOptionsScannerAlertMetadata } from "@/lib/portfolio-alert-scan-metadata";
 import { getDb } from "@/lib/mongodb";
 import { chatWithXai } from "@/lib/xai";
 import {
@@ -21,11 +27,12 @@ import {
     buildCompactOccOptionSymbol,
     contractKeyForTarget
 } from "@/modules/strategy-options/options-scanner-targets";
+import {
+  defaultOptionScannerPortfolioContext,
+  loadOptionScannerPortfolioContexts
+} from "@/modules/strategy-options/options-scanner-portfolio-context";
 
 const REC_COLL = "portfolio_recommendations";
-
-const MIN_OI_WARN = 25;
-const MIN_VOL_WARN = 5;
 
 export type CloseKind = "BUY_TO_CLOSE" | "SELL_TO_CLOSE";
 
@@ -164,17 +171,21 @@ export type RuleDecision = {
  * Long: mark vs premium paid. Short: credit vs mark (profit when mark falls vs credit).
  * High-IV short puts: tighter loss cut (conservative).
  */
-export function decideOptionActionFromRules(input: {
-  dte: number;
-  mark: number;
-  avgCost: number;
-  openInterest: number;
-  volume: number;
-  side: OptionSide;
-  impliedVolPercent: number;
-  optionType: PositionOptionType;
-}): RuleDecision {
+export function decideOptionActionFromRules(
+  input: {
+    dte: number;
+    mark: number;
+    avgCost: number;
+    openInterest: number;
+    volume: number;
+    side: OptionSide;
+    impliedVolPercent: number;
+    optionType: PositionOptionType;
+  },
+  thresholds: OptionScannerRuleThresholds = DEFAULT_OPTION_SCANNER_THRESHOLDS
+): RuleDecision {
   const { dte, mark, avgCost, openInterest, volume, side, impliedVolPercent, optionType } = input;
+  const t = thresholds;
   let pnlPct: number | null = null;
   if (avgCost > 0.0001) {
     if (side === "long") {
@@ -184,9 +195,10 @@ export function decideOptionActionFromRules(input: {
     }
   }
 
-  const shortPutHighIv = side === "short" && optionType === "put" && impliedVolPercent >= 70;
-  const lossCut = shortPutHighIv ? -40 : -55;
-  const profitTake = shortPutHighIv ? 70 : 85;
+  const shortPutHighIv =
+    side === "short" && optionType === "put" && impliedVolPercent >= t.shortPutHighIvIvMinPct;
+  const lossCut = shortPutHighIv ? t.shortPutHighIvLossCutPct : t.lossCutPctDefault;
+  const profitTake = shortPutHighIv ? t.shortPutHighIvProfitTakePct : t.profitTakePctDefault;
 
   if (dte <= 0) {
     return {
@@ -197,7 +209,7 @@ export function decideOptionActionFromRules(input: {
       pnlPct
     };
   }
-  if (dte <= 3) {
+  if (dte <= t.veryShortDteDays) {
     return {
       action: "sell",
       rationale: "Very short DTE; theta and pin risk dominate — consider closing or rolling.",
@@ -226,7 +238,7 @@ export function decideOptionActionFromRules(input: {
       pnlPct
     };
   }
-  if (openInterest < MIN_OI_WARN && volume < MIN_VOL_WARN) {
+  if (openInterest < t.minOpenInterestWarn && volume < t.minVolumeWarn) {
     return {
       action: "hold",
       rationale: `Thin OI (${openInterest}) and volume (${volume}) — liquidity risk; size exits carefully.`,
@@ -235,7 +247,11 @@ export function decideOptionActionFromRules(input: {
       pnlPct
     };
   }
-  if (dte <= 7 && pnlPct !== null && pnlPct > 35) {
+  if (
+    dte <= t.shortDteGammaWatchDays &&
+    pnlPct !== null &&
+    pnlPct > t.shortDteGammaWatchPnlPctMin
+  ) {
     return {
       action: "hold",
       rationale: "Short dated with solid P/L — watch assignment / gamma into expiry.",
@@ -470,6 +486,9 @@ export async function processOptionRecommendationsPass(input: {
     return true;
   });
 
+  const portfolioIdsHex = [...new Set(valid.map((x) => x.portfolioId.toHexString()))];
+  const ctxByPortfolio = await loadOptionScannerPortfolioContexts(portfolioIdsHex);
+
   for (const t of valid) {
     if (t.source === "position") {
       result.fromPositions += 1;
@@ -552,7 +571,9 @@ export async function processOptionRecommendationsPass(input: {
         }
       }
       const avgCost = tgt.avgCost;
-      const fp = `${displayExp}:${strike}:${ot}:${side}:${tgt.source}`;
+      const fp = tgt.accountId
+        ? `${displayExp}:${strike}:${ot}:${side}:${tgt.source}:acct:${tgt.accountId.toHexString()}`
+        : `${displayExp}:${strike}:${ot}:${side}:${tgt.source}`;
       const dte = daysToExpirationFromYmd(displayExp);
       const iv = contract.implied_volatility;
 
@@ -687,7 +708,9 @@ export async function processOptionRecommendationsPass(input: {
           title,
           body,
           severity: "warning",
-          symbol: underlying.slice(0, 32)
+          symbol: underlying.slice(0, 32),
+          accountId: tgt.accountId?.toHexString(),
+          accountContext: tgt.source === "watchlist" ? "watchlist" : "position"
         });
         if (al) {
           result.alertsCreated += 1;

@@ -185,7 +185,7 @@ When **positioning, GTM, waitlist, investor deck copy**, or
 
 ### RAG collection sources (`atx-rag-collection/`)
 
-**Scope:** In-repo **source artifacts** for **app RAG / xPersona KB** and optional xAI upload via **`npm run seed:admin:rag-sync`** / **`SEED_ADMIN_XAI_RAG_INGEST=1`** — **not** Cursor subagent definitions (those stay in **`.cursor/agents/*.md`** only).
+**Scope:** In-repo **source artifacts** for **app RAG / xPersona KB** (Mongo via **`seed:admin`**); xAI team upload is **not** wired to seed — **not** Cursor subagent definitions (those stay in **`.cursor/agents/*.md`** only).
 
 When adding or reorganizing content under **`atx-rag-collection/`**:
 

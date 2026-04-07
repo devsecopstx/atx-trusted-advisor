@@ -11,6 +11,7 @@ declare module "*persona-xapi-tools.mjs" {
 
 declare module "*resolve-mongo-uri.mjs" {
   export function resolveMongoUri(): string;
+  export function resolveSeedDbName(): string;
   export function resolveAdminSeedDbName(): string;
 }
 

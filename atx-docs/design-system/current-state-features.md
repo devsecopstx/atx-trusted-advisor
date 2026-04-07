@@ -1,7 +1,7 @@
 # xFinance monorepo — current state (stack, features, docs & test gaps)
 
 Last updated: 2026-04-07  
-App semver (canonical): root **`package.json`** (currently **3.3.4**; runtime label via `src/lib/app-version.ts` reads the same semver).
+App semver (canonical): root **`package.json`** (currently **3.3.8**; runtime label via `src/lib/app-version.ts` reads the same semver).
 
 This page is the **single entry** for “what ships today” across **Next.js (core product)** and **Kotlin/Spring (`atxfinance-backend`)**. Deep dives stay in linked docs; **outstanding work only** lives in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change, and **this doc** (or `PLAN.md`) when the shipped stack or consolidated gaps move.
 
@@ -13,7 +13,7 @@ Before approving a **production** release, the **reviewer / operator** checklist
 
 | # | Gate |
 |---|------|
-| **0** | **Version:** Root `package.json` / lockfile `packages[""].version` / `APP_VERSION` match the intended tag (e.g. **v3.3.4**). |
+| **0** | **Version:** Root `package.json` / lockfile `packages[""].version` / `APP_VERSION` match the intended tag (e.g. **v3.3.8**). |
 | **1** | **`npm run ci:gate`** green on the release ref: lint, typecheck, **`docs:links`** on all **`atx-docs/**/*.md`**, Vitest (unit + integration), OpenAPI parity (`tests/integration/openapi-*.test.ts`). |
 | **2** | **`NODE_ENV=production npm run build`** succeeds (Next compile + static generation). |
 | **3** | If **`services/atxfinance-backend/**` changed:** **`./gradlew test`** (from `services/atxfinance-backend`) green — do not ship prod with only Next green. |
@@ -75,7 +75,7 @@ Path prefixes for the shared product chrome are defined in **`APP_USER_PRODUCT_P
 **Representative capabilities (non-exhaustive — see `api-endpoints.md`):**
 
 - **xChat** — `POST /api/xchat/ask`, personas, plan limits; xAI-backed; history in Mongo (`xchat_logs` per product rules).
-- **Portfolio / accounts / holdings** — app_user and admin paths; workspace portfolio cookie; Merrill/Fidelity CSV import + **`/import-activity`** (broker ref **last-four** display; per-account **Use for import** toggles for mapping; user-facing copy in **`import-activity-copy.ts`**).
+- **Portfolio / accounts / holdings** — app_user and admin paths; workspace portfolio cookie; **`/portfolio/accounts/[id]`** Edit Account: consolidated holdings table (Last / Day Δ / Value / % acct / Qty / Avg cost) + add/remove lots — see **[`portfolio-edit-account-consolidated-holdings.md`](./portfolio-edit-account-consolidated-holdings.md)**. Merrill/Fidelity CSV import + **`/import-activity`** (broker ref **last-four** display; per-account **Use for import** toggles; copy in **`import-activity-copy.ts`**).
 - **Watchlist** — user-scoped store, quotes, optional chain glance; desk columns / IV-OI highlights (see release notes **3.1.x**). **Price alerts** (Next-side scanner thresholds + cooldown): `src/modules/watchlist/price-alert-service.ts`; roadmap context in **`PLAN.md`** (**240n** shipped).
 - **xOptions** — strategy builder UI (step 4 **Choose contract**: heatmapped Vol/OI, Mid + spread hint, ATM pill, mobile Greeks toggle); strategy-options APIs (Yahoo + optional BFF to Spring).
 - **xCoach** — learning surface (route present; detail in app).

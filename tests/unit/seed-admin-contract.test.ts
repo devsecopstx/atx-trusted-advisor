@@ -23,9 +23,10 @@ describe("seed-admin-user.mjs contract", () => {
     expect(src).toContain("atx-docs/rag-collection/xpersonas");
   });
 
-  it("xAI team RAG upload is opt-in (SEED_ADMIN_XAI_RAG_INGEST), not default seed:admin behavior", () => {
-    expect(src).toContain("function shouldRunSeedXaiRagIngest()");
-    expect(src).toContain("SEED_ADMIN_XAI_RAG_INGEST");
-    expect(src).toContain("didRunXaiRagIngest");
+  it("seed:admin never invokes xAI team RAG upload or SEED_ADMIN_XAI_RAG_INGEST", () => {
+    expect(src).not.toContain("SEED_ADMIN_XAI_RAG_INGEST");
+    expect(src).not.toContain("seed-admin-rag-sync");
+    expect(src).not.toContain("shouldRunSeedXaiRagIngest");
+    expect(src).toContain("does not upload files or create collections");
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.3.7",
+  "version": "3.3.10",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -31,11 +31,9 @@
     "seed:admin": "node --env-file=.env scripts/seed-admin-user.mjs",
     "seed:admin:full": "npm run seed:admin",
     "seed:admin:db": "node --env-file=.env scripts/seed-admin-db.mjs",
-    "seed:admin:rag-sync": "node --env-file=.env scripts/seed-admin-rag-sync.mjs",
     "seed:admin:stage": "node --env-file=.env.stage scripts/seed-admin-user.mjs",
     "seed:admin:full:stage": "npm run seed:admin:stage",
     "seed:admin:db:stage": "node --env-file=.env.stage scripts/seed-admin-db.mjs",
-    "seed:admin:rag-sync:stage": "node --env-file=.env.stage scripts/seed-admin-rag-sync.mjs",
     "seed:xpersonas": "node --env-file=.env --import tsx scripts/sync-xpersonas-from-yaml.ts",
     "seed:options-strategy-prefs": "node --env-file=.env --import tsx scripts/sync-options-strategy-preferences-from-disk.ts",
     "seed:options-strategy": "node --env-file=.env --import tsx scripts/sync-options-strategy-from-disk.ts",

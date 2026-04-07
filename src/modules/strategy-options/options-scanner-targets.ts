@@ -232,30 +232,54 @@ export function positionsToOptionScanTargets(positions: Position[]): OptionScanT
   return out;
 }
 
-/** Contract key for alerts / dedup (no portfolio — added per portfolio when persisting). */
+/**
+ * Contract key for alerts / dismiss / dedupe. Includes custodian account when the target is a
+ * position row so the same OCC line in two accounts does not collapse alerts.
+ */
 export function contractKeyForTarget(t: OptionScanTarget): string {
-  return `${t.underlying}|${t.expYmd}|${t.strike}|${t.optionType}`;
+  const base = `${t.underlying}|${t.expYmd}|${t.strike}|${t.optionType}`;
+  if (t.accountId) {
+    return `${base}|acct:${t.accountId.toHexString()}`;
+  }
+  return base;
+}
+
+function nakedContractKey(
+  portfolioId: ObjectId,
+  t: Pick<OptionScanTarget, "underlying" | "expYmd" | "strike" | "optionType">
+): string {
+  return `${portfolioId.toHexString()}:${t.underlying}|${t.expYmd}|${t.strike}|${t.optionType}`;
+}
+
+function positionMergeKey(portfolioId: ObjectId, t: OptionScanTarget): string {
+  const n = nakedContractKey(portfolioId, t);
+  return t.accountId ? `${n}|acct:${t.accountId.toHexString()}` : n;
 }
 
 /**
- * Merge position + watchlist targets; same contract on same portfolio keeps position row.
+ * Merge position + watchlist targets. Positions are keyed by portfolio + contract + account
+ * (when `accountId` is set) so duplicate contracts across accounts are all scanned. Watchlist
+ * rows are skipped when any position exists for the same naked contract (position wins).
  */
 export function mergeOptionScanTargets(
   positions: OptionScanTarget[],
   watch: OptionScanTarget[]
 ): OptionScanTarget[] {
-  const byPortfolioContract = new Map<string, OptionScanTarget>();
-  const contractKey = (portfolioId: ObjectId, t: Omit<OptionScanTarget, "dedupKey"> & { underlying: string }) =>
-    `${portfolioId.toHexString()}:${t.underlying}|${t.expYmd}|${t.strike}|${t.optionType}`;
+  const byKey = new Map<string, OptionScanTarget>();
+  const nakedHasPosition = new Set<string>();
 
   for (const t of positions) {
-    byPortfolioContract.set(contractKey(t.portfolioId, t), t);
+    byKey.set(positionMergeKey(t.portfolioId, t), t);
+    nakedHasPosition.add(nakedContractKey(t.portfolioId, t));
   }
   for (const w of watch) {
-    const k = contractKey(w.portfolioId, w);
-    if (!byPortfolioContract.has(k)) {
-      byPortfolioContract.set(k, w);
+    const n = nakedContractKey(w.portfolioId, w);
+    if (nakedHasPosition.has(n)) {
+      continue;
+    }
+    if (!byKey.has(n)) {
+      byKey.set(n, w);
     }
   }
-  return Array.from(byPortfolioContract.values());
+  return Array.from(byKey.values());
 }

@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /**
- * Post-seed verification for trusted-advisor RAG collections.
+ * Optional verification for trusted-advisor RAG collections (xAI management API).
  *
- * Validates:
- * 1) Root + segment collections from latest admin.log seed summary exist.
- * 2) Each collection has at least the expected linked-document count.
+ * Reads the latest `admin.log` JSON line with `ragIngest` (counts are zero after `seed:admin` unless you populated KB elsewhere).
+ * Validates root + segment collections exist and linked-document counts meet expectations when summaries are non-empty.
  *
  * Exit 0 when verification passes or is explicitly skipped.
  * Exit 1 on missing collections/doc links or API failures.

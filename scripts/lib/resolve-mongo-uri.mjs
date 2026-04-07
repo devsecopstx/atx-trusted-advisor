@@ -7,16 +7,14 @@ import { fileURLToPath } from "node:url";
  * Aligned with `getMongoUri()` in `src/lib/env.ts`: `MONGODB_URI` may be plain or base64;
  * legacy `MONGODB_URI_B64` is still read when `MONGODB_URI` is unset.
  *
- * Admin seed (`seed-admin-user.mjs`) uses {@link resolveAdminSeedDbName}: same DB as runtime by default.
- * Optional version suffixing is opt-in via `ADMIN_SEED_DB_VERSION_SUFFIX=on|true|1|yes|versioned`,
- * using `-<app-version-token>` from `ADMIN_SEED_APP_VERSION`, `npm_package_version`, or repo `package.json`.
+ * Admin seed (`seed-admin-user.mjs`) uses {@link resolveAdminSeedDbName}: same DB as Next `getDb()` by default
+ * (`resolveSeedDbName` mirrors `resolveEffectiveMongoDatabaseName`: **`MONGODB_DB_NAME`**, else DB path segment in
+ * **`MONGODB_URI`**, else **`atxfinance`**). Optional version suffix is opt-in via `ADMIN_SEED_DB_VERSION_SUFFIX`.
  *
- * **Next.js `getDb()`** uses `resolveDefaultMongoDatabaseName()` in `src/lib/env.ts` (no version suffix). Standalone
- * TS disk→Mongo sync scripts use that default; `seed:admin` post-steps set **`SEED_PARENT_MONGODB_DB_NAME`** to this
- * admin DB so child processes match the main seed transaction — see `scripts/lib/sync-target-mongo-db.ts`.
+ * **`seed:admin` post-steps** set **`SEED_PARENT_MONGODB_DB_NAME`** to that admin DB so TS children match — see
+ * `scripts/lib/sync-target-mongo-db.ts`.
  *
- * When `MONGODB_DB_NAME` is unset, default base is `atxfinance` (local fallback URI only). **`ATX_DEPLOY_TARGET`**
- * does not append `-stage` / `-prod` to the DB name — use one **`MONGODB_URI`** with the DB in the path for stage/prod.
+ * **`ATX_DEPLOY_TARGET`** does not change the DB name — use **`MONGODB_URI`** (and optional **`MONGODB_DB_NAME`**) consistently.
  */
 const DEFAULT_DB_BASE = "atxfinance";
 
@@ -45,10 +43,45 @@ export function parseMongoConnectionString(raw) {
   return decoded;
 }
 
+/**
+ * Same resolution order as `resolveEffectiveMongoDatabaseName` in `src/lib/env.ts` so seed/migrations
+ * use the same DB as Next `getDb()` when `MONGODB_URI` carries the database in the path.
+ */
+export function extractMongoDatabaseNameFromConnectionString(uri) {
+  const s = String(uri ?? "").trim();
+  if (!s.startsWith("mongodb://") && !s.startsWith("mongodb+srv://")) {
+    return undefined;
+  }
+  try {
+    const httpish = s.replace(/^mongodb\+srv:/i, "http:").replace(/^mongodb:/i, "http:");
+    const u = new URL(httpish);
+    const path = u.pathname.replace(/^\//, "").trim();
+    const segment = path.split("/")[0]?.trim();
+    if (!segment) {
+      return undefined;
+    }
+    return decodeURIComponent(segment);
+  } catch {
+    return undefined;
+  }
+}
+
 export function resolveSeedDbName() {
   const explicit = process.env.MONGODB_DB_NAME?.trim();
   if (explicit) {
     return explicit;
+  }
+  const raw = process.env.MONGODB_URI?.trim() || process.env.MONGODB_URI_B64?.trim();
+  if (raw) {
+    try {
+      const parsed = parseMongoConnectionString(raw);
+      const fromUri = extractMongoDatabaseNameFromConnectionString(parsed);
+      if (fromUri) {
+        return fromUri;
+      }
+    } catch {
+      /* invalid URI in env — fall through to default */
+    }
   }
   return DEFAULT_DB_BASE;
 }

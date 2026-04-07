@@ -52,6 +52,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Shipped stack, features, CI
 
 ### Open UX work
 
+- **Edit Account → scanner alerts** — Consolidated holdings table (app **3.3.8+**) exposes **Avg cost** vs **Last** (underlying). **Next:** wire “set alert” / options-scanner thresholds to `price-alert-service` (or scheduled scanner config) using those fields; add **option mark** quotes when chain API is available per `yahooRef`. Plan: [portfolio-edit-account-consolidated-holdings.md](./design-system/portfolio-edit-account-consolidated-holdings.md).
 - **Wheel strategy visual** — Subtle, accessible motion for the wheel / income-cycle story on marketing and in-product surfaces (e.g. pitch hero motif, optional branded flow diagram). Respect `prefers-reduced-motion`; keep loops slow and non-distracting.
 - **Onboarding workflows** — Stagger or transition steps in admin xPersona onboarding and related core-admin flows (directory load, filter changes, empty states) so progress feels guided without hurting scan speed for operators.
 

@@ -1919,6 +1919,7 @@ type PortfolioScopedWriteContext = {
   userId: string;
   tenantId?: string;
   portfolioOid: ObjectId;
+  portfolioName?: string;
 };
 
 async function portfolioScopedWriteContext(portfolioId: string): Promise<PortfolioScopedWriteContext | null> {
@@ -1926,10 +1927,12 @@ async function portfolioScopedWriteContext(portfolioId: string): Promise<Portfol
   if (!p?._id) {
     return null;
   }
+  const name = p.name?.trim();
   return {
     userId: portfolioOwnerUserIdString(p.userId),
     tenantId: portfolioTenantIdString(p),
-    portfolioOid: p._id
+    portfolioOid: p._id,
+    portfolioName: name ? name.slice(0, 120) : undefined
   };
 }
 
@@ -1960,17 +1963,45 @@ export async function adminCreatePortfolioAlert(input: {
   severity: PortfolioAlert["severity"];
   status?: PortfolioAlert["status"];
   symbol?: string;
+  /** Hex; must belong to this portfolio. Resolved to `accountName` snapshot. */
+  accountId?: string;
+  /**
+   * When there is no custodian account (e.g. watchlist-only scan row), UI can show this label.
+   * Options scanner passes `watchlist` | `position`.
+   */
+  accountContext?: "watchlist" | "position";
 }): Promise<PortfolioAlert | null> {
   await ensurePortfolioIndexes();
   const ctx = await portfolioScopedWriteContext(input.portfolioId);
   if (!ctx) {
     return null;
   }
+  let accountOid: ObjectId | undefined;
+  let accountName: string | undefined;
+  const accHex = input.accountId?.trim();
+  if (accHex && ObjectId.isValid(accHex)) {
+    const acct = await getPortfolioAccountByIdForSessionUser({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      accountId: accHex
+    });
+    if (acct?._id && acct.portfolioId.equals(ctx.portfolioOid)) {
+      accountOid = acct._id;
+      const n = acct.name?.trim();
+      accountName = n ? n.slice(0, 120) : undefined;
+    }
+  } else if (input.accountContext === "watchlist") {
+    accountName = "Watchlist";
+  }
+
   const now = new Date();
   const doc: PortfolioAlert = {
     tenantId: toTenantObjectId(ctx.tenantId),
     userId: ctx.userId,
     portfolioId: ctx.portfolioOid,
+    portfolioName: ctx.portfolioName,
+    accountId: accountOid,
+    accountName,
     title: input.title.trim().slice(0, 200),
     body: input.body?.trim() ? input.body.trim().slice(0, 4000) : undefined,
     severity: input.severity,
@@ -2100,6 +2131,26 @@ export async function adminDeletePortfolioAlert(portfolioId: string, alertId: st
     )
   );
   return (res.deletedCount ?? 0) > 0;
+}
+
+/** App-user / admin: remove every alert for the portfolio owner row (tenant + user scoped). */
+export async function deleteAllPortfolioAlertsForPortfolio(portfolioId: string): Promise<number> {
+  await ensurePortfolioIndexes();
+  const ctx = await portfolioScopedWriteContext(portfolioId);
+  if (!ctx) {
+    return 0;
+  }
+  const db = await getDb();
+  const res = await db.collection<PortfolioAlert>(collections.portfolioAlerts).deleteMany(
+    strictWriteTenantFilter(
+      {
+        ...userIdQuery(ctx.userId),
+        portfolioId: ctx.portfolioOid
+      },
+      ctx.tenantId
+    )
+  );
+  return res.deletedCount ?? 0;
 }
 
 export async function adminListPortfolioDeliveryChannels(portfolioId: string): Promise<PortfolioDeliveryChannel[]> {
@@ -2590,12 +2641,15 @@ export async function adminDeleteOptionsStrategy(id: string): Promise<boolean> {
   return (res.deletedCount ?? 0) > 0;
 }
 
-export async function getAllWatchlists(): Promise<Watchlist[]> {
+/**
+ * Watchlists for tenant-scoped jobs (`watchlist_price_scanner`, etc.).
+ * When `tenantId` is set, matches {@link executePriceScannerJob} / holdings scope (strict `tenantId`).
+ * Omit `tenantId` only for degenerate / test runs (full collection read).
+ */
+export async function listWatchlistsForTenantScope(tenantId?: ObjectId): Promise<Watchlist[]> {
   const db = await getDb();
-  return db
-    .collection<Watchlist>(collections.watchlists)
-    .find({})
-    .toArray();
+  const filter = tenantId ? { tenantId } : {};
+  return db.collection<Watchlist>(collections.watchlists).find(filter).toArray();
 }
 
 export async function updateWatchlistSymbolPrices(

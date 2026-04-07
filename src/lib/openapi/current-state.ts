@@ -657,7 +657,10 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   },
   {
     path: "/api/portfolios/{portfolioId}/alerts",
-    operations: [{ method: "GET", auth: "session" }],
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "DELETE", auth: "session" }
+    ],
     tag: "portfolios"
   },
   {

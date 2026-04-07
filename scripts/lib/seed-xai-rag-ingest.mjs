@@ -1,6 +1,6 @@
 /**
- * Admin seed helpers: upload repo RAG trees to xAI (files API + management link).
- * Used by scripts/seed-admin-user.mjs when XAI_API_KEY + XAI_MANAGEMENT_API_KEY + team id exist.
+ * Library: upload repo RAG trees to xAI (files API + management link).
+ * Not invoked by `npm run seed:admin` — use from custom ops or one-off scripts when team KB must be populated.
  */
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
@@ -251,7 +251,7 @@ function dedupeIds(ids) {
 /**
  * Creates team-scoped xAI collections `atx-trusted-advisor-<dev|stage|prod>` plus segment buckets and uploads
  * `atx-rag-collection/{finance-reference-docs,xpersonas,example-prompts,options-strategy}` (legacy folder names still resolved as fallbacks).
- * Invoked by **`npm run seed:admin:rag-sync`** or by **`npm run seed:admin`** only when **`SEED_ADMIN_XAI_RAG_INGEST=1`** — not default bootstrap.
+ * Call explicitly when you need team KB sync — **not** part of `seed:admin`.
  *
  * @param {{
  *   repoRoot: string;

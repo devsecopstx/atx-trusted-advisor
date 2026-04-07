@@ -452,6 +452,11 @@ export type PortfolioAlert = {
   tenantId?: ObjectId;
   userId: string;
   portfolioId: ObjectId;
+  /** Snapshot of portfolio name at create time (user-facing tables). */
+  portfolioName?: string;
+  /** Custodian account when the alert ties to a holding row (e.g. options scanner). */
+  accountId?: ObjectId;
+  accountName?: string;
   title: string;
   body?: string;
   severity: "info" | "warning" | "critical";

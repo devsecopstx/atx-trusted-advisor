@@ -40,34 +40,31 @@ This starts Mongo + backend first, then frontend.
 For each new instance, run:
 
 - `npm run seed:admin` (default full bootstrap; same as `npm run seed:admin:full`)
-- `npm run seed:admin:db` (DB-only onboarding: forces no xAI RAG upload + skips post-seed xAI verify network checks)
+- `npm run seed:admin:db` (DB-only onboarding: skips post-seed xAI hello/RAG verify network checks by default)
 
 What it does:
 
 - upserts admin + tenant bootstrap; sets **`core_users.subscriptionPlan`** to **`basic`** for `ADMIN_SEED_EMAIL` (each run normalizes that row)
 - inserts an approved bootstrap **`admin_access_requests`** row with **`requestedPlan: basic`** when none exists for that user + `global_admin`
 - runs xPersona sync from `atx-docs/rag-collection/xpersonas` (legacy `atx-rag-collection/xpersonas` still supported) unless `SKIP_SEED_XPERSONAS=1`; default global-admin persona is **Advisor** (`nameNormalized` **`advisor`**, canonical spec `advisor/advisor.yaml` in that tree; legacy DBs may still have **`super-agent`**)
-- does **not** upload finance-ref / example-prompts / segment files to xAI team collections by default — use `npm run seed:admin:rag-sync` or `SEED_ADMIN_XAI_RAG_INGEST=1 npm run seed:admin` when you want that
-- runs strict xAI seeded RAG collection verification only when RAG ingest ran in the same `seed:admin` invocation; otherwise skip (or run `npm run verify:xai-seed-rag` after `seed:admin:rag-sync`). Override with `SKIP_XAI_POST_SEED_RAG_VERIFY=1` when ingest ran
+- does **not** upload finance-ref / example-prompts / segment files to xAI team collections or create team KB folders — disk trees are **Mongo-only** (xPersonas, options strategy). Populate xAI collections separately if your deployment needs `file_search` grounding.
+- skips xAI seeded RAG collection verification after seed (nothing uploaded). Run `npm run verify:xai-seed-rag` only after team KB exists; override with `SKIP_XAI_POST_SEED_RAG_VERIFY=1` to skip that script when invoked manually.
 - runs xAI hello verification unless `SKIP_XAI_POST_SEED_VERIFY=1`
 
 `seed:admin:db` keeps Mongo onboarding behavior (admin user, approved access request, default account/watchlist, xPersona load, Advisor assignment) and forces:
 
-- `SKIP_SEED_XAI_RAG_INGEST=1` (and clears `SEED_ADMIN_XAI_RAG_INGEST`)
 - `SKIP_XAI_POST_SEED_RAG_VERIFY=1`
 - `SKIP_XAI_POST_SEED_VERIFY=1`
 
-## 4) Run persona and RAG sync explicitly (optional)
+## 4) Run persona / strategy disk sync explicitly (optional)
 
 Use these when you need targeted re-sync without full bootstrap:
 
 - xPersonas only: `npm run seed:xpersonas`
 - options strategy preferences: `npm run seed:options-strategy-prefs`
-- seeded RAG collections verification only: `npm run verify:xai-seed-rag`
+- xAI team KB verification (after KB exists in xAI): `npm run verify:xai-seed-rag`
 
-RAG upload path used by `seed:admin:rag-sync` (or `SEED_ADMIN_XAI_RAG_INGEST=1` with `seed:admin`):
-
-- `atx-docs/rag-collection/*` (legacy `atx-rag-collection/*` still resolved) via `scripts/lib/seed-xai-rag-ingest.mjs`
+Team KB upload (if you maintain it): `scripts/lib/seed-xai-rag-ingest.mjs` (`runSeedXaiRagIngest`) can be called from a **custom** script — not from `seed:admin`. Source trees: `atx-docs/rag-collection/*` (legacy `atx-rag-collection/*` still resolved in that library).
 
 ## 5) Smoke checks
 

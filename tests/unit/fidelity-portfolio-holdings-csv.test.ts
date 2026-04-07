@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    detectFidelityPortfolioHoldingsCsv,
-    parseFidelityPortfolioHoldingsCsv
-} from "@/modules/portfolio-import/fidelity-holdings-csv";
-import {
     estimatedBalanceAfterHoldingsImportUsd,
     parseBrokerHoldingsAccounts,
     previewBrokerHoldingsAccounts
 } from "@/modules/portfolio-import/broker-holdings-import";
+import {
+    detectFidelityPortfolioHoldingsCsv,
+    parseFidelityPortfolioHoldingsCsv
+} from "@/modules/portfolio-import/fidelity-holdings-csv";
 
 const SAMPLE = `
 Account Number,Account Name,Symbol,Description,Quantity,Last Price,Last Price Change,Current Value,Today's Gain/Loss Dollar,Today's Gain/Loss Percent,Total Gain/Loss Dollar,Total Gain/Loss Percent,Percent Of Account,Cost Basis Total,Average Cost Basis,Type
@@ -58,5 +58,21 @@ describe("fidelity-portfolio-holdings-csv", () => {
     expect(byRef.get("Z06276930")?.positions.find((p) => p.type === "cash" && p.ticker === "CORE")?.purchasePrice).toBe(
       123.07
     );
+  });
+
+  it("dry-run estimated balance sums CSV Current Value per account (parseBrokerHoldingsAccounts + preview)", () => {
+    const asOf = new Date("2026-04-03T12:00:00Z");
+    const { accounts, parseError } = parseBrokerHoldingsAccounts("fidelity", SAMPLE, "", {
+      fidelityPortfolioAsOf: asOf
+    });
+    expect(parseError).toBeUndefined();
+    const previews = previewBrokerHoldingsAccounts(accounts);
+    const bal = (ref: string) => previews.find((p) => p.accountRef === ref)?.estimatedBalanceUsd;
+    expect(bal("X65430196")).toBeCloseTo(105.46 + 14595, 2);
+    expect(bal("221238941")).toBeCloseTo(10562.07 + 4798 + 180655.59, 2);
+    expect(bal("269138837")).toBeCloseTo(2630.75 + 973, 2);
+    expect(bal("Z06276930")).toBeCloseTo(123.07, 2);
+    const x = accounts.find((a) => a.accountRef === "X65430196")?.positions ?? [];
+    expect(estimatedBalanceAfterHoldingsImportUsd(x)).toBeCloseTo(105.46 + 14595, 2);
   });
 });

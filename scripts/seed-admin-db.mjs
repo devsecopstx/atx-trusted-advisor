@@ -9,8 +9,8 @@
  * - xPersona sync from disk -> Mongo (`atx-docs/rag-collection/xpersonas`, advisor `advisor`)
  * - admin_user_settings.assignedPersonaId -> advisor after sync
  *
- * Intentionally disables xAI RAG upload and optional post-seed xAI verifies (`npm run seed:admin` no longer
- * uploads to team xAI collections by default — this wrapper still forces skip for CI/db-only clarity).
+ * Skips post-seed xAI network checks (`verify-xai-hello` / `verify-xai-seed-rag`) unless you unset the SKIP_* flags.
+ * `seed:admin` never uploads to xAI team collections; this wrapper is for CI / headless clarity.
  */
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -22,15 +22,13 @@ const seedScript = join(SCRIPT_DIR, "seed-admin-user.mjs");
 
 const mergedEnv = {
   ...process.env,
-  SKIP_SEED_XAI_RAG_INGEST: "1",
-  SEED_ADMIN_XAI_RAG_INGEST: "",
   SKIP_XAI_POST_SEED_RAG_VERIFY: process.env.SKIP_XAI_POST_SEED_RAG_VERIFY || "1",
   SKIP_XAI_POST_SEED_VERIFY: process.env.SKIP_XAI_POST_SEED_VERIFY || "1"
 };
 
 console.log(
-  "[seed:admin:db] DB-only mode (no xAI team RAG upload; post-seed xAI verifies skipped unless you unset those SKIP_* flags). " +
-    "Using ADMIN_SEED_EMAIL for first-login account association."
+  "[seed:admin:db] DB-only mode (skips post-seed xAI hello/RAG verify unless SKIP_* unset). " +
+    "Using ADMIN_SEED_EMAIL for first-login account association. No xAI team KB upload in any seed path."
 );
 
 const result = spawnSync(process.execPath, [seedScript], {

@@ -1,6 +1,6 @@
 import {
-  type ScheduledTaskCategory,
-  SCHEDULED_TASK_CATEGORIES
+    type ScheduledTaskCategory,
+    SCHEDULED_TASK_CATEGORIES
 } from "@/lib/scheduled-task-category-schema";
 
 /**
@@ -72,7 +72,7 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     displayName: "Watchlist price scanner (weekday desk window, UTC)",
     defaultJobName: "watchlist-price-scanner-job",
     description:
-      "Fetches Yahoo prices for symbols across all tenant watchlists (global watchlist sweep), updates quotes, and creates price alerts—distinct from portfolio-scoped price_scanner."
+      "Tenant-scoped sweep of `portfolio_watchlists`: Yahoo batch quotes, `lastPrice` updates, price-move alerts. Same US market desk window as `price_scanner` (skips with keyed `watchlist_price_scanner: skipped — …` output when closed/holiday). Run summaries match other core scanners (`items_updated`, `symbols_quoted`, `duration_s`, …)."
   },
   corporate_events_scanner: {
     displayName: "Corporate events (weekday 30m cadence, UTC)",

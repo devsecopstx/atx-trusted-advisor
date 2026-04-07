@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition, type FormEvent } from "react";
 
 import { SaveIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
-import { AccountHoldingsLiveTable } from "@/app/portfolio/ui/account-holdings-live-table";
+import { AccountConsolidatedHoldingsTable } from "@/app/portfolio/ui/account-consolidated-holdings-table";
 import { StockSymbolLiveField } from "@/app/portfolio/ui/stock-symbol-live-field";
 import type { PositionType } from "@/modules/core-admin/types";
 
@@ -13,12 +13,15 @@ type AccountHoldingsCrudCardProps = {
   portfolioIdHex: string;
   accountIdHex: string;
   initialPositions: SerializablePosition[];
+  /** When true (Edit Account tab), outer “Holdings” heading is screen-reader only — tab bar shows the label. */
+  embeddedInTab?: boolean;
 };
 
 export function AccountHoldingsCrudCard({
   portfolioIdHex,
   accountIdHex,
-  initialPositions
+  initialPositions,
+  embeddedInTab = false
 }: AccountHoldingsCrudCardProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -185,16 +188,21 @@ export function AccountHoldingsCrudCard({
   }
 
   return (
-    <section className="portfolio-edit-holdings-card xf-noise-overlay" aria-labelledby="portfolio-acct-holdings-title">
+    <section
+      className={`portfolio-edit-holdings-card xf-noise-overlay${embeddedInTab ? " portfolio-edit-holdings-card--in-tab" : ""}`}
+      aria-labelledby="portfolio-acct-holdings-title"
+    >
       <h2
         id="portfolio-acct-holdings-title"
-        className="portfolio-edit-account-card__title portfolio-edit-account-card__title--section"
+        className={`portfolio-edit-account-card__title portfolio-edit-account-card__title--section${embeddedInTab ? " sr-only" : ""}`}
       >
         Holdings
       </h2>
       <h3 className="portfolio-edit-holdings-card__table-title">Positions</h3>
       <p className="portfolio-edit-holdings-card__table-hint">
-        Add, update, or remove lots for this account. Changes save immediately.
+        Consolidated view: <strong>Last</strong> and <strong>Day Δ</strong> use the underlying quote (Yahoo).{" "}
+        <strong>Value</strong> uses live stock marks; options show <strong>book</strong> (contracts × 100 × premium) until
+        option marks ship. Use <strong>Avg cost</strong> vs <strong>Last</strong> for scanner / alert baselines.
       </p>
       {error ? (
         <p className="status-text status-error" role="alert">
@@ -205,7 +213,7 @@ export function AccountHoldingsCrudCard({
         <p className="portfolio-edit-holdings-card__empty">No positions yet — add stock, options, or cash below.</p>
       ) : (
         <div className="portfolio-edit-holdings-card__table-wrap">
-          <AccountHoldingsLiveTable
+          <AccountConsolidatedHoldingsTable
             pending={pending}
             portfolioIdHex={portfolioIdHex}
             positions={positions}

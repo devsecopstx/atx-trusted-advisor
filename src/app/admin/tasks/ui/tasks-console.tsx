@@ -729,7 +729,9 @@ export function TasksConsole() {
               Pick a template to prefill job type and default cron (
               <code className="font-mono text-xs">{SCHEDULED_TASK_CATEGORY_DEFAULT_CRON.price_scanner}</code> — weekdays
               08:00–17:59 UTC, every 15 minutes). Link a <strong>Slack</strong> delivery channel on each task to receive run
-              summaries (status, duration, full job output including price_scanner counts).
+              summaries (status, duration, full job output — same keyed metrics style for core scanners, e.g.{" "}
+              <code className="font-mono text-xs">price_scanner</code>,{" "}
+              <code className="font-mono text-xs">watchlist_price_scanner</code>).
             </p>
             <div className="crud-table-wrap" style={{ marginBottom: "0.75rem" }}>
               <table className="crud-table">
