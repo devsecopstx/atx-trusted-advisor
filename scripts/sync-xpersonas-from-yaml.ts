@@ -33,11 +33,7 @@ import {
 } from "@/modules/xchat/persona-yaml-derived";
 
 import { resolveMongoUri } from "./lib/resolve-mongo-uri.mjs";
-import {
-    collectionIdFromEntry,
-    collectionNameFromEntry,
-    managementListCollectionsRaw
-} from "./lib/seed-xai-rag-ingest.mjs";
+import { managementListCollectionsRaw } from "./lib/seed-xai-rag-ingest.mjs";
 import { formatSyncTargetMongoDatabaseLogSuffix, resolveSyncTargetMongoDatabaseName } from "./lib/sync-target-mongo-db";
 import { loadSeedTenantContext } from "./lib/tenant-defaults-seed.mjs";
 import { collectPersonaSpecFiles, loadPersonaDocFromFile } from "./lib/xpersonas-disk";
@@ -137,23 +133,6 @@ function resolveSessionCookieHeader(): string {
     return c;
   }
   return `xf_core_session=${c}`;
-}
-
-function findCollectionByDisplayName(list: unknown[], displayName: string): { id: string; name: string } {
-  const want = String(displayName).trim().toLowerCase();
-  if (!want) {
-    return { id: "", name: "" };
-  }
-  for (const c of list) {
-    const n = collectionNameFromEntry(c);
-    if (n && n.toLowerCase() === want) {
-      const id = collectionIdFromEntry(c);
-      if (id) {
-        return { id, name: n };
-      }
-    }
-  }
-  return { id: "", name: "" };
 }
 
 function toApiCreateBody(derived: ReturnType<typeof buildYamlDerived>): Record<string, unknown> {

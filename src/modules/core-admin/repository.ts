@@ -1338,15 +1338,6 @@ function userAccountsInSessionScopeFilter(userId: string, tenantId?: string): Re
   };
 }
 
-/** Watchlist rows for a portfolio — same tenant legacy scope as accounts. */
-function userWatchlistsForPortfolioSessionScopeFilter(
-  userId: string,
-  portfolioId: ObjectId,
-  tenantId?: string
-): Record<string, unknown> {
-  return userAccountsForPortfolioSessionScopeFilter(userId, portfolioId.toHexString(), tenantId);
-}
-
 /** Canonical user watchlist (one per user + tenant); matches legacy null/missing `tenantId` rows. */
 function userWatchlistSessionScopeFilter(userId: string, tenantId?: string): Record<string, unknown> {
   return userAccountsInSessionScopeFilter(userId, tenantId);

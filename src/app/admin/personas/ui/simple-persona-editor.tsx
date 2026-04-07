@@ -160,8 +160,10 @@ export function SimplePersonaEditor({
 
         // Check if hosted search tools are present
         const loadedTools = payload.data.xapi?.tools || [];
-        const hasWebSearch = loadedTools.some((tool: any) => tool.type === "web_search");
-        const hasXSearch = loadedTools.some((tool: any) => tool.type === "x_search");
+        const hasWebSearch = loadedTools.some(
+          (tool: { type?: string }) => tool.type === "web_search"
+        );
+        const hasXSearch = loadedTools.some((tool: { type?: string }) => tool.type === "x_search");
         setIncludeHostedSearch(hasWebSearch && hasXSearch);
 
         setStatus("Loaded");

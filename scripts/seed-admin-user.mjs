@@ -428,7 +428,6 @@ const DEFAULT_PORTFOLIO_SCORING_FACTORS_SEED = [
   { id: "strategy_alignment", weight: 0.1 }
 ];
 const XAI_KB_COLLECTION_RE = /^collection_[A-Za-z0-9_-]+$/;
-const DEFAULT_COLLECTION_NAME = "Finance";
 
 function shouldSkipSeedXaiRagIngest() {
   const s = String(process.env.SKIP_SEED_XAI_RAG_INGEST ?? "").toLowerCase();
