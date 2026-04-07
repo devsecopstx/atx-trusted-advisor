@@ -30,6 +30,7 @@ type BrokerPreviewAccount = {
   optionCount: number;
   cashCount: number;
   sampleTickers: string[];
+  estimatedBalanceUsd: number;
 };
 
 type BrokerApplyRow = {
@@ -351,6 +352,7 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
                 <th>Label</th>
                 <th>Rows</th>
                 <th>Stock / opt / cash</th>
+                <th className="text-right">Dry-run value (USD)</th>
                 <th>Sample tickers</th>
                 <th>Matched portfolio account (by ext_account_ref)</th>
               </tr>
@@ -368,6 +370,14 @@ export function BrokerHoldingsImportPanel({ lockedPortfolioId }: BrokerHoldingsI
                   <td>{row.positionCount}</td>
                   <td>
                     {row.stockCount} / {row.optionCount} / {row.cashCount}
+                  </td>
+                  <td className="text-right font-mono text-xs tabular-nums">
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    }).format(row.estimatedBalanceUsd)}
                   </td>
                   <td className="font-mono text-xs">{row.sampleTickers.join(", ") || "—"}</td>
                   <td>

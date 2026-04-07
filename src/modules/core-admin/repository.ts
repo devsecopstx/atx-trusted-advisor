@@ -4032,7 +4032,8 @@ export async function adminCreatePortfolio(input: {
         tenantId: tid,
         portfolioId: created._id.toHexString(),
         name: `defaultaccount${ordinal}`,
-        markAsPortfolioDefault: true
+        markAsPortfolioDefault: true,
+        cashBalance: DEFAULT_ACCOUNT_CASH_BALANCE
       });
     }
   }

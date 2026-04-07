@@ -13,9 +13,12 @@ import {
     type ImportActivityBrokerOption,
     type ImportActivityPortfolioOption
 } from "./import-activity-client";
+import { importActivityPageCopy } from "./import-activity-copy";
 
 import "@/app/account/billing/billing-plans.css";
+import "@/app/import-activity/import-activity.css";
 import "@/app/portfolio/portfolio.css";
+import "@/app/portfolios/portfolios-dashboard.css";
 
 export const dynamic = "force-dynamic";
 
@@ -71,19 +74,29 @@ export default async function ImportActivityPage({ searchParams }: PageProps) {
       <div className="xchat-body portfolio-page-body">
         <AppUserCollapsibleRailLayout
           mainClassName="app-user-shell-with-rail--padded"
-          rail={<AppUserAccountPublicRailForSession session={session} />}
+          rail={
+            <AppUserAccountPublicRailForSession
+              feedbackPageLabel="Import activities"
+              railVariant="workspace-product"
+              session={session}
+            />
+          }
         >
-          <div className="billing-page w-full min-w-0">
-            <header className="billing-hero surface-card xf-widget section-card mb-3 px-4 py-3 xf-noise-overlay md:px-5 md:py-4">
+          <div className="billing-page import-activity-page w-full min-w-0">
+            <header className="billing-hero surface-card xf-widget section-card mb-3 px-4 py-3 xf-noise-overlay md:px-5 md:py-4 dark:ring-1 dark:ring-[color:color-mix(in_srgb,var(--xf-text-100)_14%,transparent)]">
               <p className="billing-hero__eyebrow">Workspace</p>
-              <h1 className="billing-hero__title text-[clamp(1.15rem,3.5vw,1.35rem)]">Import activities</h1>
+              <h1 className="billing-hero__title text-[clamp(1.15rem,3.5vw,1.35rem)]">
+                {importActivityPageCopy.title}
+              </h1>
               <p className="billing-hero__copy max-w-none text-[0.82rem] leading-snug">
-                Upload a broker holdings CSV and map accounts. The import runs immediately as a background-style{" "}
-                <code className="font-mono text-xs">sync-broker</code> task.
+                {importActivityPageCopy.introLead}
+              </p>
+              <p className="billing-hero__copy mt-2 max-w-none text-[0.82rem] leading-snug">
+                {importActivityPageCopy.introBackground}
               </p>
             </header>
 
-            <div className="surface-card xf-widget section-card p-3 md:p-4">
+            <div className="surface-card xf-widget section-card import-activity__main-surface p-3 md:p-4 dark:ring-1 dark:ring-[color:color-mix(in_srgb,var(--xf-text-100)_12%,transparent)]">
               <ImportActivityClient
                 brokers={brokers}
                 key={initialPortfolioId ?? "default"}

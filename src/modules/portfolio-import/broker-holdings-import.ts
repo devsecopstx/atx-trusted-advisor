@@ -72,6 +72,8 @@ export type BrokerImportPreviewAccount = {
   optionCount: number;
   cashCount: number;
   sampleTickers: string[];
+  /** Sum of row-level values after parse: prefers CSV Current Value when set; else cost/quantity fallbacks. */
+  estimatedBalanceUsd: number;
 };
 
 export type BrokerImportApplyResult = {
@@ -95,10 +97,52 @@ function countByType(positions: BrokerHoldingsPosition[]) {
   return { stockCount, optionCount, cashCount };
 }
 
+/**
+ * Dry-run total account value implied by parsed holdings. Uses `currentValueUsd` when present
+ * (Fidelity Portfolio CSV); otherwise cash `purchasePrice`, stock qty×avg, option contracts×premium×100.
+ */
+export function estimatedBalanceAfterHoldingsImportUsd(positions: BrokerHoldingsPosition[]): number {
+  let sum = 0;
+  for (const p of positions) {
+    const rowVal = p.currentValueUsd;
+    if (rowVal != null && Number.isFinite(rowVal)) {
+      sum += rowVal;
+      continue;
+    }
+    if (p.type === "cash") {
+      const usd = p.purchasePrice != null && Number.isFinite(p.purchasePrice) ? p.purchasePrice : 0;
+      sum += Math.max(0, usd);
+      continue;
+    }
+    if (p.type === "stock") {
+      const sh = Number(p.shares ?? 0);
+      const px = p.purchasePrice != null && Number.isFinite(p.purchasePrice) ? p.purchasePrice : 0;
+      if (Number.isFinite(sh) && sh > 0 && px >= 0) {
+        sum += sh * px;
+      }
+      continue;
+    }
+    if (p.type === "option") {
+      const c = Math.abs(Number(p.contracts ?? 0));
+      const prem = p.premium != null && Number.isFinite(p.premium) ? p.premium : 0;
+      if (c > 0 && prem >= 0) {
+        sum += c * prem * 100;
+      }
+    }
+  }
+  return Math.round(sum * 100) / 100;
+}
+
+export type ParseBrokerHoldingsAccountsOpts = {
+  /** Pin Fidelity Portfolio positions as-of (option expiry filter); production callers omit → `new Date()`. */
+  fidelityPortfolioAsOf?: Date;
+};
+
 export function parseBrokerHoldingsAccounts(
   broker: "merrill" | "fidelity",
   csv: string,
-  fidelityHoldingsDefaultAccountRef: string
+  fidelityHoldingsDefaultAccountRef: string,
+  opts?: ParseBrokerHoldingsAccountsOpts
 ): { accounts: ParsedBrokerAccount[]; parseError?: string } {
   if (broker === "merrill") {
     const result = parseMerrillHoldingsCsv(csv);
@@ -140,7 +184,7 @@ export function parseBrokerHoldingsAccounts(
   }
 
   if (detectFidelityPortfolioHoldingsCsv(csv)) {
-    const pf = parseFidelityPortfolioHoldingsCsv(csv);
+    const pf = parseFidelityPortfolioHoldingsCsv(csv, opts?.fidelityPortfolioAsOf ?? new Date());
     if (pf.parseError && pf.accounts.length === 0) {
       return { accounts: [], parseError: pf.parseError };
     }
@@ -203,7 +247,8 @@ export function previewBrokerHoldingsAccounts(accounts: ParsedBrokerAccount[]): 
       stockCount,
       optionCount,
       cashCount,
-      sampleTickers
+      sampleTickers,
+      estimatedBalanceUsd: estimatedBalanceAfterHoldingsImportUsd(acc.positions)
     };
   });
 }

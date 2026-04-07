@@ -79,10 +79,44 @@ class PortfolioCrudService(
         return try {
             mongoTemplate.insert(doc, props.portfoliosCollection)
             val id = doc.getObjectId("_id") ?: return null
+            if (tenantOid != null) {
+                runCatching { insertDefaultPaperAccountForNewPortfolio(session, id) }
+            }
             mongoTemplate.findById(id, Document::class.java, props.portfoliosCollection)
         } catch (_: Exception) {
             null
         }
+    }
+
+    /**
+     * Parity with Next `adminCreatePortfolio`: first account per new portfolio, paper cash, portfolio-default flag.
+     * Naming matches Next: `defaultaccount` + 1-based ordinal among this user's tenant portfolios (includes this row).
+     */
+    private fun insertDefaultPaperAccountForNewPortfolio(session: ResolvedSession, portfolioObjectId: ObjectId) {
+        val tenantOid =
+            PortfolioMongoFilter.tenantObjectId(session.tenantId)
+                ?: return
+        val ordinal = countPortfoliosForSessionUser(session).toInt().coerceAtLeast(1)
+        val now = Date()
+        val ext = "atx-${ObjectId().toHexString().takeLast(12)}"
+        val acc =
+            Document(
+                mapOf(
+                    "userId" to session.userId,
+                    "portfolioId" to portfolioObjectId,
+                    "tenantId" to tenantOid,
+                    "name" to "defaultaccount$ordinal",
+                    "type" to "fidelity",
+                    "extAccountId" to ext,
+                    "cashBalance" to props.defaultAccountCashBalance,
+                    "riskProfile" to "balanced",
+                    "outlook" to "neutral",
+                    "isDefault" to true,
+                    "createdAt" to now,
+                    "updatedAt" to now,
+                ),
+            )
+        mongoTemplate.insert(acc, props.accountsCollection)
     }
 
     sealed class DeleteSessionPortfolioResult {

@@ -55,6 +55,7 @@ If any reviewer is skipped, final review is incomplete.
 
 ## Core MVP Acceptance Checks
 
+- **Shell themes:** User-facing surfaces meet **`atx-docs/design-system/shell-theme-guidelines.md`** — verify **`data-xf-ui="soft"`** (light charcoal) and **deep**; primary/secondary text contrast on panels; no faint `--xf-text-300`/`400` as main copy on soft backgrounds.
 - Route contract compatibility is preserved (`/api/*` responses, status codes, payload shape).
 - Auth and tenant boundaries remain enforced (no privilege broadening).
 - **xChat**: validation and error paths remain stable; plan limits and persona resolution behave as documented; ask execution stays on the locked single Responses tool-loop path (no unplanned chat fallback drift).

@@ -59,6 +59,8 @@ export type FidelityHoldingsPosition = {
   optionType?: "call" | "put";
   strike?: number;
   expiration?: string;
+  /** Fidelity Portfolio CSV "Current Value" when present; drives dry-run balance totals (incl. short-option negatives). */
+  currentValueUsd?: number;
 };
 
 export type FidelityHoldingsResult = {
@@ -159,16 +161,20 @@ function appendFidelityHoldingPosition(
   quantity: number,
   lastPrice: number | null,
   avgCost: number | null,
-  asOfDate: Date
+  asOfDate: Date,
+  currentValueUsd: number | null = null
 ): void {
   const priceBasis = avgCost ?? lastPrice ?? 0;
+  const cv =
+    currentValueUsd != null && Number.isFinite(currentValueUsd) ? currentValueUsd : undefined;
 
   if (/^cash\s*\(/i.test(symbolRaw)) {
     positions.push({
       type: "cash",
       ticker: symbolRaw.replace(/^cash\s*\(([^)]*)\)/i, "$1").trim() || "CASH",
       shares: quantity,
-      purchasePrice: priceBasis || 1
+      purchasePrice: priceBasis || 1,
+      ...(cv !== undefined ? { currentValueUsd: cv } : {})
     });
     return;
   }
@@ -185,7 +191,8 @@ function appendFidelityHoldingPosition(
       premium: avgCost ?? lastPrice ?? 0,
       optionType: optionInfo.optionType,
       strike: optionInfo.strike,
-      expiration: optionInfo.expiration
+      expiration: optionInfo.expiration,
+      ...(cv !== undefined ? { currentValueUsd: cv } : {})
     });
     return;
   }
@@ -194,7 +201,8 @@ function appendFidelityHoldingPosition(
     type: "stock",
     ticker: symbolRaw.toUpperCase(),
     shares: Math.round(quantity),
-    purchasePrice: priceBasis > 0 ? priceBasis : undefined
+    purchasePrice: priceBasis > 0 ? priceBasis : undefined,
+    ...(cv !== undefined ? { currentValueUsd: cv } : {})
   });
 }
 
@@ -334,7 +342,8 @@ export function parseFidelityPortfolioHoldingsCsv(
         type: "cash",
         ticker,
         shares: 1,
-        purchasePrice: dollars
+        purchasePrice: dollars,
+        currentValueUsd: dollars
       });
       continue;
     }
@@ -347,8 +356,9 @@ export function parseFidelityPortfolioHoldingsCsv(
 
     const lastPrice = iLastPrice >= 0 ? parseNum(row[iLastPrice] ?? "") : null;
     const avgCost = iAvgCost >= 0 ? parseNum(row[iAvgCost] ?? "") : null;
+    const currentVal = iCurrentValue >= 0 ? parseNum(row[iCurrentValue] ?? "") : null;
 
-    appendFidelityHoldingPosition(bucket.positions, symbolRaw, quantity, lastPrice, avgCost, asOfDate);
+    appendFidelityHoldingPosition(bucket.positions, symbolRaw, quantity, lastPrice, avgCost, asOfDate, currentVal);
   }
 
   const accounts: FidelityPortfolioHoldingsAccount[] = [...byAccount.entries()].map(([accountRef, v]) => ({

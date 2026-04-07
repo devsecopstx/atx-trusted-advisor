@@ -241,6 +241,33 @@ class BackendHttpApiCrudIntegrationTest {
     }
 
     @Test
+    fun `POST api portfolios creates default paper account with 25k cash`() {
+        val ch = cookieHeaders()
+        ch.contentType = MediaType.APPLICATION_JSON
+        json("/api/portfolios/default", HttpMethod.GET, null, ch)
+        val suffix = System.nanoTime()
+        val created =
+            json(
+                "/api/portfolios",
+                HttpMethod.POST,
+                """{"name":"Extra book $suffix"}""",
+                ch,
+            )
+        val data = created.path("data")
+        val newId = data.path("_id").asText()
+        assertTrue(newId.isNotEmpty())
+        val accounts = data.path("accounts")
+        assertTrue(accounts.isArray)
+        assertEquals(1, accounts.size())
+        assertTrue(accounts[0].path("name").asText().startsWith("defaultaccount"))
+        assertEquals(
+            25_000.0,
+            accounts[0].path("balance").asDouble(),
+            0.01,
+        )
+    }
+
+    @Test
     fun `unauthorized without session cookie on protected routes`() {
         val headers = HttpHeaders()
         val r =

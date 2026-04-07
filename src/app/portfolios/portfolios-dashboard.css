@@ -638,3 +638,18 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__accordion[open] .portfoli
 .portfolios-watchlist-compact__table td {
   vertical-align: middle;
 }
+
+/* Workspace rail — keyboard focus + soft-shell active legibility (Import activities, portfolios, etc.) */
+.portfolios-workspace-sidebar__link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-gain-green) 42%, transparent);
+  outline-offset: 2px;
+}
+
+html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link:focus-visible {
+  outline-color: color-mix(in srgb, var(--xf-xoptions-accent) 55%, transparent);
+}
+
+html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
+  background: color-mix(in srgb, var(--xf-gain-green) 9%, transparent);
+  color: color-mix(in srgb, var(--xf-gain-green) 72%, var(--xf-text-100));
+}

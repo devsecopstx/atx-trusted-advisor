@@ -8,6 +8,8 @@ import { brokerExportRefMatchesStoredExt } from "@/lib/broker-account-ref-match"
 import { detectFidelityActivitiesCsv } from "@/modules/portfolio-import/fidelity-activities-csv";
 import { detectFidelityPortfolioHoldingsCsv } from "@/modules/portfolio-import/fidelity-holdings-csv";
 
+import { importActivityWorkflowCopy } from "./import-activity-copy";
+
 export type ImportActivityPortfolioOption = {
   id: string;
   name: string;
@@ -35,6 +37,7 @@ type BrokerPreviewAccount = {
   optionCount: number;
   cashCount: number;
   sampleTickers: string[];
+  estimatedBalanceUsd: number;
 };
 
 /** Must match `parseBrokerHoldingsAccounts` / `applyBrokerHoldingsToMappedAccounts` mapping keys. */
@@ -57,6 +60,15 @@ type ImportActivityClientProps = {
   /** When present and matches a portfolio id, preselect that book (e.g. from /portfolio Activities). */
   initialPortfolioId?: string;
 };
+
+function formatUsdDryRun(n: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(n);
+}
 
 async function parseJson<T>(res: Response): Promise<T> {
   const text = await res.text();
@@ -262,7 +274,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         Object.fromEntries(payload.accounts.map((row) => [brokerImportPreviewRowKey(row), true]))
       );
       setMessage(
-        `Preview complete: ${payload.accounts.length} broker account(s) detected. Toggle Import for each row, then run import.`
+        `Preview complete: ${payload.accounts.length} broker account(s). Each row shows stocks / options / cash to import, estimated balance (dry run), and account mapping. Toggle Import, then run import.`
       );
     } catch (e) {
       setBrokerPreview(null);
@@ -426,43 +438,44 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   };
 
   return (
-    <div className="grid w-full gap-2">
+    <div className="import-activity grid w-full gap-3">
       <section
-        className="mt-2 mb-0 text-xs leading-snug text-[var(--xf-text-300)]"
+        className="import-activity__workflow-card mt-1 mb-0 text-xs leading-snug import-activity__text-secondary"
         aria-label="Import workflow guidance"
       >
-        <p className="m-0 font-semibold text-[var(--xf-text-100)]">Import broker holdings and activities</p>
-        <p className="mt-1.5 mb-2 text-xs leading-snug text-[var(--xf-text-300)]">
-          Upload CSV exports from your broker to refresh your workspace portfolio. This flow updates
-          portfolio-level risk context used by xOptions scanners and desk monitoring.
-        </p>
-        <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[var(--xf-text-300)]">
-          Supported files
-        </p>
-        <ul className="mt-1 mb-2 list-disc space-y-1 pl-5 text-xs text-[var(--xf-text-300)]">
-          <li>Portfolio holdings (multi-account positions export)</li>
-          <li>Accounts History (activity ledger)</li>
-          <li>Legacy single-account Positions CSV</li>
+        <h2 className="m-0 text-xs font-semibold text-[var(--xf-text-100)]">
+          {importActivityWorkflowCopy.supportedFilesHeading}
+        </h2>
+        <ul className="mt-1 mb-3 list-disc space-y-1 pl-5 text-xs import-activity__text-secondary">
+          {importActivityWorkflowCopy.supportedFiles.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
         </ul>
-        <p className="m-0 text-xs leading-snug text-[var(--xf-text-300)]">
-          Account numbers in the broker file must exactly match each account&apos;s external ref in this portfolio.
-          In the portfolio account list, use <strong className="text-[var(--xf-text-100)]">Use for import</strong> to choose
-          which custodian accounts can receive an import. After preview, use the <strong className="text-[var(--xf-text-100)]">Import</strong>{" "}
-          checkboxes to choose which broker file rows to load; only selected rows are written. Preview shows file impact only.
-        </p>
-        <p className="mt-2 mb-0 text-xs leading-snug text-[var(--xf-text-300)]">
-          <strong className="text-[var(--xf-text-100)]">Options note:</strong> only net-long option legs are imported
-          right now; net-short legs are skipped until short modeling is enabled.
+        <h2 className="m-0 text-xs font-semibold text-[var(--xf-text-100)]">
+          {importActivityWorkflowCopy.howToHeading}
+        </h2>
+        <div className="mt-1 mb-3 space-y-1.5 text-xs leading-snug import-activity__text-secondary">
+          {importActivityWorkflowCopy.howToSteps.map((line) => (
+            <p key={line} className="m-0">
+              {line}
+            </p>
+          ))}
+        </div>
+        <h2 className="m-0 text-xs font-semibold text-[var(--xf-text-100)]">
+          {importActivityWorkflowCopy.optionsHeading}
+        </h2>
+        <p className="mt-1 mb-0 text-xs leading-snug import-activity__text-secondary">
+          {importActivityWorkflowCopy.optionsBody}
         </p>
       </section>
 
       {portfolios.length === 0 ? (
-        <p className="text-sm text-[var(--xf-text-300)]">No portfolios yet — create one from Portfolios first.</p>
+        <p className="text-sm import-activity__text-secondary">No portfolios yet — create one from Portfolios first.</p>
       ) : (
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm text-[var(--xf-text-100)]">
           <span>Portfolio</span>
           <select
-            className="crud-input rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm"
+            className="import-activity__select crud-input rounded-md px-3 py-2 text-sm"
             value={portfolioId}
             onChange={(e) => {
               setPortfolioId(e.target.value);
@@ -483,9 +496,9 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       )}
 
       {portfolioId ? (
-        <div className="overflow-x-auto rounded-md border border-white/10">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-white/10 text-[var(--xf-text-300)]">
+        <div className="import-activity__panel">
+          <table className="import-activity__table">
+            <thead className="import-activity__thead">
               <tr>
                 <th className="p-2 w-24 text-center" scope="col">
                   Use for import
@@ -494,13 +507,13 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 <th className="p-2 font-mono">Broker ref (last 4 — full id must match CSV)</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="import-activity__tbody">
               {accounts.length > 0 ? (
                 accounts.map((a) => {
                   const aid = a._id?.trim() ?? "";
                   const eligible = aid ? accountUseForImport[aid] !== false : true;
                   return (
-                    <tr key={a._id ?? a.name} className="border-b border-white/5">
+                    <tr key={a._id ?? a.name} className="import-activity__tr">
                       <td className="p-2 text-center align-middle">
                         {aid ? (
                           <input
@@ -513,7 +526,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                             aria-label={`Use account ${a.name} for broker import mapping`}
                           />
                         ) : (
-                          <span className="text-[var(--xf-text-400)]">—</span>
+                          <span className="import-activity__text-tertiary">—</span>
                         )}
                       </td>
                       <td className="p-2">{a.name}</td>
@@ -527,8 +540,8 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                   );
                 })
               ) : (
-                <tr>
-                  <td colSpan={3} className="p-2 text-[var(--xf-text-300)]">
+                <tr className="import-activity__tr import-activity__tr--empty">
+                  <td colSpan={3} className="p-2 import-activity__text-secondary">
                     No accounts — add accounts under Portfolio for this book.
                   </td>
                 </tr>
@@ -539,32 +552,25 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       ) : null}
 
       {portfolioId ? (
-        <div
-          className="rounded-md border border-red-500/40 bg-red-950/25 p-3 text-sm text-[var(--xf-text-200)]"
-          role="region"
-          aria-label="Destructive clean before import"
-        >
-          <p className="m-0 font-semibold text-red-200/95">Clean first, then import</p>
-          <p className="mt-1.5 mb-2 text-xs leading-snug text-[var(--xf-text-300)]">
-            Use this when you want an empty book before loading a new broker file. It removes{" "}
-            <strong className="text-[var(--xf-text-100)]">all positions</strong> in every account in the selected
-            portfolio and clears <strong className="text-[var(--xf-text-100)]">broker import jobs</strong> (import
-            activity) for that book. Accounts are kept.
+        <div className="import-activity__danger" role="region" aria-label="Destructive clean before import">
+          <p className="import-activity__danger-title">{importActivityWorkflowCopy.cleanTitle}</p>
+          <p className="mt-1.5 mb-2 text-xs leading-snug import-activity__text-secondary">
+            {importActivityWorkflowCopy.cleanBody}
           </p>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-md border border-red-500/50 bg-red-900/40 px-3 py-2 text-sm font-medium text-red-100 hover:bg-red-900/55 disabled:pointer-events-none disabled:opacity-50"
+            className="import-activity__danger-btn"
             disabled={busy || cleanBusy}
             onClick={() => void runCleanFirstThenImport()}
           >
             <DeleteIcon className="crud-icon h-4 w-4" aria-hidden />
-            {cleanBusy ? "Cleaning…" : "Clean first, then import"}
+            {cleanBusy ? "Cleaning…" : importActivityWorkflowCopy.cleanTitle}
           </button>
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
-        <fieldset className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
+        <fieldset className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-[var(--xf-text-100)]">
           <legend className="text-sm">Broker</legend>
           <div className="grid gap-1.5 grid-cols-2 md:grid-cols-4">
             {orderedBrokers.map((broker) => {
@@ -575,11 +581,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 <button
                   key={broker.id}
                   type="button"
-                  className={`flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-left transition ${
-                    active
-                      ? "border-[var(--xf-gain-green)] bg-[color:color-mix(in_srgb,var(--xf-gain-green)_14%,transparent)]"
-                      : "border-white/10 bg-black/20 hover:border-white/20"
-                  }`}
+                  className={`import-activity__broker-tile ${active ? "import-activity__broker-tile--active" : ""}`}
                   disabled={busy}
                   onClick={() => {
                     setBrokerKind(broker.id);
@@ -591,28 +593,19 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 >
                   {broker.iconUrl.trim() ? (
                     // eslint-disable-next-line @next/next/no-img-element -- admin-managed broker icon URL/path
-                    <img
-                      alt=""
-                      className="h-4 w-4 rounded border border-white/10 object-contain"
-                      src={broker.iconUrl}
-                    />
+                    <img alt="" className="import-activity__broker-icon" src={broker.iconUrl} />
                   ) : (
-                    <span className="inline-flex h-4 w-4 items-center justify-center rounded border border-white/10 font-mono text-[8px] uppercase text-[var(--xf-text-300)]">
-                      {broker.id.slice(0, 2)}
-                    </span>
+                    <span className="import-activity__broker-fallback">{broker.id.slice(0, 2)}</span>
                   )}
                   <span className="min-w-0">
                     <span className="block truncate text-[10px] font-semibold text-[var(--xf-text-100)]">{broker.name}</span>
-                    <span className="block truncate font-mono text-[9px] text-[var(--xf-text-300)]">
+                    <span className="block truncate font-mono text-[9px] import-activity__text-secondary">
                       {broker.id}
                       {!supported ? " · coming soon" : ""}
                     </span>
                     <span className="mt-0.5 flex flex-wrap gap-0.5">
                       {capabilityBadges.map((badge) => (
-                        <span
-                          key={`${broker.id}-${badge}`}
-                          className="inline-flex items-center rounded border border-white/10 bg-black/25 px-1 py-0 text-[8px] font-medium text-[var(--xf-text-300)]"
-                        >
+                        <span key={`${broker.id}-${badge}`} className="import-activity__broker-badge">
                           {badge}
                         </span>
                       ))}
@@ -623,26 +616,28 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
             })}
           </div>
         </fieldset>
-        <label className="flex min-w-0 max-w-full flex-col gap-1 text-sm">
+        <label className="flex min-w-0 max-w-full flex-col gap-1 text-sm text-[var(--xf-text-100)]">
           <span>CSV file</span>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            className="crud-input text-xs min-w-0 max-w-full"
-            disabled={busy}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (!f) return;
-              void f.text().then(setBrokerCsv);
-            }}
-          />
+          <span className="import-activity__file-shell">
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="import-activity__file-input text-xs"
+              disabled={busy}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                void f.text().then(setBrokerCsv);
+              }}
+            />
+          </span>
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1 text-sm text-[var(--xf-text-100)]">
         <span>CSV contents</span>
         <textarea
-          className="min-h-[80px] rounded-md border border-white/10 bg-black/20 p-2 font-mono text-xs"
+          className="import-activity__textarea"
           value={brokerCsv}
           onChange={(e) => setBrokerCsv(e.target.value)}
           disabled={busy}
@@ -651,17 +646,14 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       </label>
 
       {!brokerImportSupported ? (
-        <p className="text-xs text-[var(--xf-text-300)]">
+        <p className="text-xs import-activity__text-secondary">
           {selectedBroker?.name ?? brokerKind} imports are not enabled yet for app-user CSV ingest. Current supported
           brokers: Merrill and Fidelity.
         </p>
       ) : null}
 
       {brokerKind === "fidelity" ? (
-        <div
-          className="rounded-md border border-white/10 bg-black/15 p-3 text-xs leading-relaxed text-[var(--xf-text-200)]"
-          role="note"
-        >
+        <div className="import-activity__note" role="note">
           <p className="m-0">
             <strong className="text-[var(--xf-text-100)]">Fidelity workflow:</strong> export and import{" "}
             <strong>Portfolio holdings</strong> (positions snapshot) first, then <strong>Accounts History</strong> when you
@@ -670,18 +662,18 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
             <code className="font-mono">Run Date</code> for activities).
           </p>
           {fidelityDetectedFileKind === "portfolio_holdings" ? (
-            <p className="mt-2 mb-0 text-[var(--xf-gain-green)]">
+            <p className="import-activity__detect-ok">
               Detected: Portfolio holdings — account numbers in the file map to each account&apos;s ext ref.
             </p>
           ) : null}
           {fidelityDetectedFileKind === "activities" ? (
-            <p className="mt-2 mb-0 text-[var(--xf-gain-green)]">
+            <p className="import-activity__detect-ok">
               Detected: Accounts History — on import, transactions replay onto current positions (import portfolio holdings
               first for a full baseline).
             </p>
           ) : null}
           {fidelityDetectedFileKind === "legacy_positions" ? (
-            <p className="mt-2 mb-0 text-[var(--xf-text-300)]">
+            <p className="mt-2 mb-0 import-activity__text-secondary">
               Detected: legacy Positions export (Symbol is the first column). If there is no account column, set a default
               account ref for the book.
             </p>
@@ -689,10 +681,10 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="import-activity__actions-row">
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-[var(--xf-radius-sm)] border border-[color:color-mix(in_srgb,var(--xf-text-100)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] px-3 py-2 text-sm font-semibold text-[var(--xf-text-100)] transition hover:bg-[color:color-mix(in_srgb,var(--xf-text-100)_14%,transparent)] disabled:pointer-events-none disabled:opacity-50"
+          className="import-activity__btn-secondary"
           disabled={busy || !portfolioId || !brokerImportSupported}
           onClick={() => void runPreview()}
         >
@@ -700,7 +692,7 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         </button>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-md bg-[var(--xf-gain-green)] px-3 py-2 text-sm font-medium text-black hover:opacity-90 disabled:opacity-50"
+          className="import-activity__btn-primary"
           disabled={
             busy ||
             !portfolioId ||
@@ -715,28 +707,34 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         </button>
       </div>
 
-      {message ? <p className="text-sm text-[var(--xf-text-200)]">{message}</p> : null}
+      {message ? <p className="import-activity__status-msg">{message}</p> : null}
 
       {brokerPreview && brokerPreview.length > 0 ? (
-        <div className="overflow-x-auto rounded-md border border-white/10">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-white/10 text-[var(--xf-text-300)]">
+        <div className="import-activity__panel">
+          <table className="import-activity__table">
+            <thead className="import-activity__thead">
               <tr>
                 <th className="p-2 w-16 text-center" scope="col">
                   Import
                 </th>
                 <th className="p-2">Broker ref</th>
-                <th className="p-2">Stocks</th>
+                <th className="p-2" scope="col" title="Position rows to import by type">
+                  Stocks / opt / cash
+                </th>
+                <th className="p-2 text-right" scope="col">
+                  Est. value
+                  <span className="block font-normal import-activity__text-tertiary">(dry run)</span>
+                </th>
                 <th className="p-2">Sample</th>
                 <th className="p-2">Maps to</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="import-activity__tbody">
               {brokerPreview.map((row, idx) => {
                 const m = findAccountByExternalRef(row.accountRef);
                 const rowKey = brokerImportPreviewRowKey(row);
                 return (
-                  <tr key={`${rowKey}-${idx}`} className="border-b border-white/5">
+                  <tr key={`${rowKey}-${idx}`} className="import-activity__tr">
                     <td className="p-2 text-center align-middle">
                       <input
                         type="checkbox"
@@ -754,13 +752,21 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                     >
                       {accountRefLastFourOnlyDisplay(row.accountRef)}
                     </td>
-                    <td className="p-2">{row.stockCount}</td>
+                    <td className="p-2 font-mono tabular-nums text-xs" title="Stock rows / option rows / cash (sweep) rows">
+                      {row.stockCount} / {row.optionCount} / {row.cashCount}
+                    </td>
+                    <td
+                      className="p-2 text-right font-mono tabular-nums"
+                      title="Sum of CSV Current Value per imported row (Fidelity Portfolio); cost/qty fallback otherwise."
+                    >
+                      {formatUsdDryRun(row.estimatedBalanceUsd)}
+                    </td>
                     <td className="p-2 font-mono">{row.sampleTickers.join(", ")}</td>
                     <td className="p-2">
                       {m ? (
                         <>
                           {m.name}
-                          <span className="ml-1 font-mono text-[var(--xf-text-400)] tabular-nums">
+                          <span className="ml-1 font-mono import-activity__text-tertiary tabular-nums">
                             {accountRefLastFourOnlyDisplay(m.extAccountId)}
                           </span>
                         </>
@@ -777,9 +783,9 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       ) : null}
 
       {results && results.length > 0 ? (
-        <div className="overflow-x-auto rounded-md border border-white/10">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-white/10 text-[var(--xf-text-300)]">
+        <div className="import-activity__panel">
+          <table className="import-activity__table">
+            <thead className="import-activity__thead">
               <tr>
                 <th className="p-2">Account</th>
                 <th className="p-2">Imported</th>
@@ -788,14 +794,14 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                 <th className="p-2">Error</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="import-activity__tbody">
               {results.map((r) => (
-                <tr key={r.accountRef} className="border-b border-white/5">
+                <tr key={r.accountRef} className="import-activity__tr">
                   <td className="p-2">{r.label}</td>
                   <td className="p-2">{r.imported}</td>
                   <td className="p-2">{r.skippedNonStock}</td>
                   <td className="p-2">{r.deletedPrior}</td>
-                  <td className="p-2 text-red-300">{r.error ?? "—"}</td>
+                  <td className="p-2 import-activity__error-cell">{r.error ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -804,11 +810,9 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       ) : null}
 
       {taskOutput ? (
-        <details className="rounded-md border border-white/10 p-3 text-xs">
-          <summary className="cursor-pointer text-[var(--xf-text-200)]">Task output</summary>
-          <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-[var(--xf-text-300)]">
-            {taskOutput}
-          </pre>
+        <details className="import-activity__details">
+          <summary>Task output</summary>
+          <pre>{taskOutput}</pre>
         </details>
       ) : null}
     </div>

@@ -82,6 +82,8 @@ export type MerrillHoldingsPosition = {
   optionType?: "call" | "put";
   strike?: number;
   expiration?: string;
+  /** Optional mark-to-market from broker CSV when available (Merrill parser may omit). */
+  currentValueUsd?: number;
 };
 
 export type MerrillHoldingsResult = {

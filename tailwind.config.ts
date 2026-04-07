@@ -1,7 +1,8 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class",
+  /** Align with `data-xf-ui`: soft = light shell, deep (or system→dark) = dark shell */
+  darkMode: ["selector", 'html:not([data-xf-ui="soft"])'],
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
     "./atx-docs/design-system/**/*.{css,js,ts,jsx,tsx,mdx}",

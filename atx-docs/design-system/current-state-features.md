@@ -68,12 +68,14 @@ Cross-check **[`.cursor/skills/test-commit-push/SKILL.md`](../../.cursor/skills/
 
 ### Product surfaces (app_user shell)
 
+**Shell themes (soft vs deep):** See **[`shell-theme-guidelines.md`](./shell-theme-guidelines.md)** — contrast rules for all user-facing pages; Tailwind **`dark:`** aligns with deep shell in **`tailwind.config.ts`**.
+
 Path prefixes for the shared product chrome are defined in **`APP_USER_PRODUCT_PATH_PREFIXES`** ([`surface-policy.ts`](../../src/modules/surface-policy.ts)): **`/xchat`**, **`/portfolio`**, **`/portfolios`**, **`/import-activity`**, **`/watchlist`**, **`/account`**, **`/workspace`**, **`/xoptions`**. Other user routes (e.g. **`/xcoach`**) exist but are not in that rail list unless extended there.
 
 **Representative capabilities (non-exhaustive — see `api-endpoints.md`):**
 
 - **xChat** — `POST /api/xchat/ask`, personas, plan limits; xAI-backed; history in Mongo (`xchat_logs` per product rules).
-- **Portfolio / accounts / holdings** — app_user and admin paths; workspace portfolio cookie; Merrill/Fidelity CSV import + **`/import-activity`** (broker ref **last-four** display; per-account **Use for import** toggles for mapping).
+- **Portfolio / accounts / holdings** — app_user and admin paths; workspace portfolio cookie; Merrill/Fidelity CSV import + **`/import-activity`** (broker ref **last-four** display; per-account **Use for import** toggles for mapping; user-facing copy in **`import-activity-copy.ts`**).
 - **Watchlist** — user-scoped store, quotes, optional chain glance; desk columns / IV-OI highlights (see release notes **3.1.x**). **Price alerts** (Next-side scanner thresholds + cooldown): `src/modules/watchlist/price-alert-service.ts`; roadmap context in **`PLAN.md`** (**240n** shipped).
 - **xOptions** — strategy builder UI (step 4 **Choose contract**: heatmapped Vol/OI, Mid + spread hint, ATM pill, mobile Greeks toggle); strategy-options APIs (Yahoo + optional BFF to Spring).
 - **xCoach** — learning surface (route present; detail in app).

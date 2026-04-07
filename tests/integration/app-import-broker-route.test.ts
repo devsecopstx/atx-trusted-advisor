@@ -87,12 +87,13 @@ describe("POST /api/import/broker (app user)", () => {
     const payload = (await response.json()) as {
       dryRun: boolean;
       broker: string;
-      accounts: Array<{ accountRef: string; stockCount: number }>;
+      accounts: Array<{ accountRef: string; stockCount: number; estimatedBalanceUsd: number }>;
     };
     expect(payload.dryRun).toBe(true);
     expect(payload.broker).toBe("merrill");
     expect(payload.accounts[0]?.accountRef).toBe("51X-98940");
     expect(payload.accounts[0]?.stockCount).toBe(1);
+    expect(payload.accounts[0]?.estimatedBalanceUsd).toBeGreaterThanOrEqual(0);
   });
 
   it("returns 404 when portfolio is not owned by session user", async () => {

@@ -12,6 +12,7 @@ html[data-xf-ui="soft"] {
   /* Readable body copy on softer charcoal (Light + System→light) */
   --xf-text-100: #0b0f14;
   --xf-text-300: #334155;
+  --xf-text-200: color-mix(in srgb, var(--xf-text-100) 28%, var(--xf-text-300) 72%);
   --xf-text-400: #64748b;
   --xf-blue-400: #1e293b;
   --xf-cyan-400: #334155;

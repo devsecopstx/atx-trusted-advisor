@@ -5,6 +5,8 @@
   --xf-surface-600: #1f2329;
   --xf-text-100: #f6f8fc;
   --xf-text-300: #b5bac6;
+  /** Between primary body and muted; used by rails, tables, secondary labels */
+  --xf-text-200: color-mix(in srgb, var(--xf-text-100) 38%, var(--xf-text-300) 62%);
   --xf-text-400: #888f9f;
   --xf-blue-400: #d1d6de;
   --xf-cyan-400: #c6ccd6;
