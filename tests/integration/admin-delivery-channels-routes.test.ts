@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
   requireAdminSession: vi.fn(),
@@ -46,6 +46,11 @@ const oid = "507f1f77bcf86cd799439011";
 const tenantId = "507f1f77bcf86cd799439022";
 
 describe("admin delivery-channels routes", () => {
+  afterEach(() => {
+    delete process.env.DESK_DELIVERY_CHANNEL_TEST_TO;
+    delete process.env.DESK_DELIVERY_CHANNEL_TEST_SUBJECT;
+  });
+
   beforeEach(() => {
     authMocks.requireAdminSession.mockResolvedValue({
       userId: oid,
@@ -246,5 +251,83 @@ describe("admin delivery-channels routes", () => {
     expect(mailCall?.[1]).toBe("aTx Finance — delivery channel test");
     expect(mailCall?.[2]).toMatch(/^hello from atx \| tenant=507f1f77bcf86cd799439022 \| at=/);
     expect(slackMocks.postSlackIncomingWebhook).not.toHaveBeenCalled();
+  });
+
+  it("test email uses DESK_DELIVERY_CHANNEL_TEST_TO when set", async () => {
+    process.env.DESK_DELIVERY_CHANNEL_TEST_TO = "safe@example.com";
+    repositoryMocks.getAdminDeliveryChannelById.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      name: "Mail",
+      deliveryTarget: "email",
+      emailTo: "ops@example.com",
+      createdAt: new Date("2026-03-20T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-20T00:00:00.000Z")
+    });
+    const response = await postTest(
+      new Request("http://test/api/admin/delivery-channels/507f1f77bcf86cd799439099/test", {
+        method: "POST"
+      }),
+      { params: Promise.resolve({ channelId: "507f1f77bcf86cd799439099" }) }
+    );
+    expect(response.status).toBe(200);
+    const mailJson = (await response.json()) as {
+      detail?: string;
+      usedEnvRecipientOverride?: boolean;
+    };
+    expect(mailJson.usedEnvRecipientOverride).toBe(true);
+    expect(mailJson.detail).toContain("safe@example.com");
+    expect(deskMocks.sendDeskPlainEmailWithRetry).toHaveBeenCalledWith(
+      "safe@example.com",
+      "aTx Finance — delivery channel test",
+      expect.stringMatching(/^hello from atx \| tenant=507f1f77bcf86cd799439022 \| at=/)
+    );
+  });
+
+  it("test email works with empty channel emailTo when DESK_DELIVERY_CHANNEL_TEST_TO is set", async () => {
+    process.env.DESK_DELIVERY_CHANNEL_TEST_TO = "safe@example.com";
+    repositoryMocks.getAdminDeliveryChannelById.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      name: "Mail",
+      deliveryTarget: "email",
+      emailTo: "",
+      createdAt: new Date("2026-03-20T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-20T00:00:00.000Z")
+    });
+    const response = await postTest(
+      new Request("http://test/api/admin/delivery-channels/507f1f77bcf86cd799439099/test", {
+        method: "POST"
+      }),
+      { params: Promise.resolve({ channelId: "507f1f77bcf86cd799439099" }) }
+    );
+    expect(response.status).toBe(200);
+    expect(deskMocks.sendDeskPlainEmailWithRetry).toHaveBeenCalledWith(
+      "safe@example.com",
+      expect.any(String),
+      expect.any(String)
+    );
+  });
+
+  it("test email uses DESK_DELIVERY_CHANNEL_TEST_SUBJECT when set", async () => {
+    process.env.DESK_DELIVERY_CHANNEL_TEST_SUBJECT = "Custom SMTP test";
+    repositoryMocks.getAdminDeliveryChannelById.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      name: "Mail",
+      deliveryTarget: "email",
+      emailTo: "ops@example.com",
+      createdAt: new Date("2026-03-20T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-20T00:00:00.000Z")
+    });
+    const response = await postTest(
+      new Request("http://test/api/admin/delivery-channels/507f1f77bcf86cd799439099/test", {
+        method: "POST"
+      }),
+      { params: Promise.resolve({ channelId: "507f1f77bcf86cd799439099" }) }
+    );
+    expect(response.status).toBe(200);
+    expect(deskMocks.sendDeskPlainEmailWithRetry).toHaveBeenCalledWith(
+      "ops@example.com",
+      "Custom SMTP test",
+      expect.stringMatching(/^hello from atx \| tenant=507f1f77bcf86cd799439022 \| at=/)
+    );
   });
 });

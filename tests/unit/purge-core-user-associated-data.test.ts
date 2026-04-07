@@ -53,6 +53,7 @@ describe("purge core user associated data", () => {
     expect(names).toContain("options_strategy_preferences");
     expect(names).toContain("app_user_recommendations");
     expect(names).toContain("xchat_logs");
+    expect(names).toContain("xchat_user_preferences");
     expect(names).toContain("app_feature_daily_usage");
     expect(names).toContain("strategy_jobs");
     expect(names).toContain("audit_login");
@@ -64,6 +65,9 @@ describe("purge core user associated data", () => {
     expect(xchat?.filter).toEqual({
       $or: [{ userId: oid }, { userId: VALID_HEX }],
     });
+
+    const xchatPrefs = deleteManyLog.find((e) => e.collection === "xchat_user_preferences");
+    expect(xchatPrefs?.filter).toEqual({ userId: oid });
 
     const audit = deleteManyLog.find((e) => e.collection === "audit_login");
     expect(audit?.filter).toEqual({

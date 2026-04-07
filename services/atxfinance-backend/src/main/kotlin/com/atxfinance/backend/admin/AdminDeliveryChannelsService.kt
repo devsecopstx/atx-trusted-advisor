@@ -217,21 +217,53 @@ class AdminDeliveryChannelsService(
             )
         }
         if (target == "email") {
-            val to = doc.getString("emailTo")?.trim()
-            if (to.isNullOrEmpty()) return TestResult.BadRequest("Email channel is missing emailTo")
-            if (!isPlausibleEmail(to)) return TestResult.BadRequest("emailTo must be a valid email address")
-            val ok = DeskSmtpSender.sendPlain(to, "aTx Finance — delivery channel test", message)
+            val envOverride = System.getenv("DESK_DELIVERY_CHANNEL_TEST_TO")?.trim()?.takeIf { it.isNotEmpty() }
+            val channelTo = doc.getString("emailTo")?.trim()?.takeIf { it.isNotEmpty() }
+            val (to, usedEnvRecipientOverride) =
+                when {
+                    !envOverride.isNullOrEmpty() -> {
+                        if (!isPlausibleEmail(envOverride)) {
+                            return TestResult.BadRequest(
+                                "DESK_DELIVERY_CHANNEL_TEST_TO is set but is not a valid email address",
+                            )
+                        }
+                        Pair(envOverride, true)
+                    }
+                    !channelTo.isNullOrEmpty() -> {
+                        if (!isPlausibleEmail(channelTo)) {
+                            return TestResult.BadRequest("emailTo must be a valid email address")
+                        }
+                        Pair(channelTo, false)
+                    }
+                    else -> {
+                        return TestResult.BadRequest(
+                            "Email channel is missing emailTo — add a recipient or set DESK_DELIVERY_CHANNEL_TEST_TO",
+                        )
+                    }
+                }
+            val subjectRaw =
+                System.getenv("DESK_DELIVERY_CHANNEL_TEST_SUBJECT")?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: "aTx Finance — delivery channel test"
+            val subject = if (subjectRaw.length > 200) subjectRaw.take(200) else subjectRaw
+            val ok = DeskSmtpSender.sendPlain(to, subject, message)
             if (!ok) {
                 return TestResult.EmailSendFailed(
                     "SMTP send failed — check SMTP_* / DESK_EMAIL_FROM env on the backend service",
                 )
             }
+            val detail =
+                if (usedEnvRecipientOverride) {
+                    "SMTP test sent to $to (DESK_DELIVERY_CHANNEL_TEST_TO override; scheduled sends still use the channel recipient). Check that inbox (and spam)."
+                } else {
+                    "SMTP test sent to $to. Check that inbox (and spam)."
+                }
             return TestResult.Ok(
                 mapOf(
                     "ok" to true,
                     "deliveryTarget" to "email",
                     "message" to message,
-                    "detail" to "SMTP test sent to $to. Check that inbox (and spam).",
+                    "detail" to detail,
+                    "usedEnvRecipientOverride" to usedEnvRecipientOverride,
                 ),
             )
         }

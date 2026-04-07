@@ -13,6 +13,8 @@ type DeliveryChannelTestResponse = {
   message?: string;
   detail?: string;
   inAppPreview?: boolean;
+  /** True when `DESK_DELIVERY_CHANNEL_TEST_TO` redirected the test send away from the channel `emailTo`. */
+  usedEnvRecipientOverride?: boolean;
 };
 
 type InAppPreviewState = {
@@ -252,7 +254,10 @@ export function AdminDeliveryChannelsCrud() {
       <h3>Add channel</h3>
       <p className="status-text mb-2 text-sm">
         <strong>Email</strong> uses the same SMTP settings as portfolio desk alerts (<code className="font-mono text-xs">SMTP_*</code>,{" "}
-        <code className="font-mono text-xs">DESK_EMAIL_FROM</code>).
+        <code className="font-mono text-xs">DESK_EMAIL_FROM</code>). Optional: set{" "}
+        <code className="font-mono text-xs">DESK_DELIVERY_CHANNEL_TEST_TO</code> so <strong>Send test</strong> always goes to
+        that inbox (scheduled/task delivery still uses each channel&apos;s saved recipient). Optional{" "}
+        <code className="font-mono text-xs">DESK_DELIVERY_CHANNEL_TEST_SUBJECT</code> overrides the test subject line.
       </p>
       <div
         className="grid gap-3"

@@ -202,7 +202,7 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 | **Pub/Sub consumer** on Spring | This doc §2 · `PLAN.md` / release notes |
 | **IBKR** — no broker OAuth/token refresh in-app; no order placement | `ibkr-automation.md` |
 | **Plan limits UI** — usage meter / soft-limit banner on xChat from `getPlanLimits()` | `PLAN.md` (deferred) · branding TODO in `AGENTS.md` |
-| **xChat** — privacy-first history, paste, voice, xMoney billing | `PLAN.md` priorities **701–704** |
+| **xChat** — paste (702), voice (703), xMoney billing (704) | `PLAN.md`; **701** privacy history **shipped** (see `PLAN.md` deferred shipped list + `xchat-history-storage.md`) |
 | **OptionsStrategyEngine** — extend scoring / desk notification providers | `PLAN.md` · `reviewer.md` §245 |
 | **Lighthouse / perf in default CI** | **`npm run ci:gate`** does **not** run Lighthouse; hot-path PRs attach local LHCI or manual Lighthouse per **`reviewer.md`**; optional repo **`.lighthouseci/`** config for local regression |
 

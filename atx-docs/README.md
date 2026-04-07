@@ -8,7 +8,6 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 - [Backlog](#backlog)
 - [Guides](#guides)
-- [Frontend plan](#frontend-plan)
 - [Operations — sre-ops](#operations-sre-ops)
 - [xChat and product — xchat](#xchat-and-product-xchat)
 - [Options (RAG + seed)](#options-rag-seed)
@@ -35,14 +34,6 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 | [guides/api-endpoints.md](./guides/api-endpoints.md) | API route inventory by domain + OpenAPI validation checklist |
 | [guides/xchat-personas.md](./guides/xchat-personas.md) | xChat route behavior, persona governance, collection/seed notes |
 | [guides/deploy-and-ops.md](./guides/deploy-and-ops.md) | Deploy/rollback model, secrets source of truth, operator checks |
-
----
-
-## Frontend plan
-
-| Doc | Purpose |
-|-----|---------|
-| [PLAN.md — Stripe billing (shipped)](./PLAN.md#stripe-billing) | **Stripe** Checkout, webhooks, Customer Portal deep link, `core_users.stripeCustomerId`, plan limits via `getPlanLimits()` — closed for MVP; optional UX meters stay in [current-state-features gaps](./design-system/current-state-features.md) |
 
 ---
 

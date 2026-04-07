@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession, requireAdminTenantIdHex } from "@/lib/api-auth";
 import { proxyAdminDeliveryChannelsRequestToBackend } from "@/lib/backend-bff";
+import { resolveDeliveryChannelTestEmail } from "@/lib/delivery-channel-test-email";
 import { sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
 import { postSlackIncomingWebhook } from "@/lib/post-slack-incoming-webhook";
 import { getAdminDeliveryChannelById } from "@/modules/core-admin/repository";
@@ -50,11 +51,12 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   if (channel.deliveryTarget === "email") {
-    const to = channel.emailTo?.trim();
-    if (!to) {
-      return NextResponse.json({ error: "Email channel is missing emailTo" }, { status: 400 });
+    const resolved = resolveDeliveryChannelTestEmail(channel.emailTo);
+    if (!resolved.ok) {
+      return NextResponse.json({ error: resolved.error }, { status: 400 });
     }
-    const ok = await sendDeskPlainEmailWithRetry(to, "aTx Finance — delivery channel test", testMessage);
+    const { to, subject, usedEnvRecipientOverride } = resolved;
+    const ok = await sendDeskPlainEmailWithRetry(to, subject, testMessage);
     if (!ok) {
       return NextResponse.json(
         {
@@ -64,11 +66,15 @@ export async function POST(request: Request, context: RouteContext) {
         { status: 502 }
       );
     }
+    const detail = usedEnvRecipientOverride
+      ? `SMTP test sent to ${to} (DESK_DELIVERY_CHANNEL_TEST_TO override; scheduled sends still use the channel recipient). Check that inbox (and spam).`
+      : `SMTP test sent to ${to}. Check that inbox (and spam).`;
     return NextResponse.json({
       ok: true,
       deliveryTarget: "email",
       message: testMessage,
-      detail: `SMTP test sent to ${to}. Check that inbox (and spam).`
+      detail,
+      usedEnvRecipientOverride
     });
   }
 

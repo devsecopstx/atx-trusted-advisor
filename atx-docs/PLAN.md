@@ -26,6 +26,7 @@ Living backlog for atx app, xChat, admin, and BFF. **Shipped stack, features, CI
 
 ### Deferred product TODOs
 
+- **Shipped — priority 701 (xChat privacy-first history):** Default **ephemeral** continuity — client sends up to **10** prior turns as `recentMessages` on `POST /api/xchat/ask` (`askSchema`); **no** `xchat_logs` row unless the user opts in via **Keep last 10 messages** (`xchat_user_preferences`, `PUT /api/xchat/preferences`). When opted in: persist to Mongo `xchat_logs` with rolling last-10 enforcement and **`XCHAT_OPT_IN_RETENTION_DAYS` = 60** on `retentionExpiresAt` + TTL index (`src/modules/xchat/repository.ts`). Per-user upload of turns to xAI collections is **off** (`isXchatUserHistoryXaiCollectionEnabled()` → `false` in `xchat-platform-settings.ts`). Team/persona RAG unchanged. **User delete:** admin purge removes `xchat_logs` and **`xchat_user_preferences`** (`purgeCoreUserAssociatedData` in `core-admin/repository.ts`). Canonical doc: [xchat-history-storage.md](./xchat/xchat-history-storage.md).
 - Shipped in app **3.3.4:** Next 16 **proxy-only** edge (`src/proxy.ts`; removed `middleware.ts`); TypeScript — **`tsconfig` excludes `.next/dev`**, **`next-env.d.ts` → `.next/types/routes.d.ts`**; admin delivery-channel response shaping in **`serialize-delivery-channel.ts`** (typed-route compliance). Docs: **`AGENTS.md`**, **`auth-and-access.md`**, release notes **3.3.4**.
 - Shipped in app **3.0.16:** soft-theme polish for xChat composer + xOptions (page surface token, chain/CTA/chart readability); **`/xoptions`** layout loads **`portfolios-dashboard.css`** with workspace rail so sidebar Lucide glyphs stay 1rem-class sized.
 - Shipped in app **3.0.6:** portfolios compact watchlist shows top five IV/OI scan rows (`watchlist-hot`) plus watchlist manage link; xOptions step 3 strategy cards show **Requires** (cash vs stock) and dropped verbose bullets / Learn more; xOptions step 4 payoff chart is optional via sidebar **Payoff preview** (default off), with position review reflow under the chain when the chart is hidden.
@@ -78,7 +79,7 @@ For the **core xStrategyBuilder loop** (collect → validate → synthesize → 
 
 **Next / outstanding (tracked here or below):** Observability hardening (correlation/job/persona/model), audit/doc parity, and strict JSON Schema artifact v2 under [Deferred (larger lifts)](#deferred-larger-lifts).
 
-**Open question:** Attachment ingestion policy for 701/702 while keeping ephemeral-by-default privacy posture.
+**Open question:** Attachment ingestion policy for **702** (paste) while keeping ephemeral-by-default privacy posture.
 
 ---
 
