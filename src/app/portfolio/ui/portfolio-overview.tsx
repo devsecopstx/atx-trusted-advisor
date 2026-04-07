@@ -6,6 +6,10 @@ import type { PortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics"
 import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 import type { Account } from "@/modules/core-admin/types";
 
+import type { PortfolioDeskPrefetchStrip } from "@/app/portfolio/ui/portfolio-desk-prefetch";
+
+export type { PortfolioDeskPrefetchStrip };
+
 type PortfolioOverviewProps = {
   portfolioDisplayName: string;
   portfolioIdHex: string;
@@ -15,6 +19,7 @@ type PortfolioOverviewProps = {
   holdingsRows: PortfolioHoldingRow[];
   positionsByAccount: Record<string, SerializablePosition[]>;
   scoringFactors: PortfolioScoringFactorApi[];
+  deskPrefetch?: PortfolioDeskPrefetchStrip | null;
 };
 
 export function PortfolioOverview({
@@ -25,7 +30,8 @@ export function PortfolioOverview({
   admin,
   holdingsRows,
   positionsByAccount,
-  scoringFactors
+  scoringFactors,
+  deskPrefetch = null
 }: PortfolioOverviewProps) {
   const defaultAccountHex =
     metrics.byAccount.find((r) => r.isDefault)?.accountIdHex ?? metrics.byAccount[0]?.accountIdHex ?? "";
@@ -44,6 +50,7 @@ export function PortfolioOverview({
     <PortfolioManageShell
       admin={admin}
       defaultAccountHex={defaultAccountHex}
+      deskPrefetch={deskPrefetch}
       holdingsRows={holdingsRows}
       manageOptions={accountManageOptions}
       metrics={metrics}

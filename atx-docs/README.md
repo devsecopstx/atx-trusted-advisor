@@ -111,7 +111,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 | [atx-multi-agent-design-loop.mmd](./xchat/atx-multi-agent-design-loop.mmd) | Multi-agent flow (Mermaid) |
 | [super-agent-model157.mmd](./xchat/super-agent-model157.mmd) | Super-agent diagram (Mermaid) |
 | [branding/](./branding/) | Brand prompts, palette, marketing copy (reference assets) |
-| [design-system/](./design-system/) | Brand kit CSS/MD/HTML + `design-future-consideration.md` — imported by Next from `src/app/layout.tsx` |
+| [design-system/](./design-system/) | Brand kit CSS/MD/HTML — imported by Next from `src/app/layout.tsx`; UX roadmap lives in [PLAN.md](./PLAN.md#design-and-ux-roadmap) |
 | [charts-apex.md](./design-system/charts-apex.md) | ApexCharts on xStrategyBuilder / xOptions (PLAN 230n); Chart.js removed |
 
 ---

@@ -1,177 +1,184 @@
-# atxfinance-backend — Current State (Architecture & Features)
+# xFinance monorepo — current state (stack, features, docs & test gaps)
 
-Last updated: 2026-04-03
+Last updated: 2026-04-08  
+App semver (canonical): root **`package.json`** (runtime label via `src/lib/app-version.ts`).
 
-Scope: Kotlin/Spring Boot service that acts as a scheduler/worker and thin HTTP API for portfolio, admin, strategy jobs, and RAG-support operations. Built and deployed from the monorepo (`services/atxfinance-backend`).
-
-**Roadmap & gaps (consolidated index):** [`atx-docs/PLAN.md`](../PLAN.md) — priorities, BFF/auth deferred work, OptionsStrategyEngine (**245n** shipped; see [`strategy-engine.md`](./xStrategyBuilder/strategy-engine.md)), audit lineage, Stripe follow-ons, branding/UI deferrals. **Outstanding-only backlog + reviewer ops hooks:** [`atx-docs/PLAN.md`](../PLAN.md) (align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md) — Secret Manager / deploy docs when SMTP or BFF changes).
-
-**Charts (Next.js):** ApexCharts for xStrategyBuilder / xOptions — [charts-apex.md](./charts-apex.md). **Watchlist price alerts (Next scanner):** thresholds + cooldown documented in `PLAN.md` shipped **240n** (`src/modules/watchlist/price-alert-service.ts`).
-
-- Runtime: Kotlin, Spring Boot, JDK 21
-- Build: Gradle (`build.gradle.kts`), repo-root Dockerfile builds this module
-- Data: MongoDB (Spring Data Mongo)
-- Scheduling & coordination: Spring @Scheduled + ShedLock (Mongo lock collection)
-- Messaging: Google Pub/Sub publisher (DLQ ready; consumer to be wired)
-- Observability: Micrometer (GMP scrape) + OpenTelemetry (OTLP) stubs
-- HTTP: REST controllers (health, portfolio, admin, strategy, RAG)
-
-## Frontend tech stack summary (core app)
-
-Companion frontend for this backend runs in the same monorepo as the Next.js core app.
-
-- Framework: Next.js App Router (`src/app/*`)
-- Language/runtime: TypeScript + React 19
-- Styling: Tailwind CSS + brand design tokens (`atx-docs/design-system/atxfinance-brand-kit.css`, `--xf-*`)
-- Validation and typing: Zod + strict TypeScript checks (`npm run typecheck`)
-- Docs/API UX: OpenAPI inventory endpoint (`GET /api/openapi`) + admin Swagger surface (`/admin/api-docs`)
-- Data/auth integration: session-cookie auth (`xf_core_session`), Mongo-backed APIs via Next route handlers under `src/app/api/*`, optional BFF proxying to Spring backend with **`ATXFINANCE_BACKEND_ORIGIN`** (staging/prod: **HTTPS** public backend origin, **no `:8080`** on the hostname; local Next-only dev often `http://127.0.0.1:8080` for the Kotlin service URL — Spring itself does **not** read this var for SMTP)
-- Tooling gates: ESLint, Vitest, CI gate (`npm run ci:gate`)
-
-Frontend quick references:
-
-- App + API implementation: `src/app/`
-- Shared modules/services: `src/modules/`
-- Dev setup guide: `atx-docs/guides/local-development.md`
-- API inventory guide: `atx-docs/guides/api-endpoints.md`
-
-
-## 1) Boot & Configuration
-
-- Entry: `com.atxfinance.backend.Application`
-- Config props: `com.atxfinance.backend.config.AtxfinanceProperties` (`app.atxfinance.*`)
-- Mongo URI resolution: `MongoUriEnvPostProcessor` + `MongoUriResolver`
-  - Accepts `MONGODB_URI` (plain or base64) or `MONGODB_URI_B64` and injects `spring.data.mongodb.uri` early
-- Scheduling: `SchedulingConfig` enables `@EnableScheduling` and ShedLock with a dedicated `schedulerTaskExecutor`
-- Pub/Sub: `PubSubConfig` (`app.pubsub.project-id`, `app.pubsub.topic`, `app.pubsub.dlq-topic`) creates a `Publisher` when configured
-
-Key env/config (examples)
-- `spring.data.mongodb.uri` (derived automatically from `MONGODB_URI`/`MONGODB_URI_B64` if present)
-- `MONGODB_URI`, `MONGODB_URI_B64` (legacy), `SPRING_DATA_MONGODB_URI`
-- `app.pubsub.project-id`, `app.pubsub.topic`
-- `OTEL_EXPORTER_OTLP_ENDPOINT` (optional local tracing)
-
-
-## 2) Module/Package Overview
-
-- `config/` — properties, Mongo URI resolver, ShedLock and executor wiring
-- `web/` — REST controllers (health, portfolio CRUD, admin, strategy, RAG, auth callbacks)
-- `portfolio/` — portfolio CRUD, nested resources, payload normalization/validation
-- `admin/` — admin services (deploy notes, scheduled tasks, positions/accounts/watchlist, platform **`admin_delivery_channels`** CRUD: `in_app` \| `slack` \| **`email`** with `emailTo`; JVM path uses `DeskSmtpSender` when SMTP env is set)
-- `audit/` — audit writers and admin query surface
-- `strategy/` — options strategy job orchestration, Yahoo client, **`OptionsStrategyEngine`** (weighted scoring + JVM `options_scanner` dry run — [`strategy-engine.md`](./xStrategyBuilder/strategy-engine.md)); product **280** remains the umbrella for scanner + interactive surfaces
-- `rag/` — RAG file ingestion helpers (mime, chunker, xAI collection client)
-- `pubsub/` — Pub/Sub publisher config
-- `session/` — session cookie parsing/writing, roles, auth env secrets
-- `auth/`, `identity/`, `notify/` — OAuth callback flow stubs, identity helpers, Slack webhooks, and **desk SMTP** (`DeskSmtpSender` / Angus Mail) for admin test-send and parity with Next `src/lib/desk-smtp.ts`
-
-
-## 3) Data Model (Mongo Collections)
-
-Collection names are centralized in `AtxfinanceProperties` (prefix `app.atxfinance.*`). Notable collections:
-- Core/app: `tenant_portfolio`, `portfolio_accounts`, `portfolio_watchlists`, `portfolio_positions`
-- Personas & users: `xchat_personas`, `core_users`, `core_tenant_memberships`, `admin_user_settings`, `admin_user_bootstrap_profiles`
-- Admin ops: `admin_audit_events`, `admin_scheduled_tasks`, `admin_task_runs`, `admin_deploy_note_configs`, `admin_delivery_channels` (platform Slack / **email** / in-app; task `deliveryChannelTarget` → run summaries)
-- Recommendations & alerts: `app_user_recommendations`, `portfolio_recommendations`, `portfolio_alerts`, `portfolio_delivery_channels`
-- RAG: `xai_collections`, `xchat_rag_chunks`, `xchat_logs`
-- Strategy orchestration: `strategy_jobs`
-
-
-## 4) HTTP API Surface (selected)
-
-Health and diagnostics
-- `GET /actuator/health` — Spring Actuator
-- `GET /api/health` — compatibility shim (basic service + Mongo/secrets check)
-- `GET /api/backend/health` — details: active profiles, masked Mongo URI, host/db, ping status
-
-Portfolio (session cookie required; cookie name from `app.atxfinance.session-cookie-name`)
-- `GET /api/portfolios/{portfolioId}` — summary payload for the session user
-- `PATCH /api/portfolios/{portfolioId}` — rename portfolio (validates name, 1..200)
-
-Additional controllers exist for admin and app surfaces (names reflect intent; see package `web/`):
-- Admin: access requests, audit, bootstrap, import broker, portfolio accounts/alerts/delivery-channels/positions/recommendations/watchlist, tenant **Tasks** (`/admin/tasks`), **platform delivery channels** (`/api/admin/delivery-channels` — `email` uses SMTP same family as portfolio desk mail), users, deploy-note-configs
-- App: recommendations (`AppUserRecommendationsController`, `PortfolioRecommendationsController`), positions & portfolio subresources, personas, strategy jobs/options, RAG files, auth callback
-
-OpenAPI: SpringDoc 2.x is configured in Gradle (see `atx-docs/sre-ops/atxfinance-backend-http-api.md`). Swagger UI: `GET /swagger-ui.html`.
-
-
-## 5) Scheduling & Concurrency
-
-- Spring `@Scheduled` tasks (see `scheduling/SampleScheduledTasks.kt`) coordinate via ShedLock (Mongo `shedLock` collection)
-- Default max lock duration: `PT5M` (see `@EnableSchedulerLock`)
-- Dedicated thread pool executor `scheduler-` (core/max size 4)
-- Intended for fault-tolerant, multi-instance operation
-
-
-## 6) Messaging (Google Pub/Sub)
-
-- Publisher bean created when `app.pubsub.project-id` and `app.pubsub.topic` are set
-- Uses `NoCredentialsProvider` by default locally; relies on ADC when deployed
-- DLQ topic name tracked in props (`dlqTopic`) for consumer wiring — **subscriber/consumer not implemented in this module** (platform follow-on; see release checklist § Infra)
-
-
-## 7) Auth & Session
-
-- Session cookie parsing: `session/SessionCookieParser` with cookie name from `AtxfinanceProperties.sessionCookieName` (default `xf_core_session`)
-- Roles scaffold in `session/PlatformRoles`
-- OAuth callback surface present (`web/AuthCallbackController`, `auth/OAuth*`, `identity/*`) — minimal wiring; full OAuth flow is owned by the frontend/BFF
-
-
-## 8) RAG Integration
-
-- Upload/readiness helpers under `rag/` handle file type/mime decisions and chunking (`RagTextChunker`)
-- HTTP clients for xAI collections/upload endpoints (`XaiCollectionDocumentsClient`, `XaiFileUploadClient`)
-- Collections: `xai_collections`, `xchat_rag_chunks`, `xchat_logs`
-
-
-## 9) Observability
-
-- Micrometer metrics designed for Google Managed Prometheus
-- OpenTelemetry export via OTLP endpoint if configured (`OTEL_EXPORTER_OTLP_ENDPOINT`)
-- Health endpoints (above) expose environment & Mongo connectivity diagnostics
-
-
-## 10) Testing
-
-- Unit/integration tests live under `src/test/kotlin` (e.g., `BackendHealthControllerTest`, `BackendHttpApiCrudIntegrationTest`)
-- Run from module root: `./gradlew test`
-
-
-## 11) Build & Run
-
-Local dev
-```
-cd services/atxfinance-backend
-chmod +x ./gradlew  # once if needed
-./gradlew bootRun   # env can be sourced from repo-root .env
-```
-Container/JAR
-- Repo-root `Dockerfile` builds the JAR from this module and runs it under Java 21
-
-
-## 12) Deployment Baseline (Cloud Run)
-
-- Concurrency: 1; CPU: 1 vCPU; Memory: 1 GiB
-- Min/Max instances (staging example): `min=0`, `max=5`
-- Exposes HTTP on `:8080`
-
-
-## Roadmap pointer (companion Next.js app)
-
-The Next.js core app (`src/app`, `src/modules`) owns **xChat** (`/api/xchat/*`), rich **persona governance**, and most **OAuth** session behavior today. BFF proxying to this service is enabled per `bff-proxy-routes.ts` when `ATXFINANCE_BACKEND_ORIGIN` is set; **xChat streaming stays Next-authoritative** until explicitly migrated. See **`PLAN.md`** § BFF routing gaps and **`api-consolidation-spring-backend.md`**.
-
-### Desk email (portfolio + platform)
-
-When **`SMTP_HOST`**, **`SMTP_USER`**, **`SMTP_PASS`**, and **`DESK_EMAIL_FROM`** are set (optional **`SMTP_PORT`**, TLS flags per env — see repo `.env.example` / `src/lib/env.ts`):
-
-- **Next:** Portfolio desk notifications (`portfolio_delivery_channels` kind **`email`**, price-alert path, etc.) send via `src/lib/desk-smtp.ts`.
-- **Spring:** Proxied admin paths (e.g. **`POST /api/admin/delivery-channels/test`**) send via **`DeskSmtpSender`**; **`EmailSendFailed`** surfaces as **502** on the API.
-- **PR / ops:** With BFF on, **both** Cloud Run services that can handle those code paths need the same SMTP secret bindings — [deploy-and-ops.md](../guides/deploy-and-ops.md). UI: **`/admin/delivery-channels`**.
+This page is the **single entry** for “what ships today” across **Next.js (core product)** and **Kotlin/Spring (`atxfinance-backend`)**. Deep dives stay in linked docs; **outstanding work only** lives in [`PLAN.md`](../PLAN.md). PR hygiene aligns with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md) (contracts, OpenAPI parity, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change).
 
 ---
-References
-- Service README: `services/atxfinance-backend/README.md`
-- SRE/API details: `atx-docs/sre-ops/atxfinance-backend-http-api.md`
-- Consolidated release / gap index: `atx-docs/PLAN.md`
-- Deploy, verify, desk SMTP on BFF: `atx-docs/guides/deploy-and-ops.md`
-- Portfolio & admin data contracts in `src/main/kotlin/com/atxfinance/backend` (packages noted above)
+
+## Doc & roadmap index
+
+| Topic | Where |
+|--------|--------|
+| Backlog (open items only) | [`PLAN.md`](../PLAN.md) |
+| IBKR integration (phases, compliance) | [`ibkr-automation.md`](./ibkr-automation.md) · module [`src/modules/ibkr-integration/README.md`](../../src/modules/ibkr-integration/README.md) |
+| Next API inventory | [`guides/api-endpoints.md`](../guides/api-endpoints.md) |
+| Spring HTTP contract | [`sre-ops/atxfinance-backend-http-api.md`](../sre-ops/atxfinance-backend-http-api.md) |
+| BFF / consolidation | [`sre-ops/api-consolidation-spring-backend.md`](../sre-ops/api-consolidation-spring-backend.md) |
+| Deploy, secrets, desk SMTP | [`guides/deploy-and-ops.md`](../guides/deploy-and-ops.md) |
+| OptionsStrategyEngine (shipped scoring path) | [`xStrategyBuilder/strategy-engine.md`](./xStrategyBuilder/strategy-engine.md) |
+| Charts (Apex) | [`charts-apex.md`](./charts-apex.md) |
+| Release history | [`sre-ops/release-notes.md`](../sre-ops/release-notes.md) |
+| Scheduled scanners (Phase 3 shipped) | [`scheduled-task/scanners-phase3-plan.md`](./scheduled-task/scanners-phase3-plan.md) |
+
+---
+
+## 1) Core app — Next.js (primary product)
+
+- **Framework:** Next.js App Router (`src/app/*`)
+- **UI:** React 19, TypeScript, Tailwind + **`--xf-*`** tokens from [`atxfinance-brand-kit.css`](./atxfinance-brand-kit.css)
+- **Validation:** Zod; **`npm run typecheck`** (strict)
+- **Data:** MongoDB via route handlers and `src/modules/*`; session cookie **`xf_core_session`**
+- **API docs:** `GET /api/openapi` (inventory); admin **Swagger** at **`/admin/api-docs`**
+- **CI gate:** **`npm run ci:gate`** → lint, typecheck, **`docs:links`** (all `atx-docs/**/*.md`), Vitest (unit + integration), OpenAPI parity tests (`tests/integration/openapi-*.test.ts`)
+- **Optional BFF:** When **`ATXFINANCE_BACKEND_ORIGIN`** points at the **Spring** service **HTTPS** origin, selected **`/api/*`** routes proxy per [`bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts). **xChat** (`/api/xchat/*`) stays **Next-authoritative** (streaming not on Spring until explicitly migrated — see `PLAN.md` / `api-consolidation-spring-backend.md`).
+
+### Product surfaces (app_user shell)
+
+Path prefixes for the shared product chrome are defined in **`APP_USER_PRODUCT_PATH_PREFIXES`** ([`surface-policy.ts`](../../src/modules/surface-policy.ts)): **`/xchat`**, **`/portfolio`**, **`/portfolios`**, **`/import-activity`**, **`/watchlist`**, **`/account`**, **`/workspace`**, **`/xoptions`**. Other user routes (e.g. **`/xcoach`**) exist but are not in that rail list unless extended there.
+
+**Representative capabilities (non-exhaustive — see `api-endpoints.md`):**
+
+- **xChat** — `POST /api/xchat/ask`, personas, plan limits; xAI-backed; history in Mongo (`xchat_logs` per product rules).
+- **Portfolio / accounts / holdings** — app_user and admin paths; workspace portfolio cookie; Merrill/Fidelity CSV import + **`/import-activity`**.
+- **Watchlist** — user-scoped store, quotes, optional chain glance; desk columns / IV-OI highlights (see release notes **3.1.x**). **Price alerts** (Next-side scanner thresholds + cooldown): `src/modules/watchlist/price-alert-service.ts`; roadmap context in **`PLAN.md`** (**240n** shipped).
+- **xOptions** — strategy builder UI; strategy-options APIs (Yahoo + optional BFF to Spring).
+- **xCoach** — learning surface (route present; detail in app).
+- **Billing** — Stripe webhook + plan field on users; portal / tier polish in `PLAN.md`.
+- **IBKR (Client Portal, gated `IBKR_ENABLED`)** — consent (`ibkr_user_consents`), sealed httpOnly CP session + issued-at cookie; **`GET /api/integrations/ibkr/*`** including **`…/accounts/{id}/snapshot`** (summary, positions, orders, trades); account allowlist vs **`portfolio/accounts`**; **`[ibkr/audit]`** logs with **`correlationId`** matching response **`X-Correlation-Id`**; UI **`/account/integrations/ibkr`**. No in-app broker OAuth yet; no live order POST (see `ibkr-automation.md`).
+- **Strategy jobs (hardcore)** — Next BFF to Spring: `POST/GET /api/strategy-jobs`, turns through **`slots_complete`**; Redis hourly cap when **`REDIS_URL`** set; contract in `atxfinance-backend-http-api.md` + smoke parity needles.
+
+### Quick pointers
+
+- Implementation: **`src/app/`**, **`src/modules/`**
+- Local dev: [`guides/local-development.md`](../guides/local-development.md)
+- AGENTS runbook: [`AGENTS.md`](../../AGENTS.md)
+
+---
+
+## 2) Worker / API — `atxfinance-backend` (Kotlin/Spring)
+
+Scope: scheduler/worker and **thin HTTP API** for portfolio/admin/strategy/RAG-support paths. Built from **`services/atxfinance-backend`** (repo-root Dockerfile can build this JAR).
+
+- **Runtime:** Kotlin, Spring Boot, **JDK 21**
+- **Build:** Gradle (`build.gradle.kts`); **`npm run build:backend`** runs **`./gradlew test`**
+- **Data:** MongoDB (Spring Data Mongo)
+- **Scheduling:** `@Scheduled` + **ShedLock** (Mongo lock collection)
+- **Messaging:** Google **Pub/Sub** publisher when configured — **subscriber/consumer not implemented** (platform follow-on)
+- **Observability:** Micrometer (GMP-oriented) + OTLP optional
+- **HTTP:** REST (health, portfolio, admin, strategy, RAG, auth callback stubs); SpringDoc **2.x** — **`/swagger-ui.html`**
+
+### Boot & configuration
+
+- Entry: `com.atxfinance.backend.Application`
+- Config: `AtxfinanceProperties` (`app.atxfinance.*`)
+- Mongo: `MONGODB_URI` / `MONGODB_URI_B64` early resolution → `spring.data.mongodb.uri`
+- Pub/Sub: `app.pubsub.project-id`, `app.pubsub.topic`, `app.pubsub.dlq-topic`
+
+### Module map (packages)
+
+- **`config/`** — properties, Mongo URI, ShedLock, executors
+- **`web/`** — REST controllers
+- **`portfolio/`**, **`admin/`** — CRUD, watchlist, positions, **platform `admin_delivery_channels`** (`in_app` \| `slack` \| **`email`**), tenant tasks, deploy notes
+- **`audit/`** — audit writers + admin query
+- **`strategy/`** — strategy jobs, Yahoo client, **`OptionsStrategyEngine`** (scoring + scanner alignment — see `strategy-engine.md`)
+- **`rag/`** — ingestion helpers, xAI collection clients
+- **`session/`** — session cookie parse (name aligns with Next: **`xf_core_session`**)
+- **`notify/`** — Slack, **desk SMTP** (`DeskSmtpSender`) for proxied admin test-send (parity with Next `desk-smtp.ts`)
+
+### Notable Mongo collections (Spring + shared)
+
+Centralized in `AtxfinanceProperties`. Examples: **`tenant_portfolio`**, **`portfolio_accounts`**, **`portfolio_positions`**, **`portfolio_watchlists`**, **`strategy_jobs`**, **`xchat_personas`**, **`core_users`**, **`admin_audit_events`**, **`admin_scheduled_tasks`**, **`admin_delivery_channels`**, **`app_user_recommendations`**, RAG (`xai_collections`, `xchat_rag_chunks`, `xchat_logs`), etc.
+
+### HTTP (selected)
+
+- **Health:** `GET /actuator/health`, `GET /api/health`, `GET /api/backend/health`
+- **Portfolio (session):** `GET|PATCH /api/portfolios/{portfolioId}` (and nested resources per `web/`)
+- **Admin / app:** access requests, audit, broker import, recommendations, strategy, RAG — full list in **`atxfinance-backend-http-api.md`**
+
+### Scheduling & deployment baseline
+
+- ShedLock default max lock **PT5M**; scheduler thread pool (e.g. core/max 4)
+- **Cloud Run (typical):** concurrency **1**, **1 vCPU**, **1 GiB**, HTTP **:8080**
+
+### Run locally
+
+```bash
+cd services/atxfinance-backend
+./gradlew bootRun   # env from repo-root .env as needed
+```
+
+Service README: [`services/atxfinance-backend/README.md`](../../services/atxfinance-backend/README.md)
+
+---
+
+## 3) Desk email (Next + Spring)
+
+When SMTP + **`DESK_EMAIL_FROM`** are configured (see **`.env.example`** / `src/lib/env.ts`):
+
+- **Next** — portfolio desk channels, price-alert paths, etc. (`src/lib/desk-smtp.ts`)
+- **Spring** — proxied admin **`POST /api/admin/delivery-channels/test`** (`DeskSmtpSender`); failures → **502**
+- **Ops:** With BFF on, **both** services that execute those paths need matching Secret Manager bindings — [`deploy-and-ops.md`](../guides/deploy-and-ops.md). UI: **`/admin/delivery-channels`**.
+
+---
+
+## 4) Testing matrix (what runs in CI vs optional)
+
+| Layer | Command / location | Notes |
+|--------|-------------------|--------|
+| **Next gate** | **`npm run ci:gate`** | lint + typecheck + **markdown link check** + full Vitest suite + OpenAPI inventory tests |
+| **Vitest unit** | `tests/unit/**` | Fast, mocked deps |
+| **Vitest integration** | `tests/integration/**` | Route/module tests; **no** live Mongo required for default suite |
+| **OpenAPI parity** | `tests/integration/openapi-*.test.ts` | **`CURRENT_STATE_ROUTES`** must match implemented routes |
+| **Smoke** | `tests/smoke/**`, `npm run smoke:*` | Backend HTTP parity needles, optional live smokes (skipped unless env flags) |
+| **Spring** | **`./gradlew test`** in `services/atxfinance-backend` | Required before prod when Kotlin changes; **`npm run build:backend`** in CI stack |
+| **Live stack** | **`npm run test:integration:live`** | Docker Compose + Mongo + backend + Redis — opt-in |
+
+---
+
+## 5) Known gaps — tests & docs (reviewer-style, consolidated)
+
+These are **documented** backlog items or **conscious** holes; do not treat as shipped.
+
+| Gap | Pointer |
+|-----|---------|
+| **xChat on Spring + BFF streaming** | `PLAN.md` · `api-consolidation-spring-backend.md` |
+| **Strict JSON Schema artifact v2** (strategy jobs) | `PLAN.md` · `atx-multi-agent.md` |
+| **`POST /api/import/broker/clean`** — no dedicated integration test (destructive) | `PLAN.md` § test/doc follow-ups · `api-endpoints.md` |
+| **Admin `PATCH/DELETE …/positions/{id}`** — Next until BFF registry + Kotlin parity | `PLAN.md` |
+| **Pub/Sub consumer** on Spring | This doc §2 · `PLAN.md` / release notes |
+| **IBKR** — no broker OAuth/token refresh in-app; no order placement | `ibkr-automation.md` |
+| **Stripe** — customer portal / `getPlanLimits()` polish | `PLAN.md` |
+| **xChat** — privacy-first history, paste, voice, xMoney billing | `PLAN.md` priorities **701–704** |
+| **OptionsStrategyEngine** — extend scoring / desk notification providers | `PLAN.md` · `reviewer.md` §245 |
+
+**Governance:** Tenant workspace limits, persona changes, and SMTP/BFF/deploy workflow edits should update **`CURRENT_STATE_ROUTES`**, relevant **`atx-docs/guides/*`**, and **`tests/unit/surface-policy.test.ts`** when **`APP_USER_PRODUCT_PATH_PREFIXES`** or public contracts change.
+
+---
+### UX Performance (current baseline)
+- **Core Web Vitals targets**: LCP ≤ 2.5s, INP ≤ 200ms, CLS ≤ 0.1 on /portfolio, /xoptions, /watchlist, /xchat
+- **Monitoring**: [to be added — see PLAN.md]
+- **CI enforcement**: Lighthouse CI on key pages (planned)
+- **High-risk surfaces**: ApexCharts, watchlist real-time updates, IBKR snapshots, strategy builder
+
+#### xChat, xOptions, /portfolios & /portfolio — loading targets (shipped baseline)
+- **First Contentful Paint** ≤ 1.2 s
+- **Largest Contentful Paint** ≤ 2.0 s
+- **Interaction to Next Paint** ≤ 200 ms
+- **High-risk**: ApexCharts, IBKR snapshot, long xChat history
+
+### xChat & Portfolios targets (2026-04-07 LHCI)
+- /xchat: 0.89 → ≥0.95 (history fetch + dynamic input)
+- /portfolios: 0.89 → ≥0.95 (virtualized list)
+- All critical routes now target LCP ≤ 2.0 s, INP ≤ 200 ms
+
+---
+
+## References (unchanged deep dives)
+
+- `services/atxfinance-backend/README.md`
+- `atx-docs/sre-ops/atxfinance-backend-http-api.md`
+- `atx-docs/PLAN.md`
+- `atx-docs/guides/deploy-and-ops.md`
+- Kotlin sources: `services/atxfinance-backend/src/main/kotlin/com/atxfinance/backend/**`

@@ -1,78 +1,44 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { requireApprovedAppUserSession } from "@/lib/api-auth";
-import { getEnv } from "@/lib/env";
 import { fetchIbkrPortfolioAccounts } from "@/modules/ibkr-integration/client-portfolio";
-import { parseIbkrIntegrationConfig } from "@/modules/ibkr-integration/config";
-import { getIbkrConsent } from "@/modules/ibkr-integration/consent-repository";
-import { IBKR_CP_SESSION_COOKIE_NAME } from "@/modules/ibkr-integration/constants";
-import { resolveIbkrClientPortalCookieHeader } from "@/modules/ibkr-integration/session-resolve";
-
-function maskId(hex: string): string {
-  const t = hex.trim();
-  if (t.length <= 8) {
-    return t;
-  }
-  return `${t.slice(0, 6)}…`;
-}
+import { logIbkrAudit } from "@/modules/ibkr-integration/ibkr-audit";
+import { ibkrJsonResponse } from "@/modules/ibkr-integration/ibkr-correlation";
+import {
+    ibkrUpstreamErrorResponse,
+    requireIbkrReadContext
+} from "@/modules/ibkr-integration/ibkr-read-route-context";
 
 export async function GET() {
-  const session = await requireApprovedAppUserSession();
-  if (session instanceof NextResponse) {
-    return session;
+  const base = await requireIbkrReadContext();
+  if (base instanceof NextResponse) {
+    return base;
   }
 
-  const cfg = parseIbkrIntegrationConfig();
-  if (!cfg.enabled) {
-    return NextResponse.json({ error: "ibkr_disabled" }, { status: 404 });
-  }
-  if (!cfg.clientPortalBaseUrl) {
-    return NextResponse.json({ error: "ibkr_gateway_url_missing" }, { status: 503 });
-  }
-
-  const consent = await getIbkrConsent(session.userId, session.tenantId);
-  if (!consent?.consentedAt) {
-    return NextResponse.json({ error: "ibkr_consent_required" }, { status: 403 });
-  }
-
-  const env = getEnv();
-  const secret = env.AUTH_SECRET ?? env.X_OAUTH_CLIENT_SECRET;
-  if (!secret || secret.length < 16) {
-    return NextResponse.json({ error: "auth_secret_unavailable" }, { status: 503 });
-  }
-
-  const jar = await cookies();
-  const sealed = jar.get(IBKR_CP_SESSION_COOKIE_NAME)?.value;
-  const resolved = resolveIbkrClientPortalCookieHeader({
-    config: cfg,
-    sealedCookieValue: sealed,
-    authSecret: secret
-  });
-
-  if (!resolved.ok) {
-    return NextResponse.json(
-      {
-        error: "ibkr_session_required",
-        hint: "POST /api/integrations/ibkr/session with Client Portal Cookie header value, or operator-only env session."
-      },
-      { status: 401 }
-    );
-  }
+  const { correlationId } = base;
 
   const result = await fetchIbkrPortfolioAccounts({
-    baseUrl: cfg.clientPortalBaseUrl,
-    cookieHeader: resolved.cookieHeader
+    baseUrl: base.cfg.clientPortalBaseUrl!,
+    cookieHeader: base.cookieHeader
   });
 
   if (!result.ok) {
-    console.warn("[ibkr/accounts] upstream failed", {
-      userId: maskId(session.userId),
-      error: result.error,
+    logIbkrAudit({
+      correlationId,
+      op: "portfolio_accounts",
+      userIdMasked: base.userIdMasked,
+      ok: false,
+      detail: result.error,
       httpStatus: result.httpStatus,
-      sessionSource: resolved.source
+      sessionSource: base.resolvedSource
     });
-    return NextResponse.json(
+    if (result.httpStatus === 401 || result.httpStatus === 403) {
+      return ibkrUpstreamErrorResponse(
+        { error: "upstream_auth", httpStatus: result.httpStatus },
+        correlationId
+      );
+    }
+    return ibkrJsonResponse(
+      correlationId,
       {
         error: "ibkr_upstream_error",
         detail: result.error,
@@ -82,17 +48,20 @@ export async function GET() {
     );
   }
 
-  console.info("[ibkr/accounts] ok", {
-    userId: maskId(session.userId),
-    count: result.accounts.length,
-    sessionSource: resolved.source
+  logIbkrAudit({
+    correlationId,
+    op: "portfolio_accounts",
+    userIdMasked: base.userIdMasked,
+    ok: true,
+    httpStatus: result.httpStatus,
+    sessionSource: base.resolvedSource
   });
 
-  return NextResponse.json({
+  return ibkrJsonResponse(correlationId, {
     data: {
       accounts: result.accounts,
-      paperTrading: cfg.paperTrading,
-      sessionSource: resolved.source
+      paperTrading: base.cfg.paperTrading,
+      sessionSource: base.resolvedSource
     }
   });
 }

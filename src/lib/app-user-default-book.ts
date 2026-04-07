@@ -31,7 +31,7 @@ export type AppUserDefaultBook = {
   workspacePortfolios: AppUserWorkspacePortfolioRef[];
 };
 
-function portfolioRefs(rows: Portfolio[]): AppUserWorkspacePortfolioRef[] {
+export function portfolioRefs(rows: Portfolio[]): AppUserWorkspacePortfolioRef[] {
   return rows
     .filter((p) => p._id)
     .map((p) => ({
@@ -117,12 +117,22 @@ async function buildDefaultBookForPortfolioRow(
   };
 }
 
+export type LoadAppUserDefaultBookOptions = {
+  /** When set, skips a duplicate {@link listPortfoliosForSessionUser} (e.g. page already loaded the list). */
+  portfolioRows?: Portfolio[];
+};
+
 /** Loads the active workspace book: cookie-selected portfolio when valid, else Mongo default (or first). */
-export async function loadAppUserDefaultBook(session: SessionUser): Promise<AppUserDefaultBook | null> {
-  const portfolioRows = await listPortfoliosForSessionUser({
-    userId: session.userId,
-    tenantId: session.tenantId
-  });
+export async function loadAppUserDefaultBook(
+  session: SessionUser,
+  options?: LoadAppUserDefaultBookOptions
+): Promise<AppUserDefaultBook | null> {
+  const portfolioRows =
+    options?.portfolioRows ??
+    (await listPortfoliosForSessionUser({
+      userId: session.userId,
+      tenantId: session.tenantId
+    }));
   if (portfolioRows.length === 0) {
     return null;
   }

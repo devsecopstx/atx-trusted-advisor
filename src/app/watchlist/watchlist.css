@@ -267,6 +267,49 @@ button.xf-watchlist-toolbar-btn.xf-icon-edit-btn--watchlist-toolbar svg {
   -webkit-overflow-scrolling: touch;
 }
 
+/* TanStack Virtual: scroll parent + grid rows aligned with sticky thead */
+.xf-watchlist-table-wrap--virtual {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(70vh, 720px);
+  -webkit-overflow-scrolling: touch;
+}
+
+.xf-watchlist-table--virtual {
+  display: block;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.xf-watchlist-table--virtual thead {
+  display: block;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--xf-bg-900, #050505);
+}
+
+.xf-watchlist-table--virtual thead tr,
+.xf-watchlist-table--virtual tbody tr.xf-watchlist-table__data-row {
+  display: grid;
+  grid-template-columns:
+    3rem minmax(4.5rem, 1.1fr) minmax(4rem, 0.9fr) minmax(3rem, 0.65fr) minmax(3rem, 0.65fr)
+    minmax(3.5rem, 0.75fr) minmax(8rem, 1.15fr) minmax(5rem, 0.9fr) minmax(3.25rem, 0.55fr) 2.75rem;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: start;
+}
+
+.xf-watchlist-table--virtual thead tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.xf-watchlist-table--virtual tbody tr.xf-watchlist-table__data-row td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
 .xf-watchlist-table {
   width: 100%;
   border-collapse: collapse;

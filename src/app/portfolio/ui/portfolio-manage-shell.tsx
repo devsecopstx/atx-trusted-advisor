@@ -20,6 +20,8 @@ import type { PortfolioHoldingRow } from "@/lib/portfolio-holding-rows";
 import { formatUsd2, formatUsdWhole, type PortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 
+import type { PortfolioDeskPrefetchStrip } from "@/app/portfolio/ui/portfolio-desk-prefetch";
+
 export type PortfolioManageShellProps = {
   portfolioDisplayName: string;
   portfolioIdHex: string;
@@ -32,6 +34,7 @@ export type PortfolioManageShellProps = {
   holdingsRows: PortfolioHoldingRow[];
   positionsByAccount: Record<string, SerializablePosition[]>;
   scoringFactors: PortfolioScoringFactorApi[];
+  deskPrefetch?: PortfolioDeskPrefetchStrip | null;
 };
 
 export function PortfolioManageShell({
@@ -45,7 +48,8 @@ export function PortfolioManageShell({
   metrics,
   holdingsRows,
   positionsByAccount,
-  scoringFactors
+  scoringFactors,
+  deskPrefetch = null
 }: PortfolioManageShellProps) {
   const [selectedAccountHex, setSelectedAccountHex] = useState(defaultAccountHex);
 
@@ -57,12 +61,12 @@ export function PortfolioManageShell({
   const selectedAccountName =
     manageOptions.find((a) => a.id === resolvedSelectedHex)?.name ?? "Selected account";
 
-  const classTotal = metrics.classAllocation.totalUsd > 0 ? metrics.classAllocation.totalUsd : 1;
-  const pctStocks = (metrics.classAllocation.stocksUsd / classTotal) * 100;
-  const pctCash = (metrics.classAllocation.cashUsd / classTotal) * 100;
-  const pctOptions = (metrics.classAllocation.optionsUsd / classTotal) * 100;
-
-  const allocationCharts = (
+  const allocationCharts = useMemo(() => {
+    const classTotal = metrics.classAllocation.totalUsd > 0 ? metrics.classAllocation.totalUsd : 1;
+    const pctStocks = (metrics.classAllocation.stocksUsd / classTotal) * 100;
+    const pctCash = (metrics.classAllocation.cashUsd / classTotal) * 100;
+    const pctOptions = (metrics.classAllocation.optionsUsd / classTotal) * 100;
+    return (
     <div className="portfolio-top-band__charts-inner">
       <section className="portfolio-panel portfolio-panel--tight">
         <h3 className="portfolio-panel__title portfolio-panel__title--sub">By account</h3>
@@ -137,7 +141,8 @@ export function PortfolioManageShell({
         </div>
       </section>
     </div>
-  );
+    );
+  }, [metrics]);
 
   const importActivitiesHref = `/import-activity?portfolioId=${encodeURIComponent(portfolioIdHex)}`;
 
@@ -196,6 +201,24 @@ export function PortfolioManageShell({
               </div>
             ) : null}
           </div>
+          {deskPrefetch &&
+          (deskPrefetch.watchlistSymbolCount > 0 ||
+            deskPrefetch.activeAlertsCount > 0 ||
+            deskPrefetch.ibkrLinkedAccountCount != null) ? (
+            <p
+              className="portfolio-manage-head__sub portfolio-manage-head__sub--tight"
+              style={{ marginTop: "0.5rem", opacity: 0.85 }}
+            >
+              Workspace: {deskPrefetch.watchlistSymbolCount} watchlist symbol
+              {deskPrefetch.watchlistSymbolCount === 1 ? "" : "s"} · {deskPrefetch.activeAlertsCount} active alert
+              {deskPrefetch.activeAlertsCount === 1 ? "" : "s"}
+              {deskPrefetch.ibkrLinkedAccountCount != null
+                ? ` · IBKR ${deskPrefetch.ibkrLinkedAccountCount} linked account${
+                    deskPrefetch.ibkrLinkedAccountCount === 1 ? "" : "s"
+                  }`
+                : ""}
+            </p>
+          ) : null}
           <details className="portfolio-tech-details portfolio-tech-details--quiet">
             <summary>Scoring factors</summary>
             <pre className="portfolio-tech-details__id">ID {portfolioIdHex}</pre>

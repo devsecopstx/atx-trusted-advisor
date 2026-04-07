@@ -15,17 +15,26 @@ import { PortfoliosWatchlistCompact } from "./portfolios-watchlist-compact";
 import { PortfoliosWorkspaceHeader } from "./portfolios-workspace-header";
 import { PortfoliosWorkspaceSidebar } from "./portfolios-workspace-sidebar";
 
+export type PortfoliosWorkspaceDeskHints = {
+  watchlistSymbolCount: number;
+  activeAlertsCount: number;
+  ibkrLinkedAccountCount: number | null;
+};
+
 type Props = {
   focusPortfolioId: string | null;
   initialRows: WorkspacePortfolioRow[];
   accountSlices: WorkspaceDashboardAccountSlice[];
   topHoldings: PortfoliosHeroTopHolding[];
+  /** Cookie / workspace active book — same scope as full watchlist when using `?portfolioId=`. */
+  chosenPortfolioId: string | null;
   defaultPortfolioId: string | null;
   workspaceBook: AppUserDefaultBook | null;
   totalBookUsd: number;
   isGlobalAdmin: boolean;
   accountDetails: AppUserRailAccountPanelDetails | null;
   accountFeedbackPageLabel?: string;
+  workspaceDeskHints?: PortfoliosWorkspaceDeskHints | null;
 };
 
 export function PortfoliosWorkspaceClient({
@@ -33,12 +42,14 @@ export function PortfoliosWorkspaceClient({
   initialRows,
   accountSlices,
   topHoldings,
+  chosenPortfolioId,
   defaultPortfolioId,
   workspaceBook,
   totalBookUsd,
   isGlobalAdmin,
   accountDetails,
-  accountFeedbackPageLabel
+  accountFeedbackPageLabel,
+  workspaceDeskHints = null
 }: Props) {
   const holdingsKey = topHoldings
     .slice(0, 2)
@@ -83,7 +94,10 @@ export function PortfoliosWorkspaceClient({
               </section>
 
               <section className="portfolios-workspace-col portfolios-workspace-col--c min-w-0">
-                <PortfoliosWatchlistCompact portfolioId={defaultPortfolioId} />
+                <PortfoliosWatchlistCompact
+                  deskHints={workspaceDeskHints}
+                  portfolioId={chosenPortfolioId}
+                />
                 <PortfoliosMiniHoldingsGlance topHoldings={topHoldings} />
                 <PortfoliosMarketsNewsCard />
               </section>

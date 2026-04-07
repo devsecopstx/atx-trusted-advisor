@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    accountRefLastFourOnlyDisplay,
     isProvisioningPortfolioAccountRef,
     maskAccountXrefForDisplay
 } from "@/lib/account-xref-display";
@@ -20,6 +21,19 @@ describe("maskAccountXrefForDisplay", () => {
   it("shows last four only for longer refs", () => {
     expect(maskAccountXrefForDisplay("Z06276930")).toBe("••••6930");
     expect(maskAccountXrefForDisplay("ext_account_xref")).toBe("••••xref");
+  });
+});
+
+describe("accountRefLastFourOnlyDisplay", () => {
+  it("matches empty and short masking rules", () => {
+    expect(accountRefLastFourOnlyDisplay("")).toBe("—");
+    expect(accountRefLastFourOnlyDisplay("12")).toBe("••••");
+    expect(accountRefLastFourOnlyDisplay("1234")).toBe("••••");
+  });
+
+  it("returns only the last four characters for longer refs", () => {
+    expect(accountRefLastFourOnlyDisplay("Z06276930")).toBe("6930");
+    expect(accountRefLastFourOnlyDisplay("ext_account_xref")).toBe("xref");
   });
 });
 

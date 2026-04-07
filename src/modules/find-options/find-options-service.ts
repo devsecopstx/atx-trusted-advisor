@@ -1,14 +1,17 @@
+import { ObjectId } from "mongodb";
+
 import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import { loadAppUserDefaultBook, type AppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { getEnv } from "@/lib/env";
-import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
+import { canonicalMongoObjectIdHex, normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import {
     ensurePortfolioWatchlistForUser,
     getDefaultPortfolio,
     listPortfolioAccounts,
     listPortfolioPositionsByAccount,
+    listPortfoliosForSessionUser,
     provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { scoringFactorsPayloadForAdminApi } from "@/modules/core-admin/scoring-factors";
@@ -378,9 +381,22 @@ const MAX_WATCHLIST_SCAN = 18;
 
 export async function getHotWatchlistSymbols(
   session: SessionUser,
-  limit: number
+  limit: number,
+  opts?: { portfolioId?: string | null }
 ): Promise<{ rows: HotWatchlistRow[]; scanned: number }> {
-  const portfolio = await resolveDefaultPortfolio(session);
+  let portfolio: Portfolio | null = null;
+  const rawPid = normalizeMongoObjectIdParam(opts?.portfolioId ?? "");
+  if (rawPid && ObjectId.isValid(rawPid)) {
+    const canon = canonicalMongoObjectIdHex(rawPid);
+    const rows = await listPortfoliosForSessionUser({
+      userId: session.userId,
+      tenantId: session.tenantId
+    });
+    portfolio = rows.find((p) => p._id?.toHexString() === canon) ?? null;
+  }
+  if (!portfolio?._id) {
+    portfolio = await resolveDefaultPortfolio(session);
+  }
   if (!portfolio?._id) {
     return { rows: [], scanned: 0 };
   }

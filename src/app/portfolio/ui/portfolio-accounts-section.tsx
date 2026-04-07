@@ -1,7 +1,8 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import Image from "next/image";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 import { PortfolioAccountActionsCell } from "@/app/portfolio/ui/portfolio-account-actions-cell";
 import { PortfolioAccountManageBar, type PortfolioAccountManageOption } from "@/app/portfolio/ui/portfolio-account-manage-bar";
@@ -21,6 +22,9 @@ export type PortfolioAccountTableRow = {
   riskDotClassName: string;
 };
 
+const ACCOUNTS_VIRTUAL_MIN_ROWS = 14;
+const ACCOUNTS_VIRTUAL_ROW_EST_PX = 56;
+
 type Props = {
   portfolioIdHex: string;
   selectedAccountHex: string;
@@ -29,6 +33,69 @@ type Props = {
   rows: PortfolioAccountTableRow[];
   totalAccounts: number;
 };
+
+type AccountRowProps = {
+  row: PortfolioAccountTableRow;
+  portfolioIdHex: string;
+  totalAccounts: number;
+  focusAccountId: string;
+  onSelectedAccountHexChange: (accountIdHex: string) => void;
+};
+
+function PortfolioAccountTableDataRow({
+  row,
+  portfolioIdHex,
+  totalAccounts,
+  focusAccountId,
+  onSelectedAccountHexChange
+}: AccountRowProps) {
+  return (
+    <tr>
+      <td>
+        <div className="portfolio-manage-table__account-cell">
+          <span className={row.riskDotClassName} title="Risk level" aria-hidden />
+          <div>
+            <div className="portfolio-manage-table__account-name">
+              {row.name}
+              {row.isDefault ? <span className="portfolio-account-card__badge ml-2">Default</span> : null}
+            </div>
+            <div className="portfolio-manage-table__account-meta portfolio-manage-table__account-desk">{row.deskLine}</div>
+          </div>
+        </div>
+      </td>
+      <td className="portfolio-manage-table__mono">
+        <div className="portfolio-manage-table__broker-row">
+          {row.brokerIconUrl ? (
+            <Image
+              className="portfolio-manage-table__broker-icon"
+              src={row.brokerIconUrl}
+              alt=""
+              width={22}
+              height={22}
+            />
+          ) : null}
+          <span className="portfolio-manage-table__broker-label">{row.brokerTypeLabel}</span>
+        </div>
+        <div className="portfolio-manage-table__ref">{row.extAccountId || "—"}</div>
+      </td>
+      <td className="portfolio-manage-table__num">{row.positionsLabel}</td>
+      <td className="portfolio-manage-table__num portfolio-manage-table__emph">{row.costBasisFormatted}</td>
+      <td className="portfolio-manage-table__muted" title="Open the Holdings tab for live marks">
+        —
+      </td>
+      <td className="portfolio-manage-table__td-actions">
+        <PortfolioAccountActionsCell
+          portfolioIdHex={portfolioIdHex}
+          accountIdHex={row.accountIdHex}
+          accountName={row.name}
+          totalAccounts={totalAccounts}
+          focusAccountId={focusAccountId}
+          onFocusChange={onSelectedAccountHexChange}
+        />
+      </td>
+    </tr>
+  );
+}
 
 export function PortfolioAccountsSection({
   portfolioIdHex,
@@ -45,6 +112,16 @@ export function PortfolioAccountsSection({
     return manageOptions[0]?.id ?? "";
   }, [selectedAccountHex, manageOptions]);
 
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const accountsVirtualize = rows.length >= ACCOUNTS_VIRTUAL_MIN_ROWS;
+  /* eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual */
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => tableScrollRef.current,
+    estimateSize: () => ACCOUNTS_VIRTUAL_ROW_EST_PX,
+    overscan: 6
+  });
+
   return (
     <div className="portfolio-manage-table-card portfolio-panel">
       <div className="portfolio-manage-table-card__bar">
@@ -58,7 +135,15 @@ export function PortfolioAccountsSection({
         selectedAccountId={focusAccountId}
         onSelectedAccountIdChange={onSelectedAccountHexChange}
       />
-      <div className="portfolio-table-wrap">
+      <div
+        ref={tableScrollRef}
+        className="portfolio-table-wrap"
+        style={
+          accountsVirtualize
+            ? { maxHeight: "min(50vh, 24rem)", overflow: "auto", position: "relative" }
+            : undefined
+        }
+      >
         <table
           className="portfolio-manage-table portfolio-manage-table--accounts"
           aria-labelledby="accounts-table-heading"
@@ -73,67 +158,56 @@ export function PortfolioAccountsSection({
               <th scope="col">Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.accountIdHex}>
-                <td>
-                  <div className="portfolio-manage-table__account-cell">
-                    <span
-                      className={row.riskDotClassName}
-                      title="Risk level"
-                      aria-hidden
-                    />
-                    <div>
-                      <div className="portfolio-manage-table__account-name">
-                        {row.name}
-                        {row.isDefault ? (
-                          <span className="portfolio-account-card__badge ml-2">Default</span>
-                        ) : null}
-                      </div>
-                      <div className="portfolio-manage-table__account-meta portfolio-manage-table__account-desk">
-                        {row.deskLine}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td className="portfolio-manage-table__mono">
-                  <div className="portfolio-manage-table__broker-row">
-                    {row.brokerIconUrl ? (
-                      <Image
-                        className="portfolio-manage-table__broker-icon"
-                        src={row.brokerIconUrl}
-                        alt=""
-                        width={22}
-                        height={22}
-                      />
+          {accountsVirtualize ? (
+            <tbody>
+              {(() => {
+                const vItems = rowVirtualizer.getVirtualItems();
+                const padTop = vItems.length > 0 ? vItems[0].start : 0;
+                const padBottom =
+                  vItems.length > 0 ? rowVirtualizer.getTotalSize() - vItems[vItems.length - 1]!.end : 0;
+                return (
+                  <>
+                    {padTop > 0 ? (
+                      <tr aria-hidden style={{ height: padTop }}>
+                        <td colSpan={6} style={{ padding: 0, border: "none" }} />
+                      </tr>
                     ) : null}
-                    <span className="portfolio-manage-table__broker-label">{row.brokerTypeLabel}</span>
-                  </div>
-                  <div className="portfolio-manage-table__ref">{row.extAccountId || "—"}</div>
-                </td>
-                <td className="portfolio-manage-table__num">{row.positionsLabel}</td>
-                <td className="portfolio-manage-table__num portfolio-manage-table__emph">
-                  {row.costBasisFormatted}
-                </td>
-                <td
-                  className="portfolio-manage-table__muted"
-                  title="Open the Holdings tab for live marks"
-                >
-                  —
-                </td>
-                <td className="portfolio-manage-table__td-actions">
-                  <PortfolioAccountActionsCell
-                    portfolioIdHex={portfolioIdHex}
-                    accountIdHex={row.accountIdHex}
-                    accountName={row.name}
-                    totalAccounts={totalAccounts}
-                    focusAccountId={focusAccountId}
-                    onFocusChange={onSelectedAccountHexChange}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
+                    {vItems.map((vr) => {
+                      const row = rows[vr.index]!;
+                      return (
+                        <PortfolioAccountTableDataRow
+                          key={row.accountIdHex}
+                          focusAccountId={focusAccountId}
+                          portfolioIdHex={portfolioIdHex}
+                          row={row}
+                          totalAccounts={totalAccounts}
+                          onSelectedAccountHexChange={onSelectedAccountHexChange}
+                        />
+                      );
+                    })}
+                    {padBottom > 0 ? (
+                      <tr aria-hidden style={{ height: padBottom }}>
+                        <td colSpan={6} style={{ padding: 0, border: "none" }} />
+                      </tr>
+                    ) : null}
+                  </>
+                );
+              })()}
+            </tbody>
+          ) : (
+            <tbody>
+              {rows.map((row) => (
+                <PortfolioAccountTableDataRow
+                  key={row.accountIdHex}
+                  focusAccountId={focusAccountId}
+                  portfolioIdHex={portfolioIdHex}
+                  row={row}
+                  totalAccounts={totalAccounts}
+                  onSelectedAccountHexChange={onSelectedAccountHexChange}
+                />
+              ))}
+            </tbody>
+          )}
         </table>
       </div>
     </div>

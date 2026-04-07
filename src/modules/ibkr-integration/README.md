@@ -28,6 +28,25 @@ Design reference: `atx-docs/design-system/ibkr-automation.md`.
 - **UI:** `/account/integrations/ibkr` — consent + optional session paste when allowed.
 - **Session POST** allowed when **`IBKR_ALLOW_SESSION_COOKIE_BODY=true`** or **`NODE_ENV=development`**.
 
+## Phase 3 (read-only portfolio — app **≥3.3.0**)
+
+- **API:** `GET …/accounts/{accountId}/snapshot` (bundled reads, **one** rate-limit slot), plus granular **`summary`**, **`positions`**, **`orders`**, **`executions`** routes. Structured **`[ibkr/audit]`** logs (masked user + account ids; no cookies).
+- **Account allowlist:** every `{accountId}` route verifies the id appears in **`GET /v1/api/portfolio/accounts`** for the same CP session before proxying.
+- **UI:** Read-only snapshot panels (JSON) on **`/account/integrations/ibkr`** after listing accounts.
+
+## Paper gateway checklist (operator / dev)
+
+1. Install and run the **IBKR Client Portal Gateway**; use an **`https://`** base URL (trusted TLS termination or dev proxy — avoid disabling TLS verification in production).
+2. Set **`IBKR_ENABLED=true`**, **`IBKR_CLIENT_PORTAL_BASE_URL=https://…:5000`** (or your gateway port), **`IBKR_PAPER=true`** until execution ships.
+3. Log into the gateway UI with a **paper** login; copy the browser **`Cookie`** header sent to the gateway; paste via **`POST /api/integrations/ibkr/session`** (or env session for smoke).
+4. Confirm **`GET /api/integrations/ibkr/accounts`** returns expected paper account ids; then **`GET …/snapshot?days=7`** for a known id.
+5. If you see **`ibkr_upstream_auth`**, the CP session expired — re-login at the gateway and re-paste the cookie. **OAuth / refresh** is not in-app yet (`oauthBrokerSsoAvailable: false` on status).
+
+## Observability
+
+- **`[ibkr/audit]`** JSON lines include **`correlationId`** (matches response **`X-Correlation-Id`**) for pairing client reports with logs.
+- **`status`**, **`consent`**, and **`session`** routes also emit **`X-Correlation-Id`** (no IBKR audit on those unless extended later).
+
 ## Security checklist (non-negotiable — future phases)
 
 - No passwords or session cookies in Mongo without encryption/KMS review; prefer short-lived tokens and IBKR-native session handling.

@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
 
+import type { PortfoliosWorkspaceDeskHints } from "./portfolios-workspace-client";
+
 type HotRow = {
   symbol: string;
   spot: number | null;
@@ -33,9 +35,11 @@ function formatOi(n: number): string {
 
 type Props = {
   portfolioId: string | null;
+  /** Server-prefetched desk context (Mongo watchlist + alerts + optional IBKR); hot IV/OI rows still load client-side. */
+  deskHints?: PortfoliosWorkspaceDeskHints | null;
 };
 
-export function PortfoliosWatchlistCompact({ portfolioId }: Props) {
+export function PortfoliosWatchlistCompact({ portfolioId, deskHints = null }: Props) {
   const [rows, setRows] = useState<HotRow[]>([]);
   const [scanned, setScanned] = useState(0);
   const [err, setErr] = useState<string | null>(null);
@@ -45,7 +49,11 @@ export function PortfoliosWatchlistCompact({ portfolioId }: Props) {
     setLoading(true);
     setErr(null);
     try {
-      const res = await fetch(`/api/app-user/find-options/watchlist-hot?limit=5`, {
+      const qs = new URLSearchParams({ limit: "5" });
+      if (portfolioId) {
+        qs.set("portfolioId", portfolioId);
+      }
+      const res = await fetch(`/api/app-user/find-options/watchlist-hot?${qs.toString()}`, {
         credentials: "include"
       });
       const body = (await res.json().catch(() => ({}))) as {
@@ -78,7 +86,7 @@ export function PortfoliosWatchlistCompact({ portfolioId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [portfolioId]);
 
   useEffect(() => {
     void load();
@@ -105,6 +113,18 @@ export function PortfoliosWatchlistCompact({ portfolioId }: Props) {
           </h2>
           <p className="mt-0.5 mb-0 text-[0.62rem] leading-snug text-[var(--xf-text-400)]">
             Top 5 by IV / OI (nearest expiry, watchlist symbols only)
+            {deskHints &&
+            (deskHints.watchlistSymbolCount > 0 ||
+              deskHints.activeAlertsCount > 0 ||
+              deskHints.ibkrLinkedAccountCount != null) ? (
+              <>
+                {" "}
+                · {deskHints.watchlistSymbolCount} wl sym · {deskHints.activeAlertsCount} open alert
+                {deskHints.ibkrLinkedAccountCount != null
+                  ? ` · IBKR ${deskHints.ibkrLinkedAccountCount} acct`
+                  : ""}
+              </>
+            ) : null}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">

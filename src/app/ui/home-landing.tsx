@@ -79,11 +79,10 @@ function FormspreeMissingNotice() {
     <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 px-5 py-4 text-left text-sm text-amber-100/90">
       <p className="font-semibold text-amber-200">Contact form not configured</p>
       <p className="mt-1 leading-relaxed text-amber-100/80">
-        Add{" "}
-        <code className="rounded bg-black/40 px-1.5 py-0.5 text-xs text-emerald-200/90">
-          NEXT_PUBLIC_FORMSPREE_ENDPOINT=https://formspree.io/f/your-id
-        </code>{" "}
-        to your env and restart the app. Create a form at{" "}
+        Pass{" "}
+        <code className="rounded bg-black/40 px-1.5 py-0.5 text-xs text-emerald-200/90">formspreeEndpoint</code>{" "}
+        (full URL, e.g. <code className="text-xs">https://formspree.io/f/your-id</code>) from the page that renders{" "}
+        <code className="text-xs">HomeLanding</code>. Create a form at{" "}
         <a href="https://formspree.io" className="underline underline-offset-2 hover:text-white" target="_blank" rel="noreferrer">
           formspree.io
         </a>
@@ -94,15 +93,13 @@ function FormspreeMissingNotice() {
 }
 
 type HomeLandingProps = {
+  /** Full Formspree form action URL. No env var — pass from server/parent when wiring marketing pages. */
   formspreeEndpoint?: string;
   /** When set, shows Sign in with Google linking to `/api/auth/google/login`. */
   googleLoginHref?: string | null;
 };
 
-export function HomeLanding({
-  formspreeEndpoint = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT ?? "",
-  googleLoginHref = null
-}: HomeLandingProps) {
+export function HomeLanding({ formspreeEndpoint = "", googleLoginHref = null }: HomeLandingProps) {
   const raw = (formspreeEndpoint || "").trim();
   const hasFormspree = hasValidFormspreeEndpoint(raw);
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CopyIcon, DeleteIcon, RefreshIcon } from "@/app/admin/ui/crud-icons";
 import { parseJson } from "@/app/admin/ui/http";
@@ -164,7 +165,9 @@ async function writeTextToClipboard(text: string): Promise<void> {
   }
 }
 
-export function RagFilesConsole() {
+function RagFilesConsoleBody() {
+  const searchParams = useSearchParams();
+  const seededFilterFromQuery = useRef(false);
   const [collections, setCollections] = useState<CollectionRow[]>([]);
   const [status, setStatus] = useState("Loading collections…");
   const [initialFetchDone, setInitialFetchDone] = useState(false);
@@ -175,10 +178,25 @@ export function RagFilesConsole() {
   const [deleting, setDeleting] = useState(false);
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    if (seededFilterFromQuery.current) {
+      return;
+    }
+    const q = searchParams.get("q")?.trim();
+    if (q) {
+      setNameFilter(q);
+      seededFilterFromQuery.current = true;
+    }
+  }, [searchParams]);
+
   const visibleCollections = useMemo(() => {
     const query = nameFilter.trim().toLowerCase();
     const filtered = query
-      ? collections.filter((row) => (row.name?.trim() || "").toLowerCase().includes(query))
+      ? collections.filter((row) => {
+          const name = (row.name?.trim() || "").toLowerCase();
+          const id = row.id.toLowerCase();
+          return name.includes(query) || id.includes(query);
+        })
       : collections;
     const sorted = [...filtered].sort((a, b) => {
       const left = (a.name?.trim() || "").toLowerCase();
@@ -442,7 +460,7 @@ export function RagFilesConsole() {
       </div>
       <div className="tool-row">
         <label className="status-text" htmlFor="rag-name-filter" style={{ display: "flex", gap: "0.45rem", alignItems: "center" }}>
-          <span>Filter by name</span>
+          <span>Filter by name or collection id</span>
           <input
             id="rag-name-filter"
             type="text"
@@ -604,5 +622,13 @@ export function RagFilesConsole() {
         )}
       </article>
     </section>
+  );
+}
+
+export function RagFilesConsole() {
+  return (
+    <Suspense fallback={<p className="status-text">Loading RAG collections…</p>}>
+      <RagFilesConsoleBody />
+    </Suspense>
   );
 }

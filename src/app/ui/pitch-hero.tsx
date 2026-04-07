@@ -98,7 +98,7 @@ export function buildPitchLoginHref(returnPath: string): string {
 export const DEFAULT_PITCH_LOGIN_HREF = buildPitchLoginHref(DEFAULT_PITCH_LOGIN_RETURN_PATH);
 
 export type HeroProps = {
-  /** Formspree form URL, e.g. `https://formspree.io/f/xxxx`. Prefer `NEXT_PUBLIC_FORMSPREE_ENDPOINT` in `.env.local`. */
+  /** Full Formspree form action URL (pass from parent/server — no dedicated env key). */
   formspreeEndpoint?: string;
   /** Product name shown in the H1 (e.g. xoptions). */
   title?: string;
@@ -183,22 +183,20 @@ function FormspreeMissingNotice({ productLabel }: { productLabel: string }) {
     >
       <p className="font-semibold text-amber-200 mb-1">Formspree not configured</p>
       <p className="text-amber-100/80 leading-relaxed">
-        Add{" "}
-        <code className="rounded bg-black/40 px-1.5 py-0.5 text-xs text-emerald-200/90">
-          NEXT_PUBLIC_FORMSPREE_ENDPOINT=https://formspree.io/f/your-id
-        </code>{" "}
-        to <code className="rounded bg-black/40 px-1.5 py-0.5 text-xs">.env.local</code> (create a form at{" "}
+        Pass{" "}
+        <code className="rounded bg-black/40 px-1.5 py-0.5 text-xs text-emerald-200/90">formspreeEndpoint</code>{" "}
+        (full URL) into this hero. Create a form at{" "}
         <a href="https://formspree.io" className="underline underline-offset-2 hover:text-white" target="_blank" rel="noreferrer">
           formspree.io
         </a>
-        ). Then restart <code className="text-xs">next dev</code>. Waitlist: <strong>{productLabel}</strong>.
+        . Waitlist: <strong>{productLabel}</strong>.
       </p>
     </motion.div>
   );
 }
 
 export default function Hero({
-  formspreeEndpoint = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT || "",
+  formspreeEndpoint = "",
   title = "xoptions",
   signInHref: signInHrefProp,
   loginReturnPath = DEFAULT_PITCH_LOGIN_RETURN_PATH,

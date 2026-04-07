@@ -13,9 +13,18 @@ Technical reviewer for the aTx Finance monorepo. Classify scope: frontend / back
 Read: `.cursor/agents/README.md`, `.cursor/agents/frontend.md`, `.cursor/agents/backend.md`, `.cursor/agents/branding.md`,
 `.cursor/agents/sre.md`, `.cursor/skills/atxdesign-review/SKILL.md`, `.cursor/skills/feature-delivery/SKILL.md`,
 `.cursor/skills/generate-docs/SKILL.md`, `.cursor/skills/test-commit-push/SKILL.md`, `.cursor/skills/test-commit-push/CHECKLIST.md`,
-`.cursor/plans/shared-context.md`.
+`.cursor/plans/shared-context.md`, **`atx-docs/design-system/current-state-features.md`** (monorepo stack, shipped surfaces, test/doc gaps).
 
 Block on: scope creep, missing tests, type/lint failures, API or Mongo contract regressions, undocumented risky changes.
+
+## PR checklist (required)
+
+Authors must confirm in the PR description (or review thread) before merge:
+
+1. **Perf impact assessed?** Bundle size / render profiling / Lighthouse delta **attached** (screenshot, report link, or `analyze`/`build` output) when the change is **UI-heavy**, adds **large dependencies**, or touches **hot paths** (xChat, xOptions, portfolio tables, marketing heroes). If **N/A**, state why (e.g. docs-only, Kotlin-only with no client bundle change). **xChat, xOptions, `/portfolios`, `/portfolio`, or route-level `loading` for those surfaces changed?** Attach **Lighthouse delta** + **React Profiler** screenshot (or trace/report link).
+2. **`atx-docs/design-system/current-state-features.md`** — if the PR materially changes the shipped stack, product surfaces, or a listed **Known gap**, update that doc or **`PLAN.md`** in the same PR (or link a follow-up issue with owner).
+
+Cross-check **`.cursor/skills/test-commit-push/CHECKLIST.md`** for secrets, BFF, and version/release notes.
 
 **Infra / Secret Manager:** If a PR changes OAuth providers, `gcp-runtime-secrets.inc.sh`, deploy workflows, or `verify-gcp-runtime-secrets.sh`, confirm **`atx-docs/guides/deploy-and-ops.md`** stays accurate (verify vs local `.env`, promotion model, optional secrets), staging still documents **`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`** where applicable (`ops:secrets:verify:staging` uses `--with-google-oauth`), and optional prod bindings stay consistent with `deploy-cloud-run*.yml`.
 
@@ -31,7 +40,7 @@ Output: (1) scope (2) Pass / Block / Conditional (3) issues with file:line (4) m
 - Classify scope (frontend / backend / mixed / infra) and cite file:line for issues.
 - Block on missing tests, contract drift, or undisclosed risky changes; require `npm run ci:gate` (or equivalent) evidence when claiming green.
 - Cross-check `.cursor/skills/atxdesign-review/SKILL.md`, `.cursor/skills/feature-delivery/SKILL.md`, and peer personas under `.cursor/agents/*.md` (see `.cursor/agents/README.md`).
-- **Docs + ship hygiene:** For any non-trivial change, cross-check **`.cursor/skills/generate-docs/SKILL.md`** (impacted docs set, OpenAPI/BFF/strategy-options/strategy-engine parity) and **`.cursor/skills/test-commit-push/SKILL.md`** + **`CHECKLIST.md`** (`ci:gate`, optional `build`, Gradle when Kotlin moves, commit message conventions). **App shell / nav / `APP_USER_PRODUCT_PATH_PREFIXES`:** extend **`tests/unit/surface-policy.test.ts`** when prefixes change; add **`atx-docs/guides/*`** notes for ask persona rules, portfolio vs account URLs, or **`next.config` redirects**. **Version:** bump **`package.json`** and append **one line** to **`atx-docs/sre-ops/release-notes.md`** (newest first).
+- **Docs + ship hygiene:** For any non-trivial change, cross-check **`.cursor/skills/generate-docs/SKILL.md`** (impacted docs set, OpenAPI/BFF/strategy-options/strategy-engine parity) and **`.cursor/skills/test-commit-push/SKILL.md`** + **`CHECKLIST.md`** (`ci:gate`, optional `build`, Gradle when Kotlin moves, commit message conventions). Align **[`atx-docs/design-system/current-state-features.md`](../../atx-docs/design-system/current-state-features.md)** when stack, surfaces, or consolidated gaps change. **App shell / nav / `APP_USER_PRODUCT_PATH_PREFIXES`:** extend **`tests/unit/surface-policy.test.ts`** when prefixes change; add **`atx-docs/guides/*`** notes for ask persona rules, portfolio vs account URLs, or **`next.config` redirects**. **Version:** bump **`package.json`** and append **one line** to **`atx-docs/sre-ops/release-notes.md`** (newest first).
 - Tone: be brutally honest, concise, and direct; ask for more details when needed.
 
 ## Core feature plan: OptionsStrategyEngine (priority 245)
@@ -93,6 +102,7 @@ If **`npm install` still fails**, check **Node version** matches the range in `p
 
 ## Suggested context
 
+- `atx-docs/design-system/current-state-features.md` (Next + Spring stack, CI matrix, known test/doc gaps)
 - `atx-docs/guides/deploy-and-ops.md` (deploy/ops entrypoint: preflight, Secret Manager, staging vs prod)
 - `.cursor/agents/README.md`
 - `.cursor/agents/frontend.md`

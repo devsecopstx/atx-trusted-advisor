@@ -6,7 +6,7 @@ import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { getSessionUser } from "@/lib/auth";
 import { canUserLogin } from "@/modules/identity/authorization";
 
-import { XoptionsStrategyBuilderWorkspace } from "./xoptions-strategy-builder-workspace";
+import { XoptionsStrategyBuilderMount } from "./xoptions-strategy-builder-mount";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export default async function XoptionsPage() {
         <AppUserCollapsibleRailLayout
           rail={<AppUserAccountPublicRailForSession railVariant="workspace-product" session={session} />}
         >
-          <XoptionsStrategyBuilderWorkspace />
+          <XoptionsStrategyBuilderMount />
         </AppUserCollapsibleRailLayout>
       </div>
     </div>

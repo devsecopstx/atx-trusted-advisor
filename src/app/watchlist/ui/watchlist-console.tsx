@@ -1,7 +1,18 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import {
+    memo,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useTransition,
+    type ChangeEvent,
+    type CSSProperties
+} from "react";
 
 import {
     AddIcon,
@@ -228,6 +239,127 @@ function formatLegCell(row: WatchlistRow): string {
   return `${g.contractType} ${g.strike.toFixed(2)}`;
 }
 
+const WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX = 58;
+const WATCHLIST_VIRTUAL_MIN_ROWS = 10;
+
+type WatchlistRowTrProps = {
+  row: WatchlistRow;
+  editMode: boolean;
+  mutating: boolean;
+  removingThisSymbol: boolean;
+  updateDraftRow: (
+    symbol: string,
+    partial: Partial<Pick<WatchlistRow, "lineType" | "strategy" | "quantity" | "entryPrice">>
+  ) => void;
+  onRemoveSymbol: (symbol: string) => void;
+  rowClassName?: string;
+  rowStyle?: CSSProperties;
+};
+
+const WatchlistRowTr = memo(function WatchlistRowTr({
+  row,
+  editMode,
+  mutating,
+  removingThisSymbol,
+  updateDraftRow,
+  onRemoveSymbol,
+  rowClassName,
+  rowStyle
+}: WatchlistRowTrProps) {
+  return (
+    <tr className={rowClassName} style={rowStyle}>
+      <td className="xf-watchlist-table-icon-cell">
+        <WatchlistIconBadge logoUrl={row.quote?.logoUrl} symbol={row.symbol} />
+      </td>
+      <td>
+        <div className="xf-watchlist-sym-cell">
+          <span className="xf-watchlist-sym-cell__label">{row.symbol}</span>
+          <a
+            className="xf-watchlist-sym-cell__ext"
+            href={`https://finance.yahoo.com/quote/${encodeURIComponent(row.symbol)}`}
+            rel="noreferrer"
+            target="_blank"
+            title={`${row.symbol} on Yahoo Finance`}
+          >
+            <ExternalLinkIcon className="crud-icon" aria-hidden />
+            <span className="sr-only">Yahoo Finance ({row.symbol})</span>
+          </a>
+        </div>
+      </td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatSpotCell(row)}</td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatIvCell(row)}</td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
+        {row.chainGlance != null ? formatOiCell(row.chainGlance.openInterest) : "—"}
+      </td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatLegCell(row)}</td>
+      <td className="xf-watchlist-table-mono">
+        {editMode ? (
+          <div className="xf-watchlist-edit-stack">
+            <input
+              aria-label={`${row.symbol} quantity`}
+              className="xf-watchlist-table-input"
+              inputMode="decimal"
+              placeholder="Quantity"
+              type="text"
+              value={row.quantity === undefined ? "" : String(row.quantity)}
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                if (v === "") {
+                  updateDraftRow(row.symbol, { quantity: undefined });
+                  return;
+                }
+                const n = Number(v);
+                updateDraftRow(row.symbol, {
+                  quantity: Number.isFinite(n) ? n : undefined
+                });
+              }}
+            />
+            <input
+              aria-label={`${row.symbol} entry price`}
+              className="xf-watchlist-table-input"
+              inputMode="decimal"
+              placeholder="Entry price"
+              type="text"
+              value={row.entryPrice === undefined ? "" : String(row.entryPrice)}
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                if (v === "") {
+                  updateDraftRow(row.symbol, { entryPrice: undefined });
+                  return;
+                }
+                const n = Number(v);
+                updateDraftRow(row.symbol, {
+                  entryPrice: Number.isFinite(n) ? n : undefined
+                });
+              }}
+            />
+            {row.quote?.price != null && Number.isFinite(row.quote.price) ? (
+              <span className="xf-watchlist-table-hint" title="100 × live quote price">
+                100× price: {formatTargetEntryCell(row)}
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          formatTargetEntryCell(row)
+        )}
+      </td>
+      <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatLastUpdateCell(row)}</td>
+      <td className="xf-watchlist-table-mono">—</td>
+      <td>
+        <button
+          aria-label={`Remove ${row.symbol}`}
+          className="xf-watchlist-action-icon"
+          disabled={(mutating && !editMode) || removingThisSymbol}
+          type="button"
+          onClick={() => void onRemoveSymbol(row.symbol)}
+        >
+          <DeleteIcon className="crud-icon" />
+        </button>
+      </td>
+    </tr>
+  );
+});
+
 function WatchlistIconBadge({ logoUrl, symbol }: { logoUrl?: string | null; symbol: string }) {
   if (logoUrl) {
     return (
@@ -405,6 +537,8 @@ export function WatchlistConsole({
     column: "instrument",
     dir: "asc"
   });
+  const [, startTransition] = useTransition();
+  const tableScrollParentRef = useRef<HTMLDivElement>(null);
 
   const toggleWatchlistSort = useCallback((column: WatchlistSortColumn) => {
     setSort((prev) =>
@@ -454,15 +588,17 @@ export function WatchlistConsole({
       if (!json.data) {
         throw new Error("Invalid response");
       }
-      setListName(json.data.name ?? "Default");
-      setRows(buildRows(json.data));
+      startTransition(() => {
+        setListName(json.data!.name ?? "Default");
+        setRows(buildRows(json.data!));
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [watchlistBaseUrl, watchlistFetchQuery]);
+  }, [watchlistBaseUrl, watchlistFetchQuery, startTransition]);
 
   useEffect(() => {
     void load();
@@ -483,10 +619,12 @@ export function WatchlistConsole({
       );
     }
     if (json.data) {
-      setListName(json.data.name ?? "Default");
-      setRows(buildRows(json.data));
+      startTransition(() => {
+        setListName(json.data!.name ?? "Default");
+        setRows(buildRows(json.data!));
+      });
     }
-  }, [watchlistBaseUrl, watchlistFetchQuery]);
+  }, [watchlistBaseUrl, watchlistFetchQuery, startTransition]);
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {
@@ -689,8 +827,10 @@ export function WatchlistConsole({
             );
           }
           if (json.data) {
-            setListName(json.data.name ?? "Default");
-            setRows(buildRows(json.data));
+            startTransition(() => {
+              setListName(json.data!.name ?? "Default");
+              setRows(buildRows(json.data!));
+            });
           }
         }
         const parts = [
@@ -711,7 +851,7 @@ export function WatchlistConsole({
         setMutating(false);
       }
     },
-    [editMode, rows, watchlistBaseUrl, watchlistFetchQuery]
+    [editMode, rows, watchlistBaseUrl, watchlistFetchQuery, startTransition]
   );
 
   const displayRows = editMode ? draftRows : rows;
@@ -719,6 +859,13 @@ export function WatchlistConsole({
     () => applyWatchlistSort(displayRows, sort.column, sort.dir),
     [displayRows, sort.column, sort.dir]
   );
+  const watchlistVirtualize = !editMode && sortedDisplayRows.length >= WATCHLIST_VIRTUAL_MIN_ROWS;
+  const rowVirtualizer = useVirtualizer({
+    count: sortedDisplayRows.length,
+    getScrollElement: () => tableScrollParentRef.current,
+    estimateSize: () => WATCHLIST_VIRTUAL_ROW_ESTIMATE_PX,
+    overscan: 8
+  });
   const sidebarTitle = editMode ? draftName || listName : listName;
 
   return (
@@ -888,8 +1035,11 @@ export function WatchlistConsole({
             ) : null}
 
             {!loading && sortedDisplayRows.length > 0 ? (
-              <div className="xf-watchlist-table-wrap">
-                <table className="xf-watchlist-table">
+              <div
+                ref={tableScrollParentRef}
+                className={`xf-watchlist-table-wrap${watchlistVirtualize ? " xf-watchlist-table-wrap--virtual" : ""}`}
+              >
+                <table className={`xf-watchlist-table${watchlistVirtualize ? " xf-watchlist-table--virtual" : ""}`}>
                   <thead>
                     <tr>
                       <th scope="col">Icon</th>
@@ -945,103 +1095,55 @@ export function WatchlistConsole({
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {sortedDisplayRows.map((row) => (
-                      <tr key={row.symbol}>
-                        <td className="xf-watchlist-table-icon-cell">
-                          <WatchlistIconBadge logoUrl={row.quote?.logoUrl} symbol={row.symbol} />
-                        </td>
-                        <td>
-                          <div className="xf-watchlist-sym-cell">
-                            <span className="xf-watchlist-sym-cell__label">{row.symbol}</span>
-                            <a
-                              className="xf-watchlist-sym-cell__ext"
-                              href={`https://finance.yahoo.com/quote/${encodeURIComponent(row.symbol)}`}
-                              rel="noreferrer"
-                              target="_blank"
-                              title={`${row.symbol} on Yahoo Finance`}
-                            >
-                              <ExternalLinkIcon className="crud-icon" aria-hidden />
-                              <span className="sr-only">Yahoo Finance ({row.symbol})</span>
-                            </a>
-                          </div>
-                        </td>
-                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatSpotCell(row)}</td>
-                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatIvCell(row)}</td>
-                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
-                          {row.chainGlance != null ? formatOiCell(row.chainGlance.openInterest) : "—"}
-                        </td>
-                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">{formatLegCell(row)}</td>
-                        <td className="xf-watchlist-table-mono">
-                          {editMode ? (
-                            <div className="xf-watchlist-edit-stack">
-                              <input
-                                aria-label={`${row.symbol} quantity`}
-                                className="xf-watchlist-table-input"
-                                inputMode="decimal"
-                                placeholder="Quantity"
-                                type="text"
-                                value={row.quantity === undefined ? "" : String(row.quantity)}
-                                onChange={(e) => {
-                                  const v = e.target.value.trim();
-                                  if (v === "") {
-                                    updateDraftRow(row.symbol, { quantity: undefined });
-                                    return;
-                                  }
-                                  const n = Number(v);
-                                  updateDraftRow(row.symbol, {
-                                    quantity: Number.isFinite(n) ? n : undefined
-                                  });
-                                }}
-                              />
-                              <input
-                                aria-label={`${row.symbol} entry price`}
-                                className="xf-watchlist-table-input"
-                                inputMode="decimal"
-                                placeholder="Entry price"
-                                type="text"
-                                value={row.entryPrice === undefined ? "" : String(row.entryPrice)}
-                                onChange={(e) => {
-                                  const v = e.target.value.trim();
-                                  if (v === "") {
-                                    updateDraftRow(row.symbol, { entryPrice: undefined });
-                                    return;
-                                  }
-                                  const n = Number(v);
-                                  updateDraftRow(row.symbol, {
-                                    entryPrice: Number.isFinite(n) ? n : undefined
-                                  });
-                                }}
-                              />
-                              {row.quote?.price != null && Number.isFinite(row.quote.price) ? (
-                                <span className="xf-watchlist-table-hint" title="100 × live quote price">
-                                  100× price: {formatTargetEntryCell(row)}
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : (
-                            formatTargetEntryCell(row)
-                          )}
-                        </td>
-                        <td className="xf-watchlist-table-mono xf-watchlist-table-nowrap">
-                          {formatLastUpdateCell(row)}
-                        </td>
-                        {/* TODO(options-scanner): show rationale / scanner snippet per row when available */}
-                        <td className="xf-watchlist-table-mono">—</td>
-                        <td>
-                          <button
-                            aria-label={`Remove ${row.symbol}`}
-                            className="xf-watchlist-action-icon"
-                            disabled={mutating && !editMode}
-                            type="button"
-                            onClick={() => void onRemoveSymbol(row.symbol)}
-                          >
-                            <DeleteIcon className="crud-icon" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                  {watchlistVirtualize ? (
+                    <tbody
+                      style={{
+                        display: "block",
+                        height: rowVirtualizer.getTotalSize(),
+                        position: "relative",
+                        width: "100%"
+                      }}
+                    >
+                      {rowVirtualizer.getVirtualItems().map((vr) => {
+                        const row = sortedDisplayRows[vr.index]!;
+                        return (
+                          <WatchlistRowTr
+                            key={row.symbol}
+                            editMode={editMode}
+                            mutating={mutating}
+                            removingThisSymbol={removingSymbol === row.symbol}
+                            row={row}
+                            rowClassName="xf-watchlist-table__data-row"
+                            rowStyle={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: "100%",
+                              display: "grid",
+                              height: `${vr.size}px`,
+                              transform: `translateY(${vr.start}px)`
+                            }}
+                            updateDraftRow={updateDraftRow}
+                            onRemoveSymbol={onRemoveSymbol}
+                          />
+                        );
+                      })}
+                    </tbody>
+                  ) : (
+                    <tbody>
+                      {sortedDisplayRows.map((row) => (
+                        <WatchlistRowTr
+                          key={row.symbol}
+                          editMode={editMode}
+                          mutating={mutating}
+                          removingThisSymbol={removingSymbol === row.symbol}
+                          row={row}
+                          updateDraftRow={updateDraftRow}
+                          onRemoveSymbol={onRemoveSymbol}
+                        />
+                      ))}
+                    </tbody>
+                  )}
                 </table>
               </div>
             ) : null}

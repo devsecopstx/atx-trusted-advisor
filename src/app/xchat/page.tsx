@@ -1,24 +1,17 @@
-import { ObjectId } from "mongodb";
+import { Suspense } from "react";
 
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { XchatGuestHeader } from "@/app/ui/xchat-guest-header";
-import {
-    loadAppUserDefaultBook,
-    loadAppUserDefaultBookForPortfolioId,
-    type AppUserDefaultBook
-} from "@/lib/app-user-default-book";
-import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@/lib/auth";
-import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
+import { isGoogleOAuthConfigured } from "@/lib/env";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { oauthAuthErrorMessages } from "@/lib/oauth-auth-error-messages";
-import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
-import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
-import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
+import { canUserLogin } from "@/modules/identity/authorization";
 
-import { XchatConversation } from "./ui/xchat-conversation";
 import { XchatGuestPanel } from "./ui/xchat-guest-panel";
 import { XchatGuestReadonlyShell } from "./ui/xchat-guest-readonly-shell";
+import { XchatRouteSkeleton } from "./ui/xchat-route-skeleton";
+import { XchatApprovedShell } from "./xchat-approved-shell";
 
 type XchatPageProps = {
   searchParams: Promise<{
@@ -70,6 +63,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
       : "/api/auth/x/login?next=%2Fxchat";
 
   const session = await getSessionUser();
+
   if (!session) {
     return (
       <div className="xchat-shell">
@@ -90,51 +84,11 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
   }
 
   const approved = canUserLogin(session.roles);
-  const defaultPersona = approved
-    ? await loadDefaultXchatPersonaForSessionDeduped(session.roles)
-    : null;
-
-  let workspaceBook: AppUserDefaultBook | null = null;
-  let workspacePortfolioId: string | null = null;
-  /** True when `?portfolioId=` resolved to an owned portfolio — cookie is synced client-side so rail matches. */
-  let syncWorkspacePortfolioCookie = false;
-  let workspaceChangePersonaEnabled = true;
-  let workspaceChatHistoryMax = 10;
-  if (approved) {
-    let book: AppUserDefaultBook | null = null;
-    if (requestedPortfolioId && ObjectId.isValid(requestedPortfolioId)) {
-      book = await loadAppUserDefaultBookForPortfolioId(session, requestedPortfolioId);
-      if (book) {
-        syncWorkspacePortfolioCookie = true;
-      }
-    }
-    if (!book) {
-      book = await loadAppUserDefaultBook(session);
-    }
-    if (book) {
-      workspaceBook = book;
-      workspacePortfolioId = book.portfolioId?.trim() ? book.portfolioId.trim() : null;
-    }
-    const wl = await getEffectiveWorkspaceLimitsForUser({
-      tenantId: session.tenantId,
-      userId: session.userId
-    });
-    workspaceChangePersonaEnabled = wl.changePersonaEnabled;
-    workspaceChatHistoryMax = wl.chatHistoryMax;
-  }
-
-  const mongoConnection = shouldShowAppUserDbLabel() ? getMongoConnectionLabel() : "";
 
   const oauthLinkBannerMessage =
     approved && authError && oauthAuthErrorMessages[authError]
       ? oauthAuthErrorMessages[authError]
       : null;
-  const googleLoginHrefApproved = isGoogleOAuthConfigured()
-    ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
-    : null;
-  const googleLinkHrefForApproved =
-    approved && googleLoginHrefApproved ? googleLoginHrefApproved : null;
-
   return (
     <div className="xchat-shell">
       {approved ? (
@@ -163,29 +117,13 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
           </p>
         ) : null}
         {approved ? (
-          <XchatConversation
-            googleLinkHref={googleLinkHrefForApproved}
-            accountDetails={{
-              email: session.email,
-              username: session.username,
-              displayName: session.displayName,
-              xUserId: session.xUserId,
-              avatarUrl: session.avatarUrl,
-              mongoConnection,
-              isGlobalAdmin: isGlobalAdmin(session.roles)
-            }}
-            accountFeedbackPageLabel="xChat"
-            defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
-            includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
-            isGlobalAdmin={isGlobalAdmin(session.roles)}
-            initialXchatItem={initialXchatItem}
-            welcomeName={appUserPrimaryDisplayName(session)}
-            workspaceChangePersonaEnabled={workspaceChangePersonaEnabled}
-            workspaceChatHistoryMax={workspaceChatHistoryMax}
-            workspaceBook={workspaceBook}
-            workspacePortfolioId={workspacePortfolioId}
-            syncWorkspacePortfolioCookie={syncWorkspacePortfolioCookie}
-          />
+          <Suspense fallback={<XchatRouteSkeleton />}>
+            <XchatApprovedShell
+              initialXchatItem={initialXchatItem}
+              requestedPortfolioId={requestedPortfolioId}
+              session={session}
+            />
+          </Suspense>
         ) : (
           <XchatGuestReadonlyShell showAccessPanel={false}>
             <XchatGuestPanel

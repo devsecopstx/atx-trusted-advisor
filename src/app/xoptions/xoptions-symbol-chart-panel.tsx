@@ -4,9 +4,13 @@ import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
+import { downsampleTimeSeries } from "@/lib/chart/downsample-time-series";
 import { useXfUiSoft } from "@/lib/use-xf-ui-soft";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
+
+/** Apex candlestick + volume stay responsive on long histories */
+const MAX_CHART_CANDLES = 420;
 
 type Candle = { t: string; o: number; h: number; l: number; c: number; v: number };
 
@@ -53,22 +57,33 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
     };
   }, [enabled, symbol]);
 
+  const chartCandles = useMemo(
+    () => downsampleTimeSeries(candles, MAX_CHART_CANDLES),
+    [candles]
+  );
+
   const candleSeries = useMemo(
     () =>
-      candles.map((c) => ({
+      chartCandles.map((c) => ({
         x: new Date(`${c.t}T12:00:00.000Z`),
         y: [c.o, c.h, c.l, c.c] as [number, number, number, number]
       })),
-    [candles]
+    [chartCandles]
   );
 
   const volSeries = useMemo(
     () =>
-      candles.map((c) => ({
+      chartCandles.map((c) => ({
         x: new Date(`${c.t}T12:00:00.000Z`),
         y: c.v
       })),
-    [candles]
+    [chartCandles]
+  );
+
+  const candleChartSeries = useMemo(() => [{ data: candleSeries }], [candleSeries]);
+  const volChartSeries = useMemo(
+    () => [{ name: "Volume", data: volSeries }],
+    [volSeries]
   );
 
   const chartOptions = useMemo<ApexOptions>(() => {
@@ -178,14 +193,14 @@ export function XoptionsSymbolChartPanel({ symbol, enabled }: { symbol: string; 
     <div className="xoptions-full-chain__chart-stack space-y-3">
       <ReactApexChart
         options={chartOptions}
-        series={[{ data: candleSeries }]}
+        series={candleChartSeries}
         type="candlestick"
         height={360}
       />
       <p className="xoptions-mid-three__label mb-0 text-[0.625rem] opacity-80">Volume</p>
       <ReactApexChart
         options={volOptions}
-        series={[{ name: "Volume", data: volSeries }]}
+        series={volChartSeries}
         type="bar"
         height={160}
       />

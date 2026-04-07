@@ -15,7 +15,8 @@ export async function GET(request: Request) {
   const raw = searchParams.get("limit");
   const limit = raw ? parseInt(raw, 10) : 3;
   const safe = Number.isFinite(limit) ? limit : 3;
+  const portfolioId = searchParams.get("portfolioId")?.trim() || null;
 
-  const { rows, scanned } = await getHotWatchlistSymbols(session, safe);
+  const { rows, scanned } = await getHotWatchlistSymbols(session, safe, { portfolioId });
   return NextResponse.json({ data: { rows, scanned } });
 }

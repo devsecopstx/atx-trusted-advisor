@@ -31,3 +31,18 @@ export function maskAccountXrefForDisplay(raw: string | null | undefined): strin
   }
   return `••••${s.slice(-4)}`;
 }
+
+/**
+ * Import-activity / high-privacy surfaces: show **only** the last four characters (no leading bullets).
+ * Short refs (≤4 chars) are not shown in clear — use a fixed mask.
+ */
+export function accountRefLastFourOnlyDisplay(raw: string | null | undefined): string {
+  const s = (raw ?? "").trim();
+  if (!s) {
+    return "—";
+  }
+  if (s.length <= 4) {
+    return "••••";
+  }
+  return s.slice(-4);
+}

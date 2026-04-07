@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteIcon, UploadIcon } from "@/app/admin/ui/crud-icons";
-import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
+import { accountRefLastFourOnlyDisplay } from "@/lib/account-xref-display";
 import { brokerExportRefMatchesStoredExt } from "@/lib/broker-account-ref-match";
 import { detectFidelityActivitiesCsv } from "@/modules/portfolio-import/fidelity-activities-csv";
 import { detectFidelityPortfolioHoldingsCsv } from "@/modules/portfolio-import/fidelity-holdings-csv";
@@ -118,6 +118,8 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   const [brokerPreview, setBrokerPreview] = useState<BrokerPreviewAccount[] | null>(null);
   /** Per preview row: whether to include this broker account when running import (default all true after preview). */
   const [importRowSelected, setImportRowSelected] = useState<Record<string, boolean>>({});
+  /** Per portfolio account (`_id`): when false, that account is ignored for CSV→account mapping and import. */
+  const [accountUseForImport, setAccountUseForImport] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [results, setResults] = useState<BrokerApplyRow[] | null>(null);
@@ -142,6 +144,19 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
   useEffect(() => {
     void loadAccounts();
   }, [loadAccounts]);
+
+  useEffect(() => {
+    setAccountUseForImport((prev) => {
+      const validIds = new Set(
+        accounts.map((a) => a._id).filter((id): id is string => Boolean(id && id.trim()))
+      );
+      const next: Record<string, boolean> = {};
+      for (const id of validIds) {
+        next[id] = prev[id] !== false;
+      }
+      return next;
+    });
+  }, [accounts]);
 
   useEffect(() => {
     if (!brokers.some((broker) => broker.id === brokerKind)) {
@@ -175,6 +190,11 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
     return brokerPreview.some((row) => importRowSelected[brokerImportPreviewRowKey(row)] === true);
   }, [brokerPreview, importRowSelected]);
 
+  const somePortfolioAccountEligible = useMemo(
+    () => accounts.some((a) => Boolean(a._id?.trim()) && accountUseForImport[a._id!] !== false),
+    [accounts, accountUseForImport]
+  );
+
   const findAccountByExternalRef = (accountRef: string): AccountRow | undefined => {
     const ref = accountRef.trim();
     if (!ref) {
@@ -182,9 +202,19 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
     }
     return accounts.find(
       (a) =>
+        Boolean(a._id?.trim()) &&
+        accountUseForImport[a._id!] !== false &&
         brokerExportRefMatchesStoredExt(ref, (a.extAccountId || "").trim()) &&
         (a.type ?? "") === brokerKind
     );
+  };
+
+  const formatRefForUserMessage = (ref: string): string => {
+    const t = ref.trim();
+    if (!t) {
+      return "(blank)";
+    }
+    return accountRefLastFourOnlyDisplay(t);
   };
 
   const runPreview = async () => {
@@ -259,6 +289,12 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       return;
     }
     if (brokerPreview?.length) {
+      if (!somePortfolioAccountEligible) {
+        setMessage(
+          'Turn on "Use for import" for at least one portfolio account in the list above, or run preview again.'
+        );
+        return;
+      }
       const enabledRows = brokerPreview.filter((row) => importRowSelected[brokerImportPreviewRowKey(row)] === true);
       if (enabledRows.length === 0) {
         setMessage("Turn on Import for at least one account row in the preview table, or run preview again.");
@@ -266,10 +302,10 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
       }
       const missing = enabledRows
         .filter((row) => !findAccountByExternalRef(row.accountRef)?._id)
-        .map((row) => row.accountRef || "(blank)");
+        .map((row) => formatRefForUserMessage(row.accountRef || ""));
       if (missing.length > 0) {
         setMessage(
-          `Import blocked: ${missing.length} selected broker account ref(s) do not match account external refs in this portfolio. Missing: ${missing.join(", ")}`
+          `Import blocked: ${missing.length} selected broker row(s) do not match an eligible portfolio account (last 4 shown): ${missing.join(", ")}`
         );
         return;
       }
@@ -410,8 +446,9 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
         </ul>
         <p className="m-0 text-xs leading-snug text-[var(--xf-text-300)]">
           Account numbers in the broker file must exactly match each account&apos;s external ref in this portfolio.
-          After preview, use the <strong className="text-[var(--xf-text-100)]">Import</strong> checkboxes to choose which
-          broker accounts to load; only selected rows are written. Preview shows file impact only.
+          In the portfolio account list, use <strong className="text-[var(--xf-text-100)]">Use for import</strong> to choose
+          which custodian accounts can receive an import. After preview, use the <strong className="text-[var(--xf-text-100)]">Import</strong>{" "}
+          checkboxes to choose which broker file rows to load; only selected rows are written. Preview shows file impact only.
         </p>
         <p className="mt-2 mb-0 text-xs leading-snug text-[var(--xf-text-300)]">
           <strong className="text-[var(--xf-text-100)]">Options note:</strong> only net-long option legs are imported
@@ -450,21 +487,48 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
           <table className="w-full text-left text-xs">
             <thead className="border-b border-white/10 text-[var(--xf-text-300)]">
               <tr>
+                <th className="p-2 w-24 text-center" scope="col">
+                  Use for import
+                </th>
                 <th className="p-2">Account</th>
-                <th className="p-2 font-mono">ext ref (CSV must match)</th>
+                <th className="p-2 font-mono">Broker ref (last 4 — full id must match CSV)</th>
               </tr>
             </thead>
             <tbody>
               {accounts.length > 0 ? (
-                accounts.map((a) => (
-                  <tr key={a._id ?? a.name} className="border-b border-white/5">
-                    <td className="p-2">{a.name}</td>
-                    <td className="p-2 font-mono">{maskAccountXrefForDisplay((a.extAccountId || "").trim())}</td>
-                  </tr>
-                ))
+                accounts.map((a) => {
+                  const aid = a._id?.trim() ?? "";
+                  const eligible = aid ? accountUseForImport[aid] !== false : true;
+                  return (
+                    <tr key={a._id ?? a.name} className="border-b border-white/5">
+                      <td className="p-2 text-center align-middle">
+                        {aid ? (
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-[var(--xf-gain-green)]"
+                            checked={eligible}
+                            onChange={(e) => {
+                              setAccountUseForImport((prev) => ({ ...prev, [aid]: e.target.checked }));
+                            }}
+                            aria-label={`Use account ${a.name} for broker import mapping`}
+                          />
+                        ) : (
+                          <span className="text-[var(--xf-text-400)]">—</span>
+                        )}
+                      </td>
+                      <td className="p-2">{a.name}</td>
+                      <td
+                        className="p-2 font-mono tabular-nums"
+                        title="Matching uses your full external ref; only the last four characters are shown here."
+                      >
+                        {accountRefLastFourOnlyDisplay((a.extAccountId || "").trim())}
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={2} className="p-2 text-[var(--xf-text-300)]">
+                  <td colSpan={3} className="p-2 text-[var(--xf-text-300)]">
                     No accounts — add accounts under Portfolio for this book.
                   </td>
                 </tr>
@@ -638,7 +702,12 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
           type="button"
           className="inline-flex items-center gap-2 rounded-md bg-[var(--xf-gain-green)] px-3 py-2 text-sm font-medium text-black hover:opacity-90 disabled:opacity-50"
           disabled={
-            busy || !portfolioId || !brokerPreview?.length || !brokerImportSupported || !someImportRowSelected
+            busy ||
+            !portfolioId ||
+            !brokerPreview?.length ||
+            !brokerImportSupported ||
+            !someImportRowSelected ||
+            !somePortfolioAccountEligible
           }
           onClick={() => void runImport()}
         >
@@ -676,14 +745,14 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                         onChange={(e) => {
                           setImportRowSelected((prev) => ({ ...prev, [rowKey]: e.target.checked }));
                         }}
-                        aria-label={`Include broker account ${row.label || row.accountRef || "row"} in import`}
+                        aria-label={`Include broker file row ${row.label || accountRefLastFourOnlyDisplay(row.accountRef) || "row"} in import`}
                       />
                     </td>
                     <td
-                      className="p-2 font-mono"
-                      title="Matching uses the full broker account id from your file; preview shows last four digits only."
+                      className="p-2 font-mono tabular-nums"
+                      title="Matching uses the full broker account id from your file; only the last four characters are shown."
                     >
-                      {maskAccountXrefForDisplay(row.accountRef)}
+                      {accountRefLastFourOnlyDisplay(row.accountRef)}
                     </td>
                     <td className="p-2">{row.stockCount}</td>
                     <td className="p-2 font-mono">{row.sampleTickers.join(", ")}</td>
@@ -691,8 +760,8 @@ export function ImportActivityClient({ portfolios, brokers, initialPortfolioId }
                       {m ? (
                         <>
                           {m.name}
-                          <span className="ml-1 font-mono text-[var(--xf-text-400)]">
-                            {maskAccountXrefForDisplay(m.extAccountId)}
+                          <span className="ml-1 font-mono text-[var(--xf-text-400)] tabular-nums">
+                            {accountRefLastFourOnlyDisplay(m.extAccountId)}
                           </span>
                         </>
                       ) : (

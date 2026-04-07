@@ -50,7 +50,8 @@ type PersonaListEnvelope = {
   data?: PersonaSummary[];
 };
 
-const DEFAULT_FORCED_PERSONA_NAME = "atx-trusted-advisor";
+/** Matches seeded global_admin default (`seed:admin` → advisor.yaml). */
+const DEFAULT_FORCED_PERSONA_NAME = "advisor";
 
 export default function AdminXchatApiTestPage() {
   const [personaId, setPersonaId] = useState("");

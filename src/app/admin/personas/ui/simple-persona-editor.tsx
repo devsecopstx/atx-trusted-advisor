@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./simple-persona-editor.module.css";
@@ -498,6 +499,20 @@ export function SimplePersonaEditor({
               file_search scope). Use checkboxes or the row; add extras with the dropdown.
             </p>
 
+            <div className={styles.collectionActions}>
+              <Link
+                className="cta cta-secondary"
+                href="/admin/rag-files"
+                title="Open xAI collection inventory (delete, refresh, copy ids)"
+              >
+                RAG collections inventory
+              </Link>
+              <span className={styles.collectionActionsHint}>
+                Opens <strong>Admin → RAG collections</strong> for vendor cleanup. Use{" "}
+                <strong>Inventory</strong> on a row to jump there with this id pre-filled in the filter.
+              </span>
+            </div>
+
             {collections.length === 0 ? (
               <p className="status-text" style={{ opacity: 0.7 }}>
                 No collections available. Create collections in xAI first.
@@ -553,12 +568,15 @@ export function SimplePersonaEditor({
                         <th className={styles.collectionDocsCell} scope="col">
                           Docs
                         </th>
+                        <th className={styles.collectionManageCell} scope="col">
+                          Manage
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredCollections.length === 0 ? (
                         <tr>
-                          <td colSpan={4}>
+                          <td colSpan={5}>
                             <span className="status-text" style={{ opacity: 0.75 }}>
                               No collections match this filter.
                             </span>
@@ -595,6 +613,27 @@ export function SimplePersonaEditor({
                                 {collection.id}
                               </td>
                               <td className={styles.collectionDocsCell}>{docCount}</td>
+                              <td
+                                className={styles.collectionManageCell}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className={styles.collectionManageCellInner}>
+                                  <Link
+                                    className={styles.collectionInventoryLink}
+                                    href={`/admin/rag-files?q=${encodeURIComponent(collection.id)}`}
+                                    title="Filter RAG inventory to this collection id"
+                                  >
+                                    Inventory
+                                  </Link>
+                                  <Link
+                                    className={styles.collectionBindingLink}
+                                    href={`/admin/personas/collections/${encodeURIComponent(collection.id)}/edit`}
+                                    title="Assign this collection id to a persona (binding helper)"
+                                  >
+                                    Assign binding
+                                  </Link>
+                                </div>
+                              </td>
                             </tr>
                           );
                         })
@@ -607,61 +646,53 @@ export function SimplePersonaEditor({
 
             {selectedCollectionIds.length > 0 && (
               <div style={{ marginTop: "0.5rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                  <p className={styles.statusText} style={{ fontSize: "0.85rem" }}>
-                    <strong>Selected:</strong> {selectedCollectionIds.length} collection{selectedCollectionIds.length !== 1 ? 's' : ''}
+                <div className={styles.toolsPreviewToolbar}>
+                  <p className={styles.toolsPreviewSelected}>
+                    <strong>Selected:</strong> {selectedCollectionIds.length} collection
+                    {selectedCollectionIds.length !== 1 ? "s" : ""}
                   </p>
                   <button
                     type="button"
                     onClick={() => setShowToolsPreview(!showToolsPreview)}
-                    className="cta cta-secondary"
-                    style={{ fontSize: "0.75rem", padding: "0.25rem 0.5rem" }}
+                    className={`cta cta-secondary ${styles.toolsPreviewToggle}`}
                   >
-                    {showToolsPreview ? 'Hide' : 'Show'} Tools Preview
+                    {showToolsPreview ? "Hide" : "Show"} tools JSON preview
                   </button>
                 </div>
 
-                {showToolsPreview && (
-                  <div style={{
-                    background: "rgba(0,0,0,0.3)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "6px",
-                    padding: "0.75rem",
-                    marginTop: "0.5rem"
-                  }}>
+                {showToolsPreview ? (
+                  <div className={styles.toolsPreviewPanel}>
                     <div style={{ marginBottom: "0.5rem" }}>
                       <strong className={styles.statusText} style={{ fontSize: "0.8rem" }}>
                         Collection IDs:
                       </strong>
-                      <code style={{
-                        background: "rgba(255,255,255,0.1)",
-                        padding: "0.25rem 0.5rem",
-                        borderRadius: "3px",
-                        marginLeft: "0.5rem",
-                        fontSize: "0.75rem"
-                      }}>
+                      <code
+                        style={{
+                          background: "color-mix(in srgb, var(--xf-text-100) 10%, transparent)",
+                          padding: "0.25rem 0.5rem",
+                          borderRadius: "3px",
+                          marginLeft: "0.5rem",
+                          fontSize: "0.75rem",
+                          wordBreak: "break-all"
+                        }}
+                      >
                         {selectedCollectionIds.join(", ")}
                       </code>
                     </div>
 
                     <div>
-                      <strong className={styles.statusText} style={{ fontSize: "0.8rem", marginBottom: "0.25rem", display: "block" }}>
+                      <strong
+                        className={styles.statusText}
+                        style={{ fontSize: "0.8rem", marginBottom: "0.35rem", display: "block" }}
+                      >
                         Generated Tools JSON:
                       </strong>
-                      <pre style={{
-                        background: "rgba(0,0,0,0.5)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: "4px",
-                        padding: "0.5rem",
-                        fontSize: "0.7rem",
-                        overflow: "auto",
-                        maxHeight: "200px"
-                      }}>
+                      <pre className={styles.toolsPreviewPre}>
                         {JSON.stringify(previewToolsJson, null, 2)}
                       </pre>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
           </div>

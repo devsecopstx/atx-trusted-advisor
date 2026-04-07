@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 type StatusPayload = {
   enabled: boolean;
@@ -10,14 +10,44 @@ type StatusPayload = {
   sessionPresent: boolean;
   sessionBodyAllowed: boolean;
   consentSummary: string | null;
+  sessionCookieMaxAgeSec?: number;
+  sessionIssuedAtMs?: number | null;
+  oauthBrokerSsoAvailable?: boolean;
+  sessionHint?: string | null;
 };
 
 export function IbkrConnectPanel() {
+  const [, startSnapshotTransition] = useTransition();
   const [status, setStatus] = useState<StatusPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cookieInput, setCookieInput] = useState("");
   const [accountsMsg, setAccountsMsg] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<Array<{ id: string; displayLabel: string }>>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+  const [snapshotBusy, setSnapshotBusy] = useState(false);
+  const [snapshotSummary, setSnapshotSummary] = useState<unknown>(null);
+  const [snapshotPositions, setSnapshotPositions] = useState<unknown>(null);
+  const [snapshotOrders, setSnapshotOrders] = useState<unknown>(null);
+  const [snapshotExecutions, setSnapshotExecutions] = useState<unknown>(null);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
+
+  const summaryText = useMemo(
+    () => (snapshotSummary != null ? JSON.stringify(snapshotSummary, null, 2) : ""),
+    [snapshotSummary]
+  );
+  const positionsText = useMemo(
+    () => (snapshotPositions != null ? JSON.stringify(snapshotPositions, null, 2) : ""),
+    [snapshotPositions]
+  );
+  const ordersText = useMemo(
+    () => (snapshotOrders != null ? JSON.stringify(snapshotOrders, null, 2) : ""),
+    [snapshotOrders]
+  );
+  const executionsText = useMemo(
+    () => (snapshotExecutions != null ? JSON.stringify(snapshotExecutions, null, 2) : ""),
+    [snapshotExecutions]
+  );
 
   const refresh = useCallback(async () => {
     setLoadError(null);
@@ -101,12 +131,21 @@ export function IbkrConnectPanel() {
         data?: { accounts: Array<{ id: string; displayLabel: string }> };
         error?: string;
         detail?: string;
+        hint?: string;
       };
       if (!res.ok) {
-        setAccountsMsg([json.error, json.detail].filter(Boolean).join(": ") || `accounts ${res.status}`);
+        setAccounts([]);
+        setSelectedAccountId("");
+        setAccountsMsg(
+          [json.error, json.detail, json.hint].filter(Boolean).join(" — ") || `accounts ${res.status}`
+        );
         return;
       }
       const rows = json.data?.accounts ?? [];
+      setAccounts(rows);
+      if (rows.length > 0 && !selectedAccountId) {
+        setSelectedAccountId(rows[0]!.id);
+      }
       setAccountsMsg(
         rows.length === 0
           ? "No accounts returned."
@@ -114,6 +153,55 @@ export function IbkrConnectPanel() {
       );
     } finally {
       setBusy(false);
+    }
+  };
+
+  const loadReadOnlySnapshot = async () => {
+    if (!selectedAccountId.trim()) {
+      setSnapshotError("Select an account first (use Test: list accounts).");
+      return;
+    }
+    const id = encodeURIComponent(selectedAccountId.trim());
+    setSnapshotBusy(true);
+    setSnapshotError(null);
+    setSnapshotSummary(null);
+    setSnapshotPositions(null);
+    setSnapshotOrders(null);
+    setSnapshotExecutions(null);
+    try {
+      const res = await fetch(`/api/integrations/ibkr/accounts/${id}/snapshot?days=7`, { cache: "no-store" });
+      const j = (await res.json()) as {
+        error?: string;
+        detail?: string;
+        hint?: string;
+        data?: {
+          summary?: unknown;
+          positions?: unknown;
+          orders?: unknown;
+          executions?: unknown;
+        };
+      };
+      if (!res.ok) {
+        setSnapshotError([j.error, j.detail, j.hint].filter(Boolean).join(" — ") || `HTTP ${res.status}`);
+        return;
+      }
+      const d = j.data;
+      startSnapshotTransition(() => {
+        if (d?.summary) {
+          setSnapshotSummary(d.summary);
+        }
+        if (d?.positions) {
+          setSnapshotPositions(d.positions);
+        }
+        if (d?.orders) {
+          setSnapshotOrders(d.orders);
+        }
+        if (d?.executions) {
+          setSnapshotExecutions(d.executions);
+        }
+      });
+    } finally {
+      setSnapshotBusy(false);
     }
   };
 
@@ -151,6 +239,21 @@ export function IbkrConnectPanel() {
           </span>
           . Gateway URL configured: {status.gatewayConfigured ? "yes" : "no"}.
         </p>
+        {status.oauthBrokerSsoAvailable === false ? (
+          <p className="mt-2 font-mono text-[10px] text-[var(--xf-text-muted,#64748b)]">
+            Broker OAuth / refresh: <span className="text-amber-400/90">not available in-app</span> — use gateway
+            cookie paste (or operator env). Session cookie max-age ~{status.sessionCookieMaxAgeSec ?? 86400}s.
+            {status.sessionIssuedAtMs ? (
+              <>
+                {" "}
+                Stored session clock: {new Date(status.sessionIssuedAtMs).toISOString()}.
+              </>
+            ) : null}
+          </p>
+        ) : null}
+        {status.sessionHint ? (
+          <p className="mt-1 font-mono text-[10px] text-[var(--xf-text-muted,#64748b)]">{status.sessionHint}</p>
+        ) : null}
         <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--xf-text-muted,#64748b)]">
           Not financial advice. Educational use only.
         </p>
@@ -231,6 +334,80 @@ export function IbkrConnectPanel() {
         <p className="font-mono text-xs text-[var(--xf-text-muted,#94a3b8)]" data-testid="ibkr-accounts-msg">
           {accountsMsg}
         </p>
+      ) : null}
+
+      {status.consentRecorded && accounts.length > 0 ? (
+        <div className="space-y-3 rounded-lg border border-[var(--xf-border-subtle,#1f2937)] bg-[var(--xf-surface-800,#0f172a)] p-4">
+          <h3 className="text-sm font-semibold text-[var(--xf-text-primary,#f1f5f9)]">Read-only portfolio snapshot</h3>
+          <p className="font-mono text-[10px] text-[var(--xf-text-muted,#64748b)]">
+            Phase 3 — summary, positions, orders, and executions (IBKR trades). No order placement. Phase 4+ adds market
+            data / contracts; Phase 5 adds confirm/place (gated).
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="font-mono text-xs text-[var(--xf-text-muted,#94a3b8)]">
+              Account{" "}
+              <select
+                className="ml-1 rounded border border-[var(--xf-border-subtle,#334155)] bg-black/40 px-2 py-1 text-[var(--xf-text-primary,#f1f5f9)]"
+                value={selectedAccountId}
+                onChange={(e) => setSelectedAccountId(e.target.value)}
+                disabled={snapshotBusy}
+              >
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.displayLabel} ({a.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={snapshotBusy || !status.sessionPresent}
+              className="rounded-md bg-[var(--xf-gain-green,#39ff14)] px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-50"
+              onClick={() => void loadReadOnlySnapshot()}
+            >
+              {snapshotBusy ? "Loading…" : "Load snapshot"}
+            </button>
+          </div>
+          {snapshotError ? (
+            <p className="font-mono text-xs text-red-400" data-testid="ibkr-snapshot-error">
+              {snapshotError}
+            </p>
+          ) : null}
+          {snapshotSummary ? (
+            <details open className="rounded border border-[var(--xf-border-subtle,#334155)] bg-black/30 p-2">
+              <summary className="cursor-pointer font-mono text-xs text-[var(--xf-gain-green,#39ff14)]">Summary</summary>
+              <pre className="mt-2 max-h-48 overflow-auto font-mono text-[10px] text-[var(--xf-text-muted,#94a3b8)]">
+                {summaryText}
+              </pre>
+            </details>
+          ) : null}
+          {snapshotPositions ? (
+            <details className="rounded border border-[var(--xf-border-subtle,#334155)] bg-black/30 p-2">
+              <summary className="cursor-pointer font-mono text-xs text-[var(--xf-gain-green,#39ff14)]">Positions</summary>
+              <pre className="mt-2 max-h-48 overflow-auto font-mono text-[10px] text-[var(--xf-text-muted,#94a3b8)]">
+                {positionsText}
+              </pre>
+            </details>
+          ) : null}
+          {snapshotOrders ? (
+            <details className="rounded border border-[var(--xf-border-subtle,#334155)] bg-black/30 p-2">
+              <summary className="cursor-pointer font-mono text-xs text-[var(--xf-gain-green,#39ff14)]">Orders</summary>
+              <pre className="mt-2 max-h-48 overflow-auto font-mono text-[10px] text-[var(--xf-text-muted,#94a3b8)]">
+                {ordersText}
+              </pre>
+            </details>
+          ) : null}
+          {snapshotExecutions ? (
+            <details className="rounded border border-[var(--xf-border-subtle,#334155)] bg-black/30 p-2">
+              <summary className="cursor-pointer font-mono text-xs text-[var(--xf-gain-green,#39ff14)]">
+                Executions (trades)
+              </summary>
+              <pre className="mt-2 max-h-48 overflow-auto font-mono text-[10px] text-[var(--xf-text-muted,#94a3b8)]">
+                {executionsText}
+              </pre>
+            </details>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

@@ -1,13 +1,31 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { formatUsd2 } from "@/lib/portfolio-overview-metrics";
 import type { WorkspaceDashboardAccountSlice } from "@/lib/workspace-dashboard-metrics";
 
-import { buildPortfolioAllocationBarSlices } from "./portfolios-allocation-utils";
 import type { WorkspacePortfolioRow } from "./portfolios-dashboard-client";
+import { PortfoliosPortfolioCardItem } from "./portfolios-portfolio-card-item";
+
+const PortfoliosPortfolioCardItemLazy = dynamic(
+  () =>
+    import("./portfolios-portfolio-card-item").then((m) => ({ default: m.PortfoliosPortfolioCardItem })),
+  { ssr: false, loading: () => <PortfoliosPortfolioCardSkeleton /> }
+);
+
+function PortfoliosPortfolioCardSkeleton() {
+  return (
+    <div
+      className="portfolios-portfolio-cards__card w-full rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] p-3"
+      style={{ minHeight: "7.5rem", background: "color-mix(in srgb, var(--xf-text-100) 5%, transparent)" }}
+    />
+  );
+}
+
+const PORTFOLIO_CARD_ROW_EST_PX = 132;
 
 type Props = {
   initialRows: WorkspacePortfolioRow[];
@@ -17,6 +35,15 @@ type Props = {
 export function PortfoliosPortfolioCards({ initialRows, accountSlices }: Props) {
   const router = useRouter();
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualize = initialRows.length > 15;
+
+  const rowVirtualizer = useVirtualizer({
+    count: initialRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => PORTFOLIO_CARD_ROW_EST_PX,
+    overscan: 4
+  });
 
   const openBook = useCallback(
     async (portfolioId: string) => {
@@ -49,64 +76,68 @@ export function PortfoliosPortfolioCards({ initialRows, accountSlices }: Props) 
     );
   }
 
-  return (
-    <ul className="portfolios-portfolio-cards flex list-none flex-col gap-3 p-0 m-0">
-      {initialRows.map((row) => {
-        const { total, barSlices } = buildPortfolioAllocationBarSlices(row.id, accountSlices);
-        const opening = openingId === row.id;
-        return (
+  if (!virtualize) {
+    return (
+      <ul className="portfolios-portfolio-cards flex list-none flex-col gap-3 p-0 m-0" role="list">
+        {initialRows.map((row) => (
           <li key={row.id}>
-            <button
-              className="portfolios-portfolio-cards__card w-full rounded-lg border border-white/10 bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-3 text-left transition hover:border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] disabled:opacity-60"
-              disabled={opening}
-              type="button"
-              onClick={() => void openBook(row.id)}
-            >
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="m-0 truncate text-sm font-semibold text-[var(--xf-text-100)]">{row.name}</p>
-                  <p className="mt-0.5 text-xs text-[var(--xf-text-300)]">
-                    {row.isDefault ? <span className="text-[var(--xf-gain-green)]">Default</span> : row.kindLabel}
-                  </p>
-                </div>
-                <span className="shrink-0 font-mono text-sm tabular-nums text-[var(--xf-text-100)]">
-                  {formatUsd2(row.valueUsd)}
-                </span>
-              </div>
-              {barSlices.length === 0 ? (
-                <p className="m-0 text-xs text-[var(--xf-text-300)]">No linked accounts</p>
-              ) : (
-                <div
-                  className="portfolio-allocation portfolio-allocation--compact"
-                  role="presentation"
-                >
-                  <div
-                    className="portfolio-allocation__bar portfolio-allocation__bar--accounts portfolios-portfolio-cards__allocation-bar"
-                    role="presentation"
-                  >
-                    {barSlices.map((s) => (
-                      <div
-                        key={s.key}
-                        className="portfolio-allocation__segment"
-                        style={{ flexGrow: Math.max(s.percent, 0.01) }}
-                        title={`${s.label}: ${s.percent.toFixed(0)}% (${formatUsd2(s.valueUsd)})`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {total > 0 && barSlices.length > 1 ? (
-                <p className="mt-1.5 text-[0.65rem] text-[var(--xf-text-300)]">
-                  {barSlices.length} accounts · book split shown above
-                </p>
-              ) : null}
-              <p className="mt-2 text-xs text-[var(--xf-gain-green)]">
-                {opening ? "Opening…" : "Open book →"}
-              </p>
-            </button>
+            <PortfoliosPortfolioCardItem
+              accountSlices={accountSlices}
+              opening={openingId === row.id}
+              row={row}
+              onOpen={openBook}
+            />
           </li>
-        );
-      })}
-    </ul>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <div
+      ref={scrollRef}
+      className="portfolios-portfolio-cards portfolios-portfolio-cards--virtual min-w-0"
+      role="list"
+      style={{
+        maxHeight: "min(70vh, 32rem)",
+        overflow: "auto",
+        position: "relative"
+      }}
+    >
+      <div
+        style={{
+          height: rowVirtualizer.getTotalSize(),
+          position: "relative",
+          width: "100%"
+        }}
+      >
+        {rowVirtualizer.getVirtualItems().map((vi) => {
+          const row = initialRows[vi.index]!;
+          return (
+            <div
+              key={row.id}
+              className="portfolios-portfolio-cards__virtual-row"
+              role="listitem"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                minHeight: vi.size,
+                transform: `translateY(${vi.start}px)`,
+                paddingBottom: "0.75rem"
+              }}
+            >
+              <PortfoliosPortfolioCardItemLazy
+                accountSlices={accountSlices}
+                opening={openingId === row.id}
+                row={row}
+                onOpen={openBook}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

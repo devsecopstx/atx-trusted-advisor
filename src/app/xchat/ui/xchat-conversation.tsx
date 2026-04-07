@@ -1,68 +1,49 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
     FormEvent,
-    type KeyboardEvent,
-    type SVGProps,
+    Suspense,
     useCallback,
     useEffect,
     useMemo,
     useRef,
-    useState
+    useState,
+    type SVGProps
 } from "react";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-import { SendIcon } from "@/app/admin/ui/crud-icons";
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
 import { LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
-import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
-import { XchatStrategyJobPreflightCards } from "@/app/xchat/ui/xchat-strategy-job-preflight";
+import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
+import type { HistoryItem, HistoryStats, Message } from "@/app/xchat/ui/xchat-conversation-types";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
 import { writeStrategyHandoffFromXchat } from "@/lib/xchat-strategy-job-handoff";
 import { XCHAT_PENDING_PROMPT_STORAGE_KEY } from "@/lib/xchat/xchat-pending-prompt";
+import type { XchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { getTeamXaiKbCollectionIdSync } from "@/modules/xchat/team-xai-collection-sync";
+
+const XchatThreadPanelLazy = dynamic(
+  () => import("./xchat-thread-panel").then((m) => ({ default: m.XchatThreadPanel })),
+  { ssr: false, loading: () => <XchatChatSkeleton variant="thread" /> }
+);
+
+const XchatComposerPanelLazy = dynamic(
+  () => import("./xchat-composer-panel").then((m) => ({ default: m.XchatComposerPanel })),
+  { ssr: false, loading: () => <XchatChatSkeleton variant="composer" /> }
+);
 
 const GLOBAL_ADMIN_DEFAULT_PERSONA_PICKER_BLOCK = new Set(
   XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS.map((k) => k.toLowerCase())
 );
-
-type Message = {
-  id: string;
-  role: "user" | "ai" | "error";
-  content: string;
-  persona?: string;
-  timestamp: number;
-  /** Mongo `xchat_logs` id after a successful `/api/xchat/ask` (used to sync rolled-off turns to xAI user history). */
-  serverLogId?: string;
-  /** Server suggested handoff to `/xoptions?strategyJob=1` (strategy_job_preflight). */
-  strategyJobOffer?: boolean;
-};
-
-type HistoryItem = {
-  id: string;
-  message: string;
-  response: string;
-  model: string;
-  createdAt: string;
-  personaId?: string;
-  contextReferenceCount: number;
-  toolCallCount: number;
-};
-
-type HistoryStats = {
-  totalPrompts: number;
-  activeDays: number;
-  referencedFileCount: number;
-  lastPromptAt?: string;
-  historyMode?: "mongo" | "ephemeral";
-};
 
 type AskToolCallSummary = {
   name: string;
@@ -81,22 +62,6 @@ function formatLastTurnToolSummary(calls: AskToolCallSummary[] | undefined): str
   const totalMs = calls.reduce((sum, c) => sum + c.durationMs, 0);
   const uniqNames = [...new Set(calls.map((c) => c.name))];
   return `${calls.length} call${calls.length === 1 ? "" : "s"} · ${totalMs}ms · ${uniqNames.join(", ")}`;
-}
-
-function XchatThreadExpandChevronIcon() {
-  return (
-    <svg aria-hidden fill="currentColor" height={22} viewBox="0 0 24 24" width={22}>
-      <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6-1.41-1.41z" />
-    </svg>
-  );
-}
-
-function XchatThreadCollapseChevronIcon() {
-  return (
-    <svg aria-hidden fill="currentColor" height={18} viewBox="0 0 24 24" width={18}>
-      <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14l-6-6z" />
-    </svg>
-  );
 }
 
 function XchatRailCollapseIcon() {
@@ -150,17 +115,7 @@ function PersonaRailGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** Narrow left-rail select: keep closed state readable without clipping. */
-function compactPersonaOptionLabel(name: string): string {
-  const normalized = name.replace(/\s+/g, " ").trim();
-  const max = 22;
-  if (normalized.length <= max) {
-    return normalized;
-  }
-  return `${normalized.slice(0, max - 1)}…`;
-}
-
-type XchatConversationProps = {
+export type XchatConversationProps = {
   accountDetails: AppUserRailAccountPanelDetails;
   /** When set (server: Google OAuth configured), account rail shows “Link Google” for X-first sessions. */
   googleLinkHref?: string | null;
@@ -185,6 +140,8 @@ type XchatConversationProps = {
   workspaceChatHistoryMax?: number;
   /** Optional deep-link target from non-xChat pages. */
   initialXchatItem?: "composer" | "persona" | "examples" | "history" | null;
+  /** RSC bootstrap: prefs + recent Mongo turns (60s server cache) to avoid cold client waterfalls. */
+  serverBootstrap?: XchatServerShellBootstrap | null;
 };
 
 /** String = chip shows full text. `{ prompt }` = full text sent on click; chip uses single-line ellipsis in the list. */
@@ -193,6 +150,19 @@ type XchatPromptExample = string | { prompt: string };
 const THIRTY_DAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 const XCHAT_UI_RESPONSE_LIMIT = 3;
+
+const THREAD_MAIN_VIRTUAL_MIN = 18;
+
+function filterRailHistoryItems(items: HistoryItem[], workspaceHistoryMax: number): HistoryItem[] {
+  const nowMs = Date.now();
+  const cap = Math.max(1, Math.min(500, workspaceHistoryMax));
+  return items
+    .filter((item) => {
+      const createdAtMs = new Date(item.createdAt).getTime();
+      return Number.isFinite(createdAtMs) && nowMs - createdAtMs <= THIRTY_DAY_WINDOW_MS;
+    })
+    .slice(0, cap * 3);
+}
 
 function trimTranscriptToRecentPrompts(
   msgs: Message[],
@@ -380,15 +350,26 @@ export function XchatConversation({
   isGlobalAdmin: isGlobalAdminSession = false,
   workspaceChangePersonaEnabled = true,
   workspaceChatHistoryMax = 10,
-  initialXchatItem = null
+  initialXchatItem = null,
+  serverBootstrap = null
 }: XchatConversationProps) {
   const router = useRouter();
   const uiPromptLimit = Math.max(1, Math.min(500, workspaceChatHistoryMax));
   const personaPickerLocked =
     !workspaceChangePersonaEnabled && !isGlobalAdminSession;
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (!serverBootstrap?.keepLastTenMessages || serverBootstrap.historyItemsNewestFirst.length === 0) {
+      return [];
+    }
+    return historyItemsToTranscriptMessages(serverBootstrap.historyItemsNewestFirst as HistoryItem[]);
+  });
   const [strategyJobOptOut, setStrategyJobOptOut] = useState(false);
-  const [savedHistory, setSavedHistory] = useState<HistoryItem[]>([]);
+  const [savedHistory, setSavedHistory] = useState<HistoryItem[]>(() => {
+    if (!serverBootstrap?.keepLastTenMessages) {
+      return [];
+    }
+    return filterRailHistoryItems(serverBootstrap.historyItemsNewestFirst as HistoryItem[], workspaceChatHistoryMax);
+  });
   const [historyStats, setHistoryStats] = useState<HistoryStats | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -415,8 +396,15 @@ export function XchatConversation({
   const [personaListError, setPersonaListError] = useState<string | null>(null);
   const [selectedPersonaId, setSelectedPersonaId] = useState("");
   const [suggestedPersonaId, setSuggestedPersonaId] = useState<string | null>(null);
-  const [privacyPrefs, setPrivacyPrefs] = useState<XchatPrivacyPrefs | null>(null);
-  const [privacyPrefsLoading, setPrivacyPrefsLoading] = useState(true);
+  const [privacyPrefs, setPrivacyPrefs] = useState<XchatPrivacyPrefs | null>(() =>
+    serverBootstrap
+      ? {
+          keepLastTenMessages: serverBootstrap.keepLastTenMessages,
+          consentedAt: serverBootstrap.consentedAt
+        }
+      : null
+  );
+  const [privacyPrefsLoading, setPrivacyPrefsLoading] = useState(() => serverBootstrap == null);
   const [privacyPrefsSaving, setPrivacyPrefsSaving] = useState(false);
   const [privacyPrefsError, setPrivacyPrefsError] = useState<string | null>(null);
   const [historyDeleteBusy, setHistoryDeleteBusy] = useState(false);
@@ -433,7 +421,15 @@ export function XchatConversation({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const composerFormRef = useRef<HTMLFormElement | null>(null);
+  const historyRailScrollRef = useRef<HTMLDivElement | null>(null);
+  const threadScrollRef = useRef<HTMLDivElement | null>(null);
   const threadHydrateStartedRef = useRef(false);
+  const skipRailHistoryListFetchOnceRef = useRef(
+    Boolean(
+      serverBootstrap?.keepLastTenMessages === true &&
+        (serverBootstrap.historyItemsNewestFirst?.length ?? 0) > 0
+    )
+  );
   const pendingComposerFromHandoffRef = useRef(false);
   const userPickedPersonaRef = useRef(false);
   /** Seconds since current ask started (UI only; resets when loading ends). */
@@ -451,6 +447,45 @@ export function XchatConversation({
     () => trimTranscriptToRecentResponses(messages, XCHAT_UI_RESPONSE_LIMIT),
     [messages]
   );
+  const threadMainVirtualize = !threadUiCollapsed && visibleThreadMessages.length >= THREAD_MAIN_VIRTUAL_MIN;
+  const threadVirtualizer = useVirtualizer({
+    count: visibleThreadMessages.length,
+    getScrollElement: () => threadScrollRef.current,
+    estimateSize: () => 108,
+    overscan: 4
+  });
+  const onStrategyJobLaunch = useCallback(() => {
+    if (loading || strategyJobLaunchBusy) {
+      return;
+    }
+    setInput("launch strategy job");
+    requestAnimationFrame(() => {
+      composerFormRef.current?.requestSubmit();
+    });
+  }, [loading, strategyJobLaunchBusy]);
+
+  const onStrategyJobStay = useCallback(() => {
+    if (loading || strategyJobLaunchBusy) {
+      return;
+    }
+    setInput("stay in chat");
+    requestAnimationFrame(() => {
+      composerFormRef.current?.requestSubmit();
+    });
+  }, [loading, strategyJobLaunchBusy]);
+
+  const emphasizeStrategyForMessage = useCallback(
+    (aiMsgId: string) => computeEmphasizeStrategyJobPrimary(messages, aiMsgId),
+    [messages]
+  );
+
+  const historyListVirtualize = savedHistory.length > 14;
+  const historyVirtualizer = useVirtualizer({
+    count: savedHistory.length,
+    getScrollElement: () => historyRailScrollRef.current,
+    estimateSize: () => 44,
+    overscan: 8
+  });
   const historyMode = historyStats?.historyMode ?? (privacyPrefs?.keepLastTenMessages ? "mongo" : "ephemeral");
   const isEphemeralHistoryMode = historyMode === "ephemeral";
 
@@ -508,6 +543,9 @@ export function XchatConversation({
   }, []);
 
   useEffect(() => {
+    if (serverBootstrap != null) {
+      return;
+    }
     let active = true;
     async function loadPrivacyPrefs() {
       setPrivacyPrefsLoading(true);
@@ -548,7 +586,7 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, []);
+  }, [serverBootstrap]);
 
   useEffect(() => {
     setHistoryLoaded(false);
@@ -603,6 +641,13 @@ export function XchatConversation({
   }, [input, resizeComposer]);
 
   useEffect(() => {
+    if (
+      serverBootstrap?.keepLastTenMessages === true &&
+      serverBootstrap.historyItemsNewestFirst.length > 0
+    ) {
+      threadHydrateStartedRef.current = true;
+      return;
+    }
     if (threadHydrateStartedRef.current) {
       return;
     }
@@ -637,7 +682,7 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, [privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, uiPromptLimit]);
+  }, [privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, serverBootstrap, uiPromptLimit]);
 
   useEffect(() => {
     let active = true;
@@ -782,6 +827,11 @@ export function XchatConversation({
           setHistoryLoaded(true);
           return;
         }
+        if (skipRailHistoryListFetchOnceRef.current) {
+          skipRailHistoryListFetchOnceRef.current = false;
+          setHistoryLoaded(true);
+          return;
+        }
         const historyRes = await fetch(`/api/xchat/history?limit=${uiPromptLimit}`);
         const historyPayload = (await historyRes.json().catch(() => ({}))) as {
           data?: { items?: HistoryItem[] };
@@ -793,13 +843,10 @@ export function XchatConversation({
         if (!active) {
           return;
         }
-        const nowMs = Date.now();
-        const filteredRecentHistory = (historyPayload.data?.items ?? [])
-          .filter((item) => {
-            const createdAtMs = new Date(item.createdAt).getTime();
-            return Number.isFinite(createdAtMs) && nowMs - createdAtMs <= THIRTY_DAY_WINDOW_MS;
-          })
-          .slice(0, uiPromptLimit * 3);
+        const filteredRecentHistory = filterRailHistoryItems(
+          historyPayload.data?.items ?? [],
+          workspaceChatHistoryMax
+        );
         setSavedHistory(filteredRecentHistory);
         setHistoryLoaded(true);
       } catch (error) {
@@ -818,7 +865,7 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, [historyLoaded, privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, uiPromptLimit]);
+  }, [historyLoaded, privacyPrefs?.keepLastTenMessages, privacyPrefsLoading, uiPromptLimit, workspaceChatHistoryMax]);
 
   useEffect(() => {
     if (!initialXchatItem) {
@@ -1426,24 +1473,73 @@ export function XchatConversation({
                       <p className="status-text">No past chat history yet.</p>
                     ) : null}
                     {!isEphemeralHistoryMode && !historyLoading && !historyError && savedHistory.length > 0 ? (
-                      <ul className="xchat-rail-history-list">
-                        {savedHistory.map((item) => (
-                          <li className="xchat-rail-history-item" key={item.id}>
-                            <XfHoverHint hint={item.message}>
-                              <button
-                                className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
-                                type="button"
-                                onClick={() => {
-                                  setInput(item.message);
-                                  queueMicrotask(() => composerRef.current?.focus());
-                                }}
-                              >
-                                <span className="xchat-rail-link__text">{item.message}</span>
-                              </button>
-                            </XfHoverHint>
-                          </li>
-                        ))}
-                      </ul>
+                      historyListVirtualize ? (
+                        <div
+                          ref={historyRailScrollRef}
+                          className="xchat-rail-history-list xchat-rail-history-list--virtual"
+                          role="list"
+                          style={{ maxHeight: 260, overflowY: "auto" }}
+                        >
+                          <div
+                            style={{
+                              height: historyVirtualizer.getTotalSize(),
+                              position: "relative",
+                              width: "100%"
+                            }}
+                          >
+                            {historyVirtualizer.getVirtualItems().map((vi) => {
+                              const item = savedHistory[vi.index]!;
+                              return (
+                                <div
+                                  key={item.id}
+                                  className="xchat-rail-history-item"
+                                  role="listitem"
+                                  style={{
+                                    position: "absolute",
+                                    top: 0,
+                                    left: 0,
+                                    width: "100%",
+                                    minHeight: vi.size,
+                                    transform: `translateY(${vi.start}px)`
+                                  }}
+                                >
+                                  <XfHoverHint hint={item.message}>
+                                    <button
+                                      className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
+                                      type="button"
+                                      onClick={() => {
+                                        setInput(item.message);
+                                        queueMicrotask(() => composerRef.current?.focus());
+                                      }}
+                                    >
+                                      <span className="xchat-rail-link__text">{item.message}</span>
+                                    </button>
+                                  </XfHoverHint>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <ul className="xchat-rail-history-list">
+                          {savedHistory.map((item) => (
+                            <li className="xchat-rail-history-item" key={item.id}>
+                              <XfHoverHint hint={item.message}>
+                                <button
+                                  className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
+                                  type="button"
+                                  onClick={() => {
+                                    setInput(item.message);
+                                    queueMicrotask(() => composerRef.current?.focus());
+                                  }}
+                                >
+                                  <span className="xchat-rail-link__text">{item.message}</span>
+                                </button>
+                              </XfHoverHint>
+                            </li>
+                          ))}
+                        </ul>
+                      )
                     ) : null}
                     <button
                       className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
@@ -1477,204 +1573,43 @@ export function XchatConversation({
           <p className="xchat-welcome-sub">Overview of xChat — portfolio, watchlist and advisor options-tools. See Examples on left.</p>
         </header>
 
-      <div className="xchat-thread-area">
-        {threadUiCollapsed && messages.length > 0 && !loading ? (
-          <button
-            aria-expanded={false}
-            className="xchat-thread-collapsed-bar"
-            type="button"
-            onClick={() => {
-              setThreadUiCollapsed(false);
-              queueMicrotask(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }));
-            }}
-          >
-            <span aria-hidden className="xchat-thread-collapsed-bar__icon">
-              <XchatThreadExpandChevronIcon />
-            </span>
-            <span className="xchat-thread-collapsed-bar__meta">
-              <span className="xchat-thread-collapsed-bar__title">
-                {loading
-                  ? "Assistant is replying…"
-                  : `Conversation · ${threadUiSummary.userTurnCount} prompt${threadUiSummary.userTurnCount === 1 ? "" : "s"}`}
-              </span>
-              {threadUiSummary.preview ? (
-                <span className="xchat-thread-collapsed-bar__preview">{threadUiSummary.preview}</span>
-              ) : null}
-            </span>
-            <span className="xchat-thread-collapsed-bar__action">Expand</span>
-          </button>
-        ) : (
-          <div className="xchat-messages">
-            {messages.length > 0 ? (
-              <button
-                aria-expanded
-                className="xchat-thread-minimize"
-                type="button"
-                onClick={() => setThreadUiCollapsed(true)}
-              >
-                <XchatThreadCollapseChevronIcon />
-                <span>Minimize thread</span>
-              </button>
-            ) : null}
+        <Suspense fallback={<XchatChatSkeleton variant="thread" />}>
+          <XchatThreadPanelLazy
+            activePersonaName={activePersonaName}
+            askWaitSeconds={askWaitSeconds}
+            emphasizeStrategyJobPrimary={emphasizeStrategyForMessage}
+            loading={loading}
+            messages={messages}
+            messagesEndRef={messagesEndRef}
+            onStrategyJobLaunch={onStrategyJobLaunch}
+            onStrategyJobStay={onStrategyJobStay}
+            setThreadUiCollapsed={setThreadUiCollapsed}
+            strategyJobLaunchBusy={strategyJobLaunchBusy}
+            threadMainVirtualize={threadMainVirtualize}
+            threadScrollRef={threadScrollRef}
+            threadUiCollapsed={threadUiCollapsed}
+            threadUiSummary={threadUiSummary}
+            threadVirtualizer={threadVirtualizer}
+            visibleThreadMessages={visibleThreadMessages}
+          />
+        </Suspense>
 
-            {messages.length === 0 ? (
-              <div className="xchat-messages-empty">
-                <p className="status-text">
-                  Start a conversation with <strong>{activePersonaName}</strong> (or choose another persona in the
-                  sidebar).
-                </p>
-              </div>
-            ) : null}
-
-            {visibleThreadMessages.map((msg) => (
-              <div className={`xchat-msg xchat-msg-${msg.role}`} key={msg.id}>
-                {msg.role === "ai" && msg.persona ? (
-                  <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>
-                    {msg.persona}
-                  </small>
-                ) : null}
-                {msg.role === "ai" ? (
-                  msg.strategyJobOffer ? (
-                    <XchatStrategyJobPreflightCards
-                      emphasizePrimary={computeEmphasizeStrategyJobPrimary(messages, msg.id)}
-                      launchBusy={strategyJobLaunchBusy}
-                      loading={loading}
-                      onLaunch={() => {
-                        if (loading || strategyJobLaunchBusy) {
-                          return;
-                        }
-                        setInput("launch strategy job");
-                        requestAnimationFrame(() => {
-                          composerFormRef.current?.requestSubmit();
-                        });
-                      }}
-                      onStayInChat={() => {
-                        if (loading || strategyJobLaunchBusy) {
-                          return;
-                        }
-                        setInput("stay in chat");
-                        requestAnimationFrame(() => {
-                          composerFormRef.current?.requestSubmit();
-                        });
-                      }}
-                    />
-                  ) : (
-                    <XchatMarkdownBody content={msg.content} />
-                  )
-                ) : (
-                  <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
-                )}
-              </div>
-            ))}
-
-            {loading ? (
-              <div
-                aria-busy="true"
-                aria-live="polite"
-                className="xchat-await"
-                role="status"
-              >
-                <div className="xchat-await__row">
-                  <div className="xchat-typing" aria-hidden>
-                    <span className="xchat-typing-dot" />
-                    <span className="xchat-typing-dot" />
-                    <span className="xchat-typing-dot" />
-                  </div>
-                  <div className="xchat-await__copy">
-                    <span className="xchat-await__title">Advisor is working</span>
-                    <span className="xchat-await__hint">
-                      {askWaitSeconds >= 10
-                        ? "Still running — portfolio or market tools can take up to a minute."
-                        : askWaitSeconds >= 3
-                          ? "Your persona may be calling workspace or Yahoo tools…"
-                          : "Sending to xAI…"}
-                    </span>
-                    <span className="xchat-await__timer" aria-label={`Elapsed ${askWaitSeconds} seconds`}>
-                      {askWaitSeconds > 0 ? `${askWaitSeconds}s` : "…"}
-                    </span>
-                  </div>
-                </div>
-                <div aria-hidden className="xchat-await__skeleton">
-                  <span className="xchat-await__sk-line xchat-await__sk-line--long" />
-                  <span className="xchat-await__sk-line xchat-await__sk-line--med" />
-                  <span className="xchat-await__sk-line xchat-await__sk-line--short" />
-                </div>
-              </div>
-            ) : null}
-
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-      </div>
-
-        <div className="xchat-composer-wrap" id="xchat-composer">
-          <form className="xchat-composer" onSubmit={handleSend} ref={composerFormRef}>
-            <div className="xchat-composer__row xchat-composer__row--input">
-              <XfHoverHint
-                className="xchat-composer__input-grow"
-                hint="Enter to send · Shift+Enter for a new line"
-              >
-                <textarea
-                  ref={composerRef}
-                  aria-busy={loading}
-                  className="xchat-composer__field xchat-composer__textarea"
-                  maxLength={4000}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
-                    if (e.key !== "Enter" || e.shiftKey || loading) {
-                      return;
-                    }
-                    e.preventDefault();
-                    e.currentTarget.form?.requestSubmit();
-                  }}
-                  placeholder={loading ? "Wait for reply…" : "What's on your mind?"}
-                  readOnly={loading}
-                  rows={1}
-                  value={input}
-                />
-              </XfHoverHint>
-            </div>
-            <div className="xchat-composer__row xchat-composer__row--actions">
-              <div className="xchat-composer__persona-actions">
-                <label className="sr-only" htmlFor="xchat-composer-persona-picker">
-                  Persona for this message
-                </label>
-                <XfHoverHint hint="Published persona for this prompt only — same list as the Persona rail">
-                  <select
-                    aria-label="Persona for this message"
-                    className="xchat-composer__persona-select xchat-composer__persona-select--inline"
-                    disabled={
-                      personaSelectRows.length === 0 ||
-                      Boolean(personaListError) ||
-                      personaPickerLocked
-                    }
-                    id="xchat-composer-persona-picker"
-                    onChange={(e) => {
-                      userPickedPersonaRef.current = true;
-                      setSelectedPersonaId(e.target.value);
-                    }}
-                    value={selectedPersonaId}
-                  >
-                    <option value="">Default</option>
-                    {personaSelectRows.map((p) => (
-                      <option key={p._id} title={p.name} value={p._id}>
-                        {compactPersonaOptionLabel(p.name)}
-                      </option>
-                    ))}
-                  </select>
-                </XfHoverHint>
-              </div>
-              <button className="xchat-composer__send" disabled={loading || !input.trim()} type="submit">
-                <SendIcon className="crud-icon" />
-                Send
-              </button>
-            </div>
-          </form>
-          <p className="xchat-composer-hint" role="note">
-            <span className="xchat-composer-hint__pill">Beta</span>
-            <span className="xchat-composer-hint__text">Composer shortcuts: Enter send · Shift+Enter newline</span>
-          </p>
-        </div>
+        <Suspense fallback={<XchatChatSkeleton variant="composer" />}>
+          <XchatComposerPanelLazy
+            composerFormRef={composerFormRef}
+            composerRef={composerRef}
+            handleSend={handleSend}
+            input={input}
+            loading={loading}
+            personaListError={personaListError}
+            personaPickerLocked={personaPickerLocked}
+            personaSelectRows={personaSelectRows}
+            selectedPersonaId={selectedPersonaId}
+            setInput={setInput}
+            setSelectedPersonaId={setSelectedPersonaId}
+            userPickedPersonaRef={userPickedPersonaRef}
+          />
+        </Suspense>
       </div>
     </div>
   );

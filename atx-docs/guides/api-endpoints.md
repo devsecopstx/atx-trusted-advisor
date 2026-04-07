@@ -105,13 +105,20 @@ Admin portfolio routes include:
 
 Requires **`IBKR_ENABLED`** + optional **`IBKR_CLIENT_PORTAL_BASE_URL`**. Routes are no-ops / 404 when disabled.
 
-- `GET /api/integrations/ibkr/status` — session; flags (gateway configured, consent, sealed cookie present, whether session body POST is allowed).
-- `POST /api/integrations/ibkr/consent` — session; JSON `{ accepted: boolean }`; persists `ibkr_user_consents` (no IBKR secrets).
-- `POST /api/integrations/ibkr/session` — session; JSON `{ clientPortalCookie }` when **`IBKR_ALLOW_SESSION_COOKIE_BODY`** or **`NODE_ENV=development`**; seals value into httpOnly **`xf_ibkr_cp_session`** (uses **`AUTH_SECRET`**).
-- `DELETE /api/integrations/ibkr/session` — clears httpOnly session cookie.
-- `GET /api/integrations/ibkr/accounts` — session; **`GET …/v1/api/portfolio/accounts`** on the Client Portal gateway with resolved cookie (per-user sealed cookie, or operator-only **`IBKR_USE_ENV_SESSION_COOKIE`** + **`IBKR_CLIENT_PORTAL_SESSION_COOKIE`**).
+All IBKR JSON responses set response header **`X-Correlation-Id`** (UUID) for support triage; the same value appears in **`[ibkr/audit]`** logs as **`correlationId`** on portfolio/iserver proxy routes.
 
-UI: **`/account/integrations/ibkr`**.
+- `GET /api/integrations/ibkr/status` — session; flags (gateway configured, consent, sealed + issued cookies, whether session body POST is allowed, **`oauthBrokerSsoAvailable: false`**, session hints / max-age).
+- `POST /api/integrations/ibkr/consent` — session; JSON `{ accepted: boolean }`; persists `ibkr_user_consents` (no IBKR secrets).
+- `POST /api/integrations/ibkr/session` — session; JSON `{ clientPortalCookie }` when **`IBKR_ALLOW_SESSION_COOKIE_BODY`** or **`NODE_ENV=development`**; seals value into httpOnly **`xf_ibkr_cp_session`** and sets **`xf_ibkr_cp_issued`** (ms timestamp UX only; uses **`AUTH_SECRET`** for the sealed cookie).
+- `DELETE /api/integrations/ibkr/session` — clears httpOnly session + issued cookies.
+- `GET /api/integrations/ibkr/accounts` — session; **`GET …/v1/api/portfolio/accounts`** on the Client Portal gateway with resolved cookie (per-user sealed cookie, or operator-only **`IBKR_USE_ENV_SESSION_COOKIE`** + **`IBKR_CLIENT_PORTAL_SESSION_COOKIE`**).
+- `GET /api/integrations/ibkr/accounts/:accountId/snapshot` — session; one round-trip from the browser: allowlists `accountId` against `portfolio/accounts`, then **`portfolio/…/summary`**, **`portfolio2/…/positions`** (fallback **`positions/0`**), **`POST iserver/account`** (switch), **`GET iserver/account/orders`**, **`GET iserver/account/trades`** (`days` query, 1–7). **One** in-app rate-limit slot per request.
+- `GET /api/integrations/ibkr/accounts/:accountId/summary` — session; CP **`GET /v1/api/portfolio/{accountId}/summary`** (allowlisted).
+- `GET /api/integrations/ibkr/accounts/:accountId/positions` — session; CP **`portfolio2/{accountId}/positions`** with legacy fallback (allowlisted).
+- `GET /api/integrations/ibkr/accounts/:accountId/orders` — session; switch account then **`GET /v1/api/iserver/account/orders`** (allowlisted).
+- `GET /api/integrations/ibkr/accounts/:accountId/executions` — session; switch account then **`GET /v1/api/iserver/account/trades`** (`days` 1–7); response field **`executions`** (IBKR “trades”). Allowlisted.
+
+UI: **`/account/integrations/ibkr`** (read-only snapshot uses **`snapshot`**).
 
 ## xStrategyBuilder / strategy options
 

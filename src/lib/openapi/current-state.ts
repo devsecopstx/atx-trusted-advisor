@@ -129,6 +129,31 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "integrations"
   },
   {
+    path: "/api/integrations/ibkr/accounts/{accountId}/snapshot",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "integrations"
+  },
+  {
+    path: "/api/integrations/ibkr/accounts/{accountId}/summary",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "integrations"
+  },
+  {
+    path: "/api/integrations/ibkr/accounts/{accountId}/positions",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "integrations"
+  },
+  {
+    path: "/api/integrations/ibkr/accounts/{accountId}/orders",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "integrations"
+  },
+  {
+    path: "/api/integrations/ibkr/accounts/{accountId}/executions",
+    operations: [{ method: "GET", auth: "session" }],
+    tag: "integrations"
+  },
+  {
     path: "/api/user/workspace-portfolio",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "user"

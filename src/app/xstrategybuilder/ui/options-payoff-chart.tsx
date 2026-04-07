@@ -36,7 +36,7 @@ export function OptionsPayoffChart({
   legs,
   currentPrice,
   darkMode = true,
-  pointCount = 240,
+  pointCount = 200,
   minPrice,
   maxPrice,
   className,
