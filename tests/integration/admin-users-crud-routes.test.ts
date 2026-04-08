@@ -100,7 +100,9 @@ describe("admin users CRUD routes", () => {
 
   it("lists users", async () => {
     const response = await getUsers(new Request("http://test/api/admin/users?limit=50"));
-    const payload = (await response.json()) as { data: Array<{ email: string }> };
+    const payload = (await response.json()) as {
+      data: Array<{ email: string; tenantMemberships: unknown[] }>;
+    };
     expect(response.status).toBe(200);
     expect(payload.data[0]?.email).toBe("user@atxfinance.ai");
     expect(payload.data[0]?.tenantMemberships).toEqual([]);

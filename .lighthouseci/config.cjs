@@ -13,6 +13,9 @@
  * Note: /xchat, /portfolio, /portfolios, /xoptions are mostly auth-gated. Unauthenticated
  * runs score redirect/login/guest shells — for signed-in scores use puppeteerLoginScript
  * or auth cookies (see LHCI docs).
+ *
+ * Reported baselines / targets (dated): atx-docs/design-system/current-state-features.md
+ * § "xChat & Portfolios targets (2026-04-08 LHCI)".
  */
 const port = process.env.LHCI_PORT || "3001";
 const origin = `http://localhost:${port}`;

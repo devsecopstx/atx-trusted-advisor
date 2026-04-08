@@ -126,7 +126,7 @@ export function logXchatAskDebug(payload: {
   /** Masked xAI collection id when collection search was used. */
   collectionId?: string;
   toolCallCount?: number;
-  modelSelectionSource?: "default" | "persona";
+  modelSelectionSource?: "default" | "persona" | "vision_env";
 }): void {
   if (!isXchatDebugEnabled()) return;
 

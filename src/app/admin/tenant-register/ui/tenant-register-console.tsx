@@ -36,7 +36,6 @@ export function TenantRegisterConsole() {
   const [rows, setRows] = useState<TenantRegisterRow[]>([]);
 
   const load = useCallback(async () => {
-    await Promise.resolve();
     setStatus("Loading…");
     try {
       const payload = await parseJson<{ data: TenantRegisterRow[] }>(
@@ -51,7 +50,14 @@ export function TenantRegisterConsole() {
   }, []);
 
   useEffect(() => {
-    void load();
+    let cancelled = false;
+    const id = window.setTimeout(() => {
+      if (!cancelled) void load();
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(id);
+    };
   }, [load]);
 
   return (

@@ -1,7 +1,7 @@
 # xFinance monorepo — technical architecture & current state
 
 Last updated: 2026-04-08  
-App semver (canonical): root **`package.json`** (currently **3.3.19**; runtime label via `src/lib/app-version.ts` reads the same semver).
+App semver (canonical): root **`package.json`** (currently **3.3.20**; runtime label via `src/lib/app-version.ts` reads the same semver).
 
 This file is the **single consolidated technical architecture** reference for the monorepo: runtime topology, responsibilities, shipped product surfaces, CI/test matrix, pre-production gates, and **known gaps**. Topic deep dives stay in linked **`atx-docs/*`** pages; **open backlog only** in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change, and **this doc** (or `PLAN.md`) when the shipped stack or consolidated gaps move.
 
@@ -267,8 +267,19 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 - **Targets (product):** LCP ≤ 2.0 s, INP ≤ 200 ms, CLS ≤ 0.1 on **`/portfolio`**, **`/portfolios`**, **`/xoptions`**, **`/watchlist`**, **`/xchat`** where feasible.
 - **Post-deploy smoke:** **`GET /api/health`** (version matches image); app_user / admin paths per [`AGENTS.md`](../../AGENTS.md) § Production validation.
 - **High-risk clients:** ApexCharts (xOptions symbol panel), long xChat threads, watchlist quote refresh, IBKR snapshot panels, virtualized portfolio tables.
-- **Local regression:** Teams may run **Lighthouse CI** (e.g. **`.lighthouseci/config.cjs`**) against **`127.0.0.1:3000`** for `/xchat`, `/portfolio`, `/portfolios` — **not** a merge blocker unless workflow is added to GitHub Actions.
+- **Local regression:** After **`NODE_ENV=production npm run build`**, run **Lighthouse CI** with **`.lighthouseci/config.cjs`** — it starts **`next start`** on **`localhost:3001`** by default (override with **`LHCI_PORT`**) and audits **`/xchat`**, **`/portfolio`**, **`/portfolios`**, **`/xoptions`**. Not a merge blocker unless workflow is added to GitHub Actions.
 - **Recent LHCI direction:** improve performance scores on **`/xchat`** and **`/portfolios`** (history + virtualized lists); keep INP ≤ 200 ms on interactive surfaces.
+
+#### xChat & Portfolios targets (2026-04-08 LHCI)
+
+- **All critical routes:** Performance **1.00** (LCP ≤ **0.7** s).
+- **`/xoptions`:** Accessibility **0.95** → stretch target **1.00** (stepper / contrast — see **Quick remaining gaps** below).
+- **High-risk surfaces** (ApexCharts, IBKR snapshot, long chat history): passing under seeded data.
+
+#### Quick remaining gaps (non-blocking)
+
+- **Best-practices ≈ 0.96 on every route:** Almost always **back/forward cache** audit failures because dynamic API responses use **`Cache-Control: no-store`** (normal and correct for live portfolios, watchlists, and IBKR snapshots). **Do not change** this in dev or prod — it would break freshness for real-money data.
+- **`/xoptions` accessibility 0.95:** One minor **contrast or label** issue in the stepper (most likely the **expiration dropdown** or **strategy preview**). Remediation is typically a single **ARIA** label or **tokenized color** tweak; **defer** unless users report it.
 
 ---
 

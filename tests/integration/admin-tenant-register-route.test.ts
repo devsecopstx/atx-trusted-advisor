@@ -50,7 +50,13 @@ describe("GET /api/admin/tenants/register", () => {
     const response = await getTenantRegister(new Request("http://test/api/admin/tenants/register"));
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
-      data: Array<{ tenantId: string; slug: string; tenantAdmins: unknown[] }>;
+      data: Array<{
+        tenantId: string;
+        slug: string;
+        workspaceLimits: unknown;
+        tenantPreferences: unknown;
+        tenantAdmins: unknown[];
+      }>;
     };
     expect(body.data).toHaveLength(1);
     expect(body.data[0]?.slug).toBe("acme");
