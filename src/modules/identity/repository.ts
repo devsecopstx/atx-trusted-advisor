@@ -2,6 +2,10 @@ import { ObjectId } from "mongodb";
 
 import { googleLinkedId, isGoogleLegacyXUserId } from "@/lib/google-oauth-identity";
 import { getDb } from "@/lib/mongodb";
+import {
+    parseXfUiThemePreferenceFromUnknown,
+    type XfUiThemePreference
+} from "@/lib/xf-ui-theme";
 import { purgeEphemeralCoreUserScaffolding } from "@/modules/core-admin/repository";
 import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import {
@@ -130,6 +134,226 @@ export async function listCoreUsers(limit = 100): Promise<CoreUser[]> {
     .sort({ updatedAt: -1, createdAt: -1 })
     .limit(limit)
     .toArray();
+}
+
+/** Serialized shape for admin user list/detail (tenant linkage from `core_tenant_memberships`). */
+export type AdminUserTenantMembershipJson = {
+  tenantId: string;
+  slug: string;
+  name: string;
+  tenantRole: TenantMembership["role"];
+  isDefaultSessionTenant: boolean;
+};
+
+/**
+ * For each user id, returns tenant memberships sorted for display: default session tenant first,
+ * then by `updatedAt` descending.
+ */
+export async function listAdminTenantMembershipsByUserIds(
+  userIds: ObjectId[]
+): Promise<Map<string, AdminUserTenantMembershipJson[]>> {
+  const out = new Map<string, AdminUserTenantMembershipJson[]>();
+  if (userIds.length === 0) {
+    return out;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const memberships = await db
+    .collection<TenantMembership>(collections.memberships)
+    .find({ userId: { $in: userIds } })
+    .toArray();
+
+  const tenantHexIds = new Set<string>();
+  for (const row of memberships) {
+    if (row.tenantId) {
+      tenantHexIds.add(row.tenantId.toHexString());
+    }
+  }
+  const tenantOids = [...tenantHexIds].filter(ObjectId.isValid).map((id) => new ObjectId(id));
+  const tenants =
+    tenantOids.length === 0
+      ? []
+      : await db
+          .collection<Tenant>(collections.tenants)
+          .find({ _id: { $in: tenantOids } })
+          .project({ slug: 1, name: 1 })
+          .toArray();
+  const tenantMeta = new Map<string, { slug: string; name: string }>();
+  for (const tenant of tenants) {
+    if (tenant._id) {
+      tenantMeta.set(tenant._id.toHexString(), { slug: tenant.slug, name: tenant.name });
+    }
+  }
+
+  const byUser = new Map<string, TenantMembership[]>();
+  for (const row of memberships) {
+    const uid = row.userId?.toHexString();
+    if (!uid) {
+      continue;
+    }
+    const bucket = byUser.get(uid) ?? [];
+    bucket.push(row);
+    byUser.set(uid, bucket);
+  }
+
+  for (const [uid, rows] of byUser) {
+    const sorted = [...rows].sort((a, b) => {
+      if (a.isDefaultTenant !== b.isDefaultTenant) {
+        return a.isDefaultTenant ? -1 : 1;
+      }
+      const ta = a.updatedAt instanceof Date ? a.updatedAt.getTime() : 0;
+      const tb = b.updatedAt instanceof Date ? b.updatedAt.getTime() : 0;
+      return tb - ta;
+    });
+    out.set(
+      uid,
+      sorted.map((row) => {
+        const tid = row.tenantId.toHexString();
+        const meta = tenantMeta.get(tid);
+        return {
+          tenantId: tid,
+          slug: meta?.slug ?? "(unknown tenant)",
+          name: meta?.name ?? "",
+          tenantRole: row.role,
+          isDefaultSessionTenant: row.isDefaultTenant
+        };
+      })
+    );
+  }
+
+  return out;
+}
+
+/** One `tenant_admin` row for the platform tenant register (admin UI). */
+export type TenantRegisterAdminRow = {
+  userId: string;
+  email: string;
+  displayName: string;
+  isDefaultSessionTenant: boolean;
+};
+
+/** One `core_tenants` row plus its tenant admins for the platform tenant register. */
+export type TenantRegisterRow = {
+  tenantId: string;
+  slug: string;
+  name: string;
+  isPlatformDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+  /** Stored partial from `core_tenants.workspaceLimits` (e.g. seed YAML); null when unset. */
+  workspaceLimits: Record<string, unknown> | null;
+  /** Stored `core_tenants.tenantPreferences` (branding, xf_ui_theme, flags); null when unset. */
+  tenantPreferences: Record<string, unknown> | null;
+  tenantAdmins: TenantRegisterAdminRow[];
+};
+
+function toTenantRegisterJsonObject(raw: unknown): Record<string, unknown> | null {
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  try {
+    return JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * global_admin directory: all tenants from `core_tenants` with `tenant_admin` memberships and user email/display name.
+ */
+export async function listTenantRegisterForAdmin(): Promise<TenantRegisterRow[]> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const tenants = await db
+    .collection<Tenant>(collections.tenants)
+    .find({})
+    .sort({ slug: 1 })
+    .toArray();
+
+  if (tenants.length === 0) {
+    return [];
+  }
+
+  const tenantObjectIds = tenants.map((t) => t._id).filter((id): id is ObjectId => Boolean(id));
+  const memberships = await db
+    .collection<TenantMembership>(collections.memberships)
+    .find({
+      tenantId: { $in: tenantObjectIds },
+      role: "tenant_admin"
+    })
+    .toArray();
+
+  const userHexIds = [
+    ...new Set(
+      memberships
+        .map((m) => m.userId?.toHexString())
+        .filter((id): id is string => Boolean(id) && ObjectId.isValid(id))
+    )
+  ];
+  const userObjectIds = userHexIds.map((id) => new ObjectId(id));
+  const users =
+    userObjectIds.length === 0
+      ? []
+      : await db
+          .collection<CoreUser>(collections.users)
+          .find({ _id: { $in: userObjectIds } })
+          .project({ email: 1, xAccount: 1 })
+          .toArray();
+  const userById = new Map(users.filter((u) => u._id).map((u) => [u._id!.toHexString(), u]));
+
+  const adminsByTenantHex = new Map<string, TenantRegisterAdminRow[]>();
+  for (const m of memberships) {
+    const tid = m.tenantId?.toHexString();
+    const uid = m.userId?.toHexString();
+    if (!tid || !uid) {
+      continue;
+    }
+    const u = userById.get(uid);
+    const email = u?.email ?? "";
+    const displayName =
+      u?.xAccount?.displayName?.trim() ||
+      u?.xAccount?.username?.trim() ||
+      email ||
+      uid;
+    const row: TenantRegisterAdminRow = {
+      userId: uid,
+      email,
+      displayName,
+      isDefaultSessionTenant: m.isDefaultTenant
+    };
+    const bucket = adminsByTenantHex.get(tid) ?? [];
+    bucket.push(row);
+    adminsByTenantHex.set(tid, bucket);
+  }
+
+  for (const rows of adminsByTenantHex.values()) {
+    rows.sort((a, b) => {
+      if (a.isDefaultSessionTenant !== b.isDefaultSessionTenant) {
+        return a.isDefaultSessionTenant ? -1 : 1;
+      }
+      return a.email.localeCompare(b.email);
+    });
+  }
+
+  return tenants
+    .filter((t) => t._id)
+    .map((t) => {
+      const id = t._id!.toHexString();
+      return {
+        tenantId: id,
+        slug: t.slug,
+        name: t.name,
+        isPlatformDefault: Boolean(t.isDefault),
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+        workspaceLimits: toTenantRegisterJsonObject(t.workspaceLimits),
+        tenantPreferences: toTenantRegisterJsonObject(t.tenantPreferences),
+        tenantAdmins: adminsByTenantHex.get(id) ?? []
+      };
+    });
 }
 
 export async function getCoreUserById(userId: ObjectId): Promise<CoreUser | null> {
@@ -270,6 +494,45 @@ export async function getCoreUserByXIdentity(
   await ensureIdentityIndexes();
   const db = await getDb();
   return db.collection<CoreUser>(collections.users).findOne({ "xAccount.xUserId": xUserId });
+}
+
+function normalizeXUsernameForOAuthLookup(handle: string): string {
+  const t = handle.trim();
+  if (!t) {
+    return "";
+  }
+  const without = t.startsWith("@") ? t.slice(1) : t;
+  return without.toLowerCase();
+}
+
+function escapeRegexChars(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Resolve a user for X OAuth: match REST API user id on `xAccount.xUserId` first, then
+ * case-insensitive handle on `xAccount.username` or `xAccount.xUserId` (YAML may store a handle there).
+ */
+export async function getCoreUserByXOAuthIdentity(input: {
+  xUserId: string;
+  username: string;
+}): Promise<CoreUser | null> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const byId = await db.collection<CoreUser>(collections.users).findOne({
+    "xAccount.xUserId": input.xUserId
+  });
+  if (byId) {
+    return byId;
+  }
+  const uname = normalizeXUsernameForOAuthLookup(input.username);
+  if (!uname) {
+    return null;
+  }
+  const pattern = new RegExp(`^${escapeRegexChars(uname)}$`, "i");
+  return db.collection<CoreUser>(collections.users).findOne({
+    $or: [{ "xAccount.username": pattern }, { "xAccount.xUserId": pattern }]
+  });
 }
 
 export async function getCoreUserByGoogleSub(sub: string): Promise<CoreUser | null> {
@@ -897,17 +1160,59 @@ export async function ensureSeededGlobalAdmin(
   return { user, tenant, membership };
 }
 
+/**
+ * Membership row the session uses as the active tenant (`isDefaultTenant: true`).
+ * When multiple rows are erroneously true (legacy / bugs), prefers the most recently updated.
+ */
+/**
+ * If multiple rows have `isDefaultTenant: true` (legacy / race), keeps the newest `updatedAt` and clears the rest.
+ */
+export async function dedupeDefaultTenantMembershipsForUser(userId: ObjectId): Promise<void> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const rows = await db
+    .collection<TenantMembership>(collections.memberships)
+    .find({ userId, isDefaultTenant: true })
+    .sort({ updatedAt: -1 })
+    .toArray();
+  if (rows.length <= 1) {
+    return;
+  }
+  const now = new Date();
+  const [, ...stale] = rows;
+  await Promise.all(
+    stale
+      .filter((r) => r._id)
+      .map((r) =>
+        db.collection<TenantMembership>(collections.memberships).updateOne(
+          { _id: r._id },
+          { $set: { isDefaultTenant: false, updatedAt: now } }
+        )
+      )
+  );
+}
+
+export async function getDefaultTenantMembershipForUser(
+  userId: ObjectId
+): Promise<TenantMembership | null> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const rows = await db
+    .collection<TenantMembership>(collections.memberships)
+    .find({ userId, isDefaultTenant: true })
+    .sort({ updatedAt: -1 })
+    .limit(1)
+    .toArray();
+  return rows[0] ?? null;
+}
+
 export async function resolveAuthContext(input: {
   user: CoreUser;
 }): Promise<AuthContext> {
   if (!input.user._id) {
     throw new Error("User is missing _id");
   }
-  const db = await getDb();
-  const membership = await db.collection<TenantMembership>(collections.memberships).findOne({
-    userId: input.user._id,
-    isDefaultTenant: true
-  });
+  const membership = await getDefaultTenantMembershipForUser(input.user._id);
   if (!membership?.tenantId) {
     throw new Error("No default tenant membership for user");
   }
@@ -941,6 +1246,39 @@ export async function getTenantByHexId(tenantIdHex: string): Promise<Tenant | nu
   await ensureIdentityIndexes();
   const db = await getDb();
   return db.collection<Tenant>(collections.tenants).findOne({ _id: new ObjectId(tenantIdHex) });
+}
+
+export async function getTenantXfUiThemePreferenceForHex(
+  tenantIdHex: string
+): Promise<XfUiThemePreference | undefined> {
+  const tenant = await getTenantByHexId(tenantIdHex);
+  const raw = tenant?.tenantPreferences?.xf_ui_theme;
+  return parseXfUiThemePreferenceFromUnknown(raw);
+}
+
+export async function updateTenantXfUiThemePreference(
+  tenantIdHex: string,
+  theme: XfUiThemePreference | null
+): Promise<Tenant | null> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return null;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const now = new Date();
+  if (theme === null) {
+    await db.collection<Tenant>(collections.tenants).updateOne(
+      { _id: id },
+      { $unset: { "tenantPreferences.xf_ui_theme": "" }, $set: { updatedAt: now } }
+    );
+  } else {
+    await db.collection<Tenant>(collections.tenants).updateOne(
+      { _id: id },
+      { $set: { "tenantPreferences.xf_ui_theme": theme, updatedAt: now } }
+    );
+  }
+  return db.collection<Tenant>(collections.tenants).findOne({ _id: id });
 }
 
 /** Matches `DEFAULT_TENANT_SLUG` in `scripts/seed-admin-user.mjs`. */

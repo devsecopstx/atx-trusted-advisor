@@ -1,0 +1,219 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * Mirrors YAML `initialTenantAdmin`: real email + xAccount + operator + tenant_admin membership.
+ * X userinfo omits email — user must be found via getCoreUserByXOAuthIdentity (not placeholder flow).
+ */
+
+const provisionedUserId = "507f1f77bcf86cd7994390aa";
+const provisionedTenantId = "507f1f77bcf86cd7994390bb";
+
+const authMocks = vi.hoisted(() => ({
+  readOAuthFlowCookies: vi.fn(),
+  clearOAuthFlowCookies: vi.fn(),
+  getSessionUser: vi.fn(),
+  createSession: vi.fn(),
+  setPendingXLinkCookie: vi.fn(),
+  consumeOAuthReturnPathCookie: vi.fn(),
+  isSafeOAuthReturnPath: vi.fn()
+}));
+
+const coreAdminMocks = vi.hoisted(() => ({
+  getPendingAccessRequestByUserAndRole: vi.fn(),
+  createAccessRequest: vi.fn(),
+  provisionDefaultPortfolioForUser: vi.fn()
+}));
+
+const identityMocks = vi.hoisted(() => {
+  const getCoreUserByXIdentity = vi.fn();
+  return {
+    getCoreUserByXIdentity,
+    getCoreUserByXOAuthIdentity: vi.fn(async (x) => getCoreUserByXIdentity(x.xUserId)),
+    getCoreUserByEmail: vi.fn(),
+    unlinkXAccountFromUser: vi.fn(),
+    linkXAccountToUser: vi.fn(),
+    ensureDefaultTenant: vi.fn(),
+    dedupeDefaultTenantMembershipsForUser: vi.fn().mockResolvedValue(undefined),
+    getDefaultTenantMembershipForUser: vi.fn(),
+    upsertTenantMembership: vi.fn(),
+    resolveAuthContext: vi.fn(),
+    ensureCoreUserByEmail: vi.fn(),
+    ensureSeededGlobalAdmin: vi.fn(),
+    recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined)
+  };
+});
+
+const envMocks = vi.hoisted(() => ({
+  getEnv: vi.fn(),
+  getXOauthClientId: vi.fn(),
+  isAllowAnyXUserLoginEnabled: vi.fn(),
+  getAtxfinanceBackendOrigin: vi.fn(() => undefined)
+}));
+
+const bootstrapMocks = vi.hoisted(() => ({
+  resolveOrCreateUserBootstrapCollection: vi.fn().mockResolvedValue({
+    collectionId: "collection_test_user_history",
+    collectionName: "test-user-history"
+  })
+}));
+
+vi.mock("@/lib/auth", () => authMocks);
+vi.mock("@/modules/core-admin/repository", () => coreAdminMocks);
+vi.mock("@/modules/identity/repository", () => identityMocks);
+vi.mock("@/modules/core-admin/access-request-bootstrap", () => bootstrapMocks);
+vi.mock("@/lib/env", () => envMocks);
+vi.mock("@/modules/identity/login-audit", () => ({
+  appendLoginAuditRecord: vi.fn().mockResolvedValue(undefined)
+}));
+
+import { GET as oauthCallback } from "@/app/api/auth/x/callback/route";
+
+function makeProvisionedTenantAdmin() {
+  return {
+    _id: { toHexString: () => provisionedUserId },
+    email: "admin@provisioned-tenant.test",
+    roles: ["operator"] as const,
+    status: "active" as const,
+    subscriptionPlan: "basic" as const,
+    xAccount: {
+      xUserId: "x-provisioned-tenant-001",
+      username: "acme_tenant_admin",
+      linkedAt: new Date()
+    }
+  };
+}
+
+describe("X OAuth — CLI/YAML provisioned tenant admin (real email + xAccount + operator)", () => {
+  beforeEach(() => {
+    authMocks.readOAuthFlowCookies.mockResolvedValue({
+      state: "state-token",
+      verifier: "pkce-verifier"
+    });
+    authMocks.clearOAuthFlowCookies.mockResolvedValue(undefined);
+    authMocks.getSessionUser.mockResolvedValue(null);
+    authMocks.createSession.mockResolvedValue(undefined);
+    authMocks.setPendingXLinkCookie.mockResolvedValue(undefined);
+    authMocks.consumeOAuthReturnPathCookie.mockResolvedValue(null);
+    authMocks.isSafeOAuthReturnPath.mockImplementation(
+      (path: string) => path.startsWith("/") && !path.startsWith("//") && !path.includes("..")
+    );
+
+    coreAdminMocks.getPendingAccessRequestByUserAndRole.mockResolvedValue(null);
+    coreAdminMocks.createAccessRequest.mockResolvedValue(undefined);
+    coreAdminMocks.provisionDefaultPortfolioForUser.mockResolvedValue({
+      portfolio: { _id: { toHexString: () => "507f1f77bcf86cd799439081" } },
+      account: { _id: { toHexString: () => "507f1f77bcf86cd799439082" } },
+      watchlist: { _id: { toHexString: () => "507f1f77bcf86cd799439083" } }
+    });
+
+    const seeded = makeProvisionedTenantAdmin();
+    identityMocks.getCoreUserByXIdentity.mockResolvedValue(seeded);
+    identityMocks.getCoreUserByEmail.mockResolvedValue(null);
+    identityMocks.unlinkXAccountFromUser.mockResolvedValue(undefined);
+    identityMocks.linkXAccountToUser.mockImplementation(async (input) => ({
+      ...seeded,
+      xAccount: {
+        xUserId: input.xUserId,
+        username: input.username,
+        displayName: input.displayName,
+        avatarUrl: input.avatarUrl,
+        linkedAt: new Date()
+      }
+    }));
+    identityMocks.ensureDefaultTenant.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      slug: "atxfinance-core",
+      name: "atxFinance Core",
+      isDefault: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    identityMocks.getDefaultTenantMembershipForUser.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd7994390dd" },
+      userId: { toHexString: () => provisionedUserId },
+      tenantId: { toHexString: () => provisionedTenantId },
+      role: "tenant_admin",
+      isDefaultTenant: true,
+      updatedAt: new Date()
+    });
+    identityMocks.upsertTenantMembership.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439044" }
+    });
+    identityMocks.resolveAuthContext.mockResolvedValue({
+      userId: { toHexString: () => provisionedUserId },
+      email: seeded.email,
+      roles: ["operator"],
+      tenantId: { toHexString: () => provisionedTenantId },
+      tenantRole: "tenant_admin",
+      xUserId: "x-provisioned-tenant-001",
+      username: "acme_tenant_admin"
+    });
+    identityMocks.ensureCoreUserByEmail.mockResolvedValue(seeded);
+    identityMocks.ensureSeededGlobalAdmin.mockResolvedValue({
+      user: seeded,
+      tenant: { _id: { toHexString: () => provisionedTenantId } },
+      membership: { _id: { toHexString: () => "507f1f77bcf86cd799439044" } }
+    });
+
+    envMocks.getEnv.mockReturnValue({
+      X_OAUTH_CLIENT_SECRET: "test-secret",
+      X_OAUTH_TOKEN_URL: "https://x.test/token",
+      X_OAUTH_USERINFO_URL: "https://x.test/me",
+      ADMIN_SEED_EMAIL: "other-admin@seed.test",
+      ADMIN_SEED_X_USER_ID: "",
+      ADMIN_SEED_X_USERNAME: "",
+      ADMIN_X_USERNAMES: "",
+      ALLOW_ANY_X_USER_LOGIN: "false",
+      NODE_ENV: "test"
+    });
+    envMocks.isAllowAnyXUserLoginEnabled.mockReturnValue(false);
+    envMocks.getXOauthClientId.mockReturnValue("test-client-id");
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          access_token: "access-token",
+          token_type: "bearer"
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            id: "x-provisioned-tenant-001",
+            username: "acme_tenant_admin",
+            name: "Acme Admin"
+          }
+        })
+      }) as typeof fetch;
+  });
+
+  it("completes session when X omits email — no placeholder or link-email redirect", async () => {
+    const response = await oauthCallback(
+      new Request("http://127.0.0.1:3000/api/auth/x/callback?code=abc&state=state-token")
+    );
+    const loc = response.headers.get("location") ?? "";
+    expect(loc).toContain("/xchat");
+    expect(identityMocks.getCoreUserByXOAuthIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        xUserId: "x-provisioned-tenant-001",
+        username: "acme_tenant_admin"
+      })
+    );
+    expect(identityMocks.ensureSeededGlobalAdmin).not.toHaveBeenCalled();
+    expect(identityMocks.ensureCoreUserByEmail).not.toHaveBeenCalled();
+    expect(authMocks.setPendingXLinkCookie).not.toHaveBeenCalled();
+    expect(authMocks.createSession).toHaveBeenCalledTimes(1);
+    expect(identityMocks.linkXAccountToUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        xUserId: "x-provisioned-tenant-001",
+        username: "acme_tenant_admin"
+      })
+    );
+    expect(identityMocks.dedupeDefaultTenantMembershipsForUser).toHaveBeenCalled();
+    expect(identityMocks.getDefaultTenantMembershipForUser).toHaveBeenCalled();
+    expect(identityMocks.upsertTenantMembership).not.toHaveBeenCalled();
+  });
+});

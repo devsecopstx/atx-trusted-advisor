@@ -135,6 +135,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
     blurb: "Observability, docs, and audit trails.",
     items: [
       {
+        href: "/admin/tenant-register",
+        title: "Tenant register",
+        description:
+          "Directory of every core tenant (id, slug, name, platform default), stored workspaceLimits and tenantPreferences, and tenant_admin users (email, display name, default session tenant)."
+      },
+      {
         href: "/admin/tenant-preferences/workspace-limits",
         title: "Workspace limits",
         description:

@@ -1,5 +1,5 @@
-import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { WorkspaceProductSidebarProps } from "@/app/ui/workspace-product-sidebar";
+import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
@@ -36,6 +36,7 @@ export async function getWorkspaceProductSidebarPropsForSession(
       xUserId: session.xUserId,
       avatarUrl: session.avatarUrl,
       mongoConnection,
+      tenantIdHex: session.tenantId?.trim() || undefined,
       isGlobalAdmin: admin
     },
     accountFeedbackPageLabel,

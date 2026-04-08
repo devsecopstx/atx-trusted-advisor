@@ -11,6 +11,7 @@ import {
 } from "@/modules/audit/repository";
 import {
     createCoreUser,
+    listAdminTenantMembershipsByUserIds,
     listCoreUsers,
     upsertTenantMembership
 } from "@/modules/identity/repository";
@@ -50,16 +51,23 @@ export async function GET(request: Request) {
   }
 
   const users = await listCoreUsers(parsed.data.limit);
+  const userIds = users.map((u) => u._id).filter((id): id is NonNullable<typeof id> => Boolean(id));
+  const tenantMembershipsByUserId =
+    (await listAdminTenantMembershipsByUserIds(userIds)) ?? new Map();
   const serialized = users.map(serializeUser);
   const latestAuditByUserId = await listLatestAuditEventsForEntities({
     entityType: "core_user",
     entityIds: serialized.flatMap((user) => (user._id ? [user._id] : []))
   });
   return NextResponse.json({
-    data: serialized.map((user) => ({
-      ...user,
-      latestAuditEvent: user._id ? serializeAuditEvent(latestAuditByUserId[user._id]) : null
-    }))
+    data: serialized.map((user) => {
+      const uid = user._id;
+      return {
+        ...user,
+        tenantMemberships: uid ? tenantMembershipsByUserId.get(uid) ?? [] : [],
+        latestAuditEvent: uid ? serializeAuditEvent(latestAuditByUserId[uid]) : null
+      };
+    })
   });
 }
 
@@ -121,7 +129,10 @@ export async function POST(request: Request) {
     });
   }
 
-  return NextResponse.json({ data: serializeUser(created) }, { status: 201 });
+  return NextResponse.json(
+    { data: { ...serializeUser(created), tenantMemberships: [] as const } },
+    { status: 201 }
+  );
 }
 
 function serializeUser(user: CoreUser) {

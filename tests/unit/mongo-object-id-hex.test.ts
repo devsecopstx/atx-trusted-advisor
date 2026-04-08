@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
     canonicalMongoObjectIdHex,
     isLikelyMongoObjectIdHex,
-    normalizeMongoObjectIdParam
+    normalizeMongoObjectIdParam,
+    redactMongoObjectIdForSidebarPreview,
+    tenantIdHexLastFourUserFacing
 } from "@/lib/mongo-object-id-hex";
 
 describe("canonicalMongoObjectIdHex", () => {
@@ -33,5 +35,25 @@ describe("isLikelyMongoObjectIdHex", () => {
 
   it("is false for wrong length", () => {
     expect(isLikelyMongoObjectIdHex("69c44a5ea186da234db395f")).toBe(false);
+  });
+});
+
+describe("tenantIdHexLastFourUserFacing", () => {
+  it("shows ellipsis plus last four lowercase hex for ObjectId", () => {
+    expect(tenantIdHexLastFourUserFacing("69D50DF9A37FF7959BCD87C0")).toBe("···87c0");
+  });
+
+  it("returns empty for blank", () => {
+    expect(tenantIdHexLastFourUserFacing("  ")).toBe("");
+  });
+});
+
+describe("redactMongoObjectIdForSidebarPreview", () => {
+  it("redacts 24-char ObjectId hex", () => {
+    expect(redactMongoObjectIdForSidebarPreview("69c44a5ea186da234db395f4")).toBe("69c4…95f4");
+  });
+
+  it("returns empty for blank", () => {
+    expect(redactMongoObjectIdForSidebarPreview("  ")).toBe("");
   });
 });

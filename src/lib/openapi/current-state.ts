@@ -244,6 +244,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-system"
   },
   {
+    path: "/api/admin/system/ops-summary",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-system"
+  },
+  {
     path: "/api/admin/task-runs",
     operations: [{ method: "GET", auth: "admin" }],
     tag: "admin-tasks"
@@ -460,6 +465,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     path: "/api/admin/tasks/{taskId}/run",
     operations: [{ method: "POST", auth: "admin" }],
     tag: "admin-tasks"
+  },
+  {
+    path: "/api/admin/tenants/register",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-tenants"
   },
   {
     path: "/api/admin/tenants/{tenantId}/portfolio-scoring-defaults",
@@ -821,6 +831,8 @@ const TAG_DESCRIPTIONS: Record<string, string> = {
   "admin-options-strategy":
     "Global admin CRUD for tenant options-strategy catalog and Mongo-backed `options_strategy_preferences` (markdown seed from `atx-docs/rag-collection/options-strategy` via `npm run seed:options-strategy-prefs`). Next-authoritative — not proxied to Spring.",
   "admin-tasks": "Admin task catalog and task-run controls.",
+  "admin-tenants":
+    "Global admin tenant surfaces: workspace limits, portfolio scoring defaults on core_tenants, and read-only tenant register (all tenants + tenant_admin directory).",
   "admin-users": "Admin management of user records, roles, plans, and settings.",
   "admin-xchat": "Platform xChat defaults (e.g. default published persona for app users).",
   personas: "Persona and collection lifecycle APIs.",

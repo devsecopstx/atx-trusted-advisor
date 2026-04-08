@@ -9,6 +9,7 @@ import { GoogleGIcon } from "@/app/ui/oauth-provider-icons";
 import { XfThemePreferenceMenu } from "@/app/ui/public-theme-picker";
 import { PwaInstallAccountPrompt } from "@/app/ui/pwa-install-account-prompt";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import { tenantIdHexLastFourUserFacing } from "@/lib/mongo-object-id-hex";
 import { USER_FEEDBACK_OPEN_EVENT } from "@/lib/user-feedback-open-event";
 
 export type AppUserRailAccountPanelDetails = {
@@ -18,6 +19,8 @@ export type AppUserRailAccountPanelDetails = {
   xUserId: string;
   avatarUrl?: string;
   mongoConnection?: string;
+  /** Session `core_tenants` ObjectId hex; UI shows last 4 chars only (`···` prefix); full id in `title`. */
+  tenantIdHex?: string;
   isGlobalAdmin: boolean;
 };
 
@@ -117,13 +120,16 @@ export function AppUserRailAccountPanel({
     return () => window.removeEventListener(USER_FEEDBACK_OPEN_EVENT, onOpenFeedback);
   }, []);
 
-  const { email, username, displayName, xUserId, mongoConnection, isGlobalAdmin } = details;
+  const { email, username, displayName, xUserId, mongoConnection, tenantIdHex, isGlobalAdmin } = details;
   const mongoHref =
     mongoConnection && mongoConnection.includes("://")
       ? mongoConnection
       : mongoConnection
         ? `mongodb://${mongoConnection}`
         : null;
+  const tenantTrimmed = tenantIdHex?.trim() ?? "";
+  const tenantPreview = tenantTrimmed ? tenantIdHexLastFourUserFacing(tenantTrimmed) : "";
+  const showDatabaseDisclosure = Boolean((mongoConnection && mongoHref) || tenantTrimmed);
 
   return (
     <div className="app-user-rail-account-panel">
@@ -142,14 +148,37 @@ export function AppUserRailAccountPanel({
         <span className="app-user-rail-account-panel__meta-k">X user id</span>
         <span className="app-user-rail-account-panel__meta-v font-mono text-[0.65rem]">{xUserId}</span>
       </p>
-      {mongoConnection && mongoHref ? (
+      {showDatabaseDisclosure ? (
         <details className="app-user-rail-account-panel__db">
           <summary className="app-user-rail-account-panel__db-summary">
             <span className="app-user-rail-account-panel__meta-k">Database</span>
+            {tenantPreview ? (
+              <span
+                className="app-user-rail-account-panel__db-tenant-redacted font-mono"
+                title={tenantTrimmed ? `Tenant id ${tenantTrimmed}` : undefined}
+              >
+                Tenant {tenantPreview}
+              </span>
+            ) : null}
           </summary>
-          <a className="app-user-rail-account-panel__code app-user-rail-account-panel__code-link" href={mongoHref}>
-            {mongoConnection}
-          </a>
+          <div className="app-user-rail-account-panel__db-body">
+            {mongoConnection && mongoHref ? (
+              <a className="app-user-rail-account-panel__code app-user-rail-account-panel__code-link" href={mongoHref}>
+                {mongoConnection}
+              </a>
+            ) : null}
+            {tenantTrimmed ? (
+              <p className="app-user-rail-account-panel__meta app-user-rail-account-panel__meta--tenant-id">
+                <span className="app-user-rail-account-panel__meta-k">Tenant id</span>
+                <span
+                  className="app-user-rail-account-panel__meta-v font-mono text-[0.65rem] break-all"
+                  title={tenantTrimmed}
+                >
+                  {tenantIdHexLastFourUserFacing(tenantTrimmed)}
+                </span>
+              </p>
+            ) : null}
+          </div>
         </details>
       ) : null}
 

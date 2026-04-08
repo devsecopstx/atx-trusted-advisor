@@ -30,6 +30,7 @@ export async function AppUserAccountPublicRailForSession({
     xUserId: session.xUserId,
     avatarUrl: session.avatarUrl,
     mongoConnection,
+    tenantIdHex: session.tenantId?.trim() || undefined,
     isGlobalAdmin: admin
   };
 

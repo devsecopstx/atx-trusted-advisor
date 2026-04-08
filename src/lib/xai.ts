@@ -418,7 +418,12 @@ function buildXaiResponsesVisionUserTurn(userPrompt: string, imageDataUrl: strin
     {
       role: "user",
       content: [
-        { type: "input_image", image_url: imageDataUrl },
+        {
+          type: "input_image",
+          image_url: imageDataUrl,
+          /** xAI image docs recommend `high` for screenshots/charts. */
+          detail: "high"
+        },
         { type: "input_text", text: userPrompt }
       ]
     }

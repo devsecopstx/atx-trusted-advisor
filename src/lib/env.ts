@@ -60,7 +60,11 @@ const envSchema = z.object({
   XAI_BASE_URL: optionalUrl,
   XAI_MANAGEMENT_BASE_URL: optionalUrl,
   XAI_CHAT_MODEL: optionalNonEmptyString,
-  /** xChat pasted-image turns use this model for `/v1/responses` vision input (defaults to `grok-4` in code). */
+  /**
+   * Optional: when set, **overrides the persona `model`** for pasted-image turns only (`input_image` + text).
+   * When unset, image analysis uses the same resolved model as text (persona or `XAI_CHAT_MODEL` fallback).
+   * The id must be valid on xAI **`/v1/responses`** for your key (many accounts reject `grok-imagine-image` there).
+   */
   XAI_VISION_MODEL: optionalNonEmptyString,
   AUTH_SECRET: optionalAuthSecret,
   ALLOW_ANY_X_USER_LOGIN: z.union([z.string(), z.boolean()]).optional(),
@@ -180,6 +184,15 @@ export function getEnv(): Env {
 
   envCache = parsed.data;
   return envCache;
+}
+
+/**
+ * Optional `XAI_VISION_MODEL` for xChat pasted-image turns only.
+ * Read from `process.env` without `getEnv()` so route handlers/tests can use this override without loading the full env schema.
+ */
+export function readXaiVisionModelOverrideFromEnv(): string | undefined {
+  const raw = process.env.XAI_VISION_MODEL?.trim();
+  return raw && raw.length > 0 ? raw : undefined;
 }
 
 /**

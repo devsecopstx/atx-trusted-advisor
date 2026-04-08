@@ -21,6 +21,8 @@ const coreAdminMocks = vi.hoisted(() => ({
 }));
 
 const identityMocks = vi.hoisted(() => ({
+  dedupeDefaultTenantMembershipsForUser: vi.fn().mockResolvedValue(undefined),
+  getDefaultTenantMembershipForUser: vi.fn().mockResolvedValue(null),
   ensureDefaultTenant: vi.fn(),
   ensureCoreUserByEmail: vi.fn(),
   getCoreUserByEmail: vi.fn(),
@@ -104,6 +106,8 @@ describe("auth link-email route", () => {
         linkedAt: new Date()
       }
     }));
+    identityMocks.dedupeDefaultTenantMembershipsForUser.mockResolvedValue(undefined);
+    identityMocks.getDefaultTenantMembershipForUser.mockResolvedValue(null);
     identityMocks.ensureDefaultTenant.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439022" }
     });

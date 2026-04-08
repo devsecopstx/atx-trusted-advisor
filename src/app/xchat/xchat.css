@@ -24,6 +24,66 @@
   min-width: 0;
 }
 
+.xchat-header-leading {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  min-width: 0;
+  flex: 0 1 auto;
+  margin-right: auto;
+}
+
+.xchat-header-brand-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.08rem;
+  min-width: 0;
+  max-width: min(100%, 520px);
+}
+
+.xchat-header-brand-stack .xchat-header-brand {
+  margin-right: 0;
+  flex: 0 1 auto;
+}
+
+/** Subtle tenant line under lockup (xChat / xOptions approved header). */
+.xchat-header-tenant-under-brand {
+  display: block;
+  max-width: min(280px, 46vw);
+  font-size: 0.62rem;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--xf-text-400);
+  white-space: normal;
+  word-break: break-word;
+}
+
+.xchat-header-tenant-under-brand__name {
+  color: var(--xf-text-300);
+  font-weight: 500;
+}
+
+.xchat-header-tenant-under-brand--chip {
+  padding: 0.1rem 0.38rem;
+  border-radius: 5px;
+  background: var(--xf-surface-800);
+  border: 1px solid var(--xf-border-subtle);
+  font-size: 0.6rem;
+  letter-spacing: normal;
+}
+
+.xchat-header-tenant-chip {
+  flex-shrink: 0;
+  padding: 0.12rem 0.42rem;
+  border-radius: 6px;
+  background: var(--xf-surface-800);
+  border: 1px solid var(--xf-border-subtle);
+  color: var(--xf-text-300);
+}
+
 .xchat-header-brand {
   text-decoration: none;
   display: flex;
@@ -3069,15 +3129,36 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
 .app-user-rail-account-panel__db-summary {
   list-style: none;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
 }
 
 .app-user-rail-account-panel__db-summary::-webkit-details-marker {
   display: none;
 }
 
+.app-user-rail-account-panel__db-tenant-redacted {
+  font-size: 0.65rem;
+  color: var(--xf-text-300);
+  line-height: 1.25;
+}
+
+.app-user-rail-account-panel__db-body {
+  margin-top: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.app-user-rail-account-panel__meta--tenant-id {
+  margin: 0;
+}
+
 .app-user-rail-account-panel__code-link {
   display: block;
-  margin-top: 0.4rem;
+  margin-top: 0;
   text-decoration: none;
 }
 

@@ -11,7 +11,8 @@ Operational runbook for engineers/agents working in `atxfinance` core admin app.
 1. `cp .env.example .env` — set `ADMIN_SEED_EMAIL`; if you use **Sign in with X** and X does not return an email, also set **`ADMIN_SEED_X_USER_ID`** (your X numeric user id) so seed + OAuth can attach `xAccount` to the admin row. For Docker Mongo with auth, set **`MONGODB_URI`** to `mongodb://admin:<password>@127.0.0.1:27017/<db>?authSource=admin` (password defaults to **`localdev`** in `docker-compose.yml` when `MONGO_ROOT_PASSWORD` is empty).
 2. `npm install`
 3. `npm run mongo:up` — MongoDB service only, waits for healthy — **or** `docker compose --env-file .env up -d` for Mongo + backend container
-4. `npm run seed:admin` — **or** `npm run local:bootstrap` to run step 3 + seed in one shot
+4. `npm run seed:admin` — **or** `npm run local:bootstrap` to run step 3 + seed in one shot  
+   **Additional `core_tenants` rows:** `npm run generate:tenant-spec` (interactive: slug, name, admin email, optional X user id/handle, optional `--theme` light|dark|system; or flags `--email` / `--xid` / `--theme`) then `npm run seed:tenant -- --file tenant-specs/<slug>.yaml` — see **`tenant-specs/README.md`** (does not replace `seed:admin` / default tenant).
 5. `npm run dev`
 
 **Docker Mongo `Authentication failed` (mongosh / Next.js):** (1) Init runs only on an **empty** data volume — run **`npm run mongo:docker-recreate`** to wipe the Compose volume and re-init with **`admin`/`localdev`**. (2) If recreate **passes** but **host** `mongosh` still fails, **another `mongod` is usually bound to host TCP 27017** (common: Homebrew Mongo). Docker’s Mongo is then on a different published port or unreachable; stop the other service (`brew services stop mongodb-community`) or change **`mongodb` `ports`** in `docker-compose.yml` to e.g. **`27018:27017`** and use **`27018` in `MONGODB_URI`**. Avoid **`export MONGO_ROOT_PASSWORD=`** (empty) before `docker compose up` — it overrides `.env`.

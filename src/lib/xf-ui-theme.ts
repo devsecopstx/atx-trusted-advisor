@@ -21,19 +21,62 @@ export function parseXfUiThemePreference(raw: string | null): XfUiThemePreferenc
   return DEFAULT_XF_UI_THEME_PREFERENCE;
 }
 
-/** Persists **`dark`** when `localStorage` has no preference yet (first visit). */
-export function seedDefaultXfUiThemePreferenceIfUnset(): void {
+/** Parse tenant YAML / admin payload; invalid values are rejected by callers. */
+export function parseXfUiThemePreferenceFromUnknown(
+  raw: unknown
+): XfUiThemePreference | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  const s = typeof raw === "string" ? raw.trim().toLowerCase() : String(raw).trim().toLowerCase();
+  if (s === "light" || s === "dark" || s === "system") {
+    return s;
+  }
+  return undefined;
+}
+
+/**
+ * Persists default when `localStorage` has no preference yet (first visit).
+ * `tenantDefault` wins over product default when the user has not chosen a theme.
+ */
+export function seedDefaultXfUiThemePreferenceIfUnset(
+  tenantDefault?: XfUiThemePreference
+): void {
   if (typeof window === "undefined") {
     return;
   }
   try {
     if (window.localStorage.getItem(XF_UI_THEME_STORAGE_KEY) === null) {
-      window.localStorage.setItem(XF_UI_THEME_STORAGE_KEY, DEFAULT_XF_UI_THEME_PREFERENCE);
+      const initial = tenantDefault ?? DEFAULT_XF_UI_THEME_PREFERENCE;
+      window.localStorage.setItem(XF_UI_THEME_STORAGE_KEY, initial);
       dispatchXfUiThemeChange();
     }
   } catch {
     /* ignore quota / private mode */
   }
+}
+
+/**
+ * Root shell bootstrap: when the signed-in session tenant has `tenantPreferences.xf_ui_theme`,
+ * align `localStorage` every load (tenant register / admin policy is source of truth).
+ * When the tenant omits it, only seed the product default if the user has never stored a preference.
+ */
+export function bootstrapXfUiThemeWithOptionalTenantDefault(
+  tenantConfiguredTheme: XfUiThemePreference | undefined
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (tenantConfiguredTheme !== undefined) {
+    try {
+      window.localStorage.setItem(XF_UI_THEME_STORAGE_KEY, tenantConfiguredTheme);
+      dispatchXfUiThemeChange();
+    } catch {
+      /* ignore quota / private mode */
+    }
+    return;
+  }
+  seedDefaultXfUiThemePreferenceIfUnset(undefined);
 }
 
 export function readXfUiThemePreferenceFromStorage(): XfUiThemePreference {

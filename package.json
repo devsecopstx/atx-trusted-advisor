@@ -1,6 +1,6 @@
 {
   "name": "atxfinance-app",
-  "version": "3.3.17",
+  "version": "3.3.20",
   "description": "aTx⚡ Trusted Advisory software and services for hnwi families and finance professionals",
   "scripts": {
     "env:cursor-cloud": "node scripts/update-cursor-cloud-env.mjs",
@@ -29,6 +29,8 @@
     "test:integration:live:down": "docker compose -p atxfinance-live-tests -f docker-compose.live-tests.yml down -v",
     "typecheck": "tsc --noEmit",
     "seed:admin": "node --env-file=.env scripts/seed-admin-user.mjs",
+    "seed:tenant": "node --env-file=.env scripts/seed-tenant-from-spec.mjs",
+    "generate:tenant-spec": "node scripts/generate-tenant-spec.mjs",
     "seed:admin:full": "npm run seed:admin",
     "seed:admin:db": "node --env-file=.env scripts/seed-admin-db.mjs",
     "seed:admin:stage": "node --env-file=.env.stage scripts/seed-admin-user.mjs",

@@ -7,6 +7,7 @@ import { getSessionUser, isSafeOAuthReturnPath, readPendingXLinkCookie } from "@
 import { isGoogleOAuthConfigured } from "@/lib/env";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { oauthAuthErrorMessages } from "@/lib/oauth-auth-error-messages";
+import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import { canUserLogin } from "@/modules/identity/authorization";
 
 import { XchatGuestPanel } from "./ui/xchat-guest-panel";
@@ -85,6 +86,7 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
   }
 
   const approved = canUserLogin(session.roles);
+  const workspaceTenant = approved ? await getWorkspaceTenantHeaderContext(session.tenantId) : null;
 
   const pendingWorkspaceRail = !approved
     ? await AppUserAccountPublicRailForSession({
@@ -101,7 +103,12 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
   return (
     <div className="xchat-shell">
       {approved ? (
-        <AppUserApprovedHeader current="xchat" feedbackPageLabel="xChat" session={session} />
+        <AppUserApprovedHeader
+          current="xchat"
+          feedbackPageLabel="xChat"
+          session={session}
+          workspaceTenant={workspaceTenant}
+        />
       ) : (
         <XchatGuestHeader />
       )}

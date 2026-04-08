@@ -3,12 +3,14 @@ import { z } from "zod";
 
 import { requireGlobalAdminSession } from "@/lib/api-auth";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { parseXfUiThemePreferenceFromUnknown } from "@/lib/xf-ui-theme";
 import {
     resolvedWorkspaceLimitsForTenant,
     resolveTenantIdHexForGlobalAdminConsole,
     updateTenantBrandingPreferencesOneTime,
     updateTenantWorkspaceLimits,
-    updateTenantXchatDebugEnabled
+    updateTenantXchatDebugEnabled,
+    updateTenantXfUiThemePreference
 } from "@/modules/identity/repository";
 import {
     parseTenantBrandingPreferencesPayload,
@@ -156,6 +158,34 @@ export async function PATCH(request: Request, context: RouteContext) {
     const afterDebug = await updateTenantXchatDebugEnabled(effectiveTenantHex, xchatDebugToggle);
     if (afterDebug?._id) {
       updated = afterDebug;
+    }
+  }
+
+  if (
+    tpBody &&
+    typeof tpBody === "object" &&
+    !Array.isArray(tpBody) &&
+    "xf_ui_theme" in (tpBody as Record<string, unknown>)
+  ) {
+    const rec = tpBody as Record<string, unknown>;
+    const rawTheme = rec.xf_ui_theme;
+    if (rawTheme === null) {
+      const afterTheme = await updateTenantXfUiThemePreference(effectiveTenantHex, null);
+      if (afterTheme?._id) {
+        updated = afterTheme;
+      }
+    } else {
+      const parsedTheme = parseXfUiThemePreferenceFromUnknown(rawTheme);
+      if (parsedTheme === undefined) {
+        return NextResponse.json(
+          { error: "Invalid xf_ui_theme — use light, dark, or system" },
+          { status: 400 }
+        );
+      }
+      const afterTheme = await updateTenantXfUiThemePreference(effectiveTenantHex, parsedTheme);
+      if (afterTheme?._id) {
+        updated = afterTheme;
+      }
     }
   }
 

@@ -1,0 +1,31 @@
+# Example tenant spec for `npm run seed:tenant -- --file tenant-specs/<slug>.yaml`
+# Copy to a new file (e.g. `acme.yaml`) or use `npm run generate:tenant-spec`.
+
+version: 1
+
+tenant:
+  slug: example-tenant
+  name: Example Tenant (rename before use)
+  isDefault: false
+
+  # Optional — Phase 1 provisioning: login-eligible platform role + tenant_admin membership + session default
+  # initialTenantAdmin:
+  #   email: admin@example.com
+  #   xUserId: "123456789" # optional — X REST API user id (often numeric) or username / @handle
+  #   platformRole: operator # advisor | operator | viewer (default operator)
+  #   setAsDefaultSessionTenant: true # default true; clears other defaults for this user
+
+  # Optional — branding + default shell theme (see src/lib/xf-ui-theme.ts — light=soft, dark=deep, system=OS)
+  # tenantPreferences:
+  #   xf_ui_theme: light # light | dark | system
+  #   xchat_brandname: "Example xChat"
+  #   xstrategybuilder_brandname: "Example Builder"
+
+  # Optional — partial workspace quotas (omit keys to use product defaults per merge rules in app)
+  # workspaceLimits:
+  #   userChatLimit: 25
+  #   userXoptionsLimit: 15
+  #   tenantPortfolioLimit: 3
+  #   portfolioAccountLimit: 5
+  #   changePersonaEnabled: true
+  #   chatHistoryMax: 10

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 import { requireSessionUser } from "@/lib/auth";
+import { readXaiVisionModelOverrideFromEnv } from "@/lib/env";
 import {
     getPersonaByIdCached,
     getTenantByHexIdCached,
@@ -16,7 +17,7 @@ import {
     searchDocumentsInCollections,
     type ToolCallLog
 } from "@/lib/xai";
-import { getDefaultPersonaChatModelId, getXchatVisionModelId } from "@/lib/xai-default-persona-model";
+import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
 import {
@@ -83,7 +84,7 @@ import {
 } from "@/modules/xchat/xchat-recent-history-prompt";
 
 const xchatPasteImageAttachmentSchema = z.object({
-  mediaType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
+  mediaType: z.enum(["image/png", "image/jpeg"]),
   dataBase64: z.string().min(8).max(6_000_000)
 });
 
@@ -126,7 +127,7 @@ const APP_USER_BLOCKED_PERSONA_KEYS = new Set<string>(
   XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS.map((k) => normalizeNameKey(k))
 );
 
-type ModelSelectionSource = "default" | "persona";
+type ModelSelectionSource = "default" | "persona" | "vision_env";
 type RequestedReasoningEffort = "low" | "medium" | "high" | "xhigh";
 type ParallelReasoningEffort = "low" | "medium" | "high";
 
@@ -377,7 +378,7 @@ export async function POST(request: Request) {
     typeof persona?.model === "string" ? persona.model.trim().slice(0, 128) : "";
   const effectiveModel =
     personaModelRaw.length > 0 ? personaModelRaw : getDefaultPersonaChatModelId();
-  const modelSelectionSource: ModelSelectionSource =
+  let modelSelectionSource: ModelSelectionSource =
     personaModelRaw.length > 0 ? "persona" : "default";
 
   let executionModel = effectiveModel;
@@ -413,8 +414,16 @@ export async function POST(request: Request) {
   }
 
   if (visionImage) {
-    executionModel = getXchatVisionModelId();
     parallelAgentConfig = undefined;
+    const visionModelOverride = readXaiVisionModelOverrideFromEnv();
+    if (visionModelOverride) {
+      executionModel = visionModelOverride;
+      modelSelectionSource = "vision_env";
+    } else if (MULTI_AGENT_PERSONA_MODEL_IDS.has(executionModel)) {
+      /** Multi-agent + `input_image` is unreliable on `/v1/responses`; fall back to the default chat model for this turn. */
+      executionModel = getDefaultPersonaChatModelId();
+      modelSelectionSource = "default";
+    }
   }
 
   const baseXapiConfig: PersonaXapiConfig = ensureSuperAgentDefaultTools(

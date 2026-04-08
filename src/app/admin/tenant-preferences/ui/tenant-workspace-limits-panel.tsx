@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { RefreshIcon, SaveIcon } from "@/app/admin/ui/crud-icons";
 import { ATX_BILLING_PLAN_IDS, ATX_BILLING_PLANS, type AtxBillingPlanId } from "@/lib/atx-billing-plans";
+import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
 import {
     DEFAULT_TENANT_PLAN_PRICE,
@@ -174,7 +175,8 @@ function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOv
 
 function buildTenantPreferencesForSave(
   tenantPreferences: TenantBrandingPreferences,
-  xchatDebugEnabled: boolean
+  xchatDebugEnabled: boolean,
+  xfUiTheme: XfUiThemePreference | "inherit"
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { xchat_debug_enabled: xchatDebugEnabled };
   const xc = tenantPreferences.xchat_brandname?.trim();
@@ -185,6 +187,7 @@ function buildTenantPreferencesForSave(
   if (xsb) {
     out.xstrategybuilder_brandname = xsb;
   }
+  out.xf_ui_theme = xfUiTheme === "inherit" ? null : xfUiTheme;
   return out;
 }
 
@@ -200,6 +203,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
   });
   const [tenantPreferencesRaw, setTenantPreferencesRaw] = useState<Record<string, unknown>>({});
   const [xchatDebugEnabled, setXchatDebugEnabled] = useState(false);
+  const [xfUiTheme, setXfUiTheme] = useState<XfUiThemePreference | "inherit">("inherit");
   const [slug, setSlug] = useState("");
   const [planDrafts, setPlanDrafts] = useState<PlanLimitDrafts>(() => emptyPlanDrafts());
 
@@ -238,6 +242,12 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         {}) as Record<string, unknown>;
       setTenantPreferencesRaw(raw);
       setXchatDebugEnabled(raw.xchat_debug_enabled === true);
+      const th = raw.xf_ui_theme;
+      if (th === "light" || th === "dark" || th === "system") {
+        setXfUiTheme(th);
+      } else {
+        setXfUiTheme("inherit");
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Load failed");
       setValues(null);
@@ -273,7 +283,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         body: JSON.stringify({
           workspaceLimits: values,
           planOverrides: planOverridesFromDrafts(planDrafts),
-          tenantPreferences: buildTenantPreferencesForSave(tenantPreferences, xchatDebugEnabled)
+          tenantPreferences: buildTenantPreferencesForSave(tenantPreferences, xchatDebugEnabled, xfUiTheme)
         })
       });
       const payload = (await res.json().catch(() => ({}))) as {
@@ -303,6 +313,12 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       if (payload.data?.tenantPreferencesRaw) {
         setTenantPreferencesRaw(payload.data.tenantPreferencesRaw);
         setXchatDebugEnabled(payload.data.tenantPreferencesRaw.xchat_debug_enabled === true);
+        const th = payload.data.tenantPreferencesRaw.xf_ui_theme;
+        if (th === "light" || th === "dark" || th === "system") {
+          setXfUiTheme(th);
+        } else {
+          setXfUiTheme("inherit");
+        }
       }
       setStatus("Saved.");
       window.setTimeout(() => setStatus(""), 4000);
@@ -471,6 +487,23 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm text-slate-300" htmlFor="tenant-xf-ui-theme">
+          Default shell theme (first visit before user picks in UI)
+        </label>
+        <select
+          className="crud-input text-sm"
+          id="tenant-xf-ui-theme"
+          value={xfUiTheme}
+          onChange={(e) => setXfUiTheme(e.target.value as XfUiThemePreference | "inherit")}
+        >
+          <option value="inherit">No tenant default</option>
+          <option value="dark">Dark (deep)</option>
+          <option value="light">Light (soft)</option>
+          <option value="system">System</option>
+        </select>
       </div>
 
       <div className="mt-6 space-y-2">

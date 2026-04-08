@@ -13,7 +13,9 @@ import { provisionDefaultPortfolioForUser } from "@/modules/core-admin/repositor
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
+    dedupeDefaultTenantMembershipsForUser,
     ensureDefaultTenant,
+    getDefaultTenantMembershipForUser,
     recordUserSuccessfulLogin,
     resolveAuthContext,
     upsertTenantMembership
@@ -103,12 +105,16 @@ export async function finalizeOAuthSessionAndRedirect(options: {
   }
 
   try {
-    await upsertTenantMembership({
-      userId: userObjectId,
-      tenantId: tenant._id,
-      role: "tenant_admin",
-      isDefaultTenant: true
-    });
+    await dedupeDefaultTenantMembershipsForUser(userObjectId);
+    const existingDefault = await getDefaultTenantMembershipForUser(userObjectId);
+    if (!existingDefault) {
+      await upsertTenantMembership({
+        userId: userObjectId,
+        tenantId: tenant._id,
+        role: "tenant_admin",
+        isDefaultTenant: true
+      });
+    }
     const authContext = await resolveAuthContext({ user });
     const hasLoginRole = canUserLogin(user.roles);
     const sessionRoles = hasLoginRole

@@ -3,6 +3,7 @@ import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import { ProductGuestShell } from "@/app/ui/product-guest-shell";
 import { getSessionUser, readPendingXLinkCookie } from "@/lib/auth";
+import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import { canUserLogin } from "@/modules/identity/authorization";
 
 import { XoptionsStrategyBuilderMount } from "./xoptions-strategy-builder-mount";
@@ -40,9 +41,16 @@ export default async function XoptionsPage({ searchParams }: PageProps) {
     );
   }
 
+  const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);
+
   return (
     <div className="xchat-shell">
-      <AppUserApprovedHeader current="xoptions" feedbackPageLabel="xOptions" session={session} />
+      <AppUserApprovedHeader
+        current="xoptions"
+        feedbackPageLabel="xOptions"
+        session={session}
+        workspaceTenant={workspaceTenant}
+      />
       <div className="xchat-body px-4 py-6 md:px-8">
         <AppUserCollapsibleRailLayout
           rail={<AppUserAccountPublicRailForSession railVariant="workspace-product" session={session} />}

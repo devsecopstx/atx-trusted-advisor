@@ -21,6 +21,12 @@ export type PortfoliosWorkspaceDeskHints = {
   ibkrLinkedAccountCount: number | null;
 };
 
+export type PortfoliosWorkspaceTenantContext = {
+  idHex: string;
+  slug: string;
+  name: string;
+};
+
 type Props = {
   focusPortfolioId: string | null;
   initialRows: WorkspacePortfolioRow[];
@@ -35,6 +41,8 @@ type Props = {
   accountDetails: AppUserRailAccountPanelDetails | null;
   accountFeedbackPageLabel?: string;
   workspaceDeskHints?: PortfoliosWorkspaceDeskHints | null;
+  workspaceTenant?: PortfoliosWorkspaceTenantContext | null;
+  workspaceTenantIdHex?: string | null;
 };
 
 export function PortfoliosWorkspaceClient({
@@ -49,7 +57,9 @@ export function PortfoliosWorkspaceClient({
   isGlobalAdmin,
   accountDetails,
   accountFeedbackPageLabel,
-  workspaceDeskHints = null
+  workspaceDeskHints = null,
+  workspaceTenant = null,
+  workspaceTenantIdHex = null
 }: Props) {
   const holdingsKey = topHoldings
     .slice(0, 2)
@@ -58,7 +68,12 @@ export function PortfoliosWorkspaceClient({
 
   return (
     <>
-      <PortfoliosWorkspaceHeader topHoldingsKey={holdingsKey} totalBookUsd={totalBookUsd} />
+      <PortfoliosWorkspaceHeader
+        topHoldingsKey={holdingsKey}
+        totalBookUsd={totalBookUsd}
+        workspaceTenant={workspaceTenant}
+        workspaceTenantIdHex={workspaceTenantIdHex}
+      />
 
       <div className="xchat-body portfolio-page-body">
         <AppUserCollapsibleRailLayout

@@ -1,6 +1,10 @@
 import { PwaBootstrapClient } from "@/app/ui/pwa-bootstrap-client";
 import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
+import { getSessionUser } from "@/lib/auth";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
+import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
+import { getTenantXfUiThemePreferenceForHex } from "@/modules/identity/repository";
+import { ObjectId } from "mongodb";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
@@ -41,7 +45,13 @@ type RootLayoutProps = {
   children: ReactNode;
 };
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const session = await getSessionUser();
+  let tenantDefaultTheme: XfUiThemePreference | undefined;
+  if (session?.tenantId && ObjectId.isValid(session.tenantId)) {
+    tenantDefaultTheme = await getTenantXfUiThemePreferenceForHex(session.tenantId);
+  }
+
   return (
     <html className={`dark ${inter.variable}`} lang="en" suppressHydrationWarning>
       <head>
@@ -52,7 +62,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link href="/pwa/icon-192.png" rel="apple-touch-icon" />
       </head>
       <body>
-        <XfThemeBootClient />
+        <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} />
         <PwaBootstrapClient />
         {children}
       </body>

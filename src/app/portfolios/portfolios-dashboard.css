@@ -233,17 +233,18 @@
   flex-wrap: nowrap;
 }
 
+.portfolios-workspace-header .xchat-header-leading {
+  min-width: 0;
+}
+
+.portfolios-workspace-header .xchat-header-brand-stack {
+  max-width: min(520px, 92vw);
+}
+
 .portfolios-workspace-header .xchat-header-brand {
   margin-right: 0;
   flex: 0 1 auto;
-  max-width: min(220px, 32vw);
-}
-
-.portfolios-workspace-header__title {
-  color: var(--xf-text-100);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .portfolios-workspace-header__center {
@@ -338,8 +339,8 @@
     text-align: left;
   }
 
-  .portfolios-workspace-header .xchat-header-brand {
-    max-width: none;
+  .portfolios-workspace-header .xchat-header-brand-stack {
+    max-width: min(100%, 420px);
   }
 }
 

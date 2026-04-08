@@ -9,7 +9,7 @@ import { readClipboardImageFileForXchat } from "./xchat-paste-image-client";
 import { compactPersonaOptionLabel } from "./xchat-persona-label";
 
 export type XchatPendingPasteImage = {
-  mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  mediaType: "image/png" | "image/jpeg";
   dataBase64: string;
   previewUrl: string;
 };

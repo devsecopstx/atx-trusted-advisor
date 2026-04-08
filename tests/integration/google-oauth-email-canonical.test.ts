@@ -22,13 +22,29 @@ const coreAdminMocks = vi.hoisted(() => ({
 }));
 
 const identityMocks = vi.hoisted(() => ({
+  dedupeDefaultTenantMembershipsForUser: vi.fn().mockResolvedValue(undefined),
   ensureCoreUserByEmail: vi.fn(),
+  ensureDefaultTenant: vi.fn().mockResolvedValue({
+    _id: { toHexString: () => "507f1f77bcf86cd799439022" }
+  }),
   ensureSeededGlobalAdmin: vi.fn(),
   getCoreUserByEmail: vi.fn(),
   getCoreUserById: vi.fn(),
   getCoreUserByGoogleSub: vi.fn(),
+  getDefaultTenantMembershipForUser: vi.fn().mockResolvedValue(null),
   linkGoogleAccountToUser: vi.fn(),
-  unlinkGoogleIdentityFromUser: vi.fn()
+  recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined),
+  resolveAuthContext: vi.fn().mockResolvedValue({
+    userId: { toHexString: () => "507f1f77bcf86cd799439011" },
+    email: "u@test.com",
+    roles: ["viewer"],
+    tenantId: { toHexString: () => "507f1f77bcf86cd799439022" },
+    tenantRole: "member" as const,
+    xUserId: "x",
+    username: "u"
+  }),
+  unlinkGoogleIdentityFromUser: vi.fn(),
+  upsertTenantMembership: vi.fn()
 }));
 
 vi.mock("@/lib/auth", () => authMocks);

@@ -2,11 +2,11 @@
 
 const MAX_BYTES = 4 * 1024 * 1024;
 
-const ALLOWED = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const ALLOWED = new Set(["image/png", "image/jpeg"]);
 
 export type XchatClientPasteImageOk = {
   ok: true;
-  mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  mediaType: "image/png" | "image/jpeg";
   dataBase64: string;
   previewUrl: string;
 };
@@ -31,7 +31,10 @@ export async function readClipboardImageFileForXchat(file: File): Promise<XchatC
     mediaType = "image/jpeg";
   }
   if (!ALLOWED.has(mediaType)) {
-    return { ok: false, error: "Paste a PNG, JPEG, WebP, or GIF screenshot." };
+    return {
+      ok: false,
+      error: "Paste a PNG or JPEG screenshot (xAI vision does not accept WebP/GIF on this path)."
+    };
   }
   try {
     const dataUrl = await readFileAsDataUrl(file);

@@ -14,6 +14,7 @@ import {
     listWorkspaceTopStockHoldingsForHero
 } from "@/lib/workspace-dashboard-metrics";
 import { WORKSPACE_PORTFOLIO_COOKIE_NAME } from "@/lib/workspace-portfolio-cookie";
+import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import {
     adminListPortfolioAlerts,
     getPortfolioWatchlist,
@@ -127,6 +128,8 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
   const mongoConnection = shouldShowAppUserDbLabel() ? getMongoConnectionLabel() : "";
   const admin = isGlobalAdmin(session.roles);
 
+  const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);
+
   const workspaceDeskHints = {
     watchlistSymbolCount: watchlistDoc?.symbols?.length ?? 0,
     activeAlertsCount: alertsRows.filter((a) => a.status === "active").length,
@@ -143,6 +146,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
         xUserId: session.xUserId,
         avatarUrl: session.avatarUrl,
         mongoConnection,
+        tenantIdHex: session.tenantId?.trim() || undefined,
         isGlobalAdmin: admin
       }}
       accountFeedbackPageLabel="Portfolio workspace"
@@ -155,6 +159,8 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
       totalBookUsd={totalBookUsd}
       workspaceBook={workspaceBook}
       workspaceDeskHints={workspaceDeskHints}
+      workspaceTenant={workspaceTenant}
+      workspaceTenantIdHex={session.tenantId?.trim() || null}
     />
   );
 }

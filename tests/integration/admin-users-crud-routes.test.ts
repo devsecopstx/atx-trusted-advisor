@@ -7,6 +7,7 @@ const authMocks = vi.hoisted(() => ({
 
 const identityMocks = vi.hoisted(() => ({
   listCoreUsers: vi.fn(),
+  listAdminTenantMembershipsByUserIds: vi.fn().mockResolvedValue(new Map()),
   createCoreUser: vi.fn(),
   upsertTenantMembership: vi.fn(),
   getCoreUserById: vi.fn(),
@@ -49,6 +50,7 @@ describe("admin users CRUD routes", () => {
       tenantId: "507f1f77bcf86cd799439022",
       roles: ["global_admin"]
     });
+    identityMocks.listAdminTenantMembershipsByUserIds.mockResolvedValue(new Map());
     identityMocks.listCoreUsers.mockResolvedValue([
       {
         _id: { toHexString: () => "507f1f77bcf86cd799439033" },
@@ -101,7 +103,9 @@ describe("admin users CRUD routes", () => {
     const payload = (await response.json()) as { data: Array<{ email: string }> };
     expect(response.status).toBe(200);
     expect(payload.data[0]?.email).toBe("user@atxfinance.ai");
+    expect(payload.data[0]?.tenantMemberships).toEqual([]);
     expect(identityMocks.listCoreUsers).toHaveBeenCalledWith(50);
+    expect(identityMocks.listAdminTenantMembershipsByUserIds).toHaveBeenCalled();
   });
 
   it("creates user", async () => {

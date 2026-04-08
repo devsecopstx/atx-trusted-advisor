@@ -95,8 +95,7 @@ vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
 }));
 
 vi.mock("@/lib/xai-default-persona-model", () => ({
-  getDefaultPersonaChatModelId: () => "grok-4-1-fast-reasoning",
-  getXchatVisionModelId: () => "grok-4"
+  getDefaultPersonaChatModelId: () => "grok-4-1-fast-reasoning"
 }));
 
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
@@ -133,6 +132,7 @@ function buildPersona(overrides?: Record<string, unknown>) {
 describe("xchat ask route collection retrieval", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     authMocks.requireSessionUser.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -185,7 +185,7 @@ describe("xchat ask route collection retrieval", () => {
     symbolLookupMocks.lookupSymbols.mockResolvedValue(new Map());
   });
 
-  it("accepts imageAttachment and forwards a data URL to respondWithXaiToolLoop (vision)", async () => {
+  it("accepts imageAttachment and forwards a data URL to respondWithXaiToolLoop (uses persona model when XAI_VISION_MODEL unset)", async () => {
     const tinyPngBase64 =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
     const response = await postAsk(
@@ -209,7 +209,69 @@ describe("xchat ask route collection retrieval", () => {
       model?: string;
     };
     expect(call?.userImageDataUrl?.startsWith("data:image/png;base64,")).toBe(true);
-    expect(call?.model).toBe("grok-4");
+    expect(call?.model).toBe("grok-4-latest");
+  });
+
+  it("uses XAI_VISION_MODEL for image turns when set", async () => {
+    vi.stubEnv("XAI_VISION_MODEL", "grok-4.20-reasoning");
+    const tinyPngBase64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    try {
+      const response = await postAsk(
+        new Request("http://test/api/xchat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            personaId: "507f1f77bcf86cd799439055",
+            message: "Describe this pixel.",
+            imageAttachment: {
+              mediaType: "image/png",
+              dataBase64: tinyPngBase64
+            },
+            topK: 4
+          })
+        })
+      );
+      expect(response.status).toBe(200);
+      const call = xaiMocks.respondWithXaiToolLoop.mock.calls.at(-1)?.[0] as { model?: string };
+      expect(call?.model).toBe("grok-4.20-reasoning");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("downgrades multi-agent persona model to default chat model on image turns", async () => {
+    repositoryMocks.getPersonaById.mockResolvedValue(
+      buildPersona({ model: "grok-4.20-multi-agent" })
+    );
+    repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValue(
+      buildPersona({ model: "grok-4.20-multi-agent" })
+    );
+    const tinyPngBase64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "What is in this image?",
+          imageAttachment: {
+            mediaType: "image/png",
+            dataBase64: tinyPngBase64
+          },
+          reasoningEffort: "low",
+          topK: 4
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    const call = xaiMocks.respondWithXaiToolLoop.mock.calls.at(-1)?.[0] as {
+      model?: string;
+      parallelism?: unknown;
+    };
+    expect(call?.model).toBe("grok-4-1-fast-reasoning");
+    expect(call?.parallelism).toBeUndefined();
   });
 
   it("preprocesses assistant markdown on the server before JSON and xchat_logs", async () => {

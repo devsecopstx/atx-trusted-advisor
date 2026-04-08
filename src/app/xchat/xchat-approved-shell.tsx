@@ -71,6 +71,7 @@ export async function XchatApprovedShell({
         xUserId: session.xUserId,
         avatarUrl: session.avatarUrl,
         mongoConnection,
+        tenantIdHex: session.tenantId?.trim() || undefined,
         isGlobalAdmin: isGlobalAdmin(session.roles)
       }}
       accountFeedbackPageLabel="xChat"

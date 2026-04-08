@@ -1,6 +1,22 @@
-import { ADMIN_FUNCTION_GROUPS } from "./ui/admin-hub-sections";
+import { redirect } from "next/navigation";
 
-export default function AdminPage() {
+import { getSessionUser } from "@/lib/auth";
+import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
+
+import { ADMIN_FUNCTION_GROUPS } from "./ui/admin-hub-sections";
+import { AdminOpsSummaryPanel } from "./ui/admin-ops-summary-panel";
+
+export default async function AdminPage() {
+  const session = await getSessionUser();
+  if (!session) {
+    redirect("/xchat");
+  }
+
+  const effectiveTenantId = await resolveTenantIdHexForGlobalAdminConsole(session.tenantId);
+  const tenantMismatch =
+    effectiveTenantId !== null &&
+    effectiveTenantId.toLowerCase() !== session.tenantId.trim().toLowerCase();
+
   return (
     <div className="core-shell">
       <section className="hero-card xf-noise-overlay">
@@ -11,6 +27,40 @@ export default function AdminPage() {
           workflows.
         </p>
       </section>
+
+      <section className="panel stack-gap">
+        <div className="panel-header">
+          <h2>Tenant</h2>
+          <p>
+            <code className="text-sm">core_tenants</code> ObjectId (24-char hex) tied to this session. Use for support,
+            workspace limits, and multi-tenant debugging.
+          </p>
+        </div>
+        <dl className="grid gap-3 text-sm md:grid-cols-[minmax(8rem,auto)_1fr] md:gap-x-4">
+          <dt className="font-medium text-[var(--xf-text-300)]">Session tenant id</dt>
+          <dd>
+            <code className="break-all rounded bg-[var(--xf-surface-800)] px-2 py-1 text-xs">{session.tenantId}</code>
+          </dd>
+          <dt className="font-medium text-[var(--xf-text-300)]">Effective tenant id</dt>
+          <dd>
+            {effectiveTenantId ? (
+              <code className="break-all rounded bg-[var(--xf-surface-800)] px-2 py-1 text-xs">{effectiveTenantId}</code>
+            ) : (
+              <span className="status-text status-error">Could not resolve a tenant in this database.</span>
+            )}
+          </dd>
+        </dl>
+        {tenantMismatch ? (
+          <p className="status-text status-warn text-sm">
+            Session tenant id does not match an existing row; the admin console falls back to the effective tenant above
+            (for example after re-seeding or changing <code className="text-xs">MONGODB_URI</code>). Sign out and sign
+            back in to refresh the session if needed.
+          </p>
+        ) : null}
+      </section>
+
+      <AdminOpsSummaryPanel />
+
       <section className="panel stack-gap">
         <div className="panel-header">
           <h2>Sections in rail</h2>

@@ -1,3 +1,5 @@
+import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
+
 /**
  * Optional tenant-level branding aliases (admin-set once).
  */
@@ -10,6 +12,11 @@ export type TenantBrandingPreferences = {
 export type TenantPreferences = TenantBrandingPreferences & {
   /** When true, enables `[xchat/debug]` logs for this tenant (global_admin via Admin → Tenant workspace). */
   xchat_debug_enabled?: boolean;
+  /**
+   * Default shell density for users with no `localStorage` choice yet (`light` → soft, `dark` → deep, `system` → OS).
+   * Stored string must be {@link XfUiThemePreference}.
+   */
+  xf_ui_theme?: XfUiThemePreference;
 };
 
 

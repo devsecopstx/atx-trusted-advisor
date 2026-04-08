@@ -1,12 +1,10 @@
 import { createHash } from "node:crypto";
 
-/** Allowed clipboard / paste MIME types for xChat vision turns. */
-export const XCHAT_PASTE_IMAGE_MEDIA_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif"
-] as const;
+/**
+ * Allowed clipboard / paste MIME types for xChat vision turns.
+ * xAI image understanding currently documents **PNG / JPEG** only (WebP/GIF tend to 4xx from `/v1/responses`).
+ */
+export const XCHAT_PASTE_IMAGE_MEDIA_TYPES = ["image/png", "image/jpeg"] as const;
 
 export type XchatPasteImageMediaType = (typeof XCHAT_PASTE_IMAGE_MEDIA_TYPES)[number];
 

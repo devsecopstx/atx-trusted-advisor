@@ -3,17 +3,27 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { AtxFinanceMark, LightningBolt } from "@/app/ui/atxfinance-logo";
+import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import { tenantIdHexLastFourUserFacing } from "@/lib/mongo-object-id-hex";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
 import type { MarketDayContext } from "@/modules/scanner/us-market-day-context";
 import { resolveUsMarketDayContext, usMarketSessionStatusLabel } from "@/modules/scanner/us-market-day-context";
 
 type PulseIndex = { symbol: string; price?: number; changePercent?: number };
 
+type WorkspaceTenant = {
+  idHex: string;
+  slug: string;
+  name: string;
+};
+
 type Props = {
   totalBookUsd: number;
   topHoldingsKey: string;
+  workspaceTenant?: WorkspaceTenant | null;
+  /** Session active tenant (for chip fallback when `getWorkspaceTenantHeaderContext` is null). */
+  workspaceTenantIdHex?: string | null;
 };
 
 function formatChgPct(p: number | undefined): string {
@@ -24,7 +34,12 @@ function formatChgPct(p: number | undefined): string {
   return `${sign}${p.toFixed(2)}%`;
 }
 
-export function PortfoliosWorkspaceHeader({ totalBookUsd, topHoldingsKey }: Props) {
+export function PortfoliosWorkspaceHeader({
+  totalBookUsd,
+  topHoldingsKey,
+  workspaceTenant = null,
+  workspaceTenantIdHex = null
+}: Props) {
   const [indices, setIndices] = useState<PulseIndex[]>([]);
   const [market, setMarket] = useState<MarketDayContext>(() => resolveUsMarketDayContext(new Date()));
   const [loading, setLoading] = useState(true);
@@ -67,19 +82,34 @@ export function PortfoliosWorkspaceHeader({ totalBookUsd, topHoldingsKey }: Prop
   const spy = useMemo(() => indices.find((i) => i.symbol === "SPY") ?? indices[0], [indices]);
   const sessionStatus = useMemo(() => usMarketSessionStatusLabel(market), [market]);
 
+  const tenantHex = workspaceTenantIdHex?.trim() ?? "";
+  const tenantFacing = tenantHex ? tenantIdHexLastFourUserFacing(tenantHex) : "";
+
   return (
     <header className="portfolios-workspace-header xchat-header">
-      <Link className="portfolios-workspace-header__brand xchat-header-brand" href="/portfolios">
-        <span className="xf-logo-lockup-inline xf-logo-lockup-inline--header-single">
-          <span className="xf-logo-row xf-logo-row--header-single">
-            <AtxFinanceMark size={22} />
-            <LightningBolt size={16} />
-            <span className="xf-logo-text xf-logo-text--sm xf-logo-title-phrase portfolios-workspace-header__title">
-              Portfolio Workspace
+      <div className="xchat-header-leading">
+        <div className="xchat-header-brand-stack">
+          <Link
+            aria-label="Portfolios workspace — home"
+            className="portfolios-workspace-header__brand xchat-header-brand"
+            href="/portfolios"
+          >
+            <XchatHeaderBrand />
+          </Link>
+          {workspaceTenant ? (
+            <span className="xchat-header-tenant-under-brand" title={tenantHex}>
+              <span className="xchat-header-tenant-under-brand__name">{workspaceTenant.name}</span>
             </span>
-          </span>
-        </span>
-      </Link>
+          ) : tenantFacing ? (
+            <span
+              className="xchat-header-tenant-under-brand xchat-header-tenant-under-brand--chip font-mono"
+              title={`Tenant id ${tenantHex}`}
+            >
+              Tenant {tenantFacing}
+            </span>
+          ) : null}
+        </div>
+      </div>
 
       <div className="portfolios-workspace-header__center">
         <XfHoverHint hint="Book total: cash plus position cost basis across all portfolios. Not live marks; no portfolio day P&amp;L.">

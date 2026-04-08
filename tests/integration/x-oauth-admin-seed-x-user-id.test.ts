@@ -18,18 +18,24 @@ const coreAdminMocks = vi.hoisted(() => ({
   provisionDefaultPortfolioForUser: vi.fn()
 }));
 
-const identityMocks = vi.hoisted(() => ({
-  getCoreUserByXIdentity: vi.fn(),
-  getCoreUserByEmail: vi.fn(),
-  unlinkXAccountFromUser: vi.fn(),
-  linkXAccountToUser: vi.fn(),
-  ensureDefaultTenant: vi.fn(),
-  upsertTenantMembership: vi.fn(),
-  resolveAuthContext: vi.fn(),
-  ensureCoreUserByEmail: vi.fn(),
-  ensureSeededGlobalAdmin: vi.fn(),
-  recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined)
-}));
+const identityMocks = vi.hoisted(() => {
+  const getCoreUserByXIdentity = vi.fn();
+  return {
+    getCoreUserByXIdentity,
+    getCoreUserByXOAuthIdentity: vi.fn(async (x) => getCoreUserByXIdentity(x.xUserId)),
+    getCoreUserByEmail: vi.fn(),
+    unlinkXAccountFromUser: vi.fn(),
+    linkXAccountToUser: vi.fn(),
+    ensureDefaultTenant: vi.fn(),
+    dedupeDefaultTenantMembershipsForUser: vi.fn().mockResolvedValue(undefined),
+    getDefaultTenantMembershipForUser: vi.fn().mockResolvedValue(null),
+    upsertTenantMembership: vi.fn(),
+    resolveAuthContext: vi.fn(),
+    ensureCoreUserByEmail: vi.fn(),
+    ensureSeededGlobalAdmin: vi.fn(),
+    recordUserSuccessfulLogin: vi.fn().mockResolvedValue(undefined)
+  };
+});
 
 const envMocks = vi.hoisted(() => ({
   getEnv: vi.fn(),

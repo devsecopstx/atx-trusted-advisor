@@ -1,0 +1,122 @@
+import { describe, expect, it } from "vitest";
+
+import {
+    assertValidTenantSlug,
+    normalizeProvisionEmail,
+    parseInitialTenantAdmin,
+    parseOptionalTenantXfUiTheme,
+    parseTenantSpecV1Document,
+    sanitizeTenantPreferencesBrandingPartial,
+    sanitizeWorkspaceLimitsPartial
+} from "../../scripts/lib/tenant-spec-schema.mjs";
+
+describe("tenant-spec-schema", () => {
+  it("accepts valid slugs", () => {
+    expect(assertValidTenantSlug("acme")).toBe("acme");
+    expect(assertValidTenantSlug("acme-advisors")).toBe("acme-advisors");
+  });
+
+  it("rejects invalid slugs", () => {
+    expect(() => assertValidTenantSlug("")).toThrow();
+    expect(() => assertValidTenantSlug("Acme")).toThrow();
+    expect(() => assertValidTenantSlug("atxfinance-core")).toThrow();
+  });
+
+  it("sanitizes workspace limit numbers", () => {
+    expect(
+      sanitizeWorkspaceLimitsPartial({
+        userChatLimit: 25,
+        changePersonaEnabled: false
+      })
+    ).toEqual({ userChatLimit: 25, changePersonaEnabled: false });
+  });
+
+  it("normalizes provision email", () => {
+    expect(normalizeProvisionEmail("  Admin@Acme.IO ")).toBe("admin@acme.io");
+    expect(() => normalizeProvisionEmail("not-an-email")).toThrow();
+  });
+
+  it("parses initialTenantAdmin defaults", () => {
+    expect(
+      parseInitialTenantAdmin({
+        email: "ops@acme.io"
+      })
+    ).toEqual({
+      email: "ops@acme.io",
+      platformRole: "operator",
+      setAsDefaultSessionTenant: true
+    });
+  });
+
+  it("parses initialTenantAdmin with xUserId and platformRole", () => {
+    expect(
+      parseInitialTenantAdmin({
+        email: "ops@acme.io",
+        xUserId: "12345",
+        platformRole: "advisor",
+        setAsDefaultSessionTenant: false
+      })
+    ).toEqual({
+      email: "ops@acme.io",
+      xUserId: "12345",
+      platformRole: "advisor",
+      setAsDefaultSessionTenant: false
+    });
+  });
+
+  it("strips leading @ from xUserId / handle", () => {
+    expect(
+      parseInitialTenantAdmin({
+        email: "ops@acme.io",
+        xUserId: "@Somegoodnewsatx"
+      })?.xUserId
+    ).toBe("Somegoodnewsatx");
+  });
+
+  it("sanitizes tenant branding preferences", () => {
+    expect(
+      sanitizeTenantPreferencesBrandingPartial({
+        xchat_brandname: "  Acme Chat  ",
+        xstrategybuilder_brandname: "x".repeat(100)
+      })
+    ).toEqual({
+      xchat_brandname: "Acme Chat",
+      xstrategybuilder_brandname: "x".repeat(80)
+    });
+  });
+
+  it("parseTenantSpecV1Document reads tenant.initialTenantAdmin", () => {
+    const r = parseTenantSpecV1Document({
+      version: 1,
+      tenant: {
+        slug: "acme-advisors",
+        name: "Acme Advisors",
+        isDefault: false,
+        initialTenantAdmin: { email: "admin@acme.io", platformRole: "viewer" }
+      }
+    });
+    expect(r.slug).toBe("acme-advisors");
+    expect(r.initialTenantAdmin?.email).toBe("admin@acme.io");
+    expect(r.initialTenantAdmin?.platformRole).toBe("viewer");
+  });
+
+  it("parseOptionalTenantXfUiTheme accepts light, dark, system", () => {
+    expect(parseOptionalTenantXfUiTheme({ xf_ui_theme: "LIGHT" })).toBe("light");
+    expect(parseOptionalTenantXfUiTheme({ xf_ui_theme: "dark" })).toBe("dark");
+    expect(parseOptionalTenantXfUiTheme({ xf_ui_theme: "system" })).toBe("system");
+    expect(parseOptionalTenantXfUiTheme({})).toBeUndefined();
+    expect(() => parseOptionalTenantXfUiTheme({ xf_ui_theme: "sepia" })).toThrow();
+  });
+
+  it("parseTenantSpecV1Document reads tenantPreferences.xf_ui_theme", () => {
+    const r = parseTenantSpecV1Document({
+      version: 1,
+      tenant: {
+        slug: "t1",
+        name: "T1",
+        tenantPreferences: { xf_ui_theme: "light" }
+      }
+    });
+    expect(r.tenantXfUiTheme).toBe("light");
+  });
+});

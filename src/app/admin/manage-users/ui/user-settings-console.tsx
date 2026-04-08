@@ -66,12 +66,21 @@ type PersonaOption = {
   status: string;
 };
 
+type UserTenantMembershipRow = {
+  tenantId: string;
+  slug: string;
+  name: string;
+  tenantRole: "tenant_admin" | "member";
+  isDefaultSessionTenant: boolean;
+};
+
 type ApprovedUser = {
   userId: string;
   name: string;
   email: string;
   role: "global_admin" | "advisor" | "operator" | "viewer";
   subscriptionPlan: SubscriptionPlan;
+  tenantMemberships: UserTenantMembershipRow[];
   approvedAt?: string;
   latestAuditEvent?: {
     action: string;
@@ -90,6 +99,7 @@ type ApiUser = {
   roles: Array<"global_admin" | "advisor" | "operator" | "viewer">;
   subscriptionPlan: SubscriptionPlan;
   status: "active" | "suspended";
+  tenantMemberships?: UserTenantMembershipRow[];
   xAccount?: {
     username?: string;
     displayName?: string;
@@ -478,6 +488,7 @@ export function UserSettingsConsole() {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Tenant</th>
                 <th>Role</th>
                 <th>Plan</th>
                 <th>xPersona</th>
@@ -499,6 +510,41 @@ export function UserSettingsConsole() {
                       type="email"
                       value={emailEdits[user.userId] ?? ""}
                     />
+                  </td>
+                  <td className="align-top" style={{ maxWidth: 220 }}>
+                    {user.tenantMemberships.length > 0 ? (
+                      <ul className="m-0 list-none space-y-2 p-0">
+                        {user.tenantMemberships.map((m) => (
+                          <li key={m.tenantId}>
+                            <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
+                              {m.isDefaultSessionTenant ? (
+                                <span
+                                  className="shrink-0"
+                                  style={{ color: "var(--xf-gain-green)" }}
+                                  title="Default session tenant"
+                                  aria-label="Default session tenant"
+                                >
+                                  ●
+                                </span>
+                              ) : null}
+                              <span className="font-semibold text-sm">{m.slug}</span>
+                              {m.name ? (
+                                <span className="status-text text-xs opacity-80">· {m.name}</span>
+                              ) : null}
+                            </div>
+                            <div
+                              className="font-mono text-xs break-all opacity-80"
+                              title="core_tenants._id"
+                            >
+                              {m.tenantId}
+                            </div>
+                            <div className="text-xs opacity-70">{m.tenantRole}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="status-text text-xs">No tenant membership</span>
+                    )}
                   </td>
                   <td>
                     <select
@@ -940,6 +986,7 @@ function toApprovedUser(user: ApiUser & { _id: string }): ApprovedUser {
     email: user.email,
     role,
     subscriptionPlan: normalizeSubscriptionPlan(user.subscriptionPlan),
+    tenantMemberships: user.tenantMemberships ?? [],
     approvedAt: user.updatedAt,
     latestAuditEvent: user.latestAuditEvent ?? null
   };

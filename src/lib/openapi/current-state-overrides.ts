@@ -577,6 +577,28 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "500": jsonResponse("Failed to read Mongo configuration.", "ErrorResponse")
     }
   },
+  "GET /api/admin/system/ops-summary": {
+    summary: "Admin ops summary: Next Mongo/Redis + optional Spring backend health",
+    description:
+      "global_admin only. Returns session tenant id, Next.js app version, Mongo ping + DB name, Next Redis health (`checkRedisHealth`), and when `ATXFINANCE_BACKEND_ORIGIN` is set a probe of Spring `GET /api/backend/health` (mongo/redis slices). Audited as `ops_summary_viewed`.",
+    responses: {
+      "200": jsonResponse("Ops summary JSON (no Mongo credentials).", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "500": jsonResponse("Failed to build ops summary.", "ErrorResponse")
+    }
+  },
+  "GET /api/admin/tenants/register": {
+    summary: "Tenant register (platform directory)",
+    description:
+      "global_admin only. Lists every `core_tenants` row with id, slug, name, platform-default flag, stored `workspaceLimits` and `tenantPreferences` (JSON objects or null), and `tenant_admin` memberships (email, display name, user id, default session marker).",
+    responses: {
+      "200": jsonResponse("Tenant register rows.", "TenantRegisterListResponseEnvelope"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
   "GET /api/admin/users": {
     summary: "List users",
     parameters: [
@@ -996,7 +1018,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     type: "object",
     required: [],
     description:
-      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot) is required. Vision turns use `XAI_VISION_MODEL` or default `grok-4` for `/v1/responses` per [xAI image analysis](https://docs.x.ai/developers/quickstart#step-5-analyze-an-image).",
+      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot, **PNG or JPEG** only) is required. **Text and images** both use the **resolved persona `model`** (or `XAI_CHAT_MODEL` when the persona has no model) on `/v1/responses`. Optional **`XAI_VISION_MODEL`** overrides that **only for image turns**. Multi-agent persona models fall back to the default chat model for image turns (no `agent_count`).",
     properties: {
       message: { type: "string", minLength: 0, maxLength: 8000 },
       imageAttachment: {
@@ -1005,7 +1027,7 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         properties: {
           mediaType: {
             type: "string",
-            enum: ["image/png", "image/jpeg", "image/webp", "image/gif"]
+            enum: ["image/png", "image/jpeg"]
           },
           dataBase64: {
             type: "string",
@@ -1638,6 +1660,82 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     type: "string",
     enum: ["active", "suspended"]
   },
+  TenantRegisterAdminRow: {
+    type: "object",
+    required: ["userId", "email", "displayName", "isDefaultSessionTenant"],
+    properties: {
+      userId: { type: "string", description: "core_users._id hex" },
+      email: { type: "string", description: "core_users.email (may be empty for edge cases)" },
+      displayName: { type: "string" },
+      isDefaultSessionTenant: {
+        type: "boolean",
+        description: "True when this membership is the user's default session tenant."
+      }
+    }
+  },
+  TenantRegisterRow: {
+    type: "object",
+    required: [
+      "tenantId",
+      "slug",
+      "name",
+      "isPlatformDefault",
+      "createdAt",
+      "updatedAt",
+      "workspaceLimits",
+      "tenantPreferences",
+      "tenantAdmins"
+    ],
+    properties: {
+      tenantId: { type: "string", description: "core_tenants._id hex" },
+      slug: { type: "string" },
+      name: { type: "string" },
+      isPlatformDefault: {
+        type: "boolean",
+        description: "True when this tenant is the platform default (`core_tenants.isDefault`)."
+      },
+      createdAt: { type: "string", format: "date-time" },
+      updatedAt: { type: "string", format: "date-time" },
+      workspaceLimits: {
+        oneOf: [
+          { type: "object", additionalProperties: true, description: "Stored `core_tenants.workspaceLimits` partial." },
+          { type: "null" }
+        ]
+      },
+      tenantPreferences: {
+        oneOf: [
+          {
+            type: "object",
+            additionalProperties: true,
+            description: "Stored `core_tenants.tenantPreferences` (branding, xf_ui_theme, flags)."
+          },
+          { type: "null" }
+        ]
+      },
+      tenantAdmins: { type: "array", items: refSchema("TenantRegisterAdminRow") }
+    }
+  },
+  TenantRegisterListResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: { type: "array", items: refSchema("TenantRegisterRow") }
+    }
+  },
+  CoreUserTenantMembership: {
+    type: "object",
+    required: ["tenantId", "slug", "name", "tenantRole", "isDefaultSessionTenant"],
+    properties: {
+      tenantId: { type: "string", description: "Mongo ObjectId hex for core_tenants._id" },
+      slug: { type: "string" },
+      name: { type: "string" },
+      tenantRole: { type: "string", enum: ["tenant_admin", "member"] },
+      isDefaultSessionTenant: {
+        type: "boolean",
+        description: "True when this row is the user's default session tenant (isDefaultTenant on membership)."
+      }
+    }
+  },
   CoreUserBase: {
     type: "object",
     required: [
@@ -1661,7 +1759,12 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       lastLoginAt: { type: "string", format: "date-time", nullable: true },
       lastLoginIp: { type: "string", nullable: true },
       lastLoginCountry: { type: "string", nullable: true },
-      lastLoginUserAgent: { type: "string", nullable: true }
+      lastLoginUserAgent: { type: "string", nullable: true },
+      tenantMemberships: {
+        type: "array",
+        items: refSchema("CoreUserTenantMembership"),
+        description: "Tenant links from core_tenant_memberships (admin list/detail)."
+      }
     }
   },
   CoreUserWithLatestAudit: {

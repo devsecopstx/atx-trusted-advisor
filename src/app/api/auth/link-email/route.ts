@@ -14,11 +14,13 @@ import {
 import { canUserLogin, isGlobalAdmin } from "@/modules/identity/authorization";
 import { appendLoginAuditRecord } from "@/modules/identity/login-audit";
 import {
+    dedupeDefaultTenantMembershipsForUser,
     ensureCoreUserByEmail,
     ensureDefaultTenant,
     ensureSeededGlobalAdmin,
     getCoreUserByEmail,
     getCoreUserByXIdentity,
+    getDefaultTenantMembershipForUser,
     linkXAccountToUser,
     mergePlaceholderXUserIntoEmailUser,
     recordUserSuccessfulLogin,
@@ -203,12 +205,16 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ error: "Failed to resolve tenant context" }, { status: 500 });
   }
-  await upsertTenantMembership({
-    userId: linkedUser._id,
-    tenantId: tenant._id,
-    role: "tenant_admin",
-    isDefaultTenant: true
-  });
+  await dedupeDefaultTenantMembershipsForUser(linkedUser._id);
+  const existingDefault = await getDefaultTenantMembershipForUser(linkedUser._id);
+  if (!existingDefault) {
+    await upsertTenantMembership({
+      userId: linkedUser._id,
+      tenantId: tenant._id,
+      role: "tenant_admin",
+      isDefaultTenant: true
+    });
+  }
 
   const authContext = await resolveAuthContext({ user: linkedUser });
   const sessionRoles = hasLoginRole

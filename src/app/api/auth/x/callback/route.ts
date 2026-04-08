@@ -27,7 +27,7 @@ import {
     ensureCoreUserByEmail,
     ensureSeededGlobalAdmin,
     getCoreUserByEmail,
-    getCoreUserByXIdentity,
+    getCoreUserByXOAuthIdentity,
     linkXAccountToUser,
     unlinkXAccountFromUser
 } from "@/modules/identity/repository";
@@ -223,7 +223,7 @@ export async function GET(request: Request) {
       ? await ensureSeededGlobalAdmin(emailFromProvider)
       : null;
 
-  let user = await getCoreUserByXIdentity(xIdentity.xUserId);
+  let user = await getCoreUserByXOAuthIdentity(xIdentity);
   if (
     !user &&
     !emailFromProvider &&

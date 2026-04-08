@@ -10,6 +10,7 @@ import { purgeAllDataAssociatedWithCoreUser } from "@/modules/core-admin/reposit
 import {
     deleteCoreUserById,
     getCoreUserById,
+    listAdminTenantMembershipsByUserIds,
     updateCoreUserById
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
@@ -57,9 +58,12 @@ export async function GET(request: Request, context: RouteContext) {
     entityType: "core_user",
     entityId: userId
   });
+  const tenantMap =
+    (await listAdminTenantMembershipsByUserIds([new ObjectId(userId)])) ?? new Map();
   return NextResponse.json({
     data: {
       ...serializeUser(user),
+      tenantMemberships: tenantMap.get(userId) ?? [],
       auditTrail: auditTrail.map(serializeAuditEvent)
     }
   });
@@ -119,7 +123,14 @@ export async function PUT(request: Request, context: RouteContext) {
     }
   });
 
-  return NextResponse.json({ data: serializeUser(updated) });
+  const tenantMap =
+    (await listAdminTenantMembershipsByUserIds([new ObjectId(userId)])) ?? new Map();
+  return NextResponse.json({
+    data: {
+      ...serializeUser(updated),
+      tenantMemberships: tenantMap.get(userId) ?? []
+    }
+  });
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
