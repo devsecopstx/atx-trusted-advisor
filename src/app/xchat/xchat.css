@@ -1419,6 +1419,83 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   color: var(--xf-text-100);
 }
 
+.xchat-msg-user-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+  max-width: min(100%, 320px);
+}
+
+.xchat-msg-user-body__image-wrap {
+  border-radius: var(--xf-radius-sm);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  line-height: 0;
+  max-width: 100%;
+}
+
+.xchat-msg-user-body__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  object-fit: contain;
+  background: var(--xf-bg-900);
+}
+
+.xchat-composer-paste-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.35rem 0 0;
+}
+
+.xchat-composer-paste-preview__thumb {
+  border-radius: var(--xf-radius-sm);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.xchat-composer-paste-preview__thumb img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  background: var(--xf-bg-900);
+}
+
+.xchat-composer-paste-preview__meta {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.75rem;
+  color: var(--xf-text-400);
+}
+
+.xchat-composer-paste-preview__link {
+  color: var(--xf-gain-green);
+  text-decoration: underline;
+}
+
+.xchat-composer-paste-preview__clear {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--xf-gain-green);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  text-decoration: underline;
+}
+
+.xchat-composer-paste-err {
+  font-size: 0.75rem;
+  color: var(--xf-danger-400);
+  margin: 0.25rem 0 0;
+}
+
 .xchat-msg-ai {
   align-self: flex-start;
   width: 100%;

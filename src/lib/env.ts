@@ -60,6 +60,8 @@ const envSchema = z.object({
   XAI_BASE_URL: optionalUrl,
   XAI_MANAGEMENT_BASE_URL: optionalUrl,
   XAI_CHAT_MODEL: optionalNonEmptyString,
+  /** xChat pasted-image turns use this model for `/v1/responses` vision input (defaults to `grok-4` in code). */
+  XAI_VISION_MODEL: optionalNonEmptyString,
   AUTH_SECRET: optionalAuthSecret,
   ALLOW_ANY_X_USER_LOGIN: z.union([z.string(), z.boolean()]).optional(),
   SLACK_WEBHOOK_URL: z.union([z.string().url(), z.literal("")]).optional(),

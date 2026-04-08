@@ -16,7 +16,7 @@ import {
     searchDocumentsInCollections,
     type ToolCallLog
 } from "@/lib/xai";
-import { getDefaultPersonaChatModelId } from "@/lib/xai-default-persona-model";
+import { getDefaultPersonaChatModelId, getXchatVisionModelId } from "@/lib/xai-default-persona-model";
 import { buildWireToolsForXaiResponses, personaXapiToolsToXaiRequestTools } from "@/lib/xai-tools";
 import { extractXaiResponsesUsage } from "@/lib/xai-usage-extract";
 import {
@@ -69,6 +69,10 @@ import {
     STRATEGY_JOB_PREFLIGHT_MARKDOWN
 } from "@/modules/xchat/xchat-ask-routing";
 import {
+    MAX_XCHAT_ASK_JSON_BYTES,
+    parseAndValidateXchatPasteImage
+} from "@/modules/xchat/xchat-image-attachment";
+import {
     buildSessionToolInstructions,
     buildXchatSystemPrompt,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
@@ -78,27 +82,42 @@ import {
     type XchatRecentThreadMessage
 } from "@/modules/xchat/xchat-recent-history-prompt";
 
-const askSchema = z.object({
-  message: z.string().min(2).max(8_000),
-  threadId: z.string().trim().min(1).max(128).optional(),
-  strategyJobOptOut: z.boolean().optional(),
-  recentMessages: z
-    .array(
-      z.object({
-        role: z.enum(["user", "assistant"]),
-        content: z.string().trim().min(1).max(8_000)
-      })
-    )
-    .max(10)
-    .optional(),
-  portfolioId: z.string().trim().regex(/^[a-f\d]{24}$/i).optional(),
-  personaId: z.string().optional(),
-  reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]).optional(),
-  scope: z.string().min(1).max(128).optional(),
-  topK: z.number().int().min(1).max(10).optional()
+const xchatPasteImageAttachmentSchema = z.object({
+  mediaType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
+  dataBase64: z.string().min(8).max(6_000_000)
 });
 
-const MAX_ASK_PAYLOAD_BYTES = 24 * 1024;
+const askSchema = z
+  .object({
+    message: z.string().max(8_000),
+    imageAttachment: xchatPasteImageAttachmentSchema.optional(),
+    threadId: z.string().trim().min(1).max(128).optional(),
+    strategyJobOptOut: z.boolean().optional(),
+    recentMessages: z
+      .array(
+        z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string().trim().min(1).max(8_000)
+        })
+      )
+      .max(10)
+      .optional(),
+    portfolioId: z.string().trim().regex(/^[a-f\d]{24}$/i).optional(),
+    personaId: z.string().optional(),
+    reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]).optional(),
+    scope: z.string().min(1).max(128).optional(),
+    topK: z.number().int().min(1).max(10).optional()
+  })
+  .superRefine((data, ctx) => {
+    const t = data.message.trim();
+    if (t.length < 2 && !data.imageAttachment) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter a message (2+ characters) or paste an image.",
+        path: ["message"]
+      });
+    }
+  });
 const ASK_RATE_MAX = 20;
 const XCHAT_OPT_IN_RETENTION_DAYS = 60;
 const STRATEGY_OPTOUT_SYSTEM_PROMPT_LINE =
@@ -175,7 +194,7 @@ export async function POST(request: Request) {
 
   return runWithXchatTenantDebugAsync(tenantDebugFlag, async () => {
   const contentLength = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(contentLength) && contentLength > MAX_ASK_PAYLOAD_BYTES) {
+  if (Number.isFinite(contentLength) && contentLength > MAX_XCHAT_ASK_JSON_BYTES) {
     return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   }
 
@@ -194,7 +213,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const { message } = parsed.data;
+  const bodyJsonSize = JSON.stringify(body).length;
+  if (bodyJsonSize > MAX_XCHAT_ASK_JSON_BYTES) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
+
+  const messageRaw = parsed.data.message;
+  const messageTrimmed = messageRaw.trim();
+  const visionParsed = parsed.data.imageAttachment
+    ? parseAndValidateXchatPasteImage(parsed.data.imageAttachment)
+    : null;
+  if (visionParsed && !visionParsed.ok) {
+    return NextResponse.json({ error: visionParsed.error }, { status: 400 });
+  }
+  const visionImage = visionParsed?.ok ? visionParsed.value : null;
+
+  const xchatImageCaptionFallback =
+    "Analyze this screenshot or pasted image. If it shows tickers, options, charts, or portfolio data, describe what you see and anything actionable. If it is not finance-related, say so briefly.";
+  const captionForPrompt = messageTrimmed || (visionImage ? xchatImageCaptionFallback : "");
+  const messageForPersistence = visionImage
+    ? `[image:${visionImage.mediaType}] ${messageTrimmed || "(paste)"}`
+    : messageRaw;
   const threadId = parsed.data.threadId?.trim() || undefined;
   const workspacePortfolioId = parsed.data.portfolioId?.trim() || undefined;
   const isAdminSession = isGlobalAdmin(session.roles);
@@ -345,7 +384,7 @@ export async function POST(request: Request) {
   let multiAgentDowngraded = false;
   if (MULTI_AGENT_PERSONA_MODEL_IDS.has(effectiveModel)) {
     const allowParallelism =
-      parsed.data.reasoningEffort != null || heavySynthesisIntent(message);
+      parsed.data.reasoningEffort != null || heavySynthesisIntent(messageTrimmed);
     if (!allowParallelism) {
       executionModel = getDefaultPersonaChatModelId();
       multiAgentDowngraded = true;
@@ -373,6 +412,11 @@ export async function POST(request: Request) {
     );
   }
 
+  if (visionImage) {
+    executionModel = getXchatVisionModelId();
+    parallelAgentConfig = undefined;
+  }
+
   const baseXapiConfig: PersonaXapiConfig = ensureSuperAgentDefaultTools(
     normalizePersonaXapiConfig(persona?.xapi),
     persona?.name
@@ -383,7 +427,8 @@ export async function POST(request: Request) {
     session.userId,
     session.tenantId ?? "tenant:none",
     resolvedPersonaIdOverride ?? persona?._id?.toHexString() ?? persona?.name ?? "persona:none",
-    message,
+    messageRaw,
+    visionImage?.contentFingerprint ?? "",
     executionModel,
     scope
   );
@@ -420,7 +465,7 @@ export async function POST(request: Request) {
     strategyJobOptOut = latestThreadLog?.strategyJobOptOut === true;
   }
 
-  if (isStayInChatReply(message)) {
+  if (isStayInChatReply(messageTrimmed)) {
     strategyJobOptOut = true;
     const responseMarkdown = preprocessXchatMarkdown(
       "Understood, staying in chat. I will continue in normal chat mode for this conversation."
@@ -437,7 +482,7 @@ export async function POST(request: Request) {
           personaId: persona?._id,
           personaName: persona.name,
           scope,
-          message,
+          message: messageForPersistence,
           response: responseMarkdown,
           contextChunkIds: [],
           model: "strategy_job_opt_out",
@@ -470,13 +515,13 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!strategyJobOptOut && shouldOfferStrategyJobPreflight(message)) {
+  if (!strategyJobOptOut && !visionImage && shouldOfferStrategyJobPreflight(messageTrimmed)) {
     const responseMarkdown = preprocessXchatMarkdown(STRATEGY_JOB_PREFLIGHT_MARKDOWN);
     const preflightRequestId = buildDeterministicId(
       "xpref",
       session.userId,
       session.tenantId ?? "tenant:none",
-      message.slice(0, 600)
+      messageTrimmed.slice(0, 600)
     );
     const preflightCorrelationId = buildDeterministicId(
       "xcorr",
@@ -496,7 +541,7 @@ export async function POST(request: Request) {
           personaId: persona?._id,
           personaName: persona.name,
           scope,
-          message,
+          message: messageForPersistence,
           response: responseMarkdown,
           contextChunkIds: [],
           model: "strategy_job_preflight",
@@ -567,7 +612,7 @@ export async function POST(request: Request) {
     if (linkedCollectionIds.length > 0 && collectionSearchStatus === "ready") {
       try {
         const collectionSnippets = await searchDocumentsInCollections({
-          query: message,
+          query: messageTrimmed || "User attached an image for analysis.",
           collectionIds: linkedCollectionIds,
           limit: topK
         });
@@ -599,7 +644,7 @@ export async function POST(request: Request) {
   const hasXfinanceTool = xapiConfig.tools.some((t) => isAtxFunctionToolType(t.type));
   const hasYahooFinanceTool = xapiConfig.tools.some((t) => t.type === "yahoo_finance");
 
-  if (hasXfinanceTool && isDirectWatchlistRequest(message)) {
+  if (!visionImage && hasXfinanceTool && isDirectWatchlistRequest(messageTrimmed)) {
     const executor = createXfinanceToolExecutor({
       userId: session.userId,
       tenantId: session.tenantId,
@@ -686,7 +731,7 @@ export async function POST(request: Request) {
           personaId: persona?._id,
           personaName: persona.name,
           scope,
-          message,
+          message: messageForPersistence,
           response: output,
           contextChunkIds: [],
           model: "watchlist_snapshot_direct",
@@ -775,8 +820,8 @@ export async function POST(request: Request) {
     : builtSystemPrompt;
   const userPromptTemplate = persona?.overridePrompt?.trim() ?? "";
   const userPromptBase = userPromptTemplate
-    ? `${userPromptTemplate}\n\nUser message:\n${message}`
-    : message;
+    ? `${userPromptTemplate}\n\nUser message:\n${captionForPrompt}`
+    : captionForPrompt;
   const personaKbAugmentation = appendXchatKbMetadata({
     tools: xapiConfig.tools,
     linkedCollectionIds,
@@ -823,6 +868,7 @@ export async function POST(request: Request) {
       model: executionModel,
       systemPrompt,
       userPrompt,
+      userImageDataUrl: visionImage?.dataUrl,
       tools: xaiTools,
       toolChoice: xapiConfig.toolChoice,
       maxTurns: xapiConfig.maxTurns,
@@ -869,7 +915,7 @@ export async function POST(request: Request) {
     email: session.email,
     personaId: persona?._id?.toHexString(),
     personaName: persona?.name,
-    message,
+    message: messageForPersistence,
     systemPrompt,
     userPrompt,
     ragContextLength: ragContext.length,
@@ -938,7 +984,7 @@ export async function POST(request: Request) {
         personaId: persona?._id,
         personaName: persona.name,
         scope,
-        message,
+        message: messageForPersistence,
         response: responseMarkdown,
         contextChunkIds,
         model: xaiResponse.model,

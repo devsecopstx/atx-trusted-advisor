@@ -412,10 +412,25 @@ export type XaiToolLoopResult = {
   raw: unknown;
 };
 
+/** First-turn multimodal user input for `/v1/responses` (vision), aligned with xAI docs. */
+function buildXaiResponsesVisionUserTurn(userPrompt: string, imageDataUrl: string): unknown {
+  return [
+    {
+      role: "user",
+      content: [
+        { type: "input_image", image_url: imageDataUrl },
+        { type: "input_text", text: userPrompt }
+      ]
+    }
+  ];
+}
+
 export async function respondWithXaiToolLoop(input: {
   model?: string;
   systemPrompt: string;
   userPrompt: string;
+  /** When set, first request uses vision `input` shape (image + text); see xAI [image analysis](https://docs.x.ai/developers/quickstart#step-5-analyze-an-image). */
+  userImageDataUrl?: string;
   tools: Array<Record<string, unknown>>;
   toolChoice?: XaiToolChoice;
   maxTurns?: number;
@@ -432,7 +447,11 @@ export async function respondWithXaiToolLoop(input: {
   const toolCalls: ToolCallLog[] = [];
   const tools = toXaiRequestTools(input.tools, { forXaiResponsesApi: true });
 
-  let conversationInput: unknown = input.userPrompt;
+  const trimmedImageUrl = input.userImageDataUrl?.trim();
+  let conversationInput: unknown =
+    trimmedImageUrl && trimmedImageUrl.length > 0
+      ? buildXaiResponsesVisionUserTurn(input.userPrompt, trimmedImageUrl)
+      : input.userPrompt;
   let turnsUsed = 0;
   let lastPayload: Record<string, unknown> = {};
   /** Required for follow-up `/responses` turns (tool outputs + hosted tools like web_search). */

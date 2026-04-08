@@ -1,9 +1,59 @@
-# xFinance monorepo — current state (stack, features, docs & test gaps)
+# xFinance monorepo — technical architecture & current state
 
-Last updated: 2026-04-07  
-App semver (canonical): root **`package.json`** (currently **3.3.13**; runtime label via `src/lib/app-version.ts` reads the same semver).
+Last updated: 2026-04-08  
+App semver (canonical): root **`package.json`** (currently **3.3.17**; runtime label via `src/lib/app-version.ts` reads the same semver).
 
-This page is the **single entry** for “what ships today” across **Next.js (core product)** and **Kotlin/Spring (`atxfinance-backend`)**. Deep dives stay in linked docs; **outstanding work only** lives in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change, and **this doc** (or `PLAN.md`) when the shipped stack or consolidated gaps move.
+This file is the **single consolidated technical architecture** reference for the monorepo: runtime topology, responsibilities, shipped product surfaces, CI/test matrix, pre-production gates, and **known gaps**. Topic deep dives stay in linked **`atx-docs/*`** pages; **open backlog only** in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change, and **this doc** (or `PLAN.md`) when the shipped stack or consolidated gaps move.
+
+---
+
+## Technical architecture (consolidated)
+
+**Production shape:** two primary deployables on **GCP Cloud Run** — the **Next.js** core app (UI + most `/api/*` route handlers + BFF) and **`atxfinance-backend`** (Kotlin/Spring worker with HTTP parity for migrated slices). Both share **one MongoDB** (tenant data, portfolios, personas, jobs, audit, xChat history when opted in). Optional **Redis** (strategy-job hourly caps, future cache), **Google Pub/Sub** (recommendation events when configured), **Stripe** (billing webhooks + Checkout on Next), and **xAI** (chat + management APIs from Next).
+
+```mermaid
+flowchart TB
+  subgraph clients [Clients]
+    Browser[Browser / PWA]
+  end
+  subgraph cr [Cloud Run]
+    Next[Next.js core app]
+    Spring[atxfinance-backend JVM]
+  end
+  subgraph external [External services]
+    Mongo[(MongoDB)]
+    xAI[xAI API]
+    Yahoo[Yahoo Finance quotes]
+    Stripe[Stripe]
+    Redis[(Redis optional)]
+    PS[Pub/Sub optional]
+    IBKR[IBKR Client Portal optional]
+  end
+  Browser -->|HTTPS same-origin / session cookie| Next
+  Next -->|BFF when ATXFINANCE_BACKEND_ORIGIN set| Spring
+  Next --> Mongo
+  Next --> xAI
+  Next --> Stripe
+  Next --> Yahoo
+  Next --> IBKR
+  Spring --> Mongo
+  Spring --> Yahoo
+  Spring --> Redis
+  Spring --> PS
+```
+
+| Layer | Primary responsibilities |
+|--------|---------------------------|
+| **Next.js (App Router)** | Product UI; **edge** auth/guest gating in **`src/proxy.ts`**; signed session **`xf_core_session`**; **xChat** (`/api/xchat/*`) and xAI calls; **OpenAPI** inventory + admin Swagger; **Stripe** Checkout/webhooks/portal; **desk SMTP** for portfolio email and admin delivery-channel **Send test**; **BFF** forwarding per [`bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) when **`ATXFINANCE_BACKEND_ORIGIN`** points at the Spring **HTTPS** origin |
+| **Spring (`atxfinance-backend`)** | **ShedLock**-backed schedulers; **strategy jobs** orchestration + HTTP; Yahoo-backed **strategy-options** and related paths when proxied; admin/portfolio/RAG slices per **[`atxfinance-backend-http-api.md`](../sre-ops/atxfinance-backend-http-api.md)**; optional **recommendation** Pub/Sub publisher; **session** cookie parse aligned with Next |
+| **MongoDB** | System of record: tenants, users, portfolios, watchlists, personas, **`strategy_jobs`**, **`options_strategy_preferences`**, **`admin_*`**, **`xchat_logs`** (when user opts in), IBKR consent rows, etc. |
+| **Redis** | Optional: strategy-job rate cap when **`REDIS_URL`** set (see **[`spring-redis-memorystore.md`](../sre-ops/spring-redis-memorystore.md)**) |
+
+**Auth (today):** Browser **X OAuth** flows live on **Next** (`/api/auth/x/*`); cutover toward Spring authority is **planned** with dual-run — see **[`api-consolidation-spring-backend.md`](../sre-ops/api-consolidation-spring-backend.md)** and **canonical live path table** in [`.cursor/plans/shared-context.md`](../../.cursor/plans/shared-context.md).
+
+**BFF / consolidation:** Not every `/api/*` route is proxied. **Next-only** examples: **`/api/xchat/*`** (streaming/tools), tenant **`/api/admin/tasks*`** / scheduler tick, tenant **`/api/admin/delivery-channels*`** (desk SMTP on Next). Full migration board: **`api-consolidation-spring-backend.md`**.
+
+**Market data:** Quotes and chains for product UX go through **Yahoo** adapters on Next (`yahoo-finance2`) and/or JVM Yahoo client on Spring for BFF paths — prefer **`market_quote` / `yahoo_finance`** tooling in xChat over narrative-only web fetches (**[`AGENTS.md`](../../AGENTS.md)**).
 
 ---
 
@@ -13,7 +63,7 @@ Before approving a **production** release, the **reviewer / operator** checklist
 
 | # | Gate |
 |---|------|
-| **0** | **Version:** Root `package.json` / lockfile `packages[""].version` / `APP_VERSION` match the intended tag (e.g. **v3.3.13**). |
+| **0** | **Version:** Root `package.json` / lockfile `packages[""].version` / `APP_VERSION` match the intended tag (e.g. **v3.3.17**). |
 | **1** | **`npm run ci:gate`** green on the release ref: lint, typecheck, **`docs:links`** on all **`atx-docs/**/*.md`**, Vitest (unit + integration), OpenAPI parity (`tests/integration/openapi-*.test.ts`). |
 | **2** | **`NODE_ENV=production npm run build`** succeeds (Next compile + static generation). |
 | **3** | If **`services/atxfinance-backend/**` changed:** **`./gradlew test`** (from `services/atxfinance-backend`) green — do not ship prod with only Next green. |
@@ -40,6 +90,7 @@ Cross-check **[`.cursor/skills/test-commit-push/SKILL.md`](../../.cursor/skills/
 
 | Topic | Where |
 |--------|--------|
+| **This doc (architecture + shipped state)** | *You are here* — [`current-state-features.md`](./current-state-features.md) |
 | Backlog (open items only) | [`PLAN.md`](../PLAN.md) |
 | IBKR integration (phases, compliance) | [`ibkr-automation.md`](./ibkr-automation.md) · module [`src/modules/ibkr-integration/README.md`](../../src/modules/ibkr-integration/README.md) |
 | Next API inventory | [`guides/api-endpoints.md`](../guides/api-endpoints.md) |
@@ -76,7 +127,7 @@ Path prefixes for the shared product chrome are defined in **`APP_USER_PRODUCT_P
 
 **Representative capabilities (non-exhaustive — see `api-endpoints.md`):**
 
-- **xChat** — `POST /api/xchat/ask`, personas, plan limits; xAI-backed; history in Mongo (`xchat_logs` per product rules).
+- **xChat** — `POST /api/xchat/ask`, personas, plan limits; xAI-backed; history in Mongo (`xchat_logs` per product rules). **Vision paste:** optional **`imageAttachment`** (clipboard screenshot) → xAI Responses **`input_image`** + text (see [xAI Step 5 — analyze an image](https://docs.x.ai/developers/quickstart#step-5-analyze-an-image)); **`XAI_VISION_MODEL`** (default **`grok-4`**).
 - **Portfolio / accounts / holdings** — app_user and admin paths; workspace portfolio cookie; **`/portfolio/accounts/[id]`** Edit Account: consolidated holdings table (Last / Day Δ / Value / % acct / Qty / Avg cost) + add/remove lots — see **[`portfolio-edit-account-consolidated-holdings.md`](./portfolio-edit-account-consolidated-holdings.md)**. Merrill/Fidelity CSV import + **`/import-activity`** (broker ref **last-four** display; per-account **Use for import** toggles; copy in **`import-activity-copy.ts`**).
 - **Watchlist** — user-scoped store, quotes, optional chain glance; desk columns / IV-OI highlights (see release notes **3.1.x**). **Price alerts** (Next-side scanner thresholds + cooldown): `src/modules/watchlist/price-alert-service.ts`; roadmap context in **`PLAN.md`** (**240n** shipped).
 - **Portfolio alerts (desk)** — UI **`/portfolio/alerts`**; app_user **`GET` / `DELETE /api/portfolios/{portfolioId}/alerts`** (may BFF to Spring); global admin **`/api/admin/portfolios/{portfolioId}/alerts`** (+ `{alertId}` **PATCH** / **DELETE**). OpenAPI under **`portfolios`** / **`admin-portfolios`**.
@@ -216,7 +267,7 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 - **Post-deploy smoke:** **`GET /api/health`** (version matches image); app_user / admin paths per [`AGENTS.md`](../../AGENTS.md) § Production validation.
 - **High-risk clients:** ApexCharts (xOptions symbol panel), long xChat threads, watchlist quote refresh, IBKR snapshot panels, virtualized portfolio tables.
 - **Local regression:** Teams may run **Lighthouse CI** (e.g. **`.lighthouseci/config.cjs`**) against **`127.0.0.1:3000`** for `/xchat`, `/portfolio`, `/portfolios` — **not** a merge blocker unless workflow is added to GitHub Actions.
-- **Recent LHCI direction (2026-04-07):** improve performance scores on **`/xchat`** and **`/portfolios`** (history + virtualized lists); keep INP ≤ 200 ms on interactive surfaces.
+- **Recent LHCI direction:** improve performance scores on **`/xchat`** and **`/portfolios`** (history + virtualized lists); keep INP ≤ 200 ms on interactive surfaces.
 
 ---
 

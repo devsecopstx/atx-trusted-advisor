@@ -6,6 +6,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 
 ## Table of contents
 
+- [Architecture & shipped stack](#architecture-shipped-stack)
 - [Backlog](#backlog)
 - [Guides](#guides)
 - [Operations — sre-ops](#operations-sre-ops)
@@ -13,6 +14,14 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 - [Options (RAG + seed)](#options-rag-seed)
 - [Diagrams & assets](#diagrams-assets)
 - [Audit & governance](#audit-governance)
+
+---
+
+## Architecture & shipped stack
+
+| Doc | Purpose |
+|-----|---------|
+| **[current-state-features.md](./design-system/current-state-features.md)** | **Single consolidated technical architecture** for the monorepo (Next + Spring + Mongo + integrations), shipped product surfaces, CI/test matrix, pre-prod release gate, and known doc/test gaps — deep dives stay in linked `atx-docs/*` files; open work stays in [PLAN.md](./PLAN.md) |
 
 ---
 

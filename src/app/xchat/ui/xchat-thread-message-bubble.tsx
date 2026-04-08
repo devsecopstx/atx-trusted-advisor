@@ -45,7 +45,23 @@ export const XchatThreadMessageBubble = memo(
             <XchatMarkdownBody content={msg.content} />
           )
         ) : (
-          <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
+          <div className="xchat-msg-user-body">
+            {msg.attachmentPreviewUrl ? (
+              <div className="xchat-msg-user-body__image-wrap">
+                {/* eslint-disable-next-line @next/next/no-img-element -- thread shows data-URL paste only */}
+                <img
+                  alt="Pasted screenshot"
+                  className="xchat-msg-user-body__image"
+                  height={160}
+                  src={msg.attachmentPreviewUrl}
+                  width={280}
+                />
+              </div>
+            ) : null}
+            {msg.content.trim().length > 0 ? (
+              <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
+            ) : null}
+          </div>
         )}
       </div>
     );
@@ -54,6 +70,7 @@ export const XchatThreadMessageBubble = memo(
     prev.msg.id === next.msg.id &&
     prev.msg.role === next.msg.role &&
     prev.msg.content === next.msg.content &&
+    prev.msg.attachmentPreviewUrl === next.msg.attachmentPreviewUrl &&
     prev.msg.persona === next.msg.persona &&
     prev.msg.strategyJobOffer === next.msg.strategyJobOffer &&
     prev.emphasizeStrategyJobPrimary === next.emphasizeStrategyJobPrimary &&

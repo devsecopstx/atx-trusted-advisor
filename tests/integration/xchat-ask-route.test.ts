@@ -95,7 +95,8 @@ vi.mock("@/modules/watchlist/yahoo-symbol-lookup", () => ({
 }));
 
 vi.mock("@/lib/xai-default-persona-model", () => ({
-  getDefaultPersonaChatModelId: () => "grok-4-1-fast-reasoning"
+  getDefaultPersonaChatModelId: () => "grok-4-1-fast-reasoning",
+  getXchatVisionModelId: () => "grok-4"
 }));
 
 import { POST as postAsk } from "@/app/api/xchat/ask/route";
@@ -182,6 +183,33 @@ describe("xchat ask route collection retrieval", () => {
     workspaceSnapshotMocks.loadWorkspaceSnapshotPreload.mockResolvedValue(null);
     workspaceSnapshotMocks.formatWorkspaceServerSnapshotBlock.mockReturnValue("");
     symbolLookupMocks.lookupSymbols.mockResolvedValue(new Map());
+  });
+
+  it("accepts imageAttachment and forwards a data URL to respondWithXaiToolLoop (vision)", async () => {
+    const tinyPngBase64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const response = await postAsk(
+      new Request("http://test/api/xchat/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: "507f1f77bcf86cd799439055",
+          message: "Describe this pixel.",
+          imageAttachment: {
+            mediaType: "image/png",
+            dataBase64: tinyPngBase64
+          },
+          topK: 4
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    const call = xaiMocks.respondWithXaiToolLoop.mock.calls.at(-1)?.[0] as {
+      userImageDataUrl?: string;
+      model?: string;
+    };
+    expect(call?.userImageDataUrl?.startsWith("data:image/png;base64,")).toBe(true);
+    expect(call?.model).toBe("grok-4");
   });
 
   it("preprocesses assistant markdown on the server before JSON and xchat_logs", async () => {

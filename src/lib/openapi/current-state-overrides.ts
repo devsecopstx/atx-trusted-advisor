@@ -994,9 +994,25 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
   },
   XChatAskRequest: {
     type: "object",
-    required: ["message"],
+    required: [],
+    description:
+      "Either **message** (trimmed length ≥ 2) or **imageAttachment** (pasted screenshot) is required. Vision turns use `XAI_VISION_MODEL` or default `grok-4` for `/v1/responses` per [xAI image analysis](https://docs.x.ai/developers/quickstart#step-5-analyze-an-image).",
     properties: {
-      message: { type: "string", minLength: 2, maxLength: 8000 },
+      message: { type: "string", minLength: 0, maxLength: 8000 },
+      imageAttachment: {
+        type: "object",
+        required: ["mediaType", "dataBase64"],
+        properties: {
+          mediaType: {
+            type: "string",
+            enum: ["image/png", "image/jpeg", "image/webp", "image/gif"]
+          },
+          dataBase64: {
+            type: "string",
+            description: "Base64-encoded image bytes (no data-URL prefix). Max decoded size 4MB."
+          }
+        }
+      },
       threadId: {
         type: "string",
         minLength: 1,

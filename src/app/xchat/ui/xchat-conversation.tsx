@@ -40,6 +40,8 @@ const XchatComposerPanelLazy = dynamic(
   { ssr: false, loading: () => <XchatChatSkeleton variant="composer" /> }
 );
 
+type XchatPendingPasteImage = import("./xchat-composer-panel").XchatPendingPasteImage;
+
 const GLOBAL_ADMIN_DEFAULT_PERSONA_PICKER_BLOCK = new Set(
   XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS.map((k) => k.toLowerCase())
 );
@@ -365,6 +367,8 @@ export function XchatConversation({
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState("");
+  const [pendingPasteImage, setPendingPasteImage] = useState<XchatPendingPasteImage | null>(null);
+  const [pasteImageError, setPasteImageError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activePersonaName, setActivePersonaName] = useState(defaultPublishedPersonaName);
   const [lastTurnToolSummary, setLastTurnToolSummary] = useState<string | null>(null);
@@ -428,9 +432,13 @@ export function XchatConversation({
   const threadUiSummary = useMemo(() => {
     const userMsgs = messages.filter((m) => m.role === "user");
     const n = userMsgs.length;
-    const lastUser = userMsgs[userMsgs.length - 1]?.content?.trim() ?? "";
-    const preview = lastUser.length > 64 ? `${lastUser.slice(0, 64)}…` : lastUser;
-    return { userTurnCount: n, preview };
+    const last = userMsgs[userMsgs.length - 1];
+    let preview = last?.content?.trim() ?? "";
+    if (last?.attachmentPreviewUrl) {
+      preview = preview.length > 0 ? `${preview} · [Image]` : "[Image]";
+    }
+    const clipped = preview.length > 64 ? `${preview.slice(0, 64)}…` : preview;
+    return { userTurnCount: n, preview: clipped };
   }, [messages]);
   const visibleThreadMessages = useMemo(
     () => trimTranscriptToRecentResponses(messages, XCHAT_UI_RESPONSE_LIMIT),
@@ -941,7 +949,9 @@ export function XchatConversation({
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const prompt = input.trim();
-    if (!prompt || loading) return;
+    const pastedImage = pendingPasteImage;
+    const hasPasteImage = Boolean(pastedImage);
+    if ((!prompt && !hasPasteImage) || loading) return;
 
     // Keep thread expanded while a response is in flight so users can read it immediately.
     setThreadUiCollapsed(false);
@@ -950,6 +960,7 @@ export function XchatConversation({
       id: `user-${Date.now()}`,
       role: "user",
       content: prompt,
+      ...(pastedImage ? { attachmentPreviewUrl: pastedImage.previewUrl } : {}),
       timestamp: Date.now()
     };
     const nextStrategyOptOut = strategyJobOptOut || shouldStayInChatFromReply(prompt);
@@ -964,6 +975,10 @@ export function XchatConversation({
     });
     setInput("");
     setLoading(true);
+    if (hasPasteImage) {
+      setPendingPasteImage(null);
+      setPasteImageError(null);
+    }
 
     if (hasPendingStrategyJobOffer(messages) && shouldLaunchStrategyJobFromReply(prompt)) {
       setStrategyJobLaunchBusy(true);
@@ -1043,6 +1058,7 @@ export function XchatConversation({
     try {
       const askBody: {
         message: string;
+        imageAttachment?: { mediaType: XchatPendingPasteImage["mediaType"]; dataBase64: string };
         scope: string;
         threadId: string;
         strategyJobOptOut: boolean;
@@ -1056,6 +1072,12 @@ export function XchatConversation({
         strategyJobOptOut: nextStrategyOptOut,
         recentMessages: buildAskRecentMessages(messages, 10)
       };
+      if (hasPasteImage && pastedImage) {
+        askBody.imageAttachment = {
+          mediaType: pastedImage.mediaType,
+          dataBase64: pastedImage.dataBase64
+        };
+      }
       const normalizedWorkspacePortfolioId = workspacePortfolioId?.trim();
       if (normalizedWorkspacePortfolioId) {
         askBody.portfolioId = normalizedWorkspacePortfolioId;
@@ -1158,7 +1180,7 @@ export function XchatConversation({
       setSavedHistory((prev) => {
         const nextItem: HistoryItem = {
           id: historyItemId,
-          message: prompt,
+          message: hasPasteImage && !prompt ? "[Pasted image]" : prompt,
           response: payload.data?.response ?? "",
           model: "xchat",
           createdAt: new Date().toISOString(),
@@ -1552,11 +1574,15 @@ export function XchatConversation({
             handleSend={handleSend}
             input={input}
             loading={loading}
+            pasteImageError={pasteImageError}
+            pendingPasteImage={pendingPasteImage}
             personaListError={personaListError}
             personaPickerLocked={personaPickerLocked}
             personaSelectRows={personaSelectRows}
             selectedPersonaId={selectedPersonaId}
             setInput={setInput}
+            setPasteImageError={setPasteImageError}
+            setPendingPasteImage={setPendingPasteImage}
             setSelectedPersonaId={setSelectedPersonaId}
             userPickedPersonaRef={userPickedPersonaRef}
           />
