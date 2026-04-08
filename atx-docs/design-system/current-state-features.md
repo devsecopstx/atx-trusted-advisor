@@ -169,9 +169,9 @@ Service README: [`services/atxfinance-backend/README.md`](../../services/atxfina
 
 When SMTP + **`DESK_EMAIL_FROM`** are configured (see **`.env.example`** / `src/lib/env.ts`):
 
-- **Next** — portfolio desk channels, price-alert paths, etc. (`src/lib/desk-smtp.ts`)
-- **Spring** — proxied admin **`POST /api/admin/delivery-channels/test`** (`DeskSmtpSender`); failures → **502**
-- **Ops:** With BFF on, **both** services that execute those paths need matching Secret Manager bindings — [`deploy-and-ops.md`](../guides/deploy-and-ops.md). UI: **`/admin/delivery-channels`**.
+- **Next** — portfolio desk channels, price-alert paths, admin **`POST /api/admin/delivery-channels/{id}/test`** (`src/lib/desk-smtp.ts`). Optional test-only env: **`DESK_DELIVERY_CHANNEL_TEST_TO`**, **`DESK_DELIVERY_CHANNEL_TEST_SUBJECT`** — [`deploy-and-ops.md`](../guides/deploy-and-ops.md).
+- **Spring** — **`DeskSmtpSender`** + **`AdminDeliveryChannelsService`** exist for HTTP parity / direct JVM use; tenant delivery-channel routes from the **Next app are not BFF-proxied** (always `src/lib/desk-smtp.ts` for **Send test** in product).
+- **Ops:** Bind desk-SMTP secrets on the **Next** Cloud Run service for admin delivery tests and portfolio email; [`deploy-and-ops.md`](../guides/deploy-and-ops.md). UI: **`/admin/delivery-channels`**.
 
 ---
 

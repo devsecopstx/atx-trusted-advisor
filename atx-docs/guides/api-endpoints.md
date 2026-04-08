@@ -60,6 +60,17 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `GET /api/admin/audit`
 - `GET /api/admin/bootstrap-status`
 
+## Admin delivery channels (tenant)
+
+**Next-only** (not BFF-proxied to Spring). **`global_admin`**. SMTP for **`email`** targets uses **`SMTP_*`** + **`DESK_EMAIL_FROM`** (`src/lib/desk-smtp.ts`). Optional **test-only** env: **`DESK_DELIVERY_CHANNEL_TEST_TO`**, **`DESK_DELIVERY_CHANNEL_TEST_SUBJECT`** — see **`deploy-and-ops.md`**.
+
+- `GET /api/admin/delivery-channels`
+- `POST /api/admin/delivery-channels`
+- `GET /api/admin/delivery-channels/:channelId`
+- `PATCH /api/admin/delivery-channels/:channelId`
+- `DELETE /api/admin/delivery-channels/:channelId`
+- `POST /api/admin/delivery-channels/:channelId/test`
+
 ## Personas and collections
 
 - `GET /api/personas`

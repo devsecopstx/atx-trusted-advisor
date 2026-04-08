@@ -532,13 +532,14 @@ export async function proxyAdminAccessRequestsRequestToBackend(
 }
 
 /**
- * `/api/admin/delivery-channels*` (tenant + portfolio-nested). **Always Next + Mongo** — BFF never forwards to Spring.
+ * Tenant + portfolio-nested **`/api/admin/delivery-channels*`** — **always Next + Mongo** (BFF never forwards).
+ * Spring implements parity for direct JVM callers; product UI hits Next only (release **3.0.25**+).
  */
 export function shouldProxyAdminDeliveryChannelsToBackend(): boolean {
   return false;
 }
 
-/** Tenant admin delivery-channels BFF → Spring; returns `null` when proxy disabled. */
+/** Would proxy tenant delivery-channels to Spring if enabled; currently always disabled. */
 export async function proxyAdminDeliveryChannelsRequestToBackend(
   request: Request
 ): Promise<Response | null> {

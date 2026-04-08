@@ -37,6 +37,8 @@ Append a short **Deploy:** clause so ops can scan the log:
 
 ## Entries
 
+- **3.3.15** — **Admin delivery-channel email test + doc accuracy:** Optional **`DESK_DELIVERY_CHANNEL_TEST_TO`** / **`DESK_DELIVERY_CHANNEL_TEST_SUBJECT`** for **`POST /api/admin/delivery-channels/{id}/test`** (Next); response **`usedEnvRecipientOverride`**. **Docs:** **`deploy-and-ops.md`** and **`current-state-features.md`** — tenant delivery-channels are **Next-only** (desk SMTP secrets on **Next** Cloud Run for **Send test**; Spring **`DeskSmtpSender`** remains for JVM parity only). **`atxfinance-backend-http-api.md`**, **`api-endpoints.md`**, **`PLAN.md`** row **100** (partial), **`README.md`** index cleanup. **Tests:** integration coverage for invalid test env + existing resolver tests. **Deploy:** Next only (Kotlin unchanged for product path).
+
 - **3.3.11** — **Portfolio workspace rail + alerts + scanner metadata:** `/portfolio` (and alerts / account edit) use `WorkspaceProductSidebar` via serializable server props (same nav as xChat / Portfolios). Portfolio alerts: impact summary, filters, severity + quant snippet, suggested actions preview, optional `metadata` on `portfolio_alerts` for options-scanner (scoring weights, thresholds, digest/snooze hooks). **Deploy:** Next only.
 - **3.3.10** — **Watchlist price scanner parity:** Tenant-scoped watchlists (same as `price_scanner`), US desk-window skip with `watchlist_price_scanner: skipped — …` + `tenant_market_calendar` row, and run output aligned with other core scanners (`watchlists=`, `items_updated=`, `symbols_quoted=`, `alerts_created=`, `duration_s=`, …). Admin Tasks UI copy + `extractSummaryForDiff` keys. **Deploy:** Next only.
 

@@ -307,6 +307,28 @@ describe("admin delivery-channels routes", () => {
     );
   });
 
+  it("test email returns 400 when DESK_DELIVERY_CHANNEL_TEST_TO is invalid", async () => {
+    process.env.DESK_DELIVERY_CHANNEL_TEST_TO = "not-an-email";
+    repositoryMocks.getAdminDeliveryChannelById.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439099" },
+      name: "Mail",
+      deliveryTarget: "email",
+      emailTo: "ops@example.com",
+      createdAt: new Date("2026-03-20T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-20T00:00:00.000Z")
+    });
+    const response = await postTest(
+      new Request("http://test/api/admin/delivery-channels/507f1f77bcf86cd799439099/test", {
+        method: "POST"
+      }),
+      { params: Promise.resolve({ channelId: "507f1f77bcf86cd799439099" }) }
+    );
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error?: string };
+    expect(body.error).toContain("DESK_DELIVERY_CHANNEL_TEST_TO");
+    expect(deskMocks.sendDeskPlainEmailWithRetry).not.toHaveBeenCalled();
+  });
+
   it("test email uses DESK_DELIVERY_CHANNEL_TEST_SUBJECT when set", async () => {
     process.env.DESK_DELIVERY_CHANNEL_TEST_SUBJECT = "Custom SMTP test";
     repositoryMocks.getAdminDeliveryChannelById.mockResolvedValueOnce({
