@@ -122,4 +122,4 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 - **Audit skill:** [`.cursor/skills/atxdesign-review-audit/SKILL.md`](../.cursor/skills/atxdesign-review-audit/SKILL.md) and [`CHECKLIST.md`](../.cursor/skills/atxdesign-review-audit/CHECKLIST.md)
 - **Ground truth:** [audit-lineage-and-controls.md](./sre-ops/audit-lineage-and-controls.md) (Mongo `admin_audit_events`, BFF parity, test inventory, known gaps)
 
-**Doc updates:** follow the [`generate-docs`](../.cursor/skills/generate-docs/SKILL.md) skill when changing APIs or runbooks.
+**Doc updates:** follow [`test-commit-push`](../.cursor/skills/test-commit-push/SKILL.md) (and [`.cursor/agents/reviewer.md`](../.cursor/agents/reviewer.md)) when changing APIs or runbooks.

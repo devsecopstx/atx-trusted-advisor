@@ -1,7 +1,7 @@
 # xFinance monorepo — technical architecture & current state
 
 Last updated: 2026-04-08  
-App semver (canonical): root **`package.json`** (currently **3.3.20**; runtime label via `src/lib/app-version.ts` reads the same semver).
+App semver (canonical): root **`package.json`** (currently **3.3.21**; runtime label via `src/lib/app-version.ts` reads the same semver).
 
 This file is the **single consolidated technical architecture** reference for the monorepo: runtime topology, responsibilities, shipped product surfaces, CI/test matrix, pre-production gates, and **known gaps**. Topic deep dives stay in linked **`atx-docs/*`** pages; **open backlog only** in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change, and **this doc** (or `PLAN.md`) when the shipped stack or consolidated gaps move.
 
@@ -53,7 +53,7 @@ flowchart TB
 
 **Auth (today):** Browser **X OAuth** flows live on **Next** (`/api/auth/x/*`); cutover toward Spring authority is **planned** with dual-run — see **[`api-consolidation-spring-backend.md`](../sre-ops/api-consolidation-spring-backend.md)** and **canonical live path table** in [`.cursor/plans/shared-context.md`](../../.cursor/plans/shared-context.md).
 
-**BFF / consolidation:** Not every `/api/*` route is proxied. **Next-only** examples: **`/api/xchat/*`** (streaming/tools), tenant **`/api/admin/tasks*`** / scheduler tick, tenant **`/api/admin/delivery-channels*`** (desk SMTP on Next). Full migration board: **`api-consolidation-spring-backend.md`**.
+**BFF / consolidation:** Not every `/api/*` route is proxied. **Next-only** examples: **`/api/xchat/*`** (non-streaming **`/v1/responses`** tool-loop + tools on Next; see **`xchat-history-storage.md`** / **`XCHAT_USE_REMOTE_HISTORY`**), tenant **`/api/admin/tasks*`** / scheduler tick, tenant **`/api/admin/delivery-channels*`** (desk SMTP on Next). Full migration board: **`api-consolidation-spring-backend.md`**.
 
 **Market data:** Quotes and chains for product UX go through **Yahoo** adapters on Next (`yahoo-finance2`) and/or JVM Yahoo client on Spring for BFF paths — prefer **`market_quote` / `yahoo_finance`** tooling in xChat over narrative-only web fetches (**[`AGENTS.md`](../../AGENTS.md)**).
 
@@ -69,7 +69,7 @@ Before approving a **production** release, the **reviewer / operator** checklist
 | **1** | **`npm run ci:gate`** green on the release ref: lint, typecheck, **`docs:links`** on all **`atx-docs/**/*.md`**, Vitest (unit + integration), OpenAPI parity (`tests/integration/openapi-*.test.ts`). |
 | **2** | **`NODE_ENV=production npm run build`** succeeds (Next compile + static generation). |
 | **3** | If **`services/atxfinance-backend/**` changed:** **`./gradlew test`** (from `services/atxfinance-backend`) green — do not ship prod with only Next green. |
-| **4** | **Docs parity:** [`.cursor/skills/generate-docs/SKILL.md`](../../.cursor/skills/generate-docs/SKILL.md) for touched domains (API, BFF, xChat, strategy-options, OptionsStrategyEngine spec, `PLAN.md`, agents). |
+| **4** | **Docs parity:** [`.cursor/skills/test-commit-push/SKILL.md`](../../.cursor/skills/test-commit-push/SKILL.md) + [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md) for touched domains (API, BFF, xChat, strategy-options, OptionsStrategyEngine spec, `PLAN.md`, agents). |
 | **5** | **Conscious test gaps** called out if shipping spec-only or partial coverage (no fake “done”). |
 | **6** | No undisclosed schema / auth / API drift; OpenAPI tests still pass. |
 | **7** | **[`.cursor/skills/test-commit-push/CHECKLIST.md`](../../.cursor/skills/test-commit-push/CHECKLIST.md)** — secrets, BFF registry, Mongo `tenant_portfolio`, staging-before-prod. |
@@ -119,7 +119,7 @@ Cross-check **[`.cursor/skills/test-commit-push/SKILL.md`](../../.cursor/skills/
 - **Data:** MongoDB via route handlers and `src/modules/*`; session cookie **`xf_core_session`**
 - **API docs:** `GET /api/openapi` (inventory); admin **Swagger** at **`/admin/api-docs`**
 - **CI gate:** **`npm run ci:gate`** → lint, typecheck, **`docs:links`** (all `atx-docs/**/*.md`), Vitest (unit + integration), OpenAPI parity tests (`tests/integration/openapi-*.test.ts`)
-- **Optional BFF:** When **`ATXFINANCE_BACKEND_ORIGIN`** points at the **Spring** service **HTTPS** origin, selected **`/api/*`** routes proxy per [`bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts). **xChat** (`/api/xchat/*`) stays **Next-authoritative** (streaming not on Spring until explicitly migrated — see `PLAN.md` / `api-consolidation-spring-backend.md`).
+- **Optional BFF:** When **`ATXFINANCE_BACKEND_ORIGIN`** points at the **Spring** service **HTTPS** origin, selected **`/api/*`** routes proxy per [`bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts). **xChat** (`/api/xchat/*`) stays **Next-authoritative** (SSE streaming not implemented on ask; Spring migration TBD — see `PLAN.md` / `api-consolidation-spring-backend.md`).
 - **Admin (`global_admin`, `/admin*`)** — Control Center (**`/admin`**): session + effective **tenant** ObjectId; **ops summary** (**`GET /api/admin/system/ops-summary`**) for Next Mongo/Redis + optional Spring **`/api/backend/health`**; personas, access, tasks, delivery channels, RAG inventory, and other hub routes.
 
 ### Product surfaces (app_user shell)
@@ -130,7 +130,7 @@ Path prefixes for the shared product chrome are defined in **`APP_USER_PRODUCT_P
 
 **Representative capabilities (non-exhaustive — see `api-endpoints.md`):**
 
-- **xChat** — `POST /api/xchat/ask`, personas, plan limits; xAI-backed; history in Mongo (`xchat_logs` per product rules). **Vision paste (PNG / JPEG):** optional **`imageAttachment`** → xAI **`/v1/responses`** **`input_image`** (`detail: high`) + **`input_text`**; **same persona `model`** as text (or **`XAI_CHAT_MODEL`** fallback); optional **`XAI_VISION_MODEL`** overrides **image turns only**; multi-agent persona ids use default chat model on image turns. See [xAI image understanding](https://docs.x.ai/developers/model-capabilities/images/understanding).
+- **xChat** — `POST /api/xchat/ask`, personas, plan limits; xAI **`/v1/responses`** **non-streaming** JSON tool-loop. **RAG / collection tools:** persona-linked ids only (`xaiCollection`, `teamCollection`, tool `collection_ids` via **`resolveXchatPersonaDeclaredCollectionIds`**); deploy env team KB is **not** merged into ask. **Continuity:** Mongo **`xchat_logs`** when opted in; optional **`XCHAT_USE_REMOTE_HISTORY=true`** + client **`threadId`** + prior **`xaiResponseId`** (same **`personaId`**) → **`previous_response_id`** / **`store_messages`** and no client recent-turn block on continuation (**`keepXchatHistory`** can disable per persona). **Vision paste (PNG / JPEG):** optional **`imageAttachment`** → **`input_image`** (`detail: high`) + **`input_text`**; optional **`XAI_VISION_MODEL`** overrides image turns; multi-agent persona ids use default chat model on image turns. See [xAI image understanding](https://docs.x.ai/developers/model-capabilities/images/understanding) · **`xchat-history-storage.md`**.
 - **Portfolio / accounts / holdings** — app_user and admin paths; workspace portfolio cookie; **`/portfolio/accounts/[id]`** Edit Account: consolidated holdings table (Last / Day Δ / Value / % acct / Qty / Avg cost) + add/remove lots — see **[`portfolio-edit-account-consolidated-holdings.md`](./portfolio-edit-account-consolidated-holdings.md)**. Merrill/Fidelity CSV import + **`/import-activity`** (broker ref **last-four** display; per-account **Use for import** toggles; copy in **`import-activity-copy.ts`**).
 - **Watchlist** — user-scoped store, quotes, optional chain glance; desk columns / IV-OI highlights (see release notes **3.1.x**). **Price alerts** (Next-side scanner thresholds + cooldown): `src/modules/watchlist/price-alert-service.ts`; roadmap context in **`PLAN.md`** (**240n** shipped).
 - **Portfolio alerts (desk)** — UI **`/portfolio/alerts`**; app_user **`GET` / `DELETE /api/portfolios/{portfolioId}/alerts`** (may BFF to Spring); global admin **`/api/admin/portfolios/{portfolioId}/alerts`** (+ `{alertId}` **PATCH** / **DELETE**). OpenAPI under **`portfolios`** / **`admin-portfolios`**.
@@ -249,7 +249,7 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 
 | Gap | Pointer |
 |-----|---------|
-| **xChat on Spring + BFF streaming** | `PLAN.md` · `api-consolidation-spring-backend.md` |
+| **xChat on Spring + BFF; SSE streaming for ask** | `POST /api/xchat/ask` is **non-streaming** Responses JSON on Next today; Spring migration + optional SSE in `PLAN.md` · `api-consolidation-spring-backend.md` |
 | **Strict JSON Schema artifact v2** (strategy jobs) | `PLAN.md` · `atx-multi-agent.md` |
 | **`POST /api/import/broker/clean`** — no dedicated integration test (destructive) | `PLAN.md` § test/doc follow-ups · `api-endpoints.md` |
 | **Admin `PATCH/DELETE …/positions/{id}`** — Next until BFF registry + Kotlin parity | `PLAN.md` |

@@ -455,6 +455,51 @@ describe("xchat ask route collection retrieval", () => {
     );
   });
 
+  it("when XCHAT_USE_REMOTE_HISTORY and prior xaiResponseId, sends previous_response_id and omits client recent thread block", async () => {
+    vi.stubEnv("XCHAT_USE_REMOTE_HISTORY", "true");
+    try {
+      repositoryMocks.getLatestXchatLogByThread.mockImplementation(
+        async (input: { personaId?: ObjectId }) => {
+          if (input.personaId) {
+            return { xaiResponseId: "resp_remote_prev_1" } as {
+              xaiResponseId: string;
+            };
+          }
+          return null;
+        }
+      );
+
+      const response = await postAsk(
+        new Request("http://test/api/xchat/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            personaId: "507f1f77bcf86cd799439055",
+            message: "Second turn",
+            threadId: "thread-remote-1",
+            recentMessages: [{ role: "user", content: "First turn summary from client" }],
+            topK: 4
+          })
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(xaiMocks.respondWithXaiToolLoop).toHaveBeenCalledWith(
+        expect.objectContaining({
+          previousResponseId: "resp_remote_prev_1",
+          storeMessages: true
+        })
+      );
+      const call = xaiMocks.respondWithXaiToolLoop.mock.calls.at(-1)?.[0] as {
+        systemPrompt: string;
+      };
+      expect(call.systemPrompt).not.toContain("Recent thread messages");
+    } finally {
+      vi.unstubAllEnvs();
+      repositoryMocks.getLatestXchatLogByThread.mockResolvedValue(null);
+    }
+  });
+
   it("uses no RAG context when TEAM collection search returns empty (no mongo fallback)", async () => {
     xaiMocks.searchDocumentsInCollections.mockResolvedValueOnce([]);
 
