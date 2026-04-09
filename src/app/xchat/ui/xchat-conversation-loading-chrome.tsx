@@ -23,8 +23,12 @@ export function XchatConversationLoadingChrome() {
               </div>
             </div>
             <div aria-hidden className="xchat-await__skeleton">
-              <span className="xchat-await__sk-line xchat-await__sk-line--long" />
-              <span className="xchat-await__sk-line xchat-await__sk-line--med" />
+              <div className="xchat-await__sk-track xchat-await__sk-track--long">
+                <span className="xchat-await__sk-line" />
+              </div>
+              <div className="xchat-await__sk-track xchat-await__sk-track--med">
+                <span className="xchat-await__sk-line" />
+              </div>
             </div>
           </div>
         </div>

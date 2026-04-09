@@ -430,6 +430,10 @@ function buildXaiResponsesVisionUserTurn(userPrompt: string, imageDataUrl: strin
   ];
 }
 
+/**
+ * Calls xAI `POST /v1/responses` with **non-streaming** JSON bodies so each turn can parse tool_calls
+ * and run the local executor loop. SSE streaming is not used here.
+ */
 export async function respondWithXaiToolLoop(input: {
   model?: string;
   systemPrompt: string;

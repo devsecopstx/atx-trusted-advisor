@@ -1,6 +1,5 @@
 import { ObjectId } from "mongodb";
 
-import { getTeamXaiKbCollectionIdSync } from "./team-xai-collection-sync";
 import {
     PERSONA_XAPI_TOOL_TYPES,
     type PersonaXapiToolDefinition,
@@ -56,33 +55,15 @@ export const DEFAULT_PERSONA_XAPI_CONFIG: PersonaXapiConfig = {
 };
 
 /**
- * Global-admin **advisor** preset: `atx_function` + `yahoo_finance` + optional `file_search` (single team KB id when `XAI_TEAM_ID` is a literal `collection_*`).
+ * Global-admin **advisor** preset: `atx_function` + `yahoo_finance`.
+ * RAG tools (`file_search` / `collections_search`) come only from persona-linked collections + `withLinkedCollectionTools`.
  */
 export function getAdvisorDefaultTools(): PersonaXapiToolDefinition[] {
-  const cid = getTeamXaiKbCollectionIdSync();
-  if (cid) {
-    return [
-      { type: "atx_function" },
-      { type: "yahoo_finance" },
-      { type: "file_search", collection_ids: [cid] }
-    ];
-  }
   return [{ type: "atx_function" }, { type: "yahoo_finance" }];
 }
 
-/** Legacy **super-agent** row: full research + `collections_search` when env resolves a KB collection id. */
+/** Legacy **super-agent** row: full research stack; collection search only when linked on the persona. */
 export function getSuperAgentDefaultTools(): PersonaXapiToolDefinition[] {
-  const cid = getTeamXaiKbCollectionIdSync();
-  if (cid) {
-    return [
-      { type: "atx_function" },
-      { type: "collections_search", collection_ids: [cid] },
-      { type: "yahoo_finance" },
-      { type: "web_search" },
-      { type: "x_search" },
-      { type: "code_interpreter" }
-    ];
-  }
   return [
     { type: "atx_function" },
     { type: "yahoo_finance" },

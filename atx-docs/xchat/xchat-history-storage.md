@@ -5,7 +5,7 @@
 ## Source of truth
 
 - **Conversation turns** for the web app are stored in **MongoDB** (`xchat_logs` and related fields). This is the **authoritative** history for UI rails, limits, and audit-oriented flows tied to the Next app.
-- **RAG / retrieval** for ask uses **team-scoped** xAI collections only (`persona.teamCollection`, deploy team default from `XAI_TEAM_ID` / `resolveTeamKbCollectionId`). Persona `xaiCollection` follows persona governance; there is **no** env default that merges arbitrary user collections into ask.
+- **RAG / retrieval** for ask uses **persona-linked** xAI collection ids only (`resolveXchatPersonaDeclaredCollectionIds`: `xaiCollection`, `teamCollection`, and tool-declared `collection_ids`, capped). Deploy env team KB (`resolveTeamKbCollectionId`) is **not** merged into ask/batch/orchestrator collection wiring.
 
 ## Deprecated / unused env (do not set)
 
@@ -24,7 +24,7 @@
 
 ## Remote xAI conversation state
 
-- **`XCHAT_USE_REMOTE_HISTORY`** — documented in **`.env.example`**; **`isXchatRemoteHistoryEnabled()`** is currently **`false`** in the same module. When enabled in code, continuity would use xAI hosted state (`store_messages` + `previous_response_id`) instead of injecting Mongo turns; until then, behavior follows the ask route implementation.
+- **`XCHAT_USE_REMOTE_HISTORY`** — parsed in **`src/lib/env.ts`** (default **`false`**). When **`true`**, `POST /api/xchat/ask` sets `store_messages` and, when `threadId` + prior `xaiResponseId` exist (same `personaId`), sends `previous_response_id` and omits Mongo recent-turn injection for that continuation. Disabled when `keepXchatHistory` is false on the persona, on vision turns, or without `threadId`.
 
 ## See also
 

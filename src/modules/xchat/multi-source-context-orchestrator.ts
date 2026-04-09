@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 
 import { respondWithXai, searchDocumentsInCollections } from "@/lib/xai";
 import { getYahooMarketQuote, type MarketQuoteSnapshot } from "@/modules/xchat/market-data";
-import { resolveXchatTeamOnlyLinkedCollectionIds } from "@/modules/xchat/persona-linked-collections";
+import { resolveXchatPersonaDeclaredCollectionIds } from "@/modules/xchat/persona-linked-collections";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import { retrieveRagChunks } from "@/modules/xchat/repository";
 import {
@@ -323,7 +323,7 @@ function pushError(
  * (if persona allows `yahoo_finance` or `atxfinance`). No LLM calls.
  *
  * Allowlists: all branches respect **resolved persona** `xapi.tools` and `enableRag` / **team KB** collection
- * ids only (same policy as `POST /api/xchat/ask`: `resolveXchatTeamOnlyLinkedCollectionIds`).
+ * ids only (same policy as `POST /api/xchat/ask`: `resolveXchatPersonaDeclaredCollectionIds`).
  */
 export async function gatherMultiSourceWorkspaceContext(
   input: MultiSourceOrchestratorInput
@@ -332,7 +332,7 @@ export async function gatherMultiSourceWorkspaceContext(
   const maxYahoo = input.maxParallelYahoo ?? DEFAULT_MAX_YAHOO_PARALLEL;
   const persona = input.persona ?? null;
   const xapi = normalizePersonaXapiConfig(persona?.xapi);
-  const linkedCollectionIds = await resolveXchatTeamOnlyLinkedCollectionIds(persona ?? undefined);
+  const linkedCollectionIds = resolveXchatPersonaDeclaredCollectionIds(persona ?? undefined);
   const scope = (input.scope ?? persona?.defaultScope ?? "global").trim() || "global";
   const tenantOid = ObjectId.isValid(input.tenantId) ? new ObjectId(input.tenantId) : null;
 

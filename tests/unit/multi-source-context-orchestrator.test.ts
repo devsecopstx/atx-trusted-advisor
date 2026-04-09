@@ -22,12 +22,6 @@ const marketMocks = vi.hoisted(() => ({
   getYahooMarketQuote: vi.fn()
 }));
 
-const teamKbMocks = vi.hoisted(() => ({
-  resolveTeamKbCollectionId: vi.fn()
-}));
-
-vi.mock("@/modules/xchat/team-xai-collection", () => teamKbMocks);
-
 vi.mock("@/lib/xai", async () => {
   const actual = await vi.importActual<typeof import("@/lib/xai")>("@/lib/xai");
   return {
@@ -95,7 +89,6 @@ describe("extractTickerCandidates", () => {
 describe("gatherMultiSourceWorkspaceContext", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    teamKbMocks.resolveTeamKbCollectionId.mockResolvedValue("env_team_kb");
     readinessMocks.getScopeReadinessSummary.mockResolvedValue({
       blocked: false,
       nonReadyFiles: []
@@ -137,7 +130,7 @@ describe("gatherMultiSourceWorkspaceContext", () => {
     });
     expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
       expect.objectContaining({
-        collectionIds: ["env_team_kb"],
+        collectionIds: ["col_test"],
         query: "TSLA outlook?"
       })
     );
@@ -224,7 +217,6 @@ describe("formatGatheredContextForPrompt", () => {
 describe("runMultiSourceWorkspaceSynthesis", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    teamKbMocks.resolveTeamKbCollectionId.mockResolvedValue("env_team_kb");
     readinessMocks.getScopeReadinessSummary.mockResolvedValue({
       blocked: false,
       nonReadyFiles: []

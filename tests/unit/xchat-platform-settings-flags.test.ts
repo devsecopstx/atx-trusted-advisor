@@ -10,7 +10,7 @@ describe("xchat platform feature flags (Mongo-first history)", () => {
     expect(isXchatUserHistoryXaiCollectionEnabled()).toBe(false);
   });
 
-  it("keeps remote xAI conversation state off until implemented", () => {
+  it("keeps remote xAI conversation state off when XCHAT_USE_REMOTE_HISTORY is unset", () => {
     expect(isXchatRemoteHistoryEnabled()).toBe(false);
   });
 });

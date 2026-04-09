@@ -2043,8 +2043,11 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   40% { opacity: 1; transform: scale(1); }
 }
 
-/* In-flight ask: status + skeleton while POST /api/xchat/ask completes */
+/* In-flight ask: calm terminal-style status (Bloomberg-adjacent; no hype) */
 .xchat-await {
+  --xchat-await-accent-glow: color-mix(in srgb, var(--xf-xoptions-accent) 14%, transparent);
+  position: relative;
+  isolation: isolate;
   align-self: flex-start;
   width: fit-content;
   max-width: min(100%, 80%);
@@ -2053,10 +2056,97 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
   padding: 0.65rem 0.95rem 0.85rem;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--xf-text-400) 22%, transparent);
-  background: color-mix(in srgb, var(--xf-surface-700) 55%, transparent);
+  background: color-mix(in srgb, var(--xf-surface-700) 58%, transparent);
+  overflow: hidden;
+  animation:
+    xchat-await-mount 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    xchat-await-border-pulse 5.5s ease-in-out infinite 0.72s,
+    xchat-await-elevate 5.5s ease-in-out infinite 0.72s;
+}
+
+/* Options-wheel watermark — one slow rotation ~9s */
+.xchat-await::before {
+  content: "";
+  position: absolute;
+  width: 118%;
+  height: 200%;
+  left: -9%;
+  top: -48%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  opacity: 0.085;
+  animation: xchat-await-wheel 9s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Faint grid / tape drift */
+.xchat-await::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--xf-text-100) 5%, transparent) 0 1px,
+      transparent 1px 36px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--xf-text-100) 4%, transparent) 0 1px,
+      transparent 1px 28px
+    );
+  opacity: 0.1;
+  animation: xchat-await-grid-drift 24s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes xchat-await-wheel {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes xchat-await-grid-drift {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 280px 0, 0 56px; }
+}
+
+@keyframes xchat-await-mount {
+  from {
+    opacity: 0.88;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes xchat-await-border-pulse {
+  0%, 100% {
+    border-color: color-mix(in srgb, var(--xf-text-400) 22%, transparent);
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--xf-xoptions-accent) 34%, transparent);
+  }
+}
+
+@keyframes xchat-await-elevate {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 transparent,
+      0 6px 20px color-mix(in srgb, var(--xf-bg-900) 48%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px var(--xchat-await-accent-glow),
+      0 10px 28px color-mix(in srgb, var(--xf-bg-900) 62%, transparent);
+  }
 }
 
 .xchat-await__row {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -2065,9 +2155,35 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 
 .xchat-await .xchat-typing {
   padding: 0.35rem 0 0;
+  gap: 5px;
+}
+
+/* Sequential scan — advisor “reading tape” */
+.xchat-await .xchat-typing-dot {
+  width: 5px;
+  height: 5px;
+  background: color-mix(in srgb, var(--xf-text-300) 85%, var(--xf-gain-green));
+  animation: xchat-await-typing-seq 1.35s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.xchat-await .xchat-typing-dot:nth-child(2) {
+  animation-delay: 0.22s;
+}
+
+.xchat-await .xchat-typing-dot:nth-child(3) {
+  animation-delay: 0.44s;
+}
+
+@keyframes xchat-await-typing-seq {
+  0%, 100% { opacity: 0.22; transform: scale(0.88); }
+  35% { opacity: 0.95; transform: scale(1); }
+  70% { opacity: 0.38; transform: scale(0.94); }
 }
 
 .xchat-await__copy {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -2089,42 +2205,129 @@ html[data-xf-ui="soft"] .xchat-markdown .xchat-md-code-inline {
 }
 
 .xchat-await__timer {
-  font-family: ui-monospace, monospace;
-  font-size: 0.68rem;
-  color: var(--xf-gain-green);
-  margin-top: 0.15rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--xf-gain-green) 92%, var(--xf-text-200));
+  margin-top: 0.2rem;
+  opacity: 0.92;
 }
 
 .xchat-await__skeleton {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.42rem;
   margin-top: 0.65rem;
   padding-top: 0.55rem;
   border-top: 1px solid color-mix(in srgb, var(--xf-text-400) 12%, transparent);
 }
 
-.xchat-await__sk-line {
-  display: block;
-  height: 0.5rem;
+.xchat-await__sk-track {
+  max-width: 100%;
+  height: 0.48rem;
   border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--xf-text-400) 14%, transparent) 0%,
-    color-mix(in srgb, var(--xf-gain-green) 18%, transparent) 50%,
-    color-mix(in srgb, var(--xf-text-400) 14%, transparent) 100%
-  );
-  background-size: 200% 100%;
-  animation: xchat-await-shimmer 1.8s ease-in-out infinite;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--xf-text-400) 7%, transparent);
 }
 
-.xchat-await__sk-line--long { width: 92%; animation-delay: 0s; }
-.xchat-await__sk-line--med { width: 72%; animation-delay: 0.15s; }
-.xchat-await__sk-line--short { width: 48%; animation-delay: 0.3s; }
+.xchat-await__sk-track--long { width: 92%; }
+.xchat-await__sk-track--med { width: 72%; }
+.xchat-await__sk-track--short { width: 48%; }
 
-@keyframes xchat-await-shimmer {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+.xchat-await__sk-line {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  transform-origin: left center;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--xf-text-400) 8%, transparent) 0%,
+    color-mix(in srgb, var(--xf-gain-green) 22%, transparent) 22%,
+    color-mix(in srgb, var(--xf-gain-green) 38%, transparent) 48%,
+    color-mix(in srgb, var(--xf-gain-green) 24%, transparent) 72%,
+    color-mix(in srgb, var(--xf-text-400) 9%, transparent) 100%
+  );
+  background-size: 220% 100%;
+  animation:
+    xchat-await-dataflow 2.4s linear infinite,
+    xchat-await-bar-opacity 3.2s ease-in-out infinite;
+}
+
+.xchat-await__sk-track:nth-child(2) .xchat-await__sk-line {
+  animation-delay: 0.2s, 0.35s;
+}
+
+.xchat-await__sk-track:nth-child(3) .xchat-await__sk-line {
+  animation-delay: 0.4s, 0.7s;
+}
+
+@keyframes xchat-await-dataflow {
+  0% { background-position: 0% 0; }
+  100% { background-position: 100% 0; }
+}
+
+@keyframes xchat-await-bar-opacity {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 0.95; }
+}
+
+/* Placeholders (skeleton chrome): same bars, calmer shell */
+.xchat-await--quiet {
+  animation: none;
+  border: none;
+  background: transparent;
+  padding-top: 0.5rem;
+  box-shadow: none;
+}
+
+.xchat-await--quiet::before,
+.xchat-await--quiet::after {
+  display: none;
+}
+
+.xchat-await--quiet .xchat-typing-dot {
+  background: var(--xf-text-400);
+  animation: xchat-pulse 1.2s ease infinite;
+}
+
+.xchat-await--quiet .xchat-typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.xchat-await--quiet .xchat-typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.xchat-await--quiet .xchat-await__sk-line {
+  animation: xchat-await-dataflow 2.6s linear infinite, xchat-await-bar-opacity 3.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xchat-await {
+    animation: none;
+  }
+
+  .xchat-await::before,
+  .xchat-await::after {
+    animation: none;
+    opacity: 0.06;
+  }
+
+  .xchat-await .xchat-typing-dot {
+    animation: xchat-pulse 1.4s ease infinite;
+  }
+
+  .xchat-await .xchat-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .xchat-await .xchat-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  .xchat-await__sk-line {
+    animation: none;
+    opacity: 0.75;
+  }
 }
 
 .xchat-input-bar {

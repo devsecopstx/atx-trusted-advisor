@@ -43,8 +43,18 @@ export type XchatThreadPanelProps = {
   messagesEndRef: RefObject<HTMLDivElement | null>;
   threadScrollRef: RefObject<HTMLDivElement | null>;
   threadUiSummary: { userTurnCount: number; preview: string };
-  askWaitSeconds: number;
+  askElapsedMs: number;
 } & XchatThreadPanelCopyProps;
+
+function formatXchatTradingClock(ms: number): string {
+  if (ms < 80) {
+    return "00:00.0";
+  }
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const tenths = Math.floor((ms % 1000) / 100);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${tenths}`;
+}
 
 export function XchatThreadPanel({
   threadUiCollapsed,
@@ -61,9 +71,10 @@ export function XchatThreadPanel({
   messagesEndRef,
   threadScrollRef,
   threadUiSummary,
-  askWaitSeconds,
+  askElapsedMs,
   activePersonaName
 }: XchatThreadPanelProps) {
+  const askWaitSeconds = Math.floor(askElapsedMs / 1000);
   return (
     <div className="xchat-thread-area">
       {threadUiCollapsed && messages.length > 0 && !loading ? (
@@ -184,15 +195,24 @@ export function XchatThreadPanel({
                         ? "Your persona may be calling workspace or Yahoo tools…"
                         : "Sending to xAI…"}
                   </span>
-                  <span className="xchat-await__timer" aria-label={`Elapsed ${askWaitSeconds} seconds`}>
-                    {askWaitSeconds > 0 ? `${askWaitSeconds}s` : "…"}
+                  <span
+                    className="xchat-await__timer"
+                    aria-label={`Elapsed ${askWaitSeconds} seconds`}
+                  >
+                    {formatXchatTradingClock(askElapsedMs)}
                   </span>
                 </div>
               </div>
               <div aria-hidden className="xchat-await__skeleton">
-                <span className="xchat-await__sk-line xchat-await__sk-line--long" />
-                <span className="xchat-await__sk-line xchat-await__sk-line--med" />
-                <span className="xchat-await__sk-line xchat-await__sk-line--short" />
+                <div className="xchat-await__sk-track xchat-await__sk-track--long">
+                  <span className="xchat-await__sk-line" />
+                </div>
+                <div className="xchat-await__sk-track xchat-await__sk-track--med">
+                  <span className="xchat-await__sk-line" />
+                </div>
+                <div className="xchat-await__sk-track xchat-await__sk-track--short">
+                  <span className="xchat-await__sk-line" />
+                </div>
               </div>
             </div>
           ) : null}

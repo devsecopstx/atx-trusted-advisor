@@ -92,6 +92,24 @@ const envSchema = z.object({
   ADMIN_X_USERNAMES: z.string().optional(),
   ENABLE_XCHAT_DEBUG: z.union([z.string(), z.boolean()]).optional(),
   /**
+   * When true, `POST /api/xchat/ask` uses xAI hosted continuity (`store_messages` + `previous_response_id`)
+   * for turns with `threadId`, skipping Mongo recent-turn injection when a prior response id exists.
+   * Persona `keepXchatHistory: false` disables this path per persona.
+   */
+  XCHAT_USE_REMOTE_HISTORY: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null || v === "") {
+        return false;
+      }
+      if (typeof v === "boolean") {
+        return v;
+      }
+      const s = String(v).trim().toLowerCase();
+      return s === "1" || s === "true" || s === "yes";
+    },
+    z.boolean().optional().default(false)
+  ),
+  /**
    * Same prefix seed uses for `{root}-rag` and `{root}-xoption-<env>`. Optional naming for instance-scoped
    * xAI resources (`{root}-chat-{userId}`) if per-user history collections are ever re-enabled — **not** the
    * primary chat store; Mongo `xchat_logs` is. Unrelated to deprecated **`ATXFINANCE_COLLECTION_ID`** (never in schema).
@@ -193,6 +211,22 @@ export function getEnv(): Env {
 export function readXaiVisionModelOverrideFromEnv(): string | undefined {
   const raw = process.env.XAI_VISION_MODEL?.trim();
   return raw && raw.length > 0 ? raw : undefined;
+}
+
+/**
+ * xAI Responses `store_messages` + `previous_response_id` for xChat (see `XCHAT_USE_REMOTE_HISTORY`).
+ * Reads `process.env` directly so unit tests and callers do not require the full `getEnv()` schema.
+ */
+export function isXchatRemoteHistoryEnabled(): boolean {
+  const raw = process.env.XCHAT_USE_REMOTE_HISTORY;
+  if (raw === undefined || raw === null || raw === "") {
+    return false;
+  }
+  if (typeof raw === "boolean") {
+    return raw;
+  }
+  const s = String(raw).trim().toLowerCase();
+  return s === "1" || s === "true" || s === "yes";
 }
 
 /**

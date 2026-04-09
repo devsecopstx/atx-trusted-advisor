@@ -75,9 +75,7 @@ export function isXchatUserHistoryXaiCollectionEnabled(): boolean {
 }
 
 /**
- * xAI hosted continuity (`store_messages` + `previous_response_id`) — **off** until implemented here.
- * When `false`, ask route behavior follows current Mongo / prompt injection paths (see `POST /api/xchat/ask`).
+ * xAI hosted continuity (`store_messages` + `previous_response_id`).
+ * Controlled by **`XCHAT_USE_REMOTE_HISTORY`** in `env.ts` (default false).
  */
-export function isXchatRemoteHistoryEnabled(): boolean {
-  return false;
-}
+export { isXchatRemoteHistoryEnabled } from "@/lib/env";

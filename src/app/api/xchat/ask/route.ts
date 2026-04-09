@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { preprocessXchatMarkdown } from "@/app/xchat/ui/xchat-markdown-preprocess";
 import { requireSessionUser } from "@/lib/auth";
-import { readXaiVisionModelOverrideFromEnv } from "@/lib/env";
+import { isXchatRemoteHistoryEnabled, readXaiVisionModelOverrideFromEnv } from "@/lib/env";
 import {
     getPersonaByIdCached,
     getTenantByHexIdCached,
@@ -38,7 +38,8 @@ import { appendXchatKbMetadata } from "@/modules/xchat/batch-prompt-context";
 import { XPERSONA_GLOBAL_ADMIN_DEFAULT_NAME_KEYS } from "@/modules/xchat/default-xpersonas";
 import { MULTI_AGENT_PERSONA_MODEL_IDS } from "@/modules/xchat/multi-agent-persona-models";
 import {
-    resolveXchatTeamOnlyLinkedCollectionIds,
+    MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
+    resolveXchatPersonaDeclaredCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
 import {
@@ -583,8 +584,8 @@ export async function POST(request: Request) {
     );
   }
 
-  /** RAG / file_search for ask: TEAM KB only (`teamCollection` + deploy team default). */
-  const linkedCollectionIds = await resolveXchatTeamOnlyLinkedCollectionIds(persona);
+  /** RAG / collection tools: persona-declared ids only (no env team KB merge). */
+  const linkedCollectionIds = resolveXchatPersonaDeclaredCollectionIds(persona);
   for (const collectionId of linkedCollectionIds) {
     verifyXaiCollectionNonBlocking(collectionId);
   }
@@ -790,13 +791,29 @@ export async function POST(request: Request) {
    */
   const hasHostedSearchTool = xapiConfig.tools.some((t) => t.type === "web_search" || t.type === "x_search");
 
-  const useRemoteConversationHistory = false;
+  const useRemoteConversationHistory =
+    isXchatRemoteHistoryEnabled() &&
+    persona?.keepXchatHistory !== false &&
+    Boolean(threadId) &&
+    Boolean(userId) &&
+    !visionImage;
+
   let previousResponseId: string | undefined;
+  if (useRemoteConversationHistory && threadId && userId && persona?._id) {
+    const latest = await getLatestXchatLogByThread({
+      userId,
+      tenantId,
+      threadId,
+      personaId: persona._id
+    });
+    const rid = latest?.xaiResponseId?.trim();
+    previousResponseId = rid && rid.length > 0 ? rid : undefined;
+  }
 
   const teamKbMetaLine =
     linkedCollectionIds.length > 0
-      ? `xChat TEAM KB xAI collection ids (persona.teamCollection + deploy default; single team model — no per-user history collection): ${linkedCollectionIds.join(", ")}`
-      : "xChat TEAM KB xAI collection ids: (none — set persona teamCollection and/or team KB / XAI_TEAM_ID so RAG can run)";
+      ? `xChat linked xAI collection ids (persona-declared; max ${MAX_XCHAT_TEAM_KB_COLLECTION_IDS}): ${linkedCollectionIds.join(", ")}`
+      : "xChat linked xAI collection ids: (none — link collections on the persona or declare file_search/collections_search collection_ids)";
 
   const recentThreadMessages: XchatRecentThreadMessage[] = (
     parsed.data.recentMessages ?? []
@@ -807,9 +824,12 @@ export async function POST(request: Request) {
     }))
     .filter((row) => row.content.length > 0)
     .slice(-10);
-  const recentHistoryBlock = buildRecentThreadMessagesPromptBlock(recentThreadMessages, {
-    maxMessages: 10
-  });
+  const recentHistoryBlock =
+    useRemoteConversationHistory && previousResponseId
+      ? ""
+      : buildRecentThreadMessagesPromptBlock(recentThreadMessages, {
+          maxMessages: 10
+        });
 
   const builtSystemPrompt = buildXchatSystemPrompt({
     personaSystem: persona?.systemPrompt ?? "",

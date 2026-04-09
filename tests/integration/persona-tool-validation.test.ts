@@ -68,33 +68,22 @@ describe("persona tool validation", () => {
     ]);
   });
 
-  it("getSuperAgentDefaultTools follows legacy super-agent ordering with collections_search", () => {
+  it("getSuperAgentDefaultTools uses research stack without implicit env collections_search", () => {
     const tools = getSuperAgentDefaultTools();
-    expect(tools).toHaveLength(6);
+    expect(tools).toHaveLength(5);
     expect(tools.map((t) => t.type)).toEqual([
       "atx_function",
-      "collections_search",
       "yahoo_finance",
       "web_search",
       "x_search",
       "code_interpreter"
     ]);
-    const collectionsSearch = tools.find((t) => t.type === "collections_search");
-    expect(collectionsSearch).toHaveProperty("collection_ids");
+    expect(tools.some((t) => t.type === "collections_search")).toBe(false);
   });
 
-  it("getAdvisorDefaultTools uses file_search with one collection id when env resolves team KB", () => {
+  it("getAdvisorDefaultTools omits file_search until persona links collections", () => {
     const tools = getAdvisorDefaultTools();
-    expect(tools.map((t) => t.type)).toEqual([
-      "atx_function",
-      "yahoo_finance",
-      "file_search"
-    ]);
-    const fs = tools.find((t) => t.type === "file_search");
-    expect(fs && "collection_ids" in fs && Array.isArray(fs.collection_ids)).toBe(true);
-    if (fs && "collection_ids" in fs && Array.isArray(fs.collection_ids)) {
-      expect(fs.collection_ids).toHaveLength(1);
-    }
+    expect(tools.map((t) => t.type)).toEqual(["atx_function", "yahoo_finance"]);
   });
 
   it("ensureSuperAgentDefaultTools restores advisor baseline vs super-agent baseline", () => {

@@ -67,7 +67,8 @@ export function countPersonaLinkedCollections(
 
 /**
  * Persona-declared ids only: `xaiCollection`, `teamCollection`, and tool `collection_ids` (admin/UI union).
- * Runtime xChat ask/batch/multi-source RAG uses `resolveXchatTeamOnlyLinkedCollectionIds` + `withLinkedCollectionTools(..., "replace")`.
+ * Runtime xChat ask/batch/multi-source RAG uses {@link resolveXchatPersonaDeclaredCollectionIds} +
+ * `withLinkedCollectionTools(..., "replace")` (no implicit deploy env KB merge).
  */
 export function resolveXchatLinkedCollectionIds(input: {
   persona: PersonaLinkedIdSource | null | undefined;
@@ -75,14 +76,23 @@ export function resolveXchatLinkedCollectionIds(input: {
   return getPersonaLinkedCollectionIds(input.persona);
 }
 
-/** Cap team KB collections wired to file_search / pre-search (persona `teamCollection` + deploy default). */
+/** Cap collections wired to file_search / collections_search / pre-search. */
 export const MAX_XCHAT_TEAM_KB_COLLECTION_IDS = 2;
 
 /**
- * xChat RAG + file_search wiring: **team KB only** — `persona.teamCollection` plus deployed
- * team default (`resolveTeamKbCollectionId` / `XAI_TEAM_ID`). Excludes persona `xaiCollection` and
- * tool-declared collection lists so retrieval stays within the TEAM model (max
- * {@link MAX_XCHAT_TEAM_KB_COLLECTION_IDS} ids).
+ * xChat runtime: **persona-linked collection ids only** (xaiCollection, teamCollection, tool-declared ids).
+ * Does **not** merge `resolveTeamKbCollectionId()` — avoids injecting `collections_search` / RAG from env alone.
+ */
+export function resolveXchatPersonaDeclaredCollectionIds(
+  persona: PersonaLinkedIdSource | null | undefined
+): string[] {
+  const unique = Array.from(new Set(getPersonaLinkedCollectionIds(persona)));
+  return unique.slice(0, MAX_XCHAT_TEAM_KB_COLLECTION_IDS);
+}
+
+/**
+ * Legacy: persona `teamCollection` plus deploy team default (`resolveTeamKbCollectionId` / `XAI_TEAM_ID`).
+ * Prefer {@link resolveXchatPersonaDeclaredCollectionIds} for ask/batch/orchestrator.
  */
 export async function resolveXchatTeamOnlyLinkedCollectionIds(
   persona: PersonaLinkedIdSource | null | undefined

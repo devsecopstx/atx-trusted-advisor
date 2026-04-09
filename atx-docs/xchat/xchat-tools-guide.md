@@ -65,7 +65,7 @@ Jobs use the **persona from the database** (Admin → Personas); nothing is hard
 |--|--|
 | System / user | Same as ask: `buildXchatSystemPrompt`, `appendXchatKbMetadata`, and the same effective-tool pipeline ending in `personaXapiToolsToXaiRequestTools` → `toXaiRequestTools`. |
 | Execution | **Single-shot** JSONL per item — **no** local `respondWithXaiToolLoop`; provider-side tool chains are best-effort. |
-| RAG | If `enableRag !== false` and `resolveXchatTeamOnlyLinkedCollectionIds` returns ids (persona `teamCollection` + `XAI_TEAM_ID` default, max 2), pre-search feeds the RAG segment; `withLinkedCollectionTools(..., "replace")` matches ask (no merge of long persona tool `collection_ids`). |
+| RAG | If `enableRag !== false` and `resolveXchatPersonaDeclaredCollectionIds` returns ids (persona `xaiCollection` / `teamCollection` / tool `collection_ids` only — no env team KB merge; max 2), pre-search feeds the RAG segment; `withLinkedCollectionTools(..., "replace")` matches ask (no merge of long persona tool `collection_ids`). |
 
 **Modules:** `batch-service.ts`, `batch-prompt-context.ts`, `xchat-prompt-build.ts`.
 
@@ -73,7 +73,7 @@ Jobs use the **persona from the database** (Admin → Personas); nothing is hard
 
 ## Multi-source orchestrator (Phase A)
 
-`multi-source-context-orchestrator.ts` — parallel gather + optional synthesis; **not** wired to `POST /api/xchat/ask`. xAI collection search uses `resolveXchatTeamOnlyLinkedCollectionIds` (same team KB cap as ask).
+`multi-source-context-orchestrator.ts` — parallel gather + optional synthesis; **not** wired to `POST /api/xchat/ask`. xAI collection search uses `resolveXchatPersonaDeclaredCollectionIds` (same cap as ask).
 
 ---
 

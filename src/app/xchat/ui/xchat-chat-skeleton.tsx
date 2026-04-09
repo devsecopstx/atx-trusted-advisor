@@ -49,12 +49,7 @@ export function XchatChatSkeleton({ variant = "thread" }: Props) {
   return (
     <div className="xchat-thread-area" aria-busy="true" aria-label="Loading conversation">
       <div className="xchat-messages xchat-messages--skeleton">
-        <div
-          aria-hidden
-          className="xchat-await"
-          role="status"
-          style={{ border: "none", background: "transparent", paddingTop: "0.5rem" }}
-        >
+        <div aria-hidden className="xchat-await xchat-await--quiet" role="status">
           <div className="xchat-await__row">
             <div className="xchat-typing">
               <span className="xchat-typing-dot" />
@@ -67,9 +62,15 @@ export function XchatChatSkeleton({ variant = "thread" }: Props) {
             </div>
           </div>
           <div aria-hidden className="xchat-await__skeleton">
-            <span className="xchat-await__sk-line xchat-await__sk-line--long" />
-            <span className="xchat-await__sk-line xchat-await__sk-line--med" />
-            <span className="xchat-await__sk-line xchat-await__sk-line--short" />
+            <div className="xchat-await__sk-track xchat-await__sk-track--long">
+              <span className="xchat-await__sk-line" />
+            </div>
+            <div className="xchat-await__sk-track xchat-await__sk-track--med">
+              <span className="xchat-await__sk-line" />
+            </div>
+            <div className="xchat-await__sk-track xchat-await__sk-track--short">
+              <span className="xchat-await__sk-line" />
+            </div>
           </div>
         </div>
       </div>

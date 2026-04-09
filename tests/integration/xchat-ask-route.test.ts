@@ -389,11 +389,11 @@ describe("xchat ask route collection retrieval", () => {
     expect(response.headers.get("x-xchat-limit-remaining-minute")).toBe("19");
     expect(payload.data.contextSource).toBe("xai_collection");
     expect(payload.data.contextCount).toBe(1);
-    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_team_default");
+    expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledWith("collection_ops-global");
     expect(verifierMocks.verifyXaiCollectionNonBlocking).toHaveBeenCalledTimes(1);
     expect(xaiMocks.searchDocumentsInCollections).toHaveBeenCalledWith(
       expect.objectContaining({
-        collectionIds: ["collection_team_default"]
+        collectionIds: ["collection_ops-global"]
       })
     );
     expect(repositoryMocks.listXChatHistoryByUser).not.toHaveBeenCalled();
@@ -407,11 +407,11 @@ describe("xchat ask route collection retrieval", () => {
           expect.objectContaining({
             type: "file_search",
             name: "file_search",
-            vector_store_ids: expect.arrayContaining(["collection_team_default"])
+            vector_store_ids: expect.arrayContaining(["collection_ops-global"])
           })
         ]),
         userPrompt: expect.stringMatching(
-          /\[Persona \/ KB metadata — xChat and batch[\s\S]*xChat TEAM KB xAI collection ids[\s\S]*collection_team_default[\s\S]*Persona xAPI tools[\s\S]*- web_search/
+          /\[Persona \/ KB metadata — xChat and batch[\s\S]*xChat linked xAI collection ids[\s\S]*collection_ops-global[\s\S]*Persona xAPI tools[\s\S]*- web_search/
         )
       })
     );
@@ -509,14 +509,17 @@ describe("xchat ask route collection retrieval", () => {
     expect(payload.data.contextCount).toBe(0);
   });
 
-  it("skips xAI collection search when no TEAM kb ids resolve", async () => {
-    teamKbMocks.resolveTeamKbCollectionId.mockResolvedValueOnce(undefined);
+  it("skips xAI collection search when persona has no linked collection ids", async () => {
+    teamKbMocks.resolveTeamKbCollectionId.mockResolvedValueOnce("collection_env_only_not_merged");
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         teamCollection: { collectionId: "", collectionName: "" },
-        xaiCollection: {
-          collectionId: "collection_persona_only_ignored_for_ask",
-          collectionName: "Ignored for ask RAG"
+        xaiCollection: { collectionId: "", collectionName: "" },
+        xapi: {
+          mode: "responses",
+          toolChoice: "auto",
+          maxTurns: 5,
+          tools: [{ type: "web_search" }]
         }
       })
     );
@@ -526,7 +529,7 @@ describe("xchat ask route collection retrieval", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: "No team kb path",
+          message: "No linked collections path",
           topK: 4
         })
       })
@@ -540,7 +543,7 @@ describe("xchat ask route collection retrieval", () => {
     expect(verifierMocks.verifyXaiCollectionNonBlocking).not.toHaveBeenCalled();
   });
 
-  it("replaces file_search vector stores with team KB ids only (drops persona-declared extras)", async () => {
+  it("replaces file_search vector stores with persona-linked ids (replace mode)", async () => {
     repositoryMocks.resolveDefaultXchatPersonaForSession.mockResolvedValueOnce(
       buildPersona({
         xapi: {
@@ -557,7 +560,7 @@ describe("xchat ask route collection retrieval", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: "team kb only file_search wiring"
+          message: "persona-linked file_search wiring"
         })
       })
     );
@@ -569,7 +572,7 @@ describe("xchat ask route collection retrieval", () => {
           {
             type: "file_search",
             name: "file_search",
-            vector_store_ids: ["collection_team_default"]
+            vector_store_ids: ["collection_ops-global", "collection_extra"]
           }
         ])
       })
@@ -610,7 +613,7 @@ describe("xchat ask route collection retrieval", () => {
           {
             type: "file_search",
             name: "file_search",
-            vector_store_ids: ["collection_team_default"]
+            vector_store_ids: ["collection_ops-global", "collection_extra"]
           },
           { type: "web_search", name: "web_search" },
           { type: "x_search", name: "x_search" }

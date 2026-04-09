@@ -6,7 +6,39 @@ const teamMocks = vi.hoisted(() => ({
 
 vi.mock("@/modules/xchat/team-xai-collection", () => teamMocks);
 
-import { resolveXchatTeamOnlyLinkedCollectionIds } from "@/modules/xchat/persona-linked-collections";
+import {
+    MAX_XCHAT_TEAM_KB_COLLECTION_IDS,
+    resolveXchatPersonaDeclaredCollectionIds,
+    resolveXchatTeamOnlyLinkedCollectionIds
+} from "@/modules/xchat/persona-linked-collections";
+
+describe("resolveXchatPersonaDeclaredCollectionIds", () => {
+  it("returns empty when persona has no collection links", () => {
+    expect(resolveXchatPersonaDeclaredCollectionIds({})).toEqual([]);
+  });
+
+  it("includes xaiCollection and teamCollection and dedupes", () => {
+    const ids = resolveXchatPersonaDeclaredCollectionIds({
+      xaiCollection: { collectionId: "col_a" },
+      teamCollection: { collectionId: "col_a" }
+    });
+    expect(ids).toEqual(["col_a"]);
+  });
+
+  it("caps at MAX_XCHAT_TEAM_KB_COLLECTION_IDS", () => {
+    const ids = resolveXchatPersonaDeclaredCollectionIds({
+      xaiCollection: { collectionId: "c1" },
+      teamCollection: { collectionId: "c2" },
+      xapi: {
+        mode: "responses",
+        toolChoice: "auto",
+        maxTurns: 5,
+        tools: [{ type: "collections_search", collection_ids: ["c3"] }]
+      }
+    });
+    expect(ids).toHaveLength(MAX_XCHAT_TEAM_KB_COLLECTION_IDS);
+  });
+});
 
 describe("resolveXchatTeamOnlyLinkedCollectionIds", () => {
   beforeEach(() => {

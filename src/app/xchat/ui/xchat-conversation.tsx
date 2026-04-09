@@ -440,7 +440,8 @@ export function XchatConversation({
   /** After "Stay in chat", re-fill composer with the prompt that triggered the strategy-job offer. */
   const strategyStayRestorePromptRef = useRef<string | null>(null);
   /** Seconds since current ask started (UI only; resets when loading ends). */
-  const [askWaitSeconds, setAskWaitSeconds] = useState(0);
+  /** Monotonic elapsed ms while `/api/xchat/ask` is in flight (100ms ticks for smooth trading-clock UI). */
+  const [askElapsedMs, setAskElapsedMs] = useState(0);
   const [strategyJobLaunchBusy, setStrategyJobLaunchBusy] = useState(false);
 
   const threadUiSummary = useMemo(() => {
@@ -661,13 +662,14 @@ export function XchatConversation({
 
   useEffect(() => {
     if (!loading) {
-      setAskWaitSeconds(0);
+      setAskElapsedMs(0);
       return;
     }
     const started = Date.now();
+    setAskElapsedMs(0);
     const id = window.setInterval(() => {
-      setAskWaitSeconds(Math.floor((Date.now() - started) / 1000));
-    }, 500);
+      setAskElapsedMs(Date.now() - started);
+    }, 100);
     return () => window.clearInterval(id);
   }, [loading]);
 
@@ -1601,7 +1603,7 @@ export function XchatConversation({
         <Suspense fallback={<XchatChatSkeleton variant="thread" />}>
           <XchatThreadPanelLazy
             activePersonaName={activePersonaName}
-            askWaitSeconds={askWaitSeconds}
+            askElapsedMs={askElapsedMs}
             emphasizeStrategyJobPrimary={emphasizeStrategyForMessage}
             loading={loading}
             messages={messages}
