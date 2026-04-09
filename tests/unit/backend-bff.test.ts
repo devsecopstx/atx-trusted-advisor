@@ -137,6 +137,69 @@ describe("proxyPortfolioRequestToBackend (watchlist bypass)", () => {
   });
 });
 
+describe("proxyAdminUsersRequestToBackend (Next-first tenant register + user list)", () => {
+  const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+
+  beforeEach(() => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ATXFINANCE_BACKEND_ORIGIN", "https://kotlin-backend.example.run.app");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    delete process.env.ATXFINANCE_BACKEND_ORIGIN;
+  });
+
+  it("does not forward GET /api/admin/tenants/register", async () => {
+    vi.resetModules();
+    const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminUsersRequestToBackend(new Request("https://next.local/api/admin/tenants/register"))
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not forward GET /api/admin/users (tenantMemberships stay on Next)", async () => {
+    vi.resetModules();
+    const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminUsersRequestToBackend(new Request("https://next.local/api/admin/users?limit=50"))
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("still forwards GET /api/admin/users/approved", async () => {
+    vi.resetModules();
+    const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
+    await proxyAdminUsersRequestToBackend(new Request("https://next.local/api/admin/users/approved"));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://kotlin-backend.example.run.app/api/admin/users/approved");
+  });
+
+  it("does not forward GET /api/admin/login-audit", async () => {
+    vi.resetModules();
+    const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminUsersRequestToBackend(new Request("https://next.local/api/admin/login-audit"))
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not forward GET /api/admin/audit", async () => {
+    vi.resetModules();
+    const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminUsersRequestToBackend(
+        new Request("https://next.local/api/admin/audit?entityType=admin_portfolio&limit=10")
+      )
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("getStrategyJobsBffUnavailableMessage", () => {
   const savedOrigin = process.env.ATXFINANCE_BACKEND_ORIGIN;
 

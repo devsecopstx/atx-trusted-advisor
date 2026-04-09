@@ -26,6 +26,7 @@ class AdminAuditController(
         "core_user",
         "deploy_note_config",
         "admin_delivery_channel",
+        "admin_portfolio",
         "xchat_session",
         "core_scanner",
     )

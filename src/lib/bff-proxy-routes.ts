@@ -9,6 +9,9 @@
  * App-user portfolio CRUD/watchlist/positions/recommendations/strategy-jobs. `/api/personas*` stays on Next Mongo.
  * Admin **portfolio** subtree (accounts, watchlist, positions, recommendations, alerts) proxies per `shouldProxyAdminUsersToBackend`.
  * Tenant delivery-channels and scheduled tasks stay Next-only. Portfolio-console uses POST /api/admin/import/broker for CSV imports.
+ * **`GET /api/admin/tenants/register`**, **`GET /api/admin/users`**, **`GET /api/admin/login-audit`**, **`GET /api/admin/audit`:**
+ * Next-only when BFF is on — see `ADMIN_USERS_BFF_NEXT_ONLY_GET_PATHS` / `shouldSkipAdminUsersBffProxyForRequest` in
+ * `backend-bff.ts` (tenant register, `tenantMemberships`, login-audit collection, audit `entityType` parity).
  *
  * **`/api/app-user/*`:** Next-only (find-options bootstrap, xOptions entitlements, symbol-chart). Do not call
  * `proxyRequestToBackend` there — Kotlin has no matching controllers; proxying returns JVM 404 before local logic runs.
