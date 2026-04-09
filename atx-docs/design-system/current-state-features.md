@@ -11,6 +11,8 @@ This file is the **single consolidated technical architecture** reference for th
 
 **Production shape:** two primary deployables on **GCP Cloud Run** — the **Next.js** core app (UI + most `/api/*` route handlers + BFF) and **`atxfinance-backend`** (Kotlin/Spring worker with HTTP parity for migrated slices). Both share **one MongoDB** (tenant data, portfolios, personas, jobs, audit, xChat history when opted in). Optional **Redis** (strategy-job hourly caps, future cache), **Google Pub/Sub** (recommendation events when configured), **Stripe** (billing webhooks + Checkout on Next), and **xAI** (chat + management APIs from Next).
 
+**Cloud Run prod sizing (operator baseline):** **Next** — 1 vCPU, 1Gi, concurrency 100, min 1 / max 50, CPU boost on; **Spring** — 1 vCPU, 1Gi, concurrency 80, min 0 / max 30, CPU boost on. Tables + `gcloud` examples: **`atx-docs/sre-ops/gcp-prod-two-service-model.md`**.
+
 ```mermaid
 flowchart TB
   subgraph clients [Clients]
@@ -204,7 +206,7 @@ Centralized in `AtxfinanceProperties`. Examples: **`tenant_portfolio`**, **`port
 ### Scheduling & deployment baseline
 
 - ShedLock default max lock **PT5M**; scheduler thread pool (e.g. core/max 4)
-- **Cloud Run (typical):** concurrency **1**, **1 vCPU**, **1 GiB**, HTTP **:8080**
+- **Cloud Run (prod Spring baseline):** concurrency **80**, **1 vCPU**, **1 GiB**, HTTP **:8080**, min **0** / max **30**, CPU boost on — **`atx-docs/sre-ops/gcp-prod-two-service-model.md`**
 
 ### Run locally
 
@@ -253,6 +255,7 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 | **Admin `PATCH/DELETE …/positions/{id}`** — Next until BFF registry + Kotlin parity | `PLAN.md` |
 | **Pub/Sub consumer** on Spring | This doc §2 · `PLAN.md` / release notes |
 | **IBKR** — no broker OAuth/token refresh in-app; no order placement | `ibkr-automation.md` |
+| **Tenant UX (`tenant_ux`)** — per-tenant per-role route allowlists + default landing; **shipped:** `data/platform/app-user-route-catalog.json` + **`GET /api/admin/platform/route-catalog`** | [tenant-ux-plan.md](./tenant-ux-plan.md) · `PLAN.md` **11** |
 | **Plan limits UI** — usage meter / soft-limit banner on xChat from `getPlanLimits()` | `PLAN.md` (deferred) · branding TODO in `AGENTS.md` |
 | **xChat** — vision paste **shipped** (follow-ups: scan/EXIF/dims/batch — `PLAN.md` deferred); voice (703), xMoney billing (704) | `PLAN.md`; **701** privacy history **shipped** (see `PLAN.md` deferred shipped list + `xchat-history-storage.md`) |
 | **OptionsStrategyEngine** — extend scoring / desk notification providers | `PLAN.md` · `reviewer.md` §245 |
@@ -268,18 +271,26 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 - **Post-deploy smoke:** **`GET /api/health`** (version matches image); app_user / admin paths per [`AGENTS.md`](../../AGENTS.md) § Production validation.
 - **High-risk clients:** ApexCharts (xOptions symbol panel), long xChat threads, watchlist quote refresh, IBKR snapshot panels, virtualized portfolio tables.
 - **Local regression:** After **`NODE_ENV=production npm run build`**, run **Lighthouse CI** with **`.lighthouseci/config.cjs`** — it starts **`next start`** on **`localhost:3001`** by default (override with **`LHCI_PORT`**) and audits **`/xchat`**, **`/portfolio`**, **`/portfolios`**, **`/xoptions`**. Not a merge blocker unless workflow is added to GitHub Actions.
+- **Live prod regression:** **`npm run lh:prod`** → **`.lighthouseci/config.prod-remote.cjs`** (same four URLs against **`https://atx.fintech-advisor.ai`**; guest shells unless you add LHCI auth).
 - **Recent LHCI direction:** improve performance scores on **`/xchat`** and **`/portfolios`** (history + virtualized lists); keep INP ≤ 200 ms on interactive surfaces.
+
+#### Lighthouse production baseline (2026-04-08)
+
+- **Performance:** **1.00** on **`/xchat`**, **`/portfolio`**, **`/portfolios`**, **`/xoptions`** (live prod).
+- **LCP:** **0.6–0.7 s** on live prod.
+- **Goal met:** Instant UX for HNWI users managing real-money portfolios and options income.
+- **Infra:** Cloud Run sizing locked in — frontend **min=1**, backend **min=0**, **CPU boost** (`--cpu-boost`) on both — **`atx-docs/sre-ops/gcp-prod-two-service-model.md`**.
 
 #### xChat & Portfolios targets (2026-04-08 LHCI)
 
-- **All critical routes:** Performance **1.00** (LCP ≤ **0.7** s).
-- **`/xoptions`:** Accessibility **0.95** → stretch target **1.00** (stepper / contrast — see **Quick remaining gaps** below).
+- **All critical routes (local + prod baselines above):** Performance **1.00** (LCP ≤ **0.7** s; prod observed **0.6–0.7** s).
+- **`/xoptions`:** Accessibility **1.00** target (horizon chips: explicit **`aria-label`** + **`aria-pressed`** on target-expiration pills in **`xoptions-choose-contract.tsx`**).
 - **High-risk surfaces** (ApexCharts, IBKR snapshot, long chat history): passing under seeded data.
 
 #### Quick remaining gaps (non-blocking)
 
 - **Best-practices ≈ 0.96 on every route:** Almost always **back/forward cache** audit failures because dynamic API responses use **`Cache-Control: no-store`** (normal and correct for live portfolios, watchlists, and IBKR snapshots). **Do not change** this in dev or prod — it would break freshness for real-money data.
-- **`/xoptions` accessibility 0.95:** One minor **contrast or label** issue in the stepper (most likely the **expiration dropdown** or **strategy preview**). Remediation is typically a single **ARIA** label or **tokenized color** tweak; **defer** unless users report it.
+- **`/xoptions` accessibility (historical):** Horizon chip buttons lacked explicit names; fixed with **`aria-label`** / **`aria-pressed`**. If Lighthouse regresses, re-check **bid-price** chain cells (price-only text) and **stepper** labels under **`max-width: 640px`** (CSS hides step titles; add **`aria-label`** on step buttons if needed).
 
 ---
 

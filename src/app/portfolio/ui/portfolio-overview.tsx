@@ -1,7 +1,6 @@
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
 import { buildPortfolioAccountTableRows } from "@/app/portfolio/ui/build-portfolio-account-table-rows";
 import { PortfolioManageShell } from "@/app/portfolio/ui/portfolio-manage-shell";
-import type { PortfolioHoldingRow } from "@/lib/portfolio-holding-rows";
 import type { PortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 import type { Account } from "@/modules/core-admin/types";
@@ -16,7 +15,6 @@ type PortfolioOverviewProps = {
   accounts: Account[];
   metrics: PortfolioOverviewMetrics;
   admin: boolean;
-  holdingsRows: PortfolioHoldingRow[];
   positionsByAccount: Record<string, SerializablePosition[]>;
   scoringFactors: PortfolioScoringFactorApi[];
   deskPrefetch?: PortfolioDeskPrefetchStrip | null;
@@ -29,7 +27,6 @@ export function PortfolioOverview({
   accounts,
   metrics,
   admin,
-  holdingsRows,
   positionsByAccount,
   scoringFactors,
   deskPrefetch = null,
@@ -53,7 +50,6 @@ export function PortfolioOverview({
       admin={admin}
       defaultAccountHex={defaultAccountHex}
       deskPrefetch={deskPrefetch}
-      holdingsRows={holdingsRows}
       manageOptions={accountManageOptions}
       metrics={metrics}
       portfolioDisplayName={portfolioDisplayName}

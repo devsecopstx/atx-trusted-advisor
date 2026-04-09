@@ -1684,6 +1684,67 @@
   vertical-align: bottom;
 }
 
+.portfolio-consolidated-holdings__th--sortable {
+  padding: 0;
+  vertical-align: bottom;
+}
+
+.portfolio-consolidated-holdings__sort-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.08rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--xf-text-300);
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--xf-radius-sm, 4px);
+}
+
+.portfolio-consolidated-holdings__sort-btn:hover {
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+}
+
+.portfolio-consolidated-holdings__sort-btn:focus-visible {
+  outline: 2px solid var(--xf-gain-green);
+  outline-offset: 1px;
+}
+
+.portfolio-consolidated-holdings__sort-btn--end {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.portfolio-consolidated-holdings__sort-btn__main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.portfolio-consolidated-holdings__sort-btn--end .portfolio-consolidated-holdings__sort-btn__main {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.portfolio-consolidated-holdings__sort-indicator {
+  font-weight: 800;
+  color: var(--xf-gain-green);
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
 .portfolio-consolidated-holdings__th-sub {
   display: block;
   font-weight: 500;

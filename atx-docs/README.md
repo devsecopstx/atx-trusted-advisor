@@ -22,6 +22,7 @@ Engineering and ops docs for **aTx Finance** / `xfinance`. **Canonical tree:** *
 | Doc | Purpose |
 |-----|---------|
 | **[current-state-features.md](./design-system/current-state-features.md)** | **Single consolidated technical architecture** for the monorepo (Next + Spring + Mongo + integrations), shipped product surfaces, CI/test matrix, pre-prod release gate, and known doc/test gaps — deep dives stay in linked `atx-docs/*` files; open work stays in [PLAN.md](./PLAN.md) |
+| **[tenant-ux-plan.md](./design-system/tenant-ux-plan.md)** | **Tenant UX (`tenant_ux`):** per-role app routes, default landing, catalog JSON + admin export API; backlog for Mongo + admin UI + enforcement |
 
 ---
 

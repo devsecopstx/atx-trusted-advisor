@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "catalogKind": "app_user_route_catalog",
+  "updated": "2026-04-08",
+  "description": "Canonical route metadata for platform/compliance: import into Mongo (or your store) to drive per-tenant role visibility and default landing paths. defaultVisibleForRoles are suggested seeds only — runtime policy may override per tenant.",
+  "platformRoles": ["global_admin", "advisor", "operator", "viewer"],
+  "tenantAssignableRoles": ["advisor", "operator", "viewer"],
+  "suggestedDefaultLandingPathByRole": {
+    "global_admin": "/admin",
+    "advisor": "/xchat",
+    "operator": "/portfolios",
+    "viewer": "/xchat"
+  },
+  "groups": [
+    { "id": "core_product", "label": "Core product (workspace rail)" },
+    { "id": "account", "label": "Account & billing" },
+    { "id": "education", "label": "Resources & education" },
+    { "id": "extended_product", "label": "Extended product surfaces" },
+    { "id": "public", "label": "Public / auth shell" },
+    { "id": "admin_console", "label": "Admin console (global_admin)" },
+    { "id": "legacy", "label": "Legacy redirects" }
+  ],
+  "entries": [
+    {
+      "id": "xchat",
+      "pathPattern": "/xchat",
+      "pathMatch": "prefix",
+      "label": "xChat",
+      "groupId": "core_product",
+      "inWorkspaceProductShell": true,
+      "guestHtmlShell": false,
+      "complianceSummary": "Educational conversations; not personalized investment advice — product disclaimers apply.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "xoptions",
+      "pathPattern": "/xoptions",
+      "pathMatch": "prefix",
+      "label": "xOptions",
+      "groupId": "core_product",
+      "inWorkspaceProductShell": true,
+      "guestHtmlShell": true,
+      "complianceSummary": "Options education and desk tools; execution not in-app.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "portfolios",
+      "pathPattern": "/portfolios",
+      "pathMatch": "prefix",
+      "label": "myPortfolios (books overview)",
+      "groupId": "core_product",
+      "inWorkspaceProductShell": true,
+      "guestHtmlShell": true,
+      "complianceSummary": "Portfolio holdings and desk data; freshness-sensitive.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "portfolio",
+      "pathPattern": "/portfolio",
+      "pathMatch": "prefix",
+      "label": "Portfolio desk",
+      "groupId": "core_product",
+      "inWorkspaceProductShell": true,
+      "guestHtmlShell": true,
+      "complianceSummary": "Accounts, holdings, alerts; not investment advice.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "watchlist",
+      "pathPattern": "/watchlist",
+      "pathMatch": "prefix",
+      "label": "Watchlist",
+      "groupId": "core_product",
+      "inWorkspaceProductShell": true,
+      "guestHtmlShell": false,
+      "complianceSummary": "Symbols and desk fields; market data illustrative.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "import_activity",
+      "pathPattern": "/import-activity",
+      "pathMatch": "prefix",
+      "label": "Broker import activity",
+      "groupId": "core_product",
+      "inWorkspaceProductShell": true,
+      "guestHtmlShell": false,
+      "complianceSummary": "Broker file import audit trail; handle custodian data per policy.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "account",
+      "pathPattern": "/account",
+      "pathMatch": "prefix",
+      "label": "Account",
+      "groupId": "account",
+      "inWorkspaceProductShell": true,
+      "guestHtmlShell": false,
+      "complianceSummary": "Billing and integrations; PII — least privilege in DB overrides.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "account_billing",
+      "pathPattern": "/account/billing",
+      "pathMatch": "prefix",
+      "label": "Billing",
+      "groupId": "account",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": true,
+      "complianceSummary": "Stripe checkout paths may allow guest HTML at same URL per edge proxy rules.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "workspace",
+      "pathPattern": "/workspace",
+      "pathMatch": "prefix",
+      "label": "Workspace",
+      "groupId": "core_product",
+      "inWorkspaceProductShell": true,
+      "guestHtmlShell": false,
+      "complianceSummary": "Workspace portfolio picker and related UI.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "xcoach",
+      "pathPattern": "/xcoach",
+      "pathMatch": "prefix",
+      "label": "xCoach",
+      "groupId": "extended_product",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": false,
+      "complianceSummary": "Exam / learning surfaces; align disclaimers with education-only use.",
+      "implementationNote": "Verify src/proxy.ts matcher includes /xcoach if session gating is required for HTML.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "xstrategybuilder",
+      "pathPattern": "/xstrategybuilder",
+      "pathMatch": "prefix",
+      "label": "xStrategyBuilder",
+      "groupId": "extended_product",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": false,
+      "complianceSummary": "Strategy jobs / hardcore scanner — gate by plan and role in DB.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "personas_directory",
+      "pathPattern": "/personas",
+      "pathMatch": "prefix",
+      "label": "xPersona directory",
+      "groupId": "extended_product",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": false,
+      "complianceSummary": "Read-only persona listing for signed-in users; not admin editor.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "resources",
+      "pathPattern": "/resources",
+      "pathMatch": "prefix",
+      "label": "Resources",
+      "groupId": "education",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": true,
+      "complianceSummary": "Marketing and education copy; no live portfolio data.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "legal",
+      "pathPattern": "/legal",
+      "pathMatch": "prefix",
+      "label": "Legal",
+      "groupId": "public",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": true,
+      "complianceSummary": "Terms, privacy, imprint — keep in sync with counsel.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "login",
+      "pathPattern": "/login",
+      "pathMatch": "exact",
+      "label": "Login",
+      "groupId": "public",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": true,
+      "complianceSummary": "Auth entry; OAuth callbacks elsewhere.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "home",
+      "pathPattern": "/",
+      "pathMatch": "exact",
+      "label": "Home / landing",
+      "groupId": "public",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": true,
+      "complianceSummary": "Marketing landing; optional waitlist CTA.",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    },
+    {
+      "id": "admin_console",
+      "pathPattern": "/admin",
+      "pathMatch": "prefix",
+      "label": "Admin console",
+      "groupId": "admin_console",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": false,
+      "complianceSummary": "Tenant and platform governance; global_admin only by default.",
+      "defaultVisibleForRoles": ["global_admin"]
+    },
+    {
+      "id": "xfinance_legacy",
+      "pathPattern": "/xfinance",
+      "pathMatch": "prefix",
+      "label": "Legacy /xfinance",
+      "groupId": "legacy",
+      "inWorkspaceProductShell": false,
+      "guestHtmlShell": false,
+      "complianceSummary": "Permanent redirect to /portfolio — keep for bookmarks.",
+      "redirectsTo": "/portfolio",
+      "defaultVisibleForRoles": ["global_admin", "advisor", "operator", "viewer"]
+    }
+  ]
+}

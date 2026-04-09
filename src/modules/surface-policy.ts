@@ -4,6 +4,8 @@ import { canUserLogin } from "@/modules/identity/authorization";
 /**
  * URL path prefixes for the **app_user** product shell (xChat chrome, shared nav).
  * `global_admin` may also use these routes; they are not admin-console exclusive.
+ *
+ * Route metadata / compliance seeds: `data/platform/app-user-route-catalog.json` (keep in sync).
  */
 export const APP_USER_PRODUCT_PATH_PREFIXES = [
   "/xchat",

@@ -1,7 +1,8 @@
 import { maskAccountXrefForDisplay } from "@/lib/account-xref-display";
 import type { SessionUser } from "@/lib/auth";
+import { computePortfolioTotalMarketValueUsd } from "@/lib/portfolio-total-market-value";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
-import { listPortfolioAccounts } from "@/modules/core-admin/repository";
+import { listPortfolioAccounts, listPortfolioPositionsByAccount } from "@/modules/core-admin/repository";
 import {
     scoringFactorsPayloadForAdminApi,
     type PortfolioScoringFactorApi
@@ -104,6 +105,18 @@ export async function buildPortfolioSummaryPayload(
     tenantRow?.defaultPortfolioScoringFactors
   );
 
+  const accountIds = accounts.flatMap((a) => (a._id ? [a._id] : []));
+  const positions =
+    accountIds.length > 0
+      ? await listPortfolioPositionsByAccount({
+          userId: session.userId,
+          tenantId: session.tenantId,
+          portfolioId,
+          accountIds
+        })
+      : [];
+  const totalValue = await computePortfolioTotalMarketValueUsd(accounts, positions, DEFAULT_COALESCE_CASH);
+
   return {
     _id: portfolioId,
     name: portfolio.name?.length ? portfolio.name : "Default Portfolio",
@@ -125,7 +138,7 @@ export async function buildPortfolioSummaryPayload(
         recommendations: []
       };
     }),
-    totalValue: 0,
+    totalValue,
     dailyChange: 0,
     dailyChangePercent: 0,
     userId,

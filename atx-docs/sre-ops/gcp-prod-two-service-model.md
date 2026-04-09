@@ -17,6 +17,67 @@ Legacy duplicate Next services (`fintech-advisor-prod`, etc.) should receive **n
 
 ---
 
+## Recommended Cloud Run capacity (production baseline)
+
+Operator-chosen defaults for **prod** (April 2026). Apply in **GCP Console → Cloud Run → service → Edit & deploy new revision**, or mirror with `gcloud run deploy` / `gcloud run services update`. **GitHub Actions** and **`deploy-cloud-run-from-env.sh`** do not yet pass CPU/memory/concurrency/min/max — a deploy that omits those flags **leaves existing values**; set capacity in Console (or add flags to scripts/workflows) so it stays intentional.
+
+Use the **Next.js** row for whichever service serves **`PROD_BASE_URL`** today (**`fintech-advisor-prod`** until cutover to **`xfinance-core-prod`**, per §3–§4).
+
+### Frontend — Next.js (`fintech-advisor-prod` or `xfinance-core-prod`)
+
+| Setting | Value | Notes |
+|---------|-------|--------|
+| CPU | **1** (`1000m`) | SSR + streaming |
+| Memory | **1Gi** | Safer than 512Mi for Apex charts + large payloads |
+| Max concurrent requests per instance | **100** | `containerConcurrency` |
+| Min instances | **1** | Warm instance; fewer cold starts for HNWI-style traffic |
+| Max instances | **50** | |
+| CPU boost | **On** | `gcloud … --cpu-boost` — extra CPU during **container startup** (cold starts) |
+| Startup CPU boost | **On** | Same capability in Console wording; align with **CPU boost** / `--cpu-boost` |
+
+**Example `gcloud` (adjust service name and project):**
+
+```bash
+gcloud run services update fintech-advisor-prod \
+  --project fintech-advisor-prod --region us-central1 \
+  --cpu=1 --memory=1Gi --concurrency=100 \
+  --min-instances=1 --max-instances=50 \
+  --cpu-boost --quiet
+```
+
+### Backend — Spring (`atxfinance-backend-prod`)
+
+| Setting | Value | Notes |
+|---------|-------|--------|
+| CPU | **1** (`1000m`) | |
+| Memory | **1Gi** | Bump to **2Gi** only if you see OOM on heavy strategy jobs |
+| Max concurrent requests per instance | **80** | I/O + Mongo |
+| Min instances | **0** | Scale-to-zero saves idle CPU |
+| Max instances | **30** | |
+| CPU boost | **On** | `--cpu-boost` |
+| Startup CPU boost | **On** | Same as frontend |
+
+**Example `gcloud`:**
+
+```bash
+gcloud run services update atxfinance-backend-prod \
+  --project fintech-advisor-prod --region us-central1 \
+  --cpu=1 --memory=1Gi --concurrency=80 \
+  --min-instances=0 --max-instances=30 \
+  --cpu-boost --quiet
+```
+
+**Script drift:** `scripts/ops/deploy-atxfinance-backend-production.sh` still passes **`--max-instances=5`** until it is updated to match this baseline; after a script deploy, re-apply **max=30** (or change the script).
+
+**Inspect current revision:**
+
+```bash
+gcloud run services describe SERVICE_NAME \
+  --region us-central1 --format='yaml(spec.template.spec.containers[0].resources,spec.template.spec.containerConcurrency,spec.template.spec.maxScale,spec.template.spec.minScale)'
+```
+
+---
+
 ## 1. Configure **`.env.prod`** (source of truth for CLI deploy)
 
 Keep **`.env.prod` gitignored**; set at least:

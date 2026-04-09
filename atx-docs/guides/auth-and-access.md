@@ -6,6 +6,7 @@ This is the auth/access entrypoint. Use this page for incident triage, then jump
 
 - `src/modules/identity/authorization.ts` (login/role gate behavior)
 - `src/modules/surface-policy.ts` (admin_console vs app_user path policy)
+- [tenant-ux-plan.md](../design-system/tenant-ux-plan.md) — **Tenant UX (`tenant_ux`):** route catalog, per-role visibility + default landing (Mongo/UI/enforcement backlog); **`GET /api/admin/platform/route-catalog`**
 - `src/proxy.ts` (edge auth: guest-capable **HTML** for `/xoptions`, `/portfolio`, `/portfolios`; other protected pages redirect unauthenticated users to `/xchat`; matched **API** paths → 401 without session)
 - `atx-docs/sre-ops/auth-oauth-spring-dual-run.md` (OAuth dual-run/cutover operations)
 - `atx-docs/sre-ops/x-oauth-atx-callbacks.md` (callback host/config checklist)
@@ -22,9 +23,11 @@ Session payload distinguishes:
 ## Surface policy
 
 - `admin_console`: `/admin/*` and `/api/admin/*` (`global_admin` only)
-- `app_user`: `/xchat`, `/portfolio`, `/portfolios`, `/import-activity`, `/watchlist`, `/recommendations`, `/xoptions` (see `APP_USER_PRODUCT_PATH_PREFIXES` in `surface-policy.ts`)
+- `app_user`: `/xchat`, `/portfolio`, `/portfolios`, `/import-activity`, `/watchlist`, `/account`, `/workspace`, `/xoptions` (see `APP_USER_PRODUCT_PATH_PREFIXES` in `surface-policy.ts`)
 
 Reference: `src/modules/surface-policy.ts` and `src/proxy.ts`.
+
+**Future (tenant UX):** Per-tenant **narrowing** of which `app_user` paths each **platform role** may hit — see [tenant-ux-plan.md](../design-system/tenant-ux-plan.md); canonical metadata in **`data/platform/app-user-route-catalog.json`**.
 
 ## Guest registration MVP (X / Google)
 

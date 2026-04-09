@@ -60,6 +60,10 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `GET /api/admin/audit`
 - `GET /api/admin/bootstrap-status`
 
+## Admin platform / compliance
+
+- `GET /api/admin/platform/route-catalog` — **`global_admin`** only; returns the parsed **app-user route catalog** (same shape as **`data/platform/app-user-route-catalog.json`**) for **DB import** / compliance tooling. **Plan:** [tenant-ux-plan.md](../design-system/tenant-ux-plan.md).
+
 ## Admin delivery channels (tenant)
 
 **Next-only** (not BFF-proxied to Spring). **`global_admin`**. SMTP for **`email`** targets uses **`SMTP_*`** + **`DESK_EMAIL_FROM`** (`src/lib/desk-smtp.ts`). Optional **test-only** env: **`DESK_DELIVERY_CHANNEL_TEST_TO`**, **`DESK_DELIVERY_CHANNEL_TEST_SUBJECT`** — see **`deploy-and-ops.md`**.

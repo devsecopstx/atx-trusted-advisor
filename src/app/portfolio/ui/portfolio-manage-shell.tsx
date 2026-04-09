@@ -16,14 +16,12 @@ import {
     type PortfolioAccountTableRow
 } from "@/app/portfolio/ui/portfolio-accounts-section";
 import type { PortfolioDeskPrefetchStrip } from "@/app/portfolio/ui/portfolio-desk-prefetch";
-import { PortfolioHoldingsPanel } from "@/app/portfolio/ui/portfolio-holdings-panel";
 import { PortfolioManageTabs } from "@/app/portfolio/ui/portfolio-manage-tabs";
 import { PortfolioRefreshButton } from "@/app/portfolio/ui/portfolio-refresh-button";
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 import { PortfoliosWatchlistCompact } from "@/app/portfolios/portfolios-watchlist-compact";
 import { PortfolioScoringFactorsReadonlyTable } from "@/app/ui/portfolio-scoring-factors-readonly";
 import { WatchlistConsole } from "@/app/watchlist/ui/watchlist-console";
-import type { PortfolioHoldingRow } from "@/lib/portfolio-holding-rows";
 import { formatUsd2, formatUsdWhole, type PortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import type { PortfolioScoringFactorApi } from "@/modules/core-admin/scoring-factors";
 
@@ -36,7 +34,6 @@ export type PortfolioManageShellProps = {
   rows: PortfolioAccountTableRow[];
   totalAccounts: number;
   metrics: PortfolioOverviewMetrics;
-  holdingsRows: PortfolioHoldingRow[];
   positionsByAccount: Record<string, SerializablePosition[]>;
   scoringFactors: PortfolioScoringFactorApi[];
   deskPrefetch?: PortfolioDeskPrefetchStrip | null;
@@ -53,7 +50,6 @@ export function PortfolioManageShell({
   rows,
   totalAccounts,
   metrics,
-  holdingsRows,
   positionsByAccount,
   scoringFactors,
   deskPrefetch = null,
@@ -284,19 +280,11 @@ export function PortfolioManageShell({
 
   const holdingsPanel = (
     <div className="stack-gap" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      <p className="portfolio-holdings-panel__hint" style={{ margin: 0 }}>
-        Showing <strong>{selectedAccountName}</strong>. Use the <strong>Account</strong> selector below the book header
-        to switch accounts.
-      </p>
-      <PortfolioHoldingsPanel
-        rows={holdingsRows}
-        portfolioIdHex={portfolioIdHex}
-        filterAccountIdHex={resolvedSelectedHex}
-      />
       {resolvedSelectedHex ? (
         <AccountHoldingsCrudCard
           key={resolvedSelectedHex}
           accountIdHex={resolvedSelectedHex}
+          embeddedInTab
           initialPositions={initialForSelected}
           portfolioIdHex={portfolioIdHex}
         />

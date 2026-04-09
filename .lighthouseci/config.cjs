@@ -5,6 +5,8 @@
  *   NODE_ENV=production npm run build
  *   npx @lhci/cli@latest autorun --config=./.lighthouseci/config.cjs
  *
+ * Live prod (no local server): `npm run lh:prod` → `.lighthouseci/config.prod-remote.cjs`
+ *
  * Port defaults to 3001 so `next dev` on 3000 does not block LHCI. Override:
  *   LHCI_PORT=3005 npx @lhci/cli@latest autorun --config=./.lighthouseci/config.cjs
  *
@@ -15,7 +17,7 @@
  * or auth cookies (see LHCI docs).
  *
  * Reported baselines / targets (dated): atx-docs/design-system/current-state-features.md
- * § "xChat & Portfolios targets (2026-04-08 LHCI)".
+ * § "Lighthouse production baseline (2026-04-08)" + "xChat & Portfolios targets (2026-04-08 LHCI)".
  */
 const port = process.env.LHCI_PORT || "3001";
 const origin = `http://localhost:${port}`;

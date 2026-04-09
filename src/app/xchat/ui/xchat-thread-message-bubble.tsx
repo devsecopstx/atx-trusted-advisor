@@ -27,11 +27,7 @@ export const XchatThreadMessageBubble = memo(
   }: XchatThreadMessageBubbleProps) {
     return (
       <div className={`xchat-msg xchat-msg-${msg.role}`}>
-        {msg.role === "ai" && msg.persona ? (
-          <small style={{ color: "var(--xf-text-400)", display: "block", marginBottom: "0.3rem" }}>
-            {msg.persona}
-          </small>
-        ) : null}
+        {msg.role === "ai" && msg.persona ? <small className="xchat-msg-ai__persona">{msg.persona}</small> : null}
         {msg.role === "ai" ? (
           msg.strategyJobOffer ? (
             <XchatStrategyJobPreflightCards
@@ -59,7 +55,7 @@ export const XchatThreadMessageBubble = memo(
               </div>
             ) : null}
             {msg.content.trim().length > 0 ? (
-              <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
+              <div className="xchat-msg-user-body__text">{msg.content}</div>
             ) : null}
           </div>
         )}

@@ -9,7 +9,6 @@ import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-port
 import { resolveActiveWorkspacePortfolioId } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
-import { buildPortfolioHoldingRows } from "@/lib/portfolio-holding-rows";
 import { tryIbkrLinkedAccountsSnapshotForSession } from "@/lib/portfolio-ibkr-ssr";
 import { computePortfolioOverviewMetrics } from "@/lib/portfolio-overview-metrics";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
@@ -146,9 +145,6 @@ export async function PortfolioPageBody({ session }: Props) {
     portfolioIdHex && accounts.length > 0
       ? computePortfolioOverviewMetrics(allPositions, accounts, DEFAULT_ACCOUNT_CASH_BALANCE)
       : null;
-  const holdingsRows =
-    portfolioIdHex && accounts.length > 0 ? buildPortfolioHoldingRows(accounts, allPositions) : [];
-
   const positionsByAccount: Record<string, SerializablePosition[]> = {};
   if (allPositions.length > 0) {
     const byHex = new Map<string, Position[]>();
@@ -264,7 +260,6 @@ export async function PortfolioPageBody({ session }: Props) {
           admin={admin}
           accounts={accounts}
           deskPrefetch={deskPrefetch}
-          holdingsRows={holdingsRows}
           metrics={metrics}
           portfolioDisplayName={portfolioDisplayName}
           portfolioIdHex={portfolioIdHex}

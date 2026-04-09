@@ -278,6 +278,18 @@ function shouldStayInChatFromReply(input: string): boolean {
   );
 }
 
+/** The user turn directly before the latest strategy-job preflight AI message (xStrategyBuilder cards). */
+function getSubstantiveUserPromptBeforeLatestStrategyOffer(messages: Message[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const m = messages[i];
+    if (m.role === "ai" && m.strategyJobOffer && i > 0 && messages[i - 1]?.role === "user") {
+      const raw = messages[i - 1]!.content;
+      return raw.trim().length > 0 ? raw : null;
+    }
+  }
+  return null;
+}
+
 function hasPendingStrategyJobOffer(messages: Message[]): boolean {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const msg = messages[i];
@@ -425,6 +437,8 @@ export function XchatConversation({
   );
   const pendingComposerFromHandoffRef = useRef(false);
   const userPickedPersonaRef = useRef(false);
+  /** After "Stay in chat", re-fill composer with the prompt that triggered the strategy-job offer. */
+  const strategyStayRestorePromptRef = useRef<string | null>(null);
   /** Seconds since current ask started (UI only; resets when loading ends). */
   const [askWaitSeconds, setAskWaitSeconds] = useState(0);
   const [strategyJobLaunchBusy, setStrategyJobLaunchBusy] = useState(false);
@@ -465,11 +479,12 @@ export function XchatConversation({
     if (loading || strategyJobLaunchBusy) {
       return;
     }
+    strategyStayRestorePromptRef.current = getSubstantiveUserPromptBeforeLatestStrategyOffer(messages);
     setInput("stay in chat");
     requestAnimationFrame(() => {
       composerFormRef.current?.requestSubmit();
     });
-  }, [loading, strategyJobLaunchBusy]);
+  }, [loading, strategyJobLaunchBusy, messages]);
 
   const emphasizeStrategyForMessage = useCallback(
     (aiMsgId: string) => computeEmphasizeStrategyJobPrimary(messages, aiMsgId),
@@ -485,6 +500,29 @@ export function XchatConversation({
   });
   const historyMode = historyStats?.historyMode ?? (privacyPrefs?.keepLastTenMessages ? "mongo" : "ephemeral");
   const isEphemeralHistoryMode = historyMode === "ephemeral";
+
+  /** `savedHistory` is newest-first; include the clicked turn and all older stored turns (chronological transcript). */
+  const applyHistoryItemToThread = useCallback(
+    (item: HistoryItem) => {
+      const idx = savedHistory.findIndex((h) => h.id === item.id);
+      if (idx < 0) {
+        return;
+      }
+      const subset = savedHistory.slice(idx);
+      const thread = historyItemsToTranscriptMessages(subset);
+      const { next } = trimTranscriptToRecentPrompts(thread, uiPromptLimit);
+      setMessages(next);
+      setInput("");
+      setStrategyJobOptOut(false);
+      setThreadUiCollapsed(false);
+      expandWorkspaceProductRail();
+      queueMicrotask(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        composerRef.current?.focus();
+      });
+    },
+    [savedHistory, uiPromptLimit]
+  );
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -953,6 +991,10 @@ export function XchatConversation({
     const hasPasteImage = Boolean(pastedImage);
     if ((!prompt && !hasPasteImage) || loading) return;
 
+    if (!shouldStayInChatFromReply(prompt)) {
+      strategyStayRestorePromptRef.current = null;
+    }
+
     // Keep thread expanded while a response is in flight so users can read it immediately.
     setThreadUiCollapsed(false);
 
@@ -1126,6 +1168,10 @@ export function XchatConversation({
           const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
           return next;
         });
+        if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
+          setInput(strategyStayRestorePromptRef.current);
+          strategyStayRestorePromptRef.current = null;
+        }
         return;
       }
 
@@ -1191,6 +1237,10 @@ export function XchatConversation({
         const deduped = prev.filter((item) => item.id !== nextItem.id);
         return [nextItem, ...deduped].slice(0, uiPromptLimit);
       });
+      if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
+        setInput(strategyStayRestorePromptRef.current);
+        strategyStayRestorePromptRef.current = null;
+      }
     } catch {
       setMessages((prev) => {
         const added = [
@@ -1205,6 +1255,10 @@ export function XchatConversation({
         const { next } = trimTranscriptToRecentPrompts(added, uiPromptLimit);
         return next;
       });
+      if (strategyStayRestorePromptRef.current && shouldStayInChatFromReply(prompt)) {
+        setInput(strategyStayRestorePromptRef.current);
+        strategyStayRestorePromptRef.current = null;
+      }
     } finally {
       setLoading(false);
     }
@@ -1482,8 +1536,7 @@ export function XchatConversation({
                                       className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
                                       type="button"
                                       onClick={() => {
-                                        setInput(item.message);
-                                        queueMicrotask(() => composerRef.current?.focus());
+                                        applyHistoryItemToThread(item);
                                       }}
                                     >
                                       <span className="xchat-rail-link__text">{item.message}</span>
@@ -1503,8 +1556,7 @@ export function XchatConversation({
                                   className="app-user-rail-sublink xchat-rail-link xchat-rail-link--history"
                                   type="button"
                                   onClick={() => {
-                                    setInput(item.message);
-                                    queueMicrotask(() => composerRef.current?.focus());
+                                    applyHistoryItemToThread(item);
                                   }}
                                 >
                                   <span className="xchat-rail-link__text">{item.message}</span>

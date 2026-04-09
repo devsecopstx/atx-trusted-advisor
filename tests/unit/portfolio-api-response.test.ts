@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const repoMocks = vi.hoisted(() => ({
-  listPortfolioAccounts: vi.fn()
+  listPortfolioAccounts: vi.fn(),
+  listPortfolioPositionsByAccount: vi.fn()
 }));
 
 vi.mock("@/lib/server-request-cache", () => ({
@@ -14,7 +15,8 @@ vi.mock("@/modules/core-admin/repository", async () => {
   );
   return {
     ...actual,
-    listPortfolioAccounts: repoMocks.listPortfolioAccounts
+    listPortfolioAccounts: repoMocks.listPortfolioAccounts,
+    listPortfolioPositionsByAccount: repoMocks.listPortfolioPositionsByAccount
   };
 });
 
@@ -23,6 +25,10 @@ import { buildPortfolioSummaryPayload } from "@/lib/portfolio-api-response";
 import { SCORING_FACTOR_IDS } from "@/modules/core-admin/scoring-factors";
 
 describe("buildPortfolioSummaryPayload", () => {
+  beforeEach(() => {
+    repoMocks.listPortfolioPositionsByAccount.mockResolvedValue([]);
+  });
+
   it("does not throw when createdAt/updatedAt are missing (legacy / provision read shape)", async () => {
     repoMocks.listPortfolioAccounts.mockResolvedValueOnce([]);
     const session = {

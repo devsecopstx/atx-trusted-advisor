@@ -158,7 +158,7 @@ export function AppUserResourcesRailSection({
     <section className="app-user-rail-section" aria-label="Resources">
       <RailDisclosure
         defaultOpen={railDisclosureDefaultOpen}
-        icon={<BookIcon className="app-user-rail-disclosure__glyph" />}
+        icon={<BookIcon className="app-user-rail-disclosure__glyph app-user-rail-disclosure__glyph--resources" />}
         title="Resources"
       >
         <nav className="app-user-rail-sublinks" aria-label="Resource links">

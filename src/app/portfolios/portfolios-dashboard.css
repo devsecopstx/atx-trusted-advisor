@@ -425,6 +425,12 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph-img {
   height: 1.25rem;
 }
 
+/* Open-book mark fills less of the 24×24 viewBox than Lucide hero icons — nudge for rail parity */
+.portfolios-workspace-sidebar__glyph--resources {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
 .portfolios-workspace-sidebar__glyph--emph {
   color: var(--xf-gain-green);
 }

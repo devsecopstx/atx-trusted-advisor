@@ -9,33 +9,33 @@ import { type StrategyChoiceId, type StrategyStartBasis } from "@/app/xoptions/x
 import { XoptionsTaxLimitHint } from "@/app/xoptions/xoptions-tax-education-panels";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import {
-    getCachedOptionChain,
-    makeOptionChainCacheKey,
-    setCachedOptionChain
+  getCachedOptionChain,
+  makeOptionChainCacheKey,
+  setCachedOptionChain
 } from "@/lib/xoptions/xoptions-chain-cache";
 import {
-    chainHeatMixPercent,
-    chainRowMoneynessClass,
-    closestStrikeToSpot,
-    filterOptionChainRowsByLiquidity,
-    filterStrikesBySpotBand,
-    formatImpliedVolatilityDisplay,
-    legHasQuotableLastQuote,
-    maxVolumeAndOpenInterestForSide,
-    sliceStrikesAroundSpot,
-    STRIKE_SPOT_BAND_PCT
+  chainHeatMixPercent,
+  chainRowMoneynessClass,
+  closestStrikeToSpot,
+  filterOptionChainRowsByLiquidity,
+  filterStrikesBySpotBand,
+  formatImpliedVolatilityDisplay,
+  legHasQuotableLastQuote,
+  maxVolumeAndOpenInterestForSide,
+  sliceStrikesAroundSpot,
+  STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
 import {
-    getPayoffPreviewSyncSnapshot,
-    isShowGreeksCalcLogicEnabled,
-    isTaxEducationEnabled,
-    subscribeXoptionsEducationPrefs
+  getPayoffPreviewSyncSnapshot,
+  isShowGreeksCalcLogicEnabled,
+  isTaxEducationEnabled,
+  subscribeXoptionsEducationPrefs
 } from "@/lib/xoptions/xoptions-education-preferences";
 import { resolveXoptionsExpirationForHorizon } from "@/lib/xoptions/xoptions-expiration-default";
 import {
-    buildXoptionsOrderReview,
-    formatXoptionsOrderReviewPlainText,
-    type XoptionsOpeningAction
+  buildXoptionsOrderReview,
+  formatXoptionsOrderReviewPlainText,
+  type XoptionsOpeningAction
 } from "@/lib/xoptions/xoptions-order-preview";
 
 type ChainLeg = {
@@ -641,6 +641,8 @@ export function XoptionsChooseContract({
             <button
               key={w.days}
               type="button"
+              aria-label={`Target expiration horizon ${w.label}, about ${w.days} calendar days from today`}
+              aria-pressed={weeks !== null && weeks === w.days}
               className={`xoptions-choice ${weeks !== null && weeks === w.days ? "xoptions-choice--active" : ""}`}
               disabled={loadingExp || expirations.length === 0}
               onClick={() => applyWeekHorizon(w.days)}

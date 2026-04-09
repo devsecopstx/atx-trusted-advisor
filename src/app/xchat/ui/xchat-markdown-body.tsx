@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import type { CSSProperties, HTMLAttributes, ReactNode, TableHTMLAttributes } from "react";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
@@ -62,6 +62,13 @@ function createMarkdownComponents(prismStyle: Record<string, CSSProperties>): Co
         >
           {children}
         </a>
+      );
+    },
+    table({ children, ...rest }: TableHTMLAttributes<HTMLTableElement>) {
+      return (
+        <div className="xchat-md-table-wrap">
+          <table {...rest}>{children}</table>
+        </div>
       );
     },
     code({ className, children, inline, ...rest }: MdCodeProps) {

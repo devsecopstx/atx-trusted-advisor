@@ -136,9 +136,9 @@ function ResourcesIcon(props: SVGProps<SVGSVGElement>) {
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth={1.65}
+        strokeWidth={1.75}
       />
-      <path d="M12 6.5v11" stroke="currentColor" strokeWidth={1.65} />
+      <path d="M12 6.5v11" stroke="currentColor" strokeWidth={1.75} />
     </svg>
   );
 }
@@ -436,7 +436,7 @@ export function WorkspaceProductSidebar({
       href: "/resources/about",
       label: "Resources",
       isActive: pathname.startsWith("/resources"),
-      icon: <ResourcesIcon className="h-4 w-4 text-[var(--xf-text-200)]" />
+      icon: <ResourcesIcon className="h-[1.35rem] w-[1.35rem] text-[var(--xf-text-200)]" />
     }
   ];
 
@@ -560,7 +560,10 @@ export function WorkspaceProductSidebar({
 
       <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/resources")}>
         <summary className="portfolios-workspace-sidebar__accordion-summary">
-          <SidebarAccordionSummary icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph" />} label="Resources" />
+          <SidebarAccordionSummary
+            icon={<ResourcesIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--resources" />}
+            label="Resources"
+          />
         </summary>
         <div className="portfolios-workspace-sidebar__accordion-body">
           <SidebarLink href="/resources/about" nested>

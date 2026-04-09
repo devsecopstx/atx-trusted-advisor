@@ -9,7 +9,7 @@ This is the deploy/ops entrypoint for staging and production workflows.
 - `atx-docs/sre-ops/secret-rotation.md` (key/secret lifecycle runbook)
 - `atx-docs/sre-ops/auth-oauth-spring-dual-run.md` (OAuth cutover/rollback considerations)
 - `atx-docs/sre-ops/api-consolidation-spring-backend.md` (BFF migration impact on deploy posture)
-- `atx-docs/sre-ops/gcp-prod-two-service-model.md` (**prod** Next `xfinance-core-prod` + Spring `atxfinance-backend-prod`, GitHub vars, domain, retire duplicate services)
+- `atx-docs/sre-ops/gcp-prod-two-service-model.md` (**prod** Next `xfinance-core-prod` + Spring `atxfinance-backend-prod`, GitHub vars, domain, retire duplicate services, **recommended Cloud Run CPU/memory/concurrency/min/max + `--cpu-boost`**)
 - `.cursor/agents/sre.md` (manual deploy, Stripe/Google hotfixes, release notes on version bump)
 
 ## Promotion model

@@ -360,6 +360,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-options-strategy"
   },
   {
+    path: "/api/admin/platform/route-catalog",
+    operations: [{ method: "GET", auth: "admin" }],
+    tag: "admin-platform"
+  },
+  {
     path: "/api/admin/portfolios",
     operations: [
       { method: "GET", auth: "admin" },

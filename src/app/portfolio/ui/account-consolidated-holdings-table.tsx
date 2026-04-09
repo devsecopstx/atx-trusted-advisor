@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { DeleteIcon } from "@/app/admin/ui/crud-icons";
 import type { SerializablePosition } from "@/app/portfolio/accounts/serializable-account";
@@ -52,12 +52,133 @@ function rowMarkUsd(p: SerializablePosition, quotes: Record<string, SymbolLookup
   return Math.abs(p.contracts) * 100 * p.premiumPerContract;
 }
 
+type HoldingsSortColumn = "symbol" | "dayChange" | "qty";
+
+function symbolSortKey(p: SerializablePosition): string {
+  if (p.type === "cash") {
+    return (p.label.trim() || "CASH").toUpperCase();
+  }
+  return p.symbol.trim().toUpperCase();
+}
+
+function qtySortValue(p: SerializablePosition): number {
+  if (p.type === "stock") {
+    return p.shares;
+  }
+  if (p.type === "option") {
+    return p.contracts;
+  }
+  return 1;
+}
+
+/** Prefer % change when present (matches primary Day Δ emphasis); else dollar change. */
+function dayChangeSortValue(
+  p: SerializablePosition,
+  quotes: Record<string, SymbolLookupResult | null>
+): number | null {
+  const u = underlyingSymbol(p);
+  if (!u) {
+    return null;
+  }
+  const q = quotes[u];
+  if (!q) {
+    return null;
+  }
+  if (q.changePercent != null && Number.isFinite(q.changePercent)) {
+    return q.changePercent;
+  }
+  if (q.change != null && Number.isFinite(q.change)) {
+    return q.change;
+  }
+  return null;
+}
+
+/**
+ * Ascending-order comparison (negative ⇒ a before b). Missing day-change rows sort last for both directions.
+ */
+function compareHoldingsRows(
+  a: SerializablePosition,
+  b: SerializablePosition,
+  col: HoldingsSortColumn,
+  quotes: Record<string, SymbolLookupResult | null>
+): number {
+  if (col === "symbol") {
+    return symbolSortKey(a).localeCompare(symbolSortKey(b), undefined, { sensitivity: "base" });
+  }
+  if (col === "qty") {
+    return qtySortValue(a) - qtySortValue(b);
+  }
+  const va = dayChangeSortValue(a, quotes);
+  const vb = dayChangeSortValue(b, quotes);
+  const aMiss = va == null || !Number.isFinite(va);
+  const bMiss = vb == null || !Number.isFinite(vb);
+  if (aMiss && bMiss) {
+    return 0;
+  }
+  if (aMiss) {
+    return 1;
+  }
+  if (bMiss) {
+    return -1;
+  }
+  return va! - vb!;
+}
+
 type AccountConsolidatedHoldingsTableProps = {
   positions: SerializablePosition[];
   pending: boolean;
   onRemove: (positionId: string) => void;
   portfolioIdHex?: string;
 };
+
+type HoldingsSortState = { col: HoldingsSortColumn; dir: "asc" | "desc" };
+
+type HoldingsSortHeaderProps = {
+  col: HoldingsSortColumn;
+  label: string;
+  sub?: string;
+  alignEnd?: boolean;
+  sort: HoldingsSortState | null;
+  onSort: (c: HoldingsSortColumn) => void;
+};
+
+function HoldingsSortHeader({ col, label, sub, alignEnd, sort, onSort }: HoldingsSortHeaderProps) {
+  const active = sort?.col === col;
+  const dir = sort?.dir ?? "asc";
+  const ariaSort = active ? (dir === "asc" ? "ascending" : "descending") : "none";
+  return (
+    <th
+      scope="col"
+      aria-sort={ariaSort}
+      className={
+        alignEnd
+          ? "portfolio-consolidated-holdings__num portfolio-consolidated-holdings__th--sortable"
+          : "portfolio-consolidated-holdings__th--sortable"
+      }
+    >
+      <button
+        type="button"
+        className={`portfolio-consolidated-holdings__sort-btn${alignEnd ? " portfolio-consolidated-holdings__sort-btn--end" : ""}`}
+        aria-label={
+          active
+            ? `${label}: sorted ${dir === "asc" ? "ascending" : "descending"}. Activate to reverse order.`
+            : `Sort by ${label}`
+        }
+        onClick={() => onSort(col)}
+      >
+        <span className="portfolio-consolidated-holdings__sort-btn__main">
+          <span>{label}</span>
+          {active ? (
+            <span className="portfolio-consolidated-holdings__sort-indicator" aria-hidden>
+              {dir === "asc" ? "↑" : "↓"}
+            </span>
+          ) : null}
+        </span>
+        {sub ? <span className="portfolio-consolidated-holdings__th-sub">{sub}</span> : null}
+      </button>
+    </th>
+  );
+}
 
 export function AccountConsolidatedHoldingsTable({
   positions,
@@ -76,6 +197,25 @@ export function AccountConsolidatedHoldingsTable({
 
   const { quotes, loading } = useSymbolQuotes(quoteSymbols, { portfolioIdHex });
 
+  const [sort, setSort] = useState<HoldingsSortState | null>(null);
+
+  const setSortColumn = useCallback((col: HoldingsSortColumn) => {
+    setSort((prev) => {
+      if (prev?.col === col) {
+        return { col, dir: prev.dir === "asc" ? "desc" : "asc" };
+      }
+      return { col, dir: "asc" };
+    });
+  }, []);
+
+  const sortedPositions = useMemo(() => {
+    if (!sort) {
+      return positions;
+    }
+    const mult = sort.dir === "asc" ? 1 : -1;
+    return [...positions].sort((a, b) => mult * compareHoldingsRows(a, b, sort.col, quotes));
+  }, [positions, sort, quotes]);
+
   const totalMark = useMemo(() => {
     let t = 0;
     for (const p of positions) {
@@ -89,24 +229,26 @@ export function AccountConsolidatedHoldingsTable({
       <table className="portfolio-consolidated-holdings">
         <thead>
           <tr>
-            <th scope="col">Symbol</th>
+            <HoldingsSortHeader col="symbol" label="Symbol" sort={sort} onSort={setSortColumn} />
             <th scope="col">Position</th>
             <th scope="col" className="portfolio-consolidated-holdings__num">
               Last
               <span className="portfolio-consolidated-holdings__th-sub">underlying</span>
             </th>
-            <th scope="col" className="portfolio-consolidated-holdings__num">
-              Day Δ
-            </th>
+            <HoldingsSortHeader
+              alignEnd
+              col="dayChange"
+              label="Day Δ"
+              sort={sort}
+              onSort={setSortColumn}
+            />
             <th scope="col" className="portfolio-consolidated-holdings__num">
               Value
             </th>
             <th scope="col" className="portfolio-consolidated-holdings__num">
               % acct
             </th>
-            <th scope="col" className="portfolio-consolidated-holdings__num">
-              Qty
-            </th>
+            <HoldingsSortHeader alignEnd col="qty" label="Qty" sort={sort} onSort={setSortColumn} />
             <th scope="col" className="portfolio-consolidated-holdings__num">
               Avg cost
             </th>
@@ -114,7 +256,7 @@ export function AccountConsolidatedHoldingsTable({
           </tr>
         </thead>
         <tbody>
-          {positions.map((p) => {
+          {sortedPositions.map((p) => {
             const u = underlyingSymbol(p);
             const q = u ? quotes[u] ?? null : null;
             const showQuote = p.type === "stock" || p.type === "option";
