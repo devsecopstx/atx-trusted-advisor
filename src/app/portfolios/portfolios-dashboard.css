@@ -247,6 +247,86 @@
   min-width: 0;
 }
 
+.portfolios-workspace-header__brand-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 10px;
+  padding: 0.15rem 0.2rem 0.15rem 0;
+  margin: -0.15rem -0.2rem -0.15rem 0;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.portfolios-workspace-header__brand-row:hover {
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 6%, transparent);
+}
+
+.portfolios-workspace-header__brand-mark {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+}
+
+.portfolios-workspace-header__brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.portfolios-workspace-header__brand-fallback-atx {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--xf-bg-900);
+  background: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.portfolios-workspace-header__brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.portfolios-workspace-header__brand-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--xf-text-100);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portfolios-workspace-header__brand-subtitle {
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--xf-text-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: min(320px, 72vw);
+}
+
 .portfolios-workspace-header__center {
   flex: 1 1 auto;
   display: flex;
@@ -274,7 +354,7 @@
   margin: 0;
   font-size: clamp(1rem, 2.8vw, 1.35rem);
   font-weight: 700;
-  color: var(--xf-gain-green);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
   line-height: 1.15;
 }
 
@@ -309,9 +389,9 @@
 }
 
 .portfolios-workspace-header__market-status--open {
-  border-color: color-mix(in srgb, var(--xf-gain-green) 48%, transparent);
-  color: var(--xf-gain-green);
-  background: color-mix(in srgb, var(--xf-gain-green) 14%, transparent);
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 48%, transparent);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 14%, transparent);
 }
 
 .portfolios-workspace-header__market-pill {
@@ -365,6 +445,93 @@
   padding: 0.15rem 0;
 }
 
+/* Tenant shell header — accent from `--xf-tenant-accent` (layout + TenantBrandingProvider); fallback matches default tenant purple token. */
+.portfolios-workspace-sidebar__tenant-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0 0 0.45rem;
+  padding: 0.5rem 0.45rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 5%, transparent);
+}
+
+.portfolios-workspace-sidebar__tenant-logo-wrap {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 18%, transparent);
+}
+
+.portfolios-workspace-sidebar__tenant-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.portfolios-workspace-sidebar__tenant-fallback-atx {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--xf-bg-900);
+  background: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.portfolios-workspace-sidebar__tenant-text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.portfolios-workspace-sidebar__tenant-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--xf-text-100);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portfolios-workspace-sidebar__tenant-tagline {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--xf-text-400);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portfolios-workspace-sidebar__tenant-compact {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 0.35rem 0 0.5rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 20%, transparent);
+}
+
+.portfolios-workspace-sidebar__tenant-compact .portfolios-workspace-sidebar__tenant-logo-wrap {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
 .portfolios-workspace-sidebar__link {
   display: flex;
   align-items: center;
@@ -383,8 +550,9 @@
 }
 
 .portfolios-workspace-sidebar__link--active {
-  background: color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
-  color: var(--xf-gain-green);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 12%, transparent);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+  box-shadow: inset 3px 0 0 var(--xf-tenant-accent, var(--xf-xoptions-accent));
 }
 
 .portfolios-workspace-sidebar__glyph {
@@ -432,7 +600,7 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph-img {
 }
 
 .portfolios-workspace-sidebar__glyph--emph {
-  color: var(--xf-gain-green);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
 }
 
 .portfolios-workspace-sidebar__glyph--zap {
@@ -449,7 +617,7 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph--composer {
 }
 
 .portfolios-workspace-sidebar__link--active .portfolios-workspace-sidebar__glyph--composer {
-  color: var(--xf-gain-green);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
 }
 
 /* Portfolio workspace — monitor / desk; soft shell uses violet (distinct from Resources book-columns) */
@@ -463,7 +631,7 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__glyph--portfolio-workspac
 
 .portfolios-workspace-sidebar__emph {
   font-weight: 600;
-  color: var(--xf-gain-green);
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
 }
 
 .portfolios-workspace-sidebar__spacer {
@@ -575,7 +743,14 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__accordion[open] .portfoli
 .portfolios-workspace-sidebar__chevron {
   flex-shrink: 0;
   color: var(--xf-text-400);
-  transition: transform 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+
+.portfolios-workspace-sidebar__accordion-summary:hover .portfolios-workspace-sidebar__chevron,
+.portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__chevron {
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
 }
 
 .portfolios-workspace-sidebar__accordion[open] .portfolios-workspace-sidebar__chevron {
@@ -648,15 +823,55 @@ html[data-xf-ui="soft"] .portfolios-workspace-sidebar__accordion[open] .portfoli
 
 /* Workspace rail — keyboard focus + soft-shell active legibility (Import activities, portfolios, etc.) */
 .portfolios-workspace-sidebar__link:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--xf-gain-green) 42%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 45%, transparent);
   outline-offset: 2px;
 }
 
 html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link:focus-visible {
-  outline-color: color-mix(in srgb, var(--xf-xoptions-accent) 55%, transparent);
+  outline-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 55%, transparent);
 }
 
 html[data-xf-ui="soft"] .portfolios-workspace-sidebar__link--active {
-  background: color-mix(in srgb, var(--xf-gain-green) 9%, transparent);
-  color: color-mix(in srgb, var(--xf-gain-green) 72%, var(--xf-text-100));
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 10%, transparent);
+  color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 78%, var(--xf-text-100));
+  box-shadow: inset 3px 0 0 var(--xf-tenant-accent, var(--xf-xoptions-accent));
+}
+
+/* ── /portfolios main column: tenant accent overrides (books grid, manage panel, footer) ── */
+.portfolios-workspace-tenant-chrome .portfolio-allocation__bar--accounts .portfolio-allocation__segment:nth-child(6n + 1) {
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 88%, var(--xf-text-100));
+}
+
+.portfolios-workspace-tenant-chrome .portfolio-allocation__bar--accounts .portfolio-allocation__segment:nth-child(6n + 4) {
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 55%, var(--xf-text-100));
+}
+
+.portfolios-workspace-tenant-chrome .portfolio-manage-tabs__btn--active {
+  color: var(--xf-text-100);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 12%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 32%, transparent);
+}
+
+.portfolios-workspace-tenant-chrome .portfolio-manage-table__row-select-btn {
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+}
+
+.portfolios-workspace-tenant-chrome .portfolio-manage-table__row-select-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 50%, transparent);
+  outline-offset: 2px;
+}
+
+.portfolios-workspace-tenant-chrome .portfolio-manage-table__row-select-btn[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 48%, transparent);
+  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 14%, var(--xf-bg-800));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
+}
+
+.portfolios-workspace-tenant-chrome .portfolio-table-link {
+  color: var(--xf-tenant-accent, var(--xf-xoptions-accent));
+}
+
+.portfolios-workspace-tenant-chrome .portfolios-portfolio-cards__card--default {
+  border-color: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 38%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 12%, transparent);
 }

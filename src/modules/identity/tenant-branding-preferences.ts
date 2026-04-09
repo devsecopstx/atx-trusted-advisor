@@ -17,6 +17,21 @@ export type TenantPreferences = TenantBrandingPreferences & {
    * Stored string must be {@link XfUiThemePreference}.
    */
   xf_ui_theme?: XfUiThemePreference;
+  /**
+   * Accent preset for tenant-branded shells — see `XF_BRAND_PALETTE_IDS` in `tenant-branding-palette.ts`.
+   * Product surfaces read this when applying tenant theme overrides.
+   */
+  xf_brand_palette?: string;
+  /**
+   * Hero / marketing icon: `https://…` URL, `http://127.0.0.1` / `localhost` for dev, or `data:image/*;base64,…` (size-capped).
+   */
+  xf_hero_icon_url?: string;
+  /** Tenant accent for shell chrome (`--xf-tenant-accent`); hex `#rrggbb`. */
+  xf_accent_color?: string;
+  /** Logo for product header; https, loopback http, or data URL (larger cap than hero). */
+  xf_tenant_logo_url?: string;
+  /** Subtitle under tenant display name in shell (max 60 chars). */
+  xf_tenant_tagline?: string;
 };
 
 

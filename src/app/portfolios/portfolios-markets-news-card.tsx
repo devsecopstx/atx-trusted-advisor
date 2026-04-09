@@ -54,7 +54,7 @@ export function PortfoliosMarketsNewsCard() {
           {lines.map((n) => (
             <li key={n.link} className="text-[0.7rem] leading-snug">
               <a
-                className="portfolios-markets-news-card__link text-[var(--xf-text-200)] underline decoration-transparent underline-offset-2 transition-colors hover:text-[var(--xf-gain-green)] hover:decoration-current"
+                className="portfolios-markets-news-card__link text-[var(--xf-text-200)] underline decoration-transparent underline-offset-2 transition-colors hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] hover:decoration-current"
                 href={n.link}
                 rel="noopener noreferrer"
                 target="_blank"

@@ -223,6 +223,18 @@ function withTenantScope(
 }
 
 /**
+ * `admin_access_requests` reads: global admin + public duplicate-check pass **no** tenant hex so we must not
+ * use `withTenantScope` (that fail-closes when tenant is missing). Scoped reads pass a concrete tenant id.
+ */
+function accessRequestReadFilter(base: Record<string, unknown>, tenantHex?: string): Record<string, unknown> {
+  const t = typeof tenantHex === "string" ? tenantHex.trim() : "";
+  if (t) {
+    return withTenantScope(base, t);
+  }
+  return mongoTenantExactScope(base, undefined, "allowMissingTenantKey");
+}
+
+/**
  * `admin_scheduled_tasks` reads (and id-scoped writes): match the session tenant **or** legacy rows with no
  * `tenantId` (created before tenant was always persisted). Invalid session tenant → no matches.
  */
@@ -436,7 +448,7 @@ export async function listAccessRequests(options?: {
   statuses?: AccessRequestStatus[];
   tenantId?: string;
 }): Promise<AccessRequestListItem[]> {
-  const limit = options?.limit ?? 50;
+  const limit = options?.limit ?? 200;
   const db = await getDb();
 
   let statusQuery: Record<string, unknown> = {};
@@ -448,7 +460,7 @@ export async function listAccessRequests(options?: {
 
   const requests = await db
     .collection<AccessRequest>(collections.accessRequests)
-    .find(withTenantScope(statusQuery, options?.tenantId))
+    .find(accessRequestReadFilter(statusQuery, options?.tenantId))
     .sort({ requestedAt: -1 })
     .limit(limit)
     .toArray();
@@ -556,18 +568,12 @@ export async function getPendingAccessRequestByUserAndRole(input: {
   tenantId?: string;
 }): Promise<AccessRequest | null> {
   const db = await getDb();
-  return db
-    .collection<AccessRequest>(collections.accessRequests)
-    .findOne(
-      withTenantScope(
-        {
-          userId: input.userId,
-          requestedRole: input.requestedRole,
-          status: { $in: ACTIONABLE_ACCESS_REQUEST_STATUSES }
-        },
-        input.tenantId
-      )
-    );
+  const base: Record<string, unknown> = {
+    ...mongoUserIdQuery(input.userId),
+    requestedRole: input.requestedRole,
+    status: { $in: ACTIONABLE_ACCESS_REQUEST_STATUSES }
+  };
+  return db.collection<AccessRequest>(collections.accessRequests).findOne(accessRequestReadFilter(base, input.tenantId));
 }
 
 export async function getAccessRequestById(
@@ -580,7 +586,7 @@ export async function getAccessRequestById(
   const db = await getDb();
   return db
     .collection<AccessRequest>(collections.accessRequests)
-    .findOne(withTenantScope({ _id: new ObjectId(id) }, options?.tenantId));
+    .findOne(accessRequestReadFilter({ _id: new ObjectId(id) }, options?.tenantId));
 }
 
 export async function reviewAccessRequestById(input: {
@@ -596,7 +602,7 @@ export async function reviewAccessRequestById(input: {
   const reviewedAt = new Date();
   const _id = new ObjectId(input.requestId);
   await db.collection<AccessRequest>(collections.accessRequests).updateOne(
-    withTenantScope({ _id }, input.tenantId),
+    strictWriteTenantFilter({ _id }, input.tenantId),
     {
       $set: {
         status: input.status,
@@ -608,7 +614,7 @@ export async function reviewAccessRequestById(input: {
 
   return db
     .collection<AccessRequest>(collections.accessRequests)
-    .findOne(withTenantScope({ _id }, input.tenantId));
+    .findOne(accessRequestReadFilter({ _id }, input.tenantId));
 }
 
 export async function updateAccessRequestPlanById(input: {
@@ -623,7 +629,7 @@ export async function updateAccessRequestPlanById(input: {
   const db = await getDb();
   const _id = new ObjectId(input.requestId);
   await db.collection<AccessRequest>(collections.accessRequests).updateOne(
-    withTenantScope({ _id, status: { $in: ACTIONABLE_ACCESS_REQUEST_STATUSES } }, input.tenantId),
+    strictWriteTenantFilter({ _id, status: { $in: ACTIONABLE_ACCESS_REQUEST_STATUSES } }, input.tenantId),
     {
       $set: {
         requestedPlan: input.requestedPlan
@@ -633,7 +639,39 @@ export async function updateAccessRequestPlanById(input: {
 
   return db
     .collection<AccessRequest>(collections.accessRequests)
-    .findOne(withTenantScope({ _id }, input.tenantId));
+    .findOne(accessRequestReadFilter({ _id }, input.tenantId));
+}
+
+export async function updateAccessRequestTenantById(input: {
+  requestId: string;
+  /** Set to a 24-char tenant hex, or `null` to clear (platform default on approve). */
+  tenantIdHex: string | null;
+  tenantId?: string;
+}): Promise<AccessRequest | null> {
+  if (!ObjectId.isValid(input.requestId)) {
+    return null;
+  }
+  const db = await getDb();
+  const _id = new ObjectId(input.requestId);
+  const filter = strictWriteTenantFilter(
+    { _id, status: { $in: ACTIONABLE_ACCESS_REQUEST_STATUSES } },
+    input.tenantId
+  );
+  if (input.tenantIdHex === null) {
+    await db.collection<AccessRequest>(collections.accessRequests).updateOne(filter, {
+      $unset: { tenantId: "" }
+    });
+  } else {
+    const oid = parseTenantObjectId(input.tenantIdHex);
+    if (!oid) {
+      return null;
+    }
+    await db.collection<AccessRequest>(collections.accessRequests).updateOne(filter, {
+      $set: { tenantId: oid }
+    });
+  }
+
+  return db.collection<AccessRequest>(collections.accessRequests).findOne(accessRequestReadFilter({ _id }, input.tenantId));
 }
 
 export async function listApprovedUsers(
@@ -3849,7 +3887,7 @@ export async function deleteAccessRequest(
   const db = await getDb();
   const result = await db
     .collection<AccessRequest>(collections.accessRequests)
-    .deleteOne(withTenantScope({ _id: new ObjectId(id) }, options?.tenantId));
+    .deleteOne(strictWriteTenantFilter({ _id: new ObjectId(id) }, options?.tenantId));
   return result.deletedCount === 1;
 }
 

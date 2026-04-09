@@ -3,7 +3,11 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { USER_PRODUCT_DESCRIPTOR_LINE, USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
+import {
+    PORTFOLIOS_WORKSPACE_FALLBACK_TAGLINE,
+    USER_PRODUCT_DESCRIPTOR_LINE,
+    USER_PRODUCT_HOME_ARIA_LABEL
+} from "@/app/ui/product-brand-constants";
 
 describe("user surfaces: aTx Trusted Advisory brand", () => {
   it("exports stable product strings for chrome and marketing", () => {
@@ -11,6 +15,8 @@ describe("user surfaces: aTx Trusted Advisory brand", () => {
     expect(USER_PRODUCT_HOME_ARIA_LABEL).not.toMatch(/whitelabel/i);
     expect(USER_PRODUCT_DESCRIPTOR_LINE).toContain("aTx Trusted Advisory");
     expect(USER_PRODUCT_DESCRIPTOR_LINE).toContain("xChat");
+    expect(PORTFOLIOS_WORKSPACE_FALLBACK_TAGLINE).toMatch(/No Atoms Moved/i);
+    expect(PORTFOLIOS_WORKSPACE_FALLBACK_TAGLINE).toMatch(/Gains Earned/i);
   });
 
   it("xChat header brand shows Trusted Advisory and inline tagline, not xFinance wordmark", () => {

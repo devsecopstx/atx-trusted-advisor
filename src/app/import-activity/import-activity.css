@@ -1,5 +1,22 @@
 /* Import activities — deep + soft shells; tokens + semantic accents (no raw hex) */
 
+/*
+ * Brand kit `.xf-widget` uses a fixed dark blue gradient. In `data-xf-ui="soft"`, `--xf-text-*`
+ * switches to dark ink for light canvases — hero + main card were unreadable (ink on navy).
+ * Match portfolio alerts soft lift: pale surfaces + token borders.
+ */
+html[data-xf-ui="soft"] .import-activity-page .xf-widget {
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--xf-bg-900) 92%, var(--xf-surface-700)),
+    color-mix(in srgb, var(--xf-bg-900) 98%, var(--xf-surface-600))
+  );
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+  box-shadow:
+    0 1px 3px color-mix(in srgb, var(--xf-text-100) 7%, transparent),
+    0 1px 0 color-mix(in srgb, var(--xf-text-100) 5%, transparent);
+}
+
 .import-activity {
   /* Panel copy: deep shell may use 300/400; soft shell overrides to 200/300 (see html[data-xf-ui="soft"]) */
   --ia-secondary-text: var(--xf-text-300);

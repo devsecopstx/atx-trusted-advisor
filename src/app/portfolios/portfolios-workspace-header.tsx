@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
+import { PORTFOLIOS_WORKSPACE_FALLBACK_TAGLINE } from "@/app/ui/product-brand-constants";
+import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { tenantIdHexLastFourUserFacing } from "@/lib/mongo-object-id-hex";
 import { formatUsdWhole } from "@/lib/portfolio-overview-metrics";
@@ -40,6 +41,7 @@ export function PortfoliosWorkspaceHeader({
   workspaceTenant = null,
   workspaceTenantIdHex = null
 }: Props) {
+  const branding = useTenantShellBranding();
   const [indices, setIndices] = useState<PulseIndex[]>([]);
   const [market, setMarket] = useState<MarketDayContext>(() => resolveUsMarketDayContext(new Date()));
   const [loading, setLoading] = useState(true);
@@ -85,22 +87,48 @@ export function PortfoliosWorkspaceHeader({
   const tenantHex = workspaceTenantIdHex?.trim() ?? "";
   const tenantFacing = tenantHex ? tenantIdHexLastFourUserFacing(tenantHex) : "";
 
+  const displayName =
+    branding?.displayName?.trim() || workspaceTenant?.name?.trim() || "Workspace";
+  const subtitle = branding?.tagline?.trim() || PORTFOLIOS_WORKSPACE_FALLBACK_TAGLINE;
+  const logoUrl = branding?.logoUrl?.trim();
+  const headerTooltip = `${displayName}${branding?.tagline?.trim() ? ` — ${branding.tagline.trim()}` : ""}`;
+
   return (
     <header className="portfolios-workspace-header xchat-header">
       <div className="xchat-header-leading">
+        {/*
+         * Branding pulled from Tenant Settings → Branding (core_tenants / tenantPreferences).
+         * Changes apply immediately across the workspace (context + --xf-tenant-accent).
+         */}
         <div className="xchat-header-brand-stack">
           <Link
             aria-label="Portfolios workspace — home"
-            className="portfolios-workspace-header__brand xchat-header-brand"
+            className="portfolios-workspace-header__brand-row"
             href="/portfolios"
+            title={headerTooltip}
           >
-            <XchatHeaderBrand />
+            <div className="portfolios-workspace-header__brand-mark">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- data URLs + tenant CDNs
+                <img
+                  alt=""
+                  className="portfolios-workspace-header__brand-logo"
+                  height={40}
+                  src={logoUrl}
+                  width={40}
+                />
+              ) : (
+                <span aria-hidden className="portfolios-workspace-header__brand-fallback-atx">
+                  aTx
+                </span>
+              )}
+            </div>
+            <div className="portfolios-workspace-header__brand-text">
+              <span className="portfolios-workspace-header__brand-title">{displayName}</span>
+              <span className="portfolios-workspace-header__brand-subtitle">{subtitle}</span>
+            </div>
           </Link>
-          {workspaceTenant ? (
-            <span className="xchat-header-tenant-under-brand" title={tenantHex}>
-              <span className="xchat-header-tenant-under-brand__name">{workspaceTenant.name}</span>
-            </span>
-          ) : tenantFacing ? (
+          {!branding?.displayName?.trim() && !workspaceTenant?.name?.trim() && tenantFacing ? (
             <span
               className="xchat-header-tenant-under-brand xchat-header-tenant-under-brand--chip font-mono"
               title={`Tenant id ${tenantHex}`}

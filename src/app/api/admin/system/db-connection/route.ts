@@ -9,6 +9,10 @@ import {
     redactMongoUriCredentials,
     resolveEffectiveMongoDatabaseName
 } from "@/lib/env";
+import {
+    isDockerComposeLoopbackVsServiceSkew,
+    mongoFingerprintStrictEqual
+} from "@/lib/mongo-connection-compare";
 import { createAuditEvent } from "@/modules/audit/repository";
 
 const BACKEND_HEALTH_TIMEOUT_MS = 6000;
@@ -16,6 +20,8 @@ const BACKEND_HEALTH_TIMEOUT_MS = 6000;
 type BackendMongoSnapshot = {
   ok: boolean;
   fingerprint: string | null;
+  /** Resolved DB name from Spring health (when present). */
+  database?: string | null;
   mongoStatus?: string;
   env?: {
     MONGODB_URI_present?: boolean;
@@ -24,10 +30,6 @@ type BackendMongoSnapshot = {
   };
   error?: string;
 };
-
-function normalizeFingerprint(s: string): string {
-  return s.trim().toLowerCase().replace(/\/+$/, "");
-}
 
 function parseBackendHealthJson(json: unknown): BackendMongoSnapshot {
   if (!json || typeof json !== "object") {
@@ -45,6 +47,7 @@ function parseBackendHealthJson(json: unknown): BackendMongoSnapshot {
   return {
     ok: mongoStatus === "ok",
     fingerprint,
+    database,
     mongoStatus,
     env: env
       ? {
@@ -97,7 +100,16 @@ export async function GET() {
       origin: string | null;
       skippedReason?: string;
       snapshot?: BackendMongoSnapshot;
+      /** Exact string match on `host:port/database` label. */
       fingerprintMatch?: boolean;
+      /** Same DB name from Spring health vs Next `resolveEffectiveMongoDatabaseName()`. */
+      databaseNameMatch?: boolean;
+      /** Next uses loopback and Spring uses Compose service `mongodb` (or the reverse) — same DB in typical local dev. */
+      composeLoopbackVsServiceSkew?: boolean;
+      /** Ops-friendly: strict match, Compose loopback vs `mongodb`, or same DB + both ping (prod host-string variants). */
+      logicalMongoAlignment?: boolean;
+      /** Why the UI considers Mongo “aligned” when strict fingerprint differs. */
+      mongoAlignmentMode?: "strict" | "compose_skew" | "same_database";
     } = {
       checked: false,
       origin: backendOrigin ?? null
@@ -111,15 +123,34 @@ export async function GET() {
       };
     } else {
       const snapshot = await fetchBackendMongoSnapshot(backendOrigin);
-      const match =
-        snapshot.fingerprint !== null
-          ? normalizeFingerprint(snapshot.fingerprint) === normalizeFingerprint(label)
+      const fp = snapshot.fingerprint;
+      const strictMatch =
+        fp !== null && fp.length > 0 ? mongoFingerprintStrictEqual(fp, label) : undefined;
+      const dbMatch =
+        snapshot.database != null && snapshot.database.length > 0
+          ? snapshot.database === effectiveDatabaseName
           : undefined;
+      const skew =
+        fp != null && fp.length > 0 ? isDockerComposeLoopbackVsServiceSkew(label, fp) : false;
+      let mongoAlignmentMode: "strict" | "compose_skew" | "same_database" | undefined;
+      if (strictMatch === true) {
+        mongoAlignmentMode = "strict";
+      } else if (Boolean(dbMatch) && snapshot.ok && skew) {
+        mongoAlignmentMode = "compose_skew";
+      } else if (Boolean(dbMatch) && snapshot.ok && fp != null && fp.length > 0) {
+        /** Atlas / multi-host URIs: DB name matches and both sides reach Mongo; host:port label often still differs. */
+        mongoAlignmentMode = "same_database";
+      }
+      const logical = mongoAlignmentMode !== undefined;
       backendMongo = {
         checked: true,
         origin: backendOrigin,
         snapshot,
-        fingerprintMatch: match
+        fingerprintMatch: strictMatch,
+        databaseNameMatch: dbMatch,
+        composeLoopbackVsServiceSkew: skew,
+        logicalMongoAlignment: logical,
+        mongoAlignmentMode
       };
     }
 
@@ -137,7 +168,9 @@ export async function GET() {
         nextEnv,
         effectiveDatabaseName,
         backendChecked: backendMongo.checked,
-        backendFingerprintMatch: backendMongo.fingerprintMatch ?? null
+        backendFingerprintMatch: backendMongo.fingerprintMatch ?? null,
+        backendLogicalMongoAlignment: backendMongo.logicalMongoAlignment ?? null,
+        backendMongoAlignmentMode: backendMongo.mongoAlignmentMode ?? null
       }
     });
 

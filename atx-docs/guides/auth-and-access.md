@@ -31,13 +31,15 @@ Reference: `src/modules/surface-policy.ts` and `src/proxy.ts`.
 
 ## Guest registration MVP (X / Google)
 
-1. User submits **Register for access** on `/xchat` (`POST /api/access-requests/public`) with name, email, and plan. That **upserts `core_users` by normalized email** (lowercased, trimmed) and creates a **pending** access request for role `viewer`.
+1. User submits **Register for access** on `/xchat` (`POST /api/access-requests/public`) with name, email, and plan. That **upserts `core_users` by normalized email** (lowercased, trimmed) and creates a **pending** access request for platform role **`operator`** (default onboarding role for xOptions / product paths).
 2. A **global admin** approves the request in **Admin → Access requests**. Approval adds the login-eligible platform role and provisions default portfolio resources **on that same `core_users` document** (`userId` on the request).
 3. The user signs in with **X** or **Google**. The callback **always prefers the `core_users` row whose `email` matches the verified email from the provider** and **moves** `xAccount` / `googleAccount` onto that row if they were previously linked to another user (for example a placeholder X-only row). This keeps approval, subscription, and OAuth identity on one document per tenant’s user set.
 
 **Google email:** The Google callback requires a **verified** `email` + `email_verified` from Google userinfo; without that it redirects with `google_email_required`.
 
-**Portfolio tenant on approve:** Default portfolio provisioning for an approved applicant uses **that user’s default tenant membership** (or the platform default tenant `atxfinance-core`), **not** the approving admin’s `session.tenantId`. Using the admin’s tenant used to write `tenant_portfolio` / `portfolio_accounts` under a tenant the applicant’s OAuth session never queries, so the UI looked empty and created a second “Default Portfolio.”
+**Portfolio tenant on approve:** Default portfolio provisioning for an approved applicant uses **the tenant stored on the access request** when set (admin can assign it before approve — **`targetTenantId`** on **`PATCH`/`PUT` `/api/admin/access-requests/{id}`**), else **that user’s default tenant membership** (or the platform default tenant `atxfinance-core`), **not** the approving admin’s `session.tenantId`. Using the admin’s tenant used to write `tenant_portfolio` / `portfolio_accounts` under a tenant the applicant’s OAuth session never queries, so the UI looked empty and created a second “Default Portfolio.” When **`tenantId`** is on the row at approve time, the server also **`upsertTenantMembership`** for that user as **`member`** with **`isDefaultTenant: true`** for that tenant.
+
+**Admin tenant column:** **Admin → Access requests** can set or clear the request’s default-book tenant (**Save tenant**) so the right **`core_tenant_memberships`** / portfolio scope applies on approval. Empty string clears the assignment (platform default path on approve). **`targetTenantId`** must be a valid 24-char hex **`ObjectId`** when non-empty.
 
 **Names on re-login:** OAuth completion still runs **idempotent** default-book provisioning so the book exists, but repeat runs **must not** reset user-edited **portfolio / account / watchlist names** (or existing **cash** on the default account). Defaults apply only when inserting new rows or when a name was never set.
 

@@ -33,6 +33,13 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `PUT /api/admin/access-requests/:requestId`
 - `DELETE /api/admin/access-requests/:requestId`
 
+**`PATCH` / `PUT` body** (at least one field): **`status`** (`approved` \| `rejected`), **`requestedPlan`** (Basic / Premium / Premium+), and/or **`targetTenantId`**. **`targetTenantId`:** 24-char hex Mongo id for the applicant’s default-book tenant before approval, or **`""`** to clear. Updates persist on the **`admin_access_requests`** row; audit **`assigned_tenant`**. On **`approved`**, if the row has **`tenantId`**, provisioning and bootstrap use that tenant and **`upsertTenantMembership`** runs for **`member`** / default tenant; otherwise **`resolveTenantIdForApprovedUserPortfolio`** applies (see **`auth-and-access.md`**).
+
+## Admin tenants (register + create)
+
+- `GET /api/admin/tenants/register` — platform directory of **`core_tenants`** + tenant admins (**Next**; may BFF-proxy when **`ATXFINANCE_BACKEND_ORIGIN`** is set and proxying is active).
+- `POST /api/admin/tenants/create` — **`global_admin`** only; **Next-only** (not proxied). Same Mongo contract as **`npm run generate:tenant-spec`** + **`npm run seed:tenant -- --file tenant-specs/<slug>.yaml`** (no YAML on disk). Body: **`slug`**, **`name`**, optional **`initialAdminEmail`** / **`initialAdminXUserId`** / **`initialAdminPlatformRole`** / **`setAsDefaultSessionTenant`**, optional **`xfUiTheme`** (`light` \| `dark` \| `system`), optional **`xfBrandPalette`** (`default` \| `violet` \| `cyan` \| `amber` \| `rose` \| `emerald`), optional **`xfHeroIconUrl`** (https, loopback http, or `data:image/*;base64,…` per server validation). UI: **Admin → Create tenant** (`/admin/tenant-register/create`).
+
 ## Admin users
 
 - `GET /api/admin/users`

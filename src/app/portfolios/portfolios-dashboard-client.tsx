@@ -342,7 +342,9 @@ export function PortfoliosDashboardClient({ focusPortfolioId, initialRows }: Pro
                   <tr
                     key={row.id}
                     className={
-                      selectedId === row.id && !creating ? "bg-[var(--xf-bg-800)]/80" : undefined
+                      selectedId === row.id && !creating
+                        ? "bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,var(--xf-bg-900))]"
+                        : undefined
                     }
                   >
                     <td>
@@ -356,7 +358,15 @@ export function PortfoliosDashboardClient({ focusPortfolioId, initialRows }: Pro
                       </button>
                     </td>
                     <td className="font-medium text-[var(--xf-text-100)]">{row.name}</td>
-                    <td>{row.isDefault ? <span className="text-[var(--xf-gain-green)]">Yes</span> : "—"}</td>
+                    <td>
+                      {row.isDefault ? (
+                        <span className="font-medium text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]">
+                          Yes
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td className="text-[var(--xf-text-200)] text-sm">{row.kindLabel}</td>
                     <td className="text-right font-mono text-sm tabular-nums">{formatUsd2(row.valueUsd)}</td>
                     <td className="text-right">
@@ -418,7 +428,7 @@ export function PortfoliosDashboardClient({ focusPortfolioId, initialRows }: Pro
             <label className="flex items-center gap-2 text-sm text-[var(--xf-text-200)]">
               <input
                 checked={isDefault}
-                className="accent-[var(--xf-gain-green)]"
+                className="accent-[var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
                 type="checkbox"
                 onChange={(e) => setIsDefault(e.target.checked)}
               />
@@ -427,7 +437,7 @@ export function PortfoliosDashboardClient({ focusPortfolioId, initialRows }: Pro
             <div className="mt-2 flex flex-wrap gap-2">
               {creating ? (
                 <button
-                  className="rounded-md bg-[var(--xf-gain-green)] px-4 py-2 text-sm font-medium text-black disabled:opacity-50"
+                  className="rounded-md bg-[var(--xf-tenant-accent,var(--xf-xoptions-accent))] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   disabled={busy}
                   type="button"
                   onClick={saveCreate}
@@ -437,7 +447,7 @@ export function PortfoliosDashboardClient({ focusPortfolioId, initialRows }: Pro
               ) : (
                 <>
                   <button
-                    className="rounded-md bg-[var(--xf-gain-green)] px-4 py-2 text-sm font-medium text-black disabled:opacity-50"
+                    className="rounded-md bg-[var(--xf-tenant-accent,var(--xf-xoptions-accent))] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                     disabled={busy || !selectedId}
                     type="button"
                     onClick={savePatch}

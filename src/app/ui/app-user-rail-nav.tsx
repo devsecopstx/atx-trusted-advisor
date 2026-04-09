@@ -65,13 +65,22 @@ type RailDisclosureProps = {
   title: string;
   icon: ReactNode;
   defaultOpen?: boolean;
+  /** Merged onto the icon wrapper span (e.g. size modifiers). Keeps leaf SVG `className` stable for SSR/hydration. */
+  iconWrapClassName?: string;
   children: ReactNode;
 };
 
-export function RailDisclosure({ title, icon, defaultOpen = false, children }: RailDisclosureProps) {
+export function RailDisclosure({
+  title,
+  icon,
+  defaultOpen = false,
+  iconWrapClassName,
+  children
+}: RailDisclosureProps) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
   const btnId = useId();
+  const iconWrapCls = ["app-user-rail-disclosure__icon", iconWrapClassName].filter(Boolean).join(" ");
 
   return (
     <div className="app-user-rail-disclosure">
@@ -84,7 +93,7 @@ export function RailDisclosure({ title, icon, defaultOpen = false, children }: R
         onClick={() => setOpen((o) => !o)}
       >
         <span className="app-user-rail-disclosure__trigger-main">
-          <span className="app-user-rail-disclosure__icon" aria-hidden>
+          <span className={iconWrapCls} aria-hidden>
             {icon}
           </span>
           <span className="app-user-rail-disclosure__title">{title}</span>
@@ -158,7 +167,8 @@ export function AppUserResourcesRailSection({
     <section className="app-user-rail-section" aria-label="Resources">
       <RailDisclosure
         defaultOpen={railDisclosureDefaultOpen}
-        icon={<BookIcon className="app-user-rail-disclosure__glyph app-user-rail-disclosure__glyph--resources" />}
+        icon={<BookIcon className="app-user-rail-disclosure__glyph" />}
+        iconWrapClassName="app-user-rail-disclosure__icon--resources"
         title="Resources"
       >
         <nav className="app-user-rail-sublinks" aria-label="Resource links">

@@ -1,0 +1,177 @@
+import type { Db } from "mongodb";
+import { ObjectId } from "mongodb";
+
+import type { ParsedInitialTenantAdmin, ParsedTenantSpecV1 } from "@/lib/tenant-spec-v1-parse";
+
+export async function ensureTenantProvisionIndexes(db: Db): Promise<void> {
+  await Promise.all([
+    db.collection("core_tenants").createIndex({ slug: 1 }, { unique: true, name: "uniq_tenant_slug" }),
+    db.collection("core_tenants").createIndex(
+      { isDefault: 1 },
+      {
+        unique: true,
+        partialFilterExpression: { isDefault: true },
+        name: "uniq_default_tenant"
+      }
+    ),
+    db.collection("core_users").createIndex({ email: 1 }, { unique: true, name: "uniq_core_user_email" }),
+    db.collection("core_users").createIndex(
+      { "xAccount.xUserId": 1 },
+      { unique: true, sparse: true, name: "uniq_core_user_x_user_id" }
+    ),
+    db.collection("core_tenant_memberships").createIndex(
+      { userId: 1, tenantId: 1 },
+      { unique: true, name: "uniq_membership_user_tenant" }
+    )
+  ]);
+}
+
+async function provisionInitialTenantAdmin(
+  db: Db,
+  tenantId: ObjectId,
+  admin: ParsedInitialTenantAdmin,
+  now: Date
+): Promise<void> {
+  const users = db.collection("core_users");
+  const memberships = db.collection("core_tenant_memberships");
+  const email = admin.email;
+
+  const existing = await users.findOne({ email });
+  const platformRole = admin.platformRole;
+  let roles: string[];
+  if (!existing) {
+    roles = [platformRole];
+  } else {
+    const prev = Array.isArray(existing.roles) ? existing.roles.map(String) : [];
+    roles = [...new Set([...prev, platformRole])];
+  }
+
+  await users.updateOne(
+    { email },
+    {
+      $setOnInsert: {
+        email,
+        createdAt: now,
+        subscriptionPlan: "basic"
+      },
+      $set: {
+        roles,
+        status: "active",
+        updatedAt: now
+      }
+    },
+    { upsert: true }
+  );
+
+  const user = await users.findOne({ email });
+  if (!user?._id) {
+    throw new Error("Failed to upsert core user for initialTenantAdmin");
+  }
+
+  if (admin.xUserId) {
+    const holder = await users.findOne({
+      "xAccount.xUserId": admin.xUserId,
+      email: { $ne: email }
+    });
+    if (holder) {
+      throw new Error(
+        `[seed:tenant] initialTenantAdmin.xUserId "${admin.xUserId}" is already linked to ${holder.email}`
+      );
+    }
+    const xSet: Record<string, unknown> = {
+      "xAccount.xUserId": admin.xUserId,
+      "xAccount.username": user.xAccount?.username || admin.xUserId,
+      "xAccount.linkedAt": now,
+      updatedAt: now
+    };
+    if (user.xAccount?.displayName) {
+      xSet["xAccount.displayName"] = user.xAccount.displayName;
+    }
+    await users.updateOne({ _id: user._id }, { $set: xSet });
+  }
+
+  if (admin.setAsDefaultSessionTenant) {
+    await memberships.updateMany(
+      { userId: user._id, tenantId: { $ne: tenantId } },
+      { $set: { isDefaultTenant: false, updatedAt: now } }
+    );
+  }
+
+  await memberships.updateOne(
+    { userId: user._id, tenantId },
+    {
+      $setOnInsert: { createdAt: now },
+      $set: {
+        role: "tenant_admin",
+        isDefaultTenant: admin.setAsDefaultSessionTenant,
+        updatedAt: now
+      }
+    },
+    { upsert: true }
+  );
+}
+
+export type UpsertTenantFromSpecResult = {
+  tenantId: string;
+  slug: string;
+  name: string;
+  provisionedInitialAdmin: boolean;
+};
+
+/**
+ * Same Mongo writes as `scripts/seed-tenant-from-spec.mjs` — upserts `core_tenants` and optional initial admin.
+ */
+export async function upsertTenantFromParsedSpecV1(
+  db: Db,
+  parsed: ParsedTenantSpecV1
+): Promise<UpsertTenantFromSpecResult> {
+  const now = new Date();
+  await ensureTenantProvisionIndexes(db);
+
+  const $set: Record<string, unknown> = {
+    name: parsed.name,
+    isDefault: false,
+    updatedAt: now
+  };
+  if (parsed.workspaceLimits) {
+    $set.workspaceLimits = parsed.workspaceLimits;
+  }
+  if (parsed.tenantPreferencesBranding) {
+    for (const [k, v] of Object.entries(parsed.tenantPreferencesBranding)) {
+      $set[`tenantPreferences.${k}`] = v;
+    }
+  }
+  if (parsed.tenantXfUiTheme) {
+    $set["tenantPreferences.xf_ui_theme"] = parsed.tenantXfUiTheme;
+  }
+
+  await db.collection("core_tenants").updateOne(
+    { slug: parsed.slug },
+    {
+      $set,
+      $setOnInsert: {
+        slug: parsed.slug,
+        createdAt: now
+      }
+    },
+    { upsert: true }
+  );
+
+  const tenant = await db.collection("core_tenants").findOne({ slug: parsed.slug });
+  if (!tenant?._id) {
+    throw new Error("Upsert failed — tenant row missing after update");
+  }
+
+  const tenantId = tenant._id as ObjectId;
+
+  if (parsed.initialTenantAdmin) {
+    await provisionInitialTenantAdmin(db, tenantId, parsed.initialTenantAdmin, now);
+  }
+
+  return {
+    tenantId: tenantId.toHexString(),
+    slug: parsed.slug,
+    name: parsed.name,
+    provisionedInitialAdmin: Boolean(parsed.initialTenantAdmin)
+  };
+}

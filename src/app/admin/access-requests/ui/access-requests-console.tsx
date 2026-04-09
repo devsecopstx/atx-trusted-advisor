@@ -14,6 +14,8 @@ type AccessRequestStatus = "new" | "triaged" | "pending" | "approved" | "rejecte
 
 type AccessRequest = {
   _id?: string;
+  /** Target tenant for default book / membership when set; omit for platform default on approve. */
+  tenantId?: string;
   userId: string;
   requestedRole: "global_admin" | "advisor" | "operator" | "viewer";
   requestedPlan: SubscriptionPlan;
@@ -54,6 +56,12 @@ type AccessRequest = {
 };
 
 type AccessRequestFilter = AccessRequestStatus | "all" | "open";
+
+type TenantRegisterRow = {
+  tenantId: string;
+  slug: string;
+  name: string;
+};
 
 const STATUS_STEPS: AccessRequestStatus[] = ["new", "triaged", "pending", "approved"];
 const TERMINAL_STATUSES: AccessRequestStatus[] = ["approved", "rejected", "expired"];
@@ -136,6 +144,8 @@ export function AccessRequestsConsole() {
   const [statusFilter, setStatusFilter] = useState<AccessRequestFilter>("open");
   const [emailEdits, setEmailEdits] = useState<Record<string, string>>({});
   const [planEdits, setPlanEdits] = useState<Record<string, AccessRequest["requestedPlan"]>>({});
+  const [tenantEdits, setTenantEdits] = useState<Record<string, string>>({});
+  const [tenants, setTenants] = useState<TenantRegisterRow[]>([]);
 
   const refreshAccessRequests = useCallback(async () => {
     setStatus("Loading requests...");
@@ -158,6 +168,14 @@ export function AccessRequestsConsole() {
         for (const item of payload.data) {
           if (!item._id) continue;
           next[item._id] = previous[item._id] ?? item.requestedPlan ?? "basic";
+        }
+        return next;
+      });
+      setTenantEdits((previous) => {
+        const next = { ...previous };
+        for (const item of payload.data) {
+          if (!item._id) continue;
+          next[item._id] = previous[item._id] ?? item.tenantId ?? "";
         }
         return next;
       });
@@ -201,6 +219,19 @@ export function AccessRequestsConsole() {
     const timer = window.setTimeout(() => void refreshAccessRequests(), 0);
     return () => window.clearTimeout(timer);
   }, [refreshAccessRequests]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const payload = await parseJson<{ data: TenantRegisterRow[] }>(
+          await fetch("/api/admin/tenants/register", { cache: "no-store" })
+        );
+        setTenants(payload.data ?? []);
+      } catch {
+        setTenants([]);
+      }
+    })();
+  }, []);
 
   async function updateUserEmail(userId: string) {
     const email = emailEdits[userId]?.trim().toLowerCase() ?? "";
@@ -246,6 +277,23 @@ export function AccessRequestsConsole() {
       await refreshAccessRequests();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to update plan");
+    }
+  }
+
+  async function updateRequestTenant(requestId: string) {
+    setStatus("Updating tenant...");
+    try {
+      await parseJson(
+        await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
+          method: "PUT",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetTenantId: tenantEdits[requestId] ?? "" })
+        })
+      );
+      await refreshAccessRequests();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update tenant");
     }
   }
 
@@ -318,6 +366,7 @@ export function AccessRequestsConsole() {
                 <th>User</th>
                 <th>Access / sign-in</th>
                 <th>Role / Plan</th>
+                <th>Tenant</th>
                 <th>Status</th>
                 <th>SLA</th>
                 <th>Reason</th>
@@ -391,6 +440,38 @@ export function AccessRequestsConsole() {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td>
+                      {item._id ? (
+                        <div className="stack-gap" style={{ maxWidth: "14rem" }}>
+                          <select
+                            disabled={!isActionable(item.status)}
+                            title="Default book / membership tenant when you approve. Empty = platform default."
+                            value={tenantEdits[item._id] ?? item.tenantId ?? ""}
+                            onChange={(e) => {
+                              setTenantEdits((p) => ({ ...p, [item._id as string]: e.target.value }));
+                            }}
+                          >
+                            <option value="">Platform default (on approve)</option>
+                            {tenants.map((t) => (
+                              <option key={t.tenantId} value={t.tenantId}>
+                                {t.name || t.slug} ({t.slug})
+                              </option>
+                            ))}
+                          </select>
+                          {isActionable(item.status) ? (
+                            <button
+                              className="tiny-button"
+                              onClick={() => void updateRequestTenant(item._id as string)}
+                              type="button"
+                            >
+                              Save tenant
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="value-neutral">—</span>
+                      )}
                     </td>
                     <td>
                       <StatusStepIndicator current={item.status} />

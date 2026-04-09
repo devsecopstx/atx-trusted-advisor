@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { RefreshIcon } from "@/app/admin/ui/crud-icons";
@@ -69,9 +70,14 @@ export function TenantRegisterConsole() {
             Read-only: Mongo tenant row, stored workspace limits / tenant preferences, and tenant_admin directory.
           </p>
         </div>
-        <button type="button" className="cta cta-secondary" onClick={() => void load()}>
-          <RefreshIcon className="crud-icon" /> Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link className="cta text-sm" href="/admin/tenant-register/create">
+            Create tenant
+          </Link>
+          <button type="button" className="cta cta-secondary" onClick={() => void load()}>
+            <RefreshIcon className="crud-icon" /> Refresh
+          </button>
+        </div>
       </div>
       <p className="status-text text-sm" role="status">
         {status}

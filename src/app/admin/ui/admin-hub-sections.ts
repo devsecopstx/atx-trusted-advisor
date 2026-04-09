@@ -141,6 +141,12 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
           "Directory of every core tenant (id, slug, name, platform default), stored workspaceLimits and tenantPreferences, and tenant_admin users (email, display name, default session tenant)."
       },
       {
+        href: "/admin/tenant-register/create",
+        title: "Create tenant",
+        description:
+          "Upsert a tenant from the same fields as generate:tenant-spec + seed:tenant (no YAML file); optional initial tenant admin and xf_ui_theme."
+      },
+      {
         href: "/admin/tenant-preferences/workspace-limits",
         title: "Workspace limits",
         description:

@@ -63,9 +63,14 @@ export function BackofficeMongoConsole() {
       origin: string | null;
       skippedReason?: string;
       fingerprintMatch?: boolean;
+      databaseNameMatch?: boolean;
+      composeLoopbackVsServiceSkew?: boolean;
+      logicalMongoAlignment?: boolean;
+      mongoAlignmentMode?: "strict" | "compose_skew" | "same_database";
       snapshot?: {
         ok: boolean;
         fingerprint: string | null;
+        database?: string | null;
         mongoStatus?: string;
         env?: {
           MONGODB_URI_present?: boolean;
@@ -290,20 +295,66 @@ export function BackofficeMongoConsole() {
                 ) : null}
                 {dbConnectionInfo.backendMongo.checked && dbConnectionInfo.backendMongo.snapshot ? (
                   <div className="space-y-2">
-                    {typeof dbConnectionInfo.backendMongo.fingerprintMatch === "boolean" ? (
-                      <p
-                        className={
-                          dbConnectionInfo.backendMongo.fingerprintMatch
-                            ? "text-sm text-[var(--xf-gain-green)]"
-                            : "text-sm text-amber-400"
-                        }
-                      >
-                        Fingerprint vs Next:{" "}
-                        <strong>{dbConnectionInfo.backendMongo.fingerprintMatch ? "match" : "mismatch"}</strong>
-                      </p>
+                    {typeof dbConnectionInfo.backendMongo.logicalMongoAlignment === "boolean" ? (
+                      <div className="space-y-1">
+                        <p
+                          className={
+                            dbConnectionInfo.backendMongo.logicalMongoAlignment
+                              ? "text-sm text-[var(--xf-gain-green)]"
+                              : "text-sm text-amber-400"
+                          }
+                        >
+                          Mongo vs Next:{" "}
+                          <strong>
+                            {dbConnectionInfo.backendMongo.logicalMongoAlignment
+                              ? "aligned"
+                              : "check required"}
+                          </strong>
+                          {dbConnectionInfo.backendMongo.logicalMongoAlignment &&
+                          !dbConnectionInfo.backendMongo.fingerprintMatch ? (
+                            <span className="text-[var(--xf-text-muted)] font-normal">
+                              {" "}
+                              (strict host:port/db string still differs — see below)
+                            </span>
+                          ) : null}
+                        </p>
+                        {dbConnectionInfo.backendMongo.logicalMongoAlignment &&
+                        dbConnectionInfo.backendMongo.mongoAlignmentMode === "compose_skew" &&
+                        !dbConnectionInfo.backendMongo.fingerprintMatch ? (
+                          <p className="muted-copy text-xs">
+                            Typical local Compose: Next uses <code>127.0.0.1</code> / <code>localhost</code>; Spring in
+                            Docker uses the <code>mongodb</code> service name — same DB when port <code>27017</code> is
+                            published to the host.
+                          </p>
+                        ) : null}
+                        {dbConnectionInfo.backendMongo.logicalMongoAlignment &&
+                        dbConnectionInfo.backendMongo.mongoAlignmentMode === "same_database" &&
+                        !dbConnectionInfo.backendMongo.fingerprintMatch ? (
+                          <p className="muted-copy text-xs">
+                            <strong>Production / Atlas:</strong> database names match and both sides ping Mongo, but the
+                            host part of the label differs (e.g. <code>mongodb+srv</code> hostname vs replica host list).
+                            Mount the same <code>MONGODB_URI</code> (or B64) secret on both Cloud Run services; compare{" "}
+                            <code>gcloud run services describe … --format=yaml</code> env blocks. Identical secrets with
+                            a strict fingerprint mismatch are usually cosmetic; different secrets need fixing.
+                          </p>
+                        ) : null}
+                        {!dbConnectionInfo.backendMongo.logicalMongoAlignment &&
+                        dbConnectionInfo.backendMongo.databaseNameMatch === false ? (
+                          <p className="muted-copy text-xs">
+                            Database name on Spring health does not match Next effective DB — point both URIs at the
+                            same database.
+                          </p>
+                        ) : null}
+                      </div>
                     ) : (
                       <p className="muted-copy text-sm">Could not compare fingerprints (backend did not report host/db).</p>
                     )}
+                    {typeof dbConnectionInfo.backendMongo.fingerprintMatch === "boolean" ? (
+                      <p className="muted-copy text-xs">
+                        Strict fingerprint (host:port/db string):{" "}
+                        <strong>{dbConnectionInfo.backendMongo.fingerprintMatch ? "match" : "mismatch"}</strong>
+                      </p>
+                    ) : null}
                     <code className="block p-2 bg-[var(--xf-surface-900)] rounded border text-sm font-mono break-all">
                       {dbConnectionInfo.backendMongo.snapshot.fingerprint ?? "(no host/db from /api/backend/health)"}
                     </code>

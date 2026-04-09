@@ -1,13 +1,14 @@
 import { PwaBootstrapClient } from "@/app/ui/pwa-bootstrap-client";
+import { TenantBrandingProvider } from "@/app/ui/tenant-branding-context";
 import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
 import { getSessionUser } from "@/lib/auth";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
-import { getTenantXfUiThemePreferenceForHex } from "@/modules/identity/repository";
+import { getTenantShellBrandingForHex, getTenantXfUiThemePreferenceForHex } from "@/modules/identity/repository";
 import { ObjectId } from "mongodb";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import "../../atx-docs/design-system/atxfinance-brand-kit.css";
 import "./globals.css";
 
@@ -48,12 +49,24 @@ type RootLayoutProps = {
 export default async function RootLayout({ children }: RootLayoutProps) {
   const session = await getSessionUser();
   let tenantDefaultTheme: XfUiThemePreference | undefined;
+  let tenantShellBranding: Awaited<ReturnType<typeof getTenantShellBrandingForHex>> = null;
   if (session?.tenantId && ObjectId.isValid(session.tenantId)) {
     tenantDefaultTheme = await getTenantXfUiThemePreferenceForHex(session.tenantId);
+    tenantShellBranding = await getTenantShellBrandingForHex(session.tenantId);
   }
 
+  const tenantAccentTrimmed = tenantShellBranding?.accentColor?.trim();
+  const tenantAccentCssVar: CSSProperties | undefined = tenantAccentTrimmed
+    ? { ["--xf-tenant-accent" as string]: tenantAccentTrimmed }
+    : undefined;
+
   return (
-    <html className={`dark ${inter.variable}`} lang="en" suppressHydrationWarning>
+    <html
+      className={`dark ${inter.variable}`}
+      lang="en"
+      style={tenantAccentCssVar}
+      suppressHydrationWarning
+    >
       <head>
         <meta content="yes" name="apple-mobile-web-app-capable" />
         <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style" />
@@ -62,9 +75,11 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <link href="/pwa/icon-192.png" rel="apple-touch-icon" />
       </head>
       <body>
-        <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} />
-        <PwaBootstrapClient />
-        {children}
+        <TenantBrandingProvider value={tenantShellBranding}>
+          <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} />
+          <PwaBootstrapClient />
+          {children}
+        </TenantBrandingProvider>
       </body>
     </html>
   );

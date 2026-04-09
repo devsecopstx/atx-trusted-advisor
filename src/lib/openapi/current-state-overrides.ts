@@ -599,6 +599,27 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
+  "POST /api/admin/tenants/create": {
+    summary: "Create or update tenant (spec-equivalent, no YAML file)",
+    description:
+      "global_admin only. Same Mongo contract as `npm run generate:tenant-spec` + `npm run seed:tenant` — upserts `core_tenants` by slug and optionally provisions `initialTenantAdmin` on `core_users` / `core_tenant_memberships`. **Next-only** (not BFF-proxied to Spring).",
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: refSchema("AdminTenantCreateRequest")
+        }
+      }
+    },
+    responses: {
+      "200": jsonResponse("Tenant upserted.", "TenantCreateResponseEnvelope"),
+      "400": jsonResponse("Invalid payload or spec validation error.", "ValidationErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "409": jsonResponse("Conflict (e.g. X user id already linked to another email).", "ConflictErrorResponse"),
+      "500": jsonResponse("Upsert or provisioning failed.", "ErrorResponse")
+    }
+  },
   "GET /api/admin/users": {
     summary: "List users",
     parameters: [
@@ -1720,6 +1741,72 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["data"],
     properties: {
       data: { type: "array", items: refSchema("TenantRegisterRow") }
+    }
+  },
+  AdminTenantCreateRequest: {
+    type: "object",
+    required: ["slug", "name"],
+    properties: {
+      slug: { type: "string", description: "Tenant slug (lowercase, hyphens)." },
+      name: { type: "string", description: "Display name." },
+      initialAdminEmail: { type: "string", description: "When set, provisions initialTenantAdmin." },
+      initialAdminXUserId: { type: "string", description: "Optional X REST user id or handle." },
+      initialAdminPlatformRole: {
+        type: "string",
+        enum: ["advisor", "operator", "viewer"],
+        description: "Platform role added to the user when initial admin is set (default operator in YAML)."
+      },
+      setAsDefaultSessionTenant: {
+        type: "boolean",
+        description: "When initial admin is set, whether membership is default session tenant (default true)."
+      },
+      xfUiTheme: { type: "string", enum: ["light", "dark", "system"], description: "tenantPreferences.xf_ui_theme." },
+      xfBrandPalette: {
+        type: "string",
+        enum: ["default", "violet", "cyan", "amber", "rose", "emerald"],
+        description: "tenantPreferences.xf_brand_palette — accent preset for tenant-branded shells."
+      },
+      xfHeroIconUrl: {
+        type: "string",
+        maxLength: 450000,
+        description:
+          "tenantPreferences.xf_hero_icon_url — https URL, http for localhost/127.0.0.1 only, or data:image/*;base64,… (size-capped)."
+      },
+      xfAccentColor: {
+        type: "string",
+        maxLength: 32,
+        description:
+          "tenantPreferences.xf_accent_color — CSS hex #rgb or #rrggbb (default #8b5cf6 when omitted)."
+      },
+      xfTenantLogoUrl: {
+        type: "string",
+        maxLength: 3_000_000,
+        description:
+          "tenantPreferences.xf_tenant_logo_url — https, localhost http, or data:image/*;base64,… (larger cap than hero)."
+      },
+      xfTenantTagline: {
+        type: "string",
+        maxLength: 60,
+        description: "tenantPreferences.xf_tenant_tagline — subtitle under tenant name in product shell."
+      }
+    }
+  },
+  TenantCreateResultData: {
+    type: "object",
+    required: ["tenantId", "slug", "name", "provisionedInitialAdmin", "message"],
+    properties: {
+      tenantId: { type: "string" },
+      slug: { type: "string" },
+      name: { type: "string" },
+      provisionedInitialAdmin: { type: "boolean" },
+      message: { type: "string" }
+    }
+  },
+  TenantCreateResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: refSchema("TenantCreateResultData")
     }
   },
   CoreUserTenantMembership: {

@@ -20,12 +20,12 @@ function PortfoliosPortfolioCardSkeleton() {
   return (
     <div
       className="portfolios-portfolio-cards__card w-full rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_12%,transparent)] p-3"
-      style={{ minHeight: "7.5rem", background: "color-mix(in srgb, var(--xf-text-100) 5%, transparent)" }}
+      style={{ minHeight: "8.75rem", background: "color-mix(in srgb, var(--xf-text-100) 5%, transparent)" }}
     />
   );
 }
 
-const PORTFOLIO_CARD_ROW_EST_PX = 132;
+const PORTFOLIO_CARD_ROW_EST_PX = 148;
 
 type Props = {
   initialRows: WorkspacePortfolioRow[];

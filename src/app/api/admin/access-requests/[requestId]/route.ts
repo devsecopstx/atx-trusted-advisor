@@ -13,7 +13,8 @@ import {
     getAccessRequestById,
     provisionDefaultPortfolioForUser,
     reviewAccessRequestById,
-    updateAccessRequestPlanById
+    updateAccessRequestPlanById,
+    updateAccessRequestTenantById
 } from "@/modules/core-admin/repository";
 import {
     ACTIONABLE_ACCESS_REQUEST_STATUSES,
@@ -23,15 +24,24 @@ import {
     addRoleToCoreUser,
     getCoreUserById,
     resolveTenantIdForApprovedUserPortfolio,
-    updateCoreUserSubscriptionPlan
+    updateCoreUserSubscriptionPlan,
+    upsertTenantMembership
 } from "@/modules/identity/repository";
 
-const reviewAccessRequestSchema = z.object({
-  status: z.enum(["approved", "rejected"]).optional(),
-  requestedPlan: z.string().trim().optional()
-}).refine((value) => value.status !== undefined || value.requestedPlan !== undefined, {
-  message: "Provide status or requestedPlan."
-});
+const reviewAccessRequestSchema = z
+  .object({
+    status: z.enum(["approved", "rejected"]).optional(),
+    requestedPlan: z.string().trim().optional(),
+    /** 24-char tenant id, or empty string to clear (platform default on approve). */
+    targetTenantId: z.string().optional()
+  })
+  .refine(
+    (value) =>
+      value.status !== undefined ||
+      value.requestedPlan !== undefined ||
+      value.targetTenantId !== undefined,
+    { message: "Provide status, requestedPlan, and/or targetTenantId." }
+  );
 
 type RouteContext = {
   params: Promise<{
@@ -111,7 +121,7 @@ async function handleUpdate(request: Request, context: RouteContext) {
     );
   }
 
-  const existing = await getAccessRequestById(requestId, {
+  let existing = await getAccessRequestById(requestId, {
     tenantId: undefined
   });
   if (!existing?._id) {
@@ -134,22 +144,58 @@ async function handleUpdate(request: Request, context: RouteContext) {
     if (!updatedRequest) {
       return NextResponse.json({ error: "Access request not found" }, { status: 404 });
     }
-    if (!parsed.data.status) {
-      await createAuditEvent({
-        entityType: "access_request",
-        entityId: requestId,
-        action: "updated_plan",
-        actor: {
-          userId: session.userId,
-          email: session.email,
-          username: session.username
-        },
-        details: {
-          requestedPlan
-        }
-      });
-      return NextResponse.json({ data: serializeAccessRequest(updatedRequest) });
+    await createAuditEvent({
+      entityType: "access_request",
+      entityId: requestId,
+      action: "updated_plan",
+      actor: {
+        userId: session.userId,
+        email: session.email,
+        username: session.username
+      },
+      details: {
+        requestedPlan
+      }
+    });
+    const refetched = await getAccessRequestById(requestId, { tenantId: undefined });
+    if (refetched) {
+      existing = refetched;
     }
+  }
+
+  if (parsed.data.targetTenantId !== undefined) {
+    const raw = parsed.data.targetTenantId.trim();
+    const tenantIdHex = raw === "" ? null : raw;
+    if (tenantIdHex !== null && !ObjectId.isValid(tenantIdHex)) {
+      return NextResponse.json({ error: "Invalid targetTenantId" }, { status: 400 });
+    }
+    const updatedTenantRow = await updateAccessRequestTenantById({
+      requestId,
+      tenantIdHex,
+      tenantId: undefined
+    });
+    if (!updatedTenantRow) {
+      return NextResponse.json({ error: "Access request not found" }, { status: 404 });
+    }
+    await createAuditEvent({
+      entityType: "access_request",
+      entityId: requestId,
+      action: "assigned_tenant",
+      actor: {
+        userId: session.userId,
+        email: session.email,
+        username: session.username
+      },
+      details: { targetTenantId: tenantIdHex }
+    });
+    const refetchedTenant = await getAccessRequestById(requestId, { tenantId: undefined });
+    if (refetchedTenant) {
+      existing = refetchedTenant;
+    }
+  }
+
+  if (!parsed.data.status) {
+    return NextResponse.json({ data: serializeAccessRequest(existing) });
   }
 
   const effectivePlan = normalizeSubscriptionPlan(
@@ -176,7 +222,17 @@ async function handleUpdate(request: Request, context: RouteContext) {
       userId,
       subscriptionPlan: effectivePlan
     });
-    applicantPortfolioTenantId = await resolveTenantIdForApprovedUserPortfolio(existing.userId);
+    applicantPortfolioTenantId = existing.tenantId
+      ? existing.tenantId.toHexString()
+      : await resolveTenantIdForApprovedUserPortfolio(existing.userId);
+    if (existing.tenantId) {
+      await upsertTenantMembership({
+        userId,
+        tenantId: existing.tenantId,
+        role: "member",
+        isDefaultTenant: true
+      });
+    }
     try {
       /** Default book for new users: one portfolio, default paper account ($25k), watchlist with TSLA (see `provisionDefaultPortfolioForUser`). Runs before review is persisted so approve fails closed if provision errors. */
       await provisionDefaultPortfolioForUser({
@@ -192,10 +248,6 @@ async function handleUpdate(request: Request, context: RouteContext) {
         { status: 500 }
       );
     }
-  }
-
-  if (!parsed.data.status) {
-    return NextResponse.json({ error: "Missing review status" }, { status: 400 });
   }
 
   const reviewed = await reviewAccessRequestById({

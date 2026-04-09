@@ -119,4 +119,33 @@ describe("tenant-spec-schema", () => {
     });
     expect(r.tenantXfUiTheme).toBe("light");
   });
+
+  it("parseTenantSpecV1Document merges xf_brand_palette and xf_hero_icon_url into branding", () => {
+    const r = parseTenantSpecV1Document({
+      version: 1,
+      tenant: {
+        slug: "t-brand",
+        name: "T Brand",
+        tenantPreferences: {
+          xf_brand_palette: "violet",
+          xf_hero_icon_url: "https://cdn.example.com/logo.png"
+        }
+      }
+    });
+    expect(r.tenantPreferencesBranding?.xf_brand_palette).toBe("violet");
+    expect(r.tenantPreferencesBranding?.xf_hero_icon_url).toBe("https://cdn.example.com/logo.png");
+  });
+
+  it("parseTenantSpecV1Document rejects invalid xf_brand_palette", () => {
+    expect(() =>
+      parseTenantSpecV1Document({
+        version: 1,
+        tenant: {
+          slug: "t-bad",
+          name: "X",
+          tenantPreferences: { xf_brand_palette: "neon" }
+        }
+      })
+    ).toThrow(/xf_brand_palette/);
+  });
 });

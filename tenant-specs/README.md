@@ -46,8 +46,15 @@ Optional block **`tenant.initialTenantAdmin`** (object):
 | **`setAsDefaultSessionTenant`** | no | Default **`true`**. When true, other memberships for this user get **`isDefaultTenant: false`** so the new tenant becomes the session default. Set **`false`** only if the user should keep another default (they need another default membership or they may not resolve a session tenant). |
 
 Optional **`tenant.tenantPreferences`**:
-- **`xf_ui_theme`**: **`light`** | **`dark`** | **`system`** — default shell density for users who have not chosen a theme in the UI yet (`light` → soft, `dark` → deep, `system` → follows OS).
+- **`xf_ui_theme`**: **`light`** | **`dark`** | **`system`** — default shell density for users who have not chosen a theme in the UI yet (`light` → soft, `dark` → deep, `system` → follows OS). **`XfThemeBootClient`** reapplies when the OS scheme changes while preference is **`system`**.
+- **`xf_accent_color`**: CSS hex **`#rgb`** / **`#rrggbb`** — drives **`--xf-tenant-accent`** (workspace sidebar active states, xOptions row, checkboxes, tenant header border). Default when omitted: **`#8b5cf6`** (same token family as **`--xf-xoptions-accent`**).
+- **`xf_tenant_logo_url`**: product header + **workspace sidebar** logo — **`https://…`**, dev **`http://localhost`** / **`127.0.0.1`**, or **`data:image/…;base64,…`** (larger cap than hero; see `src/lib/tenant-logo-url.ts`).
+- **`xf_tenant_tagline`**: optional subtitle under tenant **display name** in sidebar + header (max 60 chars).
 - **`xchat_brandname`**, **`xstrategybuilder_brandname`**: strings, trimmed, max 80 chars.
+- **`xf_brand_palette`**: **`default`** | **`violet`** | **`cyan`** | **`amber`** | **`rose`** | **`emerald`** — accent preset for tenant shells (see `src/lib/tenant-branding-palette.ts`).
+- **`xf_hero_icon_url`**: hero / marketing icon — **`https://…`**, **`http://localhost`** / **`127.0.0.1`** only for dev, or **`data:image/png|jpeg|webp|gif|svg+xml;base64,…`** (length cap ~450k chars; prefer hosting for large assets).
+
+**Runtime:** `getTenantShellBrandingForHex` loads **`core_tenants.name`** + the fields above; **`TenantBrandingProvider`** (root layout) feeds **`WorkspaceProductSidebar`** and the app-user header.
 
 Merged with dotted Mongo paths so other keys (e.g. admin-set flags) are not wiped.
 
@@ -57,7 +64,7 @@ Idempotent: safe to re-run; **`isDefault`** on the tenant row is always forced *
 
 - **Roles:** **`operator`** (default) or **`advisor`** + **`tenant_admin` membership** — not **`global_admin`** unless `/admin` access is intended.
 - **Auth:** Real **email** + optional **`xUserId`** (API id or handle) in YAML; fully seeds **`xAccount`** when set. X OAuth resolves by API **`id`**, then by **handle** on stored `xAccount` fields. **Google:** same email row; OAuth links `googleAccount` on first sign-in — **`xUserId` not required** for Google-only admins.
-- **Branding:** Display aliases only; no per-tenant regulatory claims. **v1:** names in `tenantPreferences`; logos/colors later.
+- **Branding:** Display aliases + optional **`xf_brand_palette`** / **`xf_hero_icon_url`** in `tenantPreferences`; product surfaces consume when wired. No per-tenant regulatory claims in stored copy.
 - **Provisioning:** **CLI + YAML** for v1.
 
 ## Rules

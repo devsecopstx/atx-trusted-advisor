@@ -15,8 +15,9 @@ import {
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
-import { LucideHouseIcon, LucideMonitorIcon, LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
+import { LucideMonitorIcon, LucideSquarePenIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
+import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
@@ -232,6 +233,47 @@ function RouteSyncedDetails({
   );
 }
 
+/**
+ * Workspace rail tenant mark — uses `useTenantShellBranding()` (core_tenants name + tenantPreferences).
+ * Admins set these via New Tenant / tenant preferences; change anytime in Tenant Settings (workspace limits).
+ */
+function WorkspaceSidebarTenantChrome({ variant }: { variant: "expanded" | "compact" }) {
+  const branding = useTenantShellBranding();
+  const displayName = branding?.displayName?.trim() || "Workspace";
+  const logoUrl = branding?.logoUrl?.trim();
+  const tagline = branding?.tagline?.trim();
+  const tooltip = tagline ? `${displayName} — ${tagline}` : displayName;
+
+  const logoInner = logoUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element -- data URLs + tenant CDNs
+    <img alt="" className="portfolios-workspace-sidebar__tenant-logo-img" src={logoUrl} />
+  ) : (
+    <span aria-hidden className="portfolios-workspace-sidebar__tenant-fallback-atx">
+      aTx
+    </span>
+  );
+
+  if (variant === "compact") {
+    return (
+      <div className="portfolios-workspace-sidebar__tenant-compact">
+        <div className="portfolios-workspace-sidebar__tenant-logo-wrap" title={tooltip}>
+          {logoInner}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <header className="portfolios-workspace-sidebar__tenant-brand" title={tooltip}>
+      <div className="portfolios-workspace-sidebar__tenant-logo-wrap">{logoInner}</div>
+      <div className="portfolios-workspace-sidebar__tenant-text">
+        <span className="portfolios-workspace-sidebar__tenant-title">{displayName}</span>
+        {tagline ? <span className="portfolios-workspace-sidebar__tenant-tagline">{tagline}</span> : null}
+      </div>
+    </header>
+  );
+}
+
 function SidebarAccordionSummary({
   label,
   icon
@@ -429,7 +471,7 @@ export function WorkspaceProductSidebar({
       href: "/xoptions",
       label: "xOptions",
       isActive: pathname.startsWith("/xoptions"),
-      icon: <LucideHouseIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
+      icon: <XoptionsRocketIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
     },
     {
       key: "resources",
@@ -454,6 +496,7 @@ export function WorkspaceProductSidebar({
 
   const expandedNav = (
     <nav className="portfolios-workspace-sidebar" aria-label="Workspace">
+      <WorkspaceSidebarTenantChrome variant="expanded" />
       <RouteSyncedDetails
         className="portfolios-workspace-sidebar__accordion"
         routeMatch={portfolioRouteMatch}
@@ -479,7 +522,7 @@ export function WorkspaceProductSidebar({
       <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/xoptions")}>
         <summary className="portfolios-workspace-sidebar__accordion-summary">
           <SidebarAccordionSummary
-            icon={<LucideHouseIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero" />}
+            icon={<XoptionsRocketIcon className="portfolios-workspace-sidebar__glyph portfolios-workspace-sidebar__glyph--hero" />}
             label="xOptions"
           />
         </summary>
@@ -651,12 +694,13 @@ export function WorkspaceProductSidebar({
           expandedNav
         ) : (
           <nav aria-label="Workspace" className="flex flex-col items-center gap-0.5 px-1 pt-1">
+            <WorkspaceSidebarTenantChrome variant="compact" />
             {collapsedIcons.map((item) => (
               <XfHoverHint hint={item.label} key={item.key}>
                 <Link
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-transparent transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] ${
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-transparent transition-[background-color,color] duration-150 hover:bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_10%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] ${
                     item.isActive
-                      ? "bg-[color-mix(in_srgb,var(--xf-gain-green)_14%,transparent)] text-[var(--xf-gain-green)]"
+                      ? "bg-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_14%,transparent)] text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
                       : "text-[var(--xf-text-200)]"
                   }`}
                   href={item.href}
@@ -684,7 +728,7 @@ export function WorkspaceProductSidebar({
             <button
               aria-expanded={showExpandedUi}
               aria-label={showExpandedUi ? "Collapse sidebar" : "Expand sidebar"}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-toggle-bg)] text-[var(--xf-xchat-rail-toggle-color)] transition-[border-color,background-color,color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_35%,transparent)] hover:text-[var(--xf-gain-green)]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--xf-xchat-rail-border)] bg-[var(--xf-xchat-rail-toggle-bg)] text-[var(--xf-xchat-rail-toggle-color)] transition-[border-color,background-color,color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_35%,transparent)] hover:text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]"
               type="button"
               onClick={() => persistExpanded(!expanded)}
             >
@@ -700,7 +744,7 @@ export function WorkspaceProductSidebar({
         <XfHoverHint hint="Account">
           <Link
             aria-label="Account"
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] transition-[border-color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_40%,transparent)]"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--xf-text-100)_18%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)] transition-[border-color] duration-150 hover:border-[color-mix(in_srgb,var(--xf-tenant-accent,var(--xf-xoptions-accent))_40%,transparent)]"
             href="/account"
             title="Account"
           >

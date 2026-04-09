@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 
 import { FolderPortfolioIcon, HomeIcon } from "@/app/admin/ui/crud-icons";
 import {
-  PortfolioAlertsInteractive,
-  type PortfolioAlertRowVm
+    PortfolioAlertsInteractive,
+    type PortfolioAlertRowVm
 } from "@/app/portfolio/alerts/portfolio-alerts-interactive";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
@@ -15,14 +15,15 @@ import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import {
-  adminListPortfolioAlerts,
-  getPortfolioByIdForSessionUser,
-  listPortfolioAccounts,
-  provisionDefaultPortfolioForUser
+    adminListPortfolioAlerts,
+    getPortfolioByIdForSessionUser,
+    listPortfolioAccounts,
+    provisionDefaultPortfolioForUser
 } from "@/modules/core-admin/repository";
 import { canUserLogin } from "@/modules/identity/authorization";
 
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
+import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 
 import { SyncDefaultPortfolioButton } from "@/app/portfolio/ui/sync-default-portfolio-button";
 
@@ -136,11 +137,19 @@ export default async function PortfolioAlertsPage({
     }
   }
 
-  const workspaceRailProps = await getWorkspaceProductSidebarPropsForSession(session, "Alerts");
+  const [workspaceRailProps, workspaceTenant] = await Promise.all([
+    getWorkspaceProductSidebarPropsForSession(session, "Alerts"),
+    getWorkspaceTenantHeaderContext(session.tenantId)
+  ]);
 
   return (
     <div className="xchat-shell">
-      <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Alerts" session={session} />
+      <AppUserApprovedHeader
+        current="portfolio"
+        feedbackPageLabel="Alerts"
+        session={session}
+        workspaceTenant={workspaceTenant}
+      />
 
       <div className="xchat-body portfolio-page-body" style={{ padding: 0 }}>
         <AppUserCollapsibleRailLayout

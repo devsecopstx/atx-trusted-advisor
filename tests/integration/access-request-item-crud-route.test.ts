@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +9,7 @@ const authMocks = vi.hoisted(() => ({
 const coreAdminMocks = vi.hoisted(() => ({
   getAccessRequestById: vi.fn(),
   updateAccessRequestPlanById: vi.fn(),
+  updateAccessRequestTenantById: vi.fn(),
   reviewAccessRequestById: vi.fn(),
   deleteAccessRequest: vi.fn(),
   provisionDefaultPortfolioForUser: vi.fn()
@@ -17,7 +19,8 @@ const identityMocks = vi.hoisted(() => ({
   addRoleToCoreUser: vi.fn(),
   updateCoreUserSubscriptionPlan: vi.fn(),
   getCoreUserById: vi.fn(),
-  resolveTenantIdForApprovedUserPortfolio: vi.fn()
+  resolveTenantIdForApprovedUserPortfolio: vi.fn(),
+  upsertTenantMembership: vi.fn()
 }));
 
 const auditMocks = vi.hoisted(() => ({
@@ -66,6 +69,16 @@ describe("access request item CRUD route", () => {
       status: "pending",
       requestedAt: new Date("2026-03-16T00:00:00.000Z")
     });
+    coreAdminMocks.updateAccessRequestTenantById.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      userId: "507f1f77bcf86cd799439044",
+      requestedRole: "viewer",
+      requestedPlan: "basic",
+      reason: "Need access",
+      status: "pending",
+      requestedAt: new Date("2026-03-16T00:00:00.000Z"),
+      tenantId: { toHexString: () => "507f1f77bcf86cd7994390aa" }
+    });
     coreAdminMocks.reviewAccessRequestById.mockResolvedValue({
       _id: { toHexString: () => "507f1f77bcf86cd799439033" },
       userId: "507f1f77bcf86cd799439044",
@@ -92,6 +105,7 @@ describe("access request item CRUD route", () => {
     auditMocks.createAuditEvent.mockResolvedValue(undefined);
     auditMocks.listAuditEventsForEntity.mockResolvedValue([]);
     bootstrapMocks.enqueueAccessRequestBootstrap.mockResolvedValue(undefined);
+    identityMocks.upsertTenantMembership.mockResolvedValue(undefined);
   });
 
   it("gets access request by id", async () => {
@@ -99,6 +113,100 @@ describe("access request item CRUD route", () => {
       params: Promise.resolve({ requestId: "507f1f77bcf86cd799439033" })
     });
     expect(response.status).toBe(200);
+  });
+
+  it("assigns targetTenantId without status change", async () => {
+    const afterTenant = {
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      userId: "507f1f77bcf86cd799439044",
+      requestedRole: "viewer",
+      requestedPlan: "basic",
+      reason: "Need access",
+      status: "pending",
+      requestedAt: new Date("2026-03-16T00:00:00.000Z"),
+      tenantId: { toHexString: () => "507f1f77bcf86cd7994390aa" }
+    };
+    coreAdminMocks.getAccessRequestById
+      .mockResolvedValueOnce({
+        _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+        userId: "507f1f77bcf86cd799439044",
+        requestedRole: "viewer",
+        requestedPlan: "basic",
+        reason: "Need access",
+        status: "pending",
+        requestedAt: new Date("2026-03-16T00:00:00.000Z")
+      })
+      .mockResolvedValue(afterTenant);
+
+    const response = await putAccessRequest(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetTenantId: "507f1f77bcf86cd7994390aa" })
+      }),
+      {
+        params: Promise.resolve({ requestId: "507f1f77bcf86cd799439033" })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(coreAdminMocks.updateAccessRequestTenantById).toHaveBeenCalledWith({
+      requestId: "507f1f77bcf86cd799439033",
+      tenantIdHex: "507f1f77bcf86cd7994390aa",
+      tenantId: undefined
+    });
+    expect(coreAdminMocks.reviewAccessRequestById).not.toHaveBeenCalled();
+  });
+
+  it("approves with tenant on row: upserts membership and skips resolve", async () => {
+    const tenantOid = { toHexString: () => "507f1f77bcf86cd7994390aa" };
+    coreAdminMocks.getAccessRequestById.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      userId: "507f1f77bcf86cd799439044",
+      tenantId: tenantOid,
+      requestedRole: "operator",
+      requestedPlan: "basic",
+      reason: "Need access",
+      status: "pending",
+      requestedAt: new Date("2026-03-16T00:00:00.000Z")
+    });
+    coreAdminMocks.reviewAccessRequestById.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      userId: "507f1f77bcf86cd799439044",
+      tenantId: tenantOid,
+      requestedRole: "operator",
+      requestedPlan: "basic",
+      reason: "Need access",
+      status: "approved",
+      reviewedBy: "507f1f77bcf86cd799439011",
+      reviewedAt: new Date("2026-03-16T00:01:00.000Z"),
+      requestedAt: new Date("2026-03-16T00:00:00.000Z")
+    });
+
+    const response = await putAccessRequest(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "approved" })
+      }),
+      {
+        params: Promise.resolve({ requestId: "507f1f77bcf86cd799439033" })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(identityMocks.resolveTenantIdForApprovedUserPortfolio).not.toHaveBeenCalled();
+    expect(identityMocks.upsertTenantMembership).toHaveBeenCalledWith({
+      userId: expect.any(ObjectId),
+      tenantId: tenantOid,
+      role: "member",
+      isDefaultTenant: true
+    });
+    expect(coreAdminMocks.provisionDefaultPortfolioForUser).toHaveBeenCalledWith({
+      userId: "507f1f77bcf86cd799439044",
+      tenantId: "507f1f77bcf86cd7994390aa"
+    });
+    expect(identityMocks.addRoleToCoreUser).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "operator" })
+    );
   });
 
   it("updates plan and approval via PUT", async () => {

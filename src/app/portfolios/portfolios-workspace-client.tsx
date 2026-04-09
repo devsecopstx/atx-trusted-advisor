@@ -89,7 +89,10 @@ export function PortfoliosWorkspaceClient({
           }
           railChrome="workspace-product"
         >
-          <div className="portfolios-workspace-main billing-page min-w-0">
+          {/*
+           * Branding from Tenant Settings → Branding (tenantPreferences). Updates apply immediately via --xf-tenant-accent + TenantBrandingProvider.
+           */}
+          <div className="portfolios-workspace-main portfolios-workspace-tenant-chrome billing-page min-w-0">
             <div className="portfolios-workspace-grid">
               <section
                 className="portfolios-workspace-col portfolios-workspace-col--a min-w-0"

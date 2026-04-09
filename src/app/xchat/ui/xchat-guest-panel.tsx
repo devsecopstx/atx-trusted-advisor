@@ -141,6 +141,13 @@ export function XchatGuestPanel({
         };
       };
       if (!response.ok) {
+        if (response.status === 409) {
+          setRegisterError(
+            payload.error ??
+              "A pending access request already exists for this account. Sign in with the same email after an admin approves you."
+          );
+          return;
+        }
         setRegisterError(payload.error ?? `Could not submit request (${response.status}).`);
         return;
       }
@@ -149,6 +156,7 @@ export function XchatGuestPanel({
           ? `You already have a pending ${submittedPlanLabel} request. We will review it soon.`
           : `Request submitted for ${submittedPlanLabel}. An admin will review your access.`
       );
+      setAccessOpen(true);
       setRegisterName("");
       setRegisterEmail("");
       setRegisterPlan(registerDefaultPlan);
@@ -304,7 +312,43 @@ export function XchatGuestPanel({
                 {registerLoading ? "Submitting..." : "Submit registration"}
               </button>
               {registerError ? <p className="status-text status-error">{registerError}</p> : null}
-              {registerSuccess ? <p className="status-text">{registerSuccess}</p> : null}
+              {registerSuccess ? (
+                <div className="xchat-guest-register-success" role="status">
+                  <p className="status-text">{registerSuccess}</p>
+                  <p className="xchat-guest-register-success__hint">
+                    We don&apos;t email a magic link for this step. Sign in with <strong>X</strong> or{" "}
+                    <strong>Google</strong> using <strong>the same email</strong> you submitted so your OAuth
+                    profile matches this request. After an admin approves you, that sign-in unlocks the workspace.
+                  </p>
+                  <div className="xchat-guest-register-success__actions">
+                    {googleLoginHref ? (
+                      <a
+                        className="cta cta-oauth-google login-google-btn xchat-guest-actions__cta xchat-guest-register-success__cta"
+                        href={googleLoginHref}
+                      >
+                        <GoogleGIcon size={20} />
+                        Continue with Google
+                      </a>
+                    ) : (
+                      <button
+                        className="cta cta-secondary xchat-guest-actions__cta xchat-guest-actions__cta--disabled xchat-guest-register-success__cta"
+                        disabled
+                        type="button"
+                      >
+                        <GoogleGIcon size={20} />
+                        Google unavailable
+                      </button>
+                    )}
+                    <a
+                      className="cta cta-secondary login-oauth-x xchat-guest-actions__cta xchat-guest-register-success__cta"
+                      href={xOAuthLoginHref}
+                    >
+                      <XLogoIcon size={20} />
+                      Continue with X
+                    </a>
+                  </div>
+                </div>
+              ) : null}
             </form>
           </div>
         ) : null}

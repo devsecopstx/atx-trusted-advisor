@@ -195,14 +195,17 @@ export function PortfoliosWatchlistCompact({
           No symbols met the IV/OI scan yet, or your watchlist is empty.{" "}
           {onOpenFullWatchlist ? (
             <button
-              className="text-[var(--xf-gain-green)] underline hover:no-underline"
+              className="text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] underline hover:no-underline"
               type="button"
               onClick={onOpenFullWatchlist}
             >
               Open watchlist
             </button>
           ) : (
-            <Link className="text-[var(--xf-gain-green)] underline hover:no-underline" href={watchlistHref}>
+            <Link
+              className="text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))] underline hover:no-underline"
+              href={watchlistHref}
+            >
               Open watchlist
             </Link>
           )}{" "}

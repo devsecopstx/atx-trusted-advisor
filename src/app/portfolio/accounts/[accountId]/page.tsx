@@ -15,6 +15,7 @@ import { getSessionUser } from "@/lib/auth";
 import { caughtErrorMessage } from "@/lib/caught-error";
 import { normalizeMongoObjectIdParam } from "@/lib/mongo-object-id-hex";
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
+import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 import {
     DEFAULT_ACCOUNT_CASH_BALANCE,
     getDefaultPortfolio,
@@ -157,11 +158,19 @@ export default async function PortfolioAccountPage({
     );
   }
 
-  const workspaceRailProps = await getWorkspaceProductSidebarPropsForSession(session, "Portfolio");
+  const [workspaceRailProps, workspaceTenant] = await Promise.all([
+    getWorkspaceProductSidebarPropsForSession(session, "Portfolio"),
+    getWorkspaceTenantHeaderContext(session.tenantId)
+  ]);
 
   return (
     <div className="xchat-shell">
-      <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
+      <AppUserApprovedHeader
+        current="portfolio"
+        feedbackPageLabel="Portfolio"
+        session={session}
+        workspaceTenant={workspaceTenant}
+      />
 
       <div className="xchat-body portfolio-page-body">
         <AppUserCollapsibleRailLayout

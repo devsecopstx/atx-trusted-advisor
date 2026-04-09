@@ -29,7 +29,9 @@ export function PortfoliosAccountsFooter({ accountSlices }: Props) {
           </p>
           <p className="m-0 font-mono text-sm tabular-nums text-[var(--xf-text-100)]">
             Total book{" "}
-            <span className="text-[var(--xf-gain-green)]">{formatUsdWhole(totalUsd)}</span>
+            <span className="text-[color:var(--xf-tenant-accent,var(--xf-xoptions-accent))]">
+              {formatUsdWhole(totalUsd)}
+            </span>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -41,7 +43,7 @@ export function PortfoliosAccountsFooter({ accountSlices }: Props) {
             {expanded ? "Hide detail" : "Expand"}
           </button>
           <Link
-            className="rounded-md bg-[var(--xf-gain-green)] px-3 py-1 text-xs font-medium text-black hover:opacity-90"
+            className="rounded-md bg-[var(--xf-tenant-accent,var(--xf-xoptions-accent))] px-3 py-1 text-xs font-medium text-white hover:opacity-90"
             href="/portfolio"
           >
             View all accounts

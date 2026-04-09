@@ -1,6 +1,8 @@
 /**
  * Shared validation + workspace limit sanitization for tenant YAML specs
  * (`generate-tenant-spec.mjs`, `seed-tenant-from-spec.mjs`).
+ *
+ * **Mirror:** `src/lib/tenant-spec-v1-parse.ts` (admin `POST /api/admin/tenants/create`) — keep rules in sync.
  */
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -235,6 +237,267 @@ export function parseOptionalTenantXfUiTheme(tenantPrefs) {
   return t;
 }
 
+const XF_BRAND_PALETTE_IDS = new Set(["default", "violet", "cyan", "amber", "rose", "emerald"]);
+
+const MAX_XF_HERO_ICON_URL_CHARS = 450_000;
+
+const DATA_IMAGE_PREFIXES = [
+  "data:image/png;",
+  "data:image/jpeg;",
+  "data:image/jpg;",
+  "data:image/webp;",
+  "data:image/gif;",
+  "data:image/svg+xml;"
+];
+
+/**
+ * @param {unknown} raw
+ * @returns {string}
+ */
+export function assertValidXfHeroIconUrl(raw) {
+  if (typeof raw !== "string") {
+    throw new Error("xf_hero_icon_url must be a string");
+  }
+  const s = raw.trim();
+  if (!s) {
+    throw new Error("xf_hero_icon_url is empty");
+  }
+  if (s.length > MAX_XF_HERO_ICON_URL_CHARS) {
+    throw new Error(
+      `xf_hero_icon_url exceeds ${MAX_XF_HERO_ICON_URL_CHARS} characters — host the image and use an https URL`
+    );
+  }
+  if (s.startsWith("data:image/")) {
+    const head = s.slice(0, 48).toLowerCase();
+    const known = DATA_IMAGE_PREFIXES.some((p) => head.startsWith(p.toLowerCase()));
+    if (!known) {
+      throw new Error("xf_hero_icon_url data URL must be image/png, jpeg, webp, gif, or svg+xml");
+    }
+    if (head.includes(";base64,")) {
+      return s;
+    }
+    if (head.startsWith("data:image/svg+xml,")) {
+      return s;
+    }
+    throw new Error("xf_hero_icon_url raster data URLs must use base64 encoding");
+  }
+  let u;
+  try {
+    u = new URL(s);
+  } catch {
+    throw new Error("xf_hero_icon_url must be a valid https URL, loopback http URL, or data:image URL");
+  }
+  if (u.protocol === "https:") {
+    return s;
+  }
+  if (u.protocol === "http:") {
+    const h = u.hostname.toLowerCase();
+    if (h === "localhost" || h === "127.0.0.1" || h === "[::1]") {
+      return s;
+    }
+  }
+  throw new Error("xf_hero_icon_url must use https, or http only for localhost / 127.0.0.1");
+}
+
+const MAX_XF_TENANT_LOGO_URL_CHARS = 3_000_000;
+
+/**
+ * @param {unknown} raw
+ * @returns {string}
+ */
+export function assertValidXfTenantLogoUrl(raw) {
+  if (typeof raw !== "string") {
+    throw new Error("xf_tenant_logo_url must be a string");
+  }
+  const s = raw.trim();
+  if (!s) {
+    throw new Error("xf_tenant_logo_url is empty");
+  }
+  if (s.length > MAX_XF_TENANT_LOGO_URL_CHARS) {
+    throw new Error(`xf_tenant_logo_url exceeds ${MAX_XF_TENANT_LOGO_URL_CHARS} characters`);
+  }
+  if (s.startsWith("data:image/")) {
+    const head = s.slice(0, 48).toLowerCase();
+    const known = DATA_IMAGE_PREFIXES.some((p) => head.startsWith(p.toLowerCase()));
+    if (!known) {
+      throw new Error("xf_tenant_logo_url data URL must be PNG, JPEG, WebP, GIF, or SVG");
+    }
+    if (head.includes(";base64,")) {
+      return s;
+    }
+    if (head.startsWith("data:image/svg+xml,")) {
+      return s;
+    }
+    throw new Error("xf_tenant_logo_url raster data URLs must use base64 encoding");
+  }
+  let u;
+  try {
+    u = new URL(s);
+  } catch {
+    throw new Error("xf_tenant_logo_url must be a valid https URL, loopback http URL, or data:image URL");
+  }
+  if (u.protocol === "https:") {
+    return s;
+  }
+  if (u.protocol === "http:") {
+    const h = u.hostname.toLowerCase();
+    if (h === "localhost" || h === "127.0.0.1" || h === "[::1]") {
+      return s;
+    }
+  }
+  throw new Error("xf_tenant_logo_url must use https, or http only for localhost / 127.0.0.1");
+}
+
+const DEFAULT_TENANT_ACCENT_HEX = "#8b5cf6";
+const HEX6 = /^#([0-9a-f]{6})$/i;
+const HEX3 = /^#([0-9a-f]{3})$/i;
+
+/**
+ * @param {unknown} raw
+ * @returns {string}
+ */
+export function normalizeXfAccentColor(raw) {
+  if (raw === undefined || raw === null) {
+    return DEFAULT_TENANT_ACCENT_HEX;
+  }
+  if (typeof raw !== "string") {
+    throw new Error("xf_accent_color must be a string");
+  }
+  const s = raw.trim();
+  if (!s) {
+    return DEFAULT_TENANT_ACCENT_HEX;
+  }
+  const m6 = s.match(HEX6);
+  if (m6) {
+    return `#${m6[1].toLowerCase()}`;
+  }
+  const m3 = s.match(HEX3);
+  if (m3) {
+    const [r, g, b] = m3[1].split("");
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  throw new Error("xf_accent_color must be a CSS hex color (#rgb or #rrggbb)");
+}
+
+/**
+ * @param {unknown} tenantPrefs
+ * @returns {string | undefined}
+ */
+export function parseOptionalXfAccentColor(tenantPrefs) {
+  if (tenantPrefs === undefined || tenantPrefs === null) {
+    return undefined;
+  }
+  if (typeof tenantPrefs !== "object" || Array.isArray(tenantPrefs)) {
+    return undefined;
+  }
+  const v = /** @type {Record<string, unknown>} */ (tenantPrefs).xf_accent_color;
+  if (v === undefined || v === null) {
+    return undefined;
+  }
+  const t = String(v).trim();
+  if (!t) {
+    return undefined;
+  }
+  return normalizeXfAccentColor(t);
+}
+
+/**
+ * @param {unknown} tenantPrefs
+ * @returns {string | undefined}
+ */
+export function parseOptionalXfTenantTagline(tenantPrefs) {
+  if (tenantPrefs === undefined || tenantPrefs === null) {
+    return undefined;
+  }
+  if (typeof tenantPrefs !== "object" || Array.isArray(tenantPrefs)) {
+    return undefined;
+  }
+  const v = /** @type {Record<string, unknown>} */ (tenantPrefs).xf_tenant_tagline;
+  if (v === undefined || v === null) {
+    return undefined;
+  }
+  if (typeof v !== "string") {
+    throw new Error("xf_tenant_tagline must be a string");
+  }
+  const t = v.trim();
+  if (!t) {
+    return undefined;
+  }
+  if (t.length > 60) {
+    throw new Error("xf_tenant_tagline must be at most 60 characters");
+  }
+  return t;
+}
+
+/**
+ * @param {unknown} tenantPrefs
+ * @returns {string | undefined}
+ */
+export function parseOptionalXfTenantLogoUrl(tenantPrefs) {
+  if (tenantPrefs === undefined || tenantPrefs === null) {
+    return undefined;
+  }
+  if (typeof tenantPrefs !== "object" || Array.isArray(tenantPrefs)) {
+    return undefined;
+  }
+  const v = /** @type {Record<string, unknown>} */ (tenantPrefs).xf_tenant_logo_url;
+  if (v === undefined || v === null) {
+    return undefined;
+  }
+  if (typeof v !== "string" || !String(v).trim()) {
+    return undefined;
+  }
+  return assertValidXfTenantLogoUrl(v);
+}
+
+/**
+ * @param {unknown} tenantPrefs
+ * @returns {string | undefined}
+ */
+export function parseOptionalXfBrandPalette(tenantPrefs) {
+  if (tenantPrefs === undefined || tenantPrefs === null) {
+    return undefined;
+  }
+  if (typeof tenantPrefs !== "object" || Array.isArray(tenantPrefs)) {
+    return undefined;
+  }
+  const v = /** @type {Record<string, unknown>} */ (tenantPrefs).xf_brand_palette;
+  if (v === undefined || v === null) {
+    return undefined;
+  }
+  const t = String(v).trim().toLowerCase();
+  if (!t) {
+    return undefined;
+  }
+  if (!XF_BRAND_PALETTE_IDS.has(t)) {
+    throw new Error(
+      `tenant.tenantPreferences.xf_brand_palette must be one of: ${[...XF_BRAND_PALETTE_IDS].join(", ")}`
+    );
+  }
+  return t;
+}
+
+/**
+ * @param {unknown} tenantPrefs
+ * @returns {string | undefined}
+ */
+export function parseOptionalXfHeroIconUrl(tenantPrefs) {
+  if (tenantPrefs === undefined || tenantPrefs === null) {
+    return undefined;
+  }
+  if (typeof tenantPrefs !== "object" || Array.isArray(tenantPrefs)) {
+    return undefined;
+  }
+  const v = /** @type {Record<string, unknown>} */ (tenantPrefs).xf_hero_icon_url;
+  if (v === undefined || v === null) {
+    return undefined;
+  }
+  if (typeof v !== "string" || !String(v).trim()) {
+    return undefined;
+  }
+  return assertValidXfHeroIconUrl(v);
+}
+
 /**
  * Full v1 tenant spec document (YAML root).
  * @param {unknown} doc
@@ -262,14 +525,39 @@ export function parseTenantSpecV1Document(doc) {
   }
   const workspaceLimits = sanitizeWorkspaceLimitsPartial(t.workspaceLimits);
   const initialTenantAdmin = parseInitialTenantAdmin(t.initialTenantAdmin);
-  const tenantPreferencesBranding = sanitizeTenantPreferencesBrandingPartial(t.tenantPreferences);
-  const tenantXfUiTheme = parseOptionalTenantXfUiTheme(t.tenantPreferences);
+  const tp = t.tenantPreferences;
+  const tenantPreferencesBranding = sanitizeTenantPreferencesBrandingPartial(tp);
+  const tenantXfUiTheme = parseOptionalTenantXfUiTheme(tp);
+  const xfBrandPalette = parseOptionalXfBrandPalette(tp);
+  const xfHeroIconUrl = parseOptionalXfHeroIconUrl(tp);
+  const xfAccentColor = parseOptionalXfAccentColor(tp);
+  const xfTenantLogoUrl = parseOptionalXfTenantLogoUrl(tp);
+  const xfTenantTagline = parseOptionalXfTenantTagline(tp);
+
+  const brandingMerged = { ...(tenantPreferencesBranding ?? {}) };
+  if (xfBrandPalette) {
+    brandingMerged.xf_brand_palette = xfBrandPalette;
+  }
+  if (xfHeroIconUrl) {
+    brandingMerged.xf_hero_icon_url = xfHeroIconUrl;
+  }
+  if (xfAccentColor) {
+    brandingMerged.xf_accent_color = xfAccentColor;
+  }
+  if (xfTenantLogoUrl) {
+    brandingMerged.xf_tenant_logo_url = xfTenantLogoUrl;
+  }
+  if (xfTenantTagline) {
+    brandingMerged.xf_tenant_tagline = xfTenantTagline;
+  }
+  const mergedBranding = Object.keys(brandingMerged).length > 0 ? brandingMerged : undefined;
+
   return {
     slug,
     name,
     workspaceLimits,
     initialTenantAdmin,
-    tenantPreferencesBranding,
+    tenantPreferencesBranding: mergedBranding,
     tenantXfUiTheme
   };
 }

@@ -8,6 +8,7 @@ import { ProductGuestShell } from "@/app/ui/product-guest-shell";
 import { WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { getSessionUser } from "@/lib/auth";
 import { getWorkspaceProductSidebarPropsForSession } from "@/lib/workspace-product-sidebar-server-props";
+import { getWorkspaceTenantHeaderContext } from "@/lib/workspace-tenant-header";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +39,19 @@ export default async function PortfolioPage({ searchParams }: PageProps) {
     );
   }
 
-  const workspaceRailProps = await getWorkspaceProductSidebarPropsForSession(session, "Portfolio");
+  const [workspaceRailProps, workspaceTenant] = await Promise.all([
+    getWorkspaceProductSidebarPropsForSession(session, "Portfolio"),
+    getWorkspaceTenantHeaderContext(session.tenantId)
+  ]);
 
   return (
     <div className="xchat-shell">
-      <AppUserApprovedHeader current="portfolio" feedbackPageLabel="Portfolio" session={session} />
+      <AppUserApprovedHeader
+        current="portfolio"
+        feedbackPageLabel="Portfolio"
+        session={session}
+        workspaceTenant={workspaceTenant}
+      />
 
       <div className="xchat-body portfolio-page-body">
         <AppUserCollapsibleRailLayout
