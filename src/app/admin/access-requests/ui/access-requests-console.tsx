@@ -14,7 +14,7 @@ type AccessRequestStatus = "new" | "triaged" | "pending" | "approved" | "rejecte
 
 type AccessRequest = {
   _id?: string;
-  /** Target tenant for default book / membership when set; omit for platform default on approve. */
+  /** Target tenant for default book / membership (required before approve). */
   tenantId?: string;
   userId: string;
   requestedRole: "global_admin" | "advisor" | "operator" | "viewer";
@@ -26,6 +26,8 @@ type AccessRequest = {
   triagedBy?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  /** Optional admin note from approve/reject. */
+  reviewNote?: string;
   expiredAt?: string;
   policyViolations?: Array<{ code: string; message: string }>;
   user?: {
@@ -144,7 +146,9 @@ export function AccessRequestsConsole() {
   const [statusFilter, setStatusFilter] = useState<AccessRequestFilter>("open");
   const [emailEdits, setEmailEdits] = useState<Record<string, string>>({});
   const [planEdits, setPlanEdits] = useState<Record<string, AccessRequest["requestedPlan"]>>({});
+  const [roleEdits, setRoleEdits] = useState<Record<string, AccessRequest["requestedRole"]>>({});
   const [tenantEdits, setTenantEdits] = useState<Record<string, string>>({});
+  const [reviewNoteEdits, setReviewNoteEdits] = useState<Record<string, string>>({});
   const [tenants, setTenants] = useState<TenantRegisterRow[]>([]);
 
   const refreshAccessRequests = useCallback(async () => {
@@ -171,11 +175,27 @@ export function AccessRequestsConsole() {
         }
         return next;
       });
+      setRoleEdits((previous) => {
+        const next = { ...previous };
+        for (const item of payload.data) {
+          if (!item._id) continue;
+          next[item._id] = previous[item._id] ?? item.requestedRole ?? "operator";
+        }
+        return next;
+      });
       setTenantEdits((previous) => {
         const next = { ...previous };
         for (const item of payload.data) {
           if (!item._id) continue;
           next[item._id] = previous[item._id] ?? item.tenantId ?? "";
+        }
+        return next;
+      });
+      setReviewNoteEdits((previous) => {
+        const next = { ...previous };
+        for (const item of payload.data) {
+          if (!item._id) continue;
+          next[item._id] = previous[item._id] ?? "";
         }
         return next;
       });
@@ -251,13 +271,40 @@ export function AccessRequestsConsole() {
   }
 
   async function reviewRequest(requestId: string, statusValue: "approved" | "rejected") {
+    const tenant = tenantEdits[requestId]?.trim() ?? "";
+    const plan = planEdits[requestId];
+    const role = roleEdits[requestId];
+    const reviewNoteRaw = reviewNoteEdits[requestId]?.trim() ?? "";
+    if (statusValue === "approved") {
+      if (!tenant) {
+        setStatus("Select a tenant before approving.");
+        return;
+      }
+      if (!plan) {
+        setStatus("Select a plan before approving.");
+        return;
+      }
+      if (!role) {
+        setStatus("Select a role before approving.");
+        return;
+      }
+    }
     setStatus(`${statusValue === "approved" ? "Approving" : "Rejecting"}...`);
     try {
+      const body: Record<string, unknown> = { status: statusValue };
+      if (statusValue === "approved") {
+        body.requestedRole = role;
+        body.requestedPlan = plan;
+        body.targetTenantId = tenant;
+      }
+      if (reviewNoteRaw) {
+        body.reviewNote = reviewNoteRaw;
+      }
       await parseJson(await fetch(`/api/admin/access-requests/${encodeURIComponent(requestId)}`, {
         method: "PUT",
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: statusValue })
+        body: JSON.stringify(body)
       }));
       await refreshAccessRequests();
     } catch (error) {
@@ -370,6 +417,7 @@ export function AccessRequestsConsole() {
                 <th>Status</th>
                 <th>SLA</th>
                 <th>Reason</th>
+                <th>Note</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -424,35 +472,62 @@ export function AccessRequestsConsole() {
                       </small>
                     </td>
                     <td>
-                      <span className="status-badge">{item.requestedRole}</span>
-                      <br />
-                      <select
-                        disabled={!item._id || !isActionable(item.status)}
-                        onChange={(e) => {
-                          if (!item._id) return;
-                          setPlanEdits((p) => ({ ...p, [item._id as string]: e.target.value as AccessRequest["requestedPlan"] }));
-                        }}
-                        value={item._id ? (planEdits[item._id] ?? item.requestedPlan) : "basic"}
-                      >
-                        {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                      {item._id ? (
+                        <div className="stack-gap" style={{ maxWidth: "12rem" }}>
+                          <select
+                            aria-label="Role to assign on approve"
+                            disabled={!isActionable(item.status)}
+                            onChange={(e) => {
+                              setRoleEdits((p) => ({
+                                ...p,
+                                [item._id as string]: e.target.value as AccessRequest["requestedRole"]
+                              }));
+                            }}
+                            value={roleEdits[item._id] ?? item.requestedRole}
+                          >
+                            <option value="global_admin">global_admin (elevated)</option>
+                            <option value="advisor">advisor</option>
+                            <option value="operator">operator</option>
+                            <option value="viewer">viewer</option>
+                          </select>
+                          <select
+                            aria-label="Subscription plan on approve"
+                            disabled={!isActionable(item.status)}
+                            onChange={(e) => {
+                              setPlanEdits((p) => ({
+                                ...p,
+                                [item._id as string]: e.target.value as AccessRequest["requestedPlan"]
+                              }));
+                            }}
+                            value={planEdits[item._id] ?? item.requestedPlan}
+                          >
+                            {ACCESS_REQUEST_PLAN_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="status-badge">{item.requestedRole}</span>
+                          <br />
+                          <span className="value-neutral text-xs">{item.requestedPlan}</span>
+                        </>
+                      )}
                     </td>
                     <td>
                       {item._id ? (
                         <div className="stack-gap" style={{ maxWidth: "14rem" }}>
                           <select
                             disabled={!isActionable(item.status)}
-                            title="Default book / membership tenant when you approve. Empty = platform default."
+                            title="Tenant for membership and default book — required before Approve."
                             value={tenantEdits[item._id] ?? item.tenantId ?? ""}
                             onChange={(e) => {
                               setTenantEdits((p) => ({ ...p, [item._id as string]: e.target.value }));
                             }}
                           >
-                            <option value="">Platform default (on approve)</option>
+                            <option value="">Select tenant…</option>
                             {tenants.map((t) => (
                               <option key={t.tenantId} value={t.tenantId}>
                                 {t.name || t.slug} ({t.slug})
@@ -492,6 +567,23 @@ export function AccessRequestsConsole() {
                     </td>
                     <td><small>{item.reason}</small></td>
                     <td>
+                      {item._id && isActionable(item.status) ? (
+                        <textarea
+                          aria-label="Optional note for approve or reject"
+                          className="text-xs font-mono"
+                          onChange={(e) =>
+                            setReviewNoteEdits((p) => ({ ...p, [item._id as string]: e.target.value }))
+                          }
+                          placeholder="Optional note…"
+                          rows={2}
+                          style={{ minWidth: "10rem", maxWidth: "14rem" }}
+                          value={reviewNoteEdits[item._id] ?? ""}
+                        />
+                      ) : (
+                        <small className="value-neutral">{item.reviewNote ?? "—"}</small>
+                      )}
+                    </td>
+                    <td>
                       <div className="tool-row">
                         <IconEditButton
                           label="Edit user email"
@@ -501,11 +593,19 @@ export function AccessRequestsConsole() {
                         {isActionable(item.status) && item._id ? (
                           <>
                             <IconEditButton
-                              label="Edit request plan"
+                              label="Save plan only"
                               variant="tiny"
                               onClick={() => item._id && void updateRequestPlan(item._id)}
                             />
-                            <button className="tiny-button" onClick={() => item._id && void reviewRequest(item._id, "approved")} type="button">
+                            <button
+                              className="tiny-button"
+                              disabled={
+                                !(tenantEdits[item._id]?.trim() && planEdits[item._id] && roleEdits[item._id])
+                              }
+                              onClick={() => item._id && void reviewRequest(item._id, "approved")}
+                              title="Requires tenant, plan, and role above"
+                              type="button"
+                            >
                               Approve
                             </button>
                             <button className="tiny-button" onClick={() => item._id && void reviewRequest(item._id, "rejected")} type="button">

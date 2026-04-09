@@ -14,6 +14,7 @@ import {
     provisionDefaultPortfolioForUser,
     reviewAccessRequestById,
     updateAccessRequestPlanById,
+    updateAccessRequestRoleById,
     updateAccessRequestTenantById
 } from "@/modules/core-admin/repository";
 import {
@@ -23,25 +24,56 @@ import {
 import {
     addRoleToCoreUser,
     getCoreUserById,
-    resolveTenantIdForApprovedUserPortfolio,
     updateCoreUserSubscriptionPlan,
     upsertTenantMembership
 } from "@/modules/identity/repository";
+
+const accessRequestRoleSchema = z.enum(["global_admin", "advisor", "operator", "viewer"]);
 
 const reviewAccessRequestSchema = z
   .object({
     status: z.enum(["approved", "rejected"]).optional(),
     requestedPlan: z.string().trim().optional(),
-    /** 24-char tenant id, or empty string to clear (platform default on approve). */
-    targetTenantId: z.string().optional()
+    requestedRole: accessRequestRoleSchema.optional(),
+    /** 24-char tenant id, or empty string to clear (cannot approve without a tenant in the same request). */
+    targetTenantId: z.string().optional(),
+    /** Optional note stored on the request and audit trail when approving or rejecting. */
+    reviewNote: z.string().max(2000).optional()
   })
   .refine(
     (value) =>
       value.status !== undefined ||
       value.requestedPlan !== undefined ||
+      value.requestedRole !== undefined ||
       value.targetTenantId !== undefined,
-    { message: "Provide status, requestedPlan, and/or targetTenantId." }
-  );
+    { message: "Provide status, requestedPlan, requestedRole, and/or targetTenantId (reviewNote alone is not allowed)." }
+  )
+  .superRefine((value, ctx) => {
+    if (value.status !== "approved") {
+      return;
+    }
+    if (value.requestedRole === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "requestedRole is required when approving.",
+        path: ["requestedRole"]
+      });
+    }
+    if (value.requestedPlan === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "requestedPlan is required when approving.",
+        path: ["requestedPlan"]
+      });
+    }
+    if (value.targetTenantId === undefined || value.targetTenantId.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "targetTenantId is required when approving (pick a tenant).",
+        path: ["targetTenantId"]
+      });
+    }
+  });
 
 type RouteContext = {
   params: Promise<{
@@ -194,6 +226,34 @@ async function handleUpdate(request: Request, context: RouteContext) {
     }
   }
 
+  if (parsed.data.requestedRole !== undefined) {
+    const updatedRoleRow = await updateAccessRequestRoleById({
+      requestId,
+      requestedRole: parsed.data.requestedRole,
+      tenantId: undefined
+    });
+    if (!updatedRoleRow) {
+      return NextResponse.json({ error: "Access request not found" }, { status: 404 });
+    }
+    await createAuditEvent({
+      entityType: "access_request",
+      entityId: requestId,
+      action: "updated_role",
+      actor: {
+        userId: session.userId,
+        email: session.email,
+        username: session.username
+      },
+      details: {
+        requestedRole: parsed.data.requestedRole
+      }
+    });
+    const refetchedRole = await getAccessRequestById(requestId, { tenantId: undefined });
+    if (refetchedRole) {
+      existing = refetchedRole;
+    }
+  }
+
   if (!parsed.data.status) {
     return NextResponse.json({ data: serializeAccessRequest(existing) });
   }
@@ -206,6 +266,16 @@ async function handleUpdate(request: Request, context: RouteContext) {
   let applicantPortfolioTenantId: string | undefined;
 
   if (parsed.data.status === "approved") {
+    if (!existing.tenantId) {
+      return NextResponse.json(
+        {
+          error:
+            "Target tenant is required before approval. Select a tenant (or send targetTenantId in this request), then approve.",
+          code: "access_request_tenant_required"
+        },
+        { status: 400 }
+      );
+    }
     if (!ObjectId.isValid(existing.userId)) {
       return NextResponse.json(
         { error: "Approved request has invalid user id" },
@@ -222,17 +292,13 @@ async function handleUpdate(request: Request, context: RouteContext) {
       userId,
       subscriptionPlan: effectivePlan
     });
-    applicantPortfolioTenantId = existing.tenantId
-      ? existing.tenantId.toHexString()
-      : await resolveTenantIdForApprovedUserPortfolio(existing.userId);
-    if (existing.tenantId) {
-      await upsertTenantMembership({
-        userId,
-        tenantId: existing.tenantId,
-        role: "member",
-        isDefaultTenant: true
-      });
-    }
+    applicantPortfolioTenantId = existing.tenantId.toHexString();
+    await upsertTenantMembership({
+      userId,
+      tenantId: existing.tenantId,
+      role: "member",
+      isDefaultTenant: true
+    });
     try {
       /** Default book for new users: one portfolio, default paper account ($25k), watchlist with TSLA (see `provisionDefaultPortfolioForUser`). Runs before review is persisted so approve fails closed if provision errors. */
       await provisionDefaultPortfolioForUser({
@@ -254,7 +320,8 @@ async function handleUpdate(request: Request, context: RouteContext) {
     requestId,
     status: parsed.data.status,
     reviewedBy: session.userId,
-    tenantId: undefined
+    tenantId: undefined,
+    reviewNote: parsed.data.reviewNote
   });
 
   if (!reviewed) {
@@ -271,7 +338,10 @@ async function handleUpdate(request: Request, context: RouteContext) {
       username: session.username
     },
     details: {
-      requestedPlan: effectivePlan
+      requestedPlan: effectivePlan,
+      ...(parsed.data.reviewNote !== undefined && parsed.data.reviewNote.trim()
+        ? { reviewNote: parsed.data.reviewNote.trim().slice(0, 500) }
+        : {})
     }
   });
 

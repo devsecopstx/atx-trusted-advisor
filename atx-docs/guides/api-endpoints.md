@@ -33,7 +33,13 @@ Current route inventory grouped by domain. Source of truth remains `src/app/api/
 - `PUT /api/admin/access-requests/:requestId`
 - `DELETE /api/admin/access-requests/:requestId`
 
-**`PATCH` / `PUT` body** (at least one field): **`status`** (`approved` \| `rejected`), **`requestedPlan`** (Basic / Premium / Premium+), and/or **`targetTenantId`**. **`targetTenantId`:** 24-char hex Mongo id for the applicant’s default-book tenant before approval, or **`""`** to clear. Updates persist on the **`admin_access_requests`** row; audit **`assigned_tenant`**. On **`approved`**, if the row has **`tenantId`**, provisioning and bootstrap use that tenant and **`upsertTenantMembership`** runs for **`member`** / default tenant; otherwise **`resolveTenantIdForApprovedUserPortfolio`** applies (see **`auth-and-access.md`**).
+**`PATCH` / `PUT` body:** At least one of **`status`**, **`requestedPlan`**, **`requestedRole`**, **`targetTenantId`** — not **`reviewNote` alone**. Optional **`reviewNote`** (string, max 2000) on approve/reject.
+
+- **Plan / role / tenant only:** **`requestedPlan`**, **`requestedRole`** (`global_admin` \| `advisor` \| `operator` \| `viewer`), and/or **`targetTenantId`** (24-char hex, or **`""`** to clear **`tenantId`** on the row). Audits **`updated_plan`**, **`updated_role`**, **`assigned_tenant`** as applicable.
+
+- **`status: "approved"`:** Requires **`requestedRole`**, **`requestedPlan`**, and non-empty **`targetTenantId`** in the **same** request; after persisting updates the row must have **`tenantId`** or **400** `access_request_tenant_required`. Provisioning + **`upsertTenantMembership`** use that tenant (no platform-default resolve on approve). Optional **`reviewNote`**.
+
+- **`status: "rejected"`:** Optional **`reviewNote`**; no tenant/plan/role requirement beyond the usual payload rule above.
 
 ## Admin tenants (register + create)
 

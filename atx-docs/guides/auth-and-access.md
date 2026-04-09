@@ -37,9 +37,9 @@ Reference: `src/modules/surface-policy.ts` and `src/proxy.ts`.
 
 **Google email:** The Google callback requires a **verified** `email` + `email_verified` from Google userinfo; without that it redirects with `google_email_required`.
 
-**Portfolio tenant on approve:** Default portfolio provisioning for an approved applicant uses **the tenant stored on the access request** when set (admin can assign it before approve — **`targetTenantId`** on **`PATCH`/`PUT` `/api/admin/access-requests/{id}`**), else **that user’s default tenant membership** (or the platform default tenant `atxfinance-core`), **not** the approving admin’s `session.tenantId`. Using the admin’s tenant used to write `tenant_portfolio` / `portfolio_accounts` under a tenant the applicant’s OAuth session never queries, so the UI looked empty and created a second “Default Portfolio.” When **`tenantId`** is on the row at approve time, the server also **`upsertTenantMembership`** for that user as **`member`** with **`isDefaultTenant: true`** for that tenant.
+**Portfolio tenant on approve (Next.js):** Approval **does not** fall back to the platform default tenant or **`resolveTenantIdForApprovedUserPortfolio`**. The **`admin_access_requests`** row must have **`tenantId`** set when **`status: "approved"`** is applied, and the **same HTTP request** must include **`targetTenantId`** (non-empty 24-char hex), **`requestedPlan`**, and **`requestedRole`** so the admin explicitly confirms assignment (UI sends one **`PUT`**). Otherwise the API returns **400** (validation or code **`access_request_tenant_required`**). Provisioning and **`upsertTenantMembership`** (**`member`**, **`isDefaultTenant: true`**) use that tenant — **not** the approving admin’s **`session.tenantId`**.
 
-**Admin tenant column:** **Admin → Access requests** can set or clear the request’s default-book tenant (**Save tenant**) so the right **`core_tenant_memberships`** / portfolio scope applies on approval. Empty string clears the assignment (platform default path on approve). **`targetTenantId`** must be a valid 24-char hex **`ObjectId`** when non-empty.
+**Admin → Access requests:** Per-row **role**, **plan**, and **tenant** pickers; optional **note** on approve/reject (**`reviewNote`**, stored on the request + audit snippet). **Save tenant** / **Save plan only** still issue **`PUT`** with **`targetTenantId`** or **`requestedPlan`** alone. Clearing tenant (**`targetTenantId`: `""`**) removes **`tenantId`** from the row for pending requests; **Approve** remains blocked until a tenant is selected again.
 
 **Names on re-login:** OAuth completion still runs **idempotent** default-book provisioning so the book exists, but repeat runs **must not** reset user-edited **portfolio / account / watchlist names** (or existing **cash** on the default account). Defaults apply only when inserting new rows or when a name was never set.
 
@@ -51,7 +51,7 @@ When a global admin **approves** an access request in **Admin → Access request
 
 2. **Then:** `enqueueAccessRequestBootstrap` writes `admin_user_bootstrap_profiles` (pending), inserts a **disabled** `admin_scheduled_tasks` row named `access-request-bootstrap:{email}` with `nextRunAt: now` and a `scheduleDescription` explaining that the book was already provisioned — **enabling or “Run now” on that task does not re-run book creation** (category is `notifications` for trace only). A **microtask** immediately runs xChat/xAI bootstrap (`runAccessRequestBootstrap`: idempotent provision again + xAI collection + audit `bootstrap-synced`).
 
-Spring BFF path: `AdminAccessRequestService` uses `DefaultPortfolioProvisionService.provisionForAccessRequestApprovedUser` for the same defaults.
+Spring BFF path: `AdminAccessRequestService` uses `DefaultPortfolioProvisionService.provisionForAccessRequestApprovedUser` for the same defaults; confirm Kotlin review contract stays aligned with Next when proxying approvals.
 
 If X does not expose an email, the UI uses the **link email** step so the user can tie their X identity to the same email they registered with.
 

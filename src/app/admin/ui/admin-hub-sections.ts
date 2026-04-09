@@ -138,7 +138,7 @@ export const ADMIN_FUNCTION_GROUPS: AdminFunctionGroup[] = [
         href: "/admin/tenant-register",
         title: "Tenant register",
         description:
-          "Directory of every core tenant (id, slug, name, platform default), stored workspaceLimits and tenantPreferences, and tenant_admin users (email, display name, default session tenant)."
+          "Directory of core tenants: full id, last four, name, slug, brand accent preview, platform default, collapsible workspace/preferences JSON, tenant_admin users (email, display name, default session tenant)."
       },
       {
         href: "/admin/tenant-register/create",

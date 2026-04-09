@@ -594,6 +594,7 @@ export async function reviewAccessRequestById(input: {
   status: "approved" | "rejected";
   reviewedBy: string;
   tenantId?: string;
+  reviewNote?: string;
 }): Promise<AccessRequest | null> {
   if (!ObjectId.isValid(input.requestId)) {
     return null;
@@ -601,14 +602,18 @@ export async function reviewAccessRequestById(input: {
   const db = await getDb();
   const reviewedAt = new Date();
   const _id = new ObjectId(input.requestId);
+  const $set: Record<string, unknown> = {
+    status: input.status,
+    reviewedBy: input.reviewedBy,
+    reviewedAt
+  };
+  if (input.reviewNote !== undefined) {
+    $set.reviewNote = input.reviewNote.trim() || "";
+  }
   await db.collection<AccessRequest>(collections.accessRequests).updateOne(
     strictWriteTenantFilter({ _id }, input.tenantId),
     {
-      $set: {
-        status: input.status,
-        reviewedBy: input.reviewedBy,
-        reviewedAt
-      }
+      $set
     }
   );
 
@@ -672,6 +677,31 @@ export async function updateAccessRequestTenantById(input: {
   }
 
   return db.collection<AccessRequest>(collections.accessRequests).findOne(accessRequestReadFilter({ _id }, input.tenantId));
+}
+
+export async function updateAccessRequestRoleById(input: {
+  requestId: string;
+  requestedRole: AccessRequest["requestedRole"];
+  tenantId?: string;
+}): Promise<AccessRequest | null> {
+  if (!ObjectId.isValid(input.requestId)) {
+    return null;
+  }
+
+  const db = await getDb();
+  const _id = new ObjectId(input.requestId);
+  await db.collection<AccessRequest>(collections.accessRequests).updateOne(
+    strictWriteTenantFilter({ _id, status: { $in: ACTIONABLE_ACCESS_REQUEST_STATUSES } }, input.tenantId),
+    {
+      $set: {
+        requestedRole: input.requestedRole
+      }
+    }
+  );
+
+  return db
+    .collection<AccessRequest>(collections.accessRequests)
+    .findOne(accessRequestReadFilter({ _id }, input.tenantId));
 }
 
 export async function listApprovedUsers(

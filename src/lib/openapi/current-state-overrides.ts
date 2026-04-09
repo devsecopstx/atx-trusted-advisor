@@ -591,7 +591,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "GET /api/admin/tenants/register": {
     summary: "Tenant register (platform directory)",
     description:
-      "global_admin only. Lists every `core_tenants` row with id, slug, name, platform-default flag, stored `workspaceLimits` and `tenantPreferences` (JSON objects or null), and `tenant_admin` memberships (email, display name, user id, default session marker).",
+      "global_admin only. Lists every `core_tenants` row with id, slug, name, platform-default flag, stored `workspaceLimits` and `tenantPreferences` (JSON objects or null), and `tenant_admin` memberships (email, display name, user id, default session marker). Admin UI (`/admin/tenant-register`) also surfaces last-four id, accent preview from `tenantPreferences.xf_accent_color`, and collapsible JSON for workspace limits / preferences.",
     responses: {
       "200": jsonResponse("Tenant register rows.", "TenantRegisterListResponseEnvelope"),
       "401": json401Session(),

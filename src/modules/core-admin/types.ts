@@ -46,6 +46,8 @@ export type AccessRequest = {
   triagedBy?: string;
   reviewedBy?: string;
   reviewedAt?: Date;
+  /** Optional admin note on approve/reject (audit / support trail). */
+  reviewNote?: string;
   expiredAt?: Date;
   policyViolations?: AccessRequestPolicyViolation[];
 };

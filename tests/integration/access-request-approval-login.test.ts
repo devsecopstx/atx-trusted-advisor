@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   userId: "507f1f77bcf86cd799439011",
   userRoles: [] as string[],
-  accessRequestStatus: "pending" as "pending" | "approved" | "rejected"
+  accessRequestStatus: "pending" as "pending" | "approved" | "rejected",
+  /** Mutable row fields applied by update* mocks + returned by getAccessRequestById. */
+  accessRequest: {
+    requestedRole: "viewer" as "global_admin" | "advisor" | "operator" | "viewer",
+    requestedPlan: "basic" as "basic" | "premium" | "premium_plus",
+    tenantHex: "507f1f77bcf86cd799439033"
+  }
 }));
 
 const authMocks = vi.hoisted(() => ({
@@ -20,6 +26,9 @@ const authMocks = vi.hoisted(() => ({
 const coreAdminMocks = vi.hoisted(() => ({
   getAccessRequestById: vi.fn(),
   reviewAccessRequestById: vi.fn(),
+  updateAccessRequestPlanById: vi.fn(),
+  updateAccessRequestTenantById: vi.fn(),
+  updateAccessRequestRoleById: vi.fn(),
   listAccessRequests: vi.fn(),
   createAccessRequest: vi.fn(),
   getPendingAccessRequestByUserAndRole: vi.fn(),
@@ -117,14 +126,38 @@ describe("access request approval login flow", () => {
       (path: string) => path.startsWith("/") && !path.startsWith("//") && !path.includes("..")
     );
 
+    state.accessRequest.requestedRole = "viewer";
+    state.accessRequest.requestedPlan = "basic";
+    state.accessRequest.tenantHex = "507f1f77bcf86cd799439033";
+
     coreAdminMocks.getAccessRequestById.mockImplementation(async () => ({
       _id: { toHexString: () => "507f1f77bcf86cd799439022" },
       userId: state.userId,
-      requestedRole: "viewer",
+      requestedRole: state.accessRequest.requestedRole,
+      requestedPlan: state.accessRequest.requestedPlan,
+      ...(state.accessRequest.tenantHex
+        ? { tenantId: { toHexString: () => state.accessRequest.tenantHex } }
+        : {}),
       reason: "Needs authenticated access",
       status: state.accessRequestStatus,
       requestedAt: new Date()
     }));
+    coreAdminMocks.updateAccessRequestPlanById.mockImplementation(async ({ requestedPlan }) => {
+      state.accessRequest.requestedPlan = requestedPlan;
+      return coreAdminMocks.getAccessRequestById();
+    });
+    coreAdminMocks.updateAccessRequestTenantById.mockImplementation(async ({ tenantIdHex }) => {
+      if (tenantIdHex === null) {
+        state.accessRequest.tenantHex = "";
+      } else {
+        state.accessRequest.tenantHex = tenantIdHex;
+      }
+      return coreAdminMocks.getAccessRequestById();
+    });
+    coreAdminMocks.updateAccessRequestRoleById.mockImplementation(async ({ requestedRole }) => {
+      state.accessRequest.requestedRole = requestedRole;
+      return coreAdminMocks.getAccessRequestById();
+    });
     coreAdminMocks.reviewAccessRequestById.mockImplementation(async ({ status }) => {
       state.accessRequestStatus = status;
       return {
@@ -262,7 +295,10 @@ describe("access request approval login flow", () => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          status: "approved"
+          status: "approved",
+          requestedRole: "viewer",
+          requestedPlan: "basic",
+          targetTenantId: "507f1f77bcf86cd799439033"
         })
       }),
       {
@@ -665,7 +701,10 @@ describe("access request approval login flow", () => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          status: "approved"
+          status: "approved",
+          requestedRole: "viewer",
+          requestedPlan: "basic",
+          targetTenantId: "507f1f77bcf86cd799439033"
         })
       }),
       {
