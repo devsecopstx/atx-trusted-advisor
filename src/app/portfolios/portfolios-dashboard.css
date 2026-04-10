@@ -237,94 +237,18 @@
   min-width: 0;
 }
 
-.portfolios-workspace-header .xchat-header-brand-stack {
-  max-width: min(520px, 92vw);
-}
-
-.portfolios-workspace-header .xchat-header-brand {
-  margin-right: 0;
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-.portfolios-workspace-header__brand-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  min-width: 0;
-  text-decoration: none;
-  color: inherit;
-  border-radius: 10px;
-  padding: 0.15rem 0.2rem 0.15rem 0;
-  margin: -0.15rem -0.2rem -0.15rem 0;
-  transition:
-    background-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.portfolios-workspace-header__brand-row:hover {
-  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 6%, transparent);
-}
-
-.portfolios-workspace-header__brand-mark {
-  flex-shrink: 0;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
-  background: color-mix(in srgb, var(--xf-text-100) 5%, transparent);
-}
-
-.portfolios-workspace-header__brand-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-.portfolios-workspace-header__brand-fallback-atx {
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--xf-bg-900);
-  background: var(--xf-tenant-accent, var(--xf-xoptions-accent));
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.portfolios-workspace-header__brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.12rem;
-  min-width: 0;
-}
-
-.portfolios-workspace-header__brand-title {
-  font-size: 0.88rem;
+.portfolios-workspace-header__crumb {
+  font-size: 0.58rem;
   font-weight: 700;
-  line-height: 1.2;
-  color: var(--xf-text-100);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--xf-text-300);
   white-space: nowrap;
 }
 
-.portfolios-workspace-header__brand-subtitle {
-  font-size: 0.68rem;
-  font-weight: 500;
-  line-height: 1.3;
-  color: var(--xf-text-400);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: min(320px, 72vw);
+.portfolios-workspace-header__crumb:hover {
+  color: var(--xf-text-100);
 }
 
 .portfolios-workspace-header__center {
@@ -418,10 +342,6 @@
   .portfolios-workspace-header__total-block {
     text-align: left;
   }
-
-  .portfolios-workspace-header .xchat-header-brand-stack {
-    max-width: min(100%, 420px);
-  }
 }
 
 .portfolios-workspace-grid {
@@ -443,93 +363,6 @@
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.15rem 0;
-}
-
-/* Tenant shell header — accent from `--xf-tenant-accent` (layout + TenantBrandingProvider); fallback matches default tenant purple token. */
-.portfolios-workspace-sidebar__tenant-brand {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
-  margin: 0 0 0.45rem;
-  padding: 0.5rem 0.45rem 0.55rem;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 22%, transparent);
-  background: color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 5%, transparent);
-}
-
-.portfolios-workspace-sidebar__tenant-logo-wrap {
-  flex-shrink: 0;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--xf-text-100) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 18%, transparent);
-}
-
-.portfolios-workspace-sidebar__tenant-logo-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-.portfolios-workspace-sidebar__tenant-fallback-atx {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: var(--xf-bg-900);
-  background: var(--xf-tenant-accent, var(--xf-xoptions-accent));
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.portfolios-workspace-sidebar__tenant-text {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.portfolios-workspace-sidebar__tenant-title {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--xf-text-100);
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.portfolios-workspace-sidebar__tenant-tagline {
-  font-size: 0.68rem;
-  font-weight: 500;
-  color: var(--xf-text-400);
-  line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.portfolios-workspace-sidebar__tenant-compact {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  padding: 0.35rem 0 0.5rem;
-  margin-bottom: 0.15rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--xf-tenant-accent, var(--xf-xoptions-accent)) 20%, transparent);
-}
-
-.portfolios-workspace-sidebar__tenant-compact .portfolios-workspace-sidebar__tenant-logo-wrap {
-  width: 2.25rem;
-  height: 2.25rem;
 }
 
 .portfolios-workspace-sidebar__link {

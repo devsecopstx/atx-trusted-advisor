@@ -18,9 +18,9 @@ type Props = {
   tenantId: string;
 };
 
-type QuotaFieldKey = "userXoptionsLimit" | "userChatLimit" | "tenantPortfolioLimit" | "portfolioAccountLimit";
+type PlanQuotaFieldKey = "userXoptionsLimit" | "userChatLimit" | "tenantPortfolioLimit" | "portfolioAccountLimit";
 
-const QUOTA_FIELDS: { key: QuotaFieldKey; label: string; abbr: string; hint: string }[] = [
+const QUOTA_FIELDS: { key: PlanQuotaFieldKey; label: string; abbr: string; hint: string }[] = [
   {
     key: "userXoptionsLimit",
     label: "xoptions views / hr (per user)",
@@ -46,6 +46,16 @@ const QUOTA_FIELDS: { key: QuotaFieldKey; label: string; abbr: string; hint: str
     hint: "Max custodian accounts per portfolio."
   }
 ];
+
+const MAX_USERS_PER_TENANT_FIELD = {
+  key: "maxUsersPerTenant" as const,
+  label: "Max users per tenant",
+  abbr: "Users/tenant",
+  hint: "Maximum distinct users allowed a membership on this tenant (enforced on OAuth, access approval, and admin user create)."
+};
+
+/** Base tenant row includes per-tenant user cap; billing-plan override table uses QUOTA_FIELDS only. */
+const TENANT_BASE_QUOTA_FIELDS = [...QUOTA_FIELDS, MAX_USERS_PER_TENANT_FIELD];
 
 const PREF_FIELDS: (
   | {
@@ -75,7 +85,9 @@ const PREF_FIELDS: (
 
 type PlanLimitDrafts = Record<
   AtxBillingPlanId,
-  Partial<Record<keyof TenantWorkspaceLimits | "price" | "stripeProductId" | "stripePriceId", string>>
+  Partial<
+    Record<PlanQuotaFieldKey | "chatHistoryMax" | "changePersonaEnabled" | "price" | "stripeProductId" | "stripePriceId", string>
+  >
 >;
 
 function emptyPlanDrafts(): PlanLimitDrafts {
@@ -343,7 +355,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
           <thead>
             <tr>
               <th scope="col">Tenant</th>
-              {QUOTA_FIELDS.map((f) => (
+              {TENANT_BASE_QUOTA_FIELDS.map((f) => (
                 <th key={f.key} scope="col" title={f.hint}>
                   <span className="admin-tenant-pref-crud-table__abbr">{f.abbr}</span>
                   <span className="admin-tenant-pref-crud-table__full">{f.label}</span>
@@ -370,7 +382,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
               <td>
                 <code className="font-mono text-xs">{slug || tenantId}</code>
               </td>
-              {QUOTA_FIELDS.map((f) => (
+              {TENANT_BASE_QUOTA_FIELDS.map((f) => (
                 <td key={f.key}>
                   <input
                     aria-label={f.label}

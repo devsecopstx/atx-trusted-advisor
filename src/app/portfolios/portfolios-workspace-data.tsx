@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
 import {
     loadAppUserDefaultBook,
     portfolioRefs,
@@ -137,30 +138,36 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
   };
 
   return (
-    <PortfoliosWorkspaceClient
-      chosenPortfolioId={chosenPortfolioId}
-      accountDetails={{
-        email: session.email,
-        username: session.username,
-        displayName: session.displayName,
-        xUserId: session.xUserId,
-        avatarUrl: session.avatarUrl,
-        mongoConnection,
-        tenantIdHex: session.tenantId?.trim() || undefined,
-        isGlobalAdmin: admin
-      }}
-      accountFeedbackPageLabel="Portfolio workspace"
-      accountSlices={accountSlices}
-      defaultPortfolioId={defaultPortfolioIdForImport}
-      focusPortfolioId={focusPortfolioId}
-      initialRows={initialRows}
-      isGlobalAdmin={admin}
-      topHoldings={topHoldings}
-      totalBookUsd={totalBookUsd}
-      workspaceBook={workspaceBook}
-      workspaceDeskHints={workspaceDeskHints}
-      workspaceTenant={workspaceTenant}
-      workspaceTenantIdHex={session.tenantId?.trim() || null}
-    />
+    <div className="xchat-shell">
+      <AppUserApprovedHeader
+        current="portfolio"
+        feedbackPageLabel="Portfolio workspace"
+        session={session}
+        workspaceTenant={workspaceTenant}
+      />
+      <PortfoliosWorkspaceClient
+        chosenPortfolioId={chosenPortfolioId}
+        accountDetails={{
+          email: session.email,
+          username: session.username,
+          displayName: session.displayName,
+          xUserId: session.xUserId,
+          avatarUrl: session.avatarUrl,
+          mongoConnection,
+          tenantIdHex: session.tenantId?.trim() || undefined,
+          isGlobalAdmin: admin
+        }}
+        accountFeedbackPageLabel="Portfolio workspace"
+        accountSlices={accountSlices}
+        defaultPortfolioId={defaultPortfolioIdForImport}
+        focusPortfolioId={focusPortfolioId}
+        initialRows={initialRows}
+        isGlobalAdmin={admin}
+        topHoldings={topHoldings}
+        totalBookUsd={totalBookUsd}
+        workspaceBook={workspaceBook}
+        workspaceDeskHints={workspaceDeskHints}
+      />
+    </div>
   );
 }

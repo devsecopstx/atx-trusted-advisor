@@ -13,7 +13,7 @@ import {
 export type TenantWorkspaceLimits = {
   /** xOptions deck / follow-up views per user — labeled **per hour** on `/account/billing` and admin workspace limits; enforced via `app_feature_daily_usage` (UTC day bucket) until hourly metering ships. */
   userXoptionsLimit: number;
-  /** xChat prompts per user — labeled **per hour** on billing/admin; effective cap `min(plan, tenant)` in `POST /api/xchat/ask` (usage currently tracks UTC calendar day). */
+  /** xChat prompts per user — labeled **per hour** on billing/admin; enforced in `POST /api/xchat/ask` from merged tenant limits (base + `planOverrides` row for the user’s plan; usage tracks UTC calendar day). */
   userChatLimit: number;
   /** Max portfolios per user in this tenant workspace. */
   tenantPortfolioLimit: number;
@@ -23,6 +23,8 @@ export type TenantWorkspaceLimits = {
   changePersonaEnabled: boolean;
   /** Max recent user turns shown in xChat thread + history fetch (UI); default **10**. */
   chatHistoryMax: number;
+  /** Max distinct users that may hold a `core_tenant_memberships` row for this tenant (enforced on assign). Default **5**. */
+  maxUsersPerTenant: number;
 };
 
 /** Default list price (USD, whole units) per plan when `planOverrides.*.price` is unset. */
@@ -55,7 +57,8 @@ export const DEFAULT_TENANT_WORKSPACE_LIMITS: TenantWorkspaceLimits = {
   tenantPortfolioLimit: 1,
   portfolioAccountLimit: 1,
   changePersonaEnabled: true,
-  chatHistoryMax: 10
+  chatHistoryMax: 10,
+  maxUsersPerTenant: 5
 };
 
 /** Numeric quota keys (positive integers), including chat history depth. */
@@ -64,7 +67,8 @@ const LIMIT_KEYS = [
   "userChatLimit",
   "tenantPortfolioLimit",
   "portfolioAccountLimit",
-  "chatHistoryMax"
+  "chatHistoryMax",
+  "maxUsersPerTenant"
 ] as const satisfies readonly (keyof TenantWorkspaceLimits)[];
 
 function isPositiveInt(n: unknown): n is number {
@@ -205,7 +209,8 @@ export function applyTenantPlanRowToBase(
     tenantPortfolioLimit: row.tenantPortfolioLimit ?? base.tenantPortfolioLimit,
     portfolioAccountLimit: row.portfolioAccountLimit ?? base.portfolioAccountLimit,
     changePersonaEnabled: row.changePersonaEnabled ?? base.changePersonaEnabled,
-    chatHistoryMax: row.chatHistoryMax ?? base.chatHistoryMax
+    chatHistoryMax: row.chatHistoryMax ?? base.chatHistoryMax,
+    maxUsersPerTenant: row.maxUsersPerTenant ?? base.maxUsersPerTenant
   };
 }
 

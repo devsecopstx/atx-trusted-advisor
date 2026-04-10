@@ -118,7 +118,17 @@ export function hasXaiManagementApiKey(): boolean {
   return managementApiKey.length > 0;
 }
 
-export async function createXaiCollection(collectionName: string): Promise<{
+export type CreateXaiCollectionOptions = {
+  /** When set, collection is owned by this team (Management API `team_id`). */
+  teamId?: string;
+  /** Optional human description for the xAI console / agents. */
+  collectionDescription?: string;
+};
+
+export async function createXaiCollection(
+  collectionName: string,
+  options?: CreateXaiCollectionOptions
+): Promise<{
   id: string;
   name: string;
 }> {
@@ -129,15 +139,25 @@ export async function createXaiCollection(collectionName: string): Promise<{
     throw new Error("Collection name is required");
   }
 
+  const body: Record<string, unknown> = {
+    collection_name: normalizedName
+  };
+  const tid = options?.teamId?.trim();
+  if (tid) {
+    body.team_id = tid;
+  }
+  const desc = options?.collectionDescription?.trim();
+  if (desc) {
+    body.collection_description = desc;
+  }
+
   const response = await fetch(`${managementBaseUrl}/collections`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${managementApiKey}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      collection_name: normalizedName
-    })
+    body: JSON.stringify(body)
   });
 
   const payload = (await response.json()) as Record<string, unknown>;

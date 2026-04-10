@@ -14,6 +14,7 @@ import {
     updateCoreUserById
 } from "@/modules/identity/repository";
 import type { CoreUser } from "@/modules/identity/types";
+import { clearMeteredUsageForUser } from "@/modules/xchat/clear-metered-usage-for-user";
 
 const updateUserSchema = z.object({
   email: z.string().trim().email().optional(),
@@ -94,6 +95,11 @@ export async function PUT(request: Request, context: RouteContext) {
     );
   }
 
+  const existing = await getCoreUserById(new ObjectId(userId));
+  if (!existing) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
   let updated: CoreUser | null;
   try {
     updated = await updateCoreUserById(new ObjectId(userId), parsed.data);
@@ -107,6 +113,21 @@ export async function PUT(request: Request, context: RouteContext) {
 
   if (!updated) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (parsed.data.subscriptionPlan !== undefined) {
+    const prev = normalizeSubscriptionPlan(existing.subscriptionPlan);
+    const next = normalizeSubscriptionPlan(updated.subscriptionPlan);
+    if (prev !== next) {
+      try {
+        await clearMeteredUsageForUser(userId);
+      } catch (error) {
+        console.warn("[admin/users] metered usage clear after plan change failed (non-fatal)", {
+          userId,
+          message: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
   }
 
   await createAuditEvent({

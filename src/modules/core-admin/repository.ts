@@ -153,6 +153,10 @@ function coerceWatchlistSymbolEntry(
     const entryPrice = parseOptionalFiniteNumber(o.entryPrice);
     const lastPrice = parseOptionalFiniteNumber(o.lastPrice);
     const lastUpdatedAt = o.lastUpdatedAt instanceof Date ? o.lastUpdatedAt : undefined;
+    const rationale =
+      typeof o.rationale === "string" ? o.rationale.trim().slice(0, 4000) : undefined;
+    const rs = o.rowStatus;
+    const rowStatus = rs === "draft" || rs === "active" ? rs : undefined;
     return {
       symbol,
       addedAt,
@@ -160,6 +164,8 @@ function coerceWatchlistSymbolEntry(
       ...(strategy ? { strategy } : {}),
       ...(quantity !== undefined ? { quantity } : {}),
       ...(entryPrice !== undefined ? { entryPrice } : {}),
+      ...(rationale ? { rationale } : {}),
+      ...(rowStatus ? { rowStatus } : {}),
       ...(lastPrice !== undefined ? { lastPrice } : {}),
       ...(lastUpdatedAt ? { lastUpdatedAt } : {})
     };
@@ -1061,12 +1067,24 @@ export async function finalizeTaskRun(
 export async function listTaskRuns(options?: {
   limit?: number;
   tenantId?: string;
+  /** Inclusive lower bound on `startedAt`. */
+  startedAtMin?: Date;
+  /** Exclusive upper bound on `startedAt` (Mongo `$lt`). */
+  startedAtMaxExclusive?: Date;
 }): Promise<TaskRun[]> {
-  const limit = options?.limit ?? 50;
+  const limit = Math.min(Math.max(options?.limit ?? 50, 1), 500);
   const db = await getDb();
+  const time: { $gte?: Date; $lt?: Date } = {};
+  if (options?.startedAtMin) {
+    time.$gte = options.startedAtMin;
+  }
+  if (options?.startedAtMaxExclusive) {
+    time.$lt = options.startedAtMaxExclusive;
+  }
+  const base: Filter<TaskRun> = Object.keys(time).length > 0 ? { startedAt: time } : {};
   return db
     .collection<TaskRun>(collections.taskRuns)
-    .find(withTenantScope({}, options?.tenantId))
+    .find(withTenantScope(base, options?.tenantId))
     .sort({ startedAt: -1 })
     .limit(limit)
     .toArray();
@@ -2889,6 +2907,25 @@ function mergeImportEntryIntoSymbol(
       } else {
         next.priceAlertMinAbsMovePercent = Math.min(100, Math.max(0.1, v));
       }
+    }
+  }
+  if (entry.rationale !== undefined) {
+    if (entry.rationale === null) {
+      delete next.rationale;
+    } else {
+      const v = entry.rationale.trim().slice(0, 4000);
+      if (v.length === 0) {
+        delete next.rationale;
+      } else {
+        next.rationale = v;
+      }
+    }
+  }
+  if (entry.rowStatus !== undefined) {
+    if (entry.rowStatus === null) {
+      delete next.rowStatus;
+    } else if (entry.rowStatus === "draft" || entry.rowStatus === "active") {
+      next.rowStatus = entry.rowStatus;
     }
   }
   return next;

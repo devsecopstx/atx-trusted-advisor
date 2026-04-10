@@ -591,7 +591,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "GET /api/admin/tenants/register": {
     summary: "Tenant register (platform directory)",
     description:
-      "global_admin only. Lists every `core_tenants` row with id, slug, name, platform-default flag, stored `workspaceLimits` and `tenantPreferences` (JSON objects or null), and `tenant_admin` memberships (email, display name, user id, default session marker). Admin UI (`/admin/tenant-register`) also surfaces last-four id, accent preview from `tenantPreferences.xf_accent_color`, and collapsible JSON for workspace limits / preferences.",
+      "global_admin only. Lists every `core_tenants` row with id, slug, name, platform-default flag, `membershipCount` (all `core_tenant_memberships` for that tenant), optional xChat team KB id/name from `tenantPreferences` (`xchat_team_attachments_collection_id` / `xchat_team_attachments_collection_name`), stored `workspaceLimits` and `tenantPreferences` (JSON objects or null), and `tenant_admin` memberships (email, display name, user id, default session marker). Admin UI (`/admin/tenant-register`) also surfaces last-four id, accent preview from `tenantPreferences.xf_accent_color`, Edit → branding page, Delete when `membershipCount` is 0, and collapsible JSON for workspace limits / preferences.",
     responses: {
       "200": jsonResponse("Tenant register rows.", "TenantRegisterListResponseEnvelope"),
       "401": json401Session(),
@@ -618,6 +618,21 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "403": json403Admin("Session is valid, but admin role is required."),
       "409": jsonResponse("Conflict (e.g. X user id already linked to another email).", "ConflictErrorResponse"),
       "500": jsonResponse("Upsert or provisioning failed.", "ErrorResponse")
+    }
+  },
+  "DELETE /api/admin/tenants/{tenantId}": {
+    summary: "Delete tenant (no memberships)",
+    description:
+      "global_admin only. Deletes `core_tenants` when the tenant is not the platform default and has zero `core_tenant_memberships`. Returns 409 when any user is still associated with the tenant.",
+    parameters: [{ name: "tenantId", in: "path", required: true, schema: { type: "string" } }],
+    responses: {
+      "200": jsonResponse("Tenant deleted.", "AdminTenantDeleteResponseEnvelope"),
+      "400": jsonResponse("Cannot delete platform default tenant.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "404": jsonResponse("Tenant not found.", "ErrorResponse"),
+      "409": jsonResponse("Tenant still has memberships.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
   "GET /api/admin/users": {
@@ -756,6 +771,19 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "400": jsonResponse("Invalid user id or payload.", "ValidationErrorResponse"),
       "401": json401Session(),
       "403": json403Admin("Session is valid, but admin role is required."),
+      "404": jsonResponse("User not found.", "ErrorResponse"),
+      "500": jsonResponse("Unhandled server error.", "ErrorResponse")
+    }
+  },
+  "POST /api/admin/users/{userId}/metered-usage/reset": {
+    summary: "Clear xChat and feature daily usage meters for a user (Mongo)",
+    responses: {
+      "200": jsonResponse("Deleted usage bucket counts.", "AdminMeteredUsageResetResponseEnvelope"),
+      "400": jsonResponse("Invalid user id.", "ErrorResponse"),
+      "401": json401Session(),
+      "403": json403Admin("Session is valid, but admin role is required."),
+      "404": jsonResponse("User not found.", "ErrorResponse"),
+      "503": jsonResponse("Mongo delete failed.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
@@ -1703,6 +1731,9 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       "isPlatformDefault",
       "createdAt",
       "updatedAt",
+      "membershipCount",
+      "xchatTeamAttachmentsCollectionId",
+      "xchatTeamAttachmentsCollectionName",
       "workspaceLimits",
       "tenantPreferences",
       "tenantAdmins"
@@ -1717,6 +1748,21 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       },
       createdAt: { type: "string", format: "date-time" },
       updatedAt: { type: "string", format: "date-time" },
+      membershipCount: {
+        type: "integer",
+        minimum: 0,
+        description: "Count of `core_tenant_memberships` rows for this tenant (all roles)."
+      },
+      xchatTeamAttachmentsCollectionId: {
+        type: "string",
+        nullable: true,
+        description: "xAI team collection id for xChat uploads when provisioned."
+      },
+      xchatTeamAttachmentsCollectionName: {
+        type: "string",
+        nullable: true,
+        description: "xAI collection display / folder name."
+      },
       workspaceLimits: {
         oneOf: [
           { type: "object", additionalProperties: true, description: "Stored `core_tenants.workspaceLimits` partial." },
@@ -1741,6 +1787,20 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
     required: ["data"],
     properties: {
       data: { type: "array", items: refSchema("TenantRegisterRow") }
+    }
+  },
+  AdminTenantDeleteResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["deleted", "tenantId"],
+        properties: {
+          deleted: { type: "boolean", enum: [true] },
+          tenantId: { type: "string", description: "Deleted `core_tenants._id` hex." }
+        }
+      }
     }
   },
   AdminTenantCreateRequest: {
@@ -1799,7 +1859,19 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
       slug: { type: "string" },
       name: { type: "string" },
       provisionedInitialAdmin: { type: "boolean" },
-      message: { type: "string" }
+      message: { type: "string" },
+      xchatTeamAttachments: {
+        type: "object",
+        required: ["collectionId", "collectionName", "alreadyConfigured"],
+        properties: {
+          collectionId: { type: "string", description: "xAI team collection id (Management API)." },
+          collectionName: { type: "string" },
+          alreadyConfigured: {
+            type: "boolean",
+            description: "True when ids were already stored on the tenant (re-upsert)."
+          }
+        }
+      }
     }
   },
   TenantCreateResponseEnvelope: {
@@ -1935,6 +2007,21 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         properties: {
           deleted: { type: "boolean", enum: [true] },
           userId: { type: "string" }
+        }
+      }
+    }
+  },
+  AdminMeteredUsageResetResponseEnvelope: {
+    type: "object",
+    required: ["data"],
+    properties: {
+      data: {
+        type: "object",
+        required: ["userId", "xchatUsageDeleted", "featureDailyDeleted"],
+        properties: {
+          userId: { type: "string" },
+          xchatUsageDeleted: { type: "integer", minimum: 0 },
+          featureDailyDeleted: { type: "integer", minimum: 0 }
         }
       }
     }

@@ -2,6 +2,9 @@ import type { Db } from "mongodb";
 import { ObjectId } from "mongodb";
 
 import type { ParsedInitialTenantAdmin, ParsedTenantSpecV1 } from "@/lib/tenant-spec-v1-parse";
+import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
+import { upsertTenantMembership } from "@/modules/identity/repository";
+import { ensureTenantTeamXchatAttachmentsCollection } from "@/modules/platform/tenant-xchat-team-collection";
 
 export async function ensureTenantProvisionIndexes(db: Db): Promise<void> {
   await Promise.all([
@@ -90,25 +93,12 @@ async function provisionInitialTenantAdmin(
     await users.updateOne({ _id: user._id }, { $set: xSet });
   }
 
-  if (admin.setAsDefaultSessionTenant) {
-    await memberships.updateMany(
-      { userId: user._id, tenantId: { $ne: tenantId } },
-      { $set: { isDefaultTenant: false, updatedAt: now } }
-    );
-  }
-
-  await memberships.updateOne(
-    { userId: user._id, tenantId },
-    {
-      $setOnInsert: { createdAt: now },
-      $set: {
-        role: "tenant_admin",
-        isDefaultTenant: admin.setAsDefaultSessionTenant,
-        updatedAt: now
-      }
-    },
-    { upsert: true }
-  );
+  await upsertTenantMembership({
+    userId: user._id,
+    tenantId,
+    role: "tenant_admin",
+    isDefaultTenant: true
+  });
 }
 
 export type UpsertTenantFromSpecResult = {
@@ -116,6 +106,12 @@ export type UpsertTenantFromSpecResult = {
   slug: string;
   name: string;
   provisionedInitialAdmin: boolean;
+  /** Present when xAI team attachments collection was resolved or already stored (requires `XAI_TEAM_ID` + management key). */
+  xchatTeamAttachments?: {
+    collectionId: string;
+    collectionName: string;
+    alreadyConfigured: boolean;
+  };
 };
 
 /**
@@ -168,10 +164,28 @@ export async function upsertTenantFromParsedSpecV1(
     await provisionInitialTenantAdmin(db, tenantId, parsed.initialTenantAdmin, now);
   }
 
+  const refreshed = await db.collection("core_tenants").findOne({ _id: tenantId });
+  const prefs = refreshed?.tenantPreferences as TenantPreferences | null | undefined;
+  const xchatEnsured = await ensureTenantTeamXchatAttachmentsCollection({
+    db,
+    tenantSlug: parsed.slug,
+    tenantObjectId: tenantId,
+    tenantPreferences: prefs ?? null
+  });
+
   return {
     tenantId: tenantId.toHexString(),
     slug: parsed.slug,
     name: parsed.name,
-    provisionedInitialAdmin: Boolean(parsed.initialTenantAdmin)
+    provisionedInitialAdmin: Boolean(parsed.initialTenantAdmin),
+    ...(xchatEnsured
+      ? {
+          xchatTeamAttachments: {
+            collectionId: xchatEnsured.collectionId,
+            collectionName: xchatEnsured.collectionName,
+            alreadyConfigured: xchatEnsured.skippedReason === "already_configured"
+          }
+        }
+      : {})
   };
 }

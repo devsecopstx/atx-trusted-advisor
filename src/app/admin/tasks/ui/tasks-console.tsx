@@ -114,6 +114,8 @@ export function TasksConsole() {
   const [activeTab, setActiveTab] = useState<"tasks" | "schedule" | "runs" | "channels">("tasks");
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [runs, setRuns] = useState<TaskRun[]>([]);
+  /** Default: current UTC calendar day; optional rolling 30 days. */
+  const [runHistoryWindow, setRunHistoryWindow] = useState<"today" | "30d">("today");
   const [deliveryChannels, setDeliveryChannels] = useState<DeliveryChannelRow[]>([]);
   const [status, setStatus] = useState("Ready — tap refresh");
   const [loading, setLoading] = useState(false);
@@ -155,6 +157,7 @@ export function TasksConsole() {
     >
   >({});
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const skipRunWindowEffectOnce = useRef(true);
   const selectedCreateTemplate = useMemo(
     () => SCHEDULED_TASK_CATEGORY_CATALOG[createJobType],
     [createJobType]
@@ -172,12 +175,15 @@ export function TasksConsole() {
 
   const refreshRuns = useCallback(async () => {
     try {
-      const payload = await parseJson<{ data: TaskRun[] }>(await fetch("/api/admin/task-runs"));
+      const params = new URLSearchParams({ window: runHistoryWindow });
+      const payload = await parseJson<{ data: TaskRun[] }>(
+        await fetch(`/api/admin/task-runs?${params.toString()}`)
+      );
       setRuns(payload.data);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to refresh runs");
     }
-  }, []);
+  }, [runHistoryWindow]);
 
   const refreshDeliveryChannels = useCallback(async () => {
     try {
@@ -409,6 +415,14 @@ export function TasksConsole() {
     };
   }, [refreshAll]);
 
+  useEffect(() => {
+    if (skipRunWindowEffectOnce.current) {
+      skipRunWindowEffectOnce.current = false;
+      return;
+    }
+    void refreshRuns();
+  }, [runHistoryWindow, refreshRuns]);
+
   return (
     <section className="panel stack-gap">
       <div className="tool-row">
@@ -528,7 +542,8 @@ export function TasksConsole() {
             onClick={() => setActiveTab("runs")}
             disabled={loading}
           >
-            Task runs ({runs.length})
+            Task runs ({runs.length}
+            {runHistoryWindow === "today" ? " · today UTC" : " · 30d"})
           </button>
           <button
             type="button"
@@ -863,8 +878,27 @@ export function TasksConsole() {
           </div>
         ) : activeTab === "runs" ? (
           <div className="stack-gap">
+            <div className="tool-row" style={{ flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.65rem" }}>
+              <label className="flex flex-col gap-1 text-sm" style={{ minWidth: "12rem" }}>
+                <span className="status-text text-xs uppercase tracking-wide">Run history</span>
+                <select
+                  aria-label="Task run history time range"
+                  className="crud-input text-sm"
+                  disabled={loading}
+                  value={runHistoryWindow}
+                  onChange={(e) => setRunHistoryWindow(e.target.value === "30d" ? "30d" : "today")}
+                >
+                  <option value="today">Today (UTC calendar day)</option>
+                  <option value="30d">Last 30 days</option>
+                </select>
+              </label>
+              <p className="status-text" style={{ margin: 0, flex: "1 1 12rem", alignSelf: "flex-end" }}>
+                Default shows runs that <strong>started</strong> on the current UTC date. Widen to 30 days for
+                troubleshooting; polling and refresh use the same window.
+              </p>
+            </div>
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Recent execution history for tenant-level scheduled tasks.
+              Execution history for tenant-level scheduled tasks (newest first).
             </p>
             {runs.length > 0 ? (
               <div className="crud-table-wrap">

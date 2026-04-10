@@ -382,6 +382,8 @@ export type Account = {
   updatedAt: Date;
 };
 
+export type WatchlistRowStatus = "draft" | "active";
+
 export type WatchlistSymbol = {
   symbol: string;
   addedAt: Date;
@@ -390,6 +392,10 @@ export type WatchlistSymbol = {
   strategy?: string;
   quantity?: number;
   entryPrice?: number;
+  /** Short desk thesis; required before `rowStatus` can be `active`. */
+  rationale?: string;
+  /** Watchlist workflow: `active` rows should have non-empty `rationale` (enforced in API + UI). */
+  rowStatus?: WatchlistRowStatus;
   /**
    * Minimum absolute % move vs prior `lastPrice` before firing a price alert for this row.
    * When unset, `PriceAlertService` uses the global default (see `DEFAULT_MIN_ABS_MOVE_PERCENT`).
@@ -407,6 +413,8 @@ export type WatchlistSymbolImportEntry = {
   strategy?: string | null;
   quantity?: number | null;
   entryPrice?: number | null;
+  rationale?: string | null;
+  rowStatus?: WatchlistRowStatus | null;
   priceAlertMinAbsMovePercent?: number | null;
 };
 

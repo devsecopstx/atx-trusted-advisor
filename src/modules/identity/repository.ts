@@ -3,6 +3,9 @@ import { ObjectId } from "mongodb";
 import { googleLinkedId, isGoogleLegacyXUserId } from "@/lib/google-oauth-identity";
 import { getDb } from "@/lib/mongodb";
 import { DEFAULT_TENANT_ACCENT_HEX, normalizeXfAccentColor } from "@/lib/tenant-accent-color";
+import { isXfBrandPaletteId } from "@/lib/tenant-branding-palette";
+import { MAX_XF_HERO_ICON_URL_CHARS } from "@/lib/tenant-hero-icon-url";
+import { MAX_XF_TENANT_LOGO_URL_CHARS } from "@/lib/tenant-logo-url";
 import {
     parseXfUiThemePreferenceFromUnknown,
     type XfUiThemePreference
@@ -14,6 +17,7 @@ import {
     type LoginAuditProvider
 } from "@/modules/identity/login-audit";
 import type { TenantBrandingPreferences } from "@/modules/identity/tenant-branding-preferences";
+import { TenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 import type { TenantShellBranding } from "@/modules/identity/tenant-shell-branding";
 import {
     mergeTenantWorkspaceLimits,
@@ -160,6 +164,21 @@ export async function listAdminTenantMembershipsByUserIds(
   }
   await ensureIdentityIndexes();
   const db = await getDb();
+
+  const duplicateUsers = await db
+    .collection<TenantMembership>(collections.memberships)
+    .aggregate<{ _id: ObjectId }>([
+      { $match: { userId: { $in: userIds } } },
+      { $group: { _id: "$userId", n: { $sum: 1 } } },
+      { $match: { n: { $gt: 1 } } }
+    ])
+    .toArray();
+  for (const row of duplicateUsers) {
+    if (row._id instanceof ObjectId) {
+      await pruneExcessTenantMembershipsForUser(row._id);
+    }
+  }
+
   const memberships = await db
     .collection<TenantMembership>(collections.memberships)
     .find({ userId: { $in: userIds } })
@@ -242,6 +261,11 @@ export type TenantRegisterRow = {
   isPlatformDefault: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Count of `core_tenant_memberships` rows for this tenant (all roles). */
+  membershipCount: number;
+  /** xAI team KB for xChat uploads when provisioned (`tenantPreferences`). */
+  xchatTeamAttachmentsCollectionId: string | null;
+  xchatTeamAttachmentsCollectionName: string | null;
   /** Stored partial from `core_tenants.workspaceLimits` (e.g. seed YAML); null when unset. */
   workspaceLimits: Record<string, unknown> | null;
   /** Stored `core_tenants.tenantPreferences` (branding, xf_ui_theme, flags); null when unset. */
@@ -340,10 +364,39 @@ export async function listTenantRegisterForAdmin(): Promise<TenantRegisterRow[]>
     });
   }
 
+  const membershipCountByHex = new Map<string, number>();
+  if (tenantObjectIds.length > 0) {
+    const grouped = await db
+      .collection<TenantMembership>(collections.memberships)
+      .aggregate<{ _id: ObjectId; count: number }>([
+        { $match: { tenantId: { $in: tenantObjectIds } } },
+        { $group: { _id: "$tenantId", count: { $sum: 1 } } }
+      ])
+      .toArray();
+    for (const row of grouped) {
+      if (row._id) {
+        membershipCountByHex.set(row._id.toHexString(), row.count);
+      }
+    }
+  }
+
   return tenants
     .filter((t) => t._id)
     .map((t) => {
       const id = t._id!.toHexString();
+      const tp = toTenantRegisterJsonObject(t.tenantPreferences);
+      let xchatTeamAttachmentsCollectionId: string | null = null;
+      let xchatTeamAttachmentsCollectionName: string | null = null;
+      if (tp) {
+        const cid = tp.xchat_team_attachments_collection_id;
+        const cname = tp.xchat_team_attachments_collection_name;
+        if (typeof cid === "string" && cid.trim()) {
+          xchatTeamAttachmentsCollectionId = cid.trim();
+        }
+        if (typeof cname === "string" && cname.trim()) {
+          xchatTeamAttachmentsCollectionName = cname.trim();
+        }
+      }
       return {
         tenantId: id,
         slug: t.slug,
@@ -351,11 +404,166 @@ export async function listTenantRegisterForAdmin(): Promise<TenantRegisterRow[]>
         isPlatformDefault: Boolean(t.isDefault),
         createdAt: t.createdAt.toISOString(),
         updatedAt: t.updatedAt.toISOString(),
+        membershipCount: membershipCountByHex.get(id) ?? 0,
+        xchatTeamAttachmentsCollectionId,
+        xchatTeamAttachmentsCollectionName,
         workspaceLimits: toTenantRegisterJsonObject(t.workspaceLimits),
-        tenantPreferences: toTenantRegisterJsonObject(t.tenantPreferences),
+        tenantPreferences: tp,
         tenantAdmins: adminsByTenantHex.get(id) ?? []
       };
     });
+}
+
+export type DeleteTenantIfNoMembershipsResult =
+  | { ok: true }
+  | { ok: false; code: "NOT_FOUND" | "HAS_MEMBERS" | "PLATFORM_DEFAULT" };
+
+/**
+ * Removes `core_tenants` when the tenant has no memberships and is not the platform default row.
+ */
+export async function deleteTenantIfNoMemberships(tenantIdHex: string): Promise<DeleteTenantIfNoMembershipsResult> {
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return { ok: false, code: "NOT_FOUND" };
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const tenant = await db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+  if (!tenant) {
+    return { ok: false, code: "NOT_FOUND" };
+  }
+  if (tenant.isDefault) {
+    return { ok: false, code: "PLATFORM_DEFAULT" };
+  }
+  const n = await db.collection(collections.memberships).countDocuments({ tenantId: id });
+  if (n > 0) {
+    return { ok: false, code: "HAS_MEMBERS" };
+  }
+  const del = await db.collection<Tenant>(collections.tenants).deleteOne({ _id: id });
+  if (del.deletedCount !== 1) {
+    return { ok: false, code: "NOT_FOUND" };
+  }
+  return { ok: true };
+}
+
+const SHELL_PREF_KEYS = [
+  "xf_accent_color",
+  "xf_brand_palette",
+  "xf_tenant_logo_url",
+  "xf_tenant_tagline",
+  "xf_hero_icon_url"
+] as const;
+
+/**
+ * Applies visual shell keys from `tenantPreferences` (accent, palette, logo, tagline, hero icon).
+ * Only keys present on `raw` are considered; other preference keys are left unchanged.
+ */
+export async function applyTenantShellPreferencesPatch(
+  tenantIdHex: string,
+  raw: Record<string, unknown>
+): Promise<{ tenant: Tenant | null; error?: string }> {
+  const hasShellKey = SHELL_PREF_KEYS.some((k) => k in raw);
+  if (!hasShellKey) {
+    return { tenant: null };
+  }
+  if (!ObjectId.isValid(tenantIdHex)) {
+    return { tenant: null, error: "Invalid tenant id" };
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const id = new ObjectId(tenantIdHex);
+  const existing = await db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+  if (!existing?._id) {
+    return { tenant: null, error: "Tenant not found" };
+  }
+
+  const $set: Record<string, unknown> = {};
+  const $unset: Record<string, string> = {};
+  let touched = false;
+
+  for (const key of SHELL_PREF_KEYS) {
+    if (!(key in raw)) {
+      continue;
+    }
+    touched = true;
+    const v = raw[key];
+    const path = `tenantPreferences.${key}` as const;
+
+    if (v === null) {
+      $unset[path] = "";
+      continue;
+    }
+
+    if (key === "xf_accent_color") {
+      try {
+        $set[path] = normalizeXfAccentColor(String(v));
+      } catch {
+        return { tenant: null, error: "Invalid xf_accent_color" };
+      }
+      continue;
+    }
+
+    if (key === "xf_brand_palette") {
+      const s = String(v).trim();
+      if (!s) {
+        $unset[path] = "";
+      } else if (!isXfBrandPaletteId(s)) {
+        return { tenant: null, error: "Invalid xf_brand_palette" };
+      } else {
+        $set[path] = s;
+      }
+      continue;
+    }
+
+    if (key === "xf_tenant_logo_url") {
+      const s = String(v).trim();
+      if (!s) {
+        $unset[path] = "";
+      } else if (s.length > MAX_XF_TENANT_LOGO_URL_CHARS) {
+        return { tenant: null, error: "xf_tenant_logo_url too long" };
+      } else {
+        $set[path] = s;
+      }
+      continue;
+    }
+
+    if (key === "xf_tenant_tagline") {
+      const s = String(v).trim().slice(0, 60);
+      if (!s) {
+        $unset[path] = "";
+      } else {
+        $set[path] = s;
+      }
+      continue;
+    }
+
+    if (key === "xf_hero_icon_url") {
+      const s = String(v).trim();
+      if (!s) {
+        $unset[path] = "";
+      } else if (s.length > MAX_XF_HERO_ICON_URL_CHARS) {
+        return { tenant: null, error: "xf_hero_icon_url too long" };
+      } else {
+        $set[path] = s;
+      }
+    }
+  }
+
+  if (!touched) {
+    return { tenant: existing };
+  }
+
+  const now = new Date();
+  const update: Record<string, unknown> = {
+    $set: { ...$set, updatedAt: now }
+  };
+  if (Object.keys($unset).length > 0) {
+    update.$unset = $unset;
+  }
+
+  await db.collection<Tenant>(collections.tenants).updateOne({ _id: id }, update);
+  const updated = await db.collection<Tenant>(collections.tenants).findOne({ _id: id });
+  return { tenant: updated ?? null };
 }
 
 export async function getCoreUserById(userId: ObjectId): Promise<CoreUser | null> {
@@ -1104,12 +1312,83 @@ export async function resolveTenantIdForApprovedUserPortfolio(userIdHex: string)
   return tenant._id.toHexString();
 }
 
+/**
+ * Single-tenant policy: each user has at most one `core_tenant_memberships` document.
+ * Keeps the preferred row (default session tenant, else newest `updatedAt`), deletes the rest,
+ * and sets `isDefaultTenant: true` on the survivor.
+ */
+export async function pruneExcessTenantMembershipsForUser(userId: ObjectId): Promise<void> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const rows = await db
+    .collection<TenantMembership>(collections.memberships)
+    .find({ userId })
+    .toArray();
+  if (rows.length === 0) {
+    return;
+  }
+  const sorted = [...rows].sort((a, b) => {
+    if (a.isDefaultTenant !== b.isDefaultTenant) {
+      return a.isDefaultTenant ? -1 : 1;
+    }
+    const ta = a.updatedAt instanceof Date ? a.updatedAt.getTime() : 0;
+    const tb = b.updatedAt instanceof Date ? b.updatedAt.getTime() : 0;
+    return tb - ta;
+  });
+  const keep = sorted[0];
+  const remove = sorted.slice(1).filter((r): r is TenantMembership & { _id: ObjectId } =>
+    Boolean(r._id)
+  );
+  const now = new Date();
+  if (remove.length > 0) {
+    await db.collection<TenantMembership>(collections.memberships).deleteMany({
+      _id: { $in: remove.map((r) => r._id) }
+    });
+  }
+  if (keep._id) {
+    await db.collection<TenantMembership>(collections.memberships).updateOne(
+      { _id: keep._id },
+      { $set: { isDefaultTenant: true, updatedAt: now } }
+    );
+  }
+}
+
+/** Fails if the tenant already has `maxUsersPerTenant` memberships (unless the user is already on this tenant). */
+export async function assertCanAddUserToTenant(input: {
+  userId: ObjectId;
+  tenantId: ObjectId;
+}): Promise<void> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const existingForUser = await db
+    .collection<TenantMembership>(collections.memberships)
+    .findOne({ userId: input.userId });
+  if (existingForUser?.tenantId?.equals(input.tenantId)) {
+    return;
+  }
+  await assertTenantHasRoomForAnotherUser(input.tenantId);
+}
+
+/** For a net-new member (no membership row yet), or any assignee not already on this tenant. */
+export async function assertTenantHasRoomForAnotherUser(tenantId: ObjectId): Promise<void> {
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const tenantDoc = await db.collection<Tenant>(collections.tenants).findOne({ _id: tenantId });
+  const cap = mergeTenantWorkspaceLimits(tenantDoc?.workspaceLimits ?? null).maxUsersPerTenant;
+  const n = await db.collection(collections.memberships).countDocuments({ tenantId });
+  if (n >= cap) {
+    throw new TenantMembershipCapExceededError(tenantId.toHexString(), cap, n);
+  }
+}
+
 export async function upsertTenantMembership(input: {
   userId: ObjectId;
   tenantId: ObjectId;
   role: TenantMembership["role"];
   isDefaultTenant: boolean;
 }): Promise<TenantMembership> {
+  await assertCanAddUserToTenant({ userId: input.userId, tenantId: input.tenantId });
+
   await ensureIdentityIndexes();
   const db = await getDb();
   const now = new Date();
@@ -1126,6 +1405,17 @@ export async function upsertTenantMembership(input: {
       }
     },
     { upsert: true }
+  );
+
+  await db.collection<TenantMembership>(collections.memberships).deleteMany({
+    userId: input.userId,
+    tenantId: { $ne: input.tenantId }
+  });
+
+  const nowDefault = new Date();
+  await db.collection<TenantMembership>(collections.memberships).updateOne(
+    { userId: input.userId, tenantId: input.tenantId },
+    { $set: { isDefaultTenant: true, updatedAt: nowDefault } }
   );
 
   const membership = await db.collection<TenantMembership>(collections.memberships).findOne({

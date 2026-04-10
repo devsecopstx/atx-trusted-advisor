@@ -32,6 +32,9 @@ describe("GET /api/admin/tenants/register", () => {
         isPlatformDefault: false,
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-02T00:00:00.000Z",
+        membershipCount: 2,
+        xchatTeamAttachmentsCollectionId: "col_abc123",
+        xchatTeamAttachmentsCollectionName: "xfinance-tenant-acme-xchat-attachments",
         workspaceLimits: { userChatLimit: 25 },
         tenantPreferences: { xf_ui_theme: "light", xchat_brandname: "Acme xChat" },
         tenantAdmins: [
@@ -53,6 +56,8 @@ describe("GET /api/admin/tenants/register", () => {
       data: Array<{
         tenantId: string;
         slug: string;
+        membershipCount: number;
+        xchatTeamAttachmentsCollectionName: string | null;
         workspaceLimits: unknown;
         tenantPreferences: unknown;
         tenantAdmins: unknown[];
@@ -62,6 +67,8 @@ describe("GET /api/admin/tenants/register", () => {
     expect(body.data[0]?.slug).toBe("acme");
     expect(body.data[0]?.workspaceLimits).toEqual({ userChatLimit: 25 });
     expect(body.data[0]?.tenantPreferences).toMatchObject({ xf_ui_theme: "light" });
+    expect(body.data[0]?.membershipCount).toBe(2);
+    expect(body.data[0]?.xchatTeamAttachmentsCollectionName).toContain("acme");
     expect(body.data[0]?.tenantAdmins).toHaveLength(1);
     expect(identityMocks.listTenantRegisterForAdmin).toHaveBeenCalledTimes(1);
   });

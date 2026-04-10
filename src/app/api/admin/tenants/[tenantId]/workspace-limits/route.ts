@@ -5,6 +5,7 @@ import { requireGlobalAdminSession } from "@/lib/api-auth";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { parseXfUiThemePreferenceFromUnknown } from "@/lib/xf-ui-theme";
 import {
+    applyTenantShellPreferencesPatch,
     resolvedWorkspaceLimitsForTenant,
     resolveTenantIdHexForGlobalAdminConsole,
     updateTenantBrandingPreferencesOneTime,
@@ -152,6 +153,16 @@ export async function PATCH(request: Request, context: RouteContext) {
   let updated = brandingUpdate.tenant ?? limitsUpdated;
   if (!updated?._id) {
     return NextResponse.json({ error: "Could not update tenant" }, { status: 500 });
+  }
+
+  if (tpBody && typeof tpBody === "object" && !Array.isArray(tpBody)) {
+    const shell = await applyTenantShellPreferencesPatch(effectiveTenantHex, tpBody as Record<string, unknown>);
+    if (shell.error) {
+      return NextResponse.json({ error: shell.error }, { status: 400 });
+    }
+    if (shell.tenant?._id) {
+      updated = shell.tenant;
+    }
   }
 
   if (xchatDebugToggle !== undefined) {

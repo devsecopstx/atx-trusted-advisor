@@ -20,7 +20,8 @@ export default async function AdminTenantRegisterPage() {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Tenant register</h1>
         <p className="hero-copy">
-          Platform directory of <code className="text-sm">core_tenants</code> (id, slug, name, default flag), stored{" "}
+          Platform directory of <code className="text-sm">core_tenants</code> (id, slug, name, default flag), total
+          membership count per tenant, optional xChat team KB collection name/id, stored{" "}
           <code className="text-sm">workspaceLimits</code> and <code className="text-sm">tenantPreferences</code> (as
           seeded or edited in admin), and each tenant&apos;s <code className="text-sm">tenant_admin</code> memberships
           with email and display name.{" "}

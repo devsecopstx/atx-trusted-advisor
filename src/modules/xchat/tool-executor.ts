@@ -140,6 +140,8 @@ function watchlistSymbolToJson(s: WatchlistSymbol, quotePrice?: number) {
     ...(s.lineType !== undefined ? { lineType: s.lineType } : {}),
     ...(s.strategy !== undefined ? { strategy: s.strategy } : {}),
     ...(s.quantity !== undefined ? { quantity: s.quantity } : {}),
+    ...(s.rationale !== undefined ? { rationale: s.rationale } : {}),
+    ...(s.rowStatus !== undefined ? { rowStatus: s.rowStatus } : {}),
     ...(hasEntryPrice ? { entryPrice: s.entryPrice } : {}),
     ...(hasEntryPrice ? { targetEntryPrice: s.entryPrice } : {}),
     targetEntryDisplay: formatWatchlistTargetEntryStored(s.entryPrice),

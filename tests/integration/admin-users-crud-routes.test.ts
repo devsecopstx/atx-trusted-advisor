@@ -9,6 +9,7 @@ const identityMocks = vi.hoisted(() => ({
   listCoreUsers: vi.fn(),
   listAdminTenantMembershipsByUserIds: vi.fn().mockResolvedValue(new Map()),
   createCoreUser: vi.fn(),
+  assertTenantHasRoomForAnotherUser: vi.fn().mockResolvedValue(undefined),
   upsertTenantMembership: vi.fn(),
   getCoreUserById: vi.fn(),
   updateCoreUserById: vi.fn(),
@@ -25,7 +26,14 @@ const coreAdminRepoMocks = vi.hoisted(() => ({
   purgeAllDataAssociatedWithCoreUser: vi.fn().mockResolvedValue(undefined)
 }));
 
+const clearMeteredUsageMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ xchatUsageDeleted: 2, featureDailyDeleted: 1 })
+);
+
 vi.mock("@/lib/api-auth", () => authMocks);
+vi.mock("@/modules/xchat/clear-metered-usage-for-user", () => ({
+  clearMeteredUsageForUser: clearMeteredUsageMock
+}));
 vi.mock("@/modules/identity/repository", () => identityMocks);
 vi.mock("@/modules/audit/repository", () => auditMocks);
 vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
@@ -36,6 +44,7 @@ vi.mock("@/modules/core-admin/repository", async (importOriginal) => {
   };
 });
 
+import { POST as postMeteredUsageReset } from "@/app/api/admin/users/[userId]/metered-usage/reset/route";
 import {
     DELETE as deleteUser,
     GET as getUser,
@@ -45,6 +54,8 @@ import { GET as getUsers, POST as postUser } from "@/app/api/admin/users/route";
 
 describe("admin users CRUD routes", () => {
   beforeEach(() => {
+    clearMeteredUsageMock.mockClear();
+    clearMeteredUsageMock.mockResolvedValue({ xchatUsageDeleted: 2, featureDailyDeleted: 1 });
     authMocks.requireAdminSession.mockResolvedValue({
       userId: "507f1f77bcf86cd799439011",
       tenantId: "507f1f77bcf86cd799439022",
@@ -125,6 +136,8 @@ describe("admin users CRUD routes", () => {
     );
     expect(response.status).toBe(201);
     expect(identityMocks.createCoreUser).toHaveBeenCalledTimes(1);
+    expect(identityMocks.assertTenantHasRoomForAnotherUser).toHaveBeenCalled();
+    expect(identityMocks.upsertTenantMembership).toHaveBeenCalled();
   });
 
   it("defaults new admin-created user role to operator", async () => {
@@ -171,6 +184,49 @@ describe("admin users CRUD routes", () => {
     );
     expect(response.status).toBe(200);
     expect(identityMocks.updateCoreUserById).toHaveBeenCalledTimes(1);
+    expect(clearMeteredUsageMock).toHaveBeenCalledWith("507f1f77bcf86cd799439033");
+  });
+
+  it("does not clear metered usage when subscription plan is unchanged", async () => {
+    identityMocks.updateCoreUserById.mockResolvedValueOnce({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      email: "updated2@atxfinance.ai",
+      roles: ["advisor"],
+      subscriptionPlan: "basic",
+      status: "active",
+      createdAt: new Date("2026-03-16T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-16T00:00:00.000Z")
+    });
+    const response = await putUser(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "updated2@atxfinance.ai",
+          role: "advisor",
+          subscriptionPlan: "basic"
+        })
+      }),
+      {
+        params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(clearMeteredUsageMock).not.toHaveBeenCalled();
+  });
+
+  it("POST metered-usage reset clears usage and returns counts", async () => {
+    const res = await postMeteredUsageReset(new Request("http://test"), {
+      params: Promise.resolve({ userId: "507f1f77bcf86cd799439033" })
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: { userId: string; xchatUsageDeleted: number; featureDailyDeleted: number };
+    };
+    expect(body.data.userId).toBe("507f1f77bcf86cd799439033");
+    expect(body.data.xchatUsageDeleted).toBe(2);
+    expect(body.data.featureDailyDeleted).toBe(1);
+    expect(clearMeteredUsageMock).toHaveBeenCalledWith("507f1f77bcf86cd799439033");
   });
 
   it("deletes user by id", async () => {

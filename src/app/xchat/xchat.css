@@ -3190,19 +3190,6 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
   outline-offset: 2px;
 }
 
-.app-user-rail-account-open {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--xf-gain-green);
-  text-decoration: none;
-}
-
-.app-user-rail-account-open:hover {
-  color: var(--xf-lightning-yellow);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 .app-user-rail-workspace-k {
   font-size: 0.6rem;
   font-weight: 700;

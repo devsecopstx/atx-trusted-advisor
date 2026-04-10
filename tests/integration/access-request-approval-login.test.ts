@@ -39,6 +39,7 @@ const identityMocks = vi.hoisted(() => {
   const getCoreUserByXIdentity = vi.fn();
   return {
     addRoleToCoreUser: vi.fn(),
+    assertCanAddUserToTenant: vi.fn().mockResolvedValue(undefined),
     updateCoreUserSubscriptionPlan: vi.fn(),
     getCoreUserById: vi.fn(),
     resolveTenantIdForApprovedUserPortfolio: vi.fn(),

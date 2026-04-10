@@ -6,7 +6,8 @@ import { requireAdminSession } from "@/lib/api-auth";
 import { proxyAdminUsersRequestToBackend } from "@/lib/backend-bff";
 import { normalizeSubscriptionPlan, zSubscriptionPlan } from "@/lib/subscription-plan";
 import { createAuditEvent } from "@/modules/audit/repository";
-import { updateCoreUserSubscriptionPlan } from "@/modules/identity/repository";
+import { getCoreUserById, updateCoreUserSubscriptionPlan } from "@/modules/identity/repository";
+import { clearMeteredUsageForUser } from "@/modules/xchat/clear-metered-usage-for-user";
 
 const updatePlanSchema = z.object({
   subscriptionPlan: zSubscriptionPlan
@@ -41,10 +42,28 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
+  const existing = await getCoreUserById(new ObjectId(userId));
+  if (!existing) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  const prevPlan = normalizeSubscriptionPlan(existing.subscriptionPlan);
+
   const updated = await updateCoreUserSubscriptionPlan({
     userId: new ObjectId(userId),
     subscriptionPlan: parsed.data.subscriptionPlan
   });
+  const nextPlan = normalizeSubscriptionPlan(updated.subscriptionPlan);
+  if (prevPlan !== nextPlan) {
+    try {
+      await clearMeteredUsageForUser(userId);
+    } catch (error) {
+      console.warn("[admin/users/plan] metered usage clear after plan change failed (non-fatal)", {
+        userId,
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
   await createAuditEvent({
     entityType: "core_user",
     entityId: userId,

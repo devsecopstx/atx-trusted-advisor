@@ -17,6 +17,12 @@ type CreateTenantResponse = {
     name: string;
     provisionedInitialAdmin: boolean;
     message: string;
+    /** When `XAI_TEAM_ID` + management key are set — team collection for xChat uploads. */
+    xchatTeamAttachments?: {
+      collectionId: string;
+      collectionName: string;
+      alreadyConfigured: boolean;
+    };
   };
 };
 
@@ -166,7 +172,13 @@ export function CreateTenantConsole() {
       const json = await parseJson<CreateTenantResponse>(res);
       const data = json.data;
       setLastOk(data);
-      setStatus(`Created / updated tenant “${data.slug}” (${data.tenantId}).`);
+      const xchat =
+        data.xchatTeamAttachments != null
+          ? ` xChat attachments KB: ${data.xchatTeamAttachments.collectionName} (${data.xchatTeamAttachments.collectionId})${
+              data.xchatTeamAttachments.alreadyConfigured ? " — already linked." : "."
+            }`
+          : "";
+      setStatus(`Created / updated tenant “${data.slug}” (${data.tenantId}).${xchat}`);
     } catch (e) {
       setStatus(null);
       setError(e instanceof Error ? e.message : "Request failed");

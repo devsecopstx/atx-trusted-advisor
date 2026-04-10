@@ -7,7 +7,7 @@ Per-tenant quotas for the Next.js BFF. Defaults are code-defined; overrides live
 | Key | Default | Enforcement |
 |-----|---------|-------------|
 | `userXoptionsLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** `app_feature_daily_usage` (`feature: xoptions_deck`) UTC day bucket per user+tenant. Signed-in app users with `canUserLogin`; `global_admin` bypass. |
-| `userChatLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** `min(plan max, userChatLimit)` in `POST /api/xchat/ask` with UTC day usage; `global_admin` bypasses cap. |
+| `userChatLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** merged effective `userChatLimit` (tenant base + `planOverrides` for the user’s tier) in `POST /api/xchat/ask` with UTC day usage; `global_admin` bypasses cap. |
 | `tenantPortfolioLimit` | 1 | New portfolio rows in tenant for that user (admin + app flows). |
 | `portfolioAccountLimit` | 1 | New `portfolio_accounts` per portfolio. |
 | `changePersonaEnabled` | **true** | App users: xChat persona picker enabled. When **false**, picker is disabled ( **`global_admin`** sessions ignore). Per-plan override in `planOverrides.<tier>`. |

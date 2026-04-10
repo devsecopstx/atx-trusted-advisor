@@ -21,6 +21,9 @@ type TenantRegisterRow = {
   isPlatformDefault: boolean;
   createdAt: string;
   updatedAt: string;
+  membershipCount: number;
+  xchatTeamAttachmentsCollectionId: string | null;
+  xchatTeamAttachmentsCollectionName: string | null;
   workspaceLimits: Record<string, unknown> | null;
   tenantPreferences: Record<string, unknown> | null;
   tenantAdmins: TenantRegisterAdminRow[];
@@ -39,6 +42,17 @@ function lastFourOfTenantId(tenantId: string): string {
     return t || "—";
   }
   return t.slice(-4);
+}
+
+function shortId(id: string | null): string {
+  if (!id?.trim()) {
+    return "—";
+  }
+  const t = id.trim();
+  if (t.length <= 14) {
+    return t;
+  }
+  return `${t.slice(0, 8)}…${t.slice(-4)}`;
 }
 
 function accentHexFromPreferences(prefs: Record<string, unknown> | null): string {
@@ -111,6 +125,7 @@ export function TenantRegisterConsole() {
   const [status, setStatus] = useState("Loading…");
   const [rows, setRows] = useState<TenantRegisterRow[]>([]);
   const [jsonExpanded, setJsonExpanded] = useState<Record<string, boolean>>({});
+  const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null);
 
   const setJsonOpen = useCallback((key: string, open: boolean) => {
     setJsonExpanded((prev) => ({ ...prev, [key]: open }));
@@ -130,6 +145,32 @@ export function TenantRegisterConsole() {
     }
   }, []);
 
+  const deleteTenant = useCallback(
+    async (tenantId: string, membershipCount: number, isPlatformDefault: boolean) => {
+      if (isPlatformDefault || membershipCount > 0) {
+        return;
+      }
+      if (!window.confirm(`Delete tenant ${tenantId}? This cannot be undone. No users must remain on this tenant.`)) {
+        return;
+      }
+      setDeleteBusyId(tenantId);
+      try {
+        const res = await fetch(`/api/admin/tenants/${encodeURIComponent(tenantId)}`, { method: "DELETE" });
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          throw new Error(json.error ?? res.statusText);
+        }
+        setStatus("Tenant deleted.");
+        await load();
+      } catch (e) {
+        setStatus(e instanceof Error ? e.message : "Delete failed");
+      } finally {
+        setDeleteBusyId(null);
+      }
+    },
+    [load]
+  );
+
   useEffect(() => {
     let cancelled = false;
     const id = window.setTimeout(() => {
@@ -147,7 +188,9 @@ export function TenantRegisterConsole() {
         <div>
           <h2>Tenants</h2>
           <p className="status-text text-sm">
-            Read-only: Mongo tenant row, stored workspace limits / tenant preferences, and tenant_admin directory.
+            Mongo tenant row, membership counts, xChat team KB id/name when provisioned, workspace limits / tenant
+            preferences, and tenant_admin directory. Delete is allowed only when membership count is zero (and not the
+            platform default tenant).
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -176,11 +219,14 @@ export function TenantRegisterConsole() {
               <th>Last 4</th>
               <th>Tenant</th>
               <th>Slug</th>
+              <th>Users</th>
+              <th>xChat team KB</th>
               <th>Brand color</th>
               <th>Platform default</th>
               <th>Workspace</th>
               <th>Tenant prefs</th>
               <th>Tenant admins</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -204,6 +250,26 @@ export function TenantRegisterConsole() {
                   </td>
                   <td className="align-top">
                     <code className="font-mono text-sm">{row.slug}</code>
+                  </td>
+                  <td className="align-top">
+                    <span className="font-mono text-sm tabular-nums">{row.membershipCount}</span>
+                  </td>
+                  <td className="align-top max-w-[14rem]">
+                    {row.xchatTeamAttachmentsCollectionName || row.xchatTeamAttachmentsCollectionId ? (
+                      <div className="flex flex-col gap-1 text-sm">
+                        <span className="font-medium leading-snug break-words">
+                          {row.xchatTeamAttachmentsCollectionName ?? "—"}
+                        </span>
+                        <code
+                          className="font-mono text-xs break-all text-[var(--xf-text-400)]"
+                          title={row.xchatTeamAttachmentsCollectionId ?? undefined}
+                        >
+                          {shortId(row.xchatTeamAttachmentsCollectionId)}
+                        </code>
+                      </div>
+                    ) : (
+                      <span className="status-text text-sm">—</span>
+                    )}
                   </td>
                   <td className="align-top">
                     <div className="flex flex-wrap items-center gap-2">
@@ -259,6 +325,35 @@ export function TenantRegisterConsole() {
                         ))}
                       </ul>
                     )}
+                  </td>
+                  <td className="align-top">
+                    <div className="flex flex-col gap-2">
+                      <Link
+                        className="text-sm font-semibold text-[var(--xf-gain-green)] underline-offset-2 hover:underline"
+                        href={`/admin/tenant-register/${encodeURIComponent(row.tenantId)}/edit`}
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        type="button"
+                        className="text-left text-sm font-semibold text-[var(--xf-text-300)] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={
+                          Boolean(deleteBusyId) ||
+                          row.isPlatformDefault ||
+                          row.membershipCount > 0
+                        }
+                        title={
+                          row.isPlatformDefault
+                            ? "Cannot delete the platform default tenant"
+                            : row.membershipCount > 0
+                              ? `Delete disabled while ${row.membershipCount} user(s) are on this tenant`
+                              : "Delete tenant document (no users)"
+                        }
+                        onClick={() => void deleteTenant(row.tenantId, row.membershipCount, row.isPlatformDefault)}
+                      >
+                        {deleteBusyId === row.tenantId ? "Deleting…" : "Delete"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

@@ -482,6 +482,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "admin-tenants"
   },
   {
+    path: "/api/admin/tenants/{tenantId}",
+    operations: [{ method: "DELETE", auth: "admin" }],
+    tag: "admin-tenants"
+  },
+  {
     path: "/api/admin/tenants/{tenantId}/portfolio-scoring-defaults",
     operations: [
       { method: "GET", auth: "admin" },
@@ -532,6 +537,11 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
   {
     path: "/api/admin/users/{userId}/plan",
     operations: [{ method: "PATCH", auth: "admin", hasRequestBody: true }],
+    tag: "admin-users"
+  },
+  {
+    path: "/api/admin/users/{userId}/metered-usage/reset",
+    operations: [{ method: "POST", auth: "admin" }],
     tag: "admin-users"
   },
   {

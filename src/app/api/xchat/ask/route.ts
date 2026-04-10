@@ -42,11 +42,7 @@ import {
     resolveXchatPersonaDeclaredCollectionIds,
     withLinkedCollectionTools
 } from "@/modules/xchat/persona-linked-collections";
-import {
-    clampMultiAgentParallelismForPlan,
-    clampTopK,
-    getPlanLimits
-} from "@/modules/xchat/plan-limits";
+import { clampMultiAgentParallelismForPlan, clampTopK } from "@/modules/xchat/plan-limits";
 import { getScopeReadinessSummary } from "@/modules/xchat/rag-file-readiness";
 import {
     getLatestXchatLogByThread,
@@ -252,8 +248,9 @@ export async function POST(request: Request) {
   let dailyPromptCap: number | undefined;
   if (!isAdminSession) {
     const workspaceLimits = effectiveWorkspaceLimitsForTenantAndPlan(tenantForDebug, subscriptionPlan);
-    const planDaily = getPlanLimits(subscriptionPlan).maxPromptsPerDay;
-    dailyPromptCap = Math.min(planDaily, workspaceLimits.userChatLimit);
+    // Single source of truth: merged tenant base + per-plan row from Mongo (`planOverrides`), not
+    // `getPlanLimits().maxPromptsPerDay` (hardcoded tier defaults would ignore admin workspace limits).
+    dailyPromptCap = workspaceLimits.userChatLimit;
   }
   try {
     const usageCheck = await enforceDistributedAskUsageLimit({

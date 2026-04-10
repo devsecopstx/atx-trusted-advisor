@@ -121,6 +121,7 @@ describe("GET/PATCH /api/admin/tenants/[tenantId]/workspace-limits", () => {
     expect(json.data.slug).toBe("atx-test");
     expect(json.data.workspaceLimits.userChatLimit).toBe(8);
     expect(json.data.workspaceLimits.userXoptionsLimit).toBe(10);
+    expect(json.data.workspaceLimits.maxUsersPerTenant).toBe(5);
     expect(json.data.workspaceLimitsRaw?.userChatLimit).toBe(8);
     expect(json.data.tenantPreferences).toEqual({});
     expect(json.data.planOverrides).toEqual({});

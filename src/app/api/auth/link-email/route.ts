@@ -29,6 +29,7 @@ import {
     updateCoreUserEmail,
     upsertTenantMembership
 } from "@/modules/identity/repository";
+import { isTenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 
 const linkSchema = z.object({
   email: z.string().email()
@@ -208,12 +209,22 @@ export async function POST(request: Request) {
   await dedupeDefaultTenantMembershipsForUser(linkedUser._id);
   const existingDefault = await getDefaultTenantMembershipForUser(linkedUser._id);
   if (!existingDefault) {
-    await upsertTenantMembership({
-      userId: linkedUser._id,
-      tenantId: tenant._id,
-      role: "tenant_admin",
-      isDefaultTenant: true
-    });
+    try {
+      await upsertTenantMembership({
+        userId: linkedUser._id,
+        tenantId: tenant._id,
+        role: "tenant_admin",
+        isDefaultTenant: true
+      });
+    } catch (error) {
+      if (isTenantMembershipCapExceededError(error)) {
+        return NextResponse.json(
+          { error: error.message, code: error.code },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
   }
 
   const authContext = await resolveAuthContext({ user: linkedUser });

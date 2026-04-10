@@ -271,9 +271,10 @@ export function AccessRequestsConsole() {
   }
 
   async function reviewRequest(requestId: string, statusValue: "approved" | "rejected") {
-    const tenant = tenantEdits[requestId]?.trim() ?? "";
-    const plan = planEdits[requestId];
-    const role = roleEdits[requestId];
+    const row = accessRequests.find((r) => r._id === requestId);
+    const tenant = (tenantEdits[requestId]?.trim() || row?.tenantId?.trim() || "").trim();
+    const plan = planEdits[requestId] ?? row?.requestedPlan;
+    const role = roleEdits[requestId] ?? row?.requestedRole;
     const reviewNoteRaw = reviewNoteEdits[requestId]?.trim() ?? "";
     if (statusValue === "approved") {
       if (!tenant) {
@@ -599,11 +600,15 @@ export function AccessRequestsConsole() {
                             />
                             <button
                               className="tiny-button"
-                              disabled={
-                                !(tenantEdits[item._id]?.trim() && planEdits[item._id] && roleEdits[item._id])
-                              }
+                              disabled={(() => {
+                                const id = item._id as string;
+                                const tenantOk = (tenantEdits[id]?.trim() || item.tenantId?.trim() || "").trim();
+                                const planOk = planEdits[id] ?? item.requestedPlan;
+                                const roleOk = roleEdits[id] ?? item.requestedRole;
+                                return !(tenantOk && planOk && roleOk);
+                              })()}
                               onClick={() => item._id && void reviewRequest(item._id, "approved")}
-                              title="Requires tenant, plan, and role above"
+                              title="Requires tenant, plan, and role (from row or selectors above)"
                               type="button"
                             >
                               Approve

@@ -21,7 +21,8 @@ const WORKSPACE_LIMIT_NUM_KEYS = [
   "userChatLimit",
   "tenantPortfolioLimit",
   "portfolioAccountLimit",
-  "chatHistoryMax"
+  "chatHistoryMax",
+  "maxUsersPerTenant"
 ] as const;
 
 export function assertValidTenantSlug(slug: unknown): string {

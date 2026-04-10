@@ -297,6 +297,10 @@ export function UserSettingsConsole() {
     }
     const role = roleEdits[userId] ?? "operator";
     const subscriptionPlan = planEdits[userId] ?? "basic";
+    const priorPlan = normalizeSubscriptionPlan(
+      approvedUsers.find((u) => u.userId === userId)?.subscriptionPlan ?? "basic"
+    );
+    const nextPlan = normalizeSubscriptionPlan(subscriptionPlan);
     setStatus(`Saving user changes for ${userId}...`);
     try {
       await parseJson(
@@ -306,6 +310,13 @@ export function UserSettingsConsole() {
           body: JSON.stringify({ email, role, subscriptionPlan })
         })
       );
+      if (priorPlan !== nextPlan) {
+        await parseJson(
+          await fetch(`/api/admin/users/${encodeURIComponent(userId)}/metered-usage/reset`, {
+            method: "POST"
+          })
+        );
+      }
       const settingsPayload = await parseJson<{ data: UserAdminSettingsPayload }>(
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}/settings`)
       ).catch(() => ({ data: DEFAULT_SETTINGS }));
@@ -324,6 +335,30 @@ export function UserSettingsConsole() {
       setStatus("User changes saved");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to save user changes");
+    }
+  }
+
+  async function resetUserMeteredUsage(userId: string, emailLabel: string) {
+    const ok = window.confirm(
+      `Reset xChat and app feature usage counters for ${emailLabel}? This clears rate/daily buckets in Mongo for today.`
+    );
+    if (!ok) {
+      return;
+    }
+    setStatus(`Resetting usage for ${userId}...`);
+    try {
+      const payload = await parseJson<{
+        data: { xchatUsageDeleted: number; featureDailyDeleted: number };
+      }>(
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}/metered-usage/reset`, {
+          method: "POST"
+        })
+      );
+      setStatus(
+        `Usage reset: xChat buckets ${payload.data.xchatUsageDeleted}, feature daily ${payload.data.featureDailyDeleted}`
+      );
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to reset usage");
     }
   }
 
@@ -488,7 +523,9 @@ export function UserSettingsConsole() {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
-                <th>Tenant</th>
+                <th title="Each user is linked to at most one tenant; duplicates are merged on refresh.">
+                  Tenant
+                </th>
                 <th>Role</th>
                 <th>Plan</th>
                 <th>xPersona</th>
@@ -634,6 +671,14 @@ export function UserSettingsConsole() {
                         type="button"
                       >
                         <SaveIcon className="crud-icon" /> Save
+                      </button>
+                      <button
+                        className="tiny-button"
+                        onClick={() => void resetUserMeteredUsage(user.userId, user.email)}
+                        title="Clears xChat usage_limits and app_feature_daily_usage for this user"
+                        type="button"
+                      >
+                        Reset usage
                       </button>
                       <button className="tiny-button" onClick={() => void deleteUser(user.userId)} type="button">
                         <DeleteIcon className="crud-icon" /> Delete

@@ -20,6 +20,7 @@ import {
     resolveAuthContext,
     upsertTenantMembership
 } from "@/modules/identity/repository";
+import { isTenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 import type { CoreUser } from "@/modules/identity/types";
 import { isXchatUserHistoryXaiCollectionEnabled } from "@/modules/xchat/xchat-platform-settings";
 
@@ -207,6 +208,27 @@ export async function finalizeOAuthSessionAndRedirect(options: {
     const target = returnPath && isSafeOAuthReturnPath(returnPath) ? returnPath : fallback;
     return NextResponse.redirect(new URL(target, origin));
   } catch (error) {
+    if (isTenantMembershipCapExceededError(error)) {
+      console.warn("[auth/oauth] tenant user cap reached", {
+        userId: userObjectId.toHexString(),
+        tenantId: error.tenantIdHex,
+        maxUsers: error.maxUsers,
+        currentCount: error.currentCount
+      });
+      await appendLoginAuditRecord({
+        outcome: "failure",
+        provider,
+        errorCode: "tenant_membership_cap",
+        clientIp: loginMeta?.clientIp,
+        country: loginMeta?.country,
+        userAgent: loginMeta?.userAgent,
+        userId: userObjectId.toHexString(),
+        xUserId: identity.xUserId,
+        username: identity.username,
+        email: user.email
+      });
+      return NextResponse.redirect(new URL("/login?error=tenant_membership_cap", origin));
+    }
     console.error("[auth/oauth] session bootstrap failed", {
       userId: userObjectId.toHexString(),
       message: error instanceof Error ? error.message : String(error)

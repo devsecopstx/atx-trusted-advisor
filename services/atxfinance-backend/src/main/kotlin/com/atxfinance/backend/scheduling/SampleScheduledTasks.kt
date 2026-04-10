@@ -13,11 +13,11 @@ class SampleScheduledTasks(
     private val log = LoggerFactory.getLogger(javaClass)
     private val counter = AtomicLong(0)
 
-    // Demonstration heartbeat. In real code, register thousands of tasks dynamically via DB configs.
+    // Demonstration heartbeat (ShedLock + scheduler wiring). Not for prod log noise — use DEBUG when validating scheduling.
     @Scheduled(fixedDelayString = "PT30S")
     @SchedulerLock(name = "heartbeatTask", lockAtMostFor = "PT1M")
     fun heartbeat() {
         val c = counter.incrementAndGet()
-        log.info("heartbeat run={} at={} ", c, Instant.now())
+        log.debug("heartbeat run={} at={}", c, Instant.now())
     }
 }

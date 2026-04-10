@@ -17,7 +17,6 @@ import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-acco
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { LucideMonitorIcon, LucideSquarePenIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
-import { useTenantShellBranding } from "@/app/ui/tenant-branding-context";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
@@ -230,47 +229,6 @@ function RouteSyncedDetails({
     >
       {children}
     </details>
-  );
-}
-
-/**
- * Workspace rail tenant mark — uses `useTenantShellBranding()` (core_tenants name + tenantPreferences).
- * Admins set these via New Tenant / tenant preferences; change anytime in Tenant Settings (workspace limits).
- */
-function WorkspaceSidebarTenantChrome({ variant }: { variant: "expanded" | "compact" }) {
-  const branding = useTenantShellBranding();
-  const displayName = branding?.displayName?.trim() || "Workspace";
-  const logoUrl = branding?.logoUrl?.trim();
-  const tagline = branding?.tagline?.trim();
-  const tooltip = tagline ? `${displayName} — ${tagline}` : displayName;
-
-  const logoInner = logoUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element -- data URLs + tenant CDNs
-    <img alt="" className="portfolios-workspace-sidebar__tenant-logo-img" src={logoUrl} />
-  ) : (
-    <span aria-hidden className="portfolios-workspace-sidebar__tenant-fallback-atx">
-      aTx
-    </span>
-  );
-
-  if (variant === "compact") {
-    return (
-      <div className="portfolios-workspace-sidebar__tenant-compact">
-        <div className="portfolios-workspace-sidebar__tenant-logo-wrap" title={tooltip}>
-          {logoInner}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <header className="portfolios-workspace-sidebar__tenant-brand" title={tooltip}>
-      <div className="portfolios-workspace-sidebar__tenant-logo-wrap">{logoInner}</div>
-      <div className="portfolios-workspace-sidebar__tenant-text">
-        <span className="portfolios-workspace-sidebar__tenant-title">{displayName}</span>
-        {tagline ? <span className="portfolios-workspace-sidebar__tenant-tagline">{tagline}</span> : null}
-      </div>
-    </header>
   );
 }
 
@@ -496,7 +454,6 @@ export function WorkspaceProductSidebar({
 
   const expandedNav = (
     <nav className="portfolios-workspace-sidebar" aria-label="Workspace">
-      <WorkspaceSidebarTenantChrome variant="expanded" />
       <RouteSyncedDetails
         className="portfolios-workspace-sidebar__accordion"
         routeMatch={portfolioRouteMatch}
@@ -694,7 +651,6 @@ export function WorkspaceProductSidebar({
           expandedNav
         ) : (
           <nav aria-label="Workspace" className="flex flex-col items-center gap-0.5 px-1 pt-1">
-            <WorkspaceSidebarTenantChrome variant="compact" />
             {collapsedIcons.map((item) => (
               <XfHoverHint hint={item.label} key={item.key}>
                 <Link

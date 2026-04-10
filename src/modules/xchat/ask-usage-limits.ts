@@ -26,7 +26,7 @@ type UsageLimitInput = {
   plan?: SubscriptionPlan;
   perMinuteLimit: number;
   enforceDailyLimit: boolean;
-  /** When set, overrides plan daily cap (use min(plan, tenant) at the call site). */
+  /** When set, daily cap for prompts (call site passes merged tenant `userChatLimit`). */
   dailyPromptLimit?: number;
 };
 

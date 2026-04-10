@@ -27,7 +27,9 @@ const watchlistAddEntrySchema = z.object({
   lineType: z.union([z.string().trim().max(128), z.null()]).optional(),
   strategy: z.union([z.string().trim().max(512), z.null()]).optional(),
   quantity: z.union([z.number().finite(), z.null()]).optional(),
-  entryPrice: z.union([z.number().finite(), z.null()]).optional()
+  entryPrice: z.union([z.number().finite(), z.null()]).optional(),
+  rationale: z.union([z.string().trim().max(4000), z.null()]).optional(),
+  rowStatus: z.union([z.enum(["draft", "active"]), z.null()]).optional()
 });
 
 const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);
@@ -64,6 +66,8 @@ function watchlistSymbolToJsonRow(item: WatchlistSymbol) {
     ...(item.strategy !== undefined ? { strategy: item.strategy } : {}),
     ...(item.quantity !== undefined ? { quantity: item.quantity } : {}),
     ...(item.entryPrice !== undefined ? { entryPrice: item.entryPrice } : {}),
+    ...(item.rationale !== undefined ? { rationale: item.rationale } : {}),
+    ...(item.rowStatus !== undefined ? { rowStatus: item.rowStatus } : {}),
     ...(item.lastPrice !== undefined ? { lastPrice: item.lastPrice } : {}),
     ...(item.lastUpdatedAt ? { lastUpdatedAt: item.lastUpdatedAt.toISOString() } : {})
   };
@@ -168,6 +172,21 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
   if (!ensured) {
     return NextResponse.json({ error: "Watchlist not found" }, { status: 404 });
+  }
+
+  const addEntries = parsed.data.addEntries;
+  if (addEntries?.length) {
+    for (const e of addEntries) {
+      if (e.rowStatus === "active") {
+        const r = e.rationale?.trim() ?? "";
+        if (r.length === 0) {
+          return NextResponse.json(
+            { error: "Active rows require a saved rationale (non-empty)." },
+            { status: 400 }
+          );
+        }
+      }
+    }
   }
 
   const updated = await mutatePortfolioWatchlistSymbols({

@@ -18,6 +18,7 @@ const coreAdminMocks = vi.hoisted(() => ({
 
 const identityMocks = vi.hoisted(() => ({
   addRoleToCoreUser: vi.fn(),
+  assertCanAddUserToTenant: vi.fn().mockResolvedValue(undefined),
   updateCoreUserSubscriptionPlan: vi.fn(),
   getCoreUserById: vi.fn(),
   upsertTenantMembership: vi.fn()
@@ -277,6 +278,35 @@ describe("access request item CRUD route", () => {
     );
     expect(response.status).toBe(400);
     expect(coreAdminMocks.reviewAccessRequestById).not.toHaveBeenCalled();
+  });
+
+  it("approves with only status when the stored request already has tenant, role, and plan", async () => {
+    const tenantOid = { toHexString: () => "507f1f77bcf86cd7994390aa" };
+    coreAdminMocks.getAccessRequestById.mockResolvedValue({
+      _id: { toHexString: () => "507f1f77bcf86cd799439033" },
+      userId: "507f1f77bcf86cd799439044",
+      tenantId: tenantOid,
+      requestedRole: "viewer",
+      requestedPlan: "basic",
+      reason: "Need access",
+      status: "pending",
+      requestedAt: new Date("2026-03-16T00:00:00.000Z")
+    });
+    const response = await putAccessRequest(
+      new Request("http://test", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "approved" })
+      }),
+      {
+        params: Promise.resolve({ requestId: "507f1f77bcf86cd799439033" })
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(coreAdminMocks.reviewAccessRequestById).toHaveBeenCalled();
+    expect(identityMocks.addRoleToCoreUser).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "viewer" })
+    );
   });
 
   it("deletes access request by id", async () => {

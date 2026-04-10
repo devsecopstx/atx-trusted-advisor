@@ -147,6 +147,10 @@ export const nextBffApi = {
       pathTemplate: "/api/admin/users/{userId}/settings",
       methods: ["GET", "PUT"]
     },
+    userMeteredUsageReset: {
+      pathTemplate: "/api/admin/users/{userId}/metered-usage/reset",
+      methods: ["POST"]
+    },
     tasksIndex: {
       pathTemplate: "/api/admin/tasks",
       methods: ["GET", "POST"]
@@ -452,12 +456,28 @@ export function shouldSkipAdminUsersBffProxyForRequest(request: Request): boolea
   }
 }
 
+/** Metered usage lives in Mongo (`xchat_usage_limits`, `app_feature_daily_usage`); Spring has no parity delete. */
+export function shouldSkipAdminUsersBffProxyForMeteredUsageReset(request: Request): boolean {
+  try {
+    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    if (request.method.toUpperCase() !== "POST") {
+      return false;
+    }
+    return /^\/api\/admin\/users\/[^/]+\/metered-usage\/reset$/.test(path);
+  } catch {
+    return false;
+  }
+}
+
 /** Like {@link proxyRequestToBackend} for admin user routes; returns `null` when proxy is disabled. */
 export async function proxyAdminUsersRequestToBackend(request: Request): Promise<Response | null> {
   if (!shouldProxyAdminUsersToBackend()) {
     return null;
   }
   if (shouldSkipAdminUsersBffProxyForRequest(request)) {
+    return null;
+  }
+  if (shouldSkipAdminUsersBffProxyForMeteredUsageReset(request)) {
     return null;
   }
   return proxyRequestToBackend(request);

@@ -32,6 +32,13 @@ export type TenantPreferences = TenantBrandingPreferences & {
   xf_tenant_logo_url?: string;
   /** Subtitle under tenant display name in shell (max 60 chars). */
   xf_tenant_tagline?: string;
+  /**
+   * xAI Management team collection id for this tenant’s xChat attachment uploads (provisioned on tenant create when
+   * `XAI_TEAM_ID` + `XAI_MANAGEMENT_API_KEY` are set). Stable name: `xfinance-tenant-<slug>-xchat-attachments`.
+   */
+  xchat_team_attachments_collection_id?: string;
+  /** Display name returned by xAI (see `buildTenantXchatAttachmentsCollectionName` in `tenant-xchat-team-collection.ts`). */
+  xchat_team_attachments_collection_name?: string;
 };
 
 

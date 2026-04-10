@@ -10,11 +10,14 @@ import {
     listLatestAuditEventsForEntities
 } from "@/modules/audit/repository";
 import {
+    assertTenantHasRoomForAnotherUser,
     createCoreUser,
+    deleteCoreUserById,
     listAdminTenantMembershipsByUserIds,
     listCoreUsers,
     upsertTenantMembership
 } from "@/modules/identity/repository";
+import { isTenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 import type { CoreUser } from "@/modules/identity/types";
 
 const listUsersQuerySchema = z.object({
@@ -103,12 +106,25 @@ export async function POST(request: Request) {
   }
 
   if (created._id && ObjectId.isValid(session.tenantId) && parsed.data.role !== "global_admin") {
-    await upsertTenantMembership({
-      userId: created._id,
-      tenantId: new ObjectId(session.tenantId),
-      role: "member",
-      isDefaultTenant: false
-    });
+    const tenantOid = new ObjectId(session.tenantId);
+    try {
+      await assertTenantHasRoomForAnotherUser(tenantOid);
+      await upsertTenantMembership({
+        userId: created._id,
+        tenantId: tenantOid,
+        role: "member",
+        isDefaultTenant: true
+      });
+    } catch (error) {
+      if (isTenantMembershipCapExceededError(error)) {
+        await deleteCoreUserById(created._id);
+        return NextResponse.json(
+          { error: error.message, code: error.code },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
   }
 
   if (created._id) {

@@ -198,6 +198,19 @@ describe("proxyAdminUsersRequestToBackend (Next-first tenant register + user lis
     ).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("does not forward POST /api/admin/users/{userId}/metered-usage/reset (Mongo-only)", async () => {
+    vi.resetModules();
+    const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminUsersRequestToBackend(
+        new Request("https://next.local/api/admin/users/507f1f77bcf86cd799439033/metered-usage/reset", {
+          method: "POST"
+        })
+      )
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("getStrategyJobsBffUnavailableMessage", () => {

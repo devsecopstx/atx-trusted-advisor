@@ -23,10 +23,12 @@ import {
 } from "@/modules/core-admin/types";
 import {
     addRoleToCoreUser,
+    assertCanAddUserToTenant,
     getCoreUserById,
     updateCoreUserSubscriptionPlan,
     upsertTenantMembership
 } from "@/modules/identity/repository";
+import { isTenantMembershipCapExceededError } from "@/modules/identity/tenant-membership-cap";
 
 const accessRequestRoleSchema = z.enum(["global_admin", "advisor", "operator", "viewer"]);
 
@@ -47,33 +49,7 @@ const reviewAccessRequestSchema = z
       value.requestedRole !== undefined ||
       value.targetTenantId !== undefined,
     { message: "Provide status, requestedPlan, requestedRole, and/or targetTenantId (reviewNote alone is not allowed)." }
-  )
-  .superRefine((value, ctx) => {
-    if (value.status !== "approved") {
-      return;
-    }
-    if (value.requestedRole === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "requestedRole is required when approving.",
-        path: ["requestedRole"]
-      });
-    }
-    if (value.requestedPlan === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "requestedPlan is required when approving.",
-        path: ["requestedPlan"]
-      });
-    }
-    if (value.targetTenantId === undefined || value.targetTenantId.trim() === "") {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "targetTenantId is required when approving (pick a tenant).",
-        path: ["targetTenantId"]
-      });
-    }
-  });
+  );
 
 type RouteContext = {
   params: Promise<{
@@ -284,6 +260,20 @@ async function handleUpdate(request: Request, context: RouteContext) {
     }
     const userId = new ObjectId(existing.userId);
     approvedUserObjectId = userId;
+    try {
+      await assertCanAddUserToTenant({
+        userId,
+        tenantId: existing.tenantId!
+      });
+    } catch (e) {
+      if (isTenantMembershipCapExceededError(e)) {
+        return NextResponse.json(
+          { error: e.message, code: e.code },
+          { status: 409 }
+        );
+      }
+      throw e;
+    }
     await addRoleToCoreUser({
       userId,
       role: existing.requestedRole
