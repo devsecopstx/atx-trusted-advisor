@@ -33,10 +33,10 @@ describe("billingCardWorkspaceDisplay", () => {
     expect(d.limitRows).toHaveLength(7);
     expect(d.limitRows[0]?.label).toBe("xOptions views / hr");
     expect(d.limitRows[0]?.value).toBe("10");
-    expect(d.limitRows[1]?.label).toBe("xChat prompts / hr (UTC)");
-    expect(d.limitRows[1]?.value).toBe("1");
-    expect(d.limitRows[2]?.label).toBe("xChat prompts / day (UTC)");
-    expect(d.limitRows[2]?.value).toBe("10");
+    expect(d.limitRows[1]?.label).toBe("xChat prompts / day (UTC)");
+    expect(d.limitRows[1]?.value).toBe("10");
+    expect(d.limitRows[2]?.label).toBe("xChat prompts / hr (UTC)");
+    expect(d.limitRows[2]?.value).toBe("1");
     expect(d.limitRows[5]?.label).toBe(BILLING_WORKSPACE_LABEL_CHANGE_PERSONA);
     expect(d.limitRows[5]?.value).toBe("Yes");
     expect(d.limitRows[6]?.label).toBe(BILLING_WORKSPACE_LABEL_CHAT_HISTORY);

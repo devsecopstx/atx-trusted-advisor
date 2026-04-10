@@ -131,6 +131,9 @@ export function AdminSessionPanel({
               <p className="admin-session-popover__section-title" id={`${popoverId}-appearance`}>
                 Appearance
               </p>
+              <p className="admin-session-popover__hint">
+                Hub stays dark; this sets your shell for xChat, portfolio, and other product pages.
+              </p>
               <XfThemePreferenceMenu aria-labelledby={`${popoverId}-appearance`} />
             </div>
 

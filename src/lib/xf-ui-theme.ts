@@ -57,19 +57,30 @@ export function seedDefaultXfUiThemePreferenceIfUnset(
 }
 
 /**
- * Root shell bootstrap: when the signed-in session tenant has `tenantPreferences.xf_ui_theme`,
- * align `localStorage` every load (tenant register / admin policy is source of truth).
- * When the tenant omits it, only seed the product default if the user has never stored a preference.
+ * Root shell bootstrap precedence (signed-in):
+ * 1. `userTheme` from `core_users.xfUiTheme`
+ * 2. `tenantDefaultTheme` from `tenantPreferences.xf_ui_theme`
+ * 3. Else seed product default only if `localStorage` has no key yet
  */
-export function bootstrapXfUiThemeWithOptionalTenantDefault(
-  tenantConfiguredTheme: XfUiThemePreference | undefined
-): void {
+export function bootstrapXfUiThemeFromServer(options: {
+  userTheme?: XfUiThemePreference;
+  tenantDefaultTheme?: XfUiThemePreference;
+}): void {
   if (typeof window === "undefined") {
     return;
   }
-  if (tenantConfiguredTheme !== undefined) {
+  if (options.userTheme !== undefined) {
     try {
-      window.localStorage.setItem(XF_UI_THEME_STORAGE_KEY, tenantConfiguredTheme);
+      window.localStorage.setItem(XF_UI_THEME_STORAGE_KEY, options.userTheme);
+      dispatchXfUiThemeChange();
+    } catch {
+      /* ignore quota / private mode */
+    }
+    return;
+  }
+  if (options.tenantDefaultTheme !== undefined) {
+    try {
+      window.localStorage.setItem(XF_UI_THEME_STORAGE_KEY, options.tenantDefaultTheme);
       dispatchXfUiThemeChange();
     } catch {
       /* ignore quota / private mode */
@@ -77,6 +88,13 @@ export function bootstrapXfUiThemeWithOptionalTenantDefault(
     return;
   }
   seedDefaultXfUiThemePreferenceIfUnset(undefined);
+}
+
+/** @deprecated Prefer {@link bootstrapXfUiThemeFromServer} with explicit user + tenant. */
+export function bootstrapXfUiThemeWithOptionalTenantDefault(
+  tenantConfiguredTheme: XfUiThemePreference | undefined
+): void {
+  bootstrapXfUiThemeFromServer({ tenantDefaultTheme: tenantConfiguredTheme });
 }
 
 export function readXfUiThemePreferenceFromStorage(): XfUiThemePreference {

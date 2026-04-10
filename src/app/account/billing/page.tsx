@@ -99,7 +99,8 @@ export default async function AccountBillingPage({
                 <h1 className="billing-hero__title">Account &amp; billing</h1>
                 <p className="billing-hero__copy">
                   Choose a plan for <strong className="text-[var(--xf-gain-green)]">aTx Trusted Advisory</strong>. Billing
-                  runs on Stripe. Workspace limits below reflect your tenant (and per-plan overrides when set).
+                  runs on Stripe. Workspace limits below reflect your tenant (and per-plan overrides when set), including
+                  xChat <strong>UTC day</strong> and <strong>UTC hour</strong> caps per user.
                 </p>
               </header>
 
@@ -155,7 +156,8 @@ export default async function AccountBillingPage({
                 <h1 className="billing-hero__title">Account &amp; billing</h1>
                 <p className="billing-hero__copy">
                   Select a plan, then continue with Register for access. Basic is the default selection. Limits below are
-                  list defaults; signed-in users see tenant-resolved caps.
+                  list defaults (xChat <strong>UTC day</strong> and <strong>UTC hour</strong> rows); signed-in users see
+                  tenant-resolved caps.
                 </p>
               </header>
               <BillingPlanGrid tenant={null} approved={false} checkoutReady={false} />

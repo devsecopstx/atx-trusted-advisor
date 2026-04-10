@@ -74,6 +74,14 @@ export function useXfShellTheme() {
     }
     applyXfUiToDocument(next);
     dispatchXfUiThemeChange();
+    void fetch("/api/user/appearance", {
+      method: "PATCH",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ xfUiTheme: next })
+    }).catch(() => {
+      /* offline / guest session — local theme still applies */
+    });
   }, []);
 
   return { pref, setPreference };

@@ -72,31 +72,48 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
               <p className="xf-landing-hero-tagline m-0">
                 <span className="xf-landing-hero-tagline__rest">No </span>
                 <span className="xf-landing-hero-tagline__atoms">Atoms</span>
-                <span className="xf-landing-hero-tagline__rest"> Moved. Just </span>
+                <span className="xf-landing-hero-tagline__rest"> Moved — Just </span>
                 <span className="xf-landing-hero-tagline__gains">Gains</span>
                 <span className="xf-landing-hero-tagline__rest"> Earned.</span>
               </p>
             </div>
 
-            <h1 className="text-4xl font-bold leading-[1.08] tracking-tighter text-[var(--xf-text-100)] sm:text-5xl md:text-6xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--xf-gain-green)] sm:text-sm">
               aTx Trusted Advisory
-            </h1>
-
-            <p className="mt-4 max-w-2xl text-xl font-semibold leading-snug text-[var(--xf-text-100)] sm:text-2xl md:text-3xl">
-              xAI-Powered Intelligence for Your Family Portfolio
             </p>
 
-            <div className="mt-6 max-w-2xl space-y-4 text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
-              <p>
-                One private workspace that brings everything together: portfolio consolidation, Grok-backed xChat, and
-                advanced xOptions strategy tools.
-              </p>
-              <p>Built for Austin&apos;s high-net-worth families and their trusted advisors.</p>
-              <p>
-                Get clear visibility across all your accounts, intelligent insights from xAI, and the power to build
-                smarter strategies — all in a secure, professional platform designed for serious wealth management.
-              </p>
-            </div>
+            <h1 className="mt-2 text-4xl font-bold leading-[1.08] tracking-tighter text-[var(--xf-text-100)] sm:text-5xl md:text-6xl">
+              Generate Consistent Income. Spend Just 30–60 Minutes a Week.
+            </h1>
+
+            <p className="mt-4 max-w-2xl text-lg font-semibold leading-snug text-[var(--xf-text-200)] sm:text-xl md:text-2xl">
+              Hassle-free options income for busy wealth builders — your personal options engine with AI-curated wheel,
+              covered-call, and LEAP workflows. Grok-backed xChat and execution-style tools.{" "}
+              <span className="text-[var(--xf-text-100)]">One hour a week max.</span>
+            </p>
+
+            <ul className="mt-8 max-w-2xl list-none space-y-5 text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
+              <li>
+                <span className="font-semibold text-[var(--xf-text-100)]">Ultra-low time commitment</span>
+                <span className="text-[var(--xf-text-400)]"> — </span>
+                Review AI-curated wheel, covered-call, and LEAP recommendations in plain English once a week (or less).
+                Approve or tweak in minutes — without hours of charting, scanning, or backtesting.
+              </li>
+              <li>
+                <span className="font-semibold text-[var(--xf-text-100)]">Hassle-free execution flow</span>
+                <span className="text-[var(--xf-text-400)]"> — </span>
+                Broker-aligned order previews and built-in risk guardrails: the workspace flags conflicts, helps with
+                position sizing from your book, and surfaces tax and liquidity reminders so trades feel structured and
+                reviewable.
+              </li>
+              <li>
+                <span className="font-semibold text-[var(--xf-text-100)]">Peace of mind for larger portfolios</span>
+                <span className="text-[var(--xf-text-400)]"> — </span>
+                Tuned for serious wealth ($500K–$10M+ book sizes) with conservative defaults (e.g. cash-secured puts,
+                30–45 DTE, quality underlyings). Disclaimers and audit-friendly flows for RIAs documenting client use —
+                systematic, income-focused workflows — not a casino.
+              </li>
+            </ul>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
               <a
@@ -148,26 +165,10 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
               </a>
             </div>
 
-            <div className="mt-8 flex flex-col gap-2 text-sm text-[var(--xf-text-300)] sm:mt-10 sm:flex-row sm:flex-wrap sm:gap-6">
-              <span className="flex items-center gap-2">
-                <span className="text-[var(--xf-gain-green)]" aria-hidden>
-                  ✔
-                </span>
-                Portfolio + watchlist workspace
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="text-[var(--xf-gain-green)]" aria-hidden>
-                  ✔
-                </span>
-                xChat (Grok / xAI)
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="text-[var(--xf-gain-green)]" aria-hidden>
-                  ✔
-                </span>
-                xOptions strategy builder
-              </span>
-            </div>
+            <p className="mt-8 text-sm text-[var(--xf-text-400)] sm:mt-10">
+              <span className="font-medium text-[var(--xf-text-300)]">One workspace:</span> portfolios &amp; watchlist ·
+              xChat (Grok / xAI) · xOptions strategy builder
+            </p>
           </div>
 
           <div className="hidden md:block md:self-start">
@@ -190,7 +191,7 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
               Product stack
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tighter text-[var(--xf-text-100)] sm:text-4xl md:text-5xl">
-              Execution-style tools + advisory chat in one tenant workspace
+              Books, AI advisor, and options tools — one tenant workspace
             </h2>
           </div>
           <div className="grid gap-6 md:grid-cols-3 md:gap-8">
@@ -236,10 +237,10 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
           <p className="text-xs font-medium uppercase tracking-widest text-[var(--xf-lightning-yellow)]">
             Access
           </p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tighter sm:text-4xl">Approved access, controlled rollout</h2>
+          <h2 className="mt-3 text-3xl font-bold tracking-tighter sm:text-4xl">Approved access for professionals</h2>
           <p className="mx-auto mt-4 max-w-2xl text-[var(--xf-text-300)]">
-            Register from xChat to submit an access request. Admins assign roles (viewer, operator, advisor). Your tenant
-            branding and limits apply after sign-in.
+            Log in or register from xChat to request access. Admins assign roles (viewer, operator, advisor). Tenant
+            branding, limits, and audit-friendly defaults apply after sign-in.
           </p>
           <Link
             href={XCHAT_GUEST}

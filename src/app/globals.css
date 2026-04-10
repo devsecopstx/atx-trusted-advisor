@@ -2631,6 +2631,13 @@ html[data-xf-ui="soft"] select optgroup {
   margin-top: 0.35rem;
 }
 
+.admin-session-popover p.admin-session-popover__hint {
+  margin: 0 0 0.5rem;
+  color: var(--xf-text-400);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
 .admin-session-popover strong {
   color: var(--xf-text-100);
 }

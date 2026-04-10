@@ -80,9 +80,38 @@ function isPositiveInt(n: unknown): n is number {
   return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 1_000_000;
 }
 
-/** `0` = unlimited (omit effective cap). */
-function isNonNegativeChatHourlyLimit(n: unknown): n is number {
-  return typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 1_000_000;
+/** Mongo / JSON may store hourly as double or string; billing + admin read paths use this. */
+function coerceUserChatHourlyLimitLoose(raw: unknown): number | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    const n = Math.round(raw);
+    if (n >= 0 && n <= 1_000_000 && Math.abs(raw - n) < 1e-9) {
+      return n;
+    }
+    return undefined;
+  }
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (t === "") {
+      return undefined;
+    }
+    const n = Number.parseInt(t, 10);
+    if (Number.isFinite(n) && n >= 0 && n <= 1_000_000) {
+      return n;
+    }
+    return undefined;
+  }
+  const s = String(raw).trim();
+  if (s === "") {
+    return undefined;
+  }
+  const n = Number.parseInt(s, 10);
+  if (Number.isFinite(n) && n >= 0 && n <= 1_000_000) {
+    return n;
+  }
+  return undefined;
 }
 
 function parseLimitScalars(o: Record<string, unknown>): Partial<TenantWorkspaceLimits> {
@@ -138,9 +167,9 @@ function parseStripePriceIdLoose(raw: unknown): string | undefined {
 function parsePlanOverrideRowLoose(o: Record<string, unknown>): TenantPlanWorkspaceRow {
   const row: TenantPlanWorkspaceRow = { ...parseLimitScalars(o) };
   if (Object.prototype.hasOwnProperty.call(o, "userChatHourlyLimit")) {
-    const raw = o.userChatHourlyLimit;
-    if (isNonNegativeChatHourlyLimit(raw)) {
-      row.userChatHourlyLimit = raw;
+    const n = coerceUserChatHourlyLimitLoose(o.userChatHourlyLimit);
+    if (n !== undefined) {
+      row.userChatHourlyLimit = n;
     }
   }
   if (o.price !== undefined && o.price !== null && isPositiveInt(o.price)) {
@@ -180,12 +209,12 @@ export function mergeTenantWorkspaceLimits(
     out.changePersonaEnabled = cp;
   }
   if (Object.prototype.hasOwnProperty.call(o, "userChatHourlyLimit")) {
-    const raw = o.userChatHourlyLimit;
-    if (isNonNegativeChatHourlyLimit(raw)) {
-      if (raw === 0) {
+    const n = coerceUserChatHourlyLimitLoose(o.userChatHourlyLimit);
+    if (n !== undefined) {
+      if (n === 0) {
         delete out.userChatHourlyLimit;
       } else {
-        out.userChatHourlyLimit = raw;
+        out.userChatHourlyLimit = n;
       }
     }
   }
@@ -277,13 +306,14 @@ export function parseWorkspaceLimitsPayload(
     value.changePersonaEnabled = cp;
   }
   if (o.userChatHourlyLimit !== undefined) {
-    if (!isNonNegativeChatHourlyLimit(o.userChatHourlyLimit)) {
+    const hn = coerceUserChatHourlyLimitLoose(o.userChatHourlyLimit);
+    if (hn === undefined) {
       return {
         ok: false,
         error: "Invalid userChatHourlyLimit: integer 0–1000000 required (0 = no hourly cap)"
       };
     }
-    value.userChatHourlyLimit = o.userChatHourlyLimit;
+    value.userChatHourlyLimit = hn;
   }
   return { ok: true, value };
 }
@@ -336,13 +366,14 @@ export function parsePlanOverridesPayload(
     }
     const hourlyCell = (row as Record<string, unknown>).userChatHourlyLimit;
     if (hourlyCell !== undefined && hourlyCell !== null) {
-      if (!isNonNegativeChatHourlyLimit(hourlyCell)) {
+      const hourlyN = coerceUserChatHourlyLimitLoose(hourlyCell);
+      if (hourlyN === undefined) {
         return {
           ok: false,
           error: `Invalid planOverrides.${key}.userChatHourlyLimit: integer 0–1000000 required`
         };
       }
-      parsed.userChatHourlyLimit = hourlyCell;
+      parsed.userChatHourlyLimit = hourlyN;
     }
     const changeCell = (row as Record<string, unknown>).changePersonaEnabled;
     if (changeCell !== undefined && changeCell !== null) {

@@ -572,6 +572,33 @@ export async function getCoreUserById(userId: ObjectId): Promise<CoreUser | null
   return db.collection<CoreUser>(collections.users).findOne({ _id: userId });
 }
 
+export async function getCoreUserXfUiThemePreferenceForHex(
+  userIdHex: string
+): Promise<XfUiThemePreference | undefined> {
+  if (!ObjectId.isValid(userIdHex)) {
+    return undefined;
+  }
+  const user = await getCoreUserById(new ObjectId(userIdHex));
+  return parseXfUiThemePreferenceFromUnknown(user?.xfUiTheme);
+}
+
+export async function updateCoreUserXfUiThemePreference(
+  userIdHex: string,
+  theme: XfUiThemePreference
+): Promise<boolean> {
+  if (!ObjectId.isValid(userIdHex)) {
+    return false;
+  }
+  await ensureIdentityIndexes();
+  const db = await getDb();
+  const now = new Date();
+  const r = await db.collection<CoreUser>(collections.users).updateOne(
+    { _id: new ObjectId(userIdHex) },
+    { $set: { xfUiTheme: theme, updatedAt: now } }
+  );
+  return r.matchedCount > 0;
+}
+
 /**
  * Normalize a Mongo-backed user id to a 24-char hex string for maps and `core_users` lookups.
  * Handles hex strings and BSON ObjectId (legacy `tenant_portfolio` / portfolio rows sometimes store ObjectId).

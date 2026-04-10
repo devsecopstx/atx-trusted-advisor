@@ -4,7 +4,11 @@ import { XfThemeBootClient } from "@/app/ui/xf-theme-boot-client";
 import { getSessionUser } from "@/lib/auth";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
-import { getTenantShellBrandingForHex, getTenantXfUiThemePreferenceForHex } from "@/modules/identity/repository";
+import {
+    getCoreUserXfUiThemePreferenceForHex,
+    getTenantShellBrandingForHex,
+    getTenantXfUiThemePreferenceForHex
+} from "@/modules/identity/repository";
 import { ObjectId } from "mongodb";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
@@ -49,10 +53,14 @@ type RootLayoutProps = {
 export default async function RootLayout({ children }: RootLayoutProps) {
   const session = await getSessionUser();
   let tenantDefaultTheme: XfUiThemePreference | undefined;
+  let userUiTheme: XfUiThemePreference | undefined;
   let tenantShellBranding: Awaited<ReturnType<typeof getTenantShellBrandingForHex>> = null;
   if (session?.tenantId && ObjectId.isValid(session.tenantId)) {
     tenantDefaultTheme = await getTenantXfUiThemePreferenceForHex(session.tenantId);
     tenantShellBranding = await getTenantShellBrandingForHex(session.tenantId);
+  }
+  if (session?.userId && ObjectId.isValid(session.userId)) {
+    userUiTheme = await getCoreUserXfUiThemePreferenceForHex(session.userId);
   }
 
   const tenantAccentTrimmed = tenantShellBranding?.accentColor?.trim();
@@ -76,7 +84,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       </head>
       <body>
         <TenantBrandingProvider value={tenantShellBranding}>
-          <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} />
+          <XfThemeBootClient tenantDefaultTheme={tenantDefaultTheme} userTheme={userUiTheme} />
           <PwaBootstrapClient />
           {children}
         </TenantBrandingProvider>

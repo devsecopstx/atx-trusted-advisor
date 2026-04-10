@@ -10,8 +10,8 @@ import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "aTx Trusted Advisory — xAI-Powered Family Portfolio Intelligence",
-  description: `One private workspace: portfolio consolidation, Grok-backed xChat, and xOptions strategy tools for Austin HNW families and advisors. ${EDUCATIONAL_ONLY_SHORT}`
+  title: "aTx Trusted Advisory — Options Income in 30–60 Minutes a Week",
+  description: `Generate consistent options income with minimal time: AI-curated wheel, covered calls, and LEAP workflows. Portfolios, Grok-backed xChat, and xOptions in one workspace. ${EDUCATIONAL_ONLY_SHORT}`
 };
 
 export default async function HomePage() {

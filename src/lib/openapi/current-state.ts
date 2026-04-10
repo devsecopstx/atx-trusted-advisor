@@ -167,6 +167,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "user"
   },
   {
+    path: "/api/user/appearance",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "PATCH", auth: "session", hasRequestBody: true }
+    ],
+    tag: "user"
+  },
+  {
     path: "/api/billing/checkout-session",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "billing"

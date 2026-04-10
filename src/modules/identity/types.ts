@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 
 import type { SubscriptionPlan } from "@/lib/subscription-plan";
+import type { XfUiThemePreference } from "@/lib/xf-ui-theme";
 import type { PortfolioScoringFactor } from "@/modules/core-admin/scoring-factors";
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 import type {
@@ -44,6 +45,11 @@ export type CoreUser = {
   /** e.g. CF-IPCountry when present. */
   lastLoginCountry?: string;
   lastLoginUserAgent?: string;
+  /**
+   * Shell density preference (`light` → soft, `dark` → deep, `system` → OS).
+   * Synced from the theme picker; wins over tenant default on sign-in.
+   */
+  xfUiTheme?: XfUiThemePreference;
 };
 
 export type Tenant = {

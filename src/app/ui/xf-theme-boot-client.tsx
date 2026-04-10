@@ -4,22 +4,24 @@ import { useEffect } from "react";
 
 import {
     applyXfUiToDocument,
-    bootstrapXfUiThemeWithOptionalTenantDefault,
+    bootstrapXfUiThemeFromServer,
     readXfUiThemePreferenceFromStorage,
     XF_UI_THEME_CHANGE_EVENT,
     type XfUiThemePreference
 } from "@/lib/xf-ui-theme";
 
 type Props = {
+  /** From `core_users.xfUiTheme` when the signed-in user has saved appearance. */
+  userTheme?: XfUiThemePreference;
   /** From `core_tenants.tenantPreferences.xf_ui_theme` when the session tenant sets it. */
   tenantDefaultTheme?: XfUiThemePreference;
 };
 
-export function XfThemeBootClient({ tenantDefaultTheme }: Props) {
+export function XfThemeBootClient({ userTheme, tenantDefaultTheme }: Props) {
   useEffect(() => {
-    bootstrapXfUiThemeWithOptionalTenantDefault(tenantDefaultTheme);
+    bootstrapXfUiThemeFromServer({ userTheme, tenantDefaultTheme });
     applyXfUiToDocument(readXfUiThemePreferenceFromStorage());
-  }, [tenantDefaultTheme]);
+  }, [userTheme, tenantDefaultTheme]);
 
   /**
    * When the stored preference is `system`, follow `prefers-color-scheme` (tenant default or user picker).
@@ -50,7 +52,7 @@ export function XfThemeBootClient({ tenantDefaultTheme }: Props) {
       window.removeEventListener(XF_UI_THEME_CHANGE_EVENT, attachIfSystem);
       mqCleanup?.();
     };
-  }, [tenantDefaultTheme]);
+  }, [userTheme, tenantDefaultTheme]);
 
   return null;
 }

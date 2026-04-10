@@ -10,6 +10,7 @@ import { GlobalFooter } from "../ui/global-footer";
 import { XchatHeaderBrand } from "../ui/xchat-header-brand";
 import { AdminLayoutShell } from "./ui/admin-layout-shell";
 import { AdminSessionPanel } from "./ui/admin-session-panel";
+import { AdminShellThemeLock } from "./ui/admin-shell-theme-lock";
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -32,6 +33,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="admin-layout">
+      <AdminShellThemeLock />
       <header className="admin-topbar">
         <Link className="admin-topbar-brand" href="/admin">
           <XchatHeaderBrand />

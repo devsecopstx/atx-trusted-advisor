@@ -41,7 +41,7 @@ type BillingWorkspaceQuotaKey =
 
 /**
  * Workspace quota rows on Account → Billing (price is rendered separately on the card).
- * Order matches `ATX_BILLING_PLAN_LIMIT_ROWS` catalog metrics used for guest display.
+ * Guest catalog lookup uses `catalogMetric` against `ATX_BILLING_PLAN_LIMIT_ROWS` (order here is display order).
  */
 export const BILLING_WORKSPACE_LIMIT_SPECS: readonly {
   label: string;
@@ -54,14 +54,14 @@ export const BILLING_WORKSPACE_LIMIT_SPECS: readonly {
     limitKey: "userXoptionsLimit"
   },
   {
-    label: BILLING_WORKSPACE_LABEL_XCHAT_HOURLY,
-    catalogMetric: "xChat research/prompts / hr",
-    limitKey: "userChatHourlyLimit"
-  },
-  {
     label: BILLING_WORKSPACE_LABEL_XCHAT_DAILY,
     catalogMetric: "xChat prompts / day (UTC)",
     limitKey: "userChatLimit"
+  },
+  {
+    label: BILLING_WORKSPACE_LABEL_XCHAT_HOURLY,
+    catalogMetric: "xChat research/prompts / hr",
+    limitKey: "userChatHourlyLimit"
   },
   {
     label: "Portfolios per user",

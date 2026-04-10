@@ -371,8 +371,31 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
     return <p className="status-text status-error">{err || "Could not load limits."}</p>;
   }
 
+  const hourly = values.userChatHourlyLimit ?? 0;
+
   return (
     <form className="xf-widget section-card admin-tenant-pref-form" onSubmit={(e) => void onSave(e)}>
+      <div
+        className="mb-4 rounded-lg border border-[var(--xf-border-subtle)] bg-[var(--xf-surface-800)]/40 p-4"
+        role="region"
+        aria-label="xChat prompt caps for this tenant"
+      >
+        <h2 className="text-sm font-semibold text-[var(--xf-text-100)]">xChat prompt caps (tenant row)</h2>
+        <p className="mt-1 text-xs text-[var(--xf-text-400)]">Per signed-in user, UTC. Plan overrides below can lower these; empty plan cells inherit.</p>
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-[var(--xf-text-400)]">Daily limit</dt>
+            <dd className="font-medium text-[var(--xf-text-100)]">{values.userChatLimit} prompts / UTC day</dd>
+          </div>
+          <div>
+            <dt className="text-[var(--xf-text-400)]">Hourly limit</dt>
+            <dd className="font-medium text-[var(--xf-text-100)]">
+              {hourly > 0 ? `${hourly} prompts / UTC hour` : "Off (0 — only daily cap + per-minute burst rules apply)"}
+            </dd>
+          </div>
+        </dl>
+      </div>
+
       <div className="crud-table-wrap admin-tenant-pref-table-wrap">
         <table className="crud-table admin-tenant-pref-crud-table">
           <thead>
