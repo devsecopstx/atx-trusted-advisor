@@ -1668,6 +1668,12 @@ export async function updateTenantWorkspaceLimits(
       }
       continue;
     }
+    if (k === "userChatHourlyLimit") {
+      if (typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 1_000_000) {
+        $set[`workspaceLimits.${k}`] = v;
+      }
+      continue;
+    }
     if (typeof v === "number" && Number.isInteger(v) && v >= 1) {
       $set[`workspaceLimits.${k}`] = v;
     }

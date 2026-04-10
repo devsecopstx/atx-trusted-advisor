@@ -1,9 +1,25 @@
 # xFinance monorepo — technical architecture & current state
 
-Last updated: 2026-04-08  
-App semver (canonical): root **`package.json`** (currently **3.4.5**; runtime label via `src/lib/app-version.ts` reads the same semver).
+Last updated: 2026-04-10  
+App semver (canonical): root **`package.json`** (currently **3.5.2**; runtime label via `src/lib/app-version.ts` → **`APP_VERSION`** reads the same semver).
 
 This file is the **single consolidated technical architecture** reference for the monorepo: runtime topology, responsibilities, shipped product surfaces, CI/test matrix, pre-production gates, and **known gaps**. Topic deep dives stay in linked **`atx-docs/*`** pages; **open backlog only** in [`PLAN.md`](../PLAN.md). **PR and production readiness** align with [`.cursor/agents/reviewer.md`](../../.cursor/agents/reviewer.md): contracts, OpenAPI parity, perf evidence on hot UI paths, Secret Manager / deploy docs when OAuth, BFF, or SMTP paths change, and **this doc** (or `PLAN.md`) when the shipped stack or consolidated gaps move.
+
+---
+
+## Tech stack quick reference (canonical)
+
+Values below track **`package.json`** and **`services/atxfinance-backend/gradle/libs.versions.toml`** / **`build.gradle.kts`**.
+
+| Layer | Stack |
+|--------|--------|
+| **Frontend (core app)** | **Next.js 16.x** (App Router), **React 19.2.x**, **TypeScript 5.9.x**, **Tailwind CSS 3.4.x**, **ESLint 9.x** + `eslint-config-next` |
+| **UI / data viz** | **ApexCharts 5.x** + `react-apexcharts`, **Framer Motion**, **TanStack React Virtual**, **react-markdown** + **rehype-sanitize** / **remark-gfm** |
+| **Next runtime libs** | **MongoDB** Node driver **7.x**, **Zod 4.x**, **Stripe** SDK **17.x**, **yahoo-finance2** **3.x**, **nodemailer** **8.x**, optional **redis** client **4.x**, **@google-cloud/pubsub** **4.x**, **yaml**, **cronstrue** / **rrule** |
+| **API docs (Next)** | **swagger-ui-react** / **swagger-ui-dist** **5.32.x** — admin **`/admin/api-docs`** backed by **`GET /api/openapi`** |
+| **Tests (Next)** | **Vitest 3.2.x**, **tsx**; integration + OpenAPI parity under **`tests/integration/**`** |
+| **Backend worker** | **Spring Boot 3.3.4**, **Kotlin 1.9.25**, **JDK 21**; **Spring Data MongoDB** + **Redis** starters; **SpringDoc OpenAPI 2.6.x** (**`/swagger-ui.html`**); **ShedLock 5.13.x** (Mongo provider); **Micrometer** + **OTLP** optional; **Angus Mail** (desk SMTP parity); tests use **embedded Mongo** |
+| **Deploy / data plane** | **GCP Cloud Run** (two services: Next + JVM); **MongoDB** (shared); optional **Redis** (e.g. Memorystore); **GCP Secret Manager**; optional **Google Pub/Sub** |
 
 ---
 
@@ -46,12 +62,12 @@ flowchart TB
 
 | Layer | Primary responsibilities |
 |--------|---------------------------|
-| **Next.js (App Router)** | Product UI; **edge** auth/guest gating in **`src/proxy.ts`**; signed session **`xf_core_session`**; **xChat** (`/api/xchat/*`) and xAI calls; **OpenAPI** inventory + admin Swagger; **Stripe** Checkout/webhooks/portal; **desk SMTP** for portfolio email and admin delivery-channel **Send test**; **BFF** forwarding per [`bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) when **`ATXFINANCE_BACKEND_ORIGIN`** points at the Spring **HTTPS** origin |
+| **Next.js (App Router)** | Product UI; **edge** auth/guest gating in **`src/proxy.ts`**; signed session **`xf_core_session`**; **xChat** (`/api/xchat/*`) + xAI **Responses** tool-loop; **OpenAPI** inventory (**`current-state.ts`** + **`current-state-overrides.ts`**) + admin Swagger; **Stripe** Checkout/webhooks/portal; **desk SMTP** (`nodemailer`) for portfolio email and admin delivery-channel **Send test**; **BFF** forwarding per [`bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts) when **`ATXFINANCE_BACKEND_ORIGIN`** points at the Spring **HTTPS** origin |
 | **Spring (`atxfinance-backend`)** | **ShedLock**-backed schedulers; **strategy jobs** orchestration + HTTP; Yahoo-backed **strategy-options** and related paths when proxied; admin/portfolio/RAG slices per **[`atxfinance-backend-http-api.md`](../sre-ops/atxfinance-backend-http-api.md)**; optional **recommendation** Pub/Sub publisher; **session** cookie parse aligned with Next |
-| **MongoDB** | System of record: tenants, users, portfolios, watchlists, personas, **`strategy_jobs`**, **`options_strategy_preferences`**, **`admin_*`**, **`xchat_logs`** (when user opts in), IBKR consent rows, etc. |
+| **MongoDB** | System of record: tenants, users, portfolios, watchlists, personas, **`strategy_jobs`**, **`options_strategy_preferences`**, **`admin_*`**, **`xchat_logs`** (when user opts in), **`xchat_usage_limits`** (per-user minute / optional UTC hour / UTC day counters for `POST /api/xchat/ask`), IBKR consent rows, etc. |
 | **Redis** | Optional: strategy-job rate cap when **`REDIS_URL`** set (see **[`spring-redis-memorystore.md`](../sre-ops/spring-redis-memorystore.md)**) |
 
-**Auth (today):** Browser **X OAuth** flows live on **Next** (`/api/auth/x/*`); cutover toward Spring authority is **planned** with dual-run — see **[`api-consolidation-spring-backend.md`](../sre-ops/api-consolidation-spring-backend.md)** and **canonical live path table** in [`.cursor/plans/shared-context.md`](../../.cursor/plans/shared-context.md).
+**Auth (today):** **X (Twitter) OAuth** on **Next** (`/api/auth/x/*`). **Sign in with Google** is **optional** when `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set (`/api/auth/google/*`, see **`src/lib/env.ts`** / **`isGoogleOAuthConfigured`**). Cutover toward Spring as authority is **planned** with dual-run — **[`api-consolidation-spring-backend.md`](../sre-ops/api-consolidation-spring-backend.md)** and **canonical live path table** in [`.cursor/plans/shared-context.md`](../../.cursor/plans/shared-context.md).
 
 **BFF / consolidation:** Not every `/api/*` route is proxied. **Next-only** examples: **`/api/xchat/*`** (non-streaming **`/v1/responses`** tool-loop + tools on Next; see **`xchat-history-storage.md`** / **`XCHAT_USE_REMOTE_HISTORY`**), tenant **`/api/admin/tasks*`** / scheduler tick, tenant **`/api/admin/delivery-channels*`** (desk SMTP on Next). Full migration board: **`api-consolidation-spring-backend.md`**.
 
@@ -65,7 +81,7 @@ Before approving a **production** release, the **reviewer / operator** checklist
 
 | # | Gate |
 |---|------|
-| **0** | **Version:** Root `package.json` / lockfile `packages[""].version` / `APP_VERSION` match the intended tag (e.g. **v3.4.5**). |
+| **0** | **Version:** Root `package.json` / `APP_VERSION` match the intended tag (e.g. **v3.5.2**). |
 | **1** | **`npm run ci:gate`** green on the release ref: lint, typecheck, **`docs:links`** on all **`atx-docs/**/*.md`**, Vitest (unit + integration), OpenAPI parity (`tests/integration/openapi-*.test.ts`). |
 | **2** | **`NODE_ENV=production npm run build`** succeeds (Next compile + static generation). |
 | **3** | If **`services/atxfinance-backend/**` changed:** **`./gradlew test`** (from `services/atxfinance-backend`) green — do not ship prod with only Next green. |
@@ -99,6 +115,7 @@ Cross-check **[`.cursor/skills/test-commit-push/SKILL.md`](../../.cursor/skills/
 | Spring HTTP contract | [`sre-ops/atxfinance-backend-http-api.md`](../sre-ops/atxfinance-backend-http-api.md) |
 | BFF / consolidation | [`sre-ops/api-consolidation-spring-backend.md`](../sre-ops/api-consolidation-spring-backend.md) |
 | Deploy, secrets, desk SMTP | [`guides/deploy-and-ops.md`](../guides/deploy-and-ops.md) |
+| Tenant workspace limits (xChat day/hour, xOptions copy, plan overrides) | [`sre-ops/tenant-workspace-limits.md`](../sre-ops/tenant-workspace-limits.md) |
 | OptionsStrategyEngine (shipped scoring path) | [`xStrategyBuilder/strategy-engine.md`](./xStrategyBuilder/strategy-engine.md) |
 | xOptions UI, find-options + strategy APIs | [`xchat/xoptions-strategy-builder.md`](../xchat/xoptions-strategy-builder.md) · [`guides/api-endpoints.md`](../guides/api-endpoints.md) § xOptions |
 | OpenAPI inventory (admin Swagger) | `GET /api/openapi` · `src/lib/openapi/current-state.ts` (`CURRENT_STATE_ROUTES`) |
@@ -112,15 +129,16 @@ Cross-check **[`.cursor/skills/test-commit-push/SKILL.md`](../../.cursor/skills/
 
 ## 1) Core app — Next.js (primary product)
 
-- **Framework:** Next.js App Router (`src/app/*`)
+- **Framework:** Next.js **16.x** App Router (`src/app/*`); **React 19.2.x**; **TypeScript 5.9.x** (strict **`npm run typecheck`**).
 - **Edge (Next 16):** Auth redirect / guest HTML gating lives in **`src/proxy.ts`** only (no `middleware.ts` — the framework allows one or the other). Matcher still covers protected app_user APIs and guest-capable HTML for **`/portfolio`**, **`/portfolios`**, **`/xoptions`** (see [`AGENTS.md`](../../AGENTS.md)).
-- **UI:** React 19, TypeScript, Tailwind + **`--xf-*`** tokens from [`atxfinance-brand-kit.css`](./atxfinance-brand-kit.css)
-- **Validation:** Zod; **`npm run typecheck`** (strict). **`tsconfig`** excludes **`.next/dev`** so stale dev-generated types do not break `tsc`; **`next-env.d.ts`** references **`.next/types/routes.d.ts`**. Route handlers must only export valid route symbols (shared serializers live under **`src/modules/*`**).
-- **Data:** MongoDB via route handlers and `src/modules/*`; session cookie **`xf_core_session`**
-- **API docs:** `GET /api/openapi` (inventory); admin **Swagger** at **`/admin/api-docs`**
-- **CI gate:** **`npm run ci:gate`** → lint, typecheck, **`docs:links`** (all `atx-docs/**/*.md`), Vitest (unit + integration), OpenAPI parity tests (`tests/integration/openapi-*.test.ts`)
-- **Optional BFF:** When **`ATXFINANCE_BACKEND_ORIGIN`** points at the **Spring** service **HTTPS** origin, selected **`/api/*`** routes proxy per [`bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts). **xChat** (`/api/xchat/*`) stays **Next-authoritative** (SSE streaming not implemented on ask; Spring migration TBD — see `PLAN.md` / `api-consolidation-spring-backend.md`).
-- **Admin (`global_admin`, `/admin*`)** — Control Center (**`/admin`**): session + effective **tenant** ObjectId; **ops summary** (**`GET /api/admin/system/ops-summary`**) for Next Mongo/Redis + optional Spring **`/api/backend/health`**; personas, access, tasks, delivery channels, RAG inventory, and other hub routes.
+- **UI:** Tailwind **3.4.x** + **`--xf-*`** tokens from [`atxfinance-brand-kit.css`](./atxfinance-brand-kit.css); dark-first product shell; optional **soft** theme via **`data-xf-ui`** (see globals / xOptions layout notes in **`AGENTS.md`**).
+- **Validation / contracts:** **Zod 4.x**; route handlers stay thin — domain logic in **`src/modules/*`** and **`src/lib/*`**.
+- **Tooling:** **`tsconfig`** excludes **`.next/dev`** so stale dev-generated types do not break `tsc`; **`next-env.d.ts`** references **`.next/types/routes.d.ts`**. Route files must only export valid route symbols.
+- **Data:** **MongoDB** (driver **7.x**) via route handlers and modules; signed session cookie **`xf_core_session`**.
+- **API docs:** **`GET /api/openapi`** (inventory + overrides in **`src/lib/openapi/current-state-overrides.ts`**); admin **Swagger** at **`/admin/api-docs`** (**swagger-ui-react**).
+- **CI gate:** **`npm run ci:gate`** → lint, typecheck, **`docs:links`** (`atx-docs/**/*.md`), Vitest (unit + integration), OpenAPI parity (`tests/integration/openapi-*.test.ts`).
+- **Optional BFF:** When **`ATXFINANCE_BACKEND_ORIGIN`** points at the Spring **HTTPS** origin, selected **`/api/*`** routes proxy per [`bff-proxy-routes.ts`](../../src/lib/bff-proxy-routes.ts). **xChat** (`/api/xchat/*`) remains **Next-authoritative** (ask path is non-streaming Responses JSON today; Spring migration TBD — **`PLAN.md`** / **`api-consolidation-spring-backend.md`**).
+- **Admin (`global_admin`, `/admin*`)** — Control Center (**`/admin`**): session + effective **tenant** ObjectId; **ops summary** (**`GET /api/admin/system/ops-summary`**) for Next Mongo/Redis + optional Spring **`/api/backend/health`**; personas, access, tasks, delivery channels, RAG inventory, **tenant workspace limits** (xChat day/hour caps, plan overrides), and other hub routes.
 
 ### Product surfaces (app_user shell)
 
@@ -132,13 +150,13 @@ Path prefixes for the shared product chrome are defined in **`APP_USER_PRODUCT_P
 
 **Representative capabilities (non-exhaustive — see `api-endpoints.md`):**
 
-- **xChat** — `POST /api/xchat/ask`, personas, plan limits; xAI **`/v1/responses`** **non-streaming** JSON tool-loop. **RAG / collection tools:** persona-linked ids only (`xaiCollection`, `teamCollection`, tool `collection_ids` via **`resolveXchatPersonaDeclaredCollectionIds`**); deploy env team KB is **not** merged into ask. **Continuity:** Mongo **`xchat_logs`** when opted in; optional **`XCHAT_USE_REMOTE_HISTORY=true`** + client **`threadId`** + prior **`xaiResponseId`** (same **`personaId`**) → **`previous_response_id`** / **`store_messages`** and no client recent-turn block on continuation (**`keepXchatHistory`** can disable per persona). **Vision paste (PNG / JPEG):** optional **`imageAttachment`** → **`input_image`** (`detail: high`) + **`input_text`**; optional **`XAI_VISION_MODEL`** overrides image turns; multi-agent persona ids use default chat model on image turns. See [xAI image understanding](https://docs.x.ai/developers/model-capabilities/images/understanding) · **`xchat-history-storage.md`**.
+- **xChat** — `POST /api/xchat/ask`, personas, **plan limits** (`getPlanLimits`) + **tenant workspace caps** merged from **`core_tenants.workspaceLimits`** (base + **`planOverrides`** per billing tier): **`userChatLimit`** = **UTC calendar-day** prompt cap; optional **`userChatHourlyLimit`** (**`0`** = off) = **UTC clock-hour** cap. Counters live in Mongo **`xchat_usage_limits`** (minute burst + optional hour + day buckets). **429** responses expose distinct copy + JSON **`code`** for **`xchat_rate_limit_exceeded`** (per-minute), **`xchat_hourly_limit_exceeded`**, **`xchat_daily_limit_exceeded`**; limiter metadata headers (`x-xchat-limit-*`). xAI **`/v1/responses`** **non-streaming** JSON tool-loop. **RAG / collection tools:** persona-linked ids only (`xaiCollection`, `teamCollection`, tool `collection_ids` via **`resolveXchatPersonaDeclaredCollectionIds`**); deploy env team KB is **not** merged into ask. **Continuity:** Mongo **`xchat_logs`** when opted in; optional **`XCHAT_USE_REMOTE_HISTORY=true`** + client **`threadId`** + prior **`xaiResponseId`** (same **`personaId`**) → **`previous_response_id`** / **`store_messages`** (**`keepXchatHistory`** can disable per persona). **Vision paste (PNG / JPEG):** optional **`imageAttachment`** → **`input_image`** (`detail: high`) + **`input_text`**; optional **`XAI_VISION_MODEL`** overrides image turns. See [xAI image understanding](https://docs.x.ai/developers/model-capabilities/images/understanding) · **`xchat-history-storage.md`** · **`sre-ops/tenant-workspace-limits.md`**.
 - **Portfolio / accounts / holdings** — app_user and admin paths; workspace portfolio cookie; **`/portfolio/accounts/[id]`** Edit Account: consolidated holdings table (Last / Day Δ / Value / % acct / Qty / Avg cost) + add/remove lots — see **[`portfolio-edit-account-consolidated-holdings.md`](./portfolio-edit-account-consolidated-holdings.md)**. Merrill/Fidelity CSV import + **`/import-activity`** (broker ref **last-four** display; per-account **Use for import** toggles; copy in **`import-activity-copy.ts`**).
 - **Watchlist** — user-scoped store, quotes, optional chain glance; desk columns / IV-OI highlights (see release notes **3.1.x**). **Price alerts** (Next-side scanner thresholds + cooldown): `src/modules/watchlist/price-alert-service.ts`; roadmap context in **`PLAN.md`** (**240n** shipped).
 - **Portfolio alerts (desk)** — UI **`/portfolio/alerts`**; app_user **`GET` / `DELETE /api/portfolios/{portfolioId}/alerts`** (may BFF to Spring); global admin **`/api/admin/portfolios/{portfolioId}/alerts`** (+ `{alertId}` **PATCH** / **DELETE**). OpenAPI under **`portfolios`** / **`admin-portfolios`**.
 - **xOptions** — strategy builder UI at **`/xoptions`** (step 4 **Choose contract**: heatmapped Vol/OI, Mid + spread hint, ATM pill, mobile Greeks toggle). Data plane is split across **find-options** (Next session APIs for bootstrap/context/holdings/watchlist/symbol snapshot), **strategy-options** (chain + expirations), and optional **Spring BFF** — see **Options stack** below.
 - **xCoach** — learning surface (route present; detail in app).
-- **Billing** — Stripe Checkout (`/account/billing`), webhooks → `subscriptionPlan` + **`stripeCustomerId`**, Customer Portal via `POST /api/billing/portal-session`; tier caps via `getPlanLimits()` (xChat, etc.). Ops: `stripe-billing-setup.md`.
+- **Billing** — Stripe Checkout (`/account/billing`), webhooks → `subscriptionPlan` + **`stripeCustomerId`**, Customer Portal via `POST /api/billing/portal-session`; hardcoded tier ceilings in **`getPlanLimits()`** plus **tenant-driven** workspace rows on plan cards (**xChat prompts / hr (UTC)** and **/ day (UTC)** when configured — see **`billing-plan-workspace-display.ts`**). Per-tenant Stripe **price_…** overrides in **`workspaceLimits.planOverrides`**. Ops: **`stripe-billing-setup.md`**.
 - **IBKR (Client Portal, gated `IBKR_ENABLED`)** — consent (`ibkr_user_consents`), sealed httpOnly CP session + issued-at cookie; **`GET /api/integrations/ibkr/*`** including **`…/accounts/{id}/snapshot`** (summary, positions, orders, trades); account allowlist vs **`portfolio/accounts`**; **`[ibkr/audit]`** logs with **`correlationId`** matching response **`X-Correlation-Id`**; UI **`/account/integrations/ibkr`**. No in-app broker OAuth yet; no live order POST (see `ibkr-automation.md`).
 - **Strategy jobs (hardcore)** — Next BFF to Spring: `POST/GET /api/strategy-jobs`, turns through **`slots_complete`**; Redis hourly cap when **`REDIS_URL`** set; contract in `atxfinance-backend-http-api.md` + smoke parity needles.
 
@@ -169,13 +187,14 @@ Path prefixes for the shared product chrome are defined in **`APP_USER_PRODUCT_P
 
 Scope: scheduler/worker and **thin HTTP API** for portfolio/admin/strategy/RAG-support paths. Built from **`services/atxfinance-backend`** (repo-root Dockerfile can build this JAR).
 
-- **Runtime:** Kotlin, Spring Boot, **JDK 21**
-- **Build:** Gradle (`build.gradle.kts`); **`npm run build:backend`** runs **`./gradlew test`**
-- **Data:** MongoDB (Spring Data Mongo)
-- **Scheduling:** `@Scheduled` + **ShedLock** (Mongo lock collection)
-- **Messaging:** Google **Pub/Sub** publisher when configured — **subscriber/consumer not implemented** (platform follow-on)
-- **Observability:** Micrometer (GMP-oriented) + OTLP optional
-- **HTTP:** REST (health, portfolio, admin, strategy, RAG, auth callback stubs); SpringDoc **2.x** — **`/swagger-ui.html`**
+- **Runtime:** **Kotlin 1.9.25**, **Spring Boot 3.3.4**, **JDK 21** (Gradle JVM toolchain)
+- **Build:** Gradle Kotlin DSL (`build.gradle.kts`, **`gradle/libs.versions.toml`**); **`npm run build:backend`** → **`./gradlew test --no-daemon`**
+- **Data:** **Spring Data MongoDB**; **Spring Data Redis** starter (optional runtime — strategy-job caps, etc.)
+- **Scheduling:** `@Scheduled` + **ShedLock 5.13.x** (Mongo provider)
+- **Messaging:** **Google Cloud Pub/Sub** client (BOM-aligned) — **publisher** paths where configured; **subscriber/consumer not implemented** (platform follow-on)
+- **Observability:** **Micrometer** (incl. Prometheus registry) + **OpenTelemetry** OTLP exporter optional
+- **HTTP:** REST (health, portfolio, admin, strategy, RAG, session alignment); **SpringDoc OpenAPI 2.6.x** — **`/swagger-ui.html`**
+- **Email:** **Angus Mail** for desk SMTP parity with Next **`nodemailer`** path
 
 ### Boot & configuration
 
@@ -258,12 +277,12 @@ These are **documented** backlog items or **conscious** holes; do not treat as s
 | **Pub/Sub consumer** on Spring | This doc §2 · `PLAN.md` / release notes |
 | **IBKR** — no broker OAuth/token refresh in-app; no order placement | `ibkr-automation.md` |
 | **Tenant UX (`tenant_ux`)** — per-tenant per-role route allowlists + default landing; **shipped:** `data/platform/app-user-route-catalog.json` + **`GET /api/admin/platform/route-catalog`** | [tenant-ux-plan.md](./tenant-ux-plan.md) · `PLAN.md` **11** |
-| **Plan limits UI** — usage meter / soft-limit banner on xChat from `getPlanLimits()` | `PLAN.md` (deferred) · branding TODO in `AGENTS.md` |
+| **Plan limits UI** — usage meter / soft-limit banner wired to **`getPlanLimits()`** + live workspace counters (429 headers exist; in-chat meter still deferred) | `PLAN.md` (deferred) · branding TODO in `AGENTS.md` |
 | **xChat** — vision paste **shipped** (follow-ups: scan/EXIF/dims/batch — `PLAN.md` deferred); voice (703), xMoney billing (704) | `PLAN.md`; **701** privacy history **shipped** (see `PLAN.md` deferred shipped list + `xchat-history-storage.md`) |
 | **OptionsStrategyEngine** — extend scoring / desk notification providers | `PLAN.md` · `reviewer.md` §245 |
 | **Lighthouse / perf in default CI** | **`npm run ci:gate`** does **not** run Lighthouse; hot-path PRs attach local LHCI or manual Lighthouse per **`reviewer.md`**; optional repo **`.lighthouseci/`** config for local regression |
 
-**Governance:** Tenant workspace limits, persona changes, and SMTP/BFF/deploy workflow edits should update **`CURRENT_STATE_ROUTES`**, relevant **`atx-docs/guides/*`**, and **`tests/unit/surface-policy.test.ts`** when **`APP_USER_PRODUCT_PATH_PREFIXES`** or public contracts change.
+**Governance:** Tenant workspace limits (**including xChat day/hour caps**), persona changes, and SMTP/BFF/deploy workflow edits should update **`CURRENT_STATE_ROUTES`**, relevant **`atx-docs/guides/*`** / **`sre-ops/tenant-workspace-limits.md`**, and **`tests/unit/surface-policy.test.ts`** when **`APP_USER_PRODUCT_PATH_PREFIXES`** or public contracts change.
 
 ---
 

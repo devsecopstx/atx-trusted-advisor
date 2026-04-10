@@ -7,13 +7,14 @@ Per-tenant quotas for the Next.js BFF. Defaults are code-defined; overrides live
 | Key | Default | Enforcement |
 |-----|---------|-------------|
 | `userXoptionsLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** `app_feature_daily_usage` (`feature: xoptions_deck`) UTC day bucket per user+tenant. Signed-in app users with `canUserLogin`; `global_admin` bypass. |
-| `userChatLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** merged effective `userChatLimit` (tenant base + `planOverrides` for the user’s tier) in `POST /api/xchat/ask` with UTC day usage; `global_admin` bypasses cap. |
+| `userChatLimit` | 10 | **UTC calendar day** cap on xChat asks. **Runtime:** merged effective value (tenant base + `planOverrides` for the user’s tier) in `POST /api/xchat/ask` (`ask-usage-limits` day bucket); `global_admin` bypasses workspace caps. |
+| `userChatHourlyLimit` | — (omit or `0` = off) | Optional **UTC clock-hour** cap; when &gt; 0, enforced in `ask-usage-limits` before the day bucket. Plan overrides use `0` to clear an inherited hourly cap. |
 | `tenantPortfolioLimit` | 1 | New portfolio rows in tenant for that user (admin + app flows). |
 | `portfolioAccountLimit` | 1 | New `portfolio_accounts` per portfolio. |
 | `changePersonaEnabled` | **true** | App users: xChat persona picker enabled. When **false**, picker is disabled ( **`global_admin`** sessions ignore). Per-plan override in `planOverrides.<tier>`. |
 | `chatHistoryMax` | **10** | Recent prompts loaded in xChat thread + `/api/xchat/history?limit=` (clamped 1–500 in UI). Per-plan override. |
 
-**Product vs runtime:** xOptions/xChat are labeled **per hour** on `/account/billing`, admin workspace limits, xOptions gate, and xChat limit errors. The **Runtime** column above is source of truth for the current counter implementation; align code and docs when moving to true hourly metering.
+**Product vs runtime:** xOptions remain **per hour** in billing copy while enforcement may still use a UTC day bucket (`app_feature_daily_usage`). xChat shows **hour (UTC)** and **day (UTC)** on `/account/billing` when configured; 429 responses distinguish `xchat_hourly_limit_exceeded` vs `xchat_daily_limit_exceeded`.
 
 ### Per-plan overrides (`workspaceLimits.planOverrides`)
 
@@ -28,6 +29,7 @@ Keyed by retail tier id: `basic`, `premium_monthly`, `premium_plus_monthly`. Leg
 ## Mongo collections
 
 - **`core_tenants`**: optional `workspaceLimits` subdocument.
+- **`xchat_usage_limits`**: per-user/tenant minute, hour, and day buckets for `POST /api/xchat/ask` (TTL on `expiresAt`).
 - **`app_feature_daily_usage`**: usage rows with TTL on `expiresAt` (~35d). Indexes: unique `key`, TTL on `expiresAt`.
 
 Indexes are created best-effort on first use (same pattern as other identity usage helpers).

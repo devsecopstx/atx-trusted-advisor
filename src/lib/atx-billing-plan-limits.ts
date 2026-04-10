@@ -41,6 +41,12 @@ export const ATX_BILLING_PLAN_LIMIT_ROWS: readonly AtxBillingPlanLimitRow[] = [
     premiumPlus: "Unlimited"
   },
   {
+    metric: "xChat prompts / day (UTC)",
+    basic: "10",
+    premium: "200",
+    premiumPlus: "2000"
+  },
+  {
     metric: "Portfolios per user",
     basic: "1",
     premium: "Unlimited",

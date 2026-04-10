@@ -55,7 +55,7 @@ export type Tenant = {
   updatedAt: Date;
   /**
    * Optional per-tenant quotas; omitted keys use product defaults (see `mergeTenantWorkspaceLimits`).
-   * xOptions/xChat caps are presented **per hour** on `/account/billing` and admin workspace UI (see `tenant-workspace-limits.ts` field comments for enforcement notes).
+   * xChat: `userChatLimit` = UTC **day** cap; optional `userChatHourlyLimit` = UTC **hour** cap (`0` = off). See `tenant-workspace-limits.ts` and `ask-usage-limits`.
    * Optional `planOverrides` — per retail tier (basic / premium_monthly / premium_plus_monthly): quota partials plus optional `price` (USD list price for admin).
    */
   workspaceLimits?: (Partial<TenantWorkspaceLimits> & { planOverrides?: TenantPlanWorkspaceOverrides }) | null;

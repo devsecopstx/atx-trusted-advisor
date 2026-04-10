@@ -30,6 +30,14 @@ describe("tenant workspace limits", () => {
     });
   });
 
+  it("mergeTenantWorkspaceLimits applies optional hourly cap and 0 clears", () => {
+    expect(mergeTenantWorkspaceLimits({ userChatHourlyLimit: 15 })).toEqual({
+      ...DEFAULT_TENANT_WORKSPACE_LIMITS,
+      userChatHourlyLimit: 15
+    });
+    expect(mergeTenantWorkspaceLimits({ userChatHourlyLimit: 0 }).userChatHourlyLimit).toBeUndefined();
+  });
+
   it("parseWorkspaceLimitsPayload accepts camelCase object", () => {
     const parsed = parseWorkspaceLimitsPayload({
       userXoptionsLimit: 5,
@@ -51,6 +59,14 @@ describe("tenant workspace limits", () => {
   it("parseWorkspaceLimitsPayload rejects invalid values", () => {
     const parsed = parseWorkspaceLimitsPayload({ userChatLimit: 0 });
     expect(parsed.ok).toBe(false);
+  });
+
+  it("parseWorkspaceLimitsPayload accepts userChatHourlyLimit 0", () => {
+    const parsed = parseWorkspaceLimitsPayload({ userChatHourlyLimit: 0 });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.userChatHourlyLimit).toBe(0);
+    }
   });
 
   it("parsePlanOverridesPayload accepts partial rows per plan", () => {
@@ -81,6 +97,17 @@ describe("tenant workspace limits", () => {
     );
     expect(merged.userChatLimit).toBe(5);
     expect(merged.userXoptionsLimit).toBe(base.userXoptionsLimit);
+  });
+
+  it("applyTenantPlanRowToBase merges hourly limit; 0 clears inherited cap", () => {
+    const base = { ...DEFAULT_TENANT_WORKSPACE_LIMITS, userChatHourlyLimit: 25 };
+    expect(
+      applyTenantPlanRowToBase(base, { basic: { userChatHourlyLimit: 40 } }, "basic").userChatHourlyLimit
+    ).toBe(40);
+    expect(
+      applyTenantPlanRowToBase(base, { basic: { userChatHourlyLimit: 0 } }, "basic").userChatHourlyLimit
+    ).toBeUndefined();
+    expect(applyTenantPlanRowToBase(base, { basic: {} }, "basic").userChatHourlyLimit).toBe(25);
   });
 
   it("applyTenantPlanRowToBase ignores price on the row", () => {

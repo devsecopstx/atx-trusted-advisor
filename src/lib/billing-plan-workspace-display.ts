@@ -15,11 +15,13 @@ import {
 import type { Tenant } from "@/modules/identity/types";
 
 /**
- * Canonical metric labels for `/account/billing` → Workspace limits (first two rows).
- * Product copy is **per hour**; do not use “/ day” here — enforced by `tests/unit/billing-workspace-limit-labels.test.ts`.
+ * Canonical metric labels for `/account/billing` → Workspace quota rows (xOptions + xChat hour/day + portfolio caps).
  */
 export const BILLING_WORKSPACE_LABEL_XOPTIONS = "xOptions views / hr";
-export const BILLING_WORKSPACE_LABEL_XCHAT = "xChat prompts / hr";
+/** UTC clock-hour cap when tenant sets `userChatHourlyLimit` &gt; 0; otherwise billing shows Unlimited. */
+export const BILLING_WORKSPACE_LABEL_XCHAT_HOURLY = "xChat prompts / hr (UTC)";
+/** Matches `POST /api/xchat/ask` day bucket (`userChatLimit`). */
+export const BILLING_WORKSPACE_LABEL_XCHAT_DAILY = "xChat prompts / day (UTC)";
 export const BILLING_WORKSPACE_LABEL_CHANGE_PERSONA = "Change persona";
 export const BILLING_WORKSPACE_LABEL_CHAT_HISTORY = "Chat history max (turns)";
 
@@ -32,12 +34,13 @@ const PLAN_ID_TO_LIMIT_COLUMN: Record<AtxBillingPlanId, "basic" | "premium" | "p
 
 type BillingWorkspaceQuotaKey =
   | "userXoptionsLimit"
+  | "userChatHourlyLimit"
   | "userChatLimit"
   | "tenantPortfolioLimit"
   | "portfolioAccountLimit";
 
 /**
- * Four workspace caps shown on Account → Billing (price is rendered separately on the card).
+ * Workspace quota rows on Account → Billing (price is rendered separately on the card).
  * Order matches `ATX_BILLING_PLAN_LIMIT_ROWS` catalog metrics used for guest display.
  */
 export const BILLING_WORKSPACE_LIMIT_SPECS: readonly {
@@ -51,8 +54,13 @@ export const BILLING_WORKSPACE_LIMIT_SPECS: readonly {
     limitKey: "userXoptionsLimit"
   },
   {
-    label: BILLING_WORKSPACE_LABEL_XCHAT,
+    label: BILLING_WORKSPACE_LABEL_XCHAT_HOURLY,
     catalogMetric: "xChat research/prompts / hr",
+    limitKey: "userChatHourlyLimit"
+  },
+  {
+    label: BILLING_WORKSPACE_LABEL_XCHAT_DAILY,
+    catalogMetric: "xChat prompts / day (UTC)",
     limitKey: "userChatLimit"
   },
   {
@@ -85,6 +93,14 @@ export function formatWorkspaceLimitScalar(n: number): string {
   return String(n);
 }
 
+/** Tenant xChat hourly cap: unset / 0 means no hourly product limit. */
+export function formatOptionalWorkspaceHourlyCap(n?: number): string {
+  if (n === undefined || n === 0 || n >= UNLIMITED_THRESHOLD) {
+    return "Unlimited";
+  }
+  return String(n);
+}
+
 export function formatChangePersonaEnabled(enabled: boolean): string {
   return enabled ? "Yes" : "No";
 }
@@ -101,7 +117,7 @@ export function billingCardPriceParts(
 }
 
 /**
- * Workspace limits block: four quota rows + Change persona + Chat history max; list price uses tenant `planOverrides.<tier>.price` when set.
+ * Workspace limits block: quota rows + Change persona + Chat history max; list price uses tenant `planOverrides.<tier>.price` when set.
  * Guests use the published catalog matrix (`ATX_BILLING_PLAN_LIMIT_ROWS`).
  */
 export function billingCardWorkspaceDisplay(input: {
@@ -136,7 +152,10 @@ export function billingCardWorkspaceDisplay(input: {
   const effective = applyTenantPlanRowToBase(base, planOverrides, plan.id);
   const quotaRows = BILLING_WORKSPACE_LIMIT_SPECS.map((spec) => ({
     label: spec.label,
-    value: formatWorkspaceLimitScalar(effective[spec.limitKey])
+    value:
+      spec.limitKey === "userChatHourlyLimit"
+        ? formatOptionalWorkspaceHourlyCap(effective.userChatHourlyLimit)
+        : formatWorkspaceLimitScalar(effective[spec.limitKey] as number)
   }));
   const prefRows = BILLING_WORKSPACE_PREFERENCE_SPECS.map((spec) => {
     if (spec.kind === "boolean") {

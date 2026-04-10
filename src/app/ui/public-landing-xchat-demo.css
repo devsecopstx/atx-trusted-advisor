@@ -1,0 +1,110 @@
+/* Scoped shell for marketing hero — pairs with real xChat class names from xchat.css */
+.pl-public-xchat-demo {
+  border-radius: var(--xf-radius-lg);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 10%, transparent);
+  background: var(--xf-bg-900);
+  box-shadow: 0 25px 50px -12px color-mix(in srgb, var(--xf-gain-green) 12%, transparent);
+  /* Fixed vertical budget so the hero column does not jump as the demo animates */
+  flex-shrink: 0;
+}
+
+.pl-public-xchat-demo__shell {
+  /* Explicit height: percentage children + flex thread/composer layout need a definite block size */
+  height: clamp(380px, 52vh, 500px);
+  max-height: clamp(380px, 52vh, 500px);
+  box-sizing: border-box;
+}
+
+.pl-public-xchat-demo .xchat-main-shell {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+}
+
+.pl-public-xchat-demo .xchat-main {
+  padding-top: 0.35rem;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+}
+
+.pl-public-xchat-demo .xchat-thread-area {
+  min-height: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+}
+
+.pl-public-xchat-demo .xchat-messages {
+  flex: 1 1 0%;
+  min-height: 0;
+  max-height: none;
+  padding-top: 0.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.pl-public-xchat-demo__rail {
+  width: 56px;
+  min-width: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.35rem 0.65rem;
+  border: 1px solid var(--xf-xchat-rail-border);
+  border-radius: 14px;
+  background: var(--xf-xchat-rail-bg);
+  backdrop-filter: blur(8px);
+}
+
+.pl-public-xchat-demo__rail-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  align-items: center;
+  flex: 1;
+  padding-top: 0.35rem;
+}
+
+.pl-public-xchat-demo__rail-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 10px;
+  border: 1px solid var(--xf-xchat-rail-border);
+  background: var(--xf-xchat-rail-toggle-bg);
+  color: var(--xf-xchat-rail-toggle-color);
+}
+
+.pl-public-xchat-demo__rail-icon--active {
+  border-color: color-mix(in srgb, var(--xf-gain-green) 45%, transparent);
+  color: var(--xf-gain-green);
+  background: color-mix(in srgb, var(--xf-gain-green) 10%, transparent);
+}
+
+.pl-public-xchat-demo__rail-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--xf-text-100) 18%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--xf-gain-green) 35%, var(--xf-surface-700)),
+    var(--xf-surface-600)
+  );
+}
+
+.pl-public-xchat-demo__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  flex-wrap: wrap;
+}

@@ -237,7 +237,9 @@ export async function POST(request: Request) {
   const isAdminSession = isGlobalAdmin(session.roles);
   let subscriptionPlan: SubscriptionPlan | undefined;
   let limiterRemainingMinute: number | undefined;
+  let limiterRemainingHour: number | undefined;
   let limiterRemainingDay: number | undefined;
+  let limiterHourlyLimit: number | undefined;
   let limiterDailyLimit: number | undefined;
   if (!isAdminSession && ObjectId.isValid(session.userId)) {
     const coreUser = await getCoreUserById(new ObjectId(session.userId));
@@ -246,11 +248,14 @@ export async function POST(request: Request) {
   const requestedTopK = parsed.data.topK ?? 4;
   const topK = isAdminSession ? requestedTopK : clampTopK(requestedTopK, subscriptionPlan);
   let dailyPromptCap: number | undefined;
+  let hourlyPromptCap: number | undefined;
   if (!isAdminSession) {
     const workspaceLimits = effectiveWorkspaceLimitsForTenantAndPlan(tenantForDebug, subscriptionPlan);
     // Single source of truth: merged tenant base + per-plan row from Mongo (`planOverrides`), not
     // `getPlanLimits().maxPromptsPerDay` (hardcoded tier defaults would ignore admin workspace limits).
     dailyPromptCap = workspaceLimits.userChatLimit;
+    const h = workspaceLimits.userChatHourlyLimit;
+    hourlyPromptCap = typeof h === "number" && h > 0 ? h : undefined;
   }
   try {
     const usageCheck = await enforceDistributedAskUsageLimit({
@@ -259,21 +264,27 @@ export async function POST(request: Request) {
       plan: subscriptionPlan,
       perMinuteLimit: ASK_RATE_MAX,
       enforceDailyLimit: !isAdminSession,
-      dailyPromptLimit: dailyPromptCap
+      dailyPromptLimit: dailyPromptCap,
+      hourlyPromptLimit: hourlyPromptCap
     });
     if (!usageCheck.allowed) {
       const limiterHeaders = buildLimiterHeaders({
         remainingMinute: usageCheck.remainingMinute,
+        remainingHour: usageCheck.remainingHour,
         remainingDay: usageCheck.remainingDay,
+        hourlyLimit: usageCheck.hourlyLimit,
         dailyLimit: usageCheck.dailyLimit,
         retryAfterSeconds: usageCheck.retryAfterSeconds
       });
+      const limitError =
+        usageCheck.code === "xchat_daily_limit_exceeded"
+          ? "xChat daily prompt limit reached (UTC calendar day). Resets at next UTC midnight or contact your admin."
+          : usageCheck.code === "xchat_hourly_limit_exceeded"
+            ? "xChat hourly prompt limit reached (UTC hour window). Try again next hour or contact your admin."
+            : "Rate limit exceeded";
       return NextResponse.json(
         {
-          error:
-            usageCheck.code === "xchat_daily_limit_exceeded"
-              ? "xChat prompt limit reached for your current plan (per-hour cap on billing; usage window may reset on UTC day)"
-              : "Rate limit exceeded",
+          error: limitError,
           code: usageCheck.code,
           retryAfterSeconds: usageCheck.retryAfterSeconds ?? 60
         },
@@ -281,7 +292,9 @@ export async function POST(request: Request) {
       );
     }
     limiterRemainingMinute = usageCheck.remainingMinute;
+    limiterRemainingHour = usageCheck.remainingHour;
     limiterRemainingDay = usageCheck.remainingDay;
+    limiterHourlyLimit = usageCheck.hourlyLimit;
     limiterDailyLimit = usageCheck.dailyLimit;
   } catch (error) {
     console.error("[xchat/ask] distributed usage limit check failed", {
@@ -515,7 +528,9 @@ export async function POST(request: Request) {
       {
         headers: buildLimiterHeaders({
           remainingMinute: limiterRemainingMinute,
+          remainingHour: limiterRemainingHour,
           remainingDay: limiterRemainingDay,
+          hourlyLimit: limiterHourlyLimit,
           dailyLimit: limiterDailyLimit
         })
       }
@@ -574,7 +589,9 @@ export async function POST(request: Request) {
       {
         headers: buildLimiterHeaders({
           remainingMinute: limiterRemainingMinute,
+          remainingHour: limiterRemainingHour,
           remainingDay: limiterRemainingDay,
+          hourlyLimit: limiterHourlyLimit,
           dailyLimit: limiterDailyLimit
         })
       }
@@ -774,7 +791,9 @@ export async function POST(request: Request) {
       {
         headers: buildLimiterHeaders({
           remainingMinute: limiterRemainingMinute,
+          remainingHour: limiterRemainingHour,
           remainingDay: limiterRemainingDay,
+          hourlyLimit: limiterHourlyLimit,
           dailyLimit: limiterDailyLimit
         })
       }
@@ -1084,7 +1103,9 @@ export async function POST(request: Request) {
     {
       headers: buildLimiterHeaders({
         remainingMinute: limiterRemainingMinute,
+        remainingHour: limiterRemainingHour,
         remainingDay: limiterRemainingDay,
+        hourlyLimit: limiterHourlyLimit,
         dailyLimit: limiterDailyLimit
       })
     }
@@ -1211,7 +1232,9 @@ function summarizeProviderErrorForClient(message: string): string {
 
 function buildLimiterHeaders(input: {
   remainingMinute?: number;
+  remainingHour?: number;
   remainingDay?: number;
+  hourlyLimit?: number;
   dailyLimit?: number;
   retryAfterSeconds?: number;
 }): HeadersInit {
@@ -1219,8 +1242,14 @@ function buildLimiterHeaders(input: {
   if (typeof input.remainingMinute === "number") {
     headers["x-xchat-limit-remaining-minute"] = String(Math.max(0, input.remainingMinute));
   }
+  if (typeof input.remainingHour === "number") {
+    headers["x-xchat-limit-remaining-hour"] = String(Math.max(0, input.remainingHour));
+  }
   if (typeof input.remainingDay === "number") {
     headers["x-xchat-limit-remaining-day"] = String(Math.max(0, input.remainingDay));
+  }
+  if (typeof input.hourlyLimit === "number") {
+    headers["x-xchat-limit-hourly"] = String(Math.max(0, input.hourlyLimit));
   }
   if (typeof input.dailyLimit === "number") {
     headers["x-xchat-limit-daily"] = String(Math.max(0, input.dailyLimit));

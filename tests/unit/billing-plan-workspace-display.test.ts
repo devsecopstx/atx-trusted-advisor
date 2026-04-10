@@ -30,15 +30,17 @@ describe("billingCardWorkspaceDisplay", () => {
   it("guest uses catalog quota rows plus default prefs and default list price", () => {
     const d = billingCardWorkspaceDisplay({ tenant: null, plan: basicPlan });
     expect(d.priceParts).toEqual({ priceAmount: "$9", periodNote: "per month" });
-    expect(d.limitRows).toHaveLength(6);
+    expect(d.limitRows).toHaveLength(7);
     expect(d.limitRows[0]?.label).toBe("xOptions views / hr");
     expect(d.limitRows[0]?.value).toBe("10");
-    expect(d.limitRows[1]?.label).toBe("xChat prompts / hr");
+    expect(d.limitRows[1]?.label).toBe("xChat prompts / hr (UTC)");
     expect(d.limitRows[1]?.value).toBe("1");
-    expect(d.limitRows[4]?.label).toBe(BILLING_WORKSPACE_LABEL_CHANGE_PERSONA);
-    expect(d.limitRows[4]?.value).toBe("Yes");
-    expect(d.limitRows[5]?.label).toBe(BILLING_WORKSPACE_LABEL_CHAT_HISTORY);
-    expect(d.limitRows[5]?.value).toBe("10");
+    expect(d.limitRows[2]?.label).toBe("xChat prompts / day (UTC)");
+    expect(d.limitRows[2]?.value).toBe("10");
+    expect(d.limitRows[5]?.label).toBe(BILLING_WORKSPACE_LABEL_CHANGE_PERSONA);
+    expect(d.limitRows[5]?.value).toBe("Yes");
+    expect(d.limitRows[6]?.label).toBe(BILLING_WORKSPACE_LABEL_CHAT_HISTORY);
+    expect(d.limitRows[6]?.value).toBe("10");
   });
 
   it("guest premium column uses catalog premium cells", () => {
@@ -64,15 +66,17 @@ describe("billingCardWorkspaceDisplay", () => {
       workspaceLimits: {
         userChatLimit: 20,
         planOverrides: {
-          basic: { userChatLimit: 5, userXoptionsLimit: 7 }
+          basic: { userChatLimit: 5, userXoptionsLimit: 7, userChatHourlyLimit: 3 }
         }
       }
     });
     const d = billingCardWorkspaceDisplay({ tenant, plan: basicPlan });
-    const chat = d.limitRows.find((r) => r.label === "xChat prompts / hr");
+    const chatDay = d.limitRows.find((r) => r.label === "xChat prompts / day (UTC)");
+    const chatHr = d.limitRows.find((r) => r.label === "xChat prompts / hr (UTC)");
     const xopt = d.limitRows.find((r) => r.label === "xOptions views / hr");
     expect(xopt?.value).toBe("7");
-    expect(chat?.value).toBe("5");
+    expect(chatDay?.value).toBe("5");
+    expect(chatHr?.value).toBe("3");
   });
 
   it("normalizes legacy premium_plus_yearly planOverrides for Premium+ card", () => {
@@ -86,7 +90,7 @@ describe("billingCardWorkspaceDisplay", () => {
     });
     const d = billingCardWorkspaceDisplay({ tenant, plan: plusPlan });
     expect(d.priceParts).toEqual({ priceAmount: "$350", periodNote: "per month" });
-    const chat = d.limitRows.find((r) => r.label === "xChat prompts / hr");
+    const chat = d.limitRows.find((r) => r.label === "xChat prompts / day (UTC)");
     expect(chat?.value).toBe("99");
   });
 

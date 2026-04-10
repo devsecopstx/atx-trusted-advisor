@@ -13,8 +13,13 @@ import {
 export type TenantWorkspaceLimits = {
   /** xOptions deck / follow-up views per user — labeled **per hour** on `/account/billing` and admin workspace limits; enforced via `app_feature_daily_usage` (UTC day bucket) until hourly metering ships. */
   userXoptionsLimit: number;
-  /** xChat prompts per user — labeled **per hour** on billing/admin; enforced in `POST /api/xchat/ask` from merged tenant limits (base + `planOverrides` row for the user’s plan; usage tracks UTC calendar day). */
+  /** xChat prompts per user per **UTC calendar day** — enforced in `POST /api/xchat/ask` (merged tenant base + `planOverrides` for the user’s billing tier). */
   userChatLimit: number;
+  /**
+   * xChat prompts per user per **UTC clock hour**. Omitted or `0` = no hourly product cap (daily + per-minute burst still apply).
+   * Plan override rows use the same semantics (`0` clears an inherited hourly cap).
+   */
+  userChatHourlyLimit?: number;
   /** Max portfolios per user in this tenant workspace. */
   tenantPortfolioLimit: number;
   /** Max custodian accounts per portfolio. */
@@ -75,6 +80,11 @@ function isPositiveInt(n: unknown): n is number {
   return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 1_000_000;
 }
 
+/** `0` = unlimited (omit effective cap). */
+function isNonNegativeChatHourlyLimit(n: unknown): n is number {
+  return typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= 1_000_000;
+}
+
 function parseLimitScalars(o: Record<string, unknown>): Partial<TenantWorkspaceLimits> {
   const value: Partial<TenantWorkspaceLimits> = {};
   for (const k of LIMIT_KEYS) {
@@ -127,6 +137,12 @@ function parseStripePriceIdLoose(raw: unknown): string | undefined {
 
 function parsePlanOverrideRowLoose(o: Record<string, unknown>): TenantPlanWorkspaceRow {
   const row: TenantPlanWorkspaceRow = { ...parseLimitScalars(o) };
+  if (Object.prototype.hasOwnProperty.call(o, "userChatHourlyLimit")) {
+    const raw = o.userChatHourlyLimit;
+    if (isNonNegativeChatHourlyLimit(raw)) {
+      row.userChatHourlyLimit = raw;
+    }
+  }
   if (o.price !== undefined && o.price !== null && isPositiveInt(o.price)) {
     row.price = o.price;
   }
@@ -162,6 +178,16 @@ export function mergeTenantWorkspaceLimits(
   const cp = parseChangePersonaLoose(o.changePersonaEnabled);
   if (cp !== undefined) {
     out.changePersonaEnabled = cp;
+  }
+  if (Object.prototype.hasOwnProperty.call(o, "userChatHourlyLimit")) {
+    const raw = o.userChatHourlyLimit;
+    if (isNonNegativeChatHourlyLimit(raw)) {
+      if (raw === 0) {
+        delete out.userChatHourlyLimit;
+      } else {
+        out.userChatHourlyLimit = raw;
+      }
+    }
   }
   return out;
 }
@@ -203,9 +229,18 @@ export function applyTenantPlanRowToBase(
   if (!row) {
     return { ...base };
   }
+  const hourlyFromRow = row.userChatHourlyLimit;
+  const userChatHourlyLimit =
+    hourlyFromRow !== undefined
+      ? hourlyFromRow === 0
+        ? undefined
+        : hourlyFromRow
+      : base.userChatHourlyLimit;
+
   return {
     userXoptionsLimit: row.userXoptionsLimit ?? base.userXoptionsLimit,
     userChatLimit: row.userChatLimit ?? base.userChatLimit,
+    userChatHourlyLimit,
     tenantPortfolioLimit: row.tenantPortfolioLimit ?? base.tenantPortfolioLimit,
     portfolioAccountLimit: row.portfolioAccountLimit ?? base.portfolioAccountLimit,
     changePersonaEnabled: row.changePersonaEnabled ?? base.changePersonaEnabled,
@@ -240,6 +275,15 @@ export function parseWorkspaceLimitsPayload(
       return { ok: false, error: "Invalid changePersonaEnabled: boolean required" };
     }
     value.changePersonaEnabled = cp;
+  }
+  if (o.userChatHourlyLimit !== undefined) {
+    if (!isNonNegativeChatHourlyLimit(o.userChatHourlyLimit)) {
+      return {
+        ok: false,
+        error: "Invalid userChatHourlyLimit: integer 0–1000000 required (0 = no hourly cap)"
+      };
+    }
+    value.userChatHourlyLimit = o.userChatHourlyLimit;
   }
   return { ok: true, value };
 }
@@ -289,6 +333,16 @@ export function parsePlanOverridesPayload(
         return { ok: false, error: `Invalid planOverrides.${key}.${k}: positive integer required` };
       }
       parsed[k] = cell;
+    }
+    const hourlyCell = (row as Record<string, unknown>).userChatHourlyLimit;
+    if (hourlyCell !== undefined && hourlyCell !== null) {
+      if (!isNonNegativeChatHourlyLimit(hourlyCell)) {
+        return {
+          ok: false,
+          error: `Invalid planOverrides.${key}.userChatHourlyLimit: integer 0–1000000 required`
+        };
+      }
+      parsed.userChatHourlyLimit = hourlyCell;
     }
     const changeCell = (row as Record<string, unknown>).changePersonaEnabled;
     if (changeCell !== undefined && changeCell !== null) {

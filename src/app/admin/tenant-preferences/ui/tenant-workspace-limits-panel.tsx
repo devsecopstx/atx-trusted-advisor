@@ -18,7 +18,12 @@ type Props = {
   tenantId: string;
 };
 
-type PlanQuotaFieldKey = "userXoptionsLimit" | "userChatLimit" | "tenantPortfolioLimit" | "portfolioAccountLimit";
+type PlanQuotaFieldKey =
+  | "userXoptionsLimit"
+  | "userChatLimit"
+  | "userChatHourlyLimit"
+  | "tenantPortfolioLimit"
+  | "portfolioAccountLimit";
 
 const QUOTA_FIELDS: { key: PlanQuotaFieldKey; label: string; abbr: string; hint: string }[] = [
   {
@@ -29,9 +34,15 @@ const QUOTA_FIELDS: { key: PlanQuotaFieldKey; label: string; abbr: string; hint:
   },
   {
     key: "userChatLimit",
-    label: "xChat prompts / hr (per user)",
+    label: "xChat prompts / day (UTC, per user)",
+    abbr: "xChat/d",
+    hint: "Hard cap per UTC calendar day in POST /api/xchat/ask (merged tenant + planOverrides for billing tier)."
+  },
+  {
+    key: "userChatHourlyLimit",
+    label: "xChat prompts / hr (UTC, per user)",
     abbr: "xChat/hr",
-    hint: "Capped with plan: effective = min(plan, tenant). Billing UI labels per-hour caps."
+    hint: "Optional UTC clock-hour cap; 0 = off (only daily cap + per-minute burst apply)."
   },
   {
     key: "tenantPortfolioLimit",
@@ -147,6 +158,12 @@ function planOverridesFromDrafts(drafts: PlanLimitDrafts): TenantPlanWorkspaceOv
         continue;
       }
       const n = Number.parseInt(raw, 10);
+      if (f.key === "userChatHourlyLimit") {
+        if (Number.isFinite(n) && n >= 0) {
+          partial.userChatHourlyLimit = n;
+        }
+        continue;
+      }
       if (!Number.isFinite(n) || n < 1) {
         continue;
       }
@@ -242,7 +259,10 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       if (!payload.data?.workspaceLimits) {
         throw new Error("Missing limits payload");
       }
-      setValues(payload.data.workspaceLimits);
+      setValues({
+        ...payload.data.workspaceLimits,
+        userChatHourlyLimit: payload.data.workspaceLimits.userChatHourlyLimit ?? 0
+      });
       setPlanDrafts(draftsFromPlanOverrides(payload.data.planOverrides));
       setSlug(payload.data.slug ?? "");
       setTenantPreferences({
@@ -273,7 +293,7 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
   }, [load]);
 
   function onResetDraftToDefaults() {
-    setValues({ ...DEFAULT_TENANT_WORKSPACE_LIMITS });
+    setValues({ ...DEFAULT_TENANT_WORKSPACE_LIMITS, userChatHourlyLimit: 0 });
     setPlanDrafts(emptyPlanDrafts());
     setStatus("Draft reset to product defaults (save to apply).");
     window.setTimeout(() => setStatus(""), 5000);
@@ -311,7 +331,10 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         throw new Error(payload.error ?? `HTTP ${res.status}`);
       }
       if (payload.data?.workspaceLimits) {
-        setValues(payload.data.workspaceLimits);
+        setValues({
+          ...payload.data.workspaceLimits,
+          userChatHourlyLimit: payload.data.workspaceLimits.userChatHourlyLimit ?? 0
+        });
       }
       if (payload.data?.planOverrides !== undefined) {
         setPlanDrafts(draftsFromPlanOverrides(payload.data.planOverrides));
@@ -382,26 +405,38 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
               <td>
                 <code className="font-mono text-xs">{slug || tenantId}</code>
               </td>
-              {TENANT_BASE_QUOTA_FIELDS.map((f) => (
-                <td key={f.key}>
-                  <input
-                    aria-label={f.label}
-                    className="crud-input text-sm"
-                    min={1}
-                    max={1_000_000}
-                    required
-                    title={f.hint}
-                    type="number"
-                    value={values[f.key]}
-                    onChange={(e) => {
-                      const n = Number.parseInt(e.target.value, 10);
-                      setValues((prev) =>
-                        prev ? { ...prev, [f.key]: Number.isFinite(n) ? n : prev[f.key] } : prev
-                      );
-                    }}
-                  />
-                </td>
-              ))}
+              {TENANT_BASE_QUOTA_FIELDS.map((f) => {
+                const isHourly = f.key === "userChatHourlyLimit";
+                return (
+                  <td key={f.key}>
+                    <input
+                      aria-label={f.label}
+                      className="crud-input text-sm"
+                      min={isHourly ? 0 : 1}
+                      max={1_000_000}
+                      required={!isHourly}
+                      title={f.hint}
+                      type="number"
+                      value={isHourly ? (values.userChatHourlyLimit ?? 0) : values[f.key]}
+                      onChange={(e) => {
+                        const n = Number.parseInt(e.target.value, 10);
+                        setValues((prev) => {
+                          if (!prev) {
+                            return prev;
+                          }
+                          if (isHourly) {
+                            return {
+                              ...prev,
+                              userChatHourlyLimit: Number.isFinite(n) && n >= 0 ? n : 0
+                            };
+                          }
+                          return { ...prev, [f.key]: Number.isFinite(n) ? n : prev[f.key] };
+                        });
+                      }}
+                    />
+                  </td>
+                );
+              })}
               {PREF_FIELDS.map((f) =>
                 f.kind === "checkbox" ? (
                   <td key={f.key}>
@@ -625,27 +660,30 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
                       }}
                     />
                   </td>
-                  {QUOTA_FIELDS.map((f) => (
-                    <td key={f.key}>
-                      <input
-                        aria-label={`${planLabel(planId)} ${f.label}`}
-                        className="crud-input text-sm"
-                        min={1}
-                        max={1_000_000}
-                        placeholder="inherit"
-                        title={f.hint}
-                        type="number"
-                        value={planDrafts[planId]?.[f.key] ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setPlanDrafts((prev) => ({
-                            ...prev,
-                            [planId]: { ...prev[planId], [f.key]: v }
-                          }));
-                        }}
-                      />
-                    </td>
-                  ))}
+                  {QUOTA_FIELDS.map((f) => {
+                    const isHourly = f.key === "userChatHourlyLimit";
+                    return (
+                      <td key={f.key}>
+                        <input
+                          aria-label={`${planLabel(planId)} ${f.label}`}
+                          className="crud-input text-sm"
+                          min={isHourly ? 0 : 1}
+                          max={1_000_000}
+                          placeholder="inherit"
+                          title={f.hint}
+                          type="number"
+                          value={planDrafts[planId]?.[f.key] ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setPlanDrafts((prev) => ({
+                              ...prev,
+                              [planId]: { ...prev[planId], [f.key]: v }
+                            }));
+                          }}
+                        />
+                      </td>
+                    );
+                  })}
                   {PREF_FIELDS.map((f) =>
                     f.kind === "checkbox" ? (
                       <td key={f.key}>

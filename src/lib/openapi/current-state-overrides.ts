@@ -75,14 +75,24 @@ function xchatLimiterHeaders(includeRetryAfter: boolean): NonNullable<OpenApiRes
       description: "Remaining ask requests in the current one-minute limiter window.",
       schema: { type: "string" }
     },
+    "x-xchat-limit-remaining-hour": {
+      description:
+        "Remaining asks in the current UTC clock-hour window when the tenant sets `userChatHourlyLimit` > 0; omitted when no hourly cap.",
+      schema: { type: "string" }
+    },
     "x-xchat-limit-remaining-day": {
       description:
-        "Remaining asks in the current UTC calendar window (non-admin). Billing surfaces per-hour labels for caps; this header reflects the underlying day-bucket counter.",
+        "Remaining asks in the current UTC calendar-day window for non-admin sessions (`userChatLimit` / day bucket in `ask-usage-limits`).",
+      schema: { type: "string" }
+    },
+    "x-xchat-limit-hourly": {
+      description:
+        "Configured hourly ask cap from merged tenant workspace limits when set; aligns with the UTC hour bucket in `ask-usage-limits`.",
       schema: { type: "string" }
     },
     "x-xchat-limit-daily": {
       description:
-        "Configured ask cap envelope for the caller plan + tenant (non-admin). Product copy uses per-hour framing on `/account/billing`; value aligns with usage window semantics in `ask-usage-limits`.",
+        "Configured daily ask cap from merged tenant workspace limits (`userChatLimit`); aligns with the UTC day bucket in `ask-usage-limits`.",
       schema: { type: "string" }
     }
   };

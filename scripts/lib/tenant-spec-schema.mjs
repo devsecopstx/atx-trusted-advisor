@@ -23,6 +23,8 @@ const WORKSPACE_LIMIT_NUM_KEYS = [
   "chatHistoryMax"
 ];
 
+const WORKSPACE_LIMIT_CHAT_HOURLY_KEY = "userChatHourlyLimit";
+
 /**
  * @param {unknown} slug
  * @returns {string}
@@ -84,6 +86,15 @@ export function sanitizeWorkspaceLimitsPartial(raw) {
       throw new Error(`tenant.workspaceLimits.${k} must be an integer between 1 and 1000000`);
     }
     out[k] = n;
+  }
+  if (src[WORKSPACE_LIMIT_CHAT_HOURLY_KEY] !== undefined) {
+    const n = Number(src[WORKSPACE_LIMIT_CHAT_HOURLY_KEY]);
+    if (!Number.isInteger(n) || n < 0 || n > 1_000_000) {
+      throw new Error(
+        `tenant.workspaceLimits.${WORKSPACE_LIMIT_CHAT_HOURLY_KEY} must be an integer between 0 and 1000000`
+      );
+    }
+    out[WORKSPACE_LIMIT_CHAT_HOURLY_KEY] = n;
   }
   if (src.changePersonaEnabled !== undefined) {
     if (typeof src.changePersonaEnabled !== "boolean") {

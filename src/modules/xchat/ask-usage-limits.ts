@@ -4,9 +4,10 @@ import { getPlanLimits } from "@/modules/xchat/plan-limits";
 
 const XCHAT_USAGE_COLLECTION = "xchat_usage_limits";
 const ONE_MINUTE_MS = 60_000;
+const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-type UsageBucketKind = "minute" | "day";
+type UsageBucketKind = "minute" | "hour" | "day";
 
 type UsageBucketDocument = {
   key: string;
@@ -26,16 +27,23 @@ type UsageLimitInput = {
   plan?: SubscriptionPlan;
   perMinuteLimit: number;
   enforceDailyLimit: boolean;
-  /** When set, daily cap for prompts (call site passes merged tenant `userChatLimit`). */
+  /** UTC calendar-day cap (merged tenant `userChatLimit`). */
   dailyPromptLimit?: number;
+  /** UTC clock-hour cap when > 0 (merged tenant `userChatHourlyLimit`). */
+  hourlyPromptLimit?: number;
 };
 
 export type UsageLimitResult = {
   allowed: boolean;
-  code?: "xchat_rate_limit_exceeded" | "xchat_daily_limit_exceeded";
+  code?:
+    | "xchat_rate_limit_exceeded"
+    | "xchat_hourly_limit_exceeded"
+    | "xchat_daily_limit_exceeded";
   retryAfterSeconds?: number;
   remainingMinute?: number;
+  remainingHour?: number;
   remainingDay?: number;
+  hourlyLimit?: number;
   dailyLimit?: number;
 };
 
@@ -64,11 +72,40 @@ export async function enforceDistributedAskUsageLimit(
     };
   }
 
+  const remainingMinute = Math.max(0, input.perMinuteLimit - minuteBucket.count);
+
   if (!input.enforceDailyLimit) {
     return {
       allowed: true,
-      remainingMinute: Math.max(0, input.perMinuteLimit - minuteBucket.count)
+      remainingMinute
     };
+  }
+
+  const hourlyCap =
+    input.hourlyPromptLimit !== undefined && input.hourlyPromptLimit > 0
+      ? Math.max(1, Math.floor(input.hourlyPromptLimit))
+      : 0;
+
+  let remainingHour: number | undefined;
+  if (hourlyCap > 0) {
+    const hourBucket = await incrementUsageBucket({
+      kind: "hour",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      now
+    });
+    if (hourBucket.count > hourlyCap) {
+      const hourEndMs = hourBucket.bucketStart.getTime() + ONE_HOUR_MS;
+      return {
+        allowed: false,
+        code: "xchat_hourly_limit_exceeded",
+        retryAfterSeconds: Math.max(1, Math.ceil((hourEndMs - Date.now()) / 1000)),
+        remainingMinute,
+        remainingHour: 0,
+        hourlyLimit: hourlyCap
+      };
+    }
+    remainingHour = Math.max(0, hourlyCap - hourBucket.count);
   }
 
   const dailyLimit =
@@ -88,7 +125,9 @@ export async function enforceDistributedAskUsageLimit(
       allowed: false,
       code: "xchat_daily_limit_exceeded",
       retryAfterSeconds: Math.max(1, Math.ceil((nextDayStartMs - Date.now()) / 1000)),
-      remainingMinute: Math.max(0, input.perMinuteLimit - minuteBucket.count),
+      remainingMinute,
+      remainingHour,
+      hourlyLimit: hourlyCap > 0 ? hourlyCap : undefined,
       remainingDay: 0,
       dailyLimit
     };
@@ -96,7 +135,9 @@ export async function enforceDistributedAskUsageLimit(
 
   return {
     allowed: true,
-    remainingMinute: Math.max(0, input.perMinuteLimit - minuteBucket.count),
+    remainingMinute,
+    remainingHour,
+    hourlyLimit: hourlyCap > 0 ? hourlyCap : undefined,
     remainingDay: Math.max(0, dailyLimit - dayBucket.count),
     dailyLimit
   };
@@ -171,12 +212,18 @@ function getBucketStart(kind: UsageBucketKind, now: Date): Date {
   if (kind === "minute") {
     return new Date(Math.floor(now.getTime() / ONE_MINUTE_MS) * ONE_MINUTE_MS);
   }
+  if (kind === "hour") {
+    return new Date(Math.floor(now.getTime() / ONE_HOUR_MS) * ONE_HOUR_MS);
+  }
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
 function computeBucketExpiry(kind: UsageBucketKind, bucketStart: Date): Date {
   if (kind === "minute") {
     return new Date(bucketStart.getTime() + 2 * ONE_DAY_MS);
+  }
+  if (kind === "hour") {
+    return new Date(bucketStart.getTime() + 3 * ONE_DAY_MS);
   }
   return new Date(bucketStart.getTime() + 35 * ONE_DAY_MS);
 }

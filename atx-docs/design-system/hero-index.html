@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<!--
+  Design reference / static prototype. Production guest landing (signed-out "/") ships in the Next app:
+  src/app/page.tsx + src/app/ui/public-marketing-landing.tsx + src/app/ui/public-landing-xchat-demo.tsx
+  (tenant chrome + accent apply after sign-in via root layout + TenantBrandingProvider).
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="aTx Trusted Advisory — Austin's platform for high-net-worth families and their advisors. Multi-portfolio consolidation, xChat intelligence, xOptions mastery, real-time tracking, Texas tax advantages.">
+    <title>aTx Trusted Advisory • No Atoms moved, just Gains earned</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap');
+        :root { --accent: #00d4ff; }
+        * { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+        .hero-bg { background: linear-gradient(90deg, #0a0a0a 0%, #1a1a2e 100%); }
+        .nav-link { position: relative; }
+        .nav-link:after { content: ''; position: absolute; width: 0; height: 2px; bottom: -2px; left: 0; background-color: #00d4ff; }
+        .nav-link:hover:after { width: 100%; }
+        .section-header { font-family: 'Space Grotesk', sans-serif; }
+        .cta-button {
+            background: linear-gradient(90deg, #00d4ff, #00a3cc);
+            box-shadow: 0 0 30px -5px #00d4ff;
+        }
+        .cta-button:hover { box-shadow: 0 0 40px -5px #00d4ff; transform: translateY(-2px); }
+        .feature-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .feature-card:hover { transform: translateY(-4px); box-shadow: 0 25px 50px -12px rgb(0 212 255 / 0.15); }
+        .xchat-window { background: #111113; border: 1px solid #ffffff10; box-shadow: 0 25px 50px -12px rgb(0 212 255 / 0.15); }
+        .chat-bubble-ai { background: #1a1a2e; border-radius: 20px 20px 20px 4px; }
+        .chat-bubble-user { background: #00d4ff; color: #0a0a0a; border-radius: 20px 20px 4px 20px; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white font-sans">
+    <!-- NAVBAR -->
+    <nav class="border-b border-white/10 bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-50">
+        <div class="max-w-screen-2xl mx-auto px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-x-3">
+                    <div class="flex items-center gap-x-1">
+                        <span class="text-3xl">aTx</span>
+                        <span class="text-amber-400 text-3xl">⚡</span>
+                    </div>
+                    <div class="flex items-baseline">
+                        <span class="text-2xl font-semibold tracking-tighter section-header">Trusted Advisory</span>
+                    </div>
+                    <div class="text-xs font-medium text-white/40 tracking-widest ml-3 hidden sm:block">aTx Finance Advisory • Austin, TX</div>
+                </div>
+
+                <div class="hidden md:flex items-center gap-x-10 text-sm font-medium">
+                    <a href="#platform" class="nav-link text-white/90 hover:text-white">Platform</a>
+                    <a href="#hnwi" class="nav-link text-white/90 hover:text-white">For Austin Families</a>
+                    <a href="#advisors" class="nav-link text-white/90 hover:text-white">For Advisors</a>
+                    <a href="#xchat" class="nav-link text-white/90 hover:text-white">xChat</a>
+                    <a href="#xoptions" class="nav-link text-white/90 hover:text-white">xOptions</a>
+                </div>
+
+                <div class="flex items-center gap-x-4">
+                    <a href="https://atx.fintech-advisor.ai/account/billing" class="text-sm font-semibold px-6 py-2.5 rounded-3xl border border-white/30 hover:border-[#00d4ff] hover:text-[#00d4ff]">Log in</a>
+                    <a href="https://atx.fintech-advisor.ai/account/billing" class="cta-button text-zinc-950 font-semibold px-8 py-2.5 rounded-3xl flex items-center gap-x-2">Get Started Free</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <header class="hero-bg min-h-screen flex items-center relative overflow-hidden">
+        <div class="max-w-screen-2xl mx-auto px-8 grid md:grid-cols-2 gap-12 items-center">
+            <!-- Left Text -->
+            <div class="pt-12 md:pt-0">
+                <div class="inline-flex items-center gap-x-2 bg-white/10 text-white text-sm font-medium px-5 py-2 rounded-3xl mb-6 border border-white/20">
+                    <span class="text-amber-400">⚡</span>
+                    No Atoms moved, just Gains earned
+                </div>
+                
+                <h1 class="text-6xl md:text-7xl font-semibold leading-none tracking-tighter section-header mb-6">
+                    Austin's platform<br>for high-net-worth<br>families and advisors.
+                </h1>
+                
+                <p class="text-2xl text-white/70 max-w-lg mb-10">
+                    Consolidate every account, track performance in real time, collaborate securely with family and advisors, and unlock Texas tax advantages — all in one private, Austin-built workspace.
+                </p>
+                
+                <div class="flex items-center gap-x-4">
+                    <a href="https://atx.fintech-advisor.ai/account/billing" class="cta-button text-zinc-950 font-semibold text-xl px-10 py-6 rounded-3xl flex items-center gap-x-4">
+                        Secure Your Austin Workspace
+                        <i class="fa-solid fa-arrow-right text-2xl"></i>
+                    </a>
+                    
+                    <button onclick="document.getElementById('xchat-demo').scrollIntoView({ behavior: 'smooth' })" class="flex items-center gap-x-3 text-white/80 hover:text-white group">
+                        <div class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover:bg-[#00d4ff]/10">
+                            <i class="fa-solid fa-robot text-[#00d4ff]"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-medium">Try xChat Live Demo</div>
+                            <div class="text-xs text-white/50">Right here • Matches the real app</div>
+                        </div>
+                    </button>
+                </div>
+                
+                <div class="flex items-center gap-x-8 mt-12 text-sm">
+                    <div class="flex items-center gap-x-2"><i class="fa-solid fa-check text-emerald-400"></i><span>Multi-portfolio consolidation</span></div>
+                    <div class="flex items-center gap-x-2"><i class="fa-solid fa-check text-emerald-400"></i><span>Texas tax advantages</span></div>
+                    <div class="flex items-center gap-x-2"><i class="fa-solid fa-check text-emerald-400"></i><span>Secure family &amp; advisor sharing</span></div>
+                </div>
+            </div>
+
+            <!-- RIGHT: LIVE xChat DEMO WIDGET (matches real app) -->
+            <div id="xchat-demo" class="relative hidden md:block">
+                <div class="xchat-window rounded-3xl p-2 bg-zinc-900/80 backdrop-blur-2xl border border-white/10">
+                    <div class="bg-black rounded-3xl overflow-hidden">
+                        <!-- Real app header style -->
+                        <div class="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#111113]">
+                            <div class="flex items-center gap-x-3">
+                                <div class="text-amber-400 text-2xl">⚡</div>
+                                <div class="font-semibold text-lg">aTx Trusted Advisory</div>
+                            </div>
+                            <div class="text-emerald-400 text-xs font-medium flex items-center">
+                                <i class="fa-solid fa-circle text-[10px] mr-1 animate-pulse"></i> Grok-4 • Live
+                            </div>
+                        </div>
+
+                        <!-- Welcome area -->
+                        <div class="px-6 pt-6 pb-4 text-white/90">
+                            <div class="text-2xl font-light">Welcome to xChat</div>
+                            <p class="text-sm text-white/60 mt-1">Overview of xChat — portfolio, watchlist and advisor options-tools.</p>
+                        </div>
+
+                        <!-- Chat area -->
+                        <div id="chat-messages" class="h-80 overflow-y-auto px-6 space-y-6 text-sm bg-[#111113]"></div>
+
+                        <!-- Quick prompts -->
+                        <div class="px-6 pb-4 flex flex-wrap gap-2 text-xs">
+                            <button onclick="sendQuickPrompt('Consolidate my Rollover IRA and taxable accounts')" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-3xl">Consolidate accounts</button>
+                            <button onclick="sendQuickPrompt('Show Texas tax advantages on my tech holdings')" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-3xl">Texas tax strategy</button>
+                            <button onclick="sendQuickPrompt('Build a balanced wheel on TSLA')" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-3xl">Balanced TSLA wheel</button>
+                        </div>
+
+                        <!-- Input (exact match to real app) -->
+                        <div class="px-6 pb-6">
+                            <div class="flex gap-x-2 bg-zinc-900 rounded-3xl p-2">
+                                <input id="chat-input" type="text" placeholder="What's on your mind?" 
+                                       class="flex-1 bg-transparent outline-none px-5 text-sm placeholder:text-white/40">
+                                <button onclick="sendMessage()" 
+                                        class="w-10 h-10 bg-emerald-500 text-white rounded-3xl flex items-center justify-center font-medium">
+                                    Send
+                                </button>
+                            </div>
+                            <div class="text-[10px] text-white/40 text-center mt-3">BETA • Paste screenshot (Ctrl/Cmd+V) to analyze with Grok vision</div>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-center text-xs text-white/40 mt-4">Live demo • Mirrors your real xChat exactly</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- PLATFORM / ABOUT SECTION -->
+    <section id="platform" class="max-w-screen-2xl mx-auto px-8 py-24 bg-zinc-900">
+        <div class="text-center mb-16">
+            <span class="uppercase text-xs tracking-widest font-medium text-[#00d4ff]">Built in Austin for Austin families</span>
+            <h2 class="section-header text-5xl tracking-tighter mt-3">Sophisticated portfolio management for high-net-worth families and their advisors</h2>
+        </div>
+        <div class="grid md:grid-cols-3 gap-8 text-center md:text-left">
+            <div class="feature-card bg-black rounded-3xl p-8">
+                <i class="fa-solid fa-layer-group text-4xl text-[#00d4ff] mb-6"></i>
+                <h3 class="text-2xl font-semibold mb-2">Consolidate everything</h3>
+                <p class="text-white/70">Multiple accounts, generations, stocks, options, and real estate — all in one secure dashboard.</p>
+            </div>
+            <div class="feature-card bg-black rounded-3xl p-8">
+                <i class="fa-solid fa-chart-line text-4xl text-emerald-400 mb-6"></i>
+                <h3 class="text-2xl font-semibold mb-2">Real-time visibility</h3>
+                <p class="text-white/70">Track performance, cash flow, net worth, and Texas tax advantages instantly.</p>
+            </div>
+            <div class="feature-card bg-black rounded-3xl p-8">
+                <i class="fa-solid fa-users text-4xl text-amber-400 mb-6"></i>
+                <h3 class="text-2xl font-semibold mb-2">Secure collaboration</h3>
+                <p class="text-white/70">Share with trusted advisors and family members while keeping full control and audit lineage.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- xCHAT & xOPTIONS -->
+    <section id="xchat" class="py-24 bg-black">
+        <div class="max-w-screen-2xl mx-auto px-8 grid md:grid-cols-2 gap-16 items-center">
+            <div>
+                <span class="px-4 py-1 bg-emerald-400/10 text-emerald-400 rounded-3xl text-sm">xChat • Your AI Co-Pilot</span>
+                <h2 class="section-header text-5xl tracking-tighter mt-6">Natural language intelligence for your entire book</h2>
+                <p class="mt-8 text-white/70 text-xl">Ask anything about your Austin portfolio. Get conservative-to-aggressive options strategies, tax-aware insights, and multi-agent analysis powered by Grok-4.</p>
+            </div>
+            <div class="bg-zinc-900 rounded-3xl p-8 text-center">
+                <i class="fa-solid fa-bolt text-6xl text-emerald-400 mb-6"></i>
+                <p class="text-white/70">“What’s on your mind?” — exactly like the real app</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="xoptions" class="max-w-screen-2xl mx-auto px-8 py-24">
+        <div class="text-center">
+            <span class="px-4 py-1 bg-[#00d4ff]/10 text-[#00d4ff] rounded-3xl text-sm">xOptions • Precision Strategy Builder</span>
+            <h2 class="section-header text-5xl tracking-tighter mt-6">From idea to execution in four steps</h2>
+        </div>
+        <div class="mt-12 text-center text-white/70">Input symbol • Choose outlook • Select strategy • Choose contract. Real-time Greeks, payoff curves, IV/OI heatmaps, and one-click IBKR path.</div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <div class="bg-black py-20 text-center">
+        <h2 class="section-header text-6xl tracking-tighter mb-6">Ready to bring your Austin family office online?</h2>
+        <a href="https://atx.fintech-advisor.ai/account/billing" class="cta-button mx-auto mt-12 text-zinc-950 font-semibold text-2xl px-16 py-8 rounded-3xl inline-flex items-center gap-x-6">Secure My Private Workspace • $0 first 30 days</a>
+        <p class="text-xs text-white/40 mt-6">Designed for families with portfolios exceeding $1 million</p>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-zinc-950 border-t border-white/10 py-16">
+        <div class="max-w-screen-2xl mx-auto px-8 text-center">
+            <div class="flex justify-center items-center gap-x-3 mb-6">
+                <span class="text-3xl">aTx</span><span class="text-amber-400 text-3xl">⚡</span>
+                <span class="text-3xl font-semibold tracking-tighter section-header">Trusted Advisory</span>
+            </div>
+            <p class="text-white/50 text-sm">Austin, TX • Built for high-net-worth families and the advisors who serve them since 2004.</p>
+            <p class="text-xs text-white/30 mt-8">© 2026 aTx Trusted Advisory • Not investment advice. Past performance is not indicative of future results.</p>
+        </div>
+    </footer>
+
+    <script>
+        // xChat demo (matches real app behavior)
+        let demoMessages = [{ type: 'ai', text: 'Hello. I’m your aTx xChat co-pilot. What’s on your mind today?' }];
+        function renderMessages() {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = demoMessages.map(msg => {
+                return msg.type === 'ai' 
+                    ? `<div class="flex gap-3"><div class="w-8 h-8 bg-[#00d4ff] text-zinc-950 rounded-2xl flex items-center justify-center text-xl">⚡</div><div class="chat-bubble-ai max-w-[75%] p-4">${msg.text}</div></div>`
+                    : `<div class="flex justify-end"><div class="chat-bubble-user max-w-[75%] p-4">${msg.text}</div></div>`;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+        function addMessage(type, text) {
+            demoMessages.push({ type, text });
+            renderMessages();
+        }
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            addMessage('user', text);
+            input.value = '';
+            setTimeout(() => {
+                let response = "Analyzing your Austin book now...";
+                if (text.toLowerCase().includes('consolidate')) response = "I can help consolidate your Rollover IRA and taxable accounts. Would you like the full holdings view with tax-lot optimization?";
+                else if (text.toLowerCase().includes('texas') || text.toLowerCase().includes('tax')) response = "Texas has no state income tax. Here’s a conservative wheel strategy that maximizes your tax advantages on tech holdings.";
+                else if (text.toLowerCase().includes('wheel')) response = "Balanced wheel on TSLA (45 DTE). Projected income +17.8%. Full payoff curve and IBKR preview ready in xOptions.";
+                addMessage('ai', response);
+            }, 1100);
+        }
+        function sendQuickPrompt(prompt) {
+            addMessage('user', prompt);
+            setTimeout(() => sendMessage(), 800);
+        }
+        window.onload = () => { renderMessages(); };
+    </script>
+</body>
+</html>

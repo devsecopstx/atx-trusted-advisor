@@ -20,6 +20,6 @@ describe("ATX billing list pricing", () => {
     expect(priceRow?.basic).toBe("$9/mo");
     expect(priceRow?.premium).toBe("$99/mo");
     expect(priceRow?.premiumPlus).toBe("$299/mo");
-    expect(ATX_BILLING_PLAN_LIMIT_ROWS).toHaveLength(7);
+    expect(ATX_BILLING_PLAN_LIMIT_ROWS).toHaveLength(8);
   });
 });
