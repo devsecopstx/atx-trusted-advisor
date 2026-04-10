@@ -68,7 +68,7 @@ Tool cache is implemented in `src/modules/xchat/tool-cache.ts`.
 After `npm run seed:admin`, verify:
 
 1. default admin user and default tenant are present
-2. default persona rows exist and are published as intended
+2. default persona rows exist and are published as intended (`advisor` from `atx-docs/rag-collection/xpersonas/advisor/advisor.yaml`; `xchat_platform_settings.defaultAppUserPersonaId` is set to **advisor** when previously unset)
 3. default portfolio/account/watchlist records exist
 4. xAI verification checks pass when keys are present
 

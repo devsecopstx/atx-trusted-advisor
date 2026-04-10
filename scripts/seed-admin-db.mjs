@@ -7,7 +7,7 @@
  * - approved admin_access_requests paper trail (`requestedPlan` **basic** when bootstrap row is inserted)
  * - tenant/account/watchlist bootstrap
  * - xPersona sync from disk -> Mongo (`atx-docs/rag-collection/xpersonas`, advisor `advisor`)
- * - admin_user_settings.assignedPersonaId -> advisor after sync
+ * - admin_user_settings.assignedPersonaId -> advisor after sync; xchat_platform_settings.defaultAppUserPersonaId -> advisor when unset
  *
  * Skips post-seed xAI network checks (`verify-xai-hello` / `verify-xai-seed-rag`) unless you unset the SKIP_* flags.
  * `seed:admin` never uploads to xAI team collections; this wrapper is for CI / headless clarity.

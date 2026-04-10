@@ -23,6 +23,12 @@ describe("seed-admin-user.mjs contract", () => {
     expect(src).toContain("atx-docs/rag-collection/xpersonas");
   });
 
+  it("seeds xchat_platform_settings defaultAppUserPersonaId to advisor when unset", () => {
+    expect(src).toContain("xchat_platform_settings");
+    expect(src).toContain("defaultAppUserPersonaId");
+    expect(src).toContain("seedSetPlatformDefaultAppUserPersona");
+  });
+
   it("seed:admin never invokes xAI team RAG upload or SEED_ADMIN_XAI_RAG_INGEST", () => {
     expect(src).not.toContain("SEED_ADMIN_XAI_RAG_INGEST");
     expect(src).not.toContain("seed-admin-rag-sync");

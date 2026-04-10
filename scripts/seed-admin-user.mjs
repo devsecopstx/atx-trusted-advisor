@@ -358,14 +358,18 @@ const DEFAULT_PERSONA_NAME = "advisor";
 const DEFAULT_PERSONA_NAME_NORMALIZED = "advisor";
 /** Product default for seeded admin (`core_users.subscriptionPlan`, access-request paper row). */
 const DEFAULT_SEED_SUBSCRIPTION_PLAN = "basic";
-const DEFAULT_PERSONA_SYSTEM_PROMPT = `You are The Architect, the lean administrative agent for atxFinance global admins — workspace + markets + your KB, without open-web noise unless an operator adds research tools to this persona.
+/** Inline fallback before disk sync; keep aligned with `system_prompt` in advisor/advisor.yaml. */
+const DEFAULT_PERSONA_SYSTEM_PROMPT = `**You are The Advisor** — the trusted-advisor for aTx Finance users. Calm, precise, long-term thinker.
 
-Tool discipline (use the API tool channel; do not fake tool calls in plain text):
-- atx_function — Signed-in user's portfolio, watchlist, positions, and workspace data when relevant.
-- yahoo_finance — Quotes and market data for tickers.
-- file_search — Private docs in the linked xAI collection (one collection). Use for policy, runbooks, and uploaded knowledge.
+You have direct access to:
+- signed-in user's full **atx workspace** (portfolio, watchlist, positions, balances)
+- **yahoo_finance** for live quotes, option chains, and market data
 
-Prefer tool-grounded answers over unsupported claims. When tools return nothing useful, say so clearly. For breaking news, social sentiment, or live web research, ask the user to switch to a persona that includes web_search / x_search or have an operator enable those tools.`;
+**Tool Discipline** (use API tool channel only — never fake or describe calls in text):
+- atx_function → portfolio, watchlist, positions, workspace data
+- yahoo_finance → prices, chains, fundamentals
+Respond directly and brutally honest. Anchor to user's stated goals. Include disclaimers on tax/legal/investment actions. Prioritize speed. No hype.
+**Tool efficiency rule (critical for speed):** Use the absolute minimum number of tool calls per turn (target ≤3). Prefer one bulk \`atx_function\` call for portfolio/watchlist data. For multiple tickers, make one \`yahoo_finance\` call if the tool supports batch symbols, otherwise limit to 2–3 highest-priority symbols only. Never call tools for every item in a list. If you need more data, ask the user what to prioritize next.`;
 const DEFAULT_PORTFOLIO_NAME = "Default Portfolio";
 const DEFAULT_ACCOUNT_NAME = "Default Account";
 /** Default `portfolio_accounts.extAccountId` — matches `provisionDefaultPortfolioForUser` / Spring provision. */
@@ -504,6 +508,10 @@ async function ensureIndexes(db) {
     db.collection("options_strategy_preferences").createIndex(
       { slug: 1 },
       { unique: true, name: "uniq_options_strategy_preferences_slug" }
+    ),
+    db.collection("xchat_platform_settings").createIndex(
+      { singletonKey: 1 },
+      { unique: true, name: "uniq_xchat_platform_singleton" }
     )
   ]);
 }
@@ -829,6 +837,35 @@ async function seed() {
       );
     }
 
+    /** App-user xChat default (`resolveDefaultXchatPersonaForSession`) — advisor from advisor.yaml when unset. */
+    const platformSettingsColl = db.collection("xchat_platform_settings");
+    const existingPlatform = await platformSettingsColl.findOne({ singletonKey: "default" });
+    const platformPid = existingPlatform?.defaultAppUserPersonaId;
+    const platformDefaultMissing =
+      !existingPlatform ||
+      platformPid == null ||
+      (typeof platformPid === "string" && platformPid.trim() === "");
+    if (platformDefaultMissing) {
+      await platformSettingsColl.updateOne(
+        { singletonKey: "default" },
+        {
+          $set: {
+            defaultAppUserPersonaId: String(personaAfterDisk._id),
+            updatedAt: now,
+            updatedByUserId: seedUserIdHex
+          },
+          $setOnInsert: { singletonKey: "default" }
+        },
+        { upsert: true }
+      );
+      console.log(
+        "[seed:admin] xchat_platform_settings.defaultAppUserPersonaId → advisor (was unset; app-user xChat default)"
+      );
+    }
+    const defaultAppUserPersonaIdForPayload = platformDefaultMissing
+      ? String(personaAfterDisk._id)
+      : String(platformPid ?? "").trim() || null;
+
     const payload = {
       ok: true,
       adminEmail: email,
@@ -855,6 +892,8 @@ async function seed() {
       tenantSlug: tenant.slug,
       defaultPersonaId: String(personaAfterDisk._id),
       defaultPersonaName: personaAfterDisk.name,
+      defaultAppUserPersonaId: defaultAppUserPersonaIdForPayload,
+      seedSetPlatformDefaultAppUserPersona: platformDefaultMissing,
       defaultPortfolioId: String(portfolio._id),
       defaultAccountId: String(account._id),
       defaultWatchlistId: String(watchlist._id),
@@ -862,7 +901,7 @@ async function seed() {
       mongo: {
         database: DB_NAME,
         accessRequestInserted,
-        note: "Upserted core_tenants (incl. defaultPortfolioScoringFactors), xchat_personas (advisor), core_users (subscriptionPlan basic), core_tenant_memberships, tenant_portfolio (incl. scoringFactors) + portfolio_accounts + portfolio_watchlists, admin_user_settings; then seed:xpersonas (unless SKIP_SEED_XPERSONAS), options_strategy_preferences / options_strategy, and admin_scheduled_tasks via ops/sync-scheduled-tasks-from-spec (unless SKIP_SEED_SCHEDULED_TASKS_SYNC). Does not upload to xAI team collections. See accessRequestInserted for admin_access_requests."
+        note: "Upserted core_tenants (incl. defaultPortfolioScoringFactors), xchat_personas (advisor), core_users (subscriptionPlan basic), core_tenant_memberships, tenant_portfolio (incl. scoringFactors) + portfolio_accounts + portfolio_watchlists, admin_user_settings, xchat_platform_settings.defaultAppUserPersonaId (advisor when unset); then seed:xpersonas (unless SKIP_SEED_XPERSONAS), options_strategy_preferences / options_strategy, and admin_scheduled_tasks via ops/sync-scheduled-tasks-from-spec (unless SKIP_SEED_SCHEDULED_TASKS_SYNC). Does not upload to xAI team collections. See accessRequestInserted for admin_access_requests."
       }
     };
 

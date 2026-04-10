@@ -4,7 +4,7 @@ User-facing product: **atx Trusted Advisor** (Trusted Advisory lockup in header/
 
 ## Stress-free trading — top 5 product pillars
 
-1. **Conversational desk (xChat)** — Default **atx-trusted-advisor** persona for app roles, **advisor** for global admins; optional RAG collections and tools so answers stay grounded instead of guesswork.
+1. **Conversational desk (xChat)** — After `seed:admin`, platform default is **advisor** (`atx-docs/rag-collection/xpersonas/advisor/advisor.yaml`) for app roles via `xchat_platform_settings`; **advisor** for global admins; **atx-trusted-advisor** remains the code fallback when no platform default is set. Optional RAG collections and tools keep answers grounded.
 2. **Portfolio + watchlist in one workspace** — Default book, linked accounts, watchlist with CSV import/export and aligned **risk / outlook** context (book, accounts, and watchlist) so execution views match how you think about risk.
 3. **xStrategyBuilder & option chains** — Strategy options UI, expirations, and structured chain data to reduce tab-hopping and manual reconstruction of setups.
 4. **Access you control** — Approval-based onboarding, platform roles (**viewer** / **operator** / **advisor**), and admin governance for personas, portfolios, and ops—no anonymous wild-west trading surface.

@@ -1,7 +1,7 @@
 /**
  * Published default xChat personas (operators keep both in `published` status):
- * - advisor → global_admin default (seeded; see `atx-docs/rag-collection/xpersonas/advisor/advisor.yaml` + `scripts/seed-admin-user.mjs`)
- * - atx-trusted-advisor → all other signed-in roles, with at least one collection
+ * - advisor → global_admin default and **platform** app-user default when `seed:admin` sets `xchat_platform_settings.defaultAppUserPersonaId` (see `advisor/advisor.yaml`)
+ * - atx-trusted-advisor → fallback when platform default is unset/cleared, with at least one collection
  * Collection ids/names may change over time; operators update them in Admin → Personas or via `XAI_TEAM_ID` (collection id or team UUID).
  */
 import { isGlobalAdmin } from "@/modules/identity/authorization";

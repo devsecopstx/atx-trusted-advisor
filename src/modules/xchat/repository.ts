@@ -232,7 +232,7 @@ export async function ensureDefaultTrustedAdvisorPersonaExists(): Promise<Person
 
 /**
  * Default persona when the client does not select one: **`advisor`** (seeded global_admin default; legacy **`super-agent`** still resolved if present),
- * for app roles: optional **platform default** (`xchat_platform_settings.defaultAppUserPersonaId`, published only),
+ * for app roles: **platform default** (`xchat_platform_settings.defaultAppUserPersonaId`, published only) — seeded to **advisor** on `npm run seed:admin` when unset,
  * else **atx-trusted-advisor** (created if missing).
  */
 export async function resolveDefaultXchatPersonaForSession(
