@@ -1,0 +1,6 @@
+# Disable internal scheduler during @SpringBootTest so polls never hit the DB unexpectedly.
+app:
+  atxfinance:
+    scheduler:
+      enabled: false
+      demo-heartbeat-enabled: false

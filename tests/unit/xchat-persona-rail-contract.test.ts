@@ -15,7 +15,8 @@ describe("xChat persona left-rail contract", () => {
     expect(source).toContain("RailDisclosure");
   });
 
-  it("keeps composer persona picker plus active/status blocks (rail shows active/status only)", () => {
+  it("keeps composer persona picker (rendered when workspace changePersonaEnabled / not locked) plus rail active/status blocks", () => {
+    expect(composerSource).toContain("!personaPickerLocked");
     expect(composerSource).toContain('id="xchat-composer-persona-picker"');
     expect(source).toContain('aria-label="Active persona and last turn tools"');
     expect(source).toContain('aria-label="Knowledge collections and scope status"');

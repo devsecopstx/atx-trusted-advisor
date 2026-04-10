@@ -2074,6 +2074,63 @@ html[data-xf-ui="soft"] .xoptions-contract-overlay__card {
   text-align: center;
 }
 
+/* Async chain / expiration fetch — indeterminate progress (tokens only) */
+.xoptions-chain-fetch-status {
+  width: 100%;
+  max-width: 42rem;
+}
+
+.xoptions-chain-fetch-status__label {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--xf-text-200);
+}
+
+.xoptions-chain-fetch-status__track {
+  position: relative;
+  height: 0.4rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--xf-text-100) 14%, transparent);
+}
+
+.xoptions-chain-fetch-status__indeterminate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 42%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--xf-gain-green) 70%, transparent) 45%,
+    color-mix(in srgb, var(--xf-gain-green) 95%, transparent) 50%,
+    color-mix(in srgb, var(--xf-gain-green) 70%, transparent) 55%,
+    transparent 100%
+  );
+  animation: xo-chain-fetch-indeterminate 1.15s ease-in-out infinite;
+}
+
+@keyframes xo-chain-fetch-indeterminate {
+  0% {
+    transform: translateX(-102%);
+  }
+
+  100% {
+    transform: translateX(245%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xoptions-chain-fetch-status__indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.45;
+    transform: none;
+  }
+}
+
 .xoptions-contract-overlay__list {
   margin: 0;
   padding-left: 1.1rem;

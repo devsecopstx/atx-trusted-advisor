@@ -155,33 +155,33 @@ export function XchatComposerPanel({
           </XfHoverHint>
         </div>
         <div className="xchat-composer__row xchat-composer__row--actions">
-          <div className="xchat-composer__persona-actions">
-            <label className="sr-only" htmlFor="xchat-composer-persona-picker">
-              Persona for this message
-            </label>
-            <XfHoverHint hint="Published persona for this prompt only — same list as the Persona rail">
-              <select
-                aria-label="Persona for this message"
-                className="xchat-composer__persona-select xchat-composer__persona-select--inline"
-                disabled={
-                  personaSelectRows.length === 0 || Boolean(personaListError) || personaPickerLocked
-                }
-                id="xchat-composer-persona-picker"
-                onChange={(e) => {
-                  userPickedPersonaRef.current = true;
-                  setSelectedPersonaId(e.target.value);
-                }}
-                value={selectedPersonaId}
-              >
-                <option value="">Default</option>
-                {personaSelectRows.map((p) => (
-                  <option key={p._id} title={p.name} value={p._id}>
-                    {compactPersonaOptionLabel(p.name)}
-                  </option>
-                ))}
-              </select>
-            </XfHoverHint>
-          </div>
+          {!personaPickerLocked ? (
+            <div className="xchat-composer__persona-actions">
+              <label className="sr-only" htmlFor="xchat-composer-persona-picker">
+                Persona for this message
+              </label>
+              <XfHoverHint hint="Published persona for this prompt only — same list as the Persona rail">
+                <select
+                  aria-label="Persona for this message"
+                  className="xchat-composer__persona-select xchat-composer__persona-select--inline"
+                  disabled={personaSelectRows.length === 0 || Boolean(personaListError)}
+                  id="xchat-composer-persona-picker"
+                  onChange={(e) => {
+                    userPickedPersonaRef.current = true;
+                    setSelectedPersonaId(e.target.value);
+                  }}
+                  value={selectedPersonaId}
+                >
+                  <option value="">Default</option>
+                  {personaSelectRows.map((p) => (
+                    <option key={p._id} title={p.name} value={p._id}>
+                      {compactPersonaOptionLabel(p.name)}
+                    </option>
+                  ))}
+                </select>
+              </XfHoverHint>
+            </div>
+          ) : null}
           <button className="xchat-composer__send" disabled={loading || !canSend} type="submit">
             <SendIcon className="crud-icon" />
             Send

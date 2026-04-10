@@ -66,6 +66,11 @@ app:
       auth-login-limit-per-minute: ${AUTH_RATE_LIMIT_LOGIN_PER_MINUTE:30}
       auth-callback-limit-per-minute: ${AUTH_RATE_LIMIT_CALLBACK_PER_MINUTE:60}
       oauth-flow-cookie-max-age-seconds: ${OAUTH_FLOW_TTL_SECONDS:1800}
+    scheduler:
+      enabled: ${ADMIN_SCHEDULER_ENABLED:true}
+      poll-interval-ms: ${ADMIN_SCHEDULER_POLL_INTERVAL_MS:60000}
+      max-tasks-per-poll: ${ADMIN_SCHEDULER_MAX_TASKS_PER_POLL:50}
+      demo-heartbeat-enabled: ${ADMIN_SCHEDULER_DEMO_HEARTBEAT:true}
   pubsub:
     project-id: ${PUBSUB_PROJECT_ID:}
     topic: ${PUBSUB_TOPIC:atxfinance-backend-requests}

@@ -2,12 +2,18 @@ package com.atxfinance.backend.scheduling
 
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 
 @Component
+@ConditionalOnProperty(
+    name = ["app.atxfinance.scheduler.demo-heartbeat-enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+)
 class SampleScheduledTasks(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)

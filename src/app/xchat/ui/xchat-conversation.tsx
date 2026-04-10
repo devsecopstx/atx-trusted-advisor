@@ -780,6 +780,11 @@ export function XchatConversation({
   }, [defaultPublishedPersonaName]);
 
   useEffect(() => {
+    if (personaPickerLocked) {
+      setPersonaPickerRows([]);
+      setPersonaListError(null);
+      return;
+    }
     let active = true;
     async function loadPersonas() {
       setPersonaListError(null);
@@ -814,7 +819,7 @@ export function XchatConversation({
     return () => {
       active = false;
     };
-  }, [includeSuperAgentInPersonaPicker]);
+  }, [includeSuperAgentInPersonaPicker, personaPickerLocked]);
 
   useEffect(() => {
     if (suggestedPersonaId && !userPickedPersonaRef.current) {
@@ -1126,9 +1131,10 @@ export function XchatConversation({
       if (normalizedWorkspacePortfolioId) {
         askBody.portfolioId = normalizedWorkspacePortfolioId;
       }
-      const effectivePersonaPick = selectedPersonaId.trim();
-      if (effectivePersonaPick) {
-        askBody.personaId = effectivePersonaPick;
+      const personaIdSent =
+        !personaPickerLocked && selectedPersonaId.trim() ? selectedPersonaId.trim() : undefined;
+      if (personaIdSent) {
+        askBody.personaId = personaIdSent;
       }
 
       const response = await fetch("/api/xchat/ask", {
@@ -1232,7 +1238,7 @@ export function XchatConversation({
           response: payload.data?.response ?? "",
           model: "xchat",
           createdAt: new Date().toISOString(),
-          personaId: effectivePersonaPick || undefined,
+          personaId: personaIdSent,
           contextReferenceCount: 0,
           toolCallCount: payload.data?.toolCalls?.length ?? 0
         };

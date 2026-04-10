@@ -9,33 +9,33 @@ import { type StrategyChoiceId, type StrategyStartBasis } from "@/app/xoptions/x
 import { XoptionsTaxLimitHint } from "@/app/xoptions/xoptions-tax-education-panels";
 import { EDUCATIONAL_ONLY_SHORT } from "@/lib/legal-disclaimers";
 import {
-  getCachedOptionChain,
-  makeOptionChainCacheKey,
-  setCachedOptionChain
+    getCachedOptionChain,
+    makeOptionChainCacheKey,
+    setCachedOptionChain
 } from "@/lib/xoptions/xoptions-chain-cache";
 import {
-  chainHeatMixPercent,
-  chainRowMoneynessClass,
-  closestStrikeToSpot,
-  filterOptionChainRowsByLiquidity,
-  filterStrikesBySpotBand,
-  formatImpliedVolatilityDisplay,
-  legHasQuotableLastQuote,
-  maxVolumeAndOpenInterestForSide,
-  sliceStrikesAroundSpot,
-  STRIKE_SPOT_BAND_PCT
+    chainHeatMixPercent,
+    chainRowMoneynessClass,
+    closestStrikeToSpot,
+    filterOptionChainRowsByLiquidity,
+    filterStrikesBySpotBand,
+    formatImpliedVolatilityDisplay,
+    legHasQuotableLastQuote,
+    maxVolumeAndOpenInterestForSide,
+    sliceStrikesAroundSpot,
+    STRIKE_SPOT_BAND_PCT
 } from "@/lib/xoptions/xoptions-chain-helpers";
 import {
-  getPayoffPreviewSyncSnapshot,
-  isShowGreeksCalcLogicEnabled,
-  isTaxEducationEnabled,
-  subscribeXoptionsEducationPrefs
+    getPayoffPreviewSyncSnapshot,
+    isShowGreeksCalcLogicEnabled,
+    isTaxEducationEnabled,
+    subscribeXoptionsEducationPrefs
 } from "@/lib/xoptions/xoptions-education-preferences";
 import { resolveXoptionsExpirationForHorizon } from "@/lib/xoptions/xoptions-expiration-default";
 import {
-  buildXoptionsOrderReview,
-  formatXoptionsOrderReviewPlainText,
-  type XoptionsOpeningAction
+    buildXoptionsOrderReview,
+    formatXoptionsOrderReviewPlainText,
+    type XoptionsOpeningAction
 } from "@/lib/xoptions/xoptions-order-preview";
 
 type ChainLeg = {
@@ -91,6 +91,34 @@ function formatExpirationLabel(yyyyMmDd: string): string {
   } catch {
     return yyyyMmDd;
   }
+}
+
+function XoptionsChainFetchProgress({
+  mode,
+  symbol,
+  expirationDisplay
+}: {
+  mode: "expirations" | "chain";
+  symbol: string;
+  expirationDisplay?: string;
+}) {
+  const sym = symbol.trim().toUpperCase();
+  const label =
+    mode === "expirations"
+      ? `Loading expiration dates for ${sym}…`
+      : `Fetching option chain quotes for ${sym}${expirationDisplay ? ` · ${expirationDisplay}` : ""}…`;
+  return (
+    <div className="xoptions-chain-fetch-status mb-3" role="status" aria-live="polite" aria-busy="true">
+      <p className="xoptions-chain-fetch-status__label m-0 mb-2">{label}</p>
+      <div
+        className="xoptions-chain-fetch-status__track"
+        role="progressbar"
+        aria-valuetext={label}
+      >
+        <div className="xoptions-chain-fetch-status__indeterminate" aria-hidden />
+      </div>
+    </div>
+  );
 }
 
 function breakevenLong(side: "call" | "put", strike: number, premiumPerShare: number): number {
@@ -811,6 +839,16 @@ export function XoptionsChooseContract({
         </p>
       ) : null}
 
+      {u && loadingChain && expiration ? (
+        <XoptionsChainFetchProgress
+          expirationDisplay={formatExpirationLabel(expiration)}
+          mode="chain"
+          symbol={u}
+        />
+      ) : u && loadingExp ? (
+        <XoptionsChainFetchProgress mode="expirations" symbol={u} />
+      ) : null}
+
       {u ? (
         <div
           className={`xoptions-contract__split${!payoffPreviewEnabled ? " xoptions-contract__split--no-aside" : ""}`}
@@ -1109,7 +1147,7 @@ export function XoptionsChooseContract({
                 <div className="xoptions-contract-overlay__card">
                   {loadingChain && expiration ? (
                     <p className="xoptions-contract-overlay__loading m-0 text-sm text-[var(--xf-text-300)]">
-                      Loading chain…
+                      Fetching option chain for <span className="font-mono">{u}</span>…
                     </p>
                   ) : (
                     overlayChecklist
@@ -1168,7 +1206,7 @@ export function XoptionsChooseContract({
                       <div className="xoptions-contract-overlay__card">
                         {loadingChain && expiration ? (
                           <p className="xoptions-contract-overlay__loading m-0 text-sm text-[var(--xf-text-300)]">
-                            Loading chain…
+                            Fetching option chain for <span className="font-mono">{u}</span>…
                           </p>
                         ) : (
                           overlayChecklist

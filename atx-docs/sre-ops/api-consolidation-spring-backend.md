@@ -55,6 +55,8 @@ For **local dev**, a BFF or gateway that preserves `http://127.0.0.1:3000` for U
 
 **Next-only HTTP (no BFF proxy):** tenant **`/api/admin/tasks*`**, **`/api/admin/task-runs`**, **`/api/admin/scheduler/tick`**, **`/api/admin/delivery-channels*`** (tenant + portfolio-nested), app-user **`GET`/`PATCH /api/user/watchlist`**, and app-user **`GET`/`PATCH /api/portfolios/{portfolioId}/watchlist`** — always served from Next + Mongo (Yahoo `?quotes=1`; **one watchlist per user**, portfolio path is ownership shim). Spring JVM **`…/watchlist`** paths mirror the same Mongo semantics (session user + tenant, not path `portfolioId` on the document).
 
+**Scheduler ownership (target):** **Automatic** due-task execution should run inside **atxfinance-backend** on a **60s fixed-rate** internal poller (`@Scheduled`), with work **offloaded** to the existing **`schedulerTaskExecutor`** / async path so HTTP and the poller thread stay non-blocking. **Production** should not depend on external cron hitting Next **`/tick`**. **Next `POST /api/admin/scheduler/tick`** remains for **manual “Run now”**, operators, and **dev** (same Mongo collections). See [PLAN.md § Today’s delivery focus](../PLAN.md#todays-delivery-focus-2026-04-10).
+
 ## PR 3 & PR 4 — real migration slices (not “code-only” PRs)
 
 These are **vertical migration tracks**: same Mongo collections and contracts as Next, but **cutover** is an operator-controlled step (staging → prod), with rollback by clearing the BFF origin.
@@ -75,6 +77,18 @@ These are **vertical migration tracks**: same Mongo collections and contracts as
 4. **Production:** repeat after soak; set origin on prod Cloud Run (`bash scripts/ops/set-atxfinance-backend-origin.sh prod https://…`) or mirror the same `gcloud run services update … --update-env-vars`. **Operator layout:** see **`./gcp-prod-two-service-model.md`** (`xfinance-core-prod` + `atxfinance-backend-prod`).
 5. **Rollback:** remove **`ATXFINANCE_BACKEND_ORIGIN`** — Next route handlers execute the Mongo again (fallback paths remain in `src/app/api/admin/tasks/*`, `task-runs`, `scheduler/tick`). Example:  
    `gcloud run services update xfinance-core-staging --project fintech-advisor-staging --region us-central1 --remove-env-vars ATXFINANCE_BACKEND_ORIGIN`
+
+### Internal scheduler daemon (Spring-owned)
+
+**Status:** **shipped** in `services/atxfinance-backend` — `AdminSchedulerPoller` (`@Scheduled` + ShedLock) calls `AdminScheduledTasksService.enqueueDueTasksForSystemPoll` with **`system-scheduler`** as `triggeredBy`. **HTTP** `POST /api/admin/scheduler/tick` unchanged (per-tenant session scope). Env: **`ADMIN_SCHEDULER_ENABLED`**, **`ADMIN_SCHEDULER_POLL_INTERVAL_MS`**, **`ADMIN_SCHEDULER_MAX_TASKS_PER_POLL`** (see `application.yml`). Tests default **`app.atxfinance.scheduler.enabled=false`** via `src/test/resources/application.yml`. See [PLAN.md § Today’s delivery focus](../PLAN.md#todays-delivery-focus-2026-04-10).
+
+**Behavior:** On service start, Spring enables a **daemon-style** poll (every **60s**) that finds due **`admin_scheduled_tasks`** and invokes the same execution stack as **`AdminScheduledTasksController` → `AdminScheduledTasksService.enqueueDueTasks`** / **`enqueueScheduledTask`** (audit **`admin_task_runs`**, **`nextRunAt`** / cron advancement, success and failure paths aligned with Next **`task-runner.ts`**). **Trigger string** for runs should be **`system-scheduler`** (or equivalent) so logs and run records distinguish **HTTP tick** vs **internal poll**.
+
+**Cloud Run:** With **`min-instances=1`** on the backend service, the poller stays resident without external schedulers. **Scale-out:** the repo already includes **ShedLock** with **`MongoLockProvider`** (`SchedulingConfig`); **`enqueueDueTasks`** uses a **per-task** programmatic lock before enqueue. Add **`@SchedulerLock`** on the poller method (or document where to add it) so **multiple replicas** do not duplicate poll-side work; v1 stays **no Quartz** unless we explicitly adopt it.
+
+**Optional:** `application.yml` property to **disable** the internal poller in local dev (Next tick or manual only).
+
+**Non-goals:** Removing Next **`/api/admin/scheduler/tick`**; adding **Quartz** for the first iteration.
 
 ### PR 4 — Deploy-note-configs + broker import (migration)
 
@@ -97,7 +111,7 @@ Track these before **PR 3** prod cutover and during BFF rollout; **PR 4** code p
 
 | ID | Area | Risk / gap | TODO |
 |----|------|------------|------|
-| R1 | PR 3 — JVM tasks | `AdminScheduledTasksService` blocks the HTTP thread during simulated work (`Thread.sleep`); high concurrency or long cron batches could exhaust worker threads vs Next’s async model. | Add timeouts / bounded pool or async execution; cap concurrent runs; load-test `POST /api/admin/scheduler/tick`. |
+| R1 | PR 3 — JVM tasks | HTTP **`scheduler/tick`** and early JVM paths could block workers during simulated work (`Thread.sleep`). | **Ship internal poller** + async **`schedulerTaskExecutor`** for automatic runs; keep HTTP tick for manual use; cap concurrent runs; load-test tick + poller. |
 | R2 | PR 3 — parity | Kotlin vs Next execution order: JVM runs due tasks **sequentially** in `scheduler/tick`; Next used `Promise.all` (**parallel**). Behavior differs under multi-task ticks. | Document or align ordering/parallelism; add integration test for tick with 2+ due tasks. |
 | R3 | PR 3 — tests | No `Testcontainers` / `@WebMvcTest` coverage for `AdminScheduledTasksController` in `services/atxfinance-backend` yet. | Add JVM integration or slice tests for list/create/run/tick with in-memory or test Mongo. |
 | R4 | PR 4 | ~~Deploy-note-configs + import/broker Next-only~~ — **shipped** on Kotlin + BFF. | Keep staging soak + dry-run import discipline before prod; extend parity tests if response shapes drift. |

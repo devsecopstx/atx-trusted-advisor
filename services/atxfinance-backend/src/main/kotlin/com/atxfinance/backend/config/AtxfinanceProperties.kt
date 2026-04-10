@@ -55,6 +55,8 @@ data class AtxfinanceProperties(
     val strategyTeamKbCollectionId: String = "",
     @NestedConfigurationProperty
     val redis: RedisProps = RedisProps(),
+    @NestedConfigurationProperty
+    val scheduler: SchedulerProps = SchedulerProps(),
 )
 
 /** Optional Memorystore / Redis — empty [RedisProps.url] disables Redis-backed features. */
@@ -74,4 +76,19 @@ data class RedisProps(
     val authCallbackLimitPerMinute: Int = 60,
     /** PKCE + OAuth flow cookie Max-Age when Spring issues login redirect (align with Next: 30m). */
     val oauthFlowCookieMaxAgeSeconds: Int = 1800,
+)
+
+/**
+ * Internal poll of [AtxfinanceProperties.scheduledTasksCollection] for due tenant-level jobs.
+ * Cloud Run: prefer **min-instances ≥ 1** on the backend so ticks run without an external cron.
+ * Multi-replica: [com.atxfinance.backend.scheduling.AdminSchedulerPoller] uses ShedLock; per-task locks
+ * live in [com.atxfinance.backend.admin.AdminScheduledTasksService].
+ */
+data class SchedulerProps(
+    /** When false, [com.atxfinance.backend.scheduling.AdminSchedulerPoller] is not registered. */
+    val enabled: Boolean = true,
+    /** `@Scheduled` fixed rate in milliseconds. */
+    val pollIntervalMs: Long = 60_000L,
+    /** Cap due tasks claimed per poll (across tenants). */
+    val maxTasksPerPoll: Int = 50,
 )

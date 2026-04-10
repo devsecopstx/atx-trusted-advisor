@@ -40,24 +40,30 @@ export function LucideMonitorIcon({ className, ...props }: SVGProps<SVGSVGElemen
 }
 
 /**
- * xOptions rail / header — line-art rocket (~45° up-right), inspired by X Creator Studio nav
- * (capsule hull, porthole, fins, exhaust wisps).
+ * xOptions rail / header — line-art rocket (~45° up-right toward +x), inspired by X Creator Studio nav
+ * (capsule hull, porthole, fins, exhaust wisps). Slight viewBox scale so optical size matches Lucide 24×24 marks.
  */
 export function XoptionsRocketIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
-      <g
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.75}
-        transform="translate(12 12) rotate(-42) translate(-12 -12)"
-      >
-        <path d="M12 4.75 L13.35 8.35 L12 7.15 L10.65 8.35 Z" />
-        <path d="M10.65 8.35 Q12 8.85 13.35 8.35 L14.35 14.85 Q12 16.05 9.65 14.85 L10.65 8.35 Z" />
-        <circle cx="12" cy="11.6" r="1.2" />
-        <path d="M9.65 14.85 L7.85 17.85 M14.35 14.85 L16.15 17.85" />
-        <path d="M10.2 15.9 Q8.9 18.2 8.35 20.25 M12 16.1 Q12 18.6 12 20.75 M13.8 15.9 Q15.1 18.2 15.65 20.25" />
+      <g transform="translate(12 12)">
+        <g transform="rotate(42)">
+          <g transform="scale(1.16)">
+            <g
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.75}
+              transform="translate(-12 -12)"
+            >
+              <path d="M12 4.75 L13.35 8.35 L12 7.15 L10.65 8.35 Z" />
+              <path d="M10.65 8.35 Q12 8.85 13.35 8.35 L14.35 14.85 Q12 16.05 9.65 14.85 L10.65 8.35 Z" />
+              <circle cx="12" cy="11.6" r="1.2" />
+              <path d="M9.65 14.85 L7.85 17.85 M14.35 14.85 L16.15 17.85" />
+              <path d="M10.2 15.9 Q8.9 18.2 8.35 20.25 M12 16.1 Q12 18.6 12 20.75 M13.8 15.9 Q15.1 18.2 15.65 20.25" />
+            </g>
+          </g>
+        </g>
       </g>
     </svg>
   );

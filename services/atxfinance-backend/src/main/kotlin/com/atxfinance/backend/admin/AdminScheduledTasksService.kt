@@ -304,10 +304,44 @@ class AdminScheduledTasksService(
         return mongoTemplate.find(q, Document::class.java, props.scheduledTasksCollection)
     }
 
+    /**
+     * Due tenant-level tasks across **all** tenants (no session tenant filter). Used by the internal JVM poller so
+     * production does not depend on a per-tenant HTTP tick. HTTP `POST /api/admin/scheduler/tick` remains scoped to
+     * the signed-in admin’s tenant (see [listDueTasks]).
+     */
+    fun listAllDueTenantLevelTasks(now: Date): List<Document> {
+        val lim = props.scheduler.maxTasksPerPoll.coerceIn(1, 500)
+        val tenantScopedOnly = Criteria().orOperator(
+            Criteria.where("portfolioId").exists(false),
+            Criteria.where("portfolioId").`is`(null),
+        )
+        val base = Criteria().andOperator(
+            Criteria.where("enabled").`is`(true),
+            Criteria.where("nextRunAt").lte(now),
+            tenantScopedOnly,
+        )
+        val q = Query.query(base)
+            .with(Sort.by(Sort.Direction.ASC, "nextRunAt").and(Sort.by(Sort.Direction.ASC, "_id")))
+            .limit(lim)
+        return mongoTemplate.find(q, Document::class.java, props.scheduledTasksCollection)
+    }
+
     fun enqueueDueTasks(now: Date, session: ResolvedSession): List<ExecutionResult> {
         val due = listDueTasks(now, session)
-        val accepted = mutableListOf<ExecutionResult>()
         val username = session.username?.takeIf { it.isNotBlank() } ?: session.userId
+        return enqueueDueTaskDocuments(due, "scheduler:$username")
+    }
+
+    /**
+     * Cross-tenant poll enqueue; [triggeredBy] on runs is [SYSTEM_SCHEDULER_TRIGGER] for logs and audit parity.
+     */
+    fun enqueueDueTasksForSystemPoll(now: Date): List<ExecutionResult> {
+        val due = listAllDueTenantLevelTasks(now)
+        return enqueueDueTaskDocuments(due, SYSTEM_SCHEDULER_TRIGGER)
+    }
+
+    private fun enqueueDueTaskDocuments(due: List<Document>, triggeredBy: String): List<ExecutionResult> {
+        val accepted = mutableListOf<ExecutionResult>()
         for (task in due) {
             val taskId = task.getObjectId("_id") ?: continue
             val lockName = "admin_task_" + taskId.toHexString()
@@ -316,7 +350,7 @@ class AdminScheduledTasksService(
             if (maybeLock.isPresent) {
                 val simpleLock = maybeLock.get()
                 try {
-                    val res = enqueueScheduledTask(task, "scheduler:$username")
+                    val res = enqueueScheduledTask(task, triggeredBy)
                     accepted.add(res)
                 } finally {
                     simpleLock.unlock()
@@ -490,6 +524,8 @@ class AdminScheduledTasksService(
     }
 
     companion object {
+        const val SYSTEM_SCHEDULER_TRIGGER: String = "system-scheduler"
+
         private val ALLOWED_CATEGORIES =
             setOf(
                 "price_scanner",
