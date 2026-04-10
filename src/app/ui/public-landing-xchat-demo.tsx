@@ -6,7 +6,7 @@ import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { XchatMarkdownBody } from "@/app/xchat/ui/xchat-markdown-body";
 import "@/app/xchat/xchat.css";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import "./public-landing-xchat-demo.css";
 
@@ -89,19 +89,23 @@ function splitStreamChunks(text: string): string[] {
 }
 
 function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return reduced;
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      mq.addEventListener("change", onStoreChange);
+      return () => mq.removeEventListener("change", onStoreChange);
+    },
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false
+  );
 }
 
-export function PublicLandingXchatDemo() {
-  const reducedMotion = usePrefersReducedMotion();
+type PublicLandingXchatDemoSequenceProps = {
+  reducedMotion: boolean;
+  onCycleComplete: () => void;
+};
+
+function PublicLandingXchatDemoSequence({ reducedMotion, onCycleComplete }: PublicLandingXchatDemoSequenceProps) {
   const timeoutsRef = useRef<number[]>([]);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
@@ -110,7 +114,6 @@ export function PublicLandingXchatDemo() {
   const [showAwaiting, setShowAwaiting] = useState(false);
   const [aiContent, setAiContent] = useState("");
   const [composerBusy, setComposerBusy] = useState(false);
-  const [runId, setRunId] = useState(0);
 
   const clearTimers = useCallback(() => {
     for (const id of timeoutsRef.current) {
@@ -140,11 +143,6 @@ export function PublicLandingXchatDemo() {
 
   useEffect(() => {
     clearTimers();
-    setComposerValue("");
-    setShowUserBubble(false);
-    setShowAwaiting(false);
-    setAiContent("");
-    setComposerBusy(false);
 
     const chunks = splitStreamChunks(AI_MARKDOWN);
     let chunkIdx = 0;
@@ -168,7 +166,7 @@ export function PublicLandingXchatDemo() {
               setShowAwaiting(false);
               setAiContent(AI_MARKDOWN);
               setComposerBusy(false);
-              schedule(() => setRunId((k) => k + 1), 8000);
+              schedule(onCycleComplete, 8000);
             }, awaitingMs);
           }, 200);
         }, pauseAfterType);
@@ -190,7 +188,7 @@ export function PublicLandingXchatDemo() {
                 const pushChunk = () => {
                   if (chunkIdx >= chunks.length) {
                     setComposerBusy(false);
-                    schedule(() => setRunId((k) => k + 1), 8000);
+                    schedule(onCycleComplete, 8000);
                     return;
                   }
                   setAiContent((prev) => prev + chunks[chunkIdx]!);
@@ -214,22 +212,16 @@ export function PublicLandingXchatDemo() {
     schedule(afterIntro, reducedMotion ? 120 : 650);
 
     return () => clearTimers();
-  }, [runId, reducedMotion, clearTimers, schedule, scrollToEnd]);
-
-  const onReplay = () => {
-    clearTimers();
-    setRunId((k) => k + 1);
-  };
+  }, [reducedMotion, clearTimers, schedule, scrollToEnd, onCycleComplete]);
 
   const showThreadChrome = showUserBubble || showAwaiting || aiContent.length > 0;
 
   return (
-    <div className="pl-public-xchat-demo" id="xchat-demo">
-      <div
-        aria-label="xChat interface demonstration"
-        className="pl-public-xchat-demo__shell xchat-main-shell"
-        role="region"
-      >
+    <div
+      aria-label="xChat interface demonstration"
+      className="pl-public-xchat-demo__shell xchat-main-shell"
+      role="region"
+    >
         <aside className="pl-public-xchat-demo__rail" aria-hidden>
           <button className="xchat-rail-toggle" type="button" tabIndex={-1}>
             <RailSidebarZapIcon className="xchat-rail-toggle__glyph" />
@@ -360,13 +352,27 @@ export function PublicLandingXchatDemo() {
           </div>
         </div>
       </div>
+  );
+}
 
+export function PublicLandingXchatDemo() {
+  const reducedMotion = usePrefersReducedMotion();
+  const [sequenceKey, setSequenceKey] = useState(0);
+  const restartSequence = useCallback(() => setSequenceKey((k) => k + 1), []);
+
+  return (
+    <div className="pl-public-xchat-demo" id="xchat-demo">
+      <PublicLandingXchatDemoSequence
+        key={`${sequenceKey}-${reducedMotion}`}
+        reducedMotion={reducedMotion}
+        onCycleComplete={restartSequence}
+      />
       <div className="pl-public-xchat-demo__footer">
         <span className="text-xs text-[var(--xf-text-400)]">Recorded UI replay — sign in for live xChat</span>
         <button
           className="text-xs font-semibold text-[var(--xf-gain-green)] underline-offset-2 hover:underline"
           type="button"
-          onClick={onReplay}
+          onClick={restartSequence}
         >
           Replay
         </button>

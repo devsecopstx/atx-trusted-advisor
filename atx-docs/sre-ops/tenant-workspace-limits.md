@@ -44,7 +44,11 @@ Indexes are created best-effort on first use (same pattern as other identity usa
 - `/account/billing` (see `src/app/account/billing/page.tsx`, `billing-plan-grid.tsx`) resolves each retail tier with **`billingCardWorkspaceDisplay`** in `src/lib/billing-plan-workspace-display.ts`:
   - **Signed-in:** loads `core_tenants` by session `tenantId`, merges `workspaceLimits` + `planOverrides.<tier>` via `mergeTenantWorkspaceLimits` + `applyTenantPlanRowToBase` (same shape as enforcement). **List price** on the card uses `planOverrides.<tier>.price` (USD whole dollars) when set; otherwise catalog from `ATX_BILLING_PLANS`.
   - **Guests:** list **price** and four **catalog** cap strings from `src/lib/atx-billing-plan-limits.ts` (aligned with `atx-docs/resouces/atx-limits.txt.tsv`).
-  - **Workspace limits** block on each card: **four** quota rows plus **Change persona** (Yes/No) and **Chat history max (turns)**; **price is not duplicated** in that list (only in the card header). Labels follow published billing copy (per-hour caps for xOptions/xChat on the card).
+  - **Workspace limits** block on each card: **five** quota rows (xOptions/hr, xChat day UTC, xChat hr UTC, portfolios, accounts) plus **Change persona** (Yes/No) and **Chat history max (turns)**; **price is not duplicated** in that list (only in the card header).
+
+## Parsing / Mongo quirks
+
+Reads (`mergeTenantWorkspaceLimits`, `normalizePlanOverridesFromUnknown`, admin GET) coerce **`userChatHourlyLimit`** from **integer-like doubles** or **numeric strings** when present so plan overrides and tenant rows still merge into billing and `POST /api/xchat/ask` (strict **PATCH** paths use the same coercion). Invalid values are ignored on loose read; invalid **PATCH** bodies still fail validation.
 
 ## Deploy / rollback
 

@@ -16,7 +16,7 @@ Create matching **Products** and **Prices** in Stripe (recurring subscription) a
 
 Stripe Checkout charges the **Stripe Price** bound to `STRIPE_PRICE_*`. The **dollar amount shown on `/account/billing`** for each tier can additionally reflect **`workspaceLimits.planOverrides.<tier>.price`** (admin-managed list price for that tenant). Keep Stripe recurring amounts and admin list price in sync when you intend them to match; see `atx-docs/sre-ops/tenant-workspace-limits.md` § App user surfacing. Unit coverage: `tests/unit/billing-plan-workspace-display.test.ts`.
 
-**Workspace limits copy (post-deploy check):** Under each plan card, the first two limit rows must read **xOptions views / hr** and **xChat prompts / hr** (`BILLING_WORKSPACE_LABEL_*` in `src/lib/billing-plan-workspace-display.ts`). If the UI shows **/ day**, redeploy a fresh Cloud Run revision or clear local `.next` — see `.cursor/agents/sre.md` § Account → Billing — workspace limit row labels.
+**Workspace limits copy (post-deploy check):** Under each plan card, quota rows follow **`BILLING_WORKSPACE_LIMIT_SPECS`** in `src/lib/billing-plan-workspace-display.ts`: **xOptions views / hr**, **xChat prompts / day (UTC)**, **xChat prompts / hr (UTC)** (hourly shows **Unlimited** when tenant/plan has no hourly cap — `0`/omit), then portfolios/accounts. If labels drift, redeploy a fresh Cloud Run revision or clear local `.next`.
 
 ## GitHub: Variables vs Secrets
 

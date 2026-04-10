@@ -16,9 +16,9 @@ describe("billing workspace limit labels (Account → Billing)", () => {
     expect(BILLING_WORKSPACE_LABEL_XCHAT_DAILY.toLowerCase()).toContain("day");
   });
 
-  it("BILLING_WORKSPACE_LIMIT_SPECS order: xOptions, xChat hourly, xChat daily, portfolios, accounts", () => {
+  it("BILLING_WORKSPACE_LIMIT_SPECS order: xOptions, xChat daily, xChat hourly, portfolios, accounts", () => {
     expect(BILLING_WORKSPACE_LIMIT_SPECS[0]?.label).toBe(BILLING_WORKSPACE_LABEL_XOPTIONS);
-    expect(BILLING_WORKSPACE_LIMIT_SPECS[1]?.label).toBe(BILLING_WORKSPACE_LABEL_XCHAT_HOURLY);
-    expect(BILLING_WORKSPACE_LIMIT_SPECS[2]?.label).toBe(BILLING_WORKSPACE_LABEL_XCHAT_DAILY);
+    expect(BILLING_WORKSPACE_LIMIT_SPECS[1]?.label).toBe(BILLING_WORKSPACE_LABEL_XCHAT_DAILY);
+    expect(BILLING_WORKSPACE_LIMIT_SPECS[2]?.label).toBe(BILLING_WORKSPACE_LABEL_XCHAT_HOURLY);
   });
 });

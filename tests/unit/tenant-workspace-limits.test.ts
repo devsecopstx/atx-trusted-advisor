@@ -38,6 +38,11 @@ describe("tenant workspace limits", () => {
     expect(mergeTenantWorkspaceLimits({ userChatHourlyLimit: 0 }).userChatHourlyLimit).toBeUndefined();
   });
 
+  it("mergeTenantWorkspaceLimits coerces integer-like hourly from string or double", () => {
+    expect(mergeTenantWorkspaceLimits({ userChatHourlyLimit: "12" as unknown as number }).userChatHourlyLimit).toBe(12);
+    expect(mergeTenantWorkspaceLimits({ userChatHourlyLimit: 100.0 as unknown as number }).userChatHourlyLimit).toBe(100);
+  });
+
   it("parseWorkspaceLimitsPayload accepts camelCase object", () => {
     const parsed = parseWorkspaceLimitsPayload({
       userXoptionsLimit: 5,
@@ -66,6 +71,14 @@ describe("tenant workspace limits", () => {
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
       expect(parsed.value.userChatHourlyLimit).toBe(0);
+    }
+  });
+
+  it("parseWorkspaceLimitsPayload coerces userChatHourlyLimit from numeric string", () => {
+    const parsed = parseWorkspaceLimitsPayload({ userChatHourlyLimit: "8" });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.userChatHourlyLimit).toBe(8);
     }
   });
 
@@ -167,6 +180,24 @@ describe("tenant workspace limits", () => {
         premium_plus_yearly: { userChatLimit: 9 }
       })
     ).toEqual({ premium_plus_monthly: { userChatLimit: 9 } });
+  });
+
+  it("normalizePlanOverridesFromUnknown coerces plan row userChatHourlyLimit from string", () => {
+    expect(
+      normalizePlanOverridesFromUnknown({
+        basic: { userChatHourlyLimit: "5" as unknown as number, userChatLimit: 10 }
+      })
+    ).toEqual({ basic: { userChatLimit: 10, userChatHourlyLimit: 5 } });
+  });
+
+  it("parsePlanOverridesPayload coerces userChatHourlyLimit from string", () => {
+    const parsed = parsePlanOverridesPayload({
+      basic: { userChatHourlyLimit: "25" }
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.basic?.userChatHourlyLimit).toBe(25);
+    }
   });
 
   it("parsePlanOverridesPayload maps legacy premium_plus_yearly to premium_plus_monthly", () => {

@@ -2,8 +2,8 @@ import type { Db } from "mongodb";
 import { ObjectId } from "mongodb";
 
 import type { ParsedInitialTenantAdmin, ParsedTenantSpecV1 } from "@/lib/tenant-spec-v1-parse";
-import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 import { upsertTenantMembership } from "@/modules/identity/repository";
+import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 import { ensureTenantTeamXchatAttachmentsCollection } from "@/modules/platform/tenant-xchat-team-collection";
 
 export async function ensureTenantProvisionIndexes(db: Db): Promise<void> {
@@ -36,7 +36,6 @@ async function provisionInitialTenantAdmin(
   now: Date
 ): Promise<void> {
   const users = db.collection("core_users");
-  const memberships = db.collection("core_tenant_memberships");
   const email = admin.email;
 
   const existing = await users.findOne({ email });
