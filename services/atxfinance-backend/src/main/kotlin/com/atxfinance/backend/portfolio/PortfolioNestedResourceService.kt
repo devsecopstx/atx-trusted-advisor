@@ -9,7 +9,9 @@ import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
 import org.springframework.data.mongodb.core.query.Update
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 import java.util.Date
 
@@ -21,7 +23,41 @@ class PortfolioNestedResourceService(
     private val provisionService: DefaultPortfolioProvisionService,
 ) {
     private val accountTypes = setOf("merrill", "fidelity", "etrade", "ibkr", "schwab", "other")
+    private val deskRiskProfiles = setOf("conservative", "balanced", "growth")
+    private val deskOutlookCanonical = setOf("bullish", "neutral", "bearish")
+    private val deskOutlookAliases =
+        mapOf(
+            "growth" to "bullish",
+            "aggressive" to "bullish",
+            "balanced" to "neutral",
+            "income" to "bearish",
+            "up" to "bullish",
+            "down" to "bearish",
+            "flat" to "neutral",
+        )
     private val defaultWatchlistSymbol = "TSLA"
+
+    private fun normalizeDeskOutlook(raw: String): String? {
+        val t = raw.trim().lowercase()
+        if (t in deskOutlookCanonical) {
+            return t
+        }
+        return deskOutlookAliases[t]
+    }
+
+    private fun riskLevelFromProfile(profile: String?): String =
+        when (profile) {
+            "conservative" -> "low"
+            "growth" -> "high"
+            else -> "medium"
+        }
+
+    private fun strategyFromOutlook(outlook: String?): String =
+        when (outlook) {
+            "bullish" -> "aggressive"
+            "bearish" -> "income"
+            else -> "balanced"
+        }
 
     fun listAccountsShaped(session: ResolvedSession, portfolioId: String): List<Map<String, Any?>>? {
         if (!ObjectId.isValid(portfolioId)) {
@@ -40,14 +76,23 @@ class PortfolioNestedResourceService(
         return accounts.map { account ->
             val accountId = account.getObjectId("_id")?.toHexString() ?: ""
             val accountPositions = byAccount[accountId].orEmpty()
+            val riskProfile = account.getString("riskProfile")
+            val outlookRaw = account.getString("outlook")
+            val outlookCanon =
+                outlookRaw?.let { raw ->
+                    normalizeDeskOutlook(raw) ?: raw.trim().lowercase().takeIf { it in deskOutlookCanonical }
+                }
             mapOf(
                 "_id" to account.getObjectId("_id")?.toHexString(),
                 "name" to account.getString("name"),
                 "accountRef" to account.getString("extAccountId"),
                 "brokerType" to account.getString("type"),
                 "balance" to ((account["cashBalance"] as? Number)?.toDouble() ?: 25_000.0),
-                "riskLevel" to "medium",
-                "strategy" to "balanced",
+                "riskLevel" to riskLevelFromProfile(riskProfile),
+                "strategy" to strategyFromOutlook(outlookCanon),
+                "riskProfile" to riskProfile,
+                "outlook" to outlookCanon,
+                "brokerImportLocked" to (account["brokerImportLocked"] as? Boolean ?: false),
                 "positions" to accountPositions.map { shapePosition(it) },
                 "recommendations" to emptyList<Any>(),
                 "userId" to BsonJson.value(account["userId"]),
@@ -103,13 +148,12 @@ class PortfolioNestedResourceService(
         return mongoTemplate.findById(id, Document::class.java, props.accountsCollection)
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun patchAccount(
         session: ResolvedSession,
         portfolioId: String,
         accountId: String,
-        name: String?,
-        cashBalance: Double?,
-        extAccountId: String?,
+        body: Map<String, Any?>,
     ): Document? {
         if (!ObjectId.isValid(portfolioId) || !ObjectId.isValid(accountId)) {
             return null
@@ -126,27 +170,100 @@ class PortfolioNestedResourceService(
         )
         val existing = mongoTemplate.findOne(Query.query(filter), Document::class.java, props.accountsCollection)
             ?: return null
-        val set = Update().set("updatedAt", Date())
+
+        val brokerLocked = existing["brokerImportLocked"] as? Boolean == true
+        if (brokerLocked && (body.containsKey("type") || body.containsKey("extAccountId"))) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Broker and account ref are locked after first import. Ask an admin to override.",
+            )
+        }
+
+        val upd = Update().set("updatedAt", Date())
         var changed = false
-        if (name != null && name.trim().isNotEmpty()) {
-            set.set("name", name.trim())
+
+        if (body.containsKey("name")) {
+            val n = (body["name"] as? String)?.trim()
+            if (n.isNullOrEmpty() || n.length > 80) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid name")
+            }
+            upd.set("name", n)
             changed = true
         }
-        if (cashBalance != null && cashBalance.isFinite() && cashBalance >= 0) {
-            set.set("cashBalance", cashBalance)
+
+        if (body.containsKey("cashBalance")) {
+            val raw = body["cashBalance"]
+            val d =
+                when (raw) {
+                    is Number -> raw.toDouble()
+                    else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cashBalance")
+                }
+            if (!d.isFinite() || d < 0) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cashBalance")
+            }
+            upd.set("cashBalance", d)
             changed = true
         }
-        if (extAccountId != null) {
-            val ref = extAccountId.trim()
+
+        if (body.containsKey("extAccountId") && !brokerLocked) {
+            val ref = (body["extAccountId"] as? String)?.trim() ?: ""
             if (ref.isNotEmpty()) {
-                set.set("extAccountId", ref)
+                upd.set("extAccountId", ref.take(200))
                 changed = true
             }
         }
+
+        if (body.containsKey("type") && !brokerLocked) {
+            val rawType = body["type"]
+            if (rawType == null) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid type")
+            }
+            val t = (rawType as? String)?.trim()?.lowercase()
+            if (t == null || t !in accountTypes) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid type")
+            }
+            upd.set("type", t)
+            changed = true
+        }
+
+        if (body.containsKey("riskProfile")) {
+            changed = true
+            when (val v = body["riskProfile"]) {
+                null -> {
+                    upd.unset("riskProfile")
+                }
+                is String -> {
+                    val r = v.trim().lowercase()
+                    if (r !in deskRiskProfiles) {
+                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid riskProfile")
+                    }
+                    upd.set("riskProfile", r)
+                }
+                else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid riskProfile")
+            }
+        }
+
+        if (body.containsKey("outlook")) {
+            changed = true
+            when (val v = body["outlook"]) {
+                null -> {
+                    upd.unset("outlook")
+                }
+                is String -> {
+                    val canon = normalizeDeskOutlook(v)
+                    if (canon == null) {
+                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid outlook")
+                    }
+                    upd.set("outlook", canon)
+                }
+                else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid outlook")
+            }
+        }
+
         if (!changed) {
             return existing
         }
-        mongoTemplate.updateFirst(Query.query(filter), set, props.accountsCollection)
+        mongoTemplate.updateFirst(Query.query(filter), upd, props.accountsCollection)
         return mongoTemplate.findOne(Query.query(filter), Document::class.java, props.accountsCollection)
     }
 

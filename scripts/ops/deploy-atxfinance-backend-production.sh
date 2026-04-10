@@ -43,8 +43,8 @@ gcloud run deploy "${SERVICE}" \
   --port=8080 \
   --cpu=1 \
   --memory=1Gi \
-  --min-instances=0 \
-  --max-instances=5 \
+  --min-instances=1 \
+  --max-instances=30 \
   --set-secrets="${SECRETS}" \
   --quiet
 

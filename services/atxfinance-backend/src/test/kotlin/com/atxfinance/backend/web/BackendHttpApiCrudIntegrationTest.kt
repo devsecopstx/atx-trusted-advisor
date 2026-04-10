@@ -179,6 +179,16 @@ class BackendHttpApiCrudIntegrationTest {
             )
         assertEquals("Extra Account Renamed", patchedAccount.path("data").path("name").asText())
 
+        val deskPatched =
+            json(
+                "/api/portfolios/$portfolioId/accounts/$extraAccountId",
+                HttpMethod.PATCH,
+                """{"riskProfile":"growth","outlook":"bearish"}""",
+                ch,
+            )
+        assertEquals("growth", deskPatched.path("data").path("riskProfile").asText())
+        assertEquals("bearish", deskPatched.path("data").path("outlook").asText())
+
         val wl = json("/api/portfolios/$portfolioId/watchlist", HttpMethod.GET, null, ch)
         assertTrue(wl.path("data").path("symbols").isArray)
 

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 import java.util.Date
 
@@ -78,15 +79,18 @@ class PortfolioSubresourcesController(
         if (body == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid JSON body"))
         }
-        val name = body["name"] as? String
-        val cash = (body["cashBalance"] as? Number)?.toDouble()
-        val ext = body["extAccountId"] as? String
-        if (name == null && cash == null && ext == null) {
+        val allowedKeys = setOf("name", "cashBalance", "extAccountId", "type", "riskProfile", "outlook")
+        if (body.keys.none { it in allowedKeys }) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mapOf("error" to "Invalid request payload"))
         }
-        val updated = nested.patchAccount(session, portfolioId, accountId, name, cash, ext)
-            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Account not found"))
-        return ResponseEntity.ok(mapOf("data" to BsonJson.documentToMap(updated)))
+        return try {
+            val updated =
+                nested.patchAccount(session, portfolioId, accountId, body)
+                    ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body(mapOf("error" to "Account not found"))
+            ResponseEntity.ok(mapOf("data" to BsonJson.documentToMap(updated)))
+        } catch (ex: ResponseStatusException) {
+            ResponseEntity.status(ex.statusCode).body(mapOf("error" to (ex.reason ?: "Request failed")))
+        }
     }
 
     @DeleteMapping("/api/portfolios/{portfolioId}/accounts/{accountId}")
