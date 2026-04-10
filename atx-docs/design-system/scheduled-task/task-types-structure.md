@@ -7,7 +7,7 @@ Scope: This document describes the legacy scheduler model used in `atxfinance-ba
 Related code (selected):
 - Service: `AdminScheduledTasksService`
 - Controller: `AdminScheduledTasksController`
-- Scheduling: `SchedulingConfig` (ShedLock + executor), `scheduling/SampleScheduledTasks.kt`
+- Scheduling: `SchedulingConfig` (ShedLock + executor), `scheduling/AdminSchedulerPoller.kt`
 - Properties: `AtxfinanceProperties` (collection names)
 
 Collections (from `AtxfinanceProperties`):

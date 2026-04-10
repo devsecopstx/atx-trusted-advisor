@@ -3,4 +3,3 @@ app:
   atxfinance:
     scheduler:
       enabled: false
-      demo-heartbeat-enabled: false
