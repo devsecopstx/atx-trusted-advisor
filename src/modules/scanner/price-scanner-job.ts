@@ -4,8 +4,8 @@ import { getDb } from "@/lib/mongodb";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 import {
-  resolveUsMarketDayContext,
-  updateTenantMarketCalendarSnapshot
+    resolveUsMarketDayContext,
+    updateTenantMarketCalendarSnapshot
 } from "@/modules/scanner/tenant-market-calendar";
 import { getYahooBatchQuotes } from "@/modules/watchlist/yahoo-batch-quotes";
 
@@ -20,6 +20,10 @@ const WATCHLIST_COLLECTION = "portfolio_watchlists";
 export type PriceScannerJobInput = {
   /** Tenant scope; omit only in tests / degenerate cases. */
   tenantId?: ObjectId;
+  /**
+   * When true (admin **Run** on `/admin/tasks`), skip US regular-session desk window — scan runs on demand off-hours.
+   */
+  bypassMarketWindow?: boolean;
 };
 
 type ScannerPosition = {
@@ -128,7 +132,9 @@ export async function executePriceScannerJob(input: PriceScannerJobInput): Promi
     db.collection(ACCOUNT_COLLECTION).countDocuments(scope)
   ]);
 
-  if (!market.isBusinessDay || !market.marketWindowOpen) {
+  const skipForMarket =
+    !input.bypassMarketWindow && (!market.isBusinessDay || !market.marketWindowOpen);
+  if (skipForMarket) {
     await updateTenantMarketCalendarSnapshot({
       tenantId,
       market,
@@ -229,7 +235,8 @@ export async function executePriceScannerJob(input: PriceScannerJobInput): Promi
       quotedSymbolCount: quoteBySymbol.size,
       watchlistSymbolUpdates,
       itemsUpdated,
-      itemsScanned
+      itemsScanned,
+      ...(input.bypassMarketWindow ? { adminOnDemandMarketWindowBypass: true as const } : {})
     }
   };
 }

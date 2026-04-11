@@ -368,6 +368,7 @@ export async function respondWithXai(input: {
   tools?: Array<Record<string, unknown>>;
   toolChoice?: XaiToolChoice;
   maxTurns?: number;
+  temperature?: number;
   parallelism?: XaiParallelismConfig;
 }): Promise<XaiResponsesResult> {
   const { apiKey, baseUrl, defaultModel } = getXaiConfig();
@@ -381,6 +382,9 @@ export async function respondWithXai(input: {
     tool_choice: input.toolChoice ?? "auto",
     max_turns: input.maxTurns ?? 5
   };
+  if (typeof input.temperature === "number" && Number.isFinite(input.temperature)) {
+    body.temperature = input.temperature;
+  }
   if (input.parallelism) {
     body.agent_count = input.parallelism.agentCount;
     body.reasoning = { effort: input.parallelism.reasoningEffort };
@@ -468,6 +472,8 @@ export async function respondWithXaiToolLoop(input: {
   tools: Array<Record<string, unknown>>;
   toolChoice?: XaiToolChoice;
   maxTurns?: number;
+  /** Applied on the first `/responses` request only (omit on continuation turns). */
+  temperature?: number;
   executor: ToolExecutor;
   parallelism?: XaiParallelismConfig;
   previousResponseId?: string;
@@ -517,6 +523,13 @@ export async function respondWithXaiToolLoop(input: {
     if (input.parallelism) {
       requestBody.agent_count = input.parallelism.agentCount;
       requestBody.reasoning = { effort: input.parallelism.reasoningEffort };
+    }
+    if (
+      !previousResponseId &&
+      typeof input.temperature === "number" &&
+      Number.isFinite(input.temperature)
+    ) {
+      requestBody.temperature = input.temperature;
     }
 
     const response = await fetch(`${baseUrl}/responses`, {

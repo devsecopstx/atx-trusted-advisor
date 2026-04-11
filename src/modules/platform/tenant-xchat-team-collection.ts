@@ -31,8 +31,49 @@ export type EnsureTenantTeamXchatAttachmentsCollectionResult = {
 };
 
 /**
+ * When `XAI_TEAM_ID` is unset, infer team scope if the xAI Management API reports **exactly one** distinct
+ * `team_id` across listed collections. Use in prod when the env var was never added to Cloud Run.
+ */
+export async function tryInferSingleXaiTeamIdFromManagementApi(): Promise<string | undefined> {
+  if (!hasXaiManagementApiKey()) {
+    return undefined;
+  }
+  try {
+    const listed = await listXaiCollections({});
+    const ids = [
+      ...new Set(
+        listed
+          .map((c) => c.teamId?.trim())
+          .filter((t): t is string => Boolean(t && t.length > 0))
+      )
+    ];
+    if (ids.length === 1) {
+      console.info(
+        "[tenant/xchat-team-collection] Inferred xAI team_id from collection inventory (set XAI_TEAM_ID to pin):",
+        ids[0]
+      );
+      return ids[0];
+    }
+    if (ids.length > 1) {
+      console.warn(
+        "[tenant/xchat-team-collection] Multiple xAI team ids present; set XAI_TEAM_ID on Next so tenant attachment collections can be provisioned",
+        { teamIds: ids }
+      );
+    }
+  } catch (error) {
+    console.warn("[tenant/xchat-team-collection] Collection list failed (team inference skipped)", {
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+  return undefined;
+}
+
+/**
  * Ensures an xAI **team** collection exists for xChat file attachments, and stores ids on `core_tenants.tenantPreferences`.
  * Idempotent: skips when `xchat_team_attachments_collection_id` is already set, or reuses an existing collection with the same name.
+ *
+ * **Team id:** uses `XAI_TEAM_ID` when set; otherwise tries {@link tryInferSingleXaiTeamIdFromManagementApi}.
+ * If still unset, creates the collection **without** `team_id` (xAI default team) when the API accepts it.
  */
 export async function ensureTenantTeamXchatAttachmentsCollection(input: {
   db: Db;
@@ -57,17 +98,16 @@ export async function ensureTenantTeamXchatAttachmentsCollection(input: {
     return null;
   }
 
-  const teamId = getEnv().XAI_TEAM_ID?.trim();
+  let teamId = getEnv().XAI_TEAM_ID?.trim() ?? "";
   if (!teamId) {
-    console.warn("[tenant/xchat-team-collection] XAI_TEAM_ID unset; skip provisioning team attachments collection");
-    return null;
+    teamId = (await tryInferSingleXaiTeamIdFromManagementApi()) ?? "";
   }
 
   const collectionName = buildTenantXchatAttachmentsCollectionName(input.tenantSlug);
   const description = `xFinance tenant workspace — xChat attachments for ${input.tenantSlug} (team collection).`;
 
   try {
-    const listed = await listXaiCollections({ teamId });
+    const listed = await listXaiCollections(teamId ? { teamId } : {});
     const match = listed.find((c) => (c.name ?? "").trim() === collectionName);
     let collectionId: string;
     let resolvedName: string;
@@ -75,10 +115,17 @@ export async function ensureTenantTeamXchatAttachmentsCollection(input: {
       collectionId = match.id;
       resolvedName = match.name?.trim() || collectionName;
     } else {
-      const created = await createXaiCollection(collectionName, {
-        teamId,
+      const createOpts: { teamId?: string; collectionDescription: string } = {
         collectionDescription: description
-      });
+      };
+      if (teamId) {
+        createOpts.teamId = teamId;
+      } else {
+        console.info(
+          "[tenant/xchat-team-collection] Creating attachments collection without team_id (xAI default team). Set XAI_TEAM_ID if create fails or you use multiple teams."
+        );
+      }
+      const created = await createXaiCollection(collectionName, createOpts);
       collectionId = created.id;
       resolvedName = created.name;
     }

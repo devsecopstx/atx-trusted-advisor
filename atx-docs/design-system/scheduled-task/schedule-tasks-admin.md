@@ -24,7 +24,7 @@
 - Polls **`GET /api/admin/tasks`** and **`GET /api/admin/task-runs`** on an interval and on refresh.
 - **Create task:** `name`, `category`, `scheduleCron` (cron string), POST **`/api/admin/tasks`** with `enabled: true`.
 - **Edit row:** inline name, category, cron, enabled; per-row **Save** → **`PATCH /api/admin/tasks/{id}`** (or bulk **Save changes**).
-- **Run now:** **`POST /api/admin/tasks/{id}/run`** → shows status and refreshes runs.
+- **Run now:** **`POST /api/admin/tasks/{id}/run`** → shows status and refreshes runs. **Next.js:** manual Run passes **`bypassMarketWindow: true`** through **`executeScheduledTask`** so **price**, **options**, **options expiration roll**, and **watchlist price** scanners execute **on demand** even **outside** the US regular-session desk window. **`POST /api/admin/scheduler/tick`** does **not** bypass — due tasks still respect market hours on Next.
 - **Delete:** **`DELETE /api/admin/tasks/{id}`**.
 - Tenant-level jobs omit **`portfolioId`**. Legacy Mongo rows may still have **`portfolioId`**; the scheduler **does not** enqueue them (`listDueScheduledTasks` filters them out).
 

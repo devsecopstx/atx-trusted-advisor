@@ -275,7 +275,11 @@ export async function runIncomeCashFlowProjector(task: ScheduledTask): Promise<S
 
 /** Delegates to `executeOptionsExpirationRollJob` (shared targets + option chain cache). */
 export async function runOptionsExpirationRollManager(
-  task: ScheduledTask
+  task: ScheduledTask,
+  runOptions?: { bypassMarketWindow?: boolean }
 ): Promise<ScheduledCategoryResult> {
-  return executeOptionsExpirationRollJob({ tenantId: task.tenantId });
+  return executeOptionsExpirationRollJob({
+    tenantId: task.tenantId,
+    bypassMarketWindow: runOptions?.bypassMarketWindow
+  });
 }

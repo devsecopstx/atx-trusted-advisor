@@ -7,7 +7,7 @@ import {
     type OptionScannerRuleThresholds
 } from "@/lib/option-scanner-thresholds";
 import { buildOptionsScannerAlertMetadata } from "@/lib/portfolio-alert-scan-metadata";
-import { chatWithXai } from "@/lib/xai";
+import { chatWithXai, respondWithXai, respondWithXaiToolLoop } from "@/lib/xai";
 import {
     adminCreatePortfolioAlert,
     adminCreateRecommendationForPortfolio,
@@ -22,6 +22,11 @@ import type { PortfolioAlert, PositionOptionType, WatchlistSymbolImportEntry } f
 import { quoteUnderlyingForScanner } from "@/modules/scanner/scanner-yahoo-quote";
 import { fetchYahooOptionChainForScanner } from "@/modules/scanner/yahoo-option-chain-scanner";
 import type { OptionContractData } from "@/modules/strategy-options/options-chain";
+import {
+    createOptionsScannerToolExecutor,
+    resolveOptionsScannerPersonaContext,
+    type OptionsScannerPersonaContext
+} from "@/modules/strategy-options/options-scanner-persona";
 import {
     defaultOptionScannerPortfolioContext,
     loadOptionScannerPortfolioContexts
@@ -283,6 +288,28 @@ function mapExitToRecommendationAction(
   return side === "long" ? "sell" : "buy";
 }
 
+function parseGrokRefinementJson(
+  text: string,
+  rule: RuleDecision
+): { rationale: string; action: "hold" | "sell"; confidence: number } | null {
+  const cleaned = text.replace(/^```json\s*|\s*```$/g, "").trim();
+  const json = JSON.parse(cleaned) as {
+    action?: string;
+    rationale?: string;
+    confidence?: number;
+  };
+  const action = json.action === "sell" ? "sell" : "hold";
+  const rationale =
+    typeof json.rationale === "string" && json.rationale.trim().length > 0
+      ? json.rationale.trim().slice(0, 520)
+      : rule.rationale;
+  const confidence =
+    typeof json.confidence === "number" && Number.isFinite(json.confidence)
+      ? Math.min(100, Math.max(0, Math.round(json.confidence)))
+      : rule.confidence;
+  return { action, rationale, confidence };
+}
+
 async function grokRefineDecision(input: {
   underlying: string;
   expYmd: string;
@@ -296,9 +323,9 @@ async function grokRefineDecision(input: {
   oi: number;
   vol: number;
   rule: RuleDecision;
+  /** When set (e.g. published `finance-advisor`), uses persona model + instructions + xapi tools. */
+  personaCtx: OptionsScannerPersonaContext | null;
 }): Promise<{ rationale: string; action: "hold" | "sell"; confidence: number } | null> {
-  const sys =
-    "You are a concise options desk assistant. Side long means you paid premium; short means you collected premium. Reply with JSON only, no markdown: {\"action\":\"hold\"|\"sell\",\"rationale\":\"max 500 chars\",\"confidence\":0-100}. action sell means recommend closing the position (buy to close if short premium, sell to close if long). Educational only; not financial advice.";
   const user = JSON.stringify({
     underlying: input.underlying,
     side: input.side,
@@ -316,31 +343,45 @@ async function grokRefineDecision(input: {
       pnlPct: input.rule.pnlPct
     }
   });
+  const legacySys =
+    "You are a concise options desk assistant. Side long means you paid premium; short means you collected premium. Reply with JSON only, no markdown: {\"action\":\"hold\"|\"sell\",\"rationale\":\"max 500 chars\",\"confidence\":0-100}. action sell means recommend closing the position (buy to close if short premium, sell to close if long). Educational only; not financial advice.";
   try {
-    const out = await chatWithXai({
-      messages: [
-        { role: "system", content: sys },
-        { role: "user", content: user }
-      ],
-      temperature: 0.15
-    });
-    const text = out.outputText.trim();
-    const cleaned = text.replace(/^```json\s*|\s*```$/g, "");
-    const json = JSON.parse(cleaned) as {
-      action?: string;
-      rationale?: string;
-      confidence?: number;
-    };
-    const action = json.action === "sell" ? "sell" : "hold";
-    const rationale =
-      typeof json.rationale === "string" && json.rationale.trim().length > 0
-        ? json.rationale.trim().slice(0, 520)
-        : input.rule.rationale;
-    const confidence =
-      typeof json.confidence === "number" && Number.isFinite(json.confidence)
-        ? Math.min(100, Math.max(0, Math.round(json.confidence)))
-        : input.rule.confidence;
-    return { action, rationale, confidence };
+    let text: string;
+    const ctx = input.personaCtx;
+    if (ctx) {
+      if (ctx.tools.length > 0) {
+        const loop = await respondWithXaiToolLoop({
+          model: ctx.model,
+          systemPrompt: ctx.systemPrompt,
+          userPrompt: user,
+          tools: ctx.tools,
+          toolChoice: ctx.toolChoice,
+          maxTurns: ctx.maxTurns,
+          temperature: ctx.temperature,
+          executor: createOptionsScannerToolExecutor()
+        });
+        text = loop.outputText.trim();
+      } else {
+        const single = await respondWithXai({
+          model: ctx.model,
+          systemPrompt: ctx.systemPrompt,
+          userPrompt: user,
+          maxTurns: Math.min(Math.max(ctx.maxTurns, 1), 8),
+          temperature: ctx.temperature
+        });
+        text = single.outputText.trim();
+      }
+    } else {
+      const out = await chatWithXai({
+        messages: [
+          { role: "system", content: legacySys },
+          { role: "user", content: user }
+        ],
+        temperature: 0.15
+      });
+      text = out.outputText.trim();
+    }
+    return parseGrokRefinementJson(text, input.rule);
   } catch {
     return null;
   }
@@ -429,6 +470,9 @@ async function dismissScannerAlertsForContract(
 /**
  * Positions + watchlist option rows: Yahoo chain, side-aware rules, Grok optional,
  * `portfolio_recommendations`, deduped close alerts.
+ *
+ * For scheduled jobs, pass **`tenantId`** (same as the task’s `tenantId`) so recommendation upserts
+ * use {@link adminCreateRecommendationForPortfolio}'s `jobTenantId` guard (portfolio must belong to that tenant).
  */
 export async function processOptionRecommendationsPass(input: {
   targets: OptionScanTarget[];
@@ -436,6 +480,10 @@ export async function processOptionRecommendationsPass(input: {
   tenantId?: ObjectId;
 }): Promise<OptionsScannerPassResult> {
   const env = scannerEnv();
+  const scannerPersonaCtx =
+    env.grokEnabled && process.env.OPTIONS_SCANNER_PERSONA_DISABLE !== "1"
+      ? await resolveOptionsScannerPersonaContext()
+      : null;
   const wlFxEnv = watchlistScannerSideEffectEnv();
   const metaByUser = new Map<
     string,
@@ -613,7 +661,8 @@ export async function processOptionRecommendationsPass(input: {
           dte,
           oi: contract.open_interest,
           vol: contract.volume,
-          rule
+          rule,
+          personaCtx: scannerPersonaCtx
         });
         if (grokOut) {
           grokBudget -= 1;
@@ -667,7 +716,8 @@ export async function processOptionRecommendationsPass(input: {
         const updated = await adminUpdateRecommendationForPortfolio({
           portfolioId,
           id: existing._id.toHexString(),
-          patch: { action: recAction, note }
+          patch: { action: recAction, note },
+          jobTenantId: input.tenantId
         });
         if (updated) {
           result.updated += 1;
@@ -680,7 +730,8 @@ export async function processOptionRecommendationsPass(input: {
           note,
           accountId: tgt.accountId?.toHexString(),
           quantity: tgt.qty,
-          targetPrice: mark > 0 ? Number(mark.toFixed(4)) : undefined
+          targetPrice: mark > 0 ? Number(mark.toFixed(4)) : undefined,
+          jobTenantId: input.tenantId
         });
         if (created) {
           result.stored += 1;

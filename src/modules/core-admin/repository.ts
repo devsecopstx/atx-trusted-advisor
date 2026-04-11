@@ -1901,11 +1901,21 @@ export async function adminCreateRecommendationForPortfolio(input: {
   accountId?: string;
   quantity?: number;
   targetPrice?: number;
+  /**
+   * When set (e.g. `options_scanner` scheduled task), refuse writes unless the portfolio belongs
+   * to this tenant — prevents cross-tenant recommendation rows.
+   */
+  jobTenantId?: ObjectId;
 }): Promise<Recommendation | null> {
   await ensurePortfolioIndexes();
   const portfolio = await adminGetPortfolioById(input.portfolioId);
   if (!portfolio?._id || !ObjectId.isValid(input.portfolioId)) {
     return null;
+  }
+  if (input.jobTenantId) {
+    if (!portfolio.tenantId || !portfolio.tenantId.equals(input.jobTenantId)) {
+      return null;
+    }
   }
   const userId = portfolioOwnerUserIdString(portfolio.userId);
   const tenantId = portfolioTenantIdString(portfolio);
@@ -1933,10 +1943,17 @@ export async function adminUpdateRecommendationForPortfolio(input: {
   portfolioId: string;
   id: string;
   patch: Partial<Pick<Recommendation, "action" | "note" | "quantity" | "targetPrice" | "status" | "symbol">>;
+  /** Same contract as {@link adminCreateRecommendationForPortfolio}'s `jobTenantId`. */
+  jobTenantId?: ObjectId;
 }): Promise<Recommendation | null> {
   const p = await adminGetPortfolioById(input.portfolioId);
   if (!p?._id) {
     return null;
+  }
+  if (input.jobTenantId) {
+    if (!p.tenantId || !p.tenantId.equals(input.jobTenantId)) {
+      return null;
+    }
   }
   return updateRecommendationById({
     userId: portfolioOwnerUserIdString(p.userId),

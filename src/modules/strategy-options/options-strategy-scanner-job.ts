@@ -43,6 +43,8 @@ const WATCHLIST_COLLECTION = "portfolio_watchlists";
 
 export type OptionsStrategyScannerJobInput = {
   tenantId?: ObjectId;
+  /** Admin manual **Run** — skip US regular-session desk window. */
+  bypassMarketWindow?: boolean;
 };
 
 function tenantFilter(tenantId?: ObjectId): Record<string, unknown> {
@@ -50,6 +52,25 @@ function tenantFilter(tenantId?: ObjectId): Record<string, unknown> {
     return { tenantId };
   }
   return {};
+}
+
+/** Without `tenantId` on `admin_scheduled_tasks`, Mongo scope would match all tenants — never write recs. */
+function optionsScannerJobSkippedMissingTenant(
+  serviceId: string,
+  taskCategoryTag: string,
+  startMs: number
+): ScheduledCategoryResult {
+  const durationSeconds = Number(((Date.now() - startMs) / 1000).toFixed(1));
+  return {
+    status: "success",
+    output: `${serviceId}: task_category=${taskCategoryTag} skipped=true reason=missing_scheduled_task_tenantId — set tenantId on this scheduled task so the scanner only loads positions/watchlists and writes portfolio_recommendations for that tenant (app users already see recs only via tenant-scoped GET /api/portfolios/:id/recommendations). duration_s=${durationSeconds}`,
+    auditDetails: {
+      skipped: true,
+      taskCategory: taskCategoryTag,
+      skipReason: "missing_tenant_id",
+      durationSeconds
+    }
+  };
 }
 
 /** Matches option legs in Mongo; includes legacy rows without `type: "option"`. */
@@ -205,9 +226,9 @@ export async function buildMergedOptionScanTargets(input: {
  * Options legs with DTE ≤ {@link OPTIONS_ROLL_MAX_DTE} (default 7) — uses same pipeline as options scanner
  * with Mongo-backed chain cache + circuit breaker (Phase 3).
  */
-export async function executeOptionsExpirationRollJob(input: {
-  tenantId?: ObjectId;
-}): Promise<ScheduledCategoryResult> {
+export async function executeOptionsExpirationRollJob(
+  input: OptionsStrategyScannerJobInput
+): Promise<ScheduledCategoryResult> {
   const taskCategoryTag = "options_expiration_roll_manager";
   const rollMaxDte = Number.parseInt(process.env.OPTIONS_ROLL_MAX_DTE ?? "7", 10);
   const maxDte = Number.isFinite(rollMaxDte) && rollMaxDte >= 1 && rollMaxDte <= 60 ? rollMaxDte : 7;
@@ -215,6 +236,13 @@ export async function executeOptionsExpirationRollJob(input: {
   try {
     const { tenantId } = input;
     const start = Date.now();
+    if (!tenantId) {
+      return optionsScannerJobSkippedMissingTenant(
+        "options-expiration-roll-manager",
+        taskCategoryTag,
+        start
+      );
+    }
     const db = await getDb();
     const scope = tenantFilter(tenantId);
     const market = resolveUsMarketDayContext(new Date());
@@ -234,7 +262,9 @@ export async function executeOptionsExpirationRollJob(input: {
           : `${slugs.slice(0, 24).join(", ")} …+${slugs.length - 24}`;
     const itemsScanned = strategies.length + prefs.length;
 
-    if (!market.isBusinessDay || !market.marketWindowOpen) {
+    const skipMarketRoll =
+      !input.bypassMarketWindow && (!market.isBusinessDay || !market.marketWindowOpen);
+    if (skipMarketRoll) {
       await updateTenantMarketCalendarSnapshot({
         tenantId,
         market,
@@ -319,9 +349,10 @@ export async function executeOptionsExpirationRollJob(input: {
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
     const rankTop = formatRankTop(recPass.rankedSignals);
     const recSummary = `scan_targets=${built.merged.length} prefs_after=${afterPrefs.length} prefs_active=${prefsActive} targets_roll_window=${filtered.length} chain_batches=${recPass.chainBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_stored=${recPass.stored} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated}`;
+    const rollMarketLabel = input.bypassMarketWindow ? "admin_bypass_desk_window" : "open";
     return {
       status: "success",
-      output: `options-expiration-roll-manager: task_category=${taskCategoryTag} skipped=false roll_max_dte=${maxDte} portfolios=${portfolioCount} accounts=${accountCount} option_positions=${built.optionPositions} unique_underlyings=${built.uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
+      output: `options-expiration-roll-manager: task_category=${taskCategoryTag} skipped=false market=${rollMarketLabel} roll_max_dte=${maxDte} portfolios=${portfolioCount} accounts=${accountCount} option_positions=${built.optionPositions} unique_underlyings=${built.uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
       auditDetails: {
         skipped: false,
         taskCategory: taskCategoryTag,
@@ -347,7 +378,8 @@ export async function executeOptionsExpirationRollJob(input: {
         chainFailures: recPass.chainFailures,
         grokCalls: recPass.grokCalls,
         alertsCreated: recPass.alertsCreated,
-        durationSeconds
+        durationSeconds,
+        ...(input.bypassMarketWindow ? { adminOnDemandMarketWindowBypass: true as const } : {})
       }
     };
   } catch (error) {
@@ -377,6 +409,13 @@ export async function executeOptionsStrategyScannerJob(
   try {
     const { tenantId } = input;
     const start = Date.now();
+    if (!tenantId) {
+      return optionsScannerJobSkippedMissingTenant(
+        OPTIONS_STRATEGY_SCANNER_SERVICE_ID,
+        taskCategoryTag,
+        start
+      );
+    }
     const db = await getDb();
     const scope = tenantFilter(tenantId);
     const market = resolveUsMarketDayContext(new Date());
@@ -396,7 +435,9 @@ export async function executeOptionsStrategyScannerJob(
           : `${slugs.slice(0, 24).join(", ")} …+${slugs.length - 24}`;
     const itemsScanned = strategies.length + prefs.length;
 
-    if (!market.isBusinessDay || !market.marketWindowOpen) {
+    const skipMarketOptions =
+      !input.bypassMarketWindow && (!market.isBusinessDay || !market.marketWindowOpen);
+    if (skipMarketOptions) {
       await updateTenantMarketCalendarSnapshot({
         tenantId,
         market,
@@ -471,9 +512,10 @@ export async function executeOptionsStrategyScannerJob(
     const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
     const rankTop = formatRankTop(recPass.rankedSignals);
     const recSummary = `scan_targets=${merged.length} prefs_after=${scanTargets.length} prefs_active=${prefsActive} chain_batches=${recPass.chainBatches} rank_top=${rankTop || "none"} rec_examined=${recPass.examined} rec_from_pos=${recPass.fromPositions} rec_from_wl=${recPass.fromWatchlist} rec_stored=${recPass.stored} rec_updated=${recPass.updated} chain_fail=${recPass.chainFailures} grok=${recPass.grokCalls} alerts=${recPass.alertsCreated} alert_dedupe=${recPass.alertsSuppressedDeduped} hold_dismiss=${recPass.alertsDismissedOnHold} skipped_bad=${recPass.skippedBadRow} wl_rows_added=${recPass.watchlistRowsAdded} wl_rows_updated=${recPass.watchlistRowsUpdated}`;
+    const marketRunLabel = input.bypassMarketWindow ? "admin_bypass_desk_window" : "open";
     return {
       status: "success",
-      output: `${OPTIONS_STRATEGY_SCANNER_SERVICE_ID}: task_category=${taskCategoryTag} skipped=false market=open portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} strategy_filter_rows=${strategyFilterRows.length} option_positions=${optionPositions} unique_underlyings=${uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
+      output: `${OPTIONS_STRATEGY_SCANNER_SERVICE_ID}: task_category=${taskCategoryTag} skipped=false market=${marketRunLabel} portfolios=${portfolioCount} accounts=${accountCount} items_scanned=${itemsScanned} strategies=${strategies.length} preferences=${prefs.length} strategy_filter_rows=${strategyFilterRows.length} option_positions=${optionPositions} unique_underlyings=${uniqueUnderlyings} ${recSummary} slugs: ${slugPreview} duration_s=${durationSeconds}`,
       auditDetails: {
         skipped: false,
         taskCategory: taskCategoryTag,
@@ -507,7 +549,8 @@ export async function executeOptionsStrategyScannerJob(
         chainBatches: recPass.chainBatches,
         durationSeconds,
         watchlistRowsAdded: recPass.watchlistRowsAdded,
-        watchlistRowsUpdated: recPass.watchlistRowsUpdated
+        watchlistRowsUpdated: recPass.watchlistRowsUpdated,
+        ...(input.bypassMarketWindow ? { adminOnDemandMarketWindowBypass: true as const } : {})
       }
     };
   } catch (error) {

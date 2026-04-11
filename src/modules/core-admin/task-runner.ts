@@ -28,10 +28,20 @@ import { runOptionsStrategyScanner } from "@/modules/strategy-options/options-st
 import { runWatchlistPriceScanner } from "@/modules/watchlist/watchlist-scanner";
 import { runUserHistoryAgent } from "@/modules/xchat/user-history-agent";
 
+/** Options for {@link executeScheduledTask} — e.g. admin **Run** on `/admin/tasks` vs cron/tick. */
+export type ScheduledTaskExecutionOptions = {
+  /**
+   * When true, desk **US regular-session window** gate is skipped so the job runs off-hours / holidays.
+   * Set only for `POST /api/admin/tasks/{taskId}/run` (global_admin manual run), not scheduler tick.
+   */
+  bypassMarketWindow?: boolean;
+};
+
 export async function executeScheduledTask(
   task: ScheduledTask,
   triggeredBy: string,
-  auditActor?: AuditActor
+  auditActor?: AuditActor,
+  executionOptions?: ScheduledTaskExecutionOptions
 ): Promise<{ runId: ObjectId; status: "success" | "failed"; output: string }> {
   if (!task._id) {
     throw new Error("Cannot execute task without _id");
@@ -55,7 +65,7 @@ export async function executeScheduledTask(
     scheduleRRule: task.scheduleRRule
   });
 
-  const execution = await runScheduledCategory(task);
+  const execution = await runScheduledCategory(task, executionOptions);
   const completedAt = new Date();
   const durationMs = Math.max(1, completedAt.getTime() - startedAt.getTime());
 
@@ -96,12 +106,16 @@ export async function executeScheduledTask(
   };
 }
 
-async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCategoryResult> {
+async function runScheduledCategory(
+  task: ScheduledTask,
+  executionOptions?: ScheduledTaskExecutionOptions
+): Promise<ScheduledCategoryResult> {
+  const bypass = Boolean(executionOptions?.bypassMarketWindow);
   if (task.category === "price_scanner") {
-    return executePriceScannerJob({ tenantId: task.tenantId });
+    return executePriceScannerJob({ tenantId: task.tenantId, bypassMarketWindow: bypass });
   }
   if (task.category === "options_scanner") {
-    return runOptionsStrategyScanner(task);
+    return runOptionsStrategyScanner(task, { bypassMarketWindow: bypass });
   }
   if (task.category === "user_access_requests") {
     return runUserAccessRequestsTask(task);
@@ -110,7 +124,7 @@ async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCateg
     return runUserHistoryAgent(task);
   }
   if (task.category === "watchlist_price_scanner") {
-    return runWatchlistPriceScanner(task);
+    return runWatchlistPriceScanner(task, { bypassMarketWindow: bypass });
   }
   if (task.category === "corporate_events_scanner") {
     return runCorporateEventsScanner(task);
@@ -119,7 +133,7 @@ async function runScheduledCategory(task: ScheduledTask): Promise<ScheduledCateg
     return runIncomeCashFlowProjector(task);
   }
   if (task.category === "options_expiration_roll_manager") {
-    return runOptionsExpirationRollManager(task);
+    return runOptionsExpirationRollManager(task, { bypassMarketWindow: bypass });
   }
   if (task.category === "risk_concentration_scanner") {
     return runRiskConcentrationScanner(task);

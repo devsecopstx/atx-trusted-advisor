@@ -24,16 +24,22 @@ type WatchlistPriceUpdate = {
   lastUpdatedAt: Date;
 };
 
-export async function runWatchlistPriceScanner(task: ScheduledTask): Promise<ScheduledCategoryResult> {
+export async function runWatchlistPriceScanner(
+  task: ScheduledTask,
+  runOptions?: { bypassMarketWindow?: boolean }
+): Promise<ScheduledCategoryResult> {
   const start = Date.now();
   const tenantId = task.tenantId;
+  const bypassMarketWindow = Boolean(runOptions?.bypassMarketWindow);
 
   try {
     const market = resolveUsMarketDayContext(new Date());
     const watchlists = await listWatchlistsForTenantScope(tenantId);
     const watchlistsWithSymbols = watchlists.filter((w) => (w.symbols?.length ?? 0) > 0).length;
 
-    if (!market.isBusinessDay || !market.marketWindowOpen) {
+    const skipForMarket =
+      !bypassMarketWindow && (!market.isBusinessDay || !market.marketWindowOpen);
+    if (skipForMarket) {
       await updateTenantMarketCalendarSnapshot({
         tenantId,
         market,
@@ -176,7 +182,8 @@ export async function runWatchlistPriceScanner(task: ScheduledTask): Promise<Sch
         symbolsQuoted,
         alertsCreated: alertCount,
         alertsSkippedCooldown,
-        durationSeconds
+        durationSeconds,
+        ...(bypassMarketWindow ? { adminOnDemandMarketWindowBypass: true as const } : {})
       },
       auditAlertRows: auditAlertRows.length > 0 ? auditAlertRows : undefined
     };

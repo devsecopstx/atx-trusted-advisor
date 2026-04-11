@@ -8,6 +8,11 @@ cd "${ROOT}/services/atxfinance-backend"
 set -a
 # shellcheck disable=SC1090
 [ -f "${ROOT}/.env" ] && source "${ROOT}/.env"
+# Backend-specific overrides (Atlas URI often lives here; Spring/Gradle do not auto-load .env).
+if [ -f "${ROOT}/services/atxfinance-backend/.env" ]; then
+  # shellcheck disable=SC1090
+  source "${ROOT}/services/atxfinance-backend/.env"
+fi
 if [ -z "${SPRING_DATA_MONGODB_URI:-}" ] && [ -n "${MONGODB_URI:-}" ]; then
   export SPRING_DATA_MONGODB_URI="${MONGODB_URI}"
 fi

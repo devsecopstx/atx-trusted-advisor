@@ -85,10 +85,27 @@ const emptyRecPass = {
   watchlistRowsUpdated: 0
 };
 
+const scannerTaskTenantId = new ObjectId();
+
 describe("runOptionsStrategyScanner", () => {
   beforeEach(() => {
     vi.mocked(processOptionRecommendationsPass).mockResolvedValue(emptyRecPass);
     repoMocks.listFilterRows.mockResolvedValue([]);
+    repoMocks.listStrategies.mockResolvedValue([]);
+    repoMocks.listPrefs.mockResolvedValue([]);
+  });
+
+  it("skips recommendation pass when scheduled task has no tenantId", async () => {
+    const r = await runOptionsStrategyScanner({
+      name: "t",
+      category: "options_scanner",
+      scheduleCron: "0 9 * * *",
+      enabled: true
+    });
+    expect(r.status).toBe("success");
+    expect(r.output).toContain("missing_scheduled_task_tenantId");
+    expect(r.auditDetails?.skipReason).toBe("missing_tenant_id");
+    expect(processOptionRecommendationsPass).not.toHaveBeenCalled();
   });
 
   it("reports counts, market-open path, and slug preview", async () => {
@@ -104,7 +121,8 @@ describe("runOptionsStrategyScanner", () => {
       name: "t",
       category: "options_scanner",
       scheduleCron: "0 9 * * *",
-      enabled: true
+      enabled: true,
+      tenantId: scannerTaskTenantId
     });
 
     expect(r.status).toBe("success");
@@ -167,6 +185,34 @@ describe("runOptionsStrategyScanner", () => {
         symbolCount: 2
       })
     );
+    expect(processOptionRecommendationsPass).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: scannerTaskTenantId })
+    );
+  });
+
+  it("bypasses desk market window on manual admin run (off-hours still scans)", async () => {
+    calendarMocks.resolveUsMarketDayContext.mockReturnValueOnce({
+      marketDate: "2026-04-01",
+      timezone: "America/New_York",
+      isBusinessDay: true,
+      isHoliday: false,
+      holidayName: undefined,
+      marketWindowOpen: false
+    });
+    const r = await runOptionsStrategyScanner(
+      {
+        name: "t",
+        category: "options_scanner",
+        scheduleCron: "0 9 * * *",
+        enabled: true,
+        tenantId: scannerTaskTenantId
+      },
+      { bypassMarketWindow: true }
+    );
+    expect(r.status).toBe("success");
+    expect(r.output).toContain("market=admin_bypass_desk_window");
+    expect(r.output).toContain("skipped=false");
+    expect(processOptionRecommendationsPass).toHaveBeenCalled();
   });
 
   it("returns failed on repository error", async () => {
@@ -175,7 +221,8 @@ describe("runOptionsStrategyScanner", () => {
       name: "t",
       category: "options_scanner",
       scheduleCron: "0 9 * * *",
-      enabled: true
+      enabled: true,
+      tenantId: scannerTaskTenantId
     });
     expect(r.status).toBe("failed");
     expect(r.output).toContain("db down");
