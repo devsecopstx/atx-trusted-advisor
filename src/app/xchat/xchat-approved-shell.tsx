@@ -11,12 +11,14 @@ import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, isGoogleOAuthConfigured, shouldShowAppUserDbLabel } from "@/lib/env";
 import { loadDefaultXchatPersonaForSessionDeduped } from "@/lib/server-request-cache";
 import { getEffectiveWorkspaceLimitsForUser } from "@/lib/tenant-workspace-limits";
+import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import { getXchatServerShellBootstrap } from "@/lib/xchat/xchat-shell-bootstrap";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 type XchatApprovedShellProps = {
   session: SessionUser;
-  initialXchatItem: "composer" | "persona" | "examples" | "history" | null;
+  initialXchatItem: "composer" | "persona" | "examples" | "history" | "attachments" | null;
   requestedPortfolioId: string;
 };
 
@@ -55,6 +57,17 @@ export async function XchatApprovedShell({
 
   const serverBootstrap = await getXchatServerShellBootstrap(session, workspaceChatHistoryMax);
 
+  const entitlements = await resolveXoptionsEntitlements({
+    userId: session.userId,
+    roles: session.roles
+  });
+  const fileAttachmentsEnabled = canAccessPremiumTenantAttachments(
+    entitlements.subscriptionPlan,
+    session.roles
+  );
+  const resolvedInitialXchatItem =
+    initialXchatItem === "attachments" && !fileAttachmentsEnabled ? null : initialXchatItem;
+
   const mongoConnection = shouldShowAppUserDbLabel() ? getMongoConnectionLabel() : "";
   const googleLoginHrefApproved = isGoogleOAuthConfigured()
     ? `/api/auth/google/login?next=${encodeURIComponent("/xchat")}`
@@ -76,8 +89,9 @@ export async function XchatApprovedShell({
       }}
       accountFeedbackPageLabel="xChat"
       defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
+      fileAttachmentsEnabled={fileAttachmentsEnabled}
       includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
-      initialXchatItem={initialXchatItem}
+      initialXchatItem={resolvedInitialXchatItem}
       isGlobalAdmin={isGlobalAdmin(session.roles)}
       serverBootstrap={serverBootstrap}
       welcomeName={appUserPrimaryDisplayName(session)}

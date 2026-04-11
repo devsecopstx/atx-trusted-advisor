@@ -13,7 +13,7 @@ import {
 export type TenantWorkspaceLimits = {
   /** xOptions deck / follow-up views per user — labeled **per hour** on `/account/billing` and admin workspace limits; enforced via `app_feature_daily_usage` (UTC day bucket) until hourly metering ships. */
   userXoptionsLimit: number;
-  /** xChat prompts per user per **UTC calendar day** — enforced in `POST /api/xchat/ask` (merged tenant base + `planOverrides` for the user’s billing tier). */
+  /** xChat prompts per user per **UTC calendar day** — tenant `workspaceLimits` row only for `POST /api/xchat/ask` (`tenantBaseWorkspaceLimits` in `lib/tenant-workspace-limits.ts`; `planOverrides` xChat/d does not apply). */
   userChatLimit: number;
   /**
    * xChat prompts per user per **UTC clock hour**. Omitted or `0` = no hourly product cap (daily + per-minute burst still apply).
@@ -80,6 +80,43 @@ function isPositiveInt(n: unknown): n is number {
   return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 1_000_000;
 }
 
+/**
+ * Mongo / tenant YAML sometimes stores quota scalars as strings or BSON doubles.
+ * Used for base `workspaceLimits` and plan override rows on read.
+ */
+export function coercePositiveLimitInt(raw: unknown): number | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    const n = Math.round(raw);
+    if (n >= 1 && n <= 1_000_000 && Math.abs(raw - n) < 1e-9) {
+      return n;
+    }
+    return undefined;
+  }
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (t === "") {
+      return undefined;
+    }
+    const n = Number.parseInt(t, 10);
+    if (Number.isFinite(n) && n >= 1 && n <= 1_000_000) {
+      return n;
+    }
+    return undefined;
+  }
+  const s = String(raw).trim();
+  if (s === "" || s === "[object Object]") {
+    return undefined;
+  }
+  const n = Number.parseInt(s, 10);
+  if (Number.isFinite(n) && n >= 1 && n <= 1_000_000) {
+    return n;
+  }
+  return undefined;
+}
+
 /** Mongo / JSON may store hourly as double or string; billing + admin read paths use this. */
 function coerceUserChatHourlyLimitLoose(raw: unknown): number | undefined {
   if (raw === undefined || raw === null) {
@@ -120,10 +157,10 @@ function parseLimitScalars(o: Record<string, unknown>): Partial<TenantWorkspaceL
     if (o[k] === undefined) {
       continue;
     }
-    if (!isPositiveInt(o[k])) {
-      continue;
+    const n = coercePositiveLimitInt(o[k]);
+    if (n !== undefined) {
+      value[k] = n;
     }
-    value[k] = o[k] as number;
   }
   return value;
 }
@@ -199,9 +236,9 @@ export function mergeTenantWorkspaceLimits(
   }
   const o = partial as Record<string, unknown>;
   for (const k of LIMIT_KEYS) {
-    const v = o[k];
-    if (isPositiveInt(v)) {
-      out[k] = v;
+    const n = coercePositiveLimitInt(o[k]);
+    if (n !== undefined) {
+      out[k] = n;
     }
   }
   const cp = parseChangePersonaLoose(o.changePersonaEnabled);
@@ -217,6 +254,46 @@ export function mergeTenantWorkspaceLimits(
         out.userChatHourlyLimit = n;
       }
     }
+  }
+  return out;
+}
+
+/**
+ * True when `core_tenants.workspaceLimits` has no persisted quota scalars (`null`, missing, empty object, or only `planOverrides`).
+ * Runtime still uses {@link mergeTenantWorkspaceLimits}(null) defaults; this gates **Mongo** backfill so Admin shows real keys.
+ */
+export function tenantWorkspaceLimitsScalarsMissing(raw: unknown): boolean {
+  if (raw == null) {
+    return true;
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return true;
+  }
+  const o = raw as Record<string, unknown>;
+  for (const k of LIMIT_KEYS) {
+    if (coercePositiveLimitInt(o[k]) !== undefined) {
+      return false;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(o, "userChatHourlyLimit")) {
+    const n = coerceUserChatHourlyLimitLoose(o.userChatHourlyLimit);
+    if (n !== undefined && n > 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Defaults + any valid scalars on `raw`; keeps `planOverrides` when present. Safe for `$set.workspaceLimits`. */
+export function coalesceTenantWorkspaceLimitsForPersistence(raw: unknown): Record<string, unknown> {
+  const src =
+    raw != null && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : null;
+  const merged = mergeTenantWorkspaceLimits(src);
+  const out: Record<string, unknown> = { ...merged };
+  if (src?.planOverrides !== undefined && src?.planOverrides !== null) {
+    out.planOverrides = src.planOverrides;
   }
   return out;
 }

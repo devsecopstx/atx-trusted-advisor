@@ -3,6 +3,8 @@
  * Execution paths stay separate: ask uses `respondWithXaiToolLoop`; batch uses xAI Batch JSONL.
  */
 
+import { createHash } from "node:crypto";
+
 const HOSTED_SEARCH_TOOL_COPY = `Hosted search (web_search / x_search):
 Invoke these only through the API’s native tool mechanism. Do not print pseudo calls in assistant text—no \`<xai-tool>\`, \`<function_call>\`, fenced JSON tool blobs, or \`{"name":"web_search",...}\` payloads (users must never see markup). After the platform runs search, summarize results in plain language.`;
 
@@ -46,6 +48,35 @@ export function buildSessionToolInstructions(flags: SessionToolFlags): string {
     parts.push(ATX_FUNCTION_TOOL_COPY);
   }
   return parts.join("\n\n");
+}
+
+/**
+ * Stable fingerprint for xAI **remote** thread chains (`previous_response_id`).
+ * xAI does not allow resending `instructions` on continuation turns—the chain keeps the first
+ * turn’s system prompt. When this fingerprint differs from the prior log’s, ask must start a
+ * fresh chain so Mongo-edited persona + tool routing still apply.
+ */
+export type XchatRemoteChainFingerprintInput = {
+  personaSystem: string;
+  personaUpdatedAtMs: number;
+  strategyJobOptOut: boolean;
+  hostedSearch: boolean;
+  atxFunction: boolean;
+  citationsEnabled: boolean;
+};
+
+export function computeXchatRemoteChainInstructionsFingerprint(
+  input: XchatRemoteChainFingerprintInput
+): string {
+  const raw = [
+    typeof input.personaSystem === "string" ? input.personaSystem : "",
+    String(Number.isFinite(input.personaUpdatedAtMs) ? input.personaUpdatedAtMs : 0),
+    input.strategyJobOptOut ? "1" : "0",
+    input.hostedSearch ? "1" : "0",
+    input.atxFunction ? "1" : "0",
+    input.citationsEnabled ? "1" : "0"
+  ].join("\0");
+  return createHash("sha256").update(raw, "utf8").digest("hex").slice(0, 24);
 }
 
 export type BuildXchatSystemPromptInput = {

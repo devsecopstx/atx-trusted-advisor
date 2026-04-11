@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireGlobalAdminSession } from "@/lib/api-auth";
+import { getDb } from "@/lib/mongodb";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
 import { parseXfUiThemePreferenceFromUnknown } from "@/lib/xf-ui-theme";
 import {
     applyTenantShellPreferencesPatch,
+    getTenantByHexId,
     resolvedWorkspaceLimitsForTenant,
     resolveTenantIdHexForGlobalAdminConsole,
     updateTenantBrandingPreferencesOneTime,
@@ -18,9 +20,11 @@ import {
     parseTenantXchatDebugEnabled
 } from "@/modules/identity/tenant-branding-preferences";
 import {
+    coalesceTenantWorkspaceLimitsForPersistence,
     normalizePlanOverridesFromUnknown,
     parsePlanOverridesPayload,
     parseWorkspaceLimitsPayload,
+    tenantWorkspaceLimitsScalarsMissing,
     type TenantPlanWorkspaceOverrides
 } from "@/modules/identity/tenant-workspace-limits";
 
@@ -56,7 +60,31 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const { tenantId } = await context.params;
-  const tenant = await loadTenantForWorkspaceLimitsRoute(tenantId, session.tenantId);
+  let tenant = await loadTenantForWorkspaceLimitsRoute(tenantId, session.tenantId);
+  if (!tenant?._id) {
+    return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+  }
+
+  const tenantObjectId = tenant._id;
+
+  if (tenantWorkspaceLimitsScalarsMissing(tenant.workspaceLimits)) {
+    const now = new Date();
+    const db = await getDb();
+    await db.collection("core_tenants").updateOne(
+      { _id: tenantObjectId },
+      {
+        $set: {
+          workspaceLimits: coalesceTenantWorkspaceLimitsForPersistence(tenant.workspaceLimits),
+          updatedAt: now
+        }
+      }
+    );
+    const fresh = await getTenantByHexId(tenantObjectId.toHexString());
+    if (fresh?._id) {
+      tenant = fresh;
+    }
+  }
+
   if (!tenant?._id) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }

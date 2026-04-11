@@ -101,6 +101,14 @@ export const CURRENT_STATE_ROUTES: RouteDefinition[] = [
     tag: "xoptions"
   },
   {
+    path: "/api/app-user/xchat/attachments",
+    operations: [
+      { method: "GET", auth: "session" },
+      { method: "POST", auth: "session", hasRequestBody: true }
+    ],
+    tag: "xchat"
+  },
+  {
     path: "/api/user-feedback",
     operations: [{ method: "POST", auth: "session", hasRequestBody: true }],
     tag: "user-feedback"

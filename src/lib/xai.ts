@@ -261,9 +261,11 @@ export async function uploadFileToXai(
   if (!response.ok || !fileId) {
     throw new Error(`xAI file upload failed: ${JSON.stringify(payload.error ?? payload)}`);
   }
+  const rawProcessing =
+    payload.processing_status ?? payload.processingStatus ?? payload.status;
   return {
     fileId,
-    processingStatus: toXaiProcessingStatus(payload.processing_status)
+    processingStatus: normalizeXaiFileProcessingStatus(rawProcessing)
   };
 }
 
@@ -290,11 +292,14 @@ export async function getXaiFileMetadata(fileId: string): Promise<XaiFileMetadat
     (typeof payload.file_id === "string" ? payload.file_id : undefined) ??
     (typeof payload.id === "string" ? payload.id : undefined) ??
     normalizedFileId;
+  const rawProcessing =
+    payload.processing_status ?? payload.processingStatus ?? payload.status;
   return {
     fileId: resolvedFileId,
-    uploadStatus: asString(payload.upload_status),
-    uploadErrorMessage: asString(payload.upload_error_message),
-    processingStatus: toXaiProcessingStatus(payload.processing_status)
+    uploadStatus: asString(payload.upload_status) ?? asString(payload.uploadStatus),
+    uploadErrorMessage:
+      asString(payload.upload_error_message) ?? asString(payload.uploadErrorMessage),
+    processingStatus: normalizeXaiFileProcessingStatus(rawProcessing)
   };
 }
 
@@ -1508,18 +1513,37 @@ function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-function toXaiProcessingStatus(value: unknown): XaiFileProcessingStatus {
+/**
+ * Maps xAI file upload / metadata `processing_status` (and aliases) to internal status.
+ * Missing values default to **pending** (vendor often omits field immediately after upload).
+ */
+export function normalizeXaiFileProcessingStatus(value: unknown): XaiFileProcessingStatus {
+  if (value === undefined || value === null) {
+    return "pending";
+  }
   if (typeof value !== "string") {
     return "unknown";
   }
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, "_");
   switch (normalized) {
     case "pending":
+    case "queued":
+    case "queue":
+      return "pending";
     case "processing":
+    case "in_progress":
+    case "in-progress":
+      return "processing";
     case "complete":
+    case "completed":
+    case "done":
+    case "ready":
+      return "complete";
     case "failed":
+    case "error":
+      return "failed";
     case "skipped":
-      return normalized;
+      return "skipped";
     default:
       return "unknown";
   }

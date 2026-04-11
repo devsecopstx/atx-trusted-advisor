@@ -11,7 +11,10 @@ import {
     getTenantByHexIdCached,
     loadDefaultXchatPersonaForSessionDeduped
 } from "@/lib/server-request-cache";
-import { effectiveWorkspaceLimitsForTenantAndPlan } from "@/lib/tenant-workspace-limits";
+import {
+    effectiveWorkspaceLimitsForTenantAndPlan,
+    tenantBaseWorkspaceLimits
+} from "@/lib/tenant-workspace-limits";
 import {
     respondWithXaiToolLoop,
     searchDocumentsInCollections,
@@ -73,6 +76,7 @@ import {
 import {
     buildSessionToolInstructions,
     buildXchatSystemPrompt,
+    computeXchatRemoteChainInstructionsFingerprint,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
 import {
@@ -250,11 +254,11 @@ export async function POST(request: Request) {
   let dailyPromptCap: number | undefined;
   let hourlyPromptCap: number | undefined;
   if (!isAdminSession) {
-    const workspaceLimits = effectiveWorkspaceLimitsForTenantAndPlan(tenantForDebug, subscriptionPlan);
-    // Single source of truth: merged tenant base + per-plan row from Mongo (`planOverrides`), not
-    // `getPlanLimits().maxPromptsPerDay` (hardcoded tier defaults would ignore admin workspace limits).
-    dailyPromptCap = workspaceLimits.userChatLimit;
-    const h = workspaceLimits.userChatHourlyLimit;
+    const xchatAskWorkspaceLimits = tenantBaseWorkspaceLimits(tenantForDebug);
+    // Tenant `workspaceLimits` row only — not `planOverrides` tier rows — so Admin “xChat prompt caps
+    // (tenant row)” is exactly what `/api/xchat/ask` enforces for all app users on this tenant.
+    dailyPromptCap = xchatAskWorkspaceLimits.userChatLimit;
+    const h = xchatAskWorkspaceLimits.userChatHourlyLimit;
     hourlyPromptCap = typeof h === "number" && h > 0 ? h : undefined;
   }
   try {
@@ -286,7 +290,18 @@ export async function POST(request: Request) {
         {
           error: limitError,
           code: usageCheck.code,
-          retryAfterSeconds: usageCheck.retryAfterSeconds ?? 60
+          retryAfterSeconds: usageCheck.retryAfterSeconds ?? 60,
+          ...(usageCheck.code === "xchat_daily_limit_exceeded" &&
+          typeof usageCheck.dailyLimit === "number"
+            ? {
+                dailyLimit: usageCheck.dailyLimit,
+                xchatLimitSource: "tenant_workspace_row" as const
+              }
+            : {}),
+          ...(usageCheck.code === "xchat_hourly_limit_exceeded" &&
+          typeof usageCheck.hourlyLimit === "number"
+            ? { hourlyLimit: usageCheck.hourlyLimit }
+            : {})
         },
         { status: 429, headers: limiterHeaders }
       );
@@ -814,6 +829,15 @@ export async function POST(request: Request) {
     Boolean(userId) &&
     !visionImage;
 
+  const remoteChainInstructionsFingerprint = computeXchatRemoteChainInstructionsFingerprint({
+    personaSystem: persona?.systemPrompt ?? "",
+    personaUpdatedAtMs: persona?.updatedAt?.getTime() ?? 0,
+    strategyJobOptOut,
+    hostedSearch: hasHostedSearchTool,
+    atxFunction: hasXfinanceTool,
+    citationsEnabled: persona?.citationsEnabled !== false
+  });
+
   let previousResponseId: string | undefined;
   if (useRemoteConversationHistory && threadId && userId && persona?._id) {
     const latest = await getLatestXchatLogByThread({
@@ -823,7 +847,12 @@ export async function POST(request: Request) {
       personaId: persona._id
     });
     const rid = latest?.xaiResponseId?.trim();
-    previousResponseId = rid && rid.length > 0 ? rid : undefined;
+    if (rid && rid.length > 0) {
+      const storedFp = latest?.xchatInstructionsFingerprint?.trim();
+      if (!storedFp || storedFp === remoteChainInstructionsFingerprint) {
+        previousResponseId = rid;
+      }
+    }
   }
 
   const teamKbMetaLine =
@@ -1050,7 +1079,8 @@ export async function POST(request: Request) {
             }))
           : undefined,
         strategyJobOptOut,
-        retentionExpiresAt
+        retentionExpiresAt,
+        xchatInstructionsFingerprint: remoteChainInstructionsFingerprint
       })
     : null;
 

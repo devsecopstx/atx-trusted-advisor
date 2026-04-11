@@ -155,6 +155,42 @@ function mergedOutlookLabels(
   return "";
 }
 
+function slugifyScenarioFilenamePart(input: string): string {
+  const s = input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return s.length > 0 ? s : "scenario";
+}
+
+function buildXoptionsScenarioFileBody(input: {
+  displayName: string;
+  symbol: string;
+  reviewText: string;
+  watchlistNotes: string;
+}): string {
+  const iso = new Date().toISOString();
+  const lines = [
+    `# xOptions scenario — ${input.displayName}`,
+    `Symbol: ${input.symbol}`,
+    `Saved (UTC): ${iso}`
+  ];
+  if (input.watchlistNotes.trim()) {
+    lines.push(`Watchlist notes: ${input.watchlistNotes.trim()}`);
+  }
+  lines.push("", "## Review / order summary", input.reviewText.trim(), "");
+  return lines.join("\n");
+}
+
+function xoptionsScenarioUploadFilename(displayName: string, symbol: string): string {
+  const sym = symbol.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "") || "SYM";
+  const slug = slugifyScenarioFilenamePart(displayName);
+  const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  return `xoptions-${sym}-${slug}-${ts}.txt`;
+}
+
 export function XoptionsStrategyBuilderWorkspace() {
   const [ctx, setCtx] = useState<ContextPayload | null>(null);
   const [ctxErr, setCtxErr] = useState<string | null>(null);
@@ -176,6 +212,8 @@ export function XoptionsStrategyBuilderWorkspace() {
   const [selectedOptionMeta, setSelectedOptionMeta] = useState<XoptionsSelectedOptionMeta | null>(null);
   const [watchlistAddBusy, setWatchlistAddBusy] = useState(false);
   const [watchlistAddStatus, setWatchlistAddStatus] = useState<string | null>(null);
+  const [saveScenarioBusy, setSaveScenarioBusy] = useState(false);
+  const [saveScenarioStatus, setSaveScenarioStatus] = useState<string | null>(null);
   const [watchlistNotes, setWatchlistNotes] = useState("");
   const [glanceWide, setGlanceWide] = useState(false);
 
@@ -504,7 +542,7 @@ export function XoptionsStrategyBuilderWorkspace() {
     return row != null && Number.isFinite(row.shares) ? row.shares : null;
   }, [holdings, symbolUpper]);
 
-  const handleSaveScenario = useCallback(() => {
+  const handleSaveScenario = useCallback(async () => {
     const t = reviewOrderPlainText?.trim();
     if (!t) {
       return;
@@ -513,6 +551,8 @@ export function XoptionsStrategyBuilderWorkspace() {
     if (!name?.trim()) {
       return;
     }
+    setSaveScenarioStatus(null);
+
     try {
       const key = "xf_xoptions_scenarios_v1";
       const raw = localStorage.getItem(key);
@@ -525,11 +565,73 @@ export function XoptionsStrategyBuilderWorkspace() {
         symbol: symbolUpper
       });
       localStorage.setItem(key, JSON.stringify(arr.slice(-20)));
-      trackXoptionsEvent("xoptions_scenario_save", { symbol: symbolUpper });
     } catch {
       /* ignore */
     }
-  }, [reviewOrderPlainText, symbolUpper]);
+
+    const body = buildXoptionsScenarioFileBody({
+      displayName: name.trim(),
+      symbol: symbolUpper,
+      reviewText: t,
+      watchlistNotes
+    });
+    const filename = xoptionsScenarioUploadFilename(name.trim(), symbolUpper);
+    const file = new File([body], filename, { type: "text/plain;charset=utf-8" });
+    const fd = new FormData();
+    fd.set("file", file);
+
+    setSaveScenarioBusy(true);
+    let workspaceSynced = false;
+    try {
+      const res = await fetch("/api/app-user/xchat/attachments", {
+        method: "POST",
+        body: fd,
+        credentials: "include"
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        data?: { linkedToCollection?: boolean; linkError?: string };
+      };
+
+      if (res.status === 401) {
+        setSaveScenarioStatus(
+          "Saved on this device — sign in with Premium+ to sync to xChat workspace files."
+        );
+        trackXoptionsEvent("xoptions_scenario_save", { symbol: symbolUpper, workspaceSynced });
+        return;
+      }
+      if (res.status === 403) {
+        setSaveScenarioStatus(
+          "Saved on this device — Premium+ required to upload to the tenant workspace (xChat → files)."
+        );
+        trackXoptionsEvent("xoptions_scenario_save", { symbol: symbolUpper, workspaceSynced });
+        return;
+      }
+      if (!res.ok) {
+        const err = json.error?.trim();
+        setSaveScenarioStatus(err ? `Not synced: ${err}` : `Not synced (${res.status}).`);
+        trackXoptionsEvent("xoptions_scenario_save", { symbol: symbolUpper, workspaceSynced });
+        return;
+      }
+
+      const linked = json.data?.linkedToCollection === true;
+      workspaceSynced = linked;
+      const linkErr = json.data?.linkError?.trim();
+      if (linked) {
+        setSaveScenarioStatus("Synced to workspace — appears under xChat → files for your tenant.");
+      } else if (linkErr) {
+        setSaveScenarioStatus(`Uploaded; link pending: ${linkErr}`);
+      } else {
+        setSaveScenarioStatus("Uploaded — collection link may still be configuring.");
+      }
+      trackXoptionsEvent("xoptions_scenario_save", { symbol: symbolUpper, workspaceSynced });
+    } catch {
+      setSaveScenarioStatus("Saved on this device — network error; could not sync to workspace.");
+      trackXoptionsEvent("xoptions_scenario_save", { symbol: symbolUpper, workspaceSynced });
+    } finally {
+      setSaveScenarioBusy(false);
+    }
+  }, [reviewOrderPlainText, symbolUpper, watchlistNotes]);
 
   const handlePrintSummary = useCallback(() => {
     trackXoptionsEvent("xoptions_export_print", { symbol: symbolUpper });
@@ -1182,10 +1284,10 @@ export function XoptionsStrategyBuilderWorkspace() {
                 <button
                   type="button"
                   className="cta cta-secondary xoptions-chain-cta"
-                  disabled={!reviewOrderPlainText?.trim()}
-                  onClick={handleSaveScenario}
+                  disabled={saveScenarioBusy || !reviewOrderPlainText?.trim()}
+                  onClick={() => void handleSaveScenario()}
                 >
-                  Save scenario
+                  {saveScenarioBusy ? "Saving…" : "Save scenario"}
                 </button>
                 <button type="button" className="cta cta-secondary xoptions-chain-cta" onClick={handlePrintSummary}>
                   Print / PDF
@@ -1203,6 +1305,23 @@ export function XoptionsStrategyBuilderWorkspace() {
                   role="status"
                 >
                   {watchlistAddStatus}
+                </p>
+              ) : null}
+              {saveScenarioStatus ? (
+                <p
+                  className={`xoptions-hint text-xs ${
+                    saveScenarioStatus.startsWith("Synced to workspace")
+                      ? "text-[var(--xf-gain-green)]"
+                      : saveScenarioStatus.startsWith("Uploaded;") ||
+                          saveScenarioStatus.startsWith("Uploaded —")
+                        ? "text-amber-300"
+                        : saveScenarioStatus.startsWith("Not synced:")
+                          ? "text-red-300"
+                          : "text-[var(--xf-text-400)]"
+                  }`}
+                  role="status"
+                >
+                  {saveScenarioStatus}
                 </p>
               ) : null}
             </div>

@@ -27,12 +27,14 @@ export default async function AdminEditTenantPage(props: PageProps) {
         <p className="eyebrow">atxfinance core admin</p>
         <h1 className="hero-title">Edit tenant</h1>
         <p className="hero-copy">
-          Update <code className="text-sm">tenantPreferences</code> for accent, palette, and default shell theme. Full
-          workspace limits and advanced prefs remain under{" "}
-          <Link className="text-[var(--xf-gain-green)] underline-offset-2 hover:underline" href="/admin/tenant-workspace">
-            Tenant workspace
-          </Link>
-          .
+          Update <code className="text-sm">tenantPreferences</code> for accent, palette, and default shell theme. Use{" "}
+          <Link
+            className="text-[var(--xf-gain-green)] underline-offset-2 hover:underline"
+            href={`/admin/tenant-register/${encodeURIComponent(tenantId)}/workspace-limits`}
+          >
+            Workspace limits
+          </Link>{" "}
+          for quotas (xChat, xOptions, portfolios) and plan overrides for this tenant.
         </p>
       </section>
 

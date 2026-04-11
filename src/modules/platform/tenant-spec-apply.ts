@@ -4,6 +4,10 @@ import { ObjectId } from "mongodb";
 import type { ParsedInitialTenantAdmin, ParsedTenantSpecV1 } from "@/lib/tenant-spec-v1-parse";
 import { upsertTenantMembership } from "@/modules/identity/repository";
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
+import {
+    coalesceTenantWorkspaceLimitsForPersistence,
+    tenantWorkspaceLimitsScalarsMissing
+} from "@/modules/identity/tenant-workspace-limits";
 import { ensureTenantTeamXchatAttachmentsCollection } from "@/modules/platform/tenant-xchat-team-collection";
 
 export async function ensureTenantProvisionIndexes(db: Db): Promise<void> {
@@ -158,6 +162,18 @@ export async function upsertTenantFromParsedSpecV1(
   }
 
   const tenantId = tenant._id as ObjectId;
+
+  if (tenantWorkspaceLimitsScalarsMissing(tenant.workspaceLimits)) {
+    await db.collection("core_tenants").updateOne(
+      { _id: tenantId },
+      {
+        $set: {
+          workspaceLimits: coalesceTenantWorkspaceLimitsForPersistence(tenant.workspaceLimits),
+          updatedAt: now
+        }
+      }
+    );
+  }
 
   if (parsed.initialTenantAdmin) {
     await provisionInitialTenantAdmin(db, tenantId, parsed.initialTenantAdmin, now);

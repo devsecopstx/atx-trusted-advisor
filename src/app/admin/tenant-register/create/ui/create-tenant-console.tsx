@@ -10,6 +10,15 @@ import { XF_BRAND_PALETTE_IDS, XF_BRAND_PALETTE_LABELS, type XfBrandPaletteId } 
 const MAX_LOGO_FILE_BYTES = 2 * 1024 * 1024;
 const ACCEPT_IMAGE = "image/png,image/jpeg,image/jpg,image/svg+xml,image/webp,image/gif";
 
+/** Example keys — server validates like tenant-spec YAML; omit or leave empty to use defaults after upsert. */
+const WORKSPACE_LIMITS_JSON_PLACEHOLDER = `{
+  "userChatLimit": 100,
+  "userXoptionsLimit": 20,
+  "tenantPortfolioLimit": 3,
+  "portfolioAccountLimit": 5,
+  "userChatHourlyLimit": 0
+}`;
+
 type CreateTenantResponse = {
   data: {
     tenantId: string;
@@ -64,6 +73,8 @@ export function CreateTenantConsole() {
     "operator"
   );
   const [setAsDefaultSessionTenant, setSetAsDefaultSessionTenant] = useState(true);
+
+  const [workspaceLimitsJson, setWorkspaceLimitsJson] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -164,6 +175,24 @@ export function CreateTenantConsole() {
         body.setAsDefaultSessionTenant = setAsDefaultSessionTenant;
       }
 
+      const wlTrim = workspaceLimitsJson.trim();
+      if (wlTrim) {
+        let parsedWl: unknown;
+        try {
+          parsedWl = JSON.parse(wlTrim) as unknown;
+        } catch {
+          setStatus(null);
+          setError("Workspace limits: invalid JSON.");
+          return;
+        }
+        if (parsedWl === null || typeof parsedWl !== "object" || Array.isArray(parsedWl)) {
+          setStatus(null);
+          setError("Workspace limits JSON must be a single object.");
+          return;
+        }
+        body.workspaceLimits = parsedWl as Record<string, unknown>;
+      }
+
       const res = await fetch("/api/admin/tenants/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -198,7 +227,8 @@ export function CreateTenantConsole() {
     initialAdminEmail,
     initialAdminXUserId,
     initialAdminPlatformRole,
-    setAsDefaultSessionTenant
+    setAsDefaultSessionTenant,
+    workspaceLimitsJson
   ]);
 
   const fieldClass =
@@ -210,8 +240,8 @@ export function CreateTenantConsole() {
         <div>
           <h2>New tenant</h2>
           <p className="status-text text-sm">
-            Slug and display name are required. Branding defaults are finance-grade; adjust anytime in{" "}
-            <strong>Tenant workspace</strong> limits / preferences.
+            Slug and display name are required. Set optional workspace JSON below, or use{" "}
+            <strong>Workspace limits</strong> on the tenant after create.
           </p>
         </div>
         <Link className="cta cta-secondary text-sm" href="/admin/tenant-register">
@@ -220,7 +250,8 @@ export function CreateTenantConsole() {
       </div>
 
       <p className="status-text text-xs text-[var(--xf-text-400)]">
-        These choices can be changed anytime in Tenant Settings (workspace limits / tenant preferences).
+        Branding and quotas can be changed anytime — use the tenant&apos;s Workspace limits page for the full form and
+        plan overrides.
       </p>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_min(100%,280px)] lg:items-start">
@@ -409,9 +440,33 @@ export function CreateTenantConsole() {
             </label>
           </fieldset>
 
+          <details className="rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-800)_40%,transparent)] p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-[var(--xf-text-100)]">
+              4 · Workspace limits (optional)
+            </summary>
+            <div className="mt-4 flex flex-col gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Partial JSON → core_tenants.workspaceLimits</span>
+                <textarea
+                  className={`${fieldClass} min-h-[11rem] font-mono text-xs leading-relaxed`}
+                  spellCheck={false}
+                  placeholder={WORKSPACE_LIMITS_JSON_PLACEHOLDER}
+                  value={workspaceLimitsJson}
+                  onChange={(ev) => setWorkspaceLimitsJson(ev.target.value)}
+                />
+              </label>
+              <p className="status-text text-xs">
+                Same keys as tenant-spec YAML: userChatLimit, userXoptionsLimit, tenantPortfolioLimit,
+                portfolioAccountLimit, chatHistoryMax, maxUsersPerTenant, userChatHourlyLimit (0 = no hourly cap),
+                changePersonaEnabled. Empty = defaults applied on upsert; per-plan overrides use the Workspace limits
+                page after create.
+              </p>
+            </div>
+          </details>
+
           <details className="rounded-lg border border-[color-mix(in_srgb,var(--xf-text-100)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-surface-800)_40%,transparent)] p-4" open>
             <summary className="cursor-pointer text-sm font-semibold text-[var(--xf-text-100)]">
-              4 · Preferences
+              5 · Preferences
             </summary>
             <div className="mt-4 flex flex-col gap-4">
               <label className="flex flex-col gap-1">
@@ -507,6 +562,16 @@ export function CreateTenantConsole() {
       {status ? (
         <p className="status-text text-sm text-[var(--xf-gain-green)]" role="status">
           {status}
+        </p>
+      ) : null}
+      {lastOk ? (
+        <p className="text-sm">
+          <Link
+            className="text-[var(--xf-gain-green)] underline-offset-2 hover:underline"
+            href={`/admin/tenant-register/${encodeURIComponent(lastOk.tenantId)}/workspace-limits`}
+          >
+            Open workspace limits for this tenant →
+          </Link>
         </p>
       ) : null}
       {error ? (

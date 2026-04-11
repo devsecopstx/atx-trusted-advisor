@@ -13,12 +13,20 @@ import type { SubscriptionPlan, Tenant } from "@/modules/identity/types";
 
 export type { TenantWorkspaceLimits };
 
+/**
+ * Tenant-wide `workspaceLimits` row only (ignores `planOverrides`).
+ * **xChat ask** daily/hourly caps use this so Admin “tenant row” matches `POST /api/xchat/ask` for every app user on the tenant.
+ */
+export function tenantBaseWorkspaceLimits(tenant: Tenant | null): TenantWorkspaceLimits {
+  return mergeTenantWorkspaceLimits(tenant?.workspaceLimits ?? null);
+}
+
 /** Same resolution as {@link getEffectiveWorkspaceLimitsForUser} without extra DB reads when tenant + plan are known. */
 export function effectiveWorkspaceLimitsForTenantAndPlan(
   tenant: Tenant | null,
   subscriptionPlan: SubscriptionPlan | undefined
 ): TenantWorkspaceLimits {
-  const base = mergeTenantWorkspaceLimits(tenant?.workspaceLimits ?? null);
+  const base = tenantBaseWorkspaceLimits(tenant);
   const planOverrides = normalizePlanOverridesFromUnknown(tenant?.workspaceLimits?.planOverrides);
   const tier = atxBillingPlanIdForSubscriptionPlan(subscriptionPlan);
   return applyTenantPlanRowToBase(base, planOverrides, tier);

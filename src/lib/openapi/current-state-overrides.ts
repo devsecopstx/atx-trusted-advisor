@@ -601,7 +601,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "GET /api/admin/tenants/register": {
     summary: "Tenant register (platform directory)",
     description:
-      "global_admin only. Lists every `core_tenants` row with id, slug, name, platform-default flag, `membershipCount` (all `core_tenant_memberships` for that tenant), optional xChat team KB id/name from `tenantPreferences` (`xchat_team_attachments_collection_id` / `xchat_team_attachments_collection_name`), stored `workspaceLimits` and `tenantPreferences` (JSON objects or null), and `tenant_admin` memberships (email, display name, user id, default session marker). Admin UI (`/admin/tenant-register`) also surfaces last-four id, accent preview from `tenantPreferences.xf_accent_color`, Edit → branding page, Delete when `membershipCount` is 0, and collapsible JSON for workspace limits / preferences.",
+      "global_admin only. Lists every `core_tenants` row with id, slug, name, platform-default flag, `membershipCount` (all `core_tenant_memberships` for that tenant), optional xChat team KB id/name from `tenantPreferences` (`xchat_team_attachments_collection_id` / `xchat_team_attachments_collection_name`), stored `workspaceLimits` and `tenantPreferences` (JSON objects or null), and `tenant_admin` memberships (email, display name, user id, default session marker). Admin UI (`/admin/tenant-register`) also surfaces last-four id, accent preview from `tenantPreferences.xf_accent_color`, Edit → branding (`/admin/tenant-register/{tenantId}/edit`) or **Workspace limits** (`/admin/tenant-register/{tenantId}/workspace-limits`), Delete when `membershipCount` is 0, and collapsible JSON for workspace limits / preferences.",
     responses: {
       "200": jsonResponse("Tenant register rows.", "TenantRegisterListResponseEnvelope"),
       "401": json401Session(),
@@ -633,7 +633,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
   "DELETE /api/admin/tenants/{tenantId}": {
     summary: "Delete tenant (no memberships)",
     description:
-      "global_admin only. Deletes `core_tenants` when the tenant is not the platform default and has zero `core_tenant_memberships`. Returns 409 when any user is still associated with the tenant.",
+      "global_admin only. Deletes `core_tenants` when the tenant is not the platform default and has zero `core_tenant_memberships`. Before removing the row, attempts to **DELETE** the tenant's xAI team attachments collection (`tenantPreferences.xchat_team_attachments_collection_id`) via the Management API when `XAI_MANAGEMENT_API_KEY` is set; returns **502** if that delete fails (except 404/absent, which is treated as success). When the management key is missing but an id was stored, the Mongo row is still deleted and the response includes `xaiTeamAttachmentsCollection.outcome: skipped_no_management_key` so ops can remove the collection manually. Returns 409 when any user is still associated with the tenant.",
     parameters: [{ name: "tenantId", in: "path", required: true, schema: { type: "string" } }],
     responses: {
       "200": jsonResponse("Tenant deleted.", "AdminTenantDeleteResponseEnvelope"),
@@ -642,6 +642,7 @@ const OPERATION_OVERRIDES: Record<string, OperationOverride> = {
       "403": json403Admin("Session is valid, but admin role is required."),
       "404": jsonResponse("Tenant not found.", "ErrorResponse"),
       "409": jsonResponse("Tenant still has memberships.", "ErrorResponse"),
+      "502": jsonResponse("xAI team collection delete failed; tenant row not removed.", "ErrorResponse"),
       "500": jsonResponse("Unhandled server error.", "ErrorResponse")
     }
   },
@@ -1808,7 +1809,23 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         required: ["deleted", "tenantId"],
         properties: {
           deleted: { type: "boolean", enum: [true] },
-          tenantId: { type: "string", description: "Deleted `core_tenants._id` hex." }
+          tenantId: { type: "string", description: "Deleted `core_tenants._id` hex." },
+          xaiTeamAttachmentsCollection: {
+            type: "object",
+            required: ["outcome"],
+            properties: {
+              outcome: {
+                type: "string",
+                enum: ["deleted", "already_absent", "no_collection_id", "skipped_no_management_key"],
+                description:
+                  "Result of removing the xChat team KB collection on xAI. `skipped_no_management_key` means configure `XAI_MANAGEMENT_API_KEY` or delete the collection in xAI manually."
+              },
+              collectionId: {
+                type: "string",
+                description: "xAI collection id when provisioned (omit when `no_collection_id`)."
+              }
+            }
+          }
         }
       }
     }
@@ -1858,6 +1875,12 @@ export const CURRENT_STATE_COMPONENT_SCHEMAS: Record<string, OpenApiSchema> = {
         type: "string",
         maxLength: 60,
         description: "tenantPreferences.xf_tenant_tagline — subtitle under tenant name in product shell."
+      },
+      workspaceLimits: {
+        type: "object",
+        additionalProperties: true,
+        description:
+          "Optional partial `core_tenants.workspaceLimits` — same validation as tenant-spec YAML (`userXoptionsLimit`, `userChatLimit`, `userChatHourlyLimit` 0–1e6, `tenantPortfolioLimit`, `portfolioAccountLimit`, `chatHistoryMax`, `maxUsersPerTenant`, `changePersonaEnabled`). Unknown keys ignored. Per-plan overrides are not set here; use `PATCH /api/admin/tenants/{tenantId}/workspace-limits` after create."
       }
     }
   },

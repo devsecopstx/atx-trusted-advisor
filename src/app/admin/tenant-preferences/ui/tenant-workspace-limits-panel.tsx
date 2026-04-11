@@ -36,13 +36,13 @@ const QUOTA_FIELDS: { key: PlanQuotaFieldKey; label: string; abbr: string; hint:
     key: "userChatLimit",
     label: "xChat prompts / day (UTC, per user)",
     abbr: "xChat/d",
-    hint: "Hard cap per UTC calendar day in POST /api/xchat/ask (merged tenant + planOverrides for billing tier)."
+    hint: "Tenant row: hard cap per UTC day for every app user on this tenant in POST /api/xchat/ask. Plan-table cell: not used for ask (informational / legacy)."
   },
   {
     key: "userChatHourlyLimit",
     label: "xChat prompts / hr (UTC, per user)",
     abbr: "xChat/hr",
-    hint: "Optional UTC clock-hour cap; 0 = off (only daily cap + per-minute burst apply)."
+    hint: "Tenant row: optional UTC hour cap for ask; 0 = off. Plan-table cell: not used for ask."
   },
   {
     key: "tenantPortfolioLimit",
@@ -90,7 +90,7 @@ const PREF_FIELDS: (
     label: "Chat history max (turns)",
     abbr: "Hist max",
     kind: "number",
-    hint: "Recent prompts loaded in xChat thread + history panel (default 10)."
+    hint: "UI + history API: max recent turns shown (default 10). Does not cap POST /api/xchat/ask per day — use xChat/d for daily prompt limits."
   }
 ];
 
@@ -381,7 +381,13 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
         aria-label="xChat prompt caps for this tenant"
       >
         <h2 className="text-sm font-semibold text-[var(--xf-text-100)]">xChat prompt caps (tenant row)</h2>
-        <p className="mt-1 text-xs text-[var(--xf-text-400)]">Per signed-in user, UTC. Plan overrides below can lower these; empty plan cells inherit.</p>
+        <p className="mt-1 text-xs text-[var(--xf-text-400)]">
+          These numbers are enforced for <strong className="text-[var(--xf-text-200)]">all</strong> signed-in app users
+          on this tenant (UTC). Per-billing-plan <span className="font-mono">xChat/d</span> and{" "}
+          <span className="font-mono">xChat/hr</span> cells below do <strong className="text-[var(--xf-text-200)]">not</strong>{" "}
+          change ask limits. <strong className="text-[var(--xf-text-200)]">Hist max</strong> is UI/history depth only,
+          not this cap.
+        </p>
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-[var(--xf-text-400)]">Daily limit</dt>
@@ -579,11 +585,13 @@ export function TenantWorkspaceLimitsPanel({ tenantId }: Props) {
       <div className="mt-6 space-y-2">
         <h3 className="text-sm font-semibold text-white">Per-billing-plan overrides</h3>
         <p className="admin-muted text-xs max-w-3xl">
-          Workspace overrides use billing tier keys (Basic, Premium monthly, Premium+ monthly). Core user plan enum is{" "}
-          <code className="font-mono text-[0.7rem]">basic</code>,{" "}
-          <code className="font-mono text-[0.7rem]">premium</code>,{" "}
-          <code className="font-mono text-[0.7rem]">premium_plus</code>. Leave limit cells empty
-          to inherit the tenant defaults in the row above. List price (USD) defaults to {DEFAULT_TENANT_PLAN_PRICE}{" "}
+          Overrides below apply to <strong className="text-slate-200">portfolio / xOptions / persona / history</strong>{" "}
+          quotas and Stripe list price — <strong className="text-slate-200">not</strong> xChat daily/hourly ask caps (those
+          use the tenant row only). Keys: <code className="font-mono text-[0.7rem]">basic</code>,{" "}
+          <code className="font-mono text-[0.7rem]">premium_monthly</code>,{" "}
+          <code className="font-mono text-[0.7rem]">premium_plus_monthly</code> (aligned with{" "}
+          <code className="font-mono text-[0.7rem]">core_users.subscriptionPlan</code>). Empty limit cells inherit the
+          tenant row above for <em>those</em> fields. List price (USD) defaults to {DEFAULT_TENANT_PLAN_PRICE}{" "}
           per plan when unset. Optional Stripe <strong>prod_…</strong> / <strong>price_…</strong> ids override env{" "}
           <code className="font-mono text-[0.65rem]">STRIPE_PRICE_*</code> for Checkout for this tenant; leave blank to
           use platform env. Saving persists all three tiers.

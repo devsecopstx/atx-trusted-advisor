@@ -7,7 +7,7 @@ import { DEFAULT_TENANT_ACCENT_HEX, normalizeXfAccentColor } from "@/lib/tenant-
 import { XF_BRAND_PALETTE_IDS } from "@/lib/tenant-branding-palette";
 import { MAX_XF_HERO_ICON_URL_CHARS } from "@/lib/tenant-hero-icon-url";
 import { MAX_XF_TENANT_LOGO_URL_CHARS } from "@/lib/tenant-logo-url";
-import { parseTenantSpecV1Document } from "@/lib/tenant-spec-v1-parse";
+import { parseTenantSpecV1Document, sanitizeWorkspaceLimitsPartial } from "@/lib/tenant-spec-v1-parse";
 import { upsertTenantFromParsedSpecV1 } from "@/modules/platform/tenant-spec-apply";
 
 const createTenantBodySchema = z.object({
@@ -22,10 +22,15 @@ const createTenantBodySchema = z.object({
   xfHeroIconUrl: z.string().max(MAX_XF_HERO_ICON_URL_CHARS).optional(),
   xfAccentColor: z.string().max(32).optional(),
   xfTenantLogoUrl: z.string().max(MAX_XF_TENANT_LOGO_URL_CHARS).optional(),
-  xfTenantTagline: z.string().max(60).optional()
+  xfTenantTagline: z.string().max(60).optional(),
+  /** Partial workspace limits — same validation as tenant-spec YAML (`sanitizeWorkspaceLimitsPartial`). */
+  workspaceLimits: z.record(z.string(), z.unknown()).optional()
 });
 
-function bodyToSpecV1Doc(body: z.infer<typeof createTenantBodySchema>): { version: 1; tenant: Record<string, unknown> } {
+function bodyToSpecV1Doc(
+  body: z.infer<typeof createTenantBodySchema>,
+  workspaceLimits?: Record<string, unknown>
+): { version: 1; tenant: Record<string, unknown> } {
   const tenant: Record<string, unknown> = {
     slug: body.slug.trim(),
     name: body.name.trim(),
@@ -71,6 +76,10 @@ function bodyToSpecV1Doc(body: z.infer<typeof createTenantBodySchema>): { versio
   }
   tenant.tenantPreferences = tp;
 
+  if (workspaceLimits && Object.keys(workspaceLimits).length > 0) {
+    tenant.workspaceLimits = workspaceLimits;
+  }
+
   return { version: 1, tenant };
 }
 
@@ -99,7 +108,20 @@ export async function POST(request: Request) {
     );
   }
 
-  const specDoc = bodyToSpecV1Doc(parsedBody.data);
+  let workspaceLimitsForSpec: Record<string, unknown> | undefined;
+  if (parsedBody.data.workspaceLimits !== undefined) {
+    try {
+      const w = sanitizeWorkspaceLimitsPartial(parsedBody.data.workspaceLimits);
+      if (w && Object.keys(w).length > 0) {
+        workspaceLimitsForSpec = w;
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Invalid workspaceLimits";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+  }
+
+  const specDoc = bodyToSpecV1Doc(parsedBody.data, workspaceLimitsForSpec);
 
   let parsedSpec;
   try {

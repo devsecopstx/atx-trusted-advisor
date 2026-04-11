@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
     buildSessionToolInstructions,
     buildXchatSystemPrompt,
+    computeXchatRemoteChainInstructionsFingerprint,
     XCHAT_SERVER_ROUTING_POLICY_BLOCK
 } from "@/modules/xchat/xchat-prompt-build";
 
@@ -36,6 +37,42 @@ describe("buildSessionToolInstructions", () => {
     expect(s).toContain("targetEntryNotional100xUsdDisplay");
     expect(s).toContain("targetEntryDisplay");
     expect(s).toContain("enumerate **every symbol returned**");
+  });
+});
+
+describe("computeXchatRemoteChainInstructionsFingerprint", () => {
+  const base = {
+    personaSystem: "You are The Advisor.",
+    personaUpdatedAtMs: 1_700_000_000_000,
+    strategyJobOptOut: false,
+    hostedSearch: true,
+    atxFunction: true,
+    citationsEnabled: true
+  };
+
+  it("is stable for identical inputs", () => {
+    const a = computeXchatRemoteChainInstructionsFingerprint(base);
+    const b = computeXchatRemoteChainInstructionsFingerprint({ ...base });
+    expect(a).toBe(b);
+    expect(a.length).toBe(24);
+  });
+
+  it("changes when persona system text changes", () => {
+    const a = computeXchatRemoteChainInstructionsFingerprint(base);
+    const b = computeXchatRemoteChainInstructionsFingerprint({
+      ...base,
+      personaSystem: "Different."
+    });
+    expect(a).not.toBe(b);
+  });
+
+  it("changes when persona updatedAt changes", () => {
+    const a = computeXchatRemoteChainInstructionsFingerprint(base);
+    const b = computeXchatRemoteChainInstructionsFingerprint({
+      ...base,
+      personaUpdatedAtMs: base.personaUpdatedAtMs + 1
+    });
+    expect(a).not.toBe(b);
   });
 });
 

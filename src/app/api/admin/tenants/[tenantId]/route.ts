@@ -30,7 +30,26 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const effectiveHex = tenant._id.toHexString();
   const result = await deleteTenantIfNoMemberships(effectiveHex);
   if (result.ok) {
-    return NextResponse.json({ data: { deleted: true, tenantId: effectiveHex } });
+    return NextResponse.json({
+      data: {
+        deleted: true,
+        tenantId: effectiveHex,
+        ...(result.xaiTeamAttachmentsCollection
+          ? { xaiTeamAttachmentsCollection: result.xaiTeamAttachmentsCollection }
+          : {})
+      }
+    });
+  }
+  if (result.code === "XAI_COLLECTION_DELETE_FAILED") {
+    return NextResponse.json(
+      {
+        error:
+          "Could not delete this tenant's xAI team collection. Fix xAI Management API access or remove the collection in the xAI console, then retry deleting the tenant.",
+        code: "xai_collection_delete_failed",
+        details: result.xaiError
+      },
+      { status: 502 }
+    );
   }
   if (result.code === "HAS_MEMBERS") {
     return NextResponse.json(

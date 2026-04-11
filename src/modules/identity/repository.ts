@@ -30,6 +30,7 @@ import type {
     Tenant,
     TenantMembership
 } from "@/modules/identity/types";
+import { deleteTenantTeamXchatAttachmentsCollection } from "@/modules/platform/tenant-xchat-team-collection";
 
 const collections = {
   users: "core_users",
@@ -414,9 +415,25 @@ export async function listTenantRegisterForAdmin(): Promise<TenantRegisterRow[]>
     });
 }
 
+export type DeleteTenantIfNoMembershipsXaiOutcome =
+  | "deleted"
+  | "already_absent"
+  | "no_collection_id"
+  | "skipped_no_management_key";
+
 export type DeleteTenantIfNoMembershipsResult =
-  | { ok: true }
-  | { ok: false; code: "NOT_FOUND" | "HAS_MEMBERS" | "PLATFORM_DEFAULT" };
+  | {
+      ok: true;
+      xaiTeamAttachmentsCollection?: {
+        outcome: DeleteTenantIfNoMembershipsXaiOutcome;
+        collectionId?: string;
+      };
+    }
+  | {
+      ok: false;
+      code: "NOT_FOUND" | "HAS_MEMBERS" | "PLATFORM_DEFAULT" | "XAI_COLLECTION_DELETE_FAILED";
+      xaiError?: string;
+    };
 
 /**
  * Removes `core_tenants` when the tenant has no memberships and is not the platform default row.
@@ -439,11 +456,33 @@ export async function deleteTenantIfNoMemberships(tenantIdHex: string): Promise<
   if (n > 0) {
     return { ok: false, code: "HAS_MEMBERS" };
   }
+
+  const xai = await deleteTenantTeamXchatAttachmentsCollection({
+    tenantPreferences: tenant.tenantPreferences
+  });
+  if (xai.status === "failed") {
+    return {
+      ok: false,
+      code: "XAI_COLLECTION_DELETE_FAILED",
+      xaiError: xai.message
+    };
+  }
+
   const del = await db.collection<Tenant>(collections.tenants).deleteOne({ _id: id });
   if (del.deletedCount !== 1) {
     return { ok: false, code: "NOT_FOUND" };
   }
-  return { ok: true };
+
+  const xaiTeamAttachmentsCollection =
+    xai.status === "no_collection_id"
+      ? { outcome: "no_collection_id" as const }
+      : xai.status === "skipped_no_management_key"
+        ? { outcome: "skipped_no_management_key" as const, collectionId: xai.collectionId }
+        : xai.status === "already_absent"
+          ? { outcome: "already_absent" as const, collectionId: xai.collectionId }
+          : { outcome: "deleted" as const, collectionId: xai.collectionId };
+
+  return { ok: true, xaiTeamAttachmentsCollection };
 }
 
 const SHELL_PREF_KEYS = [

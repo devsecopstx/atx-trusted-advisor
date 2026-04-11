@@ -71,7 +71,7 @@ Idempotent: safe to re-run; **`isDefault`** on the tenant row is always forced *
 
 - **`slug`**: lowercase letters, digits, single hyphens (no leading/trailing hyphen). Unique in `core_tenants`.
 - **`isDefault`**: must stay **`false`** for specs applied via `seed:tenant`. The single default tenant remains `atxfinance-core` from `seed:admin`.
-- **`workspaceLimits`**: optional partial override (same shape as `core_tenants.workspaceLimits` in app code).
+- **`workspaceLimits`**: optional partial override (same shape as `core_tenants.workspaceLimits` in app code). Omitting it still yields **persisted defaults** on upsert (`npm run seed:tenant` / **`POST /api/admin/tenants/create`**) so Admin **Tenant register** is not stuck on `null`. Per-plan overrides and the full form: **`/admin/tenant-register/{tenantId}/workspace-limits`** or session-tenant **`/admin/tenant-preferences/workspace-limits`**.
 
 ## Example
 

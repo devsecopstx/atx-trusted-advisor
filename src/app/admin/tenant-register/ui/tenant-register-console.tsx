@@ -156,11 +156,28 @@ export function TenantRegisterConsole() {
       setDeleteBusyId(tenantId);
       try {
         const res = await fetch(`/api/admin/tenants/${encodeURIComponent(tenantId)}`, { method: "DELETE" });
-        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          details?: string;
+          data?: {
+            xaiTeamAttachmentsCollection?: {
+              outcome: string;
+              collectionId?: string;
+            };
+          };
+        };
         if (!res.ok) {
-          throw new Error(json.error ?? res.statusText);
+          const detail = json.details ? ` ${json.details}` : "";
+          throw new Error(`${json.error ?? res.statusText}${detail}`.trim());
         }
-        setStatus("Tenant deleted.");
+        const xai = json.data?.xaiTeamAttachmentsCollection;
+        if (xai?.outcome === "skipped_no_management_key") {
+          setStatus(
+            `Tenant deleted. xAI team collection ${xai.collectionId ?? "(unknown id)"} was not removed automatically — set XAI_MANAGEMENT_API_KEY or delete it in the xAI console.`
+          );
+        } else {
+          setStatus("Tenant deleted.");
+        }
         await load();
       } catch (e) {
         setStatus(e instanceof Error ? e.message : "Delete failed");
@@ -190,7 +207,8 @@ export function TenantRegisterConsole() {
           <p className="status-text text-sm">
             Mongo tenant row, membership counts, xChat team KB id/name when provisioned, workspace limits / tenant
             preferences, and tenant_admin directory. Delete is allowed only when membership count is zero (and not the
-            platform default tenant).
+            platform default tenant). With <code className="font-mono text-xs">XAI_MANAGEMENT_API_KEY</code>, delete also
+            removes the tenant&apos;s xAI team attachments collection.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

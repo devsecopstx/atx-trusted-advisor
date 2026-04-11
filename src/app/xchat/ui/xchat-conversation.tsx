@@ -17,10 +17,12 @@ import { useRouter } from "next/navigation";
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { RailDisclosure } from "@/app/ui/app-user-rail-nav";
-import { LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
+import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
+import { LucideFolderIcon, LucideSquarePenIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { expandWorkspaceProductRail, WorkspaceProductSidebar } from "@/app/ui/workspace-product-sidebar";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import { XchatAttachmentsPanel } from "@/app/xchat/ui/xchat-attachments-panel";
 import { XchatChatSkeleton } from "@/app/xchat/ui/xchat-chat-skeleton";
 import type { HistoryItem, HistoryStats, Message } from "@/app/xchat/ui/xchat-conversation-types";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
@@ -79,20 +81,6 @@ function ExamplesRailGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function RecentChatsRailGlyph(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M8 9h8M8 13h5M5 19V6a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H10l-5 3v-3H6a2 2 0 01-2-2z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.75}
-      />
-    </svg>
-  );
-}
-
 function PersonaRailGlyph(props: SVGProps<SVGSVGElement>) {
   return (
     <svg aria-hidden fill="none" viewBox="0 0 24 24" {...props}>
@@ -131,7 +119,9 @@ export type XchatConversationProps = {
   /** Tenant workspace limit: max recent prompts in thread + history fetch. */
   workspaceChatHistoryMax?: number;
   /** Optional deep-link target from non-xChat pages. */
-  initialXchatItem?: "composer" | "persona" | "examples" | "history" | null;
+  initialXchatItem?: "composer" | "persona" | "examples" | "history" | "attachments" | null;
+  /** Premium+ (or global_admin): tenant xAI attachment folder management in the rail. */
+  fileAttachmentsEnabled?: boolean;
   /** RSC bootstrap: prefs + recent Mongo turns (60s server cache) to avoid cold client waterfalls. */
   serverBootstrap?: XchatServerShellBootstrap | null;
 };
@@ -355,6 +345,7 @@ export function XchatConversation({
   workspaceChangePersonaEnabled = true,
   workspaceChatHistoryMax = 10,
   initialXchatItem = null,
+  fileAttachmentsEnabled = false,
   serverBootstrap = null
 }: XchatConversationProps) {
   const router = useRouter();
@@ -1160,16 +1151,26 @@ export function XchatConversation({
           };
         };
         error?: string;
+        code?: string;
+        dailyLimit?: number;
+        hourlyLimit?: number;
+        xchatLimitSource?: "tenant_workspace_row";
       };
 
       if (!response.ok || !payload.data) {
+        const limitSuffix =
+          payload.code === "xchat_daily_limit_exceeded" && typeof payload.dailyLimit === "number"
+            ? ` Workspace daily cap: ${payload.dailyLimit} prompts per UTC day (Admin → Tenant workspace → tenant row xChat/d; same value for all users on this tenant).`
+            : payload.code === "xchat_hourly_limit_exceeded" && typeof payload.hourlyLimit === "number"
+              ? ` Workspace hourly cap: ${payload.hourlyLimit} prompts per UTC hour (tenant row xChat/hr).`
+              : "";
         setMessages((prev) => {
           const added = [
             ...prev,
             {
               id: `error-${Date.now()}`,
               role: "error" as const,
-              content: payload.error ?? `Request failed (${response.status})`,
+              content: `${payload.error ?? `Request failed (${response.status})`}${limitSuffix}`,
               timestamp: Date.now()
             }
           ];
@@ -1467,10 +1468,22 @@ export function XchatConversation({
                   </RailDisclosure>
                 </div>
 
+                {fileAttachmentsEnabled ? (
+                  <div className="xchat-rail-subsection">
+                    <RailDisclosure
+                      defaultOpen={initialXchatItem === "attachments"}
+                      icon={<LucideFolderIcon className="app-user-rail-disclosure__glyph" />}
+                      title="File attachments"
+                    >
+                      <XchatAttachmentsPanel />
+                    </RailDisclosure>
+                  </div>
+                ) : null}
+
                 <div className="xchat-rail-subsection">
                   <RailDisclosure
                     defaultOpen={initialXchatItem === "history"}
-                    icon={<RecentChatsRailGlyph className="app-user-rail-disclosure__glyph" />}
+                    icon={<ChatHistoryRailIcon className="app-user-rail-disclosure__glyph" />}
                     title="Chat history"
                   >
                     <div className="xchat-sidebar-privacy-row">

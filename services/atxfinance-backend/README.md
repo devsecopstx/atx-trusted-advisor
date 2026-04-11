@@ -13,22 +13,18 @@ Defaults approved:
 
 Prereqs:
 - JDK 21 (Temurin recommended)
-- MongoDB (Atlas or local) URI — do not commit real secrets; use `.env` or local export
+- MongoDB (Atlas or local) URI — do not commit real secrets
 
 Build tool: **Gradle** (`build.gradle.kts`, `gradlew`). There is **no** `pom.xml`; the repo-root `Dockerfile` runs `gradle bootJar` against this module.
 
-Environment vars (example) — use empty placeholders in `.env.example` at repo root when we wire secrets:
-- `MONGODB_URI` — for Spring Data + ShedLock (Mongo lock collection)
-- `PUBSUB_PROJECT_ID` — GCP project to target (staging)
-- `PUBSUB_TOPIC` — e.g. `atxfinance-backend-requests`
-- `PUBSUB_DLQ_TOPIC` — e.g. `atxfinance-backend-requests-dlq`
-- `OTEL_EXPORTER_OTLP_ENDPOINT` — OTLP collector endpoint (optional for local)
+Environment: copy **`.env.example`** in this directory to **`.env`**, fill values, then export before `bootRun` (Spring does not load `.env` automatically), e.g. `set -a && source .env && set +a && ./gradlew bootRun`. For **Docker Compose**, the repo-root **`.env`** is loaded for the `atxfinance-backend` service — copy needed keys from this example there. Full key list and comments live in **`.env.example`**.
 
 Run:
 ```
 cd services/atxfinance-backend
+cp .env.example .env
 chmod +x ./gradlew   # once, if needed
-./gradlew bootRun
+set -a && source .env && set +a && ./gradlew bootRun
 ```
 
 Tests:

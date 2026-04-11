@@ -20,7 +20,7 @@ import type { Tenant } from "@/modules/identity/types";
 export const BILLING_WORKSPACE_LABEL_XOPTIONS = "xOptions views / hr";
 /** UTC clock-hour cap when tenant sets `userChatHourlyLimit` &gt; 0; otherwise billing shows Unlimited. */
 export const BILLING_WORKSPACE_LABEL_XCHAT_HOURLY = "xChat prompts / hr (UTC)";
-/** Matches `POST /api/xchat/ask` day bucket (`userChatLimit`). */
+/** Tenant `workspaceLimits.userChatLimit` — same source as `POST /api/xchat/ask` day bucket (not plan override rows). */
 export const BILLING_WORKSPACE_LABEL_XCHAT_DAILY = "xChat prompts / day (UTC)";
 export const BILLING_WORKSPACE_LABEL_CHANGE_PERSONA = "Change persona";
 export const BILLING_WORKSPACE_LABEL_CHAT_HISTORY = "Chat history max (turns)";
@@ -150,13 +150,19 @@ export function billingCardWorkspaceDisplay(input: {
 
   const base = mergeTenantWorkspaceLimits(tenant.workspaceLimits ?? null);
   const effective = applyTenantPlanRowToBase(base, planOverrides, plan.id);
-  const quotaRows = BILLING_WORKSPACE_LIMIT_SPECS.map((spec) => ({
-    label: spec.label,
-    value:
-      spec.limitKey === "userChatHourlyLimit"
-        ? formatOptionalWorkspaceHourlyCap(effective.userChatHourlyLimit)
-        : formatWorkspaceLimitScalar(effective[spec.limitKey] as number)
-  }));
+  const quotaRows = BILLING_WORKSPACE_LIMIT_SPECS.map((spec) => {
+    const forLimits =
+      spec.limitKey === "userChatLimit" || spec.limitKey === "userChatHourlyLimit"
+        ? base
+        : effective;
+    return {
+      label: spec.label,
+      value:
+        spec.limitKey === "userChatHourlyLimit"
+          ? formatOptionalWorkspaceHourlyCap(forLimits.userChatHourlyLimit)
+          : formatWorkspaceLimitScalar(forLimits[spec.limitKey] as number)
+    };
+  });
   const prefRows = BILLING_WORKSPACE_PREFERENCE_SPECS.map((spec) => {
     if (spec.kind === "boolean") {
       return { label: spec.label, value: formatChangePersonaEnabled(effective.changePersonaEnabled) };

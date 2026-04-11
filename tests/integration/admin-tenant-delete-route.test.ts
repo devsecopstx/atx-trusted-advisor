@@ -50,6 +50,39 @@ describe("DELETE /api/admin/tenants/{tenantId}", () => {
     expect(identityMocks.deleteTenantIfNoMemberships).toHaveBeenCalledWith(tenantHex);
   });
 
+  it("returns 200 with xaiTeamAttachmentsCollection when repository reports it", async () => {
+    identityMocks.deleteTenantIfNoMemberships.mockResolvedValueOnce({
+      ok: true,
+      xaiTeamAttachmentsCollection: { outcome: "deleted", collectionId: "xai_col_1" }
+    });
+    const response = await deleteTenant(
+      new Request(`http://test/api/admin/tenants/${tenantHex}`),
+      { params: Promise.resolve({ tenantId: tenantHex }) }
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      data: { xaiTeamAttachmentsCollection?: { outcome: string; collectionId?: string } };
+    };
+    expect(body.data.xaiTeamAttachmentsCollection?.outcome).toBe("deleted");
+    expect(body.data.xaiTeamAttachmentsCollection?.collectionId).toBe("xai_col_1");
+  });
+
+  it("returns 502 when xAI collection delete fails", async () => {
+    identityMocks.deleteTenantIfNoMemberships.mockResolvedValueOnce({
+      ok: false,
+      code: "XAI_COLLECTION_DELETE_FAILED",
+      xaiError: "upstream timeout"
+    });
+    const response = await deleteTenant(
+      new Request(`http://test/api/admin/tenants/${tenantHex}`),
+      { params: Promise.resolve({ tenantId: tenantHex }) }
+    );
+    expect(response.status).toBe(502);
+    const body = (await response.json()) as { code?: string; details?: string };
+    expect(body.code).toBe("xai_collection_delete_failed");
+    expect(body.details).toBe("upstream timeout");
+  });
+
   it("returns 409 when tenant still has memberships", async () => {
     identityMocks.deleteTenantIfNoMemberships.mockResolvedValueOnce({ ok: false, code: "HAS_MEMBERS" });
     const response = await deleteTenant(

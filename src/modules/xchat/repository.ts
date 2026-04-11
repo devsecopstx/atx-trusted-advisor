@@ -318,6 +318,9 @@ export async function createRagFile(
   return { ...document, _id: result.insertedId };
 }
 
+/** App-user Premium+ xChat uploads — linked to `core_tenants.tenantPreferences.xchat_team_attachments_collection_id`. */
+export const TENANT_PREMIUM_ATTACHMENTS_SCOPE = "tenant_premium_attachments" as const;
+
 export async function listRagFiles(input?: {
   scope?: string;
   tenantId?: ObjectId;
@@ -333,6 +336,19 @@ export async function listRagFiles(input?: {
   return db
     .collection<RagSourceFile>(collections.ragFiles)
     .find(query)
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .toArray();
+}
+
+export async function listRagFilesForTenantAndScope(
+  tenantId: ObjectId,
+  scope: string
+): Promise<RagSourceFile[]> {
+  const db = await getDb();
+  return db
+    .collection<RagSourceFile>(collections.ragFiles)
+    .find({ tenantId, scope })
     .sort({ createdAt: -1 })
     .limit(100)
     .toArray();

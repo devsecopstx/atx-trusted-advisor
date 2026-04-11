@@ -261,6 +261,12 @@ export type XChatSessionLog = {
   xaiUsage?: XChatXaiUsageSnapshot;
   /** xAI `/responses` id returned for this turn; used to continue remote conversation state safely. */
   xaiResponseId?: string;
+  /**
+   * Fingerprint of persona + session-tool/citation inputs that define the **instructions** sent on
+   * a fresh xAI chain; used to drop `previous_response_id` when the persona was edited after the
+   * prior turn (xAI forbids resending `instructions` on continuation requests).
+   */
+  xchatInstructionsFingerprint?: string;
   xapiMode?: PersonaXapiMode;
   xapiToolChoice?: PersonaXapiToolChoice;
   xapiMaxTurns?: number;

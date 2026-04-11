@@ -24,7 +24,7 @@
 
 ## Remote xAI conversation state
 
-- **`XCHAT_USE_REMOTE_HISTORY`** — parsed in **`src/lib/env.ts`** (default **`false`**). When **`true`**, `POST /api/xchat/ask` sets `store_messages` and, when `threadId` + prior `xaiResponseId` exist (same `personaId`), sends `previous_response_id` and omits Mongo recent-turn injection for that continuation. Disabled when `keepXchatHistory` is false on the persona, on vision turns, or without `threadId`.
+- **`XCHAT_USE_REMOTE_HISTORY`** — parsed in **`src/lib/env.ts`** (default **`false`**). When **`true`**, `POST /api/xchat/ask` sets `store_messages` and, when `threadId` + prior `xaiResponseId` exist (same `personaId`), sends `previous_response_id` and omits Mongo recent-turn injection for that continuation. Disabled when `keepXchatHistory` is false on the persona, on vision turns, or without `threadId`. **Persona edits:** xAI does not allow sending `instructions` together with `previous_response_id`; the remote chain keeps the **first** turn’s system prompt. Ask stores **`xchatInstructionsFingerprint`** on each `xchat_logs` row (`computeXchatRemoteChainInstructionsFingerprint` in **`xchat-prompt-build.ts`**) and **starts a fresh chain** (drops `previous_response_id`, uses client `recentMessages` + new `instructions`) when the fingerprint no longer matches—so Mongo-updated persona text and tool/citation flags apply on the next turn.
 
 ## See also
 

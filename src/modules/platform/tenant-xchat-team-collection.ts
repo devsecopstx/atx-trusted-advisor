@@ -1,7 +1,12 @@
 import type { Db, ObjectId } from "mongodb";
 
 import { getEnv } from "@/lib/env";
-import { createXaiCollection, hasXaiManagementApiKey, listXaiCollections } from "@/lib/xai";
+import {
+    createXaiCollection,
+    deleteXaiCollection,
+    hasXaiManagementApiKey,
+    listXaiCollections
+} from "@/lib/xai";
 import type { TenantPreferences } from "@/modules/identity/tenant-branding-preferences";
 
 const NAME_PREFIX = "xfinance-tenant";
@@ -97,5 +102,47 @@ export async function ensureTenantTeamXchatAttachmentsCollection(input: {
       message: error instanceof Error ? error.message : String(error)
     });
     return null;
+  }
+}
+
+export type DeleteTenantTeamXchatAttachmentsCollectionOutcome =
+  | { status: "no_collection_id" }
+  | { status: "skipped_no_management_key"; collectionId: string }
+  | { status: "deleted"; collectionId: string }
+  | { status: "already_absent"; collectionId: string }
+  | { status: "failed"; collectionId: string; message: string };
+
+/**
+ * Deletes the xAI **team** collection stored on `tenantPreferences.xchat_team_attachments_collection_id`.
+ * Run **before** removing `core_tenants`. If `status === "failed"`, abort the tenant row delete and surface the error.
+ */
+export async function deleteTenantTeamXchatAttachmentsCollection(input: {
+  tenantPreferences?: TenantPreferences | null;
+}): Promise<DeleteTenantTeamXchatAttachmentsCollectionOutcome> {
+  const collectionId = input.tenantPreferences?.xchat_team_attachments_collection_id?.trim() ?? "";
+  if (!collectionId) {
+    return { status: "no_collection_id" };
+  }
+  if (!hasXaiManagementApiKey()) {
+    console.warn(
+      "[tenant/xchat-team-collection] XAI_MANAGEMENT_API_KEY missing; cannot delete team attachments collection",
+      { collectionId }
+    );
+    return { status: "skipped_no_management_key", collectionId };
+  }
+  try {
+    await deleteXaiCollection(collectionId);
+    return { status: "deleted", collectionId };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const lowered = message.toLowerCase();
+    if (lowered.includes("404") || lowered.includes("not found")) {
+      return { status: "already_absent", collectionId };
+    }
+    console.error("[tenant/xchat-team-collection] xAI collection delete failed", {
+      collectionId,
+      message
+    });
+    return { status: "failed", collectionId, message };
   }
 }

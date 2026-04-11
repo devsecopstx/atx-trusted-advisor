@@ -37,7 +37,12 @@ export default async function XchatPage({ searchParams }: XchatPageProps) {
   const rail = typeof params.rail === "string" ? params.rail : "";
   const item = typeof params.item === "string" ? params.item : "";
   const initialXchatItem =
-    rail === "xchat" && (item === "composer" || item === "persona" || item === "examples" || item === "history")
+    rail === "xchat" &&
+    (item === "composer" ||
+      item === "persona" ||
+      item === "examples" ||
+      item === "history" ||
+      item === "attachments")
       ? item
       : null;
   const pendingXHandle =

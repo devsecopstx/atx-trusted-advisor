@@ -91,6 +91,21 @@ export function LucideHouseIcon({ className, ...props }: SVGProps<SVGSVGElement>
 }
 
 /** Compose / edit — pen on document (Lucide `square-pen`). https://lucide.dev/icons/square-pen */
+/** Folder — workspace / attachments rail. https://lucide.dev/icons/folder */
+export function LucideFolderIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
+      <path
+        d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.89l-.812-1.22A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+      />
+    </svg>
+  );
+}
+
 export function LucideSquarePenIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>

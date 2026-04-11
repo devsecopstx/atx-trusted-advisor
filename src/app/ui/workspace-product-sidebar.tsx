@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
     useCallback,
     useEffect,
@@ -15,6 +15,7 @@ import {
 
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
+import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
 import { LucideMonitorIcon, LucideSquarePenIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
@@ -321,7 +322,10 @@ export function WorkspaceProductSidebar({
   xchatSection
 }: WorkspaceProductSidebarProps) {
   const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
   const narrowViewport = useSyncExternalStore(subscribeMaxWidth980, getMaxWidth980Snapshot, () => false);
+  const xchatHistoryDeepLinkActive =
+    pathname.startsWith("/xchat") && searchParams.get("item") === "history";
 
   const expanded = useSyncExternalStore(
     subscribeRailExpandedPrefs,
@@ -403,7 +407,8 @@ export function WorkspaceProductSidebar({
           Examples
         </SidebarLink>
         <SidebarLink href="/xchat?rail=xchat&item=history" nested title="Open xChat history panel">
-          Chat history
+          <ChatHistoryRailIcon className="portfolios-workspace-sidebar__glyph" />
+          <span>Chat history</span>
         </SidebarLink>
       </div>
     </RouteSyncedDetails>
@@ -424,6 +429,19 @@ export function WorkspaceProductSidebar({
       isActive: pathname.startsWith("/xchat"),
       icon: <RailSidebarZapIcon className="text-[var(--xf-lightning-yellow)]" size="disclosure" />
     },
+    ...(pathname.startsWith("/xchat")
+      ? ([
+          {
+            key: "xchat-history",
+            href: "/xchat?rail=xchat&item=history",
+            label: "Chat history",
+            isActive: xchatHistoryDeepLinkActive,
+            icon: (
+              <ChatHistoryRailIcon className="h-[1.15rem] w-[1.15rem] shrink-0 text-[var(--xf-text-200)]" />
+            )
+          }
+        ] satisfies CollapsedIconItem[])
+      : []),
     {
       key: "xoptions",
       href: "/xoptions",

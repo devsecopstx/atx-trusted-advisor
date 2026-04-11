@@ -66,6 +66,43 @@ describe("POST /api/admin/tenants/create", () => {
     );
   });
 
+  it("passes sanitized workspaceLimits into parsed spec", async () => {
+    const response = await postCreateTenant(
+      new Request("http://test/api/admin/tenants/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: "quota-co",
+          name: "Quota Co",
+          workspaceLimits: { userChatLimit: 99, userXoptionsLimit: 12 }
+        })
+      })
+    );
+    expect(response.status).toBe(200);
+    expect(applyMocks.upsertTenantFromParsedSpecV1).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        workspaceLimits: { userChatLimit: 99, userXoptionsLimit: 12 }
+      })
+    );
+  });
+
+  it("returns 400 for invalid workspaceLimits", async () => {
+    const response = await postCreateTenant(
+      new Request("http://test/api/admin/tenants/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: "bad-wl",
+          name: "Bad WL",
+          workspaceLimits: { userChatLimit: 0 }
+        })
+      })
+    );
+    expect(response.status).toBe(400);
+    expect(applyMocks.upsertTenantFromParsedSpecV1).not.toHaveBeenCalled();
+  });
+
   it("merges branding fields into parsed spec", async () => {
     const response = await postCreateTenant(
       new Request("http://test/api/admin/tenants/create", {

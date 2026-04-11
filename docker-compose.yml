@@ -1,7 +1,7 @@
 services:
   mongodb:
     image: mongo:8
-    container_name: atxfinance-mongodb
+    container_name: atxdevtest-mongodb
     restart: unless-stopped
     env_file:
       - .env

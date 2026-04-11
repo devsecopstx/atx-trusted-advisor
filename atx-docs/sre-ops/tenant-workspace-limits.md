@@ -7,7 +7,7 @@ Per-tenant quotas for the Next.js BFF. Defaults are code-defined; overrides live
 | Key | Default | Enforcement |
 |-----|---------|-------------|
 | `userXoptionsLimit` | 10 | **Billing/admin copy:** per **hour**. **Runtime:** `app_feature_daily_usage` (`feature: xoptions_deck`) UTC day bucket per user+tenant. Signed-in app users with `canUserLogin`; `global_admin` bypass. |
-| `userChatLimit` | 10 | **UTC calendar day** cap on xChat asks. **Runtime:** merged effective value (tenant base + `planOverrides` for the user’s tier) in `POST /api/xchat/ask` (`ask-usage-limits` day bucket); `global_admin` bypasses workspace caps. |
+| `userChatLimit` | 10 | **UTC calendar day** cap on xChat asks. **Runtime:** **tenant `workspaceLimits` row only** (`tenantBaseWorkspaceLimits` in `src/lib/tenant-workspace-limits.ts` + `POST /api/xchat/ask`) — **`planOverrides.*.userChatLimit` does not change ask enforcement**. `global_admin` bypasses workspace caps. |
 | `userChatHourlyLimit` | — (omit or `0` = off) | Optional **UTC clock-hour** cap; when &gt; 0, enforced in `ask-usage-limits` before the day bucket. Plan overrides use `0` to clear an inherited hourly cap. |
 | `tenantPortfolioLimit` | 1 | New portfolio rows in tenant for that user (admin + app flows). |
 | `portfolioAccountLimit` | 1 | New `portfolio_accounts` per portfolio. |
@@ -36,13 +36,13 @@ Indexes are created best-effort on first use (same pattern as other identity usa
 
 ## Admin API
 
-- `GET/PATCH /api/admin/tenants/{tenantId}/workspace-limits` — `global_admin` only.
-- UI: `/admin/tenant-preferences/workspace-limits` (session `tenantId` is the managed tenant). Legacy `/admin/tenant-workspace` redirects there.
+- `GET/PATCH /api/admin/tenants/{tenantId}/workspace-limits` — `global_admin` only; **GET** may persist default `workspaceLimits` once when scalars are missing (lazy backfill).
+- UI: `/admin/tenant-preferences/workspace-limits` — **session tenant** only. **`/admin/tenant-register/{tenantId}/workspace-limits`** — same panel for **any** tenant id (links from **Edit tenant** / post-create).
 
 ## App user surfacing
 
 - `/account/billing` (see `src/app/account/billing/page.tsx`, `billing-plan-grid.tsx`) resolves each retail tier with **`billingCardWorkspaceDisplay`** in `src/lib/billing-plan-workspace-display.ts`:
-  - **Signed-in:** loads `core_tenants` by session `tenantId`, merges `workspaceLimits` + `planOverrides.<tier>` via `mergeTenantWorkspaceLimits` + `applyTenantPlanRowToBase` (same shape as enforcement). **List price** on the card uses `planOverrides.<tier>.price` (USD whole dollars) when set; otherwise catalog from `ATX_BILLING_PLANS`.
+  - **Signed-in:** loads `core_tenants` by session `tenantId`. **List price** uses `planOverrides.<tier>.price` when set. **Workspace quota rows:** **xChat day (UTC)** and **xChat hour (UTC)** show **tenant base** scalars only (aligned with `POST /api/xchat/ask`). Other quota rows (xOptions/hr, portfolios, accounts) use **plan-effective** values (`applyTenantPlanRowToBase`). **Change persona** / **Chat history** use plan-effective merges.
   - **Guests:** list **price** and four **catalog** cap strings from `src/lib/atx-billing-plan-limits.ts` (aligned with `atx-docs/resouces/atx-limits.txt.tsv`).
   - **Workspace limits** block on each card: **five** quota rows (xOptions/hr, xChat day UTC, xChat hr UTC, portfolios, accounts) plus **Change persona** (Yes/No) and **Chat history max (turns)**; **price is not duplicated** in that list (only in the card header).
 
@@ -52,7 +52,7 @@ Reads (`mergeTenantWorkspaceLimits`, `normalizePlanOverridesFromUnknown`, admin 
 
 ## Deploy / rollback
 
-No migration required: missing `workspaceLimits` resolves to defaults. Rolling back code without removing DB fields keeps tenant overrides; ensure new code paths tolerate unknown extra keys (they are ignored by merge).
+No migration required: missing `workspaceLimits` resolves to defaults at **runtime**. **Persisted backfill:** `upsertTenantFromParsedSpecV1` and **`GET /api/admin/tenants/{tenantId}/workspace-limits`** write merged default scalars when Mongo has null / planOverrides-only rows so Admin **Tenant register** JSON is not stuck on `null`. Rolling back code without removing DB fields keeps tenant overrides; ensure new code paths tolerate unknown extra keys (they are ignored by merge).
 
 ## Related errors (HTTP)
 

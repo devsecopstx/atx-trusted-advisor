@@ -181,9 +181,17 @@ export function EditTenantConsole() {
             ) : null}
           </p>
         </div>
-        <Link className="cta cta-secondary text-sm" href="/admin/tenant-register">
-          ← Tenant register
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            className="cta cta-secondary text-sm"
+            href={`/admin/tenant-register/${encodeURIComponent(tenantId)}/workspace-limits`}
+          >
+            Workspace limits
+          </Link>
+          <Link className="cta cta-secondary text-sm" href="/admin/tenant-register">
+            ← Tenant register
+          </Link>
+        </div>
       </div>
 
       <p className="text-sm font-semibold text-[var(--xf-text-100)]">{name || "—"}</p>
