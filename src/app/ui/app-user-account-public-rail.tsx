@@ -3,6 +3,7 @@ import { appUserPrimaryDisplayName } from "@/lib/app-user-primary-display-name";
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 import { AppUserAccountPublicRail } from "./app-user-rail-nav";
 import { WorkspaceProductSidebar } from "./workspace-product-sidebar";
@@ -23,6 +24,10 @@ export async function AppUserAccountPublicRailForSession({
   const book = await loadAppUserDefaultBook(session);
   const mongoConnection = shouldShowAppUserDbLabel() ? getMongoConnectionLabel() : "";
   const admin = isGlobalAdmin(session.roles);
+  const entitlements = await resolveXoptionsEntitlements({
+    userId: session.userId,
+    roles: session.roles
+  });
   const accountDetails = {
     email: session.email,
     username: session.username,
@@ -31,6 +36,7 @@ export async function AppUserAccountPublicRailForSession({
     avatarUrl: session.avatarUrl,
     mongoConnection,
     tenantIdHex: session.tenantId?.trim() || undefined,
+    subscriptionPlan: entitlements.subscriptionPlan,
     isGlobalAdmin: admin
   };
 

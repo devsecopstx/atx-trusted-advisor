@@ -23,6 +23,7 @@ import {
 } from "@/modules/core-admin/repository";
 import { portfolioKindChoiceLabel } from "@/modules/core-admin/types";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { resolveXoptionsEntitlements } from "@/modules/xoptions/entitlements";
 
 import { tryIbkrLinkedAccountsSnapshotForSession } from "@/lib/portfolio-ibkr-ssr";
 
@@ -131,6 +132,11 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
 
   const workspaceTenant = await getWorkspaceTenantHeaderContext(session.tenantId);
 
+  const entitlements = await resolveXoptionsEntitlements({
+    userId: session.userId,
+    roles: session.roles
+  });
+
   const workspaceDeskHints = {
     watchlistSymbolCount: watchlistDoc?.symbols?.length ?? 0,
     activeAlertsCount: alertsRows.filter((a) => a.status === "active").length,
@@ -155,6 +161,7 @@ export async function PortfoliosWorkspaceData({ session, focusRaw }: Props) {
           avatarUrl: session.avatarUrl,
           mongoConnection,
           tenantIdHex: session.tenantId?.trim() || undefined,
+          subscriptionPlan: entitlements.subscriptionPlan,
           isGlobalAdmin: admin
         }}
         accountFeedbackPageLabel="Portfolio workspace"

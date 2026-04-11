@@ -85,11 +85,11 @@ export async function XchatApprovedShell({
         avatarUrl: session.avatarUrl,
         mongoConnection,
         tenantIdHex: session.tenantId?.trim() || undefined,
+        subscriptionPlan: entitlements.subscriptionPlan,
         isGlobalAdmin: isGlobalAdmin(session.roles)
       }}
       accountFeedbackPageLabel="xChat"
       defaultPublishedPersonaName={defaultPersona?.name ?? "atx-trusted-advisor"}
-      fileAttachmentsEnabled={fileAttachmentsEnabled}
       includeSuperAgentInPersonaPicker={isGlobalAdmin(session.roles)}
       initialXchatItem={resolvedInitialXchatItem}
       isGlobalAdmin={isGlobalAdmin(session.roles)}

@@ -1,8 +1,12 @@
+import { ObjectId } from "mongodb";
+
 import type { WorkspaceProductSidebarProps } from "@/app/ui/workspace-product-sidebar";
 import { loadAppUserDefaultBook } from "@/lib/app-user-default-book";
 import type { SessionUser } from "@/lib/auth";
 import { getMongoConnectionLabel, shouldShowAppUserDbLabel } from "@/lib/env";
+import { normalizeSubscriptionPlan } from "@/lib/subscription-plan";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
+import { getCoreUserById } from "@/modules/identity/repository";
 
 export type WorkspaceProductSidebarServerProps = Pick<
   WorkspaceProductSidebarProps,
@@ -28,6 +32,12 @@ export async function getWorkspaceProductSidebarPropsForSession(
   const admin = isGlobalAdmin(session.roles);
   const workspacePortfolioId = book?.portfolioId?.trim() ? book.portfolioId.trim() : null;
 
+  let subscriptionPlan = normalizeSubscriptionPlan(undefined);
+  if (ObjectId.isValid(session.userId)) {
+    const user = await getCoreUserById(new ObjectId(session.userId));
+    subscriptionPlan = normalizeSubscriptionPlan(user?.subscriptionPlan);
+  }
+
   return {
     accountDetails: {
       email: session.email,
@@ -37,6 +47,7 @@ export async function getWorkspaceProductSidebarPropsForSession(
       avatarUrl: session.avatarUrl,
       mongoConnection,
       tenantIdHex: session.tenantId?.trim() || undefined,
+      subscriptionPlan,
       isGlobalAdmin: admin
     },
     accountFeedbackPageLabel,

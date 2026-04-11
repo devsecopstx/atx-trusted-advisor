@@ -16,11 +16,13 @@ import {
 import type { AppUserRailAccountPanelDetails } from "@/app/ui/app-user-rail-account-panel";
 import { AppUserRailAccountPanel } from "@/app/ui/app-user-rail-account-panel";
 import { ChatHistoryRailIcon } from "@/app/ui/chat-history-rail-icon";
-import { LucideMonitorIcon, LucideSquarePenIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
+import { LucideFolderIcon, LucideMonitorIcon, LucideSquarePenIcon, XoptionsRocketIcon } from "@/app/ui/lucide-product-icons";
 import { RailSidebarZapIcon } from "@/app/ui/rail-sidebar-zap-icon";
 import { WorkspacePortfolioAccountPickerCard } from "@/app/ui/workspace-portfolio-account-picker-card";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
+import { XchatAttachmentsPanel } from "@/app/xchat/ui/xchat-attachments-panel";
 import type { AppUserDefaultBook } from "@/lib/app-user-default-book";
+import { canAccessPremiumTenantAttachments } from "@/lib/xchat-premium-attachments-policy";
 import {
     isXoptionsStrategyBuilderVisible,
     setXoptionsStrategyBuilderVisible,
@@ -326,6 +328,15 @@ export function WorkspaceProductSidebar({
   const narrowViewport = useSyncExternalStore(subscribeMaxWidth980, getMaxWidth980Snapshot, () => false);
   const xchatHistoryDeepLinkActive =
     pathname.startsWith("/xchat") && searchParams.get("item") === "history";
+  const xchatAttachmentsDeepLinkActive =
+    pathname.startsWith("/xchat") && searchParams.get("item") === "attachments";
+
+  const showAttachmentsRail =
+    accountDetails != null &&
+    canAccessPremiumTenantAttachments(
+      accountDetails.subscriptionPlan,
+      accountDetails.isGlobalAdmin ? ["global_admin"] : []
+    );
 
   const expanded = useSyncExternalStore(
     subscribeRailExpandedPrefs,
@@ -449,6 +460,19 @@ export function WorkspaceProductSidebar({
       isActive: pathname.startsWith("/xoptions"),
       icon: <XoptionsRocketIcon className="h-[1.25rem] w-[1.25rem] text-[var(--xf-text-200)]" />
     },
+    ...(showAttachmentsRail
+      ? ([
+          {
+            key: "attachments",
+            href: "/xchat?rail=xchat&item=attachments",
+            label: "File attachments",
+            isActive: xchatAttachmentsDeepLinkActive,
+            icon: (
+              <LucideFolderIcon className="h-[1.2rem] w-[1.2rem] shrink-0 text-[var(--xf-text-200)]" />
+            )
+          }
+        ] satisfies CollapsedIconItem[])
+      : []),
     {
       key: "resources",
       href: "/resources/about",
@@ -575,6 +599,23 @@ export function WorkspaceProductSidebar({
           ) : null}
         </div>
       </RouteSyncedDetails>
+
+      {showAttachmentsRail ? (
+        <RouteSyncedDetails
+          className="portfolios-workspace-sidebar__accordion"
+          routeMatch={xchatAttachmentsDeepLinkActive}
+        >
+          <summary className="portfolios-workspace-sidebar__accordion-summary">
+            <SidebarAccordionSummary
+              icon={<LucideFolderIcon className="portfolios-workspace-sidebar__glyph" />}
+              label="File attachments"
+            />
+          </summary>
+          <div className="portfolios-workspace-sidebar__accordion-body">
+            <XchatAttachmentsPanel />
+          </div>
+        </RouteSyncedDetails>
+      ) : null}
 
       <RouteSyncedDetails className="portfolios-workspace-sidebar__accordion" routeMatch={pathname.startsWith("/resources")}>
         <summary className="portfolios-workspace-sidebar__accordion-summary">

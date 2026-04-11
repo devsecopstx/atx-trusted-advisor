@@ -10,6 +10,7 @@ import { XfThemePreferenceMenu } from "@/app/ui/public-theme-picker";
 import { PwaInstallAccountPrompt } from "@/app/ui/pwa-install-account-prompt";
 import { XfHoverHint } from "@/app/ui/xf-hover-hint";
 import { tenantIdHexLastFourUserFacing } from "@/lib/mongo-object-id-hex";
+import { SUBSCRIPTION_PLAN_LABELS, type SubscriptionPlan } from "@/lib/subscription-plan";
 import { USER_FEEDBACK_OPEN_EVENT } from "@/lib/user-feedback-open-event";
 
 export type AppUserRailAccountPanelDetails = {
@@ -21,6 +22,8 @@ export type AppUserRailAccountPanelDetails = {
   mongoConnection?: string;
   /** Session `core_tenants` ObjectId hex; UI shows last 4 chars only (`···` prefix); full id in `title`. */
   tenantIdHex?: string;
+  /** From `core_users.subscriptionPlan` (normalized). */
+  subscriptionPlan: SubscriptionPlan;
   isGlobalAdmin: boolean;
 };
 
@@ -120,7 +123,8 @@ export function AppUserRailAccountPanel({
     return () => window.removeEventListener(USER_FEEDBACK_OPEN_EVENT, onOpenFeedback);
   }, []);
 
-  const { email, username, displayName, xUserId, mongoConnection, tenantIdHex, isGlobalAdmin } = details;
+  const { email, username, displayName, xUserId, mongoConnection, tenantIdHex, subscriptionPlan, isGlobalAdmin } =
+    details;
   const mongoHref =
     mongoConnection && mongoConnection.includes("://")
       ? mongoConnection
@@ -147,6 +151,10 @@ export function AppUserRailAccountPanel({
       <p className="app-user-rail-account-panel__meta">
         <span className="app-user-rail-account-panel__meta-k">X user id</span>
         <span className="app-user-rail-account-panel__meta-v font-mono text-[0.65rem]">{xUserId}</span>
+      </p>
+      <p className="app-user-rail-account-panel__meta">
+        <span className="app-user-rail-account-panel__meta-k">Plan</span>
+        <span className="app-user-rail-account-panel__meta-v">{SUBSCRIPTION_PLAN_LABELS[subscriptionPlan]}</span>
       </p>
       {showDatabaseDisclosure ? (
         <details className="app-user-rail-account-panel__db">
