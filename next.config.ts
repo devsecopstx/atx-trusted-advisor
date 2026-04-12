@@ -9,18 +9,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "pbs.twimg.com",
-        pathname: "/**"
-      },
-      {
-        protocol: "https",
-        hostname: "www.google.com",
-        pathname: "/s2/favicons*"
-      },
-      {
-        protocol: "https",
-        hostname: "images.financialmodelingprep.com",
-        pathname: "/symbol/**"
+        hostname: "pbs.twimg.com"
       }
     ]
   },

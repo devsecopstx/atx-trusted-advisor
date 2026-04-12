@@ -126,23 +126,3 @@ export function LucideSquarePenIcon({ className, ...props }: SVGProps<SVGSVGElem
     </svg>
   );
 }
-
-/** Briefcase — portfolio/book glyph. https://lucide.dev/icons/briefcase */
-export function LucideBriefcaseIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className} {...props}>
-      <path d="M10 12h4" stroke="currentColor" strokeLinecap="round" strokeWidth={1.75} />
-      <rect
-        x="2"
-        y="7"
-        width="20"
-        height="13"
-        rx="2"
-        ry="2"
-        stroke="currentColor"
-        strokeWidth={1.75}
-      />
-      <path d="M16 7V6a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v1" stroke="currentColor" strokeWidth={1.75} />
-    </svg>
-  );
-}

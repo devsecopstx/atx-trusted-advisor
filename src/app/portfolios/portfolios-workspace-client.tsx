@@ -14,7 +14,6 @@ import { PortfoliosPortfolioCards } from "./portfolios-portfolio-cards";
 import { PortfoliosWatchlistCompact } from "./portfolios-watchlist-compact";
 import { PortfoliosWorkspaceHeader } from "./portfolios-workspace-header";
 import { PortfoliosWorkspaceSidebar } from "./portfolios-workspace-sidebar";
-import { PortfoliosAllocationDonut } from "./portfolios-allocation-donut";
 
 export type PortfoliosWorkspaceDeskHints = {
   watchlistSymbolCount: number;
@@ -80,13 +79,6 @@ export function PortfoliosWorkspaceClient({
            */}
           <div className="portfolios-workspace-main portfolios-workspace-tenant-chrome billing-page min-w-0">
             <div className="portfolios-workspace-grid">
-              {/* XL-only compact donut near header */}
-              <div className="hidden xl:block xl:col-span-2">
-                <PortfoliosAllocationDonut
-                  totalBookUsd={totalBookUsd}
-                  topSlices={topHoldings.map((h) => ({ label: h.symbol, value: h.bookUsd }))}
-                />
-              </div>
               <section
                 className="portfolios-workspace-col portfolios-workspace-col--a min-w-0"
                 id="portfolios-workspace-books"
