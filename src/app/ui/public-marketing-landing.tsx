@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 
-import { AtxFinanceLogo, LightningBolt } from "@/app/ui/atxfinance-logo";
+import { LightningBolt } from "@/app/ui/atxfinance-logo";
+import { XchatHeaderBrand } from "@/app/ui/xchat-header-brand";
+import { USER_PRODUCT_HOME_ARIA_LABEL } from "@/app/ui/product-brand-constants";
 import { GlobalFooter } from "@/app/ui/global-footer";
 import { LandingProductScreenshot } from "@/app/ui/landing-product-screenshot";
+import { EducationalDisclaimerBanner } from "@/app/ui/educational-disclaimer-banner";
 import { GoogleGIcon, XLogoIcon } from "@/app/ui/oauth-provider-icons";
 import { PublicLandingXchatDemo } from "@/app/ui/public-landing-xchat-demo";
 
@@ -35,10 +38,11 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
       >
         <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-3 px-4 sm:px-8">
             <Link
+              aria-label={USER_PRODUCT_HOME_ARIA_LABEL}
               href="/"
-              className="flex min-w-0 shrink items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--xf-gain-green)]"
+              className="xchat-header-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--xf-gain-green)]"
             >
-              <AtxFinanceLogo size="sm" showSubtitle={false} />
+              <XchatHeaderBrand />
             </Link>
 
           <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
@@ -55,6 +59,10 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
           </div>
         </div>
       </nav>
+
+      <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 flex justify-end">
+        <EducationalDisclaimerBanner className="mt-3" />
+      </div>
 
       <header
         className="relative overflow-hidden"
@@ -165,7 +173,9 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
               </a>
             </div>
 
-            <p className="mt-8 text-sm text-[var(--xf-text-400)] sm:mt-10">
+            <EducationalDisclaimerBanner className="mt-6 max-w-2xl" />
+
+            <p className="mt-4 text-sm text-[var(--xf-text-400)] sm:mt-6">
               <span className="font-medium text-[var(--xf-text-300)]">One workspace:</span> portfolios &amp; watchlist ·
               xChat (Grok / xAI) · xOptions strategy builder
             </p>
