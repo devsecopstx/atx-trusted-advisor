@@ -140,7 +140,9 @@ function AppUserLegacyCollapsibleRailLayout({
             </XfHoverHint>
           ) : null}
         </div>
-        {!isCollapsed ? <div className="app-user-rail-stack__body">{rail}</div> : null}
+        <div className={`app-user-rail-stack__body${isCollapsed ? " app-user-rail-stack__body--collapsed" : ""}`} aria-hidden={false}>
+          {rail}
+        </div>
       </div>
       <div className={mainClassName ? `app-user-shell-main ${mainClassName}` : "app-user-shell-main"}>{children}</div>
     </div>

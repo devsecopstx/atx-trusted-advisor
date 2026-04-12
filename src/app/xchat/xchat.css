@@ -3659,6 +3659,42 @@ html[data-xf-ui="soft"] .app-user-rail-disclosure__glyph--composer {
   display: block;
 }
 
+.app-user-rail-stack__body--collapsed {
+  /* Grok-like collapsed rail: keep icon column visible, hide labels, narrow width */
+  width: 3.1rem;
+  overflow-x: hidden;
+}
+
+/* Hide disclosure titles and extra text when the rail body is collapsed */
+.app-user-rail-stack__body--collapsed .app-user-rail-disclosure__title,
+.app-user-rail-stack__body--collapsed .app-user-rail-workspace-name,
+.app-user-rail-stack__body--collapsed .app-user-rail-sublinks a span,
+.app-user-rail-stack__body--collapsed .app-user-rail-sublinks a {
+  /* Keep links clickable but visually compress to icon-only via zero max-width and text indent. */
+  max-width: 0 !important;
+  text-indent: -9999px;
+  white-space: nowrap;
+}
+
+/* Ensure icons remain centered and visible in collapsed mode */
+.app-user-rail-stack__body--collapsed .app-user-rail-disclosure__icon,
+.app-user-rail-stack__body--collapsed .app-user-rail-disclosure__glyph,
+.app-user-rail-stack__body--collapsed .app-user-rail-disclosure__glyph--zap {
+  margin: 0 auto;
+  display: inline-flex;
+}
+
+/* Compact paddings in collapsed mode */
+.app-user-rail-stack__body--collapsed .app-user-rail-disclosure__trigger {
+  padding: 0.4rem;
+}
+
+/* Keep hover hints working when collapsed */
+.app-user-rail-stack__body--collapsed [title],
+.app-user-rail-stack__body--collapsed [aria-label] {
+  pointer-events: auto;
+}
+
 /* —— xChat route Suspense + next/dynamic loading (no extra deps) —— */
 @keyframes xchat-skeleton-shimmer {
   0% {

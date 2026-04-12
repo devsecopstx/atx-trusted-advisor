@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { ExternalLinkIcon } from "@/app/admin/ui/crud-icons";
+import { TickerIcon } from "@/components/ui/ticker-icon";
 
 import type { PortfoliosWorkspaceDeskHints } from "./portfolios-workspace-client";
 
@@ -112,7 +113,7 @@ export function PortfoliosWatchlistCompact({
 
   return (
     <section
-      className="portfolios-watchlist-compact xf-noise-overlay rounded-lg border border-white/10 bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-3"
+      className="portfolios-watchlist-compact xf-noise-overlay rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-3 transition-colors hover:border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)]"
       id="portfolios-watchlist"
     >
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
@@ -189,7 +190,44 @@ export function PortfoliosWatchlistCompact({
       ) : null}
 
       {loading ? (
-        <p className="text-xs text-[var(--xf-text-300)]">Loading…</p>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-xs">
+            <thead>
+              <tr className="text-[var(--xf-gain-green)] uppercase tracking-widest">
+                <th className="pb-1 pr-1 text-[0.62rem] font-semibold">Icon</th>
+                <th className="pb-1 pr-2 text-[0.62rem] font-semibold">Sym</th>
+                <th className="pb-1 pr-2 text-right text-[0.62rem] font-semibold">Spot</th>
+                <th className="pb-1 pr-2 text-right text-[0.62rem] font-semibold">IV</th>
+                <th className="pb-1 pr-2 text-right text-[0.62rem] font-semibold">OI</th>
+                <th className="pb-1 text-right text-[0.62rem] font-semibold">Leg</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="border-t border-white/5 hover:bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)]">
+                  <td className="py-1 pr-1 align-middle">
+                    <span className="block h-6 w-6 animate-pulse rounded-md bg-white/10" />
+                  </td>
+                  <td className="py-1 pr-2 align-middle">
+                    <span className="block h-3 w-10 animate-pulse rounded bg-white/10" />
+                  </td>
+                  <td className="py-1 pr-2 align-middle text-right">
+                    <span className="ml-auto block h-3 w-16 animate-pulse rounded bg-white/10" />
+                  </td>
+                  <td className="py-1 pr-2 align-middle text-right">
+                    <span className="ml-auto block h-3 w-8 animate-pulse rounded bg-white/10" />
+                  </td>
+                  <td className="py-1 pr-2 align-middle text-right">
+                    <span className="ml-auto block h-3 w-10 animate-pulse rounded bg-white/10" />
+                  </td>
+                  <td className="py-1 align-middle text-right">
+                    <span className="ml-auto block h-5 w-24 animate-pulse rounded-2xl bg-white/10" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : rows.length === 0 ? (
         <p className="text-xs leading-relaxed text-[var(--xf-text-400)]">
           No symbols met the IV/OI scan yet, or your watchlist is empty.{" "}
@@ -216,23 +254,23 @@ export function PortfoliosWatchlistCompact({
           <div className="portfolios-watchlist-compact__scroll overflow-x-auto">
             <table className="portfolios-watchlist-compact__table min-w-full text-left text-xs">
               <thead>
-                <tr className="text-[var(--xf-text-300)]">
-                  <th className="pb-1 pr-1 font-medium" scope="col">
+                <tr className="text-[var(--xf-gain-green)] uppercase tracking-widest">
+                  <th className="pb-1 pr-1 text-[0.62rem] font-semibold" scope="col">
                     Icon
                   </th>
-                  <th className="pb-1 pr-2 font-medium" scope="col">
+                  <th className="pb-1 pr-2 text-[0.62rem] font-semibold" scope="col">
                     Sym
                   </th>
-                  <th className="pb-1 pr-2 font-medium" scope="col">
+                  <th className="pb-1 pr-2 text-right text-[0.62rem] font-semibold" scope="col">
                     Spot
                   </th>
-                  <th className="pb-1 pr-2 font-medium" scope="col">
+                  <th className="pb-1 pr-2 text-right text-[0.62rem] font-semibold" scope="col">
                     IV
                   </th>
-                  <th className="pb-1 pr-2 font-medium" scope="col">
+                  <th className="pb-1 pr-2 text-right text-[0.62rem] font-semibold" scope="col">
                     OI
                   </th>
-                  <th className="pb-1 font-medium" scope="col">
+                  <th className="pb-1 text-right text-[0.62rem] font-semibold" scope="col">
                     Leg
                   </th>
                 </tr>
@@ -241,24 +279,35 @@ export function PortfoliosWatchlistCompact({
                 {rows.map((r) => (
                   <tr
                     key={`${r.symbol}-${r.contractType}-${r.strike}`}
-                    className="border-t border-white/5 font-mono tabular-nums text-[var(--xf-text-100)]"
+                    className="border-t border-white/5 font-mono tabular-nums text-[var(--xf-text-100)] hover:bg-[color-mix(in_srgb,var(--xf-text-100)_6%,transparent)]"
                   >
                     <td className="py-1 pr-1 align-middle">
-                      <div
-                        aria-hidden
-                        className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-[color-mix(in_srgb,var(--xf-text-100)_8%,transparent)] text-[0.6rem] font-bold text-[var(--xf-text-200)]"
-                      >
-                        {r.symbol.slice(0, 2)}
-                      </div>
+                      <TickerIcon symbol={r.symbol} size={24} className="rounded-md" />
                     </td>
                     <td className="py-1 pr-2 align-middle font-semibold">{r.symbol}</td>
-                    <td className="py-1 pr-2 align-middle text-[var(--xf-text-200)]">{formatSpotUsd(r.spot)}</td>
-                    <td className="py-1 pr-2 align-middle text-[var(--xf-text-200)]">
-                      {r.impliedVolatilityPercent.toFixed(0)}%
+                    <td className="py-1 pr-2 align-middle text-right text-[var(--xf-text-200)]">{formatSpotUsd(r.spot)}</td>
+                    <td className="py-1 pr-2 align-middle text-right">
+                      <span
+                        className={
+                          r.impliedVolatilityPercent >= 40
+                            ? "text-[var(--xf-gain-green)]"
+                            : "text-[var(--xf-text-200)]"
+                        }
+                      >
+                        {r.impliedVolatilityPercent.toFixed(0)}%
+                      </span>
                     </td>
-                    <td className="py-1 pr-2 align-middle text-[var(--xf-text-200)]">{formatOi(r.openInterest)}</td>
-                    <td className="py-1 align-middle text-[var(--xf-text-300)]">
-                      {r.contractType} {r.strike.toFixed(2)}
+                    <td className="py-1 pr-2 align-middle text-right text-[var(--xf-text-200)]">{formatOi(r.openInterest)}</td>
+                    <td className="py-1 align-middle text-right">
+                      <span
+                        className={
+                          r.contractType === "call"
+                            ? "inline-flex items-center rounded-2xl bg-[color-mix(in_srgb,var(--xf-gain-green)_18%,transparent)] px-3 py-0.5 text-xs text-[var(--xf-gain-green)]"
+                            : "inline-flex items-center rounded-2xl bg-[color-mix(in_srgb,#ef4444_18%,transparent)] px-3 py-0.5 text-xs text-red-300"
+                        }
+                      >
+                        {r.contractType.toUpperCase()} {r.strike.toFixed(2)}
+                      </span>
                     </td>
                   </tr>
                 ))}

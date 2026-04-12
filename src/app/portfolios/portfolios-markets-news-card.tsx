@@ -37,10 +37,10 @@ export function PortfoliosMarketsNewsCard() {
 
   return (
     <section
-      className="portfolios-markets-news-card xf-noise-overlay mt-3 rounded-lg border border-white/10 bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-3"
+      className="portfolios-markets-news-card xf-noise-overlay mt-3 rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] bg-[color-mix(in_srgb,var(--xf-text-100)_4%,transparent)] p-3 transition-colors hover:border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)]"
       aria-label="Markets and news"
     >
-      <h2 className="portfolios-markets-news-card__title m-0 text-[0.68rem] font-semibold uppercase tracking-wider text-[var(--xf-text-200)]">
+      <h2 className="portfolios-markets-news-card__title m-0 text-[0.68rem] font-semibold uppercase tracking-wider text-[var(--xf-gain-green)]">
         Markets &amp; news
       </h2>
       {busy && lines.length === 0 ? (

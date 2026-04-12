@@ -82,7 +82,10 @@ export function PortfoliosWorkspaceHeader({ totalBookUsd, topHoldingsKey }: Prop
         <XfHoverHint hint="Book total: cash plus position cost basis across all portfolios. Not live marks; no portfolio day P&amp;L.">
           <div className="portfolios-workspace-header__total-block">
             <p className="portfolios-workspace-header__total-label">Total book value</p>
-            <p className="portfolios-workspace-header__total-value font-mono tabular-nums">
+            <p
+              className="portfolios-workspace-header__total-value font-mono tabular-nums text-[var(--xf-gain-green)]"
+              style={{ textShadow: "0 0 18px color-mix(in srgb, var(--xf-gain-green) 40%, transparent)" }}
+            >
               {formatUsdWhole(totalBookUsd)}
             </p>
             <p className="portfolios-workspace-header__total-delta">
