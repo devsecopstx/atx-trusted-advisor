@@ -135,6 +135,15 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
                 Sign in to start
                 <span aria-hidden>→</span>
               </a>
+
+              {/* New secondary CTA: See Plans */}
+              <Link
+                href="/account/billing"
+                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                See Plans
+              </Link>
+
               <button
                 type="button"
                 onClick={scrollDemo}
@@ -197,46 +206,52 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
       >
         <div className="mx-auto max-w-screen-2xl px-4 sm:px-8">
           <div className="mb-12 text-center sm:mb-16">
-            <p className="text-xs font-medium uppercase tracking-widest text-[var(--xf-gain-green)]">
-              Product stack
+            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
+              PRODUCT STACK
             </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tighter text-[var(--xf-text-100)] sm:text-4xl md:text-5xl">
+            <h2 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--xf-text-100)]">
               Books, AI advisor, and options tools — one tenant workspace
             </h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-3 md:gap-8">
-            <article className="rounded-[var(--xf-radius-lg)] border border-white/10 bg-black/40 p-6 transition hover:-translate-y-1 hover:border-white/15 sm:p-8">
+          <div className="grid items-stretch gap-6 md:grid-cols-3 md:gap-8">
+            <article className="group flex h-full flex-col rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] bg-[var(--xf-surface-700)] p-6 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] sm:p-8">
               <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">Portfolios</h3>
               <p className="mt-2 text-[var(--xf-text-300)]">
                 Books, accounts, holdings, and desk workflows — scoped to your approved tenant.
               </p>
-              <LandingProductScreenshot
-                alt="Portfolio workspace screenshot"
-                fallbackLabel="export from /portfolio or /portfolios."
-                src={LANDING_PRODUCT_SHOTS.portfolio}
-              />
+              <div className="mt-4 overflow-hidden rounded-2xl shadow-[0_0_30px_-10px_var(--xf-gain-green)]">
+                <LandingProductScreenshot
+                  alt="Portfolio workspace screenshot"
+                  fallbackLabel="export from /portfolio or /portfolios."
+                  src={LANDING_PRODUCT_SHOTS.portfolio}
+                />
+              </div>
             </article>
-            <article className="rounded-[var(--xf-radius-lg)] border border-white/10 bg-black/40 p-6 transition hover:-translate-y-1 hover:border-white/15 sm:p-8">
+            <article className="group flex h-full flex-col rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] bg-[var(--xf-surface-700)] p-6 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] sm:p-8">
               <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">xChat</h3>
               <p className="mt-2 text-[var(--xf-text-300)]">
                 Persona-linked tools and RAG — sign in for live Responses with your data boundaries.
               </p>
-              <LandingProductScreenshot
-                alt="xChat conversation screenshot"
-                fallbackLabel="export from /xchat (signed-in view)."
-                src={LANDING_PRODUCT_SHOTS.xchat}
-              />
+              <div className="mt-4 overflow-hidden rounded-2xl shadow-[0_0_30px_-10px_var(--xf-gain-green)]">
+                <LandingProductScreenshot
+                  alt="xChat conversation screenshot"
+                  fallbackLabel="export from /xchat (signed-in view)."
+                  src={LANDING_PRODUCT_SHOTS.xchat}
+                />
+              </div>
             </article>
-            <article className="rounded-[var(--xf-radius-lg)] border border-white/10 bg-black/40 p-6 transition hover:-translate-y-1 hover:border-white/15 sm:p-8">
+            <article className="group flex h-full flex-col rounded-3xl border border-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)] bg-[var(--xf-surface-700)] p-6 transition hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--xf-gain-green)_30%,transparent)] sm:p-8">
               <h3 className="text-xl font-semibold text-[var(--xf-text-100)]">xOptions</h3>
               <p className="mt-2 text-[var(--xf-text-300)]">
                 Stepped builder, chains, and strategy jobs when your workspace enables them.
               </p>
-              <LandingProductScreenshot
-                alt="xOptions strategy builder screenshot"
-                fallbackLabel="export from /xoptions."
-                src={LANDING_PRODUCT_SHOTS.xoptions}
-              />
+              <div className="mt-4 overflow-hidden rounded-2xl shadow-[0_0_30px_-10px_var(--xf-gain-green)]">
+                <LandingProductScreenshot
+                  alt="xOptions strategy builder screenshot"
+                  fallbackLabel="export from /xoptions."
+                  src={LANDING_PRODUCT_SHOTS.xoptions}
+                />
+              </div>
             </article>
           </div>
         </div>
@@ -244,20 +259,28 @@ export function PublicMarketingLanding({ googleLoginHref }: PublicMarketingLandi
 
       <section className="border-t border-white/10 py-16 sm:py-24" id="xoptions-teaser">
         <div className="mx-auto max-w-screen-2xl px-4 text-center sm:px-8">
-          <p className="text-xs font-medium uppercase tracking-widest text-[var(--xf-lightning-yellow)]">
-            Access
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--xf-gain-green)]">
+            ACCESS
           </p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tighter sm:text-4xl">Approved access for professionals</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-[var(--xf-text-300)]">
+          <h2 className="mt-3 text-4xl sm:text-5xl font-extrabold tracking-tight text-[var(--xf-text-100)]">Approved access for professionals</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[var(--xf-text-300)] sm:text-lg">
             Log in or register from xChat to request access. Admins assign roles (viewer, operator, advisor). Tenant
             branding, limits, and audit-friendly defaults apply after sign-in.
           </p>
-          <Link
-            href={XCHAT_GUEST}
-            className="mt-8 inline-flex rounded-full border-2 border-[var(--xf-gain-green)] px-8 py-4 text-base font-semibold text-[var(--xf-gain-green)] transition hover:bg-[color-mix(in_srgb,var(--xf-gain-green)_10%,transparent)]"
-          >
-            Log in or register
-          </Link>
+          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <Link
+              href={XCHAT_GUEST}
+              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl bg-[var(--xf-gain-green)] text-[var(--xf-text-100)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              Log in or register
+            </Link>
+            <Link
+              href="/account/billing"
+              className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold tracking-tight rounded-2xl border border-[var(--xf-gain-green)] text-[var(--xf-gain-green)] hover:bg-[var(--xf-gain-green)] hover:text-[var(--xf-text-100)] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              See Plans
+            </Link>
+          </div>
         </div>
       </section>
 
