@@ -575,7 +575,6 @@ class AdminScheduledTasksService(
         val ids = docs.mapNotNull { it.getObjectId("_id") }
         return ids
     }
-    }
 
     companion object {
         const val SYSTEM_SCHEDULER_TRIGGER: String = "system-scheduler"
