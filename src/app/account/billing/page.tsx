@@ -15,6 +15,7 @@ import {
 import { getSessionUser } from "@/lib/auth";
 import { isGoogleOAuthConfigured } from "@/lib/env";
 import { getTenantByHexIdCached } from "@/lib/server-request-cache";
+import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
 import { getStripePublishableKey, isStripeCheckoutConfiguredForTenant } from "@/lib/stripe-config";
 import { canUserLogin } from "@/modules/identity/authorization";
 import { getCoreUserById } from "@/modules/identity/repository";
@@ -44,8 +45,14 @@ export default async function AccountBillingPage({
   const guestRegisterDefaultPlan: AccessRequestPlanValue =
     parseAccessRequestPlanInput(selectedGuestPlanRaw) ?? "basic";
 
-  const tenant =
-    approved && session?.tenantId ? await getTenantByHexIdCached(session.tenantId) : null;
+  let tenant = approved && session?.tenantId ? await getTenantByHexIdCached(session.tenantId) : null;
+  if (!tenant) {
+    // For unauthenticated guests or missing tenant, load system default tenant so pricing/limits come from DB
+    const defaultTenantId = await resolveTenantIdHexForGlobalAdminConsole(undefined);
+    if (defaultTenantId) {
+      tenant = await getTenantByHexIdCached(defaultTenantId);
+    }
+  }
   const planOverridesForStripe = normalizePlanOverridesFromUnknown(tenant?.workspaceLimits?.planOverrides);
   const checkoutReady =
     !guestReadonly && isStripeCheckoutConfiguredForTenant(planOverridesForStripe);
@@ -160,7 +167,7 @@ export default async function AccountBillingPage({
                   tenant-resolved caps.
                 </p>
               </header>
-              <BillingPlanGrid tenant={null} approved={false} checkoutReady={false} />
+              <BillingPlanGrid tenant={tenant} approved={false} checkoutReady={false} />
               <p className="billing-footnote">
                 <span className="xf-disclaimer-emphasis">Not financial advice.</span> Guest mode is read-only. Sign in
                 for approved access to checkout and account actions.
