@@ -149,7 +149,7 @@ function watchlistRowEligible(row: WatchlistSymbol): boolean {
 /** Build scan targets from user watchlists; `defaultPortfolioByUserId` maps owner user id → default book for recs/alerts. */
 export function watchlistsToOptionScanTargets(
   watchlists: Watchlist[],
-  limit: number,
+  limit: number | null,
   defaultPortfolioByUserId: Map<string, ObjectId>
 ): OptionScanTarget[] {
   const out: OptionScanTarget[] = [];
@@ -163,7 +163,7 @@ export function watchlistsToOptionScanTargets(
       continue;
     }
     for (const row of w.symbols ?? []) {
-      if (out.length >= limit) {
+      if (limit != null && out.length >= limit) {
         return out;
       }
       if (!watchlistRowEligible(row)) {

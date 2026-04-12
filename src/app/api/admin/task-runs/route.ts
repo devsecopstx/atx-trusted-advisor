@@ -45,6 +45,7 @@ export async function GET(request: Request) {
 
   const runs = await listTaskRuns({
     tenantId: tenantIdHex,
+    allTenants: true,
     startedAtMin,
     startedAtMaxExclusive,
     limit

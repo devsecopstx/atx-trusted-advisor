@@ -160,10 +160,10 @@ function runPostSeedOptionsStrategyFromDisk() {
 }
 
 /**
- * Ensures `admin_scheduled_tasks` tenant-level rows exist for `/admin/tasks` (same logic as
- * `npm run ops:scheduled-tasks:sync -- --apply --tenant=…`).
+ * Ensures `admin_scheduled_tasks` **system-wide** rows exist for `/admin/tasks` (same as
+ * `npm run ops:scheduled-tasks:sync -- --apply` — no `--tenant=`; one row per category, fan-out per `core_tenants` on tick).
  */
-function runPostSeedScheduledTasksSync(tenantIdHex) {
+function runPostSeedScheduledTasksSync() {
   const s = String(process.env.SKIP_SEED_SCHEDULED_TASKS_SYNC ?? "").toLowerCase();
   if (s === "1" || s === "true" || s === "yes") {
     console.log(
@@ -177,7 +177,7 @@ function runPostSeedScheduledTasksSync(tenantIdHex) {
   );
   const r = spawnSync(
     process.execPath,
-    ["--import", "tsx", script, "--apply", `--tenant=${tenantIdHex}`],
+    ["--import", "tsx", script, "--apply"],
     {
       cwd: REPO_ROOT,
       env: childEnvWithSeedParentMongoDb(),
@@ -815,7 +815,7 @@ async function seed() {
     runPostSeedOptionsStrategyFromDisk();
 
     await upsertSeedAdminDeliveryChannels(db, tenant._id, now);
-    runPostSeedScheduledTasksSync(String(tenant._id));
+    runPostSeedScheduledTasksSync();
 
     const personaAfterDisk = await db
       .collection("xchat_personas")

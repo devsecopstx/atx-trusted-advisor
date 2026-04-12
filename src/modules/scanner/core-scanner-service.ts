@@ -114,7 +114,10 @@ export function extractSummaryForDiff(
     "watchlistOptionRows",
     "rollTargets",
     "rollMaxDte",
-    "tenantIdHex"
+    "tenantIdHex",
+    "rowsMarkedReview",
+    "personaGrokCalls",
+    "personaResolved"
   ]);
   let n = 0;
   const maxKeys = 48;

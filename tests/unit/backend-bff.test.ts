@@ -211,6 +211,32 @@ describe("proxyAdminUsersRequestToBackend (Next-first tenant register + user lis
     ).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("does not forward GET /api/admin/portfolios/{id}/watchlist (desk fields stay on Next Mongo)", async () => {
+    vi.resetModules();
+    const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminUsersRequestToBackend(
+        new Request("https://next.local/api/admin/portfolios/507f1f77bcf86cd799439033/watchlist")
+      )
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not forward PATCH /api/admin/portfolios/{id}/watchlist", async () => {
+    vi.resetModules();
+    const { proxyAdminUsersRequestToBackend } = await import("@/lib/backend-bff");
+    await expect(
+      proxyAdminUsersRequestToBackend(
+        new Request("https://next.local/api/admin/portfolios/507f1f77bcf86cd799439033/watchlist", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ addSymbols: ["AAPL"] })
+        })
+      )
+    ).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("getStrategyJobsBffUnavailableMessage", () => {

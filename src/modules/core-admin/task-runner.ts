@@ -4,6 +4,7 @@ import type { AuditActor } from "@/modules/audit/types";
 import {
     createTaskRun,
     finalizeTaskRun,
+    listCoreTenantObjectIds,
     markTaskRunWindow
 } from "@/modules/core-admin/repository";
 import { notifyScheduledTaskSlackSummary } from "@/modules/core-admin/scheduled-task-slack-notify";
@@ -45,6 +46,10 @@ export async function executeScheduledTask(
 ): Promise<{ runId: ObjectId; status: "success" | "failed"; output: string }> {
   if (!task._id) {
     throw new Error("Cannot execute task without _id");
+  }
+
+  if (!task.tenantId) {
+    return executeSystemWideScheduledTask(task, triggeredBy, auditActor, executionOptions);
   }
 
   const run = await createTaskRun({
@@ -172,4 +177,139 @@ async function runScheduledCategory(
         output: `Unsupported task category for "${task.name}".`
       };
   }
+}
+
+/**
+ * `admin_scheduled_tasks` row with no `tenantId`: run once per `core_tenants` document so a single cron
+ * drives all tenants (Admin → Tasks does not need duplicate rows per tenant).
+ */
+async function executeSystemWideScheduledTask(
+  templateTask: ScheduledTask,
+  triggeredBy: string,
+  auditActor?: AuditActor,
+  executionOptions?: ScheduledTaskExecutionOptions
+): Promise<{ runId: ObjectId; status: "success" | "failed"; output: string }> {
+  if (!templateTask._id) {
+    throw new Error("Cannot execute system-wide task without _id");
+  }
+
+  const tenants = await listCoreTenantObjectIds();
+  const startedAt = new Date();
+  await markTaskRunWindow(templateTask._id, startedAt, {
+    scheduleCron: templateTask.scheduleCron,
+    scheduleRRule: templateTask.scheduleRRule
+  });
+
+  if (tenants.length === 0) {
+    const run = await createTaskRun({
+      tenantId: undefined,
+      taskId: templateTask._id,
+      taskName: templateTask.name,
+      category: templateTask.category,
+      triggeredBy,
+      output: appendTenantIdToScheduledTaskOutput(
+        "system_wide: no core_tenants rows — nothing to run",
+        undefined
+      )
+    });
+    if (!run._id) {
+      throw new Error("Task run ID missing");
+    }
+    const completedAt = new Date();
+    const output = appendTenantIdToScheduledTaskOutput(
+      "system_wide: failed — core_tenants is empty",
+      undefined
+    );
+    await finalizeTaskRun(run._id, {
+      status: "failed",
+      output,
+      durationMs: 1,
+      completedAt
+    });
+    await notifyScheduledTaskSlackSummary({
+      task: templateTask,
+      status: "failed",
+      output,
+      durationMs: 1,
+      runIdHex: run._id.toHexString(),
+      triggeredBy
+    });
+    await logCoreScannerRunAudit({
+      task: templateTask,
+      triggeredBy,
+      actor: auditActor,
+      result: { status: "failed", output, auditDetails: { systemWide: true, tenantCount: 0 } },
+      taskRunIdHex: run._id.toHexString()
+    });
+    return { runId: run._id, status: "failed", output };
+  }
+
+  let aggregateStatus: "success" | "failed" = "success";
+  const outputs: string[] = [];
+  let lastRunId: ObjectId | undefined;
+  const fanWallStart = Date.now();
+
+  for (const tid of tenants) {
+    const perTask: ScheduledTask = { ...templateTask, tenantId: tid };
+    const run = await createTaskRun({
+      tenantId: tid,
+      taskId: templateTask._id,
+      taskName: templateTask.name,
+      category: templateTask.category,
+      triggeredBy,
+      output: appendTenantIdToScheduledTaskOutput("Task accepted and started", tid)
+    });
+    if (!run._id) {
+      throw new Error("Task run ID missing");
+    }
+    const iterStart = run.startedAt;
+    const execution = await runScheduledCategory(perTask, executionOptions);
+    const completedAt = new Date();
+    const durationMs = Math.max(1, completedAt.getTime() - iterStart.getTime());
+    const outputWithTenant = appendTenantIdToScheduledTaskOutput(execution.output, tid);
+    await finalizeTaskRun(run._id, {
+      status: execution.status,
+      output: outputWithTenant,
+      durationMs,
+      completedAt
+    });
+    outputs.push(outputWithTenant);
+    if (execution.status === "failed") {
+      aggregateStatus = "failed";
+    }
+    lastRunId = run._id;
+    const executionForAudit: ScheduledCategoryResult = {
+      ...execution,
+      output: outputWithTenant
+    };
+    await logCoreScannerRunAudit({
+      task: perTask,
+      triggeredBy,
+      actor: auditActor,
+      result: executionForAudit,
+      taskRunIdHex: run._id.toHexString()
+    });
+  }
+
+  const wallMs = Math.max(1, Date.now() - fanWallStart);
+  const combinedOutput = `system_wide task="${templateTask.name}" category=${templateTask.category} tenants=${tenants.length} aggregate=${aggregateStatus}\n${outputs.join("\n---\n")}`;
+  const slackTask: ScheduledTask =
+    templateTask.deliveryChannelTarget && tenants[0]
+      ? { ...templateTask, tenantId: tenants[0] }
+      : templateTask;
+
+  await notifyScheduledTaskSlackSummary({
+    task: slackTask,
+    status: aggregateStatus,
+    output: combinedOutput.length > 12000 ? `${combinedOutput.slice(0, 11900)}\n…(truncated)` : combinedOutput,
+    durationMs: wallMs,
+    runIdHex: lastRunId!.toHexString(),
+    triggeredBy
+  });
+
+  return {
+    runId: lastRunId!,
+    status: aggregateStatus,
+    output: combinedOutput
+  };
 }

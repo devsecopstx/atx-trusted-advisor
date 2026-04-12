@@ -49,7 +49,8 @@ export async function GET(request: Request) {
   }
 
   const tasks = await listScheduledTasks({
-    tenantId: tenantIdHex
+    tenantId: tenantIdHex,
+    systemWideOnly: true
   });
   return NextResponse.json({ data: tasks.map(serializeScheduledTaskForJson) });
 }
@@ -110,7 +111,6 @@ export async function POST(request: Request) {
     scheduleCron: normalizedSchedule.scheduleCron,
     scheduleRRule: normalizedSchedule.scheduleRRule,
     scheduleDescription: normalizedSchedule.scheduleDescription,
-    tenantId: tenantIdHex,
     ...(deliveryChannelTarget ? { deliveryChannelTarget } : {})
   });
   return NextResponse.json({ data: serializeScheduledTaskForJson(created) }, { status: 201 });

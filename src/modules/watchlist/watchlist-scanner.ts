@@ -11,6 +11,17 @@ import {
     type PersistedPriceAlertRow,
     persistPriceMoveAlerts
 } from "./price-alert-service";
+import {
+    lastPriceFromRawWatchlistEntry,
+    symbolFromRawWatchlistEntry,
+    watchlistRowDeskMeta
+} from "./watchlist-row-raw";
+import {
+    refineWatchlistRowRationaleWithPersona,
+    resolveWatchlistScannerPersonaContext,
+    watchlistScannerGrokEnv
+} from "./watchlist-scanner-persona";
+import { buildWatchlistScannerRationaleAppendix } from "./watchlist-scanner-rationale";
 import { getYahooBatchQuotes } from "./yahoo-batch-quotes";
 
 /**
@@ -19,9 +30,14 @@ import { getYahooBatchQuotes } from "./yahoo-batch-quotes";
  * Batch-updates prices from Yahoo Finance and triggers basic alerts.
  */
 type WatchlistPriceUpdate = {
+  /** Row in `wl.symbols` — duplicate tickers each get their own scan line + rationale. */
+  symbolRowIndex: number;
   symbol: string;
-  lastPrice: number;
-  lastUpdatedAt: Date;
+  /** Set when Yahoo returned a fresh price; omitted when we only refresh rationale / status. */
+  lastPrice?: number;
+  lastUpdatedAt?: Date;
+  rationale: string;
+  rowStatus: "review";
 };
 
 export async function runWatchlistPriceScanner(
@@ -57,7 +73,7 @@ export async function runWatchlistPriceScanner(
       const durationSeconds = Number(((Date.now() - start) / 1000).toFixed(1));
       return {
         status: "success",
-        output: `watchlist_price_scanner: skipped — ${reason} [${market.marketDate} ${market.timezone}] | watchlists=${watchlists.length} watchlists_with_symbols=${watchlistsWithSymbols} items_updated=0 items_scanned=0 symbols_quoted=0 alerts_created=0 alerts_skipped_cooldown=0 duration_s=${durationSeconds}`,
+        output: `watchlist_price_scanner: skipped — ${reason} [${market.marketDate} ${market.timezone}] | watchlists=${watchlists.length} watchlists_with_symbols=${watchlistsWithSymbols} items_updated=0 rows_marked_review=0 persona_grok_calls=0 items_scanned=0 symbols_quoted=0 alerts_created=0 alerts_skipped_cooldown=0 duration_s=${durationSeconds}`,
         auditDetails: {
           skipped: true,
           marketDate: market.marketDate,
@@ -70,6 +86,8 @@ export async function runWatchlistPriceScanner(
           symbolsQuoted: 0,
           alertsCreated: 0,
           alertsSkippedCooldown: 0,
+          rowsMarkedReview: 0,
+          personaGrokCalls: 0,
           durationSeconds
         }
       };
@@ -90,7 +108,7 @@ export async function runWatchlistPriceScanner(
       });
       return {
         status: "success",
-        output: `watchlist_price_scanner: watchlists=0 watchlists_with_symbols=0 items_updated=0 items_scanned=0 symbols_quoted=0 alerts_created=0 alerts_skipped_cooldown=0 duration_s=${durationSeconds}`,
+        output: `watchlist_price_scanner: watchlists=0 watchlists_with_symbols=0 items_updated=0 rows_marked_review=0 persona_grok_calls=0 items_scanned=0 symbols_quoted=0 alerts_created=0 alerts_skipped_cooldown=0 duration_s=${durationSeconds}`,
         auditDetails: {
           watchlistCount: 0,
           watchlistsWithSymbols: 0,
@@ -99,42 +117,106 @@ export async function runWatchlistPriceScanner(
           symbolsQuoted: 0,
           alertsCreated: 0,
           alertsSkippedCooldown: 0,
+          rowsMarkedReview: 0,
+          personaGrokCalls: 0,
           durationSeconds
         }
       };
     }
 
+    const personaDisabled = process.env.WATCHLIST_SCANNER_PERSONA_DISABLE === "1";
+    const { grokEnabled, maxGrokCalls } = watchlistScannerGrokEnv();
+    const personaCtx =
+      !personaDisabled && grokEnabled ? await resolveWatchlistScannerPersonaContext() : null;
+    let personaGrokCalls = 0;
+
     let updatedCount = 0;
+    let rowsMarkedReview = 0;
     let alertCount = 0;
     let alertsSkippedCooldown = 0;
     let itemsScanned = 0;
     let symbolsQuoted = 0;
     const auditAlertRows: PersistedPriceAlertRow[] = [];
 
+    const tenantTickerSet = new Set<string>();
+    for (const wl of watchlists) {
+      for (const raw of wl.symbols ?? []) {
+        const s = symbolFromRawWatchlistEntry(raw);
+        if (s) {
+          tenantTickerSet.add(s);
+        }
+      }
+    }
+    const uniqueTenantTickers = [...tenantTickerSet].sort();
+    const tenantQuotes =
+      uniqueTenantTickers.length > 0 ? await getYahooBatchQuotes(uniqueTenantTickers) : [];
+    symbolsQuoted += tenantQuotes.filter(
+      (q) => q.price !== undefined && Number.isFinite(q.price)
+    ).length;
+
+    const quoteByNorm = new Map<string, (typeof tenantQuotes)[number]>();
+    for (const q of tenantQuotes) {
+      if (q.price !== undefined && Number.isFinite(q.price)) {
+        quoteByNorm.set(String(q.symbol).trim().toUpperCase(), q);
+      }
+    }
+
     for (const wl of watchlists) {
       const symbols = wl.symbols || [];
       if (symbols.length === 0) continue;
 
       itemsScanned += symbols.length;
-      const tickers = symbols.map((s) => s.symbol);
-      const quotes = await getYahooBatchQuotes(tickers);
-      symbolsQuoted += quotes.filter((q) => q.price !== undefined && Number.isFinite(q.price)).length;
 
+      const nowRow = new Date();
       const updates: WatchlistPriceUpdate[] = [];
-      for (const s of symbols) {
-        const quote = quotes.find((q) => q.symbol === s.symbol);
-        if (quote?.price !== undefined) {
-          updates.push({
-            symbol: s.symbol,
-            lastPrice: quote.price,
-            lastUpdatedAt: new Date()
+      for (let i = 0; i < symbols.length; i++) {
+        const raw = symbols[i]!;
+        const sym = symbolFromRawWatchlistEntry(raw);
+        if (!sym) {
+          continue;
+        }
+        const quote = quoteByNorm.get(sym);
+        const yahooPx =
+          quote?.price !== undefined && Number.isFinite(quote.price) ? quote.price : undefined;
+        const priorPx = lastPriceFromRawWatchlistEntry(raw);
+        const spotForGrok =
+          yahooPx !== undefined ? yahooPx : priorPx !== undefined ? priorPx : undefined;
+        const desk = watchlistRowDeskMeta(raw);
+        let grokLine: string | null = null;
+        if (personaCtx != null && personaGrokCalls < maxGrokCalls && spotForGrok !== undefined) {
+          personaGrokCalls += 1;
+          grokLine = await refineWatchlistRowRationaleWithPersona(personaCtx, {
+            symbol: sym,
+            spotPrice: spotForGrok,
+            priorRationale: desk.rationale,
+            lineType: desk.lineType,
+            strategy: desk.strategy
           });
         }
+        const stitched = [desk.rationale?.trim(), grokLine].filter((x) => (x?.length ?? 0) > 0).join("\n\n");
+        const appendixSpot = yahooPx ?? priorPx;
+        updates.push({
+          symbolRowIndex: i,
+          symbol: sym,
+          ...(yahooPx !== undefined ? { lastPrice: yahooPx } : {}),
+          /** Always stamp so `/watchlist` “Last update” reflects a scan even when Yahoo missed (rationale-only merge). */
+          lastUpdatedAt: nowRow,
+          rationale: buildWatchlistScannerRationaleAppendix(stitched || undefined, appendixSpot, nowRow),
+          rowStatus: "review"
+        });
       }
 
       if (updates.length > 0 && wl._id) {
-        await updateWatchlistSymbolPrices(wl._id, updates);
-        updatedCount += updates.length;
+        const patched = await updateWatchlistSymbolPrices(wl._id, updates);
+        if (patched < updates.length) {
+          console.warn("[watchlist/scanner] fewer Mongo symbol rows patched than quote hits", {
+            watchlistId: wl._id.toHexString(),
+            attempted: updates.length,
+            patched
+          });
+        }
+        updatedCount += patched;
+        rowsMarkedReview += patched;
 
         const moves = evaluateSignificantPriceMoves(symbols, updates);
         const uid = normalizeMongoUserIdHex(wl.userId);
@@ -171,13 +253,16 @@ export async function runWatchlistPriceScanner(
 
     return {
       status: "success",
-      output: `watchlist_price_scanner: watchlists=${watchlists.length} watchlists_with_symbols=${watchlistsWithSymbols} items_updated=${updatedCount} items_scanned=${itemsScanned} symbols_quoted=${symbolsQuoted} alerts_created=${alertCount} alerts_skipped_cooldown=${alertsSkippedCooldown} duration_s=${durationSeconds}`,
+      output: `watchlist_price_scanner: watchlists=${watchlists.length} watchlists_with_symbols=${watchlistsWithSymbols} items_updated=${updatedCount} rows_marked_review=${rowsMarkedReview} persona_grok_calls=${personaGrokCalls} items_scanned=${itemsScanned} symbols_quoted=${symbolsQuoted} alerts_created=${alertCount} alerts_skipped_cooldown=${alertsSkippedCooldown} duration_s=${durationSeconds}`,
       auditDetails: {
         marketDate: market.marketDate,
         marketTimezone: market.timezone,
         watchlistCount: watchlists.length,
         watchlistsWithSymbols,
         itemsUpdated: updatedCount,
+        rowsMarkedReview,
+        personaGrokCalls,
+        personaResolved: Boolean(personaCtx),
         itemsScanned,
         symbolsQuoted,
         alertsCreated: alertCount,

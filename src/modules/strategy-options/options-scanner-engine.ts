@@ -98,8 +98,7 @@ async function flushWatchlistScannerSideEffects(
     if (!wl?._id) {
       continue;
     }
-    await updateWatchlistSymbolPrices(wl._id, prices);
-    rowsUpdated += prices.length;
+    rowsUpdated += await updateWatchlistSymbolPrices(wl._id, prices);
   }
   for (const [uid, entries] of appendByUser) {
     if (entries.length === 0) {
@@ -357,7 +356,6 @@ async function grokRefineDecision(input: {
           tools: ctx.tools,
           toolChoice: ctx.toolChoice,
           maxTurns: ctx.maxTurns,
-          temperature: ctx.temperature,
           executor: createOptionsScannerToolExecutor()
         });
         text = loop.outputText.trim();
@@ -366,8 +364,7 @@ async function grokRefineDecision(input: {
           model: ctx.model,
           systemPrompt: ctx.systemPrompt,
           userPrompt: user,
-          maxTurns: Math.min(Math.max(ctx.maxTurns, 1), 8),
-          temperature: ctx.temperature
+          maxTurns: Math.min(Math.max(ctx.maxTurns, 1), 8)
         });
         text = single.outputText.trim();
       }

@@ -78,11 +78,6 @@ export async function POST(request: Request) {
     return session;
   }
 
-  const tenantIdHex = await requireAdminTenantIdHex(session);
-  if (tenantIdHex instanceof NextResponse) {
-    return tenantIdHex;
-  }
-
   const json = await request.json();
   const parsed = createSchema.safeParse(json);
   if (!parsed.success) {
@@ -97,8 +92,7 @@ export async function POST(request: Request) {
     deliveryTarget: parsed.data.deliveryTarget,
     slackWebhookUrl:
       parsed.data.deliveryTarget === "slack" ? parsed.data.slackWebhookUrl?.trim() : undefined,
-    emailTo: parsed.data.deliveryTarget === "email" ? parsed.data.emailTo?.trim() : undefined,
-    tenantId: tenantIdHex
+    emailTo: parsed.data.deliveryTarget === "email" ? parsed.data.emailTo?.trim() : undefined
   });
 
   if (created._id) {

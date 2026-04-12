@@ -212,6 +212,20 @@ describe("core-scanner-service", () => {
     expect(s.noise).toBeUndefined();
   });
 
+  it("extractSummaryForDiff includes watchlist_price_scanner persona keys", () => {
+    const s = extractSummaryForDiff(
+      {
+        rowsMarkedReview: 12,
+        personaGrokCalls: 10,
+        personaResolved: true
+      },
+      "success"
+    );
+    expect(s.rowsMarkedReview).toBe(12);
+    expect(s.personaGrokCalls).toBe(10);
+    expect(s.personaResolved).toBe(true);
+  });
+
   it("appendTenantIdToScheduledTaskOutput prefixes once", () => {
     const oid = new ObjectId();
     expect(appendTenantIdToScheduledTaskOutput("done", oid)).toBe(

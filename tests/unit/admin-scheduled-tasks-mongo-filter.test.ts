@@ -64,6 +64,21 @@ describe("listScheduledTasks tenant read scope (admin /api/admin/tasks)", () => 
       ]
     });
   });
+
+  it("systemWideOnly uses portfolio filter + null/missing tenantId only", async () => {
+    await listScheduledTasks({ tenantId: "507f1f77bcf86cd799439022", systemWideOnly: true, limit: 50 });
+
+    expect(scheduledTasksMongo.findMock).toHaveBeenCalledTimes(1);
+    const filter = scheduledTasksMongo.findMock.mock.calls[0]![0] as Record<string, unknown>;
+    expect(filter).toEqual({
+      $and: [
+        {
+          $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
+        },
+        { $or: [{ tenantId: null }, { tenantId: { $exists: false } }] }
+      ]
+    });
+  });
 });
 
 describe("listDueScheduledTasks tenant read scope (scheduler tick)", () => {

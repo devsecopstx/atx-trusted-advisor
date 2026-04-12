@@ -48,6 +48,7 @@ import {
     type TaskRun,
     type UserAdminSettings,
     type Watchlist,
+    type WatchlistRowStatus,
     type WatchlistSymbol,
     type WatchlistSymbolImportEntry,
     accountTypeValues,
@@ -56,6 +57,10 @@ import {
 } from "@/modules/core-admin/types";
 import type { CoreUser } from "@/modules/identity/types";
 import { MAX_WATCHLIST_SYMBOLS } from "@/modules/watchlist/constants";
+import {
+    mergeBaseFromRawWatchlistEntry,
+    symbolFromRawWatchlistEntry
+} from "@/modules/watchlist/watchlist-row-raw";
 
 const collections = {
   accessRequests: "admin_access_requests",
@@ -152,11 +157,21 @@ function coerceWatchlistSymbolEntry(
     const quantity = parseOptionalFiniteNumber(o.quantity);
     const entryPrice = parseOptionalFiniteNumber(o.entryPrice);
     const lastPrice = parseOptionalFiniteNumber(o.lastPrice);
-    const lastUpdatedAt = o.lastUpdatedAt instanceof Date ? o.lastUpdatedAt : undefined;
+    let lastUpdatedAt: Date | undefined;
+    const rawLu = o.lastUpdatedAt;
+    if (rawLu instanceof Date && !Number.isNaN(rawLu.getTime())) {
+      lastUpdatedAt = rawLu;
+    } else if (typeof rawLu === "string") {
+      const parsedLu = new Date(rawLu);
+      if (!Number.isNaN(parsedLu.getTime())) {
+        lastUpdatedAt = parsedLu;
+      }
+    }
     const rationale =
       typeof o.rationale === "string" ? o.rationale.trim().slice(0, 4000) : undefined;
     const rs = o.rowStatus;
-    const rowStatus = rs === "draft" || rs === "active" ? rs : undefined;
+    const rowStatus =
+      rs === "draft" || rs === "active" || rs === "review" ? rs : undefined;
     return {
       symbol,
       addedAt,
@@ -173,20 +188,24 @@ function coerceWatchlistSymbolEntry(
   return null;
 }
 
-/** Normalizes legacy string[] rows and guarantees `ensureSymbols` exist (deduped, stable insert order). */
+/**
+ * Coerces legacy `string[]` / loose object rows and preserves **array order** and **duplicate tickers**
+ * (independent desk lines). Appends any `ensureSymbols` not already present on **at least one** row.
+ */
 export function normalizeWatchlistDocumentSymbols(
   raw: unknown,
   ensureSymbols: string[]
 ): WatchlistSymbol[] {
   const now = new Date();
   const arr = Array.isArray(raw) ? raw : [];
-  const bySymbol = new Map<string, WatchlistSymbol>();
+  const out: WatchlistSymbol[] = [];
   for (const item of arr) {
     const coerced = coerceWatchlistSymbolEntry(item, now);
-    if (coerced && !bySymbol.has(coerced.symbol)) {
-      bySymbol.set(coerced.symbol, coerced);
+    if (coerced) {
+      out.push(coerced);
     }
   }
+  const present = new Set(out.map((s) => s.symbol));
   const ensureUnique = Array.from(
     new Set(
       ensureSymbols
@@ -195,11 +214,12 @@ export function normalizeWatchlistDocumentSymbols(
     )
   );
   for (const symbol of ensureUnique) {
-    if (!bySymbol.has(symbol)) {
-      bySymbol.set(symbol, { symbol, addedAt: now });
+    if (!present.has(symbol)) {
+      out.push({ symbol, addedAt: now });
+      present.add(symbol);
     }
   }
-  return Array.from(bySymbol.values());
+  return out;
 }
 
 type TenantScopedOptions = {
@@ -804,6 +824,11 @@ export async function listScheduledTasks(options?: {
   tenantId?: string;
   /** When set, returns only tasks bound to this portfolio. */
   portfolioId?: string;
+  /**
+   * When true (Admin → Tasks default): only jobs with no `tenantId` — executed once per `core_tenants` on
+   * run/tick (`executeSystemWideScheduledTask`). Excludes per-tenant duplicates and portfolio-bound rows.
+   */
+  systemWideOnly?: boolean;
 }): Promise<ScheduledTask[]> {
   const limit = options?.limit ?? 50;
   const db = await getDb();
@@ -813,12 +838,16 @@ export async function listScheduledTasks(options?: {
       : {
           $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }]
         };
-  return db
-    .collection<ScheduledTask>(collections.scheduledTasks)
-    .find(scheduledTaskTenantReadScope(portfolioFilter, options?.tenantId))
-    .sort({ name: 1 })
-    .limit(limit)
-    .toArray();
+  const query: Filter<ScheduledTask> =
+    options?.systemWideOnly === true
+      ? ({
+          $and: [
+            portfolioFilter,
+            { $or: [{ tenantId: null }, { tenantId: { $exists: false } }] }
+          ]
+        } as Filter<ScheduledTask>)
+      : (scheduledTaskTenantReadScope(portfolioFilter, options?.tenantId) as Filter<ScheduledTask>);
+  return db.collection<ScheduledTask>(collections.scheduledTasks).find(query).sort({ name: 1 }).limit(limit).toArray();
 }
 
 export async function createScheduledTask(
@@ -850,6 +879,7 @@ export async function createScheduledTask(
       now
     ) ??
     new Date(now.getTime() + 5 * 60 * 1000);
+  const tenantOid = toTenantObjectId(payload.tenantId);
   const document: ScheduledTask = {
     name: payload.name,
     category: payload.category,
@@ -861,7 +891,7 @@ export async function createScheduledTask(
     maxRetries: payload.maxRetries,
     lastRunAt: payload.lastRunAt,
     nextRunAt: resolvedNextRunAt,
-    tenantId: toTenantObjectId(payload.tenantId),
+    ...(tenantOid ? { tenantId: tenantOid } : {}),
     ...(portfolioOid ? { portfolioId: portfolioOid } : {}),
     ...(appBrokerImportJobOid ? { appBrokerImportJobId: appBrokerImportJobOid } : {}),
     ...(payload.deliveryChannelTarget ? { deliveryChannelTarget: payload.deliveryChannelTarget } : {})
@@ -1014,8 +1044,22 @@ export async function listDueScheduledTasks(
       )
     )
     .sort({ nextRunAt: 1 })
-    .limit(30)
+    .limit(80)
     .toArray();
+}
+
+const CORE_TENANTS_COLLECTION = "core_tenants";
+
+/** Sorted `core_tenants._id` values — used when `admin_scheduled_tasks` rows omit `tenantId` (system-wide jobs). */
+export async function listCoreTenantObjectIds(): Promise<ObjectId[]> {
+  const db = await getDb();
+  const rows = await db
+    .collection<{ _id: ObjectId }>(CORE_TENANTS_COLLECTION)
+    .find({})
+    .project({ _id: 1 })
+    .sort({ _id: 1 })
+    .toArray();
+  return rows.map((r) => r._id);
 }
 
 export async function markTaskRunWindow(
@@ -1067,6 +1111,8 @@ export async function finalizeTaskRun(
 export async function listTaskRuns(options?: {
   limit?: number;
   tenantId?: string;
+  /** When true (Admin → Task runs), list runs for all tenants — matches system-wide job fan-out. */
+  allTenants?: boolean;
   /** Inclusive lower bound on `startedAt`. */
   startedAtMin?: Date;
   /** Exclusive upper bound on `startedAt` (Mongo `$lt`). */
@@ -1082,9 +1128,11 @@ export async function listTaskRuns(options?: {
     time.$lt = options.startedAtMaxExclusive;
   }
   const base: Filter<TaskRun> = Object.keys(time).length > 0 ? { startedAt: time } : {};
+  const filter: Filter<TaskRun> =
+    options?.allTenants === true ? base : withTenantScope(base, options?.tenantId);
   return db
     .collection<TaskRun>(collections.taskRuns)
-    .find(withTenantScope(base, options?.tenantId))
+    .find(filter)
     .sort({ startedAt: -1 })
     .limit(limit)
     .toArray();
@@ -1226,26 +1274,26 @@ export async function deleteDeployNoteConfigById(
   return result.deletedCount === 1;
 }
 
-export async function listAdminDeliveryChannels(options?: {
-  tenantId?: string;
-}): Promise<AdminDeliveryChannel[]> {
+export async function listAdminDeliveryChannels(
+  _options?: TenantScopedOptions
+): Promise<AdminDeliveryChannel[]> {
+  // Reference _options to satisfy eslint no-unused-vars when callers pass it for type compatibility.
+  void _options;
   const db = await getDb();
   return db
     .collection<AdminDeliveryChannel>(collections.adminDeliveryChannels)
-    .find(withTenantScope({}, options?.tenantId))
+    .find({})
     .sort({ updatedAt: -1, createdAt: -1 })
     .toArray();
 }
 
 export async function createAdminDeliveryChannel(
-  payload: Omit<AdminDeliveryChannel, "_id" | "tenantId" | "createdAt" | "updatedAt"> & {
-    tenantId?: string;
-  }
+  payload: Omit<AdminDeliveryChannel, "_id" | "tenantId" | "createdAt" | "updatedAt">
 ): Promise<AdminDeliveryChannel> {
   const db = await getDb();
   const now = new Date();
   const document: AdminDeliveryChannel = {
-    tenantId: toTenantObjectId(payload.tenantId),
+    // System-wide: do not persist tenantId
     name: payload.name.trim(),
     deliveryTarget: payload.deliveryTarget,
     slackWebhookUrl:
@@ -1262,20 +1310,37 @@ export async function createAdminDeliveryChannel(
 
 export async function getAdminDeliveryChannelById(
   id: string,
-  options?: TenantScopedOptions
+  _options?: TenantScopedOptions
 ): Promise<AdminDeliveryChannel | null> {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+  // Reference _options to satisfy eslint no-unused-vars when callers pass it for type compatibility.
+  void _options;
+  const db = await getDb();
+  return db
+    .collection<AdminDeliveryChannel>(collections.adminDeliveryChannels)
+    .findOne({ _id: new ObjectId(id) });
+}
+
+/**
+ * Lookup by `_id` only — for system-wide scheduled tasks (`task.tenantId` unset) where Slack/email notify
+ * must resolve a delivery channel stored under a concrete tenant. Call only from trusted task-runner paths.
+ */
+export async function getAdminDeliveryChannelByIdUnscoped(id: string): Promise<AdminDeliveryChannel | null> {
   if (!ObjectId.isValid(id)) {
     return null;
   }
   const db = await getDb();
   return db
     .collection<AdminDeliveryChannel>(collections.adminDeliveryChannels)
-    .findOne(withTenantScope({ _id: new ObjectId(id) }, options?.tenantId));
+    .findOne({ _id: new ObjectId(id) });
 }
 
 export async function updateAdminDeliveryChannelById(input: {
   channelId: string;
   patch: Partial<Pick<AdminDeliveryChannel, "name" | "deliveryTarget" | "slackWebhookUrl" | "emailTo">>;
+  /** Optional tenant scope from callers; channels are system-wide, so this is currently ignored. */
   tenantId?: string;
 }): Promise<AdminDeliveryChannel | null> {
   if (!ObjectId.isValid(input.channelId)) {
@@ -1321,12 +1386,12 @@ export async function updateAdminDeliveryChannelById(input: {
     updateDoc.$unset = $unset;
   }
   await db.collection<AdminDeliveryChannel>(collections.adminDeliveryChannels).updateOne(
-    withTenantScope({ _id }, input.tenantId),
+    { _id },
     updateDoc
   );
   return db
     .collection<AdminDeliveryChannel>(collections.adminDeliveryChannels)
-    .findOne(withTenantScope({ _id }, input.tenantId));
+    .findOne({ _id });
 }
 
 export async function deleteAdminDeliveryChannelById(
@@ -1378,6 +1443,24 @@ function userWatchlistSessionScopeFilter(
   whenTenantMissing: "denyIfTenantMissing" | "allowLegacyUserScope" = "denyIfTenantMissing"
 ): Record<string, unknown> {
   return userAccountsInSessionScopeFilter(userId, tenantId, whenTenantMissing);
+}
+
+/**
+ * `uniq_watchlist_per_user` keys `{ tenantId, userId }`, so **legacy `tenantId: null` and tenant-scoped rows**
+ * can both exist for one user. `findOne` without sort is undefined; batch jobs may update the fresher doc while
+ * GET returned the stale one. Prefer the row scanners / PATCH last touched.
+ */
+async function findLatestWatchlistMatchingFilter(
+  db: import("mongodb").Db,
+  filter: Record<string, unknown>
+): Promise<Watchlist | null> {
+  const rows = await db
+    .collection<Watchlist>(collections.watchlists)
+    .find(filter as Filter<Watchlist>)
+    .sort({ updatedAt: -1, _id: -1 })
+    .toArray();
+  const doc = Array.isArray(rows) && rows.length > 0 ? rows[0] : undefined;
+  return doc ?? null;
 }
 
 function defaultPortfolioMarkerFilter(
@@ -2712,41 +2795,225 @@ export async function adminDeleteOptionsStrategy(id: string): Promise<boolean> {
 }
 
 /**
+ * Hex + `ObjectId` variants for `userId: { $in: … }` so BSON matches both storage shapes.
+ */
+export async function collectTenantMemberUserIdQueryAtoms(tenantId: ObjectId): Promise<(string | ObjectId)[]> {
+  const db = await getDb();
+  const memberships = await db
+    .collection<{ userId: unknown }>("core_tenant_memberships")
+    .find({ tenantId })
+    .project({ userId: 1 })
+    .toArray();
+
+  const hexSet = new Set<string>();
+  for (const m of memberships) {
+    const u = m.userId;
+    if (u instanceof ObjectId) {
+      hexSet.add(u.toHexString());
+    } else if (typeof u === "string" && u.trim()) {
+      hexSet.add(u.trim());
+    }
+  }
+
+  const userIdIn: (string | ObjectId)[] = [];
+  for (const hex of hexSet) {
+    userIdIn.push(hex);
+    if (ObjectId.isValid(hex)) {
+      userIdIn.push(new ObjectId(hex));
+    }
+  }
+  return userIdIn;
+}
+
+/**
+ * Desk collections (`portfolio_positions`, `portfolio_watchlists`, …): strict `tenantId` **or** legacy
+ * `tenantId: null` rows for users who are members of that tenant — same idea as {@link userWatchlistSessionScopeFilter}.
+ */
+export function mongoPortfolioDeskFamilyTenantFilter(
+  tenantId: ObjectId,
+  memberUserIdAtoms: readonly (string | ObjectId)[]
+): Record<string, unknown> {
+  const legacyBranch =
+    memberUserIdAtoms.length > 0
+      ? {
+          $and: [
+            { userId: { $in: [...memberUserIdAtoms] } },
+            /** Matches BSON null and documents where `tenantId` is absent. */
+            { tenantId: null }
+          ]
+        }
+      : null;
+
+  return legacyBranch != null ? { $or: [{ tenantId }, legacyBranch] } : { tenantId };
+}
+
+/**
  * Watchlists for tenant-scoped jobs (`watchlist_price_scanner`, etc.).
- * When `tenantId` is set, matches {@link executePriceScannerJob} / holdings scope (strict `tenantId`).
+ * When `tenantId` is set: documents with that `tenantId` **or** legacy rows (null/missing `tenantId`) whose
+ * `userId` is a member of the tenant — mirrors {@link userWatchlistSessionScopeFilter} so batch jobs update
+ * the same docs the app-user API can read.
  * Omit `tenantId` only for degenerate / test runs (full collection read).
  */
 export async function listWatchlistsForTenantScope(tenantId?: ObjectId): Promise<Watchlist[]> {
   const db = await getDb();
-  const filter = tenantId ? { tenantId } : {};
-  return db.collection<Watchlist>(collections.watchlists).find(filter).toArray();
+  const col = db.collection<Watchlist>(collections.watchlists);
+  if (!tenantId) {
+    return col.find({}).toArray();
+  }
+
+  const userIdIn = await collectTenantMemberUserIdQueryAtoms(tenantId);
+  const filter = mongoPortfolioDeskFamilyTenantFilter(tenantId, userIdIn);
+  return col.find(filter as Filter<Watchlist>).toArray();
 }
 
+function watchlistSymbolMergeKey(symbol: string): string {
+  return String(symbol).trim().toUpperCase();
+}
+
+function mergedWatchlistSymbolField(
+  row: unknown,
+  base: Record<string, unknown>,
+  normalizedKey: string
+): string {
+  if (typeof row === "string") {
+    return normalizedKey;
+  }
+  const b = base.symbol;
+  if (typeof b === "string" && b.trim()) {
+    return b.trim();
+  }
+  return normalizedKey;
+}
+
+/**
+ * Merges price (and optional rationale / rowStatus) into `portfolio_watchlists.symbols`.
+ *
+ * **Symbol mode** (default): match by normalized ticker on every row — same as Yahoo uppercase vs stored
+ * lowercase. If the array has duplicate tickers, each matching row receives the **same** payload (last update
+ * wins in the keyed map).
+ *
+ * **Row-index mode**: when **every** entry includes `symbolRowIndex`, patch only that position after
+ * verifying normalized `symbol` matches the row (duplicate tickers get independent desk rows).
+ *
+ * Uses read-modify-write (avoids positional `arrayFilters` exact-match pitfalls).
+ *
+ * @returns Count of symbol **rows** in the array that were patched.
+ */
 export async function updateWatchlistSymbolPrices(
   watchlistId: ObjectId,
-  priceUpdates: Array<{ symbol: string; lastPrice: number; lastUpdatedAt: Date }>
-): Promise<void> {
-  if (priceUpdates.length === 0) return;
+  priceUpdates: Array<{
+    symbol: string;
+    /** Omit to leave prior row prices unchanged (e.g. Yahoo miss — still merge rationale / rowStatus). */
+    lastPrice?: number;
+    lastUpdatedAt?: Date;
+    rationale?: string;
+    rowStatus?: WatchlistRowStatus;
+    /** When present on all updates, targets `symbols[symbolRowIndex]` only. */
+    symbolRowIndex?: number;
+  }>
+): Promise<number> {
+  if (priceUpdates.length === 0) {
+    return 0;
+  }
 
   const db = await getDb();
-  // One update per symbol: a single `updateOne` payload must not be an array (MongoDB treats arrays as
-  // pipeline updates, where `arrayFilters` are invalid). Multiple `elem.*` arrayFilters in one op are
-  // also invalid — each symbol gets its own `updateOne` with one `elem` filter.
-  await db.collection<Watchlist>(collections.watchlists).bulkWrite(
-    priceUpdates.map((u) => ({
-      updateOne: {
-        filter: { _id: watchlistId },
-        update: {
-          $set: {
-            "symbols.$[elem].lastPrice": u.lastPrice,
-            "symbols.$[elem].lastUpdatedAt": u.lastUpdatedAt,
-          },
-        },
-        arrayFilters: [{ "elem.symbol": u.symbol }],
-      },
-    })),
-    { ordered: true }
+  const col = db.collection<Watchlist>(collections.watchlists);
+  const doc = await col.findOne({ _id: watchlistId });
+  if (!doc?.symbols || !Array.isArray(doc.symbols) || doc.symbols.length === 0) {
+    return 0;
+  }
+
+  const indexMode = priceUpdates.every((u) => typeof u.symbolRowIndex === "number");
+
+  let patched = 0;
+  /** Assigned on every path before `updateOne` (index merge, index→symbol fallback, or symbol-only merge). */
+  let nextSymbols!: WatchlistSymbol[];
+
+  const mergeNow = new Date();
+
+  const applySymbolKeyMerge = (symbols: typeof doc.symbols): void => {
+    const byKey = new Map<string, (typeof priceUpdates)[0]>();
+    for (const u of priceUpdates) {
+      byKey.set(watchlistSymbolMergeKey(u.symbol), u);
+    }
+    patched = 0;
+    nextSymbols = symbols.map((row): WatchlistSymbol => {
+      const rowSym = symbolFromRawWatchlistEntry(row);
+      if (!rowSym) {
+        return row as WatchlistSymbol;
+      }
+      const u = byKey.get(watchlistSymbolMergeKey(rowSym));
+      if (!u) {
+        return row as WatchlistSymbol;
+      }
+      patched += 1;
+      const base = mergeBaseFromRawWatchlistEntry(row, mergeNow);
+      return {
+        ...base,
+        symbol: mergedWatchlistSymbolField(row, base, rowSym),
+        ...(u.lastPrice !== undefined ? { lastPrice: u.lastPrice } : {}),
+        ...(u.lastUpdatedAt !== undefined ? { lastUpdatedAt: u.lastUpdatedAt } : {}),
+        ...(u.rationale !== undefined ? { rationale: u.rationale } : {}),
+        ...(u.rowStatus !== undefined ? { rowStatus: u.rowStatus } : {})
+      } as WatchlistSymbol;
+    });
+  };
+
+  if (indexMode) {
+    const byIdx = new Map<number, (typeof priceUpdates)[0]>();
+    for (const u of priceUpdates) {
+      byIdx.set(u.symbolRowIndex!, u);
+    }
+    nextSymbols = doc.symbols.map((row, idx): WatchlistSymbol => {
+      const u = byIdx.get(idx);
+      if (!u) {
+        return row as WatchlistSymbol;
+      }
+      const rowSym = symbolFromRawWatchlistEntry(row);
+      if (!rowSym || watchlistSymbolMergeKey(rowSym) !== watchlistSymbolMergeKey(u.symbol)) {
+        return row as WatchlistSymbol;
+      }
+      patched += 1;
+      const base = mergeBaseFromRawWatchlistEntry(row, mergeNow);
+      return {
+        ...base,
+        symbol: mergedWatchlistSymbolField(row, base, rowSym),
+        ...(u.lastPrice !== undefined ? { lastPrice: u.lastPrice } : {}),
+        ...(u.lastUpdatedAt !== undefined ? { lastUpdatedAt: u.lastUpdatedAt } : {}),
+        ...(u.rationale !== undefined ? { rationale: u.rationale } : {}),
+        ...(u.rowStatus !== undefined ? { rowStatus: u.rowStatus } : {})
+      } as WatchlistSymbol;
+    });
+    /**
+     * `watchlist_price_scanner` builds updates with `symbolRowIndex` from an in-memory snapshot. If the array
+     * order changed before this read-modify-write (concurrent PATCH/import) every index check fails → `patched=0`
+     * and **no** Mongo write (no rationale / `rowStatus`). Fall back to symbol-key merge so the scan still lands.
+     * Duplicate tickers in one list may share the last payload for that symbol (acceptable vs silent no-op).
+     */
+    if (patched === 0) {
+      console.warn(
+        "[watchlist/repository] updateWatchlistSymbolPrices: index merge patched 0 rows; retrying symbol-key merge",
+        { watchlistId: watchlistId.toHexString(), updateCount: priceUpdates.length }
+      );
+      applySymbolKeyMerge(doc.symbols);
+    }
+  } else {
+    applySymbolKeyMerge(doc.symbols);
+  }
+
+  if (patched === 0) {
+    return 0;
+  }
+
+  const tickTimes = priceUpdates
+    .map((u) => u.lastUpdatedAt?.getTime())
+    .filter((t): t is number => typeof t === "number" && !Number.isNaN(t));
+  const latestMs = tickTimes.length > 0 ? Math.max(...tickTimes) : Date.now();
+  await col.updateOne(
+    { _id: watchlistId },
+    { $set: { symbols: nextSymbols, updatedAt: new Date(latestMs) } }
   );
+  return patched;
 }
 
 /** Canonical watchlist for the user (tenant-scoped); one document per user after migration. */
@@ -2756,9 +3023,10 @@ export async function getUserWatchlist(input: {
 }): Promise<Watchlist | null> {
   await ensurePortfolioIndexes();
   const db = await getDb();
-  const doc = await db
-    .collection<Watchlist>(collections.watchlists)
-    .findOne(userWatchlistSessionScopeFilter(input.userId, input.tenantId));
+  const doc = await findLatestWatchlistMatchingFilter(
+    db,
+    userWatchlistSessionScopeFilter(input.userId, input.tenantId)
+  );
   if (!doc) {
     return null;
   }
@@ -2941,7 +3209,7 @@ function mergeImportEntryIntoSymbol(
   if (entry.rowStatus !== undefined) {
     if (entry.rowStatus === null) {
       delete next.rowStatus;
-    } else if (entry.rowStatus === "draft" || entry.rowStatus === "active") {
+    } else if (entry.rowStatus === "draft" || entry.rowStatus === "active" || entry.rowStatus === "review") {
       next.rowStatus = entry.rowStatus;
     }
   }
@@ -2967,7 +3235,7 @@ export async function mutateUserWatchlistSymbols(input: MutateUserWatchlistInput
 
   const db = await getDb();
   const filter = userWatchlistSessionScopeFilter(input.userId, input.tenantId);
-  const doc = await db.collection<Watchlist>(collections.watchlists).findOne(filter);
+  const doc = await findLatestWatchlistMatchingFilter(db, filter);
   if (!doc?._id) {
     return null;
   }
@@ -3405,9 +3673,7 @@ export async function provisionDefaultPortfolioForUser(
     input.tenantId,
     "allowLegacyUserScope"
   );
-  const existingWatchlist = await db
-    .collection<Watchlist>(collections.watchlists)
-    .findOne(watchlistLookupFilter);
+  const existingWatchlist = await findLatestWatchlistMatchingFilter(db, watchlistLookupFilter);
   const mergedWatchlistSymbols = normalizeWatchlistDocumentSymbols(
     existingWatchlist?.symbols ?? [],
     Array.from(
@@ -3462,9 +3728,7 @@ export async function provisionDefaultPortfolioForUser(
     );
   }
 
-  let watchlist = await db
-    .collection<Watchlist>(collections.watchlists)
-    .findOne(watchlistLookupFilter);
+  let watchlist = await findLatestWatchlistMatchingFilter(db, watchlistLookupFilter);
   if (!watchlist?._id) {
     throw new Error("Failed to provision default watchlist");
   }

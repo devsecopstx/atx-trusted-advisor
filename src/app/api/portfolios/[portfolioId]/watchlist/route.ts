@@ -32,7 +32,7 @@ const watchlistAddEntrySchema = z.object({
   quantity: z.union([z.number().finite(), z.null()]).optional(),
   entryPrice: z.union([z.number().finite(), z.null()]).optional(),
   rationale: z.union([z.string().trim().max(4000), z.null()]).optional(),
-  rowStatus: z.union([z.enum(["draft", "active"]), z.null()]).optional(),
+  rowStatus: z.union([z.enum(["draft", "active", "review"]), z.null()]).optional(),
   /** Min absolute % move to fire price alerts for this row; null clears. */
   priceAlertMinAbsMovePercent: z.union([z.number().min(0.1).max(100), z.null()]).optional()
 });

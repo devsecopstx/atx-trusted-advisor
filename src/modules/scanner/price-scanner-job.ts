@@ -1,12 +1,22 @@
-import { ObjectId } from "mongodb";
+import { type Filter, ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
 import { TENANT_PORTFOLIO_COLLECTION } from "@/modules/core-admin/collection-names";
+import {
+    collectTenantMemberUserIdQueryAtoms,
+    mongoPortfolioDeskFamilyTenantFilter
+} from "@/modules/core-admin/repository";
 import type { ScheduledCategoryResult } from "@/modules/scanner/core-scanner-service";
 import {
     resolveUsMarketDayContext,
     updateTenantMarketCalendarSnapshot
 } from "@/modules/scanner/tenant-market-calendar";
+import {
+    mergeBaseFromRawWatchlistEntry,
+    symbolFromRawWatchlistEntry,
+    watchlistRowDeskMeta
+} from "@/modules/watchlist/watchlist-row-raw";
+import { buildWatchlistScannerRationaleAppendix } from "@/modules/watchlist/watchlist-scanner-rationale";
 import { getYahooBatchQuotes } from "@/modules/watchlist/yahoo-batch-quotes";
 
 /** Logical service id for docs / observability (see atx-docs/design-system/scheduled-task/price-scanner.md). */
@@ -54,11 +64,33 @@ function normalizeTicker(raw: unknown): string | null {
   return s;
 }
 
-function tenantFilter(tenantId?: ObjectId): Record<string, unknown> {
-  if (tenantId) {
-    return { tenantId };
+/** Resolves legacy string rows and `{ symbol }` objects for quote batching / `$set` merges. */
+export function priceScannerNormalizedWatchlistTicker(entry: unknown): string | null {
+  const rawSym = symbolFromRawWatchlistEntry(entry);
+  return rawSym ? normalizeTicker(rawSym) : null;
+}
+
+async function tenantDeskQuoteScanFilter(tenantId?: ObjectId): Promise<Record<string, unknown>> {
+  if (!tenantId) {
+    return {};
   }
-  return {};
+  const atoms = await collectTenantMemberUserIdQueryAtoms(tenantId);
+  return mongoPortfolioDeskFamilyTenantFilter(tenantId, atoms);
+}
+
+function mergedPriceScanWatchlistSymbol(
+  entry: unknown,
+  base: Record<string, unknown>,
+  normalizedKey: string
+): string {
+  if (typeof entry === "string") {
+    return normalizedKey;
+  }
+  const b = base.symbol;
+  if (typeof b === "string" && b.trim()) {
+    return b.trim();
+  }
+  return normalizedKey;
 }
 
 async function updateWatchlistPrices(
@@ -84,7 +116,7 @@ async function updateWatchlistPrices(
     }
     let changed = false;
     const nextSymbols = wl.symbols.map((entry) => {
-      const symbol = normalizeTicker(entry?.symbol);
+      const symbol = priceScannerNormalizedWatchlistTicker(entry);
       if (!symbol) {
         return entry;
       }
@@ -94,10 +126,20 @@ async function updateWatchlistPrices(
       }
       changed = true;
       symbolUpdates += 1;
+      const base = mergeBaseFromRawWatchlistEntry(entry, now);
+      const priorTrim = watchlistRowDeskMeta(entry).rationale?.trim();
+      const rationale = buildWatchlistScannerRationaleAppendix(
+        priorTrim ? priorTrim : undefined,
+        price,
+        now
+      );
       return {
-        ...entry,
+        ...base,
+        symbol: mergedPriceScanWatchlistSymbol(entry, base, symbol),
         lastPrice: price,
-        lastUpdatedAt: now
+        lastUpdatedAt: now,
+        rationale,
+        rowStatus: "review" as const
       };
     });
     if (changed) {
@@ -117,19 +159,24 @@ async function updateWatchlistPrices(
 }
 
 /**
- * Tenant-scoped price scan: holdings + watchlist symbols → Yahoo batch quotes → watchlist `lastPrice` updates
- * + `tenant_market_calendar` snapshot. Invoked by scheduled tasks (`category: price_scanner`) and manual run.
+ * Tenant-scoped price scan: holdings + watchlist symbols → Yahoo batch quotes → **watchlist** `lastPrice` /
+ * `lastUpdatedAt`, scan-line rationale appendix, and `rowStatus` → `review` when a quote lands (aligned with
+ * `watchlist_price_scanner` desk copy) + `tenant_market_calendar` snapshot. Does **not** write `portfolio_positions`
+ * (positions only seed the symbol quote set). Uses the same tenant scope as session desk data: strict `tenantId`
+ * **or** legacy `tenantId: null` rows for users in `core_tenant_memberships`. Admin **Run** passes
+ * `bypassMarketWindow: true` (see `POST /api/admin/tasks/{taskId}/run`).
  */
 export async function executePriceScannerJob(input: PriceScannerJobInput): Promise<ScheduledCategoryResult> {
   const { tenantId } = input;
   const start = Date.now();
   const db = await getDb();
-  const scope = tenantFilter(tenantId);
+  const scope = await tenantDeskQuoteScanFilter(tenantId);
+  const scopeFilter = scope as Filter<Record<string, unknown>>;
   const market = resolveUsMarketDayContext(new Date());
 
   const [portfolioCount, accountCount] = await Promise.all([
-    db.collection(PORTFOLIO_COLLECTION).countDocuments(scope),
-    db.collection(ACCOUNT_COLLECTION).countDocuments(scope)
+    db.collection(PORTFOLIO_COLLECTION).countDocuments(scopeFilter),
+    db.collection(ACCOUNT_COLLECTION).countDocuments(scopeFilter)
   ]);
 
   const skipForMarket =
@@ -168,11 +215,11 @@ export async function executePriceScannerJob(input: PriceScannerJobInput): Promi
   const [positions, watchlists] = await Promise.all([
     db
       .collection<ScannerPosition>(POSITION_COLLECTION)
-      .find(scope, { projection: { symbol: 1 } })
+      .find(scopeFilter, { projection: { symbol: 1 } })
       .toArray(),
     db
       .collection<ScannerWatchlist>(WATCHLIST_COLLECTION)
-      .find(scope, { projection: { symbols: 1 } })
+      .find(scopeFilter, { projection: { symbols: 1 } })
       .toArray()
   ]);
 
@@ -185,7 +232,7 @@ export async function executePriceScannerJob(input: PriceScannerJobInput): Promi
   }
   for (const wl of watchlists) {
     for (const entry of wl.symbols ?? []) {
-      const symbol = normalizeTicker(entry?.symbol);
+      const symbol = priceScannerNormalizedWatchlistTicker(entry);
       if (symbol) {
         symbols.add(symbol);
       }

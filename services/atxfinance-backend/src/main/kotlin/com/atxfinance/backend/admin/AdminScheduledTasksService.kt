@@ -202,10 +202,11 @@ class AdminScheduledTasksService(
         return res.deletedCount >= 1L
     }
 
-    fun listTaskRuns(session: ResolvedSession, limit: Int): List<Map<String, Any?>> {
+    fun listTaskRuns(session: ResolvedSession, limit: Int, allTenants: Boolean = false): List<Map<String, Any?>> {
         val lim = limit.coerceIn(1, 500)
         val base = Criteria()
-        val q = Query.query(PortfolioMongoFilter.withTenantScopeCriteria(base, session.tenantId.takeIf { it.isNotBlank() }))
+        val tenantFilter: String? = if (allTenants) null else session.tenantId.takeIf { it.isNotBlank() }
+        val q = Query.query(PortfolioMongoFilter.withTenantScopeCriteria(base, tenantFilter))
             .with(Sort.by(Sort.Direction.DESC, "startedAt"))
             .limit(lim)
         return mongoTemplate.find(q, Document::class.java, props.taskRunsCollection)
@@ -221,8 +222,18 @@ class AdminScheduledTasksService(
     fun executeScheduledTask(task: Document, triggeredBy: String): ExecutionResult = enqueueScheduledTask(task, triggeredBy)
 
     fun enqueueScheduledTask(task: Document, triggeredBy: String): ExecutionResult {
+        return enqueueScheduledTaskInternal(task, triggeredBy, null, advanceSchedule = true)
+    }
+
+    private fun enqueueScheduledTaskInternal(
+        task: Document,
+        triggeredBy: String,
+        tenantOverride: ObjectId?,
+        advanceSchedule: Boolean,
+    ): ExecutionResult {
         val taskId = task.getObjectId("_id") ?: throw IllegalStateException("task missing _id")
-        val tenantOid = task.getObjectId("tenantId")
+        val baseTenantOid = task.getObjectId("tenantId")
+        val tenantOid = tenantOverride ?: baseTenantOid
         val taskName = task.getString("name") ?: "task"
         val category = task.getString("category") ?: "sync-broker"
 
@@ -240,7 +251,9 @@ class AdminScheduledTasksService(
         val runId = inserted.getObjectId("_id") ?: throw IllegalStateException("run missing _id")
         val startedAt = inserted.getDate("startedAt") ?: Date()
 
-        advanceScheduleAfterStart(task, startedAt)
+        if (advanceSchedule) {
+            advanceScheduleAfterStart(task, startedAt)
+        }
 
         // Execute asynchronously
         taskExecutor.execute {
@@ -337,7 +350,35 @@ class AdminScheduledTasksService(
      */
     fun enqueueDueTasksForSystemPoll(now: Date): List<ExecutionResult> {
         val due = listAllDueTenantLevelTasks(now)
-        return enqueueDueTaskDocuments(due, SYSTEM_SCHEDULER_TRIGGER)
+        val accepted = mutableListOf<ExecutionResult>()
+        for (task in due) {
+            val taskId = task.getObjectId("_id") ?: continue
+            val lockName = "admin_task_" + taskId.toHexString()
+            val cfg = LockConfiguration(Instant.now(), lockName, Duration.ofMinutes(5), Duration.ofSeconds(5))
+            val maybeLock = lockProvider.lock(cfg)
+            if (maybeLock.isPresent) {
+                val simpleLock = maybeLock.get()
+                try {
+                    val tenantOid = task.getObjectId("tenantId")
+                    if (tenantOid != null) {
+                        val res = enqueueScheduledTaskInternal(task, SYSTEM_SCHEDULER_TRIGGER, null, advanceSchedule = true)
+                        accepted.add(res)
+                    } else {
+                        // Fan-out: run once per tenant when task is system-wide (no tenantId)
+                        val nowStarted = Date()
+                        // Advance schedule once for the task prior to fan-out so we don't advance per-tenant
+                        advanceScheduleAfterStart(task, nowStarted)
+                        for (tid in listAllTenantIds()) {
+                            val res = enqueueScheduledTaskInternal(task, SYSTEM_SCHEDULER_TRIGGER, tid, advanceSchedule = false)
+                            accepted.add(res)
+                        }
+                    }
+                } finally {
+                    simpleLock.unlock()
+                }
+            }
+        }
+        return accepted
     }
 
     private fun enqueueDueTaskDocuments(due: List<Document>, triggeredBy: String): List<ExecutionResult> {
@@ -521,6 +562,19 @@ class AdminScheduledTasksService(
         }
         val label = tenantOid?.toHexString()?.let { hex -> "tenantId=$hex" } ?: "tenantId=none"
         return "$label | $output"
+    }
+
+    /** Enumerate all tenant ObjectIds for system-wide task fan-out. */
+    private fun listAllTenantIds(): List<ObjectId> {
+        val notDeleted = Criteria().orOperator(
+            Criteria.where("isDeleted").exists(false),
+            Criteria.where("isDeleted").`is`(false),
+        )
+        val q = Query.query(notDeleted).limit(10000)
+        val docs = mongoTemplate.find(q, Document::class.java, "core_tenants")
+        val ids = docs.mapNotNull { it.getObjectId("_id") }
+        return ids
+    }
     }
 
     companion object {

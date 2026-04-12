@@ -54,6 +54,24 @@ function tenantFilter(tenantId?: ObjectId): Record<string, unknown> {
   return {};
 }
 
+/**
+ * Positive integer → cap rows/targets. `0`, negative, or non-numeric → unlimited (`null`).
+ * Env **unset** → `defaultWhenUnset` (scanner uses `null` = all tenant rows).
+ */
+function parseOptionsScannerCapEnv(
+  raw: string | undefined,
+  defaultWhenUnset: number | null
+): number | null {
+  if (raw === undefined || raw.trim() === "") {
+    return defaultWhenUnset;
+  }
+  const n = Number.parseInt(raw.trim(), 10);
+  if (!Number.isFinite(n) || n <= 0) {
+    return null;
+  }
+  return n;
+}
+
 /** Without `tenantId` on `admin_scheduled_tasks`, Mongo scope would match all tenants — never write recs. */
 function optionsScannerJobSkippedMissingTenant(
   serviceId: string,
@@ -114,23 +132,21 @@ function applyPrefsFiltersToTargets(
   return { filtered, prefsActive };
 }
 
+/**
+ * All option legs in the tenant (every `portfolio_positions` row with `tenantId` + option shape).
+ * Same scope idea as `watchlist_price_scanner` listing every `portfolio_watchlists` doc for the tenant —
+ * no arbitrary global `.limit()` so each user’s portfolios are covered.
+ */
 async function loadTenantOptionPositions(scope: Record<string, unknown>): Promise<Position[]> {
   const db = await getDb();
   const match = optionPositionFilter(scope);
-  return db
-    .collection<Position>(POSITION_COLLECTION)
-    .find(match)
-    .limit(220)
-    .toArray();
+  return db.collection<Position>(POSITION_COLLECTION).find(match).toArray();
 }
 
+/** Every tenant watchlist document (typically one canonical list per user), like `listWatchlistsForTenantScope`. */
 async function loadTenantWatchlists(scope: Record<string, unknown>): Promise<Watchlist[]> {
   const db = await getDb();
-  return db
-    .collection<Watchlist>(WATCHLIST_COLLECTION)
-    .find(scope)
-    .limit(500)
-    .toArray();
+  return db.collection<Watchlist>(WATCHLIST_COLLECTION).find(scope).toArray();
 }
 
 async function defaultPortfolioIdsForWatchlistOwners(
@@ -205,14 +221,13 @@ export async function buildMergedOptionScanTargets(input: {
   ]);
   const { optionPositions, uniqueUnderlyings } = countInfo;
 
-  const maxWl = Number.parseInt(process.env.OPTIONS_SCANNER_MAX_WATCHLIST_ROWS ?? "50", 10);
-  const maxPosCap = Number.parseInt(process.env.OPTIONS_SCANNER_MAX_POSITIONS ?? "60", 10);
-  const wlLimit = Number.isFinite(maxWl) && maxWl > 0 ? maxWl : 50;
-  const posLimit = Number.isFinite(maxPosCap) && maxPosCap > 0 ? maxPosCap : 60;
-  const posTargets = positionsToOptionScanTargets(optionRows.slice(0, 220));
+  const wlCap = parseOptionsScannerCapEnv(process.env.OPTIONS_SCANNER_MAX_WATCHLIST_ROWS, null);
+  const posCap = parseOptionsScannerCapEnv(process.env.OPTIONS_SCANNER_MAX_POSITIONS, null);
+  const positionsForTargets = posCap != null ? optionRows.slice(0, posCap) : optionRows;
+  const posTargets = positionsToOptionScanTargets(positionsForTargets);
   const defaultByUser = await defaultPortfolioIdsForWatchlistOwners(watchlists, tenantId);
-  const wlTargets = watchlistsToOptionScanTargets(watchlists, wlLimit, defaultByUser);
-  const merged = mergeOptionScanTargets(posTargets, wlTargets).slice(0, posLimit + wlLimit);
+  const wlTargets = watchlistsToOptionScanTargets(watchlists, wlCap, defaultByUser);
+  const merged = mergeOptionScanTargets(posTargets, wlTargets);
   return {
     merged,
     optionPositions,
@@ -397,6 +412,11 @@ export async function executeOptionsExpirationRollJob(
  * **Phase 2 (shipped here):** US regular-session gate (same calendar as price scanner), strategy/prefs
  * inventory, tenant-scoped option-position counts + distinct underlyings, `tenant_market_calendar` row
  * (`sourceTaskCategory: options_strategy_scanner`).
+ *
+ * **Tenant · user · books:** Loads **all** option legs with the task `tenantId` (every portfolio’s positions
+ * in that tenant) and **all** tenant `portfolio_watchlists` rows for option-line targets — same sweep pattern
+ * as `watchlist_price_scanner`. Optional `OPTIONS_SCANNER_MAX_POSITIONS` / `OPTIONS_SCANNER_MAX_WATCHLIST_ROWS`
+ * cap cost on huge tenants (`0` or unset default = no cap).
  *
  * **Recommendations:** Yahoo chain per underlying+expiration (batched), rule + optional Grok rationale,
  * upsert `portfolio_recommendations` (`[options-scanner]` notes), alerts on SELL signals (capped per run).

@@ -29,6 +29,7 @@ import {
 } from "@/app/admin/ui/crud-icons";
 import { IconEditButton } from "@/app/ui/icon-edit-control";
 import { readFetchJsonBody } from "@/lib/read-fetch-json-body";
+import type { WatchlistRowStatus } from "@/modules/core-admin/types";
 import {
     MAX_WATCHLIST_SYMBOLS,
     MAX_WATCHLIST_SYMBOLS_PER_PATCH
@@ -63,7 +64,7 @@ type WatchlistRow = {
   quantity?: number;
   entryPrice?: number;
   rationale?: string;
-  rowStatus?: "draft" | "active";
+  rowStatus?: WatchlistRowStatus;
   /** From price scanner job (`lastPrice` / `lastUpdatedAt` on symbol row). */
   lastPrice?: number;
   lastUpdatedAt?: string;
@@ -81,7 +82,7 @@ type WatchlistApiData = {
     quantity?: number;
     entryPrice?: number;
     rationale?: string;
-    rowStatus?: "draft" | "active";
+    rowStatus?: WatchlistRowStatus;
     lastPrice?: number;
     lastUpdatedAt?: string;
   }>;
@@ -122,11 +123,18 @@ type WatchlistPatchEntry = {
   quantity?: number | null;
   entryPrice?: number | null;
   rationale?: string | null;
-  rowStatus?: "draft" | "active" | null;
+  rowStatus?: WatchlistRowStatus | null;
 };
 
 function normWatchlistField(s?: string): string {
   return (s ?? "").trim();
+}
+
+function rowStatusFromSelectValue(v: string): WatchlistRowStatus {
+  if (v === "active" || v === "review") {
+    return v;
+  }
+  return "draft";
 }
 
 function cloneWatchlistRow(r: WatchlistRow): WatchlistRow {
@@ -275,7 +283,10 @@ type WatchlistRowTrProps = {
   updateDraftRow: (
     symbol: string,
     partial: Partial<
-      Pick<WatchlistRow, "lineType" | "strategy" | "quantity" | "entryPrice" | "rationale" | "rowStatus">
+      Pick<
+        WatchlistRow,
+        "lineType" | "strategy" | "quantity" | "entryPrice" | "rationale" | "rowStatus"
+      >
     >
   ) => void;
   onRemoveSymbol: (symbol: string) => void;
@@ -288,7 +299,7 @@ type WatchlistRowTrProps = {
   portfolioTotalUsd: number;
   listLoadedAtLabel: string;
   portfolioId: string;
-  patchRowMeta: (symbol: string, partial: { rationale?: string; rowStatus?: "draft" | "active" }) => Promise<void>;
+  patchRowMeta: (symbol: string, partial: { rationale?: string; rowStatus?: WatchlistRowStatus }) => Promise<void>;
   aiSuggestBusy: boolean;
   onAiSuggest: (row: WatchlistRow) => void;
   onExportLeg: (row: WatchlistRow) => void;
@@ -434,7 +445,7 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
           />
         ) : (
           <textarea
-            key={`${row.symbol}-${row.rationale ?? ""}`}
+            key={`${row.addedAt}-${row.symbol}-${row.rationale ?? ""}`}
             aria-label={`${row.symbol} rationale`}
             className="xf-watchlist-rationale-input"
             defaultValue={row.rationale ?? ""}
@@ -469,12 +480,12 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             className="xf-watchlist-status-select"
             value={row.rowStatus ?? "draft"}
             onChange={(e) => {
-              const v = e.target.value === "active" ? "active" : "draft";
-              updateDraftRow(row.symbol, { rowStatus: v });
+              updateDraftRow(row.symbol, { rowStatus: rowStatusFromSelectValue(e.target.value) });
             }}
           >
             <option value="draft">Draft</option>
             <option value="active">Active</option>
+            <option value="review">Review</option>
           </select>
         ) : (
           <select
@@ -483,7 +494,7 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
             value={row.rowStatus ?? "draft"}
             disabled={mutating}
             onChange={(e) => {
-              const v = e.target.value === "active" ? "active" : "draft";
+              const v = rowStatusFromSelectValue(e.target.value);
               const rationale = (row.rationale ?? "").trim();
               if (v === "active" && rationale.length === 0) {
                 window.alert("Add a rationale before marking this row Active.");
@@ -494,6 +505,7 @@ const WatchlistRowTr = memo(function WatchlistRowTr({
           >
             <option value="draft">Draft</option>
             <option value="active">Active</option>
+            <option value="review">Review</option>
           </select>
         )}
       </td>
@@ -917,7 +929,7 @@ export function WatchlistConsole({
   );
 
   const patchRowMeta = useCallback(
-    async (symbol: string, partial: { rationale?: string; rowStatus?: "draft" | "active" }) => {
+    async (symbol: string, partial: { rationale?: string; rowStatus?: WatchlistRowStatus }) => {
       if (partial.rowStatus === "active") {
         const rationale =
           partial.rationale?.trim() ??
@@ -1188,7 +1200,10 @@ ${bodyRows}
     (
       symbol: string,
       partial: Partial<
-        Pick<WatchlistRow, "lineType" | "strategy" | "quantity" | "entryPrice" | "rationale" | "rowStatus">
+        Pick<
+        WatchlistRow,
+        "lineType" | "strategy" | "quantity" | "entryPrice" | "rationale" | "rowStatus"
+      >
       >
     ) => {
       setDraftRows((prev) =>
@@ -1702,7 +1717,7 @@ ${bodyRows}
                         const symU = row.symbol.trim().toUpperCase();
                         return (
                           <WatchlistRowTr
-                            key={row.symbol}
+                            key={`wl-${vr.index}-${row.addedAt}-${row.symbol}`}
                             addHoldingsBusy={addingHoldingsSymbol === symU}
                             aiSuggestBusy={aiSuggestSymbol === row.symbol}
                             editMode={editMode}
@@ -1738,11 +1753,11 @@ ${bodyRows}
                     </tbody>
                   ) : (
                     <tbody>
-                      {filteredSortedRows.map((row) => {
+                      {filteredSortedRows.map((row, rowIndex) => {
                         const symU = row.symbol.trim().toUpperCase();
                         return (
                           <WatchlistRowTr
-                            key={row.symbol}
+                            key={`wl-${rowIndex}-${row.addedAt}-${row.symbol}`}
                             addHoldingsBusy={addingHoldingsSymbol === symU}
                             aiSuggestBusy={aiSuggestSymbol === row.symbol}
                             editMode={editMode}

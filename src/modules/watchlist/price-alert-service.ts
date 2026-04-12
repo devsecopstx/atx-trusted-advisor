@@ -1,9 +1,10 @@
 import {
-  adminCreatePortfolioAlert,
-  adminHasRecentPriceAlertForSymbol
+    adminCreatePortfolioAlert,
+    adminHasRecentPriceAlertForSymbol
 } from "@/modules/core-admin/repository";
 import type { WatchlistSymbol } from "@/modules/core-admin/types";
 import { dispatchPortfolioDeskEvents } from "@/modules/notifications/portfolio-notification-service";
+import { symbolFromRawWatchlistEntry } from "@/modules/watchlist/watchlist-row-raw";
 
 /** Default minimum absolute % move vs prior `lastPrice` before creating a portfolio alert. */
 export const DEFAULT_MIN_ABS_MOVE_PERCENT = 5;
@@ -17,8 +18,25 @@ export const MAX_USER_MOVE_PERCENT = 100;
 
 export type WatchlistPriceTick = {
   symbol: string;
-  lastPrice: number;
+  /** New price after quote refresh; omit when the scan only updated rationale. */
+  lastPrice?: number;
+  /** When set, compare prior `lastPrice` on that `symbolsBefore` row (duplicate tickers). */
+  symbolRowIndex?: number;
 };
+
+function normWatchlistSymbolKey(symbol: string): string {
+  return String(symbol).trim().toUpperCase();
+}
+
+function asWatchlistSymbolForPriceAlert(raw: unknown, symbol: string): WatchlistSymbol {
+  if (typeof raw === "string") {
+    return { symbol, addedAt: new Date() };
+  }
+  if (raw && typeof raw === "object") {
+    return raw as WatchlistSymbol;
+  }
+  return { symbol, addedAt: new Date() };
+}
 
 export type PriceMoveEvaluation = {
   symbol: string;
@@ -62,13 +80,33 @@ export function resolveMinMovePercent(
  * Pure evaluation + persistence via `portfolio_alerts` (admin path).
  */
 export function evaluateSignificantPriceMoves(
-  symbolsBefore: ReadonlyArray<WatchlistSymbol>,
+  /** Raw `portfolio_watchlists.symbols` rows (structured and/or legacy string tickers). */
+  symbolsBefore: ReadonlyArray<unknown>,
   priceUpdates: ReadonlyArray<WatchlistPriceTick>,
   minAbsMovePercent: number = DEFAULT_MIN_ABS_MOVE_PERCENT
 ): PriceMoveEvaluation[] {
   const out: PriceMoveEvaluation[] = [];
   for (const u of priceUpdates) {
-    const before = symbolsBefore.find((s) => s.symbol === u.symbol);
+    let before: WatchlistSymbol | undefined;
+    if (typeof u.symbolRowIndex === "number") {
+      const raw = symbolsBefore[u.symbolRowIndex];
+      const key = raw !== undefined ? symbolFromRawWatchlistEntry(raw) : null;
+      if (key && normWatchlistSymbolKey(key) === normWatchlistSymbolKey(u.symbol)) {
+        before = asWatchlistSymbolForPriceAlert(raw, key);
+      }
+    }
+    if (!before) {
+      for (const s of symbolsBefore) {
+        const k = symbolFromRawWatchlistEntry(s);
+        if (k && normWatchlistSymbolKey(k) === normWatchlistSymbolKey(u.symbol)) {
+          before = asWatchlistSymbolForPriceAlert(s, k);
+          break;
+        }
+      }
+    }
+    if (u.lastPrice === undefined || !Number.isFinite(u.lastPrice)) {
+      continue;
+    }
     const prev = before?.lastPrice;
     if (prev === undefined || prev <= 0) {
       continue;

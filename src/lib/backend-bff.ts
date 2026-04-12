@@ -469,9 +469,25 @@ export function shouldSkipAdminUsersBffProxyForMeteredUsageReset(request: Reques
   }
 }
 
+/**
+ * Admin **`/api/admin/portfolios/{id}/watchlist`** — **Next + Mongo** (same rationale / `rowStatus` / Yahoo
+ * parity as app-user watchlist). Spring parity DTOs can omit desk fields; keep reads/writes on Next.
+ */
+export function shouldSkipAdminUsersBffProxyForAdminPortfolioWatchlist(request: Request): boolean {
+  try {
+    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    return /^\/api\/admin\/portfolios\/[^/]+\/watchlist$/.test(path);
+  } catch {
+    return false;
+  }
+}
+
 /** Like {@link proxyRequestToBackend} for admin user routes; returns `null` when proxy is disabled. */
 export async function proxyAdminUsersRequestToBackend(request: Request): Promise<Response | null> {
   if (!shouldProxyAdminUsersToBackend()) {
+    return null;
+  }
+  if (shouldSkipAdminUsersBffProxyForAdminPortfolioWatchlist(request)) {
     return null;
   }
   if (shouldSkipAdminUsersBffProxyForRequest(request)) {

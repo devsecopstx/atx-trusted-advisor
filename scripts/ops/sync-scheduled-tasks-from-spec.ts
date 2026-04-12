@@ -3,8 +3,11 @@
  * `src/lib/scheduled-task-category-schema.ts` (`SCHEDULED_TASK_CATEGORY_DEFAULT_CRON`), with human-readable names from
  * `src/lib/scheduled-task-category-catalog.ts` (`SCHEDULED_TASK_CATEGORY_DISPLAY_NAME`).
  *
- * - **Tenant:** first `core_tenants` row (sorted by `_id`), or `SCHEDULED_TASKS_SYNC_TENANT_ID` / `--tenant=<hex>`.
- * - **Upsert key:** `tenantId` + `category` + no `portfolioId` (tenant-level tasks only).
+ * - **Task scope (default):** **system-wide** — upserts rows **without** `tenantId`; scheduler runs each category **once per
+ *   `core_tenants` document** per tick (`listCoreTenantObjectIds` + `executeSystemWideScheduledTask` in `task-runner.ts`).
+ * - **Per-tenant scope (legacy):** set `SCHEDULED_TASKS_SYNC_TENANT_ID` and/or pass **`--tenant=<hex>`** on the CLI — upserts
+ *   `tenantId` + `category` + no `portfolioId` (duplicate rows if you also keep system-wide rows; prefer one model).
+ * - **Delivery channels:** still seeded/updated against **one** tenant (first `core_tenants` row, or `SCHEDULED_TASKS_SYNC_TENANT_ID` / `--tenant=` when set).
  * - **Legacy:** rows with `category: daily_options_scanner` are rewritten to `options_scanner` on `--apply` (count shown in dry-run).
  * - **`--seed-if-empty`:** if the tenant has **zero** tenant-level tasks before sync, runs `npm run seed:admin` (requires `.env` / `--file` with `ADMIN_SEED_EMAIL`, etc.) then continues.
  * - **`seed:admin`:** `scripts/seed-admin-user.mjs` runs this script with **`--apply --tenant=<seeded tenant>`** after options-strategy sync (unless **`SKIP_SEED_SCHEDULED_TASKS_SYNC=1`**).
@@ -83,8 +86,20 @@ type Cli = {
   seedIfEmpty: boolean;
   force: boolean;
   tenantId: string | null;
+  /** True only when `--tenant=…` was passed (not env-only). */
+  tenantIdFromCli: boolean;
   envFile: string | null;
 };
+
+function extractEnvFilePath(argv: string[]): string | null {
+  for (const arg of argv) {
+    const m = arg.match(/^--(?:file|env-file)=(.+)$/);
+    if (m?.[1]) {
+      return m[1]!.trim();
+    }
+  }
+  return null;
+}
 
 function loadEnvFromFile(filePath: string): void {
   const raw = readFileSync(filePath, "utf8");
@@ -117,6 +132,7 @@ function parseArgs(argv: string[]): Cli {
   let seedIfEmpty = false;
   let force = false;
   let tenantId: string | null = process.env.SCHEDULED_TASKS_SYNC_TENANT_ID?.trim() || null;
+  let tenantIdFromCli = false;
   let envFile: string | null = null;
 
   for (const arg of argv) {
@@ -141,6 +157,7 @@ function parseArgs(argv: string[]): Cli {
     const tenantM = arg.match(/^--tenant=(.+)$/);
     if (tenantM) {
       tenantId = tenantM[1]!.trim();
+      tenantIdFromCli = true;
       continue;
     }
     const fileM = arg.match(/^--file=(.+)$/) || arg.match(/^--env-file=(.+)$/);
@@ -149,7 +166,7 @@ function parseArgs(argv: string[]): Cli {
     }
   }
 
-  return { apply, dryRun, seedIfEmpty, force, tenantId, envFile };
+  return { apply, dryRun, seedIfEmpty, force, tenantId, tenantIdFromCli, envFile };
 }
 
 async function resolveTenantId(db: Db, explicit: string | null): Promise<ObjectId> {
@@ -172,8 +189,27 @@ function tenantLevelFilter(tenantId: ObjectId) {
   };
 }
 
+function globalSystemTaskFilter(category: string) {
+  return {
+    category,
+    $and: [
+      { $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }] },
+      { $or: [{ tenantId: null }, { tenantId: { $exists: false } }] }
+    ]
+  };
+}
+
 async function countTenantTasks(coll: Collection, tenantId: ObjectId): Promise<number> {
   return coll.countDocuments(tenantLevelFilter(tenantId));
+}
+
+async function countGlobalSystemTasks(coll: Collection): Promise<number> {
+  return coll.countDocuments({
+    $and: [
+      { $or: [{ portfolioId: { $exists: false } }, { portfolioId: null }] },
+      { $or: [{ tenantId: null }, { tenantId: { $exists: false } }] }
+    ]
+  });
 }
 
 function nonEmptyEnv(name: string | undefined): string | undefined {
@@ -283,8 +319,13 @@ function runSeedAdmin(envFile: string | null): void {
 }
 
 async function main(): Promise<void> {
-  const cli = parseArgs(process.argv.slice(2));
-  if (cli.envFile) {
+  const argv = process.argv.slice(2);
+  const earlyEnv = extractEnvFilePath(argv);
+  if (earlyEnv) {
+    loadEnvFromFile(earlyEnv);
+  }
+  const cli = parseArgs(argv);
+  if (cli.envFile && cli.envFile !== earlyEnv) {
     loadEnvFromFile(cli.envFile);
   }
 
@@ -296,21 +337,29 @@ async function main(): Promise<void> {
   const coll = db.collection(COLLECTION);
   const deliveryChannelsColl = db.collection(ADMIN_DELIVERY_CHANNELS_COLLECTION);
 
-  const tenantId = await resolveTenantId(db, cli.tenantId);
+  const useGlobalTaskRows =
+    !cli.tenantIdFromCli && !(process.env.SCHEDULED_TASKS_SYNC_TENANT_ID ?? "").trim();
+  const channelTenantId = await resolveTenantId(db, cli.tenantId);
+  const scopedTenantId = useGlobalTaskRows ? null : channelTenantId;
+
   console.log(
-    `[sync-scheduled-tasks] db=${dbName} tenantId=${tenantId.toHexString()} mode=${cli.apply ? "apply" : "dry-run"}`
+    `[sync-scheduled-tasks] db=${dbName} taskScope=${useGlobalTaskRows ? "all_tenants (no task.tenantId)" : `tenant=${channelTenantId.toHexString()}`} deliveryChannelTenant=${channelTenantId.toHexString()} mode=${cli.apply ? "apply" : "dry-run"}`
   );
 
-  let nExisting = await countTenantTasks(coll, tenantId);
+  let nExisting = useGlobalTaskRows
+    ? await countGlobalSystemTasks(coll)
+    : await countTenantTasks(coll, channelTenantId);
   if (cli.seedIfEmpty && nExisting === 0) {
     if (!cli.apply) {
       console.log(
-        "[sync-scheduled-tasks] --seed-if-empty: would run npm run seed:admin (tenant has 0 tasks); use --apply to execute."
+        "[sync-scheduled-tasks] --seed-if-empty: would run npm run seed:admin (no matching scheduled tasks yet); use --apply to execute."
       );
     } else {
       runSeedAdmin(cli.envFile);
-      nExisting = await countTenantTasks(coll, tenantId);
-      console.log(`[sync-scheduled-tasks] after seed: tenant task count=${nExisting}`);
+      nExisting = useGlobalTaskRows
+        ? await countGlobalSystemTasks(coll)
+        : await countTenantTasks(coll, channelTenantId);
+      console.log(`[sync-scheduled-tasks] after seed: task count=${nExisting}`);
     }
   }
 
@@ -318,7 +367,7 @@ async function main(): Promise<void> {
   const plan: string[] = [];
   await syncAdminDeliveryChannelsFromSeedSpec({
     coll: deliveryChannelsColl,
-    tenantId,
+    tenantId: channelTenantId,
     apply: cli.apply,
     plan
   });
@@ -330,13 +379,14 @@ async function main(): Promise<void> {
     const nextRunAt =
       computeNextRunAtFromCron(scheduleCron, now) ?? new Date(now.getTime() + 5 * 60 * 1000);
 
-    const existing = await coll.findOne({
-      ...tenantLevelFilter(tenantId),
-      category
-    });
+    const existing = await coll.findOne(
+      useGlobalTaskRows ? globalSystemTaskFilter(category) : { ...tenantLevelFilter(channelTenantId), category }
+    );
 
     if (!existing) {
-      plan.push(`CREATE ${category} cron=${scheduleCron} name=${name}`);
+      plan.push(
+        `CREATE ${category} cron=${scheduleCron} name=${name} scope=${useGlobalTaskRows ? "system" : "tenant"}`
+      );
       if (cli.apply) {
         await coll.insertOne({
           name,
@@ -345,7 +395,7 @@ async function main(): Promise<void> {
           scheduleDescription,
           enabled: true,
           nextRunAt,
-          tenantId
+          ...(useGlobalTaskRows ? {} : { tenantId: scopedTenantId! })
         });
       }
       continue;
@@ -377,19 +427,16 @@ async function main(): Promise<void> {
     }
   }
 
-  const legacyDailyOptions = await coll.countDocuments({
-    ...tenantLevelFilter(tenantId),
-    category: "daily_options_scanner"
-  });
+  const legacyFilter = useGlobalTaskRows
+    ? { ...globalSystemTaskFilter("daily_options_scanner") }
+    : { ...tenantLevelFilter(channelTenantId), category: "daily_options_scanner" };
+  const legacyDailyOptions = await coll.countDocuments(legacyFilter);
   if (legacyDailyOptions > 0) {
     plan.push(
       `MIGRATE ${legacyDailyOptions} task(s): category daily_options_scanner -> options_scanner (removed alias)`
     );
     if (cli.apply) {
-      await coll.updateMany(
-        { ...tenantLevelFilter(tenantId), category: "daily_options_scanner" },
-        { $set: { category: "options_scanner" } }
-      );
+      await coll.updateMany(legacyFilter, { $set: { category: "options_scanner" } });
     }
   }
 

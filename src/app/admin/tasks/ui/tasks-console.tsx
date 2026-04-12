@@ -560,9 +560,12 @@ export function TasksConsole() {
         {activeTab === "tasks" ? (
           <div className="stack-gap">
             <p className="status-text" style={{ marginBottom: "0.65rem" }}>
-              Edit <strong>tenant-level</strong> scheduled jobs (global admin only). Use <strong>Schedule tasks</strong>{" "}
-              to create job schedules. Set a delivery channel on a row to post a run summary to{" "}
-              <strong>Slack</strong> or <strong>email</strong> (SMTP) after every run (manual or scheduler).
+              Edit <strong>system-wide</strong> scheduled jobs (global admin only): each row runs once per tenant in{" "}
+              <code className="font-mono text-xs">core_tenants</code>, and run summaries (Slack/email) include{" "}
+              <strong>combined output across tenants</strong>. Use <strong>Schedule tasks</strong> to add schedules.
+              Set a delivery channel to post after every run (manual or scheduler). Delivery channels are still
+              chosen from your tenant&apos;s admin list; the job itself is not stored with a single{" "}
+              <code className="font-mono text-xs">tenantId</code>.
             </p>
             {tasks.length > 0 ? (
               <div className="crud-table-wrap">

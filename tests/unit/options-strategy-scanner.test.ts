@@ -35,18 +35,14 @@ vi.mock("@/lib/mongodb", () => ({
             toArray: vi.fn().mockResolvedValue([{ n: 2 }])
           }),
           find: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue({
-              toArray: vi.fn().mockResolvedValue([])
-            })
+            toArray: vi.fn().mockResolvedValue([])
           })
         };
       }
       if (name === "portfolio_watchlists") {
         return {
           find: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue({
-              toArray: vi.fn().mockResolvedValue([])
-            })
+            toArray: vi.fn().mockResolvedValue([])
           })
         };
       }

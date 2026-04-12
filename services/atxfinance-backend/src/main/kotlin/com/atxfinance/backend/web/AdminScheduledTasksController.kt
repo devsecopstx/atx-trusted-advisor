@@ -123,12 +123,13 @@ class AdminScheduledTasksController(
     fun listTaskRuns(
         request: HttpServletRequest,
         @RequestParam(name = "limit", required = false, defaultValue = "50") limit: Int,
+        @RequestParam(name = "allTenants", required = false, defaultValue = "false") allTenants: Boolean,
     ): ResponseEntity<Map<String, Any?>> {
         val session = when (val g = adminGate(request)) {
             is AdminGate.Err -> return g.response
             is AdminGate.Ok -> g.session
         }
-        val data = adminScheduledTasksService.listTaskRuns(session, limit)
+        val data = adminScheduledTasksService.listTaskRuns(session, limit, allTenants)
         return ResponseEntity.ok(mapOf("data" to data))
     }
 

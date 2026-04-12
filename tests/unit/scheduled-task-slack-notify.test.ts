@@ -8,10 +8,10 @@ import type { ScheduledTask } from "@/modules/core-admin/types";
 import { ObjectId } from "mongodb";
 
 describe("notifyScheduledTaskSlackSummary", () => {
-  it("posts to Slack when task has a Slack delivery channel", async () => {
+  it("posts to Slack when system-wide task has a Slack delivery channel (unscoped channel lookup)", async () => {
     const channelId = new ObjectId();
     const postSpy = vi.spyOn(slackWebhook, "postSlackIncomingWebhook").mockResolvedValue(true);
-    vi.spyOn(repository, "getAdminDeliveryChannelById").mockResolvedValue({
+    vi.spyOn(repository, "getAdminDeliveryChannelByIdUnscoped").mockResolvedValue({
       _id: channelId,
       name: "Desk",
       deliveryTarget: "slack",
@@ -46,6 +46,41 @@ describe("notifyScheduledTaskSlackSummary", () => {
     postSpy.mockRestore();
   });
 
+  it("posts to Slack for tenant-scoped task using tenant channel lookup", async () => {
+    const channelId = new ObjectId();
+    const tenantId = new ObjectId();
+    const postSpy = vi.spyOn(slackWebhook, "postSlackIncomingWebhook").mockResolvedValue(true);
+    vi.spyOn(repository, "getAdminDeliveryChannelById").mockResolvedValue({
+      _id: channelId,
+      name: "Desk",
+      deliveryTarget: "slack",
+      slackWebhookUrl: "https://hooks.slack.com/services/T/B/yy",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    const task: ScheduledTask = {
+      _id: new ObjectId(),
+      tenantId,
+      name: "tenant-job",
+      category: "notifications",
+      enabled: true,
+      deliveryChannelTarget: channelId
+    };
+
+    await notifyScheduledTaskSlackSummary({
+      task,
+      status: "success",
+      output: "ok",
+      durationMs: 100,
+      runIdHex: "507f1f77bcf86cd799439011",
+      triggeredBy: "admin"
+    });
+
+    expect(postSpy).toHaveBeenCalledTimes(1);
+    postSpy.mockRestore();
+  });
+
   it("no-ops when deliveryChannelTarget is unset", async () => {
     const postSpy = vi.spyOn(slackWebhook, "postSlackIncomingWebhook");
     const getSpy = vi.spyOn(repository, "getAdminDeliveryChannelById");
@@ -69,11 +104,11 @@ describe("notifyScheduledTaskSlackSummary", () => {
     expect(postSpy).not.toHaveBeenCalled();
   });
 
-  it("sends email when task has an email delivery channel", async () => {
+  it("sends email when system-wide task has an email delivery channel", async () => {
     const channelId = new ObjectId();
     const postSpy = vi.spyOn(slackWebhook, "postSlackIncomingWebhook");
     const emailSpy = vi.spyOn(deskSmtp, "sendDeskPlainEmailWithRetry").mockResolvedValue(true);
-    vi.spyOn(repository, "getAdminDeliveryChannelById").mockResolvedValue({
+    vi.spyOn(repository, "getAdminDeliveryChannelByIdUnscoped").mockResolvedValue({
       _id: channelId,
       name: "Desk",
       deliveryTarget: "email",

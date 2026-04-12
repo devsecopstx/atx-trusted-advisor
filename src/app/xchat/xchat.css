@@ -1103,6 +1103,21 @@ html[data-xf-ui="soft"] .xchat-feedback-dialog .cta-secondary:hover:not(:disable
   padding: 0;
 }
 
+.xchat-rail-history-group-label {
+  margin: 0.35rem 0 0.12rem;
+  padding: 0.15rem 0.5rem 0;
+  list-style: none;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--xf-text-400);
+}
+
+.xchat-rail-history-group-label:first-child {
+  margin-top: 0;
+}
+
 .xchat-rail-link {
   width: 100%;
   display: block;

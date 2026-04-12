@@ -101,6 +101,51 @@ describe("evaluateSignificantPriceMoves", () => {
     expect(r).toHaveLength(1);
     expect(r[0]?.changePct).toBeCloseTo(3, 5);
   });
+
+  it("uses symbolRowIndex so duplicate tickers compare against the correct prior lastPrice", () => {
+    const d = new Date();
+    const rows = [
+      { symbol: "TSLA", addedAt: d, lastPrice: 100 },
+      { symbol: "TSLA", addedAt: d, lastPrice: 200 }
+    ];
+    const r = evaluateSignificantPriceMoves(
+      rows,
+      [
+        { symbol: "TSLA", lastPrice: 106, symbolRowIndex: 0 },
+        { symbol: "TSLA", lastPrice: 188, symbolRowIndex: 1 }
+      ],
+      DEFAULT_MIN_ABS_MOVE_PERCENT
+    );
+    expect(r).toHaveLength(2);
+    const byNew = new Map(r.map((x) => [x.newPrice, x.changePct] as const));
+    expect(byNew.get(106)).toBeCloseTo(6, 5);
+    expect(byNew.get(188)).toBeCloseTo(6, 5);
+  });
+
+  it("does not fire when symbolsBefore rows are legacy strings (no prior lastPrice)", () => {
+    const rows = ["TSLA", "TSLA"];
+    const r = evaluateSignificantPriceMoves(
+      rows,
+      [
+        { symbol: "TSLA", lastPrice: 106, symbolRowIndex: 0 },
+        { symbol: "TSLA", lastPrice: 188, symbolRowIndex: 1 }
+      ],
+      DEFAULT_MIN_ABS_MOVE_PERCENT
+    );
+    expect(r).toEqual([]);
+  });
+
+  it("uses symbolRowIndex with mixed structured row and legacy string", () => {
+    const d = new Date();
+    const rows = [{ symbol: "TSLA", addedAt: d, lastPrice: 100 }, "TSLA"];
+    const r = evaluateSignificantPriceMoves(
+      rows,
+      [{ symbol: "TSLA", lastPrice: 106, symbolRowIndex: 0 }],
+      DEFAULT_MIN_ABS_MOVE_PERCENT
+    );
+    expect(r).toHaveLength(1);
+    expect(r[0]?.newPrice).toBe(106);
+  });
 });
 
 describe("resolveMinMovePercent", () => {

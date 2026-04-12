@@ -72,7 +72,7 @@ export const SCHEDULED_TASK_CATEGORY_CATALOG: Record<
     displayName: "Watchlist price scanner (weekday desk window, UTC)",
     defaultJobName: "watchlist-price-scanner-job",
     description:
-      "Tenant-scoped sweep of `portfolio_watchlists`: Yahoo batch quotes, `lastPrice` updates, price-move alerts. Same US market desk window as `price_scanner` (skips with keyed `watchlist_price_scanner: skipped — …` output when closed/holiday). Run summaries match other core scanners (`items_updated`, `symbols_quoted`, `duration_s`, …)."
+      "Tenant-scoped sweep: every `portfolio_watchlists` row for the tenant (one canonical watchlist per user). Processes each user’s symbol list in order; duplicate tickers in the same list each get their own quote-backed row update. Yahoo batch quotes, `lastPrice` updates, optional **finance-advisor** xPersona Grok rationale per row (capped by `WATCHLIST_SCANNER_GROK_MAX_CALLS`), scanner audit line on `rationale`, `rowStatus` → `review`, and price-move alerts. Same US market desk window as `price_scanner` (skips with keyed `watchlist_price_scanner: skipped — …` when closed/holiday). Summaries include `persona_grok_calls`, `rows_marked_review`, `items_updated`, `symbols_quoted`, `duration_s`, …."
   },
   corporate_events_scanner: {
     displayName: "Corporate events (weekday 30m cadence, UTC)",

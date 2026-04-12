@@ -29,7 +29,7 @@ const watchlistAddEntrySchema = z.object({
   quantity: z.union([z.number().finite(), z.null()]).optional(),
   entryPrice: z.union([z.number().finite(), z.null()]).optional(),
   rationale: z.union([z.string().trim().max(4000), z.null()]).optional(),
-  rowStatus: z.union([z.enum(["draft", "active"]), z.null()]).optional()
+  rowStatus: z.union([z.enum(["draft", "active", "review"]), z.null()]).optional()
 });
 
 const deskRiskEnum = z.enum(["conservative", "balanced", "growth"]);

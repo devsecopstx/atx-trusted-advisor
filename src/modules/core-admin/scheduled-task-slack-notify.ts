@@ -1,6 +1,9 @@
 import { sendDeskPlainEmailWithRetry } from "@/lib/desk-smtp";
 import { isSlackIncomingWebhookUrl, postSlackIncomingWebhook } from "@/lib/post-slack-incoming-webhook";
-import { getAdminDeliveryChannelById } from "@/modules/core-admin/repository";
+import {
+    getAdminDeliveryChannelById,
+    getAdminDeliveryChannelByIdUnscoped
+} from "@/modules/core-admin/repository";
 import type { ScheduledTask } from "@/modules/core-admin/types";
 import { z } from "zod";
 
@@ -33,7 +36,9 @@ export async function notifyScheduledTaskSlackSummary(params: {
   }
 
   const tenantId = task.tenantId ? task.tenantId.toHexString() : undefined;
-  const channel = await getAdminDeliveryChannelById(target.toHexString(), { tenantId });
+  const channel = tenantId
+    ? await getAdminDeliveryChannelById(target.toHexString(), { tenantId })
+    : await getAdminDeliveryChannelByIdUnscoped(target.toHexString());
   if (!channel) {
     return;
   }

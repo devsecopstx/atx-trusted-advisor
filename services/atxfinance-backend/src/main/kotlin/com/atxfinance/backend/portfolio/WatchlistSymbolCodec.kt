@@ -4,7 +4,7 @@ import org.bson.Document
 import java.time.Instant
 import java.util.Date
 
-/** Ports `normalizeWatchlistDocumentSymbols` + entry coercion from `repository.ts`. */
+/** Ports `normalizeWatchlistDocumentSymbols` + entry coercion from `repository.ts` (ordered rows; duplicate tickers kept). */
 object WatchlistSymbolCodec {
     private val symbolRegex = Regex("^[A-Z0-9.\\-]{1,32}$")
 
@@ -13,22 +13,21 @@ object WatchlistSymbolCodec {
             is List<*> -> raw
             else -> emptyList<Any?>()
         }
-        val bySymbol = LinkedHashMap<String, Document>()
         val now = Date()
+        val out = mutableListOf<Document>()
         for (item in arr) {
             val doc = coerceWatchlistSymbolEntry(item, now) ?: continue
-            val sym = doc.getString("symbol") ?: continue
-            if (!bySymbol.containsKey(sym)) {
-                bySymbol[sym] = doc
-            }
+            out.add(doc)
         }
+        val present = out.mapNotNull { it.getString("symbol") }.toMutableSet()
         val ensureUnique = ensureSymbols.map { it.trim().uppercase() }.filter { it.isNotEmpty() }.distinct()
         for (symbol in ensureUnique) {
-            if (!bySymbol.containsKey(symbol)) {
-                bySymbol[symbol] = Document(mapOf("symbol" to symbol, "addedAt" to now))
+            if (!present.contains(symbol)) {
+                out.add(Document(mapOf("symbol" to symbol, "addedAt" to now)))
+                present.add(symbol)
             }
         }
-        return bySymbol.values.toList()
+        return out
     }
 
     private fun coerceWatchlistSymbolEntry(item: Any?, fallbackAddedAt: Date): Document? {

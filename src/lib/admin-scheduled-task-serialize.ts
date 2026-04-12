@@ -3,6 +3,8 @@ import type { ScheduledTask } from "@/modules/core-admin/types";
 export function serializeScheduledTaskForJson(t: ScheduledTask) {
   return {
     _id: t._id?.toHexString(),
+    /** When absent, the task runs once per `core_tenants` row on each tick / manual Run. */
+    systemWide: !t.tenantId,
     tenantId: t.tenantId?.toHexString(),
     portfolioId: t.portfolioId?.toHexString(),
     appBrokerImportJobId: t.appBrokerImportJobId?.toHexString(),

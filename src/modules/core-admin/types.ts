@@ -196,7 +196,6 @@ export type DeployNoteConfig = {
 /** Platform-wide delivery channels (admin desk — ops / notifications). */
 export type AdminDeliveryChannel = {
   _id?: ObjectId;
-  tenantId?: ObjectId;
   name: string;
   deliveryTarget: "in_app" | "slack" | "email";
   /** Required when `deliveryTarget` is `slack` (HTTPS hooks.slack.com incoming webhook). */
@@ -382,7 +381,7 @@ export type Account = {
   updatedAt: Date;
 };
 
-export type WatchlistRowStatus = "draft" | "active";
+export type WatchlistRowStatus = "draft" | "active" | "review";
 
 export type WatchlistSymbol = {
   symbol: string;
@@ -394,7 +393,10 @@ export type WatchlistSymbol = {
   entryPrice?: number;
   /** Short desk thesis; required before `rowStatus` can be `active`. */
   rationale?: string;
-  /** Watchlist workflow: `active` rows should have non-empty `rationale` (enforced in API + UI). */
+  /**
+   * Watchlist workflow: `active` rows should have non-empty `rationale` (enforced in API + UI).
+   * `review` is set by `watchlist_price_scanner` after a price refresh so the desk re-checks thesis.
+   */
   rowStatus?: WatchlistRowStatus;
   /**
    * Minimum absolute % move vs prior `lastPrice` before firing a price alert for this row.

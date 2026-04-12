@@ -67,13 +67,12 @@ describe("admin RBAC and scheduler semantics", () => {
     expect(repositoryMocks.listScheduledTasks).not.toHaveBeenCalled();
   });
 
-  it("lists tasks scoped to session tenant", async () => {
+  it("lists system-wide scheduled tasks (fan-out jobs, no task.tenantId)", async () => {
     repositoryMocks.listScheduledTasks.mockResolvedValueOnce([
       {
         _id: new ObjectId("507f1f77bcf86cd799439033"),
-        tenantId: new ObjectId("507f1f77bcf86cd799439022"),
-        name: "Daily Broker Sync",
-        category: "sync-broker",
+        name: "Watchlist price scanner",
+        category: "watchlist_price_scanner",
         scheduleCron: "0 2 * * *",
         enabled: true
       }
@@ -84,9 +83,10 @@ describe("admin RBAC and scheduler semantics", () => {
 
     expect(response.status).toBe(200);
     expect(payload.data).toHaveLength(1);
-    expect(payload.data[0]?.name).toBe("Daily Broker Sync");
+    expect(payload.data[0]?.name).toBe("Watchlist price scanner");
     expect(repositoryMocks.listScheduledTasks).toHaveBeenCalledWith({
-      tenantId: "507f1f77bcf86cd799439022"
+      tenantId: "507f1f77bcf86cd799439022",
+      systemWideOnly: true
     });
   });
 
