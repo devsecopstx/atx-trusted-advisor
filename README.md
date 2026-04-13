@@ -22,3 +22,33 @@ Branding reference for UI copy: `[atx-docs/xchat/xfinance-branding-review.md](at
 - Backlog / open gaps (TODO, design TBD): `[atx-docs/PLAN.md](atx-docs/PLAN.md)` · [documentation index](atx-docs/README.md)
 - **API inventory & Swagger:** `GET /api/openapi` (public JSON spec); admin Swagger UI at `/admin/api-docs` (signed-in admin). Validation steps: [API endpoint guide checklist](atx-docs/guides/api-endpoints.md#api-docs-validation-checklist).
 
+
+## Public Resources Pages
+
+The following Resources pages are publicly accessible (no login required) and are served as static/ISR with hourly revalidation:
+
+- https://atxtrustedadvisory.com/resources/about
+- https://atxtrustedadvisory.com/resources/decision-workflow
+- https://atxtrustedadvisory.com/resources/secret-sauce
+- https://atxtrustedadvisory.com/resources/getting-started
+- https://atxtrustedadvisory.com/resources/building-wheel
+- https://atxtrustedadvisory.com/resources/building-wheel/wheel-vs-iron-condor
+
+Notes
+- Navigation: Links are visible to logged-out visitors in the guest rail and workspace sidebar.
+- SEO: These routes are included in `/sitemap.xml` and export page `metadata` for richer previews.
+- Caching: Each page exports `revalidate = 3600`.
+
+## Watchlist behavior (options)
+
+- Expired CALL options are automatically hidden across API and UI.
+  - Timezone: America/New_York (ET)
+  - Cutoff: A contract is considered expired if `expYmd < today(ET)`; items expiring today remain visible through the ET day.
+  - Scope: Only CALL options are filtered; PUTs and non-options are unaffected.
+- Deleting from the watchlist requires the exact contract key (e.g., `AAPL240419C00195000`).
+
+## Admin: Workspace limits per tenant
+
+- Path: `/admin/tenant-preferences/workspace-limits` (global_admin only).
+- A tenant selector is available at the top of the page to switch which tenant’s limits are being configured.
+- The selection syncs to the URL via `?tenant=<tenantId>` for deep-linking.

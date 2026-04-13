@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
@@ -13,7 +14,19 @@ import { canUserLogin } from "@/modules/identity/authorization";
 import "../../xchat/xchat.css";
 import "./resources-getting-started.css";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "Getting Started with Options | Resources",
+  description:
+    "Beginner-friendly guide to investing with options: onboarding, daily use, strategies, and risk disclosures.",
+  openGraph: {
+    title: "Getting Started with Options | Resources",
+    description:
+      "Beginner-friendly guide to investing with options: onboarding, daily use, strategies, and risk disclosures.",
+    type: "article"
+  }
+};
 
 const NAV_SECTIONS: { id: string; label: string }[] = [
   { id: "getting-started", label: "Getting Started" },

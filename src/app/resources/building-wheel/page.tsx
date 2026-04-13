@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
@@ -13,7 +14,19 @@ import { canUserLogin } from "@/modules/identity/authorization";
 import "../../xchat/xchat.css";
 import "../getting-started/resources-getting-started.css";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "Wheel Strategy Playbook | Resources",
+  description:
+    "Guide to building the wheel strategy: covered call cadence, premium targets, and risk controls.",
+  openGraph: {
+    title: "Wheel Strategy Playbook | Resources",
+    description:
+      "Guide to building the wheel strategy: covered call cadence, premium targets, and risk controls.",
+    type: "article"
+  }
+};
 
 const RETURN_TABLE: { annual: string; biWeekly: string; weekly: string }[] = [
   { annual: "5%", biWeekly: "0.19%", weekly: "0.10%" },

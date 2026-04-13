@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
@@ -13,7 +14,19 @@ import { canUserLogin } from "@/modules/identity/authorization";
 import "../../xchat/xchat.css";
 import "../getting-started/resources-getting-started.css";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "Secret Sauce | Resources",
+  description:
+    "How xChat produces higher-quality answers: workspace context, blended search, live checks, and tool-loop synthesis.",
+  openGraph: {
+    title: "Secret Sauce | Resources",
+    description:
+      "How xChat produces higher-quality answers: workspace context, blended search, live checks, and tool-loop synthesis.",
+    type: "article"
+  }
+};
 
 const NAV_SECTIONS: { id: string; label: string }[] = [
   { id: "workspace-context", label: "Workspace Context" },

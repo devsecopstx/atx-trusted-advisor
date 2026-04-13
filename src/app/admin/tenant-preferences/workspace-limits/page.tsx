@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { TenantWorkspaceLimitsPanel } from "@/app/admin/tenant-preferences/ui/tenant-workspace-limits-panel";
+import { TenantWorkspaceLimitsPageClient } from "@/app/admin/tenant-preferences/ui/tenant-workspace-limits-page-client";
 import { getSessionUser } from "@/lib/auth";
 import { isGlobalAdmin } from "@/modules/identity/authorization";
 import { resolveTenantIdHexForGlobalAdminConsole } from "@/modules/identity/repository";
@@ -33,7 +33,7 @@ export default async function AdminTenantWorkspaceLimitsPage() {
           edits, <strong>Reset draft</strong> for default numbers, then <strong>Save</strong>.
         </p>
       </header>
-      <TenantWorkspaceLimitsPanel tenantId={resolvedTenantId} />
+      <TenantWorkspaceLimitsPageClient defaultTenantId={resolvedTenantId} />
     </div>
   );
 }

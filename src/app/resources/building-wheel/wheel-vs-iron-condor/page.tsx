@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
@@ -13,7 +14,19 @@ import { canUserLogin } from "@/modules/identity/authorization";
 import "../../../xchat/xchat.css";
 import "../../getting-started/resources-getting-started.css";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "Wheel vs Iron Condor | Resources",
+  description:
+    "Side-by-side comparison of the options wheel income cycle versus an iron condor credit structure.",
+  openGraph: {
+    title: "Wheel vs Iron Condor | Resources",
+    description:
+      "Side-by-side comparison of the options wheel income cycle versus an iron condor credit structure.",
+    type: "article"
+  }
+};
 
 type ComparisonRow = {
   feature: string;

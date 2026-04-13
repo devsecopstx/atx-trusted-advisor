@@ -16,16 +16,13 @@ const publicRoutes = [
     changeFrequency: "weekly" as const,
     priority: 0.8,
   },
-  {
-    path: "/xoptions",
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  },
-  {
-    path: "/portfolios",
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  },
+  // Resources (public, guest-accessible)
+  { path: "/resources/about", changeFrequency: "monthly" as const, priority: 0.6 },
+  { path: "/resources/decision-workflow", changeFrequency: "monthly" as const, priority: 0.6 },
+  { path: "/resources/secret-sauce", changeFrequency: "monthly" as const, priority: 0.6 },
+  { path: "/resources/getting-started", changeFrequency: "monthly" as const, priority: 0.6 },
+  { path: "/resources/building-wheel", changeFrequency: "monthly" as const, priority: 0.6 },
+  { path: "/resources/building-wheel/wheel-vs-iron-condor", changeFrequency: "monthly" as const, priority: 0.5 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

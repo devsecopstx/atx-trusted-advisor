@@ -89,23 +89,26 @@ type WatchlistApiData = {
   symbolsWithQuotes?: WatchlistRow[];
 };
 
+import { isExpiredCallOption } from "@/modules/watchlist/option-expiration";
+
 function buildRows(data: WatchlistApiData): WatchlistRow[] {
-  if (data.symbolsWithQuotes?.length) {
-    return data.symbolsWithQuotes;
-  }
-  return (data.symbols ?? []).map((s) => ({
-    symbol: s.symbol,
-    addedAt: s.addedAt,
-    quote: null,
-    lineType: s.lineType,
-    strategy: s.strategy,
-    quantity: s.quantity,
-    entryPrice: s.entryPrice,
-    rationale: s.rationale,
-    rowStatus: s.rowStatus,
-    lastPrice: s.lastPrice,
-    lastUpdatedAt: s.lastUpdatedAt
-  }));
+  const base = data.symbolsWithQuotes?.length
+    ? data.symbolsWithQuotes
+    : (data.symbols ?? []).map((s) => ({
+        symbol: s.symbol,
+        addedAt: s.addedAt,
+        quote: null,
+        lineType: s.lineType,
+        strategy: s.strategy,
+        quantity: s.quantity,
+        entryPrice: s.entryPrice,
+        rationale: s.rationale,
+        rowStatus: s.rowStatus,
+        lastPrice: s.lastPrice,
+        lastUpdatedAt: s.lastUpdatedAt
+      }));
+  // Client-side safeguard: hide expired CALL options (ET) in case of cache lag
+  return base.filter((r) => !isExpiredCallOption(r.symbol));
 }
 
 function chunkSymbols<T>(items: T[], size: number): T[][] {

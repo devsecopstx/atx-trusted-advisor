@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AppUserAccountPublicRailForSession } from "@/app/ui/app-user-account-public-rail";
 import { AppUserCollapsibleRailLayout } from "@/app/ui/app-user-collapsible-rail-layout";
 import { AppUserApprovedHeader } from "@/app/ui/app_user-approved-header";
@@ -11,7 +12,19 @@ import { canUserLogin } from "@/modules/identity/authorization";
 import "../../xchat/xchat.css";
 import "../getting-started/resources-getting-started.css";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "About aTx Trusted Advisory | Resources",
+  description:
+    "Overview of aTx Trusted Advisory for high-net-worth families and their advisors in Austin — features, benefits, and who it's for.",
+  openGraph: {
+    title: "About aTx Trusted Advisory | Resources",
+    description:
+      "Overview of aTx Trusted Advisory for high-net-worth families and their advisors in Austin — features, benefits, and who it's for.",
+    type: "article"
+  }
+};
 
 const ABOUT_BULLETS: string[] = [
   "Consolidate all your accounts and assets into a single dashboard",
